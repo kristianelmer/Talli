@@ -270,6 +270,7 @@ test("browser owner cleanup removes tracked sources before company and user", as
   assert.ok(calls.includes("set local role ledger_workflow_store_owner"));
   assert.ok(calls.includes("set local role investments_store_owner"));
   for (const table of [
+    "position_boundary_confirmations",
     "share_sale_allocations",
     "received_dividends",
     "share_sales",

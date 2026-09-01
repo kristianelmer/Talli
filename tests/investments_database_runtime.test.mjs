@@ -33,6 +33,7 @@ const investmentsLifecyclePublicCutoverMigration = "20260901150538_investments_l
 const investmentsMeasurementReversalsMigration = "20260901203025_investments_measurement_reversals.sql";
 const investmentsBoundaryConfirmationsMigration = "20260901204052_investments_boundary_confirmations.sql";
 const investmentsSettledEventCorrectionsMigration = "20260901205331_investments_settled_event_corrections.sql";
+const investmentsCorrectionSourceIdempotenceMigration = "20260901222630_investments_lifecycle_correction_source_idempotence.sql";
 const ownerId = "00000000-0000-0000-0000-000000000011";
 const outsiderId = "00000000-0000-0000-0000-000000000022";
 const companyId = "10000000-0000-0000-0000-000000000001";
@@ -170,6 +171,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         investmentsMeasurementReversalsMigration,
         investmentsBoundaryConfirmationsMigration,
         investmentsSettledEventCorrectionsMigration,
+        investmentsCorrectionSourceIdempotenceMigration,
       ].includes(name))) {
       psql(containerName, ["--file", `/repo/supabase/migrations/${migration}`]);
     }
@@ -1259,6 +1261,125 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     psql(containerName, [
       "--file", `/repo/supabase/migrations/${investmentsLifecycleCorrectionsMigration}`,
     ]);
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsCorrectionSourceIdempotenceMigration}`,
+    ]);
+    const preContractCorrectionOne = "90500000-0000-0000-0000-000000000001";
+    const preContractCorrectionTwo = "90500000-0000-0000-0000-000000000002";
+    const preContractDocumentFact = "90500000-0000-0000-0000-000000000003";
+    const preContractFactSha256 = "9".repeat(64);
+    psql(containerName, [], String.raw`
+      set role investments_store_owner;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config(
+        'talli.verified_actor_claims',
+        '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}', false
+      );
+      insert into investments.source_fact_registry (
+        company_id, source_capability, source_record_id, source_revision,
+        fact_sha256
+      ) values (
+        '${companyId}', 'DOCUMENTS', '${preContractDocumentFact}', 1,
+        '${preContractFactSha256}'
+      );
+      insert into investments.lifecycle_corrections (
+        correction_id, company_id, income_year, idempotency_key,
+        request_fingerprint, target_kind, original_record_id,
+        original_event_id, original_activity_kind,
+        original_accounting_entry_id, reversal_accounting_entry_id,
+        replacement_record_id, replacement_accounting_entry_id,
+        reason, evidence_mode, evidence_reference, owner_attested,
+        evidence_digest, created_by
+      ) values
+        (
+          '${preContractCorrectionOne}', '${companyId}', 2026,
+          'pre-contract-source-replay-0001', repeat('1', 64),
+          'economic_event', '90500000-0000-0000-0000-000000000004',
+          '90500000-0000-0000-0000-000000000005', 'share_purchase',
+          '90500000-0000-0000-0000-000000000006',
+          '90500000-0000-0000-0000-000000000007',
+          '90500000-0000-0000-0000-000000000008',
+          '90500000-0000-0000-0000-000000000009',
+          'Reuse an immutable document fact', 'linked_sources',
+          'signed correction evidence', false, repeat('2', 64), '${ownerId}'
+        ),
+        (
+          '${preContractCorrectionTwo}', '${companyId}', 2026,
+          'pre-contract-source-replay-0002', repeat('3', 64),
+          'economic_event', '90500000-0000-0000-0000-000000000010',
+          '90500000-0000-0000-0000-000000000011', 'share_purchase',
+          '90500000-0000-0000-0000-000000000012',
+          '90500000-0000-0000-0000-000000000013',
+          '90500000-0000-0000-0000-000000000014',
+          '90500000-0000-0000-0000-000000000015',
+          'Reject a changed immutable document fact', 'linked_sources',
+          'signed correction evidence', false, repeat('4', 64), '${ownerId}'
+        );
+    `);
+    const identicalPreContractSource = JSON.stringify([{
+      capability: "DOCUMENTS",
+      recordId: preContractDocumentFact,
+      revision: 1,
+      factSha256: preContractFactSha256,
+    }]);
+    assert.equal(scalar(containerName, String.raw`
+      set role investments_store_owner;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select investments.record_lifecycle_correction_sources_v2(
+        '${companyId}', '${preContractCorrectionOne}',
+        '${identicalPreContractSource}'::jsonb
+      );
+      select pg_catalog.count(*)::text || ':' || pg_catalog.min(fact_sha256)
+      from investments.lifecycle_correction_sources
+      where correction_id = '${preContractCorrectionOne}';
+    `), `1:${preContractFactSha256}`);
+    const mismatchedPreContractSource = JSON.stringify([{
+      capability: "DOCUMENTS",
+      recordId: preContractDocumentFact,
+      revision: 1,
+      factSha256: "8".repeat(64),
+    }]);
+    const rejectedMismatchedPreContractSource = docker([
+      "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
+      "-U", "postgres", "-d", "talli_test",
+    ], { input: String.raw`
+      set role investments_store_owner;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select investments.record_lifecycle_correction_sources_v2(
+        '${companyId}', '${preContractCorrectionTwo}',
+        '${mismatchedPreContractSource}'::jsonb
+      );
+    ` });
+    assert.notEqual(rejectedMismatchedPreContractSource.status, 0);
+    assert.match(
+      `${rejectedMismatchedPreContractSource.stdout}\n${rejectedMismatchedPreContractSource.stderr}`,
+      /investments_invalid_input/u,
+    );
+    assert.equal(scalar(containerName, String.raw`
+      select fact_sha256 from investments.source_fact_registry
+      where company_id = '${companyId}'
+        and source_capability = 'DOCUMENTS'
+        and source_record_id = '${preContractDocumentFact}'
+        and source_revision = 1;
+    `), preContractFactSha256);
+    for (let rollbackAttempt = 0; rollbackAttempt < 2; rollbackAttempt += 1) {
+      psql(containerName, [
+        "--file", `/repo/supabase/rollback/${investmentsCorrectionSourceIdempotenceMigration}`,
+      ]);
+    }
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsCorrectionSourceIdempotenceMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select (
+        pg_catalog.pg_get_functiondef(
+          'investments.record_lifecycle_correction_sources_v2(uuid,uuid,jsonb)'::regprocedure
+        ) ~* 'ON CONFLICT[[:space:][:print:]]+DO NOTHING'
+        and pg_catalog.pg_get_functiondef(
+          'investments.record_lifecycle_correction_sources_v2(uuid,uuid,jsonb)'::regprocedure
+        ) !~* 'DO UPDATE SET fact_sha256'
+      )::text;
+    `), "true");
     psql(containerName, [
       "--file", `/repo/supabase/migrations/${investmentsBankFactClaimMigration}`,
     ]);
@@ -2816,11 +2937,13 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         );
       delete from investments.lifecycle_correction_sources
         where correction_id in (
-          '${lifecycleFundCorrectionId}', '${lifecycleSettlementCorrectionId}'
+          '${lifecycleFundCorrectionId}', '${lifecycleSettlementCorrectionId}',
+          '${preContractCorrectionOne}', '${preContractCorrectionTwo}'
         );
       delete from investments.lifecycle_corrections
         where correction_id in (
-          '${lifecycleFundCorrectionId}', '${lifecycleSettlementCorrectionId}'
+          '${lifecycleFundCorrectionId}', '${lifecycleSettlementCorrectionId}',
+          '${preContractCorrectionOne}', '${preContractCorrectionTwo}'
         );
       delete from investments.event_sources
         where event_id in (

@@ -1,5 +1,13 @@
 begin;
 
+do $membership$
+begin
+  execute pg_catalog.format(
+    'grant investments_store_owner to %I', current_user
+  );
+end
+$membership$;
+
 create table investments.position_boundary_confirmations (
   position_id uuid primary key references investments.positions(id) on delete restrict,
   company_id uuid not null references public.companies(id) on delete restrict,
@@ -231,5 +239,13 @@ grant execute on function
   investments.prepare_received_fund_distribution_recognition_v3(jsonb, text),
   investments.prepare_year_end_measurement_v4(jsonb, text)
 to investments_workflow_executor;
+
+do $membership_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke investments_store_owner from %I', current_user
+  );
+end
+$membership_revoke$;
 
 commit;

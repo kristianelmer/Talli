@@ -418,6 +418,7 @@ async function exerciseMobileInvestmentCorrection({
   await page
     .getByLabel("Referanse til fondets skatteoppgave")
     .fill("browser-fund-tax-2026");
+  await page.locator('input[name="investmentBoundaryConfirmed"]').check();
   await page.locator('select[name="documentId"]')
     .selectOption(evidence.purchaseDocumentId);
   await page.locator('input[name="evidenceReference"]')
@@ -440,6 +441,7 @@ async function exerciseMobileInvestmentCorrection({
   assert.equal(await preservedName.inputValue(), "Talli Browser Fond");
   assert.equal(await preservedName.getAttribute("readonly"), "");
   await page.getByLabel("Kjøpsbeløp (kr)").fill("12000.00");
+  await page.locator('input[name="investmentBoundaryConfirmed"]').check();
   await page.getByLabel("Korrigeringsdato").fill("2026-12-30");
   await page.getByLabel("Begrunnelse").fill("Korrigert kjøpsbeløp mot meglernota");
   await page.locator('select[name="documentId"]')

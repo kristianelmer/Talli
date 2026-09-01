@@ -5,6 +5,8 @@ import json
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
+import pytest
+
 from talli_backend.adapters.supabase_investments import (
     SupabaseInvestmentsSession,
     SupabaseInvestmentsTransaction,
@@ -53,7 +55,18 @@ from test_investments_workflow import (
 )
 
 
-def test_correction_uses_private_prepare_link_and_complete_rpcs() -> None:
+@pytest.mark.parametrize(
+    ("lifecycle_exists", "predecessor_exists", "expected_link"),
+    [
+        (True, False, "link_investment_lifecycle_correction_v2"),
+        (False, True, "link_investment_correction_v1"),
+    ],
+)
+def test_correction_uses_available_private_prepare_link_and_complete_rpcs(
+    lifecycle_exists: bool,
+    predecessor_exists: bool,
+    expected_link: str,
+) -> None:
     transaction = bound_transaction()
     command = supported_investment_correction()
     replacement = command.replacement
@@ -64,6 +77,10 @@ def test_correction_uses_private_prepare_link_and_complete_rpcs() -> None:
             "originalAccountingEntryId": "70000000-0000-0000-0000-000000000017",
             "originalPositionId": str(replacement.position_id),
         }},
+        {
+            "lifecycle_exists": lifecycle_exists,
+            "predecessor_exists": predecessor_exists,
+        },
         {"reversal_entry_id": "70000000-0000-0000-0000-000000000027"},
         {"result": {
             "correctionId": str(command.correction_id),
@@ -111,9 +128,9 @@ def test_correction_uses_private_prepare_link_and_complete_rpcs() -> None:
     assert replacement_record.position_id == prepared.original_position_id
     assert "get_lifecycle_correction_replay_v2" in calls[0][0]
     assert "prepare_economic_event_correction_v2" in calls[1][0]
-    assert "link_investment_lifecycle_correction_v2" in calls[2][0]
-    assert "link_investment_correction_v1" not in calls[2][0]
-    assert "complete_lifecycle_correction_v2" in calls[3][0]
+    assert "to_regprocedure" in calls[2][0]
+    assert expected_link in calls[3][0]
+    assert "complete_lifecycle_correction_v2" in calls[4][0]
     request = json.loads(str(calls[1][1][0]))
     assert request["targetKind"] == "economic_event"
     assert request["originalActivityKind"] == "dividend_received"
@@ -121,7 +138,7 @@ def test_correction_uses_private_prepare_link_and_complete_rpcs() -> None:
     assert request["replacement"]["grossAmount"] == "130.00"
     assert request["replacement"]["evidenceDigest"] == replacement.evidence.digest()
     assert request["evidenceDigest"] == prepared.evidence_digest
-    assert calls[2][1][2] == str(prepared.original_accounting_entry_id)
+    assert calls[3][1][2] == str(prepared.original_accounting_entry_id)
 
 
 def test_settlement_correction_maps_prepared_facts_and_lifecycle_completion() -> None:
@@ -142,6 +159,7 @@ def test_settlement_correction_maps_prepared_facts_and_lifecycle_completion() ->
             "evidenceDigest": replacement.evidence.digest(),
             "originalActivityKind": "share_purchase",
         }},
+        {"lifecycle_exists": True, "predecessor_exists": False},
         {"reversal_entry_id": "70000000-0000-0000-0000-000000000027"},
         {"result": {
             "correctionId": str(command.correction_id),
@@ -177,7 +195,7 @@ def test_settlement_correction_maps_prepared_facts_and_lifecycle_completion() ->
     assert prepared.original_activity_kind.value == "share_purchase"
     assert recorded.replacement_record_id == replacement.settlement_id
     assert "prepare_cash_settlement_correction_v2" in calls[1][0]
-    assert "complete_lifecycle_correction_v2" in calls[3][0]
+    assert "complete_lifecycle_correction_v2" in calls[4][0]
     request = json.loads(str(calls[1][1][0]))
     assert request["replacement"]["settlementId"] == str(
         replacement.settlement_id

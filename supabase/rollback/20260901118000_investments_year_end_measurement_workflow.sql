@@ -8,6 +8,8 @@ do $authority$
 begin
   execute pg_catalog.format('grant ledger_store_owner to %I', current_user);
   execute pg_catalog.format('grant investments_store_owner to %I', current_user);
+  execute pg_catalog.format('grant create on schema ledger to %I', current_user);
+  grant create on schema ledger to ledger_store_owner;
 end
 $authority$;
 
@@ -198,6 +200,8 @@ alter function ledger.enforce_entry_v1() owner to ledger_store_owner;
 
 do $authority_revoke$
 begin
+  execute pg_catalog.format('revoke create on schema ledger from %I', current_user);
+  revoke create on schema ledger from ledger_store_owner;
   execute pg_catalog.format('revoke ledger_store_owner from %I', current_user);
   execute pg_catalog.format('revoke investments_store_owner from %I', current_user);
 end

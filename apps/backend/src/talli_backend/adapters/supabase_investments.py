@@ -1096,6 +1096,30 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
             raise InvestmentsError.unavailable()
         return result
 
+    async def _lifecycle_correction_link_function(self) -> str:
+        rows = await self._database_rows(
+            """
+            select
+              pg_catalog.to_regprocedure(
+                'ledger.link_investment_lifecycle_correction_v2(uuid,integer,uuid,uuid,uuid,uuid,text,text,date,text)'
+              ) is not null as lifecycle_exists,
+              pg_catalog.to_regprocedure(
+                'ledger.link_investment_correction_v1(uuid,integer,uuid,uuid,uuid,uuid,text,text,date,text)'
+              ) is not null as predecessor_exists
+            """
+        )
+        if len(rows) != 1:
+            raise InvestmentsError.unavailable()
+        lifecycle_exists = rows[0].get("lifecycle_exists") is True
+        predecessor_exists = rows[0].get("predecessor_exists") is True
+        if lifecycle_exists == predecessor_exists:
+            raise InvestmentsError.unavailable()
+        return (
+            "ledger.link_investment_lifecycle_correction_v2"
+            if lifecycle_exists
+            else "ledger.link_investment_correction_v1"
+        )
+
     async def claim_transaction_for_external_action(
         self,
         command: ClaimBankTransactionForExternalActionCommand,
@@ -1819,9 +1843,10 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
         prepared: PreparedInvestmentCorrection,
         replacement_accounting_entry_id: AccountingEntryReference,
     ) -> RecordedInvestmentCorrection:
+        link_function = await self._lifecycle_correction_link_function()
         rows = await self._database_rows(
-            """
-            select ledger.link_investment_lifecycle_correction_v2(
+            f"""
+            select {link_function}(
               %s::uuid, %s::integer, %s::uuid, %s::uuid, %s::uuid,
               %s::uuid, %s::text, %s::text, %s::date, %s::text
             ) as reversal_entry_id
@@ -1983,9 +2008,10 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
         original_record_id,
         replacement_record_id,
     ) -> AccountingEntryReference:
+        link_function = await self._lifecycle_correction_link_function()
         rows = await self._database_rows(
-            """
-            select ledger.link_investment_lifecycle_correction_v2(
+            f"""
+            select {link_function}(
               %s::uuid, %s::integer, %s::uuid, %s::uuid, %s::uuid,
               %s::uuid, %s::text, %s::text, %s::date, %s::text
             ) as reversal_entry_id

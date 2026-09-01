@@ -2,6 +2,14 @@
 
 begin;
 
+do $membership$
+begin
+  execute pg_catalog.format(
+    'grant investments_store_owner to %I', current_user
+  );
+end
+$membership$;
+
 create or replace function investments.prepare_year_end_measurement_v3(
   p_request jsonb, p_verified_subject text
 )
@@ -263,5 +271,13 @@ grant execute on function
   investments.prepare_year_end_measurement_v3(jsonb, text),
   investments.complete_year_end_measurement_v3(jsonb, uuid, jsonb, text)
 to investments_workflow_executor;
+
+do $membership_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke investments_store_owner from %I', current_user
+  );
+end
+$membership_revoke$;
 
 commit;

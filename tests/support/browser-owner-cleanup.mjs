@@ -191,6 +191,7 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
       "cash_settlements",
       "event_sources",
       "economic_events",
+      "position_boundary_confirmations",
       "position_classifications",
       "source_fact_registry",
       "company_year_policies",

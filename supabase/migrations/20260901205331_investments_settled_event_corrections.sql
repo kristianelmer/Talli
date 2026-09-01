@@ -1,5 +1,13 @@
 begin;
 
+do $membership$
+begin
+  execute pg_catalog.format(
+    'grant investments_store_owner to %I', current_user
+  );
+end
+$membership$;
+
 create policy investments_cash_settlements_owner_supersede_update
 on investments.cash_settlements for update to investments_store_owner
 using (public.company_access_is_accepted_owner_v1(company_id))
@@ -429,5 +437,13 @@ grant execute on function
   investments.complete_settled_event_correction_v1(
     jsonb, uuid, uuid, uuid, uuid, uuid, uuid, text
   ) to investments_workflow_executor;
+
+do $membership_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke investments_store_owner from %I', current_user
+  );
+end
+$membership_revoke$;
 
 commit;

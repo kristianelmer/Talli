@@ -166,6 +166,14 @@ const settledEventCorrectionsRollbackPath = new URL(
   "../supabase/rollback/20260901205331_investments_settled_event_corrections.sql",
   import.meta.url,
 );
+const correctionSourceIdempotencePath = new URL(
+  "../supabase/migrations/20260901222630_investments_lifecycle_correction_source_idempotence.sql",
+  import.meta.url,
+);
+const correctionSourceIdempotenceRollbackPath = new URL(
+  "../supabase/rollback/20260901222630_investments_lifecycle_correction_source_idempotence.sql",
+  import.meta.url,
+);
 const localGatePath = new URL("../scripts/test-supabase-local.sh", import.meta.url);
 
 function artifact(path, phase) {
@@ -174,6 +182,19 @@ function artifact(path, phase) {
   assert.match(source, /\bbegin\s*;/iu);
   assert.match(source, /\bcommit\s*;\s*$/iu);
   return source;
+}
+
+function assertBoundedInvestmentsOwnerMembership(source, phase) {
+  assert.match(
+    source,
+    /grant investments_store_owner to %I/iu,
+    `${phase} must acquire migration-local investments ownership`,
+  );
+  assert.match(
+    source,
+    /revoke investments_store_owner from %I/iu,
+    `${phase} must release migration-local investments ownership`,
+  );
 }
 
 function assertBoundedBackendSystemDdlAuthority(source, phase) {
@@ -256,6 +277,21 @@ test("year-end measurement is executable, restricted, and reverses fail closed",
   assert.match(source, /function investments\.complete_year_end_measurement_v2/iu);
   assert.match(source, /'INVESTMENT_MEASUREMENT'/u);
   assert.match(source, /update investments\.positions[\s\S]+cost_basis/iu);
+  for (const [artifactSource, phase] of [
+    [source, "forward"],
+    [rollback, "rollback"],
+  ]) {
+    assert.match(
+      artifactSource,
+      /grant create on schema ledger to %I/iu,
+      `${phase} must obtain explicit migration-local ledger DDL authority`,
+    );
+    assert.match(
+      artifactSource,
+      /revoke create on schema ledger from %I/iu,
+      `${phase} must revoke migration-local ledger DDL authority`,
+    );
+  }
   assert.match(
     source,
     /grant execute on function[\s\S]+get_year_end_measurement_replay_v2[\s\S]+to investments_workflow_executor/iu,
@@ -380,7 +416,7 @@ test("lifecycle public cutover removes every v1 writer grant reversibly", () => 
   const rollbackSql = rollback.replace(/^--.*$/gmu, "");
   assert.doesNotMatch(
     rollbackSql,
-    /\b(?:drop|truncate|delete|update|insert)\b/iu,
+    /^\s*(?:drop|truncate|delete|update|insert)\b/imu,
   );
 });
 
@@ -396,6 +432,40 @@ test("contract and rollback artifacts bound hosted backend-system DDL authority"
   ]) {
     assertBoundedBackendSystemDdlAuthority(artifact(path, phase), phase);
   }
+});
+
+test("forward correction-source replay stays insert-only across rollback", () => {
+  const source = artifact(
+    correctionSourceIdempotencePath,
+    "correction-source idempotence",
+  );
+  const rollback = artifact(
+    correctionSourceIdempotenceRollbackPath,
+    "correction-source idempotence rollback",
+  );
+  assertBoundedInvestmentsOwnerMembership(
+    source,
+    "correction-source idempotence",
+  );
+  assert.match(
+    source,
+    /create or replace function investments\.record_lifecycle_correction_sources_v2[\s\S]+on conflict \([\s\S]+\) do nothing[\s\S]+join investments\.source_fact_registry registered[\s\S]+registered\.fact_sha256 = item ->> 'factSha256'/iu,
+  );
+  assert.doesNotMatch(
+    source,
+    /on conflict \([\s\S]{0,300}\) do update set fact_sha256/iu,
+  );
+  assert.doesNotMatch(
+    source,
+    /grant[^;]+update[^;]+investments\.source_fact_registry/iu,
+  );
+  assert.match(rollback, /insert-only correction-source fix/iu);
+  assert.match(rollback, /rollback_unsafe/iu);
+  const rollbackSql = rollback.replace(/^--.*$/gmu, "");
+  assert.doesNotMatch(
+    rollbackSql,
+    /^\s*(?:drop|truncate|delete|update|insert)\b/imu,
+  );
 });
 
 test("expand and workflow keep predecessor and successor stores coherent", () => {
@@ -1095,6 +1165,11 @@ test("measurement reversals and investment boundaries are executable and reversi
     measurementReversalsRollbackPath,
     "measurement reversals rollback",
   );
+  assertBoundedInvestmentsOwnerMembership(measurement, "measurement reversals");
+  assertBoundedInvestmentsOwnerMembership(
+    measurementRollback,
+    "measurement reversals rollback",
+  );
   assert.match(measurement, /prepare_year_end_measurement_v3/iu);
   assert.match(measurement, /reversal_amount/iu);
   assert.match(measurement, /remaining_cost_basis[\s\S]+v_closing/iu);
@@ -1103,6 +1178,11 @@ test("measurement reversals and investment boundaries are executable and reversi
   const boundary = artifact(boundaryConfirmationsPath, "boundary confirmations");
   const boundaryRollback = artifact(
     boundaryConfirmationsRollbackPath,
+    "boundary confirmations rollback",
+  );
+  assertBoundedInvestmentsOwnerMembership(boundary, "boundary confirmations");
+  assertBoundedInvestmentsOwnerMembership(
+    boundaryRollback,
     "boundary confirmations rollback",
   );
   assert.match(boundary, /create table investments\.position_boundary_confirmations/iu);
@@ -1128,6 +1208,11 @@ test("settled wrong-amount corrections bind both reversals atomically", () => {
   );
   const rollback = artifact(
     settledEventCorrectionsRollbackPath,
+    "settled event corrections rollback",
+  );
+  assertBoundedInvestmentsOwnerMembership(source, "settled event corrections");
+  assertBoundedInvestmentsOwnerMembership(
+    rollback,
     "settled event corrections rollback",
   );
   assert.match(source, /prepare_settled_event_correction_v1/iu);
