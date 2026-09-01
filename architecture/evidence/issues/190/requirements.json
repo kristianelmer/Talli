@@ -3,7 +3,24 @@
   "issue": "#190",
   "source": "https://github.com/kristianelmer/Talli/issues/190",
   "sourceCheckedAt": "2026-08-31T22:35:26Z",
-  "completeGates": [],
+  "completeGates": [
+    {
+      "revision": "8da241f66d987ced3812c4a1d76b69d00e075a34",
+      "previousPassingRevision": null,
+      "evidencePath": "architecture/evidence/customer-ready-gates/8da241f66d987ced3812c4a1d76b69d00e075a34.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:d42fd5b9f5ec853f51004c42eaa614076f80b07158f6d28f140d5cab4b1d5bc7"
+    },
+    {
+      "revision": "820d7ca1820fc94cd2e49642ef5bb6a26dfd2d6d",
+      "previousPassingRevision": "8da241f66d987ced3812c4a1d76b69d00e075a34",
+      "evidencePath": "architecture/evidence/customer-ready-gates/820d7ca1820fc94cd2e49642ef5bb6a26dfd2d6d.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:1df81526426a84e832b97bf2a8616d7cc0be152cc50c1946de5bad0a615d1574"
+    }
+  ],
   "entryBlockers": [
     {
       "issue": "#143",
@@ -56,7 +73,7 @@
           "command": "uv run --project apps/backend pytest apps/backend/tests/test_investments_supported_patterns.py"
         }
       ],
-      "status": "planned"
+      "status": "supported-pattern-docs-fixtures-and-python-golden-cases-passed"
     },
     {
       "id": "GH-190-A2",
@@ -76,7 +93,7 @@
           "command": "npm run test:browser-owner"
         }
       ],
-      "status": "planned"
+      "status": "provider-neutral-evidence-and-manual-fallback-runtime-passed"
     },
     {
       "id": "GH-190-A3",
@@ -96,7 +113,7 @@
           "command": "node --test tests/investments_supported_pattern_evidence.test.mjs"
         }
       ],
-      "status": "planned"
+      "status": "unsupported-and-ambiguous-cases-hard-block-before-mutation"
     },
     {
       "id": "GH-190-A4",
@@ -116,7 +133,7 @@
           "command": "npm run test:browser-owner"
         }
       ],
-      "status": "planned"
+      "status": "cross-output-reconciliation-and-owner-loop-passed"
     },
     {
       "id": "GH-190-A5",
@@ -140,7 +157,7 @@
           "command": "npm run test:browser-owner"
         }
       ],
-      "status": "planned"
+      "status": "atomic-idempotent-correction-rls-browser-and-mobile-passed"
     },
     {
       "id": "GH-190-A6",
@@ -168,8 +185,22 @@
           "command": "exact-revision protected Preview receipt"
         }
       ],
-      "status": "planned"
+      "status": "single-python-implementation-two-gates-hosted-and-preview-passed"
     }
   ],
-  "closeState": "claimed-active"
+  "hostedVerification": {
+    "path": "architecture/evidence/issues/190/hosted-verification.json",
+    "verdict": "pass",
+    "projectId": "pkpyyxryfhfehrbhbynp",
+    "migrationHistoryCount": 71,
+    "investmentTableCount": 22,
+    "investmentSecurityFindings": 0
+  },
+  "previewVerification": {
+    "path": "architecture/evidence/issues/190/preview-verification.json",
+    "sourceRevision": "78c1bd40f67887a8869ded69a8aa9a00da945089",
+    "githubDeploymentId": 6212005188,
+    "verdict": "pass"
+  },
+  "closeState": "ready-for-github-evidence-and-issue-closure"
 }
