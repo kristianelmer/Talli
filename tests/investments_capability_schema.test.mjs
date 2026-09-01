@@ -86,6 +86,22 @@ const lifecycleWorkflowRollbackPath = new URL(
   "../supabase/rollback/20260901113000_investments_lifecycle_workflow.sql",
   import.meta.url,
 );
+const shareSaleLifecyclePath = new URL(
+  "../supabase/migrations/20260901114000_investments_share_sale_lifecycle.sql",
+  import.meta.url,
+);
+const shareSaleLifecycleRollbackPath = new URL(
+  "../supabase/rollback/20260901114000_investments_share_sale_lifecycle.sql",
+  import.meta.url,
+);
+const incomeLifecyclePath = new URL(
+  "../supabase/migrations/20260901115000_investments_income_lifecycle.sql",
+  import.meta.url,
+);
+const incomeLifecycleRollbackPath = new URL(
+  "../supabase/rollback/20260901115000_investments_income_lifecycle.sql",
+  import.meta.url,
+);
 const localGatePath = new URL("../scripts/test-supabase-local.sh", import.meta.url);
 
 function artifact(path, phase) {
@@ -289,6 +305,99 @@ test("investment lifecycle workflow persists recognition and settlement separate
   assert.match(rollback, /investments_lifecycle_workflow_rollback_unsafe/iu);
   assert.match(rollback, /drop function if exists investments\.complete_cash_settlement_v2/iu);
   assert.match(rollback, /drop table investments\.share_purchase_recognitions/iu);
+});
+
+test("share-sale lifecycle recognizes exact FIFO facts before separate settlement", () => {
+  const source = artifact(shareSaleLifecyclePath, "share-sale lifecycle");
+  const rollback = artifact(
+    shareSaleLifecycleRollbackPath,
+    "share-sale lifecycle rollback",
+  );
+
+  const revokeBlock = source.match(
+    /revoke all on function([\s\S]+?)from public, anon, authenticated, service_role/iu,
+  )?.[1] ?? "";
+  const grantBlock = source.match(
+    /grant execute on function([\s\S]+?)to investments_workflow_executor/iu,
+  )?.[1] ?? "";
+  for (const routine of [
+    "get_share_sale_recognition_replay_v2",
+    "prepare_share_sale_recognition_v2",
+    "complete_share_sale_recognition_v2",
+  ]) {
+    assert.match(source, new RegExp(
+      `create or replace function investments\\.${routine}`,
+      "iu",
+    ));
+    assert.match(revokeBlock, new RegExp(`investments\\.${routine}`, "iu"));
+    assert.match(grantBlock, new RegExp(`investments\\.${routine}`, "iu"));
+  }
+  assert.match(
+    source,
+    /v_sold numeric := \(p_request ->> 'soldShareCount'\)::numeric/iu,
+  );
+  assert.match(source, /v_sold <> pg_catalog\.round\(v_sold, 12\)/iu);
+  assert.match(source, /insert into investments\.share_sales/iu);
+  assert.match(source, /insert into investments\.share_sale_allocations/iu);
+  assert.match(source, /insert into investments\.economic_events/iu);
+  assert.match(source, /settlement_balance_kind[^;]+'sale_receivable'/iu);
+  assert.match(
+    source,
+    /array\[\s*'netProceeds', 'evidenceDigest', 'correlationId'\s*\]/u,
+  );
+  assert.doesNotMatch(
+    source,
+    /grant[^;]+execute[^;]+to (?:public|anon|authenticated|service_role)/iu,
+  );
+  assert.match(rollback, /investments_share_sale_lifecycle_rollback_unsafe/iu);
+  assert.match(
+    rollback,
+    /drop function if exists investments\.complete_share_sale_recognition_v2/iu,
+  );
+});
+
+test("income lifecycle separates declaration or entitlement from cash receipt", () => {
+  const source = artifact(incomeLifecyclePath, "income lifecycle");
+  const rollback = artifact(incomeLifecycleRollbackPath, "income lifecycle rollback");
+
+  for (const table of [
+    "received_dividend_recognitions",
+    "received_fund_distribution_recognitions",
+  ]) {
+    assert.match(source, new RegExp(`create table investments\\.${table}`, "iu"));
+    assert.match(source, new RegExp(
+      `alter table investments\\.${table}[\\s\\S]+force row level security`,
+      "iu",
+    ));
+  }
+  for (const routine of [
+    "get_received_dividend_recognition_replay_v2",
+    "prepare_received_dividend_recognition_v2",
+    "complete_received_dividend_recognition_v2",
+    "get_received_fund_distribution_recognition_replay_v2",
+    "prepare_received_fund_distribution_recognition_v2",
+    "complete_received_fund_distribution_recognition_v2",
+  ]) {
+    assert.match(source, new RegExp(
+      `create or replace function investments\\.${routine}`,
+      "iu",
+    ));
+  }
+  assert.match(source, /'dividend_receivable'/u);
+  assert.match(source, /'fund_distribution_receivable'/u);
+  assert.match(source, /array\['evidenceDigest', 'correlationId'\]/u);
+  assert.match(source, /insert into investments\.economic_events/iu);
+  assert.match(source, /insert into investments\.received_dividend_recognitions/iu);
+  assert.match(
+    source,
+    /insert into investments\.received_fund_distribution_recognitions/iu,
+  );
+  assert.doesNotMatch(
+    source,
+    /grant[^;]+execute[^;]+to (?:public|anon|authenticated|service_role)/iu,
+  );
+  assert.match(rollback, /investments_income_lifecycle_rollback_unsafe/iu);
+  assert.match(rollback, /drop table investments\.received_dividend_recognitions/iu);
 });
 
 test("sale workflow owns FIFO persistence behind restricted investments functions", () => {

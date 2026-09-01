@@ -582,7 +582,7 @@ class InvestmentSaleLotFact:
     lot_id: AcquisitionLotId
     allocation_order: int
     acquisition_date: LocalDate
-    allocated_share_count: int
+    allocated_share_count: InvestmentUnits
     allocated_book_cost_basis: Money
     allocated_tax_basis: Money
     acquisition_year_fund_equity_ratio_basis_points: int | None
@@ -592,7 +592,7 @@ class InvestmentSaleLotFact:
 class InvestmentSaleLotCalculation:
     lot_id: AcquisitionLotId
     allocation_order: int
-    allocated_share_count: int
+    allocated_share_count: InvestmentUnits
     allocated_net_proceeds: Money
     allocated_book_cost_basis: Money
     allocated_tax_basis: Money
@@ -969,6 +969,64 @@ class InvestmentsPersistence(Protocol):
         accounting_entry_id: AccountingEntryReference,
     ) -> RecordedInvestmentEconomicEvent: ...
 
+    async def get_share_sale_recognition_replay(
+        self, command: RecognizeShareSaleCommand
+    ) -> RecordedInvestmentEconomicEvent | None: ...
+
+    async def prepare_share_sale_recognition(
+        self,
+        command: RecognizeShareSaleCommand,
+        *,
+        net_proceeds: Money,
+        evidence_digest: str,
+    ) -> PreparedShareSaleFacts: ...
+
+    async def complete_share_sale_recognition(
+        self,
+        command: RecognizeShareSaleCommand,
+        *,
+        prepared: PreparedShareSale,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedInvestmentEconomicEvent: ...
+
+    async def get_received_dividend_recognition_replay(
+        self, command: RecognizeReceivedDividendCommand
+    ) -> RecordedInvestmentEconomicEvent | None: ...
+
+    async def prepare_received_dividend_recognition(
+        self,
+        command: RecognizeReceivedDividendCommand,
+        *,
+        evidence_digest: str,
+    ) -> PreparedReceivedDividendFacts: ...
+
+    async def complete_received_dividend_recognition(
+        self,
+        command: RecognizeReceivedDividendCommand,
+        *,
+        prepared: PreparedReceivedDividend,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedInvestmentEconomicEvent: ...
+
+    async def get_received_fund_distribution_recognition_replay(
+        self, command: RecognizeReceivedFundDistributionCommand
+    ) -> RecordedInvestmentEconomicEvent | None: ...
+
+    async def prepare_received_fund_distribution_recognition(
+        self,
+        command: RecognizeReceivedFundDistributionCommand,
+        *,
+        evidence_digest: str,
+    ) -> PreparedReceivedFundDistributionFacts: ...
+
+    async def complete_received_fund_distribution_recognition(
+        self,
+        command: RecognizeReceivedFundDistributionCommand,
+        *,
+        prepared: PreparedReceivedFundDistribution,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedInvestmentEconomicEvent: ...
+
     async def get_cash_settlement_replay(
         self, command: SettleInvestmentCashCommand
     ) -> RecordedInvestmentCashSettlement | None: ...
@@ -1103,6 +1161,54 @@ class InvestmentsCommands(Protocol):
         command: RecognizeSharePurchaseCommand,
         *,
         prepared: PreparedSharePurchaseRecognition,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedInvestmentEconomicEvent: ...
+
+    async def get_share_sale_recognition_replay(
+        self, command: RecognizeShareSaleCommand
+    ) -> RecordedInvestmentEconomicEvent | None: ...
+
+    async def prepare_share_sale_recognition(
+        self, command: RecognizeShareSaleCommand
+    ) -> PreparedShareSale: ...
+
+    async def complete_share_sale_recognition(
+        self,
+        command: RecognizeShareSaleCommand,
+        *,
+        prepared: PreparedShareSale,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedInvestmentEconomicEvent: ...
+
+    async def get_received_dividend_recognition_replay(
+        self, command: RecognizeReceivedDividendCommand
+    ) -> RecordedInvestmentEconomicEvent | None: ...
+
+    async def prepare_received_dividend_recognition(
+        self, command: RecognizeReceivedDividendCommand
+    ) -> PreparedReceivedDividend: ...
+
+    async def complete_received_dividend_recognition(
+        self,
+        command: RecognizeReceivedDividendCommand,
+        *,
+        prepared: PreparedReceivedDividend,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedInvestmentEconomicEvent: ...
+
+    async def get_received_fund_distribution_recognition_replay(
+        self, command: RecognizeReceivedFundDistributionCommand
+    ) -> RecordedInvestmentEconomicEvent | None: ...
+
+    async def prepare_received_fund_distribution_recognition(
+        self, command: RecognizeReceivedFundDistributionCommand
+    ) -> PreparedReceivedFundDistribution: ...
+
+    async def complete_received_fund_distribution_recognition(
+        self,
+        command: RecognizeReceivedFundDistributionCommand,
+        *,
+        prepared: PreparedReceivedFundDistribution,
         accounting_entry_id: AccountingEntryReference,
     ) -> RecordedInvestmentEconomicEvent: ...
 

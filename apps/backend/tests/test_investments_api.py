@@ -28,6 +28,7 @@ from talli_backend.modules.investments.public import (
     InvestmentPositionView,
     InvestmentSaleLotFact,
     InvestmentTaxTreatment,
+    InvestmentUnits,
     PreparedReceivedDividendFacts,
     PreparedReceivedFundDistributionFacts,
     PreparedInvestmentCorrection,
@@ -150,7 +151,9 @@ class InvestmentsSessionStub:
                 lot_id=AcquisitionLotId("60000000-0000-0000-0000-000000000006"),
                 allocation_order=1,
                 acquisition_date=command.sale_date,
-                allocated_share_count=command.sold_share_count,
+                allocated_share_count=InvestmentUnits.of(
+                    str(command.sold_share_count)
+                ),
                 allocated_book_cost_basis=Money.nok("50.20"),
                 allocated_tax_basis=Money.nok("50.20"),
                 acquisition_year_fund_equity_ratio_basis_points=None,

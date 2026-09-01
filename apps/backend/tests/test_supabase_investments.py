@@ -16,6 +16,8 @@ from talli_backend.modules.investments.public import (
 from talli_backend.modules.investments.service import InvestmentsService
 from talli_backend.modules.ledger.public import (
     InvestmentClassification,
+    InvestmentDividendFacts,
+    InvestmentDividendPhase,
     InvestmentPurchaseRecognitionFacts,
     LedgerEntryKind,
     LedgerFactReference,
@@ -32,7 +34,13 @@ from test_investments import (
     supported_received_fund_distribution,
     supported_sale,
 )
-from test_investments_workflow import lifecycle_purchase, lifecycle_settlement
+from test_investments_workflow import (
+    lifecycle_dividend,
+    lifecycle_fund_distribution,
+    lifecycle_purchase,
+    lifecycle_sale,
+    lifecycle_settlement,
+)
 
 
 def test_correction_uses_private_prepare_link_and_complete_rpcs() -> None:
@@ -197,6 +205,60 @@ def test_lifecycle_ledger_post_uses_only_the_restricted_investments_wrapper() ->
             "factSha256": "a" * 64,
         },
     ]
+
+
+def test_dividend_decision_uses_the_restricted_investments_wrapper() -> None:
+    transaction = bound_transaction()
+    dividend = lifecycle_dividend()
+    primary_source = LedgerFactReference(
+        capability=LedgerSourceCapability.INVESTMENTS,
+        record_id=LedgerSourceRecordId(str(dividend.event_id)),
+        revision=1,
+        fact_sha256="e" * 64,
+    )
+    command = RecognizeHoldingActionCommand(
+        company_id=dividend.company_id,
+        actor_id=dividend.actor_id,
+        correlation_id=dividend.correlation_id,
+        idempotency_key=dividend.idempotency_key,
+        income_year=dividend.income_year,
+        event_date=dividend.declared_date,
+        primary_source=primary_source,
+        corroborating_sources=(),
+        facts=InvestmentDividendFacts(
+            phase=InvestmentDividendPhase.FINAL_DECISION,
+            gross_amount=dividend.gross_amount,
+        ),
+    )
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def one_idempotent_row(
+        query: str, parameters: tuple[object, ...]
+    ) -> dict[str, object]:
+        calls.append((query, parameters))
+        return {
+            "ledger_entry_id": "70000000-0000-0000-0000-000000000027",
+            "company_id": str(command.company_id),
+            "income_year": 2026,
+            "entry_kind": "DIVIDEND_RECEIVED",
+            "posted_at": datetime(2026, 8, 31, tzinfo=UTC),
+            "replayed": False,
+        }
+
+    transaction._one_idempotent_row = one_idempotent_row  # type: ignore[method-assign]
+    posted = asyncio.run(transaction.record_received_dividend_decision(
+        command,
+        memo="Final investment-dividend decision recognized",
+        lines=(
+            LedgerLine("1530", "Dividend receivable", Money.nok("100"), Money.nok("0")),
+            LedgerLine("8070", "Dividend income", Money.nok("0"), Money.nok("100")),
+        ),
+    ))
+
+    assert posted.entry_kind is LedgerEntryKind.DIVIDEND_RECEIVED
+    assert len(calls) == 1
+    assert "ledger.post_investment_lifecycle_entry_v2" in calls[0][0]
+    assert "ledger.record_received_dividend_decision_v1" not in calls[0][0]
 
 
 def test_share_sale_uses_only_the_private_investments_workflow_rpcs() -> None:
@@ -705,6 +767,204 @@ def test_purchase_recognition_uses_revisioned_lifecycle_rpcs() -> None:
     ]
     assert request["bankFact"] is None
     assert request["evidenceDigest"] == prepared.evidence_digest
+
+
+def test_share_sale_recognition_preserves_fractional_fifo_through_v2_rpcs() -> None:
+    transaction = bound_transaction()
+    command = lifecycle_sale()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+    responses = iter(
+        [
+            {"result": None},
+            {
+                "result": {
+                    "positionId": str(command.position_id),
+                    "investmentName": "Example AS",
+                    "investmentKind": "norwegian_private_company",
+                    "accountingClassification": "other_long_term",
+                    "fifoBookCostBasisReduction": "50.20",
+                    "fifoTaxBasisReduction": "50.20",
+                    "lotFacts": [{
+                        "lotId": "60000000-0000-0000-0000-000000000006",
+                        "allocationOrder": 1,
+                        "acquisitionDate": "2026-04-15",
+                        "allocatedShareCount": "4.125000000000",
+                        "allocatedBookCostBasis": "50.20",
+                        "allocatedTaxBasis": "50.20",
+                        "acquisitionYearFundEquityRatioBasisPoints": None,
+                    }],
+                }
+            },
+            {
+                "result": {
+                    "eventId": str(command.event_id),
+                    "positionId": str(command.position_id),
+                    "recognitionAccountingEntryId": (
+                        "70000000-0000-0000-0000-000000000017"
+                    ),
+                    "expectedSettlementAmount": "75.00",
+                    "settlementBalanceKind": "sale_receivable",
+                    "replayed": False,
+                }
+            },
+        ]
+    )
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [next(responses)]
+
+    transaction._database_rows = database_rows  # type: ignore[method-assign]
+    replay = asyncio.run(transaction.get_share_sale_recognition_replay(command))
+    prepared = asyncio.run(
+        InvestmentsService(transaction).prepare_share_sale_recognition(command)
+    )
+    recorded = asyncio.run(
+        transaction.complete_share_sale_recognition(
+            command,
+            prepared=prepared,
+            accounting_entry_id=AccountingEntryReference(
+                "70000000-0000-0000-0000-000000000017"
+            ),
+        )
+    )
+
+    assert replay is None
+    assert recorded.event_id == command.event_id
+    assert prepared.lot_calculations[0].allocated_share_count.amount == (
+        command.sold_share_count.amount
+    )
+    assert "get_share_sale_recognition_replay_v2" in calls[0][0]
+    assert "prepare_share_sale_recognition_v2" in calls[1][0]
+    assert "complete_share_sale_recognition_v2" in calls[2][0]
+    request = json.loads(str(calls[1][1][0]))
+    assert request["soldShareCount"] == "4.125000000000"
+    assert request["documentFacts"][0]["capability"] == "DOCUMENTS"
+    assert request["bankFact"] is None
+    completed = json.loads(str(calls[2][1][2]))
+    assert completed["lotCalculations"][0]["allocatedShareCount"] == (
+        "4.125000000000"
+    )
+    assert completed["netProceeds"] == "75.00"
+
+
+def test_dividend_recognition_uses_declaration_only_v2_rpcs() -> None:
+    transaction = bound_transaction()
+    command = lifecycle_dividend()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+    responses = iter([
+        {"result": None},
+        {"result": {
+            "positionId": str(command.position_id),
+            "investmentName": "Example AS",
+            "investmentKind": "norwegian_private_company",
+        }},
+        {"result": {
+            "eventId": str(command.event_id),
+            "positionId": str(command.position_id),
+            "recognitionAccountingEntryId": (
+                "70000000-0000-0000-0000-000000000027"
+            ),
+            "expectedSettlementAmount": "100.00",
+            "settlementBalanceKind": "dividend_receivable",
+            "replayed": False,
+        }},
+    ])
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [next(responses)]
+
+    transaction._database_rows = database_rows  # type: ignore[method-assign]
+    replay = asyncio.run(transaction.get_received_dividend_recognition_replay(command))
+    prepared = asyncio.run(
+        InvestmentsService(transaction).prepare_received_dividend_recognition(command)
+    )
+    recorded = asyncio.run(transaction.complete_received_dividend_recognition(
+        command,
+        prepared=prepared,
+        accounting_entry_id=AccountingEntryReference(
+            "70000000-0000-0000-0000-000000000027"
+        ),
+    ))
+
+    assert replay is None
+    assert recorded.event_id == command.event_id
+    assert "get_received_dividend_recognition_replay_v2" in calls[0][0]
+    assert "prepare_received_dividend_recognition_v2" in calls[1][0]
+    assert "complete_received_dividend_recognition_v2" in calls[2][0]
+    request = json.loads(str(calls[1][1][0]))
+    assert request["declaredDate"] == command.declared_date.value.isoformat()
+    assert "paidDate" not in request
+    assert request["bankFact"] is None
+    completed = json.loads(str(calls[2][1][2]))
+    assert completed["taxableAddBack"] == "3.77"
+    assert completed["groupExceptionApplied"] is False
+
+
+def test_fund_distribution_recognition_uses_entitlement_only_v2_rpcs() -> None:
+    transaction = bound_transaction()
+    command = lifecycle_fund_distribution()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+    responses = iter([
+        {"result": None},
+        {"result": {
+            "positionId": str(command.position_id),
+            "investmentName": "Norsk Kombinasjonsfond",
+            "investmentKind": "norwegian_equity_fund",
+        }},
+        {"result": {
+            "eventId": str(command.event_id),
+            "positionId": str(command.position_id),
+            "recognitionAccountingEntryId": (
+                "70000000-0000-0000-0000-000000000037"
+            ),
+            "expectedSettlementAmount": "100.00",
+            "settlementBalanceKind": "fund_distribution_receivable",
+            "replayed": False,
+        }},
+    ])
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [next(responses)]
+
+    transaction._database_rows = database_rows  # type: ignore[method-assign]
+    replay = asyncio.run(
+        transaction.get_received_fund_distribution_recognition_replay(command)
+    )
+    prepared = asyncio.run(
+        InvestmentsService(transaction)
+        .prepare_received_fund_distribution_recognition(command)
+    )
+    recorded = asyncio.run(
+        transaction.complete_received_fund_distribution_recognition(
+            command,
+            prepared=prepared,
+            accounting_entry_id=AccountingEntryReference(
+                "70000000-0000-0000-0000-000000000037"
+            ),
+        )
+    )
+
+    assert replay is None
+    assert recorded.event_id == command.event_id
+    assert "get_received_fund_distribution_recognition_replay_v2" in calls[0][0]
+    assert "prepare_received_fund_distribution_recognition_v2" in calls[1][0]
+    assert "complete_received_fund_distribution_recognition_v2" in calls[2][0]
+    request = json.loads(str(calls[1][1][0]))
+    assert request["entitlementDate"] == command.entitlement_date.value.isoformat()
+    assert "paidDate" not in request
+    assert request["bankFact"] is None
+    completed = json.loads(str(calls[2][1][2]))
+    assert completed["dividendPortion"] == "50.00"
+    assert completed["interestPortion"] == "50.00"
 
 
 def test_cash_settlement_uses_event_and_bank_fact_rpcs() -> None:

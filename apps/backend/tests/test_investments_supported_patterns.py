@@ -18,6 +18,7 @@ from talli_backend.modules.investments.public import (
     InvestmentSaleLotFact,
     InvestmentSourceReference,
     InvestmentTaxTreatment,
+    InvestmentUnits,
     InvestmentsError,
     PreparedReceivedDividendFacts,
     PreparedReceivedFundDistributionFacts,
@@ -120,7 +121,9 @@ class SupportedPatternsPersistence:
                     lot_id=LOT_ID,
                     allocation_order=1,
                     acquisition_date=LocalDate(date(2026, 1, 2)),
-                    allocated_share_count=command.sold_share_count,
+                    allocated_share_count=InvestmentUnits.of(
+                        str(command.sold_share_count)
+                    ),
                     allocated_book_cost_basis=self.book_basis,
                     allocated_tax_basis=self.tax_basis,
                     acquisition_year_fund_equity_ratio_basis_points=(

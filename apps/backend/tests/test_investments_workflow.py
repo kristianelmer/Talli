@@ -30,6 +30,10 @@ from talli_backend.modules.investments.public import (
     PreparedShareSaleFacts,
     PreparedSharePurchaseRecognition,
     PreparedSharePurchase,
+    PreparedShareSale,
+    RecognizeReceivedDividendCommand,
+    RecognizeReceivedFundDistributionCommand,
+    RecognizeShareSaleCommand,
     RecognizeSharePurchaseCommand,
     RecordedInvestmentCashSettlement,
     RecordedInvestmentEconomicEvent,
@@ -42,7 +46,10 @@ from talli_backend.modules.investments.public import (
 )
 from talli_backend.modules.ledger.public import (
     InvestmentCashSettlementFacts,
+    InvestmentDividendFacts,
+    InvestmentFundDistributionRecognitionFacts,
     InvestmentPurchaseRecognitionFacts,
+    InvestmentSaleRecognitionFacts,
     LedgerEntryId,
     LedgerEntryKind,
     PostedLedgerEntry,
@@ -140,6 +147,122 @@ def lifecycle_settlement(
     )
 
 
+def lifecycle_sale() -> RecognizeShareSaleCommand:
+    legacy = supported_sale()
+    return RecognizeShareSaleCommand(
+        company_id=legacy.company_id,
+        actor_id=legacy.actor_id,
+        correlation_id=legacy.correlation_id,
+        idempotency_key=IdempotencyKey("investment-sale-recognition-0001"),
+        income_year=legacy.income_year,
+        event_id=InvestmentEconomicEventId(
+            "90000000-0000-0000-0000-000000000011"
+        ),
+        position_id=legacy.position_id,
+        sale_date=legacy.sale_date,
+        sold_share_count=InvestmentUnits.of("4.125000000000"),
+        proceeds=legacy.proceeds,
+        transaction_costs=legacy.transaction_costs,
+        sale_year_fund_equity_ratio_basis_points=(
+            legacy.sale_year_fund_equity_ratio_basis_points
+        ),
+        fund_tax_statement_reference=legacy.fund_tax_statement_reference,
+        evidence=InvestmentEvidence(
+            InvestmentEvidenceMode.LINKED_SOURCES,
+            "sale agreement",
+            False,
+            (
+                InvestmentFactReference(
+                    InvestmentSourceCapability.DOCUMENTS,
+                    InvestmentSourceReference(
+                        "80000000-0000-0000-0000-000000000011"
+                    ),
+                    2,
+                    "d" * 64,
+                ),
+            ),
+            None,
+        ),
+    )
+
+
+def lifecycle_dividend() -> RecognizeReceivedDividendCommand:
+    legacy = supported_received_dividend()
+    return RecognizeReceivedDividendCommand(
+        company_id=legacy.company_id,
+        actor_id=legacy.actor_id,
+        correlation_id=legacy.correlation_id,
+        idempotency_key=IdempotencyKey("investment-dividend-recognition-0001"),
+        income_year=legacy.income_year,
+        event_id=InvestmentEconomicEventId(
+            "90000000-0000-0000-0000-000000000021"
+        ),
+        position_id=legacy.position_id,
+        paying_company_name=legacy.paying_company_name,
+        declared_date=legacy.declared_date,
+        gross_amount=legacy.gross_amount,
+        lawful_dividend_confirmed=legacy.lawful_dividend_confirmed,
+        group_exception_claimed=legacy.group_exception_claimed,
+        year_end_ownership_basis_points=legacy.year_end_ownership_basis_points,
+        year_end_voting_basis_points=legacy.year_end_voting_basis_points,
+        group_evidence_reference=legacy.group_evidence_reference,
+        evidence=InvestmentEvidence(
+            InvestmentEvidenceMode.LINKED_SOURCES,
+            "dividend decision",
+            False,
+            (
+                InvestmentFactReference(
+                    InvestmentSourceCapability.DOCUMENTS,
+                    InvestmentSourceReference(
+                        "80000000-0000-0000-0000-000000000021"
+                    ),
+                    1,
+                    "e" * 64,
+                ),
+            ),
+            None,
+        ),
+    )
+
+
+def lifecycle_fund_distribution() -> RecognizeReceivedFundDistributionCommand:
+    legacy = supported_received_fund_distribution()
+    return RecognizeReceivedFundDistributionCommand(
+        company_id=legacy.company_id,
+        actor_id=legacy.actor_id,
+        correlation_id=legacy.correlation_id,
+        idempotency_key=IdempotencyKey("investment-fund-recognition-0001"),
+        income_year=legacy.income_year,
+        event_id=InvestmentEconomicEventId(
+            "90000000-0000-0000-0000-000000000031"
+        ),
+        position_id=legacy.position_id,
+        fund_name=legacy.fund_name,
+        entitlement_date=legacy.entitlement_date,
+        gross_amount=legacy.gross_amount,
+        opening_fund_equity_ratio_basis_points=(
+            legacy.opening_fund_equity_ratio_basis_points
+        ),
+        fund_tax_statement_reference=legacy.fund_tax_statement_reference,
+        evidence=InvestmentEvidence(
+            InvestmentEvidenceMode.LINKED_SOURCES,
+            "fund tax statement",
+            False,
+            (
+                InvestmentFactReference(
+                    InvestmentSourceCapability.DOCUMENTS,
+                    InvestmentSourceReference(
+                        "80000000-0000-0000-0000-000000000031"
+                    ),
+                    3,
+                    "f" * 64,
+                ),
+            ),
+            None,
+        ),
+    )
+
+
 class SessionPersistence:
     def __init__(self) -> None:
         self.events: list[str] = []
@@ -186,6 +309,109 @@ class SessionPersistence:
             recognition_accounting_entry_id=accounting_entry_id,
             expected_settlement_amount=prepared.expected_settlement_amount,
             settlement_balance_kind=prepared.settlement_balance_kind,
+            replayed=False,
+        )
+
+    async def get_share_sale_recognition_replay(self, command):
+        self.events.append("investments:sale-recognition-replay")
+        return None
+
+    async def prepare_share_sale_recognition(
+        self, command, *, net_proceeds, evidence_digest
+    ):
+        self.events.append("investments:sale-recognition-prepare")
+        return PreparedShareSaleFacts(
+            position_id=command.position_id,
+            investment_name="Example AS",
+            investment_kind=InvestmentKind.NORWEGIAN_PRIVATE_COMPANY,
+            accounting_classification=(
+                InvestmentAccountingClassification.OTHER_LONG_TERM
+            ),
+            fifo_book_cost_basis_reduction=Money.nok("50.20"),
+            fifo_tax_basis_reduction=Money.nok("50.20"),
+            lot_facts=(
+                InvestmentSaleLotFact(
+                    lot_id=LOT_ID,
+                    allocation_order=1,
+                    acquisition_date=command.sale_date,
+                    allocated_share_count=command.sold_share_count,
+                    allocated_book_cost_basis=Money.nok("50.20"),
+                    allocated_tax_basis=Money.nok("50.20"),
+                    acquisition_year_fund_equity_ratio_basis_points=None,
+                ),
+            ),
+        )
+
+    async def complete_share_sale_recognition(
+        self, command, *, prepared, accounting_entry_id
+    ):
+        self.events.append("investments:sale-recognition-complete")
+        return RecordedInvestmentEconomicEvent(
+            event_id=command.event_id,
+            position_id=prepared.position_id,
+            recognition_accounting_entry_id=accounting_entry_id,
+            expected_settlement_amount=prepared.net_proceeds,
+            settlement_balance_kind=(
+                InvestmentSettlementBalanceKind.SALE_RECEIVABLE
+            ),
+            replayed=False,
+        )
+
+    async def get_received_dividend_recognition_replay(self, command):
+        self.events.append("investments:dividend-recognition-replay")
+        return None
+
+    async def prepare_received_dividend_recognition(
+        self, command, *, evidence_digest
+    ):
+        self.events.append("investments:dividend-recognition-prepare")
+        return PreparedReceivedDividendFacts(
+            position_id=command.position_id,
+            investment_name="Example AS",
+            investment_kind=InvestmentKind.NORWEGIAN_PRIVATE_COMPANY,
+        )
+
+    async def complete_received_dividend_recognition(
+        self, command, *, prepared, accounting_entry_id
+    ):
+        self.events.append("investments:dividend-recognition-complete")
+        return RecordedInvestmentEconomicEvent(
+            event_id=command.event_id,
+            position_id=prepared.position_id,
+            recognition_accounting_entry_id=accounting_entry_id,
+            expected_settlement_amount=command.gross_amount,
+            settlement_balance_kind=(
+                InvestmentSettlementBalanceKind.DIVIDEND_RECEIVABLE
+            ),
+            replayed=False,
+        )
+
+    async def get_received_fund_distribution_recognition_replay(self, command):
+        self.events.append("investments:fund-recognition-replay")
+        return None
+
+    async def prepare_received_fund_distribution_recognition(
+        self, command, *, evidence_digest
+    ):
+        self.events.append("investments:fund-recognition-prepare")
+        return PreparedReceivedFundDistributionFacts(
+            position_id=command.position_id,
+            investment_name="Norsk Kombinasjonsfond",
+            investment_kind=InvestmentKind.NORWEGIAN_EQUITY_FUND,
+        )
+
+    async def complete_received_fund_distribution_recognition(
+        self, command, *, prepared, accounting_entry_id
+    ):
+        self.events.append("investments:fund-recognition-complete")
+        return RecordedInvestmentEconomicEvent(
+            event_id=command.event_id,
+            position_id=prepared.position_id,
+            recognition_accounting_entry_id=accounting_entry_id,
+            expected_settlement_amount=command.gross_amount,
+            settlement_balance_kind=(
+                InvestmentSettlementBalanceKind.FUND_DISTRIBUTION_RECEIVABLE
+            ),
             replayed=False,
         )
 
@@ -306,7 +532,9 @@ class SessionPersistence:
                 lot_id=LOT_ID,
                 allocation_order=1,
                 acquisition_date=command.sale_date,
-                allocated_share_count=command.sold_share_count,
+                allocated_share_count=InvestmentUnits.of(
+                    str(command.sold_share_count)
+                ),
                 allocated_book_cost_basis=Money.nok("50.20"),
                 allocated_tax_basis=Money.nok("50.20"),
                 acquisition_year_fund_equity_ratio_basis_points=None,
@@ -385,6 +613,15 @@ class LedgerFacade:
         if isinstance(command.facts, InvestmentPurchaseRecognitionFacts):
             self.transaction.events.append("ledger:recognize-purchase")
             entry_kind = LedgerEntryKind.SHARE_PURCHASE
+        elif isinstance(command.facts, InvestmentSaleRecognitionFacts):
+            self.transaction.events.append("ledger:recognize-sale")
+            entry_kind = LedgerEntryKind.SHARE_SALE
+        elif isinstance(command.facts, InvestmentDividendFacts):
+            self.transaction.events.append("ledger:recognize-dividend")
+            entry_kind = LedgerEntryKind.DIVIDEND_RECEIVED
+        elif isinstance(command.facts, InvestmentFundDistributionRecognitionFacts):
+            self.transaction.events.append("ledger:recognize-fund-distribution")
+            entry_kind = LedgerEntryKind.DIVIDEND_RECEIVED
         elif isinstance(command.facts, InvestmentCashSettlementFacts):
             self.transaction.events.append("ledger:settle-cash")
             entry_kind = LedgerEntryKind.SHARE_PURCHASE
@@ -625,3 +862,81 @@ def test_purchase_cash_settlement_posts_independently_against_recognition() -> N
     assert persistence.posted_command.primary_source.record_id.value == str(
         command.settlement_id
     )
+
+
+def test_share_sale_recognition_posts_receivable_with_fractional_fifo() -> None:
+    persistence = SessionPersistence()
+    command = lifecycle_sale()
+
+    result = asyncio.run(
+        InvestmentsSession(persistence, LedgerFacade).recognize_share_sale(command)
+    )
+
+    assert result.event_id == command.event_id
+    assert result.settlement_balance_kind is (
+        InvestmentSettlementBalanceKind.SALE_RECEIVABLE
+    )
+    assert persistence.events == [
+        "transaction:begin",
+        "investments:sale-recognition-replay",
+        "investments:sale-recognition-prepare",
+        "ledger:recognize-sale",
+        "investments:sale-recognition-complete",
+        "transaction:commit",
+    ]
+    assert isinstance(persistence.posted_command.facts, InvestmentSaleRecognitionFacts)
+    assert persistence.posted_command.facts.net_proceeds == Money.nok("75.00")
+    assert persistence.posted_command.facts.carrying_amount == Money.nok("50.20")
+    assert command.sold_share_count.amount == Decimal("4.125000000000")
+
+
+def test_dividend_recognition_posts_receivable_on_declaration_date() -> None:
+    persistence = SessionPersistence()
+    command = lifecycle_dividend()
+
+    result = asyncio.run(
+        InvestmentsSession(persistence, LedgerFacade)
+        .recognize_received_dividend(command)
+    )
+
+    assert result.settlement_balance_kind is (
+        InvestmentSettlementBalanceKind.DIVIDEND_RECEIVABLE
+    )
+    assert persistence.events == [
+        "transaction:begin",
+        "investments:dividend-recognition-replay",
+        "investments:dividend-recognition-prepare",
+        "ledger:recognize-dividend",
+        "investments:dividend-recognition-complete",
+        "transaction:commit",
+    ]
+    assert isinstance(persistence.posted_command.facts, InvestmentDividendFacts)
+    assert persistence.posted_command.event_date == command.declared_date
+
+
+def test_fund_distribution_recognition_posts_split_receivable() -> None:
+    persistence = SessionPersistence()
+    command = lifecycle_fund_distribution()
+
+    result = asyncio.run(
+        InvestmentsSession(persistence, LedgerFacade)
+        .recognize_received_fund_distribution(command)
+    )
+
+    assert result.settlement_balance_kind is (
+        InvestmentSettlementBalanceKind.FUND_DISTRIBUTION_RECEIVABLE
+    )
+    assert persistence.events == [
+        "transaction:begin",
+        "investments:fund-recognition-replay",
+        "investments:fund-recognition-prepare",
+        "ledger:recognize-fund-distribution",
+        "investments:fund-recognition-complete",
+        "transaction:commit",
+    ]
+    assert isinstance(
+        persistence.posted_command.facts,
+        InvestmentFundDistributionRecognitionFacts,
+    )
+    assert persistence.posted_command.facts.dividend_portion == Money.nok("50")
+    assert persistence.posted_command.facts.interest_portion == Money.nok("50")

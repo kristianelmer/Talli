@@ -1,7 +1,7 @@
 # Investments backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["investments.acquisition_lots","investments.cash_settlements","investments.company_year_policies","investments.corrections","investments.economic_events","investments.event_sources","investments.measurement_sources","investments.position_classifications","investments.positions","investments.received_dividends","investments.received_fund_distributions","investments.share_purchase_recognitions","investments.share_purchases","investments.share_sale_allocations","investments.share_sales","investments.source_fact_registry","investments.year_end_measurements"],"ports":["InvestmentsPersistence"],"publicEntryPoints":["talli_backend.modules.investments.public"]}
+{"dependencies":[],"ownedTables":["investments.acquisition_lots","investments.cash_settlements","investments.company_year_policies","investments.corrections","investments.economic_events","investments.event_sources","investments.measurement_sources","investments.position_classifications","investments.positions","investments.received_dividend_recognitions","investments.received_dividends","investments.received_fund_distribution_recognitions","investments.received_fund_distributions","investments.share_purchase_recognitions","investments.share_purchases","investments.share_sale_allocations","investments.share_sales","investments.source_fact_registry","investments.year_end_measurements"],"ports":["InvestmentsPersistence"],"publicEntryPoints":["talli_backend.modules.investments.public"]}
 -->
 
 ## Purpose and ownership
@@ -137,6 +137,14 @@ fact registry and pending purchase-recognition receipt while ledger posting is
 available only through the investments-specific restricted wrapper. The
 inverse restores captured predecessor routines before new #190 data exists and
 otherwise fails closed. The
+share-sale recognition workflow is
+`supabase/migrations/20260901114000_investments_share_sale_lifecycle.sql`; it
+preserves twelve-decimal FIFO allocations and posts a receivable independently
+of settlement. Dividend decisions and fund entitlements use separate immutable
+recognition receipts in
+`supabase/migrations/20260901115000_investments_income_lifecycle.sql`, rather
+than overloading the predecessor tables' paid-date columns. Each has a
+fail-closed inverse at the matching rollback path. The
 mandatory PostgreSQL rehearsal applies each slice contract, rolls it back twice,
 writes through the restored predecessor, reapplies it, and only then performs
 the complete cleanup. The web is cut to the

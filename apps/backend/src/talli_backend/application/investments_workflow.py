@@ -26,7 +26,10 @@ from talli_backend.modules.investments.public import (
     RecordReceivedFundDistributionCommand,
     RecordSharePurchaseCommand,
     RecordShareSaleCommand,
+    RecognizeReceivedDividendCommand,
+    RecognizeReceivedFundDistributionCommand,
     RecognizeSharePurchaseCommand,
+    RecognizeShareSaleCommand,
     RecordedInvestmentCashSettlement,
     RecordedInvestmentEconomicEvent,
     RecordedSharePurchase,
@@ -40,7 +43,11 @@ from talli_backend.modules.investments.service import InvestmentsService
 from talli_backend.modules.ledger.public import (
     InvestmentClassification,
     InvestmentCashSettlementFacts,
+    InvestmentDividendFacts,
+    InvestmentDividendPhase,
+    InvestmentFundDistributionRecognitionFacts,
     InvestmentPurchaseRecognitionFacts,
+    InvestmentSaleRecognitionFacts,
     InvestmentSettlementKind,
     LedgerEntryId,
     LedgerFactReference,
@@ -201,6 +208,154 @@ class InvestmentsSession:
                 command,
                 prepared=prepared,
                 accounting_entry_id=AccountingEntryReference(str(posted.entry_id)),
+            )
+
+    async def recognize_share_sale(
+        self, command: RecognizeShareSaleCommand
+    ) -> RecordedInvestmentEconomicEvent:
+        if command.actor_id != self._persistence.actor_id:
+            raise InvestmentsError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            investments = InvestmentsService(transaction)
+            replay = await investments.get_share_sale_recognition_replay(command)
+            if replay is not None:
+                return replay
+            prepared = await investments.prepare_share_sale_recognition(command)
+            posted = await self._ledger_facade_factory(
+                transaction
+            ).recognize_holding_action(
+                RecognizeHoldingActionCommand(
+                    company_id=command.company_id,
+                    actor_id=command.actor_id,
+                    correlation_id=command.correlation_id,
+                    idempotency_key=command.idempotency_key,
+                    income_year=command.income_year,
+                    event_date=command.sale_date,
+                    primary_source=LedgerFactReference(
+                        capability=LedgerSourceCapability.INVESTMENTS,
+                        record_id=LedgerSourceRecordId(str(command.event_id)),
+                        revision=1,
+                        fact_sha256=prepared.calculation_id,
+                    ),
+                    corroborating_sources=tuple(
+                        _ledger_fact(fact) for fact in command.evidence.document_facts
+                    ),
+                    facts=InvestmentSaleRecognitionFacts(
+                        investment_name=prepared.investment_name,
+                        classification=_LEDGER_CLASSIFICATION[
+                            prepared.accounting_classification
+                        ],
+                        net_proceeds=prepared.net_proceeds,
+                        carrying_amount=prepared.fifo_cost_basis_reduction,
+                    ),
+                )
+            )
+            return await investments.complete_share_sale_recognition(
+                command,
+                prepared=prepared,
+                accounting_entry_id=AccountingEntryReference(str(posted.entry_id)),
+            )
+
+    async def recognize_received_dividend(
+        self, command: RecognizeReceivedDividendCommand
+    ) -> RecordedInvestmentEconomicEvent:
+        if command.actor_id != self._persistence.actor_id:
+            raise InvestmentsError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            investments = InvestmentsService(transaction)
+            replay = await (
+                investments.get_received_dividend_recognition_replay(command)
+            )
+            if replay is not None:
+                return replay
+            prepared = await investments.prepare_received_dividend_recognition(
+                command
+            )
+            posted = await self._ledger_facade_factory(
+                transaction
+            ).recognize_holding_action(
+                RecognizeHoldingActionCommand(
+                    company_id=command.company_id,
+                    actor_id=command.actor_id,
+                    correlation_id=command.correlation_id,
+                    idempotency_key=command.idempotency_key,
+                    income_year=command.income_year,
+                    event_date=command.declared_date,
+                    primary_source=LedgerFactReference(
+                        capability=LedgerSourceCapability.INVESTMENTS,
+                        record_id=LedgerSourceRecordId(str(command.event_id)),
+                        revision=1,
+                        fact_sha256=prepared.calculation_id,
+                    ),
+                    corroborating_sources=tuple(
+                        _ledger_fact(fact) for fact in command.evidence.document_facts
+                    ),
+                    facts=InvestmentDividendFacts(
+                        phase=InvestmentDividendPhase.FINAL_DECISION,
+                        gross_amount=command.gross_amount,
+                    ),
+                )
+            )
+            return await investments.complete_received_dividend_recognition(
+                command,
+                prepared=prepared,
+                accounting_entry_id=AccountingEntryReference(str(posted.entry_id)),
+            )
+
+    async def recognize_received_fund_distribution(
+        self, command: RecognizeReceivedFundDistributionCommand
+    ) -> RecordedInvestmentEconomicEvent:
+        if command.actor_id != self._persistence.actor_id:
+            raise InvestmentsError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            investments = InvestmentsService(transaction)
+            replay = await (
+                investments.get_received_fund_distribution_recognition_replay(
+                    command
+                )
+            )
+            if replay is not None:
+                return replay
+            prepared = await (
+                investments.prepare_received_fund_distribution_recognition(
+                    command
+                )
+            )
+            posted = await self._ledger_facade_factory(
+                transaction
+            ).recognize_holding_action(
+                RecognizeHoldingActionCommand(
+                    company_id=command.company_id,
+                    actor_id=command.actor_id,
+                    correlation_id=command.correlation_id,
+                    idempotency_key=command.idempotency_key,
+                    income_year=command.income_year,
+                    event_date=command.entitlement_date,
+                    primary_source=LedgerFactReference(
+                        capability=LedgerSourceCapability.INVESTMENTS,
+                        record_id=LedgerSourceRecordId(str(command.event_id)),
+                        revision=1,
+                        fact_sha256=prepared.calculation_id,
+                    ),
+                    corroborating_sources=tuple(
+                        _ledger_fact(fact) for fact in command.evidence.document_facts
+                    ),
+                    facts=InvestmentFundDistributionRecognitionFacts(
+                        fund_name=prepared.fund_name,
+                        gross_amount=command.gross_amount,
+                        dividend_portion=prepared.dividend_portion,
+                        interest_portion=prepared.interest_portion,
+                    ),
+                )
+            )
+            return await (
+                investments.complete_received_fund_distribution_recognition(
+                    command,
+                    prepared=prepared,
+                    accounting_entry_id=AccountingEntryReference(
+                        str(posted.entry_id)
+                    ),
+                )
             )
 
     async def correct_investment(

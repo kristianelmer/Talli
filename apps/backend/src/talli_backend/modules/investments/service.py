@@ -19,6 +19,7 @@ from talli_backend.modules.investments.public import (
     InvestmentPolicyVersion,
     InvestmentSaleLotCalculation,
     InvestmentTaxTreatment,
+    InvestmentUnits,
     PreparedInvestmentCashSettlement,
     PreparedSharePurchaseRecognition,
     InvestmentsError,
@@ -32,7 +33,10 @@ from talli_backend.modules.investments.public import (
     RecordReceivedFundDistributionCommand,
     RecordSharePurchaseCommand,
     RecordShareSaleCommand,
+    RecognizeReceivedDividendCommand,
+    RecognizeReceivedFundDistributionCommand,
     RecognizeSharePurchaseCommand,
+    RecognizeShareSaleCommand,
     RecordedInvestmentCashSettlement,
     RecordedInvestmentEconomicEvent,
     RecordedReceivedDividend,
@@ -220,14 +224,26 @@ def _replacement_activity_kind(command) -> InvestmentActivityKind:
 
 
 def _sale_calculations(
-    *, command: RecordShareSaleCommand, facts, net_proceeds: Money
+    *,
+    command: RecordShareSaleCommand | RecognizeShareSaleCommand,
+    facts,
+    net_proceeds: Money,
 ) -> tuple[
     tuple[InvestmentSaleLotCalculation, ...], Money, Money, Money, Money
 ]:
     lots = facts.lot_facts
+    sold_units = (
+        command.sold_share_count
+        if isinstance(command.sold_share_count, InvestmentUnits)
+        else InvestmentUnits.of(str(command.sold_share_count))
+    )
     if (
         not lots
-        or sum(lot.allocated_share_count for lot in lots) != command.sold_share_count
+        or sum(
+            (lot.allocated_share_count.amount for lot in lots),
+            Decimal("0"),
+        )
+        != sold_units.amount
         or _sum_money(tuple(lot.allocated_book_cost_basis for lot in lots))
         != facts.fifo_book_cost_basis_reduction
         or _sum_money(tuple(lot.allocated_tax_basis for lot in lots))
@@ -258,15 +274,15 @@ def _sale_calculations(
     calculations: list[InvestmentSaleLotCalculation] = []
     allocated_so_far = Money.nok("0")
     for index, lot in enumerate(lots):
-        if lot.allocated_share_count <= 0:
+        if lot.allocated_share_count.amount <= 0:
             raise InvestmentsError.unavailable()
         if index == len(lots) - 1:
             allocated_proceeds = Money.nok(net_proceeds.amount - allocated_so_far.amount)
         else:
             allocated_proceeds = Money.nok(
                 net_proceeds.amount
-                * Decimal(lot.allocated_share_count)
-                / Decimal(command.sold_share_count)
+                * lot.allocated_share_count.amount
+                / sold_units.amount
             )
             allocated_so_far = Money.nok(
                 allocated_so_far.amount + allocated_proceeds.amount
@@ -401,6 +417,307 @@ class InvestmentsService:
             command,
             prepared=prepared,
             accounting_entry_id=accounting_entry_id,
+        )
+
+    async def get_share_sale_recognition_replay(
+        self, command: RecognizeShareSaleCommand
+    ) -> RecordedInvestmentEconomicEvent | None:
+        return await self._persistence.get_share_sale_recognition_replay(command)
+
+    async def prepare_share_sale_recognition(
+        self, command: RecognizeShareSaleCommand
+    ) -> PreparedShareSale:
+        fund_reference = (
+            command.fund_tax_statement_reference.strip()
+            if command.fund_tax_statement_reference
+            else None
+        )
+        if (
+            command.proceeds.amount <= 0
+            or command.transaction_costs.amount < 0
+            or command.transaction_costs.amount >= command.proceeds.amount
+        ):
+            raise InvestmentsError.invalid_input()
+        normalized = replace(
+            command,
+            fund_tax_statement_reference=fund_reference,
+        )
+        evidence_digest = _lifecycle_evidence_digest(normalized)
+        net_proceeds = Money.nok(
+            normalized.proceeds.amount - normalized.transaction_costs.amount
+        )
+        facts = await self._persistence.prepare_share_sale_recognition(
+            normalized,
+            net_proceeds=net_proceeds,
+            evidence_digest=evidence_digest,
+        )
+        calculations, exempt, taxable, non_deductible, deductible = (
+            _sale_calculations(
+                command=normalized,
+                facts=facts,
+                net_proceeds=net_proceeds,
+            )
+        )
+        book_result = Money.nok(
+            net_proceeds.amount - facts.fifo_book_cost_basis_reduction.amount
+        )
+        tax_result = Money.nok(
+            net_proceeds.amount - facts.fifo_tax_basis_reduction.amount
+        )
+        calculation_id = _calculation_id(
+            action_id=normalized.event_id,
+            evidence_digest=evidence_digest,
+            facts={
+                "bookGainOrLoss": format(book_result.amount, "f"),
+                "deductibleLoss": format(deductible.amount, "f"),
+                "exemptGain": format(exempt.amount, "f"),
+                "nonDeductibleLoss": format(non_deductible.amount, "f"),
+                "taxGainOrLoss": format(tax_result.amount, "f"),
+                "taxableGain": format(taxable.amount, "f"),
+            },
+            policy_version=_LIFECYCLE_POLICY_VERSION,
+        )
+        return PreparedShareSale(
+            position_id=facts.position_id,
+            investment_name=facts.investment_name,
+            accounting_classification=facts.accounting_classification,
+            investment_kind=facts.investment_kind,
+            net_proceeds=net_proceeds,
+            fifo_cost_basis_reduction=facts.fifo_book_cost_basis_reduction,
+            fifo_tax_basis_reduction=facts.fifo_tax_basis_reduction,
+            book_gain_or_loss=book_result,
+            tax_gain_or_loss=tax_result,
+            exempt_gain=exempt,
+            taxable_gain=taxable,
+            non_deductible_loss=non_deductible,
+            deductible_loss=deductible,
+            lot_calculations=calculations,
+            evidence_digest=evidence_digest,
+            calculation_id=calculation_id,
+        )
+
+    async def complete_share_sale_recognition(
+        self,
+        command: RecognizeShareSaleCommand,
+        *,
+        prepared: PreparedShareSale,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedInvestmentEconomicEvent:
+        return await self._persistence.complete_share_sale_recognition(
+            replace(
+                command,
+                fund_tax_statement_reference=(
+                    command.fund_tax_statement_reference.strip()
+                    if command.fund_tax_statement_reference
+                    else None
+                ),
+            ),
+            prepared=prepared,
+            accounting_entry_id=accounting_entry_id,
+        )
+
+    async def get_received_dividend_recognition_replay(
+        self, command: RecognizeReceivedDividendCommand
+    ) -> RecordedInvestmentEconomicEvent | None:
+        return await self._persistence.get_received_dividend_recognition_replay(
+            command
+        )
+
+    async def prepare_received_dividend_recognition(
+        self, command: RecognizeReceivedDividendCommand
+    ) -> PreparedReceivedDividend:
+        paying_company_name = command.paying_company_name.strip()
+        group_reference = (
+            command.group_evidence_reference.strip()
+            if command.group_evidence_reference
+            else None
+        )
+        group_valid = isinstance(command.group_exception_claimed, bool) and (
+            (
+                command.group_exception_claimed
+                and _valid_basis_points(command.year_end_ownership_basis_points)
+                and _valid_basis_points(command.year_end_voting_basis_points)
+                and command.year_end_ownership_basis_points > 9_000
+                and command.year_end_voting_basis_points > 9_000
+                and group_reference is not None
+                and 0 < len(group_reference) <= 255
+            )
+            or (
+                not command.group_exception_claimed
+                and command.year_end_ownership_basis_points is None
+                and command.year_end_voting_basis_points is None
+                and group_reference is None
+            )
+        )
+        if (
+            not paying_company_name
+            or len(paying_company_name) > 255
+            or command.gross_amount.amount <= 0
+            or command.lawful_dividend_confirmed is not True
+            or not group_valid
+        ):
+            raise InvestmentsError.invalid_input()
+        normalized = replace(
+            command,
+            paying_company_name=paying_company_name,
+            group_evidence_reference=group_reference,
+        )
+        evidence_digest = _lifecycle_evidence_digest(normalized)
+        facts = await self._persistence.prepare_received_dividend_recognition(
+            normalized,
+            evidence_digest=evidence_digest,
+        )
+        if facts.investment_kind not in {
+            InvestmentKind.NORWEGIAN_PRIVATE_COMPANY,
+            InvestmentKind.NORWEGIAN_LISTED_SHARE,
+        }:
+            raise InvestmentsError.invalid_input()
+        taxable_add_back = (
+            _ZERO
+            if normalized.group_exception_claimed
+            else Money.nok(normalized.gross_amount.amount * Decimal("0.03"))
+        )
+        calculation_id = _calculation_id(
+            action_id=normalized.event_id,
+            evidence_digest=evidence_digest,
+            facts={
+                "groupExceptionApplied": normalized.group_exception_claimed,
+                "taxableAddBack": format(taxable_add_back.amount, "f"),
+            },
+            policy_version=_LIFECYCLE_POLICY_VERSION,
+        )
+        return PreparedReceivedDividend(
+            position_id=facts.position_id,
+            investment_name=facts.investment_name,
+            paying_company_name=normalized.paying_company_name,
+            taxable_add_back=taxable_add_back,
+            group_exception_applied=normalized.group_exception_claimed,
+            evidence_digest=evidence_digest,
+            calculation_id=calculation_id,
+        )
+
+    async def complete_received_dividend_recognition(
+        self,
+        command: RecognizeReceivedDividendCommand,
+        *,
+        prepared: PreparedReceivedDividend,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedInvestmentEconomicEvent:
+        return await self._persistence.complete_received_dividend_recognition(
+            replace(
+                command,
+                paying_company_name=prepared.paying_company_name,
+                group_evidence_reference=(
+                    command.group_evidence_reference.strip()
+                    if command.group_evidence_reference
+                    else None
+                ),
+            ),
+            prepared=prepared,
+            accounting_entry_id=accounting_entry_id,
+        )
+
+    async def get_received_fund_distribution_recognition_replay(
+        self, command: RecognizeReceivedFundDistributionCommand
+    ) -> RecordedInvestmentEconomicEvent | None:
+        return await (
+            self._persistence.get_received_fund_distribution_recognition_replay(
+                command
+            )
+        )
+
+    async def prepare_received_fund_distribution_recognition(
+        self, command: RecognizeReceivedFundDistributionCommand
+    ) -> PreparedReceivedFundDistribution:
+        fund_name = command.fund_name.strip()
+        tax_reference = command.fund_tax_statement_reference.strip()
+        if (
+            not fund_name
+            or len(fund_name) > 255
+            or not tax_reference
+            or len(tax_reference) > 255
+            or command.gross_amount.amount <= 0
+            or not _valid_basis_points(
+                command.opening_fund_equity_ratio_basis_points
+            )
+        ):
+            raise InvestmentsError.invalid_input()
+        normalized = replace(
+            command,
+            fund_name=fund_name,
+            fund_tax_statement_reference=tax_reference,
+        )
+        evidence_digest = _lifecycle_evidence_digest(normalized)
+        facts = await (
+            self._persistence.prepare_received_fund_distribution_recognition(
+                normalized,
+                evidence_digest=evidence_digest,
+            )
+        )
+        if facts.investment_kind is not InvestmentKind.NORWEGIAN_EQUITY_FUND:
+            raise InvestmentsError.invalid_input()
+        ratio = normalized.opening_fund_equity_ratio_basis_points
+        if ratio > 8_000:
+            dividend_portion = normalized.gross_amount
+        elif ratio < 2_000:
+            dividend_portion = _ZERO
+        else:
+            dividend_portion = Money.nok(
+                normalized.gross_amount.amount
+                * Decimal(ratio)
+                / Decimal("10000")
+            )
+        interest_portion = Money.nok(
+            normalized.gross_amount.amount - dividend_portion.amount
+        )
+        taxable_add_back = Money.nok(
+            dividend_portion.amount * Decimal("0.03")
+        )
+        total_taxable_income = Money.nok(
+            interest_portion.amount + taxable_add_back.amount
+        )
+        calculation_id = _calculation_id(
+            action_id=normalized.event_id,
+            evidence_digest=evidence_digest,
+            facts={
+                "dividendPortion": format(dividend_portion.amount, "f"),
+                "interestPortion": format(interest_portion.amount, "f"),
+                "taxableAddBack": format(taxable_add_back.amount, "f"),
+                "totalTaxableIncome": format(total_taxable_income.amount, "f"),
+            },
+            policy_version=_LIFECYCLE_POLICY_VERSION,
+        )
+        return PreparedReceivedFundDistribution(
+            position_id=facts.position_id,
+            investment_name=facts.investment_name,
+            fund_name=normalized.fund_name,
+            dividend_portion=dividend_portion,
+            interest_portion=interest_portion,
+            taxable_add_back=taxable_add_back,
+            total_taxable_income=total_taxable_income,
+            evidence_digest=evidence_digest,
+            calculation_id=calculation_id,
+        )
+
+    async def complete_received_fund_distribution_recognition(
+        self,
+        command: RecognizeReceivedFundDistributionCommand,
+        *,
+        prepared: PreparedReceivedFundDistribution,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedInvestmentEconomicEvent:
+        return await (
+            self._persistence.complete_received_fund_distribution_recognition(
+                replace(
+                    command,
+                    fund_name=prepared.fund_name,
+                    fund_tax_statement_reference=(
+                        command.fund_tax_statement_reference.strip()
+                    ),
+                ),
+                prepared=prepared,
+                accounting_entry_id=accounting_entry_id,
+            )
         )
 
     async def get_cash_settlement_replay(

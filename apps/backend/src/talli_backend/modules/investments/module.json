@@ -16,7 +16,7 @@
   },
   "owns": {
     "postgresSchemas": ["investments"],
-    "tables": ["investments.acquisition_lots", "investments.cash_settlements", "investments.company_year_policies", "investments.corrections", "investments.economic_events", "investments.event_sources", "investments.measurement_sources", "investments.position_classifications", "investments.positions", "investments.received_dividends", "investments.received_fund_distributions", "investments.share_purchase_recognitions", "investments.share_purchases", "investments.share_sale_allocations", "investments.share_sales", "investments.source_fact_registry", "investments.year_end_measurements"],
+    "tables": ["investments.acquisition_lots", "investments.cash_settlements", "investments.company_year_policies", "investments.corrections", "investments.economic_events", "investments.event_sources", "investments.measurement_sources", "investments.position_classifications", "investments.positions", "investments.received_dividend_recognitions", "investments.received_dividends", "investments.received_fund_distribution_recognitions", "investments.received_fund_distributions", "investments.share_purchase_recognitions", "investments.share_purchases", "investments.share_sale_allocations", "investments.share_sales", "investments.source_fact_registry", "investments.year_end_measurements"],
     "storageBuckets": [],
     "projections": [],
     "migrations": "supabase/migrations/20260831124939_investments_capability.sql"
