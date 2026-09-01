@@ -62,6 +62,14 @@ const supportedPatternsRollbackPath = new URL(
   "../supabase/rollback/20260901100000_investments_supported_patterns.sql",
   import.meta.url,
 );
+const supportedPatternsAuthorityCleanupPath = new URL(
+  "../supabase/migrations/20260901103000_investments_supported_patterns_authority_cleanup.sql",
+  import.meta.url,
+);
+const supportedPatternsAuthorityCleanupRollbackPath = new URL(
+  "../supabase/rollback/20260901103000_investments_supported_patterns_authority_cleanup.sql",
+  import.meta.url,
+);
 const localGatePath = new URL("../scripts/test-supabase-local.sh", import.meta.url);
 
 function artifact(path, phase) {
@@ -470,4 +478,29 @@ test("supported-pattern rollback restores the exact predecessor or refuses after
     /drop policy if exists investments_supported_patterns_overlap_audit_insert/iu,
   );
   assert.doesNotMatch(source, /\btruncate\b/iu);
+});
+
+test("supported-pattern authority cleanup grants no runtime authority", () => {
+  const source = artifact(
+    supportedPatternsAuthorityCleanupPath,
+    "supported-pattern authority cleanup",
+  );
+  assert.match(source, /if pg_catalog\.to_regrole\('postgres'\) is not null/iu);
+  for (const role of [
+    "investments_store_owner",
+    "investments_executor",
+    "investments_workflow_executor",
+    "company_access_executor",
+    "ledger_store_owner",
+    "company_archive_projection_executor",
+  ]) assert.match(source, new RegExp(`'${role}'`, "u"));
+  assert.match(source, /format\('revoke %I from postgres', v_role\)/iu);
+  assert.doesNotMatch(source, /\bgrant\b/iu);
+
+  const rollback = artifact(
+    supportedPatternsAuthorityCleanupRollbackPath,
+    "supported-pattern authority-cleanup rollback",
+  );
+  assert.match(rollback, /temporary migration authority is never restored/iu);
+  assert.doesNotMatch(rollback, /\bgrant\b/iu);
 });
