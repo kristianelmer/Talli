@@ -21,9 +21,11 @@ const investmentsDividendRollbackMigration = "20260831190000_investments_receive
 const investmentsStageExitMigration = "20260831193000_investments_stage_exit.sql";
 const investmentsSupportedPatternsMigration = "20260901100000_investments_supported_patterns.sql";
 const investmentsCompleteManualEvidenceMigration = "20260901110000_investments_complete_manual_evidence.sql";
+const investmentsLifecycleMeasurementMigration = "20260901112000_investments_lifecycle_measurement_expand.sql";
 const ownerId = "00000000-0000-0000-0000-000000000011";
 const outsiderId = "00000000-0000-0000-0000-000000000022";
 const companyId = "10000000-0000-0000-0000-000000000001";
+const secondCompanyId = "10000000-0000-0000-0000-000000000002";
 const actionId = "20000000-0000-0000-0000-000000000002";
 const positionId = "30000000-0000-0000-0000-000000000003";
 const lotId = "40000000-0000-0000-0000-000000000004";
@@ -145,6 +147,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         investmentsDividendWorkflowMigration,
         investmentsSupportedPatternsMigration,
         investmentsCompleteManualEvidenceMigration,
+        investmentsLifecycleMeasurementMigration,
       ].includes(name))) {
       psql(containerName, ["--file", `/repo/supabase/migrations/${migration}`]);
     }
@@ -1216,6 +1219,188 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     psql(containerName, [
       "--file", `/repo/supabase/migrations/${investmentsCompleteManualEvidenceMigration}`,
     ]);
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsLifecycleMeasurementMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (pg_catalog.to_regclass('investments.economic_events') is not null)::text || ':' ||
+        (pg_catalog.to_regclass('investments.event_sources') is not null)::text || ':' ||
+        (pg_catalog.to_regclass('investments.cash_settlements') is not null)::text || ':' ||
+        (pg_catalog.to_regclass('investments.year_end_measurements') is not null)::text || ':' ||
+        (select count(*) from pg_catalog.pg_class relation
+          join pg_catalog.pg_namespace namespace on namespace.oid = relation.relnamespace
+          where namespace.nspname = 'investments'
+            and relation.relname in (
+              'company_year_policies', 'economic_events', 'event_sources',
+              'cash_settlements', 'position_classifications',
+              'year_end_measurements', 'measurement_sources'
+            )
+            and relation.relrowsecurity and relation.relforcerowsecurity)::text || ':' ||
+        pg_catalog.has_table_privilege(
+          'authenticated', 'investments.cash_settlements', 'INSERT'
+        )::text || ':' ||
+        (select numeric_scale from information_schema.columns
+          where table_schema = 'investments' and table_name = 'positions'
+            and column_name = 'share_count')::text;
+    `), "true:true:true:true:7:false:12");
+
+    const tenantParentPositionId = "30000000-0000-0000-0000-000000000099";
+    const tenantEventId = "90000000-0000-0000-0000-000000000001";
+    const tenantMeasurementId = "90000000-0000-0000-0000-000000000002";
+    psql(containerName, [], String.raw`
+      insert into public.companies (
+        id, org_number, name, entity_type, address, postal_code, city,
+        status_text, source, created_by, identity_confirmed_at, identity_locked_at
+      ) values (
+        '${secondCompanyId}', '271828182', 'Second Investments AS', 'AS',
+        'Two', '0151', 'Oslo', 'Active', 'test', '${ownerId}',
+        pg_catalog.now(), pg_catalog.now()
+      );
+      insert into public.company_memberships (company_id, user_id, role, accepted_at)
+      values ('${secondCompanyId}', '${ownerId}', 'owner', pg_catalog.now());
+      insert into investments.company_year_policies (
+        company_id, income_year, policy_version, tax_law_version,
+        current_measurement_rule, long_term_measurement_rule, created_by
+      ) values
+        ('${companyId}', 2026, 'domestic_2026_v2', 'norwegian_2026',
+          'lower_of_cost_and_fair_value', 'cost_with_evidenced_impairment', '${ownerId}'),
+        ('${secondCompanyId}', 2026, 'domestic_2026_v2', 'norwegian_2026',
+          'lower_of_cost_and_fair_value', 'cost_with_evidenced_impairment', '${ownerId}');
+      insert into investments.positions (
+        id, company_id, investment_key, name, kind, tax_treatment, org_number,
+        share_count, cost_basis, tax_basis, movements, lot_history_status,
+        accounting_classification, created_by
+      ) values (
+        '${tenantParentPositionId}', '${companyId}', 'tenant-parent-as',
+        'Tenant Parent AS', 'norwegian_private_company', 'fritaksmetoden',
+        '123123123', 10, 1000, 1000, '[]'::jsonb, 'complete',
+        'other_long_term', '${ownerId}'
+      );
+      insert into investments.economic_events (
+        event_id, company_id, income_year, event_kind, position_id,
+        recognition_date, policy_version, idempotency_key, request_fingerprint,
+        evidence_mode, evidence_reference, owner_attested, evidence_digest,
+        calculation_id, recognition_accounting_entry_id,
+        expected_settlement_amount, settlement_balance_kind, created_by
+      ) values (
+        '${tenantEventId}', '${companyId}', 2026, 'share_purchase',
+        '${tenantParentPositionId}', date '2026-06-01', 'domestic_2026_v2',
+        'tenant-parent-event', repeat('1', 64), 'linked_sources',
+        'broker-note-1', false, repeat('2', 64), repeat('3', 64),
+        '90000000-0000-0000-0000-000000000003', 1000,
+        'purchase_payable', '${ownerId}'
+      );
+    `);
+    const expectTenantMismatch = (sql, label) => {
+      const result = docker([
+        "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
+        "-U", "postgres", "-d", "talli_test",
+      ], { input: sql });
+      assert.notEqual(result.status, 0, `${label} must fail closed`);
+      assert.match(`${result.stdout}\n${result.stderr}`, /foreign key constraint/iu, label);
+    };
+    expectTenantMismatch(String.raw`
+      set role investments_store_owner;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      insert into investments.event_sources (
+        event_id, company_id, ordinal, role, source_capability,
+        source_record_id, source_revision, fact_sha256
+      ) values (
+        '${tenantEventId}', '${secondCompanyId}', 1, 'primary_document',
+        'DOCUMENTS', '90000000-0000-0000-0000-000000000004', 1, repeat('4', 64)
+      );
+    `, "event source tenant mismatch");
+    expectTenantMismatch(String.raw`
+      set role investments_store_owner;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      insert into investments.cash_settlements (
+        settlement_id, event_id, company_id, income_year, settlement_date,
+        amount, source_capability, source_record_id, source_revision,
+        fact_sha256, idempotency_key, request_fingerprint, evidence_mode,
+        evidence_reference, owner_attested, evidence_digest,
+        settlement_accounting_entry_id, created_by
+      ) values (
+        '90000000-0000-0000-0000-000000000005', '${tenantEventId}',
+        '${secondCompanyId}', 2026, date '2026-06-02', 1000, 'BANKING',
+        '90000000-0000-0000-0000-000000000006', 1, repeat('5', 64),
+        'tenant-cross-settlement', repeat('6', 64), 'linked_sources',
+        'bank-transaction-1', false, repeat('7', 64),
+        '90000000-0000-0000-0000-000000000007', '${ownerId}'
+      );
+    `, "cash settlement tenant mismatch");
+    expectTenantMismatch(String.raw`
+      set role investments_store_owner;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      insert into investments.position_classifications (
+        position_id, company_id, income_year, accounting_classification,
+        purpose_reference, source_capability, source_record_id, source_revision,
+        fact_sha256, created_by
+      ) values (
+        '${tenantParentPositionId}', '${secondCompanyId}', 2026,
+        'other_long_term', 'owner purpose', 'DOCUMENTS',
+        '90000000-0000-0000-0000-000000000008', 1, repeat('8', 64), '${ownerId}'
+      );
+    `, "position classification tenant mismatch");
+    psql(containerName, [], String.raw`
+      insert into investments.position_classifications (
+        position_id, company_id, income_year, accounting_classification,
+        purpose_reference, source_capability, source_record_id, source_revision,
+        fact_sha256, created_by
+      ) values (
+        '${tenantParentPositionId}', '${companyId}', 2026, 'other_long_term',
+        'owner purpose', 'DOCUMENTS',
+        '90000000-0000-0000-0000-000000000009', 1, repeat('9', 64), '${ownerId}'
+      );
+      insert into investments.year_end_measurements (
+        measurement_id, company_id, income_year, position_id, as_of,
+        policy_version, measurement_rule, quantity, source_book_cost,
+        pre_measurement_book_value, observed_or_recoverable_value,
+        impairment_amount, reversal_amount, closing_book_value, tax_basis,
+        tax_value, evidence_digest, calculation_id, created_by
+      ) values (
+        '${tenantMeasurementId}', '${companyId}', 2026, '${tenantParentPositionId}',
+        date '2026-12-31', 'domestic_2026_v2',
+        'cost_with_evidenced_impairment', 10, 1000, 1000, 900, 100, 0, 900,
+        1000, 1000, repeat('a', 64), repeat('b', 64), '${ownerId}'
+      );
+    `);
+    expectTenantMismatch(String.raw`
+      set role investments_store_owner;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      insert into investments.measurement_sources (
+        measurement_id, company_id, ordinal, role, source_capability,
+        source_record_id, source_revision, fact_sha256
+      ) values (
+        '${tenantMeasurementId}', '${secondCompanyId}', 1, 'valuation',
+        'DOCUMENTS', '90000000-0000-0000-0000-000000000010', 1, repeat('c', 64)
+      );
+    `, "measurement source tenant mismatch");
+    psql(containerName, [], String.raw`
+      delete from investments.year_end_measurements
+        where measurement_id = '${tenantMeasurementId}';
+      delete from investments.position_classifications
+        where position_id = '${tenantParentPositionId}';
+      delete from investments.economic_events where event_id = '${tenantEventId}';
+      delete from investments.company_year_policies
+        where company_id in ('${companyId}', '${secondCompanyId}');
+      delete from investments.positions where id = '${tenantParentPositionId}';
+      delete from public.company_memberships where company_id = '${secondCompanyId}';
+      delete from public.companies where id = '${secondCompanyId}';
+    `);
+
+    psql(containerName, [
+      "--file", `/repo/supabase/rollback/${investmentsLifecycleMeasurementMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (pg_catalog.to_regclass('investments.economic_events') is null)::text || ':' ||
+        (pg_catalog.to_regclass('investments.cash_settlements') is null)::text || ':' ||
+        (select data_type from information_schema.columns
+          where table_schema = 'investments' and table_name = 'positions'
+            and column_name = 'share_count')::text;
+    `), "true:true:bigint");
+
     assert.equal(scalar(containerName, String.raw`
       select
         (pg_catalog.to_regclass('investments.received_fund_distributions') is not null)::text || ':' ||
@@ -1263,6 +1448,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     ]);
     psql(containerName, [
       "--file", `/repo/supabase/migrations/${investmentsCompleteManualEvidenceMigration}`,
+    ]);
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsLifecycleMeasurementMigration}`,
     ]);
     assert.equal(scalar(containerName, String.raw`
       select
@@ -1451,7 +1639,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         position.share_count::text || ':' || position.cost_basis::text || ':' ||
         position.tax_basis::text
       from investments.positions position where position.id = '${supportedFundPositionActual}';
-    `), "norwegian_equity_fund:current_fund:0:0.00:0.00");
+    `), "norwegian_equity_fund:current_fund:0.000000000000:0.000000000000:0.000000000000");
     const fundDistributionReplayRequest = JSON.stringify({
       ...JSON.parse(fundDistributionRequest), positionId: supportedFundPositionActual,
     });
@@ -1463,13 +1651,13 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       join investments.share_sale_allocations allocation
         on allocation.sale_action_id = sale.action_id
       where sale.action_id = '${supportedFundSaleId}';
-    `), "15.00:15.00:10.50:4.50:7000.00");
+    `), "15.000000000000:15.000000000000:10.500000000000:4.500000000000:7000.00");
     assert.equal(scalar(containerName, String.raw`
       select dividend_portion::text || ':' || interest_portion::text || ':' ||
         taxable_add_back::text || ':' || total_taxable_income::text
       from investments.received_fund_distributions
       where action_id = '${supportedFundDistributionId}';
-    `), "50.00:50.00:1.50:51.50");
+    `), "50.000000000000:50.000000000000:1.500000000000:51.500000000000");
     assert.equal(scalar(containerName, String.raw`
       set role investments_workflow_executor;
       select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
@@ -1646,7 +1834,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       from investments.positions position
       join investments.acquisition_lots lot on lot.position_id = position.id
       where position.id = '${supportedFundPositionActual}';
-    `), "0:0.00:0.00:0:0.00:0");
+    `), "0.000000000000:0.000000000000:0.000000000000:0.000000000000:0.000000000000:0");
     assert.equal(scalar(containerName, String.raw`
       set role investments_executor;
       select pg_catalog.set_config('talli.verified_actor_id', '${outsiderId}', false);

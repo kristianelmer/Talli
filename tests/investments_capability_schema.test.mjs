@@ -70,6 +70,14 @@ const supportedPatternsAuthorityCleanupRollbackPath = new URL(
   "../supabase/rollback/20260901103000_investments_supported_patterns_authority_cleanup.sql",
   import.meta.url,
 );
+const lifecycleMeasurementPath = new URL(
+  "../supabase/migrations/20260901112000_investments_lifecycle_measurement_expand.sql",
+  import.meta.url,
+);
+const lifecycleMeasurementRollbackPath = new URL(
+  "../supabase/rollback/20260901112000_investments_lifecycle_measurement_expand.sql",
+  import.meta.url,
+);
 const localGatePath = new URL("../scripts/test-supabase-local.sh", import.meta.url);
 
 function artifact(path, phase) {
@@ -168,6 +176,49 @@ test("canonical investments tables are forced-RLS and runtime roles do not own t
   );
   assert.match(expand, /grant investments_executor to talli_ledger_backend/iu);
   assert.match(workflow, /grant investments_workflow_executor to talli_ledger_backend/iu);
+});
+
+test("investment lifecycle expansion separates recognition, settlement, and measurement", () => {
+  const source = artifact(lifecycleMeasurementPath, "lifecycle measurement expand");
+  const rollback = artifact(
+    lifecycleMeasurementRollbackPath,
+    "lifecycle measurement rollback",
+  );
+
+  for (const table of [
+    "company_year_policies",
+    "economic_events",
+    "event_sources",
+    "cash_settlements",
+    "position_classifications",
+    "year_end_measurements",
+    "measurement_sources",
+  ]) {
+    assert.match(source, new RegExp(`create table investments\\.${table}`, "iu"));
+    assert.match(source, new RegExp(
+      `alter table investments\\.${table} force row level security`, "iu",
+    ));
+  }
+  assert.match(source, /event_id uuid not null unique/iu);
+  assert.match(source, /source_revision integer not null check \(source_revision > 0\)/iu);
+  assert.match(source, /fact_sha256 text not null check \(fact_sha256 ~ '\^\[0-9a-f\]\{64\}\$'\)/iu);
+  assert.match(source, /unique \(id, company_id\)/iu);
+  assert.match(source, /unique \(event_id, company_id\)/iu);
+  assert.match(source, /foreign key \(event_id, company_id\)[\s\S]+references investments\.economic_events\(event_id, company_id\)/iu);
+  assert.match(source, /foreign key \(position_id, company_id\)[\s\S]+references investments\.positions\(id, company_id\)/iu);
+  assert.match(source, /unique \(measurement_id, company_id\)/iu);
+  assert.match(source, /foreign key \(measurement_id, company_id\)[\s\S]+references investments\.year_end_measurements\(measurement_id, company_id\)/iu);
+  assert.match(source, /idempotency_key text not null/iu);
+  assert.match(source, /unique \(created_by, company_id, idempotency_key\)/iu);
+  assert.match(source, /foreign key \(company_id, income_year\)[\s\S]+references investments\.company_year_policies/iu);
+  assert.match(source, /alter column share_count type numeric\(38, 12\)/iu);
+  assert.match(source, /measurement_rule in \([\s\S]+lower_of_cost_and_fair_value[\s\S]+cost_with_evidenced_impairment/iu);
+  assert.doesNotMatch(
+    source,
+    /grant[^;]+(?:insert|update|delete)[^;]+investments\.[a-z_]+[^;]+(?:anon|authenticated|service_role|investments_executor)/iu,
+  );
+  assert.match(rollback, /investments_lifecycle_measurement_rollback_unsafe/iu);
+  assert.match(rollback, /alter column share_count type bigint/iu);
 });
 
 test("sale workflow owns FIFO persistence behind restricted investments functions", () => {

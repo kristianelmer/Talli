@@ -1,7 +1,7 @@
 # Investments backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["investments.acquisition_lots","investments.corrections","investments.positions","investments.received_dividends","investments.received_fund_distributions","investments.share_purchases","investments.share_sale_allocations","investments.share_sales"],"ports":["InvestmentsPersistence"],"publicEntryPoints":["talli_backend.modules.investments.public"]}
+{"dependencies":[],"ownedTables":["investments.acquisition_lots","investments.cash_settlements","investments.company_year_policies","investments.corrections","investments.economic_events","investments.event_sources","investments.measurement_sources","investments.position_classifications","investments.positions","investments.received_dividends","investments.received_fund_distributions","investments.share_purchases","investments.share_sale_allocations","investments.share_sales","investments.year_end_measurements"],"ports":["InvestmentsPersistence"],"publicEntryPoints":["talli_backend.modules.investments.public"]}
 -->
 
 ## Purpose and ownership
@@ -32,6 +32,15 @@ Consumers import only `talli_backend.modules.investments.public`.
 and only opaque bank/document source references. `InvestmentsCommands` exposes replay, prepare,
 and complete operations so a named application workflow can keep the investment
 mutation and authoritative ledger posting in one short transaction.
+The lifecycle expansion introduces recognition-only
+`RecognizeSharePurchaseCommand`, `RecognizeShareSaleCommand`,
+`RecognizeReceivedDividendCommand`, and
+`RecognizeReceivedFundDistributionCommand`, followed independently by
+`SettleInvestmentCashCommand`. `InvestmentEconomicEventId` and
+`InvestmentSettlementId` keep those stages correlated without sharing a posting
+date. `InvestmentEvidence` binds revisioned `InvestmentFactReference` values
+from the closed `InvestmentSourceCapability` vocabulary, and `InvestmentUnits`
+preserves source precision to twelve decimal places without rounding.
 `PreparedSharePurchase` returns the canonical position/lot identifiers and the
 normalized facts needed by ledger. `RecordedSharePurchase` binds those owned
 identifiers to an opaque accounting-entry reference. `PreparedShareSale`
@@ -111,6 +120,10 @@ irreversible, post-rehearsal stage exit is
 #190 expansion and bounded inverse are
 `supabase/migrations/20260901100000_investments_supported_patterns.sql` and
 `supabase/rollback/20260901100000_investments_supported_patterns.sql`. The
+recognition, settlement, classification, and year-end-measurement storage
+expansion is
+`supabase/migrations/20260901112000_investments_lifecycle_measurement_expand.sql`
+with its fail-closed inverse at the matching path under `supabase/rollback`. The
 inverse restores captured predecessor routines before new #190 data exists and
 otherwise fails closed. The
 mandatory PostgreSQL rehearsal applies each slice contract, rolls it back twice,

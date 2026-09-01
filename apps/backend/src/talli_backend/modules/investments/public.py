@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 from collections.abc import Callable, Mapping
 from typing import Protocol, TypeVar
@@ -40,6 +40,62 @@ class InvestmentActionId:
 
     def __str__(self) -> str:
         return self.value
+
+
+@dataclass(frozen=True, slots=True)
+class InvestmentEconomicEventId:
+    value: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "value",
+            _opaque_uuid(self.value, "investment economic event id"),
+        )
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
+class InvestmentSettlementId:
+    value: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "value",
+            _opaque_uuid(self.value, "investment settlement id"),
+        )
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
+class InvestmentUnits:
+    amount: Decimal
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.amount, Decimal):
+            raise TypeError("investment units must be Decimal")
+        if not self.amount.is_finite() or self.amount < 0:
+            raise ValueError("investment units must be finite and non-negative")
+        try:
+            normalized = self.amount.quantize(Decimal("0.000000000001"))
+        except InvalidOperation:
+            raise ValueError("investment units exceed the supported precision") from None
+        if normalized != self.amount or normalized >= Decimal("1e26"):
+            raise ValueError("investment units exceed the supported precision")
+        object.__setattr__(self, "amount", normalized)
+
+    @classmethod
+    def of(cls, amount: str | Decimal) -> InvestmentUnits:
+        try:
+            decimal_amount = amount if isinstance(amount, Decimal) else Decimal(amount)
+        except (InvalidOperation, ValueError):
+            raise ValueError("investment units must be a decimal string") from None
+        return cls(decimal_amount)
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,6 +184,7 @@ class InvestmentTaxTreatment(StrEnum):
 
 class InvestmentPolicyVersion(StrEnum):
     DOMESTIC_2026_V1 = "domestic_2026_v1"
+    DOMESTIC_2026_V2 = "domestic_2026_v2"
 
 
 class InvestmentDocumentStatus(StrEnum):
@@ -139,6 +196,89 @@ class InvestmentDocumentStatus(StrEnum):
 class InvestmentEvidenceMode(StrEnum):
     LINKED_SOURCES = "linked_sources"
     MANUAL_FALLBACK = "manual_fallback"
+
+
+class InvestmentSourceCapability(StrEnum):
+    BANKING = "BANKING"
+    DOCUMENTS = "DOCUMENTS"
+
+
+@dataclass(frozen=True, slots=True)
+class InvestmentFactReference:
+    capability: InvestmentSourceCapability
+    record_id: InvestmentSourceReference
+    revision: int
+    fact_sha256: str
+
+    def __post_init__(self) -> None:
+        digest = self.fact_sha256.strip().lower()
+        if self.revision < 1 or len(digest) != 64 or any(
+            character not in "0123456789abcdef" for character in digest
+        ):
+            raise InvestmentsError.invalid_input()
+        object.__setattr__(self, "fact_sha256", digest)
+
+
+@dataclass(frozen=True, slots=True)
+class InvestmentEvidence:
+    mode: InvestmentEvidenceMode
+    reference: str
+    owner_attested: bool
+    document_facts: tuple[InvestmentFactReference, ...]
+    bank_fact: InvestmentFactReference | None
+
+    def __post_init__(self) -> None:
+        reference = self.reference.strip()
+        if not reference or len(reference) > 500:
+            raise InvestmentsError.invalid_input()
+        facts = (*self.document_facts, *((self.bank_fact,) if self.bank_fact else ()))
+        if not facts:
+            raise InvestmentsError.invalid_input()
+        identities = {
+            (fact.capability, fact.record_id.value, fact.revision) for fact in facts
+        }
+        if len(identities) != len(facts):
+            raise InvestmentsError.invalid_input()
+        if any(
+            fact.capability is not InvestmentSourceCapability.DOCUMENTS
+            for fact in self.document_facts
+        ) or (
+            self.bank_fact is not None
+            and self.bank_fact.capability is not InvestmentSourceCapability.BANKING
+        ):
+            raise InvestmentsError.invalid_input()
+        if (
+            self.mode is InvestmentEvidenceMode.LINKED_SOURCES
+            and self.owner_attested
+        ) or (
+            self.mode is InvestmentEvidenceMode.MANUAL_FALLBACK
+            and not self.owner_attested
+        ):
+            raise InvestmentsError.invalid_input()
+        object.__setattr__(self, "reference", reference)
+
+
+def _require_recognition_evidence(evidence: InvestmentEvidence) -> None:
+    if not evidence.document_facts or evidence.bank_fact is not None:
+        raise InvestmentsError.invalid_input()
+
+
+def _require_settlement_evidence(evidence: InvestmentEvidence) -> None:
+    if evidence.document_facts or evidence.bank_fact is None:
+        raise InvestmentsError.invalid_input()
+
+
+def _require_positive_units(units: InvestmentUnits) -> None:
+    if units.amount <= 0:
+        raise InvestmentsError.invalid_input()
+
+
+def _require_2026_recognition(
+    income_year: IncomeYear,
+    recognition_date: LocalDate,
+) -> None:
+    if income_year.value != 2026 or recognition_date.value.year != income_year.value:
+        raise InvestmentsError.invalid_input()
 
 
 class InvestmentLotHistoryStatus(StrEnum):
@@ -198,6 +338,95 @@ class InvestmentsCommand:
     correlation_id: CorrelationId
     idempotency_key: IdempotencyKey
     income_year: IncomeYear
+
+
+@dataclass(frozen=True, slots=True)
+class RecognizeSharePurchaseCommand(InvestmentsCommand):
+    event_id: InvestmentEconomicEventId
+    investment_key: str
+    investment_name: str
+    investment_kind: InvestmentKind
+    accounting_classification: InvestmentAccountingClassification
+    acquisition_date: LocalDate
+    share_count: InvestmentUnits
+    purchase_amount: Money
+    transaction_costs: Money
+    org_number: str | None
+    fund_equity_ratio_basis_points: int | None
+    fund_tax_statement_reference: str | None
+    evidence: InvestmentEvidence
+
+    def __post_init__(self) -> None:
+        _require_2026_recognition(self.income_year, self.acquisition_date)
+        _require_positive_units(self.share_count)
+        _require_recognition_evidence(self.evidence)
+
+
+@dataclass(frozen=True, slots=True)
+class RecognizeShareSaleCommand(InvestmentsCommand):
+    event_id: InvestmentEconomicEventId
+    position_id: InvestmentPositionId
+    sale_date: LocalDate
+    sold_share_count: InvestmentUnits
+    proceeds: Money
+    transaction_costs: Money
+    sale_year_fund_equity_ratio_basis_points: int | None
+    fund_tax_statement_reference: str | None
+    evidence: InvestmentEvidence
+
+    def __post_init__(self) -> None:
+        _require_2026_recognition(self.income_year, self.sale_date)
+        _require_positive_units(self.sold_share_count)
+        _require_recognition_evidence(self.evidence)
+
+
+@dataclass(frozen=True, slots=True)
+class RecognizeReceivedDividendCommand(InvestmentsCommand):
+    event_id: InvestmentEconomicEventId
+    position_id: InvestmentPositionId
+    paying_company_name: str
+    declared_date: LocalDate
+    gross_amount: Money
+    lawful_dividend_confirmed: bool
+    group_exception_claimed: bool
+    year_end_ownership_basis_points: int | None
+    year_end_voting_basis_points: int | None
+    group_evidence_reference: str | None
+    evidence: InvestmentEvidence
+
+    def __post_init__(self) -> None:
+        _require_2026_recognition(self.income_year, self.declared_date)
+        _require_recognition_evidence(self.evidence)
+
+
+@dataclass(frozen=True, slots=True)
+class RecognizeReceivedFundDistributionCommand(InvestmentsCommand):
+    event_id: InvestmentEconomicEventId
+    position_id: InvestmentPositionId
+    fund_name: str
+    entitlement_date: LocalDate
+    gross_amount: Money
+    opening_fund_equity_ratio_basis_points: int
+    fund_tax_statement_reference: str
+    evidence: InvestmentEvidence
+
+    def __post_init__(self) -> None:
+        _require_2026_recognition(self.income_year, self.entitlement_date)
+        _require_recognition_evidence(self.evidence)
+
+
+@dataclass(frozen=True, slots=True)
+class SettleInvestmentCashCommand(InvestmentsCommand):
+    settlement_id: InvestmentSettlementId
+    event_id: InvestmentEconomicEventId
+    settlement_date: LocalDate
+    amount: Money
+    evidence: InvestmentEvidence
+
+    def __post_init__(self) -> None:
+        if self.settlement_date.value.year != self.income_year.value:
+            raise InvestmentsError.invalid_input()
+        _require_settlement_evidence(self.evidence)
 
 
 @dataclass(frozen=True, slots=True)
@@ -940,6 +1169,9 @@ __all__ = [
     "InvestmentCorrectionView",
     "InvestmentDocumentStatus",
     "InvestmentEvidenceMode",
+    "InvestmentEvidence",
+    "InvestmentEconomicEventId",
+    "InvestmentFactReference",
     "InvestmentKind",
     "InvestmentLotHistoryStatus",
     "InvestmentPolicyVersion",
@@ -947,7 +1179,10 @@ __all__ = [
     "InvestmentPositionId",
     "InvestmentPositionView",
     "InvestmentSourceReference",
+    "InvestmentSourceCapability",
+    "InvestmentSettlementId",
     "InvestmentTaxTreatment",
+    "InvestmentUnits",
     "InvestmentSaleLotCalculation",
     "InvestmentSaleLotFact",
     "InvestmentReplacementCommand",
@@ -965,6 +1200,10 @@ __all__ = [
     "PreparedReceivedFundDistribution",
     "PreparedReceivedFundDistributionFacts",
     "PreparedInvestmentCorrection",
+    "RecognizeReceivedDividendCommand",
+    "RecognizeReceivedFundDistributionCommand",
+    "RecognizeSharePurchaseCommand",
+    "RecognizeShareSaleCommand",
     "RecordReceivedDividendCommand",
     "RecordReceivedFundDistributionCommand",
     "RecordSharePurchaseCommand",
@@ -974,6 +1213,7 @@ __all__ = [
     "RecordedReceivedDividend",
     "RecordedReceivedFundDistribution",
     "RecordedInvestmentCorrection",
+    "SettleInvestmentCashCommand",
     "ShareSaleAllocationId",
     "ShareSaleAllocationPage",
     "ShareSaleAllocationView",

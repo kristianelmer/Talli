@@ -260,13 +260,13 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
       to: "backend:company_access",
     },
     {
-      from: "backend-system:investment-share-purchase",
+      from: "backend-system:investment-activity",
       imports: ["talli_backend.modules.investments.public"],
       kind: "workflow",
       to: "backend:investments",
     },
     {
-      from: "backend-system:investment-share-purchase",
+      from: "backend-system:investment-activity",
       imports: ["talli_backend.modules.ledger.public"],
       kind: "workflow",
       to: "backend:ledger",
@@ -1863,6 +1863,7 @@ test("the immutable frozen inventory remains exact while the active registry is 
     ["compat-banking-persistence", ["banking", "#140", 10]],
     ["compat-investment-purchase-persistence", ["investments", "#141", 3]],
     ["compat-investment-sale-persistence", ["investments", "#142", 4]],
+    ["compat-investment-stage-exit-persistence", ["investments", "#143", 2]],
     ["compat-documents-persistence", ["documents", "#147", 15]],
     ["compat-owner-dividend-persistence", ["corporate_governance", "#144", 2]],
     ["compat-shareholder-loan-persistence", ["corporate_governance", "#145", 1]],
@@ -1893,8 +1894,8 @@ test("the immutable frozen inventory remains exact while the active registry is 
   }
   assert.equal(expected.size, baseline.records.length);
 
-  assert.equal(registry.records.length, 12);
-  assert.equal(registry.records.flatMap((record) => record.scopes).length, 151);
+  assert.equal(registry.records.length, 11);
+  assert.equal(registry.records.flatMap((record) => record.scopes).length, 147);
   const baselineById = new Map(baseline.records.map((record) => [record.id, record]));
   const scopeKey = (scope) => [scope.path, scope.rule, scope.resource, scope.operation].join("\0");
   for (const record of registry.records) {
@@ -1919,6 +1920,7 @@ test("the immutable frozen inventory remains exact while the active registry is 
       "compat-banking-persistence",
       "compat-investment-purchase-persistence",
       "compat-investment-sale-persistence",
+      "compat-investment-stage-exit-persistence",
       "compat-owner-dividend-persistence",
       "compat-shareholder-loan-persistence",
       "compat-tax-settlement-persistence",
