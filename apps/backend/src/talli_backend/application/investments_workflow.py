@@ -18,27 +18,41 @@ from talli_backend.modules.investments.public import (
     AccountingEntryReference,
     CorrectInvestmentCommand,
     InvestmentAccountingClassification,
+    InvestmentFactReference,
+    InvestmentSettlementBalanceKind,
+    InvestmentSourceCapability,
     InvestmentsError,
     RecordReceivedDividendCommand,
     RecordReceivedFundDistributionCommand,
     RecordSharePurchaseCommand,
     RecordShareSaleCommand,
+    RecognizeSharePurchaseCommand,
+    RecordedInvestmentCashSettlement,
+    RecordedInvestmentEconomicEvent,
     RecordedSharePurchase,
     RecordedShareSale,
     RecordedReceivedDividend,
     RecordedReceivedFundDistribution,
     RecordedInvestmentCorrection,
+    SettleInvestmentCashCommand,
 )
 from talli_backend.modules.investments.service import InvestmentsService
 from talli_backend.modules.ledger.public import (
     InvestmentClassification,
+    InvestmentCashSettlementFacts,
+    InvestmentPurchaseRecognitionFacts,
+    InvestmentSettlementKind,
+    LedgerEntryId,
+    LedgerFactReference,
     LedgerCommands,
     LedgerPersistence,
     LedgerSourceRecordId,
+    LedgerSourceCapability,
     PostInvestmentPurchaseCommand,
     PostInvestmentSaleCommand,
     PostReceivedDividendCommand,
     PostReceivedFundDistributionCommand,
+    RecognizeHoldingActionCommand,
 )
 from talli_backend.shared.kernel import CompanyId, CorrelationId
 
@@ -53,6 +67,35 @@ _LEDGER_CLASSIFICATION = {
     InvestmentAccountingClassification.CURRENT_FUND: InvestmentClassification.CURRENT_FUND,
 }
 
+_LEDGER_SOURCE_CAPABILITY = {
+    InvestmentSourceCapability.BANKING: LedgerSourceCapability.BANKING,
+    InvestmentSourceCapability.DOCUMENTS: LedgerSourceCapability.DOCUMENTS,
+}
+
+_LEDGER_SETTLEMENT_KIND = {
+    InvestmentSettlementBalanceKind.PURCHASE_PAYABLE: (
+        InvestmentSettlementKind.PURCHASE_PAYABLE
+    ),
+    InvestmentSettlementBalanceKind.SALE_RECEIVABLE: (
+        InvestmentSettlementKind.SALE_RECEIVABLE
+    ),
+    InvestmentSettlementBalanceKind.DIVIDEND_RECEIVABLE: (
+        InvestmentSettlementKind.DIVIDEND_RECEIVABLE
+    ),
+    InvestmentSettlementBalanceKind.FUND_DISTRIBUTION_RECEIVABLE: (
+        InvestmentSettlementKind.FUND_DISTRIBUTION_RECEIVABLE
+    ),
+}
+
+
+def _ledger_fact(reference: InvestmentFactReference) -> LedgerFactReference:
+    return LedgerFactReference(
+        capability=_LEDGER_SOURCE_CAPABILITY[reference.capability],
+        record_id=LedgerSourceRecordId(str(reference.record_id)),
+        revision=reference.revision,
+        fact_sha256=reference.fact_sha256,
+    )
+
 
 class InvestmentsSession:
     def __init__(
@@ -66,6 +109,99 @@ class InvestmentsSession:
     @property
     def actor_id(self):
         return self._persistence.actor_id
+
+    async def recognize_share_purchase(
+        self, command: RecognizeSharePurchaseCommand
+    ) -> RecordedInvestmentEconomicEvent:
+        if command.actor_id != self._persistence.actor_id:
+            raise InvestmentsError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            investments = InvestmentsService(transaction)
+            replay = await investments.get_share_purchase_recognition_replay(command)
+            if replay is not None:
+                return replay
+            prepared = await investments.prepare_share_purchase_recognition(command)
+            posted = await self._ledger_facade_factory(
+                transaction
+            ).recognize_holding_action(
+                RecognizeHoldingActionCommand(
+                    company_id=command.company_id,
+                    actor_id=command.actor_id,
+                    correlation_id=command.correlation_id,
+                    idempotency_key=command.idempotency_key,
+                    income_year=command.income_year,
+                    event_date=command.acquisition_date,
+                    primary_source=LedgerFactReference(
+                        capability=LedgerSourceCapability.INVESTMENTS,
+                        record_id=LedgerSourceRecordId(str(command.event_id)),
+                        revision=1,
+                        fact_sha256=prepared.calculation_id,
+                    ),
+                    corroborating_sources=tuple(
+                        _ledger_fact(fact) for fact in command.evidence.document_facts
+                    ),
+                    facts=InvestmentPurchaseRecognitionFacts(
+                        investment_name=prepared.investment_name,
+                        classification=_LEDGER_CLASSIFICATION[
+                            prepared.accounting_classification
+                        ],
+                        acquisition_cost=prepared.acquisition_cost,
+                    ),
+                )
+            )
+            return await investments.complete_share_purchase_recognition(
+                command,
+                prepared=prepared,
+                accounting_entry_id=AccountingEntryReference(str(posted.entry_id)),
+            )
+
+    async def settle_investment_cash(
+        self, command: SettleInvestmentCashCommand
+    ) -> RecordedInvestmentCashSettlement:
+        if command.actor_id != self._persistence.actor_id:
+            raise InvestmentsError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            investments = InvestmentsService(transaction)
+            replay = await investments.get_cash_settlement_replay(command)
+            if replay is not None:
+                return replay
+            prepared = await investments.prepare_cash_settlement(command)
+            bank_fact = command.evidence.bank_fact
+            if bank_fact is None:
+                raise InvestmentsError.invalid_input()
+            posted = await self._ledger_facade_factory(
+                transaction
+            ).recognize_holding_action(
+                RecognizeHoldingActionCommand(
+                    company_id=command.company_id,
+                    actor_id=command.actor_id,
+                    correlation_id=command.correlation_id,
+                    idempotency_key=command.idempotency_key,
+                    income_year=command.income_year,
+                    event_date=command.settlement_date,
+                    primary_source=LedgerFactReference(
+                        capability=LedgerSourceCapability.INVESTMENTS,
+                        record_id=LedgerSourceRecordId(str(command.settlement_id)),
+                        revision=1,
+                        fact_sha256=prepared.event_fact_sha256,
+                    ),
+                    corroborating_sources=(_ledger_fact(bank_fact),),
+                    facts=InvestmentCashSettlementFacts(
+                        kind=_LEDGER_SETTLEMENT_KIND[
+                            prepared.settlement_balance_kind
+                        ],
+                        amount=prepared.amount,
+                        recognition_entry_id=LedgerEntryId(
+                            str(prepared.recognition_accounting_entry_id)
+                        ),
+                    ),
+                )
+            )
+            return await investments.complete_cash_settlement(
+                command,
+                prepared=prepared,
+                accounting_entry_id=AccountingEntryReference(str(posted.entry_id)),
+            )
 
     async def correct_investment(
         self, command: CorrectInvestmentCommand

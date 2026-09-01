@@ -3,33 +3,51 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from decimal import Decimal
 
 from talli_backend.application.investments_workflow import InvestmentsSession
 from talli_backend.modules.investments.public import (
     AccountingEntryReference,
     AcquisitionLotId,
     InvestmentAccountingClassification,
+    InvestmentEconomicEventId,
+    InvestmentEvidence,
+    InvestmentEvidenceMode,
+    InvestmentFactReference,
     InvestmentKind,
     InvestmentPositionId,
     InvestmentSaleLotFact,
+    InvestmentSettlementBalanceKind,
+    InvestmentSettlementId,
+    InvestmentSourceCapability,
+    InvestmentSourceReference,
+    InvestmentUnits,
+    PreparedInvestmentCashSettlement,
     PreparedInvestmentCorrection,
     PreparedReceivedDividendFacts,
     PreparedReceivedFundDistributionFacts,
     PreparedReceivedDividend,
     PreparedShareSaleFacts,
+    PreparedSharePurchaseRecognition,
     PreparedSharePurchase,
+    RecognizeSharePurchaseCommand,
+    RecordedInvestmentCashSettlement,
+    RecordedInvestmentEconomicEvent,
     RecordedShareSale,
     RecordedSharePurchase,
     RecordedReceivedDividend,
     RecordedReceivedFundDistribution,
     RecordedInvestmentCorrection,
+    SettleInvestmentCashCommand,
 )
 from talli_backend.modules.ledger.public import (
+    InvestmentCashSettlementFacts,
+    InvestmentPurchaseRecognitionFacts,
     LedgerEntryId,
     LedgerEntryKind,
     PostedLedgerEntry,
 )
-from talli_backend.shared.kernel import IncomeYear, Money, Timestamp
+from talli_backend.shared.kernel import IdempotencyKey, IncomeYear, LocalDate, Money, Timestamp
 
 from test_investments import (
     supported_purchase,
@@ -49,6 +67,79 @@ ORIGINAL_ENTRY_ID = AccountingEntryReference(
 NOW = Timestamp(datetime(2026, 8, 31, tzinfo=UTC))
 
 
+def lifecycle_purchase() -> RecognizeSharePurchaseCommand:
+    legacy = supported_purchase()
+    return RecognizeSharePurchaseCommand(
+        company_id=legacy.company_id,
+        actor_id=legacy.actor_id,
+        correlation_id=legacy.correlation_id,
+        idempotency_key=IdempotencyKey("investment-recognition-0001"),
+        income_year=legacy.income_year,
+        event_id=InvestmentEconomicEventId(
+            "90000000-0000-0000-0000-000000000001"
+        ),
+        investment_key=legacy.investment_key,
+        investment_name=legacy.investment_name,
+        investment_kind=legacy.investment_kind,
+        accounting_classification=legacy.accounting_classification,
+        acquisition_date=legacy.acquisition_date,
+        share_count=InvestmentUnits.of("10.125000000000"),
+        purchase_amount=legacy.purchase_amount,
+        transaction_costs=legacy.transaction_costs,
+        org_number=legacy.org_number,
+        fund_equity_ratio_basis_points=legacy.fund_equity_ratio_basis_points,
+        fund_tax_statement_reference=legacy.fund_tax_statement_reference,
+        evidence=InvestmentEvidence(
+            InvestmentEvidenceMode.LINKED_SOURCES,
+            "broker contract note",
+            False,
+            (
+                InvestmentFactReference(
+                    InvestmentSourceCapability.DOCUMENTS,
+                    InvestmentSourceReference(
+                        "80000000-0000-0000-0000-000000000001"
+                    ),
+                    1,
+                    "a" * 64,
+                ),
+            ),
+            None,
+        ),
+    )
+
+
+def lifecycle_settlement(
+    purchase: RecognizeSharePurchaseCommand,
+) -> SettleInvestmentCashCommand:
+    return SettleInvestmentCashCommand(
+        company_id=purchase.company_id,
+        actor_id=purchase.actor_id,
+        correlation_id=purchase.correlation_id,
+        idempotency_key=IdempotencyKey("investment-settlement-0001"),
+        income_year=purchase.income_year,
+        settlement_id=InvestmentSettlementId(
+            "90000000-0000-0000-0000-000000000002"
+        ),
+        event_id=purchase.event_id,
+        settlement_date=LocalDate(purchase.acquisition_date.value),
+        amount=Money.nok("125.50"),
+        evidence=InvestmentEvidence(
+            InvestmentEvidenceMode.LINKED_SOURCES,
+            "bank transaction",
+            False,
+            (),
+            InvestmentFactReference(
+                InvestmentSourceCapability.BANKING,
+                InvestmentSourceReference(
+                    "70000000-0000-0000-0000-000000000001"
+                ),
+                1,
+                "b" * 64,
+            ),
+        ),
+    )
+
+
 class SessionPersistence:
     def __init__(self) -> None:
         self.events: list[str] = []
@@ -63,6 +154,66 @@ class SessionPersistence:
         self.events.append("transaction:begin")
         yield self
         self.events.append("transaction:commit")
+
+    async def get_share_purchase_recognition_replay(self, command):
+        self.events.append("investments:recognition-replay")
+        return None
+
+    async def prepare_share_purchase_recognition(
+        self, command, *, capitalized_cost, evidence_digest, calculation_id
+    ):
+        self.events.append("investments:recognition-prepare")
+        return PreparedSharePurchaseRecognition(
+            position_id=POSITION_ID,
+            lot_id=LOT_ID,
+            position_created=True,
+            investment_name="Example AS",
+            accounting_classification=InvestmentAccountingClassification.OTHER_LONG_TERM,
+            acquisition_cost=capitalized_cost,
+            expected_settlement_amount=capitalized_cost,
+            settlement_balance_kind=InvestmentSettlementBalanceKind.PURCHASE_PAYABLE,
+            evidence_digest=evidence_digest,
+            calculation_id=calculation_id,
+        )
+
+    async def complete_share_purchase_recognition(
+        self, command, *, prepared, accounting_entry_id
+    ):
+        self.events.append("investments:recognition-complete")
+        return RecordedInvestmentEconomicEvent(
+            event_id=command.event_id,
+            position_id=prepared.position_id,
+            recognition_accounting_entry_id=accounting_entry_id,
+            expected_settlement_amount=prepared.expected_settlement_amount,
+            settlement_balance_kind=prepared.settlement_balance_kind,
+            replayed=False,
+        )
+
+    async def get_cash_settlement_replay(self, command):
+        self.events.append("investments:settlement-replay")
+        return None
+
+    async def prepare_cash_settlement(self, command, *, evidence_digest):
+        self.events.append("investments:settlement-prepare")
+        return PreparedInvestmentCashSettlement(
+            event_id=command.event_id,
+            recognition_accounting_entry_id=ORIGINAL_ENTRY_ID,
+            settlement_balance_kind=InvestmentSettlementBalanceKind.PURCHASE_PAYABLE,
+            amount=command.amount,
+            event_fact_sha256="c" * 64,
+            evidence_digest=evidence_digest,
+        )
+
+    async def complete_cash_settlement(
+        self, command, *, prepared, accounting_entry_id
+    ):
+        self.events.append("investments:settlement-complete")
+        return RecordedInvestmentCashSettlement(
+            settlement_id=command.settlement_id,
+            event_id=command.event_id,
+            settlement_accounting_entry_id=accounting_entry_id,
+            replayed=False,
+        )
 
     async def get_investment_correction_replay(self, command):
         self.events.append("investments:correction-replay")
@@ -229,6 +380,25 @@ class SessionPersistence:
 class LedgerFacade:
     def __init__(self, transaction: SessionPersistence) -> None:
         self.transaction = transaction
+
+    async def recognize_holding_action(self, command):
+        if isinstance(command.facts, InvestmentPurchaseRecognitionFacts):
+            self.transaction.events.append("ledger:recognize-purchase")
+            entry_kind = LedgerEntryKind.SHARE_PURCHASE
+        elif isinstance(command.facts, InvestmentCashSettlementFacts):
+            self.transaction.events.append("ledger:settle-cash")
+            entry_kind = LedgerEntryKind.SHARE_PURCHASE
+        else:
+            raise AssertionError("unexpected lifecycle facts")
+        self.transaction.posted_command = command
+        return PostedLedgerEntry(
+            entry_id=ENTRY_ID,
+            company_id=command.company_id,
+            income_year=command.income_year,
+            entry_kind=entry_kind,
+            posted_at=NOW,
+            replayed=False,
+        )
 
     async def post_investment_purchase(self, command):
         self.transaction.events.append("ledger:post")
@@ -399,3 +569,59 @@ def test_share_sale_composes_investments_and_ledger_interfaces_atomically() -> N
         "50.20"
     )
     assert not hasattr(persistence.posted_command, "lines")
+
+
+def test_purchase_recognition_posts_without_cash_and_preserves_fractional_units() -> None:
+    persistence = SessionPersistence()
+    command = lifecycle_purchase()
+
+    result = asyncio.run(
+        InvestmentsSession(persistence, LedgerFacade).recognize_share_purchase(command)
+    )
+
+    assert result.event_id == command.event_id
+    assert result.expected_settlement_amount == Money.nok("125.50")
+    assert persistence.events == [
+        "transaction:begin",
+        "investments:recognition-replay",
+        "investments:recognition-prepare",
+        "ledger:recognize-purchase",
+        "investments:recognition-complete",
+        "transaction:commit",
+    ]
+    assert isinstance(
+        persistence.posted_command.facts,
+        InvestmentPurchaseRecognitionFacts,
+    )
+    assert persistence.posted_command.facts.acquisition_cost == Money.nok("125.50")
+    assert persistence.posted_command.primary_source.record_id.value == str(
+        command.event_id
+    )
+    assert command.share_count.amount == Decimal("10.125000000000")
+
+
+def test_purchase_cash_settlement_posts_independently_against_recognition() -> None:
+    persistence = SessionPersistence()
+    command = lifecycle_settlement(lifecycle_purchase())
+
+    result = asyncio.run(
+        InvestmentsSession(persistence, LedgerFacade).settle_investment_cash(command)
+    )
+
+    assert result.settlement_id == command.settlement_id
+    assert persistence.events == [
+        "transaction:begin",
+        "investments:settlement-replay",
+        "investments:settlement-prepare",
+        "ledger:settle-cash",
+        "investments:settlement-complete",
+        "transaction:commit",
+    ]
+    assert isinstance(persistence.posted_command.facts, InvestmentCashSettlementFacts)
+    assert persistence.posted_command.facts.amount == Money.nok("125.50")
+    assert persistence.posted_command.facts.recognition_entry_id == LedgerEntryId(
+        str(ORIGINAL_ENTRY_ID)
+    )
+    assert persistence.posted_command.primary_source.record_id.value == str(
+        command.settlement_id
+    )

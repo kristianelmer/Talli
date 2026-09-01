@@ -203,6 +203,13 @@ class InvestmentSourceCapability(StrEnum):
     DOCUMENTS = "DOCUMENTS"
 
 
+class InvestmentSettlementBalanceKind(StrEnum):
+    PURCHASE_PAYABLE = "purchase_payable"
+    SALE_RECEIVABLE = "sale_receivable"
+    DIVIDEND_RECEIVABLE = "dividend_receivable"
+    FUND_DISTRIBUTION_RECEIVABLE = "fund_distribution_receivable"
+
+
 @dataclass(frozen=True, slots=True)
 class InvestmentFactReference:
     capability: InvestmentSourceCapability
@@ -547,6 +554,30 @@ class PreparedSharePurchase:
 
 
 @dataclass(frozen=True, slots=True)
+class PreparedSharePurchaseRecognition:
+    position_id: InvestmentPositionId
+    lot_id: AcquisitionLotId
+    position_created: bool
+    investment_name: str
+    accounting_classification: InvestmentAccountingClassification
+    acquisition_cost: Money
+    expected_settlement_amount: Money
+    settlement_balance_kind: InvestmentSettlementBalanceKind
+    evidence_digest: str
+    calculation_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedInvestmentCashSettlement:
+    event_id: InvestmentEconomicEventId
+    recognition_accounting_entry_id: AccountingEntryReference
+    settlement_balance_kind: InvestmentSettlementBalanceKind
+    amount: Money
+    event_fact_sha256: str
+    evidence_digest: str
+
+
+@dataclass(frozen=True, slots=True)
 class InvestmentSaleLotFact:
     lot_id: AcquisitionLotId
     allocation_order: int
@@ -656,6 +687,24 @@ class RecordedSharePurchase:
     lot_id: AcquisitionLotId
     accounting_entry_id: AccountingEntryReference
     position_created: bool
+    replayed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class RecordedInvestmentEconomicEvent:
+    event_id: InvestmentEconomicEventId
+    position_id: InvestmentPositionId
+    recognition_accounting_entry_id: AccountingEntryReference
+    expected_settlement_amount: Money
+    settlement_balance_kind: InvestmentSettlementBalanceKind
+    replayed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class RecordedInvestmentCashSettlement:
+    settlement_id: InvestmentSettlementId
+    event_id: InvestmentEconomicEventId
+    settlement_accounting_entry_id: AccountingEntryReference
     replayed: bool
 
 
@@ -899,6 +948,46 @@ class InvestmentCorrectionPage:
 
 
 class InvestmentsPersistence(Protocol):
+    async def get_share_purchase_recognition_replay(
+        self, command: RecognizeSharePurchaseCommand
+    ) -> RecordedInvestmentEconomicEvent | None: ...
+
+    async def prepare_share_purchase_recognition(
+        self,
+        command: RecognizeSharePurchaseCommand,
+        *,
+        capitalized_cost: Money,
+        evidence_digest: str,
+        calculation_id: str,
+    ) -> PreparedSharePurchaseRecognition: ...
+
+    async def complete_share_purchase_recognition(
+        self,
+        command: RecognizeSharePurchaseCommand,
+        *,
+        prepared: PreparedSharePurchaseRecognition,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedInvestmentEconomicEvent: ...
+
+    async def get_cash_settlement_replay(
+        self, command: SettleInvestmentCashCommand
+    ) -> RecordedInvestmentCashSettlement | None: ...
+
+    async def prepare_cash_settlement(
+        self,
+        command: SettleInvestmentCashCommand,
+        *,
+        evidence_digest: str,
+    ) -> PreparedInvestmentCashSettlement: ...
+
+    async def complete_cash_settlement(
+        self,
+        command: SettleInvestmentCashCommand,
+        *,
+        prepared: PreparedInvestmentCashSettlement,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedInvestmentCashSettlement: ...
+
     async def get_investment_correction_replay(
         self, command: CorrectInvestmentCommand
     ) -> RecordedInvestmentCorrection | None: ...
@@ -1000,6 +1089,40 @@ class InvestmentsPersistence(Protocol):
 
 
 class InvestmentsCommands(Protocol):
+    async def get_share_purchase_recognition_replay(
+        self, command: RecognizeSharePurchaseCommand
+    ) -> RecordedInvestmentEconomicEvent | None: ...
+
+    async def prepare_share_purchase_recognition(
+        self,
+        command: RecognizeSharePurchaseCommand,
+    ) -> PreparedSharePurchaseRecognition: ...
+
+    async def complete_share_purchase_recognition(
+        self,
+        command: RecognizeSharePurchaseCommand,
+        *,
+        prepared: PreparedSharePurchaseRecognition,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedInvestmentEconomicEvent: ...
+
+    async def get_cash_settlement_replay(
+        self, command: SettleInvestmentCashCommand
+    ) -> RecordedInvestmentCashSettlement | None: ...
+
+    async def prepare_cash_settlement(
+        self,
+        command: SettleInvestmentCashCommand,
+    ) -> PreparedInvestmentCashSettlement: ...
+
+    async def complete_cash_settlement(
+        self,
+        command: SettleInvestmentCashCommand,
+        *,
+        prepared: PreparedInvestmentCashSettlement,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedInvestmentCashSettlement: ...
+
     async def get_investment_correction_replay(
         self, command: CorrectInvestmentCommand
     ) -> RecordedInvestmentCorrection | None: ...
@@ -1181,6 +1304,7 @@ __all__ = [
     "InvestmentSourceReference",
     "InvestmentSourceCapability",
     "InvestmentSettlementId",
+    "InvestmentSettlementBalanceKind",
     "InvestmentTaxTreatment",
     "InvestmentUnits",
     "InvestmentSaleLotCalculation",
@@ -1200,6 +1324,8 @@ __all__ = [
     "PreparedReceivedFundDistribution",
     "PreparedReceivedFundDistributionFacts",
     "PreparedInvestmentCorrection",
+    "PreparedInvestmentCashSettlement",
+    "PreparedSharePurchaseRecognition",
     "RecognizeReceivedDividendCommand",
     "RecognizeReceivedFundDistributionCommand",
     "RecognizeSharePurchaseCommand",
@@ -1213,6 +1339,8 @@ __all__ = [
     "RecordedReceivedDividend",
     "RecordedReceivedFundDistribution",
     "RecordedInvestmentCorrection",
+    "RecordedInvestmentCashSettlement",
+    "RecordedInvestmentEconomicEvent",
     "SettleInvestmentCashCommand",
     "ShareSaleAllocationId",
     "ShareSaleAllocationPage",

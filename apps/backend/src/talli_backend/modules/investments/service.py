@@ -19,6 +19,8 @@ from talli_backend.modules.investments.public import (
     InvestmentPolicyVersion,
     InvestmentSaleLotCalculation,
     InvestmentTaxTreatment,
+    PreparedInvestmentCashSettlement,
+    PreparedSharePurchaseRecognition,
     InvestmentsError,
     InvestmentsPersistence,
     PreparedReceivedDividend,
@@ -30,11 +32,15 @@ from talli_backend.modules.investments.public import (
     RecordReceivedFundDistributionCommand,
     RecordSharePurchaseCommand,
     RecordShareSaleCommand,
+    RecognizeSharePurchaseCommand,
+    RecordedInvestmentCashSettlement,
+    RecordedInvestmentEconomicEvent,
     RecordedReceivedDividend,
     RecordedReceivedFundDistribution,
     RecordedInvestmentCorrection,
     RecordedSharePurchase,
     RecordedShareSale,
+    SettleInvestmentCashCommand,
 )
 from talli_backend.shared.kernel import Money
 
@@ -47,6 +53,7 @@ _PRIVATE_CLASSIFICATIONS = frozenset(
     }
 )
 _POLICY_VERSION = InvestmentPolicyVersion.DOMESTIC_2026_V1
+_LIFECYCLE_POLICY_VERSION = InvestmentPolicyVersion.DOMESTIC_2026_V2
 _ZERO = Money.nok("0")
 
 
@@ -73,13 +80,49 @@ def _evidence_digest(command: object) -> str:
     )
 
 
-def _calculation_id(*, action_id: object, evidence_digest: str, facts: object) -> str:
+def _calculation_id(
+    *,
+    action_id: object,
+    evidence_digest: str,
+    facts: object,
+    policy_version: InvestmentPolicyVersion = _POLICY_VERSION,
+) -> str:
     return _canonical_digest(
         {
             "actionId": str(action_id),
             "evidenceDigest": evidence_digest,
             "facts": facts,
-            "policyVersion": _POLICY_VERSION.value,
+            "policyVersion": policy_version.value,
+        }
+    )
+
+
+def _lifecycle_evidence_digest(command: object) -> str:
+    evidence = command.evidence
+    return _canonical_digest(
+        {
+            "bankFact": (
+                {
+                    "capability": evidence.bank_fact.capability.value,
+                    "recordId": str(evidence.bank_fact.record_id),
+                    "revision": evidence.bank_fact.revision,
+                    "factSha256": evidence.bank_fact.fact_sha256,
+                }
+                if evidence.bank_fact is not None
+                else None
+            ),
+            "documentFacts": [
+                {
+                    "capability": fact.capability.value,
+                    "recordId": str(fact.record_id),
+                    "revision": fact.revision,
+                    "factSha256": fact.fact_sha256,
+                }
+                for fact in evidence.document_facts
+            ],
+            "evidenceMode": evidence.mode.value,
+            "evidenceReference": evidence.reference,
+            "ownerAttested": evidence.owner_attested,
         }
     )
 
@@ -286,6 +329,109 @@ def _sale_calculations(
 class InvestmentsService:
     def __init__(self, persistence: InvestmentsPersistence) -> None:
         self._persistence = persistence
+
+    async def get_share_purchase_recognition_replay(
+        self, command: RecognizeSharePurchaseCommand
+    ) -> RecordedInvestmentEconomicEvent | None:
+        return await self._persistence.get_share_purchase_recognition_replay(command)
+
+    async def prepare_share_purchase_recognition(
+        self, command: RecognizeSharePurchaseCommand
+    ) -> PreparedSharePurchaseRecognition:
+        investment_key = command.investment_key.strip()
+        investment_name = command.investment_name.strip()
+        org_number = command.org_number.strip() if command.org_number else None
+        fund_reference = (
+            command.fund_tax_statement_reference.strip()
+            if command.fund_tax_statement_reference
+            else None
+        )
+        if (
+            command.purchase_amount.amount <= 0
+            or command.transaction_costs.amount < 0
+            or not investment_key
+            or len(investment_key) > 255
+            or not investment_name
+            or len(investment_name) > 255
+            or not _purchase_classification_is_supported(
+                kind=command.investment_kind,
+                classification=command.accounting_classification,
+                investment_key=investment_key,
+                org_number=org_number,
+                fund_equity_ratio_basis_points=command.fund_equity_ratio_basis_points,
+                fund_tax_statement_reference=fund_reference,
+            )
+        ):
+            raise InvestmentsError.invalid_input()
+        normalized = replace(
+            command,
+            investment_key=investment_key,
+            investment_name=investment_name,
+            org_number=org_number,
+            fund_tax_statement_reference=fund_reference,
+        )
+        evidence_digest = _lifecycle_evidence_digest(normalized)
+        capitalized_cost = Money.nok(
+            normalized.purchase_amount.amount + normalized.transaction_costs.amount
+        )
+        calculation_id = _calculation_id(
+            action_id=normalized.event_id,
+            evidence_digest=evidence_digest,
+            facts={
+                "acquisitionCost": format(capitalized_cost.amount, "f"),
+                "shareCount": format(normalized.share_count.amount, "f"),
+            },
+            policy_version=_LIFECYCLE_POLICY_VERSION,
+        )
+        return await self._persistence.prepare_share_purchase_recognition(
+            normalized,
+            capitalized_cost=capitalized_cost,
+            evidence_digest=evidence_digest,
+            calculation_id=calculation_id,
+        )
+
+    async def complete_share_purchase_recognition(
+        self,
+        command: RecognizeSharePurchaseCommand,
+        *,
+        prepared: PreparedSharePurchaseRecognition,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedInvestmentEconomicEvent:
+        return await self._persistence.complete_share_purchase_recognition(
+            command,
+            prepared=prepared,
+            accounting_entry_id=accounting_entry_id,
+        )
+
+    async def get_cash_settlement_replay(
+        self, command: SettleInvestmentCashCommand
+    ) -> RecordedInvestmentCashSettlement | None:
+        return await self._persistence.get_cash_settlement_replay(command)
+
+    async def prepare_cash_settlement(
+        self, command: SettleInvestmentCashCommand
+    ) -> PreparedInvestmentCashSettlement:
+        if command.amount.amount <= 0:
+            raise InvestmentsError.invalid_input()
+        return await self._persistence.prepare_cash_settlement(
+            command,
+            evidence_digest=_lifecycle_evidence_digest(command),
+        )
+
+    async def complete_cash_settlement(
+        self,
+        command: SettleInvestmentCashCommand,
+        *,
+        prepared: PreparedInvestmentCashSettlement,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedInvestmentCashSettlement:
+        if command.amount != prepared.amount or command.event_id != prepared.event_id:
+            raise InvestmentsError.unavailable()
+        return await self._persistence.complete_cash_settlement(
+            command,
+            prepared=prepared,
+            accounting_entry_id=accounting_entry_id,
+        )
 
     async def get_investment_correction_replay(
         self, command: CorrectInvestmentCommand

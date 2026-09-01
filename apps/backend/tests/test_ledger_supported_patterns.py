@@ -535,6 +535,7 @@ def test_investment_purchase_recognition_and_cross_year_settlement_are_separate(
                 ),
                 source(LedgerSourceCapability.INVESTMENTS, "purchase-recognition"),
                 source(LedgerSourceCapability.DOCUMENTS, "purchase-contract-note"),
+                source(LedgerSourceCapability.DOCUMENTS, "purchase-board-approval"),
             )
         )
     )

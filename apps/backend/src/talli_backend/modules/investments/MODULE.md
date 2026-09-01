@@ -1,7 +1,7 @@
 # Investments backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["investments.acquisition_lots","investments.cash_settlements","investments.company_year_policies","investments.corrections","investments.economic_events","investments.event_sources","investments.measurement_sources","investments.position_classifications","investments.positions","investments.received_dividends","investments.received_fund_distributions","investments.share_purchases","investments.share_sale_allocations","investments.share_sales","investments.year_end_measurements"],"ports":["InvestmentsPersistence"],"publicEntryPoints":["talli_backend.modules.investments.public"]}
+{"dependencies":[],"ownedTables":["investments.acquisition_lots","investments.cash_settlements","investments.company_year_policies","investments.corrections","investments.economic_events","investments.event_sources","investments.measurement_sources","investments.position_classifications","investments.positions","investments.received_dividends","investments.received_fund_distributions","investments.share_purchase_recognitions","investments.share_purchases","investments.share_sale_allocations","investments.share_sales","investments.source_fact_registry","investments.year_end_measurements"],"ports":["InvestmentsPersistence"],"publicEntryPoints":["talli_backend.modules.investments.public"]}
 -->
 
 ## Purpose and ownership
@@ -41,6 +41,12 @@ The lifecycle expansion introduces recognition-only
 date. `InvestmentEvidence` binds revisioned `InvestmentFactReference` values
 from the closed `InvestmentSourceCapability` vocabulary, and `InvestmentUnits`
 preserves source precision to twelve decimal places without rounding.
+`InvestmentSettlementBalanceKind` identifies the exact recognition balance that
+one later cash settlement clears. `PreparedSharePurchaseRecognition` and
+`PreparedInvestmentCashSettlement` carry the deterministic facts needed for
+their respective ledger posts, while `RecordedInvestmentEconomicEvent` and
+`RecordedInvestmentCashSettlement` expose only the resulting owned identities,
+opaque accounting-entry references, and replay state.
 `PreparedSharePurchase` returns the canonical position/lot identifiers and the
 normalized facts needed by ledger. `RecordedSharePurchase` binds those owned
 identifiers to an opaque accounting-entry reference. `PreparedShareSale`
@@ -124,6 +130,11 @@ recognition, settlement, classification, and year-end-measurement storage
 expansion is
 `supabase/migrations/20260901112000_investments_lifecycle_measurement_expand.sql`
 with its fail-closed inverse at the matching path under `supabase/rollback`. The
+restricted purchase-recognition and cash-settlement workflow is
+`supabase/migrations/20260901113000_investments_lifecycle_workflow.sql`, with its
+fail-closed inverse at the matching rollback path. It owns the immutable source
+fact registry and pending purchase-recognition receipt while ledger posting is
+available only through the investments-specific restricted wrapper. The
 inverse restores captured predecessor routines before new #190 data exists and
 otherwise fails closed. The
 mandatory PostgreSQL rehearsal applies each slice contract, rolls it back twice,

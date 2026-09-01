@@ -14,6 +14,16 @@ from talli_backend.modules.investments.public import (
     RecordedReceivedDividend,
 )
 from talli_backend.modules.investments.service import InvestmentsService
+from talli_backend.modules.ledger.public import (
+    InvestmentClassification,
+    InvestmentPurchaseRecognitionFacts,
+    LedgerEntryKind,
+    LedgerFactReference,
+    LedgerLine,
+    LedgerSourceCapability,
+    LedgerSourceRecordId,
+    RecognizeHoldingActionCommand,
+)
 from talli_backend.shared.kernel import Money
 
 from test_investments import (
@@ -22,6 +32,7 @@ from test_investments import (
     supported_received_fund_distribution,
     supported_sale,
 )
+from test_investments_workflow import lifecycle_purchase, lifecycle_settlement
 
 
 def test_correction_uses_private_prepare_link_and_complete_rpcs() -> None:
@@ -98,6 +109,94 @@ def bound_transaction() -> SupabaseInvestmentsTransaction:
         ),
         None,  # type: ignore[arg-type]
     )
+
+
+def test_lifecycle_ledger_post_uses_only_the_restricted_investments_wrapper() -> None:
+    transaction = bound_transaction()
+    purchase = lifecycle_purchase()
+    primary_source = LedgerFactReference(
+        capability=LedgerSourceCapability.INVESTMENTS,
+        record_id=LedgerSourceRecordId(str(purchase.event_id)),
+        revision=1,
+        fact_sha256="e" * 64,
+    )
+    command = RecognizeHoldingActionCommand(
+        company_id=purchase.company_id,
+        actor_id=purchase.actor_id,
+        correlation_id=purchase.correlation_id,
+        idempotency_key=purchase.idempotency_key,
+        income_year=purchase.income_year,
+        event_date=purchase.acquisition_date,
+        primary_source=primary_source,
+        corroborating_sources=tuple(
+            LedgerFactReference(
+                capability=LedgerSourceCapability(fact.capability.value),
+                record_id=LedgerSourceRecordId(str(fact.record_id)),
+                revision=fact.revision,
+                fact_sha256=fact.fact_sha256,
+            )
+            for fact in purchase.evidence.document_facts
+        ),
+        facts=InvestmentPurchaseRecognitionFacts(
+            investment_name=purchase.investment_name,
+            classification=InvestmentClassification[
+                purchase.accounting_classification.name
+            ],
+            acquisition_cost=Money.nok("125.50"),
+        ),
+    )
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def one_idempotent_row(
+        query: str, parameters: tuple[object, ...]
+    ) -> dict[str, object]:
+        calls.append((query, parameters))
+        return {
+            "ledger_entry_id": "70000000-0000-0000-0000-000000000007",
+            "company_id": str(command.company_id),
+            "income_year": 2026,
+            "entry_kind": "SHARE_PURCHASE",
+            "posted_at": datetime(2026, 8, 31, tzinfo=UTC),
+            "replayed": False,
+        }
+
+    transaction._one_idempotent_row = one_idempotent_row  # type: ignore[method-assign]
+    posted = asyncio.run(transaction.post_entry(
+        command,
+        entry_kind=LedgerEntryKind.SHARE_PURCHASE,
+        memo="Investment recognized: Example AS",
+        lines=(
+            LedgerLine("1350", "Investment in Example AS", Money.nok("125.50"), Money.nok("0")),
+            LedgerLine("2990", "Investment settlement payable", Money.nok("0"), Money.nok("125.50")),
+        ),
+        risk_flags=(),
+        warning_accepted=False,
+        source_capability=LedgerSourceCapability.INVESTMENTS,
+        source_record_id=primary_source.record_id,
+    ))
+
+    assert posted.entry_kind is LedgerEntryKind.SHARE_PURCHASE
+    assert len(calls) == 1
+    query, parameters = calls[0]
+    assert "ledger.post_investment_lifecycle_entry_v2" in query
+    assert "ledger.post_supported_entry_v1" not in query
+    assert parameters[7] == str(purchase.event_id)
+    assert json.loads(str(parameters[12])) == [
+        {
+            "role": "PRIMARY",
+            "capability": "INVESTMENTS",
+            "recordId": str(purchase.event_id),
+            "revision": 1,
+            "factSha256": "e" * 64,
+        },
+        {
+            "role": "CORROBORATING",
+            "capability": "DOCUMENTS",
+            "recordId": str(purchase.evidence.document_facts[0].record_id),
+            "revision": 1,
+            "factSha256": "a" * 64,
+        },
+    ]
 
 
 def test_share_sale_uses_only_the_private_investments_workflow_rpcs() -> None:
@@ -528,3 +627,146 @@ def test_correction_query_maps_immutable_lineage_and_evidence() -> None:
     assert page.items[0].correction_id.value == correction_id
     assert page.items[0].evidence_reference == "correction-owner-evidence"
     assert "from investments.corrections" in query_text
+
+
+def test_purchase_recognition_uses_revisioned_lifecycle_rpcs() -> None:
+    transaction = bound_transaction()
+    command = lifecycle_purchase()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+    responses = iter(
+        [
+            {"result": None},
+            {
+                "result": {
+                    "positionId": "50000000-0000-0000-0000-000000000005",
+                    "lotId": "60000000-0000-0000-0000-000000000006",
+                    "positionCreated": True,
+                    "investmentName": "Example AS",
+                    "accountingClassification": "other_long_term",
+                    "acquisitionCost": "125.50",
+                    "expectedSettlementAmount": "125.50",
+                    "settlementBalanceKind": "purchase_payable",
+                    "evidenceDigest": "d" * 64,
+                    "calculationId": "e" * 64,
+                }
+            },
+            {
+                "result": {
+                    "eventId": str(command.event_id),
+                    "positionId": "50000000-0000-0000-0000-000000000005",
+                    "recognitionAccountingEntryId": (
+                        "70000000-0000-0000-0000-000000000007"
+                    ),
+                    "expectedSettlementAmount": "125.50",
+                    "settlementBalanceKind": "purchase_payable",
+                    "replayed": False,
+                }
+            },
+        ]
+    )
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [next(responses)]
+
+    transaction._database_rows = database_rows  # type: ignore[method-assign]
+    replay = asyncio.run(transaction.get_share_purchase_recognition_replay(command))
+    prepared = asyncio.run(
+        InvestmentsService(transaction).prepare_share_purchase_recognition(command)
+    )
+    recorded = asyncio.run(
+        transaction.complete_share_purchase_recognition(
+            command,
+            prepared=prepared,
+            accounting_entry_id=AccountingEntryReference(
+                "70000000-0000-0000-0000-000000000007"
+            ),
+        )
+    )
+
+    assert replay is None
+    assert prepared.acquisition_cost == Money.nok("125.50")
+    assert recorded.event_id == command.event_id
+    assert "get_share_purchase_recognition_replay_v2" in calls[0][0]
+    assert "prepare_share_purchase_recognition_v2" in calls[1][0]
+    assert "complete_share_purchase_recognition_v2" in calls[2][0]
+    request = json.loads(str(calls[1][1][0]))
+    assert request["eventId"] == str(command.event_id)
+    assert request["shareCount"] == "10.125000000000"
+    assert request["documentFacts"] == [
+        {
+            "capability": "DOCUMENTS",
+            "recordId": "80000000-0000-0000-0000-000000000001",
+            "revision": 1,
+            "factSha256": "a" * 64,
+        }
+    ]
+    assert request["bankFact"] is None
+    assert request["evidenceDigest"] == prepared.evidence_digest
+
+
+def test_cash_settlement_uses_event_and_bank_fact_rpcs() -> None:
+    transaction = bound_transaction()
+    command = lifecycle_settlement(lifecycle_purchase())
+    calls: list[tuple[str, tuple[object, ...]]] = []
+    responses = iter(
+        [
+            {"result": None},
+            {
+                "result": {
+                    "eventId": str(command.event_id),
+                    "recognitionAccountingEntryId": (
+                        "70000000-0000-0000-0000-000000000017"
+                    ),
+                    "settlementBalanceKind": "purchase_payable",
+                    "amount": "125.50",
+                    "eventFactSha256": "c" * 64,
+                    "evidenceDigest": "f" * 64,
+                }
+            },
+            {
+                "result": {
+                    "settlementId": str(command.settlement_id),
+                    "eventId": str(command.event_id),
+                    "settlementAccountingEntryId": (
+                        "70000000-0000-0000-0000-000000000007"
+                    ),
+                    "replayed": False,
+                }
+            },
+        ]
+    )
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [next(responses)]
+
+    transaction._database_rows = database_rows  # type: ignore[method-assign]
+    replay = asyncio.run(transaction.get_cash_settlement_replay(command))
+    prepared = asyncio.run(
+        InvestmentsService(transaction).prepare_cash_settlement(command)
+    )
+    recorded = asyncio.run(
+        transaction.complete_cash_settlement(
+            command,
+            prepared=prepared,
+            accounting_entry_id=AccountingEntryReference(
+                "70000000-0000-0000-0000-000000000007"
+            ),
+        )
+    )
+
+    assert replay is None
+    assert recorded.settlement_id == command.settlement_id
+    assert "get_cash_settlement_replay_v2" in calls[0][0]
+    assert "prepare_cash_settlement_v2" in calls[1][0]
+    assert "complete_cash_settlement_v2" in calls[2][0]
+    request = json.loads(str(calls[1][1][0]))
+    assert request["eventId"] == str(command.event_id)
+    assert request["bankFact"]["capability"] == "BANKING"
+    assert request["documentFacts"] == []
+    assert request["evidenceDigest"] == prepared.evidence_digest

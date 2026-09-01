@@ -18,8 +18,11 @@ from talli_backend.adapters.supabase_ledger import (
     SupabaseLedgerWorkflowTransaction,
     _VerifiedActor,
     _actor,
+    _fact_reference_payload,
+    _line_payload,
     _map_database_error,
     _money,
+    _posted_entry,
     _timestamp,
 )
 from talli_backend.application.investments_session import (
@@ -44,6 +47,7 @@ from talli_backend.modules.investments.public import (
     InvestmentCorrectionPage,
     InvestmentCorrectionView,
     InvestmentDocumentStatus,
+    InvestmentEconomicEventId,
     InvestmentEvidenceMode,
     InvestmentKind,
     InvestmentLotHistoryStatus,
@@ -51,6 +55,8 @@ from talli_backend.modules.investments.public import (
     InvestmentPositionId,
     InvestmentPositionView,
     InvestmentSaleLotFact,
+    InvestmentSettlementBalanceKind,
+    InvestmentSettlementId,
     InvestmentSourceReference,
     InvestmentTaxTreatment,
     InvestmentsError,
@@ -61,24 +67,34 @@ from talli_backend.modules.investments.public import (
     PreparedReceivedFundDistribution,
     PreparedReceivedFundDistributionFacts,
     PreparedInvestmentCorrection,
+    PreparedInvestmentCashSettlement,
     PreparedSharePurchase,
+    PreparedSharePurchaseRecognition,
     PreparedShareSale,
     PreparedShareSaleFacts,
     RecordReceivedDividendCommand,
     RecordReceivedFundDistributionCommand,
     RecordSharePurchaseCommand,
     RecordShareSaleCommand,
+    RecognizeSharePurchaseCommand,
     RecordedReceivedDividend,
     RecordedReceivedFundDistribution,
     RecordedInvestmentCorrection,
+    RecordedInvestmentCashSettlement,
+    RecordedInvestmentEconomicEvent,
     RecordedSharePurchase,
     RecordedShareSale,
+    SettleInvestmentCashCommand,
     ShareSaleAllocationId,
     ShareSaleAllocationPage,
     ShareSaleAllocationView,
     investments_persistence_adapter,
 )
-from talli_backend.modules.ledger.public import LedgerError
+from talli_backend.modules.ledger.public import (
+    LedgerError,
+    LedgerSourceCapability,
+    RecognizeHoldingActionCommand,
+)
 from talli_backend.modules.ledger.service import LedgerService
 from talli_backend.shared.kernel import (
     ActorId,
@@ -166,6 +182,58 @@ def _request_payload(
     }
 
 
+def _fact_payload(fact) -> dict[str, object]:
+    return {
+        "capability": fact.capability.value,
+        "recordId": str(fact.record_id),
+        "revision": fact.revision,
+        "factSha256": fact.fact_sha256,
+    }
+
+
+def _lifecycle_request_payload(
+    command: RecognizeSharePurchaseCommand | SettleInvestmentCashCommand,
+) -> dict[str, object]:
+    common: dict[str, object] = {
+        "companyId": str(command.company_id),
+        "incomeYear": int(command.income_year),
+        "idempotencyKey": str(command.idempotency_key),
+        "correlationId": str(command.correlation_id),
+        "evidenceMode": command.evidence.mode.value,
+        "evidenceReference": command.evidence.reference,
+        "ownerAttested": command.evidence.owner_attested,
+        "documentFacts": [
+            _fact_payload(fact) for fact in command.evidence.document_facts
+        ],
+        "bankFact": (
+            _fact_payload(command.evidence.bank_fact)
+            if command.evidence.bank_fact is not None
+            else None
+        ),
+    }
+    if isinstance(command, SettleInvestmentCashCommand):
+        return {
+            **common,
+            "settlementId": str(command.settlement_id),
+            "eventId": str(command.event_id),
+            "settlementDate": command.settlement_date.value.isoformat(),
+            "amount": format(command.amount.amount, "f"),
+        }
+    return {
+        **common,
+        "eventId": str(command.event_id),
+        "investmentKey": command.investment_key,
+        "investmentName": command.investment_name,
+        "investmentKind": command.investment_kind.value,
+        "accountingClassification": command.accounting_classification.value,
+        "acquisitionDate": command.acquisition_date.value.isoformat(),
+        "shareCount": format(command.share_count.amount, ".12f"),
+        "purchaseAmount": format(command.purchase_amount.amount, "f"),
+        "transactionCosts": format(command.transaction_costs.amount, "f"),
+        "orgNumber": command.org_number,
+        "fundEquityRatioBasisPoints": command.fund_equity_ratio_basis_points,
+        "fundTaxStatementReference": command.fund_tax_statement_reference,
+    }
 def _correction_request_payload(command: CorrectInvestmentCommand) -> dict[str, object]:
     replacement = command.replacement
     return {
@@ -736,7 +804,8 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
         query: str,
         command: RecordSharePurchaseCommand | RecordShareSaleCommand
         | RecordReceivedDividendCommand | RecordReceivedFundDistributionCommand
-        | CorrectInvestmentCommand,
+        | CorrectInvestmentCommand | RecognizeSharePurchaseCommand
+        | SettleInvestmentCashCommand,
         extra: tuple[object, ...] = (),
         request_extra: Mapping[str, object] | None = None,
     ) -> Mapping[str, object] | None:
@@ -750,6 +819,14 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
                         **(
                             _correction_request_payload(command)
                             if isinstance(command, CorrectInvestmentCommand)
+                            else _lifecycle_request_payload(command)
+                            if isinstance(
+                                command,
+                                (
+                                    RecognizeSharePurchaseCommand,
+                                    SettleInvestmentCashCommand,
+                                ),
+                            )
                             else _request_payload(command)
                         ),
                         **(request_extra or {}),
@@ -768,6 +845,224 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
         if not isinstance(result, Mapping):
             raise InvestmentsError.unavailable()
         return result
+
+    async def post_entry(
+        self,
+        command,
+        *,
+        entry_kind,
+        memo,
+        lines,
+        risk_flags,
+        warning_accepted,
+        source_capability,
+        source_record_id,
+        requested_entry_id=None,
+    ):
+        if (
+            not isinstance(command, RecognizeHoldingActionCommand)
+            or requested_entry_id is not None
+            or risk_flags
+            or warning_accepted
+            or source_capability is not LedgerSourceCapability.INVESTMENTS
+            or source_record_id != command.primary_source.record_id
+        ):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        sources = (
+            _fact_reference_payload(command.primary_source, primary=True),
+            *(
+                _fact_reference_payload(source, primary=False)
+                for source in command.corroborating_sources
+            ),
+        )
+        row = await self._one_idempotent_row(
+            """
+            select * from ledger.post_investment_lifecycle_entry_v2(
+              %s::text, %s::uuid, %s::integer, %s::text, %s::text,
+              %s::jsonb, %s::text, %s::text, %s::text, %s::text,
+              %s::date, %s::text, %s::jsonb
+            )
+            """,
+            (
+                str(command.idempotency_key),
+                str(command.company_id),
+                int(command.income_year),
+                entry_kind.value,
+                memo,
+                json.dumps(
+                    [_line_payload(line) for line in lines],
+                    separators=(",", ":"),
+                ),
+                source_capability.value,
+                str(source_record_id),
+                str(command.correlation_id),
+                str(command.actor_id.subject),
+                command.event_date.value,
+                "ledger-supported-patterns-2026.1",
+                json.dumps(sources, separators=(",", ":")),
+            ),
+        )
+        return _posted_entry(row)
+
+    async def get_share_purchase_recognition_replay(
+        self, command: RecognizeSharePurchaseCommand
+    ) -> RecordedInvestmentEconomicEvent | None:
+        result = await self._investment_result(
+            "select investments.get_share_purchase_recognition_replay_v2(%s::jsonb, %s::text) as result",
+            command,
+        )
+        return _recorded_economic_event(result) if result is not None else None
+
+    async def prepare_share_purchase_recognition(
+        self,
+        command: RecognizeSharePurchaseCommand,
+        *,
+        capitalized_cost: Money,
+        evidence_digest: str,
+        calculation_id: str,
+    ) -> PreparedSharePurchaseRecognition:
+        result = await self._investment_result(
+            "select investments.prepare_share_purchase_recognition_v2(%s::jsonb, %s::text) as result",
+            command,
+            request_extra={
+                "acquisitionCost": format(capitalized_cost.amount, "f"),
+                "evidenceDigest": evidence_digest,
+                "calculationId": calculation_id,
+            },
+        )
+        if result is None:
+            raise InvestmentsError.unavailable()
+        return PreparedSharePurchaseRecognition(
+            position_id=InvestmentPositionId(str(result["positionId"])),
+            lot_id=AcquisitionLotId(str(result["lotId"])),
+            position_created=bool(result["positionCreated"]),
+            investment_name=str(result["investmentName"]),
+            accounting_classification=InvestmentAccountingClassification(
+                str(result["accountingClassification"])
+            ),
+            acquisition_cost=_money(result["acquisitionCost"]),
+            expected_settlement_amount=_money(
+                result["expectedSettlementAmount"]
+            ),
+            settlement_balance_kind=InvestmentSettlementBalanceKind(
+                str(result["settlementBalanceKind"])
+            ),
+            evidence_digest=evidence_digest,
+            calculation_id=calculation_id,
+        )
+
+    async def complete_share_purchase_recognition(
+        self,
+        command: RecognizeSharePurchaseCommand,
+        *,
+        prepared: PreparedSharePurchaseRecognition,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedInvestmentEconomicEvent:
+        result = await self._investment_result(
+            """
+            select investments.complete_share_purchase_recognition_v2(
+              %s::jsonb, %s::uuid, %s::jsonb, %s::text
+            ) as result
+            """,
+            command,
+            (
+                str(accounting_entry_id),
+                json.dumps(
+                    {
+                        "positionId": str(prepared.position_id),
+                        "lotId": str(prepared.lot_id),
+                        "positionCreated": prepared.position_created,
+                        "acquisitionCost": format(
+                            prepared.acquisition_cost.amount, "f"
+                        ),
+                        "expectedSettlementAmount": format(
+                            prepared.expected_settlement_amount.amount, "f"
+                        ),
+                        "settlementBalanceKind": (
+                            prepared.settlement_balance_kind.value
+                        ),
+                        "evidenceDigest": prepared.evidence_digest,
+                        "calculationId": prepared.calculation_id,
+                    },
+                    separators=(",", ":"),
+                ),
+            ),
+        )
+        if result is None:
+            raise InvestmentsError.unavailable()
+        return _recorded_economic_event(result)
+
+    async def get_cash_settlement_replay(
+        self, command: SettleInvestmentCashCommand
+    ) -> RecordedInvestmentCashSettlement | None:
+        result = await self._investment_result(
+            "select investments.get_cash_settlement_replay_v2(%s::jsonb, %s::text) as result",
+            command,
+        )
+        return _recorded_cash_settlement(result) if result is not None else None
+
+    async def prepare_cash_settlement(
+        self,
+        command: SettleInvestmentCashCommand,
+        *,
+        evidence_digest: str,
+    ) -> PreparedInvestmentCashSettlement:
+        result = await self._investment_result(
+            "select investments.prepare_cash_settlement_v2(%s::jsonb, %s::text) as result",
+            command,
+            request_extra={"evidenceDigest": evidence_digest},
+        )
+        if result is None:
+            raise InvestmentsError.unavailable()
+        return PreparedInvestmentCashSettlement(
+            event_id=InvestmentEconomicEventId(str(result["eventId"])),
+            recognition_accounting_entry_id=AccountingEntryReference(
+                str(result["recognitionAccountingEntryId"])
+            ),
+            settlement_balance_kind=InvestmentSettlementBalanceKind(
+                str(result["settlementBalanceKind"])
+            ),
+            amount=_money(result["amount"]),
+            event_fact_sha256=str(result["eventFactSha256"]),
+            evidence_digest=evidence_digest,
+        )
+
+    async def complete_cash_settlement(
+        self,
+        command: SettleInvestmentCashCommand,
+        *,
+        prepared: PreparedInvestmentCashSettlement,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> RecordedInvestmentCashSettlement:
+        result = await self._investment_result(
+            """
+            select investments.complete_cash_settlement_v2(
+              %s::jsonb, %s::uuid, %s::jsonb, %s::text
+            ) as result
+            """,
+            command,
+            (
+                str(accounting_entry_id),
+                json.dumps(
+                    {
+                        "eventId": str(prepared.event_id),
+                        "recognitionAccountingEntryId": str(
+                            prepared.recognition_accounting_entry_id
+                        ),
+                        "settlementBalanceKind": (
+                            prepared.settlement_balance_kind.value
+                        ),
+                        "amount": format(prepared.amount.amount, "f"),
+                        "eventFactSha256": prepared.event_fact_sha256,
+                        "evidenceDigest": prepared.evidence_digest,
+                    },
+                    separators=(",", ":"),
+                ),
+            ),
+        )
+        if result is None:
+            raise InvestmentsError.unavailable()
+        return _recorded_cash_settlement(result)
 
     async def get_investment_correction_replay(
         self, command: CorrectInvestmentCommand
@@ -1174,6 +1469,36 @@ def _recorded(value: Mapping[str, object]) -> RecordedSharePurchase:
         lot_id=AcquisitionLotId(str(value["lotId"])),
         accounting_entry_id=AccountingEntryReference(str(value["accountingEntryId"])),
         position_created=bool(value["positionCreated"]),
+        replayed=bool(value["replayed"]),
+    )
+
+
+def _recorded_economic_event(
+    value: Mapping[str, object],
+) -> RecordedInvestmentEconomicEvent:
+    return RecordedInvestmentEconomicEvent(
+        event_id=InvestmentEconomicEventId(str(value["eventId"])),
+        position_id=InvestmentPositionId(str(value["positionId"])),
+        recognition_accounting_entry_id=AccountingEntryReference(
+            str(value["recognitionAccountingEntryId"])
+        ),
+        expected_settlement_amount=_money(value["expectedSettlementAmount"]),
+        settlement_balance_kind=InvestmentSettlementBalanceKind(
+            str(value["settlementBalanceKind"])
+        ),
+        replayed=bool(value["replayed"]),
+    )
+
+
+def _recorded_cash_settlement(
+    value: Mapping[str, object],
+) -> RecordedInvestmentCashSettlement:
+    return RecordedInvestmentCashSettlement(
+        settlement_id=InvestmentSettlementId(str(value["settlementId"])),
+        event_id=InvestmentEconomicEventId(str(value["eventId"])),
+        settlement_accounting_entry_id=AccountingEntryReference(
+            str(value["settlementAccountingEntryId"])
+        ),
         replayed=bool(value["replayed"]),
     )
 

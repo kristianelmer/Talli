@@ -1525,11 +1525,25 @@ class LedgerService:
         else:
             raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
 
+        allows_evidence_pack = isinstance(
+            facts,
+            (
+                InvestmentPurchaseRecognitionFacts,
+                InvestmentSaleRecognitionFacts,
+                InvestmentFundDistributionRecognitionFacts,
+            ),
+        ) or (
+            isinstance(facts, InvestmentDividendFacts)
+            and facts.phase is InvestmentDividendPhase.FINAL_DECISION
+        )
         actual_sources = frozenset(source.capability for source in sources)
         if (
             command.primary_source.capability is not primary_source_capability
             or actual_sources != required_sources
-            or len(sources) != len(required_sources)
+            or (
+                not allows_evidence_pack
+                and len(sources) != len(required_sources)
+            )
         ):
             raise LedgerError.precondition_failed(
                 "LEDGER_SOURCE_CAPABILITY_MISMATCH"

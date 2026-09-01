@@ -22,6 +22,7 @@ const investmentsStageExitMigration = "20260831193000_investments_stage_exit.sql
 const investmentsSupportedPatternsMigration = "20260901100000_investments_supported_patterns.sql";
 const investmentsCompleteManualEvidenceMigration = "20260901110000_investments_complete_manual_evidence.sql";
 const investmentsLifecycleMeasurementMigration = "20260901112000_investments_lifecycle_measurement_expand.sql";
+const investmentsLifecycleWorkflowMigration = "20260901113000_investments_lifecycle_workflow.sql";
 const ownerId = "00000000-0000-0000-0000-000000000011";
 const outsiderId = "00000000-0000-0000-0000-000000000022";
 const companyId = "10000000-0000-0000-0000-000000000001";
@@ -148,6 +149,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         investmentsSupportedPatternsMigration,
         investmentsCompleteManualEvidenceMigration,
         investmentsLifecycleMeasurementMigration,
+        investmentsLifecycleWorkflowMigration,
       ].includes(name))) {
       psql(containerName, ["--file", `/repo/supabase/migrations/${migration}`]);
     }
@@ -1222,6 +1224,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     psql(containerName, [
       "--file", `/repo/supabase/migrations/${investmentsLifecycleMeasurementMigration}`,
     ]);
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsLifecycleWorkflowMigration}`,
+    ]);
     assert.equal(scalar(containerName, String.raw`
       select
         (pg_catalog.to_regclass('investments.economic_events') is not null)::text || ':' ||
@@ -1245,6 +1250,215 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
             and column_name = 'share_count')::text;
     `), "true:true:true:true:7:false:12");
 
+    const lifecycleEventId = "91000000-0000-0000-0000-000000000001";
+    const lifecycleSettlementId = "91000000-0000-0000-0000-000000000002";
+    const lifecycleDocumentOne = "91000000-0000-0000-0000-000000000003";
+    const lifecycleDocumentTwo = "91000000-0000-0000-0000-000000000004";
+    const lifecycleBankFact = "91000000-0000-0000-0000-000000000005";
+    const lifecycleCalculationId = "e".repeat(64);
+    const lifecycleEvidenceDigest = "d".repeat(64);
+    const lifecycleSettlementEvidenceDigest = "f".repeat(64);
+    const lifecycleDocumentFacts = [
+      {
+        capability: "DOCUMENTS", recordId: lifecycleDocumentOne,
+        revision: 1, factSha256: "a".repeat(64),
+      },
+      {
+        capability: "DOCUMENTS", recordId: lifecycleDocumentTwo,
+        revision: 2, factSha256: "b".repeat(64),
+      },
+    ];
+    const lifecyclePurchaseRequest = JSON.stringify({
+      companyId, incomeYear: 2026, eventId: lifecycleEventId,
+      idempotencyKey: "lifecycle-purchase-0001",
+      correlationId: "lifecycle-purchase",
+      investmentKey: "lifecycle-private-as",
+      investmentName: "Lifecycle Private AS",
+      investmentKind: "norwegian_private_company",
+      accountingClassification: "other_long_term",
+      acquisitionDate: "2026-12-29", shareCount: "10.125000000000",
+      purchaseAmount: "120.00", transactionCosts: "5.50",
+      orgNumber: "123456789", fundEquityRatioBasisPoints: null,
+      fundTaxStatementReference: null, evidenceMode: "linked_sources",
+      evidenceReference: "signed purchase agreement and approval",
+      ownerAttested: false, documentFacts: lifecycleDocumentFacts,
+      bankFact: null, acquisitionCost: "125.50",
+      evidenceDigest: lifecycleEvidenceDigest,
+      calculationId: lifecycleCalculationId,
+    });
+    const lifecycleRecognitionSources = JSON.stringify([
+      {
+        role: "PRIMARY", capability: "INVESTMENTS",
+        recordId: lifecycleEventId, revision: 1,
+        factSha256: lifecycleCalculationId,
+      },
+      ...lifecycleDocumentFacts.map((fact) => ({
+        role: "CORROBORATING", ...fact,
+      })),
+    ]);
+    const lifecycleSettlementRequest = JSON.stringify({
+      companyId, incomeYear: 2026, settlementId: lifecycleSettlementId,
+      eventId: lifecycleEventId, idempotencyKey: "lifecycle-settlement-0001",
+      correlationId: "lifecycle-settlement", settlementDate: "2026-12-31",
+      amount: "125.50", evidenceMode: "linked_sources",
+      evidenceReference: "bank transaction revision 1", ownerAttested: false,
+      documentFacts: [], bankFact: {
+        capability: "BANKING", recordId: lifecycleBankFact,
+        revision: 1, factSha256: "c".repeat(64),
+      }, evidenceDigest: lifecycleSettlementEvidenceDigest,
+    });
+
+    assert.equal(scalar(containerName, String.raw`
+      begin;
+      set local role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', true);
+      select pg_catalog.set_config(
+        'talli.verified_actor_claims',
+        '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}', true
+      );
+      create temporary table lifecycle_purchase_prepared as
+      select investments.prepare_share_purchase_recognition_v2(
+        '${lifecyclePurchaseRequest}'::jsonb, '${ownerId}'
+      ) as value;
+      create temporary table lifecycle_recognition_entry as
+      select * from ledger.post_investment_lifecycle_entry_v2(
+        'lifecycle-purchase-0001', '${companyId}', 2026,
+        'SHARE_PURCHASE', 'Investment recognized: Lifecycle Private AS',
+        '[{"account":"1350","description":"Investment in Lifecycle Private AS","debit":"125.50","credit":"0.00","currency":"NOK"},{"account":"2990","description":"Investment settlement payable","debit":"0.00","credit":"125.50","currency":"NOK"}]'::jsonb,
+        'INVESTMENTS', '${lifecycleEventId}', 'lifecycle-purchase',
+        '${ownerId}', date '2026-12-29',
+        'ledger-supported-patterns-2026.1', '${lifecycleRecognitionSources}'::jsonb
+      );
+      create temporary table lifecycle_recognized as
+      select investments.complete_share_purchase_recognition_v2(
+        '${lifecyclePurchaseRequest}'::jsonb,
+        (select ledger_entry_id from lifecycle_recognition_entry),
+        (select value from lifecycle_purchase_prepared), '${ownerId}'
+      ) as value;
+      create temporary table lifecycle_settlement_prepared as
+      select investments.prepare_cash_settlement_v2(
+        '${lifecycleSettlementRequest}'::jsonb, '${ownerId}'
+      ) as value;
+      create temporary table lifecycle_settlement_entry as
+      select * from ledger.post_investment_lifecycle_entry_v2(
+        'lifecycle-settlement-0001', '${companyId}', 2026,
+        'SHARE_PURCHASE', 'Investment purchase payable settled',
+        '[{"account":"2990","description":"Investment settlement payable cleared","debit":"125.50","credit":"0.00","currency":"NOK"},{"account":"1920","description":"Investment paid from bank","debit":"0.00","credit":"125.50","currency":"NOK"}]'::jsonb,
+        'INVESTMENTS', '${lifecycleSettlementId}', 'lifecycle-settlement',
+        '${ownerId}', date '2026-12-31',
+        'ledger-supported-patterns-2026.1',
+        pg_catalog.jsonb_build_array(
+          pg_catalog.jsonb_build_object(
+            'role', 'PRIMARY', 'capability', 'INVESTMENTS',
+            'recordId', '${lifecycleSettlementId}', 'revision', 1,
+            'factSha256',
+              (select value ->> 'eventFactSha256'
+               from lifecycle_settlement_prepared)
+          ),
+          pg_catalog.jsonb_build_object(
+            'role', 'CORROBORATING', 'capability', 'BANKING',
+            'recordId', '${lifecycleBankFact}', 'revision', 1,
+            'factSha256', repeat('c', 64)
+          )
+        )
+      );
+      create temporary table lifecycle_settled as
+      select investments.complete_cash_settlement_v2(
+        '${lifecycleSettlementRequest}'::jsonb,
+        (select ledger_entry_id from lifecycle_settlement_entry),
+        (select value from lifecycle_settlement_prepared), '${ownerId}'
+      ) as value;
+      commit;
+      select
+        (select value ->> 'settlementBalanceKind'
+          from lifecycle_recognized) || ':' ||
+        (select value ->> 'replayed' from lifecycle_recognized) || ':' ||
+        (select value ->> 'replayed' from lifecycle_settled) || ':' ||
+        (select share_count::text from investments.positions
+          where investment_key = 'lifecycle-private-as') || ':' ||
+        (select count(*)::text from investments.event_sources
+          where event_id = '${lifecycleEventId}') || ':' ||
+        (select income_year::text from investments.cash_settlements
+          where settlement_id = '${lifecycleSettlementId}');
+    `), "purchase_payable:false:false:10.125000000000:2:2026");
+
+    assert.equal(scalar(containerName, String.raw`
+      set role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config(
+        'talli.verified_actor_claims',
+        '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}', false
+      );
+      select
+        (investments.get_share_purchase_recognition_replay_v2(
+          pg_catalog.jsonb_set(
+            '${lifecyclePurchaseRequest}'::jsonb,
+            '{correlationId}', '"lifecycle-purchase-retry"'
+          ), '${ownerId}'
+        ) ->> 'replayed') || ':' ||
+        (investments.get_cash_settlement_replay_v2(
+          pg_catalog.jsonb_set(
+            '${lifecycleSettlementRequest}'::jsonb,
+            '{correlationId}', '"lifecycle-settlement-retry"'
+          ), '${ownerId}'
+        ) ->> 'replayed');
+    `), "true:true");
+
+    assert.equal(scalar(containerName, String.raw`
+      with lifecycle_entries as (
+        select entry.id from ledger.entries entry
+        where entry.source_capability = 'INVESTMENTS'
+          and entry.source_record_id in (
+            '${lifecycleEventId}', '${lifecycleSettlementId}'
+          )
+      ), totals as (
+        select line ->> 'account' as account,
+          pg_catalog.sum(
+            (line ->> 'debit')::numeric - (line ->> 'credit')::numeric
+          ) as net
+        from ledger.entries entry
+        join lifecycle_entries selected on selected.id = entry.id
+        cross join lateral pg_catalog.jsonb_array_elements(entry.lines) line
+        group by line ->> 'account'
+      )
+      select pg_catalog.string_agg(
+        account || ':' || net::text, ',' order by account
+      ) from totals;
+    `), "1350:125.50,1920:-125.50,2990:0.00");
+
+    const reusedLifecycle = docker([
+      "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
+      "-U", "postgres", "-d", "talli_test",
+    ], { input: String.raw`
+      set role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config(
+        'talli.verified_actor_claims',
+        '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}', false
+      );
+      select investments.get_share_purchase_recognition_replay_v2(
+        pg_catalog.jsonb_set(
+          '${lifecyclePurchaseRequest}'::jsonb, '{shareCount}', '"11.125"'
+        ), '${ownerId}'
+      );
+    ` });
+    assert.notEqual(reusedLifecycle.status, 0);
+    assert.match(
+      `${reusedLifecycle.stdout}\n${reusedLifecycle.stderr}`,
+      /investments_idempotency_key_reused/u,
+    );
+
+    const refusedLifecycleRollback = docker([
+      "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
+      "-U", "postgres", "-d", "talli_test", "--file",
+      `/repo/supabase/rollback/${investmentsLifecycleWorkflowMigration}`,
+    ]);
+    assert.notEqual(refusedLifecycleRollback.status, 0);
+    assert.match(
+      `${refusedLifecycleRollback.stdout}\n${refusedLifecycleRollback.stderr}`,
+      /investments_lifecycle_workflow_rollback_unsafe/u,
+    );
+
     const tenantParentPositionId = "30000000-0000-0000-0000-000000000099";
     const tenantEventId = "90000000-0000-0000-0000-000000000001";
     const tenantMeasurementId = "90000000-0000-0000-0000-000000000002";
@@ -1266,7 +1480,8 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         ('${companyId}', 2026, 'domestic_2026_v2', 'norwegian_2026',
           'lower_of_cost_and_fair_value', 'cost_with_evidenced_impairment', '${ownerId}'),
         ('${secondCompanyId}', 2026, 'domestic_2026_v2', 'norwegian_2026',
-          'lower_of_cost_and_fair_value', 'cost_with_evidenced_impairment', '${ownerId}');
+          'lower_of_cost_and_fair_value', 'cost_with_evidenced_impairment', '${ownerId}')
+      on conflict (company_id, income_year) do nothing;
       insert into investments.positions (
         id, company_id, investment_key, name, kind, tax_treatment, org_number,
         share_count, cost_basis, tax_basis, movements, lot_history_status,
@@ -1382,6 +1597,26 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       delete from investments.position_classifications
         where position_id = '${tenantParentPositionId}';
       delete from investments.economic_events where event_id = '${tenantEventId}';
+      delete from investments.cash_settlements
+        where settlement_id = '${lifecycleSettlementId}';
+      delete from investments.event_sources
+        where event_id = '${lifecycleEventId}';
+      delete from investments.position_classifications
+        where position_id = (
+          select position_id from investments.share_purchase_recognitions
+          where event_id = '${lifecycleEventId}'
+        );
+      delete from investments.share_purchase_recognitions
+        where event_id = '${lifecycleEventId}';
+      delete from investments.economic_events
+        where event_id = '${lifecycleEventId}';
+      delete from investments.source_fact_registry
+        where company_id = '${companyId}';
+      delete from investments.acquisition_lots
+        where acquisition_action_id = '${lifecycleEventId}';
+      delete from investments.positions
+        where company_id = '${companyId}'
+          and investment_key = 'lifecycle-private-as';
       delete from investments.company_year_policies
         where company_id in ('${companyId}', '${secondCompanyId}');
       delete from investments.positions where id = '${tenantParentPositionId}';
@@ -1389,6 +1624,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       delete from public.companies where id = '${secondCompanyId}';
     `);
 
+    psql(containerName, [
+      "--file", `/repo/supabase/rollback/${investmentsLifecycleWorkflowMigration}`,
+    ]);
     psql(containerName, [
       "--file", `/repo/supabase/rollback/${investmentsLifecycleMeasurementMigration}`,
     ]);
@@ -1451,6 +1689,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     ]);
     psql(containerName, [
       "--file", `/repo/supabase/migrations/${investmentsLifecycleMeasurementMigration}`,
+    ]);
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsLifecycleWorkflowMigration}`,
     ]);
     assert.equal(scalar(containerName, String.raw`
       select
