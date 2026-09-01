@@ -23,6 +23,7 @@ type TextFieldProps = {
   helper?: string;
   placeholder?: string;
   inputMode?: "decimal" | "numeric" | "text";
+  readOnly?: boolean;
 };
 
 export function TextField({
@@ -34,6 +35,7 @@ export function TextField({
   helper,
   placeholder,
   inputMode,
+  readOnly,
 }: TextFieldProps) {
   return (
     <label className="field">
@@ -48,6 +50,7 @@ export function TextField({
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
         required={required}
+        readOnly={readOnly}
       />
       {helper ? <p className="fieldHelper">{helper}</p> : null}
     </label>

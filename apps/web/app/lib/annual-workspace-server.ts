@@ -22,7 +22,9 @@ import {
 } from "./supabase/server.ts";
 import { listCompanyAccessContexts } from "./company-access-context.ts";
 import {
+  effectiveInvestmentActivity,
   listPresentedInvestmentActivity,
+  listPresentedInvestmentCorrections,
   listPresentedInvestmentPositions,
 } from "../../features/investments";
 import { getCurrentSessionAccessToken } from "./supabase/auth-session.ts";
@@ -55,6 +57,7 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     overridesResult,
     transactionsResult,
     actionsResult,
+    correctionsResult,
     positionsResult,
     entriesResult,
     snapshotsResult,
@@ -71,6 +74,7 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     listFilingOverrides(companyIds),
     listBankTransactions(companyIds),
     listPresentedInvestmentActivity(accessToken, companyIds),
+    listPresentedInvestmentCorrections(accessToken, companyIds),
     listPresentedInvestmentPositions(accessToken, companyIds),
     listLedgerEntries(companyIds),
     listFilingReadinessSnapshots(companyIds),
@@ -89,6 +93,7 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     ["overrides", overridesResult.error],
     ["transactions", transactionsResult.error],
     ["actions", actionsResult.error],
+    ["corrections", correctionsResult.error],
     ["positions", positionsResult.error],
     ["entries", entriesResult.error],
     ["snapshots", snapshotsResult.error],
@@ -111,7 +116,10 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     submissions: submissionsResult.submissions,
     overrides: overridesResult.overrides,
     transactions: transactionsResult.transactions,
-    actions: actionsResult.actions,
+    actions: effectiveInvestmentActivity(
+      actionsResult.actions,
+      correctionsResult.corrections,
+    ),
     positions: positionsResult.positions,
     entries: entriesResult.entries,
     snapshots: snapshotsResult.readinessSnapshots,

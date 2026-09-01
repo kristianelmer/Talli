@@ -7,6 +7,7 @@ import secrets
 import time
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Annotated, Any, Literal, TypeVar, cast
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
@@ -197,11 +198,16 @@ from talli_backend.modules.ledger.public import (
 )
 from talli_backend.modules.investments.public import (
     AcquisitionLotView,
+    CorrectInvestmentCommand,
+    InvestmentAccountingClassification,
     InvestmentActivityKind,
     InvestmentActivityView,
     InvestmentActionId,
     InvestmentCursor,
+    InvestmentCorrectionId,
+    InvestmentCorrectionView,
     InvestmentDocumentStatus,
+    InvestmentEvidenceMode,
     InvestmentKind,
     InvestmentLotHistoryStatus,
     InvestmentPositionId,
@@ -210,6 +216,7 @@ from talli_backend.modules.investments.public import (
     InvestmentTaxTreatment,
     InvestmentsError,
     RecordReceivedDividendCommand,
+    RecordReceivedFundDistributionCommand,
     RecordSharePurchaseCommand,
     RecordShareSaleCommand,
     ShareSaleAllocationView,
@@ -845,11 +852,18 @@ class InvestmentsSharePurchaseWire(LedgerCompanyYearWire):
     investment_key: str = Field(min_length=1, max_length=255)
     investment_name: str = Field(min_length=1, max_length=255)
     investment_kind: InvestmentKind
+    accounting_classification: InvestmentAccountingClassification
     tax_treatment: InvestmentTaxTreatment
     acquisition_date: date
     share_count: int = Field(gt=0, le=9_007_199_254_740_991)
     purchase_amount: LedgerMoneyWire
+    transaction_costs: LedgerMoneyWire
     org_number: str | None = Field(default=None, pattern=r"^\d{9}$")
+    fund_equity_ratio_basis_points: int | None = Field(default=None, ge=0, le=10_000)
+    fund_tax_statement_reference: str | None = Field(default=None, min_length=1, max_length=255)
+    evidence_mode: InvestmentEvidenceMode
+    evidence_reference: str = Field(min_length=1, max_length=255)
+    owner_attested: bool
     bank_transaction_id: UUID | None = None
     document_id: UUID | None = None
     document_status: InvestmentDocumentStatus
@@ -870,6 +884,12 @@ class InvestmentsShareSaleWire(LedgerCompanyYearWire):
     sale_date: date
     sold_share_count: int = Field(gt=0, le=9_007_199_254_740_991)
     proceeds: LedgerMoneyWire
+    transaction_costs: LedgerMoneyWire
+    sale_year_fund_equity_ratio_basis_points: int | None = Field(default=None, ge=0, le=10_000)
+    fund_tax_statement_reference: str | None = Field(default=None, min_length=1, max_length=255)
+    evidence_mode: InvestmentEvidenceMode
+    evidence_reference: str = Field(min_length=1, max_length=255)
+    owner_attested: bool
     bank_transaction_id: UUID | None = None
     document_id: UUID | None = None
     document_status: InvestmentDocumentStatus
@@ -890,6 +910,14 @@ class InvestmentsReceivedDividendWire(LedgerCompanyYearWire):
     paid_date: date
     gross_amount: LedgerMoneyWire
     tax_treatment: InvestmentTaxTreatment
+    lawful_dividend_confirmed: bool
+    group_exception_claimed: bool
+    year_end_ownership_basis_points: int | None = Field(default=None, ge=0, le=10_000)
+    year_end_voting_basis_points: int | None = Field(default=None, ge=0, le=10_000)
+    group_evidence_reference: str | None = Field(default=None, min_length=1, max_length=255)
+    evidence_mode: InvestmentEvidenceMode
+    evidence_reference: str = Field(min_length=1, max_length=255)
+    owner_attested: bool
     bank_transaction_id: UUID | None = None
     document_id: UUID | None = None
     document_status: InvestmentDocumentStatus
@@ -903,9 +931,93 @@ class InvestmentsReceivedDividendResultWire(TransportModel):
     replayed: bool
 
 
+class InvestmentsReceivedFundDistributionWire(LedgerCompanyYearWire):
+    action_id: UUID
+    position_id: UUID
+    fund_name: str = Field(min_length=1, max_length=255)
+    entitlement_date: date
+    paid_date: date
+    gross_amount: LedgerMoneyWire
+    opening_fund_equity_ratio_basis_points: int = Field(ge=0, le=10_000)
+    fund_tax_statement_reference: str = Field(min_length=1, max_length=255)
+    evidence_mode: InvestmentEvidenceMode
+    evidence_reference: str = Field(min_length=1, max_length=255)
+    owner_attested: bool
+    bank_transaction_id: UUID | None = None
+    document_id: UUID | None = None
+    document_status: InvestmentDocumentStatus
+
+
+class InvestmentsReceivedFundDistributionResultWire(TransportModel):
+    action_id: UUID
+    position_id: UUID
+    accounting_entry_id: UUID
+    dividend_portion: LedgerMoneyWire
+    interest_portion: LedgerMoneyWire
+    taxable_add_back: LedgerMoneyWire
+    total_taxable_income: LedgerMoneyWire
+    replayed: bool
+
+
+class InvestmentsCorrectionWire(LedgerCompanyYearWire):
+    correction_id: UUID
+    original_action_id: UUID
+    original_activity_kind: InvestmentActivityKind
+    correction_date: date
+    reason: str = Field(min_length=1, max_length=500)
+    evidence_mode: InvestmentEvidenceMode
+    evidence_reference: str = Field(min_length=1, max_length=255)
+    owner_attested: bool
+    bank_transaction_id: UUID | None = None
+    document_id: UUID | None = None
+    document_status: InvestmentDocumentStatus
+    replacement: (
+        InvestmentsSharePurchaseWire
+        | InvestmentsShareSaleWire
+        | InvestmentsReceivedDividendWire
+        | InvestmentsReceivedFundDistributionWire
+    )
+
+
+class InvestmentsCorrectionResultWire(TransportModel):
+    correction_id: UUID
+    original_action_id: UUID
+    replacement_action_id: UUID
+    reversal_accounting_entry_id: UUID
+    replacement_accounting_entry_id: UUID
+    replayed: bool
+
+
+class InvestmentCorrectionWire(TransportModel):
+    id: UUID
+    company_id: UUID
+    income_year: int
+    original_action_id: UUID
+    original_activity_kind: InvestmentActivityKind
+    reversal_accounting_entry_id: UUID
+    replacement_action_id: UUID
+    replacement_activity_kind: InvestmentActivityKind
+    replacement_accounting_entry_id: UUID
+    reason: str
+    bank_transaction_id: UUID | None
+    document_id: UUID | None
+    document_status: InvestmentDocumentStatus
+    evidence_mode: InvestmentEvidenceMode
+    evidence_reference: str
+    evidence_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    owner_attested: bool
+    created_by: UUID
+    created_at: datetime
+
+
 class InvestmentsPageWire(TransportModel):
     next_cursor: str | None
     has_more: bool
+
+
+class InvestmentCorrectionPageWire(TransportModel):
+    items: list[InvestmentCorrectionWire]
+    page: InvestmentsPageWire
 
 
 class InvestmentPositionWire(TransportModel):
@@ -914,10 +1026,14 @@ class InvestmentPositionWire(TransportModel):
     investment_key: str
     name: str
     kind: InvestmentKind
+    accounting_classification: InvestmentAccountingClassification
     tax_treatment: InvestmentTaxTreatment
     org_number: str | None
+    fund_equity_ratio_basis_points: int | None
+    fund_tax_statement_reference: str | None
     share_count: int
     cost_basis: LedgerMoneyWire
+    tax_basis: LedgerMoneyWire
     lot_history_status: InvestmentLotHistoryStatus
     movement_count: int
     movements: list[dict[str, Any]]
@@ -941,6 +1057,10 @@ class AcquisitionLotWire(TransportModel):
     remaining_share_count: int
     original_cost_basis: LedgerMoneyWire
     remaining_cost_basis: LedgerMoneyWire
+    original_tax_basis: LedgerMoneyWire
+    remaining_tax_basis: LedgerMoneyWire
+    acquisition_year_fund_equity_ratio_basis_points: int | None
+    fund_tax_statement_reference: str | None
     created_by: UUID
     created_at: datetime
 
@@ -960,24 +1080,55 @@ class InvestmentActivityWire(TransportModel):
     investment_key: str
     investment_name: str
     investment_kind: InvestmentKind
+    accounting_classification: InvestmentAccountingClassification
     tax_treatment: InvestmentTaxTreatment
     org_number: str | None
+    fund_equity_ratio_basis_points: int | None
+    fund_tax_statement_reference: str | None
     acquisition_lot_id: UUID | None
     share_count: int | None
     purchase_amount: LedgerMoneyWire | None
+    transaction_costs: LedgerMoneyWire | None
+    capitalized_cost: LedgerMoneyWire | None
     sold_share_count: int | None
     proceeds: LedgerMoneyWire | None
+    net_proceeds: LedgerMoneyWire | None
     fifo_cost_basis_reduction: LedgerMoneyWire | None
+    fifo_tax_basis_reduction: LedgerMoneyWire | None
     remaining_share_count: int | None
     remaining_cost_basis: LedgerMoneyWire | None
+    remaining_tax_basis: LedgerMoneyWire | None
     paying_company_name: str | None
     declared_date: date | None
     gross_amount: LedgerMoneyWire | None
     taxable_add_back: LedgerMoneyWire | None
     gain_or_loss: LedgerMoneyWire | None
+    book_gain_or_loss: LedgerMoneyWire | None
+    tax_gain_or_loss: LedgerMoneyWire | None
+    exempt_gain: LedgerMoneyWire | None
+    taxable_gain: LedgerMoneyWire | None
+    non_deductible_loss: LedgerMoneyWire | None
+    deductible_loss: LedgerMoneyWire | None
+    lawful_dividend_confirmed: bool | None
+    group_exception_claimed: bool | None
+    group_exception_applied: bool | None
+    year_end_ownership_basis_points: int | None
+    year_end_voting_basis_points: int | None
+    group_evidence_reference: str | None
+    fund_name: str | None
+    entitlement_date: date | None
+    opening_fund_equity_ratio_basis_points: int | None
+    dividend_portion: LedgerMoneyWire | None
+    interest_portion: LedgerMoneyWire | None
+    total_taxable_income: LedgerMoneyWire | None
     bank_transaction_id: UUID | None
     document_id: UUID | None
     document_status: InvestmentDocumentStatus
+    evidence_mode: InvestmentEvidenceMode
+    evidence_reference: str
+    evidence_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    calculation_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    owner_attested: bool
     accounting_entry_id: UUID | None
     created_by: UUID
     created_at: datetime
@@ -998,6 +1149,15 @@ class ShareSaleAllocationWire(TransportModel):
     acquisition_date: date
     allocated_share_count: int
     allocated_cost_basis: LedgerMoneyWire
+    allocated_book_cost_basis: LedgerMoneyWire
+    allocated_tax_basis: LedgerMoneyWire
+    allocated_net_proceeds: LedgerMoneyWire
+    average_fund_equity_ratio_basis_points: Decimal | None
+    tax_gain_or_loss: LedgerMoneyWire
+    exempt_gain: LedgerMoneyWire
+    taxable_gain: LedgerMoneyWire
+    non_deductible_loss: LedgerMoneyWire
+    deductible_loss: LedgerMoneyWire
     created_by: UUID
     created_at: datetime
 
@@ -2700,10 +2860,14 @@ def create_app(
             investment_key=value.investment_key,
             name=value.name,
             kind=value.kind,
+            accounting_classification=value.accounting_classification,
             tax_treatment=value.tax_treatment,
             org_number=value.org_number,
+            fund_equity_ratio_basis_points=value.fund_equity_ratio_basis_points,
+            fund_tax_statement_reference=value.fund_tax_statement_reference,
             share_count=value.share_count,
             cost_basis=_money_wire(value.cost_basis),
+            tax_basis=_money_wire(value.tax_basis),
             lot_history_status=value.lot_history_status,
             movement_count=value.movement_count,
             movements=[dict(movement) for movement in value.movements],
@@ -2723,6 +2887,12 @@ def create_app(
             remaining_share_count=value.remaining_share_count,
             original_cost_basis=_money_wire(value.original_cost_basis),
             remaining_cost_basis=_money_wire(value.remaining_cost_basis),
+            original_tax_basis=_money_wire(value.original_tax_basis),
+            remaining_tax_basis=_money_wire(value.remaining_tax_basis),
+            acquisition_year_fund_equity_ratio_basis_points=(
+                value.acquisition_year_fund_equity_ratio_basis_points
+            ),
+            fund_tax_statement_reference=value.fund_tax_statement_reference,
             created_by=UUID(str(value.created_by.subject)),
             created_at=value.created_at.value,
         )
@@ -2738,8 +2908,11 @@ def create_app(
             investment_key=value.investment_key,
             investment_name=value.investment_name,
             investment_kind=value.investment_kind,
+            accounting_classification=value.accounting_classification,
             tax_treatment=value.tax_treatment,
             org_number=value.org_number,
+            fund_equity_ratio_basis_points=value.fund_equity_ratio_basis_points,
+            fund_tax_statement_reference=value.fund_tax_statement_reference,
             acquisition_lot_id=(
                 UUID(str(value.acquisition_lot_id))
                 if value.acquisition_lot_id else None
@@ -2748,16 +2921,35 @@ def create_app(
             purchase_amount=(
                 _money_wire(value.purchase_amount) if value.purchase_amount else None
             ),
+            transaction_costs=(
+                _money_wire(value.transaction_costs)
+                if value.transaction_costs else None
+            ),
+            capitalized_cost=(
+                _money_wire(value.capitalized_cost)
+                if value.capitalized_cost else None
+            ),
             sold_share_count=value.sold_share_count,
             proceeds=_money_wire(value.proceeds) if value.proceeds else None,
+            net_proceeds=(
+                _money_wire(value.net_proceeds) if value.net_proceeds else None
+            ),
             fifo_cost_basis_reduction=(
                 _money_wire(value.fifo_cost_basis_reduction)
                 if value.fifo_cost_basis_reduction else None
+            ),
+            fifo_tax_basis_reduction=(
+                _money_wire(value.fifo_tax_basis_reduction)
+                if value.fifo_tax_basis_reduction else None
             ),
             remaining_share_count=value.remaining_share_count,
             remaining_cost_basis=(
                 _money_wire(value.remaining_cost_basis)
                 if value.remaining_cost_basis else None
+            ),
+            remaining_tax_basis=(
+                _money_wire(value.remaining_tax_basis)
+                if value.remaining_tax_basis else None
             ),
             paying_company_name=value.paying_company_name,
             declared_date=(
@@ -2768,6 +2960,53 @@ def create_app(
                 _money_wire(value.taxable_add_back) if value.taxable_add_back else None
             ),
             gain_or_loss=_money_wire(value.gain_or_loss) if value.gain_or_loss else None,
+            book_gain_or_loss=(
+                _money_wire(value.book_gain_or_loss)
+                if value.book_gain_or_loss else None
+            ),
+            tax_gain_or_loss=(
+                _money_wire(value.tax_gain_or_loss)
+                if value.tax_gain_or_loss else None
+            ),
+            exempt_gain=(
+                _money_wire(value.exempt_gain) if value.exempt_gain else None
+            ),
+            taxable_gain=(
+                _money_wire(value.taxable_gain) if value.taxable_gain else None
+            ),
+            non_deductible_loss=(
+                _money_wire(value.non_deductible_loss)
+                if value.non_deductible_loss else None
+            ),
+            deductible_loss=(
+                _money_wire(value.deductible_loss)
+                if value.deductible_loss else None
+            ),
+            lawful_dividend_confirmed=value.lawful_dividend_confirmed,
+            group_exception_claimed=value.group_exception_claimed,
+            group_exception_applied=value.group_exception_applied,
+            year_end_ownership_basis_points=value.year_end_ownership_basis_points,
+            year_end_voting_basis_points=value.year_end_voting_basis_points,
+            group_evidence_reference=value.group_evidence_reference,
+            fund_name=value.fund_name,
+            entitlement_date=(
+                value.entitlement_date.value if value.entitlement_date else None
+            ),
+            opening_fund_equity_ratio_basis_points=(
+                value.opening_fund_equity_ratio_basis_points
+            ),
+            dividend_portion=(
+                _money_wire(value.dividend_portion)
+                if value.dividend_portion else None
+            ),
+            interest_portion=(
+                _money_wire(value.interest_portion)
+                if value.interest_portion else None
+            ),
+            total_taxable_income=(
+                _money_wire(value.total_taxable_income)
+                if value.total_taxable_income else None
+            ),
             bank_transaction_id=(
                 UUID(str(value.bank_transaction_id))
                 if value.bank_transaction_id else None
@@ -2776,6 +3015,11 @@ def create_app(
                 UUID(str(value.document_id)) if value.document_id else None
             ),
             document_status=value.document_status,
+            evidence_mode=value.evidence_mode,
+            evidence_reference=value.evidence_reference,
+            evidence_digest=value.evidence_digest,
+            calculation_id=value.calculation_id,
+            owner_attested=value.owner_attested,
             accounting_entry_id=(
                 UUID(str(value.accounting_entry_id))
                 if value.accounting_entry_id else None
@@ -2797,6 +3041,53 @@ def create_app(
             acquisition_date=value.acquisition_date.value,
             allocated_share_count=value.allocated_share_count,
             allocated_cost_basis=_money_wire(value.allocated_cost_basis),
+            allocated_book_cost_basis=_money_wire(
+                value.allocated_book_cost_basis
+            ),
+            allocated_tax_basis=_money_wire(value.allocated_tax_basis),
+            allocated_net_proceeds=_money_wire(value.allocated_net_proceeds),
+            average_fund_equity_ratio_basis_points=(
+                value.average_fund_equity_ratio_basis_points
+            ),
+            tax_gain_or_loss=_money_wire(value.tax_gain_or_loss),
+            exempt_gain=_money_wire(value.exempt_gain),
+            taxable_gain=_money_wire(value.taxable_gain),
+            non_deductible_loss=_money_wire(value.non_deductible_loss),
+            deductible_loss=_money_wire(value.deductible_loss),
+            created_by=UUID(str(value.created_by.subject)),
+            created_at=value.created_at.value,
+        )
+
+    def investment_correction_wire(
+        value: InvestmentCorrectionView,
+    ) -> InvestmentCorrectionWire:
+        return InvestmentCorrectionWire(
+            id=UUID(str(value.correction_id)),
+            company_id=UUID(str(value.company_id)),
+            income_year=int(value.income_year),
+            original_action_id=UUID(str(value.original_action_id)),
+            original_activity_kind=value.original_activity_kind,
+            reversal_accounting_entry_id=UUID(
+                str(value.reversal_accounting_entry_id)
+            ),
+            replacement_action_id=UUID(str(value.replacement_action_id)),
+            replacement_activity_kind=value.replacement_activity_kind,
+            replacement_accounting_entry_id=UUID(
+                str(value.replacement_accounting_entry_id)
+            ),
+            reason=value.reason,
+            bank_transaction_id=(
+                UUID(str(value.bank_transaction_id))
+                if value.bank_transaction_id else None
+            ),
+            document_id=(
+                UUID(str(value.document_id)) if value.document_id else None
+            ),
+            document_status=value.document_status,
+            evidence_mode=value.evidence_mode,
+            evidence_reference=value.evidence_reference,
+            evidence_digest=value.evidence_digest,
+            owner_attested=value.owner_attested,
             created_by=UUID(str(value.created_by.subject)),
             created_at=value.created_at.value,
         )
@@ -2967,6 +3258,51 @@ def create_app(
 
         return await investments_call(execute)
 
+    @application.get(
+        "/api/v1/investments/corrections",
+        operation_id="investmentsListCorrections",
+        response_model=InvestmentCorrectionPageWire,
+        responses={
+            200: {"description": "Visible immutable investment correction lineage."}
+            | investments_success
+        }
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_investment_corrections(
+        request: Request,
+        company_ids: Annotated[
+            list[UUID], Query(alias="companyId", min_length=1, max_length=100)
+        ],
+        cursor: str | None = Query(default=None, min_length=1, max_length=80),
+        limit: int = Query(default=100, ge=1, le=100),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> InvestmentCorrectionPageWire:
+        async def execute() -> InvestmentCorrectionPageWire:
+            session = await investments_application.session(bearer_token(credentials))
+            page = await session.list_corrections(
+                company_ids=tuple(
+                    investments_input(lambda value=value: CompanyId(str(value)))
+                    for value in company_ids
+                ),
+                correlation_id=CorrelationId(request.state.request_id),
+                cursor=(
+                    investments_input(lambda: InvestmentCursor(cursor))
+                    if cursor else None
+                ),
+                limit=limit,
+            )
+            return InvestmentCorrectionPageWire(
+                items=[investment_correction_wire(item) for item in page.items],
+                page=InvestmentsPageWire(
+                    next_cursor=str(page.next_cursor) if page.next_cursor else None,
+                    has_more=page.has_more,
+                ),
+            )
+
+        return await investments_call(execute)
+
     async def execute_investments_share_purchase(
         request: Request,
         command: InvestmentsSharePurchaseWire,
@@ -2985,11 +3321,20 @@ def create_app(
                 investment_key=command.investment_key,
                 investment_name=command.investment_name,
                 investment_kind=command.investment_kind,
+                accounting_classification=command.accounting_classification,
                 tax_treatment=command.tax_treatment,
                 acquisition_date=LocalDate(command.acquisition_date),
                 share_count=command.share_count,
                 purchase_amount=command.purchase_amount.to_domain(),
+                transaction_costs=command.transaction_costs.to_domain(),
                 org_number=command.org_number,
+                fund_equity_ratio_basis_points=(
+                    command.fund_equity_ratio_basis_points
+                ),
+                fund_tax_statement_reference=command.fund_tax_statement_reference,
+                evidence_mode=command.evidence_mode,
+                evidence_reference=command.evidence_reference,
+                owner_attested=command.owner_attested,
                 bank_transaction_id=(
                     InvestmentSourceReference(str(command.bank_transaction_id))
                     if command.bank_transaction_id
@@ -3073,6 +3418,14 @@ def create_app(
                 sale_date=LocalDate(command.sale_date),
                 sold_share_count=command.sold_share_count,
                 proceeds=command.proceeds.to_domain(),
+                transaction_costs=command.transaction_costs.to_domain(),
+                sale_year_fund_equity_ratio_basis_points=(
+                    command.sale_year_fund_equity_ratio_basis_points
+                ),
+                fund_tax_statement_reference=command.fund_tax_statement_reference,
+                evidence_mode=command.evidence_mode,
+                evidence_reference=command.evidence_reference,
+                owner_attested=command.owner_attested,
                 bank_transaction_id=(
                     InvestmentSourceReference(str(command.bank_transaction_id))
                     if command.bank_transaction_id
@@ -3131,6 +3484,16 @@ def create_app(
                 paid_date=LocalDate(command.paid_date),
                 gross_amount=command.gross_amount.to_domain(),
                 tax_treatment=command.tax_treatment,
+                lawful_dividend_confirmed=command.lawful_dividend_confirmed,
+                group_exception_claimed=command.group_exception_claimed,
+                year_end_ownership_basis_points=(
+                    command.year_end_ownership_basis_points
+                ),
+                year_end_voting_basis_points=command.year_end_voting_basis_points,
+                group_evidence_reference=command.group_evidence_reference,
+                evidence_mode=command.evidence_mode,
+                evidence_reference=command.evidence_reference,
+                owner_attested=command.owner_attested,
                 bank_transaction_id=(
                     InvestmentSourceReference(str(command.bank_transaction_id))
                     if command.bank_transaction_id
@@ -3149,6 +3512,252 @@ def create_app(
                 position_id=UUID(str(result.position_id)),
                 accounting_entry_id=UUID(str(result.accounting_entry_id)),
                 taxable_add_back=_money_wire(result.taxable_add_back),
+                replayed=result.replayed,
+            )
+
+        return await investments_call(execute)
+
+    @application.post(
+        "/api/v1/investments/received-fund-distributions",
+        operation_id="investmentsRecordReceivedFundDistribution",
+        response_model=InvestmentsReceivedFundDistributionResultWire,
+        status_code=201,
+        responses={
+            201: {"description": "Received fund distribution recorded atomically."}
+            | investments_success
+        }
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_investments_received_fund_distribution(
+        request: Request,
+        command: InvestmentsReceivedFundDistributionWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> InvestmentsReceivedFundDistributionResultWire:
+        async def execute() -> InvestmentsReceivedFundDistributionResultWire:
+            session = await investments_application.session(bearer_token(credentials))
+            domain = RecordReceivedFundDistributionCommand(
+                company_id=CompanyId(str(command.company_id)),
+                actor_id=session.actor_id,
+                correlation_id=CorrelationId(request.state.request_id),
+                idempotency_key=IdempotencyKey(idempotency_key),
+                income_year=IncomeYear(command.income_year),
+                action_id=InvestmentActionId(str(command.action_id)),
+                position_id=InvestmentPositionId(str(command.position_id)),
+                fund_name=command.fund_name,
+                entitlement_date=LocalDate(command.entitlement_date),
+                paid_date=LocalDate(command.paid_date),
+                gross_amount=command.gross_amount.to_domain(),
+                opening_fund_equity_ratio_basis_points=(
+                    command.opening_fund_equity_ratio_basis_points
+                ),
+                fund_tax_statement_reference=(
+                    command.fund_tax_statement_reference
+                ),
+                evidence_mode=command.evidence_mode,
+                evidence_reference=command.evidence_reference,
+                owner_attested=command.owner_attested,
+                bank_transaction_id=(
+                    InvestmentSourceReference(str(command.bank_transaction_id))
+                    if command.bank_transaction_id
+                    else None
+                ),
+                document_id=(
+                    InvestmentSourceReference(str(command.document_id))
+                    if command.document_id
+                    else None
+                ),
+                document_status=command.document_status,
+            )
+            result = await session.record_received_fund_distribution(domain)
+            return InvestmentsReceivedFundDistributionResultWire(
+                action_id=UUID(str(result.action_id)),
+                position_id=UUID(str(result.position_id)),
+                accounting_entry_id=UUID(str(result.accounting_entry_id)),
+                dividend_portion=_money_wire(result.dividend_portion),
+                interest_portion=_money_wire(result.interest_portion),
+                taxable_add_back=_money_wire(result.taxable_add_back),
+                total_taxable_income=_money_wire(result.total_taxable_income),
+                replayed=result.replayed,
+            )
+
+        return await investments_call(execute)
+
+    @application.post(
+        "/api/v1/investments/corrections",
+        operation_id="investmentsCorrectInvestment",
+        response_model=InvestmentsCorrectionResultWire,
+        status_code=201,
+        responses={
+            201: {"description": "Investment corrected by linked reversal and replacement."}
+            | investments_success
+        }
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def correct_investment(
+        request: Request,
+        command: InvestmentsCorrectionWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> InvestmentsCorrectionResultWire:
+        async def execute() -> InvestmentsCorrectionResultWire:
+            session = await investments_application.session(bearer_token(credentials))
+            replacement_wire = command.replacement
+            common = {
+                "company_id": CompanyId(str(replacement_wire.company_id)),
+                "actor_id": session.actor_id,
+                "correlation_id": CorrelationId(request.state.request_id),
+                "idempotency_key": IdempotencyKey(
+                    f"replacement:{replacement_wire.action_id}"
+                ),
+                "income_year": IncomeYear(replacement_wire.income_year),
+                "action_id": InvestmentActionId(str(replacement_wire.action_id)),
+                "evidence_mode": replacement_wire.evidence_mode,
+                "evidence_reference": replacement_wire.evidence_reference,
+                "owner_attested": replacement_wire.owner_attested,
+                "bank_transaction_id": (
+                    InvestmentSourceReference(str(replacement_wire.bank_transaction_id))
+                    if replacement_wire.bank_transaction_id else None
+                ),
+                "document_id": (
+                    InvestmentSourceReference(str(replacement_wire.document_id))
+                    if replacement_wire.document_id else None
+                ),
+                "document_status": replacement_wire.document_status,
+            }
+            if isinstance(replacement_wire, InvestmentsSharePurchaseWire):
+                replacement = RecordSharePurchaseCommand(
+                    **common,
+                    investment_key=replacement_wire.investment_key,
+                    investment_name=replacement_wire.investment_name,
+                    investment_kind=replacement_wire.investment_kind,
+                    accounting_classification=(
+                        replacement_wire.accounting_classification
+                    ),
+                    tax_treatment=replacement_wire.tax_treatment,
+                    acquisition_date=LocalDate(replacement_wire.acquisition_date),
+                    share_count=replacement_wire.share_count,
+                    purchase_amount=replacement_wire.purchase_amount.to_domain(),
+                    transaction_costs=(
+                        replacement_wire.transaction_costs.to_domain()
+                    ),
+                    org_number=replacement_wire.org_number,
+                    fund_equity_ratio_basis_points=(
+                        replacement_wire.fund_equity_ratio_basis_points
+                    ),
+                    fund_tax_statement_reference=(
+                        replacement_wire.fund_tax_statement_reference
+                    ),
+                )
+            elif isinstance(replacement_wire, InvestmentsShareSaleWire):
+                replacement = RecordShareSaleCommand(
+                    **common,
+                    position_id=InvestmentPositionId(
+                        str(replacement_wire.position_id)
+                    ),
+                    sale_date=LocalDate(replacement_wire.sale_date),
+                    sold_share_count=replacement_wire.sold_share_count,
+                    proceeds=replacement_wire.proceeds.to_domain(),
+                    transaction_costs=(
+                        replacement_wire.transaction_costs.to_domain()
+                    ),
+                    sale_year_fund_equity_ratio_basis_points=(
+                        replacement_wire.sale_year_fund_equity_ratio_basis_points
+                    ),
+                    fund_tax_statement_reference=(
+                        replacement_wire.fund_tax_statement_reference
+                    ),
+                )
+            elif isinstance(replacement_wire, InvestmentsReceivedDividendWire):
+                replacement = RecordReceivedDividendCommand(
+                    **common,
+                    position_id=InvestmentPositionId(
+                        str(replacement_wire.position_id)
+                    ),
+                    paying_company_name=replacement_wire.paying_company_name,
+                    declared_date=LocalDate(replacement_wire.declared_date),
+                    paid_date=LocalDate(replacement_wire.paid_date),
+                    gross_amount=replacement_wire.gross_amount.to_domain(),
+                    tax_treatment=replacement_wire.tax_treatment,
+                    lawful_dividend_confirmed=(
+                        replacement_wire.lawful_dividend_confirmed
+                    ),
+                    group_exception_claimed=(
+                        replacement_wire.group_exception_claimed
+                    ),
+                    year_end_ownership_basis_points=(
+                        replacement_wire.year_end_ownership_basis_points
+                    ),
+                    year_end_voting_basis_points=(
+                        replacement_wire.year_end_voting_basis_points
+                    ),
+                    group_evidence_reference=(
+                        replacement_wire.group_evidence_reference
+                    ),
+                )
+            else:
+                replacement = RecordReceivedFundDistributionCommand(
+                    **common,
+                    position_id=InvestmentPositionId(
+                        str(replacement_wire.position_id)
+                    ),
+                    fund_name=replacement_wire.fund_name,
+                    entitlement_date=LocalDate(replacement_wire.entitlement_date),
+                    paid_date=LocalDate(replacement_wire.paid_date),
+                    gross_amount=replacement_wire.gross_amount.to_domain(),
+                    opening_fund_equity_ratio_basis_points=(
+                        replacement_wire.opening_fund_equity_ratio_basis_points
+                    ),
+                    fund_tax_statement_reference=(
+                        replacement_wire.fund_tax_statement_reference
+                    ),
+                )
+            domain = CorrectInvestmentCommand(
+                company_id=CompanyId(str(command.company_id)),
+                actor_id=session.actor_id,
+                correlation_id=CorrelationId(request.state.request_id),
+                idempotency_key=IdempotencyKey(idempotency_key),
+                income_year=IncomeYear(command.income_year),
+                correction_id=InvestmentCorrectionId(str(command.correction_id)),
+                original_action_id=InvestmentActionId(
+                    str(command.original_action_id)
+                ),
+                original_activity_kind=command.original_activity_kind,
+                correction_date=LocalDate(command.correction_date),
+                reason=command.reason,
+                evidence_mode=command.evidence_mode,
+                evidence_reference=command.evidence_reference,
+                owner_attested=command.owner_attested,
+                bank_transaction_id=(
+                    InvestmentSourceReference(str(command.bank_transaction_id))
+                    if command.bank_transaction_id else None
+                ),
+                document_id=(
+                    InvestmentSourceReference(str(command.document_id))
+                    if command.document_id else None
+                ),
+                document_status=command.document_status,
+                replacement=replacement,
+            )
+            result = await session.correct_investment(domain)
+            return InvestmentsCorrectionResultWire(
+                correction_id=UUID(str(result.correction_id)),
+                original_action_id=UUID(str(result.original_action_id)),
+                replacement_action_id=UUID(str(result.replacement_action_id)),
+                reversal_accounting_entry_id=UUID(
+                    str(result.reversal_accounting_entry_id)
+                ),
+                replacement_accounting_entry_id=UUID(
+                    str(result.replacement_accounting_entry_id)
+                ),
                 replayed=result.replayed,
             )
 

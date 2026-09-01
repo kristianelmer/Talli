@@ -54,6 +54,14 @@ const stageExitPolicyCleanupPath = new URL(
   "../supabase/contract-migrations/20260901001500_investments_stage_exit_policy_cleanup.sql",
   import.meta.url,
 );
+const supportedPatternsPath = new URL(
+  "../supabase/migrations/20260901100000_investments_supported_patterns.sql",
+  import.meta.url,
+);
+const supportedPatternsRollbackPath = new URL(
+  "../supabase/rollback/20260901100000_investments_supported_patterns.sql",
+  import.meta.url,
+);
 const localGatePath = new URL("../scripts/test-supabase-local.sh", import.meta.url);
 
 function artifact(path, phase) {
@@ -408,4 +416,58 @@ test("complete stage exit binds canonical investment writes to archive freshness
       ),
     );
   }
+});
+
+test("supported patterns keep writes private and publish correction lineage", () => {
+  const source = artifact(supportedPatternsPath, "supported patterns");
+  assert.match(
+    source,
+    /alter table investments\.share_sales[\s\S]+add column remaining_tax_basis numeric\(20, 2\)[\s\S]+alter column remaining_tax_basis set not null/iu,
+  );
+  for (const table of ["received_fund_distributions", "corrections"]) {
+    assert.match(source, new RegExp(`create table investments\\.${table}`, "iu"));
+    assert.match(source, new RegExp(
+      `alter table investments\\.${table} force row level security`,
+      "iu",
+    ));
+  }
+  for (const routine of [
+    "prepare_received_fund_distribution_v1",
+    "complete_received_fund_distribution_v1",
+    "prepare_correction_v1",
+    "complete_correction_v1",
+    "link_investment_correction_v1",
+  ]) {
+    assert.match(source, new RegExp(`function (?:investments|ledger)\\.${routine}`, "iu"));
+  }
+  assert.match(source, /rename to rollback_190_prepare_share_purchase_v1/iu);
+  assert.match(
+    source,
+    /create policy investments_supported_patterns_overlap_audit_insert[\s\S]+to investments_store_owner/iu,
+  );
+  assert.match(source, /grant execute on function[\s\S]+investments\.prepare_correction_v1/iu);
+  assert.match(
+    source,
+    /revoke all on function[\s\S]+investments\.prepare_share_purchase_v1[\s\S]+from public, anon, authenticated, service_role/iu,
+  );
+  assert.doesNotMatch(
+    source,
+    /grant[^;]+investments\.(?:received_fund_distributions|corrections)[^;]+(?:anon|authenticated|service_role)/iu,
+  );
+});
+
+test("supported-pattern rollback restores the exact predecessor or refuses after new data", () => {
+  const source = artifact(supportedPatternsRollbackPath, "supported-pattern rollback");
+  assert.match(source, /BOUNDED ROLLBACK ARTIFACT:.*#190/iu);
+  const guardAt = source.search(/investments_supported_patterns_rollback_has_new_data/iu);
+  const firstDropAt = source.search(/drop function investments\.complete_correction_v1/iu);
+  assert.ok(guardAt >= 0 && firstDropAt > guardAt);
+  assert.match(source, /rename to prepare_share_purchase_v1/iu);
+  assert.match(source, /rename to prepare_share_sale_v1/iu);
+  assert.match(source, /rename to prepare_received_dividend_v1/iu);
+  assert.match(
+    source,
+    /drop policy if exists investments_supported_patterns_overlap_audit_insert/iu,
+  );
+  assert.doesNotMatch(source, /\btruncate\b/iu);
 });

@@ -49,7 +49,7 @@
 -->
 
 <!-- architecture-inventory
-{"adapterBindingModes":["InvestmentsPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["InvestmentsPersistence=>backend-system"],"adapterBindings":["InvestmentsPersistence=>talli_backend.adapters.supabase_investments.SupabaseInvestmentsSession"],"adapterDependencies":["talli_backend.application.investments_session","talli_backend.application.investments_workflow","talli_backend.modules.investments.public"],"ports":["InvestmentsPersistence"],"publicPackages":["talli_backend.modules.investments.public"],"routes":["/api/v1/investments/acquisition-lots","/api/v1/investments/activity","/api/v1/investments/positions","/api/v1/investments/received-dividends","/api/v1/investments/share-purchases","/api/v1/investments/share-sale-allocations","/api/v1/investments/share-sales"],"transportDependencies":["talli_backend.adapters.supabase_investments","talli_backend.application.investments_session","talli_backend.modules.investments.public"],"workflowDependencies":["talli_backend.modules.investments.public"],"workflowPurposes":["investment-activity=>Authenticates one verified actor, records supported canonical share purchases, FIFO share sales, and received dividends, posts deterministic accounting entries through the ledger public contract in the same transaction, and serves tenant-concealed position, lot, allocation, and activity pages."],"workflows":["investment-activity"]}
+{"adapterBindingModes":["InvestmentsPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["InvestmentsPersistence=>backend-system"],"adapterBindings":["InvestmentsPersistence=>talli_backend.adapters.supabase_investments.SupabaseInvestmentsSession"],"adapterDependencies":["talli_backend.application.investments_session","talli_backend.application.investments_workflow","talli_backend.modules.investments.public"],"ports":["InvestmentsPersistence"],"publicPackages":["talli_backend.modules.investments.public"],"routes":["/api/v1/investments/acquisition-lots","/api/v1/investments/activity","/api/v1/investments/corrections","/api/v1/investments/positions","/api/v1/investments/received-dividends","/api/v1/investments/received-fund-distributions","/api/v1/investments/share-purchases","/api/v1/investments/share-sale-allocations","/api/v1/investments/share-sales"],"transportDependencies":["decimal","talli_backend.adapters.supabase_investments","talli_backend.application.investments_session","talli_backend.modules.investments.public"],"workflowDependencies":["talli_backend.modules.investments.public"],"workflowPurposes":["investment-activity=>Authenticates one verified actor, records supported domestic purchases, FIFU sales, share dividends, fund distributions, and full-reversal/replacement corrections, posts deterministic entries through ledger in the same transaction, and serves tenant-concealed position, lot, allocation, activity, and correction pages."],"workflows":["investment-activity"]}
 -->
 
 <!-- architecture-inventory
@@ -185,11 +185,15 @@ read stays in an explicitly named compatibility model outside the frozen future
 capability package; ledger owns only posting and lock behavior.
 
 The `investment-activity` workflow serves canonical position, acquisition-lot,
-FIFO-allocation, and activity pages and accepts share purchases, share sales,
-and received dividends under `/api/v1/investments`. It calls only the
-investments and ledger public contracts. Investments owns validation, FIFO,
-tax facts, and persistence; ledger owns the deterministic posting invoked in
-the same request-bound transaction.
+FIFU-allocation, activity, and correction pages and accepts domestic share and
+fund purchases, share sales, share dividends, fund distributions, and
+full-reversal/replacement corrections under `/api/v1/investments`. The
+correction and fund-distribution routes are
+`/api/v1/investments/corrections` and
+`/api/v1/investments/received-fund-distributions`. It calls only the investments
+and ledger public contracts. Investments owns validation, FIFU, tax facts,
+correction lineage, and persistence; ledger owns the deterministic posting
+invoked in the same request-bound transaction.
 
 ## Operational and technical ownership
 

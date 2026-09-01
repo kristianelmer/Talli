@@ -72,7 +72,7 @@ export default async function YearEndPage() {
       (position) => position.company_id === companyId && Number(position.share_count) > 0,
     ),
     bought_or_sold_shares: hasActionType("share_purchase", "share_sale"),
-    received_dividends: hasActionType("dividend_received"),
+    received_dividends: hasActionType("dividend_received", "fund_distribution_received"),
     declared_owner_dividends: entries.some(
       (entry) => entry.company_id === companyId
         && entry.income_year === year

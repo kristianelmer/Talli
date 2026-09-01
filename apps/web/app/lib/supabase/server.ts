@@ -479,6 +479,7 @@ export type HoldingActionRow = {
     | "dividend_received"
     | "share_purchase"
     | "share_sale"
+    | "fund_distribution_received"
     | "dividend_to_owner"
     | "shareholder_loan"
     | "tax_settlement";

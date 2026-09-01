@@ -4,19 +4,19 @@
   "name": "investments",
   "path": "apps/backend/src/talli_backend/modules/investments",
   "owner": "backend:investments",
-  "purpose": "Own supported share-purchase, share-sale, and received-dividend policy, canonical investment positions and activity, immutable acquisition lots, authoritative FIFO allocations, deterministic tax facts, command replay, and purpose-specific investment queries.",
+  "purpose": "Own the approved domestic private-share, NOK listed-share, and Norwegian fund boundary, including purchases, sales, dividends, distributions, immutable corrections, positions, FIFU lots, separate book/tax facts, replay, and purpose-specific queries.",
   "documentation": "apps/backend/src/talli_backend/modules/investments/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.investments.public",
   "exports": {
-    "commands": ["InvestmentsCommand", "InvestmentsCommands", "RecordReceivedDividendCommand", "RecordSharePurchaseCommand", "RecordShareSaleCommand"],
-    "queries": ["AcquisitionLotPage", "AcquisitionLotView", "InvestmentActivityPage", "InvestmentActivityView", "InvestmentPositionPage", "InvestmentPositionView", "InvestmentsQueries", "PreparedReceivedDividend", "PreparedSharePurchase", "PreparedShareSale", "RecordedReceivedDividend", "RecordedSharePurchase", "RecordedShareSale", "ShareSaleAllocationPage", "ShareSaleAllocationView"],
+    "commands": ["CorrectInvestmentCommand", "InvestmentsCommand", "InvestmentsCommands", "RecordReceivedDividendCommand", "RecordReceivedFundDistributionCommand", "RecordSharePurchaseCommand", "RecordShareSaleCommand"],
+    "queries": ["AcquisitionLotPage", "AcquisitionLotView", "InvestmentActivityPage", "InvestmentActivityView", "InvestmentCorrectionPage", "InvestmentCorrectionView", "InvestmentPositionPage", "InvestmentPositionView", "InvestmentsQueries", "PreparedInvestmentCorrection", "PreparedReceivedDividend", "PreparedReceivedDividendFacts", "PreparedReceivedFundDistribution", "PreparedReceivedFundDistributionFacts", "PreparedSharePurchase", "PreparedShareSale", "PreparedShareSaleFacts", "RecordedInvestmentCorrection", "RecordedReceivedDividend", "RecordedReceivedFundDistribution", "RecordedSharePurchase", "RecordedShareSale", "ShareSaleAllocationPage", "ShareSaleAllocationView"],
     "events": [],
     "errors": ["InvestmentsError", "InvestmentsErrorCode"],
-    "identifiers": ["AccountingEntryReference", "AcquisitionLotId", "InvestmentActionId", "InvestmentActivityKind", "InvestmentCursor", "InvestmentDocumentStatus", "InvestmentKind", "InvestmentLotHistoryStatus", "InvestmentPositionId", "InvestmentSourceReference", "InvestmentTaxTreatment", "InvestmentsPersistence", "ShareSaleAllocationId", "investments_persistence_adapter"]
+    "identifiers": ["AccountingEntryReference", "AcquisitionLotId", "InvestmentActionId", "InvestmentAccountingClassification", "InvestmentActivityKind", "InvestmentCorrectionId", "InvestmentCursor", "InvestmentDocumentStatus", "InvestmentEvidenceMode", "InvestmentKind", "InvestmentLotHistoryStatus", "InvestmentPolicyVersion", "InvestmentPositionId", "InvestmentReplacementCommand", "InvestmentSaleLotCalculation", "InvestmentSaleLotFact", "InvestmentSourceReference", "InvestmentTaxTreatment", "InvestmentsPersistence", "ShareSaleAllocationId", "investments_persistence_adapter"]
   },
   "owns": {
     "postgresSchemas": ["investments"],
-    "tables": ["investments.acquisition_lots", "investments.positions", "investments.received_dividends", "investments.share_purchases", "investments.share_sale_allocations", "investments.share_sales"],
+    "tables": ["investments.acquisition_lots", "investments.corrections", "investments.positions", "investments.received_dividends", "investments.received_fund_distributions", "investments.share_purchases", "investments.share_sale_allocations", "investments.share_sales"],
     "storageBuckets": [],
     "projections": [],
     "migrations": "supabase/migrations/20260831124939_investments_capability.sql"
@@ -31,7 +31,7 @@
     }
   ],
   "dependencies": [],
-  "allowedImports": ["__future__", "collections.abc", "dataclasses", "decimal", "enum", "re", "talli_backend.shared.kernel", "typing", "uuid"],
+  "allowedImports": ["__future__", "collections.abc", "dataclasses", "decimal", "enum", "hashlib", "json", "re", "talli_backend.shared.kernel", "typing", "uuid"],
   "forbiddenResponsibilities": [
     "Ledger accounts, posting lines, balance enforcement, or period-lock policy",
     "Bank-provider selection, credentials, consent, live calls, or provider-specific types",
@@ -42,9 +42,11 @@
   "tests": {
     "contract": "apps/backend/tests/test_investments_public_contract.py",
     "policy": "apps/backend/tests/test_investments.py",
+    "supportedPatterns": "apps/backend/tests/test_investments_supported_patterns.py",
     "workflow": "apps/backend/tests/test_investments_workflow.py",
     "adapter": "apps/backend/tests/test_supabase_investments.py",
     "database": "tests/investments_database_runtime.test.mjs",
+    "crossOutput": "tests/investments_cross_output_reconciliation.test.mjs",
     "architecture": "tests/architecture_foundation.test.mjs"
   },
   "compatibilityExceptions": []

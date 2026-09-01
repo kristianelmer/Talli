@@ -9,10 +9,13 @@ import {
   loadInvestmentActivity,
   loadInvestmentPositions,
   loadInvestmentShareSaleAllocations,
+  loadInvestmentCorrections,
+  effectiveInvestmentActivity,
   presentAcquisitionLots,
   presentInvestmentActivity,
   presentInvestmentPositions,
   presentShareSaleAllocations,
+  presentInvestmentCorrections,
 } from "../../../../../features/investments";
 import {
   buildPersistedCompanyArchive,
@@ -64,11 +67,12 @@ async function loadArchiveInvestments(
   incomeYear: number,
 ) {
   try {
-    const [activity, positions, lots, allocations] = await Promise.all([
+    const [activity, positions, lots, allocations, corrections] = await Promise.all([
       loadInvestmentActivity(accessToken, [companyId]),
       loadInvestmentPositions(accessToken, [companyId]),
       loadInvestmentAcquisitionLots(accessToken, [companyId]),
       loadInvestmentShareSaleAllocations(accessToken, [companyId]),
+      loadInvestmentCorrections(accessToken, [companyId]),
     ]);
     const presentedActivity = presentInvestmentActivity(activity).map((item) => {
       if (item.action_type !== "share_sale") return item;
@@ -84,6 +88,16 @@ async function loadArchiveInvestments(
               acquisition_date: allocation.acquisitionDate,
               share_count: allocation.allocatedShareCount,
               cost_basis: Number(allocation.allocatedCostBasis.amount),
+              book_cost_basis: Number(allocation.allocatedBookCostBasis.amount),
+              tax_basis: Number(allocation.allocatedTaxBasis.amount),
+              net_proceeds: Number(allocation.allocatedNetProceeds.amount),
+              average_fund_equity_ratio_basis_points:
+                allocation.averageFundEquityRatioBasisPoints,
+              tax_gain_or_loss: Number(allocation.taxGainOrLoss.amount),
+              exempt_gain: Number(allocation.exemptGain.amount),
+              taxable_gain: Number(allocation.taxableGain.amount),
+              non_deductible_loss: Number(allocation.nonDeductibleLoss.amount),
+              deductible_loss: Number(allocation.deductibleLoss.amount),
             })),
         },
       };
@@ -91,11 +105,13 @@ async function loadArchiveInvestments(
     const presentedPositions = presentInvestmentPositions(positions);
     const presentedLots = presentAcquisitionLots(lots);
     const presentedAllocations = presentShareSaleAllocations(allocations);
+    const presentedCorrections = presentInvestmentCorrections(corrections);
     const allRecords = [
       ...presentedActivity,
       ...presentedPositions,
       ...presentedLots,
       ...presentedAllocations,
+      ...presentedCorrections,
     ];
     if (allRecords.some((record) => record.company_id !== companyId)) {
       throw new Error("Investments query escaped the authorized company scope.");
@@ -108,6 +124,9 @@ async function loadArchiveInvestments(
         positions: presentedPositions,
         lots: presentedLots,
         allocations: presentedAllocations,
+        corrections: presentedCorrections.filter(
+          (correction) => correction.income_year === incomeYear,
+        ),
       },
       error: null,
     };
@@ -289,13 +308,23 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     documents: documents ?? [],
     holdingActions: [
       ...(holdingActions ?? []).filter(
-        (action) => !["share_purchase", "share_sale", "dividend_received"].includes(action.action_type),
+        (action) => ![
+          "share_purchase",
+          "share_sale",
+          "dividend_received",
+          "fund_distribution_received",
+        ].includes(action.action_type),
       ),
       ...(investments?.holdingActions ?? []),
     ],
     investmentPositions: investments?.positions ?? [],
     investmentLots: investments?.lots ?? [],
     investmentLotAllocations: investments?.allocations ?? [],
+    investmentCorrections: investments?.corrections ?? [],
+    effectiveInvestmentActions: effectiveInvestmentActivity(
+      investments?.holdingActions ?? [],
+      investments?.corrections ?? [],
+    ),
     bankSuggestionAcceptances: bankSuggestionAcceptances ?? [],
     billingAccounts: billingAccounts ?? [],
     authorityPermissions: authorityPermissions ?? [],

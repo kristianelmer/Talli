@@ -52,7 +52,12 @@ export function buildAnnualAccountsPayload(input: {
       field("resultatFoerSkattekostnad/aarets", "167", resultBeforeTax, "derived"),
       field("skattekostnad/aarets", "11835", totals.taxExpense, "ledger.8300"),
       field("aarsresultat/aarets", "172", annualResult, "derived"),
-      field("investeringAksjerAndeler/aarets", "7100", totals.investmentBalance, "ledger.1800"),
+      field(
+        "investeringAksjerAndeler/aarets",
+        "7100",
+        totals.investmentBalance,
+        "ledger.1300_1310_1350_1800_1810_1815",
+      ),
       field("sumFinansielleAnleggsmidler/aarets", "5267", totals.investmentBalance, "derived"),
       field("sumBankinnskuddKontanter/aarets", "29042", totals.bankBalance, "ledger.1920"),
       field("sumEiendeler/aarets", "219", sumAssets, "derived"),
@@ -94,12 +99,21 @@ export function annualAccountsPayloadFeedback(annualData: AnnualDataRow | null):
 
 function ledgerTotals(entries: LedgerEntryRow[]) {
   const taxPayable = accountCreditBalance(entries, "2500");
+  const investmentBalance = round(
+    ["1300", "1310", "1350", "1800", "1810", "1815"]
+      .reduce((sum, account) => sum + accountBalance(entries, account), 0),
+  );
   return {
     bankBalance: accountBalance(entries, "1920"),
-    investmentBalance: accountBalance(entries, "1800"),
+    investmentBalance,
     adminCosts: debitTotal(entries, new Set(["7770", "6700", "6705", "6420", "7790", "6720", "7795"])),
-    financialIncome: round(accountCreditBalance(entries, "8070") + accountCreditBalance(entries, "8050")),
-    financialCosts: debitTotal(entries, new Set(["8090"])),
+    financialIncome: round(
+      accountCreditBalance(entries, "8070")
+        + accountCreditBalance(entries, "8071")
+        + accountCreditBalance(entries, "8074")
+        + accountCreditBalance(entries, "8050"),
+    ),
+    financialCosts: debitTotal(entries, new Set(["8090", "8171", "8174"])),
     taxExpense: accountBalance(entries, "8300"),
     taxPayable,
     shareCapital: accountCreditBalance(entries, "2000"),

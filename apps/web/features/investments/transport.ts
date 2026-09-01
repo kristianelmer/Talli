@@ -7,9 +7,14 @@ import {
   type InvestmentsShareSaleWire,
   type InvestmentsReceivedDividendResultWire,
   type InvestmentsReceivedDividendWire,
+  type InvestmentsReceivedFundDistributionResultWire,
+  type InvestmentsReceivedFundDistributionWire,
   type InvestmentPositionWire,
   type InvestmentActivityWire,
   type ShareSaleAllocationWire,
+  type InvestmentCorrectionWire,
+  type InvestmentsCorrectionResultWire,
+  type InvestmentsCorrectionWire,
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
 
@@ -84,6 +89,30 @@ export function recordInvestmentReceivedDividend(
   });
 }
 
+export function recordInvestmentReceivedFundDistribution(
+  accessToken: string,
+  command: InvestmentsReceivedFundDistributionWire,
+  idempotencyKey: string,
+  requestId?: string,
+): Promise<InvestmentsReceivedFundDistributionResultWire> {
+  return client(accessToken).investmentsRecordReceivedFundDistribution(command, {
+    ...request(requestId),
+    idempotencyKey,
+  });
+}
+
+export function correctInvestment(
+  accessToken: string,
+  command: InvestmentsCorrectionWire,
+  idempotencyKey: string,
+  requestId?: string,
+): Promise<InvestmentsCorrectionResultWire> {
+  return client(accessToken).investmentsCorrectInvestment(command, {
+    ...request(requestId),
+    idempotencyKey,
+  });
+}
+
 export function loadInvestmentPositions(
   accessToken: string,
   companyIds: readonly string[],
@@ -137,6 +166,21 @@ export function loadInvestmentShareSaleAllocations(
   if (companyIds.length === 0) return Promise.resolve([]);
   const api = client(accessToken);
   return loadAllPages((cursor) => api.investmentsListShareSaleAllocations({
+    companyIds,
+    cursor,
+    limit: PAGE_LIMIT,
+    ...request(requestId),
+  }));
+}
+
+export function loadInvestmentCorrections(
+  accessToken: string,
+  companyIds: readonly string[],
+  requestId?: string,
+): Promise<InvestmentCorrectionWire[]> {
+  if (companyIds.length === 0) return Promise.resolve([]);
+  const api = client(accessToken);
+  return loadAllPages((cursor) => api.investmentsListCorrections({
     companyIds,
     cursor,
     limit: PAGE_LIMIT,

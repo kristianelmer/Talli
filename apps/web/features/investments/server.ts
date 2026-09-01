@@ -3,6 +3,7 @@ import {
   loadInvestmentPositions,
   loadInvestmentActivity,
   loadInvestmentShareSaleAllocations,
+  loadInvestmentCorrections,
 } from "./transport.ts";
 import {
   presentAcquisitionLots,
@@ -13,6 +14,8 @@ import {
   type InvestmentActivityPresentation,
   presentShareSaleAllocations,
   type ShareSaleAllocationPresentation,
+  presentInvestmentCorrections,
+  type InvestmentCorrectionPresentation,
 } from "./presentation.ts";
 
 export async function listPresentedInvestmentActivity(
@@ -76,5 +79,21 @@ export async function listPresentedShareSaleAllocations(
     };
   } catch {
     return { allocations: [], error: "Kunne ikke laste FIFO-fordelingene." };
+  }
+}
+
+export async function listPresentedInvestmentCorrections(
+  accessToken: string,
+  companyIds: readonly string[],
+): Promise<{ corrections: InvestmentCorrectionPresentation[]; error: string | null }> {
+  try {
+    return {
+      corrections: presentInvestmentCorrections(
+        await loadInvestmentCorrections(accessToken, companyIds),
+      ),
+      error: null,
+    };
+  } catch {
+    return { corrections: [], error: "Kunne ikke laste investeringskorrigeringene." };
   }
 }

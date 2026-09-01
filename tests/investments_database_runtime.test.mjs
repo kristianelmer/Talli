@@ -19,6 +19,7 @@ const investmentsSaleRollbackMigration = "20260831170000_investments_share_sale_
 const investmentsDividendContractMigration = "20260831190000_investments_received_dividend_contract.sql";
 const investmentsDividendRollbackMigration = "20260831190000_investments_received_dividend_contract.sql";
 const investmentsStageExitMigration = "20260831193000_investments_stage_exit.sql";
+const investmentsSupportedPatternsMigration = "20260901100000_investments_supported_patterns.sql";
 const ownerId = "00000000-0000-0000-0000-000000000011";
 const outsiderId = "00000000-0000-0000-0000-000000000022";
 const companyId = "10000000-0000-0000-0000-000000000001";
@@ -139,6 +140,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         investmentsSaleWorkflowMigration,
         investmentsAllocationIdentityMigration,
         investmentsDividendWorkflowMigration,
+        investmentsSupportedPatternsMigration,
       ].includes(name))) {
       psql(containerName, ["--file", `/repo/supabase/migrations/${migration}`]);
     }
@@ -1203,6 +1205,431 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
             'investments_lots_workflow_insert'
           ))::text;
     `), "true:true:true:0:0");
+
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsSupportedPatternsMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (pg_catalog.to_regclass('investments.received_fund_distributions') is not null)::text || ':' ||
+        (pg_catalog.to_regclass('investments.corrections') is not null)::text || ':' ||
+        (select count(*) from pg_catalog.pg_attribute attribute
+          where attribute.attrelid = 'investments.positions'::regclass
+            and attribute.attname in ('accounting_classification', 'tax_basis')
+            and not attribute.attisdropped)::text || ':' ||
+        (select count(*) from pg_catalog.pg_attribute attribute
+          where attribute.attrelid = 'investments.share_sales'::regclass
+            and attribute.attname = 'remaining_tax_basis'
+            and attribute.attnotnull
+            and not attribute.attisdropped)::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_received_fund_distribution_v1(jsonb,text)',
+          'EXECUTE'
+        )::text;
+    `), "true:true:2:1:true");
+
+    psql(containerName, [
+      "--file", `/repo/supabase/rollback/${investmentsSupportedPatternsMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (pg_catalog.to_regclass('investments.received_fund_distributions') is null)::text || ':' ||
+        (pg_catalog.to_regclass('investments.corrections') is null)::text || ':' ||
+        (pg_catalog.to_regprocedure(
+          'investments.prepare_share_purchase_v1(jsonb,text)'
+        ) is not null)::text || ':' ||
+        (pg_catalog.to_regprocedure(
+          'investments.rollback_190_prepare_share_purchase_v1(jsonb,text)'
+        ) is null)::text || ':' ||
+        (select count(*) from pg_catalog.pg_attribute attribute
+          where attribute.attrelid = 'investments.positions'::regclass
+            and attribute.attname in ('accounting_classification', 'tax_basis')
+            and not attribute.attisdropped)::text;
+    `), "true:true:true:true:0");
+
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsSupportedPatternsMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (pg_catalog.to_regclass('investments.received_fund_distributions') is not null)::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_received_fund_distribution_v1(jsonb,text)',
+          'EXECUTE'
+        )::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'authenticated',
+          'investments.prepare_share_purchase_v1(jsonb,text)',
+          'EXECUTE'
+        )::text;
+    `), "true:true:false");
+
+    const supportedFundPositionId = "30000000-0000-0000-0000-000000000090";
+    const supportedFundPurchaseId = "20000000-0000-0000-0000-000000000090";
+    const supportedFundSaleId = "20000000-0000-0000-0000-000000000091";
+    const supportedFundDistributionId = "20000000-0000-0000-0000-000000000092";
+    const correctedFundDistributionId = "20000000-0000-0000-0000-000000000093";
+    const fundDistributionCorrectionId = "20000000-0000-0000-0000-000000000094";
+    const failedSaleReplacementId = "20000000-0000-0000-0000-000000000095";
+    const failedSaleCorrectionId = "20000000-0000-0000-0000-000000000096";
+    const evidenceDigest = "a".repeat(64);
+    const purchaseCalculationId = "b".repeat(64);
+    const saleCalculationId = "c".repeat(64);
+    const distributionCalculationId = "d".repeat(64);
+    const fundPurchaseRequest = JSON.stringify({
+      companyId, incomeYear: 2026, actionId: supportedFundPurchaseId,
+      idempotencyKey: "fund-purchase-supported-0001", correlationId: "fund-purchase-supported",
+      investmentKey: "NO0000000090", investmentName: "Norsk Kombinasjonsfond",
+      investmentKind: "norwegian_equity_fund", accountingClassification: "current_fund",
+      taxTreatment: "fritaksmetoden", acquisitionDate: "2026-01-02", shareCount: 10,
+      purchaseAmount: "100.00", transactionCosts: "2.50", capitalizedCost: "102.50",
+      orgNumber: null, fundEquityRatioBasisPoints: 6000,
+      fundTaxStatementReference: "provider-tax-statement-2026-r1",
+      evidenceMode: "manual_fallback", evidenceReference: "fund-contract-note-1",
+      ownerAttested: true, bankTransactionId: null, documentId: null,
+      documentStatus: "missing_accepted_warning", evidenceDigest,
+      calculationId: purchaseCalculationId,
+    });
+    const fundSaleRequest = JSON.stringify({
+      companyId, incomeYear: 2026, actionId: supportedFundSaleId,
+      idempotencyKey: "fund-sale-supported-0001", correlationId: "fund-sale-supported",
+      positionId: supportedFundPositionId, saleDate: "2026-06-01", soldShareCount: 10,
+      proceeds: "120.00", transactionCosts: "2.50", netProceeds: "117.50",
+      saleYearFundEquityRatioBasisPoints: 8000,
+      fundTaxStatementReference: "provider-tax-statement-2026-r2",
+      evidenceMode: "manual_fallback", evidenceReference: "fund-sale-note-1",
+      ownerAttested: true, bankTransactionId: null, documentId: null,
+      documentStatus: "missing_accepted_warning", evidenceDigest,
+    });
+    const fundDistributionRequest = JSON.stringify({
+      companyId, incomeYear: 2026, actionId: supportedFundDistributionId,
+      idempotencyKey: "fund-distribution-supported-0001",
+      correlationId: "fund-distribution-supported", positionId: supportedFundPositionId,
+      fundName: "Norsk Kombinasjonsfond", entitlementDate: "2026-05-01",
+      paidDate: "2026-05-15", grossAmount: "100.00",
+      openingFundEquityRatioBasisPoints: 5000,
+      fundTaxStatementReference: "provider-tax-statement-2026-r3",
+      evidenceMode: "manual_fallback", evidenceReference: "fund-distribution-note-1",
+      ownerAttested: true, bankTransactionId: null, documentId: null,
+      documentStatus: "missing_accepted_warning", evidenceDigest,
+    });
+    psql(containerName, [], String.raw`
+      begin;
+      set local role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', true);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', true);
+
+      create temporary table supported_purchase_prepared as
+      select investments.prepare_share_purchase_v1(
+        '${fundPurchaseRequest}'::jsonb, '${ownerId}'
+      ) as value;
+      create temporary table supported_purchase_entry as
+      select * from ledger.post_entry(
+        'fund-purchase-supported-0001', '${companyId}', 2026,
+        'SHARE_PURCHASE', 'Fund purchase: Norsk Kombinasjonsfond',
+        '[{"account":"1815","description":"Investment in Norsk Kombinasjonsfond","debit":"102.50","credit":"0.00","currency":"NOK"},{"account":"1920","description":"Paid from bank","debit":"0.00","credit":"102.50","currency":"NOK"}]'::jsonb,
+        '[]'::jsonb, false, 'INVESTMENTS', '${supportedFundPurchaseId}',
+        'fund-purchase-supported', '${ownerId}'
+      );
+      select investments.complete_share_purchase_v1(
+        '${fundPurchaseRequest}'::jsonb,
+        (select ledger_entry_id from supported_purchase_entry),
+        (select value from supported_purchase_prepared), '${ownerId}'
+      );
+
+      create temporary table supported_sale_prepared as
+      select investments.prepare_share_sale_v1(
+        pg_catalog.jsonb_set(
+          '${fundSaleRequest}'::jsonb, '{positionId}',
+          (select value -> 'positionId' from supported_purchase_prepared)
+        ), '${ownerId}'
+      ) as value;
+      create temporary table supported_sale_entry as
+      select * from ledger.post_entry(
+        'fund-sale-supported-0001', '${companyId}', 2026,
+        'SHARE_SALE', 'Fund sale: Norsk Kombinasjonsfond',
+        '[{"account":"1920","description":"Received in bank","debit":"117.50","credit":"0.00","currency":"NOK"},{"account":"1815","description":"Investment disposed","debit":"0.00","credit":"102.50","currency":"NOK"},{"account":"8071","description":"Investment gain","debit":"0.00","credit":"15.00","currency":"NOK"}]'::jsonb,
+        '[]'::jsonb, false, 'INVESTMENTS', '${supportedFundSaleId}',
+        'fund-sale-supported', '${ownerId}'
+      );
+      select investments.complete_share_sale_v1(
+        pg_catalog.jsonb_set(
+          '${fundSaleRequest}'::jsonb, '{positionId}',
+          (select value -> 'positionId' from supported_purchase_prepared)
+        ) || pg_catalog.jsonb_build_object(
+          'bookGainOrLoss', '15.00', 'taxGainOrLoss', '15.00',
+          'exemptGain', '10.50', 'taxableGain', '4.50',
+          'nonDeductibleLoss', '0.00', 'deductibleLoss', '0.00',
+          'calculationId', '${saleCalculationId}',
+          'lotCalculations', pg_catalog.jsonb_build_array(
+            pg_catalog.jsonb_build_object(
+              'lotId', (select value -> 'lotFacts' -> 0 ->> 'lotId' from supported_sale_prepared),
+              'allocationOrder', 1, 'allocatedNetProceeds', '117.50',
+              'taxGainOrLoss', '15.00',
+              'averageFundEquityRatioBasisPoints', '7000',
+              'exemptGain', '10.50', 'taxableGain', '4.50',
+              'nonDeductibleLoss', '0.00', 'deductibleLoss', '0.00'
+            )
+          )
+        ),
+        (select ledger_entry_id from supported_sale_entry), '${ownerId}'
+      );
+
+      create temporary table supported_distribution_prepared as
+      select investments.prepare_received_fund_distribution_v1(
+        pg_catalog.jsonb_set(
+          '${fundDistributionRequest}'::jsonb, '{positionId}',
+          (select value -> 'positionId' from supported_purchase_prepared)
+        ), '${ownerId}'
+      ) as value;
+      create temporary table supported_distribution_entry as
+      select * from ledger.post_entry(
+        'fund-distribution-supported-0001', '${companyId}', 2026,
+        'DIVIDEND_RECEIVED', 'Fund distribution: Norsk Kombinasjonsfond',
+        '[{"account":"1920","description":"Received in bank","debit":"100.00","credit":"0.00","currency":"NOK"},{"account":"8070","description":"Fund dividend","debit":"0.00","credit":"50.00","currency":"NOK"},{"account":"8050","description":"Fund interest","debit":"0.00","credit":"50.00","currency":"NOK"}]'::jsonb,
+        '[]'::jsonb, false, 'INVESTMENTS', '${supportedFundDistributionId}',
+        'fund-distribution-supported', '${ownerId}'
+      );
+      select investments.complete_received_fund_distribution_v1(
+        pg_catalog.jsonb_set(
+          '${fundDistributionRequest}'::jsonb, '{positionId}',
+          (select value -> 'positionId' from supported_purchase_prepared)
+        ) || pg_catalog.jsonb_build_object(
+          'dividendPortion', '50.00', 'interestPortion', '50.00',
+          'taxableAddBack', '1.50', 'totalTaxableIncome', '51.50',
+          'calculationId', '${distributionCalculationId}'
+        ),
+        (select ledger_entry_id from supported_distribution_entry), '${ownerId}'
+      );
+      commit;
+    `);
+    const supportedFundPositionActual = scalar(containerName, String.raw`
+      select position_id::text from investments.share_purchases
+      where action_id = '${supportedFundPurchaseId}';
+    `);
+    assert.equal(scalar(containerName, String.raw`
+      select position.kind || ':' || position.accounting_classification || ':' ||
+        position.share_count::text || ':' || position.cost_basis::text || ':' ||
+        position.tax_basis::text
+      from investments.positions position where position.id = '${supportedFundPositionActual}';
+    `), "norwegian_equity_fund:current_fund:0:0.00:0.00");
+    const fundDistributionReplayRequest = JSON.stringify({
+      ...JSON.parse(fundDistributionRequest), positionId: supportedFundPositionActual,
+    });
+    assert.equal(scalar(containerName, String.raw`
+      select sale.book_gain_or_loss::text || ':' || sale.tax_gain_or_loss::text || ':' ||
+        sale.exempt_gain::text || ':' || sale.taxable_gain::text || ':' ||
+        allocation.average_fund_equity_ratio_basis_points::text
+      from investments.share_sales sale
+      join investments.share_sale_allocations allocation
+        on allocation.sale_action_id = sale.action_id
+      where sale.action_id = '${supportedFundSaleId}';
+    `), "15.00:15.00:10.50:4.50:7000.00");
+    assert.equal(scalar(containerName, String.raw`
+      select dividend_portion::text || ':' || interest_portion::text || ':' ||
+        taxable_add_back::text || ':' || total_taxable_income::text
+      from investments.received_fund_distributions
+      where action_id = '${supportedFundDistributionId}';
+    `), "50.00:50.00:1.50:51.50");
+    assert.equal(scalar(containerName, String.raw`
+      set role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', false);
+      select (investments.get_received_fund_distribution_replay_v1(
+        '${fundDistributionReplayRequest}'::jsonb, '${ownerId}'
+      ) ->> 'replayed')::text;
+    `), "true");
+
+    const replacementFundDistribution = {
+      companyId, incomeYear: 2026, actionId: correctedFundDistributionId,
+      idempotencyKey: "fund-distribution-replacement-0001",
+      correlationId: "fund-distribution-replacement",
+      positionId: supportedFundPositionActual,
+      fundName: "Norsk Kombinasjonsfond", entitlementDate: "2026-05-01",
+      paidDate: "2026-05-15", grossAmount: "120.00",
+      openingFundEquityRatioBasisPoints: 5000,
+      fundTaxStatementReference: "provider-tax-statement-2026-r4",
+      evidenceMode: "manual_fallback",
+      evidenceReference: "corrected-fund-distribution-note",
+      ownerAttested: true, bankTransactionId: null, documentId: null,
+      documentStatus: "missing_accepted_warning",
+    };
+    const replacementFundDistributionRequest = JSON.stringify({
+      ...replacementFundDistribution,
+      evidenceDigest,
+    });
+    const fundDistributionCorrectionRequest = JSON.stringify({
+      companyId, incomeYear: 2026,
+      correctionId: fundDistributionCorrectionId,
+      idempotencyKey: "fund-distribution-correction-0001",
+      correlationId: "fund-distribution-correction",
+      originalActionId: supportedFundDistributionId,
+      originalActivityKind: "fund_distribution_received",
+      replacementActionId: correctedFundDistributionId,
+      replacementActivityKind: "fund_distribution_received",
+      correctionDate: "2026-08-31",
+      reason: "Correct gross fund distribution amount",
+      evidenceMode: "manual_fallback",
+      evidenceReference: "fund-distribution-correction-evidence",
+      ownerAttested: true, bankTransactionId: null, documentId: null,
+      documentStatus: "missing_accepted_warning",
+      evidenceDigest,
+      replacement: replacementFundDistribution,
+    });
+    const correctionResult = JSON.parse(scalar(containerName, String.raw`
+      begin;
+      set local role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', true);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', true);
+      create temporary table supported_correction_prepared as
+      select investments.prepare_correction_v1(
+        '${fundDistributionCorrectionRequest}'::jsonb, '${ownerId}'
+      ) as value;
+      create temporary table replacement_distribution_prepared as
+      select investments.prepare_received_fund_distribution_v1(
+        '${replacementFundDistributionRequest}'::jsonb, '${ownerId}'
+      ) as value;
+      create temporary table replacement_distribution_entry as
+      select * from ledger.post_entry(
+        'fund-distribution-replacement-0001', '${companyId}', 2026,
+        'DIVIDEND_RECEIVED', 'Fund distribution: Norsk Kombinasjonsfond',
+        '[{"account":"1920","description":"Received in bank","debit":"120.00","credit":"0.00","currency":"NOK"},{"account":"8070","description":"Fund dividend","debit":"0.00","credit":"60.00","currency":"NOK"},{"account":"8050","description":"Fund interest","debit":"0.00","credit":"60.00","currency":"NOK"}]'::jsonb,
+        '[]'::jsonb, false, 'INVESTMENTS', '${correctedFundDistributionId}',
+        'fund-distribution-replacement', '${ownerId}'
+      );
+      select investments.complete_received_fund_distribution_v1(
+        '${replacementFundDistributionRequest}'::jsonb || pg_catalog.jsonb_build_object(
+          'dividendPortion', '60.00', 'interestPortion', '60.00',
+          'taxableAddBack', '1.80', 'totalTaxableIncome', '61.80',
+          'calculationId', '${distributionCalculationId}'
+        ),
+        (select ledger_entry_id from replacement_distribution_entry), '${ownerId}'
+      );
+      create temporary table supported_correction_link as
+      select ledger.link_investment_correction_v1(
+        '${companyId}', 2026,
+        ((select value from supported_correction_prepared) ->> 'originalAccountingEntryId')::uuid,
+        (select ledger_entry_id from replacement_distribution_entry),
+        '${supportedFundDistributionId}', '${correctedFundDistributionId}',
+        'Correct gross fund distribution amount',
+        'fund-distribution-correction', date '2026-08-31', '${ownerId}'
+      ) as reversal_entry_id;
+      select investments.complete_correction_v1(
+        '${fundDistributionCorrectionRequest}'::jsonb,
+        ((select value from supported_correction_prepared) ->> 'originalAccountingEntryId')::uuid,
+        (select ledger_entry_id from replacement_distribution_entry),
+        (select reversal_entry_id from supported_correction_link), '${ownerId}'
+      )::text;
+      commit;
+    `));
+    assert.equal(correctionResult.correctionId, fundDistributionCorrectionId);
+    assert.equal(correctionResult.originalActionId, supportedFundDistributionId);
+    assert.equal(correctionResult.replacementActionId, correctedFundDistributionId);
+    assert.equal(scalar(containerName, String.raw`
+      with correction_entries as (
+        select original_entry_id as entry_id from ledger.entry_corrections
+          where original_entry_id = (
+            select accounting_entry_id from investments.received_fund_distributions
+            where action_id = '${supportedFundDistributionId}'
+          )
+        union all
+        select reversal_entry_id from ledger.entry_corrections
+          where original_entry_id = (
+            select accounting_entry_id from investments.received_fund_distributions
+            where action_id = '${supportedFundDistributionId}'
+          )
+        union all
+        select replacement_entry_id from ledger.entry_corrections
+          where original_entry_id = (
+            select accounting_entry_id from investments.received_fund_distributions
+            where action_id = '${supportedFundDistributionId}'
+          )
+      ), totals as (
+        select line ->> 'account' as account,
+          sum((line ->> 'debit')::numeric - (line ->> 'credit')::numeric) as net
+        from ledger.entries entry
+        join correction_entries selected on selected.entry_id = entry.id
+        cross join lateral pg_catalog.jsonb_array_elements(entry.lines) line
+        group by line ->> 'account'
+      )
+      select pg_catalog.string_agg(account || ':' || net::text, ',' order by account)
+      from totals;
+    `), "1920:120.00,8050:-60.00,8070:-60.00");
+    assert.equal(scalar(containerName, String.raw`
+      set role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', false);
+      select (investments.get_correction_replay_v1(
+        '${fundDistributionCorrectionRequest}'::jsonb, '${ownerId}'
+      ) ->> 'replayed')::text;
+    `), "true");
+
+    const failedSaleCorrectionRequest = JSON.stringify({
+      companyId, incomeYear: 2026, correctionId: failedSaleCorrectionId,
+      idempotencyKey: "failed-sale-correction-0001",
+      correlationId: "failed-sale-correction",
+      originalActionId: supportedFundSaleId,
+      originalActivityKind: "share_sale",
+      replacementActionId: failedSaleReplacementId,
+      replacementActivityKind: "share_sale",
+      correctionDate: "2026-08-31", reason: "Deliberate rollback rehearsal",
+      evidenceMode: "manual_fallback", evidenceReference: "rollback-evidence",
+      ownerAttested: true, bankTransactionId: null, documentId: null,
+      documentStatus: "missing_accepted_warning", evidenceDigest,
+      replacement: { actionId: failedSaleReplacementId },
+    });
+    assert.equal(scalar(containerName, String.raw`
+      begin;
+      set local role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', true);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${ownerId}","aal":"aal2"}', true);
+      do $forced_failure$
+      begin
+        begin
+          perform investments.prepare_correction_v1(
+            '${failedSaleCorrectionRequest}'::jsonb, '${ownerId}'
+          );
+          raise exception 'forced_correction_failure';
+        exception when others then
+          if sqlerrm <> 'forced_correction_failure' then raise; end if;
+        end;
+      end
+      $forced_failure$;
+      commit;
+      select position.share_count::text || ':' || position.cost_basis::text || ':' ||
+        position.tax_basis::text || ':' || lot.remaining_share_count::text || ':' ||
+        lot.remaining_cost_basis::text || ':' ||
+        (select count(*) from investments.corrections
+          where correction_id = '${failedSaleCorrectionId}')::text
+      from investments.positions position
+      join investments.acquisition_lots lot on lot.position_id = position.id
+      where position.id = '${supportedFundPositionActual}';
+    `), "0:0.00:0.00:0:0.00:0");
+    assert.equal(scalar(containerName, String.raw`
+      set role investments_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${outsiderId}', false);
+      select pg_catalog.set_config('talli.verified_actor_claims', '{"sub":"${outsiderId}","aal":"aal2"}', false);
+      select
+        (select count(*) from investments.received_fund_distributions)::text || ':' ||
+        (select count(*) from investments.corrections)::text;
+    `), "0:0");
+
+    const refusedRollback = docker([
+      "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
+      "-U", "postgres", "-d", "talli_test", "--file",
+      `/repo/supabase/rollback/${investmentsSupportedPatternsMigration}`,
+    ]);
+    assert.notEqual(refusedRollback.status, 0, "rollback must fail closed after #190 data exists");
+    assert.match(
+      `${refusedRollback.stdout}\n${refusedRollback.stderr}`,
+      /investments_supported_patterns_rollback_has_new_data/u,
+    );
+    assert.equal(scalar(containerName, String.raw`
+      select (select count(*) from investments.received_fund_distributions)::text || ':' ||
+        (select count(*) from investments.corrections)::text;
+    `), "2:1");
   } finally {
     docker(["rm", "--force", containerName]);
   }

@@ -15,6 +15,7 @@ from talli_backend.modules.ledger.public import (
     LedgerPage,
     LedgerSourceCapability,
     LedgerSourceRecordId,
+    InvestmentClassification,
     LockPeriodCommand,
     PeriodLock,
     PeriodLockId,
@@ -23,6 +24,7 @@ from talli_backend.modules.ledger.public import (
     PostBankSuggestionOutcomeCommand,
     PostedLedgerEntry,
     PostReceivedDividendCommand,
+    PostReceivedFundDistributionCommand,
     PostInvestmentPurchaseCommand,
     PostInvestmentSaleCommand,
     PostManualJournalCommand,
@@ -285,12 +287,34 @@ def test_received_dividend_translates_investment_facts_without_source_lines() ->
     )
 
 
+def test_received_fund_distribution_posts_documented_income_split() -> None:
+    persistence = LedgerPersistenceStub()
+    command = PostReceivedFundDistributionCommand(
+        **metadata(),
+        action_id=LedgerSourceRecordId("73000000-0000-0000-0000-000000000007"),
+        fund_name=" Norsk Kombinasjonsfond ",
+        gross_amount=Money.nok("100.00"),
+        dividend_portion=Money.nok("50.00"),
+        interest_portion=Money.nok("50.00"),
+    )
+
+    asyncio.run(LedgerService(persistence).post_received_fund_distribution(command))
+
+    assert persistence.postings[0]["source_record_id"] == command.action_id
+    assert persistence.postings[0]["lines"] == (
+        LedgerLine("1920", "Fund distribution received in bank", Money.nok("100"), Money.nok("0")),
+        LedgerLine("8070", "Fund dividend from Norsk Kombinasjonsfond", Money.nok("0"), Money.nok("50")),
+        LedgerLine("8050", "Fund interest income from Norsk Kombinasjonsfond", Money.nok("0"), Money.nok("50")),
+    )
+
+
 def test_share_purchase_translates_authoritative_investment_result() -> None:
     persistence = LedgerPersistenceStub()
     command = PostInvestmentPurchaseCommand(
         **metadata(),
         action_id=LedgerSourceRecordId("74000000-0000-0000-0000-000000000007"),
         investment_name=" Eksempel Holding AS ",
+        classification=InvestmentClassification.OTHER_LONG_TERM,
         purchase_amount=Money.nok("100000"),
     )
 
@@ -301,7 +325,7 @@ def test_share_purchase_translates_authoritative_investment_result() -> None:
     assert persistence.postings[0]["source_record_id"] == command.action_id
     assert persistence.postings[0]["memo"] == "Share purchase: Eksempel Holding AS"
     assert persistence.postings[0]["lines"] == (
-        LedgerLine("1800", "Investment in Eksempel Holding AS", Money.nok("100000"), Money.nok("0")),
+        LedgerLine("1350", "Investment in Eksempel Holding AS", Money.nok("100000"), Money.nok("0")),
         LedgerLine("1920", "Paid from bank", Money.nok("0"), Money.nok("100000")),
     )
 
@@ -332,6 +356,7 @@ def test_share_sale_uses_provider_authoritative_fifo_cost_result(
         **metadata(),
         action_id=LedgerSourceRecordId("76000000-0000-0000-0000-000000000007"),
         investment_name="Eksempel Holding AS",
+        classification=InvestmentClassification.OTHER_LONG_TERM,
         proceeds=proceeds,
         fifo_cost_basis_reduction=fifo_cost,
     )
@@ -340,7 +365,7 @@ def test_share_sale_uses_provider_authoritative_fifo_cost_result(
 
     expected = (
         LedgerLine("1920", "Sale proceeds received in bank", proceeds, Money.nok("0")),
-        LedgerLine("1800", "Cost basis reduction: Eksempel Holding AS", Money.nok("0"), fifo_cost),
+        LedgerLine("1350", "Cost basis reduction: Eksempel Holding AS", Money.nok("0"), fifo_cost),
     ) + (() if result_line is None else (result_line,))
     assert persistence.postings[0]["entry_kind"] is LedgerEntryKind.SHARE_SALE
     assert persistence.postings[0]["source_capability"] is LedgerSourceCapability.INVESTMENTS

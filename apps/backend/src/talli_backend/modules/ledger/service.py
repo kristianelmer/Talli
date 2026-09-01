@@ -34,6 +34,7 @@ from talli_backend.modules.ledger.public import (
     GroupContributionRelationship,
     IntercompanyLoanPerspective,
     IntercompanyLoanRelationship,
+    InvestmentClassification,
     InvestmentDividendFacts,
     InvestmentDividendPhase,
     LedgerCursor,
@@ -63,6 +64,7 @@ from talli_backend.modules.ledger.public import (
     PostBankSuggestionOutcomeCommand,
     PostedLedgerEntry,
     PostReceivedDividendCommand,
+    PostReceivedFundDistributionCommand,
     PostInvestmentPurchaseCommand,
     PostInvestmentSaleCommand,
     PostManualJournalCommand,
@@ -105,6 +107,14 @@ _ADMINISTRATIVE_COST_ACCOUNTS = {
     AdministrativeCostCategory.PUBLIC_FEE: "7790",
     AdministrativeCostCategory.LEGAL_ADVISORY: "6720",
     AdministrativeCostCategory.OTHER_ADMIN_COST: "7795",
+}
+
+_INVESTMENT_ACCOUNTS = {
+    InvestmentClassification.SUBSIDIARY: "1300",
+    InvestmentClassification.ASSOCIATE: "1310",
+    InvestmentClassification.OTHER_LONG_TERM: "1350",
+    InvestmentClassification.CURRENT_LISTED_SHARE: "1810",
+    InvestmentClassification.CURRENT_FUND: "1815",
 }
 
 _OPENING_BALANCE_RULES = {
@@ -1713,13 +1723,59 @@ class LedgerService:
             source_record_id=command.action_id,
         )
 
+    async def post_received_fund_distribution(
+        self, command: PostReceivedFundDistributionCommand
+    ) -> PostedLedgerEntry:
+        _positive(command.gross_amount, "LEDGER_INVALID_INPUT")
+        if (
+            command.dividend_portion.amount < 0
+            or command.interest_portion.amount < 0
+            or command.dividend_portion.amount + command.interest_portion.amount
+            != command.gross_amount.amount
+        ):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        lines = [
+            LedgerLine(
+                "1920", "Fund distribution received in bank", command.gross_amount, _ZERO
+            )
+        ]
+        if command.dividend_portion.amount:
+            lines.append(LedgerLine(
+                "8070",
+                f"Fund dividend from {command.fund_name}",
+                _ZERO,
+                command.dividend_portion,
+            ))
+        if command.interest_portion.amount:
+            lines.append(LedgerLine(
+                "8050",
+                f"Fund interest income from {command.fund_name}",
+                _ZERO,
+                command.interest_portion,
+            ))
+        balanced_lines = tuple(lines)
+        _balanced(balanced_lines)
+        return await self._persistence.post_entry(
+            command,
+            entry_kind=LedgerEntryKind.DIVIDEND_RECEIVED,
+            memo=f"Fund distribution received from {command.fund_name}",
+            lines=balanced_lines,
+            risk_flags=(),
+            warning_accepted=False,
+            source_capability=LedgerSourceCapability.INVESTMENTS,
+            source_record_id=command.action_id,
+        )
+
     async def post_investment_purchase(
         self, command: PostInvestmentPurchaseCommand
     ) -> PostedLedgerEntry:
         _positive(command.purchase_amount, "LEDGER_INVALID_INPUT")
+        account = _INVESTMENT_ACCOUNTS.get(command.classification)
+        if account is None:
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
         lines = (
             LedgerLine(
-                "1800",
+                account,
                 f"Investment in {command.investment_name}",
                 command.purchase_amount,
                 _ZERO,
@@ -1746,6 +1802,9 @@ class LedgerService:
             raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
         if command.proceeds.currency != command.fifo_cost_basis_reduction.currency:
             raise LedgerError.invalid_input("LEDGER_CURRENCY_MISMATCH")
+        account = _INVESTMENT_ACCOUNTS.get(command.classification)
+        if account is None:
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
         gain_or_loss = (
             command.proceeds.amount - command.fifo_cost_basis_reduction.amount
         )
@@ -1754,7 +1813,7 @@ class LedgerService:
                 "1920", "Sale proceeds received in bank", command.proceeds, _ZERO
             ),
             LedgerLine(
-                "1800",
+                account,
                 f"Cost basis reduction: {command.investment_name}",
                 _ZERO,
                 command.fifo_cost_basis_reduction,

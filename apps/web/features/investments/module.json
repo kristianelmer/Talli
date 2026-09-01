@@ -4,12 +4,12 @@
   "name": "investments",
   "path": "apps/web/features/investments",
   "owner": "web:investments",
-  "purpose": "Carry investment purchase, sale, and received-dividend commands plus canonical position, lot, FIFO-allocation, and activity queries through the generated API client without recreating investment or accounting policy.",
+  "purpose": "Carry domestic investment purchase, sale, dividend, fund-distribution, and correction commands plus canonical position, lot, FIFU-allocation, activity, and correction queries through the generated API client without recreating policy.",
   "documentation": "apps/web/features/investments/MODULE.md",
   "publicEntryPoint": "@/features/investments",
   "publicImportPaths": ["@/features/investments", "apps/web/features/investments", "apps/web/features/investments/index.ts"],
   "ownedRoutes": ["/workspace", "/actions/[type]", "/year-end"],
-  "apiOperations": ["investmentsListAcquisitionLots", "investmentsListActivity", "investmentsListPositions", "investmentsListShareSaleAllocations", "investmentsRecordReceivedDividend", "investmentsRecordSharePurchase", "investmentsRecordShareSale"],
+  "apiOperations": ["investmentsCorrectInvestment", "investmentsListAcquisitionLots", "investmentsListActivity", "investmentsListCorrections", "investmentsListPositions", "investmentsListShareSaleAllocations", "investmentsRecordReceivedDividend", "investmentsRecordReceivedFundDistribution", "investmentsRecordSharePurchase", "investmentsRecordShareSale"],
   "dependencies": [],
   "allowedImports": ["#backend-configuration", "@talli/talli-api-client"],
   "cachePolicy": { "default": "no-store", "allowed": [] },
@@ -21,6 +21,8 @@
   ],
   "tests": {
     "feature": "apps/web/tests/investments-presentation.test.mjs",
+    "supportedPatterns": "tests/investments_supported_pattern_evidence.test.mjs",
+    "crossOutput": "tests/investments_cross_output_reconciliation.test.mjs",
     "stageExit": "tests/investments_database_runtime.test.mjs",
     "architecture": "tests/architecture_foundation.test.mjs"
   },

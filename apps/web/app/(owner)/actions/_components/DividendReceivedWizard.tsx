@@ -7,7 +7,11 @@ import { Banner, SubmitButton } from "../../../components/ui";
 import { ownerCopy } from "../../../lib/copy";
 import { SelectField, TextField } from "./fields";
 
-export type DividendInvestment = { id: string; name: string };
+export type DividendInvestment = {
+  id: string;
+  name: string;
+  kind: "norwegian_private_company" | "norwegian_listed_share" | "norwegian_equity_fund";
+};
 
 type Props = {
   companyId: string;
@@ -29,13 +33,25 @@ export function DividendReceivedWizard({
   const [declaredDate, setDeclaredDate] = useState("");
   const [paidDate, setPaidDate] = useState("");
   const [grossAmount, setGrossAmount] = useState("");
+  const [groupException, setGroupException] = useState(false);
+  const [ownershipBasisPoints, setOwnershipBasisPoints] = useState("");
+  const [votingBasisPoints, setVotingBasisPoints] = useState("");
+  const [groupEvidence, setGroupEvidence] = useState("");
+  const [evidenceReference, setEvidenceReference] = useState("");
   const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
+  const selectedInvestment = investments.find((investment) => investment.id === positionId);
+  const groupExceptionAvailable = selectedInvestment?.kind === "norwegian_private_company";
   const ready =
     positionId.trim() !== "" &&
     payingCompanyName.trim() !== "" &&
     declaredDate.trim() !== "" &&
     paidDate.trim() !== "" &&
-    grossAmount.trim() !== "";
+    grossAmount.trim() !== "" &&
+    evidenceReference.trim() !== "" &&
+    (!groupExceptionAvailable || !groupException || (
+      ownershipBasisPoints.trim() !== "" && votingBasisPoints.trim() !== ""
+      && groupEvidence.trim() !== ""
+    ));
 
   if (investments.length === 0) {
     return <Banner variant="info">{c.noInvestments}</Banner>;
@@ -54,7 +70,15 @@ export function DividendReceivedWizard({
         label={c.investmentLabel}
         name="positionId"
         value={positionId}
-        onChange={setPositionId}
+        onChange={(value) => {
+          setPositionId(value);
+          if (investments.find((investment) => investment.id === value)?.kind !== "norwegian_private_company") {
+            setGroupException(false);
+            setOwnershipBasisPoints("");
+            setVotingBasisPoints("");
+            setGroupEvidence("");
+          }
+        }}
         required
       >
         <option value="" disabled>
@@ -73,6 +97,56 @@ export function DividendReceivedWizard({
         onChange={setPayingCompanyName}
         required
       />
+      <TextField
+        label="Utbytte- eller bilagsreferanse"
+        name="evidenceReference"
+        value={evidenceReference}
+        onChange={setEvidenceReference}
+        required
+      />
+      {groupExceptionAvailable ? (
+        <SelectField
+          label="Konsernunntak fra 3 %-regelen"
+          name="groupExceptionClaimed"
+          value={groupException ? "true" : "false"}
+          onChange={(value) => setGroupException(value === "true")}
+          required
+        >
+          <option value="false">Nei</option>
+          <option value="true">Ja, over 90 % av aksjer og stemmer</option>
+        </SelectField>
+      ) : (
+        <input type="hidden" name="groupExceptionClaimed" value="false" />
+      )}
+      {groupExceptionAvailable && groupException ? (
+        <>
+          <div className="fieldRow">
+            <TextField
+              label="Eierandel ved årsslutt (basispoeng)"
+              name="yearEndOwnershipBasisPoints"
+              value={ownershipBasisPoints}
+              onChange={setOwnershipBasisPoints}
+              inputMode="numeric"
+              required
+            />
+            <TextField
+              label="Stemmeandel ved årsslutt (basispoeng)"
+              name="yearEndVotingBasisPoints"
+              value={votingBasisPoints}
+              onChange={setVotingBasisPoints}
+              inputMode="numeric"
+              required
+            />
+          </div>
+          <TextField
+            label="Referanse til konserndokumentasjon"
+            name="groupEvidenceReference"
+            value={groupEvidence}
+            onChange={setGroupEvidence}
+            required
+          />
+        </>
+      ) : null}
       <div className="fieldRow">
         <TextField
           label={c.declaredLabel}

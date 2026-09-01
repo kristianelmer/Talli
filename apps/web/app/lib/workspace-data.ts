@@ -36,6 +36,8 @@ import {
   listPresentedAcquisitionLots,
   listPresentedInvestmentPositions,
   listPresentedInvestmentActivity,
+  listPresentedInvestmentCorrections,
+  effectiveInvestmentActivity,
   summarizeReceivedDividendAnnualImpact,
 } from "../../features/investments";
 import { getCurrentSessionAccessToken } from "./supabase/auth-session";
@@ -95,15 +97,28 @@ export async function loadWorkspaceData() {
   const { acceptances: bankSuggestionAcceptances } = user
     ? await listBankSuggestionAcceptances(companies.map((company) => company.id))
     : { acceptances: [] };
-  const { actions } = accessToken
-    ? await listPresentedInvestmentActivity(accessToken, companies.map((company) => company.id))
-    : { actions: [] };
-  const { positions } = accessToken
-    ? await listPresentedInvestmentPositions(accessToken, companies.map((company) => company.id))
-    : { positions: [] };
-  const { lots: investmentLots } = accessToken
-    ? await listPresentedAcquisitionLots(accessToken, companies.map((company) => company.id))
-    : { lots: [] };
+  const companyIds = companies.map((company) => company.id);
+  const [activityResult, positionsResult, lotsResult, correctionsResult] = accessToken
+    ? await Promise.all([
+        listPresentedInvestmentActivity(accessToken, companyIds),
+        listPresentedInvestmentPositions(accessToken, companyIds),
+        listPresentedAcquisitionLots(accessToken, companyIds),
+        listPresentedInvestmentCorrections(accessToken, companyIds),
+      ])
+    : [
+        { actions: [], error: null },
+        { positions: [], error: null },
+        { lots: [], error: null },
+        { corrections: [], error: null },
+      ];
+  const investmentActivityHistory = activityResult.actions;
+  const positions = positionsResult.positions;
+  const investmentLots = lotsResult.lots;
+  const investmentCorrections = correctionsResult.corrections;
+  const actions = effectiveInvestmentActivity(
+    investmentActivityHistory,
+    investmentCorrections,
+  );
   const { entries } = user ? await listLedgerEntries(companies.map((company) => company.id)) : { entries: [] };
   const { locks } = user ? await listPeriodLocks(companies.map((company) => company.id)) : { locks: [] };
   const unmatchedTransactions = transactions.filter(
@@ -201,8 +216,10 @@ export async function loadWorkspaceData() {
     transactions,
     bankSuggestionAcceptances,
     actions,
+    investmentActivityHistory,
     positions,
     investmentLots,
+    investmentCorrections,
     entries,
     locks,
     primaryCompanyId,

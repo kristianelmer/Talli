@@ -2458,7 +2458,16 @@ test(
     assert.ok(outsiderLoanActionInsertError);
 
     const taxEstimate = estimateAnnualTax({
-      ledgerEntries: [{ entry_type: "admin_cost", lines: adminCostEntry.lines }],
+      ledgerEntries: [
+        { entry_type: "admin_cost", lines: adminCostEntry.lines },
+        {
+          entry_type: "interest_income",
+          lines: [
+            { account: "1920", description: "Bankrente", debit: 100, credit: 0 },
+            { account: "8050", description: "Renteinntekt", debit: 0, credit: 100 },
+          ],
+        },
+      ],
       holdingActions: [{
         action_type: "dividend_received",
         payload: { gross_amount: 1000, taxable_add_back: 30 },

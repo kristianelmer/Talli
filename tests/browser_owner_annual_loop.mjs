@@ -282,6 +282,19 @@ test("browser owner annual loop uses persisted state and survives reload", async
 
     await expectText(page, "sim-rf1086-");
     await expectText(page, "Eksporter arkiv");
+
+    await seedSupportedInvestmentYear(database, {
+      companyId,
+      ownerId,
+      orgNumber,
+    });
+    await exerciseMobileInvestmentCorrection({
+      companyId,
+      database,
+      page,
+      baseUrl,
+    });
+
   } catch (error) {
     const diagnostics = new Error(
       `${error instanceof Error ? error.message : String(error)}\n`
@@ -293,6 +306,190 @@ test("browser owner annual loop uses persisted state and survives reload", async
     throw diagnostics;
   }
 });
+
+async function seedSupportedInvestmentYear(
+  database,
+  { companyId, ownerId, orgNumber },
+) {
+  const eligibilityAssessmentId = randomUUID();
+  const eligibilityOperationId = randomUUID();
+  const companyYearAdmissionId = randomUUID();
+  const companyYearAcceptanceId = randomUUID();
+  const capabilityManifestSha256 =
+    "9f91a66d0e2cb560d880b6b290c707bc45a8d117a4175780c75e2d1ccdb694de";
+  await database.query(
+    `insert into public.company_eligibility_assessments (
+      id, company_id, accounting_year, operation_id, trigger, decision,
+      capability_manifest, capability_manifest_version,
+      capability_manifest_sha256, public_facts, public_facts_sha256,
+      answers, answers_sha256, reason_codes, reason_explanations,
+      next_step_code, next_step, consequential_operations_allowed,
+      archive_export_available, evaluator_version, assessed_by, assessed_at
+    ) values (
+      $1, $2, 2026, $3, 'initial_admission', 'supported', '{}'::jsonb,
+      '2026.1', $4, '{}'::jsonb, repeat('a', 64),
+      '{"supported":true}'::jsonb, repeat('b', 64), '{}'::text[],
+      '{}'::text[], 'CREATE_ACCOUNT_AND_ACCEPT', 'Browser fixture admission.',
+      true, true, '2026.1', $5, now()
+    )`,
+    [
+      eligibilityAssessmentId,
+      companyId,
+      eligibilityOperationId,
+      capabilityManifestSha256,
+      ownerId,
+    ],
+  );
+  await database.query(
+    `insert into public.company_year_admissions (
+      id, company_id, accounting_year, eligibility_assessment_id,
+      capability_manifest, capability_manifest_version,
+      capability_manifest_sha256, company_year_promise,
+      company_year_promise_sha256, reconstruct_from, admitted_by, admitted_at
+    ) values (
+      $1, $2, 2026, $3, '{}'::jsonb, '2026.1', $4, '{}'::jsonb,
+      repeat('c', 64), date '2026-01-01', $5, now()
+    )`,
+    [
+      companyYearAdmissionId,
+      companyId,
+      eligibilityAssessmentId,
+      capabilityManifestSha256,
+      ownerId,
+    ],
+  );
+  await database.query(
+    `insert into public.company_year_acceptances (
+      id, company_year_admission_id, company_id, accounting_year, accepted_by,
+      customer_legal_name, customer_org_number,
+      business_terms_version, business_terms_effective_date,
+      business_terms_path, business_terms_sha256,
+      dpa_version, dpa_effective_date, dpa_path, dpa_sha256,
+      privacy_notice_version, privacy_notice_effective_date,
+      privacy_notice_path, privacy_notice_sha256,
+      capability_manifest_version, capability_manifest_sha256,
+      authority_statement_version, acceptance_method, accepted_at
+    ) values (
+      $1, $2, $3, 2026, $4, 'Talli Browser Holding AS', $5,
+      '2026-08-30', date '2026-08-30', '/vilkar',
+      'afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04',
+      '2026-08-30', date '2026-08-30', '/databehandleravtale',
+      '1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a',
+      '2026-08-30', date '2026-08-30', '/personvern',
+      '041a65be9f020c037bd65b7097e04afdbeb2c944ef45d7bef3dd380e92f907de',
+      '2026.1', $6, 'authority-v1', 'in_app_clickwrap', now()
+    )`,
+    [
+      companyYearAcceptanceId,
+      companyYearAdmissionId,
+      companyId,
+      ownerId,
+      orgNumber,
+      capabilityManifestSha256,
+    ],
+  );
+}
+
+async function exerciseMobileInvestmentCorrection({
+  companyId,
+  database,
+  page,
+  baseUrl,
+}) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${baseUrl}/actions/share-purchase`);
+  await page.waitForLoadState("networkidle");
+  await page.getByLabel("Type investering").selectOption("norwegian_equity_fund");
+  await page.getByLabel("Selskapet du kjøper i").fill("Talli Browser Fond");
+  await page.getByLabel("ISIN").fill("NO0000000001");
+  await page.getByLabel("Kjøpsdato").fill("2026-03-01");
+  await page.getByLabel("Antall aksjer").fill("100");
+  await page.getByLabel("Kjøpsbeløp (kr)").fill("10000.00");
+  await page.getByLabel("Transaksjonskostnader (kr)").fill("25.00");
+  await page.getByLabel("Aksjeandel ved kjøp (basispoeng)").fill("6500");
+  await page
+    .getByLabel("Referanse til fondets skatteoppgave")
+    .fill("browser-fund-tax-2026");
+  await page
+    .getByLabel("Bilags- eller meglerreferanse")
+    .fill("browser-broker-purchase-1");
+  const originalActionId = await page
+    .locator('input[name="operationId"]')
+    .inputValue();
+  assert.equal(await page.evaluate(() => document.body.scrollWidth <= innerWidth), true);
+  await page.getByRole("button", { name: "Bekreft og bokfør" }).click();
+  await page.waitForLoadState("networkidle");
+  await expectText(page, "Handlingen er bokført");
+
+  await page.goto(`${baseUrl}/actions/fund-distribution`);
+  await page.waitForLoadState("networkidle");
+  await page.getByLabel("Fondsposisjon").selectOption({
+    label: "Talli Browser Fond",
+  });
+  await page.getByLabel("Rettighetsdato").fill("2026-06-01");
+  await page.getByLabel("Utbetalingsdato").fill("2026-06-15");
+  await page.getByLabel("Brutto utdeling (kr)").fill("1000.00");
+  await page
+    .getByLabel("Aksjeandel ved årets start (basispoeng)")
+    .fill("6500");
+  await page
+    .getByLabel("Referanse til fondets skatteoppgave")
+    .fill("browser-fund-tax-2026");
+  await page
+    .getByLabel("Utbetalings- eller bilagsreferanse")
+    .fill("browser-fund-payment-1");
+  await page.getByRole("button", { name: "Poster fondsutdeling" }).click();
+  await page.waitForLoadState("networkidle");
+  await expectText(page, "Handlingen er bokført");
+
+  await page.goto(`${baseUrl}/actions/investment-correction`);
+  await page.waitForLoadState("networkidle");
+  await page.getByLabel("Hendelse som skal korrigeres").selectOption({
+    label: "2026-03-01 · Talli Browser Fond",
+  });
+  const preservedName = page.getByLabel("Investeringsnavn");
+  assert.equal(await preservedName.inputValue(), "Talli Browser Fond");
+  assert.equal(await preservedName.getAttribute("readonly"), "");
+  await page.getByLabel("Kjøpsbeløp (kr)").fill("12000.00");
+  await page.getByLabel("Korrigeringsdato").fill("2026-12-30");
+  await page.getByLabel("Begrunnelse").fill("Korrigert kjøpsbeløp mot meglernota");
+  await page
+    .getByLabel("Dokumentasjon for korrigeringen")
+    .fill("browser-correction-note-1");
+  await page
+    .getByLabel("Dokumentasjon for nye fakta")
+    .fill("browser-broker-purchase-2");
+  const replacementActionId = await page
+    .locator('input[name="replacementActionId"]')
+    .inputValue();
+  assert.equal(await page.evaluate(() => document.body.scrollWidth <= innerWidth), true);
+  await page.getByRole("button", { name: "Reverser og erstatt" }).click();
+  await page.waitForLoadState("networkidle");
+  await expectText(page, "Handlingen er bokført");
+  await page.reload();
+  await page.waitForLoadState("networkidle");
+  assert.equal(await page.evaluate(() => document.body.scrollWidth <= innerWidth), true);
+
+  const persisted = await database.query(
+    `select
+       (select count(*)::integer from investments.share_purchases
+        where company_id = $1) as purchases,
+       (select count(*)::integer from investments.received_fund_distributions
+        where company_id = $1) as distributions,
+       (select count(*)::integer from investments.corrections
+        where company_id = $1) as corrections,
+       (select count(*)::integer from ledger.entries
+        where company_id = $1 and source_capability = 'INVESTMENTS'
+          and source_record_id in ($2, $3)) as replacement_entries`,
+    [companyId, originalActionId, replacementActionId],
+  );
+  assert.deepEqual(persisted.rows[0], {
+    purchases: 2,
+    distributions: 1,
+    corrections: 1,
+    replacement_entries: 2,
+  });
+}
 
 async function seedAnnualLoop(admin, database, ids, onCompanyCreated) {
   const { companyId, setupId, shareholderId, previewId, ownerId, orgNumber } =

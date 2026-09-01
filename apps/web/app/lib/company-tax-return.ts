@@ -32,18 +32,69 @@ export function buildCompanyTaxReturnPayload(input: {
   const authorityPartyNumber = input.companyPartyNumber ?? input.companyOrgNumber;
   const totals = ledgerTotals(input.ledgerEntries);
   const dividendActions = input.holdingActions.filter((action) => action.action_type === "dividend_received");
+  const fundDistributionActions = input.holdingActions.filter(
+    (action) => action.action_type === "fund_distribution_received",
+  );
   const shareSaleActions = input.holdingActions.filter((action) => action.action_type === "share_sale");
+  const classifiedDividendIncome = dividendActions.reduce(
+    (sum, action) => sum + amount(action, "gross_amount"),
+    0,
+  ) + fundDistributionActions.reduce(
+    (sum, action) => sum + amount(action, "dividend_portion"),
+    0,
+  );
   const dividendIncome = roundMoney(
-    dividendActions.reduce((sum, action) => sum + Number(action.payload.gross_amount ?? 0), 0) || totals.dividendAndGainIncome,
+    classifiedDividendIncome || (
+      dividendActions.length === 0
+        && fundDistributionActions.length === 0
+        && shareSaleActions.length === 0
+        ? totals.dividendAndGainIncome
+        : 0
+    ),
+  );
+  const bookShareSaleGain = roundMoney(
+    shareSaleActions.reduce(
+      (sum, action) => sum + Math.max(0, saleBookResult(action)),
+      0,
+    ),
+  );
+  const bookShareSaleLoss = roundMoney(
+    shareSaleActions.reduce(
+      (sum, action) => sum + Math.max(0, -saleBookResult(action)),
+      0,
+    ),
   );
   const exemptShareSaleGain = roundMoney(
-    shareSaleActions.reduce((sum, action) => sum + Math.max(0, Number(action.payload.gain_or_loss ?? 0)), 0),
+    shareSaleActions.reduce((sum, action) => sum + saleComponent(
+      action,
+      "exempt_gain",
+      Math.max(0, saleBookResult(action)),
+    ), 0),
+  );
+  const taxableShareSaleGain = roundMoney(
+    shareSaleActions.reduce(
+      (sum, action) => sum + saleComponent(action, "taxable_gain", 0),
+      0,
+    ),
   );
   const nonDeductibleShareSaleLoss = roundMoney(
-    shareSaleActions.reduce((sum, action) => sum + Math.max(0, -Number(action.payload.gain_or_loss ?? 0)), 0),
+    shareSaleActions.reduce((sum, action) => sum + saleComponent(
+      action,
+      "non_deductible_loss",
+      Math.max(0, -saleBookResult(action)),
+    ), 0),
+  );
+  const deductibleShareSaleLoss = roundMoney(
+    shareSaleActions.reduce(
+      (sum, action) => sum + saleComponent(action, "deductible_loss", 0),
+      0,
+    ),
   );
   const fritaksmetodenAddBack = roundMoney(
-    dividendActions.reduce((sum, action) => sum + Number(action.payload.taxable_add_back ?? 0), 0),
+    [...dividendActions, ...fundDistributionActions].reduce(
+      (sum, action) => sum + amount(action, "taxable_add_back"),
+      0,
+    ),
   );
   const accountingResultBeforeTax = roundMoney(
     totals.dividendAndGainIncome + totals.interestIncome - totals.adminCosts - totals.shareSaleLoss,
@@ -51,9 +102,11 @@ export function buildCompanyTaxReturnPayload(input: {
   const taxableBasis = roundMoney(
     accountingResultBeforeTax
       - dividendIncome
-      - exemptShareSaleGain
-      + nonDeductibleShareSaleLoss
-      + fritaksmetodenAddBack,
+      - bookShareSaleGain
+      + bookShareSaleLoss
+      + fritaksmetodenAddBack
+      + taxableShareSaleGain
+      - deductibleShareSaleLoss,
   );
   const noActivity = Boolean(input.annualData?.no_activity_confirmed);
   const feedback = companyTaxReturnPayloadFeedback(input);
@@ -61,8 +114,8 @@ export function buildCompanyTaxReturnPayload(input: {
     ...adminCostResultFields(totals.adminCostsByAccount),
     ...resultOccurrenceFields("resultatregnskap.finansinntekt.inntekt", 0, "8090", dividendIncome, "holding_actions.dividend_received"),
     ...resultOccurrenceFields("resultatregnskap.finansinntekt.inntekt", 1, "8050", totals.interestIncome, "ledger.8050"),
-    ...resultOccurrenceFields("resultatregnskap.finansinntekt.inntekt", 2, "8074", exemptShareSaleGain, "holding_actions.share_sale.gain_or_loss"),
-    ...resultOccurrenceFields("resultatregnskap.finanskostnad.kostnad", 0, "8174", nonDeductibleShareSaleLoss, "holding_actions.share_sale.gain_or_loss"),
+    ...resultOccurrenceFields("resultatregnskap.finansinntekt.inntekt", 2, "8074", bookShareSaleGain, "holding_actions.share_sale.book_gain_or_loss"),
+    ...resultOccurrenceFields("resultatregnskap.finanskostnad.kostnad", 0, "8174", bookShareSaleLoss, "holding_actions.share_sale.book_gain_or_loss"),
   ];
   const differenceFields = [
     ...permanentDifferenceFields(0, "tilbakefoeringAvInntektsfoertUtbytte", dividendIncome, "holding_actions.dividend_received.gross_amount"),
@@ -92,8 +145,12 @@ export function buildCompanyTaxReturnPayload(input: {
       adminCosts: totals.adminCosts,
       interestIncome: totals.interestIncome,
       dividendIncome,
+      bookShareSaleGain,
+      bookShareSaleLoss,
       exemptShareSaleGain,
+      taxableShareSaleGain,
       nonDeductibleShareSaleLoss,
+      deductibleShareSaleLoss,
       accountingResultBeforeTax,
       fritaksmetodenAddBack,
       taxableBasis,
@@ -107,7 +164,17 @@ export function buildCompanyTaxReturnPayload(input: {
       field("naeringsspesifikasjon", "naeringsspesifikasjon.partsreferanse", authorityPartyNumber, "current.skattemelding.partsnummer", "naeringsspesifikasjon_v6_ekstern.xsd"),
       field("naeringsspesifikasjon", "naeringsspesifikasjon.inntektsaar", input.incomeYear, "company.income_year", "naeringsspesifikasjon_v6_ekstern.xsd"),
       ...resultFields,
-      ...balanceOccurrenceFields("balanseregnskap.anleggsmiddel.balanseverdiForAnleggsmiddel.balanseverdi", 0, "1800", totals.investmentBalance, "ledger.1800"),
+      ...totals.investmentBalances.flatMap(({ account, amount }, index) =>
+        balanceOccurrenceFields(
+          account === "1810" || account === "1815"
+            ? "balanseregnskap.omloepsmiddel.balanseverdiForOmloepsmiddel.balanseverdi"
+            : "balanseregnskap.anleggsmiddel.balanseverdiForAnleggsmiddel.balanseverdi",
+          index,
+          account,
+          amount,
+          `ledger.${account}`,
+        ),
+      ),
       ...balanceOccurrenceFields("balanseregnskap.omloepsmiddel.balanseverdiForOmloepsmiddel.balanseverdi", 0, "1920", totals.bankBalance, "ledger.1920"),
       ...balanceOccurrenceFields("balanseregnskap.gjeldOgEgenkapital.kortsiktigGjeld.gjeld", 0, "2990", totals.shortTermDebt, "ledger.2255_or_2990"),
       ...balanceOccurrenceFields("balanseregnskap.gjeldOgEgenkapital.egenkapital.kapital", 0, "2000", totals.shareCapital, "ledger.2000"),
@@ -164,7 +231,9 @@ export function companyTaxReturnPayloadFeedback(input: {
   }
   if (
     input.annualData.answers.bought_or_sold_shares
-    || input.holdingActions.some((action) => action.action_type === "share_purchase" || action.action_type === "share_sale")
+    || input.holdingActions.some((action) => (
+      action.action_type === "share_purchase" || action.action_type === "share_sale"
+    ) && typeof action.payload.calculation_id !== "string")
   ) {
     feedback.push(warning("tax_return_share_sale_or_purchase_review", "Kjøp/salg av aksjer må ha fritaksmetodeklassifisering og dokumentasjon."));
   }
@@ -173,7 +242,12 @@ export function companyTaxReturnPayloadFeedback(input: {
       feedback.push(block("tax_return_blocking_holding_action", "Blokkerende holdinghandling må løses før skattemelding."));
     }
     const taxTreatment = String(action.payload.tax_treatment ?? "");
-    if (["dividend_received", "share_purchase", "share_sale"].includes(action.action_type) && taxTreatment !== "fritaksmetoden") {
+    if ([
+      "dividend_received",
+      "fund_distribution_received",
+      "share_purchase",
+      "share_sale",
+    ].includes(action.action_type) && taxTreatment !== "fritaksmetoden") {
       feedback.push(block("tax_return_unclear_fritaksmetoden", "Kun sikker fritaksmetodebehandling støttes i første skattemelding-løype."));
     }
   }
@@ -190,10 +264,13 @@ export function companyTaxReturnPayloadFeedback(input: {
   const classifiedDividendAndGain = roundMoney(
     input.holdingActions.reduce((sum, action) => {
       if (action.action_type === "dividend_received") {
-        return sum + Number(action.payload.gross_amount ?? 0);
+        return sum + amount(action, "gross_amount");
+      }
+      if (action.action_type === "fund_distribution_received") {
+        return sum + amount(action, "dividend_portion");
       }
       if (action.action_type === "share_sale") {
-        return sum + Math.max(0, Number(action.payload.gain_or_loss ?? 0));
+        return sum + Math.max(0, saleBookResult(action));
       }
       return sum;
     }, 0),
@@ -201,7 +278,7 @@ export function companyTaxReturnPayloadFeedback(input: {
   const classifiedShareLoss = roundMoney(
     input.holdingActions
       .filter((action) => action.action_type === "share_sale")
-      .reduce((sum, action) => sum + Math.max(0, -Number(action.payload.gain_or_loss ?? 0)), 0),
+      .reduce((sum, action) => sum + Math.max(0, -saleBookResult(action)), 0),
   );
   if (classifiedDividendAndGain > 0 && classifiedDividendAndGain !== totals.dividendAndGainIncome) {
     feedback.push(block("tax_return_financial_income_classification_mismatch", "Finansinntekt i hovedbok stemmer ikke med klassifiserte utbytter og aksjegevinster."));
@@ -297,6 +374,9 @@ function field(
 }
 
 function ledgerTotals(entries: LedgerEntryRow[]) {
+  const investmentBalances = ["1300", "1310", "1350", "1800", "1810", "1815"]
+    .map((account) => ({ account, amount: accountBalance(entries, account) }))
+    .filter(({ amount }) => amount !== 0);
   const adminCostsByAccount = ["6700", "6705", "6420", "6720", "7770", "7790", "7795"]
     .map((account) => ({ account: authorityAdminAccount(account), amount: accountDebitTotal(entries, account) }))
     .filter(({ amount }) => amount !== 0)
@@ -312,12 +392,23 @@ function ledgerTotals(entries: LedgerEntryRow[]) {
     .sort((left, right) => left.account.localeCompare(right.account));
   return {
     bankBalance: accountBalance(entries, "1920"),
-    investmentBalance: accountBalance(entries, "1800"),
+    investmentBalances,
+    investmentBalance: roundMoney(
+      investmentBalances.reduce((sum, item) => sum + item.amount, 0),
+    ),
     adminCostsByAccount,
     adminCosts: roundMoney(adminCostsByAccount.reduce((sum, item) => sum + item.amount, 0)),
-    dividendAndGainIncome: accountCreditBalance(entries, "8070"),
+    dividendAndGainIncome: roundMoney(
+      accountCreditBalance(entries, "8070")
+        + accountCreditBalance(entries, "8071")
+        + accountCreditBalance(entries, "8074"),
+    ),
     interestIncome: accountCreditBalance(entries, "8050"),
-    shareSaleLoss: accountDebitTotal(entries, "8090"),
+    shareSaleLoss: roundMoney(
+      accountDebitTotal(entries, "8090")
+        + accountDebitTotal(entries, "8171")
+        + accountDebitTotal(entries, "8174"),
+    ),
     shareCapital: accountCreditBalance(entries, "2000"),
     retainedEarnings: accountCreditBalance(entries, "2050"),
     shortTermDebt: accountCreditBalance(entries, "2255") + accountCreditBalance(entries, "2990"),
@@ -372,6 +463,28 @@ function dedupe(feedback: CompanyTaxReturnFeedback[]) {
     seen.add(item.code);
     return true;
   });
+}
+
+function amount(action: HoldingActionRow, key: string) {
+  const value = Number(action.payload[key] ?? 0);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function saleBookResult(action: HoldingActionRow) {
+  return amount(
+    action,
+    action.payload.book_gain_or_loss === undefined
+      ? "gain_or_loss"
+      : "book_gain_or_loss",
+  );
+}
+
+function saleComponent(
+  action: HoldingActionRow,
+  key: string,
+  legacyFallback: number,
+) {
+  return action.payload[key] === undefined ? legacyFallback : amount(action, key);
 }
 
 function roundMoney(value: number) {

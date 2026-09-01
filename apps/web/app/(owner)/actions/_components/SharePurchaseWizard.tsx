@@ -20,10 +20,15 @@ export function SharePurchaseWizard({
   const [investmentKey, setInvestmentKey] = useState("");
   const [orgNumber, setOrgNumber] = useState("");
   const [kind, setKind] = useState("norwegian_private_company");
+  const [classification, setClassification] = useState("other_long_term");
   const [treatment, setTreatment] = useState("fritaksmetoden");
   const [acquisitionDate, setAcquisitionDate] = useState("");
   const [shareCount, setShareCount] = useState("");
   const [purchaseAmount, setPurchaseAmount] = useState("");
+  const [transactionCosts, setTransactionCosts] = useState("0");
+  const [fundEquityRatio, setFundEquityRatio] = useState("");
+  const [fundStatement, setFundStatement] = useState("");
+  const [evidenceReference, setEvidenceReference] = useState("");
   const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
 
   const ready =
@@ -31,7 +36,22 @@ export function SharePurchaseWizard({
     investmentKey.trim() !== "" &&
     acquisitionDate.trim() !== "" &&
     shareCount.trim() !== "" &&
-    purchaseAmount.trim() !== "";
+    purchaseAmount.trim() !== "" &&
+    evidenceReference.trim() !== "" &&
+    (kind !== "norwegian_private_company" || /^\d{9}$/.test(orgNumber)) &&
+    (kind !== "norwegian_equity_fund"
+      || (fundEquityRatio.trim() !== "" && fundStatement.trim() !== ""));
+
+  function changeKind(value: string) {
+    setKind(value);
+    setClassification(
+      value === "norwegian_equity_fund"
+        ? "current_fund"
+        : value === "norwegian_listed_share"
+          ? "current_listed_share"
+          : "other_long_term",
+    );
+  }
 
   return (
     <form action={recordSharePurchase} className="wizardForm">
@@ -49,11 +69,11 @@ export function SharePurchaseWizard({
       />
       <div className="fieldRow">
         <TextField
-          label={c.keyLabel}
+          label={kind === "norwegian_private_company" ? c.keyLabel : "ISIN"}
           name="investmentKey"
           value={investmentKey}
           onChange={setInvestmentKey}
-          helper={c.keyHelp}
+          helper={kind === "norwegian_private_company" ? c.keyHelp : "12 tegn og starter med NO."}
           required
         />
         <TextField
@@ -69,12 +89,14 @@ export function SharePurchaseWizard({
           label={a.investmentKind.label}
           name="investmentKind"
           value={kind}
-          onChange={setKind}
+          onChange={changeKind}
           required
         >
           <option value="norwegian_private_company">
             {a.investmentKind.norwegianPrivate}
           </option>
+          <option value="norwegian_listed_share">Norsk børsnotert aksje (NOK)</option>
+          <option value="norwegian_equity_fund">Norsk aksje- eller kombinasjonsfond (NOK)</option>
         </SelectField>
         <SelectField
           label={a.taxTreatment.label}
@@ -86,6 +108,25 @@ export function SharePurchaseWizard({
           <option value="fritaksmetoden">{a.taxTreatment.fritak}</option>
         </SelectField>
       </div>
+      <SelectField
+        label="Regnskapsklassifisering"
+        name="accountingClassification"
+        value={classification}
+        onChange={setClassification}
+        required
+      >
+        {kind === "norwegian_private_company" ? (
+          <>
+            <option value="other_long_term">Andre langsiktige investeringer</option>
+            <option value="associate">Tilknyttet selskap</option>
+            <option value="subsidiary">Datterselskap</option>
+          </>
+        ) : kind === "norwegian_listed_share" ? (
+          <option value="current_listed_share">Markedsbasert aksje</option>
+        ) : (
+          <option value="current_fund">Markedsbasert fond</option>
+        )}
+      </SelectField>
       <div className="fieldRow">
         <TextField
           label={c.dateLabel}
@@ -115,7 +156,44 @@ export function SharePurchaseWizard({
           required
         />
         <input type="hidden" name="documentStatus" value="not_required" />
+        <TextField
+          label="Transaksjonskostnader (kr)"
+          name="transactionCosts"
+          value={transactionCosts}
+          onChange={setTransactionCosts}
+          inputMode="decimal"
+          required
+        />
       </div>
+
+      {kind === "norwegian_equity_fund" ? (
+        <div className="fieldRow">
+          <TextField
+            label="Aksjeandel ved kjøp (basispoeng)"
+            name="fundEquityRatioBasisPoints"
+            value={fundEquityRatio}
+            onChange={setFundEquityRatio}
+            inputMode="numeric"
+            helper="0–10 000. Bruk verdien fra fondets skatteoppgave."
+            required
+          />
+          <TextField
+            label="Referanse til fondets skatteoppgave"
+            name="fundTaxStatementReference"
+            value={fundStatement}
+            onChange={setFundStatement}
+            required
+          />
+        </div>
+      ) : null}
+      <TextField
+        label="Bilags- eller meglerreferanse"
+        name="evidenceReference"
+        value={evidenceReference}
+        onChange={setEvidenceReference}
+        helper="Ved manuell registrering lagres denne sammen med din attestasjon."
+        required
+      />
 
       <SubmitButton disabled={!ready} pendingLabel={a.pending}>
         {a.confirmCta}

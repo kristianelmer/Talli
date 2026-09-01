@@ -763,9 +763,25 @@ class PostReceivedDividendCommand(LedgerCommand):
 
 
 @dataclass(frozen=True, slots=True)
+class PostReceivedFundDistributionCommand(LedgerCommand):
+    action_id: LedgerSourceRecordId
+    fund_name: str
+    gross_amount: Money
+    dividend_portion: Money
+    interest_portion: Money
+
+    def __post_init__(self) -> None:
+        name = self.fund_name.strip()
+        if not name or len(name) > 255:
+            raise LedgerError.invalid_input("LEDGER_DESCRIPTION_REQUIRED")
+        object.__setattr__(self, "fund_name", name)
+
+
+@dataclass(frozen=True, slots=True)
 class PostInvestmentPurchaseCommand(LedgerCommand):
     action_id: LedgerSourceRecordId
     investment_name: str
+    classification: InvestmentClassification
     purchase_amount: Money
 
     def __post_init__(self) -> None:
@@ -779,6 +795,7 @@ class PostInvestmentPurchaseCommand(LedgerCommand):
 class PostInvestmentSaleCommand(LedgerCommand):
     action_id: LedgerSourceRecordId
     investment_name: str
+    classification: InvestmentClassification
     proceeds: Money
     fifo_cost_basis_reduction: Money
 
@@ -1750,6 +1767,10 @@ class LedgerCommands(Protocol):
         self, command: PostReceivedDividendCommand
     ) -> PostedLedgerEntry: ...
 
+    async def post_received_fund_distribution(
+        self, command: PostReceivedFundDistributionCommand
+    ) -> PostedLedgerEntry: ...
+
     async def post_investment_purchase(
         self, command: PostInvestmentPurchaseCommand
     ) -> PostedLedgerEntry: ...
@@ -1924,6 +1945,7 @@ __all__ = [
     "PostAdministrativeCostCommand",
     "PostBankSuggestionOutcomeCommand",
     "PostReceivedDividendCommand",
+    "PostReceivedFundDistributionCommand",
     "PostInvestmentPurchaseCommand",
     "PostInvestmentSaleCommand",
     "PostManualJournalCommand",

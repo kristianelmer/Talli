@@ -852,6 +852,8 @@ export const ownerCopy = {
       share_purchase: "Kjøp aksjer",
       share_sale: "Selg aksjer",
       dividend_received: "Mottatt utbytte",
+      fund_distribution_received: "Mottatt fondsutdeling",
+      investment_correction: "Investeringskorrigering",
       dividend_to_owner: "Utbytte til deg",
       shareholder_loan: "Aksjonærlån",
       tax_settlement: "Skatteoppgjør",
@@ -869,6 +871,14 @@ export const ownerCopy = {
       "dividend-received": {
         title: "Mottatt utbytte",
         body: "Utbytte selskapet har mottatt på sine investeringer.",
+      },
+      "fund-distribution": {
+        title: "Mottatt fondsutdeling",
+        body: "Registrer og splitt en norsk fondsutdeling etter skatteoppgaven.",
+      },
+      "investment-correction": {
+        title: "Korriger investering",
+        body: "Reverser en feil hendelse og erstatt den med korrigerte fakta.",
       },
       "owner-dividend": {
         title: "Utbytte til deg",
@@ -925,6 +935,16 @@ export const ownerCopy = {
         `3 % av utbyttet (${amount} kr) legges til som skattepliktig inntekt under fritaksmetoden.`,
       policyNote:
         "Talli validerer fritaksmetoden, beregner 3 %-tillegget og viser den endelige posteringen etter registrering.",
+    },
+    fundDistribution: {
+      title: "Mottatt fondsutdeling",
+      intro:
+        "Registrer en utdeling fra norsk aksje- eller kombinasjonsfond med aksjeandel fra skatteoppgaven.",
+    },
+    investmentCorrection: {
+      title: "Korriger investeringshendelse",
+      intro:
+        "Bevar originalen, opprett en full reversering og registrer korrigerte fakta gjennom samme regelsett.",
     },
     ownerDividend: {
       title: "Utbytte til deg",

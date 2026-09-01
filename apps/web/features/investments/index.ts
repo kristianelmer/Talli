@@ -3,22 +3,28 @@ export {
   loadInvestmentPositions,
   loadInvestmentActivity,
   loadInvestmentShareSaleAllocations,
+  loadInvestmentCorrections,
+  correctInvestment,
   recordInvestmentSharePurchase,
   recordInvestmentShareSale,
   recordInvestmentReceivedDividend,
+  recordInvestmentReceivedFundDistribution,
 } from "./transport.ts";
 export {
   investmentsActionErrorMessage,
   investmentsOutcomeMayBeUnknown,
+  effectiveInvestmentActivity,
   presentAcquisitionLots,
   presentInvestmentPositions,
   presentInvestmentActivity,
   presentShareSaleAllocations,
+  presentInvestmentCorrections,
   summarizeReceivedDividendAnnualImpact,
   type AcquisitionLotPresentation,
   type InvestmentPositionPresentation,
   type InvestmentActivityPresentation,
   type ShareSaleAllocationPresentation,
+  type InvestmentCorrectionPresentation,
 } from "./presentation.ts";
 export type {
   InvestmentsSharePurchaseResultWire,
@@ -27,10 +33,16 @@ export type {
   InvestmentsShareSaleWire,
   InvestmentsReceivedDividendResultWire,
   InvestmentsReceivedDividendWire,
+  InvestmentsReceivedFundDistributionResultWire,
+  InvestmentsReceivedFundDistributionWire,
+  InvestmentsCorrectionResultWire,
+  InvestmentsCorrectionWire,
+  InvestmentCorrectionWire,
 } from "@talli/talli-api-client";
 export {
   listPresentedAcquisitionLots,
   listPresentedInvestmentPositions,
   listPresentedInvestmentActivity,
   listPresentedShareSaleAllocations,
+  listPresentedInvestmentCorrections,
 } from "./server.ts";

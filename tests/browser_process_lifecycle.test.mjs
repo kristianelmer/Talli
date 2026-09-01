@@ -259,6 +259,7 @@ test("browser owner cleanup removes tracked sources before company and user", as
     "delete from backend_system.ledger_workflow_receipts where company_id = $1",
   ));
   assert.ok(calls.includes("delete from ledger.entry_sources where company_id = $1"));
+  assert.ok(calls.includes("delete from ledger.entry_corrections where company_id = $1"));
   assert.ok(calls.includes("delete from ledger.entry_contexts where company_id = $1"));
   assert.ok(calls.includes("delete from ledger.entries where company_id = $1"));
   assert.ok(calls.includes(
@@ -296,6 +297,10 @@ test("browser owner cleanup removes tracked sources before company and user", as
     );
     assert.ok(disable < remove && remove < restore);
   }
+  assert.ok(
+    calls.indexOf("delete from ledger.entry_corrections where company_id = $1")
+      < calls.indexOf("delete from ledger.entries where company_id = $1"),
+  );
   assert.ok(
     calls.indexOf("delete from ledger.entry_sources where company_id = $1")
       < calls.indexOf("delete from ledger.entries where company_id = $1"),

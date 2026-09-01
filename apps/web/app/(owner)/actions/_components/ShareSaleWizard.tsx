@@ -12,6 +12,7 @@ export type SalePosition = {
   name: string;
   share_count: number;
   lot_history_status: "complete" | "needs_reconstruction";
+  kind: "norwegian_private_company" | "norwegian_listed_share" | "norwegian_equity_fund";
 };
 
 type Props = {
@@ -37,6 +38,10 @@ export function ShareSaleWizard({
   const [saleDate, setSaleDate] = useState("");
   const [soldShareCount, setSoldShareCount] = useState("");
   const [proceeds, setProceeds] = useState("");
+  const [transactionCosts, setTransactionCosts] = useState("0");
+  const [fundEquityRatio, setFundEquityRatio] = useState("");
+  const [fundStatement, setFundStatement] = useState("");
+  const [evidenceReference, setEvidenceReference] = useState("");
   const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
 
   const selected = sellable.find((position) => position.id === positionId);
@@ -44,7 +49,10 @@ export function ShareSaleWizard({
     Boolean(selected) &&
     saleDate.trim() !== "" &&
     soldShareCount.trim() !== "" &&
-    proceeds.trim() !== "";
+    proceeds.trim() !== "" &&
+    evidenceReference.trim() !== "" &&
+    (selected?.kind !== "norwegian_equity_fund"
+      || (fundEquityRatio.trim() !== "" && fundStatement.trim() !== ""));
 
   if (sellable.length === 0) {
     return <Banner variant="info">{c.noPositions}</Banner>;
@@ -101,6 +109,43 @@ export function ShareSaleWizard({
         inputMode="decimal"
         required
       />
+      <div className="fieldRow">
+        <TextField
+          label="Transaksjonskostnader (kr)"
+          name="transactionCosts"
+          value={transactionCosts}
+          onChange={setTransactionCosts}
+          inputMode="decimal"
+          required
+        />
+        <TextField
+          label="Bilags- eller meglerreferanse"
+          name="evidenceReference"
+          value={evidenceReference}
+          onChange={setEvidenceReference}
+          required
+        />
+      </div>
+
+      {selected?.kind === "norwegian_equity_fund" ? (
+        <div className="fieldRow">
+          <TextField
+            label="Aksjeandel ved salg (basispoeng)"
+            name="saleYearFundEquityRatioBasisPoints"
+            value={fundEquityRatio}
+            onChange={setFundEquityRatio}
+            inputMode="numeric"
+            required
+          />
+          <TextField
+            label="Referanse til fondets skatteoppgave"
+            name="fundTaxStatementReference"
+            value={fundStatement}
+            onChange={setFundStatement}
+            required
+          />
+        </div>
+      ) : null}
 
       <Banner variant="info">{c.fifoNote}</Banner>
 

@@ -1,21 +1,24 @@
 # Investments backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["investments.acquisition_lots","investments.positions","investments.received_dividends","investments.share_purchases","investments.share_sale_allocations","investments.share_sales"],"ports":["InvestmentsPersistence"],"publicEntryPoints":["talli_backend.modules.investments.public"]}
+{"dependencies":[],"ownedTables":["investments.acquisition_lots","investments.corrections","investments.positions","investments.received_dividends","investments.received_fund_distributions","investments.share_purchases","investments.share_sale_allocations","investments.share_sales"],"ports":["InvestmentsPersistence"],"publicEntryPoints":["talli_backend.modules.investments.public"]}
 -->
 
 ## Purpose and ownership
 
-`investments` owns supported share-purchase, share-sale, and received-dividend policy, canonical
-investment positions, immutable acquisition lots, authoritative FIFO sale
-allocations, deterministic movements, and command replay. The expand migration
+`investments` owns the approved domestic private-share, NOK listed-share, and
+Norwegian fund boundary: purchases, sales, dividends, fund distributions,
+immutable corrections, canonical positions, acquisition lots, authoritative
+FIFU allocations, deterministic book/tax facts, movements, and replay. The expand migration
 `supabase/migrations/20260831124939_investments_capability.sql` copies the exact
 legacy position and acquisition-lot identities into forced-RLS capability tables.
 The purchase and sale workflow migrations add canonical command receipts and a
 bounded two-way overlap bridge. Their separate contract artifacts reconcile
 typed state before removing predecessor production names for the bounded
 rollback rehearsal. The dividend workflow owns fritaksmetoden validation,
-cent-exact 3% add-back facts, and canonical activity. The complete stage-exit
+cent-exact 3% add-back facts, and canonical activity. The #190 migration adds
+fund splits, separate book/tax bases, group-exception evidence, and atomic
+full-reversal/replacement correction lineage. The complete stage-exit
 contract reconciles all three slices, removes the predecessor stores, bridges,
 rollback capsules, and investment rows in the shared holding-action table, then
 leaves only the canonical investments implementation.
@@ -23,8 +26,9 @@ leaves only the canonical investments implementation.
 ## Public interface
 
 Consumers import only `talli_backend.modules.investments.public`.
-`RecordSharePurchaseCommand`, `RecordShareSaleCommand`, and
-`RecordReceivedDividendCommand` carry supported facts
+`RecordSharePurchaseCommand`, `RecordShareSaleCommand`,
+`RecordReceivedDividendCommand`, `RecordReceivedFundDistributionCommand`, and
+`CorrectInvestmentCommand` carry supported facts
 and only opaque bank/document source references. `InvestmentsCommands` exposes replay, prepare,
 and complete operations so a named application workflow can keep the investment
 mutation and authoritative ledger posting in one short transaction.
@@ -41,16 +45,27 @@ allocation, and activity views; the web does not read either legacy or canonical
 tables directly. `InvestmentPositionView`, `AcquisitionLotView`,
 `ShareSaleAllocationView`, and `InvestmentActivityView` are returned in
 `InvestmentPositionPage`, `AcquisitionLotPage`, `ShareSaleAllocationPage`, and
-`InvestmentActivityPage`. `InvestmentActivityKind` identifies the closed
-purchase, sale, and received-dividend activity variants. `InvestmentCursor` carries
+`InvestmentActivityPage`. `InvestmentCorrectionView` exposes immutable
+original/reversal/replacement lineage. `InvestmentActivityKind` identifies the
+closed purchase, sale, share-dividend, and fund-distribution variants. `InvestmentCursor` carries
 the stable continuation boundary, while `InvestmentLotHistoryStatus` reports
 whether the canonical lot has complete legacy history.
+
+The typed workflow results are `PreparedShareSaleFacts`,
+`InvestmentSaleLotFact`, `InvestmentSaleLotCalculation`,
+`PreparedReceivedDividendFacts`, `PreparedReceivedFundDistribution`,
+`PreparedReceivedFundDistributionFacts`, `PreparedInvestmentCorrection`,
+`RecordedReceivedFundDistribution`, and `RecordedInvestmentCorrection`.
+Corrections use `InvestmentCorrectionId`, `InvestmentReplacementCommand`, and
+the bounded `InvestmentCorrectionPage` query result.
 
 `InvestmentActionId`, `InvestmentPositionId`, `AcquisitionLotId`, and
 `ShareSaleAllocationId` are owned UUID identities. `AccountingEntryReference` is the opaque ledger correlation,
 while `InvestmentSourceReference` carries opaque banking or document evidence.
-The closed purchase vocabulary is `InvestmentKind`, `InvestmentTaxTreatment`,
-and `InvestmentDocumentStatus`. Infrastructure adapters are declared only via
+The closed policy vocabulary is `InvestmentKind`,
+`InvestmentAccountingClassification`, `InvestmentTaxTreatment`,
+`InvestmentPolicyVersion`, `InvestmentEvidenceMode`, and
+`InvestmentDocumentStatus`. Infrastructure adapters are declared only via
 `investments_persistence_adapter` against `InvestmentsPersistence`.
 
 Expected failures cross the interface only as `InvestmentsError` with declared
@@ -59,7 +74,8 @@ are forbidden from the public contract.
 
 ## Workflow and persistence seam
 
-`InvestmentsPersistence` is the sole outbound port. The purchase, sale, and dividend
+`InvestmentsPersistence` is the sole outbound port. The purchase, sale, dividend,
+fund-distribution, and correction
 workflow authenticates one verified actor, opens one request-bound PostgreSQL
 transaction, asks investments to replay or prepare the command, passes only the
 normalized ledger facts and opaque action identifier to the ledger public
@@ -70,10 +86,9 @@ position atomically with the ledger entry. Dividend preparation validates the
 position and computes the add-back in investments; persistence stores that fact
 without deriving filing policy.
 
-This slice accepts no bank or document association because neither permitted
-read-only collaboration can claim or mutate those external records atomically.
-Bank evidence may later be consumed only through banking's provider-neutral public
-contract, local fakes, or the hardened file fallback. No provider selection,
+Bank/document identifiers remain opaque evidence references. Linked mode requires
+both sources; manual fallback retains a typed reference and owner attestation.
+No provider selection,
 activation, credentials, consent, live call/data, production banking, or
 live-bank readiness claim is part of this capability.
 
@@ -93,6 +108,11 @@ The stable allocation identity expand step is
 `supabase/migrations/20260831180000_investments_allocation_identity.sql`, and the
 irreversible, post-rehearsal stage exit is
 `supabase/contract-migrations/20260831193000_investments_stage_exit.sql`. The
+#190 expansion and bounded inverse are
+`supabase/migrations/20260901100000_investments_supported_patterns.sql` and
+`supabase/rollback/20260901100000_investments_supported_patterns.sql`. The
+inverse restores captured predecessor routines before new #190 data exists and
+otherwise fails closed. The
 mandatory PostgreSQL rehearsal applies each slice contract, rolls it back twice,
 writes through the restored predecessor, reapplies it, and only then performs
 the complete cleanup. The web is cut to the

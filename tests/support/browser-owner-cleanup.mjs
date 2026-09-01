@@ -140,6 +140,7 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
       "opening_position_component_sources",
       "opening_position_components",
       "opening_position_rebuilds",
+      "entry_corrections",
       "entry_sources",
       "entry_contexts",
       "entries",
@@ -172,7 +173,9 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
     }
     await database.query("reset role");
     const investmentTables = [
+      "corrections",
       "share_sale_allocations",
+      "received_fund_distributions",
       "received_dividends",
       "share_sales",
       "share_purchases",

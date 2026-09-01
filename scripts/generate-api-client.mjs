@@ -63,6 +63,11 @@ const ledgerOperations = {
   lockPeriod: ["/api/v1/ledger/period-locks", "post", "ledgerLockPeriod"],
 };
 const investmentsOperations = {
+  listCorrections: [
+    "/api/v1/investments/corrections",
+    "get",
+    "investmentsListCorrections",
+  ],
   listActivity: [
     "/api/v1/investments/activity",
     "get",
@@ -97,6 +102,16 @@ const investmentsOperations = {
     "/api/v1/investments/received-dividends",
     "post",
     "investmentsRecordReceivedDividend",
+  ],
+  recordReceivedFundDistribution: [
+    "/api/v1/investments/received-fund-distributions",
+    "post",
+    "investmentsRecordReceivedFundDistribution",
+  ],
+  correctInvestment: [
+    "/api/v1/investments/corrections",
+    "post",
+    "investmentsCorrectInvestment",
   ],
 };
 const bankingOperations = {
@@ -440,11 +455,15 @@ const ledgerSchemas = Object.fromEntries([
 ].map((name) => [name, contract.components.schemas[name]]));
 const investmentsSchemas = Object.fromEntries([
   "InvestmentActivityKind",
+  "InvestmentCorrectionPageWire",
+  "InvestmentCorrectionWire",
   "InvestmentActivityPageWire",
   "InvestmentActivityWire",
   "AcquisitionLotPageWire",
   "AcquisitionLotWire",
+  "InvestmentAccountingClassification",
   "InvestmentDocumentStatus",
+  "InvestmentEvidenceMode",
   "InvestmentKind",
   "InvestmentLotHistoryStatus",
   "InvestmentTaxTreatment",
@@ -457,6 +476,10 @@ const investmentsSchemas = Object.fromEntries([
   "InvestmentsShareSaleWire",
   "InvestmentsReceivedDividendResultWire",
   "InvestmentsReceivedDividendWire",
+  "InvestmentsReceivedFundDistributionResultWire",
+  "InvestmentsReceivedFundDistributionWire",
+  "InvestmentsCorrectionResultWire",
+  "InvestmentsCorrectionWire",
   "ShareSaleAllocationPageWire",
   "ShareSaleAllocationWire",
 ].map((name) => [name, contract.components.schemas[name]]));
@@ -1340,6 +1363,44 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       return result;
     },
 
+    async investmentsRecordReceivedFundDistribution(
+      body: InvestmentsReceivedFundDistributionWire,
+      request: TalliMutationOptions,
+    ): Promise<InvestmentsReceivedFundDistributionResultWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/investments/received-fund-distributions\`,
+        "POST",
+        request,
+        body,
+        isInvestmentsReceivedFundDistributionResultWire,
+      );
+      if (result.actionId !== body.actionId || result.positionId !== body.positionId) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async investmentsCorrectInvestment(
+      body: InvestmentsCorrectionWire,
+      request: TalliMutationOptions,
+    ): Promise<InvestmentsCorrectionResultWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/investments/corrections\`,
+        "POST",
+        request,
+        body,
+        isInvestmentsCorrectionResultWire,
+      );
+      if (
+        result.correctionId !== body.correctionId ||
+        result.originalActionId !== body.originalActionId ||
+        result.replacementActionId !== body.replacement.actionId
+      ) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
     async investmentsListPositions(
       request: InvestmentsListRequest,
     ): Promise<InvestmentPositionPageWire> {
@@ -1353,6 +1414,22 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isInvestmentPositionPageWire,
+      );
+    },
+
+    async investmentsListCorrections(
+      request: InvestmentsListRequest,
+    ): Promise<InvestmentCorrectionPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/investments/corrections?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isInvestmentCorrectionPageWire,
       );
     },
 

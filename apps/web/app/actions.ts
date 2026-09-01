@@ -123,10 +123,15 @@ import {
 import {
   investmentsActionErrorMessage,
   investmentsOutcomeMayBeUnknown,
+  effectiveInvestmentActivity,
   listPresentedInvestmentActivity,
+  listPresentedInvestmentCorrections,
+  correctInvestment,
   recordInvestmentSharePurchase,
   recordInvestmentShareSale,
   recordInvestmentReceivedDividend,
+  recordInvestmentReceivedFundDistribution,
+  type InvestmentsCorrectionWire,
 } from "../features/investments";
 import { buildLaunchSignoffRecord } from "./lib/launch-signoff";
 import { actionReturnPath } from "./lib/action-return";
@@ -2010,6 +2015,10 @@ export async function recordDividendReceived(formData: FormData) {
   const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
+  const groupExceptionClaimed = formString(
+    formData,
+    "groupExceptionClaimed",
+  ) === "true";
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
@@ -2021,13 +2030,28 @@ export async function recordDividendReceived(formData: FormData) {
         companyId,
         declaredDate: formString(formData, "declaredDate"),
         documentId: null,
-        documentStatus: "not_required",
+        documentStatus: "missing_accepted_warning",
+        evidenceMode: "manual_fallback",
+        evidenceReference: formString(formData, "evidenceReference")
+          || `owner-entry:${operationId}`,
         grossAmount: { amount: formString(formData, "grossAmount"), currency: "NOK" },
+        groupEvidenceReference: groupExceptionClaimed
+          ? formString(formData, "groupEvidenceReference")
+          : null,
+        groupExceptionClaimed,
         incomeYear,
+        lawfulDividendConfirmed: true,
+        ownerAttested: true,
         paidDate: formString(formData, "paidDate"),
         payingCompanyName: formString(formData, "payingCompanyName"),
         positionId: formString(formData, "positionId"),
         taxTreatment: "fritaksmetoden",
+        yearEndOwnershipBasisPoints: groupExceptionClaimed
+          ? Number(formString(formData, "yearEndOwnershipBasisPoints"))
+          : null,
+        yearEndVotingBasisPoints: groupExceptionClaimed
+          ? Number(formString(formData, "yearEndVotingBasisPoints"))
+          : null,
       },
       operationId,
       operationId,
@@ -2056,6 +2080,24 @@ export async function recordSharePurchase(formData: FormData) {
   const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
+  const investmentKind = formString(formData, "investmentKind") as
+    | "norwegian_private_company"
+    | "norwegian_listed_share"
+    | "norwegian_equity_fund";
+  const accountingClassification = (formString(
+    formData,
+    "accountingClassification",
+  ) || (
+    investmentKind === "norwegian_equity_fund"
+      ? "current_fund"
+      : investmentKind === "norwegian_listed_share"
+        ? "current_listed_share"
+        : "other_long_term"
+  )) as "subsidiary" | "associate" | "other_long_term" | "current_listed_share" | "current_fund";
+  const purchaseBankTransactionId = formString(formData, "bankTransactionId") || null;
+  const purchaseDocumentId = formString(formData, "documentId") || null;
+  const purchaseHasLinkedEvidence = purchaseBankTransactionId !== null
+    && purchaseDocumentId !== null;
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
@@ -2063,19 +2105,40 @@ export async function recordSharePurchase(formData: FormData) {
       accessToken,
       {
         acquisitionDate: formString(formData, "acquisitionDate"),
+        accountingClassification,
         actionId: operationId,
-        bankTransactionId: formString(formData, "bankTransactionId") || null,
+        bankTransactionId: purchaseHasLinkedEvidence
+          ? purchaseBankTransactionId
+          : null,
         companyId,
-        documentId: formString(formData, "documentId") || null,
-        documentStatus: formString(formData, "documentStatus") as "attached" | "missing_accepted_warning" | "not_required",
+        documentId: purchaseHasLinkedEvidence ? purchaseDocumentId : null,
+        documentStatus: purchaseHasLinkedEvidence
+          ? "attached"
+          : "missing_accepted_warning",
+        evidenceMode: purchaseHasLinkedEvidence
+          ? "linked_sources"
+          : "manual_fallback",
+        evidenceReference: formString(formData, "evidenceReference")
+          || `owner-entry:${operationId}`,
+        fundEquityRatioBasisPoints: investmentKind === "norwegian_equity_fund"
+          ? Number(formString(formData, "fundEquityRatioBasisPoints"))
+          : null,
+        fundTaxStatementReference: investmentKind === "norwegian_equity_fund"
+          ? formString(formData, "fundTaxStatementReference")
+          : null,
         incomeYear,
         investmentKey: formString(formData, "investmentKey"),
-        investmentKind: formString(formData, "investmentKind") as "norwegian_private_company",
+        investmentKind,
         investmentName: formString(formData, "investmentName"),
+        ownerAttested: !purchaseHasLinkedEvidence,
         orgNumber: formString(formData, "orgNumber") || null,
         purchaseAmount: { amount: formString(formData, "purchaseAmount"), currency: "NOK" },
         shareCount: Number(formString(formData, "shareCount")),
         taxTreatment: formString(formData, "taxTreatment") as "fritaksmetoden",
+        transactionCosts: {
+          amount: formString(formData, "transactionCosts") || "0",
+          currency: "NOK",
+        },
       },
       operationId,
       operationId,
@@ -2107,6 +2170,7 @@ export async function recordShareSale(formData: FormData) {
   const positionId = formString(formData, "positionId");
   const bankTransactionId = formString(formData, "bankTransactionId") || null;
   const documentId = formString(formData, "documentId") || null;
+  const saleHasLinkedEvidence = bankTransactionId !== null && documentId !== null;
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
@@ -2114,18 +2178,35 @@ export async function recordShareSale(formData: FormData) {
       accessToken,
       {
         actionId: operationId,
-        bankTransactionId,
+        bankTransactionId: saleHasLinkedEvidence ? bankTransactionId : null,
         companyId,
-        documentId,
-        documentStatus: formString(formData, "documentStatus") as
-          | "attached"
-          | "missing_accepted_warning"
-          | "not_required",
+        documentId: saleHasLinkedEvidence ? documentId : null,
+        documentStatus: saleHasLinkedEvidence
+          ? "attached"
+          : "missing_accepted_warning",
+        evidenceMode: saleHasLinkedEvidence
+          ? "linked_sources"
+          : "manual_fallback",
+        evidenceReference: formString(formData, "evidenceReference")
+          || `owner-entry:${operationId}`,
+        fundTaxStatementReference:
+          formString(formData, "fundTaxStatementReference") || null,
         incomeYear,
+        ownerAttested: !saleHasLinkedEvidence,
         positionId,
         proceeds: { amount: formString(formData, "proceeds"), currency: "NOK" },
         saleDate: formString(formData, "saleDate"),
+        saleYearFundEquityRatioBasisPoints: formString(
+          formData,
+          "saleYearFundEquityRatioBasisPoints",
+        )
+          ? Number(formString(formData, "saleYearFundEquityRatioBasisPoints"))
+          : null,
         soldShareCount: Number(formString(formData, "soldShareCount")),
+        transactionCosts: {
+          amount: formString(formData, "transactionCosts") || "0",
+          currency: "NOK",
+        },
       },
       operationId,
       operationId,
@@ -2141,6 +2222,215 @@ export async function recordShareSale(formData: FormData) {
     }));
   }
 
+  revalidatePath("/");
+  succeedTo(returnTo);
+}
+
+export async function recordFundDistribution(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  if (!hasSupabaseEnv()) failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
+  const operationId = requiredFormUuid(formData, "operationId");
+  const companyId = formString(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear") || "2025");
+  const bankTransactionId = formString(formData, "bankTransactionId") || null;
+  const documentId = formString(formData, "documentId") || null;
+  const hasLinkedEvidence = bankTransactionId !== null && documentId !== null;
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
+  try {
+    await recordInvestmentReceivedFundDistribution(
+      accessToken,
+      {
+        actionId: operationId,
+        companyId,
+        incomeYear,
+        positionId: formString(formData, "positionId"),
+        fundName: formString(formData, "fundName"),
+        entitlementDate: formString(formData, "entitlementDate"),
+        paidDate: formString(formData, "paidDate"),
+        grossAmount: {
+          amount: formString(formData, "grossAmount"),
+          currency: "NOK",
+        },
+        openingFundEquityRatioBasisPoints: Number(
+          formString(formData, "openingFundEquityRatioBasisPoints"),
+        ),
+        fundTaxStatementReference: formString(
+          formData,
+          "fundTaxStatementReference",
+        ),
+        evidenceMode: hasLinkedEvidence ? "linked_sources" : "manual_fallback",
+        evidenceReference: formString(formData, "evidenceReference")
+          || `owner-entry:${operationId}`,
+        ownerAttested: !hasLinkedEvidence,
+        bankTransactionId: hasLinkedEvidence ? bankTransactionId : null,
+        documentId: hasLinkedEvidence ? documentId : null,
+        documentStatus: hasLinkedEvidence
+          ? "attached"
+          : "missing_accepted_warning",
+      },
+      operationId,
+      operationId,
+    );
+  } catch (error) {
+    const outcomeMayBeUnknown = investmentsOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery(
+      outcomeMayBeUnknown ? "/actions/fund-distribution" : returnTo,
+      {
+        error: investmentsActionErrorMessage(error),
+        fundDistributionOperationId: outcomeMayBeUnknown ? operationId : undefined,
+      },
+    ));
+  }
+  revalidatePath("/");
+  succeedTo(returnTo);
+}
+
+export async function correctInvestmentAction(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  if (!hasSupabaseEnv()) failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
+  const correctionId = requiredFormUuid(formData, "operationId");
+  const replacementActionId = requiredFormUuid(formData, "replacementActionId");
+  const companyId = formString(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear") || "2025");
+  const originalActivityKind = formString(
+    formData,
+    "originalActivityKind",
+  ) as InvestmentsCorrectionWire["originalActivityKind"];
+  const common = {
+    actionId: replacementActionId,
+    companyId,
+    incomeYear,
+    evidenceMode: "manual_fallback" as const,
+    evidenceReference: formString(formData, "replacementEvidenceReference")
+      || `owner-correction-replacement:${replacementActionId}`,
+    ownerAttested: true,
+    bankTransactionId: null,
+    documentId: null,
+    documentStatus: "missing_accepted_warning" as const,
+  };
+  let replacement: InvestmentsCorrectionWire["replacement"];
+  if (originalActivityKind === "share_purchase") {
+    const investmentKind = formString(formData, "investmentKind") as
+      | "norwegian_private_company"
+      | "norwegian_listed_share"
+      | "norwegian_equity_fund";
+    replacement = {
+      ...common,
+      investmentKey: formString(formData, "investmentKey"),
+      investmentName: formString(formData, "investmentName"),
+      investmentKind,
+      accountingClassification: formString(
+        formData,
+        "accountingClassification",
+      ) as "subsidiary" | "associate" | "other_long_term"
+        | "current_listed_share" | "current_fund",
+      taxTreatment: "fritaksmetoden",
+      acquisitionDate: formString(formData, "actionDate"),
+      shareCount: Number(formString(formData, "shareCount")),
+      purchaseAmount: {
+        amount: formString(formData, "grossAmount"), currency: "NOK",
+      },
+      transactionCosts: {
+        amount: formString(formData, "transactionCosts") || "0", currency: "NOK",
+      },
+      orgNumber: formString(formData, "orgNumber") || null,
+      fundEquityRatioBasisPoints: investmentKind === "norwegian_equity_fund"
+        ? Number(formString(formData, "fundEquityRatioBasisPoints"))
+        : null,
+      fundTaxStatementReference: investmentKind === "norwegian_equity_fund"
+        ? formString(formData, "fundTaxStatementReference")
+        : null,
+    };
+  } else if (originalActivityKind === "share_sale") {
+    replacement = {
+      ...common,
+      positionId: formString(formData, "positionId"),
+      saleDate: formString(formData, "actionDate"),
+      soldShareCount: Number(formString(formData, "shareCount")),
+      proceeds: { amount: formString(formData, "grossAmount"), currency: "NOK" },
+      transactionCosts: {
+        amount: formString(formData, "transactionCosts") || "0", currency: "NOK",
+      },
+      saleYearFundEquityRatioBasisPoints: formString(
+        formData,
+        "fundEquityRatioBasisPoints",
+      ) ? Number(formString(formData, "fundEquityRatioBasisPoints")) : null,
+      fundTaxStatementReference:
+        formString(formData, "fundTaxStatementReference") || null,
+    };
+  } else if (originalActivityKind === "dividend_received") {
+    const groupExceptionClaimed = formString(formData, "groupExceptionClaimed") === "true";
+    replacement = {
+      ...common,
+      positionId: formString(formData, "positionId"),
+      payingCompanyName: formString(formData, "investmentName"),
+      declaredDate: formString(formData, "declaredDate"),
+      paidDate: formString(formData, "actionDate"),
+      grossAmount: { amount: formString(formData, "grossAmount"), currency: "NOK" },
+      taxTreatment: "fritaksmetoden",
+      lawfulDividendConfirmed: true,
+      groupExceptionClaimed,
+      yearEndOwnershipBasisPoints: groupExceptionClaimed
+        ? Number(formString(formData, "yearEndOwnershipBasisPoints")) : null,
+      yearEndVotingBasisPoints: groupExceptionClaimed
+        ? Number(formString(formData, "yearEndVotingBasisPoints")) : null,
+      groupEvidenceReference: groupExceptionClaimed
+        ? formString(formData, "groupEvidenceReference") : null,
+    };
+  } else if (originalActivityKind === "fund_distribution_received") {
+    replacement = {
+      ...common,
+      positionId: formString(formData, "positionId"),
+      fundName: formString(formData, "investmentName"),
+      entitlementDate: formString(formData, "declaredDate"),
+      paidDate: formString(formData, "actionDate"),
+      grossAmount: { amount: formString(formData, "grossAmount"), currency: "NOK" },
+      openingFundEquityRatioBasisPoints: Number(
+        formString(formData, "fundEquityRatioBasisPoints"),
+      ),
+      fundTaxStatementReference: formString(formData, "fundTaxStatementReference"),
+    };
+  } else {
+    failTo(returnTo, "Ugyldig investeringstype for korrigering.");
+  }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
+  try {
+    await correctInvestment(
+      accessToken,
+      {
+        companyId,
+        incomeYear,
+        correctionId,
+        originalActionId: formString(formData, "originalActionId"),
+        originalActivityKind,
+        correctionDate: formString(formData, "correctionDate"),
+        reason: formString(formData, "reason"),
+        evidenceMode: "manual_fallback",
+        evidenceReference: formString(formData, "evidenceReference")
+          || `owner-correction:${correctionId}`,
+        ownerAttested: true,
+        bankTransactionId: null,
+        documentId: null,
+        documentStatus: "missing_accepted_warning",
+        replacement,
+      },
+      correctionId,
+      correctionId,
+    );
+  } catch (error) {
+    const outcomeMayBeUnknown = investmentsOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery(
+      outcomeMayBeUnknown ? "/actions/investment-correction" : returnTo,
+      {
+        error: investmentsActionErrorMessage(error),
+        investmentCorrectionOperationId: outcomeMayBeUnknown ? correctionId : undefined,
+        investmentCorrectionReplacementActionId: outcomeMayBeUnknown
+          ? replacementActionId : undefined,
+      },
+    ));
+  }
   revalidatePath("/");
   succeedTo(returnTo);
 }
@@ -3567,6 +3857,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     { data: ledgerEntries, error: ledgerError },
     { data: legacyHoldingActions, error: legacyActionsError },
     { data: investmentActions, error: investmentActionsError },
+    { data: investmentCorrections, error: investmentCorrectionsError },
     { data: bankTransactions, error: bankError },
     { data: documents, error: documentsError },
     { data: overrides, error: overridesError },
@@ -3595,6 +3886,10 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
       data: actions.filter((action) => action.income_year === incomeYear),
       error: error ? { message: error } : null,
     })),
+    listPresentedInvestmentCorrections(accessToken, [companyId]).then(({ corrections, error }) => ({
+      data: corrections.filter((correction) => correction.income_year === incomeYear),
+      error: error ? { message: error } : null,
+    })),
     listBankTransactions([companyId]).then(({ transactions, error }) => ({
       data: transactions.filter((transaction) => transaction.income_year === incomeYear),
       error: error ? { message: error } : null,
@@ -3621,6 +3916,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     ledgerError ||
     legacyActionsError ||
     investmentActionsError ||
+    investmentCorrectionsError ||
     bankError ||
     documentsError ||
     overridesError ||
@@ -3641,9 +3937,17 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
 
   const holdingActions = [
     ...(legacyHoldingActions ?? []).filter(
-      (action) => !["share_purchase", "share_sale", "dividend_received"].includes(action.action_type),
+      (action) => ![
+        "share_purchase",
+        "share_sale",
+        "dividend_received",
+        "fund_distribution_received",
+      ].includes(action.action_type),
     ),
-    ...(investmentActions ?? []),
+    ...effectiveInvestmentActivity(
+      investmentActions ?? [],
+      investmentCorrections ?? [],
+    ),
   ];
 
   const annualCorporateDecision = (corporateDecisions ?? []).find(
