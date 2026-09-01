@@ -67,7 +67,10 @@ accounting review approves an immutable policy version.
 The mass-market interface begins with `RecognizeHoldingActionCommand`, which
 accepts a closed `SupportedHoldingActionFacts` variant and immutable
 `LedgerFactReference` values. The initial variants are
-`BankInterestIncomeFacts`, `InvestmentDividendFacts`, `CompanyTaxAccrualFacts`,
+`BankInterestIncomeFacts`, `InvestmentDividendFacts`,
+`InvestmentPurchaseRecognitionFacts`, `InvestmentSaleRecognitionFacts`,
+`InvestmentFundDistributionRecognitionFacts`, `InvestmentCashSettlementFacts`,
+`CompanyTaxAccrualFacts`,
 `OrdinaryBankLoanFacts`, `CashCapitalIncreaseFacts`, and
 `ApprovedLossCoverageCapitalReductionFacts`, `ApprovedOwnerLoanFundingFacts`,
 `ApprovedOneSidedIntercompanyLoanFundingFacts`, and `GroupContributionFacts`; their
@@ -78,12 +81,19 @@ closed phase and relationship values are `BankLoanEvent`, `InvestmentDividendPha
 `GroupContributionPerspective`. Callers cannot select an account, line,
 pattern, or rule version.
 
+The investment receivers keep ownership/trade/entitlement recognition separate
+from bank settlement. Purchases recognize the classified investment against a
+settlement payable; sales recognize a settlement receivable, carrying-value
+derecognition, and the canonical gain or loss; fund distributions recognize the
+receivable and documented income split. `InvestmentCashSettlementFacts` clears
+the exact purchase payable or sale/dividend/distribution receivable, including
+in a later admitted company-year. Source owners supply semantic facts and stable
+phase identities; ledger alone selects accounts and balanced lines.
+
 The phase-linked received-dividend receiver recognizes the final investee
 decision as a receivable and income, then settles that exact decision from the
-bank payment. It is a ledger-owned accrual lifecycle distinct from the
-investments capability's supported cash-receipt command. The decision requires
-investments, documents, and company-tax facts; payment requires investments and
-banking facts plus either the immutable decision entry ID or the stable
+bank payment. The decision requires investments and documents; payment requires
+investments and banking facts plus either the immutable decision entry ID or the stable
 `DividendDecisionReferenceId` persisted by opening rebuild. The serialized
 persistence path permits one settlement per decision, including a later
 admitted company-year, and rejects payments before the decision plus
@@ -215,7 +225,7 @@ Its closed opening vocabulary is `OpeningPositionMode`,
 decision produced from that public vocabulary.
 Supporting closed values are `BankSuggestionRule`,
 `LedgerCursor`, `LedgerErrorCode`, `ShareholderLoanDirection`, and
-`TaxSettlementKind`.
+`TaxSettlementKind`, `InvestmentSettlementKind`.
 
 Purpose-specific query/results are `LedgerQueries`, `CompanyYearCloseAssessment`,
 `LedgerEntryPage`,

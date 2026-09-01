@@ -11,7 +11,7 @@
     "retainsZeroEquityLine": true
   },
   "manualJournal": {
-    "sensitiveAccounts": ["1370", "1800", "2000", "2050", "2255", "2800", "8070", "8071", "8090", "8171"],
+    "sensitiveAccounts": ["1370", "1570", "1800", "2000", "2050", "2255", "2800", "2990", "8070", "8071", "8090", "8171"],
     "minimumLines": 2,
     "requiresBalance": true
   },

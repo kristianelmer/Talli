@@ -26,6 +26,12 @@ from talli_backend.modules.ledger.public import (
     IntercompanyLoanRelationship,
     InvestmentDividendFacts,
     InvestmentDividendPhase,
+    InvestmentCashSettlementFacts,
+    InvestmentFundDistributionRecognitionFacts,
+    InvestmentPurchaseRecognitionFacts,
+    InvestmentSaleRecognitionFacts,
+    InvestmentSettlementKind,
+    InvestmentClassification,
     LedgerEntryId,
     LedgerEntryKind,
     LedgerError,
@@ -503,10 +509,6 @@ def test_investment_dividend_final_decision_recognizes_receivable_before_cash() 
                 ),
                 source(LedgerSourceCapability.INVESTMENTS, "dividend-decision"),
                 source(LedgerSourceCapability.DOCUMENTS, "dividend-decision-document"),
-                source(
-                    LedgerSourceCapability.COMPANY_TAX_FILING,
-                    "dividend-decision-tax",
-                ),
             )
         )
     )
@@ -517,6 +519,124 @@ def test_investment_dividend_final_decision_recognizes_receivable_before_cash() 
     assert posted_lines(persistence) == [
         ("1530", "5000.00", "0.00"),
         ("8070", "0.00", "5000.00"),
+    ]
+
+
+def test_investment_purchase_recognition_and_cross_year_settlement_are_separate() -> None:
+    recognition = PatternPersistenceStub()
+
+    recognized = asyncio.run(
+        LedgerService(recognition).recognize_holding_action(
+            command(
+                InvestmentPurchaseRecognitionFacts(
+                    investment_name="Example AS",
+                    classification=InvestmentClassification.OTHER_LONG_TERM,
+                    acquisition_cost=Money.nok("125.50"),
+                ),
+                source(LedgerSourceCapability.INVESTMENTS, "purchase-recognition"),
+                source(LedgerSourceCapability.DOCUMENTS, "purchase-contract-note"),
+            )
+        )
+    )
+
+    assert recognized.entry_kind is LedgerEntryKind.SHARE_PURCHASE
+    assert posted_lines(recognition) == [
+        ("1350", "125.50", "0.00"),
+        ("2990", "0.00", "125.50"),
+    ]
+
+    settlement = PatternPersistenceStub()
+    settled = asyncio.run(
+        LedgerService(settlement).recognize_holding_action(
+            RecognizeHoldingActionCommand(
+                company_id=COMPANY_ID,
+                actor_id=ACTOR_ID,
+                correlation_id=CorrelationId("supported-pattern-settlement"),
+                idempotency_key=IdempotencyKey("supported-pattern-settlement-0001"),
+                income_year=IncomeYear(2027),
+                event_date=LocalDate(date(2027, 1, 3)),
+                primary_source=source(
+                    LedgerSourceCapability.INVESTMENTS, "purchase-settlement"
+                ),
+                corroborating_sources=(
+                    source(LedgerSourceCapability.BANKING, "purchase-bank"),
+                ),
+                facts=InvestmentCashSettlementFacts(
+                    kind=InvestmentSettlementKind.PURCHASE_PAYABLE,
+                    amount=Money.nok("125.50"),
+                    recognition_entry_id=recognized.entry_id,
+                ),
+            )
+        )
+    )
+
+    assert settled.entry_kind is LedgerEntryKind.SHARE_PURCHASE
+    assert posted_lines(settlement) == [
+        ("2990", "125.50", "0.00"),
+        ("1920", "0.00", "125.50"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("proceeds", "cost", "result_line"),
+    [
+        ("75.00", "50.20", ("8071", "0.00", "24.80")),
+        ("40.00", "50.20", ("8171", "10.20", "0.00")),
+    ],
+)
+def test_investment_sale_recognition_uses_receivable_and_canonical_result_accounts(
+    proceeds: str,
+    cost: str,
+    result_line: tuple[str, str, str],
+) -> None:
+    persistence = PatternPersistenceStub()
+
+    result = asyncio.run(
+        LedgerService(persistence).recognize_holding_action(
+            command(
+                InvestmentSaleRecognitionFacts(
+                    investment_name="Example AS",
+                    classification=InvestmentClassification.OTHER_LONG_TERM,
+                    net_proceeds=Money.nok(proceeds),
+                    carrying_amount=Money.nok(cost),
+                ),
+                source(LedgerSourceCapability.INVESTMENTS, "sale-recognition"),
+                source(LedgerSourceCapability.DOCUMENTS, "sale-contract-note"),
+            )
+        )
+    )
+
+    assert result.entry_kind is LedgerEntryKind.SHARE_SALE
+    assert posted_lines(persistence) == [
+        ("1570", proceeds, "0.00"),
+        ("1350", "0.00", cost),
+        result_line,
+    ]
+
+
+def test_fund_distribution_recognition_precedes_receivable_settlement() -> None:
+    persistence = PatternPersistenceStub()
+
+    result = asyncio.run(
+        LedgerService(persistence).recognize_holding_action(
+            command(
+                InvestmentFundDistributionRecognitionFacts(
+                    fund_name="Norsk Kombinasjonsfond",
+                    gross_amount=Money.nok("100.00"),
+                    dividend_portion=Money.nok("50.00"),
+                    interest_portion=Money.nok("50.00"),
+                ),
+                source(LedgerSourceCapability.INVESTMENTS, "fund-entitlement"),
+                source(LedgerSourceCapability.DOCUMENTS, "fund-tax-statement"),
+            )
+        )
+    )
+
+    assert result.entry_kind is LedgerEntryKind.DIVIDEND_RECEIVED
+    assert posted_lines(persistence) == [
+        ("1530", "100.00", "0.00"),
+        ("8070", "0.00", "50.00"),
+        ("8050", "0.00", "50.00"),
     ]
 
 
@@ -557,8 +677,11 @@ def test_investment_dividend_payment_clears_the_linked_decision_receivable() -> 
                 gross_amount=Money.nok("5000.00"),
                 decision_entry_id=None,
             ),
-            source(LedgerSourceCapability.INVESTMENTS, "decision-missing-tax"),
-            (source(LedgerSourceCapability.DOCUMENTS, "decision-document"),),
+            source(LedgerSourceCapability.INVESTMENTS, "decision-extra-tax"),
+            (
+                source(LedgerSourceCapability.DOCUMENTS, "decision-document"),
+                source(LedgerSourceCapability.COMPANY_TAX_FILING, "decision-tax"),
+            ),
         ),
         (
             InvestmentDividendFacts(
@@ -569,7 +692,6 @@ def test_investment_dividend_payment_clears_the_linked_decision_receivable() -> 
             source(LedgerSourceCapability.DOCUMENTS, "decision-wrong-primary"),
             (
                 source(LedgerSourceCapability.INVESTMENTS, "decision-investments"),
-                source(LedgerSourceCapability.COMPANY_TAX_FILING, "decision-tax"),
             ),
         ),
         (
@@ -639,7 +761,6 @@ def test_investment_dividend_phase_requires_valid_decision_linkage(
     corroborating = (
         (
             source(LedgerSourceCapability.DOCUMENTS, "linkage-document"),
-            source(LedgerSourceCapability.COMPANY_TAX_FILING, "linkage-tax"),
         )
         if facts.phase is InvestmentDividendPhase.FINAL_DECISION
         else (source(LedgerSourceCapability.BANKING, "linkage-bank"),)
@@ -711,7 +832,6 @@ def test_investment_dividend_requires_a_positive_amount(
     corroborating = (
         (
             source(LedgerSourceCapability.DOCUMENTS, "amount-document"),
-            source(LedgerSourceCapability.COMPANY_TAX_FILING, "amount-tax"),
         )
         if phase is InvestmentDividendPhase.FINAL_DECISION
         else (source(LedgerSourceCapability.BANKING, "amount-bank"),)
@@ -1454,6 +1574,10 @@ def test_fact_variants_never_accept_accounts_lines_or_rule_selection() -> None:
         ApprovedLossCoverageCapitalReductionFacts,
         ApprovedOwnerLoanFundingFacts,
         GroupContributionFacts,
+        InvestmentCashSettlementFacts,
         InvestmentDividendFacts,
+        InvestmentFundDistributionRecognitionFacts,
+        InvestmentPurchaseRecognitionFacts,
+        InvestmentSaleRecognitionFacts,
     ):
         assert not (set(facts.__dataclass_fields__) & forbidden)

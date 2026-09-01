@@ -412,6 +412,13 @@ class InvestmentDividendPhase(StrEnum):
     PAYMENT = "PAYMENT"
 
 
+class InvestmentSettlementKind(StrEnum):
+    PURCHASE_PAYABLE = "PURCHASE_PAYABLE"
+    SALE_RECEIVABLE = "SALE_RECEIVABLE"
+    DIVIDEND_RECEIVABLE = "DIVIDEND_RECEIVABLE"
+    FUND_DISTRIBUTION_RECEIVABLE = "FUND_DISTRIBUTION_RECEIVABLE"
+
+
 class CapitalIncreasePhase(StrEnum):
     BINDING_SUBSCRIPTION = "BINDING_SUBSCRIPTION"
     RESTRICTED_PAYMENT = "RESTRICTED_PAYMENT"
@@ -456,6 +463,36 @@ class InvestmentDividendFacts:
     gross_amount: Money
     decision_entry_id: LedgerEntryId | None = None
     decision_reference_id: DividendDecisionReferenceId | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class InvestmentPurchaseRecognitionFacts:
+    investment_name: str
+    classification: InvestmentClassification
+    acquisition_cost: Money
+
+
+@dataclass(frozen=True, slots=True)
+class InvestmentSaleRecognitionFacts:
+    investment_name: str
+    classification: InvestmentClassification
+    net_proceeds: Money
+    carrying_amount: Money
+
+
+@dataclass(frozen=True, slots=True)
+class InvestmentFundDistributionRecognitionFacts:
+    fund_name: str
+    gross_amount: Money
+    dividend_portion: Money
+    interest_portion: Money
+
+
+@dataclass(frozen=True, slots=True)
+class InvestmentCashSettlementFacts:
+    kind: InvestmentSettlementKind
+    amount: Money
+    recognition_entry_id: LedgerEntryId
 
 
 @dataclass(frozen=True, slots=True)
@@ -532,7 +569,11 @@ SupportedHoldingActionFacts: TypeAlias = (
     | CashCapitalIncreaseFacts
     | CompanyTaxAccrualFacts
     | GroupContributionFacts
+    | InvestmentCashSettlementFacts
     | InvestmentDividendFacts
+    | InvestmentFundDistributionRecognitionFacts
+    | InvestmentPurchaseRecognitionFacts
+    | InvestmentSaleRecognitionFacts
     | ApprovedLossCoverageCapitalReductionFacts
     | OrdinaryBankLoanFacts
 )
@@ -1907,8 +1948,13 @@ __all__ = [
     "IntercompanyLoanPerspective",
     "IntercompanyLoanRelationship",
     "InvestmentClassification",
+    "InvestmentCashSettlementFacts",
     "InvestmentDividendFacts",
     "InvestmentDividendPhase",
+    "InvestmentFundDistributionRecognitionFacts",
+    "InvestmentPurchaseRecognitionFacts",
+    "InvestmentSaleRecognitionFacts",
+    "InvestmentSettlementKind",
     "LedgerCommands",
     "LedgerCursor",
     "LedgerEntryId",

@@ -37,6 +37,11 @@ from talli_backend.modules.ledger.public import (
     InvestmentClassification,
     InvestmentDividendFacts,
     InvestmentDividendPhase,
+    InvestmentCashSettlementFacts,
+    InvestmentFundDistributionRecognitionFacts,
+    InvestmentPurchaseRecognitionFacts,
+    InvestmentSaleRecognitionFacts,
+    InvestmentSettlementKind,
     LedgerCursor,
     LedgerEntryKind,
     LedgerEntryPage,
@@ -100,11 +105,13 @@ _ZERO = Money.nok("0.00")
 _SENSITIVE_MANUAL_ACCOUNTS = frozenset(
     {
         "1370",
+        "1570",
         "1800",
         "2000",
         "2050",
         "2255",
         "2800",
+        "2990",
         "8070",
         "8071",
         "8090",
@@ -964,7 +971,6 @@ class LedgerService:
                     {
                         LedgerSourceCapability.INVESTMENTS,
                         LedgerSourceCapability.DOCUMENTS,
-                        LedgerSourceCapability.COMPANY_TAX_FILING,
                     }
                 )
                 memo = "Final investment-dividend decision recognized"
@@ -992,6 +998,183 @@ class LedgerService:
                     LedgerLine("1920", "Dividend received", facts.gross_amount, _ZERO),
                     LedgerLine(
                         "1530", "Dividend receivable settled", _ZERO, facts.gross_amount
+                    ),
+                )
+            else:
+                raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        elif isinstance(facts, InvestmentPurchaseRecognitionFacts):
+            required_sources = frozenset(
+                {
+                    LedgerSourceCapability.INVESTMENTS,
+                    LedgerSourceCapability.DOCUMENTS,
+                }
+            )
+            primary_source_capability = LedgerSourceCapability.INVESTMENTS
+            _positive(facts.acquisition_cost, "LEDGER_INVALID_INPUT")
+            investment_name = facts.investment_name.strip()
+            account = _INVESTMENT_ACCOUNTS.get(facts.classification)
+            if not investment_name or len(investment_name) > 255 or account is None:
+                raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+            entry_kind = LedgerEntryKind.SHARE_PURCHASE
+            memo = f"Investment recognized: {investment_name}"
+            lines = (
+                LedgerLine(
+                    account,
+                    f"Investment in {investment_name}",
+                    facts.acquisition_cost,
+                    _ZERO,
+                ),
+                LedgerLine(
+                    "2990",
+                    "Investment settlement payable",
+                    _ZERO,
+                    facts.acquisition_cost,
+                ),
+            )
+        elif isinstance(facts, InvestmentSaleRecognitionFacts):
+            required_sources = frozenset(
+                {
+                    LedgerSourceCapability.INVESTMENTS,
+                    LedgerSourceCapability.DOCUMENTS,
+                }
+            )
+            primary_source_capability = LedgerSourceCapability.INVESTMENTS
+            _positive(facts.net_proceeds, "LEDGER_INVALID_INPUT")
+            if facts.carrying_amount.amount < 0:
+                raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+            if facts.net_proceeds.currency != facts.carrying_amount.currency:
+                raise LedgerError.invalid_input("LEDGER_CURRENCY_MISMATCH")
+            investment_name = facts.investment_name.strip()
+            account = _INVESTMENT_ACCOUNTS.get(facts.classification)
+            if not investment_name or len(investment_name) > 255 or account is None:
+                raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+            entry_kind = LedgerEntryKind.SHARE_SALE
+            memo = f"Investment sale recognized: {investment_name}"
+            lines = (
+                LedgerLine(
+                    "1570",
+                    "Investment settlement receivable",
+                    facts.net_proceeds,
+                    _ZERO,
+                ),
+                LedgerLine(
+                    account,
+                    f"Cost basis reduction: {investment_name}",
+                    _ZERO,
+                    facts.carrying_amount,
+                ),
+            )
+            gain_or_loss = facts.net_proceeds.amount - facts.carrying_amount.amount
+            if gain_or_loss > 0:
+                lines += (
+                    LedgerLine(
+                        "8071",
+                        f"Share sale gain: {investment_name}",
+                        _ZERO,
+                        Money.nok(gain_or_loss),
+                    ),
+                )
+            elif gain_or_loss < 0:
+                lines += (
+                    LedgerLine(
+                        "8171",
+                        f"Share sale loss: {investment_name}",
+                        Money.nok(abs(gain_or_loss)),
+                        _ZERO,
+                    ),
+                )
+        elif isinstance(facts, InvestmentFundDistributionRecognitionFacts):
+            required_sources = frozenset(
+                {
+                    LedgerSourceCapability.INVESTMENTS,
+                    LedgerSourceCapability.DOCUMENTS,
+                }
+            )
+            primary_source_capability = LedgerSourceCapability.INVESTMENTS
+            _positive(facts.gross_amount, "LEDGER_INVALID_INPUT")
+            fund_name = facts.fund_name.strip()
+            if (
+                not fund_name
+                or len(fund_name) > 255
+                or facts.dividend_portion.amount < 0
+                or facts.interest_portion.amount < 0
+                or len(
+                    {
+                        facts.gross_amount.currency,
+                        facts.dividend_portion.currency,
+                        facts.interest_portion.currency,
+                    }
+                )
+                != 1
+                or facts.dividend_portion.amount + facts.interest_portion.amount
+                != facts.gross_amount.amount
+            ):
+                raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+            entry_kind = LedgerEntryKind.DIVIDEND_RECEIVED
+            memo = f"Fund distribution recognized: {fund_name}"
+            lines = (
+                LedgerLine(
+                    "1530",
+                    "Fund distribution receivable",
+                    facts.gross_amount,
+                    _ZERO,
+                ),
+            )
+            if facts.dividend_portion.amount > 0:
+                lines += (
+                    LedgerLine(
+                        "8070",
+                        f"Fund dividend from {fund_name}",
+                        _ZERO,
+                        facts.dividend_portion,
+                    ),
+                )
+            if facts.interest_portion.amount > 0:
+                lines += (
+                    LedgerLine(
+                        "8050",
+                        f"Fund interest income from {fund_name}",
+                        _ZERO,
+                        facts.interest_portion,
+                    ),
+                )
+        elif isinstance(facts, InvestmentCashSettlementFacts):
+            required_sources = frozenset(
+                {
+                    LedgerSourceCapability.INVESTMENTS,
+                    LedgerSourceCapability.BANKING,
+                }
+            )
+            primary_source_capability = LedgerSourceCapability.INVESTMENTS
+            _positive(facts.amount, "LEDGER_INVALID_INPUT")
+            if facts.kind is InvestmentSettlementKind.PURCHASE_PAYABLE:
+                entry_kind = LedgerEntryKind.SHARE_PURCHASE
+                memo = "Investment purchase payable settled"
+                lines = (
+                    LedgerLine(
+                        "2990", "Investment settlement payable cleared", facts.amount, _ZERO
+                    ),
+                    LedgerLine("1920", "Investment paid from bank", _ZERO, facts.amount),
+                )
+            elif facts.kind is InvestmentSettlementKind.SALE_RECEIVABLE:
+                entry_kind = LedgerEntryKind.SHARE_SALE
+                memo = "Investment sale receivable settled"
+                lines = (
+                    LedgerLine("1920", "Investment proceeds received", facts.amount, _ZERO),
+                    LedgerLine(
+                        "1570", "Investment settlement receivable cleared", _ZERO, facts.amount
+                    ),
+                )
+            elif facts.kind in {
+                InvestmentSettlementKind.DIVIDEND_RECEIVABLE,
+                InvestmentSettlementKind.FUND_DISTRIBUTION_RECEIVABLE,
+            }:
+                entry_kind = LedgerEntryKind.DIVIDEND_RECEIVED
+                memo = "Investment income receivable settled"
+                lines = (
+                    LedgerLine("1920", "Investment income received", facts.amount, _ZERO),
+                    LedgerLine(
+                        "1530", "Investment income receivable cleared", _ZERO, facts.amount
                     ),
                 )
             else:
