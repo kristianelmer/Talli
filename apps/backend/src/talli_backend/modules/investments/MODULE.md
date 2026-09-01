@@ -1,7 +1,7 @@
 # Investments backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["investments.acquisition_lots","investments.cash_settlements","investments.company_year_policies","investments.corrections","investments.economic_events","investments.event_sources","investments.measurement_sources","investments.position_classifications","investments.positions","investments.received_dividend_recognitions","investments.received_dividends","investments.received_fund_distribution_recognitions","investments.received_fund_distributions","investments.share_purchase_recognitions","investments.share_purchases","investments.share_sale_allocations","investments.share_sales","investments.source_fact_registry","investments.year_end_measurements"],"ports":["InvestmentsPersistence"],"publicEntryPoints":["talli_backend.modules.investments.public"]}
+{"dependencies":[],"ownedTables":["investments.acquisition_lots","investments.cash_settlements","investments.company_year_policies","investments.corrections","investments.economic_events","investments.event_sources","investments.lifecycle_correction_sources","investments.lifecycle_corrections","investments.measurement_sources","investments.position_classifications","investments.positions","investments.received_dividend_recognitions","investments.received_dividends","investments.received_fund_distribution_recognitions","investments.received_fund_distributions","investments.share_purchase_recognitions","investments.share_purchases","investments.share_sale_allocations","investments.share_sales","investments.source_fact_registry","investments.year_end_measurements"],"ports":["InvestmentsPersistence"],"publicEntryPoints":["talli_backend.modules.investments.public"]}
 -->
 
 ## Purpose and ownership
@@ -47,6 +47,13 @@ one later cash settlement clears. `PreparedSharePurchaseRecognition` and
 their respective ledger posts, while `RecordedInvestmentEconomicEvent` and
 `RecordedInvestmentCashSettlement` expose only the resulting owned identities,
 opaque accounting-entry references, and replay state.
+The lifecycle-correction migration records document-evidenced, append-only
+full-reversal/replacement lineage in `investments.lifecycle_corrections`.
+Unsettled economic events can be replaced through the same recognition
+workflow; settled economic events are hard-blocked. Cash-settlement corrections
+retain the recognized amount and event, append a bank-evidenced replacement,
+and link it to the prior settlement through `supersedes_settlement_id` rather
+than mutating or deleting either fact.
 `PreparedSharePurchase` returns the canonical position/lot identifiers and the
 normalized facts needed by ledger. `RecordedSharePurchase` binds those owned
 identifiers to an opaque accounting-entry reference. `PreparedShareSale`

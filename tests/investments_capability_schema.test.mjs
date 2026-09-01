@@ -102,6 +102,14 @@ const incomeLifecycleRollbackPath = new URL(
   "../supabase/rollback/20260901115000_investments_income_lifecycle.sql",
   import.meta.url,
 );
+const lifecycleCorrectionsPath = new URL(
+  "../supabase/migrations/20260901116000_investments_lifecycle_corrections.sql",
+  import.meta.url,
+);
+const lifecycleCorrectionsRollbackPath = new URL(
+  "../supabase/rollback/20260901116000_investments_lifecycle_corrections.sql",
+  import.meta.url,
+);
 const localGatePath = new URL("../scripts/test-supabase-local.sh", import.meta.url);
 
 function artifact(path, phase) {
@@ -398,6 +406,53 @@ test("income lifecycle separates declaration or entitlement from cash receipt", 
   );
   assert.match(rollback, /investments_income_lifecycle_rollback_unsafe/iu);
   assert.match(rollback, /drop table investments\.received_dividend_recognitions/iu);
+});
+
+test("lifecycle corrections preserve history and supersede only equal settlements", () => {
+  const source = artifact(lifecycleCorrectionsPath, "lifecycle corrections");
+  const rollback = artifact(
+    lifecycleCorrectionsRollbackPath,
+    "lifecycle corrections rollback",
+  );
+  for (const table of [
+    "lifecycle_corrections",
+    "lifecycle_correction_sources",
+  ]) {
+    assert.match(source, new RegExp(`create table investments\\.${table}`, "iu"));
+    assert.match(source, new RegExp(
+      `alter table investments\\.${table}[\\s\\S]+force row level security`,
+      "iu",
+    ));
+  }
+  assert.match(source, /add column supersedes_settlement_id uuid unique/iu);
+  assert.match(
+    source,
+    /foreign key \(\s*supersedes_settlement_id, company_id, event_id, income_year\s*\)/iu,
+  );
+  assert.match(
+    source,
+    /foreign key \(correction_id, company_id\)[\s\S]+references investments\.lifecycle_corrections\(correction_id, company_id\)/iu,
+  );
+  assert.match(source, /v_amount <> v_original\.amount/iu);
+  assert.match(source, /correction-target:economic_event/iu);
+  assert.match(source, /correction-target:cash_settlement/iu);
+  assert.doesNotMatch(
+    source,
+    /from investments\.cash_settlements settlement[\s\S]{0,200}for update/iu,
+  );
+  assert.match(source, /exists \([\s\S]+from investments\.cash_settlements settlement[\s\S]+settlement\.event_id = v_event\.event_id/iu);
+  assert.match(source, /ledger\.investment_correction_matches_v1/iu);
+  assert.match(source, /insert into investments\.lifecycle_corrections/iu);
+  assert.match(source, /insert into investments\.lifecycle_correction_sources/iu);
+  assert.doesNotMatch(
+    source,
+    /grant[^;]+execute[^;]+to (?:public|anon|authenticated|service_role)/iu,
+  );
+  assert.match(
+    rollback,
+    /investments_lifecycle_corrections_rollback_unsafe/iu,
+  );
+  assert.match(rollback, /add constraint cash_settlements_event_id_key unique/iu);
 });
 
 test("sale workflow owns FIFO persistence behind restricted investments functions", () => {

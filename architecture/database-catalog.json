@@ -38,6 +38,8 @@
     { "name": "investments.corrections", "kind": "capability-business", "owner": "backend:investments" },
     { "name": "investments.economic_events", "kind": "capability-business", "owner": "backend:investments" },
     { "name": "investments.event_sources", "kind": "capability-business", "owner": "backend:investments" },
+    { "name": "investments.lifecycle_correction_sources", "kind": "capability-business", "owner": "backend:investments" },
+    { "name": "investments.lifecycle_corrections", "kind": "capability-business", "owner": "backend:investments" },
     { "name": "investments.measurement_sources", "kind": "capability-business", "owner": "backend:investments" },
     { "name": "investments.position_classifications", "kind": "capability-business", "owner": "backend:investments" },
     { "name": "investments.positions", "kind": "capability-business", "owner": "backend:investments", "compatibilityResources": ["table:investment_positions"] },

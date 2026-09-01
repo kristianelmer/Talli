@@ -25,6 +25,7 @@ const investmentsLifecycleMeasurementMigration = "20260901112000_investments_lif
 const investmentsLifecycleWorkflowMigration = "20260901113000_investments_lifecycle_workflow.sql";
 const investmentsShareSaleLifecycleMigration = "20260901114000_investments_share_sale_lifecycle.sql";
 const investmentsIncomeLifecycleMigration = "20260901115000_investments_income_lifecycle.sql";
+const investmentsLifecycleCorrectionsMigration = "20260901116000_investments_lifecycle_corrections.sql";
 const ownerId = "00000000-0000-0000-0000-000000000011";
 const outsiderId = "00000000-0000-0000-0000-000000000022";
 const companyId = "10000000-0000-0000-0000-000000000001";
@@ -154,6 +155,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         investmentsLifecycleWorkflowMigration,
         investmentsShareSaleLifecycleMigration,
         investmentsIncomeLifecycleMigration,
+        investmentsLifecycleCorrectionsMigration,
       ].includes(name))) {
       psql(containerName, ["--file", `/repo/supabase/migrations/${migration}`]);
     }
@@ -1237,6 +1239,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     psql(containerName, [
       "--file", `/repo/supabase/migrations/${investmentsIncomeLifecycleMigration}`,
     ]);
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsLifecycleCorrectionsMigration}`,
+    ]);
     assert.equal(scalar(containerName, String.raw`
       select
         (pg_catalog.to_regclass('investments.economic_events') is not null)::text || ':' ||
@@ -1259,6 +1264,19 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
           where table_schema = 'investments' and table_name = 'positions'
             and column_name = 'share_count')::text;
     `), "true:true:true:true:7:false:12");
+
+    const expectLifecycleForeignKeyFailure = (sql, label) => {
+      const result = docker([
+        "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
+        "-U", "postgres", "-d", "talli_test",
+      ], { input: sql });
+      assert.notEqual(result.status, 0, `${label} must fail closed`);
+      assert.match(
+        `${result.stdout}\n${result.stderr}`,
+        /foreign key constraint/iu,
+        label,
+      );
+    };
 
     const lifecycleEventId = "91000000-0000-0000-0000-000000000001";
     const lifecycleSettlementId = "91000000-0000-0000-0000-000000000002";
@@ -1436,6 +1454,229 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       ) from totals;
     `), "1350:125.50,1920:-125.50,2990:0.00");
 
+    const lifecycleSettlementCorrectionId =
+      "92500000-0000-0000-0000-000000000001";
+    const lifecycleReplacementSettlementId =
+      "92500000-0000-0000-0000-000000000002";
+    const lifecycleCorrectionDocumentId =
+      "92500000-0000-0000-0000-000000000003";
+    const lifecycleReplacementBankFact =
+      "92500000-0000-0000-0000-000000000004";
+    const lifecycleReplacementSettlementRequest = {
+      companyId, incomeYear: 2026,
+      settlementId: lifecycleReplacementSettlementId,
+      eventId: lifecycleEventId,
+      idempotencyKey: "lifecycle-replacement-settlement-0001",
+      correlationId: "lifecycle-replacement-settlement",
+      settlementDate: "2026-12-30", amount: "125.50",
+      evidenceMode: "linked_sources",
+      evidenceReference: "corrected bank transaction revision 2",
+      ownerAttested: false, documentFacts: [], bankFact: {
+        capability: "BANKING", recordId: lifecycleReplacementBankFact,
+        revision: 2, factSha256: "1".repeat(64),
+      }, evidenceDigest: "2".repeat(64),
+    };
+    const lifecycleSettlementCorrectionRequest = JSON.stringify({
+      companyId, incomeYear: 2026,
+      correctionId: lifecycleSettlementCorrectionId,
+      idempotencyKey: "lifecycle-settlement-correction-0001",
+      correlationId: "lifecycle-settlement-correction",
+      targetKind: "cash_settlement", originalRecordId: lifecycleSettlementId,
+      replacementRecordId: lifecycleReplacementSettlementId,
+      originalActivityKind: "share_purchase",
+      replacementActivityKind: "share_purchase",
+      correctionDate: "2026-12-31", reason: "Correct bank settlement date",
+      evidenceMode: "linked_sources",
+      evidenceReference: "signed settlement correction",
+      ownerAttested: false, documentFacts: [{
+        capability: "DOCUMENTS", recordId: lifecycleCorrectionDocumentId,
+        revision: 1, factSha256: "0".repeat(64),
+      }], bankFact: null, evidenceDigest: "3".repeat(64),
+      replacement: lifecycleReplacementSettlementRequest,
+    });
+
+    assert.equal(scalar(containerName, String.raw`
+      set role investments_store_owner;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config(
+        'talli.verified_actor_claims',
+        '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}', false
+      );
+      select (company_id = '${companyId}')::text || ':' ||
+        (income_year = 2026)::text || ':' ||
+        ((request.value ->> 'eventId') = event_id::text)::text || ':' ||
+        ((request.value ->> 'amount')::numeric = amount)::text || ':' ||
+        exists (
+          select 1 from investments.cash_settlements newer
+          where newer.supersedes_settlement_id = original.settlement_id
+        )::text
+      from investments.cash_settlements original
+      cross join lateral (
+        select '${lifecycleSettlementCorrectionRequest}'::jsonb -> 'replacement'
+      ) request(value)
+      where settlement_id = '${lifecycleSettlementId}';
+    `), "true:true:true:true:false");
+
+    assert.equal(scalar(containerName, String.raw`
+      begin;
+      set local role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', true);
+      select pg_catalog.set_config(
+        'talli.verified_actor_claims',
+        '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}', true
+      );
+      create temporary table lifecycle_settlement_correction_prepared as
+      select investments.prepare_cash_settlement_correction_v2(
+        '${lifecycleSettlementCorrectionRequest}'::jsonb, '${ownerId}'
+      ) as value;
+      create temporary table lifecycle_replacement_settlement_entry as
+      select * from ledger.post_investment_lifecycle_entry_v2(
+        'lifecycle-replacement-settlement-0001', '${companyId}', 2026,
+        'SHARE_PURCHASE', 'Investment purchase payable settled',
+        '[{"account":"2990","description":"Investment settlement payable cleared","debit":"125.50","credit":"0.00","currency":"NOK"},{"account":"1920","description":"Investment paid from bank","debit":"0.00","credit":"125.50","currency":"NOK"}]'::jsonb,
+        'INVESTMENTS', '${lifecycleReplacementSettlementId}',
+        'lifecycle-replacement-settlement', '${ownerId}', date '2026-12-30',
+        'ledger-supported-patterns-2026.1',
+        pg_catalog.jsonb_build_array(
+          pg_catalog.jsonb_build_object(
+            'role', 'PRIMARY', 'capability', 'INVESTMENTS',
+            'recordId', '${lifecycleReplacementSettlementId}', 'revision', 1,
+            'factSha256', (select value ->> 'eventFactSha256'
+              from lifecycle_settlement_correction_prepared)
+          ),
+          pg_catalog.jsonb_build_object(
+            'role', 'CORROBORATING', 'capability', 'BANKING',
+            'recordId', '${lifecycleReplacementBankFact}', 'revision', 2,
+            'factSha256', repeat('1', 64)
+          )
+        )
+      );
+      create temporary table lifecycle_settlement_reversal as
+      select ledger.link_investment_correction_v1(
+        '${companyId}', 2026,
+        (select (value ->> 'originalAccountingEntryId')::uuid
+          from lifecycle_settlement_correction_prepared),
+        (select ledger_entry_id from lifecycle_replacement_settlement_entry),
+        '${lifecycleSettlementId}', '${lifecycleReplacementSettlementId}',
+        'Correct bank settlement date', 'lifecycle-settlement-correction',
+        date '2026-12-31', '${ownerId}'
+      ) as reversal_entry_id;
+      create temporary table lifecycle_settlement_corrected as
+      select investments.complete_lifecycle_correction_v2(
+        '${lifecycleSettlementCorrectionRequest}'::jsonb,
+        (select (value ->> 'originalAccountingEntryId')::uuid
+          from lifecycle_settlement_correction_prepared),
+        (select ledger_entry_id from lifecycle_replacement_settlement_entry),
+        (select reversal_entry_id from lifecycle_settlement_reversal),
+        '${ownerId}'
+      ) as value;
+      commit;
+      select
+        (select value ->> 'targetKind' from lifecycle_settlement_corrected) || ':' ||
+        (select supersedes_settlement_id::text
+          from investments.cash_settlements
+          where settlement_id = '${lifecycleReplacementSettlementId}') || ':' ||
+        (select count(*)::text from investments.cash_settlements
+          where event_id = '${lifecycleEventId}') || ':' ||
+        (select count(*)::text from investments.lifecycle_correction_sources
+          where correction_id = '${lifecycleSettlementCorrectionId}');
+    `), `cash_settlement:${lifecycleSettlementId}:2:1`);
+
+    assert.equal(scalar(containerName, String.raw`
+      set role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config(
+        'talli.verified_actor_claims',
+        '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}', false
+      );
+      select investments.get_lifecycle_correction_replay_v2(
+        pg_catalog.jsonb_set(
+          '${lifecycleSettlementCorrectionRequest}'::jsonb,
+          '{correlationId}', '"lifecycle-settlement-correction-retry"'
+        ), '${ownerId}'
+      ) ->> 'replayed';
+    `), "true");
+
+    const changedSettlementCorrection = JSON.stringify({
+      ...JSON.parse(lifecycleSettlementCorrectionRequest),
+      correctionId: "92500000-0000-0000-0000-000000000005",
+      idempotencyKey: "lifecycle-settlement-correction-0002",
+      originalRecordId: lifecycleReplacementSettlementId,
+      replacementRecordId: "92500000-0000-0000-0000-000000000006",
+      replacement: {
+        ...lifecycleReplacementSettlementRequest,
+        settlementId: "92500000-0000-0000-0000-000000000006",
+        idempotencyKey: "lifecycle-replacement-settlement-0002",
+        amount: "124.50",
+      },
+    });
+    const refusedChangedSettlement = docker([
+      "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
+      "-U", "postgres", "-d", "talli_test",
+    ], { input: String.raw`
+      set role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config(
+        'talli.verified_actor_claims',
+        '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}', false
+      );
+      select investments.prepare_cash_settlement_correction_v2(
+        '${changedSettlementCorrection}'::jsonb, '${ownerId}'
+      );
+    ` });
+    assert.notEqual(refusedChangedSettlement.status, 0);
+    assert.match(
+      `${refusedChangedSettlement.stdout}\n${refusedChangedSettlement.stderr}`,
+      /investments_dependency_unavailable/u,
+    );
+
+    const settledEventCorrection = JSON.stringify({
+      companyId, incomeYear: 2026,
+      correctionId: "92500000-0000-0000-0000-000000000007",
+      idempotencyKey: "lifecycle-event-correction-0001",
+      correlationId: "lifecycle-event-correction",
+      targetKind: "economic_event", originalRecordId: lifecycleEventId,
+      replacementRecordId: "92500000-0000-0000-0000-000000000008",
+      originalActivityKind: "share_purchase",
+      replacementActivityKind: "share_purchase",
+      correctionDate: "2026-12-31", reason: "Change settled acquisition amount",
+      evidenceMode: "linked_sources", evidenceReference: "signed correction",
+      ownerAttested: false, documentFacts: [{
+        capability: "DOCUMENTS", recordId: lifecycleCorrectionDocumentId,
+        revision: 2, factSha256: "4".repeat(64),
+      }], bankFact: null, evidenceDigest: "5".repeat(64),
+    });
+    const refusedSettledEvent = docker([
+      "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
+      "-U", "postgres", "-d", "talli_test",
+    ], { input: String.raw`
+      set role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config(
+        'talli.verified_actor_claims',
+        '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}', false
+      );
+      select investments.prepare_economic_event_correction_v2(
+        '${settledEventCorrection}'::jsonb, '${ownerId}'
+      );
+    ` });
+    assert.notEqual(refusedSettledEvent.status, 0);
+    assert.match(
+      `${refusedSettledEvent.stdout}\n${refusedSettledEvent.stderr}`,
+      /investments_dependency_unavailable/u,
+    );
+
+    const refusedLifecycleCorrectionsRollback = docker([
+      "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
+      "-U", "postgres", "-d", "talli_test", "--file",
+      `/repo/supabase/rollback/${investmentsLifecycleCorrectionsMigration}`,
+    ]);
+    assert.notEqual(refusedLifecycleCorrectionsRollback.status, 0);
+    assert.match(
+      `${refusedLifecycleCorrectionsRollback.stdout}\n${refusedLifecycleCorrectionsRollback.stderr}`,
+      /investments_lifecycle_corrections_rollback_unsafe/u,
+    );
+
     const lifecyclePositionId = scalar(containerName, String.raw`
       select position_id from investments.economic_events
       where event_id = '${lifecycleEventId}';
@@ -1606,6 +1847,24 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         ) ->> 'replayed');
     `), "true:true");
 
+    expectLifecycleForeignKeyFailure(String.raw`
+      insert into investments.cash_settlements (
+        settlement_id, event_id, company_id, income_year, settlement_date,
+        amount, source_capability, source_record_id, source_revision,
+        fact_sha256, idempotency_key, request_fingerprint, evidence_mode,
+        evidence_reference, owner_attested, evidence_digest,
+        settlement_accounting_entry_id, created_by, supersedes_settlement_id
+      ) values (
+        '92000000-0000-0000-0000-000000000005',
+        '${lifecycleEventId}', '${companyId}', 2026, date '2026-12-31',
+        125.50, 'BANKING', '${lifecycleBankFact}', 1, repeat('c', 64),
+        'cross-event-supersession-0001', repeat('6', 64), 'linked_sources',
+        'cross-event supersession must fail', false, repeat('7', 64),
+        '92000000-0000-0000-0000-000000000006', '${ownerId}',
+        '${lifecycleSaleSettlementId}'
+      );
+    `, "cash settlement cross-event supersession");
+
     const reusedLifecycleSale = docker([
       "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
       "-U", "postgres", "-d", "talli_test",
@@ -1648,6 +1907,14 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     const lifecycleFundSettlementId = "94000000-0000-0000-0000-000000000003";
     const lifecycleFundDocumentId = "94000000-0000-0000-0000-000000000004";
     const lifecycleFundBankFact = "94000000-0000-0000-0000-000000000005";
+    const lifecycleFundReplacementEventId =
+      "94000000-0000-0000-0000-000000000006";
+    const lifecycleFundCorrectionId =
+      "94000000-0000-0000-0000-000000000007";
+    const lifecycleFundCorrectionDocumentId =
+      "94000000-0000-0000-0000-000000000008";
+    const lifecycleFundReplacementDocumentId =
+      "94000000-0000-0000-0000-000000000009";
     const lifecycleDividendCalculationId = "6".repeat(64);
     const lifecycleFundCalculationId = "7".repeat(64);
     const lifecycleDividendRequest = JSON.stringify({
@@ -1728,15 +1995,66 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     ]);
     const lifecycleFundSettlementRequest = JSON.stringify({
       companyId, incomeYear: 2026, settlementId: lifecycleFundSettlementId,
-      eventId: lifecycleFundEventId,
+      eventId: lifecycleFundReplacementEventId,
       idempotencyKey: "lifecycle-fund-settlement-0001",
       correlationId: "lifecycle-fund-settlement",
-      settlementDate: "2026-12-31", amount: "100.00",
+      settlementDate: "2026-12-31", amount: "110.00",
       evidenceMode: "linked_sources", evidenceReference: "fund bank receipt",
       ownerAttested: false, documentFacts: [], bankFact: {
         capability: "BANKING", recordId: lifecycleFundBankFact,
         revision: 1, factSha256: "e".repeat(64),
       }, evidenceDigest: "f".repeat(64),
+    });
+    const lifecycleFundReplacementRequest = JSON.stringify({
+      companyId, incomeYear: 2026, eventId: lifecycleFundReplacementEventId,
+      positionId: lifecycleFundPositionId,
+      idempotencyKey: "lifecycle-fund-replacement-0001",
+      correlationId: "lifecycle-fund-replacement",
+      fundName: "Lifecycle Mixed Fund", entitlementDate: "2026-12-31",
+      grossAmount: "110.00", openingFundEquityRatioBasisPoints: 5000,
+      fundTaxStatementReference: "fund-tax-statement-2026-corrected",
+      evidenceMode: "linked_sources",
+      evidenceReference: "corrected fund distribution notice",
+      ownerAttested: false, documentFacts: [{
+        capability: "DOCUMENTS", recordId: lifecycleFundReplacementDocumentId,
+        revision: 1, factSha256: "1".repeat(64),
+      }], bankFact: null, evidenceDigest: "2".repeat(64),
+    });
+    const lifecycleFundReplacementPrepared = JSON.stringify({
+      positionId: lifecycleFundPositionId, dividendPortion: "55.00",
+      interestPortion: "55.00", taxableAddBack: "1.65",
+      totalTaxableIncome: "56.65", evidenceDigest: "2".repeat(64),
+      calculationId: "3".repeat(64),
+    });
+    const lifecycleFundReplacementSources = JSON.stringify([
+      {
+        role: "PRIMARY", capability: "INVESTMENTS",
+        recordId: lifecycleFundReplacementEventId, revision: 1,
+        factSha256: "3".repeat(64),
+      },
+      {
+        role: "CORROBORATING", capability: "DOCUMENTS",
+        recordId: lifecycleFundReplacementDocumentId, revision: 1,
+        factSha256: "1".repeat(64),
+      },
+    ]);
+    const lifecycleFundCorrectionRequest = JSON.stringify({
+      companyId, incomeYear: 2026, correctionId: lifecycleFundCorrectionId,
+      idempotencyKey: "lifecycle-fund-event-correction-0001",
+      correlationId: "lifecycle-fund-event-correction",
+      targetKind: "economic_event", originalRecordId: lifecycleFundEventId,
+      replacementRecordId: lifecycleFundReplacementEventId,
+      originalActivityKind: "fund_distribution_received",
+      replacementActivityKind: "fund_distribution_received",
+      correctionDate: "2026-12-31",
+      reason: "Correct fund entitlement amount",
+      evidenceMode: "linked_sources",
+      evidenceReference: "signed fund entitlement correction",
+      ownerAttested: false, documentFacts: [{
+        capability: "DOCUMENTS", recordId: lifecycleFundCorrectionDocumentId,
+        revision: 1, factSha256: "4".repeat(64),
+      }], bankFact: null, evidenceDigest: "5".repeat(64),
+      replacement: JSON.parse(lifecycleFundReplacementRequest),
     });
 
     psql(containerName, [], String.raw`
@@ -1832,6 +2150,50 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         (select ledger_entry_id from lifecycle_fund_entry),
         '${lifecycleFundPrepared}'::jsonb, '${ownerId}'
       ) as value;
+      create temporary table lifecycle_fund_correction_prepared as
+      select investments.prepare_economic_event_correction_v2(
+        '${lifecycleFundCorrectionRequest}'::jsonb, '${ownerId}'
+      ) as value;
+      create temporary table lifecycle_fund_replacement_prepared as
+      select investments.prepare_received_fund_distribution_recognition_v2(
+        '${lifecycleFundReplacementRequest}'::jsonb, '${ownerId}'
+      ) as value;
+      create temporary table lifecycle_fund_replacement_entry as
+      select * from ledger.post_investment_lifecycle_entry_v2(
+        'lifecycle-fund-replacement-0001', '${companyId}', 2026,
+        'DIVIDEND_RECEIVED',
+        'Corrected fund distribution recognized: Lifecycle Mixed Fund',
+        '[{"account":"1530","description":"Corrected fund distribution receivable","debit":"110.00","credit":"0.00","currency":"NOK"},{"account":"8070","description":"Corrected fund dividend from Lifecycle Mixed Fund","debit":"0.00","credit":"55.00","currency":"NOK"},{"account":"8050","description":"Corrected fund interest income from Lifecycle Mixed Fund","debit":"0.00","credit":"55.00","currency":"NOK"}]'::jsonb,
+        'INVESTMENTS', '${lifecycleFundReplacementEventId}',
+        'lifecycle-fund-replacement', '${ownerId}', date '2026-12-31',
+        'ledger-supported-patterns-2026.1',
+        '${lifecycleFundReplacementSources}'::jsonb
+      );
+      create temporary table lifecycle_fund_replacement_recognized as
+      select investments.complete_received_fund_distribution_recognition_v2(
+        '${lifecycleFundReplacementRequest}'::jsonb,
+        (select ledger_entry_id from lifecycle_fund_replacement_entry),
+        '${lifecycleFundReplacementPrepared}'::jsonb, '${ownerId}'
+      ) as value;
+      create temporary table lifecycle_fund_correction_reversal as
+      select ledger.link_investment_correction_v1(
+        '${companyId}', 2026,
+        (select (value ->> 'originalAccountingEntryId')::uuid
+          from lifecycle_fund_correction_prepared),
+        (select ledger_entry_id from lifecycle_fund_replacement_entry),
+        '${lifecycleFundEventId}', '${lifecycleFundReplacementEventId}',
+        'Correct fund entitlement amount', 'lifecycle-fund-event-correction',
+        date '2026-12-31', '${ownerId}'
+      ) as reversal_entry_id;
+      create temporary table lifecycle_fund_corrected as
+      select investments.complete_lifecycle_correction_v2(
+        '${lifecycleFundCorrectionRequest}'::jsonb,
+        (select (value ->> 'originalAccountingEntryId')::uuid
+          from lifecycle_fund_correction_prepared),
+        (select ledger_entry_id from lifecycle_fund_replacement_entry),
+        (select reversal_entry_id from lifecycle_fund_correction_reversal),
+        '${ownerId}'
+      ) as value;
       create temporary table lifecycle_fund_settlement_prepared as
       select investments.prepare_cash_settlement_v2(
         '${lifecycleFundSettlementRequest}'::jsonb, '${ownerId}'
@@ -1840,7 +2202,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       select * from ledger.post_investment_lifecycle_entry_v2(
         'lifecycle-fund-settlement-0001', '${companyId}', 2026,
         'DIVIDEND_RECEIVED', 'Investment income receivable settled',
-        '[{"account":"1920","description":"Investment income received","debit":"100.00","credit":"0.00","currency":"NOK"},{"account":"1530","description":"Investment income receivable cleared","debit":"0.00","credit":"100.00","currency":"NOK"}]'::jsonb,
+        '[{"account":"1920","description":"Investment income received","debit":"110.00","credit":"0.00","currency":"NOK"},{"account":"1530","description":"Investment income receivable cleared","debit":"0.00","credit":"110.00","currency":"NOK"}]'::jsonb,
         'INVESTMENTS', '${lifecycleFundSettlementId}',
         'lifecycle-fund-settlement', '${ownerId}', date '2026-12-31',
         'ledger-supported-patterns-2026.1',
@@ -1877,9 +2239,10 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         (select dividend_portion::text || ':' || interest_portion::text || ':' ||
           total_taxable_income::text
           from investments.received_fund_distribution_recognitions
-          where event_id = '${lifecycleFundEventId}') || ':' ||
+          where event_id = '${lifecycleFundReplacementEventId}') || ':' ||
+        (select value ->> 'targetKind' from lifecycle_fund_corrected) || ':' ||
         (select value ->> 'replayed' from lifecycle_fund_settled);
-    `), "dividend_receivable:3.000000000000:false:fund_distribution_receivable:50.000000000000:50.000000000000:51.500000000000:false");
+    `), "dividend_receivable:3.000000000000:false:fund_distribution_receivable:55.000000000000:55.000000000000:56.650000000000:economic_event:false");
 
     assert.equal(scalar(containerName, String.raw`
       set role investments_workflow_executor;
@@ -1900,8 +2263,14 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
             '${lifecycleFundRequest}'::jsonb,
             '{correlationId}', '"lifecycle-fund-retry"'
           ), '${ownerId}'
+        ) ->> 'replayed') || ':' ||
+        (investments.get_lifecycle_correction_replay_v2(
+          pg_catalog.jsonb_set(
+            '${lifecycleFundCorrectionRequest}'::jsonb,
+            '{correlationId}', '"lifecycle-fund-correction-retry"'
+          ), '${ownerId}'
         ) ->> 'replayed');
-    `), "true:true");
+    `), "true:true:true");
 
     const refusedIncomeLifecycleRollback = docker([
       "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
@@ -1994,6 +2363,33 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         '90000000-0000-0000-0000-000000000003', 1000,
         'purchase_payable', '${ownerId}'
       );
+    `);
+    const crossCompanyCorrectionSourceId =
+      "94000000-0000-0000-0000-000000000010";
+    psql(containerName, [], String.raw`
+      insert into investments.source_fact_registry (
+        company_id, source_capability, source_record_id, source_revision,
+        fact_sha256
+      ) values (
+        '${secondCompanyId}', 'DOCUMENTS',
+        '${crossCompanyCorrectionSourceId}', 1, repeat('6', 64)
+      );
+    `);
+    expectLifecycleForeignKeyFailure(String.raw`
+      insert into investments.lifecycle_correction_sources (
+        correction_id, company_id, ordinal, source_capability,
+        source_record_id, source_revision, fact_sha256
+      ) values (
+        '${lifecycleFundCorrectionId}', '${secondCompanyId}', 99, 'DOCUMENTS',
+        '${crossCompanyCorrectionSourceId}', 1, repeat('6', 64)
+      );
+    `, "lifecycle correction source tenant mismatch");
+    psql(containerName, [], String.raw`
+      delete from investments.source_fact_registry
+      where company_id = '${secondCompanyId}'
+        and source_capability = 'DOCUMENTS'
+        and source_record_id = '${crossCompanyCorrectionSourceId}'
+        and source_revision = 1;
     `);
     const expectTenantMismatch = (sql, label) => {
       const result = docker([
@@ -2089,15 +2485,33 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         where settlement_id in (
           '${lifecycleDividendSettlementId}', '${lifecycleFundSettlementId}'
         );
+      delete from investments.lifecycle_correction_sources
+        where correction_id in (
+          '${lifecycleFundCorrectionId}', '${lifecycleSettlementCorrectionId}'
+        );
+      delete from investments.lifecycle_corrections
+        where correction_id in (
+          '${lifecycleFundCorrectionId}', '${lifecycleSettlementCorrectionId}'
+        );
       delete from investments.event_sources
-        where event_id in ('${lifecycleDividendEventId}', '${lifecycleFundEventId}');
+        where event_id in (
+          '${lifecycleDividendEventId}', '${lifecycleFundEventId}',
+          '${lifecycleFundReplacementEventId}'
+        );
       delete from investments.received_dividend_recognitions
         where event_id = '${lifecycleDividendEventId}';
       delete from investments.received_fund_distribution_recognitions
-        where event_id = '${lifecycleFundEventId}';
+        where event_id in (
+          '${lifecycleFundEventId}', '${lifecycleFundReplacementEventId}'
+        );
       delete from investments.economic_events
-        where event_id in ('${lifecycleDividendEventId}', '${lifecycleFundEventId}');
+        where event_id in (
+          '${lifecycleDividendEventId}', '${lifecycleFundEventId}',
+          '${lifecycleFundReplacementEventId}'
+        );
       delete from investments.positions where id = '${lifecycleFundPositionId}';
+      delete from investments.cash_settlements
+        where settlement_id = '${lifecycleReplacementSettlementId}';
       delete from investments.cash_settlements
         where settlement_id = '${lifecycleSaleSettlementId}';
       delete from investments.event_sources
@@ -2135,6 +2549,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       delete from public.companies where id = '${secondCompanyId}';
     `);
 
+    psql(containerName, [
+      "--file", `/repo/supabase/rollback/${investmentsLifecycleCorrectionsMigration}`,
+    ]);
     psql(containerName, [
       "--file", `/repo/supabase/rollback/${investmentsIncomeLifecycleMigration}`,
     ]);
@@ -2215,6 +2632,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     ]);
     psql(containerName, [
       "--file", `/repo/supabase/migrations/${investmentsIncomeLifecycleMigration}`,
+    ]);
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsLifecycleCorrectionsMigration}`,
     ]);
     assert.equal(scalar(containerName, String.raw`
       select
