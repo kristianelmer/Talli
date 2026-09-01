@@ -132,6 +132,7 @@ import {
   recognizeInvestmentShareSale,
   recognizeInvestmentReceivedDividend,
   recognizeInvestmentReceivedFundDistribution,
+  recordInvestmentYearEndMeasurement,
   settleInvestmentCash,
   type InvestmentsCorrectionWire,
 } from "../features/investments";
@@ -2150,6 +2151,61 @@ export async function recordDividendReceived(formData: FormData) {
     }));
   }
 
+  revalidatePath("/");
+  succeedTo(returnTo);
+}
+
+export async function recordInvestmentYearEndMeasurementAction(
+  formData: FormData,
+) {
+  const returnTo = returnTarget(formData);
+  if (!hasSupabaseEnv()) {
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
+  }
+  const operationId = requiredFormUuid(formData, "operationId");
+  const companyId = formString(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear") || "2026");
+  const evidence = await ownerAttestedInvestmentDocumentEvidence(
+    formData,
+    companyId,
+    incomeYear,
+  );
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
+  try {
+    await recordInvestmentYearEndMeasurement(
+      accessToken,
+      {
+        asOf: `${incomeYear}-12-31`,
+        companyId,
+        ...evidence,
+        incomeYear,
+        measurementId: operationId,
+        observedOrRecoverableValue: {
+          amount: formString(formData, "observedOrRecoverableValue"),
+          currency: "NOK",
+        },
+        positionId: formString(formData, "positionId"),
+        taxValue: {
+          amount: formString(formData, "taxValue"),
+          currency: "NOK",
+        },
+      },
+      operationId,
+      operationId,
+    );
+  } catch (error) {
+    const outcomeMayBeUnknown = investmentsOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery(
+      outcomeMayBeUnknown ? "/actions/investment-measurement" : returnTo,
+      {
+        error: investmentsActionErrorMessage(error),
+        investmentMeasurementOperationId: outcomeMayBeUnknown
+          ? operationId
+          : undefined,
+      },
+    ));
+  }
   revalidatePath("/");
   succeedTo(returnTo);
 }

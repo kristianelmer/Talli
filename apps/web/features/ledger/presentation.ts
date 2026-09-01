@@ -25,6 +25,7 @@ const ENTRY_TYPES: Record<LedgerEntryKind, string> = {
   DIVIDEND_RECEIVED: "dividend_received",
   GROUP_CONTRIBUTION: "group_contribution",
   INTERCOMPANY_LOAN: "intercompany_loan",
+  INVESTMENT_MEASUREMENT: "investment_measurement",
   MANUAL_JOURNAL: "manual_journal",
   OPENING_BALANCE: "opening_balance",
   OWNER_DIVIDEND_DECLARED: "owner_dividend_declared",

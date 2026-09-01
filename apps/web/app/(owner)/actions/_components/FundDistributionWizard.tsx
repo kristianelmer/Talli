@@ -112,7 +112,6 @@ export function FundDistributionWizard({
         />
       </div>
       <InvestmentEvidenceFields
-        bankTransactions={bankTransactions}
         documents={documents}
         state={evidence}
         onChange={setEvidence}

@@ -41,6 +41,7 @@ from talli_backend.modules.ledger.public import (
     InvestmentFundDistributionRecognitionFacts,
     InvestmentPurchaseRecognitionFacts,
     InvestmentSaleRecognitionFacts,
+    InvestmentYearEndMeasurementFacts,
     InvestmentSettlementKind,
     LedgerCursor,
     LedgerEntryKind,
@@ -1179,6 +1180,48 @@ class LedgerService:
                 )
             else:
                 raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        elif isinstance(facts, InvestmentYearEndMeasurementFacts):
+            required_sources = frozenset(
+                {
+                    LedgerSourceCapability.INVESTMENTS,
+                    LedgerSourceCapability.DOCUMENTS,
+                }
+            )
+            primary_source_capability = LedgerSourceCapability.INVESTMENTS
+            investment_name = facts.investment_name.strip()
+            account = _INVESTMENT_ACCOUNTS.get(facts.classification)
+            if (
+                not investment_name
+                or len(investment_name) > 255
+                or account is None
+                or facts.pre_measurement_book_value.amount < 0
+                or facts.closing_book_value.amount < 0
+                or facts.pre_measurement_book_value.currency
+                != facts.closing_book_value.currency
+                or facts.closing_book_value.amount
+                >= facts.pre_measurement_book_value.amount
+            ):
+                raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+            amount = Money.nok(
+                facts.pre_measurement_book_value.amount
+                - facts.closing_book_value.amount
+            )
+            entry_kind = LedgerEntryKind.INVESTMENT_MEASUREMENT
+            memo = f"Year-end investment impairment: {investment_name}"
+            lines = (
+                LedgerLine(
+                    "8172",
+                    f"Investment impairment: {investment_name}",
+                    amount,
+                    _ZERO,
+                ),
+                LedgerLine(
+                    account,
+                    f"Investment carrying value reduced: {investment_name}",
+                    _ZERO,
+                    amount,
+                ),
+            )
         elif isinstance(facts, ApprovedOwnerLoanFundingFacts):
             required_sources = frozenset(
                 {

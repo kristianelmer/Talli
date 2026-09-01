@@ -33,6 +33,7 @@ from talli_backend.modules.investments.public import (
     InvestmentLifecycleEventPage,
     InvestmentLifecycleEventView,
     InvestmentLotHistoryStatus,
+    InvestmentMeasurementRule,
     InvestmentPositionPage,
     InvestmentPositionId,
     InvestmentPositionView,
@@ -43,12 +44,14 @@ from talli_backend.modules.investments.public import (
     PreparedReceivedFundDistributionFacts,
     PreparedEconomicEventCorrection,
     PreparedInvestmentCashSettlement,
+    PreparedInvestmentMeasurementFacts,
     PreparedSharePurchaseRecognition,
     RecordedReceivedDividend,
     RecordedReceivedFundDistribution,
     RecordedInvestmentCorrection,
     RecordedInvestmentCashSettlement,
     RecordedInvestmentEconomicEvent,
+    RecordedInvestmentYearEndMeasurement,
     InvestmentEconomicEventId,
     InvestmentSettlementId,
     InvestmentSettlementBalanceKind,
@@ -131,6 +134,23 @@ class InvestmentsSessionStub:
             settlement_balance_kind=(
                 InvestmentSettlementBalanceKind.DIVIDEND_RECEIVABLE
             ),
+            replayed=False,
+        )
+
+    async def record_year_end_measurement(self, command):
+        self.commands.append(command)
+        return RecordedInvestmentYearEndMeasurement(
+            measurement_id=command.measurement_id,
+            position_id=command.position_id,
+            accounting_entry_id=AccountingEntryReference(
+                "70000000-0000-0000-0000-000000000047"
+            ),
+            measurement_rule=(
+                InvestmentMeasurementRule.LOWER_OF_COST_AND_FAIR_VALUE
+            ),
+            closing_book_value=Money.nok("82.50"),
+            tax_basis=Money.nok("100.00"),
+            tax_value=command.tax_value,
             replayed=False,
         )
 
@@ -294,6 +314,38 @@ class InvestmentsSessionStub:
 
     async def get_cash_settlement_replay(self, command):
         return None
+
+    async def get_year_end_measurement_replay(self, command):
+        return None
+
+    async def prepare_year_end_measurement(self, command, *, evidence_digest):
+        self.commands.append(command)
+        return PreparedInvestmentMeasurementFacts(
+            position_id=command.position_id,
+            investment_name="Norsk Notert ASA",
+            investment_kind=InvestmentKind.NORWEGIAN_LISTED_SHARE,
+            accounting_classification=(
+                InvestmentAccountingClassification.CURRENT_LISTED_SHARE
+            ),
+            quantity=InvestmentUnits.of("10"),
+            source_book_cost=Money.nok("100.00"),
+            pre_measurement_book_value=Money.nok("100.00"),
+            tax_basis=Money.nok("100.00"),
+        )
+
+    async def complete_year_end_measurement(
+        self, command, *, prepared, accounting_entry_id
+    ):
+        return RecordedInvestmentYearEndMeasurement(
+            measurement_id=command.measurement_id,
+            position_id=command.position_id,
+            accounting_entry_id=accounting_entry_id,
+            measurement_rule=prepared.measurement_rule,
+            closing_book_value=prepared.closing_book_value,
+            tax_basis=prepared.tax_basis,
+            tax_value=prepared.tax_value,
+            replayed=False,
+        )
 
     async def prepare_cash_settlement(self, command, *, evidence_digest):
         self.commands.append(command)
@@ -1131,6 +1183,50 @@ def test_supported_fund_distribution_uses_recognition_http_contract() -> None:
     )
 
 
+def test_year_end_measurement_uses_separate_book_and_tax_value_contract() -> None:
+    sessions = InvestmentsSessionStub()
+    client = TestClient(create_app(investments_session_factory=sessions))
+    measurement_id = "40000000-0000-0000-0000-000000000044"
+    position_id = "50000000-0000-0000-0000-000000000005"
+
+    response = client.post(
+        "/api/v1/investments/year-end-measurements",
+        headers={
+            "Authorization": "Bearer owner-token",
+            "Idempotency-Key": "measurement-api-contract-0001",
+            "X-Request-ID": "investment-measurement-api",
+        },
+        json={
+            "companyId": "10000000-0000-0000-0000-000000000001",
+            "incomeYear": 2026,
+            "measurementId": measurement_id,
+            "positionId": position_id,
+            "asOf": "2026-12-31",
+            "observedOrRecoverableValue": {
+                "amount": "82.50", "currency": "NOK",
+            },
+            "taxValue": {"amount": "97.00", "currency": "NOK"},
+            "evidenceMode": "manual_fallback",
+            "evidenceReference": "year-end broker statement",
+            "ownerAttested": True,
+            "documentFacts": [{
+                "capability": "DOCUMENTS",
+                "recordId": "80000000-0000-0000-0000-000000000048",
+                "revision": 1,
+                "factSha256": "d" * 64,
+            }],
+            "bankFact": None,
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    assert response.json()["measurementId"] == measurement_id
+    assert response.json()["closingBookValue"]["amount"] == "82.50"
+    assert response.json()["taxBasis"]["amount"] == "100.00"
+    assert response.json()["taxValue"]["amount"] == "97.00"
+    assert sessions.commands[0].position_id == InvestmentPositionId(position_id)
+
+
 def test_supported_cash_settlement_uses_independent_http_contract() -> None:
     sessions = InvestmentsSessionStub()
     banking = BankingSessionStub()
@@ -1180,10 +1276,10 @@ def test_supported_cash_settlement_uses_independent_http_contract() -> None:
     assert sessions.commands[0].settlement_id == InvestmentSettlementId(
         settlement_id
     )
-    assert banking.tokens == ["owner-token"]
+    assert banking.tokens == []
 
 
-def test_cash_settlement_rejects_a_noncanonical_bank_fact() -> None:
+def test_cash_settlement_defers_canonical_bank_claim_to_transaction_workflow() -> None:
     sessions = InvestmentsSessionStub()
     client = TestClient(create_app(
         investments_session_factory=sessions,
@@ -1217,11 +1313,12 @@ def test_cash_settlement_rejects_a_noncanonical_bank_fact() -> None:
         },
     )
 
-    assert response.status_code == 422, response.text
-    assert response.json()["code"] == "INVESTMENTS_INVALID_INPUT"
+    assert response.status_code == 201, response.text
+    assert sessions.commands[0].evidence.bank_fact is not None
+    assert sessions.commands[0].evidence.bank_fact.fact_sha256 == "b" * 64
 
 
-def test_purchase_cash_settlement_requires_an_outgoing_bank_amount() -> None:
+def test_purchase_cash_direction_is_checked_by_locked_bank_claim_not_transport() -> None:
     sessions = InvestmentsSessionStub(
         InvestmentSettlementBalanceKind.PURCHASE_PAYABLE
     )
@@ -1257,7 +1354,8 @@ def test_purchase_cash_settlement_requires_an_outgoing_bank_amount() -> None:
         },
     )
 
-    assert response.status_code == 422, response.text
+    assert response.status_code == 201, response.text
+    assert sessions.commands[0].evidence.bank_fact is not None
 
 
 def test_supported_correction_uses_linked_reversal_replacement_http_contract() -> None:

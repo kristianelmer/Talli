@@ -737,7 +737,7 @@ export interface LedgerCompanyYearCloseAssessmentWire {
   state: CompanyYearCloseState;
 }
 
-export type LedgerEntryKind = "OPENING_BALANCE" | "ADMINISTRATIVE_COST" | "MANUAL_JOURNAL" | "BANK_RULE_SUGGESTION" | "DIVIDEND_RECEIVED" | "OWNER_DIVIDEND_DECLARED" | "OWNER_DIVIDEND_PAYMENT" | "SHARE_PURCHASE" | "SHARE_SALE" | "SHAREHOLDER_LOAN" | "TAX_SETTLEMENT" | "BANK_INTEREST" | "BANK_LOAN" | "CAPITAL_INCREASE" | "CAPITAL_REDUCTION" | "COMPANY_TAX_ACCRUAL" | "GROUP_CONTRIBUTION" | "INTERCOMPANY_LOAN" | "CORRECTION_REVERSAL";
+export type LedgerEntryKind = "OPENING_BALANCE" | "ADMINISTRATIVE_COST" | "MANUAL_JOURNAL" | "BANK_RULE_SUGGESTION" | "DIVIDEND_RECEIVED" | "OWNER_DIVIDEND_DECLARED" | "OWNER_DIVIDEND_PAYMENT" | "SHARE_PURCHASE" | "SHARE_SALE" | "SHAREHOLDER_LOAN" | "TAX_SETTLEMENT" | "BANK_INTEREST" | "BANK_LOAN" | "CAPITAL_INCREASE" | "CAPITAL_REDUCTION" | "COMPANY_TAX_ACCRUAL" | "GROUP_CONTRIBUTION" | "INTERCOMPANY_LOAN" | "INVESTMENT_MEASUREMENT" | "CORRECTION_REVERSAL";
 
 export interface LedgerEntryPageWire {
   items: LedgerEntryViewWire[];
@@ -1255,6 +1255,8 @@ export type InvestmentKind = "norwegian_private_company" | "norwegian_listed_sha
 
 export type InvestmentLotHistoryStatus = "complete" | "needs_reconstruction";
 
+export type InvestmentMeasurementRule = "lower_of_cost_and_fair_value" | "cost_with_evidenced_impairment";
+
 export type InvestmentSettlementBalanceKind = "purchase_payable" | "sale_receivable" | "dividend_receivable" | "fund_distribution_receivable";
 
 export type InvestmentTaxTreatment = "fritaksmetoden";
@@ -1291,6 +1293,34 @@ export interface InvestmentPositionWire {
   taxBasis: LedgerMoneyWire;
   taxTreatment: InvestmentTaxTreatment;
   updatedAt: string;
+}
+
+export interface InvestmentYearEndMeasurementPageWire {
+  items: InvestmentYearEndMeasurementViewWire[];
+  page: InvestmentsPageWire;
+}
+
+export interface InvestmentYearEndMeasurementViewWire {
+  accountingEntryId: string | null;
+  asOf: string;
+  calculationId: string;
+  closingBookValue: LedgerMoneyWire;
+  companyId: string;
+  createdAt: string;
+  createdBy: string;
+  evidenceDigest: string;
+  id: string;
+  impairmentAmount: LedgerMoneyWire;
+  incomeYear: number;
+  measurementRule: InvestmentMeasurementRule;
+  observedOrRecoverableValue: LedgerMoneyWire;
+  positionId: string;
+  preMeasurementBookValue: LedgerMoneyWire;
+  quantity: string;
+  reversalAmount: LedgerMoneyWire;
+  sourceBookCost: LedgerMoneyWire;
+  taxBasis: LedgerMoneyWire;
+  taxValue: LedgerMoneyWire;
 }
 
 export interface InvestmentsPageWire {
@@ -1403,6 +1433,32 @@ export interface InvestmentsSettleCashWire {
   ownerAttested: boolean;
   settlementDate: string;
   settlementId: string;
+}
+
+export interface InvestmentsYearEndMeasurementResultWire {
+  accountingEntryId: string | null;
+  closingBookValue: LedgerMoneyWire;
+  measurementId: string;
+  measurementRule: InvestmentMeasurementRule;
+  positionId: string;
+  replayed: boolean;
+  taxBasis: LedgerMoneyWire;
+  taxValue: LedgerMoneyWire;
+}
+
+export interface InvestmentsYearEndMeasurementWire {
+  asOf: string;
+  bankFact?: InvestmentFactReferenceWire | null;
+  companyId: string;
+  documentFacts?: InvestmentFactReferenceWire[];
+  evidenceMode: InvestmentEvidenceMode;
+  evidenceReference: string;
+  incomeYear: number;
+  measurementId: string;
+  observedOrRecoverableValue: LedgerMoneyWire;
+  ownerAttested: boolean;
+  positionId: string;
+  taxValue: LedgerMoneyWire;
 }
 
 export interface InvestmentsCorrectionResultWire {
@@ -2678,7 +2734,7 @@ function isLedgerCompanyYearCloseAssessmentWire(value: unknown): value is Ledger
 }
 
 function isLedgerEntryKind(value: unknown): value is LedgerEntryKind {
-  return value === "OPENING_BALANCE" || value === "ADMINISTRATIVE_COST" || value === "MANUAL_JOURNAL" || value === "BANK_RULE_SUGGESTION" || value === "DIVIDEND_RECEIVED" || value === "OWNER_DIVIDEND_DECLARED" || value === "OWNER_DIVIDEND_PAYMENT" || value === "SHARE_PURCHASE" || value === "SHARE_SALE" || value === "SHAREHOLDER_LOAN" || value === "TAX_SETTLEMENT" || value === "BANK_INTEREST" || value === "BANK_LOAN" || value === "CAPITAL_INCREASE" || value === "CAPITAL_REDUCTION" || value === "COMPANY_TAX_ACCRUAL" || value === "GROUP_CONTRIBUTION" || value === "INTERCOMPANY_LOAN" || value === "CORRECTION_REVERSAL";
+  return value === "OPENING_BALANCE" || value === "ADMINISTRATIVE_COST" || value === "MANUAL_JOURNAL" || value === "BANK_RULE_SUGGESTION" || value === "DIVIDEND_RECEIVED" || value === "OWNER_DIVIDEND_DECLARED" || value === "OWNER_DIVIDEND_PAYMENT" || value === "SHARE_PURCHASE" || value === "SHARE_SALE" || value === "SHAREHOLDER_LOAN" || value === "TAX_SETTLEMENT" || value === "BANK_INTEREST" || value === "BANK_LOAN" || value === "CAPITAL_INCREASE" || value === "CAPITAL_REDUCTION" || value === "COMPANY_TAX_ACCRUAL" || value === "GROUP_CONTRIBUTION" || value === "INTERCOMPANY_LOAN" || value === "INVESTMENT_MEASUREMENT" || value === "CORRECTION_REVERSAL";
 }
 
 function isLedgerEntryPageWire(value: unknown): value is LedgerEntryPageWire {
@@ -3397,6 +3453,10 @@ function isInvestmentLotHistoryStatus(value: unknown): value is InvestmentLotHis
   return value === "complete" || value === "needs_reconstruction";
 }
 
+function isInvestmentMeasurementRule(value: unknown): value is InvestmentMeasurementRule {
+  return value === "lower_of_cost_and_fair_value" || value === "cost_with_evidenced_impairment";
+}
+
 function isInvestmentSettlementBalanceKind(value: unknown): value is InvestmentSettlementBalanceKind {
   return value === "purchase_payable" || value === "sale_receivable" || value === "dividend_receivable" || value === "fund_distribution_receivable";
 }
@@ -3446,6 +3506,42 @@ function isInvestmentPositionWire(value: unknown): value is InvestmentPositionWi
     isLedgerMoneyWire(value.taxBasis) &&
     isInvestmentTaxTreatment(value.taxTreatment) &&
     isDateTime(value.updatedAt)
+  );
+}
+
+function isInvestmentYearEndMeasurementPageWire(value: unknown): value is InvestmentYearEndMeasurementPageWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["items","page"]) &&
+    Array.isArray(value.items) && value.items.every((item) => isInvestmentYearEndMeasurementViewWire(item)) &&
+    isInvestmentsPageWire(value.page)
+  );
+}
+
+function isInvestmentYearEndMeasurementViewWire(value: unknown): value is InvestmentYearEndMeasurementViewWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountingEntryId","asOf","calculationId","closingBookValue","companyId","createdAt","createdBy","evidenceDigest","id","impairmentAmount","incomeYear","measurementRule","observedOrRecoverableValue","positionId","preMeasurementBookValue","quantity","reversalAmount","sourceBookCost","taxBasis","taxValue"]) &&
+    (isUuid(value.accountingEntryId) || value.accountingEntryId === null) &&
+    typeof value.asOf === "string" &&
+    (typeof value.calculationId === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.calculationId)) &&
+    isLedgerMoneyWire(value.closingBookValue) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    (typeof value.evidenceDigest === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.evidenceDigest)) &&
+    isUuid(value.id) &&
+    isLedgerMoneyWire(value.impairmentAmount) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    isInvestmentMeasurementRule(value.measurementRule) &&
+    isLedgerMoneyWire(value.observedOrRecoverableValue) &&
+    isUuid(value.positionId) &&
+    isLedgerMoneyWire(value.preMeasurementBookValue) &&
+    (typeof value.quantity === "string" && new RegExp("^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$", "u").test(value.quantity)) &&
+    isLedgerMoneyWire(value.reversalAmount) &&
+    isLedgerMoneyWire(value.sourceBookCost) &&
+    isLedgerMoneyWire(value.taxBasis) &&
+    isLedgerMoneyWire(value.taxValue)
   );
 }
 
@@ -3590,6 +3686,40 @@ function isInvestmentsSettleCashWire(value: unknown): value is InvestmentsSettle
     typeof value.ownerAttested === "boolean" &&
     typeof value.settlementDate === "string" &&
     isUuid(value.settlementId)
+  );
+}
+
+function isInvestmentsYearEndMeasurementResultWire(value: unknown): value is InvestmentsYearEndMeasurementResultWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountingEntryId","closingBookValue","measurementId","measurementRule","positionId","replayed","taxBasis","taxValue"]) &&
+    (isUuid(value.accountingEntryId) || value.accountingEntryId === null) &&
+    isLedgerMoneyWire(value.closingBookValue) &&
+    isUuid(value.measurementId) &&
+    isInvestmentMeasurementRule(value.measurementRule) &&
+    isUuid(value.positionId) &&
+    typeof value.replayed === "boolean" &&
+    isLedgerMoneyWire(value.taxBasis) &&
+    isLedgerMoneyWire(value.taxValue)
+  );
+}
+
+function isInvestmentsYearEndMeasurementWire(value: unknown): value is InvestmentsYearEndMeasurementWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["asOf","bankFact","companyId","documentFacts","evidenceMode","evidenceReference","incomeYear","measurementId","observedOrRecoverableValue","ownerAttested","positionId","taxValue"]) &&
+    typeof value.asOf === "string" &&
+    (value.bankFact === undefined || (isInvestmentFactReferenceWire(value.bankFact) || value.bankFact === null)) &&
+    isUuid(value.companyId) &&
+    (value.documentFacts === undefined || Array.isArray(value.documentFacts) && value.documentFacts.every((item) => isInvestmentFactReferenceWire(item)) && value.documentFacts.length <= 50) &&
+    isInvestmentEvidenceMode(value.evidenceMode) &&
+    (typeof value.evidenceReference === "string" && value.evidenceReference.length >= 1 && value.evidenceReference.length <= 500) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    isUuid(value.measurementId) &&
+    isLedgerMoneyWire(value.observedOrRecoverableValue) &&
+    typeof value.ownerAttested === "boolean" &&
+    isUuid(value.positionId) &&
+    isLedgerMoneyWire(value.taxValue)
   );
 }
 
@@ -4886,6 +5016,26 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       return result;
     },
 
+    async investmentsRecordYearEndMeasurement(
+      body: InvestmentsYearEndMeasurementWire,
+      request: TalliMutationOptions,
+    ): Promise<InvestmentsYearEndMeasurementResultWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/investments/year-end-measurements`,
+        "POST",
+        request,
+        body,
+        isInvestmentsYearEndMeasurementResultWire,
+      );
+      if (
+        result.measurementId !== body.measurementId ||
+        result.positionId !== body.positionId
+      ) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
     async investmentsCorrectInvestment(
       body: InvestmentsCorrectionWire,
       request: TalliMutationOptions,
@@ -5004,6 +5154,22 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isShareSaleAllocationPageWire,
+      );
+    },
+
+    async investmentsListYearEndMeasurements(
+      request: InvestmentsListRequest,
+    ): Promise<InvestmentYearEndMeasurementPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        `${baseUrl}/api/v1/investments/year-end-measurements?${query}`,
+        "GET",
+        request,
+        undefined,
+        isInvestmentYearEndMeasurementPageWire,
       );
     },
 

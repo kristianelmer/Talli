@@ -1,7 +1,7 @@
 # Banking backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["banking.accounts","banking.connections","banking.coverage_intervals","banking.source_files","banking.suggestion_acceptances","banking.sync_attempts","banking.transaction_sources","banking.transactions"],"ports":["BankDataProvider","BankingPersistence"],"publicEntryPoints":["talli_backend.modules.banking.public"]}
+{"dependencies":[],"ownedTables":["banking.accounts","banking.connections","banking.coverage_intervals","banking.source_files","banking.suggestion_acceptances","banking.sync_attempts","banking.transaction_sources","banking.transactions"],"ports":["BankDataProvider","BankTransactionClaimPersistence","BankingPersistence"],"publicEntryPoints":["talli_backend.modules.banking.public"]}
 -->
 
 ## Purpose and ownership
@@ -71,12 +71,22 @@ without exposing provider credentials.
 
 ## Ports and workflow seam
 
-`BankingPersistence` is the sole outbound persistence port and is declared by
+`BankingPersistence` is the general banking workflow persistence port and is declared by
 `banking_persistence_adapter`. The expand slice binds it to the verified-actor,
 restricted-role PostgreSQL adapter
 `talli_backend.adapters.supabase_banking.SupabaseBankingSession`. Provider ports
 may produce bank source rows only. They cannot depend on ledger contracts or
 request accounting entries.
+
+`BankTransactionClaimPersistence` is the narrow cross-capability claim port.
+Its `ClaimBankTransactionForExternalActionCommand` is bound by
+`bank_transaction_claim_persistence_adapter`.
+The investment application transaction binds it to
+`talli_backend.adapters.supabase_investments.SupabaseInvestmentsTransaction`
+so the database locks and revalidates company, year, date, signed NOK amount,
+source hash, and unmatched state before recording one external action and its
+opaque ledger reference. The claim and all investment and ledger effects share
+one transaction; a mismatch or later failure rolls the whole action back.
 
 `BankDataProvider` is the sole outbound read-only provider port and is declared
 by `bank_data_provider_adapter`. The backend-system binds both

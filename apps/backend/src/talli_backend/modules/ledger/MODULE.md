@@ -70,6 +70,7 @@ accepts a closed `SupportedHoldingActionFacts` variant and immutable
 `BankInterestIncomeFacts`, `InvestmentDividendFacts`,
 `InvestmentPurchaseRecognitionFacts`, `InvestmentSaleRecognitionFacts`,
 `InvestmentFundDistributionRecognitionFacts`, `InvestmentCashSettlementFacts`,
+`InvestmentYearEndMeasurementFacts`,
 `CompanyTaxAccrualFacts`,
 `OrdinaryBankLoanFacts`, `CashCapitalIncreaseFacts`, and
 `ApprovedLossCoverageCapitalReductionFacts`, `ApprovedOwnerLoanFundingFacts`,
@@ -89,6 +90,9 @@ receivable and documented income split. `InvestmentCashSettlementFacts` clears
 the exact purchase payable or sale/dividend/distribution receivable, including
 in a later admitted company-year. Source owners supply semantic facts and stable
 phase identities; ledger alone selects accounts and balanced lines.
+`InvestmentYearEndMeasurementFacts` carries only the classification and the
+pre- and post-measurement book values. Ledger derives the dedicated impairment
+entry and rejects a non-decreasing value through this posting route.
 
 The phase-linked received-dividend receiver recognizes the final investee
 decision as a receivable and income, then settles that exact decision from the

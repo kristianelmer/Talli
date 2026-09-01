@@ -32,7 +32,9 @@ from talli_backend.application.investments_session import (
 from talli_backend.application.investments_workflow import InvestmentsApplication
 from talli_backend.application.ledger_workflow import LedgerAuthenticationError
 from talli_backend.modules.banking.public import (
+    BankTransactionClaimPersistence,
     ClaimBankTransactionForExternalActionCommand,
+    bank_transaction_claim_persistence_adapter,
 )
 from talli_backend.modules.investments.public import (
     AccountingEntryReference,
@@ -58,9 +60,13 @@ from talli_backend.modules.investments.public import (
     InvestmentLotHistoryStatus,
     InvestmentLifecycleEventPage,
     InvestmentLifecycleEventView,
+    InvestmentMeasurementId,
+    InvestmentMeasurementRule,
     InvestmentPositionPage,
     InvestmentPositionId,
     InvestmentPositionView,
+    InvestmentYearEndMeasurementPage,
+    InvestmentYearEndMeasurementView,
     InvestmentSaleLotFact,
     InvestmentSettlementBalanceKind,
     InvestmentSettlementId,
@@ -79,6 +85,8 @@ from talli_backend.modules.investments.public import (
     PreparedEconomicEventCorrection,
     PreparedCashSettlementCorrection,
     PreparedInvestmentCashSettlement,
+    PreparedInvestmentMeasurementFacts,
+    PreparedInvestmentYearEndMeasurement,
     PreparedSharePurchaseRecognition,
     PreparedShareSale,
     PreparedShareSaleFacts,
@@ -86,9 +94,11 @@ from talli_backend.modules.investments.public import (
     RecognizeReceivedFundDistributionCommand,
     RecognizeSharePurchaseCommand,
     RecognizeShareSaleCommand,
+    RecordInvestmentYearEndMeasurementCommand,
     RecordedInvestmentCorrection,
     RecordedInvestmentCashSettlement,
     RecordedInvestmentEconomicEvent,
+    RecordedInvestmentYearEndMeasurement,
     SettleInvestmentCashCommand,
     ShareSaleAllocationId,
     ShareSaleAllocationPage,
@@ -124,7 +134,8 @@ def _fact_payload(fact) -> dict[str, object]:
 def _lifecycle_request_payload(
     command: RecognizeSharePurchaseCommand | RecognizeShareSaleCommand
     | RecognizeReceivedDividendCommand
-    | RecognizeReceivedFundDistributionCommand | SettleInvestmentCashCommand,
+    | RecognizeReceivedFundDistributionCommand | SettleInvestmentCashCommand
+    | RecordInvestmentYearEndMeasurementCommand,
 ) -> dict[str, object]:
     common: dict[str, object] = {
         "companyId": str(command.company_id),
@@ -150,6 +161,17 @@ def _lifecycle_request_payload(
             "eventId": str(command.event_id),
             "settlementDate": command.settlement_date.value.isoformat(),
             "amount": format(command.amount.amount, "f"),
+        }
+    if isinstance(command, RecordInvestmentYearEndMeasurementCommand):
+        return {
+            **common,
+            "measurementId": str(command.measurement_id),
+            "positionId": str(command.position_id),
+            "asOf": command.as_of.value.isoformat(),
+            "observedOrRecoverableValue": format(
+                command.observed_or_recoverable_value.amount, "f"
+            ),
+            "taxValue": format(command.tax_value.amount, "f"),
         }
     if isinstance(command, RecognizeShareSaleCommand):
         return {
@@ -424,6 +446,47 @@ class SupabaseInvestmentsSession:
             items=items,
             next_cursor=(
                 InvestmentCursor(str(page_rows[-1]["id"])) if has_more else None
+            ),
+            has_more=has_more,
+        )
+
+    async def list_year_end_measurements(
+        self,
+        *,
+        actor_id: ActorId,
+        company_ids: tuple[CompanyId, ...],
+        correlation_id: CorrelationId,
+        cursor: InvestmentCursor | None,
+        limit: int,
+    ) -> InvestmentYearEndMeasurementPage:
+        self._query_input(
+            actor_id=actor_id,
+            company_ids=company_ids,
+            correlation_id=correlation_id,
+            limit=limit,
+        )
+        rows = await self._query_rows(
+            """
+            select * from investments.year_end_measurements
+            where company_id = any(%s::uuid[])
+              and (%s::uuid is null or measurement_id > %s::uuid)
+            order by measurement_id
+            limit %s
+            """,
+            (
+                [str(company_id) for company_id in company_ids],
+                str(cursor) if cursor else None,
+                str(cursor) if cursor else None,
+                limit + 1,
+            ),
+        )
+        has_more = len(rows) > limit
+        page_rows = rows[:limit]
+        return InvestmentYearEndMeasurementPage(
+            items=tuple(_measurement(row) for row in page_rows),
+            next_cursor=(
+                InvestmentCursor(str(page_rows[-1]["measurement_id"]))
+                if has_more else None
             ),
             has_more=has_more,
         )
@@ -962,6 +1025,7 @@ class SupabaseInvestmentsSession:
             raise _map_investments_database_error(str(error)) from None
 
 
+@bank_transaction_claim_persistence_adapter(BankTransactionClaimPersistence)
 class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
     async def _database_rows(
         self,
@@ -981,7 +1045,8 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
         query: str,
         command: CorrectInvestmentCommand | RecognizeSharePurchaseCommand
         | RecognizeShareSaleCommand | RecognizeReceivedDividendCommand
-        | RecognizeReceivedFundDistributionCommand | SettleInvestmentCashCommand,
+        | RecognizeReceivedFundDistributionCommand | SettleInvestmentCashCommand
+        | RecordInvestmentYearEndMeasurementCommand,
         extra: tuple[object, ...] = (),
         request_extra: Mapping[str, object] | None = None,
     ) -> Mapping[str, object] | None:
@@ -1505,6 +1570,95 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
             raise InvestmentsError.unavailable()
         return _recorded_economic_event(result)
 
+    async def get_year_end_measurement_replay(
+        self, command: RecordInvestmentYearEndMeasurementCommand
+    ) -> RecordedInvestmentYearEndMeasurement | None:
+        result = await self._investment_result(
+            "select investments.get_year_end_measurement_replay_v2(%s::jsonb, %s::text) as result",
+            command,
+        )
+        return _recorded_measurement(result) if result is not None else None
+
+    async def prepare_year_end_measurement(
+        self,
+        command: RecordInvestmentYearEndMeasurementCommand,
+        *,
+        evidence_digest: str,
+    ) -> PreparedInvestmentMeasurementFacts:
+        result = await self._investment_result(
+            "select investments.prepare_year_end_measurement_v2(%s::jsonb, %s::text) as result",
+            command,
+            request_extra={"evidenceDigest": evidence_digest},
+        )
+        if result is None:
+            raise InvestmentsError.unavailable()
+        return PreparedInvestmentMeasurementFacts(
+            position_id=InvestmentPositionId(str(result["positionId"])),
+            investment_name=str(result["investmentName"]),
+            investment_kind=InvestmentKind(str(result["investmentKind"])),
+            accounting_classification=InvestmentAccountingClassification(
+                str(result["accountingClassification"])
+            ),
+            quantity=InvestmentUnits.of(str(result["quantity"])),
+            source_book_cost=_money(result["sourceBookCost"]),
+            pre_measurement_book_value=_money(
+                result["preMeasurementBookValue"]
+            ),
+            tax_basis=_money(result["taxBasis"]),
+        )
+
+    async def complete_year_end_measurement(
+        self,
+        command: RecordInvestmentYearEndMeasurementCommand,
+        *,
+        prepared: PreparedInvestmentYearEndMeasurement,
+        accounting_entry_id: AccountingEntryReference | None,
+    ) -> RecordedInvestmentYearEndMeasurement:
+        result = await self._investment_result(
+            """
+            select investments.complete_year_end_measurement_v2(
+              %s::jsonb, %s::uuid, %s::jsonb, %s::text
+            ) as result
+            """,
+            command,
+            (
+                str(accounting_entry_id) if accounting_entry_id else None,
+                json.dumps(
+                    {
+                        "positionId": str(prepared.position_id),
+                        "measurementRule": prepared.measurement_rule.value,
+                        "quantity": format(prepared.quantity.amount, ".12f"),
+                        "sourceBookCost": format(
+                            prepared.source_book_cost.amount, "f"
+                        ),
+                        "preMeasurementBookValue": format(
+                            prepared.pre_measurement_book_value.amount, "f"
+                        ),
+                        "observedOrRecoverableValue": format(
+                            prepared.observed_or_recoverable_value.amount, "f"
+                        ),
+                        "impairmentAmount": format(
+                            prepared.impairment_amount.amount, "f"
+                        ),
+                        "reversalAmount": format(
+                            prepared.reversal_amount.amount, "f"
+                        ),
+                        "closingBookValue": format(
+                            prepared.closing_book_value.amount, "f"
+                        ),
+                        "taxBasis": format(prepared.tax_basis.amount, "f"),
+                        "taxValue": format(prepared.tax_value.amount, "f"),
+                        "evidenceDigest": prepared.evidence_digest,
+                        "calculationId": prepared.calculation_id,
+                    },
+                    separators=(",", ":"),
+                ),
+            ),
+        )
+        if result is None:
+            raise InvestmentsError.unavailable()
+        return _recorded_measurement(result)
+
     async def get_cash_settlement_replay(
         self, command: SettleInvestmentCashCommand
     ) -> RecordedInvestmentCashSettlement | None:
@@ -1719,6 +1873,26 @@ def _recorded_cash_settlement(
     )
 
 
+def _recorded_measurement(
+    value: Mapping[str, object],
+) -> RecordedInvestmentYearEndMeasurement:
+    entry_id = value.get("accountingEntryId")
+    return RecordedInvestmentYearEndMeasurement(
+        measurement_id=InvestmentMeasurementId(str(value["measurementId"])),
+        position_id=InvestmentPositionId(str(value["positionId"])),
+        accounting_entry_id=(
+            AccountingEntryReference(str(entry_id)) if entry_id else None
+        ),
+        measurement_rule=InvestmentMeasurementRule(
+            str(value["measurementRule"])
+        ),
+        closing_book_value=_money(value["closingBookValue"]),
+        tax_basis=_money(value["taxBasis"]),
+        tax_value=_money(value["taxValue"]),
+        replayed=bool(value["replayed"]),
+    )
+
+
 def _recorded_correction(
     value: Mapping[str, object],
 ) -> RecordedInvestmentCorrection:
@@ -1805,6 +1979,37 @@ def _correction(value: Mapping[str, object]) -> InvestmentCorrectionView:
         evidence_reference=str(value["evidence_reference"]),
         evidence_digest=str(value["evidence_digest"]),
         owner_attested=bool(value["owner_attested"]),
+        created_by=_actor(value["created_by"]),
+        created_at=_timestamp(value["created_at"]),
+    )
+
+
+def _measurement(value: Mapping[str, object]) -> InvestmentYearEndMeasurementView:
+    return InvestmentYearEndMeasurementView(
+        measurement_id=InvestmentMeasurementId(str(value["measurement_id"])),
+        company_id=CompanyId(str(value["company_id"])),
+        income_year=IncomeYear(int(value["income_year"])),
+        position_id=InvestmentPositionId(str(value["position_id"])),
+        as_of=LocalDate(value["as_of"]),
+        measurement_rule=InvestmentMeasurementRule(str(value["measurement_rule"])),
+        quantity=InvestmentUnits.of(str(value["quantity"])),
+        source_book_cost=_money(value["source_book_cost"]),
+        pre_measurement_book_value=_money(value["pre_measurement_book_value"]),
+        observed_or_recoverable_value=_money(
+            value["observed_or_recoverable_value"]
+        ),
+        impairment_amount=_money(value["impairment_amount"]),
+        reversal_amount=_money(value["reversal_amount"]),
+        closing_book_value=_money(value["closing_book_value"]),
+        tax_basis=_money(value["tax_basis"]),
+        tax_value=_money(value["tax_value"]),
+        evidence_digest=str(value["evidence_digest"]),
+        calculation_id=str(value["calculation_id"]),
+        accounting_entry_id=(
+            AccountingEntryReference(str(value["accounting_entry_id"]))
+            if value["accounting_entry_id"]
+            else None
+        ),
         created_by=_actor(value["created_by"]),
         created_at=_timestamp(value["created_at"]),
     )

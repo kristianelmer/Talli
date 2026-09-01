@@ -261,6 +261,12 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     },
     {
       from: "backend-system:investment-activity",
+      imports: ["talli_backend.modules.banking.public"],
+      kind: "workflow",
+      to: "backend:banking",
+    },
+    {
+      from: "backend-system:investment-activity",
       imports: ["talli_backend.modules.investments.public"],
       kind: "workflow",
       to: "backend:investments",

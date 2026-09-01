@@ -133,7 +133,6 @@ export function InvestmentSettlementCorrectionWizard({
         required
       />
       <InvestmentEvidenceFields
-        bankTransactions={bankTransactions}
         documents={documents}
         state={evidence}
         onChange={setEvidence}

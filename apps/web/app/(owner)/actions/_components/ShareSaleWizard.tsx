@@ -164,7 +164,6 @@ export function ShareSaleWizard({
       <Banner variant="info">{c.fifoNote}</Banner>
 
       <InvestmentEvidenceFields
-        bankTransactions={bankTransactions}
         documents={documents}
         state={evidence}
         onChange={setEvidence}

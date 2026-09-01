@@ -35,7 +35,7 @@
         "settlementId": "30000000-0000-4000-8000-000000000001"
       },
       "expected": {
-        "calculationId": "20000000-0000-4000-8000-000000000001",
+        "calculationId": "14d847b7336c4f9f97d5ec17a5160ccb60de5f4c0fa7ae4d9162e110837b7de6",
         "capitalizedCostNok": "100250.00",
         "bookCostNok": "100250.00",
         "taxBasisNok": "100250.00",
@@ -78,7 +78,7 @@
           "effect": "none"
         },
         "companyTax": {
-          "calculationId": "20000000-0000-4000-8000-000000000001"
+          "calculationId": "14d847b7336c4f9f97d5ec17a5160ccb60de5f4c0fa7ae4d9162e110837b7de6"
         },
         "annualAccounts": {
           "economicEventId": "10000000-0000-4000-8000-000000000001"
@@ -104,7 +104,7 @@
         "settlementId": "30000000-0000-4000-8000-000000000002"
       },
       "expected": {
-        "calculationId": "20000000-0000-4000-8000-000000000002",
+        "calculationId": "1c4afda54acb6d8dd9962069a875b1fe19640f867974e9d1f525b8490cd680e4",
         "capitalizedCostNok": "10050.00",
         "bookCostNok": "10050.00",
         "taxBasisNok": "10050.00",
@@ -147,7 +147,7 @@
           "effect": "none"
         },
         "companyTax": {
-          "calculationId": "20000000-0000-4000-8000-000000000002"
+          "calculationId": "1c4afda54acb6d8dd9962069a875b1fe19640f867974e9d1f525b8490cd680e4"
         },
         "annualAccounts": {
           "economicEventId": "10000000-0000-4000-8000-000000000002"
@@ -174,7 +174,7 @@
         "settlementId": "30000000-0000-4000-8000-000000000003"
       },
       "expected": {
-        "calculationId": "20000000-0000-4000-8000-000000000003",
+        "calculationId": "4543de1149c75e5525c1c6d43211b33a61dc17934cea4fd23aa03f760d00f947",
         "capitalizedCostNok": "10050.00",
         "bookCostNok": "10050.00",
         "taxBasisNok": "10050.00",
@@ -217,7 +217,7 @@
           "effect": "none"
         },
         "companyTax": {
-          "calculationId": "20000000-0000-4000-8000-000000000003"
+          "calculationId": "4543de1149c75e5525c1c6d43211b33a61dc17934cea4fd23aa03f760d00f947"
         },
         "annualAccounts": {
           "economicEventId": "10000000-0000-4000-8000-000000000003"
@@ -244,7 +244,7 @@
         "settlementId": "30000000-0000-4000-8000-000000000004"
       },
       "expected": {
-        "calculationId": "20000000-0000-4000-8000-000000000004",
+        "calculationId": "c1c54410d91fe94b8920d0478b084cd591019f3d9d81393e79b7d2ce663d858e",
         "netProceedsNok": "14900.00",
         "gainOrLossNok": "4900.00",
         "bookGainOrLossNok": "4900.00",
@@ -294,7 +294,7 @@
           "effect": "none"
         },
         "companyTax": {
-          "calculationId": "20000000-0000-4000-8000-000000000004"
+          "calculationId": "c1c54410d91fe94b8920d0478b084cd591019f3d9d81393e79b7d2ce663d858e"
         },
         "annualAccounts": {
           "economicEventId": "10000000-0000-4000-8000-000000000004"
@@ -321,7 +321,7 @@
         "settlementId": "30000000-0000-4000-8000-000000000005"
       },
       "expected": {
-        "calculationId": "20000000-0000-4000-8000-000000000005",
+        "calculationId": "09e6bcb222ac7ade261461d8b5c19c623753aaa5ebb6505c6488bf6bd5885b1b",
         "netProceedsNok": "7950.00",
         "gainOrLossNok": "-2050.00",
         "bookGainOrLossNok": "-2050.00",
@@ -371,7 +371,7 @@
           "effect": "none"
         },
         "companyTax": {
-          "calculationId": "20000000-0000-4000-8000-000000000005"
+          "calculationId": "09e6bcb222ac7ade261461d8b5c19c623753aaa5ebb6505c6488bf6bd5885b1b"
         },
         "annualAccounts": {
           "economicEventId": "10000000-0000-4000-8000-000000000005"
@@ -400,7 +400,7 @@
         "settlementId": "30000000-0000-4000-8000-000000000006"
       },
       "expected": {
-        "calculationId": "20000000-0000-4000-8000-000000000006",
+        "calculationId": "5c9d4c8abda50d1f026d8f287ecc58094c02f2c5713a26274a47f5ab59ee01e4",
         "netProceedsNok": "117.50",
         "gainOrLossNok": "17.50",
         "bookGainOrLossNok": "17.50",
@@ -451,7 +451,7 @@
           "effect": "none"
         },
         "companyTax": {
-          "calculationId": "20000000-0000-4000-8000-000000000006"
+          "calculationId": "5c9d4c8abda50d1f026d8f287ecc58094c02f2c5713a26274a47f5ab59ee01e4"
         },
         "annualAccounts": {
           "economicEventId": "10000000-0000-4000-8000-000000000006"
@@ -476,7 +476,7 @@
         "settlementId": "30000000-0000-4000-8000-000000000007"
       },
       "expected": {
-        "calculationId": "20000000-0000-4000-8000-000000000007",
+        "calculationId": "60e7d9b2cf8a5f62c39b7ccc767abb96afcc05cdde18c5026322e9db877a7b2d",
         "taxTreatment": "fritaksmetoden",
         "taxableAddBackNok": "3.77",
         "groupExceptionApplied": false,
@@ -518,7 +518,7 @@
           "effect": "none"
         },
         "companyTax": {
-          "calculationId": "20000000-0000-4000-8000-000000000007"
+          "calculationId": "60e7d9b2cf8a5f62c39b7ccc767abb96afcc05cdde18c5026322e9db877a7b2d"
         },
         "annualAccounts": {
           "economicEventId": "10000000-0000-4000-8000-000000000007"
@@ -548,7 +548,7 @@
         "settlementId": "30000000-0000-4000-8000-000000000008"
       },
       "expected": {
-        "calculationId": "20000000-0000-4000-8000-000000000008",
+        "calculationId": "eb788c5e7f1c6abdd7d6e0a669e1af85c2efcaeb3aae64183660622d1b5b0e55",
         "taxTreatment": "fritaksmetoden",
         "taxableAddBackNok": "0.00",
         "groupExceptionApplied": true,
@@ -590,7 +590,7 @@
           "effect": "none"
         },
         "companyTax": {
-          "calculationId": "20000000-0000-4000-8000-000000000008"
+          "calculationId": "eb788c5e7f1c6abdd7d6e0a669e1af85c2efcaeb3aae64183660622d1b5b0e55"
         },
         "annualAccounts": {
           "economicEventId": "10000000-0000-4000-8000-000000000008"
@@ -616,7 +616,7 @@
         "settlementId": "30000000-0000-4000-8000-000000000009"
       },
       "expected": {
-        "calculationId": "20000000-0000-4000-8000-000000000009",
+        "calculationId": "f19e5ca93a2ae46e9535bbc2419f2e4be26db567ffb17d4376ea11b73374d7d8",
         "dividendPortionNok": "100.00",
         "interestPortionNok": "0.00",
         "taxableAddBackNok": "3.00",
@@ -664,7 +664,7 @@
           "effect": "none"
         },
         "companyTax": {
-          "calculationId": "20000000-0000-4000-8000-000000000009"
+          "calculationId": "f19e5ca93a2ae46e9535bbc2419f2e4be26db567ffb17d4376ea11b73374d7d8"
         },
         "annualAccounts": {
           "economicEventId": "10000000-0000-4000-8000-000000000009"
@@ -690,7 +690,7 @@
         "settlementId": "30000000-0000-4000-8000-000000000010"
       },
       "expected": {
-        "calculationId": "20000000-0000-4000-8000-000000000010",
+        "calculationId": "2c6a882d6c0801293c84ca2e4aaf204ce43e9e13836e474147cdfbdb17a06981",
         "dividendPortionNok": "0.00",
         "interestPortionNok": "100.00",
         "taxableAddBackNok": "0.00",
@@ -738,7 +738,7 @@
           "effect": "none"
         },
         "companyTax": {
-          "calculationId": "20000000-0000-4000-8000-000000000010"
+          "calculationId": "2c6a882d6c0801293c84ca2e4aaf204ce43e9e13836e474147cdfbdb17a06981"
         },
         "annualAccounts": {
           "economicEventId": "10000000-0000-4000-8000-000000000010"
@@ -764,7 +764,7 @@
         "settlementId": "30000000-0000-4000-8000-000000000011"
       },
       "expected": {
-        "calculationId": "20000000-0000-4000-8000-000000000011",
+        "calculationId": "f34beb869937f71205df02beef5ebee95223ee0b406cafaae32732ec2de3e2cc",
         "dividendPortionNok": "50.00",
         "interestPortionNok": "50.00",
         "taxableAddBackNok": "1.50",
@@ -812,7 +812,7 @@
           "effect": "none"
         },
         "companyTax": {
-          "calculationId": "20000000-0000-4000-8000-000000000011"
+          "calculationId": "f34beb869937f71205df02beef5ebee95223ee0b406cafaae32732ec2de3e2cc"
         },
         "annualAccounts": {
           "economicEventId": "10000000-0000-4000-8000-000000000011"
@@ -827,6 +827,50 @@
           "evidenceRequired": true
         }
       }
+    }
+  ],
+  "yearEndMeasurementCases": [
+    {
+      "id": "listed-share-year-end-impairment",
+      "input": {
+        "measurementId": "90000000-0000-0000-0000-000000000001",
+        "asOf": "2026-12-31",
+        "accountingClassification": "current_listed_share",
+        "preMeasurementBookValueNok": "100.00",
+        "observedOrRecoverableValueNok": "82.50",
+        "taxBasisNok": "100.00",
+        "taxValueNok": "97.00"
+      },
+      "expected": {
+        "measurementRule": "lower_of_cost_and_fair_value",
+        "impairmentAmountNok": "17.50",
+        "closingBookValueNok": "82.50",
+        "calculationId": "b7fe9331185a7e050d4bac7b6da1970c023fb2aa880f9180f0e07c14b0883031",
+        "ledgerLines": [
+          {
+            "account": "8172",
+            "debitNok": "17.50",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "1810",
+            "debitNok": "0.00",
+            "creditNok": "17.50"
+          }
+        ]
+      }
+    }
+  ],
+  "ownershipContinuityCases": [
+    {
+      "id": "partial-sale-preserves-position-classification",
+      "purchaseEventId": "10000000-0000-4000-8000-000000000001",
+      "saleEventId": "10000000-0000-4000-8000-000000000004",
+      "accountingClassification": "other_long_term",
+      "openingUnits": "10.000000000000",
+      "soldUnits": "4.000000000000",
+      "closingUnits": "6.000000000000",
+      "positionIdentityPreserved": true
     }
   ],
   "blockedPatterns": [

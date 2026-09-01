@@ -28,6 +28,7 @@ const investmentsShareSaleLifecycleMigration = "20260901114000_investments_share
 const investmentsIncomeLifecycleMigration = "20260901115000_investments_income_lifecycle.sql";
 const investmentsLifecycleCorrectionsMigration = "20260901116000_investments_lifecycle_corrections.sql";
 const investmentsBankFactClaimMigration = "20260901117000_investments_bank_fact_claim.sql";
+const investmentsYearEndMeasurementWorkflowMigration = "20260901118000_investments_year_end_measurement_workflow.sql";
 const investmentsLifecyclePublicCutoverMigration = "20260901150538_investments_lifecycle_public_cutover.sql";
 const ownerId = "00000000-0000-0000-0000-000000000011";
 const outsiderId = "00000000-0000-0000-0000-000000000022";
@@ -161,6 +162,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         investmentsIncomeLifecycleMigration,
         investmentsLifecycleCorrectionsMigration,
         investmentsBankFactClaimMigration,
+        investmentsYearEndMeasurementWorkflowMigration,
         investmentsLifecyclePublicCutoverMigration,
       ].includes(name))) {
       psql(containerName, ["--file", `/repo/supabase/migrations/${migration}`]);
@@ -1253,6 +1255,15 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     ]);
     psql(containerName, [
       "--file", `/repo/supabase/migrations/${investmentsBankFactClaimMigration}`,
+    ]);
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsYearEndMeasurementWorkflowMigration}`,
+    ]);
+    psql(containerName, [
+      "--file", `/repo/supabase/rollback/${investmentsYearEndMeasurementWorkflowMigration}`,
+    ]);
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsYearEndMeasurementWorkflowMigration}`,
     ]);
     assert.equal(scalar(containerName, String.raw`
       select
@@ -2439,6 +2450,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
 
     const tenantParentPositionId = "30000000-0000-0000-0000-000000000099";
     const tenantEventId = "90000000-0000-0000-0000-000000000001";
+    const tenantLotId = "90000000-0000-0000-0000-000000000011";
     const tenantMeasurementId = "90000000-0000-0000-0000-000000000002";
     psql(containerName, [], String.raw`
       insert into public.companies (
@@ -2483,6 +2495,16 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         'broker-note-1', false, repeat('2', 64), repeat('3', 64),
         '90000000-0000-0000-0000-000000000003', 1000,
         'purchase_payable', '${ownerId}'
+      );
+      insert into investments.acquisition_lots (
+        id, company_id, position_id, acquisition_action_id, acquisition_date,
+        original_share_count, remaining_share_count,
+        original_cost_basis, remaining_cost_basis,
+        original_tax_basis, remaining_tax_basis, created_by
+      ) values (
+        '${tenantLotId}', '${companyId}', '${tenantParentPositionId}',
+        '${tenantEventId}', date '2026-06-01', 10, 10,
+        1000, 1000, 1000, 1000, '${ownerId}'
       );
     `);
     const crossCompanyCorrectionSourceId =
@@ -2572,19 +2594,88 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         'owner purpose', 'DOCUMENTS',
         '90000000-0000-0000-0000-000000000009', 1, repeat('9', 64), '${ownerId}'
       );
-      insert into investments.year_end_measurements (
-        measurement_id, company_id, income_year, position_id, as_of,
-        policy_version, measurement_rule, quantity, source_book_cost,
-        pre_measurement_book_value, observed_or_recoverable_value,
-        impairment_amount, reversal_amount, closing_book_value, tax_basis,
-        tax_value, evidence_digest, calculation_id, created_by
-      ) values (
-        '${tenantMeasurementId}', '${companyId}', 2026, '${tenantParentPositionId}',
-        date '2026-12-31', 'domestic_2026_v2',
-        'cost_with_evidenced_impairment', 10, 1000, 1000, 900, 100, 0, 900,
-        1000, 1000, repeat('a', 64), repeat('b', 64), '${ownerId}'
-      );
     `);
+    const measurementRequest = JSON.stringify({
+      companyId, incomeYear: 2026, measurementId: tenantMeasurementId,
+      positionId: tenantParentPositionId, asOf: "2026-12-31",
+      observedOrRecoverableValue: "900.00", taxValue: "1000.00",
+      idempotencyKey: "tenant-measurement-0001",
+      correlationId: "tenant-measurement", evidenceMode: "linked_sources",
+      evidenceReference: "tenant valuation", ownerAttested: false,
+      documentFacts: [{
+        capability: "DOCUMENTS",
+        recordId: "90000000-0000-0000-0000-000000000009",
+        revision: 1, factSha256: "c".repeat(64),
+      }],
+      bankFact: null,
+    });
+    assert.equal(scalar(containerName, String.raw`
+      begin;
+      set local role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', true);
+      select pg_catalog.set_config(
+        'talli.verified_actor_claims',
+        '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}', true
+      );
+      create temporary table measurement_prepared as
+      select investments.prepare_year_end_measurement_v2(
+        pg_catalog.jsonb_set(
+          '${measurementRequest}'::jsonb, '{evidenceDigest}',
+          pg_catalog.to_jsonb(repeat('a', 64))
+        ), '${ownerId}'
+      ) as value;
+      create temporary table measurement_entry as
+      select * from ledger.post_investment_lifecycle_entry_v2(
+        'tenant-measurement-0001', '${companyId}', 2026,
+        'INVESTMENT_MEASUREMENT',
+        'Year-end investment impairment: Tenant Parent AS',
+        '[{"account":"8172","description":"Investment impairment: Tenant Parent AS","debit":"100.00","credit":"0.00","currency":"NOK"},{"account":"1350","description":"Investment carrying value reduced: Tenant Parent AS","debit":"0.00","credit":"100.00","currency":"NOK"}]'::jsonb,
+        'INVESTMENTS', '${tenantMeasurementId}', 'tenant-measurement',
+        '${ownerId}', date '2026-12-31',
+        'ledger-supported-patterns-2026.1',
+        pg_catalog.jsonb_build_array(
+          pg_catalog.jsonb_build_object(
+            'role', 'PRIMARY', 'capability', 'INVESTMENTS',
+            'recordId', '${tenantMeasurementId}', 'revision', 1,
+            'factSha256', repeat('b', 64)
+          ),
+          pg_catalog.jsonb_build_object(
+            'role', 'CORROBORATING', 'capability', 'DOCUMENTS',
+            'recordId', '90000000-0000-0000-0000-000000000009',
+            'revision', 1, 'factSha256', repeat('c', 64)
+          )
+        )
+      );
+      select investments.complete_year_end_measurement_v2(
+        '${measurementRequest}'::jsonb,
+        (select ledger_entry_id from measurement_entry),
+        pg_catalog.jsonb_build_object(
+          'positionId', '${tenantParentPositionId}',
+          'measurementRule', 'cost_with_evidenced_impairment',
+          'quantity', '10.000000000000', 'sourceBookCost', '1000.00',
+          'preMeasurementBookValue', '1000.00',
+          'observedOrRecoverableValue', '900.00',
+          'impairmentAmount', '100.00', 'reversalAmount', '0.00',
+          'closingBookValue', '900.00', 'taxBasis', '1000.00',
+          'taxValue', '1000.00', 'evidenceDigest', repeat('a', 64),
+          'calculationId', repeat('b', 64)
+        ), '${ownerId}'
+      );
+      commit;
+      select (select cost_basis::text from investments.positions
+        where id = '${tenantParentPositionId}') || ':' ||
+        (select pg_catalog.sum(remaining_cost_basis)::text
+          from investments.acquisition_lots
+          where position_id = '${tenantParentPositionId}') || ':' ||
+        (select pg_catalog.sum(remaining_tax_basis)::text
+          from investments.acquisition_lots
+          where position_id = '${tenantParentPositionId}') || ':' ||
+        (select entry_kind from ledger.entries
+          where source_record_id = '${tenantMeasurementId}') || ':' ||
+        (select closing_book_value::text
+          from investments.year_end_measurements
+          where measurement_id = '${tenantMeasurementId}');
+    `), "900.000000000000:900.000000000000:1000.000000000000:INVESTMENT_MEASUREMENT:900.000000000000");
     expectTenantMismatch(String.raw`
       set role investments_store_owner;
       select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
@@ -2592,11 +2683,13 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         measurement_id, company_id, ordinal, role, source_capability,
         source_record_id, source_revision, fact_sha256
       ) values (
-        '${tenantMeasurementId}', '${secondCompanyId}', 1, 'valuation',
+        '${tenantMeasurementId}', '${secondCompanyId}', 99, 'valuation',
         'DOCUMENTS', '90000000-0000-0000-0000-000000000010', 1, repeat('c', 64)
       );
     `, "measurement source tenant mismatch");
     psql(containerName, [], String.raw`
+      delete from investments.measurement_sources
+        where measurement_id = '${tenantMeasurementId}';
       delete from investments.year_end_measurements
         where measurement_id = '${tenantMeasurementId}';
       delete from investments.position_classifications
@@ -2665,6 +2758,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
           and investment_key = 'lifecycle-private-as';
       delete from investments.company_year_policies
         where company_id in ('${companyId}', '${secondCompanyId}');
+      delete from investments.acquisition_lots where id = '${tenantLotId}';
       delete from investments.positions where id = '${tenantParentPositionId}';
       delete from public.company_memberships where company_id = '${secondCompanyId}';
       delete from public.companies where id = '${secondCompanyId}';

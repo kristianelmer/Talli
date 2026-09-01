@@ -15,10 +15,12 @@ from talli_backend.modules.investments.public import (
     InvestmentKind,
     InvestmentActivityKind,
     InvestmentCorrectionTargetKind,
+    InvestmentMeasurementRule,
     InvestmentPolicyVersion,
     InvestmentSaleLotCalculation,
     InvestmentUnits,
     PreparedInvestmentCashSettlement,
+    PreparedInvestmentYearEndMeasurement,
     PreparedSharePurchaseRecognition,
     InvestmentsError,
     InvestmentsPersistence,
@@ -32,9 +34,11 @@ from talli_backend.modules.investments.public import (
     RecognizeReceivedFundDistributionCommand,
     RecognizeSharePurchaseCommand,
     RecognizeShareSaleCommand,
+    RecordInvestmentYearEndMeasurementCommand,
     RecordedInvestmentCashSettlement,
     RecordedInvestmentEconomicEvent,
     RecordedInvestmentCorrection,
+    RecordedInvestmentYearEndMeasurement,
     SettleInvestmentCashCommand,
 )
 from talli_backend.shared.kernel import Money
@@ -637,6 +641,101 @@ class InvestmentsService:
         self, command: SettleInvestmentCashCommand
     ) -> RecordedInvestmentCashSettlement | None:
         return await self._persistence.get_cash_settlement_replay(command)
+
+    async def get_year_end_measurement_replay(
+        self, command: RecordInvestmentYearEndMeasurementCommand
+    ) -> RecordedInvestmentYearEndMeasurement | None:
+        return await self._persistence.get_year_end_measurement_replay(command)
+
+    async def prepare_year_end_measurement(
+        self, command: RecordInvestmentYearEndMeasurementCommand
+    ) -> PreparedInvestmentYearEndMeasurement:
+        evidence_digest = _lifecycle_evidence_digest(command)
+        facts = await self._persistence.prepare_year_end_measurement(
+            command,
+            evidence_digest=evidence_digest,
+        )
+        values = (
+            facts.source_book_cost,
+            facts.pre_measurement_book_value,
+            facts.tax_basis,
+            command.observed_or_recoverable_value,
+            command.tax_value,
+        )
+        if (
+            facts.quantity.amount < 0
+            or any(value.amount < 0 for value in values)
+            or len({value.currency for value in values}) != 1
+        ):
+            raise InvestmentsError.unavailable()
+        current = facts.accounting_classification in {
+            InvestmentAccountingClassification.CURRENT_LISTED_SHARE,
+            InvestmentAccountingClassification.CURRENT_FUND,
+        }
+        long_term = facts.accounting_classification in _PRIVATE_CLASSIFICATIONS
+        if not current and not long_term:
+            raise InvestmentsError.invalid_input()
+        rule = (
+            InvestmentMeasurementRule.LOWER_OF_COST_AND_FAIR_VALUE
+            if current
+            else InvestmentMeasurementRule.COST_WITH_EVIDENCED_IMPAIRMENT
+        )
+        closing_amount = min(
+            facts.pre_measurement_book_value.amount,
+            command.observed_or_recoverable_value.amount,
+        )
+        closing = Money.nok(closing_amount)
+        impairment = Money.nok(
+            facts.pre_measurement_book_value.amount - closing.amount
+        )
+        calculation_id = _calculation_id(
+            action_id=command.measurement_id,
+            evidence_digest=evidence_digest,
+            facts={
+                "classification": facts.accounting_classification.value,
+                "closingBookValue": format(closing.amount, "f"),
+                "impairmentAmount": format(impairment.amount, "f"),
+                "measurementRule": rule.value,
+                "observedOrRecoverableValue": format(
+                    command.observed_or_recoverable_value.amount, "f"
+                ),
+                "taxBasis": format(facts.tax_basis.amount, "f"),
+                "taxValue": format(command.tax_value.amount, "f"),
+            },
+            policy_version=_LIFECYCLE_POLICY_VERSION,
+        )
+        return PreparedInvestmentYearEndMeasurement(
+            position_id=facts.position_id,
+            investment_name=facts.investment_name,
+            accounting_classification=facts.accounting_classification,
+            measurement_rule=rule,
+            quantity=facts.quantity,
+            source_book_cost=facts.source_book_cost,
+            pre_measurement_book_value=facts.pre_measurement_book_value,
+            observed_or_recoverable_value=command.observed_or_recoverable_value,
+            impairment_amount=impairment,
+            reversal_amount=_ZERO,
+            closing_book_value=closing,
+            tax_basis=facts.tax_basis,
+            tax_value=command.tax_value,
+            evidence_digest=evidence_digest,
+            calculation_id=calculation_id,
+        )
+
+    async def complete_year_end_measurement(
+        self,
+        command: RecordInvestmentYearEndMeasurementCommand,
+        *,
+        prepared: PreparedInvestmentYearEndMeasurement,
+        accounting_entry_id: AccountingEntryReference | None,
+    ) -> RecordedInvestmentYearEndMeasurement:
+        if (prepared.impairment_amount.amount > 0) is (accounting_entry_id is None):
+            raise InvestmentsError.unavailable()
+        return await self._persistence.complete_year_end_measurement(
+            command,
+            prepared=prepared,
+            accounting_entry_id=accounting_entry_id,
+        )
 
     async def prepare_cash_settlement(
         self, command: SettleInvestmentCashCommand

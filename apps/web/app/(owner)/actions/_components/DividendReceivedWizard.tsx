@@ -182,7 +182,6 @@ export function DividendReceivedWizard({
         required
       />
       <InvestmentEvidenceFields
-        bankTransactions={bankTransactions}
         documents={documents}
         state={evidence}
         onChange={setEvidence}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 from hashlib import sha256
@@ -156,6 +157,17 @@ class InvestmentCorrectionId:
 
 
 @dataclass(frozen=True, slots=True)
+class InvestmentMeasurementId:
+    value: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "value", _opaque_uuid(self.value, "investment measurement id"))
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
 class AccountingEntryReference:
     value: str
 
@@ -178,6 +190,11 @@ class InvestmentAccountingClassification(StrEnum):
     OTHER_LONG_TERM = "other_long_term"
     CURRENT_LISTED_SHARE = "current_listed_share"
     CURRENT_FUND = "current_fund"
+
+
+class InvestmentMeasurementRule(StrEnum):
+    LOWER_OF_COST_AND_FAIR_VALUE = "lower_of_cost_and_fair_value"
+    COST_WITH_EVIDENCED_IMPAIRMENT = "cost_with_evidenced_impairment"
 
 
 class InvestmentTaxTreatment(StrEnum):
@@ -480,6 +497,26 @@ class SettleInvestmentCashCommand(InvestmentsCommand):
 
 
 @dataclass(frozen=True, slots=True)
+class RecordInvestmentYearEndMeasurementCommand(InvestmentsCommand):
+    measurement_id: InvestmentMeasurementId
+    position_id: InvestmentPositionId
+    as_of: LocalDate
+    observed_or_recoverable_value: Money
+    tax_value: Money
+    evidence: InvestmentEvidence
+
+    def __post_init__(self) -> None:
+        if (
+            self.income_year.value != 2026
+            or self.as_of.value != date(self.income_year.value, 12, 31)
+            or self.observed_or_recoverable_value.amount < 0
+            or self.tax_value.amount < 0
+        ):
+            raise InvestmentsError.invalid_input()
+        _require_recognition_evidence(self.evidence)
+
+
+@dataclass(frozen=True, slots=True)
 class RecordSharePurchaseCommand(InvestmentsCommand):
     action_id: InvestmentActionId
     investment_key: str
@@ -630,6 +667,37 @@ class PreparedInvestmentCashSettlement:
 
 
 @dataclass(frozen=True, slots=True)
+class PreparedInvestmentMeasurementFacts:
+    position_id: InvestmentPositionId
+    investment_name: str
+    investment_kind: InvestmentKind
+    accounting_classification: InvestmentAccountingClassification
+    quantity: InvestmentUnits
+    source_book_cost: Money
+    pre_measurement_book_value: Money
+    tax_basis: Money
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedInvestmentYearEndMeasurement:
+    position_id: InvestmentPositionId
+    investment_name: str
+    accounting_classification: InvestmentAccountingClassification
+    measurement_rule: InvestmentMeasurementRule
+    quantity: InvestmentUnits
+    source_book_cost: Money
+    pre_measurement_book_value: Money
+    observed_or_recoverable_value: Money
+    impairment_amount: Money
+    reversal_amount: Money
+    closing_book_value: Money
+    tax_basis: Money
+    tax_value: Money
+    evidence_digest: str
+    calculation_id: str
+
+
+@dataclass(frozen=True, slots=True)
 class InvestmentSaleLotFact:
     lot_id: AcquisitionLotId
     allocation_order: int
@@ -776,6 +844,18 @@ class RecordedInvestmentCashSettlement:
     settlement_id: InvestmentSettlementId
     event_id: InvestmentEconomicEventId
     settlement_accounting_entry_id: AccountingEntryReference
+    replayed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class RecordedInvestmentYearEndMeasurement:
+    measurement_id: InvestmentMeasurementId
+    position_id: InvestmentPositionId
+    accounting_entry_id: AccountingEntryReference | None
+    measurement_rule: InvestmentMeasurementRule
+    closing_book_value: Money
+    tax_basis: Money
+    tax_value: Money
     replayed: bool
 
 
@@ -1057,6 +1137,30 @@ class InvestmentCorrectionView:
 
 
 @dataclass(frozen=True, slots=True)
+class InvestmentYearEndMeasurementView:
+    measurement_id: InvestmentMeasurementId
+    company_id: CompanyId
+    income_year: IncomeYear
+    position_id: InvestmentPositionId
+    as_of: LocalDate
+    measurement_rule: InvestmentMeasurementRule
+    quantity: InvestmentUnits
+    source_book_cost: Money
+    pre_measurement_book_value: Money
+    observed_or_recoverable_value: Money
+    impairment_amount: Money
+    reversal_amount: Money
+    closing_book_value: Money
+    tax_basis: Money
+    tax_value: Money
+    evidence_digest: str
+    calculation_id: str
+    accounting_entry_id: AccountingEntryReference | None
+    created_by: ActorId
+    created_at: Timestamp
+
+
+@dataclass(frozen=True, slots=True)
 class InvestmentPositionPage:
     items: tuple[InvestmentPositionView, ...]
     next_cursor: InvestmentCursor | None
@@ -1098,7 +1202,33 @@ class InvestmentCorrectionPage:
     has_more: bool
 
 
+@dataclass(frozen=True, slots=True)
+class InvestmentYearEndMeasurementPage:
+    items: tuple[InvestmentYearEndMeasurementView, ...]
+    next_cursor: InvestmentCursor | None
+    has_more: bool
+
+
 class InvestmentsPersistence(Protocol):
+    async def get_year_end_measurement_replay(
+        self, command: RecordInvestmentYearEndMeasurementCommand
+    ) -> RecordedInvestmentYearEndMeasurement | None: ...
+
+    async def prepare_year_end_measurement(
+        self,
+        command: RecordInvestmentYearEndMeasurementCommand,
+        *,
+        evidence_digest: str,
+    ) -> PreparedInvestmentMeasurementFacts: ...
+
+    async def complete_year_end_measurement(
+        self,
+        command: RecordInvestmentYearEndMeasurementCommand,
+        *,
+        prepared: PreparedInvestmentYearEndMeasurement,
+        accounting_entry_id: AccountingEntryReference | None,
+    ) -> RecordedInvestmentYearEndMeasurement: ...
+
     async def get_share_purchase_recognition_replay(
         self, command: RecognizeSharePurchaseCommand
     ) -> RecordedInvestmentEconomicEvent | None: ...
@@ -1219,6 +1349,22 @@ class InvestmentsPersistence(Protocol):
 
 
 class InvestmentsCommands(Protocol):
+    async def get_year_end_measurement_replay(
+        self, command: RecordInvestmentYearEndMeasurementCommand
+    ) -> RecordedInvestmentYearEndMeasurement | None: ...
+
+    async def prepare_year_end_measurement(
+        self, command: RecordInvestmentYearEndMeasurementCommand
+    ) -> PreparedInvestmentYearEndMeasurement: ...
+
+    async def complete_year_end_measurement(
+        self,
+        command: RecordInvestmentYearEndMeasurementCommand,
+        *,
+        prepared: PreparedInvestmentYearEndMeasurement,
+        accounting_entry_id: AccountingEntryReference | None,
+    ) -> RecordedInvestmentYearEndMeasurement: ...
+
     async def get_share_purchase_recognition_replay(
         self, command: RecognizeSharePurchaseCommand
     ) -> RecordedInvestmentEconomicEvent | None: ...
@@ -1319,6 +1465,16 @@ class InvestmentsCommands(Protocol):
 
 
 class InvestmentsQueries(Protocol):
+    async def list_year_end_measurements(
+        self,
+        *,
+        actor_id: ActorId,
+        company_ids: tuple[CompanyId, ...],
+        correlation_id: CorrelationId,
+        cursor: InvestmentCursor | None,
+        limit: int,
+    ) -> InvestmentYearEndMeasurementPage: ...
+
     async def list_corrections(
         self,
         *,
@@ -1417,6 +1573,8 @@ __all__ = [
     "InvestmentEconomicEventId",
     "InvestmentFactReference",
     "InvestmentKind",
+    "InvestmentMeasurementId",
+    "InvestmentMeasurementRule",
     "InvestmentLotHistoryStatus",
     "InvestmentLifecycleEventPage",
     "InvestmentLifecycleEventView",
@@ -1424,6 +1582,8 @@ __all__ = [
     "InvestmentPositionPage",
     "InvestmentPositionId",
     "InvestmentPositionView",
+    "InvestmentYearEndMeasurementPage",
+    "InvestmentYearEndMeasurementView",
     "InvestmentSourceReference",
     "InvestmentSourceCapability",
     "InvestmentSettlementId",
@@ -1450,6 +1610,8 @@ __all__ = [
     "PreparedEconomicEventCorrection",
     "PreparedCashSettlementCorrection",
     "PreparedInvestmentCashSettlement",
+    "PreparedInvestmentMeasurementFacts",
+    "PreparedInvestmentYearEndMeasurement",
     "PreparedSharePurchaseRecognition",
     "RecognizeReceivedDividendCommand",
     "RecognizeReceivedFundDistributionCommand",
@@ -1459,6 +1621,7 @@ __all__ = [
     "RecordReceivedFundDistributionCommand",
     "RecordSharePurchaseCommand",
     "RecordShareSaleCommand",
+    "RecordInvestmentYearEndMeasurementCommand",
     "RecordedSharePurchase",
     "RecordedShareSale",
     "RecordedReceivedDividend",
@@ -1466,6 +1629,7 @@ __all__ = [
     "RecordedInvestmentCorrection",
     "RecordedInvestmentCashSettlement",
     "RecordedInvestmentEconomicEvent",
+    "RecordedInvestmentYearEndMeasurement",
     "SettleInvestmentCashCommand",
     "ShareSaleAllocationId",
     "ShareSaleAllocationPage",

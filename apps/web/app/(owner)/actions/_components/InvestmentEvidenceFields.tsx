@@ -16,7 +16,6 @@ export type InvestmentEvidenceState = {
 };
 
 type Props = {
-  bankTransactions: InvestmentEvidenceOption[];
   documents: InvestmentEvidenceOption[];
   state: InvestmentEvidenceState;
   onChange: (state: InvestmentEvidenceState) => void;

@@ -882,6 +882,7 @@ test("investment actions require explicit owner and dividend attestations", () =
     "FundDistributionWizard.tsx",
     "InvestmentCorrectionWizard.tsx",
     "InvestmentSettlementCorrectionWizard.tsx",
+    "InvestmentMeasurementWizard.tsx",
   ].map((fileName) => readFileSync(
     new URL(`../app/(owner)/actions/_components/${fileName}`, import.meta.url),
     "utf8",

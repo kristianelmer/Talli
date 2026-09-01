@@ -35,7 +35,43 @@ test("#190 evidence pins the approved source cut and complete supported set", ()
     ],
   );
   assert.ok(evidence.sources.every((source) => source.url.startsWith("https://")));
+  assert.ok(evidence.acceptedPatterns.every((pattern) => (
+    /^[0-9a-f]{64}$/u.test(pattern.expected.calculationId)
+  )));
   for (const source of evidence.sources) assert.match(documentation, new RegExp(source.url.replaceAll("/", "\\/"), "u"));
+});
+
+test("year-end golden keeps book impairment and tax values separate", () => {
+  const [measurement] = evidence.yearEndMeasurementCases;
+  assert.equal(measurement.id, "listed-share-year-end-impairment");
+  assert.equal(measurement.input.asOf, "2026-12-31");
+  assert.equal(
+    money(measurement.expected.impairmentAmountNok),
+    money(measurement.input.preMeasurementBookValueNok)
+      - money(measurement.expected.closingBookValueNok),
+  );
+  assert.equal(measurement.input.taxBasisNok, "100.00");
+  assert.equal(measurement.input.taxValueNok, "97.00");
+  assert.match(measurement.expected.calculationId, /^[0-9a-f]{64}$/u);
+  const debit = measurement.expected.ledgerLines.reduce(
+    (sum, line) => sum + money(line.debitNok),
+    0,
+  );
+  const credit = measurement.expected.ledgerLines.reduce(
+    (sum, line) => sum + money(line.creditNok),
+    0,
+  );
+  assert.equal(debit, credit);
+});
+
+test("simple ownership changes preserve the classified position", () => {
+  const [change] = evidence.ownershipContinuityCases;
+  assert.equal(
+    Number(change.closingUnits),
+    Number(change.openingUnits) - Number(change.soldUnits),
+  );
+  assert.equal(change.accountingClassification, "other_long_term");
+  assert.equal(change.positionIdentityPreserved, true);
 });
 
 test("purchase and sale golden cases reconcile cent-exact carrying amounts", () => {

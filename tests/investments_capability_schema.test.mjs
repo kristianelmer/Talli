@@ -126,6 +126,14 @@ const bankFactClaimRollbackPath = new URL(
   "../supabase/rollback/20260901117000_investments_bank_fact_claim.sql",
   import.meta.url,
 );
+const yearEndMeasurementWorkflowPath = new URL(
+  "../supabase/migrations/20260901118000_investments_year_end_measurement_workflow.sql",
+  import.meta.url,
+);
+const yearEndMeasurementWorkflowRollbackPath = new URL(
+  "../supabase/rollback/20260901118000_investments_year_end_measurement_workflow.sql",
+  import.meta.url,
+);
 const lifecyclePublicCutoverPath = new URL(
   "../supabase/contract-migrations/20260901150538_investments_lifecycle_public_cutover.sql",
   import.meta.url,
@@ -208,6 +216,29 @@ test("bank facts are claimed atomically through one restricted reversible routin
     rollback,
     /drop function banking\.claim_transaction_for_external_action_v1/iu,
   );
+  assert.doesNotMatch(rollback, /\btruncate\b/iu);
+});
+
+test("year-end measurement is executable, restricted, and reverses fail closed", () => {
+  const source = artifact(
+    yearEndMeasurementWorkflowPath,
+    "year-end measurement workflow",
+  );
+  const rollback = artifact(
+    yearEndMeasurementWorkflowRollbackPath,
+    "year-end measurement workflow rollback",
+  );
+  assert.match(source, /function investments\.prepare_year_end_measurement_v2/iu);
+  assert.match(source, /function investments\.complete_year_end_measurement_v2/iu);
+  assert.match(source, /'INVESTMENT_MEASUREMENT'/u);
+  assert.match(source, /update investments\.positions[\s\S]+cost_basis/iu);
+  assert.match(
+    source,
+    /grant execute on function[\s\S]+get_year_end_measurement_replay_v2[\s\S]+to investments_workflow_executor/iu,
+  );
+  assert.match(rollback, /investments_year_end_measurement_rollback_unsafe/iu);
+  assert.match(rollback, /drop function investments\.complete_year_end_measurement_v2/iu);
+  assert.match(rollback, /drop column idempotency_key/iu);
   assert.doesNotMatch(rollback, /\btruncate\b/iu);
 });
 

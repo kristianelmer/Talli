@@ -93,6 +93,11 @@ const investmentsOperations = {
     "get",
     "investmentsListShareSaleAllocations",
   ],
+  listYearEndMeasurements: [
+    "/api/v1/investments/year-end-measurements",
+    "get",
+    "investmentsListYearEndMeasurements",
+  ],
   recognizeSharePurchase: [
     "/api/v1/investments/share-purchase-recognitions",
     "post",
@@ -117,6 +122,11 @@ const investmentsOperations = {
     "/api/v1/investments/cash-settlements",
     "post",
     "investmentsSettleCash",
+  ],
+  recordYearEndMeasurement: [
+    "/api/v1/investments/year-end-measurements",
+    "post",
+    "investmentsRecordYearEndMeasurement",
   ],
   correctInvestment: [
     "/api/v1/investments/corrections",
@@ -485,11 +495,14 @@ const investmentsSchemas = Object.fromEntries([
   "InvestmentEvidenceMode",
   "InvestmentKind",
   "InvestmentLotHistoryStatus",
+  "InvestmentMeasurementRule",
   "InvestmentSettlementBalanceKind",
   "InvestmentTaxTreatment",
   "InvestmentPositionPageWire",
   "InvestmentPositionMovementWire",
   "InvestmentPositionWire",
+  "InvestmentYearEndMeasurementPageWire",
+  "InvestmentYearEndMeasurementViewWire",
   "InvestmentsPageWire",
   "InvestmentsEconomicEventResultWire",
   "InvestmentsCashSettlementResultWire",
@@ -498,6 +511,8 @@ const investmentsSchemas = Object.fromEntries([
   "InvestmentsRecognizeReceivedDividendWire",
   "InvestmentsRecognizeReceivedFundDistributionWire",
   "InvestmentsSettleCashWire",
+  "InvestmentsYearEndMeasurementResultWire",
+  "InvestmentsYearEndMeasurementWire",
   "InvestmentsCorrectionResultWire",
   "InvestmentsCorrectionWire",
   "InvestmentsSharePurchaseRecognitionWire",
@@ -1422,6 +1437,26 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       return result;
     },
 
+    async investmentsRecordYearEndMeasurement(
+      body: InvestmentsYearEndMeasurementWire,
+      request: TalliMutationOptions,
+    ): Promise<InvestmentsYearEndMeasurementResultWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/investments/year-end-measurements\`,
+        "POST",
+        request,
+        body,
+        isInvestmentsYearEndMeasurementResultWire,
+      );
+      if (
+        result.measurementId !== body.measurementId ||
+        result.positionId !== body.positionId
+      ) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
     async investmentsCorrectInvestment(
       body: InvestmentsCorrectionWire,
       request: TalliMutationOptions,
@@ -1540,6 +1575,22 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isShareSaleAllocationPageWire,
+      );
+    },
+
+    async investmentsListYearEndMeasurements(
+      request: InvestmentsListRequest,
+    ): Promise<InvestmentYearEndMeasurementPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/investments/year-end-measurements?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isInvestmentYearEndMeasurementPageWire,
       );
     },
 

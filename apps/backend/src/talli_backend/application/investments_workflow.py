@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from dataclasses import replace
 
 from talli_backend.modules.banking.public import (
@@ -22,6 +22,7 @@ from talli_backend.modules.investments.public import (
     InvestmentCorrectionPage,
     InvestmentLifecycleEventPage,
     InvestmentPositionPage,
+    InvestmentYearEndMeasurementPage,
     ShareSaleAllocationPage,
     AccountingEntryReference,
     CorrectInvestmentCommand,
@@ -38,8 +39,11 @@ from talli_backend.modules.investments.public import (
     RecordedInvestmentCashSettlement,
     RecordedInvestmentEconomicEvent,
     RecordedInvestmentCorrection,
+    RecordedInvestmentYearEndMeasurement,
     PreparedCashSettlementCorrection,
     PreparedInvestmentCashSettlement,
+    PreparedInvestmentYearEndMeasurement,
+    RecordInvestmentYearEndMeasurementCommand,
     SettleInvestmentCashCommand,
 )
 from talli_backend.modules.investments.service import InvestmentsService
@@ -51,6 +55,7 @@ from talli_backend.modules.ledger.public import (
     InvestmentFundDistributionRecognitionFacts,
     InvestmentPurchaseRecognitionFacts,
     InvestmentSaleRecognitionFacts,
+    InvestmentYearEndMeasurementFacts,
     InvestmentSettlementKind,
     LedgerEntryId,
     LedgerFactReference,
@@ -64,11 +69,6 @@ from talli_backend.shared.kernel import CompanyId, CorrelationId
 
 
 LedgerFacadeFactory = Callable[[LedgerPersistence], LedgerCommands]
-InvestmentBankFactValidator = Callable[
-    [SettleInvestmentCashCommand, PreparedInvestmentCashSettlement],
-    Awaitable[None],
-]
-
 _LEDGER_CLASSIFICATION = {
     InvestmentAccountingClassification.SUBSIDIARY: InvestmentClassification.SUBSIDIARY,
     InvestmentAccountingClassification.ASSOCIATE: InvestmentClassification.ASSOCIATE,
@@ -112,11 +112,9 @@ class InvestmentsSession:
         self,
         persistence: AuthenticatedInvestmentsSession,
         ledger_facade_factory: LedgerFacadeFactory,
-        bank_fact_validator: InvestmentBankFactValidator | None = None,
     ) -> None:
         self._persistence = persistence
         self._ledger_facade_factory = ledger_facade_factory
-        self._bank_fact_validator = bank_fact_validator
 
     @property
     def actor_id(self):
@@ -137,6 +135,65 @@ class InvestmentsSession:
             raise InvestmentsError.forbidden()
         async with self._persistence.transaction() as transaction:
             return await self._settle_in_transaction(transaction, command)
+
+    async def record_year_end_measurement(
+        self, command: RecordInvestmentYearEndMeasurementCommand
+    ) -> RecordedInvestmentYearEndMeasurement:
+        if command.actor_id != self._persistence.actor_id:
+            raise InvestmentsError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            investments = InvestmentsService(transaction)
+            replay = await investments.get_year_end_measurement_replay(command)
+            if replay is not None:
+                return replay
+            prepared = await investments.prepare_year_end_measurement(command)
+            entry_id = await self._post_year_end_measurement_entry(
+                transaction, command, prepared
+            )
+            return await investments.complete_year_end_measurement(
+                command,
+                prepared=prepared,
+                accounting_entry_id=entry_id,
+            )
+
+    async def _post_year_end_measurement_entry(
+        self,
+        transaction,
+        command: RecordInvestmentYearEndMeasurementCommand,
+        prepared: PreparedInvestmentYearEndMeasurement,
+    ) -> AccountingEntryReference | None:
+        if prepared.impairment_amount.amount == 0:
+            return None
+        posted = await self._ledger_facade_factory(
+            transaction
+        ).recognize_holding_action(
+            RecognizeHoldingActionCommand(
+                company_id=command.company_id,
+                actor_id=command.actor_id,
+                correlation_id=command.correlation_id,
+                idempotency_key=command.idempotency_key,
+                income_year=command.income_year,
+                event_date=command.as_of,
+                primary_source=LedgerFactReference(
+                    capability=LedgerSourceCapability.INVESTMENTS,
+                    record_id=LedgerSourceRecordId(str(command.measurement_id)),
+                    revision=1,
+                    fact_sha256=prepared.calculation_id,
+                ),
+                corroborating_sources=tuple(
+                    _ledger_fact(fact) for fact in command.evidence.document_facts
+                ),
+                facts=InvestmentYearEndMeasurementFacts(
+                    investment_name=prepared.investment_name,
+                    classification=_LEDGER_CLASSIFICATION[
+                        prepared.accounting_classification
+                    ],
+                    pre_measurement_book_value=prepared.pre_measurement_book_value,
+                    closing_book_value=prepared.closing_book_value,
+                ),
+            )
+        )
+        return AccountingEntryReference(str(posted.entry_id))
 
     async def record_compatibility_action(
         self,
@@ -170,7 +227,6 @@ class InvestmentsSession:
         if replay is not None:
             return replay
         prepared = await investments.prepare_cash_settlement(command)
-        await self._validate_bank_fact(command, prepared)
         replacement_entry_id = await self._post_cash_settlement_entry(
             transaction, command, prepared
         )
@@ -336,15 +392,6 @@ class InvestmentsSession:
         )
         return AccountingEntryReference(str(posted.entry_id))
 
-    async def _validate_bank_fact(
-        self,
-        command: SettleInvestmentCashCommand,
-        prepared: PreparedInvestmentCashSettlement,
-    ) -> None:
-        if self._bank_fact_validator is None:
-            raise InvestmentsError.unavailable()
-        await self._bank_fact_validator(command, prepared)
-
     async def _claim_bank_fact(
         self,
         transaction,
@@ -418,10 +465,6 @@ class InvestmentsSession:
                     amount=prepared.amount,
                     event_fact_sha256=prepared.event_fact_sha256,
                     evidence_digest=prepared.replacement_evidence_digest,
-                )
-                await self._validate_bank_fact(
-                    command.replacement,
-                    replacement_prepared,
                 )
                 replacement = await self._post_cash_settlement_entry(
                     transaction,
@@ -536,6 +579,22 @@ class InvestmentsSession:
             limit=limit,
         )
 
+    async def list_year_end_measurements(
+        self,
+        *,
+        company_ids: tuple[CompanyId, ...],
+        correlation_id: CorrelationId,
+        cursor: InvestmentCursor | None,
+        limit: int,
+    ) -> InvestmentYearEndMeasurementPage:
+        return await self._persistence.list_year_end_measurements(
+            actor_id=self.actor_id,
+            company_ids=company_ids,
+            correlation_id=correlation_id,
+            cursor=cursor,
+            limit=limit,
+        )
+
 
 class InvestmentsApplication:
     def __init__(
@@ -549,18 +608,14 @@ class InvestmentsApplication:
     async def session(
         self,
         access_token: str,
-        *,
-        bank_fact_validator: InvestmentBankFactValidator | None = None,
     ) -> InvestmentsSession:
         return InvestmentsSession(
             await self._sessions.session(access_token),
             self._ledger_facade_factory,
-            bank_fact_validator,
         )
 
 
 __all__ = [
-    "InvestmentBankFactValidator",
     "InvestmentsApplication",
     "InvestmentsSession",
     "LedgerFacadeFactory",

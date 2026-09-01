@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import replace
 from datetime import date
+from pathlib import Path
 from decimal import Decimal
 
 import pytest
@@ -15,6 +17,8 @@ from talli_backend.modules.investments.public import (
     InvestmentEvidenceMode,
     InvestmentFactReference,
     InvestmentKind,
+    InvestmentMeasurementId,
+    InvestmentMeasurementRule,
     InvestmentPositionId,
     InvestmentSaleLotFact,
     InvestmentSourceReference,
@@ -23,12 +27,14 @@ from talli_backend.modules.investments.public import (
     InvestmentsError,
     PreparedReceivedDividendFacts,
     PreparedReceivedFundDistributionFacts,
+    PreparedInvestmentMeasurementFacts,
     PreparedSharePurchaseRecognition,
     PreparedShareSaleFacts,
     RecognizeReceivedDividendCommand,
     RecognizeReceivedFundDistributionCommand,
     RecognizeSharePurchaseCommand,
     RecognizeShareSaleCommand,
+    RecordInvestmentYearEndMeasurementCommand,
     InvestmentSettlementBalanceKind,
 )
 from talli_backend.modules.investments.service import InvestmentsService
@@ -163,6 +169,30 @@ class SupportedPatternsPersistence:
             position_id=POSITION_ID,
             investment_name="Nordic Fund",
             investment_kind=self.position_kind,
+        )
+
+    async def prepare_year_end_measurement(
+        self,
+        command: RecordInvestmentYearEndMeasurementCommand,
+        *,
+        evidence_digest: str,
+    ) -> PreparedInvestmentMeasurementFacts:
+        self.command = command
+        self.evidence_digest = evidence_digest
+        classification = (
+            InvestmentAccountingClassification.CURRENT_FUND
+            if self.position_kind is InvestmentKind.NORWEGIAN_EQUITY_FUND
+            else InvestmentAccountingClassification.CURRENT_LISTED_SHARE
+        )
+        return PreparedInvestmentMeasurementFacts(
+            position_id=POSITION_ID,
+            investment_name="Nordic Investment",
+            investment_kind=self.position_kind,
+            accounting_classification=classification,
+            quantity=InvestmentUnits.of("10"),
+            source_book_cost=self.book_basis,
+            pre_measurement_book_value=self.book_basis,
+            tax_basis=self.tax_basis,
         )
 
 
@@ -435,3 +465,162 @@ def test_fund_tax_data_and_position_kind_mismatches_hard_block() -> None:
     fund_position = SupportedPatternsPersistence(position_kind=InvestmentKind.NORWEGIAN_EQUITY_FUND)
     with pytest.raises(InvestmentsError):
         asyncio.run(InvestmentsService(fund_position).prepare_received_dividend_recognition(dividend_command()))
+
+
+def test_year_end_measurement_keeps_book_impairment_and_tax_values_separate() -> None:
+    persistence = SupportedPatternsPersistence(book_basis="100.00", tax_basis="100.00")
+    command = RecordInvestmentYearEndMeasurementCommand(
+        company_id=COMPANY_ID,
+        actor_id=ACTOR_ID,
+        correlation_id=CorrelationId("investments-year-end-measurement"),
+        idempotency_key=IdempotencyKey("measurement-2026-position-0001"),
+        income_year=IncomeYear(2026),
+        measurement_id=InvestmentMeasurementId(
+            "90000000-0000-0000-0000-000000000001"
+        ),
+        position_id=POSITION_ID,
+        as_of=LocalDate(date(2026, 12, 31)),
+        observed_or_recoverable_value=Money.nok("82.50"),
+        tax_value=Money.nok("97.00"),
+        evidence=InvestmentEvidence(
+            InvestmentEvidenceMode.LINKED_SOURCES,
+            "year-end broker statement",
+            False,
+            (
+                InvestmentFactReference(
+                    InvestmentSourceCapability.DOCUMENTS,
+                    DOCUMENT_ID,
+                    1,
+                    "d" * 64,
+                ),
+            ),
+            None,
+        ),
+    )
+
+    result = asyncio.run(
+        InvestmentsService(persistence).prepare_year_end_measurement(command)
+    )
+
+    assert result.measurement_rule is InvestmentMeasurementRule.LOWER_OF_COST_AND_FAIR_VALUE
+    assert result.impairment_amount == Money.nok("17.50")
+    assert result.closing_book_value == Money.nok("82.50")
+    assert result.tax_basis == Money.nok("100.00")
+    assert result.tax_value == Money.nok("97.00")
+    assert len(result.calculation_id) == 64
+    fixture = json.loads(
+        (
+            Path(__file__).parents[3]
+            / "tests/fixtures/investments-supported-patterns.json"
+        ).read_text(encoding="utf-8")
+    )
+    golden = fixture["yearEndMeasurementCases"][0]
+    assert result.calculation_id == golden["expected"]["calculationId"]
+
+
+def test_committed_goldens_execute_the_production_investment_policy() -> None:
+    fixture = json.loads(
+        (
+            Path(__file__).parents[3]
+            / "tests/fixtures/investments-supported-patterns.json"
+        ).read_text(encoding="utf-8")
+    )
+
+    async def execute(pattern):
+        facts = pattern["input"]
+        operation = pattern["operation"]
+        persistence = SupportedPatternsPersistence()
+        if operation == "purchase":
+            kind = InvestmentKind.NORWEGIAN_PRIVATE_COMPANY
+            classification = InvestmentAccountingClassification.OTHER_LONG_TERM
+            arguments = {}
+            if pattern["id"] == "listed-share-purchase":
+                kind = InvestmentKind.NORWEGIAN_LISTED_SHARE
+                classification = InvestmentAccountingClassification.CURRENT_LISTED_SHARE
+                arguments = {"investment_key": "NO0000000001", "org_number": None}
+            elif pattern["id"] == "fund-unit-purchase":
+                kind = InvestmentKind.NORWEGIAN_EQUITY_FUND
+                classification = InvestmentAccountingClassification.CURRENT_FUND
+                arguments = {
+                    "investment_key": "NO0000000002",
+                    "org_number": None,
+                    "fund_equity_ratio_basis_points": facts[
+                        "acquisitionYearEquityBasisPoints"
+                    ],
+                    "fund_tax_statement_reference": "fixture-tax-statement",
+                }
+            command = replace(
+                purchase_command(
+                    kind=kind,
+                    classification=classification,
+                    **arguments,
+                ),
+                event_id=InvestmentEconomicEventId(facts["eventId"]),
+                purchase_amount=Money.nok(facts["considerationNok"]),
+                transaction_costs=Money.nok(facts["transactionCostsNok"]),
+            )
+            return await InvestmentsService(
+                persistence
+            ).prepare_share_purchase_recognition(command)
+        if operation == "sale":
+            kind = (
+                InvestmentKind.NORWEGIAN_EQUITY_FUND
+                if pattern["id"] == "fund-redemption-gain"
+                else InvestmentKind.NORWEGIAN_LISTED_SHARE
+                if pattern["id"] == "listed-share-sale-loss"
+                else InvestmentKind.NORWEGIAN_PRIVATE_COMPANY
+            )
+            persistence = SupportedPatternsPersistence(
+                position_kind=kind,
+                book_basis=facts["fifoCostBasisNok"],
+                tax_basis=facts["fifoCostBasisNok"],
+                acquisition_ratio=facts.get("acquisitionYearEquityBasisPoints"),
+            )
+            command = replace(
+                sale_command(
+                    sale_ratio=facts.get("saleYearEquityBasisPoints"),
+                    tax_reference=(
+                        "fixture-tax-statement"
+                        if kind is InvestmentKind.NORWEGIAN_EQUITY_FUND
+                        else None
+                    ),
+                ),
+                event_id=InvestmentEconomicEventId(facts["eventId"]),
+                proceeds=Money.nok(facts["grossProceedsNok"]),
+                transaction_costs=Money.nok(facts["transactionCostsNok"]),
+            )
+            return await InvestmentsService(
+                persistence
+            ).prepare_share_sale_recognition(command)
+        if operation == "share_dividend":
+            group = facts.get("groupExceptionEvidence")
+            command = replace(
+                dividend_command(
+                    group_exception_claimed=bool(group),
+                    ownership=group and group["ownershipBasisPoints"],
+                    votes=group and group["votingBasisPoints"],
+                    group_reference="fixture-group-proof" if group else None,
+                ),
+                event_id=InvestmentEconomicEventId(facts["eventId"]),
+                gross_amount=Money.nok(facts["grossAmountNok"]),
+            )
+            return await InvestmentsService(
+                persistence
+            ).prepare_received_dividend_recognition(command)
+        command = replace(
+            fund_distribution_command(facts["openingEquityBasisPoints"]),
+            event_id=InvestmentEconomicEventId(facts["eventId"]),
+            gross_amount=Money.nok(facts["grossAmountNok"]),
+        )
+        return await InvestmentsService(
+            SupportedPatternsPersistence(
+                position_kind=InvestmentKind.NORWEGIAN_EQUITY_FUND
+            )
+        ).prepare_received_fund_distribution_recognition(command)
+
+    for pattern in fixture["acceptedPatterns"]:
+        result = asyncio.run(execute(pattern))
+        assert result.calculation_id == pattern["expected"]["calculationId"]
+        assert result.calculation_id == pattern["reconciliation"]["companyTax"][
+            "calculationId"
+        ]

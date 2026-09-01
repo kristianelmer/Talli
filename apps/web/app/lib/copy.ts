@@ -884,6 +884,10 @@ export const ownerCopy = {
         title: "Avstem investering",
         body: "Koble et ventende kontantoppgjør til riktig bankbevegelse.",
       },
+      "investment-measurement": {
+        title: "Mål investering ved årsslutt",
+        body: "Dokumenter virkelig eller gjenvinnbar verdi og bokfør eventuell nedskrivning.",
+      },
       "owner-dividend": {
         title: "Utbytte til deg",
         body: "Del ut utbytte til aksjonær, med selskapsdokumenter.",
@@ -954,6 +958,20 @@ export const ownerCopy = {
       title: "Avstem kontantoppgjør",
       intro:
         "Velg en regnskapsført investeringshendelse og avstem det separate kontantoppgjøret mot banken.",
+    },
+    investmentMeasurement: {
+      title: "Mål investering ved årsslutt",
+      intro:
+        "Dokumenter verdien per 31. desember. Talli holder bokført verdi og skatteverdi atskilt.",
+      positionLabel: "Investeringsposisjon",
+      positionPlaceholder: "Velg posisjon",
+      observedValueLabel: "Virkelig eller gjenvinnbar verdi (kr)",
+      observedValueHelp:
+        "Bruk markedsverdi for omløpsmidler og dokumentert gjenvinnbar verdi for langsiktige investeringer.",
+      taxValueLabel: "Skattemessig verdi (kr)",
+      taxValueHelp: "Bruk verdien fra skatteoppgaven eller annet dokumentert skattegrunnlag.",
+      policyNote:
+        "Talli anvender laveste verdis prinsipp for markedsbaserte omløpsmidler og dokumentert nedskrivning for langsiktige investeringer. Ingen verdiøkning bokføres i denne arbeidsflyten.",
     },
     ownerDividend: {
       title: "Utbytte til deg",

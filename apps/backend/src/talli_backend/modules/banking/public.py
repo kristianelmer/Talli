@@ -1027,6 +1027,18 @@ def bank_data_provider_adapter(
     return declare
 
 
+def bank_transaction_claim_persistence_adapter(
+    contract: type[object],
+) -> Callable[[BankingAdapter], BankingAdapter]:
+    """Declare the same-transaction external-action claim binding."""
+
+    def declare(adapter: BankingAdapter) -> BankingAdapter:
+        _ = contract
+        return adapter
+
+    return declare
+
+
 class BankingCommands(Protocol):
     async def import_statement(
         self, command: ImportBankStatementCommand
@@ -1113,6 +1125,7 @@ __all__ = [
     "BankTransactionPage",
     "BankTransactionState",
     "BankTransactionClaimPersistence",
+    "bank_transaction_claim_persistence_adapter",
     "BankingCommand",
     "BankingCommands",
     "BankingCursor",

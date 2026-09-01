@@ -9,7 +9,8 @@
 `investments` owns the approved domestic private-share, NOK listed-share, and
 Norwegian fund boundary: purchases, sales, dividends, fund distributions,
 immutable corrections, canonical positions, acquisition lots, authoritative
-FIFU allocations, deterministic book/tax facts, movements, and replay. The expand migration
+FIFU allocations, deterministic year-end measurement and book/tax facts,
+movements, and replay. The expand migration
 `supabase/migrations/20260831124939_investments_capability.sql` copies the exact
 legacy position and acquisition-lot identities into forced-RLS capability tables.
 The purchase and sale workflow migrations add canonical command receipts and a
@@ -30,6 +31,13 @@ The four deprecated `/api/v1` mutation routes remain during the ADR-0012
 overlap window, but their transport adapters translate directly to the
 recognition/settlement lifecycle in one transaction. No Python workflow or
 runtime database grant can invoke the predecessor v1 investment writers.
+The corresponding `RecordSharePurchaseCommand`, `RecordShareSaleCommand`,
+`RecordReceivedDividendCommand`, and `RecordReceivedFundDistributionCommand`
+remain declared, deprecated overlap data contracts only. The same applies to
+`PreparedSharePurchase`, `RecordedSharePurchase`, `RecordedShareSale`,
+`RecordedReceivedDividend`, and `RecordedReceivedFundDistribution`; there are
+no public command methods, service workflow, persistence RPC, or separate
+writer behind these shapes.
 `CorrectInvestmentCommand`
 targets an economic event or cash settlement and carries a canonical recognition or
 settlement replacement with revisioned evidence. `InvestmentCorrectionTargetKind`
@@ -45,6 +53,16 @@ The lifecycle expansion introduces recognition-only
 date. `InvestmentEvidence` binds revisioned `InvestmentFactReference` values
 from the closed `InvestmentSourceCapability` vocabulary, and `InvestmentUnits`
 preserves source precision to twelve decimal places without rounding.
+`RecordInvestmentYearEndMeasurementCommand` captures the evidenced value at
+31 December and the tax value independently. The service chooses the closed
+`InvestmentMeasurementRule`, derives an SHA-256 calculation identity, prevents
+upward book revaluation, and returns `PreparedInvestmentYearEndMeasurement`
+from canonical `PreparedInvestmentMeasurementFacts`. `InvestmentMeasurementId`
+is the stable request and source identity. Completion returns
+`RecordedInvestmentYearEndMeasurement`, persists an
+`InvestmentYearEndMeasurementView` exposed in a bounded
+`InvestmentYearEndMeasurementPage`, and posts an impairment only when the
+calculated closing book value is lower.
 `InvestmentSettlementBalanceKind` identifies the exact recognition balance that
 one later cash settlement clears. `PreparedSharePurchaseRecognition` and
 `PreparedInvestmentCashSettlement` carry the deterministic facts needed for
@@ -107,6 +125,7 @@ are forbidden from the public contract.
 
 `InvestmentsPersistence` is the sole outbound port. The purchase, sale, dividend,
 fund-distribution, and correction
+and year-end-measurement
 workflow authenticates one verified actor, opens one request-bound PostgreSQL
 transaction, asks investments to replay or prepare the command, passes only the
 normalized ledger facts and opaque action identifier to the ledger public
@@ -162,6 +181,11 @@ recognition receipts in
 `supabase/migrations/20260901115000_investments_income_lifecycle.sql`, rather
 than overloading the predecessor tables' paid-date columns. Each has a
 fail-closed inverse at the matching rollback path. The public lifecycle
+Year-end measurement becomes executable through
+`supabase/migrations/20260901118000_investments_year_end_measurement_workflow.sql`.
+It binds measurement evidence and the dedicated ledger entry in one transaction
+and has a fail-closed inverse at the matching rollback path.
+The public lifecycle
 contract cutover is
 `supabase/contract-migrations/20260901150538_investments_lifecycle_public_cutover.sql`.
 It preserves predecessor tables and routines but revokes every v1 replay,

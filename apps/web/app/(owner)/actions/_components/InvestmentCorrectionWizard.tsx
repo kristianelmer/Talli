@@ -316,13 +316,11 @@ export function InvestmentCorrectionWizard({
         required
       />
       <InvestmentEvidenceFields
-        bankTransactions={bankTransactions}
         documents={documents}
         state={evidence}
         onChange={setEvidence}
       />
       <InvestmentEvidenceFields
-        bankTransactions={bankTransactions}
         documents={documents}
         state={replacementEvidence}
         onChange={setReplacementEvidence}

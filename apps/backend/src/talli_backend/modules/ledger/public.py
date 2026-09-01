@@ -496,6 +496,14 @@ class InvestmentCashSettlementFacts:
 
 
 @dataclass(frozen=True, slots=True)
+class InvestmentYearEndMeasurementFacts:
+    investment_name: str
+    classification: InvestmentClassification
+    pre_measurement_book_value: Money
+    closing_book_value: Money
+
+
+@dataclass(frozen=True, slots=True)
 class AdministrativeCostCorrectionFacts:
     category: AdministrativeCostCategory
     supplier_name: str
@@ -574,6 +582,7 @@ SupportedHoldingActionFacts: TypeAlias = (
     | InvestmentFundDistributionRecognitionFacts
     | InvestmentPurchaseRecognitionFacts
     | InvestmentSaleRecognitionFacts
+    | InvestmentYearEndMeasurementFacts
     | ApprovedLossCoverageCapitalReductionFacts
     | OrdinaryBankLoanFacts
 )
@@ -598,6 +607,7 @@ class LedgerEntryKind(StrEnum):
     COMPANY_TAX_ACCRUAL = "COMPANY_TAX_ACCRUAL"
     GROUP_CONTRIBUTION = "GROUP_CONTRIBUTION"
     INTERCOMPANY_LOAN = "INTERCOMPANY_LOAN"
+    INVESTMENT_MEASUREMENT = "INVESTMENT_MEASUREMENT"
     CORRECTION_REVERSAL = "CORRECTION_REVERSAL"
 
 
@@ -1954,6 +1964,7 @@ __all__ = [
     "InvestmentFundDistributionRecognitionFacts",
     "InvestmentPurchaseRecognitionFacts",
     "InvestmentSaleRecognitionFacts",
+    "InvestmentYearEndMeasurementFacts",
     "InvestmentSettlementKind",
     "LedgerCommands",
     "LedgerCursor",

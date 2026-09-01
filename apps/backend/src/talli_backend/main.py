@@ -215,9 +215,11 @@ from talli_backend.modules.investments.public import (
     InvestmentKind,
     InvestmentLotHistoryStatus,
     InvestmentLifecycleEventView,
+    InvestmentMeasurementId,
+    InvestmentMeasurementRule,
     InvestmentPositionId,
     InvestmentPositionView,
-    PreparedInvestmentCashSettlement,
+    InvestmentYearEndMeasurementView,
     InvestmentSourceCapability,
     InvestmentSourceReference,
     InvestmentSettlementId,
@@ -229,6 +231,7 @@ from talli_backend.modules.investments.public import (
     RecognizeReceivedFundDistributionCommand,
     RecognizeSharePurchaseCommand,
     RecognizeShareSaleCommand,
+    RecordInvestmentYearEndMeasurementCommand,
     SettleInvestmentCashCommand,
     ShareSaleAllocationView,
 )
@@ -1070,6 +1073,25 @@ class InvestmentsSettleCashWire(InvestmentsLifecycleEvidenceWire):
     amount: LedgerMoneyWire
 
 
+class InvestmentsYearEndMeasurementWire(InvestmentsLifecycleEvidenceWire):
+    measurement_id: UUID
+    position_id: UUID
+    as_of: date
+    observed_or_recoverable_value: LedgerMoneyWire
+    tax_value: LedgerMoneyWire
+
+
+class InvestmentsYearEndMeasurementResultWire(TransportModel):
+    measurement_id: UUID
+    position_id: UUID
+    accounting_entry_id: UUID | None
+    measurement_rule: InvestmentMeasurementRule
+    closing_book_value: LedgerMoneyWire
+    tax_basis: LedgerMoneyWire
+    tax_value: LedgerMoneyWire
+    replayed: bool
+
+
 class InvestmentsSharePurchaseRecognitionWire(
     InvestmentsRecognizeSharePurchaseWire
 ):
@@ -1174,6 +1196,34 @@ class InvestmentsPageWire(TransportModel):
 
 class InvestmentCorrectionPageWire(TransportModel):
     items: list[InvestmentCorrectionWire]
+    page: InvestmentsPageWire
+
+
+class InvestmentYearEndMeasurementViewWire(TransportModel):
+    id: UUID
+    company_id: UUID
+    income_year: int
+    position_id: UUID
+    as_of: date
+    measurement_rule: InvestmentMeasurementRule
+    quantity: InvestmentUnitsWireValue
+    source_book_cost: LedgerMoneyWire
+    pre_measurement_book_value: LedgerMoneyWire
+    observed_or_recoverable_value: LedgerMoneyWire
+    impairment_amount: LedgerMoneyWire
+    reversal_amount: LedgerMoneyWire
+    closing_book_value: LedgerMoneyWire
+    tax_basis: LedgerMoneyWire
+    tax_value: LedgerMoneyWire
+    evidence_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    calculation_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    accounting_entry_id: UUID | None
+    created_by: UUID
+    created_at: datetime
+
+
+class InvestmentYearEndMeasurementPageWire(TransportModel):
+    items: list[InvestmentYearEndMeasurementViewWire]
     page: InvestmentsPageWire
 
 
@@ -1959,95 +2009,10 @@ def create_app(
     )
     banking_application = compose_banking_application(banking_session_factory)
 
-    async def resolve_investment_bank_transaction(
-        access_token: str,
-        *,
-        actor_id,
-        company_id: CompanyId,
-        correlation_id: CorrelationId,
-        transaction_id: UUID,
-    ) -> BankTransaction:
-        try:
-            banking_session = await banking_application.session(access_token)
-            if banking_session.actor_id != actor_id:
-                raise InvestmentsError.forbidden()
-            cursor: BankingCursor | None = None
-            seen_cursors: set[str] = set()
-            while True:
-                page = await banking_session.list_transactions(
-                    actor_id=banking_session.actor_id,
-                    company_ids=(company_id,),
-                    correlation_id=correlation_id,
-                    cursor=cursor,
-                    limit=500,
-                )
-                transaction = next(
-                    (
-                        item
-                        for item in page.items
-                        if str(item.transaction_id) == str(transaction_id)
-                    ),
-                    None,
-                )
-                if transaction is not None:
-                    return transaction
-                if not page.page.has_more:
-                    raise InvestmentsError.invalid_input()
-                next_cursor = page.page.next_cursor
-                if next_cursor is None or str(next_cursor) in seen_cursors:
-                    raise InvestmentsError.unavailable()
-                seen_cursors.add(str(next_cursor))
-                cursor = next_cursor
-        except BankingAuthenticationError:
-            raise InvestmentsAuthenticationError() from None
-        except BankingError as error:
-            if error.category is ErrorCategory.FORBIDDEN:
-                raise InvestmentsError.forbidden() from None
-            if error.category is ErrorCategory.DEPENDENCY_UNAVAILABLE:
-                raise InvestmentsError.unavailable() from None
-            raise InvestmentsError.invalid_input() from None
-
     async def investments_session_with_bank_validation(
         credentials: HTTPAuthorizationCredentials | None,
     ):
-        access_token = bearer_token(credentials)
-
-        async def validate_bank_fact(
-            command: SettleInvestmentCashCommand,
-            prepared: PreparedInvestmentCashSettlement,
-        ) -> None:
-            fact = command.evidence.bank_fact
-            if fact is None or fact.revision != 1:
-                raise InvestmentsError.invalid_input()
-            transaction = await resolve_investment_bank_transaction(
-                access_token,
-                actor_id=command.actor_id,
-                company_id=command.company_id,
-                correlation_id=command.correlation_id,
-                transaction_id=UUID(str(fact.record_id)),
-            )
-            expected_amount = prepared.amount.amount
-            if (
-                prepared.settlement_balance_kind
-                is InvestmentSettlementBalanceKind.PURCHASE_PAYABLE
-            ):
-                expected_amount = -expected_amount
-            if (
-                transaction.company_id != command.company_id
-                or transaction.income_year != command.income_year
-                or transaction.transaction_date != command.settlement_date
-                or transaction.amount.currency != prepared.amount.currency
-                or transaction.amount.amount != expected_amount
-                or transaction.source_hash != fact.fact_sha256
-                or transaction.matched_entry_id is not None
-                or transaction.matched_action_reference is not None
-            ):
-                raise InvestmentsError.invalid_input()
-
-        return await investments_application.session(
-            access_token,
-            bank_fact_validator=validate_bank_fact,
-        )
+        return await investments_application.session(bearer_token(credentials))
 
     def compatibility_document_evidence(command) -> InvestmentEvidence:
         document_record_id = command.document_id or command.action_id
@@ -3711,6 +3676,75 @@ def create_app(
             created_at=value.created_at.value,
         )
 
+    def investment_measurement_wire(
+        value: InvestmentYearEndMeasurementView,
+    ) -> InvestmentYearEndMeasurementViewWire:
+        return InvestmentYearEndMeasurementViewWire(
+            id=UUID(str(value.measurement_id)),
+            company_id=UUID(str(value.company_id)),
+            income_year=int(value.income_year),
+            position_id=UUID(str(value.position_id)),
+            as_of=value.as_of.value,
+            measurement_rule=value.measurement_rule,
+            quantity=format(value.quantity.amount, ".12f"),
+            source_book_cost=_money_wire(value.source_book_cost),
+            pre_measurement_book_value=_money_wire(
+                value.pre_measurement_book_value
+            ),
+            observed_or_recoverable_value=_money_wire(
+                value.observed_or_recoverable_value
+            ),
+            impairment_amount=_money_wire(value.impairment_amount),
+            reversal_amount=_money_wire(value.reversal_amount),
+            closing_book_value=_money_wire(value.closing_book_value),
+            tax_basis=_money_wire(value.tax_basis),
+            tax_value=_money_wire(value.tax_value),
+            evidence_digest=value.evidence_digest,
+            calculation_id=value.calculation_id,
+            accounting_entry_id=(
+                UUID(str(value.accounting_entry_id))
+                if value.accounting_entry_id else None
+            ),
+            created_by=UUID(str(value.created_by.subject)),
+            created_at=value.created_at.value,
+        )
+
+    @application.get(
+        "/api/v1/investments/year-end-measurements",
+        operation_id="investmentsListYearEndMeasurements",
+        response_model=InvestmentYearEndMeasurementPageWire,
+        responses={200: {"description": "Visible year-end investment measurements."} | investments_success}
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_investment_year_end_measurements(
+        request: Request,
+        company_ids: Annotated[list[UUID], Query(alias="companyId", min_length=1, max_length=100)],
+        cursor: str | None = Query(default=None, min_length=1, max_length=80),
+        limit: int = Query(default=100, ge=1, le=100),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> InvestmentYearEndMeasurementPageWire:
+        async def execute() -> InvestmentYearEndMeasurementPageWire:
+            session = await investments_application.session(bearer_token(credentials))
+            page = await session.list_year_end_measurements(
+                company_ids=tuple(
+                    investments_input(lambda value=value: CompanyId(str(value)))
+                    for value in company_ids
+                ),
+                correlation_id=CorrelationId(request.state.request_id),
+                cursor=(investments_input(lambda: InvestmentCursor(cursor)) if cursor else None),
+                limit=limit,
+            )
+            return InvestmentYearEndMeasurementPageWire(
+                items=[investment_measurement_wire(item) for item in page.items],
+                page=InvestmentsPageWire(
+                    next_cursor=str(page.next_cursor) if page.next_cursor else None,
+                    has_more=page.has_more,
+                ),
+            )
+        return await investments_call(execute)
+
     @application.get(
         "/api/v1/investments/economic-events",
         operation_id="investmentsListEconomicEvents",
@@ -4587,6 +4621,63 @@ def create_app(
                 replayed=result.replayed,
             )
 
+        return await investments_call(execute)
+
+    @application.post(
+        "/api/v1/investments/year-end-measurements",
+        operation_id="investmentsRecordYearEndMeasurement",
+        response_model=InvestmentsYearEndMeasurementResultWire,
+        status_code=201,
+        responses={
+            201: {"description": "Investment year-end measurement recorded."}
+            | investments_success
+        }
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_investments_year_end_measurement(
+        request: Request,
+        command: InvestmentsYearEndMeasurementWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> InvestmentsYearEndMeasurementResultWire:
+        async def execute() -> InvestmentsYearEndMeasurementResultWire:
+            session = await investments_application.session(bearer_token(credentials))
+            result = await session.record_year_end_measurement(
+                RecordInvestmentYearEndMeasurementCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=session.actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    income_year=IncomeYear(command.income_year),
+                    measurement_id=InvestmentMeasurementId(
+                        str(command.measurement_id)
+                    ),
+                    position_id=InvestmentPositionId(str(command.position_id)),
+                    as_of=LocalDate(command.as_of),
+                    observed_or_recoverable_value=(
+                        command.observed_or_recoverable_value.to_domain()
+                    ),
+                    tax_value=command.tax_value.to_domain(),
+                    evidence=command.evidence_domain(),
+                )
+            )
+            return InvestmentsYearEndMeasurementResultWire(
+                measurement_id=UUID(str(result.measurement_id)),
+                position_id=UUID(str(result.position_id)),
+                accounting_entry_id=(
+                    UUID(str(result.accounting_entry_id))
+                    if result.accounting_entry_id else None
+                ),
+                measurement_rule=result.measurement_rule,
+                closing_book_value=_money_wire(result.closing_book_value),
+                tax_basis=_money_wire(result.tax_basis),
+                tax_value=_money_wire(result.tax_value),
+                replayed=result.replayed,
+            )
         return await investments_call(execute)
 
     @application.post(

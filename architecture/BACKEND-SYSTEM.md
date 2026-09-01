@@ -49,7 +49,7 @@
 -->
 
 <!-- architecture-inventory
-{"adapterBindingModes":["InvestmentsPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["InvestmentsPersistence=>backend-system"],"adapterBindings":["InvestmentsPersistence=>talli_backend.adapters.supabase_investments.SupabaseInvestmentsSession"],"adapterDependencies":["talli_backend.application.investments_session","talli_backend.application.investments_workflow","talli_backend.modules.investments.public"],"ports":["InvestmentsPersistence"],"publicPackages":["talli_backend.modules.investments.public"],"routes":["/api/v1/investments/acquisition-lots","/api/v1/investments/activity","/api/v1/investments/cash-settlements","/api/v1/investments/corrections","/api/v1/investments/economic-events","/api/v1/investments/positions","/api/v1/investments/received-dividend-recognitions","/api/v1/investments/received-dividends","/api/v1/investments/received-fund-distribution-recognitions","/api/v1/investments/received-fund-distributions","/api/v1/investments/share-purchase-recognitions","/api/v1/investments/share-purchases","/api/v1/investments/share-sale-allocations","/api/v1/investments/share-sale-recognitions","/api/v1/investments/share-sales"],"transportDependencies":["decimal","hashlib","talli_backend.adapters.supabase_investments","talli_backend.application.investments_session","talli_backend.modules.investments.public"],"workflowDependencies":["talli_backend.modules.investments.public"],"workflowPurposes":["investment-activity=>Authenticates one verified actor, recognizes supported domestic purchases, FIFU sales, share dividends and fund distributions independently from cash settlement, validates each settlement against the same actor's canonical unmatched banking fact before posting, performs full-reversal/replacement lifecycle corrections, posts deterministic entries through ledger in the same transaction, and serves tenant-concealed lifecycle, position, lot, allocation, activity, and correction pages."],"workflows":["investment-activity"]}
+{"adapterBindingModes":["BankTransactionClaimPersistence=>same-request investments transaction using the restricted locked banking claim","InvestmentsPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["BankTransactionClaimPersistence=>backend-system","InvestmentsPersistence=>backend-system"],"adapterBindings":["BankTransactionClaimPersistence=>talli_backend.adapters.supabase_investments.SupabaseInvestmentsTransaction","InvestmentsPersistence=>talli_backend.adapters.supabase_investments.SupabaseInvestmentsSession"],"adapterDependencies":["talli_backend.application.investments_session","talli_backend.application.investments_workflow","talli_backend.modules.banking.public","talli_backend.modules.investments.public"],"ports":["BankTransactionClaimPersistence","InvestmentsPersistence"],"publicPackages":["talli_backend.modules.banking.public","talli_backend.modules.investments.public","talli_backend.modules.ledger.public"],"routes":["/api/v1/investments/acquisition-lots","/api/v1/investments/activity","/api/v1/investments/cash-settlements","/api/v1/investments/corrections","/api/v1/investments/economic-events","/api/v1/investments/positions","/api/v1/investments/received-dividend-recognitions","/api/v1/investments/received-dividends","/api/v1/investments/received-fund-distribution-recognitions","/api/v1/investments/received-fund-distributions","/api/v1/investments/share-purchase-recognitions","/api/v1/investments/share-purchases","/api/v1/investments/share-sale-allocations","/api/v1/investments/share-sale-recognitions","/api/v1/investments/share-sales","/api/v1/investments/year-end-measurements"],"transportDependencies":["decimal","hashlib","talli_backend.adapters.supabase_investments","talli_backend.application.investments_session","talli_backend.modules.banking.public","talli_backend.modules.investments.public"],"workflowDependencies":["talli_backend.modules.banking.public","talli_backend.modules.investments.public","talli_backend.modules.ledger.public"],"workflowPurposes":["investment-activity=>Authenticates one verified actor, recognizes supported domestic purchases, FIFU sales, share dividends and fund distributions independently from cash settlement, validates and single-use claims each settlement against the same actor's canonical unmatched banking fact inside the investment transaction, performs full-reversal/replacement lifecycle corrections and document-evidenced year-end measurement, posts deterministic entries through ledger in the same transaction, and serves tenant-concealed lifecycle, position, lot, allocation, activity, correction, and measurement pages."],"workflows":["investment-activity"]}
 -->
 
 <!-- architecture-inventory
@@ -193,15 +193,19 @@ recognized through `/api/v1/investments/share-purchase-recognitions`,
 `/api/v1/investments/received-fund-distribution-recognitions`. Cash is recorded
 later through `/api/v1/investments/cash-settlements`; lifecycle state is read
 through `/api/v1/investments/economic-events`; corrections remain at
-`/api/v1/investments/corrections`. The four predecessor mutation paths remain
+`/api/v1/investments/corrections`. Document-evidenced values at 31 December are
+measured through `/api/v1/investments/year-end-measurements`; any derived
+impairment is posted and persisted in the same transaction. The four predecessor mutation paths remain
 explicitly deprecated adapters during the ADR-0012 overlap and compose these
 same lifecycle commands; they do not reach predecessor workflows or database
 writers. It calls the investments, banking, and ledger
 public contracts. Before any new or corrected cash settlement is posted, the
-workflow resolves the submitted immutable bank-fact identity through the same
-authenticated banking session and requires the canonical company, income year,
-date, NOK amount and direction, source hash, and unmatched state to agree.
-Investments owns FIFU, tax facts, settlement state, correction lineage, and
+workflow submits the immutable bank-fact identity to banking's restricted,
+locked claim and requires the canonical company, income year, date, NOK amount
+and direction, source hash, and unmatched state to agree before the shared
+transaction can commit.
+Investments owns FIFU, tax facts, settlement state, year-end measurement,
+correction lineage, and
 persistence; banking owns canonical transaction facts; ledger owns each
 deterministic recognition or settlement posting invoked in the same
 request-bound transaction.

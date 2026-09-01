@@ -14,6 +14,7 @@ import { loadWorkspaceData } from "../../../lib/workspace-data";
 import { DividendReceivedWizard } from "../_components/DividendReceivedWizard";
 import { FundDistributionWizard } from "../_components/FundDistributionWizard";
 import { InvestmentCorrectionWizard } from "../_components/InvestmentCorrectionWizard";
+import { InvestmentMeasurementWizard } from "../_components/InvestmentMeasurementWizard";
 import { InvestmentSettlementWizard } from "../_components/InvestmentSettlementWizard";
 import { InvestmentSettlementCorrectionWizard } from "../_components/InvestmentSettlementCorrectionWizard";
 import { OwnerDividendWizard } from "../_components/OwnerDividendWizard";
@@ -29,6 +30,7 @@ type ActionSlug =
   | "fund-distribution"
   | "investment-settlement"
   | "investment-correction"
+  | "investment-measurement"
   | "owner-dividend"
   | "shareholder-loan"
   | "tax-settlement";
@@ -40,6 +42,7 @@ const COPY_KEY: Record<ActionSlug, keyof typeof ownerCopy.actions> = {
   "fund-distribution": "fundDistribution",
   "investment-settlement": "investmentSettlement",
   "investment-correction": "investmentCorrection",
+  "investment-measurement": "investmentMeasurement",
   "owner-dividend": "ownerDividend",
   "shareholder-loan": "shareholderLoan",
   "tax-settlement": "taxSettlement",
@@ -60,6 +63,7 @@ type ActionPageProps = {
     investmentCorrectionOperationId?: string;
     investmentCorrectionReplacementActionId?: string;
     investmentCorrectionReplacementSettlementId?: string;
+    investmentMeasurementOperationId?: string;
     investmentSettlementCorrectionOperationId?: string;
     investmentSettlementOperationId?: string;
     shareholderLoanOperationId?: string;
@@ -235,6 +239,23 @@ export default async function ActionPage({
       );
       break;
     }
+    case "investment-measurement":
+      body = (
+        <InvestmentMeasurementWizard
+          companyId={companyId}
+          documents={investmentDocuments}
+          incomeYear={incomeYear}
+          operationId={query?.investmentMeasurementOperationId}
+          positions={companyPositions.map((position) => ({
+            id: position.id,
+            name: position.name,
+            classification: position.accounting_classification,
+            bookValue: position.cost_basis,
+            taxBasis: position.tax_basis,
+          }))}
+        />
+      );
+      break;
     case "investment-correction": {
       const corrected = new Set(
         investmentCorrections

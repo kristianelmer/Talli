@@ -8,11 +8,14 @@ import {
   type InvestmentsRecognizeReceivedDividendWire,
   type InvestmentsRecognizeReceivedFundDistributionWire,
   type InvestmentsSettleCashWire,
+  type InvestmentsYearEndMeasurementResultWire,
+  type InvestmentsYearEndMeasurementWire,
   type InvestmentPositionWire,
   type InvestmentActivityWire,
   type InvestmentLifecycleEventWire,
   type ShareSaleAllocationWire,
   type InvestmentCorrectionWire,
+  type InvestmentYearEndMeasurementViewWire,
   type InvestmentsCorrectionWire,
   type InvestmentsCorrectionResultWire,
 } from "@talli/talli-api-client";
@@ -113,6 +116,18 @@ export function settleInvestmentCash(
   });
 }
 
+export function recordInvestmentYearEndMeasurement(
+  accessToken: string,
+  command: InvestmentsYearEndMeasurementWire,
+  idempotencyKey: string,
+  requestId?: string,
+): Promise<InvestmentsYearEndMeasurementResultWire> {
+  return client(accessToken).investmentsRecordYearEndMeasurement(command, {
+    ...request(requestId),
+    idempotencyKey,
+  });
+}
+
 export function correctInvestment(
   accessToken: string,
   command: InvestmentsCorrectionWire,
@@ -208,6 +223,21 @@ export function loadInvestmentCorrections(
   if (companyIds.length === 0) return Promise.resolve([]);
   const api = client(accessToken);
   return loadAllPages((cursor) => api.investmentsListCorrections({
+    companyIds,
+    cursor,
+    limit: PAGE_LIMIT,
+    ...request(requestId),
+  }));
+}
+
+export function loadInvestmentYearEndMeasurements(
+  accessToken: string,
+  companyIds: readonly string[],
+  requestId?: string,
+): Promise<InvestmentYearEndMeasurementViewWire[]> {
+  if (companyIds.length === 0) return Promise.resolve([]);
+  const api = client(accessToken);
+  return loadAllPages((cursor) => api.investmentsListYearEndMeasurements({
     companyIds,
     cursor,
     limit: PAGE_LIMIT,

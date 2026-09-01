@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from talli_backend.application.investments_workflow import InvestmentsSession
@@ -20,6 +20,8 @@ from talli_backend.modules.investments.public import (
     InvestmentEvidenceMode,
     InvestmentFactReference,
     InvestmentKind,
+    InvestmentMeasurementId,
+    InvestmentMeasurementRule,
     InvestmentPositionId,
     InvestmentSaleLotFact,
     InvestmentSettlementBalanceKind,
@@ -28,6 +30,8 @@ from talli_backend.modules.investments.public import (
     InvestmentSourceReference,
     InvestmentUnits,
     PreparedInvestmentCashSettlement,
+    PreparedInvestmentMeasurementFacts,
+    PreparedInvestmentYearEndMeasurement,
     PreparedEconomicEventCorrection,
     PreparedCashSettlementCorrection,
     PreparedReceivedDividendFacts,
@@ -41,8 +45,10 @@ from talli_backend.modules.investments.public import (
     RecognizeReceivedFundDistributionCommand,
     RecognizeShareSaleCommand,
     RecognizeSharePurchaseCommand,
+    RecordInvestmentYearEndMeasurementCommand,
     RecordedInvestmentCashSettlement,
     RecordedInvestmentEconomicEvent,
+    RecordedInvestmentYearEndMeasurement,
     RecordedShareSale,
     RecordedSharePurchase,
     RecordedReceivedDividend,
@@ -56,6 +62,7 @@ from talli_backend.modules.ledger.public import (
     InvestmentFundDistributionRecognitionFacts,
     InvestmentPurchaseRecognitionFacts,
     InvestmentSaleRecognitionFacts,
+    InvestmentYearEndMeasurementFacts,
     LedgerEntryId,
     LedgerEntryKind,
     PostedLedgerEntry,
@@ -121,6 +128,40 @@ def lifecycle_purchase() -> RecognizeSharePurchaseCommand:
                     ),
                     1,
                     "a" * 64,
+                ),
+            ),
+            None,
+        ),
+    )
+
+
+def lifecycle_year_end_measurement() -> RecordInvestmentYearEndMeasurementCommand:
+    purchase = supported_purchase()
+    return RecordInvestmentYearEndMeasurementCommand(
+        company_id=purchase.company_id,
+        actor_id=purchase.actor_id,
+        correlation_id=CorrelationId("investment-measurement-2026"),
+        idempotency_key=IdempotencyKey("investment-measurement-2026-0001"),
+        income_year=IncomeYear(2026),
+        measurement_id=InvestmentMeasurementId(
+            "90000000-0000-0000-0000-000000000041"
+        ),
+        position_id=POSITION_ID,
+        as_of=LocalDate(date(2026, 12, 31)),
+        observed_or_recoverable_value=Money.nok("82.50"),
+        tax_value=Money.nok("97.00"),
+        evidence=InvestmentEvidence(
+            InvestmentEvidenceMode.LINKED_SOURCES,
+            "year-end broker statement",
+            False,
+            (
+                InvestmentFactReference(
+                    InvestmentSourceCapability.DOCUMENTS,
+                    InvestmentSourceReference(
+                        "80000000-0000-0000-0000-000000000041"
+                    ),
+                    1,
+                    "d" * 64,
                 ),
             ),
             None,
@@ -349,6 +390,42 @@ class SessionPersistence:
         self.events.append("transaction:begin")
         yield self
         self.events.append("transaction:commit")
+
+    async def get_year_end_measurement_replay(self, command):
+        self.events.append("investments:measurement-replay")
+        return None
+
+    async def prepare_year_end_measurement(
+        self, command, *, evidence_digest
+    ):
+        self.events.append("investments:measurement-prepare")
+        return PreparedInvestmentMeasurementFacts(
+            position_id=command.position_id,
+            investment_name="Example ASA",
+            investment_kind=InvestmentKind.NORWEGIAN_LISTED_SHARE,
+            accounting_classification=(
+                InvestmentAccountingClassification.CURRENT_LISTED_SHARE
+            ),
+            quantity=InvestmentUnits.of("10"),
+            source_book_cost=Money.nok("100.00"),
+            pre_measurement_book_value=Money.nok("100.00"),
+            tax_basis=Money.nok("100.00"),
+        )
+
+    async def complete_year_end_measurement(
+        self, command, *, prepared, accounting_entry_id
+    ):
+        self.events.append("investments:measurement-complete")
+        return RecordedInvestmentYearEndMeasurement(
+            measurement_id=command.measurement_id,
+            position_id=command.position_id,
+            accounting_entry_id=accounting_entry_id,
+            measurement_rule=prepared.measurement_rule,
+            closing_book_value=prepared.closing_book_value,
+            tax_basis=prepared.tax_basis,
+            tax_value=prepared.tax_value,
+            replayed=False,
+        )
 
     async def get_share_purchase_recognition_replay(self, command):
         self.events.append("investments:recognition-replay")
@@ -733,6 +810,9 @@ class LedgerFacade:
         elif isinstance(command.facts, InvestmentCashSettlementFacts):
             self.transaction.events.append("ledger:settle-cash")
             entry_kind = LedgerEntryKind.SHARE_PURCHASE
+        elif isinstance(command.facts, InvestmentYearEndMeasurementFacts):
+            self.transaction.events.append("ledger:measure-investment")
+            entry_kind = LedgerEntryKind.INVESTMENT_MEASUREMENT
         else:
             raise AssertionError("unexpected lifecycle facts")
         self.transaction.posted_command = command
@@ -825,15 +905,8 @@ def test_settlement_correction_posts_replacement_before_append_only_completion()
     persistence = SessionPersistence()
     command = lifecycle_settlement_correction()
 
-    async def validate_bank_fact(_command, _prepared) -> None:
-        persistence.events.append("banking:validate-settlement-fact")
-
     result = asyncio.run(
-        InvestmentsSession(
-            persistence,
-            LedgerFacade,
-            validate_bank_fact,
-        ).correct_investment(command)
+        InvestmentsSession(persistence, LedgerFacade).correct_investment(command)
     )
 
     assert result.target_kind is InvestmentCorrectionTargetKind.CASH_SETTLEMENT
@@ -843,7 +916,6 @@ def test_settlement_correction_posts_replacement_before_append_only_completion()
         "transaction:begin",
         "investments:correction-replay",
         "investments:correction-prepare",
-        "banking:validate-settlement-fact",
         "ledger:settle-cash",
         "banking:claim-settlement-fact",
         "investments:correction-complete",
@@ -885,15 +957,8 @@ def test_purchase_cash_settlement_posts_independently_against_recognition() -> N
     persistence = SessionPersistence()
     command = lifecycle_settlement(lifecycle_purchase())
 
-    async def validate_bank_fact(_command, _prepared) -> None:
-        persistence.events.append("banking:validate-settlement-fact")
-
     result = asyncio.run(
-        InvestmentsSession(
-            persistence,
-            LedgerFacade,
-            validate_bank_fact,
-        ).settle_investment_cash(command)
+        InvestmentsSession(persistence, LedgerFacade).settle_investment_cash(command)
     )
 
     assert result.settlement_id == command.settlement_id
@@ -901,7 +966,6 @@ def test_purchase_cash_settlement_posts_independently_against_recognition() -> N
         "transaction:begin",
         "investments:settlement-replay",
         "investments:settlement-prepare",
-        "banking:validate-settlement-fact",
         "ledger:settle-cash",
         "banking:claim-settlement-fact",
         "investments:settlement-complete",
@@ -922,15 +986,10 @@ def test_deprecated_overlap_composes_recognition_and_settlement_atomically() -> 
     recognition = lifecycle_purchase()
     settlement = lifecycle_settlement(recognition)
 
-    async def validate_bank_fact(_command, _prepared) -> None:
-        persistence.events.append("banking:validate-settlement-fact")
-
     event, cash = asyncio.run(
-        InvestmentsSession(
-            persistence,
-            LedgerFacade,
-            validate_bank_fact,
-        ).record_compatibility_action(recognition, settlement)
+        InvestmentsSession(persistence, LedgerFacade).record_compatibility_action(
+            recognition, settlement
+        )
     )
 
     assert event.event_id == recognition.event_id
@@ -943,7 +1002,6 @@ def test_deprecated_overlap_composes_recognition_and_settlement_atomically() -> 
         "investments:recognition-complete",
         "investments:settlement-replay",
         "investments:settlement-prepare",
-        "banking:validate-settlement-fact",
         "ledger:settle-cash",
         "banking:claim-settlement-fact",
         "investments:settlement-complete",
@@ -1027,3 +1085,36 @@ def test_fund_distribution_recognition_posts_split_receivable() -> None:
     )
     assert persistence.posted_command.facts.dividend_portion == Money.nok("50")
     assert persistence.posted_command.facts.interest_portion == Money.nok("50")
+
+
+def test_year_end_measurement_posts_impairment_and_completes_atomically() -> None:
+    persistence = SessionPersistence()
+    command = lifecycle_year_end_measurement()
+
+    result = asyncio.run(
+        InvestmentsSession(persistence, LedgerFacade)
+        .record_year_end_measurement(command)
+    )
+
+    assert result.measurement_id == command.measurement_id
+    assert result.closing_book_value == Money.nok("82.50")
+    assert result.tax_basis == Money.nok("100.00")
+    assert result.tax_value == Money.nok("97.00")
+    assert persistence.events == [
+        "transaction:begin",
+        "investments:measurement-replay",
+        "investments:measurement-prepare",
+        "ledger:measure-investment",
+        "investments:measurement-complete",
+        "transaction:commit",
+    ]
+    assert isinstance(
+        persistence.posted_command.facts,
+        InvestmentYearEndMeasurementFacts,
+    )
+    assert persistence.posted_command.primary_source.record_id.value == str(
+        command.measurement_id
+    )
+    assert persistence.posted_command.facts.pre_measurement_book_value == Money.nok(
+        "100.00"
+    )
