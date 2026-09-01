@@ -314,3 +314,7 @@ and may execute only the one typed passive-writer function.
 Transport, workflow, and adapter dependency allowlists are in the system
 manifest. Adding a workflow, technical table, binding, or dependency changes
 this document and `backend-system.json` together, with an ADR review.
+
+<!-- architecture-inventory
+{"transportDependencies":["talli_backend.application.investments_workflow"]}
+-->

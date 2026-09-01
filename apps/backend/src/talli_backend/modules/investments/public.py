@@ -201,6 +201,12 @@ class InvestmentTaxTreatment(StrEnum):
     EXEMPTION_METHOD = "fritaksmetoden"
 
 
+class InvestmentTradingProfile(StrEnum):
+    LOW_VOLUME_NON_ACTIVE = "low_volume_non_active"
+    ACTIVE_OR_HIGH_VOLUME = "active_or_high_volume"
+    UNKNOWN = "unknown"
+
+
 class InvestmentPolicyVersion(StrEnum):
     DOMESTIC_2026_V1 = "domestic_2026_v1"
     DOMESTIC_2026_V2 = "domestic_2026_v2"
@@ -366,6 +372,8 @@ class InvestmentsErrorCode(StrEnum):
     IDEMPOTENCY_KEY_REUSED = "INVESTMENTS_IDEMPOTENCY_KEY_REUSED"
     DEPENDENCY_UNAVAILABLE = "INVESTMENTS_DEPENDENCY_UNAVAILABLE"
     BANK_FACT_ALREADY_CLAIMED = "INVESTMENTS_BANK_FACT_ALREADY_CLAIMED"
+    ACTIVE_TRADING_UNSUPPORTED = "INVESTMENTS_ACTIVE_TRADING_UNSUPPORTED"
+    OWNERSHIP_OR_RIGHTS_UNCLEAR = "INVESTMENTS_OWNERSHIP_OR_RIGHTS_UNCLEAR"
 
 
 class InvestmentsError(DomainError):
@@ -388,6 +396,20 @@ class InvestmentsError(DomainError):
         return cls(
             code=InvestmentsErrorCode.DEPENDENCY_UNAVAILABLE.value,
             category=ErrorCategory.DEPENDENCY_UNAVAILABLE,
+        )
+
+    @classmethod
+    def active_trading_unsupported(cls) -> InvestmentsError:
+        return cls(
+            code=InvestmentsErrorCode.ACTIVE_TRADING_UNSUPPORTED.value,
+            category=ErrorCategory.INVALID_INPUT,
+        )
+
+    @classmethod
+    def ownership_or_rights_unclear(cls) -> InvestmentsError:
+        return cls(
+            code=InvestmentsErrorCode.OWNERSHIP_OR_RIGHTS_UNCLEAR.value,
+            category=ErrorCategory.INVALID_INPUT,
         )
 
     @classmethod
@@ -421,6 +443,12 @@ class RecognizeSharePurchaseCommand(InvestmentsCommand):
     org_number: str | None
     fund_equity_ratio_basis_points: int | None
     fund_tax_statement_reference: str | None
+    trading_profile: InvestmentTradingProfile
+    non_active_trading_confirmed: bool
+    share_class_code: str | None
+    single_share_class_confirmed: bool | None
+    equal_share_rights_confirmed: bool | None
+    unusual_share_rights_absent_confirmed: bool | None
     evidence: InvestmentEvidence
 
     def __post_init__(self) -> None:
@@ -812,6 +840,12 @@ class PreparedCashSettlementCorrection:
     replacement_evidence_digest: str
     evidence_digest: str
     original_activity_kind: InvestmentActivityKind
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedSettledInvestmentCorrection:
+    event: PreparedEconomicEventCorrection
+    settlement: PreparedCashSettlementCorrection
 
 
 PreparedInvestmentCorrection = (
@@ -1347,6 +1381,27 @@ class InvestmentsPersistence(Protocol):
         replacement_accounting_entry_id: AccountingEntryReference,
     ) -> RecordedInvestmentCorrection: ...
 
+    async def prepare_settled_investment_correction(
+        self,
+        event_command: CorrectInvestmentCommand,
+        settlement_command: CorrectInvestmentCommand,
+        *,
+        event_evidence_digest: str,
+        event_replacement_evidence_digest: str,
+        settlement_evidence_digest: str,
+        settlement_replacement_evidence_digest: str,
+    ) -> PreparedSettledInvestmentCorrection: ...
+
+    async def complete_settled_investment_correction(
+        self,
+        event_command: CorrectInvestmentCommand,
+        settlement_command: CorrectInvestmentCommand,
+        *,
+        prepared: PreparedSettledInvestmentCorrection,
+        replacement_event: RecordedInvestmentEconomicEvent,
+        replacement_settlement: RecordedInvestmentCashSettlement,
+    ) -> RecordedInvestmentCorrection: ...
+
 
 class InvestmentsCommands(Protocol):
     async def get_year_end_measurement_replay(
@@ -1461,6 +1516,22 @@ class InvestmentsCommands(Protocol):
         *,
         prepared: PreparedInvestmentCorrection,
         replacement: RecordedInvestmentEconomicEvent | AccountingEntryReference,
+    ) -> RecordedInvestmentCorrection: ...
+
+    async def prepare_settled_investment_correction(
+        self,
+        event_command: CorrectInvestmentCommand,
+        settlement_command: CorrectInvestmentCommand,
+    ) -> PreparedSettledInvestmentCorrection: ...
+
+    async def complete_settled_investment_correction(
+        self,
+        event_command: CorrectInvestmentCommand,
+        settlement_command: CorrectInvestmentCommand,
+        *,
+        prepared: PreparedSettledInvestmentCorrection,
+        replacement_event: RecordedInvestmentEconomicEvent,
+        replacement_settlement: RecordedInvestmentCashSettlement,
     ) -> RecordedInvestmentCorrection: ...
 
 
@@ -1589,6 +1660,7 @@ __all__ = [
     "InvestmentSettlementId",
     "InvestmentSettlementBalanceKind",
     "InvestmentTaxTreatment",
+    "InvestmentTradingProfile",
     "InvestmentUnits",
     "InvestmentSaleLotCalculation",
     "InvestmentSaleLotFact",
@@ -1609,6 +1681,7 @@ __all__ = [
     "PreparedInvestmentCorrection",
     "PreparedEconomicEventCorrection",
     "PreparedCashSettlementCorrection",
+    "PreparedSettledInvestmentCorrection",
     "PreparedInvestmentCashSettlement",
     "PreparedInvestmentMeasurementFacts",
     "PreparedInvestmentYearEndMeasurement",

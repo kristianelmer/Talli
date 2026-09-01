@@ -19,22 +19,27 @@ from talli_backend.modules.investments.public import (
     InvestmentEvidenceMode,
     InvestmentFactReference,
     InvestmentKind,
+    InvestmentTradingProfile,
     InvestmentPositionId,
     InvestmentSaleLotFact,
     InvestmentSourceReference,
     InvestmentSourceCapability,
     InvestmentSettlementBalanceKind,
+    InvestmentSettlementId,
     InvestmentUnits,
     InvestmentsError,
     InvestmentsErrorCode,
     PreparedReceivedDividendFacts,
     PreparedEconomicEventCorrection,
+    PreparedCashSettlementCorrection,
+    PreparedSettledInvestmentCorrection,
     PreparedSharePurchaseRecognition,
     PreparedShareSaleFacts,
     RecognizeReceivedDividendCommand,
     RecognizeReceivedFundDistributionCommand,
     RecognizeSharePurchaseCommand,
     RecognizeShareSaleCommand,
+    SettleInvestmentCashCommand,
 )
 from talli_backend.modules.investments.service import InvestmentsService
 from talli_backend.shared.kernel import (
@@ -133,6 +138,12 @@ class InvestmentsPersistenceStub:
         assert replacement_evidence_digest == command.replacement.evidence.digest()
         return replace(self.prepared, evidence_digest=evidence_digest)
 
+    async def prepare_settled_investment_correction(
+        self, event_command, settlement_command, **digests
+    ):
+        self.command = (event_command, settlement_command, digests)
+        return self.prepared
+
 
 def supported_purchase() -> RecognizeSharePurchaseCommand:
     return RecognizeSharePurchaseCommand(
@@ -142,7 +153,7 @@ def supported_purchase() -> RecognizeSharePurchaseCommand:
         idempotency_key=IdempotencyKey("30000000-0000-4000-8000-000000000003"),
         income_year=IncomeYear(2026),
         event_id=InvestmentEconomicEventId("40000000-0000-0000-0000-000000000004"),
-        investment_key="  example-as  ",
+        investment_key="  private:123456789:ordinary  ",
         investment_name="  Example AS  ",
         investment_kind=InvestmentKind.NORWEGIAN_PRIVATE_COMPANY,
         accounting_classification=InvestmentAccountingClassification.OTHER_LONG_TERM,
@@ -153,6 +164,12 @@ def supported_purchase() -> RecognizeSharePurchaseCommand:
         org_number="123456789",
         fund_equity_ratio_basis_points=None,
         fund_tax_statement_reference=None,
+        trading_profile=InvestmentTradingProfile.LOW_VOLUME_NON_ACTIVE,
+        non_active_trading_confirmed=True,
+        share_class_code="ordinary",
+        single_share_class_confirmed=True,
+        equal_share_rights_confirmed=True,
+        unusual_share_rights_absent_confirmed=True,
         evidence=InvestmentEvidence(
             InvestmentEvidenceMode.MANUAL_FALLBACK,
             "broker-note-example-purchase",
@@ -331,6 +348,113 @@ def test_supported_investment_correction_is_normalized_before_state_reversal() -
     assert persistence.command.reason == "Correct gross dividend amount"
 
 
+def test_settled_wrong_amount_correction_requires_linked_replacement_settlement() -> None:
+    event_command = supported_investment_correction()
+    replacement_event = event_command.replacement
+    assert isinstance(replacement_event, RecognizeReceivedDividendCommand)
+    replacement_settlement = SettleInvestmentCashCommand(
+        company_id=event_command.company_id,
+        actor_id=event_command.actor_id,
+        correlation_id=CorrelationId("replacement-settlement-correction"),
+        idempotency_key=IdempotencyKey(
+            "30000000-0000-4000-8000-000000000046"
+        ),
+        income_year=event_command.income_year,
+        settlement_id=InvestmentSettlementId(
+            "40000000-0000-0000-0000-000000000046"
+        ),
+        event_id=replacement_event.event_id,
+        settlement_date=LocalDate(date(2026, 9, 1)),
+        amount=replacement_event.gross_amount,
+        evidence=InvestmentEvidence(
+            InvestmentEvidenceMode.LINKED_SOURCES,
+            "corrected-bank-settlement",
+            False,
+            (),
+            InvestmentFactReference(
+                InvestmentSourceCapability.BANKING,
+                BANK_ID,
+                1,
+                "b" * 64,
+            ),
+        ),
+    )
+    settlement_command = CorrectInvestmentCommand(
+        company_id=event_command.company_id,
+        actor_id=event_command.actor_id,
+        correlation_id=CorrelationId("settlement-correction"),
+        idempotency_key=IdempotencyKey(
+            "30000000-0000-4000-8000-000000000047"
+        ),
+        income_year=event_command.income_year,
+        correction_id=InvestmentCorrectionId(
+            "40000000-0000-0000-0000-000000000047"
+        ),
+        target_kind=InvestmentCorrectionTargetKind.CASH_SETTLEMENT,
+        original_record_id=InvestmentSettlementId(
+            "40000000-0000-0000-0000-000000000041"
+        ),
+        original_activity_kind=event_command.original_activity_kind,
+        correction_date=event_command.correction_date,
+        reason=event_command.reason,
+        evidence=event_command.evidence,
+        replacement=replacement_settlement,
+    )
+    prepared = PreparedSettledInvestmentCorrection(
+        event=PreparedEconomicEventCorrection(
+            AccountingEntryReference(
+                "70000000-0000-0000-0000-000000000007"
+            ),
+            replacement_event.position_id,
+            "e" * 64,
+        ),
+        settlement=PreparedCashSettlementCorrection(
+            AccountingEntryReference(
+                "70000000-0000-0000-0000-000000000008"
+            ),
+            InvestmentSettlementId(
+                "40000000-0000-0000-0000-000000000041"
+            ),
+            replacement_event.event_id,
+            AccountingEntryReference(
+                "70000000-0000-0000-0000-000000000007"
+            ),
+            InvestmentSettlementBalanceKind.DIVIDEND_RECEIVABLE,
+            replacement_event.gross_amount,
+            "f" * 64,
+            replacement_settlement.evidence.digest(),
+            "d" * 64,
+            InvestmentActivityKind.DIVIDEND_RECEIVED,
+        ),
+    )
+    persistence = InvestmentsPersistenceStub(prepared)
+    result = asyncio.run(
+        InvestmentsService(persistence).prepare_settled_investment_correction(
+            event_command, settlement_command
+        )
+    )
+    assert result is prepared
+    assert persistence.command[0].replacement.event_id == (
+        persistence.command[1].replacement.event_id
+    )
+
+    with pytest.raises(InvestmentsError):
+        asyncio.run(
+            InvestmentsService(persistence).prepare_settled_investment_correction(
+                event_command,
+                replace(
+                    settlement_command,
+                    replacement=replace(
+                        replacement_settlement,
+                        event_id=InvestmentEconomicEventId(
+                            "40000000-0000-0000-0000-000000000099"
+                        ),
+                    ),
+                ),
+            )
+        )
+
+
 def test_correction_rejects_a_different_replacement_activity_before_mutation() -> None:
     command = supported_investment_correction()
     prepared = PreparedEconomicEventCorrection(
@@ -404,7 +528,7 @@ def test_supported_share_purchase_is_normalized_and_prepared() -> None:
     assert result.acquisition_cost == Money.nok("125.50")
     assert len(result.evidence_digest) == 64
     assert len(result.calculation_id) == 64
-    assert persistence.command.investment_key == "example-as"
+    assert persistence.command.investment_key == "private:123456789:ordinary"
     assert persistence.command.investment_name == "Example AS"
 
 
@@ -418,4 +542,40 @@ def test_invalid_share_purchase_facts_fail_before_persistence(changes) -> None:
     with pytest.raises(InvestmentsError) as failure:
         asyncio.run(InvestmentsService(persistence).prepare_share_purchase_recognition(replace(supported_purchase(), **changes)))
     assert failure.value.code == InvestmentsErrorCode.INVALID_INPUT.value
+    assert persistence.command is None
+
+
+@pytest.mark.parametrize("changes", [
+    {"trading_profile": InvestmentTradingProfile.ACTIVE_OR_HIGH_VOLUME},
+    {"trading_profile": InvestmentTradingProfile.UNKNOWN},
+    {"non_active_trading_confirmed": False},
+])
+def test_active_or_unconfirmed_trading_is_rejected_before_persistence(changes) -> None:
+    persistence = InvestmentsPersistenceStub(prepared_purchase())
+    with pytest.raises(InvestmentsError) as failure:
+        asyncio.run(
+            InvestmentsService(persistence).prepare_share_purchase_recognition(
+                replace(supported_purchase(), **changes)
+            )
+        )
+    assert failure.value.code == InvestmentsErrorCode.ACTIVE_TRADING_UNSUPPORTED.value
+    assert persistence.command is None
+
+
+@pytest.mark.parametrize("changes", [
+    {"investment_key": "private:123456789"},
+    {"share_class_code": "class-a"},
+    {"single_share_class_confirmed": False},
+    {"equal_share_rights_confirmed": False},
+    {"unusual_share_rights_absent_confirmed": False},
+])
+def test_unclear_private_share_identity_or_rights_is_rejected(changes) -> None:
+    persistence = InvestmentsPersistenceStub(prepared_purchase())
+    with pytest.raises(InvestmentsError) as failure:
+        asyncio.run(
+            InvestmentsService(persistence).prepare_share_purchase_recognition(
+                replace(supported_purchase(), **changes)
+            )
+        )
+    assert failure.value.code == InvestmentsErrorCode.OWNERSHIP_OR_RIGHTS_UNCLEAR.value
     assert persistence.command is None

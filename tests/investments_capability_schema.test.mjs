@@ -142,6 +142,30 @@ const lifecyclePublicCutoverRollbackPath = new URL(
   "../supabase/rollback/20260901150538_investments_lifecycle_public_cutover.sql",
   import.meta.url,
 );
+const measurementReversalsPath = new URL(
+  "../supabase/migrations/20260901203025_investments_measurement_reversals.sql",
+  import.meta.url,
+);
+const measurementReversalsRollbackPath = new URL(
+  "../supabase/rollback/20260901203025_investments_measurement_reversals.sql",
+  import.meta.url,
+);
+const boundaryConfirmationsPath = new URL(
+  "../supabase/migrations/20260901204052_investments_boundary_confirmations.sql",
+  import.meta.url,
+);
+const boundaryConfirmationsRollbackPath = new URL(
+  "../supabase/rollback/20260901204052_investments_boundary_confirmations.sql",
+  import.meta.url,
+);
+const settledEventCorrectionsPath = new URL(
+  "../supabase/migrations/20260901205331_investments_settled_event_corrections.sql",
+  import.meta.url,
+);
+const settledEventCorrectionsRollbackPath = new URL(
+  "../supabase/rollback/20260901205331_investments_settled_event_corrections.sql",
+  import.meta.url,
+);
 const localGatePath = new URL("../scripts/test-supabase-local.sh", import.meta.url);
 
 function artifact(path, phase) {
@@ -1063,4 +1087,57 @@ test("lifecycle measurement bounds owner authority after cleanup", () => {
       /grant (?:investments_executor|investments_workflow_executor|company_access_executor|ledger_store_owner|company_archive_projection_executor) to %I/iu,
     );
   }
+});
+
+test("measurement reversals and investment boundaries are executable and reversible", () => {
+  const measurement = artifact(measurementReversalsPath, "measurement reversals");
+  const measurementRollback = artifact(
+    measurementReversalsRollbackPath,
+    "measurement reversals rollback",
+  );
+  assert.match(measurement, /prepare_year_end_measurement_v3/iu);
+  assert.match(measurement, /reversal_amount/iu);
+  assert.match(measurement, /remaining_cost_basis[\s\S]+v_closing/iu);
+  assert.match(measurementRollback, /investments_measurement_reversals_rollback_unsafe/iu);
+
+  const boundary = artifact(boundaryConfirmationsPath, "boundary confirmations");
+  const boundaryRollback = artifact(
+    boundaryConfirmationsRollbackPath,
+    "boundary confirmations rollback",
+  );
+  assert.match(boundary, /create table investments\.position_boundary_confirmations/iu);
+  assert.match(boundary, /force row level security/iu);
+  assert.match(boundary, /trading_profile = 'low_volume_non_active'/iu);
+  assert.match(boundary, /issuer_org_number is not null[\s\S]+issuer_org_number ~ '\^\[0-9\]\{9\}\$'/iu);
+  assert.match(boundary, /private:' \|\| issuer_org_number \|\| ':ordinary'/iu);
+  assert.match(boundary, /v_org is null[\s\S]+v_org !~ '\^\[0-9\]\{9\}\$'/iu);
+  assert.match(boundary, /complete_share_purchase_recognition_v3/iu);
+  assert.match(boundary, /prepare_year_end_measurement_v4/iu);
+  assert.match(
+    boundary,
+    /revoke execute on function[\s\S]+complete_share_purchase_recognition_v2[\s\S]+prepare_share_sale_recognition_v2[\s\S]+prepare_received_dividend_recognition_v2[\s\S]+prepare_received_fund_distribution_recognition_v2[\s\S]+prepare_year_end_measurement_v3[\s\S]+from investments_workflow_executor/iu,
+  );
+  assert.match(boundaryRollback, /rollback_refused_investment_boundary_confirmations_exist/iu);
+  assert.match(boundaryRollback, /grant execute on function[\s\S]+_v2/iu);
+});
+
+test("settled wrong-amount corrections bind both reversals atomically", () => {
+  const source = artifact(
+    settledEventCorrectionsPath,
+    "settled event corrections",
+  );
+  const rollback = artifact(
+    settledEventCorrectionsRollbackPath,
+    "settled event corrections rollback",
+  );
+  assert.match(source, /prepare_settled_event_correction_v1/iu);
+  assert.match(source, /complete_settled_event_correction_v1/iu);
+  assert.equal(
+    (source.match(/ledger\.investment_correction_matches_v1/giu) ?? []).length,
+    2,
+  );
+  assert.match(source, /set supersedes_settlement_id = v_original_settlement\.settlement_id/iu);
+  assert.match(source, /insert into investments\.lifecycle_corrections[\s\S]+values[\s\S]+economic_event[\s\S]+cash_settlement/iu);
+  assert.match(source, /settled_investment_corrected/iu);
+  assert.match(rollback, /investments_settled_event_corrections_rollback_unsafe/iu);
 });

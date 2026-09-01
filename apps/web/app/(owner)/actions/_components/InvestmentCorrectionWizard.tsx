@@ -39,6 +39,8 @@ export type CorrectableInvestmentActivity = {
   yearEndOwnershipBasisPoints: number | null;
   yearEndVotingBasisPoints: number | null;
   groupEvidenceReference: string | null;
+  settlementId: string | null;
+  settlementDate: string | null;
 };
 
 function CorrectionFields({ activity }: { activity: CorrectableInvestmentActivity }) {
@@ -231,6 +233,8 @@ export function InvestmentCorrectionWizard({
   activities,
   operationId: initialOperationId,
   replacementActionId: initialReplacementActionId,
+  settlementCorrectionId: initialSettlementCorrectionId,
+  replacementSettlementId: initialReplacementSettlementId,
   bankTransactions,
   documents,
 }: {
@@ -239,6 +243,8 @@ export function InvestmentCorrectionWizard({
   activities: CorrectableInvestmentActivity[];
   operationId?: string;
   replacementActionId?: string;
+  settlementCorrectionId?: string;
+  replacementSettlementId?: string;
   bankTransactions: InvestmentEvidenceOption[];
   documents: InvestmentEvidenceOption[];
 }) {
@@ -246,9 +252,20 @@ export function InvestmentCorrectionWizard({
   const [replacementActionId] = useState(
     () => initialReplacementActionId ?? crypto.randomUUID(),
   );
+  const [settlementCorrectionId] = useState(
+    () => initialSettlementCorrectionId ?? crypto.randomUUID(),
+  );
+  const [replacementSettlementId] = useState(
+    () => initialReplacementSettlementId ?? crypto.randomUUID(),
+  );
   const [activityId, setActivityId] = useState("");
   const [correctionDate, setCorrectionDate] = useState("");
   const [reason, setReason] = useState("");
+  const [purchaseBoundaryConfirmed, setPurchaseBoundaryConfirmed] = useState(false);
+  const [replacementSettlementDate, setReplacementSettlementDate] = useState("");
+  const [replacementSettlementAmount, setReplacementSettlementAmount] = useState("");
+  const [replacementBankTransactionId, setReplacementBankTransactionId] = useState("");
+  const [replacementSettlementReference, setReplacementSettlementReference] = useState("");
   const [evidence, setEvidence] = useState<InvestmentEvidenceState>({
     mode: "manual_fallback",
     bankTransactionId: "",
@@ -266,7 +283,14 @@ export function InvestmentCorrectionWizard({
   const selected = activities.find((activity) => activity.id === activityId);
   const ready = Boolean(selected && correctionDate && reason.trim()
     && investmentEvidenceComplete(evidence)
-    && investmentEvidenceComplete(replacementEvidence));
+    && investmentEvidenceComplete(replacementEvidence)
+    && (selected.kind !== "share_purchase" || purchaseBoundaryConfirmed)
+    && (!selected.settlementId || (
+      replacementSettlementDate
+      && replacementSettlementAmount
+      && replacementBankTransactionId
+      && replacementSettlementReference.trim()
+    )));
 
   if (activities.length === 0) {
     return <Banner variant="info">Det finnes ingen ukorrigerte investeringshendelser.</Banner>;
@@ -299,6 +323,65 @@ export function InvestmentCorrectionWizard({
             value={selected.kind}
           />
           <CorrectionFields key={selected.id} activity={selected} />
+          {selected.kind === "share_purchase" ? (
+            <CheckboxField
+              label="Jeg bekrefter at investeringen fortsatt er innenfor Tallis grense: begrenset, ikke-aktiv handel, og for privat selskap én ordinær aksjeklasse med like rettigheter uten uvanlige særrettigheter."
+              name="investmentBoundaryConfirmed"
+              checked={purchaseBoundaryConfirmed}
+              onChange={setPurchaseBoundaryConfirmed}
+              required
+            />
+          ) : null}
+          {selected.settlementId ? (
+            <>
+              <input type="hidden" name="originalSettlementId" value={selected.settlementId} />
+              <input type="hidden" name="settlementCorrectionId" value={settlementCorrectionId} />
+              <input type="hidden" name="replacementSettlementId" value={replacementSettlementId} />
+              <div className="fieldRow">
+                <TextField
+                  label="Ny oppgjørsdato"
+                  name="replacementSettlementDate"
+                  value={replacementSettlementDate}
+                  onChange={setReplacementSettlementDate}
+                  required
+                />
+                <SelectField
+                  label="Ny bankbevegelse"
+                  name="replacementBankTransactionId"
+                  value={replacementBankTransactionId}
+                  onChange={setReplacementBankTransactionId}
+                  required
+                >
+                  <option value="" disabled>Velg bankbevegelse</option>
+                  {bankTransactions.map((transaction) => (
+                    <option key={transaction.id} value={transaction.id}>
+                      {transaction.label}
+                    </option>
+                  ))}
+                </SelectField>
+              </div>
+              <TextField
+                label="Nytt oppgjørsbeløp (kr)"
+                name="replacementSettlementAmount"
+                value={replacementSettlementAmount}
+                onChange={setReplacementSettlementAmount}
+                inputMode="decimal"
+                helper="Beløpet må være likt det nye hendelsesbeløpet etter transaksjonskostnader."
+                required
+              />
+              <TextField
+                label="Ny bank- eller oppgjørsreferanse"
+                name="replacementSettlementEvidenceReference"
+                value={replacementSettlementReference}
+                onChange={setReplacementSettlementReference}
+                required
+              />
+              <Banner variant="warning">
+                Hendelsen er allerede oppgjort. Talli reverserer derfor både
+                hendelsen og kontantoppgjøret og erstatter begge atomisk.
+              </Banner>
+            </>
+          ) : null}
         </>
       ) : null}
       <TextField

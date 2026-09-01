@@ -845,7 +845,7 @@
         "measurementRule": "lower_of_cost_and_fair_value",
         "impairmentAmountNok": "17.50",
         "closingBookValueNok": "82.50",
-        "calculationId": "b7fe9331185a7e050d4bac7b6da1970c023fb2aa880f9180f0e07c14b0883031",
+        "calculationId": "47463ab00e010a1d3a4c7664438a2796b2654c85385dbb5e44e8022742729941",
         "ledgerLines": [
           {
             "account": "8172",

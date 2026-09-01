@@ -1064,7 +1064,7 @@ def test_purchase_recognition_uses_revisioned_lifecycle_rpcs() -> None:
     assert recorded.event_id == command.event_id
     assert "get_share_purchase_recognition_replay_v2" in calls[0][0]
     assert "prepare_share_purchase_recognition_v2" in calls[1][0]
-    assert "complete_share_purchase_recognition_v2" in calls[2][0]
+    assert "complete_share_purchase_recognition_v3" in calls[2][0]
     request = json.loads(str(calls[1][1][0]))
     assert request["eventId"] == str(command.event_id)
     assert request["shareCount"] == "10.125000000000"
@@ -1148,7 +1148,7 @@ def test_share_sale_recognition_preserves_fractional_fifo_through_v2_rpcs() -> N
         command.sold_share_count.amount
     )
     assert "get_share_sale_recognition_replay_v2" in calls[0][0]
-    assert "prepare_share_sale_recognition_v2" in calls[1][0]
+    assert "prepare_share_sale_recognition_v3" in calls[1][0]
     assert "complete_share_sale_recognition_v2" in calls[2][0]
     request = json.loads(str(calls[1][1][0]))
     assert request["soldShareCount"] == "4.125000000000"
@@ -1206,7 +1206,7 @@ def test_dividend_recognition_uses_declaration_only_v2_rpcs() -> None:
     assert replay is None
     assert recorded.event_id == command.event_id
     assert "get_received_dividend_recognition_replay_v2" in calls[0][0]
-    assert "prepare_received_dividend_recognition_v2" in calls[1][0]
+    assert "prepare_received_dividend_recognition_v3" in calls[1][0]
     assert "complete_received_dividend_recognition_v2" in calls[2][0]
     request = json.loads(str(calls[1][1][0]))
     assert request["declaredDate"] == command.declared_date.value.isoformat()
@@ -1267,7 +1267,7 @@ def test_fund_distribution_recognition_uses_entitlement_only_v2_rpcs() -> None:
     assert replay is None
     assert recorded.event_id == command.event_id
     assert "get_received_fund_distribution_recognition_replay_v2" in calls[0][0]
-    assert "prepare_received_fund_distribution_recognition_v2" in calls[1][0]
+    assert "prepare_received_fund_distribution_recognition_v3" in calls[1][0]
     assert "complete_received_fund_distribution_recognition_v2" in calls[2][0]
     request = json.loads(str(calls[1][1][0]))
     assert request["entitlementDate"] == command.entitlement_date.value.isoformat()

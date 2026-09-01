@@ -17,6 +17,7 @@ from talli_backend.modules.investments.public import (
     InvestmentEvidenceMode,
     InvestmentFactReference,
     InvestmentKind,
+    InvestmentTradingProfile,
     InvestmentMeasurementId,
     InvestmentMeasurementRule,
     InvestmentPositionId,
@@ -68,6 +69,7 @@ class SupportedPatternsPersistence:
         *,
         position_kind: InvestmentKind = InvestmentKind.NORWEGIAN_LISTED_SHARE,
         book_basis: str = "80.00",
+        source_book_basis: str | None = None,
         tax_basis: str = "80.00",
         acquisition_ratio: int | None = None,
     ) -> None:
@@ -77,6 +79,7 @@ class SupportedPatternsPersistence:
         self.evidence_digest = None
         self.position_kind = position_kind
         self.book_basis = Money.nok(book_basis)
+        self.source_book_basis = Money.nok(source_book_basis or book_basis)
         self.tax_basis = Money.nok(tax_basis)
         self.acquisition_ratio = acquisition_ratio
 
@@ -190,7 +193,7 @@ class SupportedPatternsPersistence:
             investment_kind=self.position_kind,
             accounting_classification=classification,
             quantity=InvestmentUnits.of("10"),
-            source_book_cost=self.book_basis,
+            source_book_cost=self.source_book_basis,
             pre_measurement_book_value=self.book_basis,
             tax_basis=self.tax_basis,
         )
@@ -202,7 +205,7 @@ def purchase_command(
     classification: InvestmentAccountingClassification = (
         InvestmentAccountingClassification.OTHER_LONG_TERM
     ),
-    investment_key: str = "private:123456789",
+    investment_key: str = "private:123456789:ordinary",
     org_number: str | None = "123456789",
     fund_equity_ratio_basis_points: int | None = None,
     fund_tax_statement_reference: str | None = None,
@@ -225,6 +228,22 @@ def purchase_command(
         org_number=org_number,
         fund_equity_ratio_basis_points=fund_equity_ratio_basis_points,
         fund_tax_statement_reference=fund_tax_statement_reference,
+        trading_profile=InvestmentTradingProfile.LOW_VOLUME_NON_ACTIVE,
+        non_active_trading_confirmed=True,
+        share_class_code=(
+            "ordinary"
+            if kind is InvestmentKind.NORWEGIAN_PRIVATE_COMPANY
+            else None
+        ),
+        single_share_class_confirmed=(
+            True if kind is InvestmentKind.NORWEGIAN_PRIVATE_COMPANY else None
+        ),
+        equal_share_rights_confirmed=(
+            True if kind is InvestmentKind.NORWEGIAN_PRIVATE_COMPANY else None
+        ),
+        unusual_share_rights_absent_confirmed=(
+            True if kind is InvestmentKind.NORWEGIAN_PRIVATE_COMPANY else None
+        ),
         evidence=InvestmentEvidence(
             InvestmentEvidenceMode.LINKED_SOURCES,
             "  broker-note-42  ",
@@ -324,7 +343,7 @@ def fund_distribution_command(ratio: int) -> RecognizeReceivedFundDistributionCo
 @pytest.mark.parametrize(
     ("kind", "classification", "key", "org_number", "fund_ratio", "fund_reference"),
     [
-        (InvestmentKind.NORWEGIAN_PRIVATE_COMPANY, InvestmentAccountingClassification.SUBSIDIARY, "private:123456789", "123456789", None, None),
+        (InvestmentKind.NORWEGIAN_PRIVATE_COMPANY, InvestmentAccountingClassification.SUBSIDIARY, "private:123456789:ordinary", "123456789", None, None),
         (InvestmentKind.NORWEGIAN_LISTED_SHARE, InvestmentAccountingClassification.CURRENT_LISTED_SHARE, "NO0000000001", "123456789", None, None),
         (InvestmentKind.NORWEGIAN_EQUITY_FUND, InvestmentAccountingClassification.CURRENT_FUND, "NO0000000002", None, 7_500, "provider-tax-statement-2026-r1"),
     ],
@@ -504,6 +523,7 @@ def test_year_end_measurement_keeps_book_impairment_and_tax_values_separate() ->
 
     assert result.measurement_rule is InvestmentMeasurementRule.LOWER_OF_COST_AND_FAIR_VALUE
     assert result.impairment_amount == Money.nok("17.50")
+    assert result.reversal_amount == Money.nok("0.00")
     assert result.closing_book_value == Money.nok("82.50")
     assert result.tax_basis == Money.nok("100.00")
     assert result.tax_value == Money.nok("97.00")
@@ -516,6 +536,49 @@ def test_year_end_measurement_keeps_book_impairment_and_tax_values_separate() ->
     )
     golden = fixture["yearEndMeasurementCases"][0]
     assert result.calculation_id == golden["expected"]["calculationId"]
+
+
+def test_year_end_measurement_reverses_only_up_to_remaining_source_cost() -> None:
+    persistence = SupportedPatternsPersistence(
+        book_basis="60.00", source_book_basis="100.00", tax_basis="100.00"
+    )
+    command = RecordInvestmentYearEndMeasurementCommand(
+        company_id=COMPANY_ID,
+        actor_id=ACTOR_ID,
+        correlation_id=CorrelationId("investments-year-end-reversal"),
+        idempotency_key=IdempotencyKey("measurement-2026-position-reversal"),
+        income_year=IncomeYear(2026),
+        measurement_id=InvestmentMeasurementId(
+            "90000000-0000-0000-0000-000000000002"
+        ),
+        position_id=POSITION_ID,
+        as_of=LocalDate(date(2026, 12, 31)),
+        observed_or_recoverable_value=Money.nok("125.00"),
+        tax_value=Money.nok("100.00"),
+        evidence=InvestmentEvidence(
+            InvestmentEvidenceMode.LINKED_SOURCES,
+            "evidenced recovery",
+            False,
+            (
+                InvestmentFactReference(
+                    InvestmentSourceCapability.DOCUMENTS,
+                    DOCUMENT_ID,
+                    2,
+                    "e" * 64,
+                ),
+            ),
+            None,
+        ),
+    )
+
+    result = asyncio.run(
+        InvestmentsService(persistence).prepare_year_end_measurement(command)
+    )
+
+    assert result.impairment_amount == Money.nok("0.00")
+    assert result.reversal_amount == Money.nok("40.00")
+    assert result.closing_book_value == Money.nok("100.00")
+    assert result.tax_basis == Money.nok("100.00")
 
 
 def test_committed_goldens_execute_the_production_investment_policy() -> None:

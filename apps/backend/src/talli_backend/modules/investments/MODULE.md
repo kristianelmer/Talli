@@ -27,6 +27,8 @@ leaves only the canonical investments implementation.
 ## Public interface
 
 Consumers import only `talli_backend.modules.investments.public`.
+`InvestmentTradingProfile` and `PreparedSettledInvestmentCorrection` keep the
+supported activity boundary and paired correction protocol explicit.
 The four deprecated `/api/v1` mutation routes remain during the ADR-0012
 overlap window, but their transport adapters translate directly to the
 recognition/settlement lifecycle in one transaction. No Python workflow or
@@ -38,6 +40,11 @@ remain declared, deprecated overlap data contracts only. The same applies to
 `RecordedReceivedDividend`, and `RecordedReceivedFundDistribution`; there are
 no public command methods, service workflow, persistence RPC, or separate
 writer behind these shapes.
+
+<!-- architecture-inventory
+{"ownedTables":["investments.position_boundary_confirmations"]}
+-->
+
 `CorrectInvestmentCommand`
 targets an economic event or cash settlement and carries a canonical recognition or
 settlement replacement with revisioned evidence. `InvestmentCorrectionTargetKind`

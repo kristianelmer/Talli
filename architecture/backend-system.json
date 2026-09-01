@@ -310,6 +310,7 @@
       "talli_backend.adapters.supabase_validation_observation",
       "talli_backend.application.banking_session",
       "talli_backend.application.investments_session",
+      "talli_backend.application.investments_workflow",
       "talli_backend.application.ledger_workflow",
       "talli_backend.application.opening_snapshot_compatibility",
       "talli_backend.modules.banking.public",

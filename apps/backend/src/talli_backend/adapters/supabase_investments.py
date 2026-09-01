@@ -84,6 +84,7 @@ from talli_backend.modules.investments.public import (
     PreparedInvestmentCorrection,
     PreparedEconomicEventCorrection,
     PreparedCashSettlementCorrection,
+    PreparedSettledInvestmentCorrection,
     PreparedInvestmentCashSettlement,
     PreparedInvestmentMeasurementFacts,
     PreparedInvestmentYearEndMeasurement,
@@ -230,6 +231,14 @@ def _lifecycle_request_payload(
         "orgNumber": command.org_number,
         "fundEquityRatioBasisPoints": command.fund_equity_ratio_basis_points,
         "fundTaxStatementReference": command.fund_tax_statement_reference,
+        "tradingProfile": command.trading_profile.value,
+        "nonActiveTradingConfirmed": command.non_active_trading_confirmed,
+        "shareClassCode": command.share_class_code,
+        "singleShareClassConfirmed": command.single_share_class_confirmed,
+        "equalShareRightsConfirmed": command.equal_share_rights_confirmed,
+        "unusualShareRightsAbsentConfirmed": (
+            command.unusual_share_rights_absent_confirmed
+        ),
     }
 def _correction_request_payload(command: CorrectInvestmentCommand) -> dict[str, object]:
     replacement = command.replacement
@@ -296,6 +305,14 @@ def _map_investments_database_error(message: str) -> InvestmentsError | Exceptio
             InvestmentsError.conflict(InvestmentsErrorCode.IDEMPOTENCY_IN_PROGRESS),
         ),
         ("investments_forbidden", InvestmentsError.forbidden()),
+        (
+            "investments_active_trading_unsupported",
+            InvestmentsError.active_trading_unsupported(),
+        ),
+        (
+            "investments_ownership_or_rights_unclear",
+            InvestmentsError.ownership_or_rights_unclear(),
+        ),
         ("investments_invalid_input", InvestmentsError.invalid_input()),
         ("investments_dependency_unavailable", InvestmentsError.unavailable()),
         (
@@ -1242,7 +1259,7 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
     ) -> RecordedInvestmentEconomicEvent:
         result = await self._investment_result(
             """
-            select investments.complete_share_purchase_recognition_v2(
+            select investments.complete_share_purchase_recognition_v3(
               %s::jsonb, %s::uuid, %s::jsonb, %s::text
             ) as result
             """,
@@ -1291,7 +1308,7 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
         evidence_digest: str,
     ) -> PreparedShareSaleFacts:
         result = await self._investment_result(
-            "select investments.prepare_share_sale_recognition_v2(%s::jsonb, %s::text) as result",
+            "select investments.prepare_share_sale_recognition_v3(%s::jsonb, %s::text) as result",
             command,
             request_extra={
                 "netProceeds": format(net_proceeds.amount, "f"),
@@ -1452,7 +1469,7 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
         evidence_digest: str,
     ) -> PreparedReceivedDividendFacts:
         result = await self._investment_result(
-            "select investments.prepare_received_dividend_recognition_v2(%s::jsonb, %s::text) as result",
+            "select investments.prepare_received_dividend_recognition_v3(%s::jsonb, %s::text) as result",
             command,
             request_extra={"evidenceDigest": evidence_digest},
         )
@@ -1516,7 +1533,7 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
         evidence_digest: str,
     ) -> PreparedReceivedFundDistributionFacts:
         result = await self._investment_result(
-            "select investments.prepare_received_fund_distribution_recognition_v2(%s::jsonb, %s::text) as result",
+            "select investments.prepare_received_fund_distribution_recognition_v3(%s::jsonb, %s::text) as result",
             command,
             request_extra={"evidenceDigest": evidence_digest},
         )
@@ -1586,7 +1603,7 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
         evidence_digest: str,
     ) -> PreparedInvestmentMeasurementFacts:
         result = await self._investment_result(
-            "select investments.prepare_year_end_measurement_v2(%s::jsonb, %s::text) as result",
+            "select investments.prepare_year_end_measurement_v4(%s::jsonb, %s::text) as result",
             command,
             request_extra={"evidenceDigest": evidence_digest},
         )
@@ -1616,7 +1633,7 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
     ) -> RecordedInvestmentYearEndMeasurement:
         result = await self._investment_result(
             """
-            select investments.complete_year_end_measurement_v2(
+            select investments.complete_year_end_measurement_v3(
               %s::jsonb, %s::uuid, %s::jsonb, %s::text
             ) as result
             """,
@@ -1842,6 +1859,148 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
         if result is None:
             raise InvestmentsError.unavailable()
         return _recorded_correction(result)
+
+    async def prepare_settled_investment_correction(
+        self,
+        event_command: CorrectInvestmentCommand,
+        settlement_command: CorrectInvestmentCommand,
+        *,
+        event_evidence_digest: str,
+        event_replacement_evidence_digest: str,
+        settlement_evidence_digest: str,
+        settlement_replacement_evidence_digest: str,
+    ) -> PreparedSettledInvestmentCorrection:
+        result = await self._investment_result(
+            "select investments.prepare_settled_event_correction_v1(%s::jsonb, %s::text) as result",
+            event_command,
+            request_extra={
+                "evidenceDigest": event_evidence_digest,
+                "settlementCorrection": {
+                    **_correction_request_payload(settlement_command),
+                    "evidenceDigest": settlement_evidence_digest,
+                },
+            },
+        )
+        if result is None:
+            raise InvestmentsError.unavailable()
+        event = PreparedEconomicEventCorrection(
+            original_accounting_entry_id=AccountingEntryReference(
+                str(result["originalRecognitionAccountingEntryId"])
+            ),
+            original_position_id=InvestmentPositionId(
+                str(result["originalPositionId"])
+            ),
+            evidence_digest=event_evidence_digest,
+        )
+        settlement = PreparedCashSettlementCorrection(
+            original_accounting_entry_id=AccountingEntryReference(
+                str(result["originalSettlementAccountingEntryId"])
+            ),
+            original_settlement_id=InvestmentSettlementId(
+                str(result["originalSettlementId"])
+            ),
+            event_id=InvestmentEconomicEventId(
+                str(event_command.replacement.event_id)
+            ),
+            recognition_accounting_entry_id=AccountingEntryReference(
+                str(result["originalRecognitionAccountingEntryId"])
+            ),
+            settlement_balance_kind=InvestmentSettlementBalanceKind(
+                str(result["settlementBalanceKind"])
+            ),
+            amount=_money(result["replacementAmount"]),
+            event_fact_sha256=str(result["replacementEventFactSha256"]),
+            replacement_evidence_digest=settlement_replacement_evidence_digest,
+            evidence_digest=settlement_evidence_digest,
+            original_activity_kind=event_command.original_activity_kind,
+        )
+        if (
+            event_replacement_evidence_digest
+            != event_command.replacement.evidence.digest()
+        ):
+            raise InvestmentsError.unavailable()
+        return PreparedSettledInvestmentCorrection(event=event, settlement=settlement)
+
+    async def complete_settled_investment_correction(
+        self,
+        event_command: CorrectInvestmentCommand,
+        settlement_command: CorrectInvestmentCommand,
+        *,
+        prepared: PreparedSettledInvestmentCorrection,
+        replacement_event: RecordedInvestmentEconomicEvent,
+        replacement_settlement: RecordedInvestmentCashSettlement,
+    ) -> RecordedInvestmentCorrection:
+        event_reversal = await self._correction_reversal_entry(
+            event_command,
+            original_entry_id=prepared.event.original_accounting_entry_id,
+            replacement_entry_id=replacement_event.recognition_accounting_entry_id,
+            original_record_id=event_command.original_record_id,
+            replacement_record_id=replacement_event.event_id,
+        )
+        settlement_reversal = await self._correction_reversal_entry(
+            settlement_command,
+            original_entry_id=prepared.settlement.original_accounting_entry_id,
+            replacement_entry_id=(
+                replacement_settlement.settlement_accounting_entry_id
+            ),
+            original_record_id=settlement_command.original_record_id,
+            replacement_record_id=replacement_settlement.settlement_id,
+        )
+        result = await self._investment_result(
+            """
+            select investments.complete_settled_event_correction_v1(
+              %s::jsonb, %s::uuid, %s::uuid, %s::uuid, %s::uuid,
+              %s::uuid, %s::uuid, %s::text
+            ) as result
+            """,
+            event_command,
+            (
+                str(prepared.event.original_accounting_entry_id),
+                str(replacement_event.recognition_accounting_entry_id),
+                str(event_reversal),
+                str(prepared.settlement.original_accounting_entry_id),
+                str(replacement_settlement.settlement_accounting_entry_id),
+                str(settlement_reversal),
+            ),
+            request_extra={
+                "evidenceDigest": prepared.event.evidence_digest,
+                "settlementCorrection": {
+                    **_correction_request_payload(settlement_command),
+                    "evidenceDigest": prepared.settlement.evidence_digest,
+                },
+            },
+        )
+        if result is None:
+            raise InvestmentsError.unavailable()
+        return _recorded_correction(result)
+
+    async def _correction_reversal_entry(
+        self,
+        command: CorrectInvestmentCommand,
+        *,
+        original_entry_id: AccountingEntryReference,
+        replacement_entry_id: AccountingEntryReference,
+        original_record_id,
+        replacement_record_id,
+    ) -> AccountingEntryReference:
+        rows = await self._database_rows(
+            """
+            select ledger.link_investment_lifecycle_correction_v2(
+              %s::uuid, %s::integer, %s::uuid, %s::uuid, %s::uuid,
+              %s::uuid, %s::text, %s::text, %s::date, %s::text
+            ) as reversal_entry_id
+            """,
+            (
+                str(command.company_id), int(command.income_year),
+                str(original_entry_id), str(replacement_entry_id),
+                str(original_record_id), str(replacement_record_id),
+                command.reason, str(command.correlation_id),
+                command.correction_date.value, str(command.actor_id.subject),
+            ),
+        )
+        if len(rows) != 1 or rows[0].get("reversal_entry_id") is None:
+            raise InvestmentsError.unavailable()
+        return AccountingEntryReference(str(rows[0]["reversal_entry_id"]))
 
 def _recorded_economic_event(
     value: Mapping[str, object],

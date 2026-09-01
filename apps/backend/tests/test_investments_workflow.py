@@ -6,7 +6,11 @@ from dataclasses import replace
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
-from talli_backend.application.investments_workflow import InvestmentsSession
+from talli_backend.application.investments_workflow import (
+    InvestmentsSession,
+    LegacyInvestmentEvidence,
+    LegacySharePurchase,
+)
 from talli_backend.modules.investments.public import (
     AccountingEntryReference,
     AcquisitionLotId,
@@ -15,11 +19,15 @@ from talli_backend.modules.investments.public import (
     InvestmentAccountingClassification,
     InvestmentCorrectionId,
     InvestmentCorrectionTargetKind,
+    InvestmentDocumentStatus,
     InvestmentEconomicEventId,
     InvestmentEvidence,
     InvestmentEvidenceMode,
     InvestmentFactReference,
     InvestmentKind,
+    InvestmentsError,
+    InvestmentTradingProfile,
+    InvestmentTaxTreatment,
     InvestmentMeasurementId,
     InvestmentMeasurementRule,
     InvestmentPositionId,
@@ -116,6 +124,14 @@ def lifecycle_purchase() -> RecognizeSharePurchaseCommand:
         org_number=legacy.org_number,
         fund_equity_ratio_basis_points=legacy.fund_equity_ratio_basis_points,
         fund_tax_statement_reference=legacy.fund_tax_statement_reference,
+        trading_profile=legacy.trading_profile,
+        non_active_trading_confirmed=legacy.non_active_trading_confirmed,
+        share_class_code=legacy.share_class_code,
+        single_share_class_confirmed=legacy.single_share_class_confirmed,
+        equal_share_rights_confirmed=legacy.equal_share_rights_confirmed,
+        unusual_share_rights_absent_confirmed=(
+            legacy.unusual_share_rights_absent_confirmed
+        ),
         evidence=InvestmentEvidence(
             InvestmentEvidenceMode.LINKED_SOURCES,
             "broker contract note",
@@ -1007,6 +1023,62 @@ def test_deprecated_overlap_composes_recognition_and_settlement_atomically() -> 
         "investments:settlement-complete",
         "transaction:commit",
     ]
+
+
+def test_deprecated_overlap_rejects_inexact_document_evidence_before_mutation() -> None:
+    persistence = SessionPersistence()
+    purchase = supported_purchase()
+    request = LegacySharePurchase(
+        company_id=purchase.company_id,
+        correlation_id=purchase.correlation_id,
+        idempotency_key=purchase.idempotency_key,
+        income_year=purchase.income_year,
+        event_id=InvestmentEconomicEventId(
+            "90000000-0000-0000-0000-000000000091"
+        ),
+        investment_key=purchase.investment_key,
+        investment_name=purchase.investment_name,
+        investment_kind=purchase.investment_kind,
+        accounting_classification=purchase.accounting_classification,
+        tax_treatment=InvestmentTaxTreatment.EXEMPTION_METHOD,
+        acquisition_date=purchase.acquisition_date,
+        share_count=purchase.share_count,
+        purchase_amount=purchase.purchase_amount,
+        transaction_costs=purchase.transaction_costs,
+        org_number=purchase.org_number,
+        fund_equity_ratio_basis_points=purchase.fund_equity_ratio_basis_points,
+        fund_tax_statement_reference=purchase.fund_tax_statement_reference,
+        trading_profile=purchase.trading_profile,
+        non_active_trading_confirmed=purchase.non_active_trading_confirmed,
+        share_class_code=purchase.share_class_code,
+        single_share_class_confirmed=purchase.single_share_class_confirmed,
+        equal_share_rights_confirmed=purchase.equal_share_rights_confirmed,
+        unusual_share_rights_absent_confirmed=(
+            purchase.unusual_share_rights_absent_confirmed
+        ),
+        evidence=LegacyInvestmentEvidence(
+            mode=InvestmentEvidenceMode.MANUAL_FALLBACK,
+            reference="owner-provided purchase document",
+            owner_attested=False,
+            document_id=InvestmentSourceReference(
+                "80000000-0000-0000-0000-000000000091"
+            ),
+            document_status=InvestmentDocumentStatus.ATTACHED,
+        ),
+    )
+
+    try:
+        asyncio.run(
+            InvestmentsSession(persistence, LedgerFacade).record_legacy_action(
+                request, None
+            )
+        )
+    except InvestmentsError as error:
+        assert error.code == "INVESTMENTS_INVALID_INPUT"
+    else:
+        raise AssertionError("inexact compatibility evidence must fail closed")
+
+    assert persistence.events == []
 
 
 def test_share_sale_recognition_posts_receivable_with_fractional_fifo() -> None:

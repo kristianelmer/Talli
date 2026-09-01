@@ -62,6 +62,8 @@ type ActionPageProps = {
     fundDistributionOperationId?: string;
     investmentCorrectionOperationId?: string;
     investmentCorrectionReplacementActionId?: string;
+    investmentEventCorrectionSettlementCorrectionId?: string;
+    investmentEventCorrectionReplacementSettlementId?: string;
     investmentCorrectionReplacementSettlementId?: string;
     investmentMeasurementOperationId?: string;
     investmentSettlementCorrectionOperationId?: string;
@@ -335,6 +337,8 @@ export default async function ActionPage({
             ),
             groupEvidenceReference:
               stringFact("group_evidence_reference") || null,
+            settlementId: stringFact("settlement_id") || null,
+            settlementDate: stringFact("settlement_date") || null,
           };
         });
       const correctedSettlements = new Set(
@@ -373,6 +377,12 @@ export default async function ActionPage({
             activities={correctable}
             operationId={query?.investmentCorrectionOperationId}
             replacementActionId={query?.investmentCorrectionReplacementActionId}
+            settlementCorrectionId={
+              query?.investmentEventCorrectionSettlementCorrectionId
+            }
+            replacementSettlementId={
+              query?.investmentEventCorrectionReplacementSettlementId
+            }
           />
           <h2>Korriger kontantoppgjør</h2>
           <InvestmentSettlementCorrectionWizard

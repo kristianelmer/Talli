@@ -498,6 +498,7 @@ const investmentsSchemas = Object.fromEntries([
   "InvestmentMeasurementRule",
   "InvestmentSettlementBalanceKind",
   "InvestmentTaxTreatment",
+  "InvestmentTradingProfile",
   "InvestmentPositionPageWire",
   "InvestmentPositionMovementWire",
   "InvestmentPositionWire",
@@ -520,6 +521,7 @@ const investmentsSchemas = Object.fromEntries([
   "InvestmentsDividendRecognitionWire",
   "InvestmentsFundDistributionRecognitionWire",
   "InvestmentsCashSettlementWire",
+  "InvestmentsReplacementCashSettlementWire",
   "ShareSaleAllocationPageWire",
   "ShareSaleAllocationWire",
 ].map((name) => [name, contract.components.schemas[name]]));

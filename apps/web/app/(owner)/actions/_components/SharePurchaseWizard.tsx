@@ -42,6 +42,7 @@ export function SharePurchaseWizard({
   const [transactionCosts, setTransactionCosts] = useState("0");
   const [fundEquityRatio, setFundEquityRatio] = useState("");
   const [fundStatement, setFundStatement] = useState("");
+  const [boundaryConfirmed, setBoundaryConfirmed] = useState(false);
   const [evidence, setEvidence] = useState<InvestmentEvidenceState>({
     mode: "manual_fallback",
     bankTransactionId: "",
@@ -53,11 +54,12 @@ export function SharePurchaseWizard({
 
   const ready =
     investmentName.trim() !== "" &&
-    investmentKey.trim() !== "" &&
+    (kind === "norwegian_private_company" || investmentKey.trim() !== "") &&
     acquisitionDate.trim() !== "" &&
     shareCount.trim() !== "" &&
     purchaseAmount.trim() !== "" &&
     investmentEvidenceComplete(evidence) &&
+    boundaryConfirmed &&
     (kind !== "norwegian_private_company" || /^\d{9}$/.test(orgNumber)) &&
     (kind !== "norwegian_equity_fund"
       || (fundEquityRatio.trim() !== "" && fundStatement.trim() !== ""));
@@ -88,14 +90,16 @@ export function SharePurchaseWizard({
         required
       />
       <div className="fieldRow">
-        <TextField
-          label={kind === "norwegian_private_company" ? c.keyLabel : "ISIN"}
-          name="investmentKey"
-          value={investmentKey}
-          onChange={setInvestmentKey}
-          helper={kind === "norwegian_private_company" ? c.keyHelp : "12 tegn og starter med NO."}
-          required
-        />
+        {kind === "norwegian_private_company" ? null : (
+          <TextField
+            label="ISIN"
+            name="investmentKey"
+            value={investmentKey}
+            onChange={setInvestmentKey}
+            helper="12 tegn og starter med NO."
+            required
+          />
+        )}
         <TextField
           label={c.orgLabel}
           name="orgNumber"
@@ -206,6 +210,21 @@ export function SharePurchaseWizard({
           />
         </div>
       ) : null}
+      <label className="checkboxRow">
+        <input
+          type="checkbox"
+          name="investmentBoundaryConfirmed"
+          value="true"
+          checked={boundaryConfirmed}
+          onChange={(event) => setBoundaryConfirmed(event.target.checked)}
+          required
+        />
+        <span>
+          {kind === "norwegian_private_company"
+            ? "Jeg bekrefter at dette er en enkelt ordinær aksjeklasse med like rettigheter, uten uvanlige særrettigheter, og at handelen er begrenset og ikke aktiv virksomhet."
+            : "Jeg bekrefter at handelen er begrenset og ikke aktiv handelsvirksomhet."}
+        </span>
+      </label>
       <InvestmentEvidenceFields
         documents={documents}
         state={evidence}

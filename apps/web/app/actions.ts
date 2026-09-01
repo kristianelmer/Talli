@@ -312,7 +312,7 @@ function requiredFormUuid(formData: FormData, key: string) {
   return value;
 }
 
-type InvestmentEvidencePrefix = "" | "replacement";
+type InvestmentEvidencePrefix = "" | "replacement" | "replacementSettlement";
 
 function investmentEvidenceField(prefix: InvestmentEvidencePrefix, name: string) {
   if (!prefix) return name;
@@ -2233,6 +2233,11 @@ export async function recordSharePurchase(formData: FormData) {
         ? "current_listed_share"
         : "other_long_term"
   )) as "subsidiary" | "associate" | "other_long_term" | "current_listed_share" | "current_fund";
+  const investmentBoundaryConfirmed =
+    formString(formData, "investmentBoundaryConfirmed") === "true";
+  if (!investmentBoundaryConfirmed) {
+    failTo(returnTo, "Bekreft investeringsgrensen før du fortsetter.");
+  }
   const evidence = await ownerAttestedInvestmentDocumentEvidence(
     formData,
     companyId,
@@ -2256,10 +2261,22 @@ export async function recordSharePurchase(formData: FormData) {
           ? formString(formData, "fundTaxStatementReference")
           : null,
         incomeYear,
-        investmentKey: formString(formData, "investmentKey"),
+        investmentKey: investmentKind === "norwegian_private_company"
+          ? `private:${formString(formData, "orgNumber")}:ordinary`
+          : formString(formData, "investmentKey"),
         investmentKind,
         investmentName: formString(formData, "investmentName"),
         orgNumber: formString(formData, "orgNumber") || null,
+        tradingProfile: "low_volume_non_active",
+        nonActiveTradingConfirmed: true,
+        shareClassCode: investmentKind === "norwegian_private_company"
+          ? "ordinary" : null,
+        singleShareClassConfirmed: investmentKind === "norwegian_private_company"
+          ? true : null,
+        equalShareRightsConfirmed: investmentKind === "norwegian_private_company"
+          ? true : null,
+        unusualShareRightsAbsentConfirmed:
+          investmentKind === "norwegian_private_company" ? true : null,
         purchaseAmount: { amount: formString(formData, "purchaseAmount"), currency: "NOK" },
         shareCount: formString(formData, "shareCount"),
         transactionCosts: {
@@ -2566,6 +2583,9 @@ export async function correctInvestmentAction(formData: FormData) {
   };
   let replacement: InvestmentsCorrectionWire["replacement"];
   if (originalActivityKind === "share_purchase") {
+    if (formString(formData, "investmentBoundaryConfirmed") !== "true") {
+      failTo(returnTo, "Bekreft investeringsgrensen før du fortsetter.");
+    }
     const investmentKind = formString(formData, "investmentKind") as
       | "norwegian_private_company"
       | "norwegian_listed_share"
@@ -2596,6 +2616,16 @@ export async function correctInvestmentAction(formData: FormData) {
       fundTaxStatementReference: investmentKind === "norwegian_equity_fund"
         ? formString(formData, "fundTaxStatementReference")
         : null,
+      tradingProfile: "low_volume_non_active",
+      nonActiveTradingConfirmed: true,
+      shareClassCode: investmentKind === "norwegian_private_company"
+        ? "ordinary" : null,
+      singleShareClassConfirmed: investmentKind === "norwegian_private_company"
+        ? true : null,
+      equalShareRightsConfirmed: investmentKind === "norwegian_private_company"
+        ? true : null,
+      unusualShareRightsAbsentConfirmed:
+        investmentKind === "norwegian_private_company" ? true : null,
     };
   } else if (originalActivityKind === "share_sale") {
     replacement = {
@@ -2650,6 +2680,48 @@ export async function correctInvestmentAction(formData: FormData) {
   } else {
     failTo(returnTo, "Ugyldig investeringstype for korrigering.");
   }
+  const originalSettlementId = formString(formData, "originalSettlementId");
+  let settledBundle: Pick<
+    InvestmentsCorrectionWire,
+    "originalSettlementId" | "settlementCorrectionId" | "replacementSettlement"
+  > = {
+    originalSettlementId: null,
+    settlementCorrectionId: null,
+    replacementSettlement: null,
+  };
+  if (originalSettlementId) {
+    const settlementCorrectionId = requiredFormUuid(
+      formData,
+      "settlementCorrectionId",
+    );
+    const replacementSettlementId = requiredFormUuid(
+      formData,
+      "replacementSettlementId",
+    );
+    const settlementEvidence = await requiredInvestmentBankEvidence(
+      formData,
+      companyId,
+      incomeYear,
+      "replacementSettlement",
+    );
+    settledBundle = {
+      originalSettlementId,
+      settlementCorrectionId,
+      replacementSettlement: {
+        replacementKind: "cash_settlement",
+        companyId,
+        incomeYear,
+        settlementId: replacementSettlementId,
+        eventId: replacementActionId,
+        settlementDate: formString(formData, "replacementSettlementDate"),
+        amount: {
+          amount: formString(formData, "replacementSettlementAmount"),
+          currency: "NOK",
+        },
+        ...settlementEvidence,
+      },
+    };
+  }
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
@@ -2666,6 +2738,7 @@ export async function correctInvestmentAction(formData: FormData) {
         reason: formString(formData, "reason"),
         ...correctionEvidence,
         replacement,
+        ...settledBundle,
       },
       correctionId,
       correctionId,
@@ -2679,6 +2752,14 @@ export async function correctInvestmentAction(formData: FormData) {
         investmentCorrectionOperationId: outcomeMayBeUnknown ? correctionId : undefined,
         investmentCorrectionReplacementActionId: outcomeMayBeUnknown
           ? replacementActionId : undefined,
+        investmentEventCorrectionSettlementCorrectionId:
+          outcomeMayBeUnknown && originalSettlementId
+            ? settledBundle.settlementCorrectionId ?? undefined
+            : undefined,
+        investmentEventCorrectionReplacementSettlementId:
+          outcomeMayBeUnknown && originalSettlementId
+            ? settledBundle.replacementSettlement?.settlementId
+            : undefined,
       },
     ));
   }

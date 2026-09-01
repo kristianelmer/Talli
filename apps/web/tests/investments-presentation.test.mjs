@@ -913,4 +913,10 @@ test("investment actions require explicit owner and dividend attestations", () =
   assert.doesNotMatch(wizardSources[4], /label="Utbetalingsdato"/u);
   assert.match(actionsSource, /targetKind: "cash_settlement"/u);
   assert.match(actionsSource, /replacementKind: "cash_settlement"/u);
+  assert.match(wizardSources[4], /name="replacementSettlementAmount"/u);
+  assert.match(
+    actionsSource,
+    /amount:\s*formString\(formData, "replacementSettlementAmount"\)/u,
+  );
+  assert.doesNotMatch(actionsSource, /const replacementAmount\s*=/u);
 });

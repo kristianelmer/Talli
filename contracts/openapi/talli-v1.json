@@ -4774,6 +4774,15 @@
         "title": "InvestmentTaxTreatment",
         "type": "string"
       },
+      "InvestmentTradingProfile": {
+        "enum": [
+          "low_volume_non_active",
+          "active_or_high_volume",
+          "unknown"
+        ],
+        "title": "InvestmentTradingProfile",
+        "type": "string"
+      },
       "InvestmentYearEndMeasurementPageWire": {
         "properties": {
           "items": {
@@ -5131,6 +5140,18 @@
             "title": "Originalrecordid",
             "type": "string"
           },
+          "originalSettlementId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Originalsettlementid"
+          },
           "ownerAttested": {
             "title": "Ownerattested",
             "type": "boolean"
@@ -5170,6 +5191,28 @@
               }
             ],
             "title": "Replacement"
+          },
+          "replacementSettlement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentsReplacementCashSettlementWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "settlementCorrectionId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settlementcorrectionid"
           },
           "targetKind": {
             "$ref": "#/components/schemas/InvestmentCorrectionTargetKind"
@@ -6119,6 +6162,17 @@
             "title": "Documentfacts",
             "type": "array"
           },
+          "equalShareRightsConfirmed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equalsharerightsconfirmed"
+          },
           "eventId": {
             "format": "uuid",
             "title": "Eventid",
@@ -6180,6 +6234,10 @@
             "title": "Investmentname",
             "type": "string"
           },
+          "nonActiveTradingConfirmed": {
+            "title": "Nonactivetradingconfirmed",
+            "type": "boolean"
+          },
           "orgNumber": {
             "anyOf": [
               {
@@ -6199,13 +6257,51 @@
           "purchaseAmount": {
             "$ref": "#/components/schemas/LedgerMoneyWire"
           },
+          "shareClassCode": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shareclasscode"
+          },
           "shareCount": {
             "pattern": "^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
             "title": "Sharecount",
             "type": "string"
           },
+          "singleShareClassConfirmed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Singleshareclassconfirmed"
+          },
+          "tradingProfile": {
+            "$ref": "#/components/schemas/InvestmentTradingProfile"
+          },
           "transactionCosts": {
             "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "unusualShareRightsAbsentConfirmed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unusualsharerightsabsentconfirmed"
           }
         },
         "required": [
@@ -6222,7 +6318,9 @@
           "acquisitionDate",
           "shareCount",
           "purchaseAmount",
-          "transactionCosts"
+          "transactionCosts",
+          "tradingProfile",
+          "nonActiveTradingConfirmed"
         ],
         "title": "InvestmentsRecognizeSharePurchaseWire",
         "type": "object"
@@ -6341,6 +6439,90 @@
         "title": "InvestmentsRecognizeShareSaleWire",
         "type": "object"
       },
+      "InvestmentsReplacementCashSettlementWire": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "bankFact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "documentFacts": {
+            "items": {
+              "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+            },
+            "maxItems": 50,
+            "title": "Documentfacts",
+            "type": "array"
+          },
+          "eventId": {
+            "format": "uuid",
+            "title": "Eventid",
+            "type": "string"
+          },
+          "evidenceMode": {
+            "$ref": "#/components/schemas/InvestmentEvidenceMode"
+          },
+          "evidenceReference": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Evidencereference",
+            "type": "string"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "ownerAttested": {
+            "title": "Ownerattested",
+            "type": "boolean"
+          },
+          "replacementKind": {
+            "const": "cash_settlement",
+            "title": "Replacementkind",
+            "type": "string"
+          },
+          "settlementDate": {
+            "format": "date",
+            "title": "Settlementdate",
+            "type": "string"
+          },
+          "settlementId": {
+            "format": "uuid",
+            "title": "Settlementid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "evidenceMode",
+          "evidenceReference",
+          "ownerAttested",
+          "settlementId",
+          "eventId",
+          "settlementDate",
+          "amount",
+          "replacementKind"
+        ],
+        "title": "InvestmentsReplacementCashSettlementWire",
+        "type": "object"
+      },
       "InvestmentsSettleCashWire": {
         "additionalProperties": false,
         "properties": {
@@ -6453,6 +6635,17 @@
             "title": "Documentfacts",
             "type": "array"
           },
+          "equalShareRightsConfirmed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equalsharerightsconfirmed"
+          },
           "eventId": {
             "format": "uuid",
             "title": "Eventid",
@@ -6514,6 +6707,10 @@
             "title": "Investmentname",
             "type": "string"
           },
+          "nonActiveTradingConfirmed": {
+            "title": "Nonactivetradingconfirmed",
+            "type": "boolean"
+          },
           "orgNumber": {
             "anyOf": [
               {
@@ -6538,13 +6735,51 @@
             "title": "Replacementkind",
             "type": "string"
           },
+          "shareClassCode": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shareclasscode"
+          },
           "shareCount": {
             "pattern": "^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
             "title": "Sharecount",
             "type": "string"
           },
+          "singleShareClassConfirmed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Singleshareclassconfirmed"
+          },
+          "tradingProfile": {
+            "$ref": "#/components/schemas/InvestmentTradingProfile"
+          },
           "transactionCosts": {
             "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "unusualShareRightsAbsentConfirmed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unusualsharerightsabsentconfirmed"
           }
         },
         "required": [
@@ -6562,6 +6797,8 @@
           "shareCount",
           "purchaseAmount",
           "transactionCosts",
+          "tradingProfile",
+          "nonActiveTradingConfirmed",
           "replacementKind"
         ],
         "title": "InvestmentsSharePurchaseRecognitionWire",
@@ -6657,6 +6894,17 @@
           "documentStatus": {
             "$ref": "#/components/schemas/InvestmentDocumentStatus"
           },
+          "equalShareRightsConfirmed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equalsharerightsconfirmed"
+          },
           "evidenceMode": {
             "$ref": "#/components/schemas/InvestmentEvidenceMode"
           },
@@ -6713,6 +6961,10 @@
             "title": "Investmentname",
             "type": "string"
           },
+          "nonActiveTradingConfirmed": {
+            "title": "Nonactivetradingconfirmed",
+            "type": "boolean"
+          },
           "orgNumber": {
             "anyOf": [
               {
@@ -6732,17 +6984,55 @@
           "purchaseAmount": {
             "$ref": "#/components/schemas/LedgerMoneyWire"
           },
+          "shareClassCode": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shareclasscode"
+          },
           "shareCount": {
             "exclusiveMinimum": 0.0,
             "maximum": 9007199254740991.0,
             "title": "Sharecount",
             "type": "integer"
           },
+          "singleShareClassConfirmed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Singleshareclassconfirmed"
+          },
           "taxTreatment": {
             "$ref": "#/components/schemas/InvestmentTaxTreatment"
           },
+          "tradingProfile": {
+            "$ref": "#/components/schemas/InvestmentTradingProfile"
+          },
           "transactionCosts": {
             "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "unusualShareRightsAbsentConfirmed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unusualsharerightsabsentconfirmed"
           }
         },
         "required": [
@@ -6758,6 +7048,8 @@
           "shareCount",
           "purchaseAmount",
           "transactionCosts",
+          "tradingProfile",
+          "nonActiveTradingConfirmed",
           "evidenceMode",
           "evidenceReference",
           "ownerAttested",

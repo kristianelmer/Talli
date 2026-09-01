@@ -1199,29 +1199,50 @@ class LedgerService:
                 or facts.pre_measurement_book_value.currency
                 != facts.closing_book_value.currency
                 or facts.closing_book_value.amount
-                >= facts.pre_measurement_book_value.amount
+                == facts.pre_measurement_book_value.amount
             ):
                 raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
-            amount = Money.nok(
+            is_impairment = (
+                facts.closing_book_value.amount
+                < facts.pre_measurement_book_value.amount
+            )
+            amount = Money.nok(abs(
                 facts.pre_measurement_book_value.amount
                 - facts.closing_book_value.amount
-            )
+            ))
             entry_kind = LedgerEntryKind.INVESTMENT_MEASUREMENT
-            memo = f"Year-end investment impairment: {investment_name}"
-            lines = (
-                LedgerLine(
-                    "8172",
-                    f"Investment impairment: {investment_name}",
-                    amount,
-                    _ZERO,
-                ),
-                LedgerLine(
-                    account,
-                    f"Investment carrying value reduced: {investment_name}",
-                    _ZERO,
-                    amount,
-                ),
-            )
+            if is_impairment:
+                memo = f"Year-end investment impairment: {investment_name}"
+                lines = (
+                    LedgerLine(
+                        "8172",
+                        f"Investment impairment: {investment_name}",
+                        amount,
+                        _ZERO,
+                    ),
+                    LedgerLine(
+                        account,
+                        f"Investment carrying value reduced: {investment_name}",
+                        _ZERO,
+                        amount,
+                    ),
+                )
+            else:
+                memo = f"Year-end investment impairment reversal: {investment_name}"
+                lines = (
+                    LedgerLine(
+                        account,
+                        f"Investment carrying value restored: {investment_name}",
+                        amount,
+                        _ZERO,
+                    ),
+                    LedgerLine(
+                        "8172",
+                        f"Investment impairment reversed: {investment_name}",
+                        _ZERO,
+                        amount,
+                    ),
+                )
         elif isinstance(facts, ApprovedOwnerLoanFundingFacts):
             required_sources = frozenset(
                 {

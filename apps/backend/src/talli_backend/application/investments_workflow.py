@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import replace
+from dataclasses import dataclass, replace
+from hashlib import sha256
+from uuid import NAMESPACE_URL, uuid5
 
 from talli_backend.modules.banking.public import (
     AccountingEntryReference as BankingAccountingEntryReference,
+    BankTransaction,
     BankTransactionId,
     ClaimBankTransactionForExternalActionCommand,
     ExternalActionReference,
@@ -21,6 +24,7 @@ from talli_backend.modules.investments.public import (
     InvestmentActivityPage,
     InvestmentCorrectionPage,
     InvestmentLifecycleEventPage,
+    InvestmentLifecycleEventView,
     InvestmentPositionPage,
     InvestmentYearEndMeasurementPage,
     ShareSaleAllocationPage,
@@ -28,9 +32,20 @@ from talli_backend.modules.investments.public import (
     CorrectInvestmentCommand,
     InvestmentAccountingClassification,
     InvestmentCorrectionTargetKind,
+    InvestmentDocumentStatus,
+    InvestmentEconomicEventId,
+    InvestmentEvidence,
+    InvestmentEvidenceMode,
     InvestmentFactReference,
+    InvestmentKind,
+    InvestmentTradingProfile,
+    InvestmentPositionId,
+    InvestmentSettlementId,
     InvestmentSettlementBalanceKind,
+    InvestmentSourceReference,
     InvestmentSourceCapability,
+    InvestmentTaxTreatment,
+    InvestmentUnits,
     InvestmentsError,
     RecognizeReceivedDividendCommand,
     RecognizeReceivedFundDistributionCommand,
@@ -65,7 +80,14 @@ from talli_backend.modules.ledger.public import (
     LedgerSourceCapability,
     RecognizeHoldingActionCommand,
 )
-from talli_backend.shared.kernel import CompanyId, CorrelationId
+from talli_backend.shared.kernel import (
+    CompanyId,
+    CorrelationId,
+    IdempotencyKey,
+    IncomeYear,
+    LocalDate,
+    Money,
+)
 
 
 LedgerFacadeFactory = Callable[[LedgerPersistence], LedgerCommands]
@@ -105,6 +127,113 @@ def _ledger_fact(reference: InvestmentFactReference) -> LedgerFactReference:
         revision=reference.revision,
         fact_sha256=reference.fact_sha256,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class LegacyInvestmentEvidence:
+    mode: InvestmentEvidenceMode
+    reference: str
+    owner_attested: bool
+    document_id: InvestmentSourceReference | None
+    document_status: InvestmentDocumentStatus
+
+
+@dataclass(frozen=True, slots=True)
+class LegacySharePurchase:
+    company_id: CompanyId
+    correlation_id: CorrelationId
+    idempotency_key: IdempotencyKey
+    income_year: IncomeYear
+    event_id: InvestmentEconomicEventId
+    investment_key: str
+    investment_name: str
+    investment_kind: InvestmentKind
+    accounting_classification: InvestmentAccountingClassification
+    tax_treatment: InvestmentTaxTreatment
+    acquisition_date: LocalDate
+    share_count: InvestmentUnits
+    purchase_amount: Money
+    transaction_costs: Money
+    org_number: str | None
+    fund_equity_ratio_basis_points: int | None
+    fund_tax_statement_reference: str | None
+    trading_profile: InvestmentTradingProfile
+    non_active_trading_confirmed: bool
+    share_class_code: str | None
+    single_share_class_confirmed: bool | None
+    equal_share_rights_confirmed: bool | None
+    unusual_share_rights_absent_confirmed: bool | None
+    evidence: LegacyInvestmentEvidence
+
+
+@dataclass(frozen=True, slots=True)
+class LegacyShareSale:
+    company_id: CompanyId
+    correlation_id: CorrelationId
+    idempotency_key: IdempotencyKey
+    income_year: IncomeYear
+    event_id: InvestmentEconomicEventId
+    position_id: InvestmentPositionId
+    sale_date: LocalDate
+    sold_share_count: InvestmentUnits
+    proceeds: Money
+    transaction_costs: Money
+    sale_year_fund_equity_ratio_basis_points: int | None
+    fund_tax_statement_reference: str | None
+    evidence: LegacyInvestmentEvidence
+
+
+@dataclass(frozen=True, slots=True)
+class LegacyReceivedDividend:
+    company_id: CompanyId
+    correlation_id: CorrelationId
+    idempotency_key: IdempotencyKey
+    income_year: IncomeYear
+    event_id: InvestmentEconomicEventId
+    position_id: InvestmentPositionId
+    paying_company_name: str
+    declared_date: LocalDate
+    paid_date: LocalDate
+    gross_amount: Money
+    tax_treatment: InvestmentTaxTreatment
+    lawful_dividend_confirmed: bool
+    group_exception_claimed: bool
+    year_end_ownership_basis_points: int | None
+    year_end_voting_basis_points: int | None
+    group_evidence_reference: str | None
+    evidence: LegacyInvestmentEvidence
+
+
+@dataclass(frozen=True, slots=True)
+class LegacyReceivedFundDistribution:
+    company_id: CompanyId
+    correlation_id: CorrelationId
+    idempotency_key: IdempotencyKey
+    income_year: IncomeYear
+    event_id: InvestmentEconomicEventId
+    position_id: InvestmentPositionId
+    fund_name: str
+    entitlement_date: LocalDate
+    paid_date: LocalDate
+    gross_amount: Money
+    opening_fund_equity_ratio_basis_points: int
+    fund_tax_statement_reference: str
+    evidence: LegacyInvestmentEvidence
+
+
+@dataclass(frozen=True, slots=True)
+class LegacyInvestmentResult:
+    event: RecordedInvestmentEconomicEvent
+    settlement: RecordedInvestmentCashSettlement | None
+    lifecycle: object
+
+
+LegacyInvestmentRequest = (
+    LegacySharePurchase
+    | LegacyShareSale
+    | LegacyReceivedDividend
+    | LegacyReceivedFundDistribution
+)
 
 
 class InvestmentsSession:
@@ -162,7 +291,10 @@ class InvestmentsSession:
         command: RecordInvestmentYearEndMeasurementCommand,
         prepared: PreparedInvestmentYearEndMeasurement,
     ) -> AccountingEntryReference | None:
-        if prepared.impairment_amount.amount == 0:
+        if (
+            prepared.impairment_amount.amount == 0
+            and prepared.reversal_amount.amount == 0
+        ):
             return None
         posted = await self._ledger_facade_factory(
             transaction
@@ -216,6 +348,239 @@ class InvestmentsSession:
                 else None
             )
             return event, cash
+
+    def _legacy_document_evidence(
+        self,
+        request: LegacyInvestmentRequest,
+    ) -> InvestmentEvidence:
+        evidence = request.evidence
+        if (
+            evidence.mode is not InvestmentEvidenceMode.MANUAL_FALLBACK
+            or not evidence.owner_attested
+            or evidence.document_status is not InvestmentDocumentStatus.ATTACHED
+            or evidence.document_id is None
+        ):
+            raise InvestmentsError.invalid_input()
+        identity = "\n".join(
+            (
+                "talli:owner-attested-investment-compatibility:v2",
+                f"company={request.company_id}",
+                f"income-year={request.income_year.value}",
+                f"action={request.event_id}",
+                f"document={evidence.document_id}",
+                f"status={evidence.document_status.value}",
+                f"reference={evidence.reference.strip()}",
+            )
+        )
+        return InvestmentEvidence(
+            mode=evidence.mode,
+            reference=evidence.reference,
+            owner_attested=evidence.owner_attested,
+            document_facts=(
+                InvestmentFactReference(
+                    capability=InvestmentSourceCapability.DOCUMENTS,
+                    record_id=evidence.document_id,
+                    revision=1,
+                    fact_sha256=sha256(identity.encode("utf-8")).hexdigest(),
+                ),
+            ),
+            bank_fact=None,
+        )
+
+    def _legacy_cash_settlement(
+        self,
+        *,
+        request: LegacyInvestmentRequest,
+        transaction: BankTransaction,
+        amount: Money,
+    ) -> SettleInvestmentCashCommand:
+        settlement_id = uuid5(
+            NAMESPACE_URL,
+            f"https://talli.no/investments/compatibility-settlement/{request.event_id}",
+        )
+        settlement_idempotency = "compat-settlement-" + sha256(
+            f"{request.idempotency_key}:{request.event_id}".encode("utf-8")
+        ).hexdigest()
+        return SettleInvestmentCashCommand(
+            company_id=request.company_id,
+            actor_id=self.actor_id,
+            correlation_id=request.correlation_id,
+            idempotency_key=IdempotencyKey(settlement_idempotency),
+            income_year=request.income_year,
+            settlement_id=InvestmentSettlementId(str(settlement_id)),
+            event_id=request.event_id,
+            settlement_date=transaction.transaction_date,
+            amount=amount,
+            evidence=InvestmentEvidence(
+                mode=InvestmentEvidenceMode.LINKED_SOURCES,
+                reference=(
+                    f"Canonical bank transaction {transaction.transaction_id} "
+                    "revision 1"
+                ),
+                owner_attested=False,
+                document_facts=(),
+                bank_fact=InvestmentFactReference(
+                    capability=InvestmentSourceCapability.BANKING,
+                    record_id=InvestmentSourceReference(str(transaction.transaction_id)),
+                    revision=1,
+                    fact_sha256=transaction.source_hash,
+                ),
+            ),
+        )
+
+    async def _legacy_lifecycle_event(
+        self,
+        *,
+        company_id: CompanyId,
+        correlation_id: CorrelationId,
+        event_id: InvestmentEconomicEventId,
+    ) -> InvestmentLifecycleEventView:
+        cursor: InvestmentCursor | None = None
+        seen_cursors: set[str] = set()
+        while True:
+            page = await self.list_lifecycle_events(
+                company_ids=(company_id,),
+                correlation_id=correlation_id,
+                cursor=cursor,
+                limit=100,
+            )
+            event = next((item for item in page.items if item.event_id == event_id), None)
+            if event is not None:
+                return event
+            if page.next_cursor is None or str(page.next_cursor) in seen_cursors:
+                raise InvestmentsError.unavailable()
+            seen_cursors.add(str(page.next_cursor))
+            cursor = page.next_cursor
+
+    async def record_legacy_action(
+        self,
+        request: LegacyInvestmentRequest,
+        bank_transaction: BankTransaction | None,
+    ) -> LegacyInvestmentResult:
+        evidence = self._legacy_document_evidence(request)
+        if isinstance(request, LegacySharePurchase):
+            if request.tax_treatment is not InvestmentTaxTreatment.EXEMPTION_METHOD:
+                raise InvestmentsError.invalid_input()
+            recognition = RecognizeSharePurchaseCommand(
+                company_id=request.company_id,
+                actor_id=self.actor_id,
+                correlation_id=request.correlation_id,
+                idempotency_key=request.idempotency_key,
+                income_year=request.income_year,
+                event_id=request.event_id,
+                investment_key=request.investment_key,
+                investment_name=request.investment_name,
+                investment_kind=request.investment_kind,
+                accounting_classification=request.accounting_classification,
+                acquisition_date=request.acquisition_date,
+                share_count=request.share_count,
+                purchase_amount=request.purchase_amount,
+                transaction_costs=request.transaction_costs,
+                org_number=request.org_number,
+                fund_equity_ratio_basis_points=request.fund_equity_ratio_basis_points,
+                fund_tax_statement_reference=request.fund_tax_statement_reference,
+                trading_profile=request.trading_profile,
+                non_active_trading_confirmed=request.non_active_trading_confirmed,
+                share_class_code=request.share_class_code,
+                single_share_class_confirmed=request.single_share_class_confirmed,
+                equal_share_rights_confirmed=request.equal_share_rights_confirmed,
+                unusual_share_rights_absent_confirmed=(
+                    request.unusual_share_rights_absent_confirmed
+                ),
+                evidence=evidence,
+            )
+            amount = Money.nok(
+                request.purchase_amount.amount + request.transaction_costs.amount
+            )
+        elif isinstance(request, LegacyShareSale):
+            recognition = RecognizeShareSaleCommand(
+                company_id=request.company_id,
+                actor_id=self.actor_id,
+                correlation_id=request.correlation_id,
+                idempotency_key=request.idempotency_key,
+                income_year=request.income_year,
+                event_id=request.event_id,
+                position_id=request.position_id,
+                sale_date=request.sale_date,
+                sold_share_count=request.sold_share_count,
+                proceeds=request.proceeds,
+                transaction_costs=request.transaction_costs,
+                sale_year_fund_equity_ratio_basis_points=(
+                    request.sale_year_fund_equity_ratio_basis_points
+                ),
+                fund_tax_statement_reference=request.fund_tax_statement_reference,
+                evidence=evidence,
+            )
+            amount = Money.nok(
+                request.proceeds.amount - request.transaction_costs.amount
+            )
+        elif isinstance(request, LegacyReceivedDividend):
+            if request.tax_treatment is not InvestmentTaxTreatment.EXEMPTION_METHOD:
+                raise InvestmentsError.invalid_input()
+            recognition = RecognizeReceivedDividendCommand(
+                company_id=request.company_id,
+                actor_id=self.actor_id,
+                correlation_id=request.correlation_id,
+                idempotency_key=request.idempotency_key,
+                income_year=request.income_year,
+                event_id=request.event_id,
+                position_id=request.position_id,
+                paying_company_name=request.paying_company_name,
+                declared_date=request.declared_date,
+                gross_amount=request.gross_amount,
+                lawful_dividend_confirmed=request.lawful_dividend_confirmed,
+                group_exception_claimed=request.group_exception_claimed,
+                year_end_ownership_basis_points=request.year_end_ownership_basis_points,
+                year_end_voting_basis_points=request.year_end_voting_basis_points,
+                group_evidence_reference=request.group_evidence_reference,
+                evidence=evidence,
+            )
+            amount = request.gross_amount
+            if (
+                bank_transaction is not None
+                and bank_transaction.transaction_date != request.paid_date
+            ):
+                raise InvestmentsError.invalid_input()
+        else:
+            recognition = RecognizeReceivedFundDistributionCommand(
+                company_id=request.company_id,
+                actor_id=self.actor_id,
+                correlation_id=request.correlation_id,
+                idempotency_key=request.idempotency_key,
+                income_year=request.income_year,
+                event_id=request.event_id,
+                position_id=request.position_id,
+                fund_name=request.fund_name,
+                entitlement_date=request.entitlement_date,
+                gross_amount=request.gross_amount,
+                opening_fund_equity_ratio_basis_points=(
+                    request.opening_fund_equity_ratio_basis_points
+                ),
+                fund_tax_statement_reference=request.fund_tax_statement_reference,
+                evidence=evidence,
+            )
+            amount = request.gross_amount
+            if (
+                bank_transaction is not None
+                and bank_transaction.transaction_date != request.paid_date
+            ):
+                raise InvestmentsError.invalid_input()
+        settlement = (
+            self._legacy_cash_settlement(
+                request=request,
+                transaction=bank_transaction,
+                amount=amount,
+            )
+            if bank_transaction is not None
+            else None
+        )
+        event, cash = await self.record_compatibility_action(recognition, settlement)
+        lifecycle = await self._legacy_lifecycle_event(
+            company_id=request.company_id,
+            correlation_id=request.correlation_id,
+            event_id=request.event_id,
+        )
+        return LegacyInvestmentResult(event=event, settlement=cash, lifecycle=lifecycle)
 
     async def _settle_in_transaction(
         self,
@@ -483,6 +848,46 @@ class InvestmentsSession:
                 replacement=replacement,
             )
 
+    async def correct_settled_investment(
+        self,
+        event_command: CorrectInvestmentCommand,
+        settlement_command: CorrectInvestmentCommand,
+    ) -> RecordedInvestmentCorrection:
+        if (
+            event_command.actor_id != self._persistence.actor_id
+            or settlement_command.actor_id != self._persistence.actor_id
+        ):
+            raise InvestmentsError.forbidden()
+        async with self._persistence.transaction() as transaction:
+            investments = InvestmentsService(transaction)
+            replay = await investments.get_investment_correction_replay(
+                event_command
+            )
+            if replay is not None:
+                return replay
+            prepared = await investments.prepare_settled_investment_correction(
+                event_command, settlement_command
+            )
+            if isinstance(event_command.replacement, SettleInvestmentCashCommand):
+                raise InvestmentsError.invalid_input()
+            replacement_event = await self._recognize_in_transaction(
+                transaction, event_command.replacement
+            )
+            if not isinstance(
+                settlement_command.replacement, SettleInvestmentCashCommand
+            ):
+                raise InvestmentsError.invalid_input()
+            replacement_settlement = await self._settle_in_transaction(
+                transaction, settlement_command.replacement
+            )
+            return await investments.complete_settled_investment_correction(
+                event_command,
+                settlement_command,
+                prepared=prepared,
+                replacement_event=replacement_event,
+                replacement_settlement=replacement_settlement,
+            )
+
     async def list_positions(
         self,
         *,
@@ -618,5 +1023,11 @@ class InvestmentsApplication:
 __all__ = [
     "InvestmentsApplication",
     "InvestmentsSession",
+    "LegacyInvestmentEvidence",
+    "LegacyInvestmentResult",
+    "LegacyReceivedDividend",
+    "LegacyReceivedFundDistribution",
+    "LegacySharePurchase",
+    "LegacyShareSale",
     "LedgerFacadeFactory",
 ]

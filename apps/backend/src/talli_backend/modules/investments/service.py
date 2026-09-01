@@ -16,6 +16,7 @@ from talli_backend.modules.investments.public import (
     InvestmentActivityKind,
     InvestmentCorrectionTargetKind,
     InvestmentMeasurementRule,
+    InvestmentTradingProfile,
     InvestmentPolicyVersion,
     InvestmentSaleLotCalculation,
     InvestmentUnits,
@@ -29,6 +30,7 @@ from talli_backend.modules.investments.public import (
     PreparedInvestmentCorrection,
     PreparedEconomicEventCorrection,
     PreparedCashSettlementCorrection,
+    PreparedSettledInvestmentCorrection,
     PreparedShareSale,
     RecognizeReceivedDividendCommand,
     RecognizeReceivedFundDistributionCommand,
@@ -279,6 +281,11 @@ class InvestmentsService:
             if command.fund_tax_statement_reference
             else None
         )
+        share_class_code = (
+            command.share_class_code.strip().lower()
+            if command.share_class_code
+            else None
+        )
         if (
             command.purchase_amount.amount <= 0
             or command.transaction_costs.amount < 0
@@ -296,11 +303,40 @@ class InvestmentsService:
             )
         ):
             raise InvestmentsError.invalid_input()
+        if (
+            command.trading_profile
+            is not InvestmentTradingProfile.LOW_VOLUME_NON_ACTIVE
+            or not command.non_active_trading_confirmed
+        ):
+            raise InvestmentsError.active_trading_unsupported()
+        if command.investment_kind is InvestmentKind.NORWEGIAN_PRIVATE_COMPANY:
+            expected_key = (
+                f"private:{org_number}:ordinary" if org_number is not None else None
+            )
+            if (
+                investment_key != expected_key
+                or share_class_code != "ordinary"
+                or command.single_share_class_confirmed is not True
+                or command.equal_share_rights_confirmed is not True
+                or command.unusual_share_rights_absent_confirmed is not True
+            ):
+                raise InvestmentsError.ownership_or_rights_unclear()
+        elif any(
+            value is not None
+            for value in (
+                share_class_code,
+                command.single_share_class_confirmed,
+                command.equal_share_rights_confirmed,
+                command.unusual_share_rights_absent_confirmed,
+            )
+        ):
+            raise InvestmentsError.invalid_input()
         normalized = replace(
             command,
             investment_key=investment_key,
             investment_name=investment_name,
             org_number=org_number,
+            share_class_code=share_class_code,
             fund_tax_statement_reference=fund_reference,
         )
         evidence_digest = _lifecycle_evidence_digest(normalized)
@@ -680,13 +716,20 @@ class InvestmentsService:
             if current
             else InvestmentMeasurementRule.COST_WITH_EVIDENCED_IMPAIRMENT
         )
-        closing_amount = min(
-            facts.pre_measurement_book_value.amount,
+        target_amount = min(
+            facts.source_book_cost.amount,
             command.observed_or_recoverable_value.amount,
         )
-        closing = Money.nok(closing_amount)
         impairment = Money.nok(
-            facts.pre_measurement_book_value.amount - closing.amount
+            max(facts.pre_measurement_book_value.amount - target_amount, Decimal("0"))
+        )
+        reversal = Money.nok(
+            max(target_amount - facts.pre_measurement_book_value.amount, Decimal("0"))
+        )
+        closing = Money.nok(
+            facts.pre_measurement_book_value.amount
+            - impairment.amount
+            + reversal.amount
         )
         calculation_id = _calculation_id(
             action_id=command.measurement_id,
@@ -695,6 +738,7 @@ class InvestmentsService:
                 "classification": facts.accounting_classification.value,
                 "closingBookValue": format(closing.amount, "f"),
                 "impairmentAmount": format(impairment.amount, "f"),
+                "reversalAmount": format(reversal.amount, "f"),
                 "measurementRule": rule.value,
                 "observedOrRecoverableValue": format(
                     command.observed_or_recoverable_value.amount, "f"
@@ -714,7 +758,7 @@ class InvestmentsService:
             pre_measurement_book_value=facts.pre_measurement_book_value,
             observed_or_recoverable_value=command.observed_or_recoverable_value,
             impairment_amount=impairment,
-            reversal_amount=_ZERO,
+            reversal_amount=reversal,
             closing_book_value=closing,
             tax_basis=facts.tax_basis,
             tax_value=command.tax_value,
@@ -729,7 +773,11 @@ class InvestmentsService:
         prepared: PreparedInvestmentYearEndMeasurement,
         accounting_entry_id: AccountingEntryReference | None,
     ) -> RecordedInvestmentYearEndMeasurement:
-        if (prepared.impairment_amount.amount > 0) is (accounting_entry_id is None):
+        has_book_change = (
+            prepared.impairment_amount.amount > 0
+            or prepared.reversal_amount.amount > 0
+        )
+        if has_book_change is (accounting_entry_id is None):
             raise InvestmentsError.unavailable()
         return await self._persistence.complete_year_end_measurement(
             command,
@@ -839,6 +887,81 @@ class InvestmentsService:
             normalized,
             prepared=prepared,
             replacement_accounting_entry_id=replacement_entry_id,
+        )
+
+    async def prepare_settled_investment_correction(
+        self,
+        event_command: CorrectInvestmentCommand,
+        settlement_command: CorrectInvestmentCommand,
+    ) -> PreparedSettledInvestmentCorrection:
+        event_replacement = event_command.replacement
+        settlement_replacement = settlement_command.replacement
+        if (
+            event_command.target_kind
+            is not InvestmentCorrectionTargetKind.ECONOMIC_EVENT
+            or isinstance(event_replacement, SettleInvestmentCashCommand)
+            or settlement_command.target_kind
+            is not InvestmentCorrectionTargetKind.CASH_SETTLEMENT
+            or not isinstance(settlement_replacement, SettleInvestmentCashCommand)
+            or event_command.company_id != settlement_command.company_id
+            or event_command.actor_id != settlement_command.actor_id
+            or event_command.income_year != settlement_command.income_year
+            or event_command.original_activity_kind
+            is not settlement_command.original_activity_kind
+            or settlement_replacement.event_id != event_replacement.event_id
+            or event_command.correction_id == settlement_command.correction_id
+            or event_command.idempotency_key == settlement_command.idempotency_key
+        ):
+            raise InvestmentsError.invalid_input()
+        event_normalized = replace(
+            event_command, reason=event_command.reason.strip()
+        )
+        settlement_normalized = replace(
+            settlement_command, reason=settlement_command.reason.strip()
+        )
+        return await self._persistence.prepare_settled_investment_correction(
+            event_normalized,
+            settlement_normalized,
+            event_evidence_digest=_lifecycle_evidence_digest(event_normalized),
+            event_replacement_evidence_digest=(
+                _lifecycle_evidence_digest(event_replacement)
+            ),
+            settlement_evidence_digest=(
+                _lifecycle_evidence_digest(settlement_normalized)
+            ),
+            settlement_replacement_evidence_digest=(
+                _lifecycle_evidence_digest(settlement_replacement)
+            ),
+        )
+
+    async def complete_settled_investment_correction(
+        self,
+        event_command: CorrectInvestmentCommand,
+        settlement_command: CorrectInvestmentCommand,
+        *,
+        prepared: PreparedSettledInvestmentCorrection,
+        replacement_event: RecordedInvestmentEconomicEvent,
+        replacement_settlement: RecordedInvestmentCashSettlement,
+    ) -> RecordedInvestmentCorrection:
+        settlement_replacement = settlement_command.replacement
+        if (
+            not isinstance(settlement_replacement, SettleInvestmentCashCommand)
+            or replacement_event.position_id
+            != prepared.event.original_position_id
+            or replacement_event.event_id != settlement_replacement.event_id
+            or replacement_settlement.event_id != replacement_event.event_id
+            or replacement_settlement.settlement_id
+            != settlement_replacement.settlement_id
+            or settlement_replacement.amount
+            != replacement_event.expected_settlement_amount
+        ):
+            raise InvestmentsError.unavailable()
+        return await self._persistence.complete_settled_investment_correction(
+            replace(event_command, reason=event_command.reason.strip()),
+            replace(settlement_command, reason=settlement_command.reason.strip()),
+            prepared=prepared,
+            replacement_event=replacement_event,
+            replacement_settlement=replacement_settlement,
         )
 
 __all__ = ["InvestmentsService"]

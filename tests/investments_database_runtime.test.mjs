@@ -30,6 +30,9 @@ const investmentsLifecycleCorrectionsMigration = "20260901116000_investments_lif
 const investmentsBankFactClaimMigration = "20260901117000_investments_bank_fact_claim.sql";
 const investmentsYearEndMeasurementWorkflowMigration = "20260901118000_investments_year_end_measurement_workflow.sql";
 const investmentsLifecyclePublicCutoverMigration = "20260901150538_investments_lifecycle_public_cutover.sql";
+const investmentsMeasurementReversalsMigration = "20260901203025_investments_measurement_reversals.sql";
+const investmentsBoundaryConfirmationsMigration = "20260901204052_investments_boundary_confirmations.sql";
+const investmentsSettledEventCorrectionsMigration = "20260901205331_investments_settled_event_corrections.sql";
 const ownerId = "00000000-0000-0000-0000-000000000011";
 const outsiderId = "00000000-0000-0000-0000-000000000022";
 const companyId = "10000000-0000-0000-0000-000000000001";
@@ -164,6 +167,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         investmentsBankFactClaimMigration,
         investmentsYearEndMeasurementWorkflowMigration,
         investmentsLifecyclePublicCutoverMigration,
+        investmentsMeasurementReversalsMigration,
+        investmentsBoundaryConfirmationsMigration,
+        investmentsSettledEventCorrectionsMigration,
       ].includes(name))) {
       psql(containerName, ["--file", `/repo/supabase/migrations/${migration}`]);
     }
@@ -1258,6 +1264,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     ]);
     psql(containerName, [
       "--file", `/repo/supabase/migrations/${investmentsYearEndMeasurementWorkflowMigration}`,
+    ]);
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsMeasurementReversalsMigration}`,
     ]);
     psql(containerName, [
       "--file", `/repo/supabase/rollback/${investmentsYearEndMeasurementWorkflowMigration}`,
@@ -2376,6 +2385,112 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         (select value ->> 'replayed' from lifecycle_fund_settled);
     `), "dividend_receivable:3.000000000000:false:fund_distribution_receivable:55.000000000000:55.000000000000:56.650000000000:economic_event:false");
 
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsSettledEventCorrectionsMigration}`,
+    ]);
+    const settledReplacementEventId = "93500000-0000-0000-0000-000000000001";
+    const settledReplacementSettlementId = "93500000-0000-0000-0000-000000000002";
+    const settledEventCorrectionId = "93500000-0000-0000-0000-000000000003";
+    const settledSettlementCorrectionId = "93500000-0000-0000-0000-000000000004";
+    const settledReplacementBankFact = "93500000-0000-0000-0000-000000000005";
+    const settledCorrectionRequest = JSON.stringify({
+      companyId, incomeYear: 2026,
+      correctionId: settledEventCorrectionId,
+      idempotencyKey: "settled-event-correction-0001",
+      correlationId: "settled-event-correction",
+      targetKind: "economic_event",
+      originalRecordId: lifecycleDividendEventId,
+      originalActivityKind: "dividend_received",
+      replacementRecordId: settledReplacementEventId,
+      replacementActivityKind: "dividend_received",
+      correctionDate: "2026-12-31",
+      reason: "Correct settled dividend amount",
+      evidenceMode: "linked_sources", evidenceReference: "correction decision",
+      ownerAttested: false, documentFacts: [{
+        capability: "DOCUMENTS", recordId: lifecycleDividendDocumentId,
+        revision: 1, factSha256: "8".repeat(64),
+      }], bankFact: null, evidenceDigest: "4".repeat(64),
+      replacement: {
+        companyId, incomeYear: 2026, eventId: settledReplacementEventId,
+        positionId: lifecyclePositionId,
+        idempotencyKey: "settled-event-replacement-0001",
+        correlationId: "settled-event-replacement",
+        payingCompanyName: "Lifecycle Private AS", declaredDate: "2026-12-30",
+        grossAmount: "130.00", lawfulDividendConfirmed: true,
+        groupExceptionClaimed: false, yearEndOwnershipBasisPoints: null,
+        yearEndVotingBasisPoints: null, groupEvidenceReference: null,
+        evidenceMode: "linked_sources", evidenceReference: "corrected decision",
+        ownerAttested: false, documentFacts: [{
+          capability: "DOCUMENTS", recordId: lifecycleDividendDocumentId,
+          revision: 1, factSha256: "8".repeat(64),
+        }], bankFact: null, evidenceDigest: "5".repeat(64),
+      },
+      settlementCorrection: {
+        companyId, incomeYear: 2026,
+        correctionId: settledSettlementCorrectionId,
+        idempotencyKey: "settled-cash-correction-0001",
+        correlationId: "settled-cash-correction",
+        targetKind: "cash_settlement",
+        originalRecordId: lifecycleDividendSettlementId,
+        originalActivityKind: "dividend_received",
+        replacementRecordId: settledReplacementSettlementId,
+        replacementActivityKind: "dividend_received",
+        correctionDate: "2026-12-31",
+        reason: "Correct settled dividend amount",
+        evidenceMode: "linked_sources", evidenceReference: "correction decision",
+        ownerAttested: false, documentFacts: [{
+          capability: "DOCUMENTS", recordId: lifecycleDividendDocumentId,
+          revision: 1, factSha256: "8".repeat(64),
+        }], bankFact: null, evidenceDigest: "6".repeat(64),
+        replacement: {
+          companyId, incomeYear: 2026,
+          settlementId: settledReplacementSettlementId,
+          eventId: settledReplacementEventId,
+          idempotencyKey: "settled-cash-replacement-0001",
+          correlationId: "settled-cash-replacement",
+          settlementDate: "2026-12-31", amount: "130.00",
+          evidenceMode: "linked_sources", evidenceReference: "corrected bank",
+          ownerAttested: false, documentFacts: [], bankFact: {
+            capability: "BANKING", recordId: settledReplacementBankFact,
+            revision: 1, factSha256: "7".repeat(64),
+          }, evidenceDigest: "7".repeat(64),
+        },
+      },
+    });
+    assert.equal(scalar(containerName, String.raw`
+      select
+        (select count(*) from investments.economic_events
+          where event_id = '${lifecycleDividendEventId}')::text || ':' ||
+        (select count(*) from investments.cash_settlements
+          where settlement_id = '${lifecycleDividendSettlementId}'
+            and event_id = '${lifecycleDividendEventId}')::text || ':' ||
+        (select count(*) from investments.cash_settlements
+          where supersedes_settlement_id = '${lifecycleDividendSettlementId}')::text || ':' ||
+        (select company_id::text || ':' || event_kind
+          from investments.economic_events
+          where event_id = '${lifecycleDividendEventId}') || ':' ||
+        (select company_id::text from investments.cash_settlements
+          where settlement_id = '${lifecycleDividendSettlementId}');
+    `), `1:1:0:${companyId}:dividend_received:${companyId}`);
+    assert.equal(scalar(containerName, String.raw`
+      begin;
+      set local role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', true);
+      select pg_catalog.set_config(
+        'talli.verified_actor_claims',
+        '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}', true
+      );
+      create temporary table settled_event_prepared as
+      select investments.prepare_settled_event_correction_v1(
+        '${settledCorrectionRequest}'::jsonb, '${ownerId}'
+      ) as value;
+      select (value ->> 'originalSettlementId') || ':' ||
+        (value ->> 'replacementAmount') || ':' ||
+        (value ->> 'settlementBalanceKind')
+      from settled_event_prepared;
+      rollback;
+    `), `${lifecycleDividendSettlementId}:130.00:dividend_receivable`);
+
     assert.equal(scalar(containerName, String.raw`
       set role investments_workflow_executor;
       select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
@@ -3262,6 +3377,50 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       "--file",
       `/repo/supabase/contract-migrations/${investmentsLifecyclePublicCutoverMigration}`,
     ]);
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsBoundaryConfirmationsMigration}`,
+    ]);
+    psql(containerName, [], String.raw`
+      insert into investments.positions (
+        id, company_id, investment_key, name, kind, tax_treatment, org_number,
+        share_count, cost_basis, tax_basis, movements, lot_history_status,
+        accounting_classification, created_by
+      ) values (
+        '${tenantParentPositionId}', '${companyId}',
+        'private:123456789:ordinary', 'Boundary Confirmation AS',
+        'norwegian_private_company', 'fritaksmetoden', '123456789',
+        10, 1000, 1000, '[]'::jsonb, 'complete',
+        'other_long_term', '${ownerId}'
+      );
+    `);
+    assert.equal(scalar(containerName, String.raw`
+      begin;
+      set local role investments_store_owner;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', true);
+      select pg_catalog.set_config(
+        'talli.verified_actor_claims',
+        '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}', true
+      );
+      insert into investments.position_boundary_confirmations (
+        position_id, company_id, investment_kind, investment_key,
+        issuer_org_number, trading_profile, non_active_trading_confirmed,
+        share_class_code, single_share_class_confirmed,
+        equal_share_rights_confirmed, unusual_share_rights_absent_confirmed,
+        confirmed_by
+      ) values (
+        '${tenantParentPositionId}', '${companyId}',
+        'norwegian_private_company', 'private:123456789:ordinary',
+        '123456789', 'low_volume_non_active', true, 'ordinary',
+        true, true, true, '${ownerId}'
+      );
+      select investments.assert_position_boundary_supported_v1(
+        '${tenantParentPositionId}', '${companyId}', '${ownerId}'
+      );
+      commit;
+      select count(*)::text
+      from investments.position_boundary_confirmations
+      where position_id = '${tenantParentPositionId}';
+    `), "1");
     assert.equal(scalar(containerName, String.raw`
       select
         pg_catalog.has_function_privilege(

@@ -43,6 +43,8 @@ from talli_backend.modules.investments.public import (
     PreparedReceivedDividendFacts,
     PreparedReceivedFundDistributionFacts,
     PreparedEconomicEventCorrection,
+    PreparedCashSettlementCorrection,
+    PreparedSettledInvestmentCorrection,
     PreparedInvestmentCashSettlement,
     PreparedInvestmentMeasurementFacts,
     PreparedSharePurchaseRecognition,
@@ -174,6 +176,40 @@ class InvestmentsSessionStub:
             event_id=command.event_id,
             settlement_accounting_entry_id=AccountingEntryReference(
                 "70000000-0000-0000-0000-000000000017"
+            ),
+            replayed=False,
+        )
+
+    async def correct_investment(self, command):
+        self.commands.append(command)
+        return RecordedInvestmentCorrection(
+            correction_id=command.correction_id,
+            target_kind=command.target_kind,
+            original_record_id=command.original_record_id,
+            replacement_record_id=command.replacement.event_id,
+            reversal_accounting_entry_id=AccountingEntryReference(
+                "70000000-0000-0000-0000-000000000027"
+            ),
+            replacement_accounting_entry_id=AccountingEntryReference(
+                "70000000-0000-0000-0000-000000000037"
+            ),
+            replayed=False,
+        )
+
+    async def correct_settled_investment(
+        self, event_command, settlement_command
+    ):
+        self.commands.extend((event_command, settlement_command))
+        return RecordedInvestmentCorrection(
+            correction_id=event_command.correction_id,
+            target_kind=event_command.target_kind,
+            original_record_id=event_command.original_record_id,
+            replacement_record_id=event_command.replacement.event_id,
+            reversal_accounting_entry_id=AccountingEntryReference(
+                "70000000-0000-0000-0000-000000000027"
+            ),
+            replacement_accounting_entry_id=AccountingEntryReference(
+                "70000000-0000-0000-0000-000000000037"
             ),
             replayed=False,
         )
@@ -380,6 +416,57 @@ class InvestmentsSessionStub:
             ),
             original_position_id=command.replacement.position_id,
             evidence_digest=evidence_digest,
+        )
+
+    async def prepare_settled_investment_correction(
+        self, event_command, settlement_command, **digests
+    ):
+        self.commands.extend((event_command, settlement_command))
+        return PreparedSettledInvestmentCorrection(
+            event=PreparedEconomicEventCorrection(
+                original_accounting_entry_id=AccountingEntryReference(
+                    "70000000-0000-0000-0000-000000000017"
+                ),
+                original_position_id=event_command.replacement.position_id,
+                evidence_digest=digests["event_evidence_digest"],
+            ),
+            settlement=PreparedCashSettlementCorrection(
+                original_accounting_entry_id=AccountingEntryReference(
+                    "70000000-0000-0000-0000-000000000018"
+                ),
+                original_settlement_id=settlement_command.original_record_id,
+                event_id=event_command.replacement.event_id,
+                recognition_accounting_entry_id=AccountingEntryReference(
+                    "70000000-0000-0000-0000-000000000017"
+                ),
+                settlement_balance_kind=(
+                    InvestmentSettlementBalanceKind.DIVIDEND_RECEIVABLE
+                ),
+                amount=settlement_command.replacement.amount,
+                event_fact_sha256="f" * 64,
+                replacement_evidence_digest=digests[
+                    "settlement_replacement_evidence_digest"
+                ],
+                evidence_digest=digests["settlement_evidence_digest"],
+                original_activity_kind=event_command.original_activity_kind,
+            ),
+        )
+
+    async def complete_settled_investment_correction(
+        self, event_command, settlement_command, **_facts
+    ):
+        return RecordedInvestmentCorrection(
+            correction_id=event_command.correction_id,
+            target_kind=event_command.target_kind,
+            original_record_id=event_command.original_record_id,
+            replacement_record_id=event_command.replacement.event_id,
+            reversal_accounting_entry_id=AccountingEntryReference(
+                "70000000-0000-0000-0000-000000000027"
+            ),
+            replacement_accounting_entry_id=AccountingEntryReference(
+                "70000000-0000-0000-0000-000000000037"
+            ),
+            replayed=False,
         )
 
     async def complete_investment_correction(
@@ -956,7 +1043,7 @@ def test_deprecated_share_purchase_wire_delegates_to_lifecycle_recognition() -> 
             "companyId": "10000000-0000-0000-0000-000000000001",
             "incomeYear": 2026,
             "actionId": action_id,
-            "investmentKey": "example-as",
+            "investmentKey": "private:123456789:ordinary",
             "investmentName": "Example AS",
             "investmentKind": "norwegian_private_company",
             "accountingClassification": "other_long_term",
@@ -968,6 +1055,12 @@ def test_deprecated_share_purchase_wire_delegates_to_lifecycle_recognition() -> 
             "orgNumber": "123456789",
             "fundEquityRatioBasisPoints": None,
             "fundTaxStatementReference": None,
+            "tradingProfile": "low_volume_non_active",
+            "nonActiveTradingConfirmed": True,
+            "shareClassCode": "ordinary",
+            "singleShareClassConfirmed": True,
+            "equalShareRightsConfirmed": True,
+            "unusualShareRightsAbsentConfirmed": True,
             "evidenceMode": "manual_fallback",
             "evidenceReference": "broker-note-example-purchase",
             "ownerAttested": True,
@@ -1009,6 +1102,75 @@ def lifecycle_document_evidence(reference: str) -> dict[str, object]:
     }
 
 
+def test_settled_wrong_amount_correction_is_one_http_operation() -> None:
+    sessions = InvestmentsSessionStub()
+    client = TestClient(create_app(investments_session_factory=sessions))
+    event_correction_id = "40000000-0000-0000-0000-000000000142"
+    settlement_correction_id = "40000000-0000-0000-0000-000000000143"
+    replacement_event_id = "40000000-0000-0000-0000-000000000144"
+    replacement_settlement_id = "40000000-0000-0000-0000-000000000145"
+    response = client.post(
+        "/api/v1/investments/corrections",
+        headers={
+            "Authorization": "Bearer owner-token",
+            "Idempotency-Key": event_correction_id,
+            "X-Request-ID": "settled-wrong-amount-correction",
+        },
+        json={
+            "companyId": "10000000-0000-0000-0000-000000000001",
+            "incomeYear": 2026,
+            "correctionId": event_correction_id,
+            "targetKind": "economic_event",
+            "originalRecordId": "40000000-0000-0000-0000-000000000140",
+            "originalActivityKind": "dividend_received",
+            "correctionDate": "2026-09-01",
+            "reason": "Correct settled dividend amount",
+            **lifecycle_document_evidence("correction evidence"),
+            "replacement": {
+                "replacementKind": "dividend_received",
+                "companyId": "10000000-0000-0000-0000-000000000001",
+                "incomeYear": 2026,
+                "eventId": replacement_event_id,
+                "positionId": "50000000-0000-0000-0000-000000000005",
+                "payingCompanyName": "Example AS",
+                "declaredDate": "2026-08-20",
+                "grossAmount": {"amount": "130.00", "currency": "NOK"},
+                "lawfulDividendConfirmed": True,
+                "groupExceptionClaimed": False,
+                "yearEndOwnershipBasisPoints": None,
+                "yearEndVotingBasisPoints": None,
+                "groupEvidenceReference": None,
+                **lifecycle_document_evidence("replacement evidence"),
+            },
+            "originalSettlementId": "40000000-0000-0000-0000-000000000141",
+            "settlementCorrectionId": settlement_correction_id,
+            "replacementSettlement": {
+                "replacementKind": "cash_settlement",
+                "companyId": "10000000-0000-0000-0000-000000000001",
+                "incomeYear": 2026,
+                "settlementId": replacement_settlement_id,
+                "eventId": replacement_event_id,
+                "settlementDate": "2026-09-01",
+                "amount": {"amount": "130.00", "currency": "NOK"},
+                "evidenceMode": "linked_sources",
+                "evidenceReference": "corrected bank fact",
+                "ownerAttested": False,
+                "documentFacts": [],
+                "bankFact": {
+                    "capability": "BANKING",
+                    "recordId": "70000000-0000-0000-0000-000000000007",
+                    "revision": 1,
+                    "factSha256": "b" * 64,
+                },
+            },
+        },
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["correctionId"] == event_correction_id
+    assert len(sessions.commands) >= 2
+    assert sessions.commands[1].replacement.amount == Money.nok("130.00")
+
+
 def assert_recognition_response(
     response, *, event_id: str, position_id: str, amount: str, balance_kind: str
 ) -> None:
@@ -1041,7 +1203,7 @@ def test_supported_share_purchase_uses_recognition_http_contract() -> None:
             "companyId": "10000000-0000-0000-0000-000000000001",
             "incomeYear": 2026,
             "eventId": event_id,
-            "investmentKey": "example-as",
+            "investmentKey": "private:123456789:ordinary",
             "investmentName": "Example AS",
             "investmentKind": "norwegian_private_company",
             "accountingClassification": "other_long_term",
@@ -1052,6 +1214,12 @@ def test_supported_share_purchase_uses_recognition_http_contract() -> None:
             "orgNumber": "123456789",
             "fundEquityRatioBasisPoints": None,
             "fundTaxStatementReference": None,
+            "tradingProfile": "low_volume_non_active",
+            "nonActiveTradingConfirmed": True,
+            "shareClassCode": "ordinary",
+            "singleShareClassConfirmed": True,
+            "equalShareRightsConfirmed": True,
+            "unusualShareRightsAbsentConfirmed": True,
             **lifecycle_document_evidence("broker-note-example-purchase"),
         },
     )

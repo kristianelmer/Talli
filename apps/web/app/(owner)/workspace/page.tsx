@@ -1847,10 +1847,6 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
                   </label>
                   <label>
-                    Investering-ID
-                    <input name="investmentKey" placeholder="Stabil intern ID" required />
-                  </label>
-                  <label>
                     Selskap
                     <input name="investmentName" required />
                   </label>
@@ -1883,6 +1879,18 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     <input name="purchaseAmount" inputMode="decimal" placeholder="0" required />
                   </label>
                   <input name="documentStatus" type="hidden" value="not_required" />
+                  <label className="checkboxField">
+                    <input
+                      name="investmentBoundaryConfirmed"
+                      type="checkbox"
+                      value="true"
+                      required
+                    />
+                    <span>
+                      Jeg bekrefter én ordinær aksjeklasse med like rettigheter,
+                      uten uvanlige særrettigheter, og begrenset, ikke-aktiv handel.
+                    </span>
+                  </label>
                   <button className="secondaryButton" type="submit">
                     Poster aksjekjøp
                   </button>

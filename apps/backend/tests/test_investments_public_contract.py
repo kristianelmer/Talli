@@ -170,6 +170,12 @@ def test_canonical_commands_separate_recognition_from_cash_settlement() -> None:
             "org_number",
             "fund_equity_ratio_basis_points",
             "fund_tax_statement_reference",
+            "trading_profile",
+            "non_active_trading_confirmed",
+            "share_class_code",
+            "single_share_class_confirmed",
+            "equal_share_rights_confirmed",
+            "unusual_share_rights_absent_confirmed",
             "evidence",
         },
         RecognizeShareSaleCommand: {
@@ -238,6 +244,7 @@ def test_canonical_units_and_evidence_preserve_fractional_facts_by_lifecycle_sta
         InvestmentEvidenceMode,
         InvestmentFactReference,
         InvestmentKind,
+        InvestmentTradingProfile,
         InvestmentSettlementId,
         InvestmentSourceCapability,
         InvestmentSourceReference,
@@ -338,6 +345,12 @@ def test_canonical_units_and_evidence_preserve_fractional_facts_by_lifecycle_sta
         org_number=None,
         fund_equity_ratio_basis_points=8000,
         fund_tax_statement_reference="statement-2026",
+        trading_profile=InvestmentTradingProfile.LOW_VOLUME_NON_ACTIVE,
+        non_active_trading_confirmed=True,
+        share_class_code=None,
+        single_share_class_confirmed=None,
+        equal_share_rights_confirmed=None,
+        unusual_share_rights_absent_confirmed=None,
         evidence=recognition_evidence,
     )
     assert purchase.share_count == units
