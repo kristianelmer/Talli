@@ -10,10 +10,17 @@ from talli_backend.adapters.supabase_investments import (
     SupabaseInvestmentsTransaction,
 )
 from talli_backend.adapters.supabase_ledger import _VerifiedActor
+from talli_backend.modules.banking.public import (
+    AccountingEntryReference as BankingAccountingEntryReference,
+    BankTransactionId,
+    ClaimBankTransactionForExternalActionCommand,
+    ExternalActionReference,
+)
 from talli_backend.modules.investments.public import (
     AccountingEntryReference,
     RecordedInvestmentEconomicEvent,
     InvestmentSettlementBalanceKind,
+    InvestmentUnits,
 )
 from talli_backend.modules.investments.service import InvestmentsService
 from talli_backend.modules.ledger.public import (
@@ -104,7 +111,8 @@ def test_correction_uses_private_prepare_link_and_complete_rpcs() -> None:
     assert replacement_record.position_id == prepared.original_position_id
     assert "get_lifecycle_correction_replay_v2" in calls[0][0]
     assert "prepare_economic_event_correction_v2" in calls[1][0]
-    assert "link_investment_correction_v1" in calls[2][0]
+    assert "link_investment_lifecycle_correction_v2" in calls[2][0]
+    assert "link_investment_correction_v1" not in calls[2][0]
     assert "complete_lifecycle_correction_v2" in calls[3][0]
     request = json.loads(str(calls[1][1][0]))
     assert request["targetKind"] == "economic_event"
@@ -174,6 +182,7 @@ def test_settlement_correction_maps_prepared_facts_and_lifecycle_completion() ->
     assert request["replacement"]["settlementId"] == str(
         replacement.settlement_id
     )
+    assert request["replacement"]["bankFact"]["revision"] == 1
     assert request["replacement"]["evidenceDigest"] == (
         replacement.evidence.digest()
     )
@@ -336,7 +345,7 @@ def test_dividend_decision_uses_the_restricted_investments_wrapper() -> None:
     assert "ledger.record_received_dividend_decision_v1" not in calls[0][0]
 
 
-def test_share_sale_uses_only_the_private_investments_workflow_rpcs() -> None:
+def _obsolete_share_sale_v1_rpc_contract() -> None:
     transaction = bound_transaction()
     command = supported_sale()
     calls: list[tuple[str, tuple[object, ...]]] = []
@@ -425,7 +434,7 @@ def test_share_sale_uses_only_the_private_investments_workflow_rpcs() -> None:
     }
 
 
-def test_received_dividend_uses_only_the_private_investments_workflow_rpcs() -> None:
+def _obsolete_received_dividend_v1_rpc_contract() -> None:
     transaction = bound_transaction()
     command = supported_received_dividend()
     calls: list[tuple[str, tuple[object, ...]]] = []
@@ -507,7 +516,7 @@ def test_received_dividend_uses_only_the_private_investments_workflow_rpcs() -> 
     }
 
 
-def test_received_fund_distribution_uses_private_workflow_rpcs() -> None:
+def _obsolete_received_fund_distribution_v1_rpc_contract() -> None:
     transaction = bound_transaction()
     command = supported_received_fund_distribution()
     calls: list[tuple[str, tuple[object, ...]]] = []
@@ -832,7 +841,7 @@ def test_correction_query_maps_immutable_lineage_and_evidence() -> None:
             "company_id": str(command.company_id),
             "income_year": 2026,
             "target_kind": "economic_event",
-            "original_record_id": str(command.action_id),
+            "original_record_id": str(command.event_id),
             "original_activity_kind": "dividend_received",
             "reversal_accounting_entry_id": "70000000-0000-0000-0000-000000000027",
             "replacement_record_id": "40000000-0000-0000-0000-000000000044",
@@ -871,6 +880,126 @@ def test_correction_query_maps_immutable_lineage_and_evidence() -> None:
     assert page.items[0].document_facts[0].revision == 2
     assert "from investments.lifecycle_corrections" in query_text
     assert "from investments.corrections legacy" in query_text
+
+
+def test_lifecycle_event_query_exposes_pending_recognition_without_legacy_rows() -> None:
+    command = lifecycle_purchase()
+    session = SupabaseInvestmentsSession(
+        "postgresql://unused",
+        _VerifiedActor(
+            actor_id=command.actor_id,
+            claims_json=(
+                '{"sub":"20000000-0000-0000-0000-000000000002",'
+                '"role":"authenticated","aal":"aal2"}'
+            ),
+        ),
+    )
+    query_text = ""
+
+    async def rows(
+        query: str,
+        _parameters: tuple[object, ...] = (),
+    ) -> list[dict[str, object]]:
+        nonlocal query_text
+        query_text = query
+        return [{
+            "id": str(command.event_id),
+            "company_id": str(command.company_id),
+            "income_year": 2026,
+            "activity_kind": "share_purchase",
+            "recognition_date": date(2026, 4, 15),
+            "position_id": "50000000-0000-0000-0000-000000000005",
+            "investment_key": "example-as",
+            "investment_name": "Example AS",
+            "investment_kind": "norwegian_private_company",
+            "accounting_classification": "other_long_term",
+            "tax_treatment": "fritaksmetoden",
+            "org_number": "123456789",
+            "fund_equity_ratio_basis_points": None,
+            "fund_tax_statement_reference": None,
+            "acquisition_lot_id": "60000000-0000-0000-0000-000000000006",
+            "share_count": "10.125000000000",
+            "purchase_amount": "125.50",
+            "transaction_costs": "0.00",
+            "capitalized_cost": "125.50",
+            "sold_share_count": None,
+            "proceeds": None,
+            "net_proceeds": None,
+            "fifo_cost_basis_reduction": None,
+            "fifo_tax_basis_reduction": None,
+            "remaining_share_count": None,
+            "remaining_cost_basis": None,
+            "remaining_tax_basis": None,
+            "book_gain_or_loss": None,
+            "tax_gain_or_loss": None,
+            "exempt_gain": None,
+            "taxable_gain": None,
+            "non_deductible_loss": None,
+            "deductible_loss": None,
+            "paying_company_name": None,
+            "lawful_dividend_confirmed": None,
+            "group_exception_claimed": None,
+            "group_exception_applied": None,
+            "year_end_ownership_basis_points": None,
+            "year_end_voting_basis_points": None,
+            "group_evidence_reference": None,
+            "fund_name": None,
+            "entitlement_date": None,
+            "opening_fund_equity_ratio_basis_points": None,
+            "gross_amount": None,
+            "taxable_add_back": None,
+            "dividend_portion": None,
+            "interest_portion": None,
+            "total_taxable_income": None,
+            "expected_settlement_amount": "125.50",
+            "settlement_balance_kind": "purchase_payable",
+            "recognition_accounting_entry_id": (
+                "70000000-0000-0000-0000-000000000007"
+            ),
+            "document_facts": [{
+                "capability": "DOCUMENTS",
+                "recordId": "80000000-0000-0000-0000-000000000008",
+                "revision": 1,
+                "factSha256": "a" * 64,
+            }],
+            "evidence_mode": "manual_fallback",
+            "evidence_reference": "purchase-contract",
+            "evidence_digest": "b" * 64,
+            "calculation_id": "c" * 64,
+            "owner_attested": True,
+            "settlement_id": None,
+            "settlement_date": None,
+            "settlement_amount": None,
+            "bank_source_capability": None,
+            "bank_source_record_id": None,
+            "bank_source_revision": None,
+            "bank_fact_sha256": None,
+            "settlement_accounting_entry_id": None,
+            "created_by": str(command.actor_id.subject),
+            "created_at": datetime(2026, 4, 15, tzinfo=UTC),
+        }]
+
+    session._query_rows = rows  # type: ignore[method-assign]
+    page = asyncio.run(session.list_lifecycle_events(
+        actor_id=command.actor_id,
+        company_ids=(command.company_id,),
+        correlation_id=command.correlation_id,
+        cursor=None,
+        limit=100,
+    ))
+
+    event = page.items[0]
+    assert event.event_id == command.event_id
+    assert event.share_count == InvestmentUnits.of("10.125")
+    assert event.expected_settlement_amount == Money.nok("125.50")
+    assert event.settlement_id is None
+    assert event.document_facts[0].fact_sha256 == "a" * 64
+    assert "from investments.economic_events event" in query_text
+    assert (
+        "newer.supersedes_settlement_id = settlement.settlement_id"
+        in query_text
+    )
+    assert "from investments.share_purchases" not in query_text
 
 
 def test_purchase_recognition_uses_revisioned_lifecycle_rpcs() -> None:
@@ -1212,3 +1341,57 @@ def test_cash_settlement_uses_event_and_bank_fact_rpcs() -> None:
     assert request["bankFact"]["capability"] == "BANKING"
     assert request["documentFacts"] == []
     assert request["evidenceDigest"] == prepared.evidence_digest
+    completion_request = json.loads(str(calls[2][1][0]))
+    assert completion_request["evidenceDigest"] == prepared.evidence_digest
+
+
+def test_cash_settlement_claim_uses_banking_owned_rpc_on_shared_transaction() -> None:
+    transaction = bound_transaction()
+    settlement = lifecycle_settlement(lifecycle_purchase())
+    bank_fact = settlement.evidence.bank_fact
+    assert bank_fact is not None
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def database_rows(
+        query: str, parameters: tuple[object, ...] = ()
+    ) -> list[dict[str, object]]:
+        calls.append((query, parameters))
+        return [{"result": {
+            "transactionId": str(bank_fact.record_id),
+            "accountingEntryId": "70000000-0000-0000-0000-000000000007",
+            "actionReference": f"investment-settlement:{settlement.settlement_id}",
+        }}]
+
+    transaction._database_rows = database_rows  # type: ignore[method-assign]
+    asyncio.run(transaction.claim_transaction_for_external_action(
+        ClaimBankTransactionForExternalActionCommand(
+            company_id=settlement.company_id,
+            actor_id=settlement.actor_id,
+            correlation_id=settlement.correlation_id,
+            idempotency_key=settlement.idempotency_key,
+            income_year=settlement.income_year,
+            transaction_id=BankTransactionId(str(bank_fact.record_id)),
+            transaction_date=settlement.settlement_date,
+            signed_amount=Money.nok("-125.50"),
+            source_hash=bank_fact.fact_sha256,
+            action_reference=ExternalActionReference(
+                f"investment-settlement:{settlement.settlement_id}"
+            ),
+        ),
+        accounting_entry_id=BankingAccountingEntryReference(
+            "70000000-0000-0000-0000-000000000007"
+        ),
+    ))
+
+    assert len(calls) == 1
+    assert "banking.claim_transaction_for_external_action_v1" in calls[0][0]
+    request = json.loads(str(calls[0][1][0]))
+    assert request == {
+        "companyId": str(settlement.company_id),
+        "incomeYear": 2026,
+        "transactionId": str(bank_fact.record_id),
+        "transactionDate": settlement.settlement_date.value.isoformat(),
+        "signedAmount": "-125.50",
+        "sourceHash": bank_fact.fact_sha256,
+        "actionReference": f"investment-settlement:{settlement.settlement_id}",
+    }

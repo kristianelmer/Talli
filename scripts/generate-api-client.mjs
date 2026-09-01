@@ -73,6 +73,11 @@ const investmentsOperations = {
     "get",
     "investmentsListActivity",
   ],
+  listEconomicEvents: [
+    "/api/v1/investments/economic-events",
+    "get",
+    "investmentsListEconomicEvents",
+  ],
   listPositions: [
     "/api/v1/investments/positions",
     "get",
@@ -88,25 +93,30 @@ const investmentsOperations = {
     "get",
     "investmentsListShareSaleAllocations",
   ],
-  recordSharePurchase: [
-    "/api/v1/investments/share-purchases",
+  recognizeSharePurchase: [
+    "/api/v1/investments/share-purchase-recognitions",
     "post",
-    "investmentsRecordSharePurchase",
+    "investmentsRecognizeSharePurchase",
   ],
-  recordShareSale: [
-    "/api/v1/investments/share-sales",
+  recognizeShareSale: [
+    "/api/v1/investments/share-sale-recognitions",
     "post",
-    "investmentsRecordShareSale",
+    "investmentsRecognizeShareSale",
   ],
-  recordReceivedDividend: [
-    "/api/v1/investments/received-dividends",
+  recognizeReceivedDividend: [
+    "/api/v1/investments/received-dividend-recognitions",
     "post",
-    "investmentsRecordReceivedDividend",
+    "investmentsRecognizeReceivedDividend",
   ],
-  recordReceivedFundDistribution: [
-    "/api/v1/investments/received-fund-distributions",
+  recognizeReceivedFundDistribution: [
+    "/api/v1/investments/received-fund-distribution-recognitions",
     "post",
-    "investmentsRecordReceivedFundDistribution",
+    "investmentsRecognizeReceivedFundDistribution",
+  ],
+  settleCash: [
+    "/api/v1/investments/cash-settlements",
+    "post",
+    "investmentsSettleCash",
   ],
   correctInvestment: [
     "/api/v1/investments/corrections",
@@ -238,9 +248,11 @@ function renderInterface(name, schema) {
     .map(([property, propertySchema]) => {
       const optional = required.has(property) ? "" : "?";
       return `  ${property}${optional}: ${schemaType(propertySchema)};`;
-    })
-    .join("\n");
-  return `export interface ${name} {\n${properties}\n}`;
+    });
+  if (schema.additionalProperties === true) {
+    properties.push("  [key: string]: unknown;");
+  }
+  return `export interface ${name} {\n${properties.join("\n")}\n}`;
 }
 
 function renderSchema(name, schema) {
@@ -299,7 +311,9 @@ function renderGuard(name, schema) {
     return constraints.length ? `(${[base, ...constraints].join(" && ")})` : base;
   };
   const checks = [
-    `    hasOnlyProperties(value, ${JSON.stringify(allowedProperties)})`,
+    ...(schema.additionalProperties === true
+      ? []
+      : [`    hasOnlyProperties(value, ${JSON.stringify(allowedProperties)})`]),
     ...Object.entries(schema.properties ?? {}).map(([property, propertySchema]) => {
       const check = propertyCheck(propertySchema, `value.${property}`);
       return required.has(property)
@@ -462,6 +476,8 @@ const investmentsSchemas = Object.fromEntries([
   "InvestmentCorrectionWire",
   "InvestmentActivityPageWire",
   "InvestmentActivityWire",
+  "InvestmentLifecycleEventPageWire",
+  "InvestmentLifecycleEventWire",
   "AcquisitionLotPageWire",
   "AcquisitionLotWire",
   "InvestmentAccountingClassification",
@@ -469,19 +485,19 @@ const investmentsSchemas = Object.fromEntries([
   "InvestmentEvidenceMode",
   "InvestmentKind",
   "InvestmentLotHistoryStatus",
+  "InvestmentSettlementBalanceKind",
   "InvestmentTaxTreatment",
   "InvestmentPositionPageWire",
   "InvestmentPositionMovementWire",
   "InvestmentPositionWire",
   "InvestmentsPageWire",
-  "InvestmentsSharePurchaseResultWire",
-  "InvestmentsSharePurchaseWire",
-  "InvestmentsShareSaleResultWire",
-  "InvestmentsShareSaleWire",
-  "InvestmentsReceivedDividendResultWire",
-  "InvestmentsReceivedDividendWire",
-  "InvestmentsReceivedFundDistributionResultWire",
-  "InvestmentsReceivedFundDistributionWire",
+  "InvestmentsEconomicEventResultWire",
+  "InvestmentsCashSettlementResultWire",
+  "InvestmentsRecognizeSharePurchaseWire",
+  "InvestmentsRecognizeShareSaleWire",
+  "InvestmentsRecognizeReceivedDividendWire",
+  "InvestmentsRecognizeReceivedFundDistributionWire",
+  "InvestmentsSettleCashWire",
   "InvestmentsCorrectionResultWire",
   "InvestmentsCorrectionWire",
   "InvestmentsSharePurchaseRecognitionWire",
@@ -1321,69 +1337,86 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
-    async investmentsRecordSharePurchase(
-      body: InvestmentsSharePurchaseWire,
+    async investmentsRecognizeSharePurchase(
+      body: InvestmentsRecognizeSharePurchaseWire,
       request: TalliMutationOptions,
-    ): Promise<InvestmentsSharePurchaseResultWire> {
+    ): Promise<InvestmentsEconomicEventResultWire> {
       const result = await executeJson(
-        \`\${baseUrl}/api/v1/investments/share-purchases\`,
+        \`\${baseUrl}/api/v1/investments/share-purchase-recognitions\`,
         "POST",
         request,
         body,
-        isInvestmentsSharePurchaseResultWire,
+        isInvestmentsEconomicEventResultWire,
       );
-      if (result.actionId !== body.actionId) {
+      if (result.eventId !== body.eventId) {
         throw new TalliApiError(502, undefined);
       }
       return result;
     },
 
-    async investmentsRecordShareSale(
-      body: InvestmentsShareSaleWire,
+    async investmentsRecognizeShareSale(
+      body: InvestmentsRecognizeShareSaleWire,
       request: TalliMutationOptions,
-    ): Promise<InvestmentsShareSaleResultWire> {
+    ): Promise<InvestmentsEconomicEventResultWire> {
       const result = await executeJson(
-        \`\${baseUrl}/api/v1/investments/share-sales\`,
+        \`\${baseUrl}/api/v1/investments/share-sale-recognitions\`,
         "POST",
         request,
         body,
-        isInvestmentsShareSaleResultWire,
+        isInvestmentsEconomicEventResultWire,
       );
-      if (result.actionId !== body.actionId || result.positionId !== body.positionId) {
+      if (result.eventId !== body.eventId || result.positionId !== body.positionId) {
         throw new TalliApiError(502, undefined);
       }
       return result;
     },
 
-    async investmentsRecordReceivedDividend(
-      body: InvestmentsReceivedDividendWire,
+    async investmentsRecognizeReceivedDividend(
+      body: InvestmentsRecognizeReceivedDividendWire,
       request: TalliMutationOptions,
-    ): Promise<InvestmentsReceivedDividendResultWire> {
+    ): Promise<InvestmentsEconomicEventResultWire> {
       const result = await executeJson(
-        \`\${baseUrl}/api/v1/investments/received-dividends\`,
+        \`\${baseUrl}/api/v1/investments/received-dividend-recognitions\`,
         "POST",
         request,
         body,
-        isInvestmentsReceivedDividendResultWire,
+        isInvestmentsEconomicEventResultWire,
       );
-      if (result.actionId !== body.actionId || result.positionId !== body.positionId) {
+      if (result.eventId !== body.eventId || result.positionId !== body.positionId) {
         throw new TalliApiError(502, undefined);
       }
       return result;
     },
 
-    async investmentsRecordReceivedFundDistribution(
-      body: InvestmentsReceivedFundDistributionWire,
+    async investmentsRecognizeReceivedFundDistribution(
+      body: InvestmentsRecognizeReceivedFundDistributionWire,
       request: TalliMutationOptions,
-    ): Promise<InvestmentsReceivedFundDistributionResultWire> {
+    ): Promise<InvestmentsEconomicEventResultWire> {
       const result = await executeJson(
-        \`\${baseUrl}/api/v1/investments/received-fund-distributions\`,
+        \`\${baseUrl}/api/v1/investments/received-fund-distribution-recognitions\`,
         "POST",
         request,
         body,
-        isInvestmentsReceivedFundDistributionResultWire,
+        isInvestmentsEconomicEventResultWire,
       );
-      if (result.actionId !== body.actionId || result.positionId !== body.positionId) {
+      if (result.eventId !== body.eventId || result.positionId !== body.positionId) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async investmentsSettleCash(
+      body: InvestmentsSettleCashWire,
+      request: TalliMutationOptions,
+    ): Promise<InvestmentsCashSettlementResultWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/investments/cash-settlements\`,
+        "POST",
+        request,
+        body,
+        isInvestmentsCashSettlementResultWire,
+      );
+      if (result.settlementId !== body.settlementId || result.eventId !== body.eventId) {
         throw new TalliApiError(502, undefined);
       }
       return result;
@@ -1459,6 +1492,22 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isInvestmentActivityPageWire,
+      );
+    },
+
+    async investmentsListEconomicEvents(
+      request: InvestmentsListRequest,
+    ): Promise<InvestmentLifecycleEventPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/investments/economic-events?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isInvestmentLifecycleEventPageWire,
       );
     },
 

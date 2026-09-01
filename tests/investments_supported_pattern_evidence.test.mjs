@@ -15,7 +15,7 @@ const documentation = readFileSync(
 const money = (value) => Math.round(Number(value) * 100);
 
 test("#190 evidence pins the approved source cut and complete supported set", () => {
-  assert.equal(evidence.schemaVersion, "1.0");
+  assert.equal(evidence.schemaVersion, "2.0");
   assert.equal(evidence.issue, "#190");
   assert.match(evidence.sourceCheckedAt, /^2026-08-31T/u);
   assert.deepEqual(
@@ -45,8 +45,8 @@ test("purchase and sale golden cases reconcile cent-exact carrying amounts", () 
       money(pattern.input.considerationNok) + money(pattern.input.transactionCostsNok),
       pattern.id,
     );
-    assert.equal(pattern.expected.ledgerLines[0].account, pattern.expected.investmentAccount);
-    assert.equal(money(pattern.expected.ledgerLines[0].debitNok), money(pattern.expected.capitalizedCostNok));
+    assert.equal(pattern.expected.recognitionLedgerLines[0].account, pattern.expected.investmentAccount);
+    assert.equal(money(pattern.expected.recognitionLedgerLines[0].debitNok), money(pattern.expected.capitalizedCostNok));
   }
 
   for (const pattern of evidence.acceptedPatterns.filter((item) => item.operation === "sale")) {
@@ -57,10 +57,40 @@ test("purchase and sale golden cases reconcile cent-exact carrying amounts", () 
       net - money(pattern.input.fifoCostBasisNok),
       pattern.id,
     );
-    const lines = pattern.expected.ledgerLines;
-    const debit = lines.reduce((sum, line) => sum + money(line.debitNok), 0);
-    const credit = lines.reduce((sum, line) => sum + money(line.creditNok), 0);
-    assert.equal(debit, credit, pattern.id);
+    for (const lines of [
+      pattern.expected.recognitionLedgerLines,
+      pattern.expected.settlementLedgerLines,
+    ]) {
+      const debit = lines.reduce((sum, line) => sum + money(line.debitNok), 0);
+      const credit = lines.reduce((sum, line) => sum + money(line.creditNok), 0);
+      assert.equal(debit, credit, pattern.id);
+    }
+  }
+});
+
+test("every golden separates accrual recognition from bank settlement", () => {
+  const recognitionBalances = {
+    purchase: "2990",
+    sale: "1570",
+    share_dividend: "1530",
+    fund_distribution: "1530",
+  };
+  for (const pattern of evidence.acceptedPatterns) {
+    assert.notEqual(pattern.input.eventId, pattern.input.settlementId, pattern.id);
+    assert.ok(
+      pattern.expected.recognitionLedgerLines.some(
+        (line) => line.account === recognitionBalances[pattern.operation],
+      ),
+      pattern.id,
+    );
+    assert.ok(
+      pattern.expected.settlementLedgerLines.some((line) => line.account === "1920"),
+      pattern.id,
+    );
+    assert.ok(
+      pattern.expected.recognitionLedgerLines.every((line) => line.account !== "1920"),
+      pattern.id,
+    );
   }
 });
 
@@ -130,13 +160,18 @@ test("every accepted case declares exact cross-output disposition", () => {
   const outputs = ["investments", "ledger", "rf1086", "companyTax", "annualAccounts", "saft", "archive"];
   for (const pattern of evidence.acceptedPatterns) {
     assert.deepEqual(Object.keys(pattern.reconciliation).sort(), outputs.sort(), pattern.id);
-    assert.equal(pattern.reconciliation.investments.economicFactId, pattern.input.actionId);
-    assert.equal(pattern.reconciliation.ledger.sourceRecordId, pattern.input.actionId);
+    assert.equal(pattern.reconciliation.investments.economicEventId, pattern.input.eventId);
+    assert.equal(pattern.reconciliation.investments.settlementId, pattern.input.settlementId);
+    assert.equal(pattern.reconciliation.ledger.recognitionSourceRecordId, pattern.input.eventId);
+    assert.equal(pattern.reconciliation.ledger.settlementSourceRecordId, pattern.input.settlementId);
     assert.equal(pattern.reconciliation.rf1086.effect, "none");
     assert.equal(pattern.reconciliation.archive.evidenceRequired, true);
     assert.equal(pattern.reconciliation.companyTax.calculationId, pattern.expected.calculationId);
-    assert.equal(pattern.reconciliation.annualAccounts.economicFactId, pattern.input.actionId);
-    assert.equal(pattern.reconciliation.saft.sourceRecordId, pattern.input.actionId);
+    assert.equal(pattern.reconciliation.annualAccounts.economicEventId, pattern.input.eventId);
+    assert.deepEqual(
+      pattern.reconciliation.saft.sourceRecordIds,
+      [pattern.input.eventId, pattern.input.settlementId],
+    );
   }
 });
 

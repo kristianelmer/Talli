@@ -31,6 +31,9 @@ from talli_backend.application.investments_session import (
 )
 from talli_backend.application.investments_workflow import InvestmentsApplication
 from talli_backend.application.ledger_workflow import LedgerAuthenticationError
+from talli_backend.modules.banking.public import (
+    ClaimBankTransactionForExternalActionCommand,
+)
 from talli_backend.modules.investments.public import (
     AccountingEntryReference,
     AcquisitionLotPage,
@@ -53,6 +56,8 @@ from talli_backend.modules.investments.public import (
     InvestmentEvidenceMode,
     InvestmentKind,
     InvestmentLotHistoryStatus,
+    InvestmentLifecycleEventPage,
+    InvestmentLifecycleEventView,
     InvestmentPositionPage,
     InvestmentPositionId,
     InvestmentPositionView,
@@ -74,25 +79,16 @@ from talli_backend.modules.investments.public import (
     PreparedEconomicEventCorrection,
     PreparedCashSettlementCorrection,
     PreparedInvestmentCashSettlement,
-    PreparedSharePurchase,
     PreparedSharePurchaseRecognition,
     PreparedShareSale,
     PreparedShareSaleFacts,
-    RecordReceivedDividendCommand,
-    RecordReceivedFundDistributionCommand,
-    RecordSharePurchaseCommand,
-    RecordShareSaleCommand,
     RecognizeReceivedDividendCommand,
     RecognizeReceivedFundDistributionCommand,
     RecognizeSharePurchaseCommand,
     RecognizeShareSaleCommand,
-    RecordedReceivedDividend,
-    RecordedReceivedFundDistribution,
     RecordedInvestmentCorrection,
     RecordedInvestmentCashSettlement,
     RecordedInvestmentEconomicEvent,
-    RecordedSharePurchase,
-    RecordedShareSale,
     SettleInvestmentCashCommand,
     ShareSaleAllocationId,
     ShareSaleAllocationPage,
@@ -114,82 +110,6 @@ from talli_backend.shared.kernel import (
     LocalDate,
     Money,
 )
-
-
-def _request_payload(
-    command: RecordSharePurchaseCommand | RecordShareSaleCommand | RecordReceivedDividendCommand | RecordReceivedFundDistributionCommand,
-) -> dict[str, object]:
-    common: dict[str, object] = {
-        "companyId": str(command.company_id),
-        "incomeYear": int(command.income_year),
-        "actionId": str(command.action_id),
-        "idempotencyKey": str(command.idempotency_key),
-        "correlationId": str(command.correlation_id),
-        "bankTransactionId": (
-            str(command.bank_transaction_id) if command.bank_transaction_id else None
-        ),
-        "documentId": str(command.document_id) if command.document_id else None,
-        "documentStatus": command.document_status.value,
-        "evidenceMode": command.evidence_mode.value,
-        "evidenceReference": command.evidence_reference,
-        "ownerAttested": command.owner_attested,
-    }
-    if isinstance(command, RecordReceivedDividendCommand):
-        return {
-            **common,
-            "positionId": str(command.position_id),
-            "payingCompanyName": command.paying_company_name,
-            "declaredDate": command.declared_date.value.isoformat(),
-            "paidDate": command.paid_date.value.isoformat(),
-            "grossAmount": format(command.gross_amount.amount, "f"),
-            "taxTreatment": command.tax_treatment.value,
-            "lawfulDividendConfirmed": command.lawful_dividend_confirmed,
-            "groupExceptionClaimed": command.group_exception_claimed,
-            "yearEndOwnershipBasisPoints": command.year_end_ownership_basis_points,
-            "yearEndVotingBasisPoints": command.year_end_voting_basis_points,
-            "groupEvidenceReference": command.group_evidence_reference,
-        }
-    if isinstance(command, RecordReceivedFundDistributionCommand):
-        return {
-            **common,
-            "positionId": str(command.position_id),
-            "fundName": command.fund_name,
-            "entitlementDate": command.entitlement_date.value.isoformat(),
-            "paidDate": command.paid_date.value.isoformat(),
-            "grossAmount": format(command.gross_amount.amount, "f"),
-            "openingFundEquityRatioBasisPoints": (
-                command.opening_fund_equity_ratio_basis_points
-            ),
-            "fundTaxStatementReference": command.fund_tax_statement_reference,
-        }
-    if isinstance(command, RecordShareSaleCommand):
-        return {
-            **common,
-            "positionId": str(command.position_id),
-            "saleDate": command.sale_date.value.isoformat(),
-            "soldShareCount": command.sold_share_count,
-            "proceeds": format(command.proceeds.amount, "f"),
-            "transactionCosts": format(command.transaction_costs.amount, "f"),
-            "saleYearFundEquityRatioBasisPoints": (
-                command.sale_year_fund_equity_ratio_basis_points
-            ),
-            "fundTaxStatementReference": command.fund_tax_statement_reference,
-        }
-    return {
-        **common,
-        "investmentKey": command.investment_key,
-        "investmentName": command.investment_name,
-        "investmentKind": command.investment_kind.value,
-        "accountingClassification": command.accounting_classification.value,
-        "taxTreatment": command.tax_treatment.value,
-        "acquisitionDate": command.acquisition_date.value.isoformat(),
-        "shareCount": command.share_count,
-        "purchaseAmount": format(command.purchase_amount.amount, "f"),
-        "transactionCosts": format(command.transaction_costs.amount, "f"),
-        "orgNumber": command.org_number,
-        "fundEquityRatioBasisPoints": command.fund_equity_ratio_basis_points,
-        "fundTaxStatementReference": command.fund_tax_statement_reference,
-    }
 
 
 def _fact_payload(fact) -> dict[str, object]:
@@ -356,6 +276,17 @@ def _map_investments_database_error(message: str) -> InvestmentsError | Exceptio
         ("investments_forbidden", InvestmentsError.forbidden()),
         ("investments_invalid_input", InvestmentsError.invalid_input()),
         ("investments_dependency_unavailable", InvestmentsError.unavailable()),
+        (
+            "banking_transaction_already_reconciled",
+            InvestmentsError.conflict(
+                InvestmentsErrorCode.BANK_FACT_ALREADY_CLAIMED
+            ),
+        ),
+        ("banking_forbidden", InvestmentsError.forbidden()),
+        ("banking_company_year_not_admitted", InvestmentsError.invalid_input()),
+        ("banking_transaction_not_found", InvestmentsError.invalid_input()),
+        ("banking_transaction_fact_mismatch", InvestmentsError.invalid_input()),
+        ("banking_invalid_input", InvestmentsError.invalid_input()),
     )
     for marker, mapped in definitions:
         if marker in message:
@@ -576,6 +507,145 @@ class SupabaseInvestmentsSession:
             items=tuple(_correction(row) for row in page_rows),
             next_cursor=(
                 InvestmentCursor(str(page_rows[-1]["id"])) if has_more else None
+            ),
+            has_more=has_more,
+        )
+
+    async def list_lifecycle_events(
+        self,
+        *,
+        actor_id: ActorId,
+        company_ids: tuple[CompanyId, ...],
+        correlation_id: CorrelationId,
+        cursor: InvestmentCursor | None,
+        limit: int,
+    ) -> InvestmentLifecycleEventPage:
+        self._query_input(
+            actor_id=actor_id,
+            company_ids=company_ids,
+            correlation_id=correlation_id,
+            limit=limit,
+        )
+        rows = await self._query_rows(
+            """
+            select event.event_id as id, event.company_id, event.income_year,
+              event.event_kind as activity_kind, event.recognition_date,
+              event.position_id, position.investment_key,
+              position.name as investment_name,
+              position.kind as investment_kind,
+              position.accounting_classification, position.tax_treatment,
+              position.org_number,
+              coalesce(
+                purchase.fund_equity_ratio_basis_points,
+                sale.sale_year_fund_equity_ratio_basis_points,
+                position.fund_equity_ratio_basis_points
+              ) as fund_equity_ratio_basis_points,
+              coalesce(
+                purchase.fund_tax_statement_reference,
+                sale.fund_tax_statement_reference,
+                distribution.fund_tax_statement_reference,
+                position.fund_tax_statement_reference
+              ) as fund_tax_statement_reference,
+              purchase.acquisition_lot_id, purchase.position_created,
+              purchase.share_count,
+              purchase.purchase_amount,
+              coalesce(
+                purchase.transaction_costs, sale.transaction_costs
+              ) as transaction_costs,
+              purchase.acquisition_cost as capitalized_cost,
+              sale.sold_share_count, sale.proceeds,
+              sale.net_proceeds, sale.fifo_cost_basis_reduction,
+              sale.fifo_tax_basis_reduction, sale.remaining_share_count,
+              sale.remaining_cost_basis, sale.remaining_tax_basis,
+              sale.book_gain_or_loss, sale.tax_gain_or_loss,
+              sale.exempt_gain, sale.taxable_gain,
+              sale.non_deductible_loss, sale.deductible_loss,
+              dividend.paying_company_name,
+              dividend.lawful_dividend_confirmed,
+              dividend.group_exception_claimed,
+              dividend.group_exception_applied,
+              dividend.year_end_ownership_basis_points,
+              dividend.year_end_voting_basis_points,
+              dividend.group_evidence_reference,
+              distribution.fund_name, distribution.entitlement_date,
+              distribution.opening_fund_equity_ratio_basis_points,
+              coalesce(
+                dividend.gross_amount, distribution.gross_amount
+              ) as gross_amount,
+              coalesce(
+                dividend.taxable_add_back, distribution.taxable_add_back
+              ) as taxable_add_back,
+              distribution.dividend_portion, distribution.interest_portion,
+              distribution.total_taxable_income,
+              event.expected_settlement_amount,
+              event.settlement_balance_kind,
+              event.recognition_accounting_entry_id,
+              coalesce((
+                select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+                  'capability', source.source_capability,
+                  'recordId', source.source_record_id,
+                  'revision', source.source_revision,
+                  'factSha256', source.fact_sha256
+                ) order by source.ordinal)
+                from investments.event_sources source
+                where source.event_id = event.event_id
+                  and source.company_id = event.company_id
+              ), '[]'::jsonb) as document_facts,
+              event.evidence_mode, event.evidence_reference,
+              event.evidence_digest, event.calculation_id,
+              event.owner_attested,
+              settlement.settlement_id, settlement.settlement_date,
+              settlement.amount as settlement_amount,
+              settlement.source_capability as bank_source_capability,
+              settlement.source_record_id as bank_source_record_id,
+              settlement.source_revision as bank_source_revision,
+              settlement.fact_sha256 as bank_fact_sha256,
+              settlement.settlement_accounting_entry_id,
+              event.created_by, event.created_at
+            from investments.economic_events event
+            join investments.positions position
+              on position.id = event.position_id
+             and position.company_id = event.company_id
+            left join investments.share_purchase_recognitions purchase
+              on purchase.event_id = event.event_id
+             and purchase.company_id = event.company_id
+            left join investments.share_sales sale
+              on sale.action_id = event.event_id
+             and sale.company_id = event.company_id
+            left join investments.received_dividend_recognitions dividend
+              on dividend.event_id = event.event_id
+             and dividend.company_id = event.company_id
+            left join investments.received_fund_distribution_recognitions
+              distribution
+              on distribution.event_id = event.event_id
+             and distribution.company_id = event.company_id
+            left join investments.cash_settlements settlement
+              on settlement.event_id = event.event_id
+             and settlement.company_id = event.company_id
+             and not exists (
+               select 1
+               from investments.cash_settlements newer
+               where newer.supersedes_settlement_id = settlement.settlement_id
+             )
+            where event.company_id = any(%s::uuid[])
+              and (%s::uuid is null or event.event_id > %s::uuid)
+            order by event.event_id
+            limit %s
+            """,
+            (
+                [str(company_id) for company_id in company_ids],
+                str(cursor) if cursor else None,
+                str(cursor) if cursor else None,
+                limit + 1,
+            ),
+        )
+        has_more = len(rows) > limit
+        page_rows = rows[:limit]
+        return InvestmentLifecycleEventPage(
+            items=tuple(_lifecycle_event(row) for row in page_rows),
+            next_cursor=(
+                InvestmentCursor(str(page_rows[-1]["id"]))
+                if has_more else None
             ),
             has_more=has_more,
         )
@@ -909,9 +979,7 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
     async def _investment_result(
         self,
         query: str,
-        command: RecordSharePurchaseCommand | RecordShareSaleCommand
-        | RecordReceivedDividendCommand | RecordReceivedFundDistributionCommand
-        | CorrectInvestmentCommand | RecognizeSharePurchaseCommand
+        command: CorrectInvestmentCommand | RecognizeSharePurchaseCommand
         | RecognizeShareSaleCommand | RecognizeReceivedDividendCommand
         | RecognizeReceivedFundDistributionCommand | SettleInvestmentCashCommand,
         extra: tuple[object, ...] = (),
@@ -928,17 +996,6 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
                             _correction_request_payload(command)
                             if isinstance(command, CorrectInvestmentCommand)
                             else _lifecycle_request_payload(command)
-                            if isinstance(
-                                command,
-                                (
-                                    RecognizeSharePurchaseCommand,
-                                    RecognizeShareSaleCommand,
-                                    RecognizeReceivedDividendCommand,
-                                    RecognizeReceivedFundDistributionCommand,
-                                    SettleInvestmentCashCommand,
-                                ),
-                            )
-                            else _request_payload(command)
                         ),
                         **(request_extra or {}),
                     },
@@ -956,6 +1013,37 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
         if not isinstance(result, Mapping):
             raise InvestmentsError.unavailable()
         return result
+
+    async def claim_transaction_for_external_action(
+        self,
+        command: ClaimBankTransactionForExternalActionCommand,
+        *,
+        accounting_entry_id,
+    ) -> None:
+        if command.actor_id != self.actor_id:
+            raise InvestmentsError.forbidden()
+        rows = await self._database_rows(
+            "select banking.claim_transaction_for_external_action_v1("
+            "%s::jsonb, %s::uuid, %s::text) as result",
+            (
+                json.dumps(
+                    {
+                        "companyId": str(command.company_id),
+                        "incomeYear": command.income_year.value,
+                        "transactionId": str(command.transaction_id),
+                        "transactionDate": command.transaction_date.value.isoformat(),
+                        "signedAmount": str(command.signed_amount.amount),
+                        "sourceHash": command.source_hash,
+                        "actionReference": str(command.action_reference),
+                    },
+                    separators=(",", ":"),
+                ),
+                str(accounting_entry_id),
+                str(command.actor_id.subject),
+            ),
+        )
+        if len(rows) != 1 or not isinstance(rows[0].get("result"), Mapping):
+            raise InvestmentsError.unavailable()
 
     async def post_entry(
         self,
@@ -1484,6 +1572,7 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
                     separators=(",", ":"),
                 ),
             ),
+            request_extra={"evidenceDigest": prepared.evidence_digest},
         )
         if result is None:
             raise InvestmentsError.unavailable()
@@ -1561,7 +1650,7 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
     ) -> RecordedInvestmentCorrection:
         rows = await self._database_rows(
             """
-            select ledger.link_investment_correction_v1(
+            select ledger.link_investment_lifecycle_correction_v2(
               %s::uuid, %s::integer, %s::uuid, %s::uuid, %s::uuid,
               %s::uuid, %s::text, %s::text, %s::date, %s::text
             ) as reversal_entry_id
@@ -1600,336 +1689,6 @@ class SupabaseInvestmentsTransaction(SupabaseLedgerWorkflowTransaction):
             raise InvestmentsError.unavailable()
         return _recorded_correction(result)
 
-    async def get_received_fund_distribution_replay(
-        self, command: RecordReceivedFundDistributionCommand
-    ) -> RecordedReceivedFundDistribution | None:
-        result = await self._investment_result(
-            "select investments.get_received_fund_distribution_replay_v1(%s::jsonb, %s::text) as result",
-            command,
-        )
-        return _recorded_fund_distribution(result) if result is not None else None
-
-    async def prepare_received_fund_distribution(
-        self,
-        command: RecordReceivedFundDistributionCommand,
-        *,
-        evidence_digest: str,
-    ) -> PreparedReceivedFundDistributionFacts:
-        result = await self._investment_result(
-            "select investments.prepare_received_fund_distribution_v1(%s::jsonb, %s::text) as result",
-            command,
-            request_extra={"evidenceDigest": evidence_digest},
-        )
-        if result is None:
-            raise InvestmentsError.unavailable()
-        return PreparedReceivedFundDistributionFacts(
-            position_id=InvestmentPositionId(str(result["positionId"])),
-            investment_name=str(result["investmentName"]),
-            investment_kind=InvestmentKind(str(result["investmentKind"])),
-        )
-
-    async def complete_received_fund_distribution(
-        self,
-        command: RecordReceivedFundDistributionCommand,
-        *,
-        prepared: PreparedReceivedFundDistribution,
-        accounting_entry_id: AccountingEntryReference,
-    ) -> RecordedReceivedFundDistribution:
-        result = await self._investment_result(
-            """
-            select investments.complete_received_fund_distribution_v1(
-              %s::jsonb, %s::uuid, %s::text
-            ) as result
-            """,
-            command,
-            (str(accounting_entry_id),),
-            request_extra={
-                "dividendPortion": format(prepared.dividend_portion.amount, "f"),
-                "interestPortion": format(prepared.interest_portion.amount, "f"),
-                "taxableAddBack": format(prepared.taxable_add_back.amount, "f"),
-                "totalTaxableIncome": format(
-                    prepared.total_taxable_income.amount, "f"
-                ),
-                "evidenceDigest": prepared.evidence_digest,
-                "calculationId": prepared.calculation_id,
-            },
-        )
-        if result is None:
-            raise InvestmentsError.unavailable()
-        return _recorded_fund_distribution(result)
-
-    async def get_received_dividend_replay(
-        self, command: RecordReceivedDividendCommand
-    ) -> RecordedReceivedDividend | None:
-        result = await self._investment_result(
-            "select investments.get_received_dividend_replay_v1(%s::jsonb, %s::text) as result",
-            command,
-        )
-        return _recorded_dividend(result) if result is not None else None
-
-    async def prepare_received_dividend(
-        self,
-        command: RecordReceivedDividendCommand,
-        *,
-        evidence_digest: str,
-    ) -> PreparedReceivedDividendFacts:
-        result = await self._investment_result(
-            "select investments.prepare_received_dividend_v1(%s::jsonb, %s::text) as result",
-            command,
-            request_extra={
-                "evidenceDigest": evidence_digest,
-            },
-        )
-        if result is None:
-            raise InvestmentsError.unavailable()
-        return PreparedReceivedDividendFacts(
-            position_id=InvestmentPositionId(str(result["positionId"])),
-            investment_name=str(result["investmentName"]),
-            investment_kind=InvestmentKind(str(result["investmentKind"])),
-        )
-
-    async def complete_received_dividend(
-        self,
-        command: RecordReceivedDividendCommand,
-        *,
-        prepared: PreparedReceivedDividend,
-        accounting_entry_id: AccountingEntryReference,
-    ) -> RecordedReceivedDividend:
-        result = await self._investment_result(
-            """
-            select investments.complete_received_dividend_v1(
-              %s::jsonb, %s::uuid, %s::text
-            ) as result
-            """,
-            command,
-            (str(accounting_entry_id),),
-            request_extra={
-                "taxableAddBack": format(prepared.taxable_add_back.amount, "f"),
-                "groupExceptionApplied": prepared.group_exception_applied,
-                "evidenceDigest": prepared.evidence_digest,
-                "calculationId": prepared.calculation_id,
-            },
-        )
-        if result is None:
-            raise InvestmentsError.unavailable()
-        return _recorded_dividend(result)
-
-    async def get_share_purchase_replay(
-        self, command: RecordSharePurchaseCommand
-    ) -> RecordedSharePurchase | None:
-        result = await self._investment_result(
-            "select investments.get_share_purchase_replay_v1(%s::jsonb, %s::text) as result",
-            command,
-        )
-        return _recorded(result) if result is not None else None
-
-    async def prepare_share_purchase(
-        self,
-        command: RecordSharePurchaseCommand,
-        *,
-        capitalized_cost: Money,
-        evidence_digest: str,
-        calculation_id: str,
-    ) -> PreparedSharePurchase:
-        result = await self._investment_result(
-            "select investments.prepare_share_purchase_v1(%s::jsonb, %s::text) as result",
-            command,
-            request_extra={
-                "capitalizedCost": format(capitalized_cost.amount, "f"),
-                "evidenceDigest": evidence_digest,
-                "calculationId": calculation_id,
-            },
-        )
-        if result is None:
-            raise InvestmentsError.unavailable()
-        return PreparedSharePurchase(
-            position_id=InvestmentPositionId(str(result["positionId"])),
-            lot_id=AcquisitionLotId(str(result["lotId"])),
-            position_created=bool(result["positionCreated"]),
-            investment_name=str(result["investmentName"]),
-            accounting_classification=InvestmentAccountingClassification(
-                str(result["accountingClassification"])
-            ),
-            purchase_amount=_money(result["capitalizedCost"]),
-            evidence_digest=str(result["evidenceDigest"]),
-            calculation_id=str(result["calculationId"]),
-        )
-
-    async def complete_share_purchase(
-        self,
-        command: RecordSharePurchaseCommand,
-        *,
-        prepared: PreparedSharePurchase,
-        accounting_entry_id: AccountingEntryReference,
-    ) -> RecordedSharePurchase:
-        result = await self._investment_result(
-            """
-            select investments.complete_share_purchase_v1(
-              %s::jsonb, %s::uuid, %s::jsonb, %s::text
-            ) as result
-            """,
-            command,
-            (
-                str(accounting_entry_id),
-                json.dumps(
-                    {
-                        "positionId": str(prepared.position_id),
-                        "lotId": str(prepared.lot_id),
-                        "positionCreated": prepared.position_created,
-                        "capitalizedCost": format(
-                            prepared.purchase_amount.amount, "f"
-                        ),
-                        "evidenceDigest": prepared.evidence_digest,
-                        "calculationId": prepared.calculation_id,
-                    },
-                    separators=(",", ":"),
-                ),
-            ),
-        )
-        if result is None:
-            raise InvestmentsError.unavailable()
-        return _recorded(result)
-
-    async def get_share_sale_replay(
-        self, command: RecordShareSaleCommand
-    ) -> RecordedShareSale | None:
-        result = await self._investment_result(
-            "select investments.get_share_sale_replay_v1(%s::jsonb, %s::text) as result",
-            command,
-        )
-        return _recorded_sale(result) if result is not None else None
-
-    async def prepare_share_sale(
-        self,
-        command: RecordShareSaleCommand,
-        *,
-        net_proceeds: Money,
-        evidence_digest: str,
-    ) -> PreparedShareSaleFacts:
-        result = await self._investment_result(
-            "select investments.prepare_share_sale_v1(%s::jsonb, %s::text) as result",
-            command,
-            request_extra={
-                "netProceeds": format(net_proceeds.amount, "f"),
-                "evidenceDigest": evidence_digest,
-            },
-        )
-        if result is None:
-            raise InvestmentsError.unavailable()
-        lot_facts_value = result.get("lotFacts")
-        if not isinstance(lot_facts_value, list):
-            raise InvestmentsError.unavailable()
-        return PreparedShareSaleFacts(
-            position_id=InvestmentPositionId(str(result["positionId"])),
-            investment_name=str(result["investmentName"]),
-            investment_kind=InvestmentKind(str(result["investmentKind"])),
-            accounting_classification=InvestmentAccountingClassification(
-                str(result["accountingClassification"])
-            ),
-            fifo_book_cost_basis_reduction=_money(
-                result["fifoBookCostBasisReduction"]
-            ),
-            fifo_tax_basis_reduction=_money(
-                result["fifoTaxBasisReduction"]
-            ),
-            lot_facts=tuple(
-                InvestmentSaleLotFact(
-                    lot_id=AcquisitionLotId(str(value["lotId"])),
-                    allocation_order=int(value["allocationOrder"]),
-                    acquisition_date=LocalDate(value["acquisitionDate"]),
-                    allocated_share_count=InvestmentUnits.of(
-                        str(value["allocatedShareCount"])
-                    ),
-                    allocated_book_cost_basis=_money(
-                        value["allocatedBookCostBasis"]
-                    ),
-                    allocated_tax_basis=_money(value["allocatedTaxBasis"]),
-                    acquisition_year_fund_equity_ratio_basis_points=(
-                        int(value["acquisitionYearFundEquityRatioBasisPoints"])
-                        if value.get(
-                            "acquisitionYearFundEquityRatioBasisPoints"
-                        )
-                        is not None
-                        else None
-                    ),
-                )
-                for value in lot_facts_value
-                if isinstance(value, Mapping)
-            ),
-        )
-
-    async def complete_share_sale(
-        self,
-        command: RecordShareSaleCommand,
-        *,
-        prepared: PreparedShareSale,
-        accounting_entry_id: AccountingEntryReference,
-    ) -> RecordedShareSale:
-        result = await self._investment_result(
-            """
-            select investments.complete_share_sale_v1(
-              %s::jsonb, %s::uuid, %s::text
-            ) as result
-            """,
-            command,
-            (str(accounting_entry_id),),
-            request_extra={
-                "bookGainOrLoss": format(prepared.book_gain_or_loss.amount, "f"),
-                "taxGainOrLoss": format(prepared.tax_gain_or_loss.amount, "f"),
-                "exemptGain": format(prepared.exempt_gain.amount, "f"),
-                "taxableGain": format(prepared.taxable_gain.amount, "f"),
-                "nonDeductibleLoss": format(
-                    prepared.non_deductible_loss.amount, "f"
-                ),
-                "deductibleLoss": format(prepared.deductible_loss.amount, "f"),
-                "evidenceDigest": prepared.evidence_digest,
-                "calculationId": prepared.calculation_id,
-                "lotCalculations": [
-                    {
-                        "lotId": str(value.lot_id),
-                        "allocationOrder": value.allocation_order,
-                        "allocatedNetProceeds": format(
-                            value.allocated_net_proceeds.amount, "f"
-                        ),
-                        "taxGainOrLoss": format(value.tax_gain_or_loss.amount, "f"),
-                        "averageFundEquityRatioBasisPoints": (
-                            format(
-                                value.average_fund_equity_ratio_basis_points,
-                                "f",
-                            )
-                            if value.average_fund_equity_ratio_basis_points
-                            is not None
-                            else None
-                        ),
-                        "exemptGain": format(value.exempt_gain.amount, "f"),
-                        "taxableGain": format(value.taxable_gain.amount, "f"),
-                        "nonDeductibleLoss": format(
-                            value.non_deductible_loss.amount, "f"
-                        ),
-                        "deductibleLoss": format(
-                            value.deductible_loss.amount, "f"
-                        ),
-                    }
-                    for value in prepared.lot_calculations
-                ],
-            },
-        )
-        if result is None:
-            raise InvestmentsError.unavailable()
-        return _recorded_sale(result)
-
-
-def _recorded(value: Mapping[str, object]) -> RecordedSharePurchase:
-    return RecordedSharePurchase(
-        action_id=InvestmentActionId(str(value["actionId"])),
-        position_id=InvestmentPositionId(str(value["positionId"])),
-        lot_id=AcquisitionLotId(str(value["lotId"])),
-        accounting_entry_id=AccountingEntryReference(str(value["accountingEntryId"])),
-        position_created=bool(value["positionCreated"]),
-        replayed=bool(value["replayed"]),
-    )
-
-
 def _recorded_economic_event(
     value: Mapping[str, object],
 ) -> RecordedInvestmentEconomicEvent:
@@ -1956,40 +1715,6 @@ def _recorded_cash_settlement(
         settlement_accounting_entry_id=AccountingEntryReference(
             str(value["settlementAccountingEntryId"])
         ),
-        replayed=bool(value["replayed"]),
-    )
-
-
-def _recorded_dividend(value: Mapping[str, object]) -> RecordedReceivedDividend:
-    return RecordedReceivedDividend(
-        action_id=InvestmentActionId(str(value["actionId"])),
-        position_id=InvestmentPositionId(str(value["positionId"])),
-        accounting_entry_id=AccountingEntryReference(str(value["accountingEntryId"])),
-        taxable_add_back=_money(value["taxableAddBack"]),
-        replayed=bool(value["replayed"]),
-    )
-
-
-def _recorded_fund_distribution(
-    value: Mapping[str, object],
-) -> RecordedReceivedFundDistribution:
-    return RecordedReceivedFundDistribution(
-        action_id=InvestmentActionId(str(value["actionId"])),
-        position_id=InvestmentPositionId(str(value["positionId"])),
-        accounting_entry_id=AccountingEntryReference(str(value["accountingEntryId"])),
-        dividend_portion=_money(value["dividendPortion"]),
-        interest_portion=_money(value["interestPortion"]),
-        taxable_add_back=_money(value["taxableAddBack"]),
-        total_taxable_income=_money(value["totalTaxableIncome"]),
-        replayed=bool(value["replayed"]),
-    )
-
-
-def _recorded_sale(value: Mapping[str, object]) -> RecordedShareSale:
-    return RecordedShareSale(
-        action_id=InvestmentActionId(str(value["actionId"])),
-        position_id=InvestmentPositionId(str(value["positionId"])),
-        accounting_entry_id=AccountingEntryReference(str(value["accountingEntryId"])),
         replayed=bool(value["replayed"]),
     )
 
@@ -2154,6 +1879,167 @@ def _lot(value: Mapping[str, object]) -> AcquisitionLotView:
             str(value["fund_tax_statement_reference"])
             if value["fund_tax_statement_reference"] is not None
             else None
+        ),
+        created_by=_actor(value["created_by"]),
+        created_at=_timestamp(value["created_at"]),
+    )
+
+
+def _lifecycle_event(
+    value: Mapping[str, object],
+) -> InvestmentLifecycleEventView:
+    raw_facts = value["document_facts"]
+    if isinstance(raw_facts, str):
+        raw_facts = json.loads(raw_facts)
+    if not isinstance(raw_facts, list) or any(
+        not isinstance(fact, Mapping) for fact in raw_facts
+    ):
+        raise InvestmentsError.unavailable()
+    document_facts = tuple(
+        InvestmentFactReference(
+            capability=InvestmentSourceCapability(str(fact["capability"])),
+            record_id=InvestmentSourceReference(str(fact["recordId"])),
+            revision=int(fact["revision"]),
+            fact_sha256=str(fact["factSha256"]),
+        )
+        for fact in raw_facts
+    )
+    bank_fact = (
+        InvestmentFactReference(
+            capability=InvestmentSourceCapability(
+                str(value["bank_source_capability"])
+            ),
+            record_id=InvestmentSourceReference(
+                str(value["bank_source_record_id"])
+            ),
+            revision=int(value["bank_source_revision"]),
+            fact_sha256=str(value["bank_fact_sha256"]),
+        )
+        if value["bank_source_record_id"] is not None
+        else None
+    )
+    def optional_money(key: str) -> Money | None:
+        return _money(value[key]) if value[key] is not None else None
+
+    def optional_units(key: str) -> InvestmentUnits | None:
+        return (
+            InvestmentUnits.of(str(value[key]))
+            if value[key] is not None else None
+        )
+
+    def optional_text(key: str) -> str | None:
+        return str(value[key]) if value[key] is not None else None
+
+    def optional_int(key: str) -> int | None:
+        return int(value[key]) if value[key] is not None else None
+
+    def optional_bool(key: str) -> bool | None:
+        raw = value.get(key)
+        return bool(raw) if raw is not None else None
+    return InvestmentLifecycleEventView(
+        event_id=InvestmentEconomicEventId(str(value["id"])),
+        company_id=CompanyId(str(value["company_id"])),
+        income_year=IncomeYear(int(value["income_year"])),
+        activity_kind=InvestmentActivityKind(str(value["activity_kind"])),
+        recognition_date=LocalDate(value["recognition_date"]),
+        position_id=InvestmentPositionId(str(value["position_id"])),
+        investment_key=str(value["investment_key"]),
+        investment_name=str(value["investment_name"]),
+        investment_kind=InvestmentKind(str(value["investment_kind"])),
+        accounting_classification=InvestmentAccountingClassification(
+            str(value["accounting_classification"])
+        ),
+        tax_treatment=InvestmentTaxTreatment(str(value["tax_treatment"])),
+        org_number=optional_text("org_number"),
+        fund_equity_ratio_basis_points=optional_int(
+            "fund_equity_ratio_basis_points"
+        ),
+        fund_tax_statement_reference=optional_text(
+            "fund_tax_statement_reference"
+        ),
+        acquisition_lot_id=(
+            AcquisitionLotId(str(value["acquisition_lot_id"]))
+            if value["acquisition_lot_id"] is not None else None
+        ),
+        position_created=optional_bool("position_created"),
+        share_count=optional_units("share_count"),
+        purchase_amount=optional_money("purchase_amount"),
+        transaction_costs=optional_money("transaction_costs"),
+        capitalized_cost=optional_money("capitalized_cost"),
+        sold_share_count=optional_units("sold_share_count"),
+        proceeds=optional_money("proceeds"),
+        net_proceeds=optional_money("net_proceeds"),
+        fifo_cost_basis_reduction=optional_money(
+            "fifo_cost_basis_reduction"
+        ),
+        fifo_tax_basis_reduction=optional_money(
+            "fifo_tax_basis_reduction"
+        ),
+        remaining_share_count=optional_units("remaining_share_count"),
+        remaining_cost_basis=optional_money("remaining_cost_basis"),
+        remaining_tax_basis=optional_money("remaining_tax_basis"),
+        book_gain_or_loss=optional_money("book_gain_or_loss"),
+        tax_gain_or_loss=optional_money("tax_gain_or_loss"),
+        exempt_gain=optional_money("exempt_gain"),
+        taxable_gain=optional_money("taxable_gain"),
+        non_deductible_loss=optional_money("non_deductible_loss"),
+        deductible_loss=optional_money("deductible_loss"),
+        paying_company_name=optional_text("paying_company_name"),
+        lawful_dividend_confirmed=optional_bool(
+            "lawful_dividend_confirmed"
+        ),
+        group_exception_claimed=optional_bool("group_exception_claimed"),
+        group_exception_applied=optional_bool("group_exception_applied"),
+        year_end_ownership_basis_points=optional_int(
+            "year_end_ownership_basis_points"
+        ),
+        year_end_voting_basis_points=optional_int(
+            "year_end_voting_basis_points"
+        ),
+        group_evidence_reference=optional_text("group_evidence_reference"),
+        fund_name=optional_text("fund_name"),
+        entitlement_date=(
+            LocalDate(value["entitlement_date"])
+            if value["entitlement_date"] is not None else None
+        ),
+        opening_fund_equity_ratio_basis_points=optional_int(
+            "opening_fund_equity_ratio_basis_points"
+        ),
+        gross_amount=optional_money("gross_amount"),
+        taxable_add_back=optional_money("taxable_add_back"),
+        dividend_portion=optional_money("dividend_portion"),
+        interest_portion=optional_money("interest_portion"),
+        total_taxable_income=optional_money("total_taxable_income"),
+        expected_settlement_amount=_money(
+            value["expected_settlement_amount"]
+        ),
+        settlement_balance_kind=InvestmentSettlementBalanceKind(
+            str(value["settlement_balance_kind"])
+        ),
+        recognition_accounting_entry_id=AccountingEntryReference(
+            str(value["recognition_accounting_entry_id"])
+        ),
+        document_facts=document_facts,
+        evidence_mode=InvestmentEvidenceMode(str(value["evidence_mode"])),
+        evidence_reference=str(value["evidence_reference"]),
+        evidence_digest=str(value["evidence_digest"]),
+        calculation_id=str(value["calculation_id"]),
+        owner_attested=bool(value["owner_attested"]),
+        settlement_id=(
+            InvestmentSettlementId(str(value["settlement_id"]))
+            if value["settlement_id"] is not None else None
+        ),
+        settlement_date=(
+            LocalDate(value["settlement_date"])
+            if value["settlement_date"] is not None else None
+        ),
+        settlement_amount=optional_money("settlement_amount"),
+        bank_fact=bank_fact,
+        settlement_accounting_entry_id=(
+            AccountingEntryReference(
+                str(value["settlement_accounting_entry_id"])
+            )
+            if value["settlement_accounting_entry_id"] is not None else None
         ),
         created_by=_actor(value["created_by"]),
         created_at=_timestamp(value["created_at"]),

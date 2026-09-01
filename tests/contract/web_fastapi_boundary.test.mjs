@@ -139,9 +139,12 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
 test("the committed contract gives investments its complete activity interface", () => {
   const contract = JSON.parse(readFileSync(contractPath, "utf8"));
   for (const [path, method, operationId] of [
-    ["/api/v1/investments/share-purchases", "post", "investmentsRecordSharePurchase"],
-    ["/api/v1/investments/share-sales", "post", "investmentsRecordShareSale"],
-    ["/api/v1/investments/received-dividends", "post", "investmentsRecordReceivedDividend"],
+    ["/api/v1/investments/share-purchase-recognitions", "post", "investmentsRecognizeSharePurchase"],
+    ["/api/v1/investments/share-sale-recognitions", "post", "investmentsRecognizeShareSale"],
+    ["/api/v1/investments/received-dividend-recognitions", "post", "investmentsRecognizeReceivedDividend"],
+    ["/api/v1/investments/received-fund-distribution-recognitions", "post", "investmentsRecognizeReceivedFundDistribution"],
+    ["/api/v1/investments/cash-settlements", "post", "investmentsSettleCash"],
+    ["/api/v1/investments/economic-events", "get", "investmentsListEconomicEvents"],
     ["/api/v1/investments/activity", "get", "investmentsListActivity"],
     ["/api/v1/investments/positions", "get", "investmentsListPositions"],
     ["/api/v1/investments/acquisition-lots", "get", "investmentsListAcquisitionLots"],
@@ -151,16 +154,27 @@ test("the committed contract gives investments its complete activity interface",
     assert.deepEqual(operation?.security, [{ bearerAuth: [] }]);
     assert.ok(operation?.responses["401"].content["application/problem+json"]);
   }
+  for (const [legacyPath, operationId] of [
+    ["/api/v1/investments/share-purchases", "investmentsRecordSharePurchase"],
+    ["/api/v1/investments/share-sales", "investmentsRecordShareSale"],
+    ["/api/v1/investments/received-dividends", "investmentsRecordReceivedDividend"],
+    ["/api/v1/investments/received-fund-distributions", "investmentsRecordReceivedFundDistribution"],
+  ]) {
+    const operation = contract.paths[legacyPath]?.post;
+    assert.equal(operation?.operationId, operationId);
+    assert.equal(operation?.deprecated, true);
+    assert.deepEqual(operation?.security, [{ bearerAuth: [] }]);
+  }
   assert.equal(contract.paths["/api/v1/ledger/investment-purchases"], undefined);
   assert.equal(contract.components.schemas.LedgerInvestmentPurchaseWire, undefined);
   assert.equal(contract.paths["/api/v1/ledger/investment-sales"], undefined);
   assert.equal(contract.components.schemas.LedgerInvestmentSaleWire, undefined);
   assert.equal(
-    contract.components.schemas.InvestmentsSharePurchaseWire.properties.lines,
+    contract.components.schemas.InvestmentsRecognizeSharePurchaseWire.properties.lines,
     undefined,
   );
   assert.equal(
-    contract.components.schemas.InvestmentsShareSaleWire.properties.lines,
+    contract.components.schemas.InvestmentsRecognizeShareSaleWire.properties.lines,
     undefined,
   );
 });

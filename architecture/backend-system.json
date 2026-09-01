@@ -106,8 +106,9 @@
     },
     {
       "name": "investment-activity",
-      "purpose": "Authenticates one verified actor, records supported domestic purchases, FIFU sales, share dividends, fund distributions, and full-reversal/replacement corrections, posts deterministic entries through ledger in the same transaction, and serves tenant-concealed position, lot, allocation, activity, and correction pages.",
+      "purpose": "Authenticates one verified actor, recognizes supported domestic purchases, FIFU sales, share dividends and fund distributions independently from cash settlement, validates each settlement against the same actor's canonical unmatched banking fact before posting, performs full-reversal/replacement lifecycle corrections, posts deterministic entries through ledger in the same transaction, and serves tenant-concealed lifecycle, position, lot, allocation, activity, and correction pages.",
       "publicPackages": [
+        "talli_backend.modules.banking.public",
         "talli_backend.modules.investments.public",
         "talli_backend.modules.ledger.public"
       ],
@@ -115,12 +116,18 @@
         "/api/v1/investments/positions",
         "/api/v1/investments/acquisition-lots",
         "/api/v1/investments/activity",
+        "/api/v1/investments/economic-events",
         "/api/v1/investments/share-sale-allocations",
         "/api/v1/investments/corrections",
+        "/api/v1/investments/share-purchase-recognitions",
         "/api/v1/investments/share-purchases",
+        "/api/v1/investments/share-sale-recognitions",
         "/api/v1/investments/share-sales",
+        "/api/v1/investments/received-dividend-recognitions",
         "/api/v1/investments/received-dividends",
-        "/api/v1/investments/received-fund-distributions"
+        "/api/v1/investments/received-fund-distribution-recognitions",
+        "/api/v1/investments/received-fund-distributions",
+        "/api/v1/investments/cash-settlements"
       ]
     },
     {
@@ -277,6 +284,7 @@
       "collections",
       "datetime",
       "decimal",
+      "hashlib",
       "os",
       "secrets",
       "time",

@@ -33,18 +33,17 @@ export function FundDistributionWizard({
   const [positionId, setPositionId] = useState("");
   const [fundName, setFundName] = useState("");
   const [entitlementDate, setEntitlementDate] = useState("");
-  const [paidDate, setPaidDate] = useState("");
   const [grossAmount, setGrossAmount] = useState("");
   const [equityRatio, setEquityRatio] = useState("");
   const [statementReference, setStatementReference] = useState("");
   const [evidence, setEvidence] = useState<InvestmentEvidenceState>({
-    mode: "linked_sources",
+    mode: "manual_fallback",
     bankTransactionId: "",
     documentId: "",
     reference: "",
     ownerAttested: false,
   });
-  const ready = Boolean(positionId && fundName.trim() && entitlementDate && paidDate
+  const ready = Boolean(positionId && fundName.trim() && entitlementDate
     && grossAmount.trim() && equityRatio.trim() && statementReference.trim()
     && investmentEvidenceComplete(evidence));
 
@@ -78,24 +77,14 @@ export function FundDistributionWizard({
         ))}
       </SelectField>
       <input type="hidden" name="fundName" value={fundName} />
-      <div className="fieldRow">
-        <TextField
-          label="Rettighetsdato"
-          name="entitlementDate"
-          value={entitlementDate}
-          onChange={setEntitlementDate}
-          placeholder="2026-05-01"
-          required
-        />
-        <TextField
-          label="Utbetalingsdato"
-          name="paidDate"
-          value={paidDate}
-          onChange={setPaidDate}
-          placeholder="2026-05-15"
-          required
-        />
-      </div>
+      <TextField
+        label="Rettighetsdato"
+        name="entitlementDate"
+        value={entitlementDate}
+        onChange={setEntitlementDate}
+        placeholder="2026-05-01"
+        required
+      />
       <TextField
         label="Brutto utdeling (kr)"
         name="grossAmount"

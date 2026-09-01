@@ -9,6 +9,7 @@ const ACTION_SLUGS = [
   "share-sale",
   "dividend-received",
   "fund-distribution",
+  "investment-settlement",
   "investment-correction",
   "owner-dividend",
   "shareholder-loan",

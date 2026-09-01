@@ -57,7 +57,7 @@ export function ShareSaleWizard({
   const [fundEquityRatio, setFundEquityRatio] = useState("");
   const [fundStatement, setFundStatement] = useState("");
   const [evidence, setEvidence] = useState<InvestmentEvidenceState>({
-    mode: "linked_sources",
+    mode: "manual_fallback",
     bankTransactionId: "",
     documentId: "",
     reference: "",

@@ -272,8 +272,14 @@ def test_canonical_units_and_evidence_preserve_fractional_facts_by_lifecycle_sta
     bank_fact = InvestmentFactReference(
         InvestmentSourceCapability.BANKING,
         InvestmentSourceReference("70000000-0000-0000-0000-000000000001"),
-        2,
+        1,
         "b" * 64,
+    )
+    revised_bank_fact = InvestmentFactReference(
+        InvestmentSourceCapability.BANKING,
+        InvestmentSourceReference("70000000-0000-0000-0000-000000000002"),
+        2,
+        "c" * 64,
     )
     with pytest.raises(InvestmentsError):
         InvestmentEvidence(
@@ -298,6 +304,14 @@ def test_canonical_units_and_evidence_preserve_fractional_facts_by_lifecycle_sta
         (),
         bank_fact,
     )
+    with pytest.raises(InvestmentsError):
+        InvestmentEvidence(
+            InvestmentEvidenceMode.LINKED_SOURCES,
+            "caller-invented bank revision",
+            False,
+            (),
+            revised_bank_fact,
+        )
     base = {
         "company_id": CompanyId("10000000-0000-0000-0000-000000000001"),
         "actor_id": ActorId(

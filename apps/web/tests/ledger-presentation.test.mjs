@@ -1229,7 +1229,7 @@ function ledgerServerActionSource(actionName) {
 test("all relocated ledger writers use the stable operation ID at the generated boundary", () => {
   const coordinators = {
     recordAdminCost: ["postLedgerAdministrativeCost", null],
-    recordDividendReceived: ["recordInvestmentReceivedDividend", "actionId"],
+    recordDividendReceived: ["recognizeInvestmentReceivedDividend", "eventId"],
     finalizeCorporateDecision: ["finalizeLedgerCorporateDecision", "finalizationId"],
     recordOwnerDividendPayment: ["postLedgerOwnerDividendPayment", null],
     recordShareholderLoan: ["postLedgerShareholderLoan", "actionId"],
@@ -1256,23 +1256,25 @@ test("all relocated ledger writers use the stable operation ID at the generated 
 
 test("share purchases and sales use the investments generated interface", () => {
   const action = ledgerServerActionSource("recordSharePurchase");
-  assert.match(action, /await recordInvestmentSharePurchase\(/u);
+  assert.match(action, /await recognizeInvestmentSharePurchase\(/u);
   assert.match(
     action,
-    /recordInvestmentSharePurchase\([\s\S]*?operationId,[\s\S]*?operationId/u,
+    /recognizeInvestmentSharePurchase\([\s\S]*?operationId,[\s\S]*?operationId/u,
   );
-  assert.match(action, /actionId: operationId/u);
+  assert.match(action, /eventId: operationId/u);
+  assert.match(action, /shareCount: formString\(formData, "shareCount"\)/u);
   assert.match(action, /investmentsOutcomeMayBeUnknown\(error\)/u);
   assert.match(action, /investmentsActionErrorMessage\(error\)/u);
   assert.doesNotMatch(action, /postLedgerInvestmentPurchase|validateSharePurchase/u);
 
   const sale = ledgerServerActionSource("recordShareSale");
-  assert.match(sale, /await recordInvestmentShareSale\(/u);
+  assert.match(sale, /await recognizeInvestmentShareSale\(/u);
   assert.match(
     sale,
-    /recordInvestmentShareSale\([\s\S]*?operationId,[\s\S]*?operationId/u,
+    /recognizeInvestmentShareSale\([\s\S]*?operationId,[\s\S]*?operationId/u,
   );
-  assert.match(sale, /actionId: operationId/u);
+  assert.match(sale, /eventId: operationId/u);
+  assert.match(sale, /soldShareCount: formString\(formData, "soldShareCount"\)/u);
   assert.match(sale, /investmentsOutcomeMayBeUnknown\(error\)/u);
   assert.match(sale, /investmentsActionErrorMessage\(error\)/u);
   assert.doesNotMatch(sale, /postLedgerInvestmentSale|validateShareSale/u);

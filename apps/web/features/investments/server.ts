@@ -2,6 +2,7 @@ import {
   loadInvestmentAcquisitionLots,
   loadInvestmentPositions,
   loadInvestmentActivity,
+  loadInvestmentEconomicEvents,
   loadInvestmentShareSaleAllocations,
   loadInvestmentCorrections,
 } from "./transport.ts";
@@ -9,6 +10,7 @@ import {
   presentAcquisitionLots,
   presentInvestmentPositions,
   presentInvestmentActivity,
+  presentInvestmentLifecycleEvents,
   type AcquisitionLotPresentation,
   type InvestmentPositionPresentation,
   type InvestmentActivityPresentation,
@@ -23,14 +25,41 @@ export async function listPresentedInvestmentActivity(
   companyIds: readonly string[],
 ): Promise<{ actions: InvestmentActivityPresentation[]; error: string | null }> {
   try {
+    const [legacy, lifecycle] = await Promise.all([
+      loadInvestmentActivity(accessToken, companyIds),
+      loadInvestmentEconomicEvents(accessToken, companyIds),
+    ]);
+    const byId = new Map(
+      presentInvestmentActivity(legacy).map((item) => [item.id, item]),
+    );
+    for (const item of presentInvestmentLifecycleEvents(lifecycle)) {
+      byId.set(item.id, item);
+    }
     return {
-      actions: presentInvestmentActivity(
-        await loadInvestmentActivity(accessToken, companyIds),
-      ),
+      actions: [...byId.values()],
       error: null,
     };
   } catch {
     return { actions: [], error: "Kunne ikke laste investeringsaktiviteten." };
+  }
+}
+
+export async function listPresentedInvestmentLifecycleEvents(
+  accessToken: string,
+  companyIds: readonly string[],
+): Promise<{ actions: InvestmentActivityPresentation[]; error: string | null }> {
+  try {
+    return {
+      actions: presentInvestmentLifecycleEvents(
+        await loadInvestmentEconomicEvents(accessToken, companyIds),
+      ),
+      error: null,
+    };
+  } catch {
+    return {
+      actions: [],
+      error: "Kunne ikke laste investeringshendelsene.",
+    };
   }
 }
 

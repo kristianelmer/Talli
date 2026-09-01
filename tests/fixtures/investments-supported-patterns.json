@@ -1,94 +1,248 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "2.0",
   "issue": "#190",
   "sourceCheckedAt": "2026-08-31T23:00:00Z",
   "sources": [
-    { "id": "tax-act-2-38", "url": "https://lovdata.no/lov/1999-03-26-14/%C2%A72-38" },
-    { "id": "tax-act-10-20", "url": "https://lovdata.no/lov/1999-03-26-14/%C2%A710-20" },
-    { "id": "tax-act-10-36", "url": "https://lovdata.no/lov/1999-03-26-14/%C2%A710-36" },
-    { "id": "accounting-act-5-4", "url": "https://lovdata.no/lov/1998-07-17-56/%C2%A75-4" },
-    { "id": "tax-guidance-exemption", "url": "https://www.skatteetaten.no/bedrift-og-organisasjon/skatt/skattemelding-naringsdrivende/fradrag/aksjer/fritaksmetoden/" }
+    {
+      "id": "tax-act-2-38",
+      "url": "https://lovdata.no/lov/1999-03-26-14/%C2%A72-38"
+    },
+    {
+      "id": "tax-act-10-20",
+      "url": "https://lovdata.no/lov/1999-03-26-14/%C2%A710-20"
+    },
+    {
+      "id": "tax-act-10-36",
+      "url": "https://lovdata.no/lov/1999-03-26-14/%C2%A710-36"
+    },
+    {
+      "id": "accounting-act-5-4",
+      "url": "https://lovdata.no/lov/1998-07-17-56/%C2%A75-4"
+    },
+    {
+      "id": "tax-guidance-exemption",
+      "url": "https://www.skatteetaten.no/bedrift-og-organisasjon/skatt/skattemelding-naringsdrivende/fradrag/aksjer/fritaksmetoden/"
+    }
   ],
   "acceptedPatterns": [
     {
       "id": "private-share-purchase",
       "operation": "purchase",
-      "input": { "actionId": "10000000-0000-4000-8000-000000000001", "considerationNok": "100000.00", "transactionCostsNok": "250.00" },
+      "input": {
+        "considerationNok": "100000.00",
+        "transactionCostsNok": "250.00",
+        "eventId": "10000000-0000-4000-8000-000000000001",
+        "settlementId": "30000000-0000-4000-8000-000000000001"
+      },
       "expected": {
         "calculationId": "20000000-0000-4000-8000-000000000001",
         "capitalizedCostNok": "100250.00",
         "bookCostNok": "100250.00",
         "taxBasisNok": "100250.00",
         "investmentAccount": "1300",
-        "ledgerLines": [
-          { "account": "1300", "debitNok": "100250.00", "creditNok": "0.00" },
-          { "account": "1920", "debitNok": "0.00", "creditNok": "100250.00" }
+        "recognitionLedgerLines": [
+          {
+            "account": "1300",
+            "debitNok": "100250.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "2990",
+            "debitNok": "0.00",
+            "creditNok": "100250.00"
+          }
+        ],
+        "settlementLedgerLines": [
+          {
+            "account": "2990",
+            "debitNok": "100250.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "1920",
+            "debitNok": "0.00",
+            "creditNok": "100250.00"
+          }
         ]
       },
       "reconciliation": {
-        "investments": { "economicFactId": "10000000-0000-4000-8000-000000000001" },
-        "ledger": { "sourceRecordId": "10000000-0000-4000-8000-000000000001" },
-        "rf1086": { "effect": "none" },
-        "companyTax": { "calculationId": "20000000-0000-4000-8000-000000000001" },
-        "annualAccounts": { "economicFactId": "10000000-0000-4000-8000-000000000001" },
-        "saft": { "sourceRecordId": "10000000-0000-4000-8000-000000000001" },
-        "archive": { "evidenceRequired": true }
+        "investments": {
+          "economicEventId": "10000000-0000-4000-8000-000000000001",
+          "settlementId": "30000000-0000-4000-8000-000000000001"
+        },
+        "ledger": {
+          "recognitionSourceRecordId": "10000000-0000-4000-8000-000000000001",
+          "settlementSourceRecordId": "30000000-0000-4000-8000-000000000001"
+        },
+        "rf1086": {
+          "effect": "none"
+        },
+        "companyTax": {
+          "calculationId": "20000000-0000-4000-8000-000000000001"
+        },
+        "annualAccounts": {
+          "economicEventId": "10000000-0000-4000-8000-000000000001"
+        },
+        "saft": {
+          "sourceRecordIds": [
+            "10000000-0000-4000-8000-000000000001",
+            "30000000-0000-4000-8000-000000000001"
+          ]
+        },
+        "archive": {
+          "evidenceRequired": true
+        }
       }
     },
     {
       "id": "listed-share-purchase",
       "operation": "purchase",
-      "input": { "actionId": "10000000-0000-4000-8000-000000000002", "considerationNok": "10000.00", "transactionCostsNok": "50.00" },
+      "input": {
+        "considerationNok": "10000.00",
+        "transactionCostsNok": "50.00",
+        "eventId": "10000000-0000-4000-8000-000000000002",
+        "settlementId": "30000000-0000-4000-8000-000000000002"
+      },
       "expected": {
         "calculationId": "20000000-0000-4000-8000-000000000002",
         "capitalizedCostNok": "10050.00",
         "bookCostNok": "10050.00",
         "taxBasisNok": "10050.00",
         "investmentAccount": "1810",
-        "ledgerLines": [
-          { "account": "1810", "debitNok": "10050.00", "creditNok": "0.00" },
-          { "account": "1920", "debitNok": "0.00", "creditNok": "10050.00" }
+        "recognitionLedgerLines": [
+          {
+            "account": "1810",
+            "debitNok": "10050.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "2990",
+            "debitNok": "0.00",
+            "creditNok": "10050.00"
+          }
+        ],
+        "settlementLedgerLines": [
+          {
+            "account": "2990",
+            "debitNok": "10050.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "1920",
+            "debitNok": "0.00",
+            "creditNok": "10050.00"
+          }
         ]
       },
       "reconciliation": {
-        "investments": { "economicFactId": "10000000-0000-4000-8000-000000000002" },
-        "ledger": { "sourceRecordId": "10000000-0000-4000-8000-000000000002" },
-        "rf1086": { "effect": "none" },
-        "companyTax": { "calculationId": "20000000-0000-4000-8000-000000000002" },
-        "annualAccounts": { "economicFactId": "10000000-0000-4000-8000-000000000002" },
-        "saft": { "sourceRecordId": "10000000-0000-4000-8000-000000000002" },
-        "archive": { "evidenceRequired": true }
+        "investments": {
+          "economicEventId": "10000000-0000-4000-8000-000000000002",
+          "settlementId": "30000000-0000-4000-8000-000000000002"
+        },
+        "ledger": {
+          "recognitionSourceRecordId": "10000000-0000-4000-8000-000000000002",
+          "settlementSourceRecordId": "30000000-0000-4000-8000-000000000002"
+        },
+        "rf1086": {
+          "effect": "none"
+        },
+        "companyTax": {
+          "calculationId": "20000000-0000-4000-8000-000000000002"
+        },
+        "annualAccounts": {
+          "economicEventId": "10000000-0000-4000-8000-000000000002"
+        },
+        "saft": {
+          "sourceRecordIds": [
+            "10000000-0000-4000-8000-000000000002",
+            "30000000-0000-4000-8000-000000000002"
+          ]
+        },
+        "archive": {
+          "evidenceRequired": true
+        }
       }
     },
     {
       "id": "fund-unit-purchase",
       "operation": "purchase",
-      "input": { "actionId": "10000000-0000-4000-8000-000000000003", "considerationNok": "10000.00", "transactionCostsNok": "50.00", "acquisitionYearEquityBasisPoints": 6000 },
+      "input": {
+        "considerationNok": "10000.00",
+        "transactionCostsNok": "50.00",
+        "acquisitionYearEquityBasisPoints": 6000,
+        "eventId": "10000000-0000-4000-8000-000000000003",
+        "settlementId": "30000000-0000-4000-8000-000000000003"
+      },
       "expected": {
         "calculationId": "20000000-0000-4000-8000-000000000003",
         "capitalizedCostNok": "10050.00",
         "bookCostNok": "10050.00",
         "taxBasisNok": "10050.00",
         "investmentAccount": "1815",
-        "ledgerLines": [
-          { "account": "1815", "debitNok": "10050.00", "creditNok": "0.00" },
-          { "account": "1920", "debitNok": "0.00", "creditNok": "10050.00" }
+        "recognitionLedgerLines": [
+          {
+            "account": "1815",
+            "debitNok": "10050.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "2990",
+            "debitNok": "0.00",
+            "creditNok": "10050.00"
+          }
+        ],
+        "settlementLedgerLines": [
+          {
+            "account": "2990",
+            "debitNok": "10050.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "1920",
+            "debitNok": "0.00",
+            "creditNok": "10050.00"
+          }
         ]
       },
       "reconciliation": {
-        "investments": { "economicFactId": "10000000-0000-4000-8000-000000000003" },
-        "ledger": { "sourceRecordId": "10000000-0000-4000-8000-000000000003" },
-        "rf1086": { "effect": "none" },
-        "companyTax": { "calculationId": "20000000-0000-4000-8000-000000000003" },
-        "annualAccounts": { "economicFactId": "10000000-0000-4000-8000-000000000003" },
-        "saft": { "sourceRecordId": "10000000-0000-4000-8000-000000000003" },
-        "archive": { "evidenceRequired": true }
+        "investments": {
+          "economicEventId": "10000000-0000-4000-8000-000000000003",
+          "settlementId": "30000000-0000-4000-8000-000000000003"
+        },
+        "ledger": {
+          "recognitionSourceRecordId": "10000000-0000-4000-8000-000000000003",
+          "settlementSourceRecordId": "30000000-0000-4000-8000-000000000003"
+        },
+        "rf1086": {
+          "effect": "none"
+        },
+        "companyTax": {
+          "calculationId": "20000000-0000-4000-8000-000000000003"
+        },
+        "annualAccounts": {
+          "economicEventId": "10000000-0000-4000-8000-000000000003"
+        },
+        "saft": {
+          "sourceRecordIds": [
+            "10000000-0000-4000-8000-000000000003",
+            "30000000-0000-4000-8000-000000000003"
+          ]
+        },
+        "archive": {
+          "evidenceRequired": true
+        }
       }
     },
     {
       "id": "private-share-sale-gain",
       "operation": "sale",
-      "input": { "actionId": "10000000-0000-4000-8000-000000000004", "grossProceedsNok": "15000.00", "transactionCostsNok": "100.00", "fifoCostBasisNok": "10000.00" },
+      "input": {
+        "grossProceedsNok": "15000.00",
+        "transactionCostsNok": "100.00",
+        "fifoCostBasisNok": "10000.00",
+        "eventId": "10000000-0000-4000-8000-000000000004",
+        "settlementId": "30000000-0000-4000-8000-000000000004"
+      },
       "expected": {
         "calculationId": "20000000-0000-4000-8000-000000000004",
         "netProceedsNok": "14900.00",
@@ -97,26 +251,75 @@
         "taxGainOrLossNok": "4900.00",
         "exemptGainNok": "4900.00",
         "taxableGainNok": "0.00",
-        "ledgerLines": [
-          { "account": "1920", "debitNok": "14900.00", "creditNok": "0.00" },
-          { "account": "1350", "debitNok": "0.00", "creditNok": "10000.00" },
-          { "account": "8071", "debitNok": "0.00", "creditNok": "4900.00" }
+        "recognitionLedgerLines": [
+          {
+            "account": "1570",
+            "debitNok": "14900.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "1350",
+            "debitNok": "0.00",
+            "creditNok": "10000.00"
+          },
+          {
+            "account": "8071",
+            "debitNok": "0.00",
+            "creditNok": "4900.00"
+          }
+        ],
+        "settlementLedgerLines": [
+          {
+            "account": "1920",
+            "debitNok": "14900.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "1570",
+            "debitNok": "0.00",
+            "creditNok": "14900.00"
+          }
         ]
       },
       "reconciliation": {
-        "investments": { "economicFactId": "10000000-0000-4000-8000-000000000004" },
-        "ledger": { "sourceRecordId": "10000000-0000-4000-8000-000000000004" },
-        "rf1086": { "effect": "none" },
-        "companyTax": { "calculationId": "20000000-0000-4000-8000-000000000004" },
-        "annualAccounts": { "economicFactId": "10000000-0000-4000-8000-000000000004" },
-        "saft": { "sourceRecordId": "10000000-0000-4000-8000-000000000004" },
-        "archive": { "evidenceRequired": true }
+        "investments": {
+          "economicEventId": "10000000-0000-4000-8000-000000000004",
+          "settlementId": "30000000-0000-4000-8000-000000000004"
+        },
+        "ledger": {
+          "recognitionSourceRecordId": "10000000-0000-4000-8000-000000000004",
+          "settlementSourceRecordId": "30000000-0000-4000-8000-000000000004"
+        },
+        "rf1086": {
+          "effect": "none"
+        },
+        "companyTax": {
+          "calculationId": "20000000-0000-4000-8000-000000000004"
+        },
+        "annualAccounts": {
+          "economicEventId": "10000000-0000-4000-8000-000000000004"
+        },
+        "saft": {
+          "sourceRecordIds": [
+            "10000000-0000-4000-8000-000000000004",
+            "30000000-0000-4000-8000-000000000004"
+          ]
+        },
+        "archive": {
+          "evidenceRequired": true
+        }
       }
     },
     {
       "id": "listed-share-sale-loss",
       "operation": "sale",
-      "input": { "actionId": "10000000-0000-4000-8000-000000000005", "grossProceedsNok": "8000.00", "transactionCostsNok": "50.00", "fifoCostBasisNok": "10000.00" },
+      "input": {
+        "grossProceedsNok": "8000.00",
+        "transactionCostsNok": "50.00",
+        "fifoCostBasisNok": "10000.00",
+        "eventId": "10000000-0000-4000-8000-000000000005",
+        "settlementId": "30000000-0000-4000-8000-000000000005"
+      },
       "expected": {
         "calculationId": "20000000-0000-4000-8000-000000000005",
         "netProceedsNok": "7950.00",
@@ -125,26 +328,77 @@
         "taxGainOrLossNok": "-2050.00",
         "nonDeductibleLossNok": "2050.00",
         "deductibleLossNok": "0.00",
-        "ledgerLines": [
-          { "account": "1920", "debitNok": "7950.00", "creditNok": "0.00" },
-          { "account": "8171", "debitNok": "2050.00", "creditNok": "0.00" },
-          { "account": "1810", "debitNok": "0.00", "creditNok": "10000.00" }
+        "recognitionLedgerLines": [
+          {
+            "account": "1570",
+            "debitNok": "7950.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "8171",
+            "debitNok": "2050.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "1810",
+            "debitNok": "0.00",
+            "creditNok": "10000.00"
+          }
+        ],
+        "settlementLedgerLines": [
+          {
+            "account": "1920",
+            "debitNok": "7950.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "1570",
+            "debitNok": "0.00",
+            "creditNok": "7950.00"
+          }
         ]
       },
       "reconciliation": {
-        "investments": { "economicFactId": "10000000-0000-4000-8000-000000000005" },
-        "ledger": { "sourceRecordId": "10000000-0000-4000-8000-000000000005" },
-        "rf1086": { "effect": "none" },
-        "companyTax": { "calculationId": "20000000-0000-4000-8000-000000000005" },
-        "annualAccounts": { "economicFactId": "10000000-0000-4000-8000-000000000005" },
-        "saft": { "sourceRecordId": "10000000-0000-4000-8000-000000000005" },
-        "archive": { "evidenceRequired": true }
+        "investments": {
+          "economicEventId": "10000000-0000-4000-8000-000000000005",
+          "settlementId": "30000000-0000-4000-8000-000000000005"
+        },
+        "ledger": {
+          "recognitionSourceRecordId": "10000000-0000-4000-8000-000000000005",
+          "settlementSourceRecordId": "30000000-0000-4000-8000-000000000005"
+        },
+        "rf1086": {
+          "effect": "none"
+        },
+        "companyTax": {
+          "calculationId": "20000000-0000-4000-8000-000000000005"
+        },
+        "annualAccounts": {
+          "economicEventId": "10000000-0000-4000-8000-000000000005"
+        },
+        "saft": {
+          "sourceRecordIds": [
+            "10000000-0000-4000-8000-000000000005",
+            "30000000-0000-4000-8000-000000000005"
+          ]
+        },
+        "archive": {
+          "evidenceRequired": true
+        }
       }
     },
     {
       "id": "fund-redemption-gain",
       "operation": "sale",
-      "input": { "actionId": "10000000-0000-4000-8000-000000000006", "grossProceedsNok": "120.00", "transactionCostsNok": "2.50", "fifoCostBasisNok": "100.00", "acquisitionYearEquityBasisPoints": 6000, "saleYearEquityBasisPoints": 8000 },
+      "input": {
+        "grossProceedsNok": "120.00",
+        "transactionCostsNok": "2.50",
+        "fifoCostBasisNok": "100.00",
+        "acquisitionYearEquityBasisPoints": 6000,
+        "saleYearEquityBasisPoints": 8000,
+        "eventId": "10000000-0000-4000-8000-000000000006",
+        "settlementId": "30000000-0000-4000-8000-000000000006"
+      },
       "expected": {
         "calculationId": "20000000-0000-4000-8000-000000000006",
         "netProceedsNok": "117.50",
@@ -154,107 +408,463 @@
         "averageEquityBasisPoints": 7000,
         "exemptGainNok": "12.25",
         "taxableGainNok": "5.25",
-        "ledgerLines": [
-          { "account": "1920", "debitNok": "117.50", "creditNok": "0.00" },
-          { "account": "1815", "debitNok": "0.00", "creditNok": "100.00" },
-          { "account": "8071", "debitNok": "0.00", "creditNok": "17.50" }
+        "recognitionLedgerLines": [
+          {
+            "account": "1570",
+            "debitNok": "117.50",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "1815",
+            "debitNok": "0.00",
+            "creditNok": "100.00"
+          },
+          {
+            "account": "8071",
+            "debitNok": "0.00",
+            "creditNok": "17.50"
+          }
+        ],
+        "settlementLedgerLines": [
+          {
+            "account": "1920",
+            "debitNok": "117.50",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "1570",
+            "debitNok": "0.00",
+            "creditNok": "117.50"
+          }
         ]
       },
       "reconciliation": {
-        "investments": { "economicFactId": "10000000-0000-4000-8000-000000000006" },
-        "ledger": { "sourceRecordId": "10000000-0000-4000-8000-000000000006" },
-        "rf1086": { "effect": "none" },
-        "companyTax": { "calculationId": "20000000-0000-4000-8000-000000000006" },
-        "annualAccounts": { "economicFactId": "10000000-0000-4000-8000-000000000006" },
-        "saft": { "sourceRecordId": "10000000-0000-4000-8000-000000000006" },
-        "archive": { "evidenceRequired": true }
+        "investments": {
+          "economicEventId": "10000000-0000-4000-8000-000000000006",
+          "settlementId": "30000000-0000-4000-8000-000000000006"
+        },
+        "ledger": {
+          "recognitionSourceRecordId": "10000000-0000-4000-8000-000000000006",
+          "settlementSourceRecordId": "30000000-0000-4000-8000-000000000006"
+        },
+        "rf1086": {
+          "effect": "none"
+        },
+        "companyTax": {
+          "calculationId": "20000000-0000-4000-8000-000000000006"
+        },
+        "annualAccounts": {
+          "economicEventId": "10000000-0000-4000-8000-000000000006"
+        },
+        "saft": {
+          "sourceRecordIds": [
+            "10000000-0000-4000-8000-000000000006",
+            "30000000-0000-4000-8000-000000000006"
+          ]
+        },
+        "archive": {
+          "evidenceRequired": true
+        }
       }
     },
     {
       "id": "ordinary-share-dividend",
       "operation": "share_dividend",
-      "input": { "actionId": "10000000-0000-4000-8000-000000000007", "grossAmountNok": "125.50" },
-      "expected": { "calculationId": "20000000-0000-4000-8000-000000000007", "taxTreatment": "fritaksmetoden", "taxableAddBackNok": "3.77", "groupExceptionApplied": false, "ledgerLines": [] },
+      "input": {
+        "grossAmountNok": "125.50",
+        "eventId": "10000000-0000-4000-8000-000000000007",
+        "settlementId": "30000000-0000-4000-8000-000000000007"
+      },
+      "expected": {
+        "calculationId": "20000000-0000-4000-8000-000000000007",
+        "taxTreatment": "fritaksmetoden",
+        "taxableAddBackNok": "3.77",
+        "groupExceptionApplied": false,
+        "recognitionLedgerLines": [
+          {
+            "account": "1530",
+            "debitNok": "125.50",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "8070",
+            "debitNok": "0.00",
+            "creditNok": "125.50"
+          }
+        ],
+        "settlementLedgerLines": [
+          {
+            "account": "1920",
+            "debitNok": "125.50",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "1530",
+            "debitNok": "0.00",
+            "creditNok": "125.50"
+          }
+        ]
+      },
       "reconciliation": {
-        "investments": { "economicFactId": "10000000-0000-4000-8000-000000000007" },
-        "ledger": { "sourceRecordId": "10000000-0000-4000-8000-000000000007" },
-        "rf1086": { "effect": "none" },
-        "companyTax": { "calculationId": "20000000-0000-4000-8000-000000000007" },
-        "annualAccounts": { "economicFactId": "10000000-0000-4000-8000-000000000007" },
-        "saft": { "sourceRecordId": "10000000-0000-4000-8000-000000000007" },
-        "archive": { "evidenceRequired": true }
+        "investments": {
+          "economicEventId": "10000000-0000-4000-8000-000000000007",
+          "settlementId": "30000000-0000-4000-8000-000000000007"
+        },
+        "ledger": {
+          "recognitionSourceRecordId": "10000000-0000-4000-8000-000000000007",
+          "settlementSourceRecordId": "30000000-0000-4000-8000-000000000007"
+        },
+        "rf1086": {
+          "effect": "none"
+        },
+        "companyTax": {
+          "calculationId": "20000000-0000-4000-8000-000000000007"
+        },
+        "annualAccounts": {
+          "economicEventId": "10000000-0000-4000-8000-000000000007"
+        },
+        "saft": {
+          "sourceRecordIds": [
+            "10000000-0000-4000-8000-000000000007",
+            "30000000-0000-4000-8000-000000000007"
+          ]
+        },
+        "archive": {
+          "evidenceRequired": true
+        }
       }
     },
     {
       "id": "group-share-dividend",
       "operation": "share_dividend",
-      "input": { "actionId": "10000000-0000-4000-8000-000000000008", "grossAmountNok": "125.50", "groupExceptionEvidence": { "ownershipBasisPoints": 9001, "votingBasisPoints": 9001, "verifiedAtYearEnd": true } },
-      "expected": { "calculationId": "20000000-0000-4000-8000-000000000008", "taxTreatment": "fritaksmetoden", "taxableAddBackNok": "0.00", "groupExceptionApplied": true, "ledgerLines": [] },
+      "input": {
+        "grossAmountNok": "125.50",
+        "groupExceptionEvidence": {
+          "ownershipBasisPoints": 9001,
+          "votingBasisPoints": 9001,
+          "verifiedAtYearEnd": true
+        },
+        "eventId": "10000000-0000-4000-8000-000000000008",
+        "settlementId": "30000000-0000-4000-8000-000000000008"
+      },
+      "expected": {
+        "calculationId": "20000000-0000-4000-8000-000000000008",
+        "taxTreatment": "fritaksmetoden",
+        "taxableAddBackNok": "0.00",
+        "groupExceptionApplied": true,
+        "recognitionLedgerLines": [
+          {
+            "account": "1530",
+            "debitNok": "125.50",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "8070",
+            "debitNok": "0.00",
+            "creditNok": "125.50"
+          }
+        ],
+        "settlementLedgerLines": [
+          {
+            "account": "1920",
+            "debitNok": "125.50",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "1530",
+            "debitNok": "0.00",
+            "creditNok": "125.50"
+          }
+        ]
+      },
       "reconciliation": {
-        "investments": { "economicFactId": "10000000-0000-4000-8000-000000000008" },
-        "ledger": { "sourceRecordId": "10000000-0000-4000-8000-000000000008" },
-        "rf1086": { "effect": "none" },
-        "companyTax": { "calculationId": "20000000-0000-4000-8000-000000000008" },
-        "annualAccounts": { "economicFactId": "10000000-0000-4000-8000-000000000008" },
-        "saft": { "sourceRecordId": "10000000-0000-4000-8000-000000000008" },
-        "archive": { "evidenceRequired": true }
+        "investments": {
+          "economicEventId": "10000000-0000-4000-8000-000000000008",
+          "settlementId": "30000000-0000-4000-8000-000000000008"
+        },
+        "ledger": {
+          "recognitionSourceRecordId": "10000000-0000-4000-8000-000000000008",
+          "settlementSourceRecordId": "30000000-0000-4000-8000-000000000008"
+        },
+        "rf1086": {
+          "effect": "none"
+        },
+        "companyTax": {
+          "calculationId": "20000000-0000-4000-8000-000000000008"
+        },
+        "annualAccounts": {
+          "economicEventId": "10000000-0000-4000-8000-000000000008"
+        },
+        "saft": {
+          "sourceRecordIds": [
+            "10000000-0000-4000-8000-000000000008",
+            "30000000-0000-4000-8000-000000000008"
+          ]
+        },
+        "archive": {
+          "evidenceRequired": true
+        }
       }
     },
     {
       "id": "fund-distribution-over-80",
       "operation": "fund_distribution",
-      "input": { "actionId": "10000000-0000-4000-8000-000000000009", "grossAmountNok": "100.00", "openingEquityBasisPoints": 8001 },
-      "expected": { "calculationId": "20000000-0000-4000-8000-000000000009", "dividendPortionNok": "100.00", "interestPortionNok": "0.00", "taxableAddBackNok": "3.00", "totalTaxableIncomeNok": "3.00", "ledgerLines": [] },
+      "input": {
+        "grossAmountNok": "100.00",
+        "openingEquityBasisPoints": 8001,
+        "eventId": "10000000-0000-4000-8000-000000000009",
+        "settlementId": "30000000-0000-4000-8000-000000000009"
+      },
+      "expected": {
+        "calculationId": "20000000-0000-4000-8000-000000000009",
+        "dividendPortionNok": "100.00",
+        "interestPortionNok": "0.00",
+        "taxableAddBackNok": "3.00",
+        "totalTaxableIncomeNok": "3.00",
+        "recognitionLedgerLines": [
+          {
+            "account": "1530",
+            "debitNok": "100.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "8070",
+            "debitNok": "0.00",
+            "creditNok": "100.00"
+          },
+          {
+            "account": "8050",
+            "debitNok": "0.00",
+            "creditNok": "0.00"
+          }
+        ],
+        "settlementLedgerLines": [
+          {
+            "account": "1920",
+            "debitNok": "100.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "1530",
+            "debitNok": "0.00",
+            "creditNok": "100.00"
+          }
+        ]
+      },
       "reconciliation": {
-        "investments": { "economicFactId": "10000000-0000-4000-8000-000000000009" },
-        "ledger": { "sourceRecordId": "10000000-0000-4000-8000-000000000009" },
-        "rf1086": { "effect": "none" },
-        "companyTax": { "calculationId": "20000000-0000-4000-8000-000000000009" },
-        "annualAccounts": { "economicFactId": "10000000-0000-4000-8000-000000000009" },
-        "saft": { "sourceRecordId": "10000000-0000-4000-8000-000000000009" },
-        "archive": { "evidenceRequired": true }
+        "investments": {
+          "economicEventId": "10000000-0000-4000-8000-000000000009",
+          "settlementId": "30000000-0000-4000-8000-000000000009"
+        },
+        "ledger": {
+          "recognitionSourceRecordId": "10000000-0000-4000-8000-000000000009",
+          "settlementSourceRecordId": "30000000-0000-4000-8000-000000000009"
+        },
+        "rf1086": {
+          "effect": "none"
+        },
+        "companyTax": {
+          "calculationId": "20000000-0000-4000-8000-000000000009"
+        },
+        "annualAccounts": {
+          "economicEventId": "10000000-0000-4000-8000-000000000009"
+        },
+        "saft": {
+          "sourceRecordIds": [
+            "10000000-0000-4000-8000-000000000009",
+            "30000000-0000-4000-8000-000000000009"
+          ]
+        },
+        "archive": {
+          "evidenceRequired": true
+        }
       }
     },
     {
       "id": "fund-distribution-under-20",
       "operation": "fund_distribution",
-      "input": { "actionId": "10000000-0000-4000-8000-000000000010", "grossAmountNok": "100.00", "openingEquityBasisPoints": 1999 },
-      "expected": { "calculationId": "20000000-0000-4000-8000-000000000010", "dividendPortionNok": "0.00", "interestPortionNok": "100.00", "taxableAddBackNok": "0.00", "totalTaxableIncomeNok": "100.00", "ledgerLines": [] },
+      "input": {
+        "grossAmountNok": "100.00",
+        "openingEquityBasisPoints": 1999,
+        "eventId": "10000000-0000-4000-8000-000000000010",
+        "settlementId": "30000000-0000-4000-8000-000000000010"
+      },
+      "expected": {
+        "calculationId": "20000000-0000-4000-8000-000000000010",
+        "dividendPortionNok": "0.00",
+        "interestPortionNok": "100.00",
+        "taxableAddBackNok": "0.00",
+        "totalTaxableIncomeNok": "100.00",
+        "recognitionLedgerLines": [
+          {
+            "account": "1530",
+            "debitNok": "100.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "8070",
+            "debitNok": "0.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "8050",
+            "debitNok": "0.00",
+            "creditNok": "100.00"
+          }
+        ],
+        "settlementLedgerLines": [
+          {
+            "account": "1920",
+            "debitNok": "100.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "1530",
+            "debitNok": "0.00",
+            "creditNok": "100.00"
+          }
+        ]
+      },
       "reconciliation": {
-        "investments": { "economicFactId": "10000000-0000-4000-8000-000000000010" },
-        "ledger": { "sourceRecordId": "10000000-0000-4000-8000-000000000010" },
-        "rf1086": { "effect": "none" },
-        "companyTax": { "calculationId": "20000000-0000-4000-8000-000000000010" },
-        "annualAccounts": { "economicFactId": "10000000-0000-4000-8000-000000000010" },
-        "saft": { "sourceRecordId": "10000000-0000-4000-8000-000000000010" },
-        "archive": { "evidenceRequired": true }
+        "investments": {
+          "economicEventId": "10000000-0000-4000-8000-000000000010",
+          "settlementId": "30000000-0000-4000-8000-000000000010"
+        },
+        "ledger": {
+          "recognitionSourceRecordId": "10000000-0000-4000-8000-000000000010",
+          "settlementSourceRecordId": "30000000-0000-4000-8000-000000000010"
+        },
+        "rf1086": {
+          "effect": "none"
+        },
+        "companyTax": {
+          "calculationId": "20000000-0000-4000-8000-000000000010"
+        },
+        "annualAccounts": {
+          "economicEventId": "10000000-0000-4000-8000-000000000010"
+        },
+        "saft": {
+          "sourceRecordIds": [
+            "10000000-0000-4000-8000-000000000010",
+            "30000000-0000-4000-8000-000000000010"
+          ]
+        },
+        "archive": {
+          "evidenceRequired": true
+        }
       }
     },
     {
       "id": "fund-distribution-proportional",
       "operation": "fund_distribution",
-      "input": { "actionId": "10000000-0000-4000-8000-000000000011", "grossAmountNok": "100.00", "openingEquityBasisPoints": 5000 },
-      "expected": { "calculationId": "20000000-0000-4000-8000-000000000011", "dividendPortionNok": "50.00", "interestPortionNok": "50.00", "taxableAddBackNok": "1.50", "totalTaxableIncomeNok": "51.50", "ledgerLines": [] },
+      "input": {
+        "grossAmountNok": "100.00",
+        "openingEquityBasisPoints": 5000,
+        "eventId": "10000000-0000-4000-8000-000000000011",
+        "settlementId": "30000000-0000-4000-8000-000000000011"
+      },
+      "expected": {
+        "calculationId": "20000000-0000-4000-8000-000000000011",
+        "dividendPortionNok": "50.00",
+        "interestPortionNok": "50.00",
+        "taxableAddBackNok": "1.50",
+        "totalTaxableIncomeNok": "51.50",
+        "recognitionLedgerLines": [
+          {
+            "account": "1530",
+            "debitNok": "100.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "8070",
+            "debitNok": "0.00",
+            "creditNok": "50.00"
+          },
+          {
+            "account": "8050",
+            "debitNok": "0.00",
+            "creditNok": "50.00"
+          }
+        ],
+        "settlementLedgerLines": [
+          {
+            "account": "1920",
+            "debitNok": "100.00",
+            "creditNok": "0.00"
+          },
+          {
+            "account": "1530",
+            "debitNok": "0.00",
+            "creditNok": "100.00"
+          }
+        ]
+      },
       "reconciliation": {
-        "investments": { "economicFactId": "10000000-0000-4000-8000-000000000011" },
-        "ledger": { "sourceRecordId": "10000000-0000-4000-8000-000000000011" },
-        "rf1086": { "effect": "none" },
-        "companyTax": { "calculationId": "20000000-0000-4000-8000-000000000011" },
-        "annualAccounts": { "economicFactId": "10000000-0000-4000-8000-000000000011" },
-        "saft": { "sourceRecordId": "10000000-0000-4000-8000-000000000011" },
-        "archive": { "evidenceRequired": true }
+        "investments": {
+          "economicEventId": "10000000-0000-4000-8000-000000000011",
+          "settlementId": "30000000-0000-4000-8000-000000000011"
+        },
+        "ledger": {
+          "recognitionSourceRecordId": "10000000-0000-4000-8000-000000000011",
+          "settlementSourceRecordId": "30000000-0000-4000-8000-000000000011"
+        },
+        "rf1086": {
+          "effect": "none"
+        },
+        "companyTax": {
+          "calculationId": "20000000-0000-4000-8000-000000000011"
+        },
+        "annualAccounts": {
+          "economicEventId": "10000000-0000-4000-8000-000000000011"
+        },
+        "saft": {
+          "sourceRecordIds": [
+            "10000000-0000-4000-8000-000000000011",
+            "30000000-0000-4000-8000-000000000011"
+          ]
+        },
+        "archive": {
+          "evidenceRequired": true
+        }
       }
     }
   ],
   "blockedPatterns": [
-    { "code": "FOREIGN_OR_FX_UNSUPPORTED", "mutationCount": 0 },
-    { "code": "CRYPTO_UNSUPPORTED", "mutationCount": 0 },
-    { "code": "DERIVATIVE_UNSUPPORTED", "mutationCount": 0 },
-    { "code": "ACTIVE_TRADING_UNSUPPORTED", "mutationCount": 0 },
-    { "code": "COMPLEX_CORPORATE_ACTION_UNSUPPORTED", "mutationCount": 0 },
-    { "code": "FUND_EQUITY_DATA_INCOMPLETE", "mutationCount": 0 },
-    { "code": "TAX_CLASSIFICATION_UNCLEAR", "mutationCount": 0 },
-    { "code": "OWNERSHIP_OR_RIGHTS_UNCLEAR", "mutationCount": 0 },
-    { "code": "EVIDENCE_INCOMPLETE", "mutationCount": 0 }
+    {
+      "code": "FOREIGN_OR_FX_UNSUPPORTED",
+      "mutationCount": 0
+    },
+    {
+      "code": "CRYPTO_UNSUPPORTED",
+      "mutationCount": 0
+    },
+    {
+      "code": "DERIVATIVE_UNSUPPORTED",
+      "mutationCount": 0
+    },
+    {
+      "code": "ACTIVE_TRADING_UNSUPPORTED",
+      "mutationCount": 0
+    },
+    {
+      "code": "COMPLEX_CORPORATE_ACTION_UNSUPPORTED",
+      "mutationCount": 0
+    },
+    {
+      "code": "FUND_EQUITY_DATA_INCOMPLETE",
+      "mutationCount": 0
+    },
+    {
+      "code": "TAX_CLASSIFICATION_UNCLEAR",
+      "mutationCount": 0
+    },
+    {
+      "code": "OWNERSHIP_OR_RIGHTS_UNCLEAR",
+      "mutationCount": 0
+    },
+    {
+      "code": "EVIDENCE_INCOMPLETE",
+      "mutationCount": 0
+    }
   ]
 }

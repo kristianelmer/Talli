@@ -14,6 +14,14 @@ export async function cleanupBrowserOwnerResources(resources) {
   await attempt(() => stopOwnedProcess(resources.server));
   await attempt(() => stopOwnedProcess(resources.backend));
   await attempt(() => resources.cleanupBackendDatabaseRole?.());
+  if (resources.storageKeys?.length > 0) {
+    await attempt(async () => {
+      const { error } = await resources.admin.storage
+        .from("company-documents")
+        .remove(resources.storageKeys);
+      if (error) throw error;
+    });
+  }
 
   const companyIds = [...new Set([
     resources.companyId,
@@ -173,6 +181,19 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
     }
     await database.query("reset role");
     const investmentTables = [
+      "lifecycle_correction_sources",
+      "lifecycle_corrections",
+      "measurement_sources",
+      "year_end_measurements",
+      "received_fund_distribution_recognitions",
+      "received_dividend_recognitions",
+      "share_purchase_recognitions",
+      "cash_settlements",
+      "event_sources",
+      "economic_events",
+      "position_classifications",
+      "source_fact_registry",
+      "company_year_policies",
       "corrections",
       "share_sale_allocations",
       "received_fund_distributions",

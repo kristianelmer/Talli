@@ -30,15 +30,14 @@ function fieldName(prefix: Props["fieldPrefix"], name: string) {
 
 export function investmentEvidenceComplete(state: InvestmentEvidenceState) {
   return Boolean(
-    state.bankTransactionId
-      && state.documentId
+    state.documentId
       && state.reference.trim()
-      && (state.mode === "linked_sources" || state.ownerAttested),
+      && state.mode === "manual_fallback"
+      && state.ownerAttested,
   );
 }
 
 export function InvestmentEvidenceFields({
-  bankTransactions,
   documents,
   state,
   onChange,
@@ -52,68 +51,44 @@ export function InvestmentEvidenceFields({
 
   return (
     <>
-      <SelectField
-        label={`Kildekanal${prefixLabel}`}
+      <input
+        type="hidden"
         name={fieldName(fieldPrefix, "evidenceMode")}
-        value={state.mode}
-        onChange={(mode) => set({
-          mode: mode as InvestmentEvidenceState["mode"],
-          ownerAttested: false,
+        value="manual_fallback"
+      />
+      <SelectField
+        label={`Dokument${prefixLabel}`}
+        name={fieldName(fieldPrefix, "documentId")}
+        value={state.documentId}
+        onChange={(documentId) => set({
+          documentId,
+          mode: "manual_fallback",
         })}
         required
       >
-        <option value="linked_sources">Koblede kilder</option>
-        <option value="manual_fallback">Manuelt registrerte fakta med komplette kilder</option>
+        <option value="" disabled>Velg dokument</option>
+        {documents.map((item) => (
+          <option key={item.id} value={item.id}>{item.label}</option>
+        ))}
       </SelectField>
-      <div className="fieldRow">
-        <SelectField
-          label={`Bankbevegelse${prefixLabel}`}
-          name={fieldName(fieldPrefix, "bankTransactionId")}
-          value={state.bankTransactionId}
-          onChange={(bankTransactionId) => set({ bankTransactionId })}
-          required
-        >
-          <option value="" disabled>Velg bankbevegelse</option>
-          {bankTransactions.map((item) => (
-            <option key={item.id} value={item.id}>{item.label}</option>
-          ))}
-        </SelectField>
-        <SelectField
-          label={`Dokument${prefixLabel}`}
-          name={fieldName(fieldPrefix, "documentId")}
-          value={state.documentId}
-          onChange={(documentId) => set({ documentId })}
-          required
-        >
-          <option value="" disabled>Velg dokument</option>
-          {documents.map((item) => (
-            <option key={item.id} value={item.id}>{item.label}</option>
-          ))}
-        </SelectField>
-      </div>
       <TextField
-        label={`Bilags- eller leverandørreferanse${prefixLabel}`}
+        label={`Bilags- eller meglerreferanse${prefixLabel}`}
         name={fieldName(fieldPrefix, "evidenceReference")}
         value={state.reference}
         onChange={(reference) => set({ reference })}
-        helper="Referansen identifiserer de samme faktaene som bankbevegelsen og dokumentet."
+        helper="Referansen og eierbekreftelsen identifiserer de registrerte faktaene. Talli verifiserer ikke dokumentfilens innhold kryptografisk. Kontantoppgjøret avstemmes separat mot banken."
         required
       />
-      {state.mode === "manual_fallback" ? (
-        <CheckboxField
-          label={`Jeg bekrefter at de manuelt registrerte faktaene${prefixLabel} samsvarer med valgte kilder.`}
-          name={fieldName(fieldPrefix, "ownerAttested")}
-          checked={state.ownerAttested}
-          onChange={(ownerAttested) => set({ ownerAttested })}
-          required
-        />
-      ) : (
-        <input
-          type="hidden"
-          name={fieldName(fieldPrefix, "ownerAttested")}
-          value="false"
-        />
-      )}
+      <CheckboxField
+        label={`Jeg bekrefter at de manuelt registrerte faktaene${prefixLabel} samsvarer med valgt dokument.`}
+        name={fieldName(fieldPrefix, "ownerAttested")}
+        checked={state.ownerAttested}
+        onChange={(ownerAttested) => set({
+          ownerAttested,
+          mode: "manual_fallback",
+        })}
+        required
+      />
     </>
   );
 }

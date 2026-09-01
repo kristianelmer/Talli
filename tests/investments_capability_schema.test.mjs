@@ -118,6 +118,22 @@ const lifecycleCorrectionsRollbackPath = new URL(
   "../supabase/rollback/20260901116000_investments_lifecycle_corrections.sql",
   import.meta.url,
 );
+const bankFactClaimPath = new URL(
+  "../supabase/migrations/20260901117000_investments_bank_fact_claim.sql",
+  import.meta.url,
+);
+const bankFactClaimRollbackPath = new URL(
+  "../supabase/rollback/20260901117000_investments_bank_fact_claim.sql",
+  import.meta.url,
+);
+const lifecyclePublicCutoverPath = new URL(
+  "../supabase/contract-migrations/20260901150538_investments_lifecycle_public_cutover.sql",
+  import.meta.url,
+);
+const lifecyclePublicCutoverRollbackPath = new URL(
+  "../supabase/rollback/20260901150538_investments_lifecycle_public_cutover.sql",
+  import.meta.url,
+);
 const localGatePath = new URL("../scripts/test-supabase-local.sh", import.meta.url);
 
 function artifact(path, phase) {
@@ -164,6 +180,153 @@ function assertBoundedBackendSystemDdlAuthority(source, phase) {
 test("the complete local database gate includes the investments lifecycle", () => {
   const source = readFileSync(localGatePath, "utf8");
   assert.match(source, /npm run test:investments-database-lifecycle/iu);
+});
+
+test("bank facts are claimed atomically through one restricted reversible routine", () => {
+  const source = artifact(bankFactClaimPath, "bank-fact claim");
+  const rollback = artifact(bankFactClaimRollbackPath, "bank-fact claim rollback");
+  assert.match(source, /function banking\.claim_transaction_for_external_action_v1/iu);
+  assert.match(source, /from banking\.transactions[\s\S]+for update/iu);
+  assert.match(source, /matched_accounting_entry_id is not null/iu);
+  assert.match(source, /matched_action_reference is not null/iu);
+  assert.match(source, /transaction_date <> v_transaction_date/iu);
+  assert.match(source, /amount <> v_signed_amount/iu);
+  assert.match(source, /source_hash <> v_source_hash/iu);
+  assert.match(
+    source,
+    /grant execute on function banking\.claim_transaction_for_external_action_v1[\s\S]+to investments_workflow_executor/iu,
+  );
+  assert.doesNotMatch(
+    source,
+    /grant execute on function banking\.claim_transaction_for_external_action_v1[\s\S]+to (?:public|anon|authenticated|service_role|banking_executor|banking_workflow_executor|talli_banking_backend)/iu,
+  );
+  assert.match(
+    rollback,
+    /revoke execute on function banking\.claim_transaction_for_external_action_v1[\s\S]+investments_workflow_executor/iu,
+  );
+  assert.match(
+    rollback,
+    /drop function banking\.claim_transaction_for_external_action_v1/iu,
+  );
+  assert.doesNotMatch(rollback, /\btruncate\b/iu);
+});
+
+test("lifecycle public cutover removes every v1 writer grant reversibly", () => {
+  const source = artifact(lifecyclePublicCutoverPath, "lifecycle public cutover");
+  const rollback = artifact(
+    lifecyclePublicCutoverRollbackPath,
+    "lifecycle public cutover rollback",
+  );
+  const routines = [
+    "get_share_purchase_replay_v1",
+    "prepare_share_purchase_v1",
+    "complete_share_purchase_v1",
+    "get_share_sale_replay_v1",
+    "prepare_share_sale_v1",
+    "complete_share_sale_v1",
+    "get_received_dividend_replay_v1",
+    "prepare_received_dividend_v1",
+    "complete_received_dividend_v1",
+    "get_received_fund_distribution_replay_v1",
+    "prepare_received_fund_distribution_v1",
+    "complete_received_fund_distribution_v1",
+    "get_correction_replay_v1",
+    "prepare_correction_v1",
+    "complete_correction_v1",
+  ];
+  for (const routine of routines) {
+    assert.match(source, new RegExp(`investments\\.${routine}`, "iu"));
+    assert.match(rollback, new RegExp(`investments\\.${routine}`, "iu"));
+  }
+  assert.match(
+    source,
+    /revoke execute on function[\s\S]+from investments_workflow_executor/iu,
+  );
+  assert.match(
+    rollback,
+    /grant execute on function[\s\S]+to investments_workflow_executor/iu,
+  );
+  assert.match(
+    source,
+    /alter function ledger\.link_investment_correction_v1[\s\S]+rename to link_investment_lifecycle_correction_v2/iu,
+  );
+  assert.match(
+    source,
+    /grant execute on function ledger\.link_investment_lifecycle_correction_v2[\s\S]+to investments_workflow_executor/iu,
+  );
+  assert.match(
+    rollback,
+    /alter function ledger\.link_investment_lifecycle_correction_v2[\s\S]+rename to link_investment_correction_v1/iu,
+  );
+  for (const [artifactSource, phase] of [
+    [source, "cutover"],
+    [rollback, "rollback"],
+  ]) {
+    assert.match(
+      artifactSource,
+      /grant investments_store_owner, ledger_store_owner to %I/iu,
+      `${phase} must borrow only the two function-owning roles`,
+    );
+    assert.match(
+      artifactSource,
+      /set local role investments_store_owner/iu,
+      `${phase} must mutate investments routine ACLs as their owner`,
+    );
+    assert.match(
+      artifactSource,
+      /set local role ledger_store_owner/iu,
+      `${phase} must mutate the ledger routine ACL as its owner`,
+    );
+    assert.match(
+      artifactSource,
+      /grant create on schema ledger to ledger_store_owner/iu,
+      `${phase} must acquire bounded ledger rename authority`,
+    );
+    assert.match(
+      artifactSource,
+      /revoke create on schema ledger from ledger_store_owner/iu,
+      `${phase} must restore the ledger schema boundary`,
+    );
+    assert.match(
+      artifactSource,
+      /revoke investments_store_owner, ledger_store_owner from %I/iu,
+      `${phase} must release temporary owner-role membership`,
+    );
+  }
+  assert.match(
+    source,
+    /create or replace function investments\.record_lifecycle_correction_sources_v2[\s\S]+on conflict \([\s\S]+\) do nothing[\s\S]+join investments\.source_fact_registry registered[\s\S]+registered\.fact_sha256 = item ->> 'factSha256'/iu,
+  );
+  assert.doesNotMatch(
+    source,
+    /on conflict \([\s\S]{0,300}\) do update set fact_sha256/iu,
+  );
+  assert.doesNotMatch(
+    source,
+    /grant[^;]+update[^;]+investments\.source_fact_registry/iu,
+  );
+  assert.match(
+    source,
+    /cash_settlements_bank_fact_key[\s\S]+unique \(\s*company_id, source_capability, source_record_id\s*\)/iu,
+  );
+  assert.match(
+    source,
+    /cash_settlements_bank_fact_revision_check[\s\S]+check \(source_revision = 1\)/iu,
+  );
+  assert.match(
+    source,
+    /lifecycle_cash_evidence_is_valid_v2[\s\S]+bankFact' ->> 'revision' = '1'/iu,
+  );
+  assert.doesNotMatch(
+    rollback,
+    /drop constraint cash_settlements_bank_fact_key/iu,
+  );
+  assert.doesNotMatch(source, /\b(?:drop|truncate|delete)\b/iu);
+  const rollbackSql = rollback.replace(/^--.*$/gmu, "");
+  assert.doesNotMatch(
+    rollbackSql,
+    /\b(?:drop|truncate|delete|update|insert)\b/iu,
+  );
 });
 
 test("contract and rollback artifacts bound hosted backend-system DDL authority", () => {

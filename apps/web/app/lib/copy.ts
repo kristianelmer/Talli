@@ -880,6 +880,10 @@ export const ownerCopy = {
         title: "Korriger investering",
         body: "Reverser en feil hendelse og erstatt den med korrigerte fakta.",
       },
+      "investment-settlement": {
+        title: "Avstem investering",
+        body: "Koble et ventende kontantoppgjør til riktig bankbevegelse.",
+      },
       "owner-dividend": {
         title: "Utbytte til deg",
         body: "Del ut utbytte til aksjonær, med selskapsdokumenter.",
@@ -945,6 +949,11 @@ export const ownerCopy = {
       title: "Korriger investeringshendelse",
       intro:
         "Bevar originalen, opprett en full reversering og registrer korrigerte fakta gjennom samme regelsett.",
+    },
+    investmentSettlement: {
+      title: "Avstem kontantoppgjør",
+      intro:
+        "Velg en regnskapsført investeringshendelse og avstem det separate kontantoppgjøret mot banken.",
     },
     ownerDividend: {
       title: "Utbytte til deg",

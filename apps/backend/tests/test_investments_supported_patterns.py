@@ -10,24 +10,26 @@ import pytest
 from talli_backend.modules.investments.public import (
     AcquisitionLotId,
     InvestmentAccountingClassification,
-    InvestmentActionId,
-    InvestmentDocumentStatus,
+    InvestmentEconomicEventId,
+    InvestmentEvidence,
     InvestmentEvidenceMode,
+    InvestmentFactReference,
     InvestmentKind,
     InvestmentPositionId,
     InvestmentSaleLotFact,
     InvestmentSourceReference,
-    InvestmentTaxTreatment,
+    InvestmentSourceCapability,
     InvestmentUnits,
     InvestmentsError,
     PreparedReceivedDividendFacts,
     PreparedReceivedFundDistributionFacts,
-    PreparedSharePurchase,
+    PreparedSharePurchaseRecognition,
     PreparedShareSaleFacts,
-    RecordReceivedDividendCommand,
-    RecordReceivedFundDistributionCommand,
-    RecordSharePurchaseCommand,
-    RecordShareSaleCommand,
+    RecognizeReceivedDividendCommand,
+    RecognizeReceivedFundDistributionCommand,
+    RecognizeSharePurchaseCommand,
+    RecognizeShareSaleCommand,
+    InvestmentSettlementBalanceKind,
 )
 from talli_backend.modules.investments.service import InvestmentsService
 from talli_backend.shared.kernel import (
@@ -72,31 +74,33 @@ class SupportedPatternsPersistence:
         self.tax_basis = Money.nok(tax_basis)
         self.acquisition_ratio = acquisition_ratio
 
-    async def prepare_share_purchase(
+    async def prepare_share_purchase_recognition(
         self,
-        command: RecordSharePurchaseCommand,
+        command: RecognizeSharePurchaseCommand,
         *,
         capitalized_cost: Money,
         evidence_digest: str,
         calculation_id: str,
-    ) -> PreparedSharePurchase:
+    ) -> PreparedSharePurchaseRecognition:
         self.command = command
         self.capitalized_cost = capitalized_cost
         self.evidence_digest = evidence_digest
-        return PreparedSharePurchase(
+        return PreparedSharePurchaseRecognition(
             position_id=POSITION_ID,
             lot_id=LOT_ID,
             position_created=True,
             investment_name=command.investment_name,
             accounting_classification=command.accounting_classification,
-            purchase_amount=capitalized_cost,
+            acquisition_cost=capitalized_cost,
+            expected_settlement_amount=capitalized_cost,
+            settlement_balance_kind=InvestmentSettlementBalanceKind.PURCHASE_PAYABLE,
             evidence_digest=evidence_digest,
             calculation_id=calculation_id,
         )
 
-    async def prepare_share_sale(
+    async def prepare_share_sale_recognition(
         self,
-        command: RecordShareSaleCommand,
+        command: RecognizeShareSaleCommand,
         *,
         net_proceeds: Money,
         evidence_digest: str,
@@ -122,7 +126,7 @@ class SupportedPatternsPersistence:
                     allocation_order=1,
                     acquisition_date=LocalDate(date(2026, 1, 2)),
                     allocated_share_count=InvestmentUnits.of(
-                        str(command.sold_share_count)
+                        str(command.sold_share_count.amount)
                     ),
                     allocated_book_cost_basis=self.book_basis,
                     allocated_tax_basis=self.tax_basis,
@@ -133,9 +137,9 @@ class SupportedPatternsPersistence:
             ),
         )
 
-    async def prepare_received_dividend(
+    async def prepare_received_dividend_recognition(
         self,
-        command: RecordReceivedDividendCommand,
+        command: RecognizeReceivedDividendCommand,
         *,
         evidence_digest: str,
     ) -> PreparedReceivedDividendFacts:
@@ -147,9 +151,9 @@ class SupportedPatternsPersistence:
             investment_kind=self.position_kind,
         )
 
-    async def prepare_received_fund_distribution(
+    async def prepare_received_fund_distribution_recognition(
         self,
-        command: RecordReceivedFundDistributionCommand,
+        command: RecognizeReceivedFundDistributionCommand,
         *,
         evidence_digest: str,
     ) -> PreparedReceivedFundDistributionFacts:
@@ -172,32 +176,32 @@ def purchase_command(
     org_number: str | None = "123456789",
     fund_equity_ratio_basis_points: int | None = None,
     fund_tax_statement_reference: str | None = None,
-) -> RecordSharePurchaseCommand:
-    return RecordSharePurchaseCommand(
+) -> RecognizeSharePurchaseCommand:
+    return RecognizeSharePurchaseCommand(
         company_id=COMPANY_ID,
         actor_id=ACTOR_ID,
         correlation_id=CorrelationId("investments-supported-pattern-purchase"),
         idempotency_key=IdempotencyKey("30000000-0000-4000-8000-000000000003"),
         income_year=IncomeYear(2026),
-        action_id=InvestmentActionId("40000000-0000-0000-0000-000000000004"),
+        event_id=InvestmentEconomicEventId("40000000-0000-0000-0000-000000000004"),
         investment_key=investment_key,
         investment_name="  Nordic Investment  ",
         investment_kind=kind,
         accounting_classification=classification,
-        tax_treatment=InvestmentTaxTreatment.EXEMPTION_METHOD,
         acquisition_date=LocalDate(date(2026, 4, 15)),
-        share_count=10,
+        share_count=InvestmentUnits.of("10"),
         purchase_amount=Money.nok("100.00"),
         transaction_costs=Money.nok("2.50"),
         org_number=org_number,
         fund_equity_ratio_basis_points=fund_equity_ratio_basis_points,
         fund_tax_statement_reference=fund_tax_statement_reference,
-        evidence_mode=InvestmentEvidenceMode.LINKED_SOURCES,
-        evidence_reference="  broker-note-42  ",
-        owner_attested=False,
-        bank_transaction_id=BANK_ID,
-        document_id=DOCUMENT_ID,
-        document_status=InvestmentDocumentStatus.ATTACHED,
+        evidence=InvestmentEvidence(
+            InvestmentEvidenceMode.LINKED_SOURCES,
+            "  broker-note-42  ",
+            False,
+            (InvestmentFactReference(InvestmentSourceCapability.DOCUMENTS, DOCUMENT_ID, 1, "d" * 64),),
+            None,
+        ),
     )
 
 
@@ -205,27 +209,28 @@ def sale_command(
     *,
     sale_ratio: int | None = None,
     tax_reference: str | None = None,
-) -> RecordShareSaleCommand:
-    return RecordShareSaleCommand(
+) -> RecognizeShareSaleCommand:
+    return RecognizeShareSaleCommand(
         company_id=COMPANY_ID,
         actor_id=ACTOR_ID,
         correlation_id=CorrelationId("investments-supported-pattern-sale"),
         idempotency_key=IdempotencyKey("30000000-0000-4000-8000-000000000013"),
         income_year=IncomeYear(2026),
-        action_id=InvestmentActionId("40000000-0000-0000-0000-000000000014"),
+        event_id=InvestmentEconomicEventId("40000000-0000-0000-0000-000000000014"),
         position_id=POSITION_ID,
         sale_date=LocalDate(date(2026, 6, 1)),
-        sold_share_count=4,
+        sold_share_count=InvestmentUnits.of("4"),
         proceeds=Money.nok("120.00"),
         transaction_costs=Money.nok("2.00"),
         sale_year_fund_equity_ratio_basis_points=sale_ratio,
         fund_tax_statement_reference=tax_reference,
-        evidence_mode=InvestmentEvidenceMode.MANUAL_FALLBACK,
-        evidence_reference="broker-contract-note-77",
-        owner_attested=True,
-        bank_transaction_id=BANK_ID,
-        document_id=DOCUMENT_ID,
-        document_status=InvestmentDocumentStatus.ATTACHED,
+        evidence=InvestmentEvidence(
+            InvestmentEvidenceMode.MANUAL_FALLBACK,
+            "broker-contract-note-77",
+            True,
+            (InvestmentFactReference(InvestmentSourceCapability.DOCUMENTS, DOCUMENT_ID, 1, "d" * 64),),
+            None,
+        ),
     )
 
 
@@ -235,55 +240,54 @@ def dividend_command(
     ownership: int | None = None,
     votes: int | None = None,
     group_reference: str | None = None,
-) -> RecordReceivedDividendCommand:
-    return RecordReceivedDividendCommand(
+) -> RecognizeReceivedDividendCommand:
+    return RecognizeReceivedDividendCommand(
         company_id=COMPANY_ID,
         actor_id=ACTOR_ID,
         correlation_id=CorrelationId("investments-supported-pattern-dividend"),
         idempotency_key=IdempotencyKey("30000000-0000-4000-8000-000000000023"),
         income_year=IncomeYear(2026),
-        action_id=InvestmentActionId("40000000-0000-0000-0000-000000000024"),
+        event_id=InvestmentEconomicEventId("40000000-0000-0000-0000-000000000024"),
         position_id=POSITION_ID,
         paying_company_name="  Nordic Listed ASA  ",
         declared_date=LocalDate(date(2026, 4, 1)),
-        paid_date=LocalDate(date(2026, 4, 15)),
         gross_amount=Money.nok("125.50"),
-        tax_treatment=InvestmentTaxTreatment.EXEMPTION_METHOD,
         lawful_dividend_confirmed=True,
         group_exception_claimed=group_exception_claimed,
         year_end_ownership_basis_points=ownership,
         year_end_voting_basis_points=votes,
         group_evidence_reference=group_reference,
-        evidence_mode=InvestmentEvidenceMode.LINKED_SOURCES,
-        evidence_reference="dividend-advice-19",
-        owner_attested=False,
-        bank_transaction_id=BANK_ID,
-        document_id=DOCUMENT_ID,
-        document_status=InvestmentDocumentStatus.ATTACHED,
+        evidence=InvestmentEvidence(
+            InvestmentEvidenceMode.LINKED_SOURCES,
+            "dividend-advice-19",
+            False,
+            (InvestmentFactReference(InvestmentSourceCapability.DOCUMENTS, DOCUMENT_ID, 1, "d" * 64),),
+            None,
+        ),
     )
 
 
-def fund_distribution_command(ratio: int) -> RecordReceivedFundDistributionCommand:
-    return RecordReceivedFundDistributionCommand(
+def fund_distribution_command(ratio: int) -> RecognizeReceivedFundDistributionCommand:
+    return RecognizeReceivedFundDistributionCommand(
         company_id=COMPANY_ID,
         actor_id=ACTOR_ID,
         correlation_id=CorrelationId("investments-supported-fund-distribution"),
         idempotency_key=IdempotencyKey("30000000-0000-4000-8000-000000000033"),
         income_year=IncomeYear(2026),
-        action_id=InvestmentActionId("40000000-0000-0000-0000-000000000034"),
+        event_id=InvestmentEconomicEventId("40000000-0000-0000-0000-000000000034"),
         position_id=POSITION_ID,
         fund_name="  Nordic Fund  ",
         entitlement_date=LocalDate(date(2026, 5, 1)),
-        paid_date=LocalDate(date(2026, 5, 15)),
         gross_amount=Money.nok("100.00"),
         opening_fund_equity_ratio_basis_points=ratio,
         fund_tax_statement_reference="provider-tax-statement-2026-r1",
-        evidence_mode=InvestmentEvidenceMode.LINKED_SOURCES,
-        evidence_reference="fund-distribution-advice-3",
-        owner_attested=False,
-        bank_transaction_id=BANK_ID,
-        document_id=DOCUMENT_ID,
-        document_status=InvestmentDocumentStatus.ATTACHED,
+        evidence=InvestmentEvidence(
+            InvestmentEvidenceMode.LINKED_SOURCES,
+            "fund-distribution-advice-3",
+            False,
+            (InvestmentFactReference(InvestmentSourceCapability.DOCUMENTS, DOCUMENT_ID, 1, "d" * 64),),
+            None,
+        ),
     )
 
 
@@ -299,10 +303,10 @@ def test_supported_domestic_purchase_capitalizes_book_and_tax_cost_and_binds_evi
     kind, classification, key, org_number, fund_ratio, fund_reference
 ) -> None:
     persistence = SupportedPatternsPersistence()
-    result = asyncio.run(InvestmentsService(persistence).prepare_share_purchase(
+    result = asyncio.run(InvestmentsService(persistence).prepare_share_purchase_recognition(
         purchase_command(kind=kind, classification=classification, investment_key=key, org_number=org_number, fund_equity_ratio_basis_points=fund_ratio, fund_tax_statement_reference=fund_reference)
     ))
-    assert result.purchase_amount == Money.nok("102.50")
+    assert result.acquisition_cost == Money.nok("102.50")
     assert result.accounting_classification is classification
     assert len(result.evidence_digest) == 64
     assert len(result.calculation_id) == 64
@@ -313,22 +317,23 @@ def test_manual_fallback_keeps_authoritative_sources_and_adds_owner_attestation(
     persistence = SupportedPatternsPersistence()
     command = replace(
         purchase_command(),
-        evidence_mode=InvestmentEvidenceMode.MANUAL_FALLBACK,
-        owner_attested=True,
+        evidence=replace(
+            purchase_command().evidence,
+            mode=InvestmentEvidenceMode.MANUAL_FALLBACK,
+            owner_attested=True,
+        ),
     )
 
-    result = asyncio.run(InvestmentsService(persistence).prepare_share_purchase(command))
+    result = asyncio.run(InvestmentsService(persistence).prepare_share_purchase_recognition(command))
 
-    assert result.purchase_amount == Money.nok("102.50")
-    assert persistence.command.bank_transaction_id == BANK_ID
-    assert persistence.command.document_id == DOCUMENT_ID
-    assert persistence.command.document_status is InvestmentDocumentStatus.ATTACHED
-    assert persistence.command.owner_attested is True
+    assert result.acquisition_cost == Money.nok("102.50")
+    assert persistence.command.evidence.document_facts[0].record_id == DOCUMENT_ID
+    assert persistence.command.evidence.owner_attested is True
 
 
 def test_share_sale_keeps_book_and_tax_results_separate() -> None:
     persistence = SupportedPatternsPersistence(book_basis="80.00", tax_basis="82.00")
-    result = asyncio.run(InvestmentsService(persistence).prepare_share_sale(sale_command()))
+    result = asyncio.run(InvestmentsService(persistence).prepare_share_sale_recognition(sale_command()))
     assert result.net_proceeds == Money.nok("118.00")
     assert result.book_gain_or_loss == Money.nok("38.00")
     assert result.tax_gain_or_loss == Money.nok("36.00")
@@ -344,7 +349,7 @@ def test_fund_redemption_averages_acquisition_and_sale_year_ratios() -> None:
         tax_basis="100.00",
         acquisition_ratio=6_000,
     )
-    result = asyncio.run(InvestmentsService(persistence).prepare_share_sale(
+    result = asyncio.run(InvestmentsService(persistence).prepare_share_sale_recognition(
         sale_command(sale_ratio=8_000, tax_reference="provider-tax-statement-2026-r2")
     ))
     allocation = result.lot_calculations[0]
@@ -356,8 +361,8 @@ def test_fund_redemption_averages_acquisition_and_sale_year_ratios() -> None:
 
 def test_ordinary_and_proved_group_dividends_use_distinct_inclusion() -> None:
     persistence = SupportedPatternsPersistence()
-    ordinary = asyncio.run(InvestmentsService(persistence).prepare_received_dividend(dividend_command()))
-    group = asyncio.run(InvestmentsService(persistence).prepare_received_dividend(
+    ordinary = asyncio.run(InvestmentsService(persistence).prepare_received_dividend_recognition(dividend_command()))
+    group = asyncio.run(InvestmentsService(persistence).prepare_received_dividend_recognition(
         dividend_command(group_exception_claimed=True, ownership=9_001, votes=9_001, group_reference="year-end-group-proof")
     ))
     assert ordinary.taxable_add_back == Money.nok("3.77")
@@ -380,7 +385,7 @@ def test_fund_distribution_applies_statutory_thresholds(
     ratio, dividend, interest, add_back, taxable
 ) -> None:
     persistence = SupportedPatternsPersistence(position_kind=InvestmentKind.NORWEGIAN_EQUITY_FUND)
-    result = asyncio.run(InvestmentsService(persistence).prepare_received_fund_distribution(fund_distribution_command(ratio)))
+    result = asyncio.run(InvestmentsService(persistence).prepare_received_fund_distribution_recognition(fund_distribution_command(ratio)))
     assert result.dividend_portion == Money.nok(dividend)
     assert result.interest_portion == Money.nok(interest)
     assert result.taxable_add_back == Money.nok(add_back)
@@ -393,14 +398,13 @@ def test_fund_distribution_applies_statutory_thresholds(
         replace(purchase_command(), investment_kind="foreign_share"),
         purchase_command(kind=InvestmentKind.NORWEGIAN_EQUITY_FUND, classification=InvestmentAccountingClassification.CURRENT_FUND, investment_key="NO0000000002", org_number=None, fund_equity_ratio_basis_points=7_500),
         replace(purchase_command(), accounting_classification=InvestmentAccountingClassification.CURRENT_LISTED_SHARE),
-        replace(purchase_command(), evidence_mode=InvestmentEvidenceMode.MANUAL_FALLBACK, owner_attested=True, bank_transaction_id=None, document_id=None, document_status=InvestmentDocumentStatus.MISSING_ACCEPTED_WARNING),
         replace(purchase_command(), transaction_costs=Money.nok("-0.01")),
     ],
 )
 def test_unsupported_or_incomplete_purchase_fails_before_persistence(command) -> None:
     persistence = SupportedPatternsPersistence()
     with pytest.raises(InvestmentsError):
-        asyncio.run(InvestmentsService(persistence).prepare_share_purchase(command))
+        asyncio.run(InvestmentsService(persistence).prepare_share_purchase_recognition(command))
     assert persistence.command is None
 
 
@@ -415,19 +419,19 @@ def test_unsupported_or_incomplete_purchase_fails_before_persistence(command) ->
 def test_unclear_dividend_tax_or_lawfulness_fails_before_persistence(command) -> None:
     persistence = SupportedPatternsPersistence()
     with pytest.raises(InvestmentsError):
-        asyncio.run(InvestmentsService(persistence).prepare_received_dividend(command))
+        asyncio.run(InvestmentsService(persistence).prepare_received_dividend_recognition(command))
     assert persistence.command is None
 
 
 def test_fund_tax_data_and_position_kind_mismatches_hard_block() -> None:
     missing_sale_data = SupportedPatternsPersistence(position_kind=InvestmentKind.NORWEGIAN_EQUITY_FUND, acquisition_ratio=6_000)
     with pytest.raises(InvestmentsError):
-        asyncio.run(InvestmentsService(missing_sale_data).prepare_share_sale(sale_command()))
+        asyncio.run(InvestmentsService(missing_sale_data).prepare_share_sale_recognition(sale_command()))
 
     share_position = SupportedPatternsPersistence(position_kind=InvestmentKind.NORWEGIAN_LISTED_SHARE)
     with pytest.raises(InvestmentsError):
-        asyncio.run(InvestmentsService(share_position).prepare_received_fund_distribution(fund_distribution_command(5_000)))
+        asyncio.run(InvestmentsService(share_position).prepare_received_fund_distribution_recognition(fund_distribution_command(5_000)))
 
     fund_position = SupportedPatternsPersistence(position_kind=InvestmentKind.NORWEGIAN_EQUITY_FUND)
     with pytest.raises(InvestmentsError):
-        asyncio.run(InvestmentsService(fund_position).prepare_received_dividend(dividend_command()))
+        asyncio.run(InvestmentsService(fund_position).prepare_received_dividend_recognition(dividend_command()))

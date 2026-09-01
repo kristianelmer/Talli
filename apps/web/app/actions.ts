@@ -126,11 +126,13 @@ import {
   effectiveInvestmentActivity,
   listPresentedInvestmentActivity,
   listPresentedInvestmentCorrections,
+  loadInvestmentEconomicEvents,
   correctInvestment,
-  recordInvestmentSharePurchase,
-  recordInvestmentShareSale,
-  recordInvestmentReceivedDividend,
-  recordInvestmentReceivedFundDistribution,
+  recognizeInvestmentSharePurchase,
+  recognizeInvestmentShareSale,
+  recognizeInvestmentReceivedDividend,
+  recognizeInvestmentReceivedFundDistribution,
+  settleInvestmentCash,
   type InvestmentsCorrectionWire,
 } from "../features/investments";
 import { buildLaunchSignoffRecord } from "./lib/launch-signoff";
@@ -316,65 +318,79 @@ function investmentEvidenceField(prefix: InvestmentEvidencePrefix, name: string)
   return `${prefix}${name[0]?.toUpperCase() ?? ""}${name.slice(1)}`;
 }
 
-function requiredInvestmentEvidence(
+async function ownerAttestedInvestmentDocumentEvidence(
   formData: FormData,
+  companyId: string,
+  incomeYear: number,
   prefix: InvestmentEvidencePrefix = "",
 ) {
   const field = (name: string) => investmentEvidenceField(prefix, name);
   const evidenceMode = requiredFormChoice(
     formData,
     field("evidenceMode"),
-    ["linked_sources", "manual_fallback"] as const,
+    ["manual_fallback"] as const,
   );
   const evidenceReference = formString(formData, field("evidenceReference"));
   const ownerAttested = formString(formData, field("ownerAttested")) === "true";
-  if (!evidenceReference || (evidenceMode === "linked_sources" && ownerAttested)
-    || (evidenceMode === "manual_fallback" && !ownerAttested)) {
+  const documentId = requiredFormUuid(formData, field("documentId"));
+  if (!evidenceReference || !ownerAttested) {
     throw new Error("Investeringsdokumentasjonen er ufullstendig.");
   }
+  const ownerAttestedIdentitySha256 = createHash("sha256")
+    .update([
+      "talli-investment-owner-attested-document-fact-v1",
+      companyId,
+      String(incomeYear),
+      documentId,
+      "1",
+    ].join("\0"), "utf8")
+    .digest("hex");
   return {
-    bankTransactionId: requiredFormUuid(formData, field("bankTransactionId")),
-    documentId: requiredFormUuid(formData, field("documentId")),
-    documentStatus: "attached" as const,
     evidenceMode,
     evidenceReference,
     ownerAttested,
+    documentFacts: [{
+      capability: "DOCUMENTS" as const,
+      recordId: documentId,
+      revision: 1,
+      factSha256: ownerAttestedIdentitySha256,
+    }],
+    bankFact: null,
   };
 }
 
-function requiredInvestmentLifecycleEvidence(
+async function requiredInvestmentBankEvidence(
   formData: FormData,
-  capability: "DOCUMENTS" | "BANKING",
+  companyId: string,
+  incomeYear: number,
   prefix: InvestmentEvidencePrefix = "",
 ) {
   const field = (name: string) => investmentEvidenceField(prefix, name);
-  const evidenceMode = requiredFormChoice(
-    formData,
-    field("evidenceMode"),
-    ["linked_sources", "manual_fallback"] as const,
-  );
+  const recordId = requiredFormUuid(formData, field("bankTransactionId"));
   const evidenceReference = formString(formData, field("evidenceReference"));
-  const ownerAttested = formString(formData, field("ownerAttested")) === "true";
-  const sourcePrefix = capability === "DOCUMENTS" ? "document" : "bank";
-  const recordId = requiredFormUuid(
-    formData,
-    field(capability === "DOCUMENTS" ? "documentId" : "bankTransactionId"),
-  );
-  const revision = Number(formString(formData, field(`${sourcePrefix}Revision`)));
-  const factSha256 = formString(formData, field(`${sourcePrefix}FactSha256`));
-  if (!evidenceReference || !Number.isInteger(revision) || revision < 1
-    || !/^[0-9a-f]{64}$/u.test(factSha256)
-    || (evidenceMode === "linked_sources" && ownerAttested)
-    || (evidenceMode === "manual_fallback" && !ownerAttested)) {
+  if (!evidenceReference) {
     throw new Error("Investeringsdokumentasjonen er ufullstendig.");
   }
-  const fact = { capability, recordId, revision, factSha256 } as const;
+  const { transactions, error } = await listBankTransactions([companyId]);
+  const transaction = transactions.find((candidate) => (
+    candidate.id === recordId
+    && candidate.company_id === companyId
+    && candidate.income_year === incomeYear
+  ));
+  if (error || !transaction || !/^[0-9a-f]{64}$/u.test(transaction.source_hash)) {
+    throw new Error("Den valgte bankbevegelsen kunne ikke verifiseres.");
+  }
   return {
-    evidenceMode,
+    evidenceMode: "linked_sources" as const,
     evidenceReference,
-    ownerAttested,
-    documentFacts: capability === "DOCUMENTS" ? [fact] : [],
-    bankFact: capability === "BANKING" ? fact : null,
+    ownerAttested: false,
+    documentFacts: [],
+    bankFact: {
+      capability: "BANKING" as const,
+      recordId,
+      revision: 1,
+      factSha256: transaction.source_hash,
+    },
   };
 }
 
@@ -2088,14 +2104,18 @@ export async function recordDividendReceived(formData: FormData) {
     formData,
     "groupExceptionClaimed",
   ) === "true";
-  const evidence = requiredInvestmentEvidence(formData);
+  const evidence = await ownerAttestedInvestmentDocumentEvidence(
+    formData,
+    companyId,
+    incomeYear,
+  );
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
-    await recordInvestmentReceivedDividend(
+    await recognizeInvestmentReceivedDividend(
       accessToken,
       {
-        actionId: operationId,
+        eventId: operationId,
         companyId,
         declaredDate: formString(formData, "declaredDate"),
         ...evidence,
@@ -2107,10 +2127,8 @@ export async function recordDividendReceived(formData: FormData) {
         incomeYear,
         lawfulDividendConfirmed:
           formString(formData, "lawfulDividendConfirmed") === "true",
-        paidDate: formString(formData, "paidDate"),
         payingCompanyName: formString(formData, "payingCompanyName"),
         positionId: formString(formData, "positionId"),
-        taxTreatment: "fritaksmetoden",
         yearEndOwnershipBasisPoints: groupExceptionClaimed
           ? Number(formString(formData, "yearEndOwnershipBasisPoints"))
           : null,
@@ -2159,16 +2177,20 @@ export async function recordSharePurchase(formData: FormData) {
         ? "current_listed_share"
         : "other_long_term"
   )) as "subsidiary" | "associate" | "other_long_term" | "current_listed_share" | "current_fund";
-  const evidence = requiredInvestmentEvidence(formData);
+  const evidence = await ownerAttestedInvestmentDocumentEvidence(
+    formData,
+    companyId,
+    incomeYear,
+  );
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
-    await recordInvestmentSharePurchase(
+    await recognizeInvestmentSharePurchase(
       accessToken,
       {
         acquisitionDate: formString(formData, "acquisitionDate"),
         accountingClassification,
-        actionId: operationId,
+        eventId: operationId,
         companyId,
         ...evidence,
         fundEquityRatioBasisPoints: investmentKind === "norwegian_equity_fund"
@@ -2183,8 +2205,7 @@ export async function recordSharePurchase(formData: FormData) {
         investmentName: formString(formData, "investmentName"),
         orgNumber: formString(formData, "orgNumber") || null,
         purchaseAmount: { amount: formString(formData, "purchaseAmount"), currency: "NOK" },
-        shareCount: Number(formString(formData, "shareCount")),
-        taxTreatment: formString(formData, "taxTreatment") as "fritaksmetoden",
+        shareCount: formString(formData, "shareCount"),
         transactionCosts: {
           amount: formString(formData, "transactionCosts") || "0",
           currency: "NOK",
@@ -2218,14 +2239,18 @@ export async function recordShareSale(formData: FormData) {
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const positionId = formString(formData, "positionId");
-  const evidence = requiredInvestmentEvidence(formData);
+  const evidence = await ownerAttestedInvestmentDocumentEvidence(
+    formData,
+    companyId,
+    incomeYear,
+  );
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
-    await recordInvestmentShareSale(
+    await recognizeInvestmentShareSale(
       accessToken,
       {
-        actionId: operationId,
+        eventId: operationId,
         companyId,
         ...evidence,
         fundTaxStatementReference:
@@ -2240,7 +2265,7 @@ export async function recordShareSale(formData: FormData) {
         )
           ? Number(formString(formData, "saleYearFundEquityRatioBasisPoints"))
           : null,
-        soldShareCount: Number(formString(formData, "soldShareCount")),
+        soldShareCount: formString(formData, "soldShareCount"),
         transactionCosts: {
           amount: formString(formData, "transactionCosts") || "0",
           currency: "NOK",
@@ -2270,20 +2295,23 @@ export async function recordFundDistribution(formData: FormData) {
   const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
-  const evidence = requiredInvestmentEvidence(formData);
+  const evidence = await ownerAttestedInvestmentDocumentEvidence(
+    formData,
+    companyId,
+    incomeYear,
+  );
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
-    await recordInvestmentReceivedFundDistribution(
+    await recognizeInvestmentReceivedFundDistribution(
       accessToken,
       {
-        actionId: operationId,
+        eventId: operationId,
         companyId,
         incomeYear,
         positionId: formString(formData, "positionId"),
         fundName: formString(formData, "fundName"),
         entitlementDate: formString(formData, "entitlementDate"),
-        paidDate: formString(formData, "paidDate"),
         grossAmount: {
           amount: formString(formData, "grossAmount"),
           currency: "NOK",
@@ -2314,6 +2342,144 @@ export async function recordFundDistribution(formData: FormData) {
   succeedTo(returnTo);
 }
 
+export async function settleInvestmentCashAction(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  if (!hasSupabaseEnv()) {
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
+  }
+  const settlementId = requiredFormUuid(formData, "operationId");
+  const eventId = requiredFormUuid(formData, "eventId");
+  const companyId = formString(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear"));
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
+
+  try {
+    const events = await loadInvestmentEconomicEvents(
+      accessToken,
+      [companyId],
+      settlementId,
+    );
+    const event = events.find((candidate) => (
+      candidate.id === eventId
+      && candidate.companyId === companyId
+      && candidate.incomeYear === incomeYear
+      && candidate.settlementId === null
+    ));
+    if (!event) {
+      throw new Error("Investeringshendelsen venter ikke på oppgjør.");
+    }
+    const evidence = await requiredInvestmentBankEvidence(
+      formData,
+      companyId,
+      incomeYear,
+    );
+    await settleInvestmentCash(
+      accessToken,
+      {
+        settlementId,
+        eventId,
+        companyId,
+        incomeYear,
+        settlementDate: formString(formData, "settlementDate"),
+        amount: event.expectedSettlementAmount,
+        ...evidence,
+      },
+      settlementId,
+      settlementId,
+    );
+  } catch (error) {
+    const outcomeMayBeUnknown = investmentsOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery(
+      outcomeMayBeUnknown ? "/actions/investment-settlement" : returnTo,
+      {
+        error: investmentsActionErrorMessage(error),
+        investmentSettlementOperationId: outcomeMayBeUnknown
+          ? settlementId
+          : undefined,
+      },
+    ));
+  }
+  revalidatePath("/");
+  succeedTo(returnTo);
+}
+
+export async function correctInvestmentSettlementAction(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  if (!hasSupabaseEnv()) failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
+  const correctionId = requiredFormUuid(formData, "operationId");
+  const replacementSettlementId = requiredFormUuid(
+    formData,
+    "replacementSettlementId",
+  );
+  const companyId = formString(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear") || "2025");
+  const originalActivityKind = formString(
+    formData,
+    "originalActivityKind",
+  ) as InvestmentsCorrectionWire["originalActivityKind"];
+  const correctionEvidence = await ownerAttestedInvestmentDocumentEvidence(
+    formData,
+    companyId,
+    incomeYear,
+  );
+  const replacementEvidence = await requiredInvestmentBankEvidence(
+    formData,
+    companyId,
+    incomeYear,
+    "replacement",
+  );
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
+  try {
+    await correctInvestment(
+      accessToken,
+      {
+        companyId,
+        incomeYear,
+        correctionId,
+        targetKind: "cash_settlement",
+        originalRecordId: requiredFormUuid(formData, "originalSettlementId"),
+        originalActivityKind,
+        correctionDate: formString(formData, "correctionDate"),
+        reason: formString(formData, "reason"),
+        ...correctionEvidence,
+        replacement: {
+          replacementKind: "cash_settlement",
+          companyId,
+          incomeYear,
+          settlementId: replacementSettlementId,
+          eventId: requiredFormUuid(formData, "eventId"),
+          settlementDate: formString(formData, "replacementSettlementDate"),
+          amount: {
+            amount: formString(formData, "expectedAmount"),
+            currency: "NOK",
+          },
+          ...replacementEvidence,
+        },
+      },
+      correctionId,
+      correctionId,
+    );
+  } catch (error) {
+    const outcomeMayBeUnknown = investmentsOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery(
+      outcomeMayBeUnknown ? "/actions/investment-correction" : returnTo,
+      {
+        error: investmentsActionErrorMessage(error),
+        investmentSettlementCorrectionOperationId: outcomeMayBeUnknown
+          ? correctionId
+          : undefined,
+        investmentCorrectionReplacementSettlementId: outcomeMayBeUnknown
+          ? replacementSettlementId
+          : undefined,
+      },
+    ));
+  }
+  revalidatePath("/");
+  succeedTo(returnTo);
+}
+
 export async function correctInvestmentAction(formData: FormData) {
   const returnTo = returnTarget(formData);
   if (!hasSupabaseEnv()) failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
@@ -2325,11 +2491,16 @@ export async function correctInvestmentAction(formData: FormData) {
     formData,
     "originalActivityKind",
   ) as InvestmentsCorrectionWire["originalActivityKind"];
-  const correctionEvidence = requiredInvestmentLifecycleEvidence(
-    formData, "DOCUMENTS",
+  const correctionEvidence = await ownerAttestedInvestmentDocumentEvidence(
+    formData,
+    companyId,
+    incomeYear,
   );
-  const replacementEvidence = requiredInvestmentLifecycleEvidence(
-    formData, "DOCUMENTS", "replacement",
+  const replacementEvidence = await ownerAttestedInvestmentDocumentEvidence(
+    formData,
+    companyId,
+    incomeYear,
+    "replacement",
   );
   const common = {
     companyId,

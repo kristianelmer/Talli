@@ -3915,6 +3915,651 @@
         "title": "InvestmentKind",
         "type": "string"
       },
+      "InvestmentLifecycleEventPageWire": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InvestmentLifecycleEventWire"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/InvestmentsPageWire"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "title": "InvestmentLifecycleEventPageWire",
+        "type": "object"
+      },
+      "InvestmentLifecycleEventWire": {
+        "properties": {
+          "accountingClassification": {
+            "$ref": "#/components/schemas/InvestmentAccountingClassification"
+          },
+          "acquisitionLotId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acquisitionlotid"
+          },
+          "activityKind": {
+            "$ref": "#/components/schemas/InvestmentActivityKind"
+          },
+          "bankFact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bookGainOrLoss": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "calculationId": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Calculationid",
+            "type": "string"
+          },
+          "capitalizedCost": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "createdBy": {
+            "format": "uuid",
+            "title": "Createdby",
+            "type": "string"
+          },
+          "deductibleLoss": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dividendPortion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "documentFacts": {
+            "items": {
+              "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+            },
+            "title": "Documentfacts",
+            "type": "array"
+          },
+          "entitlementDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entitlementdate"
+          },
+          "evidenceDigest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Evidencedigest",
+            "type": "string"
+          },
+          "evidenceMode": {
+            "$ref": "#/components/schemas/InvestmentEvidenceMode"
+          },
+          "evidenceReference": {
+            "title": "Evidencereference",
+            "type": "string"
+          },
+          "exemptGain": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedSettlementAmount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "fifoCostBasisReduction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fifoTaxBasisReduction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fundEquityRatioBasisPoints": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fundequityratiobasispoints"
+          },
+          "fundName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fundname"
+          },
+          "fundTaxStatementReference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fundtaxstatementreference"
+          },
+          "grossAmount": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "groupEvidenceReference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Groupevidencereference"
+          },
+          "groupExceptionApplied": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Groupexceptionapplied"
+          },
+          "groupExceptionClaimed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Groupexceptionclaimed"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "interestPortion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "investmentKey": {
+            "title": "Investmentkey",
+            "type": "string"
+          },
+          "investmentKind": {
+            "$ref": "#/components/schemas/InvestmentKind"
+          },
+          "investmentName": {
+            "title": "Investmentname",
+            "type": "string"
+          },
+          "lawfulDividendConfirmed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lawfuldividendconfirmed"
+          },
+          "netProceeds": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nonDeductibleLoss": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "openingFundEquityRatioBasisPoints": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Openingfundequityratiobasispoints"
+          },
+          "orgNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orgnumber"
+          },
+          "ownerAttested": {
+            "title": "Ownerattested",
+            "type": "boolean"
+          },
+          "payingCompanyName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payingcompanyname"
+          },
+          "positionCreated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Positioncreated"
+          },
+          "positionId": {
+            "format": "uuid",
+            "title": "Positionid",
+            "type": "string"
+          },
+          "proceeds": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "purchaseAmount": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recognitionAccountingEntryId": {
+            "format": "uuid",
+            "title": "Recognitionaccountingentryid",
+            "type": "string"
+          },
+          "recognitionDate": {
+            "format": "date",
+            "title": "Recognitiondate",
+            "type": "string"
+          },
+          "remainingCostBasis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "remainingShareCount": {
+            "anyOf": [
+              {
+                "pattern": "^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remainingsharecount"
+          },
+          "remainingTaxBasis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "settlementAccountingEntryId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settlementaccountingentryid"
+          },
+          "settlementAmount": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "settlementBalanceKind": {
+            "$ref": "#/components/schemas/InvestmentSettlementBalanceKind"
+          },
+          "settlementDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settlementdate"
+          },
+          "settlementId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settlementid"
+          },
+          "shareCount": {
+            "anyOf": [
+              {
+                "pattern": "^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharecount"
+          },
+          "soldShareCount": {
+            "anyOf": [
+              {
+                "pattern": "^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Soldsharecount"
+          },
+          "taxGainOrLoss": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "taxTreatment": {
+            "$ref": "#/components/schemas/InvestmentTaxTreatment"
+          },
+          "taxableAddBack": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "taxableGain": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "totalTaxableIncome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "transactionCosts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerMoneyWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "yearEndOwnershipBasisPoints": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yearendownershipbasispoints"
+          },
+          "yearEndVotingBasisPoints": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yearendvotingbasispoints"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "incomeYear",
+          "activityKind",
+          "recognitionDate",
+          "positionId",
+          "investmentKey",
+          "investmentName",
+          "investmentKind",
+          "accountingClassification",
+          "taxTreatment",
+          "orgNumber",
+          "fundEquityRatioBasisPoints",
+          "fundTaxStatementReference",
+          "acquisitionLotId",
+          "positionCreated",
+          "shareCount",
+          "purchaseAmount",
+          "transactionCosts",
+          "capitalizedCost",
+          "soldShareCount",
+          "proceeds",
+          "netProceeds",
+          "fifoCostBasisReduction",
+          "fifoTaxBasisReduction",
+          "remainingShareCount",
+          "remainingCostBasis",
+          "remainingTaxBasis",
+          "bookGainOrLoss",
+          "taxGainOrLoss",
+          "exemptGain",
+          "taxableGain",
+          "nonDeductibleLoss",
+          "deductibleLoss",
+          "payingCompanyName",
+          "lawfulDividendConfirmed",
+          "groupExceptionClaimed",
+          "groupExceptionApplied",
+          "yearEndOwnershipBasisPoints",
+          "yearEndVotingBasisPoints",
+          "groupEvidenceReference",
+          "fundName",
+          "entitlementDate",
+          "openingFundEquityRatioBasisPoints",
+          "grossAmount",
+          "taxableAddBack",
+          "dividendPortion",
+          "interestPortion",
+          "totalTaxableIncome",
+          "expectedSettlementAmount",
+          "settlementBalanceKind",
+          "recognitionAccountingEntryId",
+          "documentFacts",
+          "evidenceMode",
+          "evidenceReference",
+          "evidenceDigest",
+          "calculationId",
+          "ownerAttested",
+          "settlementId",
+          "settlementDate",
+          "settlementAmount",
+          "bankFact",
+          "settlementAccountingEntryId",
+          "createdBy",
+          "createdAt"
+        ],
+        "title": "InvestmentLifecycleEventWire",
+        "type": "object"
+      },
       "InvestmentLotHistoryStatus": {
         "enum": [
           "complete",
@@ -4096,6 +4741,16 @@
         "title": "InvestmentPositionWire",
         "type": "object"
       },
+      "InvestmentSettlementBalanceKind": {
+        "enum": [
+          "purchase_payable",
+          "sale_receivable",
+          "dividend_receivable",
+          "fund_distribution_receivable"
+        ],
+        "title": "InvestmentSettlementBalanceKind",
+        "type": "string"
+      },
       "InvestmentSourceCapability": {
         "enum": [
           "BANKING",
@@ -4110,6 +4765,37 @@
         ],
         "title": "InvestmentTaxTreatment",
         "type": "string"
+      },
+      "InvestmentsCashSettlementResultWire": {
+        "properties": {
+          "eventId": {
+            "format": "uuid",
+            "title": "Eventid",
+            "type": "string"
+          },
+          "replayed": {
+            "title": "Replayed",
+            "type": "boolean"
+          },
+          "settlementAccountingEntryId": {
+            "format": "uuid",
+            "title": "Settlementaccountingentryid",
+            "type": "string"
+          },
+          "settlementId": {
+            "format": "uuid",
+            "title": "Settlementid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "settlementId",
+          "eventId",
+          "settlementAccountingEntryId",
+          "replayed"
+        ],
+        "title": "InvestmentsCashSettlementResultWire",
+        "type": "object"
       },
       "InvestmentsCashSettlementWire": {
         "additionalProperties": false,
@@ -4186,11 +4872,11 @@
           "evidenceMode",
           "evidenceReference",
           "ownerAttested",
-          "replacementKind",
           "settlementId",
           "eventId",
           "settlementDate",
-          "amount"
+          "amount",
+          "replacementKind"
         ],
         "title": "InvestmentsCashSettlementWire",
         "type": "object"
@@ -4490,16 +5176,55 @@
           "evidenceMode",
           "evidenceReference",
           "ownerAttested",
-          "replacementKind",
           "eventId",
           "positionId",
           "payingCompanyName",
           "declaredDate",
           "grossAmount",
           "lawfulDividendConfirmed",
-          "groupExceptionClaimed"
+          "groupExceptionClaimed",
+          "replacementKind"
         ],
         "title": "InvestmentsDividendRecognitionWire",
+        "type": "object"
+      },
+      "InvestmentsEconomicEventResultWire": {
+        "properties": {
+          "eventId": {
+            "format": "uuid",
+            "title": "Eventid",
+            "type": "string"
+          },
+          "expectedSettlementAmount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "positionId": {
+            "format": "uuid",
+            "title": "Positionid",
+            "type": "string"
+          },
+          "recognitionAccountingEntryId": {
+            "format": "uuid",
+            "title": "Recognitionaccountingentryid",
+            "type": "string"
+          },
+          "replayed": {
+            "title": "Replayed",
+            "type": "boolean"
+          },
+          "settlementBalanceKind": {
+            "$ref": "#/components/schemas/InvestmentSettlementBalanceKind"
+          }
+        },
+        "required": [
+          "eventId",
+          "positionId",
+          "recognitionAccountingEntryId",
+          "expectedSettlementAmount",
+          "settlementBalanceKind",
+          "replayed"
+        ],
+        "title": "InvestmentsEconomicEventResultWire",
         "type": "object"
       },
       "InvestmentsFundDistributionRecognitionWire": {
@@ -4595,14 +5320,14 @@
           "evidenceMode",
           "evidenceReference",
           "ownerAttested",
-          "replacementKind",
           "eventId",
           "positionId",
           "fundName",
           "entitlementDate",
           "grossAmount",
           "openingFundEquityRatioBasisPoints",
-          "fundTaxStatementReference"
+          "fundTaxStatementReference",
+          "replacementKind"
         ],
         "title": "InvestmentsFundDistributionRecognitionWire",
         "type": "object"
@@ -4983,6 +5708,573 @@
         "title": "InvestmentsReceivedFundDistributionWire",
         "type": "object"
       },
+      "InvestmentsRecognizeReceivedDividendWire": {
+        "additionalProperties": false,
+        "properties": {
+          "bankFact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "declaredDate": {
+            "format": "date",
+            "title": "Declareddate",
+            "type": "string"
+          },
+          "documentFacts": {
+            "items": {
+              "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+            },
+            "maxItems": 50,
+            "title": "Documentfacts",
+            "type": "array"
+          },
+          "eventId": {
+            "format": "uuid",
+            "title": "Eventid",
+            "type": "string"
+          },
+          "evidenceMode": {
+            "$ref": "#/components/schemas/InvestmentEvidenceMode"
+          },
+          "evidenceReference": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Evidencereference",
+            "type": "string"
+          },
+          "grossAmount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "groupEvidenceReference": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Groupevidencereference"
+          },
+          "groupExceptionClaimed": {
+            "title": "Groupexceptionclaimed",
+            "type": "boolean"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "lawfulDividendConfirmed": {
+            "title": "Lawfuldividendconfirmed",
+            "type": "boolean"
+          },
+          "ownerAttested": {
+            "title": "Ownerattested",
+            "type": "boolean"
+          },
+          "payingCompanyName": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Payingcompanyname",
+            "type": "string"
+          },
+          "positionId": {
+            "format": "uuid",
+            "title": "Positionid",
+            "type": "string"
+          },
+          "yearEndOwnershipBasisPoints": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yearendownershipbasispoints"
+          },
+          "yearEndVotingBasisPoints": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yearendvotingbasispoints"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "evidenceMode",
+          "evidenceReference",
+          "ownerAttested",
+          "eventId",
+          "positionId",
+          "payingCompanyName",
+          "declaredDate",
+          "grossAmount",
+          "lawfulDividendConfirmed",
+          "groupExceptionClaimed"
+        ],
+        "title": "InvestmentsRecognizeReceivedDividendWire",
+        "type": "object"
+      },
+      "InvestmentsRecognizeReceivedFundDistributionWire": {
+        "additionalProperties": false,
+        "properties": {
+          "bankFact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "documentFacts": {
+            "items": {
+              "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+            },
+            "maxItems": 50,
+            "title": "Documentfacts",
+            "type": "array"
+          },
+          "entitlementDate": {
+            "format": "date",
+            "title": "Entitlementdate",
+            "type": "string"
+          },
+          "eventId": {
+            "format": "uuid",
+            "title": "Eventid",
+            "type": "string"
+          },
+          "evidenceMode": {
+            "$ref": "#/components/schemas/InvestmentEvidenceMode"
+          },
+          "evidenceReference": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Evidencereference",
+            "type": "string"
+          },
+          "fundName": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Fundname",
+            "type": "string"
+          },
+          "fundTaxStatementReference": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Fundtaxstatementreference",
+            "type": "string"
+          },
+          "grossAmount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "openingFundEquityRatioBasisPoints": {
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Openingfundequityratiobasispoints",
+            "type": "integer"
+          },
+          "ownerAttested": {
+            "title": "Ownerattested",
+            "type": "boolean"
+          },
+          "positionId": {
+            "format": "uuid",
+            "title": "Positionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "evidenceMode",
+          "evidenceReference",
+          "ownerAttested",
+          "eventId",
+          "positionId",
+          "fundName",
+          "entitlementDate",
+          "grossAmount",
+          "openingFundEquityRatioBasisPoints",
+          "fundTaxStatementReference"
+        ],
+        "title": "InvestmentsRecognizeReceivedFundDistributionWire",
+        "type": "object"
+      },
+      "InvestmentsRecognizeSharePurchaseWire": {
+        "additionalProperties": false,
+        "properties": {
+          "accountingClassification": {
+            "$ref": "#/components/schemas/InvestmentAccountingClassification"
+          },
+          "acquisitionDate": {
+            "format": "date",
+            "title": "Acquisitiondate",
+            "type": "string"
+          },
+          "bankFact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "documentFacts": {
+            "items": {
+              "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+            },
+            "maxItems": 50,
+            "title": "Documentfacts",
+            "type": "array"
+          },
+          "eventId": {
+            "format": "uuid",
+            "title": "Eventid",
+            "type": "string"
+          },
+          "evidenceMode": {
+            "$ref": "#/components/schemas/InvestmentEvidenceMode"
+          },
+          "evidenceReference": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Evidencereference",
+            "type": "string"
+          },
+          "fundEquityRatioBasisPoints": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fundequityratiobasispoints"
+          },
+          "fundTaxStatementReference": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fundtaxstatementreference"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "investmentKey": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Investmentkey",
+            "type": "string"
+          },
+          "investmentKind": {
+            "$ref": "#/components/schemas/InvestmentKind"
+          },
+          "investmentName": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Investmentname",
+            "type": "string"
+          },
+          "orgNumber": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{9}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orgnumber"
+          },
+          "ownerAttested": {
+            "title": "Ownerattested",
+            "type": "boolean"
+          },
+          "purchaseAmount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "shareCount": {
+            "pattern": "^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
+            "title": "Sharecount",
+            "type": "string"
+          },
+          "transactionCosts": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "evidenceMode",
+          "evidenceReference",
+          "ownerAttested",
+          "eventId",
+          "investmentKey",
+          "investmentName",
+          "investmentKind",
+          "accountingClassification",
+          "acquisitionDate",
+          "shareCount",
+          "purchaseAmount",
+          "transactionCosts"
+        ],
+        "title": "InvestmentsRecognizeSharePurchaseWire",
+        "type": "object"
+      },
+      "InvestmentsRecognizeShareSaleWire": {
+        "additionalProperties": false,
+        "properties": {
+          "bankFact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "documentFacts": {
+            "items": {
+              "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+            },
+            "maxItems": 50,
+            "title": "Documentfacts",
+            "type": "array"
+          },
+          "eventId": {
+            "format": "uuid",
+            "title": "Eventid",
+            "type": "string"
+          },
+          "evidenceMode": {
+            "$ref": "#/components/schemas/InvestmentEvidenceMode"
+          },
+          "evidenceReference": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Evidencereference",
+            "type": "string"
+          },
+          "fundTaxStatementReference": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fundtaxstatementreference"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "ownerAttested": {
+            "title": "Ownerattested",
+            "type": "boolean"
+          },
+          "positionId": {
+            "format": "uuid",
+            "title": "Positionid",
+            "type": "string"
+          },
+          "proceeds": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "saleDate": {
+            "format": "date",
+            "title": "Saledate",
+            "type": "string"
+          },
+          "saleYearFundEquityRatioBasisPoints": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saleyearfundequityratiobasispoints"
+          },
+          "soldShareCount": {
+            "pattern": "^(?:0|[1-9][0-9]{0,25})(?:\\.[0-9]{1,12})?$",
+            "title": "Soldsharecount",
+            "type": "string"
+          },
+          "transactionCosts": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "evidenceMode",
+          "evidenceReference",
+          "ownerAttested",
+          "eventId",
+          "positionId",
+          "saleDate",
+          "soldShareCount",
+          "proceeds",
+          "transactionCosts"
+        ],
+        "title": "InvestmentsRecognizeShareSaleWire",
+        "type": "object"
+      },
+      "InvestmentsSettleCashWire": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "bankFact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "documentFacts": {
+            "items": {
+              "$ref": "#/components/schemas/InvestmentFactReferenceWire"
+            },
+            "maxItems": 50,
+            "title": "Documentfacts",
+            "type": "array"
+          },
+          "eventId": {
+            "format": "uuid",
+            "title": "Eventid",
+            "type": "string"
+          },
+          "evidenceMode": {
+            "$ref": "#/components/schemas/InvestmentEvidenceMode"
+          },
+          "evidenceReference": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Evidencereference",
+            "type": "string"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "ownerAttested": {
+            "title": "Ownerattested",
+            "type": "boolean"
+          },
+          "settlementDate": {
+            "format": "date",
+            "title": "Settlementdate",
+            "type": "string"
+          },
+          "settlementId": {
+            "format": "uuid",
+            "title": "Settlementid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "evidenceMode",
+          "evidenceReference",
+          "ownerAttested",
+          "settlementId",
+          "eventId",
+          "settlementDate",
+          "amount"
+        ],
+        "title": "InvestmentsSettleCashWire",
+        "type": "object"
+      },
       "InvestmentsSharePurchaseRecognitionWire": {
         "additionalProperties": false,
         "properties": {
@@ -5117,7 +6409,6 @@
           "evidenceMode",
           "evidenceReference",
           "ownerAttested",
-          "replacementKind",
           "eventId",
           "investmentKey",
           "investmentName",
@@ -5126,7 +6417,8 @@
           "acquisitionDate",
           "shareCount",
           "purchaseAmount",
-          "transactionCosts"
+          "transactionCosts",
+          "replacementKind"
         ],
         "title": "InvestmentsSharePurchaseRecognitionWire",
         "type": "object"
@@ -5439,13 +6731,13 @@
           "evidenceMode",
           "evidenceReference",
           "ownerAttested",
-          "replacementKind",
           "eventId",
           "positionId",
           "saleDate",
           "soldShareCount",
           "proceeds",
-          "transactionCosts"
+          "transactionCosts",
+          "replacementKind"
         ],
         "title": "InvestmentsShareSaleRecognitionWire",
         "type": "object"
@@ -27323,6 +28615,420 @@
         ]
       }
     },
+    "/api/v1/investments/cash-settlements": {
+      "post": {
+        "operationId": "investmentsSettleCash",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 16,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestmentsSettleCashWire"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentsCashSettlementResultWire"
+                }
+              }
+            },
+            "description": "Investment cash settled against a recognition.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Settle Investments Cash",
+        "tags": [
+          "investments"
+        ]
+      }
+    },
     "/api/v1/investments/corrections": {
       "get": {
         "operationId": "investmentsListCorrections",
@@ -28173,6 +29879,444 @@
         ]
       }
     },
+    "/api/v1/investments/economic-events": {
+      "get": {
+        "operationId": "investmentsListEconomicEvents",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "companyId",
+            "required": true,
+            "schema": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "title": "Companyid",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentLifecycleEventPageWire"
+                }
+              }
+            },
+            "description": "Visible investment economic events and settlement state.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List Investment Economic Events",
+        "tags": [
+          "investments"
+        ]
+      }
+    },
     "/api/v1/investments/positions": {
       "get": {
         "operationId": "investmentsListPositions",
@@ -28611,8 +30755,423 @@
         ]
       }
     },
+    "/api/v1/investments/received-dividend-recognitions": {
+      "post": {
+        "operationId": "investmentsRecognizeReceivedDividend",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 16,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestmentsRecognizeReceivedDividendWire"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentsEconomicEventResultWire"
+                }
+              }
+            },
+            "description": "Received dividend recognized without cash settlement.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Recognize Investments Received Dividend",
+        "tags": [
+          "investments"
+        ]
+      }
+    },
     "/api/v1/investments/received-dividends": {
       "post": {
+        "deprecated": true,
         "operationId": "investmentsRecordReceivedDividend",
         "parameters": [
           {
@@ -28655,7 +31214,7 @@
                 }
               }
             },
-            "description": "Received dividend recorded atomically.",
+            "description": "Dividend recorded through lifecycle compatibility.",
             "headers": {
               "X-Request-ID": {
                 "description": "Correlation identifier for the request and response.",
@@ -29025,8 +31584,423 @@
         ]
       }
     },
+    "/api/v1/investments/received-fund-distribution-recognitions": {
+      "post": {
+        "operationId": "investmentsRecognizeReceivedFundDistribution",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 16,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestmentsRecognizeReceivedFundDistributionWire"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentsEconomicEventResultWire"
+                }
+              }
+            },
+            "description": "Fund distribution recognized without cash settlement.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Recognize Investments Received Fund Distribution",
+        "tags": [
+          "investments"
+        ]
+      }
+    },
     "/api/v1/investments/received-fund-distributions": {
       "post": {
+        "deprecated": true,
         "operationId": "investmentsRecordReceivedFundDistribution",
         "parameters": [
           {
@@ -29069,7 +32043,7 @@
                 }
               }
             },
-            "description": "Received fund distribution recorded atomically.",
+            "description": "Fund distribution recorded through lifecycle compatibility.",
             "headers": {
               "X-Request-ID": {
                 "description": "Correlation identifier for the request and response.",
@@ -29439,8 +32413,423 @@
         ]
       }
     },
+    "/api/v1/investments/share-purchase-recognitions": {
+      "post": {
+        "operationId": "investmentsRecognizeSharePurchase",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 16,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestmentsRecognizeSharePurchaseWire"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentsEconomicEventResultWire"
+                }
+              }
+            },
+            "description": "Share purchase recognized without cash settlement.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Recognize Investments Share Purchase",
+        "tags": [
+          "investments"
+        ]
+      }
+    },
     "/api/v1/investments/share-purchases": {
       "post": {
+        "deprecated": true,
         "operationId": "investmentsRecordSharePurchase",
         "parameters": [
           {
@@ -29483,7 +32872,7 @@
                 }
               }
             },
-            "description": "Share purchase recorded atomically.",
+            "description": "Share purchase recorded through lifecycle compatibility.",
             "headers": {
               "X-Request-ID": {
                 "description": "Correlation identifier for the request and response.",
@@ -30291,8 +33680,423 @@
         ]
       }
     },
+    "/api/v1/investments/share-sale-recognitions": {
+      "post": {
+        "operationId": "investmentsRecognizeShareSale",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 16,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestmentsRecognizeShareSaleWire"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentsEconomicEventResultWire"
+                }
+              }
+            },
+            "description": "Share sale recognized without cash settlement.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Investments request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Recognize Investments Share Sale",
+        "tags": [
+          "investments"
+        ]
+      }
+    },
     "/api/v1/investments/share-sales": {
       "post": {
+        "deprecated": true,
         "operationId": "investmentsRecordShareSale",
         "parameters": [
           {
@@ -30335,7 +34139,7 @@
                 }
               }
             },
-            "description": "Share sale recorded atomically.",
+            "description": "Share sale recorded through lifecycle compatibility.",
             "headers": {
               "X-Request-ID": {
                 "description": "Correlation identifier for the request and response.",

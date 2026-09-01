@@ -41,7 +41,6 @@ export function DividendReceivedWizard({
   const [positionId, setPositionId] = useState("");
   const [payingCompanyName, setPayingCompanyName] = useState("");
   const [declaredDate, setDeclaredDate] = useState("");
-  const [paidDate, setPaidDate] = useState("");
   const [grossAmount, setGrossAmount] = useState("");
   const [groupException, setGroupException] = useState(false);
   const [ownershipBasisPoints, setOwnershipBasisPoints] = useState("");
@@ -49,7 +48,7 @@ export function DividendReceivedWizard({
   const [groupEvidence, setGroupEvidence] = useState("");
   const [lawfulDividendConfirmed, setLawfulDividendConfirmed] = useState(false);
   const [evidence, setEvidence] = useState<InvestmentEvidenceState>({
-    mode: "linked_sources",
+    mode: "manual_fallback",
     bankTransactionId: "",
     documentId: "",
     reference: "",
@@ -62,7 +61,6 @@ export function DividendReceivedWizard({
     positionId.trim() !== "" &&
     payingCompanyName.trim() !== "" &&
     declaredDate.trim() !== "" &&
-    paidDate.trim() !== "" &&
     grossAmount.trim() !== "" &&
     lawfulDividendConfirmed &&
     investmentEvidenceComplete(evidence) &&
@@ -158,26 +156,15 @@ export function DividendReceivedWizard({
           />
         </>
       ) : null}
-      <div className="fieldRow">
-        <TextField
-          label={c.declaredLabel}
-          name="declaredDate"
-          value={declaredDate}
-          onChange={setDeclaredDate}
-          placeholder="2025-04-01"
-          helper={a.dateHelp}
-          required
-        />
-        <TextField
-          label={c.paidLabel}
-          name="paidDate"
-          value={paidDate}
-          onChange={setPaidDate}
-          placeholder="2025-04-15"
-          helper={a.dateHelp}
-          required
-        />
-      </div>
+      <TextField
+        label={c.declaredLabel}
+        name="declaredDate"
+        value={declaredDate}
+        onChange={setDeclaredDate}
+        placeholder="2025-04-01"
+        helper={a.dateHelp}
+        required
+      />
       <TextField
         label={c.amountLabel}
         name="grossAmount"

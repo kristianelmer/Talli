@@ -253,7 +253,10 @@ class InvestmentEvidence:
             for fact in self.document_facts
         ) or (
             self.bank_fact is not None
-            and self.bank_fact.capability is not InvestmentSourceCapability.BANKING
+            and (
+                self.bank_fact.capability is not InvestmentSourceCapability.BANKING
+                or self.bank_fact.revision != 1
+            )
         ):
             raise InvestmentsError.invalid_input()
         if (
@@ -345,6 +348,7 @@ class InvestmentsErrorCode(StrEnum):
     IDEMPOTENCY_IN_PROGRESS = "INVESTMENTS_IDEMPOTENCY_IN_PROGRESS"
     IDEMPOTENCY_KEY_REUSED = "INVESTMENTS_IDEMPOTENCY_KEY_REUSED"
     DEPENDENCY_UNAVAILABLE = "INVESTMENTS_DEPENDENCY_UNAVAILABLE"
+    BANK_FACT_ALREADY_CLAIMED = "INVESTMENTS_BANK_FACT_ALREADY_CLAIMED"
 
 
 class InvestmentsError(DomainError):
@@ -934,6 +938,75 @@ class InvestmentActivityView:
 
 
 @dataclass(frozen=True, slots=True)
+class InvestmentLifecycleEventView:
+    event_id: InvestmentEconomicEventId
+    company_id: CompanyId
+    income_year: IncomeYear
+    activity_kind: InvestmentActivityKind
+    recognition_date: LocalDate
+    position_id: InvestmentPositionId
+    investment_key: str
+    investment_name: str
+    investment_kind: InvestmentKind
+    accounting_classification: InvestmentAccountingClassification
+    tax_treatment: InvestmentTaxTreatment
+    org_number: str | None
+    fund_equity_ratio_basis_points: int | None
+    fund_tax_statement_reference: str | None
+    acquisition_lot_id: AcquisitionLotId | None
+    position_created: bool | None
+    share_count: InvestmentUnits | None
+    purchase_amount: Money | None
+    transaction_costs: Money | None
+    capitalized_cost: Money | None
+    sold_share_count: InvestmentUnits | None
+    proceeds: Money | None
+    net_proceeds: Money | None
+    fifo_cost_basis_reduction: Money | None
+    fifo_tax_basis_reduction: Money | None
+    remaining_share_count: InvestmentUnits | None
+    remaining_cost_basis: Money | None
+    remaining_tax_basis: Money | None
+    book_gain_or_loss: Money | None
+    tax_gain_or_loss: Money | None
+    exempt_gain: Money | None
+    taxable_gain: Money | None
+    non_deductible_loss: Money | None
+    deductible_loss: Money | None
+    paying_company_name: str | None
+    lawful_dividend_confirmed: bool | None
+    group_exception_claimed: bool | None
+    group_exception_applied: bool | None
+    year_end_ownership_basis_points: int | None
+    year_end_voting_basis_points: int | None
+    group_evidence_reference: str | None
+    fund_name: str | None
+    entitlement_date: LocalDate | None
+    opening_fund_equity_ratio_basis_points: int | None
+    gross_amount: Money | None
+    taxable_add_back: Money | None
+    dividend_portion: Money | None
+    interest_portion: Money | None
+    total_taxable_income: Money | None
+    expected_settlement_amount: Money
+    settlement_balance_kind: InvestmentSettlementBalanceKind
+    recognition_accounting_entry_id: AccountingEntryReference
+    document_facts: tuple[InvestmentFactReference, ...]
+    evidence_mode: InvestmentEvidenceMode
+    evidence_reference: str
+    evidence_digest: str
+    calculation_id: str
+    owner_attested: bool
+    settlement_id: InvestmentSettlementId | None
+    settlement_date: LocalDate | None
+    settlement_amount: Money | None
+    bank_fact: InvestmentFactReference | None
+    settlement_accounting_entry_id: AccountingEntryReference | None
+    created_by: ActorId
+    created_at: Timestamp
+
+
+@dataclass(frozen=True, slots=True)
 class ShareSaleAllocationView:
     allocation_id: ShareSaleAllocationId
     company_id: CompanyId
@@ -1000,6 +1073,13 @@ class AcquisitionLotPage:
 @dataclass(frozen=True, slots=True)
 class InvestmentActivityPage:
     items: tuple[InvestmentActivityView, ...]
+    next_cursor: InvestmentCursor | None
+    has_more: bool
+
+
+@dataclass(frozen=True, slots=True)
+class InvestmentLifecycleEventPage:
+    items: tuple[InvestmentLifecycleEventView, ...]
     next_cursor: InvestmentCursor | None
     has_more: bool
 
@@ -1137,85 +1217,6 @@ class InvestmentsPersistence(Protocol):
         replacement_accounting_entry_id: AccountingEntryReference,
     ) -> RecordedInvestmentCorrection: ...
 
-    async def get_received_fund_distribution_replay(
-        self, command: RecordReceivedFundDistributionCommand
-    ) -> RecordedReceivedFundDistribution | None: ...
-
-    async def prepare_received_fund_distribution(
-        self,
-        command: RecordReceivedFundDistributionCommand,
-        *,
-        evidence_digest: str,
-    ) -> PreparedReceivedFundDistributionFacts: ...
-
-    async def complete_received_fund_distribution(
-        self,
-        command: RecordReceivedFundDistributionCommand,
-        *,
-        prepared: PreparedReceivedFundDistribution,
-        accounting_entry_id: AccountingEntryReference,
-    ) -> RecordedReceivedFundDistribution: ...
-
-    async def get_received_dividend_replay(
-        self, command: RecordReceivedDividendCommand
-    ) -> RecordedReceivedDividend | None: ...
-
-    async def prepare_received_dividend(
-        self,
-        command: RecordReceivedDividendCommand,
-        *,
-        evidence_digest: str,
-    ) -> PreparedReceivedDividendFacts: ...
-
-    async def complete_received_dividend(
-        self,
-        command: RecordReceivedDividendCommand,
-        *,
-        prepared: PreparedReceivedDividend,
-        accounting_entry_id: AccountingEntryReference,
-    ) -> RecordedReceivedDividend: ...
-
-    async def get_share_purchase_replay(
-        self, command: RecordSharePurchaseCommand
-    ) -> RecordedSharePurchase | None: ...
-
-    async def prepare_share_purchase(
-        self,
-        command: RecordSharePurchaseCommand,
-        *,
-        capitalized_cost: Money,
-        evidence_digest: str,
-        calculation_id: str,
-    ) -> PreparedSharePurchase: ...
-
-    async def complete_share_purchase(
-        self,
-        command: RecordSharePurchaseCommand,
-        *,
-        prepared: PreparedSharePurchase,
-        accounting_entry_id: AccountingEntryReference,
-    ) -> RecordedSharePurchase: ...
-
-    async def prepare_share_sale(
-        self,
-        command: RecordShareSaleCommand,
-        *,
-        net_proceeds: Money,
-        evidence_digest: str,
-    ) -> PreparedShareSaleFacts: ...
-
-    async def get_share_sale_replay(
-        self, command: RecordShareSaleCommand
-    ) -> RecordedShareSale | None: ...
-
-    async def complete_share_sale(
-        self,
-        command: RecordShareSaleCommand,
-        *,
-        prepared: PreparedShareSale,
-        accounting_entry_id: AccountingEntryReference,
-    ) -> RecordedShareSale: ...
-
 
 class InvestmentsCommands(Protocol):
     async def get_share_purchase_recognition_replay(
@@ -1316,73 +1317,6 @@ class InvestmentsCommands(Protocol):
         replacement: RecordedInvestmentEconomicEvent | AccountingEntryReference,
     ) -> RecordedInvestmentCorrection: ...
 
-    async def get_received_fund_distribution_replay(
-        self, command: RecordReceivedFundDistributionCommand
-    ) -> RecordedReceivedFundDistribution | None: ...
-
-    async def prepare_received_fund_distribution(
-        self, command: RecordReceivedFundDistributionCommand
-    ) -> PreparedReceivedFundDistribution: ...
-
-    async def complete_received_fund_distribution(
-        self,
-        command: RecordReceivedFundDistributionCommand,
-        *,
-        prepared: PreparedReceivedFundDistribution,
-        accounting_entry_id: AccountingEntryReference,
-    ) -> RecordedReceivedFundDistribution: ...
-
-    async def get_received_dividend_replay(
-        self, command: RecordReceivedDividendCommand
-    ) -> RecordedReceivedDividend | None: ...
-
-    async def prepare_received_dividend(
-        self,
-        command: RecordReceivedDividendCommand,
-    ) -> PreparedReceivedDividend: ...
-
-    async def complete_received_dividend(
-        self,
-        command: RecordReceivedDividendCommand,
-        *,
-        prepared: PreparedReceivedDividend,
-        accounting_entry_id: AccountingEntryReference,
-    ) -> RecordedReceivedDividend: ...
-
-    async def get_share_purchase_replay(
-        self, command: RecordSharePurchaseCommand
-    ) -> RecordedSharePurchase | None: ...
-
-    async def prepare_share_purchase(
-        self,
-        command: RecordSharePurchaseCommand,
-    ) -> PreparedSharePurchase: ...
-
-    async def complete_share_purchase(
-        self,
-        command: RecordSharePurchaseCommand,
-        *,
-        prepared: PreparedSharePurchase,
-        accounting_entry_id: AccountingEntryReference,
-    ) -> RecordedSharePurchase: ...
-
-    async def prepare_share_sale(
-        self,
-        command: RecordShareSaleCommand,
-    ) -> PreparedShareSale: ...
-
-    async def get_share_sale_replay(
-        self, command: RecordShareSaleCommand
-    ) -> RecordedShareSale | None: ...
-
-    async def complete_share_sale(
-        self,
-        command: RecordShareSaleCommand,
-        *,
-        prepared: PreparedShareSale,
-        accounting_entry_id: AccountingEntryReference,
-    ) -> RecordedShareSale: ...
-
 
 class InvestmentsQueries(Protocol):
     async def list_corrections(
@@ -1414,6 +1348,16 @@ class InvestmentsQueries(Protocol):
         cursor: InvestmentCursor | None,
         limit: int,
     ) -> InvestmentActivityPage: ...
+
+    async def list_lifecycle_events(
+        self,
+        *,
+        actor_id: ActorId,
+        company_ids: tuple[CompanyId, ...],
+        correlation_id: CorrelationId,
+        cursor: InvestmentCursor | None,
+        limit: int,
+    ) -> InvestmentLifecycleEventPage: ...
 
     async def list_positions(
         self,
@@ -1474,6 +1418,8 @@ __all__ = [
     "InvestmentFactReference",
     "InvestmentKind",
     "InvestmentLotHistoryStatus",
+    "InvestmentLifecycleEventPage",
+    "InvestmentLifecycleEventView",
     "InvestmentPolicyVersion",
     "InvestmentPositionPage",
     "InvestmentPositionId",

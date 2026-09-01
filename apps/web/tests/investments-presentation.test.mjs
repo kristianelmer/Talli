@@ -16,16 +16,19 @@ import {
   loadInvestmentCorrections,
   loadInvestmentPositions,
   loadInvestmentActivity,
+  loadInvestmentEconomicEvents,
   loadInvestmentShareSaleAllocations,
   presentAcquisitionLots,
   presentInvestmentPositions,
   presentInvestmentActivity,
+  presentInvestmentLifecycleEvents,
   presentInvestmentCorrections,
   presentShareSaleAllocations,
-  recordInvestmentSharePurchase,
-  recordInvestmentShareSale,
-  recordInvestmentReceivedDividend,
-  recordInvestmentReceivedFundDistribution,
+  recognizeInvestmentSharePurchase,
+  recognizeInvestmentShareSale,
+  recognizeInvestmentReceivedDividend,
+  recognizeInvestmentReceivedFundDistribution,
+  settleInvestmentCash,
   summarizeReceivedDividendAnnualImpact,
 } from "../features/investments/index.ts";
 
@@ -140,6 +143,82 @@ function dividendActivity(overrides = {}) {
   };
 }
 
+function lifecycleEvent(overrides = {}) {
+  return {
+    accountingClassification: "other_long_term",
+    acquisitionLotId: null,
+    activityKind: "dividend_received",
+    bankFact: null,
+    bookGainOrLoss: null,
+    calculationId: "c".repeat(64),
+    capitalizedCost: null,
+    companyId,
+    createdAt: "2026-08-15T10:00:00Z",
+    createdBy: actorId,
+    deductibleLoss: null,
+    dividendPortion: null,
+    documentFacts: [{
+      capability: "DOCUMENTS",
+      recordId: documentId,
+      revision: 1,
+      factSha256: "d".repeat(64),
+    }],
+    entitlementDate: null,
+    evidenceDigest: "e".repeat(64),
+    evidenceMode: "manual_fallback",
+    evidenceReference: "dividend-advice-example",
+    exemptGain: null,
+    expectedSettlementAmount: { amount: "125.50", currency: "NOK" },
+    fifoCostBasisReduction: null,
+    fifoTaxBasisReduction: null,
+    fundEquityRatioBasisPoints: null,
+    fundName: null,
+    fundTaxStatementReference: null,
+    grossAmount: { amount: "125.50", currency: "NOK" },
+    groupEvidenceReference: null,
+    groupExceptionApplied: false,
+    groupExceptionClaimed: false,
+    id: dividendActionId,
+    incomeYear: 2026,
+    interestPortion: null,
+    investmentKey: "portfolio-as",
+    investmentKind: "norwegian_private_company",
+    investmentName: "Portfolio AS",
+    lawfulDividendConfirmed: true,
+    netProceeds: null,
+    nonDeductibleLoss: null,
+    openingFundEquityRatioBasisPoints: null,
+    orgNumber: "999888777",
+    ownerAttested: true,
+    payingCompanyName: "Portfolio AS",
+    positionId,
+    positionCreated: null,
+    proceeds: null,
+    purchaseAmount: null,
+    recognitionAccountingEntryId: entryId,
+    recognitionDate: "2026-08-01",
+    remainingCostBasis: null,
+    remainingShareCount: null,
+    remainingTaxBasis: null,
+    settlementAccountingEntryId: null,
+    settlementAmount: null,
+    settlementBalanceKind: "dividend_receivable",
+    settlementDate: null,
+    settlementId: null,
+    shareCount: null,
+    soldShareCount: null,
+    taxGainOrLoss: null,
+    taxableAddBack: { amount: "3.77", currency: "NOK" },
+    taxableGain: null,
+    taxTreatment: "fritaksmetoden",
+    totalTaxableIncome: null,
+    transactionCosts: null,
+    yearEndOwnershipBasisPoints: null,
+    yearEndVotingBasisPoints: null,
+    ...overrides,
+  };
+}
+
 function allocation(overrides = {}) {
   return {
     acquisitionDate: "2026-05-01",
@@ -222,43 +301,52 @@ test("investments transport uses generated routes, auth, idempotency, and opaque
   globalThis.fetch = async (url, request) => {
     calls.push({ url: String(url), request });
     const path = String(url);
-    if (path.endsWith("/share-purchases")) {
+    if (path.endsWith("/share-purchase-recognitions")) {
       return Response.json({
-        accountingEntryId: entryId,
-        acquisitionLotId: lotId,
-        actionId,
-        positionCreated: true,
+        eventId: actionId,
+        expectedSettlementAmount: { amount: "50000.00", currency: "NOK" },
         positionId,
+        recognitionAccountingEntryId: entryId,
         replayed: false,
+        settlementBalanceKind: "purchase_payable",
       });
     }
-    if (path.endsWith("/share-sales")) {
+    if (path.endsWith("/share-sale-recognitions")) {
       return Response.json({
-        accountingEntryId: entryId,
-        actionId: saleActionId,
+        eventId: saleActionId,
+        expectedSettlementAmount: { amount: "30000.00", currency: "NOK" },
         positionId,
+        recognitionAccountingEntryId: entryId,
         replayed: false,
+        settlementBalanceKind: "sale_receivable",
       });
     }
-    if (path.endsWith("/received-dividends")) {
+    if (path.endsWith("/received-dividend-recognitions")) {
       return Response.json({
-        accountingEntryId: entryId,
-        actionId: dividendActionId,
+        eventId: dividendActionId,
+        expectedSettlementAmount: { amount: "125.50", currency: "NOK" },
         positionId,
+        recognitionAccountingEntryId: entryId,
         replayed: false,
-        taxableAddBack: { amount: "3.77", currency: "NOK" },
+        settlementBalanceKind: "dividend_receivable",
       });
     }
-    if (path.endsWith("/received-fund-distributions")) {
+    if (path.endsWith("/received-fund-distribution-recognitions")) {
       return Response.json({
-        accountingEntryId: entryId,
-        actionId: fundDistributionActionId,
-        dividendPortion: { amount: "80.00", currency: "NOK" },
-        interestPortion: { amount: "20.00", currency: "NOK" },
+        eventId: fundDistributionActionId,
+        expectedSettlementAmount: { amount: "100.00", currency: "NOK" },
         positionId,
+        recognitionAccountingEntryId: entryId,
         replayed: false,
-        taxableAddBack: { amount: "2.40", currency: "NOK" },
-        totalTaxableIncome: { amount: "22.40", currency: "NOK" },
+        settlementBalanceKind: "fund_distribution_receivable",
+      });
+    }
+    if (path.endsWith("/cash-settlements")) {
+      return Response.json({
+        eventId: fundDistributionActionId,
+        replayed: false,
+        settlementAccountingEntryId: entryId,
+        settlementId: replacementActionId,
       });
     }
     if (path.endsWith("/corrections") && request.method === "POST") {
@@ -291,6 +379,12 @@ test("investments transport uses generated routes, auth, idempotency, and opaque
         page: { hasMore: false, nextCursor: null },
       });
     }
+    if (path.includes("/economic-events")) {
+      return Response.json({
+        items: [lifecycleEvent()],
+        page: { hasMore: false, nextCursor: null },
+      });
+    }
     if (path.includes("/share-sale-allocations")) {
       return Response.json({
         items: [allocation()],
@@ -302,12 +396,19 @@ test("investments transport uses generated routes, auth, idempotency, and opaque
   process.env.TALLI_BACKEND_URL = "https://backend.example";
 
   try {
-    const recorded = await recordInvestmentSharePurchase("session-token", {
+    const documentFacts = [{
+      capability: "DOCUMENTS",
+      recordId: documentId,
+      revision: 1,
+      factSha256: "c".repeat(64),
+    }];
+    const recorded = await recognizeInvestmentSharePurchase("session-token", {
       acquisitionDate: "2026-05-01",
       accountingClassification: "other_long_term",
-      actionId,
+      eventId: actionId,
       companyId,
-      documentStatus: "not_required",
+      documentFacts,
+      bankFact: null,
       evidenceMode: "manual_fallback",
       evidenceReference: "broker-note-purchase",
       incomeYear: 2026,
@@ -317,14 +418,14 @@ test("investments transport uses generated routes, auth, idempotency, and opaque
       ownerAttested: true,
       orgNumber: "999888777",
       purchaseAmount: { amount: "50000.00", currency: "NOK" },
-      shareCount: 100,
-      taxTreatment: "fritaksmetoden",
+      shareCount: "100.125000000000",
       transactionCosts: { amount: "0.00", currency: "NOK" },
     }, "purchase-idempotency", "purchase-request");
-    const recordedSale = await recordInvestmentShareSale("session-token", {
-      actionId: saleActionId,
+    const recordedSale = await recognizeInvestmentShareSale("session-token", {
+      eventId: saleActionId,
       companyId,
-      documentStatus: "not_required",
+      documentFacts,
+      bankFact: null,
       evidenceMode: "manual_fallback",
       evidenceReference: "broker-note-sale",
       incomeYear: 2026,
@@ -332,14 +433,15 @@ test("investments transport uses generated routes, auth, idempotency, and opaque
       positionId,
       proceeds: { amount: "30000.00", currency: "NOK" },
       saleDate: "2026-08-01",
-      soldShareCount: 40,
+      soldShareCount: "40.062500000000",
       transactionCosts: { amount: "0.00", currency: "NOK" },
     }, "sale-idempotency", "sale-request");
-    const recordedDividend = await recordInvestmentReceivedDividend("session-token", {
-      actionId: dividendActionId,
+    const recordedDividend = await recognizeInvestmentReceivedDividend("session-token", {
+      eventId: dividendActionId,
       companyId,
       declaredDate: "2026-08-01",
-      documentStatus: "not_required",
+      documentFacts,
+      bankFact: null,
       evidenceMode: "manual_fallback",
       evidenceReference: "dividend-advice",
       grossAmount: { amount: "125.50", currency: "NOK" },
@@ -347,15 +449,14 @@ test("investments transport uses generated routes, auth, idempotency, and opaque
       groupExceptionClaimed: false,
       lawfulDividendConfirmed: true,
       ownerAttested: true,
-      paidDate: "2026-08-15",
       payingCompanyName: "Portfolio AS",
       positionId,
-      taxTreatment: "fritaksmetoden",
     }, "dividend-idempotency", "dividend-request");
-    const recordedFundDistribution = await recordInvestmentReceivedFundDistribution("session-token", {
-      actionId: fundDistributionActionId,
+    const recordedFundDistribution = await recognizeInvestmentReceivedFundDistribution("session-token", {
+      eventId: fundDistributionActionId,
       companyId,
-      documentStatus: "not_required",
+      documentFacts,
+      bankFact: null,
       entitlementDate: "2026-08-01",
       evidenceMode: "manual_fallback",
       evidenceReference: "fund-tax-statement",
@@ -365,9 +466,26 @@ test("investments transport uses generated routes, auth, idempotency, and opaque
       incomeYear: 2026,
       openingFundEquityRatioBasisPoints: 8000,
       ownerAttested: true,
-      paidDate: "2026-08-15",
       positionId,
     }, "fund-idempotency", "fund-request");
+    const settled = await settleInvestmentCash("session-token", {
+      amount: { amount: "100.00", currency: "NOK" },
+      bankFact: {
+        capability: "BANKING",
+        recordId: "70000000-0000-0000-0000-000000000007",
+        revision: 1,
+        factSha256: "b".repeat(64),
+      },
+      companyId,
+      documentFacts: [],
+      eventId: fundDistributionActionId,
+      evidenceMode: "linked_sources",
+      evidenceReference: "bank-payment",
+      incomeYear: 2026,
+      ownerAttested: false,
+      settlementDate: "2026-08-15",
+      settlementId: replacementActionId,
+    }, "settlement-idempotency", "settlement-request");
     const corrected = await correctInvestment("session-token", {
       companyId,
       correctionDate: "2026-08-31",
@@ -412,6 +530,9 @@ test("investments transport uses generated routes, auth, idempotency, and opaque
     }, "correction-idempotency", "correction-request");
     const positions = await loadInvestmentPositions("session-token", [companyId], "position-request");
     const activity = await loadInvestmentActivity("session-token", [companyId], "activity-request");
+    const economicEvents = await loadInvestmentEconomicEvents(
+      "session-token", [companyId], "event-request",
+    );
     const lots = await loadInvestmentAcquisitionLots("session-token", [companyId], "lot-request");
     const allocations = await loadInvestmentShareSaleAllocations(
       "session-token", [companyId], "allocation-request",
@@ -420,26 +541,30 @@ test("investments transport uses generated routes, auth, idempotency, and opaque
       "session-token", [companyId], "corrections-request",
     );
 
-    assert.equal(recorded.accountingEntryId, entryId);
-    assert.equal(recordedSale.actionId, saleActionId);
-    assert.equal(recordedDividend.taxableAddBack.amount, "3.77");
-    assert.equal(recordedFundDistribution.totalTaxableIncome.amount, "22.40");
+    assert.equal(recorded.recognitionAccountingEntryId, entryId);
+    assert.equal(recordedSale.eventId, saleActionId);
+    assert.equal(recordedDividend.expectedSettlementAmount.amount, "125.50");
+    assert.equal(recordedFundDistribution.expectedSettlementAmount.amount, "100.00");
+    assert.equal(settled.settlementId, replacementActionId);
     assert.equal(corrected.reversalAccountingEntryId, reversalEntryId);
     assert.deepEqual(positions, [position()]);
     assert.equal(activity[0].id, dividendActionId);
+    assert.equal(economicEvents[0].settlementId, null);
     assert.deepEqual(lots, [lot()]);
     assert.deepEqual(allocations, [allocation()]);
     assert.deepEqual(corrections, [correction()]);
-    assert.equal(calls.length, 11);
-    assert.match(calls[0].url, /\/api\/v1\/investments\/share-purchases$/u);
-    assert.match(calls[1].url, /\/api\/v1\/investments\/share-sales$/u);
-    assert.match(calls[2].url, /\/api\/v1\/investments\/received-dividends$/u);
-    assert.match(calls[3].url, /\/api\/v1\/investments\/received-fund-distributions$/u);
-    assert.match(calls[4].url, /\/api\/v1\/investments\/corrections$/u);
-    assert.match(calls[6].url, /cursor=opaque-next/u);
-    assert.match(calls[7].url, /\/api\/v1\/investments\/activity/u);
-    assert.match(calls[9].url, /\/api\/v1\/investments\/share-sale-allocations/u);
-    assert.match(calls[10].url, /\/api\/v1\/investments\/corrections/u);
+    assert.equal(calls.length, 13);
+    assert.match(calls[0].url, /\/api\/v1\/investments\/share-purchase-recognitions$/u);
+    assert.match(calls[1].url, /\/api\/v1\/investments\/share-sale-recognitions$/u);
+    assert.match(calls[2].url, /\/api\/v1\/investments\/received-dividend-recognitions$/u);
+    assert.match(calls[3].url, /\/api\/v1\/investments\/received-fund-distribution-recognitions$/u);
+    assert.match(calls[4].url, /\/api\/v1\/investments\/cash-settlements$/u);
+    assert.match(calls[5].url, /\/api\/v1\/investments\/corrections$/u);
+    assert.match(calls[7].url, /cursor=opaque-next/u);
+    assert.match(calls[8].url, /\/api\/v1\/investments\/activity/u);
+    assert.match(calls[9].url, /\/api\/v1\/investments\/economic-events/u);
+    assert.match(calls[11].url, /\/api\/v1\/investments\/share-sale-allocations/u);
+    assert.match(calls[12].url, /\/api\/v1\/investments\/corrections/u);
     const mutationHeaders = new Headers(calls[0].request.headers);
     assert.equal(mutationHeaders.get("Authorization"), "Bearer session-token");
     assert.equal(mutationHeaders.get("Idempotency-Key"), "purchase-idempotency");
@@ -452,7 +577,7 @@ test("investments transport uses generated routes, auth, idempotency, and opaque
     assert.equal(dividendHeaders.get("Authorization"), "Bearer session-token");
     assert.equal(dividendHeaders.get("Idempotency-Key"), "dividend-idempotency");
     assert.equal(dividendHeaders.get("X-Request-ID"), "dividend-request");
-    const correctionHeaders = new Headers(calls[4].request.headers);
+    const correctionHeaders = new Headers(calls[5].request.headers);
     assert.equal(correctionHeaders.get("Idempotency-Key"), "correction-idempotency");
     assert.equal(correctionHeaders.get("X-Request-ID"), "correction-request");
   } finally {
@@ -494,6 +619,40 @@ test("investment unit reads reject lossy wire values", async () => {
       loadInvestmentPositions("session-token", [companyId], "invalid-movement-units"),
       (error) => error instanceof TalliApiError && error.status === 502,
     );
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+  }
+});
+
+test("investment position reads preserve contract-declared lifecycle movement facts", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+  const movement = {
+    movement_date: "2026-05-01",
+    movement_type: "purchase_recognition",
+    share_delta: "100.125000000000",
+    event_id: actionId,
+    calculation_id: "c".repeat(64),
+    evidence_digest: "e".repeat(64),
+    book_cost_basis_delta: 50000,
+    tax_basis_delta: 50000,
+  };
+  try {
+    globalThis.fetch = async () => Response.json({
+      items: [position({ movements: [movement] })],
+      page: { hasMore: false, nextCursor: null },
+    });
+
+    const [loaded] = await loadInvestmentPositions(
+      "session-token",
+      [companyId],
+      "lifecycle-movement-facts",
+    );
+
+    assert.deepEqual(loaded.movements, [movement]);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
@@ -611,6 +770,15 @@ test("investments presentation maps canonical wire facts without owning policy",
     dividendIncome: 125.5,
     fritaksmetodenAddBack: 3.77,
   });
+  const [presentedLifecycleEvent] = presentInvestmentLifecycleEvents([
+    lifecycleEvent(),
+  ]);
+  assert.equal(presentedLifecycleEvent.action_date, "2026-08-01");
+  assert.equal(presentedLifecycleEvent.document_id, documentId);
+  assert.equal(presentedLifecycleEvent.bank_transaction_id, null);
+  assert.equal(presentedLifecycleEvent.payload.settlement_status, "pending");
+  assert.equal(presentedLifecycleEvent.payload.expected_settlement_amount, 125.5);
+  assert.equal(presentedLifecycleEvent.payload.taxable_add_back, 3.77);
   const [purchaseActivity] = presentInvestmentActivity([dividendActivity({
     activityKind: "share_purchase",
     shareCount: "10.125000000000",
@@ -688,7 +856,7 @@ test("investments errors preserve retry identity only for unknown outcomes", () 
   const problem = (code, status = 422) => new TalliApiError(status, {
     code,
     detail: "Investments request failed.",
-    instance: "/api/v1/investments/share-purchases",
+    instance: "/api/v1/investments/share-purchase-recognitions",
     requestId: "investment-error-test",
     status,
     title: "Investments request failed",
@@ -713,6 +881,7 @@ test("investment actions require explicit owner and dividend attestations", () =
     "DividendReceivedWizard.tsx",
     "FundDistributionWizard.tsx",
     "InvestmentCorrectionWizard.tsx",
+    "InvestmentSettlementCorrectionWizard.tsx",
   ].map((fileName) => readFileSync(
     new URL(`../app/(owner)/actions/_components/${fileName}`, import.meta.url),
     "utf8",
@@ -740,4 +909,7 @@ test("investment actions require explicit owner and dividend attestations", () =
   assert.match(evidenceFieldsSource, /fieldName\(fieldPrefix, "ownerAttested"\)/u);
   assert.match(wizardSources[2], /name="lawfulDividendConfirmed"/u);
   assert.match(wizardSources[4], /name="lawfulDividendConfirmed"/u);
+  assert.doesNotMatch(wizardSources[4], /label="Utbetalingsdato"/u);
+  assert.match(actionsSource, /targetKind: "cash_settlement"/u);
+  assert.match(actionsSource, /replacementKind: "cash_settlement"/u);
 });

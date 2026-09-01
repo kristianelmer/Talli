@@ -3,6 +3,7 @@
 from contextlib import AbstractAsyncContextManager
 from typing import Protocol
 
+from talli_backend.modules.banking.public import BankTransactionClaimPersistence
 from talli_backend.modules.investments.public import InvestmentsPersistence, InvestmentsQueries
 from talli_backend.modules.ledger.public import LedgerPersistence
 from talli_backend.shared.kernel import ActorId
@@ -12,7 +13,12 @@ class InvestmentsAuthenticationError(Exception):
     """The caller could not be bound to a verified investments session."""
 
 
-class InvestmentsWorkflowTransaction(InvestmentsPersistence, LedgerPersistence, Protocol):
+class InvestmentsWorkflowTransaction(
+    InvestmentsPersistence,
+    LedgerPersistence,
+    BankTransactionClaimPersistence,
+    Protocol,
+):
     @property
     def actor_id(self) -> ActorId: ...
 

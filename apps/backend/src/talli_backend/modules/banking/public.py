@@ -210,6 +210,25 @@ class BankingCommand:
 
 
 @dataclass(frozen=True, slots=True)
+class ClaimBankTransactionForExternalActionCommand(BankingCommand):
+    transaction_id: BankTransactionId
+    transaction_date: LocalDate
+    signed_amount: Money
+    source_hash: str
+    action_reference: ExternalActionReference
+
+    def __post_init__(self) -> None:
+        source_hash = self.source_hash.strip().lower()
+        if (
+            self.transaction_date.value.year != self.income_year.value
+            or len(source_hash) != 64
+            or any(character not in "0123456789abcdef" for character in source_hash)
+        ):
+            raise BankingError.invalid_input(BankingErrorCode.INVALID_INPUT)
+        object.__setattr__(self, "source_hash", source_hash)
+
+
+@dataclass(frozen=True, slots=True)
 class BankFileColumnMapping:
     booking_date: str
     value_date: str | None
@@ -868,6 +887,15 @@ class BankingPersistence(Protocol):
     ) -> BankSuggestionAcceptancePage: ...
 
 
+class BankTransactionClaimPersistence(Protocol):
+    async def claim_transaction_for_external_action(
+        self,
+        command: ClaimBankTransactionForExternalActionCommand,
+        *,
+        accounting_entry_id: AccountingEntryReference,
+    ) -> None: ...
+
+
 class BankDataProvider(Protocol):
     @property
     def connector_id(self) -> BankConnectorId: ...
@@ -1084,6 +1112,7 @@ __all__ = [
     "BankTransactionId",
     "BankTransactionPage",
     "BankTransactionState",
+    "BankTransactionClaimPersistence",
     "BankingCommand",
     "BankingCommands",
     "BankingCursor",
@@ -1097,6 +1126,7 @@ __all__ = [
     "BeginBankConsentRequest",
     "CompleteBankConsentRequest",
     "CompleteBankConnectionCommand",
+    "ClaimBankTransactionForExternalActionCommand",
     "FetchBankTransactionsRequest",
     "ImportBankStatementCommand",
     "ImportedBankTransaction",

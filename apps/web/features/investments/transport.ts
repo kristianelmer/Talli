@@ -1,20 +1,20 @@
 import {
   createTalliApiClient,
   type AcquisitionLotWire,
-  type InvestmentsSharePurchaseResultWire,
-  type InvestmentsSharePurchaseWire,
-  type InvestmentsShareSaleResultWire,
-  type InvestmentsShareSaleWire,
-  type InvestmentsReceivedDividendResultWire,
-  type InvestmentsReceivedDividendWire,
-  type InvestmentsReceivedFundDistributionResultWire,
-  type InvestmentsReceivedFundDistributionWire,
+  type InvestmentsEconomicEventResultWire,
+  type InvestmentsCashSettlementResultWire,
+  type InvestmentsRecognizeSharePurchaseWire,
+  type InvestmentsRecognizeShareSaleWire,
+  type InvestmentsRecognizeReceivedDividendWire,
+  type InvestmentsRecognizeReceivedFundDistributionWire,
+  type InvestmentsSettleCashWire,
   type InvestmentPositionWire,
   type InvestmentActivityWire,
+  type InvestmentLifecycleEventWire,
   type ShareSaleAllocationWire,
   type InvestmentCorrectionWire,
-  type InvestmentsCorrectionResultWire,
   type InvestmentsCorrectionWire,
+  type InvestmentsCorrectionResultWire,
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
 
@@ -53,49 +53,61 @@ async function loadAllPages<T>(
   throw new Error("Investments query exceeded its bounded page budget.");
 }
 
-export function recordInvestmentSharePurchase(
+export function recognizeInvestmentSharePurchase(
   accessToken: string,
-  command: InvestmentsSharePurchaseWire,
+  command: InvestmentsRecognizeSharePurchaseWire,
   idempotencyKey: string,
   requestId?: string,
-): Promise<InvestmentsSharePurchaseResultWire> {
-  return client(accessToken).investmentsRecordSharePurchase(command, {
+): Promise<InvestmentsEconomicEventResultWire> {
+  return client(accessToken).investmentsRecognizeSharePurchase(command, {
     ...request(requestId),
     idempotencyKey,
   });
 }
 
-export function recordInvestmentShareSale(
+export function recognizeInvestmentShareSale(
   accessToken: string,
-  command: InvestmentsShareSaleWire,
+  command: InvestmentsRecognizeShareSaleWire,
   idempotencyKey: string,
   requestId?: string,
-): Promise<InvestmentsShareSaleResultWire> {
-  return client(accessToken).investmentsRecordShareSale(command, {
+): Promise<InvestmentsEconomicEventResultWire> {
+  return client(accessToken).investmentsRecognizeShareSale(command, {
     ...request(requestId),
     idempotencyKey,
   });
 }
 
-export function recordInvestmentReceivedDividend(
+export function recognizeInvestmentReceivedDividend(
   accessToken: string,
-  command: InvestmentsReceivedDividendWire,
+  command: InvestmentsRecognizeReceivedDividendWire,
   idempotencyKey: string,
   requestId?: string,
-): Promise<InvestmentsReceivedDividendResultWire> {
-  return client(accessToken).investmentsRecordReceivedDividend(command, {
+): Promise<InvestmentsEconomicEventResultWire> {
+  return client(accessToken).investmentsRecognizeReceivedDividend(command, {
     ...request(requestId),
     idempotencyKey,
   });
 }
 
-export function recordInvestmentReceivedFundDistribution(
+export function recognizeInvestmentReceivedFundDistribution(
   accessToken: string,
-  command: InvestmentsReceivedFundDistributionWire,
+  command: InvestmentsRecognizeReceivedFundDistributionWire,
   idempotencyKey: string,
   requestId?: string,
-): Promise<InvestmentsReceivedFundDistributionResultWire> {
-  return client(accessToken).investmentsRecordReceivedFundDistribution(command, {
+): Promise<InvestmentsEconomicEventResultWire> {
+  return client(accessToken).investmentsRecognizeReceivedFundDistribution(command, {
+    ...request(requestId),
+    idempotencyKey,
+  });
+}
+
+export function settleInvestmentCash(
+  accessToken: string,
+  command: InvestmentsSettleCashWire,
+  idempotencyKey: string,
+  requestId?: string,
+): Promise<InvestmentsCashSettlementResultWire> {
+  return client(accessToken).investmentsSettleCash(command, {
     ...request(requestId),
     idempotencyKey,
   });
@@ -136,6 +148,21 @@ export function loadInvestmentActivity(
   if (companyIds.length === 0) return Promise.resolve([]);
   const api = client(accessToken);
   return loadAllPages((cursor) => api.investmentsListActivity({
+    companyIds,
+    cursor,
+    limit: PAGE_LIMIT,
+    ...request(requestId),
+  }));
+}
+
+export function loadInvestmentEconomicEvents(
+  accessToken: string,
+  companyIds: readonly string[],
+  requestId?: string,
+): Promise<InvestmentLifecycleEventWire[]> {
+  if (companyIds.length === 0) return Promise.resolve([]);
+  const api = client(accessToken);
+  return loadAllPages((cursor) => api.investmentsListEconomicEvents({
     companyIds,
     cursor,
     limit: PAGE_LIMIT,

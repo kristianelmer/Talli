@@ -26,9 +26,11 @@ leaves only the canonical investments implementation.
 ## Public interface
 
 Consumers import only `talli_backend.modules.investments.public`.
-`RecordSharePurchaseCommand`, `RecordShareSaleCommand`,
-`RecordReceivedDividendCommand`, and `RecordReceivedFundDistributionCommand`
-remain the bounded predecessor commands during stage exit. `CorrectInvestmentCommand`
+The four deprecated `/api/v1` mutation routes remain during the ADR-0012
+overlap window, but their transport adapters translate directly to the
+recognition/settlement lifecycle in one transaction. No Python workflow or
+runtime database grant can invoke the predecessor v1 investment writers.
+`CorrectInvestmentCommand`
 targets an economic event or cash settlement and carries a canonical recognition or
 settlement replacement with revisioned evidence. `InvestmentCorrectionTargetKind`
 closes that target vocabulary. `InvestmentsCommands` exposes replay, prepare,
@@ -62,20 +64,19 @@ balance kind, activity kind, and replacement evidence digest needed before the
 replacement ledger entry is posted. Correction reads expose lifecycle rows and
 ordered document facts while explicitly retaining predecessor lineage during the
 bounded overlap.
-`PreparedSharePurchase` returns the canonical position/lot identifiers and the
-normalized facts needed by ledger. `RecordedSharePurchase` binds those owned
-identifiers to an opaque accounting-entry reference. `PreparedShareSale`
-returns only the name and authoritative FIFO cost needed by ledger;
-`RecordedShareSale` binds the sale and position to the opaque entry reference.
-`PreparedReceivedDividend` carries the normalized payer and backend-calculated
-taxable add-back; `RecordedReceivedDividend` binds them to the posted entry.
-Neither workflow exposes ledger lines, allocation rows, or persistence types.
+`PreparedReceivedDividend` and `PreparedReceivedFundDistribution` carry the
+normalized, backend-calculated recognition facts. Neither workflow exposes
+ledger lines, allocation rows, or persistence types.
 `InvestmentsQueries` returns bounded cursor pages of position, lot, FIFO
-allocation, and activity views; the web does not read either legacy or canonical
+allocation, lifecycle economic-event, and predecessor activity views; the web
+does not read either legacy or canonical
 tables directly. `InvestmentPositionView`, `AcquisitionLotView`,
 `ShareSaleAllocationView`, and `InvestmentActivityView` are returned in
 `InvestmentPositionPage`, `AcquisitionLotPage`, `ShareSaleAllocationPage`, and
-`InvestmentActivityPage`. `InvestmentCorrectionView` exposes immutable
+`InvestmentActivityPage`. `InvestmentLifecycleEventView` and
+`InvestmentLifecycleEventPage` expose recognition facts, revisioned document
+facts, the exact expected settlement, and optional bank-backed settlement state
+without collapsing the two accounting dates. `InvestmentCorrectionView` exposes immutable
 original/reversal/replacement lineage. `InvestmentActivityKind` identifies the
 closed purchase, sale, share-dividend, and fund-distribution variants. `InvestmentCursor` carries
 the stable continuation boundary, while `InvestmentLotHistoryStatus` reports
@@ -116,8 +117,9 @@ position atomically with the ledger entry. Dividend preparation validates the
 position and computes the add-back in investments; persistence stores that fact
 without deriving filing policy.
 
-Bank/document identifiers remain opaque evidence references. Linked mode requires
-both sources; manual fallback retains a typed reference and owner attestation.
+Bank/document identifiers remain opaque evidence references. Recognition binds
+one or more document facts and settlement binds exactly one bank fact. Manual
+document fallback retains a typed reference and owner attestation.
 No provider selection,
 activation, credentials, consent, live call/data, production banking, or
 live-bank readiness claim is part of this capability.
@@ -159,8 +161,14 @@ of settlement. Dividend decisions and fund entitlements use separate immutable
 recognition receipts in
 `supabase/migrations/20260901115000_investments_income_lifecycle.sql`, rather
 than overloading the predecessor tables' paid-date columns. Each has a
-fail-closed inverse at the matching rollback path. The
-mandatory PostgreSQL rehearsal applies each slice contract, rolls it back twice,
+fail-closed inverse at the matching rollback path. The public lifecycle
+contract cutover is
+`supabase/contract-migrations/20260901150538_investments_lifecycle_public_cutover.sql`.
+It preserves predecessor tables and routines but revokes every v1 replay,
+prepare, complete, and correction-link grant from the application workflow
+role. Its matching rollback restores only those predecessor grants and does not
+modify data. The mandatory PostgreSQL rehearsal applies each slice contract,
+rolls it back twice,
 writes through the restored predecessor, reapplies it, and only then performs
 the complete cleanup. The web is cut to the
 generated investments client; both legacy browser RPCs and browser-side

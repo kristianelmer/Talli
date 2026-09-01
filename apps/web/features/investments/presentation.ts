@@ -3,6 +3,7 @@ import {
   type AcquisitionLotWire,
   type InvestmentPositionWire,
   type InvestmentActivityWire,
+  type InvestmentLifecycleEventWire,
   type ShareSaleAllocationWire,
   type InvestmentCorrectionWire,
 } from "@talli/talli-api-client";
@@ -262,6 +263,125 @@ export function presentInvestmentActivity(
     ledger_entry_id: item.accountingEntryId,
     bank_transaction_id: item.bankTransactionId,
     document_id: item.documentId,
+    risk_level: "ready",
+    blocker_code: null,
+    created_by: item.createdBy,
+    created_at: item.createdAt,
+  }));
+}
+
+export function presentInvestmentLifecycleEvents(
+  events: readonly InvestmentLifecycleEventWire[],
+): InvestmentActivityPresentation[] {
+  return events.map((item) => ({
+    id: item.id,
+    company_id: item.companyId,
+    income_year: item.incomeYear,
+    action_type: item.activityKind,
+    action_date: item.recognitionDate,
+    payload: {
+      position_id: item.positionId,
+      investment_key: item.investmentKey,
+      investment_name: item.investmentName,
+      investment_kind: item.investmentKind,
+      accounting_classification: item.accountingClassification,
+      tax_treatment: item.taxTreatment,
+      org_number: item.orgNumber,
+      fund_equity_ratio_basis_points: item.fundEquityRatioBasisPoints,
+      fund_tax_statement_reference: item.fundTaxStatementReference,
+      evidence_mode: item.evidenceMode,
+      evidence_reference: item.evidenceReference,
+      evidence_digest: item.evidenceDigest,
+      calculation_id: item.calculationId,
+      owner_attested: item.ownerAttested,
+      document_facts: item.documentFacts,
+      recognition_accounting_entry_id: item.recognitionAccountingEntryId,
+      expected_settlement_amount: nok(item.expectedSettlementAmount),
+      settlement_balance_kind: item.settlementBalanceKind,
+      settlement_status: item.settlementId === null ? "pending" : "settled",
+      settlement_id: item.settlementId,
+      settlement_date: item.settlementDate,
+      settlement_amount: item.settlementAmount
+        ? nok(item.settlementAmount)
+        : null,
+      bank_fact: item.bankFact,
+      settlement_accounting_entry_id: item.settlementAccountingEntryId,
+      ...(item.activityKind === "share_purchase" ? {
+        acquisition_date: item.recognitionDate,
+        share_count: item.shareCount,
+        purchase_amount: item.purchaseAmount ? nok(item.purchaseAmount) : null,
+        transaction_costs: item.transactionCosts ? nok(item.transactionCosts) : null,
+        capitalized_cost: item.capitalizedCost ? nok(item.capitalizedCost) : null,
+        acquisition_lot_id: item.acquisitionLotId,
+      } : {}),
+      ...(item.activityKind === "share_sale" ? {
+        sale_date: item.recognitionDate,
+        sold_share_count: item.soldShareCount,
+        proceeds: item.proceeds ? nok(item.proceeds) : null,
+        transaction_costs: item.transactionCosts ? nok(item.transactionCosts) : null,
+        net_proceeds: item.netProceeds ? nok(item.netProceeds) : null,
+        cost_basis_reduction: item.fifoCostBasisReduction
+          ? nok(item.fifoCostBasisReduction)
+          : null,
+        tax_basis_reduction: item.fifoTaxBasisReduction
+          ? nok(item.fifoTaxBasisReduction)
+          : null,
+        remaining_share_count: item.remainingShareCount,
+        remaining_cost_basis: item.remainingCostBasis
+          ? nok(item.remainingCostBasis)
+          : null,
+        remaining_tax_basis: item.remainingTaxBasis
+          ? nok(item.remainingTaxBasis)
+          : null,
+        book_gain_or_loss: item.bookGainOrLoss ? nok(item.bookGainOrLoss) : null,
+        tax_gain_or_loss: item.taxGainOrLoss ? nok(item.taxGainOrLoss) : null,
+        exempt_gain: item.exemptGain ? nok(item.exemptGain) : null,
+        taxable_gain: item.taxableGain ? nok(item.taxableGain) : null,
+        non_deductible_loss: item.nonDeductibleLoss
+          ? nok(item.nonDeductibleLoss)
+          : null,
+        deductible_loss: item.deductibleLoss
+          ? nok(item.deductibleLoss)
+          : null,
+      } : {}),
+      ...(item.activityKind === "dividend_received" ? {
+        paying_company_name: item.payingCompanyName,
+        declared_date: item.recognitionDate,
+        linked_investment_id: item.positionId,
+        gross_amount: item.grossAmount ? nok(item.grossAmount) : null,
+        taxable_add_back: item.taxableAddBack
+          ? nok(item.taxableAddBack)
+          : null,
+        lawful_dividend_confirmed: item.lawfulDividendConfirmed,
+        group_exception_claimed: item.groupExceptionClaimed,
+        group_exception_applied: item.groupExceptionApplied,
+        year_end_ownership_basis_points: item.yearEndOwnershipBasisPoints,
+        year_end_voting_basis_points: item.yearEndVotingBasisPoints,
+        group_evidence_reference: item.groupEvidenceReference,
+      } : {}),
+      ...(item.activityKind === "fund_distribution_received" ? {
+        fund_name: item.fundName,
+        entitlement_date: item.entitlementDate,
+        gross_amount: item.grossAmount ? nok(item.grossAmount) : null,
+        opening_fund_equity_ratio_basis_points:
+          item.openingFundEquityRatioBasisPoints,
+        dividend_portion: item.dividendPortion
+          ? nok(item.dividendPortion)
+          : null,
+        interest_portion: item.interestPortion
+          ? nok(item.interestPortion)
+          : null,
+        taxable_add_back: item.taxableAddBack
+          ? nok(item.taxableAddBack)
+          : null,
+        total_taxable_income: item.totalTaxableIncome
+          ? nok(item.totalTaxableIncome)
+          : null,
+      } : {}),
+    },
+    ledger_entry_id: item.recognitionAccountingEntryId,
+    bank_transaction_id: item.bankFact?.recordId ?? null,
+    document_id: item.documentFacts[0]?.recordId ?? null,
     risk_level: "ready",
     blocker_code: null,
     created_by: item.createdBy,

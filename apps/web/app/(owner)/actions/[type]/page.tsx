@@ -14,6 +14,8 @@ import { loadWorkspaceData } from "../../../lib/workspace-data";
 import { DividendReceivedWizard } from "../_components/DividendReceivedWizard";
 import { FundDistributionWizard } from "../_components/FundDistributionWizard";
 import { InvestmentCorrectionWizard } from "../_components/InvestmentCorrectionWizard";
+import { InvestmentSettlementWizard } from "../_components/InvestmentSettlementWizard";
+import { InvestmentSettlementCorrectionWizard } from "../_components/InvestmentSettlementCorrectionWizard";
 import { OwnerDividendWizard } from "../_components/OwnerDividendWizard";
 import { SharePurchaseWizard } from "../_components/SharePurchaseWizard";
 import { ShareSaleWizard } from "../_components/ShareSaleWizard";
@@ -25,6 +27,7 @@ type ActionSlug =
   | "share-sale"
   | "dividend-received"
   | "fund-distribution"
+  | "investment-settlement"
   | "investment-correction"
   | "owner-dividend"
   | "shareholder-loan"
@@ -35,6 +38,7 @@ const COPY_KEY: Record<ActionSlug, keyof typeof ownerCopy.actions> = {
   "share-sale": "shareSale",
   "dividend-received": "dividendReceived",
   "fund-distribution": "fundDistribution",
+  "investment-settlement": "investmentSettlement",
   "investment-correction": "investmentCorrection",
   "owner-dividend": "ownerDividend",
   "shareholder-loan": "shareholderLoan",
@@ -55,6 +59,9 @@ type ActionPageProps = {
     fundDistributionOperationId?: string;
     investmentCorrectionOperationId?: string;
     investmentCorrectionReplacementActionId?: string;
+    investmentCorrectionReplacementSettlementId?: string;
+    investmentSettlementCorrectionOperationId?: string;
+    investmentSettlementOperationId?: string;
     shareholderLoanOperationId?: string;
     taxSettlementOperationId?: string;
   }>;
@@ -190,6 +197,44 @@ export default async function ActionPage({
         />
       );
       break;
+    case "investment-settlement": {
+      const pendingEvents = actions
+        .filter((action) => (
+          action.company_id === companyId
+          && action.income_year === incomeYear
+          && action.payload.settlement_status === "pending"
+        ))
+        .map((action) => ({
+          eventId: action.id,
+          label: `${action.action_date} · ${String(
+            action.payload.investment_name
+              ?? action.payload.fund_name
+              ?? "Investering",
+          )}`,
+          expectedAmount: Number(action.payload.expected_settlement_amount),
+        }))
+        .filter((event) => Number.isFinite(event.expectedAmount));
+      body = (
+        <InvestmentSettlementWizard
+          bankTransactions={transactions
+            .filter((transaction) => (
+              transaction.company_id === companyId
+              && transaction.income_year === incomeYear
+              && !transaction.matched_entry_id
+              && !transaction.matched_action_id
+            ))
+            .map((transaction) => ({
+              id: transaction.id,
+              label: `${transaction.transaction_date} · ${transaction.text} · ${transaction.amount} kr`,
+            }))}
+          companyId={companyId}
+          events={pendingEvents}
+          incomeYear={incomeYear}
+          operationId={query?.investmentSettlementOperationId}
+        />
+      );
+      break;
+    }
     case "investment-correction": {
       const corrected = new Set(
         investmentCorrections
@@ -271,16 +316,64 @@ export default async function ActionPage({
               stringFact("group_evidence_reference") || null,
           };
         });
+      const correctedSettlements = new Set(
+        investmentCorrections
+          .filter((correction) => correction.target_kind === "cash_settlement")
+          .map((correction) => correction.original_record_id),
+      );
+      const correctableSettlements = actions
+        .filter((action) => (
+          action.company_id === companyId
+          && action.income_year === incomeYear
+          && typeof action.payload.settlement_id === "string"
+          && !correctedSettlements.has(action.payload.settlement_id)
+        ))
+        .map((action) => ({
+          settlementId: String(action.payload.settlement_id),
+          eventId: action.id,
+          activityKind: action.action_type,
+          label: `${String(action.payload.settlement_date ?? action.action_date)} · ${String(
+            action.payload.investment_name
+              ?? action.payload.fund_name
+              ?? action.payload.paying_company_name
+              ?? "Investering",
+          )}`,
+          expectedAmount: Number(action.payload.expected_settlement_amount),
+        }))
+        .filter((settlement) => Number.isFinite(settlement.expectedAmount));
       body = (
-        <InvestmentCorrectionWizard
-          bankTransactions={investmentBankTransactions}
-          companyId={companyId}
-          documents={investmentDocuments}
-          incomeYear={incomeYear}
-          activities={correctable}
-          operationId={query?.investmentCorrectionOperationId}
-          replacementActionId={query?.investmentCorrectionReplacementActionId}
-        />
+        <>
+          <h2>Korriger økonomisk hendelse</h2>
+          <InvestmentCorrectionWizard
+            bankTransactions={investmentBankTransactions}
+            companyId={companyId}
+            documents={investmentDocuments}
+            incomeYear={incomeYear}
+            activities={correctable}
+            operationId={query?.investmentCorrectionOperationId}
+            replacementActionId={query?.investmentCorrectionReplacementActionId}
+          />
+          <h2>Korriger kontantoppgjør</h2>
+          <InvestmentSettlementCorrectionWizard
+            bankTransactions={transactions
+              .filter((transaction) => (
+                transaction.company_id === companyId
+                && transaction.income_year === incomeYear
+                && !transaction.matched_entry_id
+                && !transaction.matched_action_id
+              ))
+              .map((transaction) => ({
+                id: transaction.id,
+                label: `${transaction.transaction_date} · ${transaction.text} · ${transaction.amount} kr`,
+              }))}
+            companyId={companyId}
+            documents={investmentDocuments}
+            incomeYear={incomeYear}
+            operationId={query?.investmentSettlementCorrectionOperationId}
+            replacementSettlementId={query?.investmentCorrectionReplacementSettlementId}
+            settlements={correctableSettlements}
+          />
+        </>
       );
       break;
     }

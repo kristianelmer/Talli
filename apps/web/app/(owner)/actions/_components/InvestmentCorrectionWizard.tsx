@@ -91,22 +91,14 @@ function CorrectionFields({ activity }: { activity: CorrectableInvestmentActivit
           required
         />
       ) : (
-        <div className="fieldRow">
-          <TextField
-            label={activity.kind === "dividend_received" ? "Vedtaksdato" : "Rettighetsdato"}
-            name="declaredDate"
-            value={declaredDate}
-            onChange={setDeclaredDate}
-            required
-          />
-          <TextField
-            label="Utbetalingsdato"
-            name="actionDate"
-            value={actionDate}
-            onChange={setActionDate}
-            required
-          />
-        </div>
+        <TextField
+          label={activity.kind === "dividend_received" ? "Vedtaksdato" : "Rettighetsdato"}
+          name="declaredDate"
+          value={declaredDate}
+          onChange={setDeclaredDate}
+          helper="Kontantoppgjørsdato korrigeres separat nedenfor."
+          required
+        />
       )}
       {(activity.kind === "share_purchase"
         || activity.kind === "dividend_received"

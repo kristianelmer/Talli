@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from hashlib import sha256
 import os
 import re
 import secrets
@@ -202,7 +203,6 @@ from talli_backend.modules.investments.public import (
     InvestmentAccountingClassification,
     InvestmentActivityKind,
     InvestmentActivityView,
-    InvestmentActionId,
     InvestmentCursor,
     InvestmentCorrectionId,
     InvestmentCorrectionTargetKind,
@@ -214,18 +214,17 @@ from talli_backend.modules.investments.public import (
     InvestmentEconomicEventId,
     InvestmentKind,
     InvestmentLotHistoryStatus,
+    InvestmentLifecycleEventView,
     InvestmentPositionId,
     InvestmentPositionView,
-    InvestmentSourceReference,
+    PreparedInvestmentCashSettlement,
     InvestmentSourceCapability,
+    InvestmentSourceReference,
     InvestmentSettlementId,
+    InvestmentSettlementBalanceKind,
     InvestmentUnits,
     InvestmentTaxTreatment,
     InvestmentsError,
-    RecordReceivedDividendCommand,
-    RecordReceivedFundDistributionCommand,
-    RecordSharePurchaseCommand,
-    RecordShareSaleCommand,
     RecognizeReceivedDividendCommand,
     RecognizeReceivedFundDistributionCommand,
     RecognizeSharePurchaseCommand,
@@ -1013,8 +1012,7 @@ class InvestmentsLifecycleEvidenceWire(LedgerCompanyYearWire):
         )
 
 
-class InvestmentsSharePurchaseRecognitionWire(InvestmentsLifecycleEvidenceWire):
-    replacement_kind: Literal["share_purchase"]
+class InvestmentsRecognizeSharePurchaseWire(InvestmentsLifecycleEvidenceWire):
     event_id: UUID
     investment_key: str = Field(min_length=1, max_length=255)
     investment_name: str = Field(min_length=1, max_length=255)
@@ -1029,8 +1027,7 @@ class InvestmentsSharePurchaseRecognitionWire(InvestmentsLifecycleEvidenceWire):
     fund_tax_statement_reference: str | None = Field(default=None, min_length=1, max_length=255)
 
 
-class InvestmentsShareSaleRecognitionWire(InvestmentsLifecycleEvidenceWire):
-    replacement_kind: Literal["share_sale"]
+class InvestmentsRecognizeShareSaleWire(InvestmentsLifecycleEvidenceWire):
     event_id: UUID
     position_id: UUID
     sale_date: date
@@ -1041,8 +1038,7 @@ class InvestmentsShareSaleRecognitionWire(InvestmentsLifecycleEvidenceWire):
     fund_tax_statement_reference: str | None = Field(default=None, min_length=1, max_length=255)
 
 
-class InvestmentsDividendRecognitionWire(InvestmentsLifecycleEvidenceWire):
-    replacement_kind: Literal["dividend_received"]
+class InvestmentsRecognizeReceivedDividendWire(InvestmentsLifecycleEvidenceWire):
     event_id: UUID
     position_id: UUID
     paying_company_name: str = Field(min_length=1, max_length=255)
@@ -1055,8 +1051,9 @@ class InvestmentsDividendRecognitionWire(InvestmentsLifecycleEvidenceWire):
     group_evidence_reference: str | None = Field(default=None, min_length=1, max_length=255)
 
 
-class InvestmentsFundDistributionRecognitionWire(InvestmentsLifecycleEvidenceWire):
-    replacement_kind: Literal["fund_distribution_received"]
+class InvestmentsRecognizeReceivedFundDistributionWire(
+    InvestmentsLifecycleEvidenceWire
+):
     event_id: UUID
     position_id: UUID
     fund_name: str = Field(min_length=1, max_length=255)
@@ -1066,12 +1063,53 @@ class InvestmentsFundDistributionRecognitionWire(InvestmentsLifecycleEvidenceWir
     fund_tax_statement_reference: str = Field(min_length=1, max_length=255)
 
 
-class InvestmentsCashSettlementWire(InvestmentsLifecycleEvidenceWire):
-    replacement_kind: Literal["cash_settlement"]
+class InvestmentsSettleCashWire(InvestmentsLifecycleEvidenceWire):
     settlement_id: UUID
     event_id: UUID
     settlement_date: date
     amount: LedgerMoneyWire
+
+
+class InvestmentsSharePurchaseRecognitionWire(
+    InvestmentsRecognizeSharePurchaseWire
+):
+    replacement_kind: Literal["share_purchase"]
+
+
+class InvestmentsShareSaleRecognitionWire(InvestmentsRecognizeShareSaleWire):
+    replacement_kind: Literal["share_sale"]
+
+
+class InvestmentsDividendRecognitionWire(
+    InvestmentsRecognizeReceivedDividendWire
+):
+    replacement_kind: Literal["dividend_received"]
+
+
+class InvestmentsFundDistributionRecognitionWire(
+    InvestmentsRecognizeReceivedFundDistributionWire
+):
+    replacement_kind: Literal["fund_distribution_received"]
+
+
+class InvestmentsCashSettlementWire(InvestmentsSettleCashWire):
+    replacement_kind: Literal["cash_settlement"]
+
+
+class InvestmentsEconomicEventResultWire(TransportModel):
+    event_id: UUID
+    position_id: UUID
+    recognition_accounting_entry_id: UUID
+    expected_settlement_amount: LedgerMoneyWire
+    settlement_balance_kind: InvestmentSettlementBalanceKind
+    replayed: bool
+
+
+class InvestmentsCashSettlementResultWire(TransportModel):
+    settlement_id: UUID
+    event_id: UUID
+    settlement_accounting_entry_id: UUID
+    replayed: bool
 
 
 InvestmentsLifecycleReplacementWire = Annotated[
@@ -1263,6 +1301,79 @@ class InvestmentActivityWire(TransportModel):
 
 class InvestmentActivityPageWire(TransportModel):
     items: list[InvestmentActivityWire]
+    page: InvestmentsPageWire
+
+
+class InvestmentLifecycleEventWire(TransportModel):
+    id: UUID
+    company_id: UUID
+    income_year: int
+    activity_kind: InvestmentActivityKind
+    recognition_date: date
+    position_id: UUID
+    investment_key: str
+    investment_name: str
+    investment_kind: InvestmentKind
+    accounting_classification: InvestmentAccountingClassification
+    tax_treatment: InvestmentTaxTreatment
+    org_number: str | None
+    fund_equity_ratio_basis_points: int | None
+    fund_tax_statement_reference: str | None
+    acquisition_lot_id: UUID | None
+    position_created: bool | None
+    share_count: InvestmentUnitsWireValue | None
+    purchase_amount: LedgerMoneyWire | None
+    transaction_costs: LedgerMoneyWire | None
+    capitalized_cost: LedgerMoneyWire | None
+    sold_share_count: InvestmentUnitsWireValue | None
+    proceeds: LedgerMoneyWire | None
+    net_proceeds: LedgerMoneyWire | None
+    fifo_cost_basis_reduction: LedgerMoneyWire | None
+    fifo_tax_basis_reduction: LedgerMoneyWire | None
+    remaining_share_count: InvestmentUnitsWireValue | None
+    remaining_cost_basis: LedgerMoneyWire | None
+    remaining_tax_basis: LedgerMoneyWire | None
+    book_gain_or_loss: LedgerMoneyWire | None
+    tax_gain_or_loss: LedgerMoneyWire | None
+    exempt_gain: LedgerMoneyWire | None
+    taxable_gain: LedgerMoneyWire | None
+    non_deductible_loss: LedgerMoneyWire | None
+    deductible_loss: LedgerMoneyWire | None
+    paying_company_name: str | None
+    lawful_dividend_confirmed: bool | None
+    group_exception_claimed: bool | None
+    group_exception_applied: bool | None
+    year_end_ownership_basis_points: int | None
+    year_end_voting_basis_points: int | None
+    group_evidence_reference: str | None
+    fund_name: str | None
+    entitlement_date: date | None
+    opening_fund_equity_ratio_basis_points: int | None
+    gross_amount: LedgerMoneyWire | None
+    taxable_add_back: LedgerMoneyWire | None
+    dividend_portion: LedgerMoneyWire | None
+    interest_portion: LedgerMoneyWire | None
+    total_taxable_income: LedgerMoneyWire | None
+    expected_settlement_amount: LedgerMoneyWire
+    settlement_balance_kind: InvestmentSettlementBalanceKind
+    recognition_accounting_entry_id: UUID
+    document_facts: list[InvestmentFactReferenceWire]
+    evidence_mode: InvestmentEvidenceMode
+    evidence_reference: str
+    evidence_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    calculation_id: str = Field(pattern=r"^[0-9a-f]{64}$")
+    owner_attested: bool
+    settlement_id: UUID | None
+    settlement_date: date | None
+    settlement_amount: LedgerMoneyWire | None
+    bank_fact: InvestmentFactReferenceWire | None
+    settlement_accounting_entry_id: UUID | None
+    created_by: UUID
+    created_at: datetime
+
+
+class InvestmentLifecycleEventPageWire(TransportModel):
+    items: list[InvestmentLifecycleEventWire]
     page: InvestmentsPageWire
 
 
@@ -1847,6 +1958,199 @@ def create_app(
         investments_session_factory
     )
     banking_application = compose_banking_application(banking_session_factory)
+
+    async def resolve_investment_bank_transaction(
+        access_token: str,
+        *,
+        actor_id,
+        company_id: CompanyId,
+        correlation_id: CorrelationId,
+        transaction_id: UUID,
+    ) -> BankTransaction:
+        try:
+            banking_session = await banking_application.session(access_token)
+            if banking_session.actor_id != actor_id:
+                raise InvestmentsError.forbidden()
+            cursor: BankingCursor | None = None
+            seen_cursors: set[str] = set()
+            while True:
+                page = await banking_session.list_transactions(
+                    actor_id=banking_session.actor_id,
+                    company_ids=(company_id,),
+                    correlation_id=correlation_id,
+                    cursor=cursor,
+                    limit=500,
+                )
+                transaction = next(
+                    (
+                        item
+                        for item in page.items
+                        if str(item.transaction_id) == str(transaction_id)
+                    ),
+                    None,
+                )
+                if transaction is not None:
+                    return transaction
+                if not page.page.has_more:
+                    raise InvestmentsError.invalid_input()
+                next_cursor = page.page.next_cursor
+                if next_cursor is None or str(next_cursor) in seen_cursors:
+                    raise InvestmentsError.unavailable()
+                seen_cursors.add(str(next_cursor))
+                cursor = next_cursor
+        except BankingAuthenticationError:
+            raise InvestmentsAuthenticationError() from None
+        except BankingError as error:
+            if error.category is ErrorCategory.FORBIDDEN:
+                raise InvestmentsError.forbidden() from None
+            if error.category is ErrorCategory.DEPENDENCY_UNAVAILABLE:
+                raise InvestmentsError.unavailable() from None
+            raise InvestmentsError.invalid_input() from None
+
+    async def investments_session_with_bank_validation(
+        credentials: HTTPAuthorizationCredentials | None,
+    ):
+        access_token = bearer_token(credentials)
+
+        async def validate_bank_fact(
+            command: SettleInvestmentCashCommand,
+            prepared: PreparedInvestmentCashSettlement,
+        ) -> None:
+            fact = command.evidence.bank_fact
+            if fact is None or fact.revision != 1:
+                raise InvestmentsError.invalid_input()
+            transaction = await resolve_investment_bank_transaction(
+                access_token,
+                actor_id=command.actor_id,
+                company_id=command.company_id,
+                correlation_id=command.correlation_id,
+                transaction_id=UUID(str(fact.record_id)),
+            )
+            expected_amount = prepared.amount.amount
+            if (
+                prepared.settlement_balance_kind
+                is InvestmentSettlementBalanceKind.PURCHASE_PAYABLE
+            ):
+                expected_amount = -expected_amount
+            if (
+                transaction.company_id != command.company_id
+                or transaction.income_year != command.income_year
+                or transaction.transaction_date != command.settlement_date
+                or transaction.amount.currency != prepared.amount.currency
+                or transaction.amount.amount != expected_amount
+                or transaction.source_hash != fact.fact_sha256
+                or transaction.matched_entry_id is not None
+                or transaction.matched_action_reference is not None
+            ):
+                raise InvestmentsError.invalid_input()
+
+        return await investments_application.session(
+            access_token,
+            bank_fact_validator=validate_bank_fact,
+        )
+
+    def compatibility_document_evidence(command) -> InvestmentEvidence:
+        document_record_id = command.document_id or command.action_id
+        identity = "\n".join(
+            (
+                "talli:owner-attested-investment-compatibility:v1",
+                f"company={command.company_id}",
+                f"income-year={command.income_year}",
+                f"action={command.action_id}",
+                f"document={document_record_id}",
+                f"reference={command.evidence_reference.strip()}",
+            )
+        )
+        return InvestmentEvidence(
+            mode=InvestmentEvidenceMode.MANUAL_FALLBACK,
+            reference=command.evidence_reference,
+            owner_attested=True,
+            document_facts=(
+                InvestmentFactReference(
+                    capability=InvestmentSourceCapability.DOCUMENTS,
+                    record_id=InvestmentSourceReference(str(document_record_id)),
+                    revision=1,
+                    fact_sha256=sha256(identity.encode("utf-8")).hexdigest(),
+                ),
+            ),
+            bank_fact=None,
+        )
+
+    def compatibility_cash_settlement(
+        *,
+        command,
+        actor_id,
+        correlation_id: CorrelationId,
+        idempotency_key: str,
+        transaction: BankTransaction,
+        amount: Money,
+    ) -> SettleInvestmentCashCommand:
+        settlement_id = uuid5(
+            NAMESPACE_URL,
+            f"https://talli.no/investments/compatibility-settlement/{command.action_id}",
+        )
+        settlement_idempotency = "compat-settlement-" + sha256(
+            f"{idempotency_key}:{command.action_id}".encode("utf-8")
+        ).hexdigest()
+        return SettleInvestmentCashCommand(
+            company_id=CompanyId(str(command.company_id)),
+            actor_id=actor_id,
+            correlation_id=correlation_id,
+            idempotency_key=IdempotencyKey(settlement_idempotency),
+            income_year=IncomeYear(command.income_year),
+            settlement_id=InvestmentSettlementId(str(settlement_id)),
+            event_id=InvestmentEconomicEventId(str(command.action_id)),
+            settlement_date=transaction.transaction_date,
+            amount=amount,
+            evidence=InvestmentEvidence(
+                mode=InvestmentEvidenceMode.LINKED_SOURCES,
+                reference=(
+                    f"Canonical bank transaction {transaction.transaction_id} "
+                    "revision 1"
+                ),
+                owner_attested=False,
+                document_facts=(),
+                bank_fact=InvestmentFactReference(
+                    capability=InvestmentSourceCapability.BANKING,
+                    record_id=InvestmentSourceReference(
+                        str(transaction.transaction_id)
+                    ),
+                    revision=1,
+                    fact_sha256=transaction.source_hash,
+                ),
+            ),
+        )
+
+    async def compatibility_lifecycle_event(
+        session,
+        *,
+        company_id: CompanyId,
+        correlation_id: CorrelationId,
+        event_id: InvestmentEconomicEventId,
+    ) -> InvestmentLifecycleEventView:
+        cursor: InvestmentCursor | None = None
+        seen_cursors: set[str] = set()
+        while True:
+            page = await session.list_lifecycle_events(
+                company_ids=(company_id,),
+                correlation_id=correlation_id,
+                cursor=cursor,
+                limit=100,
+            )
+            event = next(
+                (item for item in page.items if item.event_id == event_id),
+                None,
+            )
+            if event is not None:
+                return event
+            if not page.has_more:
+                raise InvestmentsError.unavailable()
+            next_cursor = page.next_cursor
+            if next_cursor is None or str(next_cursor) in seen_cursors:
+                raise InvestmentsError.unavailable()
+            seen_cursors.add(str(next_cursor))
+            cursor = next_cursor
+
     provider_registry = dict(banking_providers or {})
     measurement_gateway = (
         marketing_measurement_gateway
@@ -3167,6 +3471,168 @@ def create_app(
             created_at=value.created_at.value,
         )
 
+    def investment_lifecycle_event_wire(
+        value: InvestmentLifecycleEventView,
+    ) -> InvestmentLifecycleEventWire:
+        def fact_wire(fact: InvestmentFactReference) -> InvestmentFactReferenceWire:
+            return InvestmentFactReferenceWire(
+                capability=fact.capability,
+                record_id=UUID(str(fact.record_id)),
+                revision=fact.revision,
+                fact_sha256=fact.fact_sha256,
+            )
+
+        return InvestmentLifecycleEventWire(
+            id=UUID(str(value.event_id)),
+            company_id=UUID(str(value.company_id)),
+            income_year=int(value.income_year),
+            activity_kind=value.activity_kind,
+            recognition_date=value.recognition_date.value,
+            position_id=UUID(str(value.position_id)),
+            investment_key=value.investment_key,
+            investment_name=value.investment_name,
+            investment_kind=value.investment_kind,
+            accounting_classification=value.accounting_classification,
+            tax_treatment=value.tax_treatment,
+            org_number=value.org_number,
+            fund_equity_ratio_basis_points=value.fund_equity_ratio_basis_points,
+            fund_tax_statement_reference=value.fund_tax_statement_reference,
+            acquisition_lot_id=(
+                UUID(str(value.acquisition_lot_id))
+                if value.acquisition_lot_id else None
+            ),
+            position_created=value.position_created,
+            share_count=(
+                format(value.share_count.amount, ".12f")
+                if value.share_count is not None else None
+            ),
+            purchase_amount=(
+                _money_wire(value.purchase_amount)
+                if value.purchase_amount else None
+            ),
+            transaction_costs=(
+                _money_wire(value.transaction_costs)
+                if value.transaction_costs else None
+            ),
+            capitalized_cost=(
+                _money_wire(value.capitalized_cost)
+                if value.capitalized_cost else None
+            ),
+            sold_share_count=(
+                format(value.sold_share_count.amount, ".12f")
+                if value.sold_share_count is not None else None
+            ),
+            proceeds=_money_wire(value.proceeds) if value.proceeds else None,
+            net_proceeds=(
+                _money_wire(value.net_proceeds) if value.net_proceeds else None
+            ),
+            fifo_cost_basis_reduction=(
+                _money_wire(value.fifo_cost_basis_reduction)
+                if value.fifo_cost_basis_reduction else None
+            ),
+            fifo_tax_basis_reduction=(
+                _money_wire(value.fifo_tax_basis_reduction)
+                if value.fifo_tax_basis_reduction else None
+            ),
+            remaining_share_count=(
+                format(value.remaining_share_count.amount, ".12f")
+                if value.remaining_share_count is not None else None
+            ),
+            remaining_cost_basis=(
+                _money_wire(value.remaining_cost_basis)
+                if value.remaining_cost_basis else None
+            ),
+            remaining_tax_basis=(
+                _money_wire(value.remaining_tax_basis)
+                if value.remaining_tax_basis else None
+            ),
+            book_gain_or_loss=(
+                _money_wire(value.book_gain_or_loss)
+                if value.book_gain_or_loss else None
+            ),
+            tax_gain_or_loss=(
+                _money_wire(value.tax_gain_or_loss)
+                if value.tax_gain_or_loss else None
+            ),
+            exempt_gain=(
+                _money_wire(value.exempt_gain) if value.exempt_gain else None
+            ),
+            taxable_gain=(
+                _money_wire(value.taxable_gain) if value.taxable_gain else None
+            ),
+            non_deductible_loss=(
+                _money_wire(value.non_deductible_loss)
+                if value.non_deductible_loss else None
+            ),
+            deductible_loss=(
+                _money_wire(value.deductible_loss)
+                if value.deductible_loss else None
+            ),
+            paying_company_name=value.paying_company_name,
+            lawful_dividend_confirmed=value.lawful_dividend_confirmed,
+            group_exception_claimed=value.group_exception_claimed,
+            group_exception_applied=value.group_exception_applied,
+            year_end_ownership_basis_points=value.year_end_ownership_basis_points,
+            year_end_voting_basis_points=value.year_end_voting_basis_points,
+            group_evidence_reference=value.group_evidence_reference,
+            fund_name=value.fund_name,
+            entitlement_date=(
+                value.entitlement_date.value if value.entitlement_date else None
+            ),
+            opening_fund_equity_ratio_basis_points=(
+                value.opening_fund_equity_ratio_basis_points
+            ),
+            gross_amount=(
+                _money_wire(value.gross_amount) if value.gross_amount else None
+            ),
+            taxable_add_back=(
+                _money_wire(value.taxable_add_back)
+                if value.taxable_add_back else None
+            ),
+            dividend_portion=(
+                _money_wire(value.dividend_portion)
+                if value.dividend_portion else None
+            ),
+            interest_portion=(
+                _money_wire(value.interest_portion)
+                if value.interest_portion else None
+            ),
+            total_taxable_income=(
+                _money_wire(value.total_taxable_income)
+                if value.total_taxable_income else None
+            ),
+            expected_settlement_amount=_money_wire(
+                value.expected_settlement_amount
+            ),
+            settlement_balance_kind=value.settlement_balance_kind,
+            recognition_accounting_entry_id=UUID(
+                str(value.recognition_accounting_entry_id)
+            ),
+            document_facts=[fact_wire(fact) for fact in value.document_facts],
+            evidence_mode=value.evidence_mode,
+            evidence_reference=value.evidence_reference,
+            evidence_digest=value.evidence_digest,
+            calculation_id=value.calculation_id,
+            owner_attested=value.owner_attested,
+            settlement_id=(
+                UUID(str(value.settlement_id)) if value.settlement_id else None
+            ),
+            settlement_date=(
+                value.settlement_date.value if value.settlement_date else None
+            ),
+            settlement_amount=(
+                _money_wire(value.settlement_amount)
+                if value.settlement_amount else None
+            ),
+            bank_fact=(fact_wire(value.bank_fact) if value.bank_fact else None),
+            settlement_accounting_entry_id=(
+                UUID(str(value.settlement_accounting_entry_id))
+                if value.settlement_accounting_entry_id else None
+            ),
+            created_by=UUID(str(value.created_by.subject)),
+            created_at=value.created_at.value,
+        )
+
     def share_sale_allocation_wire(
         value: ShareSaleAllocationView,
     ) -> ShareSaleAllocationWire:
@@ -3244,6 +3710,63 @@ def create_app(
             created_by=UUID(str(value.created_by.subject)),
             created_at=value.created_at.value,
         )
+
+    @application.get(
+        "/api/v1/investments/economic-events",
+        operation_id="investmentsListEconomicEvents",
+        response_model=InvestmentLifecycleEventPageWire,
+        responses={
+            200: {
+                "description": (
+                    "Visible investment economic events and settlement state."
+                )
+            }
+            | investments_success
+        }
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_investment_economic_events(
+        request: Request,
+        company_ids: Annotated[
+            list[UUID],
+            Query(alias="companyId", min_length=1, max_length=100),
+        ],
+        cursor: str | None = Query(default=None, min_length=1, max_length=80),
+        limit: int = Query(default=100, ge=1, le=100),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> InvestmentLifecycleEventPageWire:
+        async def execute() -> InvestmentLifecycleEventPageWire:
+            session = await investments_application.session(
+                bearer_token(credentials)
+            )
+            page = await session.list_lifecycle_events(
+                company_ids=tuple(
+                    investments_input(lambda value=value: CompanyId(str(value)))
+                    for value in company_ids
+                ),
+                correlation_id=CorrelationId(request.state.request_id),
+                cursor=(
+                    investments_input(lambda: InvestmentCursor(cursor))
+                    if cursor else None
+                ),
+                limit=limit,
+            )
+            return InvestmentLifecycleEventPageWire(
+                items=[
+                    investment_lifecycle_event_wire(item)
+                    for item in page.items
+                ],
+                page=InvestmentsPageWire(
+                    next_cursor=(
+                        str(page.next_cursor) if page.next_cursor else None
+                    ),
+                    has_more=page.has_more,
+                ),
+            )
+
+        return await investments_call(execute)
 
     @application.get(
         "/api/v1/investments/activity",
@@ -3456,69 +3979,39 @@ def create_app(
 
         return await investments_call(execute)
 
-    async def execute_investments_share_purchase(
-        request: Request,
-        command: InvestmentsSharePurchaseWire,
-        idempotency_key: str,
-        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
-    ) -> InvestmentsSharePurchaseResultWire:
-        async def execute() -> InvestmentsSharePurchaseResultWire:
-            session = await investments_application.session(bearer_token(credentials))
-            domain = RecordSharePurchaseCommand(
-                company_id=CompanyId(str(command.company_id)),
-                actor_id=session.actor_id,
-                correlation_id=CorrelationId(request.state.request_id),
-                idempotency_key=IdempotencyKey(idempotency_key),
-                income_year=IncomeYear(command.income_year),
-                action_id=InvestmentActionId(str(command.action_id)),
-                investment_key=command.investment_key,
-                investment_name=command.investment_name,
-                investment_kind=command.investment_kind,
-                accounting_classification=command.accounting_classification,
-                tax_treatment=command.tax_treatment,
-                acquisition_date=LocalDate(command.acquisition_date),
-                share_count=command.share_count,
-                purchase_amount=command.purchase_amount.to_domain(),
-                transaction_costs=command.transaction_costs.to_domain(),
-                org_number=command.org_number,
-                fund_equity_ratio_basis_points=(
-                    command.fund_equity_ratio_basis_points
-                ),
-                fund_tax_statement_reference=command.fund_tax_statement_reference,
-                evidence_mode=command.evidence_mode,
-                evidence_reference=command.evidence_reference,
-                owner_attested=command.owner_attested,
-                bank_transaction_id=(
-                    InvestmentSourceReference(str(command.bank_transaction_id))
-                    if command.bank_transaction_id
-                    else None
-                ),
-                document_id=(
-                    InvestmentSourceReference(str(command.document_id))
-                    if command.document_id
-                    else None
-                ),
-                document_status=command.document_status,
-            )
-            result = await session.record_share_purchase(domain)
-            return InvestmentsSharePurchaseResultWire(
-                action_id=UUID(str(result.action_id)),
-                position_id=UUID(str(result.position_id)),
-                acquisition_lot_id=UUID(str(result.lot_id)),
-                accounting_entry_id=UUID(str(result.accounting_entry_id)),
-                position_created=result.position_created,
-                replayed=result.replayed,
-            )
+    async def compatibility_bank_transaction(
+        *,
+        command,
+        access_token: str,
+        actor_id,
+        correlation_id: CorrelationId,
+    ) -> BankTransaction | None:
+        if command.bank_transaction_id is None:
+            return None
+        return await resolve_investment_bank_transaction(
+            access_token,
+            actor_id=actor_id,
+            company_id=CompanyId(str(command.company_id)),
+            correlation_id=correlation_id,
+            transaction_id=command.bank_transaction_id,
+        )
 
-        return await investments_call(execute)
+    def compatibility_accounting_entry(event, settlement) -> UUID:
+        reference = (
+            settlement.settlement_accounting_entry_id
+            if settlement is not None
+            else event.recognition_accounting_entry_id
+        )
+        return UUID(str(reference))
 
     @application.post(
         "/api/v1/investments/share-purchases",
         operation_id="investmentsRecordSharePurchase",
         response_model=InvestmentsSharePurchaseResultWire,
         status_code=201,
+        deprecated=True,
         responses={
-            201: {"description": "Share purchase recorded atomically."}
+            201: {"description": "Share purchase recorded through lifecycle compatibility."}
             | investments_success
         }
         | investments_errors,
@@ -3533,17 +4026,83 @@ def create_app(
         ],
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> InvestmentsSharePurchaseResultWire:
-        return await execute_investments_share_purchase(
-            request, command, idempotency_key, credentials
-        )
+        async def execute() -> InvestmentsSharePurchaseResultWire:
+            if command.tax_treatment is not InvestmentTaxTreatment.EXEMPTION_METHOD:
+                raise InvestmentsError.invalid_input()
+            access_token = bearer_token(credentials)
+            correlation_id = CorrelationId(request.state.request_id)
+            session = await investments_session_with_bank_validation(credentials)
+            bank = await compatibility_bank_transaction(
+                command=command,
+                access_token=access_token,
+                actor_id=session.actor_id,
+                correlation_id=correlation_id,
+            )
+            recognition = RecognizeSharePurchaseCommand(
+                company_id=CompanyId(str(command.company_id)),
+                actor_id=session.actor_id,
+                correlation_id=correlation_id,
+                idempotency_key=IdempotencyKey(idempotency_key),
+                income_year=IncomeYear(command.income_year),
+                event_id=InvestmentEconomicEventId(str(command.action_id)),
+                investment_key=command.investment_key,
+                investment_name=command.investment_name,
+                investment_kind=command.investment_kind,
+                accounting_classification=command.accounting_classification,
+                acquisition_date=LocalDate(command.acquisition_date),
+                share_count=InvestmentUnits.of(str(command.share_count)),
+                purchase_amount=command.purchase_amount.to_domain(),
+                transaction_costs=command.transaction_costs.to_domain(),
+                org_number=command.org_number,
+                fund_equity_ratio_basis_points=command.fund_equity_ratio_basis_points,
+                fund_tax_statement_reference=command.fund_tax_statement_reference,
+                evidence=compatibility_document_evidence(command),
+            )
+            amount = Money.nok(
+                recognition.purchase_amount.amount
+                + recognition.transaction_costs.amount
+            )
+            settlement = (
+                compatibility_cash_settlement(
+                    command=command,
+                    actor_id=session.actor_id,
+                    correlation_id=correlation_id,
+                    idempotency_key=idempotency_key,
+                    transaction=bank,
+                    amount=amount,
+                )
+                if bank is not None else None
+            )
+            event, cash = await session.record_compatibility_action(
+                recognition, settlement
+            )
+            view = await compatibility_lifecycle_event(
+                session,
+                company_id=recognition.company_id,
+                correlation_id=correlation_id,
+                event_id=recognition.event_id,
+            )
+            if view.acquisition_lot_id is None or view.position_created is None:
+                raise InvestmentsError.unavailable()
+            return InvestmentsSharePurchaseResultWire(
+                action_id=command.action_id,
+                position_id=UUID(str(view.position_id)),
+                acquisition_lot_id=UUID(str(view.acquisition_lot_id)),
+                accounting_entry_id=compatibility_accounting_entry(event, cash),
+                position_created=view.position_created,
+                replayed=event.replayed and (cash is None or cash.replayed),
+            )
+
+        return await investments_call(execute)
 
     @application.post(
         "/api/v1/investments/share-sales",
         operation_id="investmentsRecordShareSale",
         response_model=InvestmentsShareSaleResultWire,
         status_code=201,
+        deprecated=True,
         responses={
-            201: {"description": "Share sale recorded atomically."}
+            201: {"description": "Share sale recorded through lifecycle compatibility."}
             | investments_success
         }
         | investments_errors,
@@ -3559,44 +4118,49 @@ def create_app(
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> InvestmentsShareSaleResultWire:
         async def execute() -> InvestmentsShareSaleResultWire:
-            session = await investments_application.session(bearer_token(credentials))
-            domain = RecordShareSaleCommand(
+            access_token = bearer_token(credentials)
+            correlation_id = CorrelationId(request.state.request_id)
+            session = await investments_session_with_bank_validation(credentials)
+            bank = await compatibility_bank_transaction(
+                command=command, access_token=access_token,
+                actor_id=session.actor_id, correlation_id=correlation_id,
+            )
+            recognition = RecognizeShareSaleCommand(
                 company_id=CompanyId(str(command.company_id)),
                 actor_id=session.actor_id,
-                correlation_id=CorrelationId(request.state.request_id),
+                correlation_id=correlation_id,
                 idempotency_key=IdempotencyKey(idempotency_key),
                 income_year=IncomeYear(command.income_year),
-                action_id=InvestmentActionId(str(command.action_id)),
+                event_id=InvestmentEconomicEventId(str(command.action_id)),
                 position_id=InvestmentPositionId(str(command.position_id)),
                 sale_date=LocalDate(command.sale_date),
-                sold_share_count=command.sold_share_count,
+                sold_share_count=InvestmentUnits.of(str(command.sold_share_count)),
                 proceeds=command.proceeds.to_domain(),
                 transaction_costs=command.transaction_costs.to_domain(),
                 sale_year_fund_equity_ratio_basis_points=(
                     command.sale_year_fund_equity_ratio_basis_points
                 ),
                 fund_tax_statement_reference=command.fund_tax_statement_reference,
-                evidence_mode=command.evidence_mode,
-                evidence_reference=command.evidence_reference,
-                owner_attested=command.owner_attested,
-                bank_transaction_id=(
-                    InvestmentSourceReference(str(command.bank_transaction_id))
-                    if command.bank_transaction_id
-                    else None
-                ),
-                document_id=(
-                    InvestmentSourceReference(str(command.document_id))
-                    if command.document_id
-                    else None
-                ),
-                document_status=command.document_status,
+                evidence=compatibility_document_evidence(command),
             )
-            result = await session.record_share_sale(domain)
+            amount = Money.nok(
+                recognition.proceeds.amount - recognition.transaction_costs.amount
+            )
+            settlement = (
+                compatibility_cash_settlement(
+                    command=command, actor_id=session.actor_id,
+                    correlation_id=correlation_id, idempotency_key=idempotency_key,
+                    transaction=bank, amount=amount,
+                ) if bank is not None else None
+            )
+            event, cash = await session.record_compatibility_action(
+                recognition, settlement
+            )
             return InvestmentsShareSaleResultWire(
-                action_id=UUID(str(result.action_id)),
-                position_id=UUID(str(result.position_id)),
-                accounting_entry_id=UUID(str(result.accounting_entry_id)),
-                replayed=result.replayed,
+                action_id=command.action_id,
+                position_id=UUID(str(event.position_id)),
+                accounting_entry_id=compatibility_accounting_entry(event, cash),
+                replayed=event.replayed and (cash is None or cash.replayed),
             )
 
         return await investments_call(execute)
@@ -3606,8 +4170,9 @@ def create_app(
         operation_id="investmentsRecordReceivedDividend",
         response_model=InvestmentsReceivedDividendResultWire,
         status_code=201,
+        deprecated=True,
         responses={
-            201: {"description": "Received dividend recorded atomically."}
+            201: {"description": "Dividend recorded through lifecycle compatibility."}
             | investments_success
         }
         | investments_errors,
@@ -3623,49 +4188,57 @@ def create_app(
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> InvestmentsReceivedDividendResultWire:
         async def execute() -> InvestmentsReceivedDividendResultWire:
-            session = await investments_application.session(bearer_token(credentials))
-            domain = RecordReceivedDividendCommand(
+            if command.tax_treatment is not InvestmentTaxTreatment.EXEMPTION_METHOD:
+                raise InvestmentsError.invalid_input()
+            access_token = bearer_token(credentials)
+            correlation_id = CorrelationId(request.state.request_id)
+            session = await investments_session_with_bank_validation(credentials)
+            bank = await compatibility_bank_transaction(
+                command=command, access_token=access_token,
+                actor_id=session.actor_id, correlation_id=correlation_id,
+            )
+            if bank is not None and bank.transaction_date.value != command.paid_date:
+                raise InvestmentsError.invalid_input()
+            recognition = RecognizeReceivedDividendCommand(
                 company_id=CompanyId(str(command.company_id)),
                 actor_id=session.actor_id,
-                correlation_id=CorrelationId(request.state.request_id),
+                correlation_id=correlation_id,
                 idempotency_key=IdempotencyKey(idempotency_key),
                 income_year=IncomeYear(command.income_year),
-                action_id=InvestmentActionId(str(command.action_id)),
+                event_id=InvestmentEconomicEventId(str(command.action_id)),
                 position_id=InvestmentPositionId(str(command.position_id)),
                 paying_company_name=command.paying_company_name,
                 declared_date=LocalDate(command.declared_date),
-                paid_date=LocalDate(command.paid_date),
                 gross_amount=command.gross_amount.to_domain(),
-                tax_treatment=command.tax_treatment,
                 lawful_dividend_confirmed=command.lawful_dividend_confirmed,
                 group_exception_claimed=command.group_exception_claimed,
-                year_end_ownership_basis_points=(
-                    command.year_end_ownership_basis_points
-                ),
+                year_end_ownership_basis_points=command.year_end_ownership_basis_points,
                 year_end_voting_basis_points=command.year_end_voting_basis_points,
                 group_evidence_reference=command.group_evidence_reference,
-                evidence_mode=command.evidence_mode,
-                evidence_reference=command.evidence_reference,
-                owner_attested=command.owner_attested,
-                bank_transaction_id=(
-                    InvestmentSourceReference(str(command.bank_transaction_id))
-                    if command.bank_transaction_id
-                    else None
-                ),
-                document_id=(
-                    InvestmentSourceReference(str(command.document_id))
-                    if command.document_id
-                    else None
-                ),
-                document_status=command.document_status,
+                evidence=compatibility_document_evidence(command),
             )
-            result = await session.record_received_dividend(domain)
+            settlement = (
+                compatibility_cash_settlement(
+                    command=command, actor_id=session.actor_id,
+                    correlation_id=correlation_id, idempotency_key=idempotency_key,
+                    transaction=bank, amount=recognition.gross_amount,
+                ) if bank is not None else None
+            )
+            event, cash = await session.record_compatibility_action(
+                recognition, settlement
+            )
+            view = await compatibility_lifecycle_event(
+                session, company_id=recognition.company_id,
+                correlation_id=correlation_id, event_id=recognition.event_id,
+            )
+            if view.taxable_add_back is None:
+                raise InvestmentsError.unavailable()
             return InvestmentsReceivedDividendResultWire(
-                action_id=UUID(str(result.action_id)),
-                position_id=UUID(str(result.position_id)),
-                accounting_entry_id=UUID(str(result.accounting_entry_id)),
-                taxable_add_back=_money_wire(result.taxable_add_back),
-                replayed=result.replayed,
+                action_id=command.action_id,
+                position_id=UUID(str(event.position_id)),
+                accounting_entry_id=compatibility_accounting_entry(event, cash),
+                taxable_add_back=_money_wire(view.taxable_add_back),
+                replayed=event.replayed and (cash is None or cash.replayed),
             )
 
         return await investments_call(execute)
@@ -3675,8 +4248,9 @@ def create_app(
         operation_id="investmentsRecordReceivedFundDistribution",
         response_model=InvestmentsReceivedFundDistributionResultWire,
         status_code=201,
+        deprecated=True,
         responses={
-            201: {"description": "Received fund distribution recorded atomically."}
+            201: {"description": "Fund distribution recorded through lifecycle compatibility."}
             | investments_success
         }
         | investments_errors,
@@ -3692,49 +4266,324 @@ def create_app(
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> InvestmentsReceivedFundDistributionResultWire:
         async def execute() -> InvestmentsReceivedFundDistributionResultWire:
-            session = await investments_application.session(bearer_token(credentials))
-            domain = RecordReceivedFundDistributionCommand(
+            access_token = bearer_token(credentials)
+            correlation_id = CorrelationId(request.state.request_id)
+            session = await investments_session_with_bank_validation(credentials)
+            bank = await compatibility_bank_transaction(
+                command=command, access_token=access_token,
+                actor_id=session.actor_id, correlation_id=correlation_id,
+            )
+            if bank is not None and bank.transaction_date.value != command.paid_date:
+                raise InvestmentsError.invalid_input()
+            recognition = RecognizeReceivedFundDistributionCommand(
                 company_id=CompanyId(str(command.company_id)),
                 actor_id=session.actor_id,
-                correlation_id=CorrelationId(request.state.request_id),
+                correlation_id=correlation_id,
                 idempotency_key=IdempotencyKey(idempotency_key),
                 income_year=IncomeYear(command.income_year),
-                action_id=InvestmentActionId(str(command.action_id)),
+                event_id=InvestmentEconomicEventId(str(command.action_id)),
                 position_id=InvestmentPositionId(str(command.position_id)),
                 fund_name=command.fund_name,
                 entitlement_date=LocalDate(command.entitlement_date),
-                paid_date=LocalDate(command.paid_date),
                 gross_amount=command.gross_amount.to_domain(),
                 opening_fund_equity_ratio_basis_points=(
                     command.opening_fund_equity_ratio_basis_points
                 ),
-                fund_tax_statement_reference=(
-                    command.fund_tax_statement_reference
-                ),
-                evidence_mode=command.evidence_mode,
-                evidence_reference=command.evidence_reference,
-                owner_attested=command.owner_attested,
-                bank_transaction_id=(
-                    InvestmentSourceReference(str(command.bank_transaction_id))
-                    if command.bank_transaction_id
-                    else None
-                ),
-                document_id=(
-                    InvestmentSourceReference(str(command.document_id))
-                    if command.document_id
-                    else None
-                ),
-                document_status=command.document_status,
+                fund_tax_statement_reference=command.fund_tax_statement_reference,
+                evidence=compatibility_document_evidence(command),
             )
-            result = await session.record_received_fund_distribution(domain)
+            settlement = (
+                compatibility_cash_settlement(
+                    command=command, actor_id=session.actor_id,
+                    correlation_id=correlation_id, idempotency_key=idempotency_key,
+                    transaction=bank, amount=recognition.gross_amount,
+                ) if bank is not None else None
+            )
+            event, cash = await session.record_compatibility_action(
+                recognition, settlement
+            )
+            view = await compatibility_lifecycle_event(
+                session, company_id=recognition.company_id,
+                correlation_id=correlation_id, event_id=recognition.event_id,
+            )
+            if (
+                view.dividend_portion is None
+                or view.interest_portion is None
+                or view.taxable_add_back is None
+                or view.total_taxable_income is None
+            ):
+                raise InvestmentsError.unavailable()
             return InvestmentsReceivedFundDistributionResultWire(
-                action_id=UUID(str(result.action_id)),
-                position_id=UUID(str(result.position_id)),
-                accounting_entry_id=UUID(str(result.accounting_entry_id)),
-                dividend_portion=_money_wire(result.dividend_portion),
-                interest_portion=_money_wire(result.interest_portion),
-                taxable_add_back=_money_wire(result.taxable_add_back),
-                total_taxable_income=_money_wire(result.total_taxable_income),
+                action_id=command.action_id,
+                position_id=UUID(str(event.position_id)),
+                accounting_entry_id=compatibility_accounting_entry(event, cash),
+                dividend_portion=_money_wire(view.dividend_portion),
+                interest_portion=_money_wire(view.interest_portion),
+                taxable_add_back=_money_wire(view.taxable_add_back),
+                total_taxable_income=_money_wire(view.total_taxable_income),
+                replayed=event.replayed and (cash is None or cash.replayed),
+            )
+
+        return await investments_call(execute)
+
+    def economic_event_result_wire(result) -> InvestmentsEconomicEventResultWire:
+        return InvestmentsEconomicEventResultWire(
+            event_id=UUID(str(result.event_id)),
+            position_id=UUID(str(result.position_id)),
+            recognition_accounting_entry_id=UUID(
+                str(result.recognition_accounting_entry_id)
+            ),
+            expected_settlement_amount=_money_wire(
+                result.expected_settlement_amount
+            ),
+            settlement_balance_kind=result.settlement_balance_kind,
+            replayed=result.replayed,
+        )
+
+    @application.post(
+        "/api/v1/investments/share-purchase-recognitions",
+        operation_id="investmentsRecognizeSharePurchase",
+        response_model=InvestmentsEconomicEventResultWire,
+        status_code=201,
+        responses={
+            201: {"description": "Share purchase recognized without cash settlement."}
+            | investments_success
+        }
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def recognize_investments_share_purchase(
+        request: Request,
+        command: InvestmentsRecognizeSharePurchaseWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> InvestmentsEconomicEventResultWire:
+        async def execute() -> InvestmentsEconomicEventResultWire:
+            session = await investments_application.session(bearer_token(credentials))
+            result = await session.recognize_share_purchase(
+                RecognizeSharePurchaseCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=session.actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    income_year=IncomeYear(command.income_year),
+                    event_id=InvestmentEconomicEventId(str(command.event_id)),
+                    investment_key=command.investment_key,
+                    investment_name=command.investment_name,
+                    investment_kind=command.investment_kind,
+                    accounting_classification=command.accounting_classification,
+                    acquisition_date=LocalDate(command.acquisition_date),
+                    share_count=InvestmentUnits.of(command.share_count),
+                    purchase_amount=command.purchase_amount.to_domain(),
+                    transaction_costs=command.transaction_costs.to_domain(),
+                    org_number=command.org_number,
+                    fund_equity_ratio_basis_points=(
+                        command.fund_equity_ratio_basis_points
+                    ),
+                    fund_tax_statement_reference=(
+                        command.fund_tax_statement_reference
+                    ),
+                    evidence=command.evidence_domain(),
+                )
+            )
+            return economic_event_result_wire(result)
+
+        return await investments_call(execute)
+
+    @application.post(
+        "/api/v1/investments/share-sale-recognitions",
+        operation_id="investmentsRecognizeShareSale",
+        response_model=InvestmentsEconomicEventResultWire,
+        status_code=201,
+        responses={
+            201: {"description": "Share sale recognized without cash settlement."}
+            | investments_success
+        }
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def recognize_investments_share_sale(
+        request: Request,
+        command: InvestmentsRecognizeShareSaleWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> InvestmentsEconomicEventResultWire:
+        async def execute() -> InvestmentsEconomicEventResultWire:
+            session = await investments_application.session(bearer_token(credentials))
+            result = await session.recognize_share_sale(
+                RecognizeShareSaleCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=session.actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    income_year=IncomeYear(command.income_year),
+                    event_id=InvestmentEconomicEventId(str(command.event_id)),
+                    position_id=InvestmentPositionId(str(command.position_id)),
+                    sale_date=LocalDate(command.sale_date),
+                    sold_share_count=InvestmentUnits.of(command.sold_share_count),
+                    proceeds=command.proceeds.to_domain(),
+                    transaction_costs=command.transaction_costs.to_domain(),
+                    sale_year_fund_equity_ratio_basis_points=(
+                        command.sale_year_fund_equity_ratio_basis_points
+                    ),
+                    fund_tax_statement_reference=(
+                        command.fund_tax_statement_reference
+                    ),
+                    evidence=command.evidence_domain(),
+                )
+            )
+            return economic_event_result_wire(result)
+
+        return await investments_call(execute)
+
+    @application.post(
+        "/api/v1/investments/received-dividend-recognitions",
+        operation_id="investmentsRecognizeReceivedDividend",
+        response_model=InvestmentsEconomicEventResultWire,
+        status_code=201,
+        responses={
+            201: {"description": "Received dividend recognized without cash settlement."}
+            | investments_success
+        }
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def recognize_investments_received_dividend(
+        request: Request,
+        command: InvestmentsRecognizeReceivedDividendWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> InvestmentsEconomicEventResultWire:
+        async def execute() -> InvestmentsEconomicEventResultWire:
+            session = await investments_application.session(bearer_token(credentials))
+            result = await session.recognize_received_dividend(
+                RecognizeReceivedDividendCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=session.actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    income_year=IncomeYear(command.income_year),
+                    event_id=InvestmentEconomicEventId(str(command.event_id)),
+                    position_id=InvestmentPositionId(str(command.position_id)),
+                    paying_company_name=command.paying_company_name,
+                    declared_date=LocalDate(command.declared_date),
+                    gross_amount=command.gross_amount.to_domain(),
+                    lawful_dividend_confirmed=command.lawful_dividend_confirmed,
+                    group_exception_claimed=command.group_exception_claimed,
+                    year_end_ownership_basis_points=(
+                        command.year_end_ownership_basis_points
+                    ),
+                    year_end_voting_basis_points=(
+                        command.year_end_voting_basis_points
+                    ),
+                    group_evidence_reference=command.group_evidence_reference,
+                    evidence=command.evidence_domain(),
+                )
+            )
+            return economic_event_result_wire(result)
+
+        return await investments_call(execute)
+
+    @application.post(
+        "/api/v1/investments/received-fund-distribution-recognitions",
+        operation_id="investmentsRecognizeReceivedFundDistribution",
+        response_model=InvestmentsEconomicEventResultWire,
+        status_code=201,
+        responses={
+            201: {"description": "Fund distribution recognized without cash settlement."}
+            | investments_success
+        }
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def recognize_investments_received_fund_distribution(
+        request: Request,
+        command: InvestmentsRecognizeReceivedFundDistributionWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> InvestmentsEconomicEventResultWire:
+        async def execute() -> InvestmentsEconomicEventResultWire:
+            session = await investments_application.session(bearer_token(credentials))
+            result = await session.recognize_received_fund_distribution(
+                RecognizeReceivedFundDistributionCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=session.actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    income_year=IncomeYear(command.income_year),
+                    event_id=InvestmentEconomicEventId(str(command.event_id)),
+                    position_id=InvestmentPositionId(str(command.position_id)),
+                    fund_name=command.fund_name,
+                    entitlement_date=LocalDate(command.entitlement_date),
+                    gross_amount=command.gross_amount.to_domain(),
+                    opening_fund_equity_ratio_basis_points=(
+                        command.opening_fund_equity_ratio_basis_points
+                    ),
+                    fund_tax_statement_reference=(
+                        command.fund_tax_statement_reference
+                    ),
+                    evidence=command.evidence_domain(),
+                )
+            )
+            return economic_event_result_wire(result)
+
+        return await investments_call(execute)
+
+    @application.post(
+        "/api/v1/investments/cash-settlements",
+        operation_id="investmentsSettleCash",
+        response_model=InvestmentsCashSettlementResultWire,
+        status_code=201,
+        responses={
+            201: {"description": "Investment cash settled against a recognition."}
+            | investments_success
+        }
+        | investments_errors,
+        tags=["investments"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def settle_investments_cash(
+        request: Request,
+        command: InvestmentsSettleCashWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> InvestmentsCashSettlementResultWire:
+        async def execute() -> InvestmentsCashSettlementResultWire:
+            session = await investments_session_with_bank_validation(credentials)
+            result = await session.settle_investment_cash(
+                SettleInvestmentCashCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=session.actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    income_year=IncomeYear(command.income_year),
+                    settlement_id=InvestmentSettlementId(str(command.settlement_id)),
+                    event_id=InvestmentEconomicEventId(str(command.event_id)),
+                    settlement_date=LocalDate(command.settlement_date),
+                    amount=command.amount.to_domain(),
+                    evidence=command.evidence_domain(),
+                )
+            )
+            return InvestmentsCashSettlementResultWire(
+                settlement_id=UUID(str(result.settlement_id)),
+                event_id=UUID(str(result.event_id)),
+                settlement_accounting_entry_id=UUID(
+                    str(result.settlement_accounting_entry_id)
+                ),
                 replayed=result.replayed,
             )
 
@@ -3762,7 +4611,7 @@ def create_app(
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> InvestmentsCorrectionResultWire:
         async def execute() -> InvestmentsCorrectionResultWire:
-            session = await investments_application.session(bearer_token(credentials))
+            session = await investments_session_with_bank_validation(credentials)
             replacement_wire = command.replacement
             replacement_record_id = (
                 replacement_wire.settlement_id

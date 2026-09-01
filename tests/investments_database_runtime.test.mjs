@@ -27,6 +27,8 @@ const investmentsLifecycleWorkflowMigration = "20260901113000_investments_lifecy
 const investmentsShareSaleLifecycleMigration = "20260901114000_investments_share_sale_lifecycle.sql";
 const investmentsIncomeLifecycleMigration = "20260901115000_investments_income_lifecycle.sql";
 const investmentsLifecycleCorrectionsMigration = "20260901116000_investments_lifecycle_corrections.sql";
+const investmentsBankFactClaimMigration = "20260901117000_investments_bank_fact_claim.sql";
+const investmentsLifecyclePublicCutoverMigration = "20260901150538_investments_lifecycle_public_cutover.sql";
 const ownerId = "00000000-0000-0000-0000-000000000011";
 const outsiderId = "00000000-0000-0000-0000-000000000022";
 const companyId = "10000000-0000-0000-0000-000000000001";
@@ -158,6 +160,8 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         investmentsShareSaleLifecycleMigration,
         investmentsIncomeLifecycleMigration,
         investmentsLifecycleCorrectionsMigration,
+        investmentsBankFactClaimMigration,
+        investmentsLifecyclePublicCutoverMigration,
       ].includes(name))) {
       psql(containerName, ["--file", `/repo/supabase/migrations/${migration}`]);
     }
@@ -1247,6 +1251,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     psql(containerName, [
       "--file", `/repo/supabase/migrations/${investmentsLifecycleCorrectionsMigration}`,
     ]);
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsBankFactClaimMigration}`,
+    ]);
     assert.equal(scalar(containerName, String.raw`
       select
         (pg_catalog.to_regclass('investments.economic_events') is not null)::text || ':' ||
@@ -1288,6 +1295,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     const lifecycleDocumentOne = "91000000-0000-0000-0000-000000000003";
     const lifecycleDocumentTwo = "91000000-0000-0000-0000-000000000004";
     const lifecycleBankFact = "91000000-0000-0000-0000-000000000005";
+    const lifecycleRollbackBankFact = "91000000-0000-0000-0000-000000000006";
     const lifecycleCalculationId = "e".repeat(64);
     const lifecycleEvidenceDigest = "d".repeat(64);
     const lifecycleSettlementEvidenceDigest = "f".repeat(64);
@@ -1340,6 +1348,28 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         revision: 1, factSha256: "c".repeat(64),
       }, evidenceDigest: lifecycleSettlementEvidenceDigest,
     });
+
+    psql(containerName, [], String.raw`
+      begin;
+      set local role banking_store_owner;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', true);
+      select pg_catalog.set_config(
+        'talli.verified_actor_claims',
+        '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}', true
+      );
+      insert into banking.transactions (
+        id, company_id, income_year, transaction_date, text, amount,
+        source_hash, created_by
+      ) values (
+        '${lifecycleBankFact}', '${companyId}', 2026, date '2026-12-31',
+        'Lifecycle investment purchase', -125.50, repeat('c', 64), '${ownerId}'
+      ), (
+        '${lifecycleRollbackBankFact}', '${companyId}', 2026,
+        date '2026-12-31', 'Lifecycle rollback purchase', -125.50,
+        repeat('9', 64), '${ownerId}'
+      );
+      commit;
+    `);
 
     assert.equal(scalar(containerName, String.raw`
       begin;
@@ -1395,6 +1425,19 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
           )
         )
       );
+      select banking.claim_transaction_for_external_action_v1(
+        pg_catalog.jsonb_build_object(
+          'companyId', '${companyId}',
+          'incomeYear', 2026,
+          'transactionId', '${lifecycleBankFact}',
+          'transactionDate', '2026-12-31',
+          'signedAmount', '-125.50',
+          'sourceHash', repeat('c', 64),
+          'actionReference', 'investment-settlement:${lifecycleSettlementId}'
+        ),
+        (select ledger_entry_id from lifecycle_settlement_entry),
+        '${ownerId}'
+      );
       create temporary table lifecycle_settled as
       select investments.complete_cash_settlement_v2(
         '${lifecycleSettlementRequest}'::jsonb,
@@ -1412,8 +1455,81 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         (select count(*)::text from investments.event_sources
           where event_id = '${lifecycleEventId}') || ':' ||
         (select income_year::text from investments.cash_settlements
-          where settlement_id = '${lifecycleSettlementId}');
-    `), "purchase_payable:false:false:10.125000000000:2:2026");
+          where settlement_id = '${lifecycleSettlementId}') || ':' ||
+        (select matched_action_reference from banking.transactions
+          where id = '${lifecycleBankFact}');
+    `), `purchase_payable:false:false:10.125000000000:2:2026:investment-settlement:${lifecycleSettlementId}`);
+
+    const reusedLifecycleBankFact = docker([
+      "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
+      "-U", "postgres", "-d", "talli_test",
+    ], { input: String.raw`
+      set role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config(
+        'talli.verified_actor_claims',
+        '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}', false
+      );
+      select banking.claim_transaction_for_external_action_v1(
+        pg_catalog.jsonb_build_object(
+          'companyId', '${companyId}', 'incomeYear', 2026,
+          'transactionId', '${lifecycleBankFact}',
+          'transactionDate', '2026-12-31', 'signedAmount', '-125.50',
+          'sourceHash', repeat('c', 64),
+          'actionReference', 'investment-settlement:${lifecycleSettlementId}'
+        ),
+        '${actionId}',
+        '${ownerId}'
+      );
+    ` });
+    assert.notEqual(reusedLifecycleBankFact.status, 0);
+    assert.match(
+      `${reusedLifecycleBankFact.stdout}\n${reusedLifecycleBankFact.stderr}`,
+      /banking_transaction_already_reconciled/u,
+    );
+
+    const lifecycleSettlementEntryId = scalar(containerName, String.raw`
+      select matched_accounting_entry_id::text
+      from banking.transactions
+      where id = '${lifecycleBankFact}';
+    `);
+    const failedAfterLifecycleBankClaim = docker([
+      "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
+      "-U", "postgres", "-d", "talli_test",
+    ], { input: String.raw`
+      set role investments_workflow_executor;
+      select pg_catalog.set_config('talli.verified_actor_id', '${ownerId}', false);
+      select pg_catalog.set_config(
+        'talli.verified_actor_claims',
+        '{"sub":"${ownerId}","role":"authenticated","aal":"aal2"}', false
+      );
+      begin;
+      select banking.claim_transaction_for_external_action_v1(
+        pg_catalog.jsonb_build_object(
+          'companyId', '${companyId}', 'incomeYear', 2026,
+          'transactionId', '${lifecycleRollbackBankFact}',
+          'transactionDate', '2026-12-31', 'signedAmount', '-125.50',
+          'sourceHash', repeat('9', 64),
+          'actionReference',
+            'investment-settlement:91000000-0000-0000-0000-000000000099'
+        ),
+        '${lifecycleSettlementEntryId}', '${ownerId}'
+      );
+      select investments.complete_cash_settlement_v2(
+        '${lifecycleSettlementRequest}'::jsonb,
+        '${lifecycleSettlementEntryId}', '{}'::jsonb, '${ownerId}'
+      );
+      commit;
+    ` });
+    assert.notEqual(failedAfterLifecycleBankClaim.status, 0);
+    assert.equal(scalar(containerName, String.raw`
+      select (
+        matched_accounting_entry_id is null
+        and matched_action_reference is null
+      )::text
+      from banking.transactions
+      where id = '${lifecycleRollbackBankFact}';
+    `), "true");
 
     assert.equal(scalar(containerName, String.raw`
       set role investments_workflow_executor;
@@ -1475,10 +1591,10 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       correlationId: "lifecycle-replacement-settlement",
       settlementDate: "2026-12-30", amount: "125.50",
       evidenceMode: "linked_sources",
-      evidenceReference: "corrected bank transaction revision 2",
+      evidenceReference: "corrected immutable bank transaction",
       ownerAttested: false, documentFacts: [], bankFact: {
         capability: "BANKING", recordId: lifecycleReplacementBankFact,
-        revision: 2, factSha256: "1".repeat(64),
+        revision: 1, factSha256: "1".repeat(64),
       }, evidenceDigest: "2".repeat(64),
     };
     const lifecycleSettlementCorrectionRequest = JSON.stringify({
@@ -1551,7 +1667,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
           ),
           pg_catalog.jsonb_build_object(
             'role', 'CORROBORATING', 'capability', 'BANKING',
-            'recordId', '${lifecycleReplacementBankFact}', 'revision', 2,
+            'recordId', '${lifecycleReplacementBankFact}', 'revision', 1,
             'factSha256', repeat('1', 64)
           )
         )
@@ -3047,6 +3163,167 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       select (select count(*) from investments.received_fund_distributions)::text || ':' ||
         (select count(*) from investments.corrections)::text;
     `), "2:1");
+
+    psql(containerName, [
+      "--file",
+      `/repo/supabase/contract-migrations/${investmentsLifecyclePublicCutoverMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_share_purchase_v1(jsonb,text)',
+          'EXECUTE'
+        )::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_share_sale_v1(jsonb,text)',
+          'EXECUTE'
+        )::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_received_dividend_v1(jsonb,text)',
+          'EXECUTE'
+        )::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_received_fund_distribution_v1(jsonb,text)',
+          'EXECUTE'
+        )::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_correction_v1(jsonb,text)',
+          'EXECUTE'
+        )::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_share_purchase_recognition_v2(jsonb,text)',
+          'EXECUTE'
+        )::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'investments.prepare_cash_settlement_v2(jsonb,text)',
+          'EXECUTE'
+        )::text || ':' ||
+        (pg_catalog.to_regprocedure(
+          'ledger.link_investment_correction_v1(uuid,integer,uuid,uuid,uuid,uuid,text,text,date,text)'
+        ) is null)::text || ':' ||
+        (pg_catalog.to_regprocedure(
+          'ledger.link_investment_lifecycle_correction_v2(uuid,integer,uuid,uuid,uuid,uuid,text,text,date,text)'
+        ) is not null)::text || ':' ||
+        pg_catalog.has_function_privilege(
+          'investments_workflow_executor',
+          'ledger.link_investment_lifecycle_correction_v2(uuid,integer,uuid,uuid,uuid,uuid,text,text,date,text)',
+          'EXECUTE'
+        )::text || ':' ||
+        exists (
+          select 1 from pg_catalog.pg_constraint constraint_record
+          join pg_catalog.pg_namespace namespace
+            on namespace.oid = constraint_record.connamespace
+          where namespace.nspname = 'investments'
+            and constraint_record.conname = 'cash_settlements_bank_fact_key'
+            and constraint_record.contype = 'u'
+        )::text || ':' ||
+        exists (
+          select 1 from pg_catalog.pg_constraint constraint_record
+          join pg_catalog.pg_namespace namespace
+            on namespace.oid = constraint_record.connamespace
+          where namespace.nspname = 'investments'
+            and constraint_record.conname =
+              'cash_settlements_bank_fact_revision_check'
+            and constraint_record.contype = 'c'
+        )::text;
+    `), "false:false:false:false:false:true:true:true:true:true:true:true");
+    const refusedCallerBankRevision = docker([
+      "exec", "-i", containerName, "psql", "-v", "ON_ERROR_STOP=1",
+      "-U", "postgres", "-d", "talli_test",
+    ], { input: String.raw`
+      select investments.cash_settlement_fingerprint_v2(
+        pg_catalog.jsonb_set(
+          '${lifecycleSaleSettlementRequest}'::jsonb,
+          '{bankFact,revision}', '2'::jsonb
+        )
+      );
+    ` });
+    assert.notEqual(refusedCallerBankRevision.status, 0);
+    assert.match(
+      `${refusedCallerBankRevision.stdout}\n${refusedCallerBankRevision.stderr}`,
+      /investments_invalid_input/u,
+    );
+    psql(containerName, [
+      "--file",
+      `/repo/supabase/rollback/${investmentsLifecyclePublicCutoverMigration}`,
+    ]);
+    psql(containerName, [
+      "--file",
+      `/repo/supabase/rollback/${investmentsLifecyclePublicCutoverMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select pg_catalog.has_function_privilege(
+        'investments_workflow_executor',
+        'investments.prepare_share_purchase_v1(jsonb,text)',
+        'EXECUTE'
+      )::text || ':' ||
+      (pg_catalog.to_regprocedure(
+        'ledger.link_investment_correction_v1(uuid,integer,uuid,uuid,uuid,uuid,text,text,date,text)'
+      ) is not null)::text || ':' ||
+      (pg_catalog.to_regprocedure(
+        'ledger.link_investment_lifecycle_correction_v2(uuid,integer,uuid,uuid,uuid,uuid,text,text,date,text)'
+      ) is null)::text || ':' ||
+      exists (
+        select 1 from pg_catalog.pg_constraint constraint_record
+        join pg_catalog.pg_namespace namespace
+          on namespace.oid = constraint_record.connamespace
+        where namespace.nspname = 'investments'
+          and constraint_record.conname = 'cash_settlements_bank_fact_key'
+          and constraint_record.contype = 'u'
+      )::text || ':' ||
+      exists (
+        select 1 from pg_catalog.pg_constraint constraint_record
+        join pg_catalog.pg_namespace namespace
+          on namespace.oid = constraint_record.connamespace
+        where namespace.nspname = 'investments'
+          and constraint_record.conname =
+            'cash_settlements_bank_fact_revision_check'
+          and constraint_record.contype = 'c'
+      )::text;
+    `), "true:true:true:true:true");
+    psql(containerName, [
+      "--file",
+      `/repo/supabase/contract-migrations/${investmentsLifecyclePublicCutoverMigration}`,
+    ]);
+    assert.equal(scalar(containerName, String.raw`
+      select pg_catalog.has_function_privilege(
+        'investments_workflow_executor',
+        'investments.prepare_share_purchase_v1(jsonb,text)',
+        'EXECUTE'
+      )::text || ':' ||
+      (pg_catalog.to_regprocedure(
+        'ledger.link_investment_correction_v1(uuid,integer,uuid,uuid,uuid,uuid,text,text,date,text)'
+      ) is null)::text || ':' ||
+      pg_catalog.has_function_privilege(
+        'investments_workflow_executor',
+        'ledger.link_investment_lifecycle_correction_v2(uuid,integer,uuid,uuid,uuid,uuid,text,text,date,text)',
+        'EXECUTE'
+      )::text || ':' ||
+      exists (
+        select 1 from pg_catalog.pg_constraint constraint_record
+        join pg_catalog.pg_namespace namespace
+          on namespace.oid = constraint_record.connamespace
+        where namespace.nspname = 'investments'
+          and constraint_record.conname = 'cash_settlements_bank_fact_key'
+          and constraint_record.contype = 'u'
+      )::text || ':' ||
+      exists (
+        select 1 from pg_catalog.pg_constraint constraint_record
+        join pg_catalog.pg_namespace namespace
+          on namespace.oid = constraint_record.connamespace
+        where namespace.nspname = 'investments'
+          and constraint_record.conname =
+            'cash_settlements_bank_fact_revision_check'
+          and constraint_record.contype = 'c'
+      )::text;
+    `), "false:true:true:true:true");
   } finally {
     docker(["rm", "--force", containerName]);
   }

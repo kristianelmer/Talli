@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createHmac, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import test from "node:test";
@@ -69,6 +69,7 @@ test("browser owner annual loop uses persisted state and survives reload", async
     ownerId: undefined,
     primaryFailure: undefined,
     server: undefined,
+    storageKeys: [],
   };
   t.after(async () => {
     const cleanupErrors = await cleanupBrowserOwnerResources(resources);
@@ -288,9 +289,15 @@ test("browser owner annual loop uses persisted state and survives reload", async
       ownerId,
       orgNumber,
     });
+    const investmentEvidence = await seedInvestmentEvidence(
+      admin,
+      database,
+      { companyId, ownerId, storageKeys: resources.storageKeys },
+    );
     await exerciseMobileInvestmentCorrection({
       companyId,
       database,
+      evidence: investmentEvidence,
       page,
       baseUrl,
     });
@@ -393,6 +400,7 @@ async function seedSupportedInvestmentYear(
 async function exerciseMobileInvestmentCorrection({
   companyId,
   database,
+  evidence,
   page,
   baseUrl,
 }) {
@@ -410,35 +418,16 @@ async function exerciseMobileInvestmentCorrection({
   await page
     .getByLabel("Referanse til fondets skatteoppgave")
     .fill("browser-fund-tax-2026");
-  await page
-    .getByLabel("Bilags- eller meglerreferanse")
+  await page.locator('select[name="documentId"]')
+    .selectOption(evidence.purchaseDocumentId);
+  await page.locator('input[name="evidenceReference"]')
     .fill("browser-broker-purchase-1");
+  await page.locator('input[name="ownerAttested"]').check();
   const originalActionId = await page
     .locator('input[name="operationId"]')
     .inputValue();
   assert.equal(await page.evaluate(() => document.body.scrollWidth <= innerWidth), true);
   await page.getByRole("button", { name: "Bekreft og bokfør" }).click();
-  await page.waitForLoadState("networkidle");
-  await expectText(page, "Handlingen er bokført");
-
-  await page.goto(`${baseUrl}/actions/fund-distribution`);
-  await page.waitForLoadState("networkidle");
-  await page.getByLabel("Fondsposisjon").selectOption({
-    label: "Talli Browser Fond",
-  });
-  await page.getByLabel("Rettighetsdato").fill("2026-06-01");
-  await page.getByLabel("Utbetalingsdato").fill("2026-06-15");
-  await page.getByLabel("Brutto utdeling (kr)").fill("1000.00");
-  await page
-    .getByLabel("Aksjeandel ved årets start (basispoeng)")
-    .fill("6500");
-  await page
-    .getByLabel("Referanse til fondets skatteoppgave")
-    .fill("browser-fund-tax-2026");
-  await page
-    .getByLabel("Utbetalings- eller bilagsreferanse")
-    .fill("browser-fund-payment-1");
-  await page.getByRole("button", { name: "Poster fondsutdeling" }).click();
   await page.waitForLoadState("networkidle");
   await expectText(page, "Handlingen er bokført");
 
@@ -453,17 +442,83 @@ async function exerciseMobileInvestmentCorrection({
   await page.getByLabel("Kjøpsbeløp (kr)").fill("12000.00");
   await page.getByLabel("Korrigeringsdato").fill("2026-12-30");
   await page.getByLabel("Begrunnelse").fill("Korrigert kjøpsbeløp mot meglernota");
-  await page
-    .getByLabel("Dokumentasjon for korrigeringen")
+  await page.locator('select[name="documentId"]')
+    .selectOption(evidence.purchaseDocumentId);
+  await page.locator('input[name="evidenceReference"]')
     .fill("browser-correction-note-1");
-  await page
-    .getByLabel("Dokumentasjon for nye fakta")
+  await page.locator('input[name="ownerAttested"]').check();
+  await page.locator('select[name="replacementDocumentId"]')
+    .selectOption(evidence.replacementDocumentId);
+  await page.locator('input[name="replacementEvidenceReference"]')
     .fill("browser-broker-purchase-2");
+  await page.locator('input[name="replacementOwnerAttested"]').check();
   const replacementActionId = await page
     .locator('input[name="replacementActionId"]')
     .inputValue();
   assert.equal(await page.evaluate(() => document.body.scrollWidth <= innerWidth), true);
   await page.getByRole("button", { name: "Reverser og erstatt" }).click();
+  await page.waitForLoadState("networkidle");
+  await expectText(page, "Handlingen er bokført");
+
+  await page.goto(`${baseUrl}/actions/investment-settlement`);
+  await page.waitForLoadState("networkidle");
+  await page
+    .getByLabel("Hendelse som skal avstemmes")
+    .selectOption(replacementActionId);
+  await page.getByLabel("Oppgjørsdato").fill("2026-03-15");
+  await page.locator('select[name="bankTransactionId"]')
+    .selectOption(evidence.purchaseBankId);
+  await page
+    .getByLabel("Bank- eller oppgjørsreferanse")
+    .fill("browser-purchase-payment-1");
+  const purchaseSettlementId = await page
+    .locator('input[name="operationId"]')
+    .inputValue();
+  await page.getByRole("button", { name: "Avstem kontantoppgjør" }).click();
+  await page.waitForLoadState("networkidle");
+  await expectText(page, "Handlingen er bokført");
+
+  await page.goto(`${baseUrl}/actions/fund-distribution`);
+  await page.waitForLoadState("networkidle");
+  await page.locator('select[name="positionId"]').selectOption({
+    label: "Talli Browser Fond",
+  });
+  await page.getByLabel("Rettighetsdato").fill("2026-06-01");
+  await page.getByLabel("Brutto utdeling (kr)").fill("1000.00");
+  await page
+    .getByLabel("Aksjeandel ved årets start (basispoeng)")
+    .fill("6500");
+  await page
+    .getByLabel("Referanse til fondets skatteoppgave")
+    .fill("browser-fund-tax-2026");
+  await page.locator('select[name="documentId"]')
+    .selectOption(evidence.distributionDocumentId);
+  await page.locator('input[name="evidenceReference"]')
+    .fill("browser-fund-entitlement-1");
+  await page.locator('input[name="ownerAttested"]').check();
+  const distributionActionId = await page
+    .locator('input[name="operationId"]')
+    .inputValue();
+  await page.getByRole("button", { name: "Poster fondsutdeling" }).click();
+  await page.waitForLoadState("networkidle");
+  await expectText(page, "Handlingen er bokført");
+
+  await page.goto(`${baseUrl}/actions/investment-settlement`);
+  await page.waitForLoadState("networkidle");
+  await page
+    .getByLabel("Hendelse som skal avstemmes")
+    .selectOption(distributionActionId);
+  await page.getByLabel("Oppgjørsdato").fill("2026-06-15");
+  await page
+    .locator('select[name="bankTransactionId"]')
+    .selectOption(evidence.distributionBankId);
+  await page
+    .getByLabel("Bank- eller oppgjørsreferanse")
+    .fill("browser-fund-payment-1");
+  const distributionSettlementId = await page
+    .locator('input[name="operationId"]')
+    .inputValue();
+  await page.getByRole("button", { name: "Avstem kontantoppgjør" }).click();
   await page.waitForLoadState("networkidle");
   await expectText(page, "Handlingen er bokført");
   await page.reload();
@@ -472,23 +527,136 @@ async function exerciseMobileInvestmentCorrection({
 
   const persisted = await database.query(
     `select
+       (select count(*)::integer from investments.economic_events
+        where company_id = $1) as economic_events,
+       (select count(*)::integer from investments.cash_settlements
+        where company_id = $1) as cash_settlements,
+       (select count(*)::integer from investments.lifecycle_corrections
+        where company_id = $1) as lifecycle_corrections,
        (select count(*)::integer from investments.share_purchases
-        where company_id = $1) as purchases,
+        where company_id = $1) as legacy_purchases,
        (select count(*)::integer from investments.received_fund_distributions
-        where company_id = $1) as distributions,
+        where company_id = $1) as legacy_distributions,
        (select count(*)::integer from investments.corrections
-        where company_id = $1) as corrections,
+        where company_id = $1) as legacy_corrections,
        (select count(*)::integer from ledger.entries
         where company_id = $1 and source_capability = 'INVESTMENTS'
-          and source_record_id in ($2, $3)) as replacement_entries`,
-    [companyId, originalActionId, replacementActionId],
+          and source_record_id in ($2, $3, $4, $5, $6)) as lifecycle_entries`,
+    [
+      companyId,
+      originalActionId,
+      replacementActionId,
+      purchaseSettlementId,
+      distributionActionId,
+      distributionSettlementId,
+    ],
   );
   assert.deepEqual(persisted.rows[0], {
-    purchases: 2,
-    distributions: 1,
-    corrections: 1,
-    replacement_entries: 2,
+    economic_events: 3,
+    cash_settlements: 2,
+    lifecycle_corrections: 1,
+    legacy_purchases: 0,
+    legacy_distributions: 0,
+    legacy_corrections: 0,
+    lifecycle_entries: 5,
   });
+}
+
+async function seedInvestmentEvidence(
+  admin,
+  database,
+  { companyId, ownerId, storageKeys },
+) {
+  const documents = [
+    ["purchaseDocumentId", "browser-purchase-contract.pdf"],
+    ["replacementDocumentId", "browser-purchase-correction.pdf"],
+    ["distributionDocumentId", "browser-fund-entitlement.pdf"],
+  ];
+  const result = {};
+  for (const [key, name] of documents) {
+    const documentId = randomUUID();
+    const storageKey = `${companyId}/2026/${documentId}/${name}`;
+    const pdf = Buffer.from(
+      `%PDF-1.4\n% Talli browser evidence ${documentId}\n1 0 obj<<>>endobj\n%%EOF\n`,
+      "utf8",
+    );
+    const { error: uploadError } = await admin.storage
+      .from("company-documents")
+      .upload(storageKey, pdf, {
+        contentType: "application/pdf",
+        upsert: false,
+      });
+    assert.ifError(uploadError);
+    storageKeys.push(storageKey);
+    await assertNoError(admin.from("documents").insert({
+      id: documentId,
+      company_id: companyId,
+      income_year: 2026,
+      document_type: "investment_evidence",
+      name,
+      linked_to: "investments",
+      status: "attached",
+      retention_years: 5,
+      storage_key: storageKey,
+      created_by: ownerId,
+    }));
+    result[key] = documentId;
+  }
+
+  const purchaseBankId = randomUUID();
+  const distributionBankId = randomUUID();
+  await database.query("begin");
+  try {
+    await database.query(`do $browser_owner_banking_authority$
+      begin
+        execute pg_catalog.format(
+          'grant banking_store_owner to %I', current_user
+        );
+      end
+      $browser_owner_banking_authority$`);
+    await database.query("set local role banking_store_owner");
+    await database.query(
+      `select
+         pg_catalog.set_config('request.jwt.claim.sub', $1, true),
+         pg_catalog.set_config('request.jwt.claims', $2, true)`,
+      [ownerId, JSON.stringify({ sub: ownerId, aal: "aal2" })],
+    );
+    await database.query(
+      `insert into banking.transactions (
+         id, company_id, income_year, transaction_date, text, amount, balance,
+         source_hash, created_by
+       ) values
+         ($1, $2, 2026, date '2026-03-15', 'Purchase settlement', -12025.00,
+          25000.00, $3, $4),
+         ($5, $2, 2026, date '2026-06-15', 'Fund distribution', 1000.00,
+          26000.00, $6, $4)`,
+      [
+        purchaseBankId,
+        companyId,
+        createHash("sha256").update("browser-purchase-bank-v1").digest("hex"),
+        ownerId,
+        distributionBankId,
+        createHash("sha256").update("browser-distribution-bank-v1").digest("hex"),
+      ],
+    );
+    await database.query("reset role");
+    await database.query(`do $browser_owner_banking_authority$
+      begin
+        execute pg_catalog.format(
+          'revoke banking_store_owner from %I', current_user
+        );
+      end
+      $browser_owner_banking_authority$`);
+    await database.query("commit");
+  } catch (error) {
+    await database.query("rollback");
+    throw error;
+  }
+  return {
+    ...result,
+    purchaseBankId,
+    distributionBankId,
+  };
 }
 
 async function seedAnnualLoop(admin, database, ids, onCompanyCreated) {

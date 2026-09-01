@@ -180,7 +180,7 @@ def lifecycle_settlement_correction() -> CorrectInvestmentCommand:
                 InvestmentSourceReference(
                     "70000000-0000-0000-0000-000000000003"
                 ),
-                2,
+                1,
                 "f" * 64,
             ),
         ),
@@ -513,6 +513,17 @@ class SessionPersistence:
             replayed=False,
         )
 
+    async def claim_transaction_for_external_action(
+        self, command, *, accounting_entry_id
+    ):
+        self.events.append("banking:claim-settlement-fact")
+        assert str(command.transaction_id) == str(
+            lifecycle_settlement(lifecycle_purchase()).evidence.bank_fact.record_id
+        ) or str(command.transaction_id) == str(
+            lifecycle_settlement_correction().replacement.evidence.bank_fact.record_id
+        )
+        assert accounting_entry_id.value == str(ENTRY_ID)
+
     async def get_investment_correction_replay(self, command):
         self.events.append("investments:correction-replay")
         return None
@@ -783,30 +794,6 @@ class LedgerFacade:
         )
 
 
-def test_received_dividend_composes_investments_and_ledger_interfaces_atomically() -> None:
-    persistence = SessionPersistence()
-    command = supported_received_dividend()
-
-    result = asyncio.run(
-        InvestmentsSession(persistence, LedgerFacade).record_received_dividend(command)
-    )
-
-    assert result.accounting_entry_id == AccountingEntryReference(str(ENTRY_ID))
-    assert result.position_id == command.position_id
-    assert result.taxable_add_back == Money.nok("3.77")
-    assert persistence.events == [
-        "transaction:begin",
-        "investments:dividend-replay",
-        "investments:dividend-prepare",
-        "ledger:dividend-post",
-        "investments:dividend-complete",
-        "transaction:commit",
-    ]
-    assert persistence.posted_command.paying_company_name == "Example AS"
-    assert persistence.posted_command.gross_amount == Money.nok("125.50")
-    assert not hasattr(persistence.posted_command, "lines")
-
-
 def test_correction_composes_reversal_and_same_policy_replacement_atomically() -> None:
     persistence = SessionPersistence()
     command = supported_investment_correction()
@@ -838,8 +825,15 @@ def test_settlement_correction_posts_replacement_before_append_only_completion()
     persistence = SessionPersistence()
     command = lifecycle_settlement_correction()
 
+    async def validate_bank_fact(_command, _prepared) -> None:
+        persistence.events.append("banking:validate-settlement-fact")
+
     result = asyncio.run(
-        InvestmentsSession(persistence, LedgerFacade).correct_investment(command)
+        InvestmentsSession(
+            persistence,
+            LedgerFacade,
+            validate_bank_fact,
+        ).correct_investment(command)
     )
 
     assert result.target_kind is InvestmentCorrectionTargetKind.CASH_SETTLEMENT
@@ -849,83 +843,13 @@ def test_settlement_correction_posts_replacement_before_append_only_completion()
         "transaction:begin",
         "investments:correction-replay",
         "investments:correction-prepare",
+        "banking:validate-settlement-fact",
         "ledger:settle-cash",
+        "banking:claim-settlement-fact",
         "investments:correction-complete",
         "transaction:commit",
     ]
     assert "investments:settlement-complete" not in persistence.events
-
-
-def test_fund_distribution_composes_split_and_ledger_atomically() -> None:
-    persistence = SessionPersistence()
-    command = supported_received_fund_distribution()
-
-    result = asyncio.run(
-        InvestmentsSession(persistence, LedgerFacade)
-        .record_received_fund_distribution(command)
-    )
-
-    assert result.dividend_portion == Money.nok("50.00")
-    assert result.interest_portion == Money.nok("50.00")
-    assert result.total_taxable_income == Money.nok("51.50")
-    assert persistence.events == [
-        "transaction:begin",
-        "investments:fund-distribution-replay",
-        "investments:fund-distribution-prepare",
-        "ledger:fund-distribution-post",
-        "investments:fund-distribution-complete",
-        "transaction:commit",
-    ]
-
-
-def test_share_purchase_composes_investments_and_ledger_interfaces_atomically() -> None:
-    persistence = SessionPersistence()
-    command = supported_purchase()
-
-    result = asyncio.run(
-        InvestmentsSession(persistence, LedgerFacade).record_share_purchase(command)
-    )
-
-    assert result.accounting_entry_id == AccountingEntryReference(str(ENTRY_ID))
-    assert result.position_id == POSITION_ID
-    assert result.lot_id == LOT_ID
-    assert persistence.events == [
-        "transaction:begin",
-        "investments:replay",
-        "investments:prepare",
-        "ledger:post",
-        "investments:complete",
-        "transaction:commit",
-    ]
-    assert persistence.posted_command.investment_name == "Example AS"
-    assert persistence.posted_command.purchase_amount == Money.nok("125.50")
-    assert not hasattr(persistence.posted_command, "lines")
-
-
-def test_share_sale_composes_investments_and_ledger_interfaces_atomically() -> None:
-    persistence = SessionPersistence()
-    command = supported_sale()
-
-    result = asyncio.run(
-        InvestmentsSession(persistence, LedgerFacade).record_share_sale(command)
-    )
-
-    assert result.accounting_entry_id == AccountingEntryReference(str(ENTRY_ID))
-    assert result.position_id == command.position_id
-    assert persistence.events == [
-        "transaction:begin",
-        "investments:sale-replay",
-        "investments:sale-prepare",
-        "ledger:sale-post",
-        "investments:sale-complete",
-        "transaction:commit",
-    ]
-    assert persistence.posted_command.investment_name == "Example AS"
-    assert persistence.posted_command.proceeds == Money.nok("75.00")
-    assert persistence.posted_command.fifo_cost_basis_reduction == Money.nok(
-        "50.20"
-    )
-    assert not hasattr(persistence.posted_command, "lines")
 
 
 def test_purchase_recognition_posts_without_cash_and_preserves_fractional_units() -> None:
@@ -961,8 +885,15 @@ def test_purchase_cash_settlement_posts_independently_against_recognition() -> N
     persistence = SessionPersistence()
     command = lifecycle_settlement(lifecycle_purchase())
 
+    async def validate_bank_fact(_command, _prepared) -> None:
+        persistence.events.append("banking:validate-settlement-fact")
+
     result = asyncio.run(
-        InvestmentsSession(persistence, LedgerFacade).settle_investment_cash(command)
+        InvestmentsSession(
+            persistence,
+            LedgerFacade,
+            validate_bank_fact,
+        ).settle_investment_cash(command)
     )
 
     assert result.settlement_id == command.settlement_id
@@ -970,7 +901,9 @@ def test_purchase_cash_settlement_posts_independently_against_recognition() -> N
         "transaction:begin",
         "investments:settlement-replay",
         "investments:settlement-prepare",
+        "banking:validate-settlement-fact",
         "ledger:settle-cash",
+        "banking:claim-settlement-fact",
         "investments:settlement-complete",
         "transaction:commit",
     ]
@@ -982,6 +915,40 @@ def test_purchase_cash_settlement_posts_independently_against_recognition() -> N
     assert persistence.posted_command.primary_source.record_id.value == str(
         command.settlement_id
     )
+
+
+def test_deprecated_overlap_composes_recognition_and_settlement_atomically() -> None:
+    persistence = SessionPersistence()
+    recognition = lifecycle_purchase()
+    settlement = lifecycle_settlement(recognition)
+
+    async def validate_bank_fact(_command, _prepared) -> None:
+        persistence.events.append("banking:validate-settlement-fact")
+
+    event, cash = asyncio.run(
+        InvestmentsSession(
+            persistence,
+            LedgerFacade,
+            validate_bank_fact,
+        ).record_compatibility_action(recognition, settlement)
+    )
+
+    assert event.event_id == recognition.event_id
+    assert cash is not None and cash.settlement_id == settlement.settlement_id
+    assert persistence.events == [
+        "transaction:begin",
+        "investments:recognition-replay",
+        "investments:recognition-prepare",
+        "ledger:recognize-purchase",
+        "investments:recognition-complete",
+        "investments:settlement-replay",
+        "investments:settlement-prepare",
+        "banking:validate-settlement-fact",
+        "ledger:settle-cash",
+        "banking:claim-settlement-fact",
+        "investments:settlement-complete",
+        "transaction:commit",
+    ]
 
 
 def test_share_sale_recognition_posts_receivable_with_fractional_fifo() -> None:
