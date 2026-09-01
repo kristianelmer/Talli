@@ -13,6 +13,22 @@ begin
 end
 $membership$;
 
+select pg_catalog.set_config(
+  'talli.investments_lifecycle_rollback_principal', current_user, true
+);
+
+grant usage, create on schema ledger to ledger_store_owner;
+set local role ledger_store_owner;
+do $ledger_schema_authority$
+begin
+  execute pg_catalog.format(
+    'grant usage, create on schema ledger to %I',
+    pg_catalog.current_setting('talli.investments_lifecycle_rollback_principal')
+  );
+end
+$ledger_schema_authority$;
+reset role;
+
 revoke execute on function
   investments.get_share_purchase_recognition_replay_v2(jsonb, text),
   investments.prepare_share_purchase_recognition_v2(jsonb, text),
@@ -88,6 +104,18 @@ alter table investments.economic_events
       'purchase_payable', 'sale_receivable', 'income_receivable'
     )
   );
+
+set local role ledger_store_owner;
+do $ledger_schema_authority_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke create on schema ledger from %I',
+    pg_catalog.current_setting('talli.investments_lifecycle_rollback_principal')
+  );
+end
+$ledger_schema_authority_revoke$;
+reset role;
+revoke create on schema ledger from ledger_store_owner;
 
 do $membership_revoke$
 begin

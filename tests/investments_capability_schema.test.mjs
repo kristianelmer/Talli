@@ -70,6 +70,14 @@ const supportedPatternsAuthorityCleanupRollbackPath = new URL(
   "../supabase/rollback/20260901103000_investments_supported_patterns_authority_cleanup.sql",
   import.meta.url,
 );
+const completeManualEvidencePath = new URL(
+  "../supabase/migrations/20260901110000_investments_complete_manual_evidence.sql",
+  import.meta.url,
+);
+const completeManualEvidenceRollbackPath = new URL(
+  "../supabase/rollback/20260901110000_investments_complete_manual_evidence.sql",
+  import.meta.url,
+);
 const lifecycleMeasurementPath = new URL(
   "../supabase/migrations/20260901112000_investments_lifecycle_measurement_expand.sql",
   import.meta.url,
@@ -313,6 +321,31 @@ test("investment lifecycle workflow persists recognition and settlement separate
   assert.match(rollback, /investments_lifecycle_workflow_rollback_unsafe/iu);
   assert.match(rollback, /drop function if exists investments\.complete_cash_settlement_v2/iu);
   assert.match(rollback, /drop table investments\.share_purchase_recognitions/iu);
+  for (const [artifactSource, phase] of [
+    [source, "lifecycle workflow"],
+    [rollback, "lifecycle workflow rollback"],
+  ]) {
+    assert.match(
+      artifactSource,
+      /grant usage, create on schema ledger to ledger_store_owner/iu,
+      `${phase} must let the schema owner delegate bounded DDL authority`,
+    );
+    assert.match(
+      artifactSource,
+      /grant usage, create on schema ledger to %I/iu,
+      `${phase} must grant the migration principal direct DDL authority`,
+    );
+    assert.match(
+      artifactSource,
+      /revoke create on schema ledger from %I/iu,
+      `${phase} must revoke direct migration-principal DDL authority`,
+    );
+    assert.match(
+      artifactSource,
+      /revoke create on schema ledger from ledger_store_owner/iu,
+      `${phase} must restore the ledger schema runtime boundary`,
+    );
+  }
 });
 
 test("share-sale lifecycle recognizes exact FIFO facts before separate settlement", () => {
@@ -788,4 +821,52 @@ test("supported-pattern authority cleanup grants no runtime authority", () => {
   );
   assert.match(rollback, /temporary migration authority is never restored/iu);
   assert.doesNotMatch(rollback, /\bgrant\b/iu);
+});
+
+test("manual-evidence migration bounds owner authority after cleanup", () => {
+  for (const [path, phase] of [
+    [completeManualEvidencePath, "complete manual evidence"],
+    [completeManualEvidenceRollbackPath, "complete manual evidence rollback"],
+  ]) {
+    const source = artifact(path, phase);
+    const membershipAt = source.search(
+      /grant investments_store_owner to %I/iu,
+    );
+    const firstFunctionAt = source.search(
+      /create or replace function investments\.prepare_share_purchase_v1/iu,
+    );
+    const revokeAt = source.search(
+      /revoke investments_store_owner from %I/iu,
+    );
+    assert.ok(membershipAt >= 0 && membershipAt < firstFunctionAt);
+    assert.ok(revokeAt > firstFunctionAt);
+    assert.doesNotMatch(
+      source,
+      /grant (?:investments_executor|investments_workflow_executor|company_access_executor|ledger_store_owner|company_archive_projection_executor) to %I/iu,
+    );
+  }
+});
+
+test("lifecycle measurement bounds owner authority after cleanup", () => {
+  for (const [path, phase] of [
+    [lifecycleMeasurementPath, "lifecycle measurement expand"],
+    [lifecycleMeasurementRollbackPath, "lifecycle measurement rollback"],
+  ]) {
+    const source = artifact(path, phase);
+    const membershipAt = source.search(
+      /grant investments_store_owner to %I/iu,
+    );
+    const firstOwnerDdlAt = source.search(
+      /(?:alter table|drop table) investments\./iu,
+    );
+    const revokeAt = source.search(
+      /revoke investments_store_owner from %I/iu,
+    );
+    assert.ok(membershipAt >= 0 && membershipAt < firstOwnerDdlAt);
+    assert.ok(revokeAt > firstOwnerDdlAt);
+    assert.doesNotMatch(
+      source,
+      /grant (?:investments_executor|investments_workflow_executor|company_access_executor|ledger_store_owner|company_archive_projection_executor) to %I/iu,
+    );
+  }
 });

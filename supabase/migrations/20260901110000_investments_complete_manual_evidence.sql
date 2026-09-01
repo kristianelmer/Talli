@@ -3,6 +3,15 @@ begin;
 -- Manual entry changes provenance, not source completeness. Every accepted
 -- investment mutation still binds its authoritative bank and document rows.
 
+do $membership$
+begin
+  execute pg_catalog.format(
+    'grant investments_store_owner to %I',
+    current_user
+  );
+end
+$membership$;
+
 create or replace function investments.prepare_share_purchase_v1(
   p_request jsonb, p_verified_subject text
 )
@@ -735,5 +744,14 @@ begin
   );
 end;
 $function$;
+
+do $membership_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke investments_store_owner from %I',
+    current_user
+  );
+end
+$membership_revoke$;
 
 commit;

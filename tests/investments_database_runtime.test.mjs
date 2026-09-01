@@ -20,6 +20,7 @@ const investmentsDividendContractMigration = "20260831190000_investments_receive
 const investmentsDividendRollbackMigration = "20260831190000_investments_received_dividend_contract.sql";
 const investmentsStageExitMigration = "20260831193000_investments_stage_exit.sql";
 const investmentsSupportedPatternsMigration = "20260901100000_investments_supported_patterns.sql";
+const investmentsSupportedPatternsAuthorityCleanupMigration = "20260901103000_investments_supported_patterns_authority_cleanup.sql";
 const investmentsCompleteManualEvidenceMigration = "20260901110000_investments_complete_manual_evidence.sql";
 const investmentsLifecycleMeasurementMigration = "20260901112000_investments_lifecycle_measurement_expand.sql";
 const investmentsLifecycleWorkflowMigration = "20260901113000_investments_lifecycle_workflow.sql";
@@ -150,6 +151,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         investmentsAllocationIdentityMigration,
         investmentsDividendWorkflowMigration,
         investmentsSupportedPatternsMigration,
+        investmentsSupportedPatternsAuthorityCleanupMigration,
         investmentsCompleteManualEvidenceMigration,
         investmentsLifecycleMeasurementMigration,
         investmentsLifecycleWorkflowMigration,
@@ -1223,6 +1225,9 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
 
     psql(containerName, [
       "--file", `/repo/supabase/migrations/${investmentsSupportedPatternsMigration}`,
+    ]);
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${investmentsSupportedPatternsAuthorityCleanupMigration}`,
     ]);
     psql(containerName, [
       "--file", `/repo/supabase/migrations/${investmentsCompleteManualEvidenceMigration}`,

@@ -3,6 +3,15 @@ begin;
 set local lock_timeout = '5s';
 set local statement_timeout = '120s';
 
+do $membership$
+begin
+  execute pg_catalog.format(
+    'grant investments_store_owner to %I',
+    current_user
+  );
+end
+$membership$;
+
 select pg_catalog.pg_advisory_xact_lock(
   pg_catalog.hashtextextended('talli:investments:lifecycle-measurement:v2', 0)
 );
@@ -99,5 +108,14 @@ alter table investments.positions
   );
 
 reset role;
+
+do $membership_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke investments_store_owner from %I',
+    current_user
+  );
+end
+$membership_revoke$;
 
 commit;
