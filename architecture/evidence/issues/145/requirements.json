@@ -134,6 +134,6 @@
     "businessRows": 0,
     "shareholderLoanSecurityFindings": 0
   },
-  "closeState": "ready-to-close",
-  "closureReceipt": null
+  "closeState": "closed",
+  "closureReceipt": "https://github.com/kristianelmer/Talli/issues/145#issuecomment-5507207404"
 }
