@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#147",
+  "verifiedAt": "2026-09-02T02:49:08Z",
+  "sourceRevision": "32dcb77890d92c655ee589e7c6c603f27c27c625",
+  "githubDeploymentId": 6214263255,
+  "githubDeploymentStatusId": 17655388173,
+  "environment": "Preview",
+  "productionEnvironment": false,
+  "state": "SUCCESS",
+  "provider": "Vercel",
+  "teamId": "team_vjY7Lg3yOS7gSUnFqbihoTo2",
+  "projectId": "prj_1JJkOqzGBhn438IKHYADWiRbVGeZ",
+  "project": "kristianelmers-projects/talli-web",
+  "deploymentId": "dpl_F8dotgUcPRGf6RTwNh8WgsKMiKUQ",
+  "deploymentUrl": "https://talli-iqa24vrdt-kristianelmers-projects.vercel.app",
+  "providerReceiptUrl": "https://vercel.com/kristianelmers-projects/talli-web/F8dotgUcPRGf6RTwNh8WgsKMiKUQ",
+  "providerState": "READY",
+  "providerSource": "git",
+  "providerCommitSha": "32dcb77890d92c655ee589e7c6c603f27c27c625",
+  "access": {
+    "result": "protected-by-project-vercel-authentication",
+    "basis": "The exact revision deployed to the same protected Vercel project recorded in architecture/evidence/issues/190/preview-verification.json.",
+    "directProbePerformed": false,
+    "reason": "The deployment verification skill forbids fetching the deployed URL."
+  },
+  "compensatingVerification": {
+    "gateEvidence": "architecture/evidence/customer-ready-gates/32dcb77890d92c655ee589e7c6c603f27c27c625.json",
+    "workflowRun": "https://github.com/kristianelmer/Talli/actions/runs/33583631755",
+    "checks": [
+      "build-web",
+      "boundary-smoke",
+      "launch-rehearsal",
+      "database-isolation"
+    ],
+    "allExitCodes": 0
+  },
+  "verdict": "pass"
+}
