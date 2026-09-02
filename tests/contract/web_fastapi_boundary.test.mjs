@@ -86,7 +86,6 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
     ["/api/v1/ledger/entries", "get", "ledgerListEntries"],
     ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
     ["/api/v1/ledger/administrative-costs", "post", "ledgerPostAdministrativeCost"],
-    ["/api/v1/ledger/shareholder-loans", "post", "ledgerPostShareholderLoan"],
     ["/api/v1/ledger/tax-settlements", "post", "ledgerPostTaxSettlement"],
     ["/api/v1/ledger/corporate-decisions/finalizations", "post", "ledgerFinalizeCorporateDecision"],
     ["/api/v1/ledger/manual-journals", "post", "ledgerPostManualJournal"],
@@ -105,6 +104,7 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
     "/api/v1/ledger/owner-dividends/payments",
     "/api/v1/ledger/structured-entries",
     "/api/v1/ledger/investment-dividends",
+    "/api/v1/ledger/shareholder-loans",
   ]) {
     assert.equal(contract.paths[path], undefined);
   }
@@ -123,7 +123,6 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
     true,
   );
   for (const schemaName of [
-    "LedgerShareholderLoanWire",
     "LedgerTaxSettlementWire",
     "LedgerCorporateDecisionFinalizationWire",
   ]) {
@@ -133,6 +132,25 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
     contract.components.schemas.LedgerWriterResultWire.required,
     ["postedEntry", "replayed"],
   );
+});
+
+test("the committed contract assigns shareholder loans to corporate governance", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const operation = contract.paths[
+    "/api/v1/corporate-governance/shareholder-loans"
+  ]?.post;
+
+  assert.equal(
+    operation?.operationId,
+    "corporateGovernanceRecordShareholderLoan",
+  );
+  assert.deepEqual(operation?.security, [{ bearerAuth: [] }]);
+  assert.ok(operation?.responses["401"].content["application/problem+json"]);
+  assert.equal(
+    contract.components.schemas.ShareholderLoanWire.properties.lines,
+    undefined,
+  );
+  assert.equal(contract.components.schemas.LedgerShareholderLoanWire, undefined);
 });
 
 test("the committed contract gives investments its complete activity interface", () => {

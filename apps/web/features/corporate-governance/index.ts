@@ -2,6 +2,7 @@ export {
   approveOwnerDividend,
   finalizeOwnerDividend,
   proposeOwnerDividend,
+  recordShareholderLoan,
   recordOwnerDividendPayment,
   registerOwnerDividendDocuments,
 } from "./transport.ts";
@@ -18,4 +19,8 @@ export type {
   OwnerDividendPaymentWire,
   OwnerDividendProposalWire,
   ProposedOwnerDividendWire,
+  RecordedShareholderLoanWire,
+  ShareholderLoanDirection,
+  ShareholderLoanDocumentStatus,
+  ShareholderLoanWire,
 } from "@talli/talli-api-client";

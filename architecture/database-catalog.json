@@ -38,6 +38,7 @@
     { "name": "corporate_governance.owner_dividend_events", "kind": "capability-business", "owner": "backend:corporate_governance" },
     { "name": "corporate_governance.owner_dividend_finalizations", "kind": "capability-business", "owner": "backend:corporate_governance" },
     { "name": "corporate_governance.owner_dividend_payments", "kind": "capability-business", "owner": "backend:corporate_governance" },
+    { "name": "corporate_governance.shareholder_loans", "kind": "capability-business", "owner": "backend:corporate_governance" },
     { "name": "investments.acquisition_lots", "kind": "capability-business", "owner": "backend:investments", "compatibilityResources": ["table:investment_lots"] },
     { "name": "investments.cash_settlements", "kind": "capability-business", "owner": "backend:investments" },
     { "name": "investments.company_year_policies", "kind": "capability-business", "owner": "backend:investments" },

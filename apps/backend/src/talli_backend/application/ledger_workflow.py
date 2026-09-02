@@ -56,7 +56,6 @@ from talli_backend.modules.ledger.public import (
     PostManualJournalCommand,
     PostOwnerDividendDeclaredCommand,
     PostOwnerDividendPaymentCommand,
-    PostShareholderLoanCommand,
     PostTaxSettlementCommand,
     RebuildCompanyYearOpeningCommand,
     ReconstructionAssessment,
@@ -64,7 +63,6 @@ from talli_backend.modules.ledger.public import (
     ReconstructionEconomicFactCandidates,
     ReconstructionEconomicFactSnapshot,
     RecordReconstructionAssessmentCommand,
-    ShareholderLoanDirection,
     TaxSettlementKind,
 )
 from talli_backend.modules.shareholder_register_filing.public import (
@@ -95,20 +93,6 @@ class RecordAdministrativeCostCommand(LedgerCommand):
     amount: Money
     paid_date: LocalDate
     document_id: LedgerSourceRecordId | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class RecordShareholderLoanCommand(LedgerCommand):
-    action_id: LedgerSourceRecordId
-    loan_date: LocalDate
-    amount: Money
-    direction: ShareholderLoanDirection
-    counterparty_name: str
-    document_status: str
-    interest_modelled: bool
-    related_party_security: bool
-    bank_transaction_id: LedgerSourceRecordId | None
-    document_id: LedgerSourceRecordId | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -592,36 +576,6 @@ class LedgerApplicationSession:
                 replayed=False,
             )
 
-    async def record_shareholder_loan(
-        self, command: RecordShareholderLoanCommand
-    ) -> LedgerWriterResult:
-        if command.actor_id != self.actor_id:
-            raise LedgerError.forbidden()
-        async with self._persistence.transaction() as transaction:
-            prepared = await transaction.prepare_shareholder_loan(command)
-            replay = prepared.get("replay")
-            if replay is not None:
-                if not isinstance(replay, dict):
-                    raise LedgerError.unavailable()
-                return _replayed_writer(replay, command, LedgerEntryKind.SHAREHOLDER_LOAN)
-            posted = await self._facade_factory(transaction).post_shareholder_loan(
-                PostShareholderLoanCommand(
-                    company_id=command.company_id,
-                    actor_id=command.actor_id,
-                    correlation_id=command.correlation_id,
-                    idempotency_key=command.idempotency_key,
-                    income_year=command.income_year,
-                    action_id=command.action_id,
-                    counterparty_name=command.counterparty_name,
-                    direction=command.direction,
-                    amount=command.amount,
-                )
-            )
-            result = await transaction.complete_shareholder_loan(
-                command, posted, prepared
-            )
-            return LedgerWriterResult(posted, result, False)
-
     async def record_tax_settlement(
         self, command: RecordTaxSettlementCommand
     ) -> LedgerWriterResult:
@@ -909,6 +863,5 @@ __all__ = [
     "NewYearStartResult",
     "RecordAdministrativeCostCommand",
     "RecordOwnerDividendPaymentCommand",
-    "RecordShareholderLoanCommand",
     "RecordTaxSettlementCommand",
 ]

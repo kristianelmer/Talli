@@ -113,6 +113,18 @@ class OwnerDividendState(StrEnum):
     REJECTED = "rejected"
 
 
+class ShareholderLoanDirection(StrEnum):
+    SHAREHOLDER_TO_COMPANY = "shareholder_to_company"
+    COMPANY_TO_CORPORATE_SHAREHOLDER = "company_to_corporate_shareholder"
+    COMPANY_TO_PERSONAL_SHAREHOLDER = "company_to_personal_shareholder"
+
+
+class ShareholderLoanDocumentStatus(StrEnum):
+    ATTACHED = "attached"
+    MISSING_ACCEPTED_WARNING = "missing_accepted_warning"
+    NOT_REQUIRED = "not_required"
+
+
 class CorporateGovernanceErrorCode(StrEnum):
     INVALID_INPUT = "corporate_documents_invalid_persisted_facts"
     INVALID_MEETING_FACTS = "corporate_documents_invalid_meeting_facts"
@@ -136,6 +148,8 @@ class CorporateGovernanceErrorCode(StrEnum):
         "corporate_documents_accounting_policy_disabled"
     )
     MISSING_SIGNED_ARTIFACTS = "corporate_documents_missing_signed_artifacts"
+    PERSONAL_SHAREHOLDER_LOAN_BLOCKED = "personal_shareholder_loan_blocked"
+    RELATED_PARTY_SECURITY_BLOCKED = "related_party_security_blocked"
     DEPENDENCY_UNAVAILABLE = "corporate_governance_dependency_unavailable"
 
 
@@ -479,6 +493,58 @@ class RecordOwnerDividendPaymentCommand:
     bank_transaction_id: BankTransactionReference
 
 
+@dataclass(frozen=True, slots=True)
+class RecordShareholderLoanCommand:
+    company_id: CompanyId
+    actor_id: ActorId
+    correlation_id: CorrelationId
+    idempotency_key: IdempotencyKey
+    income_year: IncomeYear
+    action_id: CorporateEventId
+    ledger_entry_id: AccountingEntryReference
+    loan_date: LocalDate
+    amount: Money
+    direction: ShareholderLoanDirection
+    counterparty_name: str
+    document_status: ShareholderLoanDocumentStatus
+    interest_modelled: bool
+    related_party_security: bool
+    bank_transaction_id: BankTransactionReference | None
+    document_id: DocumentReference | None
+
+
+@dataclass(frozen=True, slots=True)
+class CanonicalShareholderLoan:
+    action_id: CorporateEventId
+    company_id: CompanyId
+    income_year: IncomeYear
+    loan_date: LocalDate
+    amount_ore: int
+    direction: ShareholderLoanDirection
+    counterparty_name: str
+    document_status: ShareholderLoanDocumentStatus
+    interest_modelled: bool
+    related_party_security: bool
+    bank_transaction_id: BankTransactionReference | None
+    document_id: DocumentReference | None
+
+
+@dataclass(frozen=True, slots=True)
+class RecordedShareholderLoan:
+    loan: CanonicalShareholderLoan
+    accounting_entry_id: AccountingEntryReference
+    replayed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedShareholderLoan:
+    loan: CanonicalShareholderLoan
+    bank_transaction_date: LocalDate | None
+    bank_signed_amount: Money | None
+    bank_source_sha256: str | None
+    replay: RecordedShareholderLoan | None
+
+
 class CorporateGovernancePersistence(Protocol):
     @property
     def actor_id(self) -> ActorId: ...
@@ -525,6 +591,19 @@ class CorporateGovernancePersistence(Protocol):
         prepared: PreparedOwnerDividendPayment,
     ) -> OwnerDividendLifecycle: ...
 
+    async def prepare_shareholder_loan(
+        self,
+        command: RecordShareholderLoanCommand,
+        loan: CanonicalShareholderLoan,
+    ) -> PreparedShareholderLoan: ...
+
+    async def complete_shareholder_loan(
+        self,
+        command: RecordShareholderLoanCommand,
+        accounting_entry_id: AccountingEntryReference,
+        prepared: PreparedShareholderLoan,
+    ) -> RecordedShareholderLoan: ...
+
 
 CorporateGovernanceAdapter = TypeVar(
     "CorporateGovernanceAdapter", bound=type[object]
@@ -558,6 +637,7 @@ __all__ = [
     "CanonicalBoardParticipant",
     "CanonicalDecisionShareholder",
     "CanonicalOwnerDividendDecision",
+    "CanonicalShareholderLoan",
     "CorporateArtifactId",
     "CorporateArtifactKind",
     "CorporateDecisionId",
@@ -584,13 +664,18 @@ __all__ = [
     "PersistedShareholderFacts",
     "PreparedOwnerDividendFinalization",
     "PreparedOwnerDividendPayment",
+    "PreparedShareholderLoan",
     "ProposedOwnerDividend",
     "RecordOwnerDividendPaymentCommand",
+    "RecordShareholderLoanCommand",
+    "RecordedShareholderLoan",
     "RegisterOwnerDividendDocumentsCommand",
     "ReviewedOwnerDividendFacts",
     "ReviewedShareholderFacts",
     "SHA256_PATTERN",
     "ShareholderBallot",
+    "ShareholderLoanDirection",
+    "ShareholderLoanDocumentStatus",
     "ShareholderVote",
     "corporate_governance_persistence_adapter",
 ]

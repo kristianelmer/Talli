@@ -1226,13 +1226,13 @@ function ledgerServerActionSource(actionName) {
   return ledgerActionsSource.slice(start, end < 0 ? undefined : end);
 }
 
-test("all relocated ledger writers use the stable operation ID at the generated boundary", () => {
+test("all relocated transactional writers use the stable operation ID at the generated boundary", () => {
   const coordinators = {
     recordAdminCost: ["postLedgerAdministrativeCost", null],
     recordDividendReceived: ["recognizeInvestmentReceivedDividend", "eventId"],
     finalizeCorporateDecision: ["finalizeLedgerCorporateDecision", "finalizationId"],
     recordOwnerDividendPayment: ["recordOwnerDividendPaymentThroughApi", "paymentEventId"],
-    recordShareholderLoan: ["postLedgerShareholderLoan", "actionId"],
+    recordShareholderLoan: ["recordShareholderLoanThroughApi", "actionId"],
     recordTaxSettlement: ["postLedgerTaxSettlement", "actionId"],
   };
 
@@ -1329,7 +1329,10 @@ test("unknown coordinator outcomes preserve only the scoped retry operation", ()
   };
   for (const [actionName, fields] of Object.entries(retryFields)) {
     const action = ledgerServerActionSource(actionName);
-    const governance = actionName === "recordOwnerDividendPayment";
+    const governance = [
+      "recordOwnerDividendPayment",
+      "recordShareholderLoan",
+    ].includes(actionName);
     assert.match(
       action,
       governance

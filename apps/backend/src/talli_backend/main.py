@@ -80,7 +80,6 @@ from talli_backend.application.ledger_workflow import (
     LedgerWriterResult,
     NewYearStartCommand,
     RecordAdministrativeCostCommand,
-    RecordShareholderLoanCommand,
     RecordTaxSettlementCommand,
 )
 from talli_backend.application.opening_snapshot_compatibility import (
@@ -199,10 +198,14 @@ from talli_backend.modules.corporate_governance.public import (
     PersistedShareholderFacts,
     ProposedOwnerDividend,
     RecordOwnerDividendPaymentCommand as CorporateRecordOwnerDividendPaymentCommand,
+    RecordShareholderLoanCommand as CorporateRecordShareholderLoanCommand,
+    RecordedShareholderLoan,
     RegisterOwnerDividendDocumentsCommand,
     ReviewedOwnerDividendFacts,
     ReviewedShareholderFacts,
     ShareholderBallot,
+    ShareholderLoanDirection as CorporateShareholderLoanDirection,
+    ShareholderLoanDocumentStatus,
     ShareholderVote,
 )
 from talli_backend.modules.ledger.public import (
@@ -247,7 +250,6 @@ from talli_backend.modules.ledger.public import (
     ReconstructionAssessment,
     ReconstructionGapCode,
     ReconstructionState,
-    ShareholderLoanDirection,
     TaxSettlementKind,
 )
 from talli_backend.modules.documents.public import (
@@ -906,23 +908,6 @@ class LedgerAdministrativeCostWire(LedgerCompanyYearWire):
     document_id: str | None = Field(default=None, min_length=1, max_length=255)
 
 
-class LedgerShareholderLoanWire(LedgerCompanyYearWire):
-    action_id: UUID
-    loan_date: date
-    amount: LedgerMoneyWire
-    direction: Literal[
-        "shareholder_to_company", "company_to_corporate_shareholder"
-    ]
-    counterparty_name: str = Field(min_length=1, max_length=255)
-    document_status: Literal[
-        "attached", "missing_accepted_warning", "not_required"
-    ]
-    interest_modelled: bool
-    related_party_security: Literal[False]
-    bank_transaction_id: UUID | None = None
-    document_id: UUID | None = None
-
-
 class LedgerTaxSettlementWire(LedgerCompanyYearWire):
     action_id: UUID
     settlement_date: date
@@ -1077,6 +1062,39 @@ class OwnerDividendPaymentWire(StrictTransportModel):
     holding_action_id: UUID
     ledger_entry_id: UUID
     bank_transaction_id: UUID
+
+
+class ShareholderLoanWire(StrictTransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2200)
+    action_id: UUID
+    ledger_entry_id: UUID
+    loan_date: date
+    amount: LedgerMoneyWire
+    direction: CorporateShareholderLoanDirection
+    counterparty_name: str = Field(min_length=1, max_length=255)
+    document_status: ShareholderLoanDocumentStatus
+    interest_modelled: bool
+    related_party_security: bool
+    bank_transaction_id: UUID | None
+    document_id: UUID | None
+
+
+class RecordedShareholderLoanWire(TransportModel):
+    action_id: UUID
+    company_id: UUID
+    income_year: int
+    loan_date: date
+    amount_ore: int
+    direction: CorporateShareholderLoanDirection
+    counterparty_name: str
+    document_status: ShareholderLoanDocumentStatus
+    interest_modelled: bool
+    related_party_security: bool
+    bank_transaction_id: UUID | None
+    document_id: UUID | None
+    accounting_entry_id: UUID
+    replayed: bool
 
 
 class CorporateFinancialTotalsWire(TransportModel):
@@ -3783,6 +3801,32 @@ def create_app(
             replayed=value.replayed,
         )
 
+    def shareholder_loan_wire(
+        value: RecordedShareholderLoan,
+    ) -> RecordedShareholderLoanWire:
+        return RecordedShareholderLoanWire(
+            action_id=UUID(str(value.loan.action_id)),
+            company_id=UUID(str(value.loan.company_id)),
+            income_year=int(value.loan.income_year),
+            loan_date=value.loan.loan_date.value,
+            amount_ore=value.loan.amount_ore,
+            direction=value.loan.direction,
+            counterparty_name=value.loan.counterparty_name,
+            document_status=value.loan.document_status,
+            interest_modelled=value.loan.interest_modelled,
+            related_party_security=value.loan.related_party_security,
+            bank_transaction_id=(
+                UUID(str(value.loan.bank_transaction_id))
+                if value.loan.bank_transaction_id
+                else None
+            ),
+            document_id=(
+                UUID(str(value.loan.document_id)) if value.loan.document_id else None
+            ),
+            accounting_entry_id=UUID(str(value.accounting_entry_id)),
+            replayed=value.replayed,
+        )
+
     async def governance_actor(access_token: str):
         return await corporate_governance_application.authenticated_actor_id(
             access_token
@@ -4122,6 +4166,69 @@ def create_app(
                 )
             )
             return dividend_lifecycle_wire(result)
+
+        return await corporate_governance_call(execute)
+
+    @application.post(
+        "/api/v1/corporate-governance/shareholder-loans",
+        operation_id="corporateGovernanceRecordShareholderLoan",
+        response_model=RecordedShareholderLoanWire,
+        status_code=201,
+        responses={
+            201: {
+                "description": "Shareholder loan recorded in Corporate Governance and Ledger."
+            }
+            | corporate_governance_success
+        }
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_corporate_shareholder_loan(
+        request: Request,
+        command: ShareholderLoanWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RecordedShareholderLoanWire:
+        async def execute() -> RecordedShareholderLoanWire:
+            access_token = bearer_token(credentials)
+            actor_id = await governance_actor(access_token)
+            domain_command = corporate_governance_input(
+                lambda: CorporateRecordShareholderLoanCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    income_year=IncomeYear(command.income_year),
+                    action_id=CorporateEventId(str(command.action_id)),
+                    ledger_entry_id=CorporateAccountingEntryReference(
+                        str(command.ledger_entry_id)
+                    ),
+                    loan_date=LocalDate(command.loan_date),
+                    amount=command.amount.to_domain(),
+                    direction=command.direction,
+                    counterparty_name=command.counterparty_name,
+                    document_status=command.document_status,
+                    interest_modelled=command.interest_modelled,
+                    related_party_security=command.related_party_security,
+                    bank_transaction_id=(
+                        BankTransactionReference(str(command.bank_transaction_id))
+                        if command.bank_transaction_id
+                        else None
+                    ),
+                    document_id=(
+                        DocumentReference(str(command.document_id))
+                        if command.document_id
+                        else None
+                    ),
+                )
+            )
+            result = await corporate_governance_application.record_shareholder_loan(
+                access_token, domain_command
+            )
+            return shareholder_loan_wire(result)
 
         return await corporate_governance_call(execute)
 
@@ -6745,50 +6852,6 @@ def create_app(
                 entry_kind=result.entry_kind.value,
                 posted_at=result.posted_at.value,
                 replayed=result.replayed,
-            )
-
-        return await ledger_call(execute)
-
-    @application.post(
-        "/api/v1/ledger/shareholder-loans",
-        operation_id="ledgerPostShareholderLoan",
-        response_model=LedgerWriterResultWire,
-        status_code=201,
-        responses={201: {"description": "Shareholder loan recorded atomically."} | ledger_success}
-        | ledger_errors,
-        tags=["ledger-workflows"],
-        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
-    )
-    async def record_ledger_shareholder_loan(
-        request: Request,
-        command: LedgerShareholderLoanWire,
-        idempotency_key: Annotated[
-            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
-        ],
-        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
-    ) -> LedgerWriterResultWire:
-        directions = {
-            "shareholder_to_company": ShareholderLoanDirection.SHAREHOLDER_TO_COMPANY,
-            "company_to_corporate_shareholder": ShareholderLoanDirection.COMPANY_TO_CORPORATE_SHAREHOLDER,
-        }
-
-        async def execute() -> LedgerWriterResultWire:
-            session = await ledger_application.session(bearer_token(credentials))
-            domain = ledger_input(lambda: RecordShareholderLoanCommand(
-                company_id=CompanyId(str(command.company_id)), actor_id=session.actor_id,
-                correlation_id=ledger_correlation(request), idempotency_key=IdempotencyKey(idempotency_key),
-                income_year=IncomeYear(command.income_year), action_id=LedgerSourceRecordId(str(command.action_id)),
-                loan_date=LocalDate(command.loan_date), amount=command.amount.to_domain(),
-                direction=directions[command.direction], counterparty_name=command.counterparty_name,
-                document_status=command.document_status, interest_modelled=command.interest_modelled,
-                related_party_security=command.related_party_security,
-                bank_transaction_id=(LedgerSourceRecordId(str(command.bank_transaction_id)) if command.bank_transaction_id else None),
-                document_id=(LedgerSourceRecordId(str(command.document_id)) if command.document_id else None),
-            ))
-            result = await session.record_shareholder_loan(domain)
-            return ledger_writer_wire(
-                result, company_id=command.company_id, income_year=command.income_year,
-                expected_kind=LedgerEntryKind.SHAREHOLDER_LOAN,
             )
 
         return await ledger_call(execute)

@@ -988,21 +988,6 @@ export interface LedgerRiskFlagWire {
 
 export type LedgerRiskCode = "MANUAL_JOURNAL_SENSITIVE_ACCOUNT";
 
-export interface LedgerShareholderLoanWire {
-  actionId: string;
-  amount: LedgerMoneyWire;
-  bankTransactionId?: string | null;
-  companyId: string;
-  counterpartyName: string;
-  direction: "shareholder_to_company" | "company_to_corporate_shareholder";
-  documentId?: string | null;
-  documentStatus: "attached" | "missing_accepted_warning" | "not_required";
-  incomeYear: number;
-  interestModelled: boolean;
-  loanDate: string;
-  relatedPartySecurity: false;
-}
-
 export type LedgerSourceCapability = "LEDGER" | "BANKING" | "INVESTMENTS" | "CORPORATE_GOVERNANCE" | "SHAREHOLDER_REGISTER_FILING" | "COMPANY_TAX_FILING" | "ANNUAL_ACCOUNTS_FILING" | "DOCUMENTS";
 
 export interface LedgerTaxSettlementWire {
@@ -1949,6 +1934,43 @@ export interface ProposedOwnerDividendWire {
   decision: CorporateCanonicalDecisionWire;
   replayed: boolean;
   state: OwnerDividendState;
+}
+
+export interface RecordedShareholderLoanWire {
+  accountingEntryId: string;
+  actionId: string;
+  amountOre: number;
+  bankTransactionId: string | null;
+  companyId: string;
+  counterpartyName: string;
+  direction: ShareholderLoanDirection;
+  documentId: string | null;
+  documentStatus: ShareholderLoanDocumentStatus;
+  incomeYear: number;
+  interestModelled: boolean;
+  loanDate: string;
+  relatedPartySecurity: boolean;
+  replayed: boolean;
+}
+
+export type ShareholderLoanDirection = "shareholder_to_company" | "company_to_corporate_shareholder" | "company_to_personal_shareholder";
+
+export type ShareholderLoanDocumentStatus = "attached" | "missing_accepted_warning" | "not_required";
+
+export interface ShareholderLoanWire {
+  actionId: string;
+  amount: LedgerMoneyWire;
+  bankTransactionId: string | null;
+  companyId: string;
+  counterpartyName: string;
+  direction: ShareholderLoanDirection;
+  documentId: string | null;
+  documentStatus: ShareholderLoanDocumentStatus;
+  incomeYear: number;
+  interestModelled: boolean;
+  ledgerEntryId: string;
+  loanDate: string;
+  relatedPartySecurity: boolean;
 }
 
 export type ShareholderVote = "for" | "against" | "abstain";
@@ -3453,25 +3475,6 @@ function isLedgerRiskCode(value: unknown): value is LedgerRiskCode {
   return value === "MANUAL_JOURNAL_SENSITIVE_ACCOUNT";
 }
 
-function isLedgerShareholderLoanWire(value: unknown): value is LedgerShareholderLoanWire {
-  return (
-    isRecord(value) &&
-    hasOnlyProperties(value, ["actionId","amount","bankTransactionId","companyId","counterpartyName","direction","documentId","documentStatus","incomeYear","interestModelled","loanDate","relatedPartySecurity"]) &&
-    isUuid(value.actionId) &&
-    isLedgerMoneyWire(value.amount) &&
-    (value.bankTransactionId === undefined || (isUuid(value.bankTransactionId) || value.bankTransactionId === null)) &&
-    isUuid(value.companyId) &&
-    (typeof value.counterpartyName === "string" && value.counterpartyName.length >= 1 && value.counterpartyName.length <= 255) &&
-    (value.direction === "shareholder_to_company" || value.direction === "company_to_corporate_shareholder") &&
-    (value.documentId === undefined || (isUuid(value.documentId) || value.documentId === null)) &&
-    (value.documentStatus === "attached" || value.documentStatus === "missing_accepted_warning" || value.documentStatus === "not_required") &&
-    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
-    typeof value.interestModelled === "boolean" &&
-    typeof value.loanDate === "string" &&
-    value.relatedPartySecurity === false
-  );
-}
-
 function isLedgerSourceCapability(value: unknown): value is LedgerSourceCapability {
   return value === "LEDGER" || value === "BANKING" || value === "INVESTMENTS" || value === "CORPORATE_GOVERNANCE" || value === "SHAREHOLDER_REGISTER_FILING" || value === "COMPANY_TAX_FILING" || value === "ANNUAL_ACCOUNTS_FILING" || value === "DOCUMENTS";
 }
@@ -4736,6 +4739,55 @@ function isProposedOwnerDividendWire(value: unknown): value is ProposedOwnerDivi
   );
 }
 
+function isRecordedShareholderLoanWire(value: unknown): value is RecordedShareholderLoanWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountingEntryId","actionId","amountOre","bankTransactionId","companyId","counterpartyName","direction","documentId","documentStatus","incomeYear","interestModelled","loanDate","relatedPartySecurity","replayed"]) &&
+    isUuid(value.accountingEntryId) &&
+    isUuid(value.actionId) &&
+    typeof value.amountOre === "number" && Number.isInteger(value.amountOre) &&
+    (isUuid(value.bankTransactionId) || value.bankTransactionId === null) &&
+    isUuid(value.companyId) &&
+    typeof value.counterpartyName === "string" &&
+    isShareholderLoanDirection(value.direction) &&
+    (isUuid(value.documentId) || value.documentId === null) &&
+    isShareholderLoanDocumentStatus(value.documentStatus) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.interestModelled === "boolean" &&
+    typeof value.loanDate === "string" &&
+    typeof value.relatedPartySecurity === "boolean" &&
+    typeof value.replayed === "boolean"
+  );
+}
+
+function isShareholderLoanDirection(value: unknown): value is ShareholderLoanDirection {
+  return value === "shareholder_to_company" || value === "company_to_corporate_shareholder" || value === "company_to_personal_shareholder";
+}
+
+function isShareholderLoanDocumentStatus(value: unknown): value is ShareholderLoanDocumentStatus {
+  return value === "attached" || value === "missing_accepted_warning" || value === "not_required";
+}
+
+function isShareholderLoanWire(value: unknown): value is ShareholderLoanWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["actionId","amount","bankTransactionId","companyId","counterpartyName","direction","documentId","documentStatus","incomeYear","interestModelled","ledgerEntryId","loanDate","relatedPartySecurity"]) &&
+    isUuid(value.actionId) &&
+    isLedgerMoneyWire(value.amount) &&
+    (isUuid(value.bankTransactionId) || value.bankTransactionId === null) &&
+    isUuid(value.companyId) &&
+    (typeof value.counterpartyName === "string" && value.counterpartyName.length >= 1 && value.counterpartyName.length <= 255) &&
+    isShareholderLoanDirection(value.direction) &&
+    (isUuid(value.documentId) || value.documentId === null) &&
+    isShareholderLoanDocumentStatus(value.documentStatus) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2200) &&
+    typeof value.interestModelled === "boolean" &&
+    isUuid(value.ledgerEntryId) &&
+    typeof value.loanDate === "string" &&
+    typeof value.relatedPartySecurity === "boolean"
+  );
+}
+
 function isShareholderVote(value: unknown): value is ShareholderVote {
   return value === "for" || value === "against" || value === "abstain";
 }
@@ -5866,6 +5918,19 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
+    async corporateGovernanceRecordShareholderLoan(
+      body: ShareholderLoanWire,
+      request: TalliMutationOptions,
+    ): Promise<RecordedShareholderLoanWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/shareholder-loans`,
+        "POST",
+        request,
+        body,
+        isRecordedShareholderLoanWire,
+      );
+    },
+
     async corporateGovernanceRegisterOwnerDividendDocuments(
       decisionId: string,
       body: OwnerDividendDocumentsWire,
@@ -6256,18 +6321,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         throw new TalliApiError(502, undefined);
       }
       return result;
-    },
-
-    async ledgerPostShareholderLoan(
-      body: LedgerShareholderLoanWire,
-      request: TalliMutationOptions,
-    ): Promise<LedgerWriterResultWire> {
-      return executeLedgerWriter(
-        "/api/v1/ledger/shareholder-loans",
-        body,
-        request,
-        "SHAREHOLDER_LOAN",
-      );
     },
 
     async ledgerPostTaxSettlement(

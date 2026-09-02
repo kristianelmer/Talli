@@ -883,6 +883,7 @@ class PostShareholderLoanCommand(LedgerCommand):
     counterparty_name: str
     direction: ShareholderLoanDirection
     amount: Money
+    ledger_entry_id: LedgerEntryId | None = None
 
     def __post_init__(self) -> None:
         name = self.counterparty_name.strip()

@@ -1,15 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { recordShareholderLoan } from "../../../actions";
 import { SubmitButton } from "../../../components/ui";
 import { ownerCopy } from "../../../lib/copy";
-import {
-  shareholderLoanLedgerLines,
-  validateShareholderLoan,
-} from "../../../lib/shareholder-loan";
-import { ActionPreview, type LedgerLine } from "./ActionPreview";
 import {
   CheckboxField,
   DocStatusSelect,
@@ -36,57 +31,10 @@ export function ShareholderLoanWizard({
   const [documentStatus, setDocumentStatus] = useState("attached");
   const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
 
-  // These two "needs-accountant" branches are surfaced immediately, before the
-  // rest of the form is complete, so the owner is not led down a dead end.
-  const hardBlock =
-    direction === "company_to_personal_shareholder"
-      ? c.personalBlock
-      : relatedPartySecurity
-        ? c.securityBlock
-        : null;
-
   const ready =
     loanDate.trim() !== "" &&
     amount.trim() !== "" &&
     counterpartyName.trim() !== "";
-
-  const preview = useMemo<{ block: string | null; lines: LedgerLine[] | null }>(() => {
-    if (hardBlock) return { block: hardBlock, lines: null };
-    if (!ready) return { block: null, lines: null };
-    try {
-      const payload = validateShareholderLoan({
-        loanDate,
-        amount: Number(amount),
-        direction: direction as
-          | "shareholder_to_company"
-          | "company_to_corporate_shareholder"
-          | "company_to_personal_shareholder",
-        counterpartyName,
-        documentStatus: documentStatus as
-          | "attached"
-          | "missing_accepted_warning"
-          | "not_required",
-        interestModelled,
-        relatedPartySecurity,
-      });
-      return { block: null, lines: shareholderLoanLedgerLines(payload) };
-    } catch (error) {
-      return {
-        block: error instanceof Error ? error.message : "Ugyldig aksjonærlån",
-        lines: null,
-      };
-    }
-  }, [
-    hardBlock,
-    ready,
-    loanDate,
-    amount,
-    direction,
-    counterpartyName,
-    documentStatus,
-    interestModelled,
-    relatedPartySecurity,
-  ]);
 
   return (
     <form action={recordShareholderLoan} className="wizardForm">
@@ -150,9 +98,7 @@ export function ShareholderLoanWizard({
         onChange={setRelatedPartySecurity}
       />
 
-      <ActionPreview block={preview.block} lines={preview.lines} />
-
-      <SubmitButton disabled={preview.lines === null} pendingLabel={a.pending}>
+      <SubmitButton disabled={!ready} pendingLabel={a.pending}>
         {a.confirmCta}
       </SubmitButton>
     </form>

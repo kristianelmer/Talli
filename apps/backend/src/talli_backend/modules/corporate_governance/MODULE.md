@@ -1,7 +1,7 @@
 # Corporate governance backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["corporate_governance.owner_dividend_accounting_policies","corporate_governance.owner_dividend_artifacts","corporate_governance.owner_dividend_decisions","corporate_governance.owner_dividend_events","corporate_governance.owner_dividend_finalizations","corporate_governance.owner_dividend_payments"],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
+{"dependencies":[],"ownedTables":["corporate_governance.owner_dividend_accounting_policies","corporate_governance.owner_dividend_artifacts","corporate_governance.owner_dividend_decisions","corporate_governance.owner_dividend_events","corporate_governance.owner_dividend_finalizations","corporate_governance.owner_dividend_payments","corporate_governance.shareholder_loans"],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
 -->
 
 ## Purpose and ownership
@@ -34,6 +34,16 @@ object-operation vocabulary. `FinalizeOwnerDividendCommand` and
 `RecordOwnerDividendPaymentCommand` carry opaque `AccountingEntryReference` and
 `BankTransactionReference` identities; they expose no accounts, ledger lines,
 provider fields, or bank credentials.
+
+`RecordShareholderLoanCommand` carries only the owner's business intent and
+opaque document, bank-transaction, action, and accounting-entry references. The
+service blocks personal-shareholder lending and related-party security, while
+the application verifies Documents evidence and coordinates the characterized
+Ledger posting and optional Banking claim in the governance transaction.
+The stable vocabulary is `ShareholderLoanDirection` and
+`ShareholderLoanDocumentStatus`; normalization produces
+`CanonicalShareholderLoan`, preparation exposes `PreparedShareholderLoan`, and
+completion returns `RecordedShareholderLoan`.
 
 The proposal vocabulary is `PersistedCompanyFacts`,
 `PersistedShareholderFacts`, `ApprovedAnnualBasis`,
@@ -71,9 +81,9 @@ request-bound application workflow authenticates one verified actor, opens a
 restricted forced-RLS PostgreSQL transaction, asks governance to prepare or
 replay its mutation, collaborates with `documents`, `ledger`, and `banking` only
 through their public contracts, and completes governance-owned state in the same
-transaction. The five append-only owner-dividend tables derive lifecycle state
+transaction. The owner-dividend tables and canonical `shareholder_loans` table derive state
 without mutable status columns. The executor has no table grants and reaches
-Ledger and Banking only through owner-dividend-specific routines. Provider
+Ledger and Banking only through governance-specific routines. Provider
 selection, activation, credentials, consent, live calls, customer bank data, and
 production banking remain outside this capability and blocked independently by
 #189.
@@ -83,7 +93,9 @@ production banking remain outside this capability and blocked independently by
 The deterministic policy, forced-RLS store, restricted transaction adapter,
 FastAPI transport, generated client, web cutover, legacy-writer contraction,
 reconciliation import, rollback, and hosted migration verification are
-implemented for #144. Immutable customer-ready verification gates remain before
-this slice exits. The existing Python subprocess renderer is intentionally not
+implemented for #144. Issue #145 additionally owns supported shareholder-loan
+policy, persistence, API transport, and atomic Ledger/Banking coordination; its
+predecessor Ledger route and TypeScript policy have been removed. The existing
+Python subprocess renderer is intentionally not
 reclassified as complete governance ownership; #148 must move rendering
 in-process and remove the bridge before the full capability exits.

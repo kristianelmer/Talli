@@ -461,7 +461,6 @@ def test_ledger_http_contract_exposes_only_ledger_owned_user_intents() -> None:
         "ledgerLockPeriod",
         "ledgerPostAdministrativeCost",
         "ledgerPostManualJournal",
-        "ledgerPostShareholderLoan",
         "ledgerPostTaxSettlement",
         "ledgerFinalizeCorporateDecision",
         "ledgerStartNewYear",
@@ -471,11 +470,13 @@ def test_ledger_http_contract_exposes_only_ledger_owned_user_intents() -> None:
         "ledgerPostOwnerDividendDeclared",
         "ledgerPostOwnerDividendPayment",
         "ledgerPostInvestmentSale",
+        "ledgerPostShareholderLoan",
         "ledgerPostStructuredEntry",
     } & operations
     assert not {
         "/api/v1/ledger/owner-dividends/declared",
         "/api/v1/ledger/opening-balances",
+        "/api/v1/ledger/shareholder-loans",
         "/api/v1/ledger/structured-entries",
     } & client.app.openapi()["paths"].keys()
 
@@ -490,23 +491,6 @@ def test_cross_capability_writers_bind_business_facts_to_one_ledger_result() -> 
     decision_hash = "a" * 64
     common = {"companyId": str(COMPANY_ID), "incomeYear": 2026}
     cases = (
-        (
-            "/api/v1/ledger/shareholder-loans",
-            "SHAREHOLDER_LOAN",
-            {
-                **common,
-                "actionId": operation_id,
-                "loanDate": "2026-04-15",
-                "amount": money("125.50"),
-                "direction": "shareholder_to_company",
-                "counterpartyName": "Owner",
-                "documentStatus": "attached",
-                "interestModelled": True,
-                "relatedPartySecurity": False,
-                "bankTransactionId": bank_id,
-                "documentId": document_id,
-            },
-        ),
         (
             "/api/v1/ledger/tax-settlements",
             "TAX_SETTLEMENT",

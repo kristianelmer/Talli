@@ -82,3 +82,62 @@ test("owner-dividend transport rejects malformed lifecycle responses", async () 
     (error) => error instanceof TalliApiError && error.status === 502,
   );
 });
+
+test("shareholder-loan transport preserves identity and rejects malformed responses", async () => {
+  const captured = [];
+  const response = {
+    actionId: "12121212-1212-4212-8212-121212121212",
+    companyId,
+    incomeYear: 2025,
+    loanDate: "2025-03-01",
+    amountOre: 125050,
+    direction: "shareholder_to_company",
+    counterpartyName: "Eier Holding AS",
+    documentStatus: "attached",
+    interestModelled: true,
+    relatedPartySecurity: false,
+    bankTransactionId: null,
+    documentId: null,
+    accountingEntryId: "13131313-1313-4313-8313-131313131313",
+    replayed: false,
+  };
+  const client = createTalliApiClient({
+    baseUrl: "https://backend.example/",
+    fetch: async (url, request) => {
+      captured.push({ url: String(url), request });
+      return Response.json(response, { status: 201 });
+    },
+  });
+
+  const result = await client.corporateGovernanceRecordShareholderLoan(
+    {
+      actionId: response.actionId,
+      companyId,
+      incomeYear: 2025,
+      ledgerEntryId: response.accountingEntryId,
+      loanDate: response.loanDate,
+      amount: { amount: "1250.50", currency: "NOK" },
+      direction: response.direction,
+      counterpartyName: response.counterpartyName,
+      documentStatus: response.documentStatus,
+      interestModelled: true,
+      relatedPartySecurity: false,
+      bankTransactionId: null,
+      documentId: null,
+    },
+    {
+      idempotencyKey: "shareholder-loan-record-0001",
+      requestId: "shareholder-loan-record-0001",
+    },
+  );
+
+  assert.equal(result.actionId, response.actionId);
+  assert.equal(
+    captured[0].url,
+    "https://backend.example/api/v1/corporate-governance/shareholder-loans",
+  );
+  assert.equal(
+    captured[0].request.headers["Idempotency-Key"],
+    "shareholder-loan-record-0001",
+  );
+});

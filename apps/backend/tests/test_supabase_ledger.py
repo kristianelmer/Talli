@@ -1982,7 +1982,6 @@ def test_transaction_adapter_names_all_remaining_exact_prepare_and_complete_rout
     ).read_text(encoding="utf-8")
     for operation in (
         "administrative_cost",
-        "shareholder_loan",
         "tax_settlement",
         "corporate_decision_finalization",
         "owner_dividend_payment",

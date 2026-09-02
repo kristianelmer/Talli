@@ -7,6 +7,7 @@ import os
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from datetime import date
+from decimal import Decimal
 
 import psycopg
 from psycopg.rows import dict_row
@@ -37,22 +38,31 @@ from talli_backend.modules.banking.public import (
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
     ApproveOwnerDividendCommand,
+    BankTransactionReference,
+    CanonicalShareholderLoan,
     CanonicalOwnerDividendDecision,
     CorporateDecisionId,
     CorporateDocumentSetId,
+    CorporateEventId,
     CorporateFinalizationId,
     CorporateGovernanceError,
     CorporateGovernanceErrorCode,
     CorporateGovernancePersistence,
+    DocumentReference,
     FinalizeOwnerDividendCommand,
     OwnerDividendLifecycle,
     OwnerDividendProposalCommand,
     OwnerDividendState,
     PreparedOwnerDividendFinalization,
     PreparedOwnerDividendPayment,
+    PreparedShareholderLoan,
     ProposedOwnerDividend,
     RecordOwnerDividendPaymentCommand,
+    RecordShareholderLoanCommand,
+    RecordedShareholderLoan,
     RegisterOwnerDividendDocumentsCommand,
+    ShareholderLoanDirection,
+    ShareholderLoanDocumentStatus,
     corporate_governance_persistence_adapter,
 )
 from talli_backend.modules.corporate_governance.service import (
@@ -68,6 +78,7 @@ from talli_backend.modules.ledger.public import (
     LedgerSourceRecordId,
     PostOwnerDividendDeclaredCommand,
     PostOwnerDividendPaymentCommand,
+    PostShareholderLoanCommand,
 )
 from talli_backend.modules.documents.public import DocumentsSessionFactory
 from talli_backend.modules.ledger.service import LedgerService
@@ -209,6 +220,71 @@ def _lifecycle(value: Mapping[str, object]) -> OwnerDividendLifecycle:
         ),
         replayed=bool(value["replayed"]),
     )
+
+
+def _shareholder_loan(value: Mapping[str, object]) -> CanonicalShareholderLoan:
+    bank_transaction_id = value.get("bankTransactionId")
+    document_id = value.get("documentId")
+    return CanonicalShareholderLoan(
+        action_id=CorporateEventId(str(value["actionId"])),
+        company_id=CompanyId(str(value["companyId"])),
+        income_year=IncomeYear(int(value["incomeYear"])),
+        loan_date=LocalDate(date.fromisoformat(str(value["loanDate"]))),
+        amount_ore=int(value["amountOre"]),
+        direction=ShareholderLoanDirection(str(value["direction"])),
+        counterparty_name=str(value["counterpartyName"]),
+        document_status=ShareholderLoanDocumentStatus(str(value["documentStatus"])),
+        interest_modelled=bool(value["interestModelled"]),
+        related_party_security=bool(value["relatedPartySecurity"]),
+        bank_transaction_id=(
+            BankTransactionReference(str(bank_transaction_id))
+            if bank_transaction_id is not None
+            else None
+        ),
+        document_id=(
+            DocumentReference(str(document_id)) if document_id is not None else None
+        ),
+    )
+
+
+def _recorded_shareholder_loan(value: Mapping[str, object]) -> RecordedShareholderLoan:
+    loan = value.get("loan")
+    if not isinstance(loan, Mapping):
+        raise CorporateGovernanceError.unavailable()
+    return RecordedShareholderLoan(
+        loan=_shareholder_loan(loan),
+        accounting_entry_id=AccountingEntryReference(
+            str(value["accountingEntryId"])
+        ),
+        replayed=bool(value["replayed"]),
+    )
+
+
+def _shareholder_loan_request(
+    command: RecordShareholderLoanCommand,
+    loan: CanonicalShareholderLoan,
+) -> dict[str, object]:
+    return {
+        "companyId": str(command.company_id),
+        "incomeYear": int(command.income_year),
+        "actionId": str(command.action_id),
+        "ledgerEntryId": str(command.ledger_entry_id),
+        "loanDate": loan.loan_date.value.isoformat(),
+        "amountOre": loan.amount_ore,
+        "direction": loan.direction.value,
+        "counterpartyName": loan.counterparty_name,
+        "documentStatus": loan.document_status.value,
+        "interestModelled": loan.interest_modelled,
+        "relatedPartySecurity": loan.related_party_security,
+        "bankTransactionId": (
+            str(loan.bank_transaction_id)
+            if loan.bank_transaction_id is not None
+            else None
+        ),
+        "documentId": str(loan.document_id) if loan.document_id is not None else None,
+        "idempotencyKey": str(command.idempotency_key),
+        "correlationId": str(command.correlation_id),
+    }
 
 
 def _map_governance_database_error(message: str):
@@ -546,6 +622,78 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
             },
         ))
 
+    async def prepare_shareholder_loan(
+        self,
+        command: RecordShareholderLoanCommand,
+        loan: CanonicalShareholderLoan,
+    ) -> PreparedShareholderLoan:
+        if command.actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        result = await self._governance_result(
+            "select corporate_governance.prepare_shareholder_loan_v1("
+            "%s::jsonb, %s::text) as result",
+            _shareholder_loan_request(command, loan),
+        )
+        result_loan = result.get("loan")
+        if not isinstance(result_loan, Mapping):
+            raise CorporateGovernanceError.unavailable()
+        replay = result.get("replay")
+        bank_transaction_date = result.get("bankTransactionDate")
+        bank_signed_amount = result.get("bankSignedAmount")
+        bank_source_sha256 = result.get("bankSourceSha256")
+        return PreparedShareholderLoan(
+            loan=_shareholder_loan(result_loan),
+            bank_transaction_date=(
+                LocalDate(date.fromisoformat(str(bank_transaction_date)))
+                if bank_transaction_date is not None
+                else None
+            ),
+            bank_signed_amount=(
+                Money.nok(Decimal(str(bank_signed_amount)))
+                if bank_signed_amount is not None
+                else None
+            ),
+            bank_source_sha256=(
+                str(bank_source_sha256)
+                if bank_source_sha256 is not None
+                else None
+            ),
+            replay=(
+                _recorded_shareholder_loan(replay)
+                if isinstance(replay, Mapping)
+                else None
+            ),
+        )
+
+    async def complete_shareholder_loan(
+        self,
+        command: RecordShareholderLoanCommand,
+        accounting_entry_id: AccountingEntryReference,
+        prepared: PreparedShareholderLoan,
+    ) -> RecordedShareholderLoan:
+        if command.actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        result = await self._governance_result(
+            "select corporate_governance.complete_shareholder_loan_v1("
+            "%s::jsonb, %s::text) as result",
+            {
+                **_shareholder_loan_request(command, prepared.loan),
+                "ledgerEntryId": str(accounting_entry_id),
+                "bankTransactionDate": (
+                    prepared.bank_transaction_date.value.isoformat()
+                    if prepared.bank_transaction_date is not None
+                    else None
+                ),
+                "bankSignedAmount": (
+                    format(prepared.bank_signed_amount.amount, "f")
+                    if prepared.bank_signed_amount is not None
+                    else None
+                ),
+                "bankSourceSha256": prepared.bank_source_sha256,
+            },
+        )
+        return _recorded_shareholder_loan(result)
+
     async def claim_transaction_for_external_action(
         self,
         command: ClaimBankTransactionForExternalActionCommand,
@@ -555,7 +703,7 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
         if command.actor_id != self.actor_id:
             raise CorporateGovernanceError.forbidden()
         rows = await self._database_rows(
-            "select banking.claim_owner_dividend_transaction_v1("
+            "select banking.claim_corporate_governance_transaction_v1("
             "%s::jsonb, %s::uuid, %s::text) as result",
             (
                 json.dumps(
@@ -596,7 +744,11 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
             else (
                 LedgerEntryKind.OWNER_DIVIDEND_PAYMENT
                 if isinstance(command, PostOwnerDividendPaymentCommand)
-                else None
+                else (
+                    LedgerEntryKind.SHAREHOLDER_LOAN
+                    if isinstance(command, PostShareholderLoanCommand)
+                    else None
+                )
             )
         )
         if (

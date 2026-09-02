@@ -5,6 +5,7 @@ import {
   type OwnerDividendFinalizationWire,
   type OwnerDividendPaymentWire,
   type OwnerDividendProposalWire,
+  type ShareholderLoanWire,
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
 
@@ -30,6 +31,18 @@ export function proposeOwnerDividend(
   requestId?: string,
 ) {
   return client(accessToken).corporateGovernanceProposeOwnerDividend(
+    body,
+    mutation(idempotencyKey, requestId),
+  );
+}
+
+export function recordShareholderLoan(
+  accessToken: string,
+  body: ShareholderLoanWire,
+  idempotencyKey: string,
+  requestId?: string,
+) {
+  return client(accessToken).corporateGovernanceRecordShareholderLoan(
     body,
     mutation(idempotencyKey, requestId),
   );

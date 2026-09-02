@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from types import SimpleNamespace
 
@@ -27,7 +28,10 @@ from talli_backend.modules.corporate_governance.public import (
     OwnerDividendState,
     PreparedOwnerDividendFinalization,
     PreparedOwnerDividendPayment,
+    PreparedShareholderLoan,
+    RecordedShareholderLoan,
     RecordOwnerDividendPaymentCommand,
+    RecordShareholderLoanCommand,
     RegisterOwnerDividendDocumentsCommand,
 )
 from talli_backend.modules.documents.public import DocumentId, DocumentStatus
@@ -35,6 +39,7 @@ from talli_backend.modules.ledger.public import (
     LedgerEntryId,
     LedgerEntryKind,
     PostedLedgerEntry,
+    ShareholderLoanDirection as LedgerShareholderLoanDirection,
 )
 from talli_backend.shared.kernel import (
     CorrelationId,
@@ -45,7 +50,7 @@ from talli_backend.shared.kernel import (
     Timestamp,
 )
 
-from test_corporate_governance import supported_proposal
+from test_corporate_governance import supported_proposal, supported_shareholder_loan
 
 
 ENTRY_ID = LedgerEntryId("99999999-9999-4999-8999-999999999999")
@@ -87,6 +92,8 @@ class GovernanceTransactionStub:
         self.complete_failure = False
         self.finalization_replay: OwnerDividendLifecycle | None = None
         self.payment_replay: OwnerDividendLifecycle | None = None
+        self.shareholder_loan_replay: RecordedShareholderLoan | None = None
+        self.shareholder_loan_bank = False
 
     async def actor_role(self, company_id):
         self.calls.append(("actor_role", company_id))
@@ -149,6 +156,30 @@ class GovernanceTransactionStub:
             accounting_entry_id=accounting_entry_id,
         )
 
+    async def prepare_shareholder_loan(self, command, loan):
+        self.calls.append(("prepare_shareholder_loan", loan))
+        return PreparedShareholderLoan(
+            loan=loan,
+            bank_transaction_date=(
+                LocalDate(date(2025, 3, 1)) if self.shareholder_loan_bank else None
+            ),
+            bank_signed_amount=(
+                Money.nok("1250.50") if self.shareholder_loan_bank else None
+            ),
+            bank_source_sha256="e" * 64 if self.shareholder_loan_bank else None,
+            replay=self.shareholder_loan_replay,
+        )
+
+    async def complete_shareholder_loan(self, command, accounting_entry_id, prepared):
+        self.calls.append(("complete_shareholder_loan", accounting_entry_id))
+        if self.complete_failure:
+            raise CorporateGovernanceError.unavailable()
+        return RecordedShareholderLoan(
+            loan=prepared.loan,
+            accounting_entry_id=accounting_entry_id,
+            replayed=False,
+        )
+
     async def post_entry(self, command, **kwargs):
         raise AssertionError("Injected ledger facade must own posting policy")
 
@@ -191,6 +222,7 @@ class DocumentsSessionStub:
                 status=DocumentStatus.GENERATED_UNSIGNED,
                 content_sha256="a" * 64,
                 byte_length=101,
+                income_year=IncomeYear(2025),
             ),
             SimpleNamespace(
                 document_id=DocumentId("77777777-7777-4777-8777-777777777777"),
@@ -199,6 +231,7 @@ class DocumentsSessionStub:
                 status=DocumentStatus.GENERATED_UNSIGNED,
                 content_sha256="b" * 64,
                 byte_length=202,
+                income_year=IncomeYear(2025),
             ),
         )
 
@@ -239,6 +272,17 @@ class LedgerFacadeStub:
             command.company_id,
             command.income_year,
             LedgerEntryKind.OWNER_DIVIDEND_PAYMENT,
+            NOW,
+            False,
+        )
+
+    async def post_shareholder_loan(self, command):
+        self.commands.append(command)
+        return PostedLedgerEntry(
+            command.ledger_entry_id,
+            command.company_id,
+            command.income_year,
+            LedgerEntryKind.SHAREHOLDER_LOAN,
             NOW,
             False,
         )
@@ -318,6 +362,53 @@ def test_document_registration_uses_only_documents_public_records() -> None:
         asyncio.run(
             app.register_owner_dividend_documents("access-token", document_command())
         )
+
+
+def test_shareholder_loan_uses_governance_policy_and_narrow_ledger_contract() -> None:
+    app, transaction, _, _, ledgers = application()
+    result = asyncio.run(
+        app.record_shareholder_loan("access-token", supported_shareholder_loan())
+    )
+
+    assert result.loan.counterparty_name == "Eier Holding AS"
+    assert result.accounting_entry_id == supported_shareholder_loan().ledger_entry_id
+    assert [call[0] for call in transaction.calls] == [
+        "actor_role",
+        "prepare_shareholder_loan",
+        "complete_shareholder_loan",
+    ]
+    posted = ledgers[0].commands[0]
+    assert posted.direction is LedgerShareholderLoanDirection.SHAREHOLDER_TO_COMPANY
+    assert posted.amount == Money.nok("1250.50")
+    assert posted.ledger_entry_id == LedgerEntryId(
+        str(supported_shareholder_loan().ledger_entry_id)
+    )
+
+
+def test_shareholder_loan_verifies_document_and_claims_optional_bank_atomically() -> None:
+    app, transaction, session, _, ledgers = application()
+    transaction.shareholder_loan_bank = True
+    command = replace(
+        supported_shareholder_loan(),
+        document_id=DocumentReference("66666666-6666-4666-8666-666666666666"),
+        bank_transaction_id=BankTransactionReference(
+            "abababab-abab-4bab-8bab-abababababab"
+        ),
+    )
+    result = asyncio.run(app.record_shareholder_loan("access-token", command))
+
+    assert result.replayed is False
+    assert [call[0] for call in transaction.calls][-2:] == [
+        "claim_bank",
+        "complete_shareholder_loan",
+    ]
+    claim = [call for call in transaction.calls if call[0] == "claim_bank"][0][1][0]
+    assert claim.signed_amount == Money.nok("1250.50")
+
+    transaction.complete_failure = True
+    with pytest.raises(CorporateGovernanceError):
+        asyncio.run(app.record_shareholder_loan("access-token", command))
+    assert session.rolled_back is True
 
 
 def finalization_command() -> FinalizeOwnerDividendCommand:

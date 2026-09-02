@@ -128,3 +128,39 @@ def test_public_contract_exposes_only_opaque_cross_capability_references() -> No
     ):
         assert str(reference).count("-") == 4
 
+
+def test_shareholder_loan_contract_is_governance_owned_and_policy_complete() -> None:
+    from talli_backend.modules.corporate_governance.public import (
+        RecordShareholderLoanCommand,
+        ShareholderLoanDirection,
+        ShareholderLoanDocumentStatus,
+    )
+
+    assert set(RecordShareholderLoanCommand.__dataclass_fields__) == {
+        "company_id",
+        "actor_id",
+        "correlation_id",
+        "idempotency_key",
+        "income_year",
+        "action_id",
+        "ledger_entry_id",
+        "loan_date",
+        "amount",
+        "direction",
+        "counterparty_name",
+        "document_status",
+        "interest_modelled",
+        "related_party_security",
+        "bank_transaction_id",
+        "document_id",
+    }
+    assert {item.value for item in ShareholderLoanDirection} == {
+        "shareholder_to_company",
+        "company_to_corporate_shareholder",
+        "company_to_personal_shareholder",
+    }
+    assert {item.value for item in ShareholderLoanDocumentStatus} == {
+        "attached",
+        "missing_accepted_warning",
+        "not_required",
+    }

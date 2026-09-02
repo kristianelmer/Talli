@@ -15,6 +15,7 @@ from talli_backend.modules.corporate_governance.public import (
     CanonicalBoardParticipant,
     CanonicalDecisionShareholder,
     CanonicalOwnerDividendDecision,
+    CanonicalShareholderLoan,
     CorporateGovernanceError,
     CorporateGovernanceErrorCode,
     GeneralMeeting,
@@ -23,7 +24,10 @@ from talli_backend.modules.corporate_governance.public import (
     OwnerDividendFacts,
     OwnerDividendFinancialTotals,
     OwnerDividendProposalCommand,
+    RecordShareholderLoanCommand,
     SHA256_PATTERN,
+    ShareholderLoanDirection,
+    ShareholderLoanDocumentStatus,
     ShareholderVote,
 )
 
@@ -192,6 +196,67 @@ def canonical_owner_dividend_payload(
 
 
 class CorporateGovernanceService:
+    def validate_shareholder_loan(
+        self,
+        command: RecordShareholderLoanCommand,
+    ) -> CanonicalShareholderLoan:
+        if command.loan_date.value.year != int(command.income_year):
+            _fail(
+                CorporateGovernanceErrorCode.INVALID_INPUT,
+                "Shareholder-loan date must belong to the company year.",
+            )
+        if command.amount.currency.value != "NOK" or command.amount.amount <= 0:
+            _fail(
+                CorporateGovernanceErrorCode.INVALID_INPUT,
+                "Shareholder-loan amount must be positive NOK.",
+            )
+        if not isinstance(command.direction, ShareholderLoanDirection):
+            _fail(
+                CorporateGovernanceErrorCode.INVALID_INPUT,
+                "Shareholder-loan direction is invalid.",
+            )
+        if command.direction is ShareholderLoanDirection.COMPANY_TO_PERSONAL_SHAREHOLDER:
+            _fail(
+                CorporateGovernanceErrorCode.PERSONAL_SHAREHOLDER_LOAN_BLOCKED,
+                "A company loan to a personal shareholder requires accountant review.",
+            )
+        if command.related_party_security is not False:
+            _fail(
+                CorporateGovernanceErrorCode.RELATED_PARTY_SECURITY_BLOCKED,
+                "Related-party security or guarantees require accountant review.",
+            )
+        if not isinstance(command.document_status, ShareholderLoanDocumentStatus):
+            _fail(
+                CorporateGovernanceErrorCode.INVALID_INPUT,
+                "Shareholder-loan document status is invalid.",
+            )
+        if not isinstance(command.interest_modelled, bool):
+            _fail(
+                CorporateGovernanceErrorCode.INVALID_INPUT,
+                "Shareholder-loan interest evidence is invalid.",
+            )
+        counterparty_name = _text(command.counterparty_name)
+        if len(counterparty_name) > 255:
+            _fail(
+                CorporateGovernanceErrorCode.INVALID_INPUT,
+                "Shareholder-loan counterparty is too long.",
+            )
+        amount_ore = int(command.amount.amount * 100)
+        return CanonicalShareholderLoan(
+            action_id=command.action_id,
+            company_id=command.company_id,
+            income_year=command.income_year,
+            loan_date=command.loan_date,
+            amount_ore=amount_ore,
+            direction=command.direction,
+            counterparty_name=counterparty_name,
+            document_status=command.document_status,
+            interest_modelled=command.interest_modelled,
+            related_party_security=False,
+            bank_transaction_id=command.bank_transaction_id,
+            document_id=command.document_id,
+        )
+
     def build_owner_dividend_decision(
         self,
         command: OwnerDividendProposalCommand,

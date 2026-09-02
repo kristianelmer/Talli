@@ -102,7 +102,6 @@ import {
   lockLedgerPeriod,
   postLedgerAdministrativeCost,
   postLedgerManualJournal,
-  postLedgerShareholderLoan,
   postLedgerTaxSettlement,
   startNewYear,
   type NewYearShareholderWire,
@@ -136,6 +135,7 @@ import {
   finalizeOwnerDividend,
   proposeOwnerDividend,
   recordOwnerDividendPayment as recordOwnerDividendPaymentThroughApi,
+  recordShareholderLoan as recordShareholderLoanThroughApi,
   registerOwnerDividendDocuments,
   type CorporateCanonicalDecisionWire,
   type OwnerDividendProposalWire,
@@ -218,10 +218,6 @@ import {
   SensitiveAction,
   SensitiveActionStepUpError,
 } from "./lib/security";
-import {
-  ShareholderLoanValidationError,
-  validateShareholderLoan,
-} from "./lib/shareholder-loan";
 import {
   createSupabaseServerClient,
   createSupabaseServiceRoleClient,
@@ -3683,61 +3679,44 @@ export async function recordShareholderLoan(formData: FormData) {
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const bankTransactionId = formString(formData, "bankTransactionId") || null;
   const documentId = formString(formData, "documentId") || null;
-  let payload;
-  try {
-    payload = validateShareholderLoan({
-      loanDate: formString(formData, "loanDate"),
-      amount: Number(formString(formData, "amount")),
-      direction: formString(formData, "direction") as
-        | "shareholder_to_company"
-        | "company_to_corporate_shareholder"
-        | "company_to_personal_shareholder",
-      counterpartyName: formString(formData, "counterpartyName"),
-      documentStatus: formString(formData, "documentStatus") as "attached" | "missing_accepted_warning" | "not_required",
-      interestModelled: formData.get("interestModelled") === "on",
-      relatedPartySecurity: formData.get("relatedPartySecurity") === "on",
-      bankTransactionId,
-      documentId,
-    });
-  } catch (error) {
-    const message =
-      error instanceof ShareholderLoanValidationError
-        ? `${error.code}: ${error.message}`
-        : error instanceof Error
-          ? error.message
-          : "Ugyldig aksjonærlån";
-    failTo(returnTo, message);
-  }
+  const counterpartyName = formString(formData, "counterpartyName");
 
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
-    await postLedgerShareholderLoan(
+    await recordShareholderLoanThroughApi(
       accessToken,
       {
         actionId: operationId,
-        amount: { amount: String(payload.amount), currency: "NOK" },
+        ledgerEntryId: operationId,
+        loanDate: formString(formData, "loanDate"),
+        amount: { amount: formString(formData, "amount"), currency: "NOK" },
+        direction: formString(formData, "direction") as
+          | "shareholder_to_company"
+          | "company_to_corporate_shareholder"
+          | "company_to_personal_shareholder",
+        counterpartyName,
+        documentStatus: formString(formData, "documentStatus") as
+          | "attached"
+          | "missing_accepted_warning"
+          | "not_required",
+        interestModelled: formData.get("interestModelled") === "on",
+        relatedPartySecurity: formData.get("relatedPartySecurity") === "on",
         bankTransactionId,
         companyId,
-        counterpartyName: payload.counterparty_name,
-        direction: payload.direction,
         documentId,
-        documentStatus: payload.document_status,
         incomeYear,
-        interestModelled: payload.interest_modelled,
-        loanDate: payload.loan_date,
-        relatedPartySecurity: payload.related_party_security,
       },
       operationId,
       operationId,
     );
   } catch (error) {
-    const outcomeMayBeUnknown = ledgerOutcomeMayBeUnknown(error);
+    const outcomeMayBeUnknown = corporateGovernanceOutcomeMayBeUnknown(error);
     const retryTarget = outcomeMayBeUnknown && returnTo === "/actions"
       ? "/actions/shareholder-loan"
       : returnTo;
     redirect(ownerPathWithQuery(retryTarget, {
-      error: ledgerActionErrorMessage(error),
+      error: corporateGovernanceActionErrorMessage(error),
       shareholderLoanOperationId: outcomeMayBeUnknown ? operationId : undefined,
     }));
   }
@@ -3749,7 +3728,7 @@ export async function recordShareholderLoan(formData: FormData) {
       actorId: user.id,
       category: "ledger",
       action: "shareholder_loan_recorded",
-      message: `Aksjonærlån postert for ${payload.counterparty_name} i ${incomeYear}.`,
+      message: `Aksjonærlån postert for ${counterpartyName} i ${incomeYear}.`,
     });
   } catch {
     const retryTarget = returnTo === "/actions" ? "/actions/shareholder-loan" : returnTo;

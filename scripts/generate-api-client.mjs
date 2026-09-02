@@ -55,7 +55,6 @@ const ledgerOperations = {
   listEntries: ["/api/v1/ledger/entries", "get", "ledgerListEntries"],
   listPeriodLocks: ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
   postAdministrativeCost: ["/api/v1/ledger/administrative-costs", "post", "ledgerPostAdministrativeCost"],
-  postShareholderLoan: ["/api/v1/ledger/shareholder-loans", "post", "ledgerPostShareholderLoan"],
   postTaxSettlement: ["/api/v1/ledger/tax-settlements", "post", "ledgerPostTaxSettlement"],
   finalizeCorporateDecision: ["/api/v1/ledger/corporate-decisions/finalizations", "post", "ledgerFinalizeCorporateDecision"],
   postManualJournal: ["/api/v1/ledger/manual-journals", "post", "ledgerPostManualJournal"],
@@ -154,6 +153,11 @@ const documentsOperations = {
   ],
 };
 const corporateGovernanceOperations = {
+  recordShareholderLoan: [
+    "/api/v1/corporate-governance/shareholder-loans",
+    "post",
+    "corporateGovernanceRecordShareholderLoan",
+  ],
   proposeOwnerDividend: [
     "/api/v1/corporate-governance/owner-dividends/proposals",
     "post",
@@ -525,7 +529,6 @@ const ledgerSchemas = Object.fromEntries([
   "LedgerPostedEntryWire",
   "LedgerRiskFlagWire",
   "LedgerRiskCode",
-  "LedgerShareholderLoanWire",
   "LedgerSourceCapability",
   "LedgerTaxSettlementWire",
   "LedgerWriterResultWire",
@@ -622,6 +625,10 @@ const corporateGovernanceSchemas = Object.fromEntries([
   "OwnerDividendProposalWire",
   "OwnerDividendState",
   "ProposedOwnerDividendWire",
+  "RecordedShareholderLoanWire",
+  "ShareholderLoanDirection",
+  "ShareholderLoanDocumentStatus",
+  "ShareholderLoanWire",
   "ShareholderVote",
 ].map((name) => [name, contract.components.schemas[name]]));
 const bankingSchemas = Object.fromEntries([
@@ -1566,6 +1573,19 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
+    async corporateGovernanceRecordShareholderLoan(
+      body: ShareholderLoanWire,
+      request: TalliMutationOptions,
+    ): Promise<RecordedShareholderLoanWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/shareholder-loans\`,
+        "POST",
+        request,
+        body,
+        isRecordedShareholderLoanWire,
+      );
+    },
+
     async corporateGovernanceRegisterOwnerDividendDocuments(
       decisionId: string,
       body: OwnerDividendDocumentsWire,
@@ -1956,18 +1976,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         throw new TalliApiError(502, undefined);
       }
       return result;
-    },
-
-    async ledgerPostShareholderLoan(
-      body: LedgerShareholderLoanWire,
-      request: TalliMutationOptions,
-    ): Promise<LedgerWriterResultWire> {
-      return executeLedgerWriter(
-        "/api/v1/ledger/shareholder-loans",
-        body,
-        request,
-        "SHAREHOLDER_LOAN",
-      );
     },
 
     async ledgerPostTaxSettlement(

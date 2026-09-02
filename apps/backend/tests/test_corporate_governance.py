@@ -6,6 +6,7 @@ from datetime import date, time
 import pytest
 
 from talli_backend.modules.corporate_governance.public import (
+    AccountingEntryReference,
     ApprovedAnnualBasis,
     BoardMeeting,
     BoardParticipant,
@@ -13,6 +14,7 @@ from talli_backend.modules.corporate_governance.public import (
     BoardTreatmentMethod,
     CorporateDecisionId,
     CorporateDocumentSetId,
+    CorporateEventId,
     CorporateGovernanceError,
     CorporateGovernanceErrorCode,
     CorporateSourceReference,
@@ -23,7 +25,10 @@ from talli_backend.modules.corporate_governance.public import (
     PersistedShareholderFacts,
     ReviewedOwnerDividendFacts,
     ReviewedShareholderFacts,
+    RecordShareholderLoanCommand,
     ShareholderBallot,
+    ShareholderLoanDirection,
+    ShareholderLoanDocumentStatus,
     ShareholderVote,
 )
 from talli_backend.modules.corporate_governance.service import (
@@ -37,6 +42,7 @@ from talli_backend.shared.kernel import (
     IdempotencyKey,
     IncomeYear,
     LocalDate,
+    Money,
     UserId,
 )
 
@@ -191,3 +197,73 @@ def test_owner_dividend_policy_is_deterministic_across_input_order() -> None:
     assert service.build_owner_dividend_decision(command) == service.build_owner_dividend_decision(
         reordered
     )
+
+
+def supported_shareholder_loan() -> RecordShareholderLoanCommand:
+    proposal = supported_proposal()
+    return RecordShareholderLoanCommand(
+        company_id=proposal.company_id,
+        actor_id=proposal.actor_id,
+        correlation_id=CorrelationId("shareholder-loan-record"),
+        idempotency_key=IdempotencyKey("shareholder-loan-record-0001"),
+        income_year=IncomeYear(2025),
+        action_id=CorporateEventId("12121212-1212-4212-8212-121212121212"),
+        ledger_entry_id=AccountingEntryReference(
+            "13131313-1313-4313-8313-131313131313"
+        ),
+        loan_date=LocalDate(date(2025, 3, 1)),
+        amount=Money.nok("1250.50"),
+        direction=ShareholderLoanDirection.SHAREHOLDER_TO_COMPANY,
+        counterparty_name="  Eier   Holding AS  ",
+        document_status=ShareholderLoanDocumentStatus.ATTACHED,
+        interest_modelled=True,
+        related_party_security=False,
+        bank_transaction_id=None,
+        document_id=None,
+    )
+
+
+def test_shareholder_loan_policy_normalizes_supported_owner_intent() -> None:
+    loan = CorporateGovernanceService().validate_shareholder_loan(
+        supported_shareholder_loan()
+    )
+
+    assert loan.counterparty_name == "Eier Holding AS"
+    assert loan.amount_ore == 125_050
+    assert loan.direction is ShareholderLoanDirection.SHAREHOLDER_TO_COMPANY
+    assert loan.loan_date.value == date(2025, 3, 1)
+    assert loan.interest_modelled is True
+    assert loan.related_party_security is False
+
+
+@pytest.mark.parametrize(
+    ("mutate", "code"),
+    [
+        (
+            lambda command: replace(
+                command,
+                direction=ShareholderLoanDirection.COMPANY_TO_PERSONAL_SHAREHOLDER,
+            ),
+            CorporateGovernanceErrorCode.PERSONAL_SHAREHOLDER_LOAN_BLOCKED,
+        ),
+        (
+            lambda command: replace(command, related_party_security=True),
+            CorporateGovernanceErrorCode.RELATED_PARTY_SECURITY_BLOCKED,
+        ),
+        (
+            lambda command: replace(
+                command,
+                loan_date=LocalDate(date(2024, 12, 31)),
+            ),
+            CorporateGovernanceErrorCode.INVALID_INPUT,
+        ),
+    ],
+)
+def test_shareholder_loan_policy_preserves_characterized_hard_blocks(
+    mutate, code
+) -> None:
+    with pytest.raises(CorporateGovernanceError) as raised:
+        CorporateGovernanceService().validate_shareholder_loan(
+            mutate(supported_shareholder_loan())
+        )
+    assert raised.value.code == code

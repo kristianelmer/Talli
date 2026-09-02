@@ -9,7 +9,6 @@ export {
   lockLedgerPeriod,
   postLedgerAdministrativeCost,
   postLedgerManualJournal,
-  postLedgerShareholderLoan,
   postLedgerTaxSettlement,
   startNewYear,
 } from "./transport.ts";
@@ -38,7 +37,6 @@ export type {
   LedgerLockPeriodWire,
   LedgerManualJournalWire,
   LedgerMoneyWire,
-  LedgerShareholderLoanWire,
   LedgerTaxSettlementWire,
   LedgerWriterResultWire,
   NewYearShareholderWire,

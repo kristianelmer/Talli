@@ -25,7 +25,9 @@ from talli_backend.modules.corporate_governance.public import (
     OwnerDividendLifecycle,
     OwnerDividendProposalCommand,
     ProposedOwnerDividend,
+    RecordShareholderLoanCommand,
     RecordOwnerDividendPaymentCommand,
+    RecordedShareholderLoan,
     RegisterOwnerDividendDocumentsCommand,
     SHA256_PATTERN,
 )
@@ -43,6 +45,8 @@ from talli_backend.modules.ledger.public import (
     LedgerSourceRecordId,
     PostOwnerDividendDeclaredCommand,
     PostOwnerDividendPaymentCommand,
+    PostShareholderLoanCommand,
+    ShareholderLoanDirection as LedgerShareholderLoanDirection,
 )
 from talli_backend.shared.kernel import ActorId, Money
 
@@ -236,6 +240,96 @@ class CorporateGovernanceApplication:
                 ),
             )
             return await transaction.complete_owner_dividend_payment(
+                command,
+                AccountingEntryReference(str(posted.entry_id)),
+                prepared,
+            )
+
+    async def record_shareholder_loan(
+        self,
+        access_token: str,
+        command: RecordShareholderLoanCommand,
+    ) -> RecordedShareholderLoan:
+        session = await self._session(access_token, command.actor_id)
+        loan = self._service.validate_shareholder_loan(command)
+        if command.document_id is not None:
+            documents = await self._documents_session_factory.session(access_token)
+            if documents.actor_id != command.actor_id:
+                raise CorporateGovernanceError.forbidden()
+            records = await documents.list_documents((command.company_id,))
+            record = next(
+                (
+                    item
+                    for item in records
+                    if str(item.document_id) == str(command.document_id)
+                ),
+                None,
+            )
+            if (
+                record is None
+                or record.company_id != command.company_id
+                or record.income_year != command.income_year
+                or record.status in {DocumentStatus.QUARANTINED, DocumentStatus.REMOVED}
+            ):
+                raise CorporateGovernanceError.precondition(
+                    CorporateGovernanceErrorCode.INVALID_INPUT,
+                    "Shareholder-loan document evidence does not match the company year.",
+                )
+        async with session.transaction() as transaction:
+            await self._require_owner(transaction, command.company_id)
+            prepared = await transaction.prepare_shareholder_loan(command, loan)
+            if prepared.replay is not None:
+                return prepared.replay
+            ledger = self._ledger_facade_factory(transaction)
+            directions = {
+                "shareholder_to_company": LedgerShareholderLoanDirection.SHAREHOLDER_TO_COMPANY,
+                "company_to_corporate_shareholder": LedgerShareholderLoanDirection.COMPANY_TO_CORPORATE_SHAREHOLDER,
+            }
+            posted = await ledger.post_shareholder_loan(
+                PostShareholderLoanCommand(
+                    company_id=command.company_id,
+                    actor_id=command.actor_id,
+                    correlation_id=command.correlation_id,
+                    idempotency_key=command.idempotency_key,
+                    income_year=command.income_year,
+                    action_id=LedgerSourceRecordId(str(command.action_id)),
+                    counterparty_name=prepared.loan.counterparty_name,
+                    direction=directions[prepared.loan.direction.value],
+                    amount=_money_from_ore(prepared.loan.amount_ore),
+                    ledger_entry_id=LedgerEntryId(str(command.ledger_entry_id)),
+                )
+            )
+            if posted.entry_id != LedgerEntryId(str(command.ledger_entry_id)):
+                raise CorporateGovernanceError.unavailable()
+            if command.bank_transaction_id is not None:
+                if (
+                    prepared.bank_transaction_date is None
+                    or prepared.bank_signed_amount is None
+                    or prepared.bank_source_sha256 is None
+                ):
+                    raise CorporateGovernanceError.unavailable()
+                await transaction.claim_transaction_for_external_action(
+                    ClaimBankTransactionForExternalActionCommand(
+                        company_id=command.company_id,
+                        actor_id=command.actor_id,
+                        correlation_id=command.correlation_id,
+                        idempotency_key=command.idempotency_key,
+                        income_year=command.income_year,
+                        transaction_id=BankTransactionId(
+                            str(command.bank_transaction_id)
+                        ),
+                        transaction_date=prepared.bank_transaction_date,
+                        signed_amount=prepared.bank_signed_amount,
+                        source_hash=prepared.bank_source_sha256,
+                        action_reference=ExternalActionReference(
+                            str(command.action_id)
+                        ),
+                    ),
+                    accounting_entry_id=BankingAccountingEntryReference(
+                        str(posted.entry_id)
+                    ),
+                )
+            return await transaction.complete_shareholder_loan(
                 command,
                 AccountingEntryReference(str(posted.entry_id)),
                 prepared,

@@ -23,6 +23,8 @@ from talli_backend.modules.corporate_governance.public import (
     ApproveOwnerDividendCommand,
     CorporateEventId,
     OwnerDividendState,
+    PreparedShareholderLoan,
+    RecordedShareholderLoan,
 )
 from talli_backend.modules.corporate_governance.service import CorporateGovernanceService
 from talli_backend.modules.ledger.public import (
@@ -31,10 +33,12 @@ from talli_backend.modules.ledger.public import (
     LedgerSourceCapability,
     LedgerSourceRecordId,
     PostOwnerDividendDeclaredCommand,
+    PostShareholderLoanCommand,
+    ShareholderLoanDirection as LedgerShareholderLoanDirection,
 )
 from talli_backend.shared.kernel import CorrelationId, IdempotencyKey, LocalDate, Money
 
-from test_corporate_governance import supported_proposal
+from test_corporate_governance import supported_proposal, supported_shareholder_loan
 from test_corporate_governance_workflow import (
     DECISION_HASH,
     document_command,
@@ -192,6 +196,35 @@ def test_ledger_and_banking_calls_use_governance_restricted_wrappers() -> None:
     assert "ledger.post_corporate_governance_entry_v1" in calls[0][0]
     assert "ledger.post_entry_with_id_v1" not in calls[0][0]
 
+    loan = supported_shareholder_loan()
+    loan_command = PostShareholderLoanCommand(
+        company_id=loan.company_id,
+        actor_id=loan.actor_id,
+        correlation_id=loan.correlation_id,
+        idempotency_key=loan.idempotency_key,
+        income_year=loan.income_year,
+        action_id=LedgerSourceRecordId(str(loan.action_id)),
+        counterparty_name=loan.counterparty_name,
+        direction=LedgerShareholderLoanDirection.SHAREHOLDER_TO_COMPANY,
+        amount=loan.amount,
+        ledger_entry_id=loan.ledger_entry_id,
+    )
+    asyncio.run(transaction.post_entry(
+        loan_command,
+        entry_kind=LedgerEntryKind.SHAREHOLDER_LOAN,
+        memo="Shareholder loan from Eier Holding AS",
+        lines=(
+            LedgerLine("1920", "Bank", Money.nok("1250.50"), Money.nok("0")),
+            LedgerLine("2255", "Debt", Money.nok("0"), Money.nok("1250.50")),
+        ),
+        risk_flags=(),
+        warning_accepted=False,
+        source_capability=LedgerSourceCapability.CORPORATE_GOVERNANCE,
+        source_record_id=loan_command.action_id,
+        requested_entry_id=loan_command.ledger_entry_id,
+    ))
+    assert "ledger.post_corporate_governance_entry_v1" in calls[1][0]
+
     async def rows(query: str, parameters: tuple[object, ...] = ()):
         calls.append((query, parameters))
         return [{"result": {"transactionId": str(payment_command().bank_transaction_id)}}]
@@ -213,8 +246,8 @@ def test_ledger_and_banking_calls_use_governance_restricted_wrappers() -> None:
         ),
         accounting_entry_id=BankingAccountingEntryReference(str(payment.ledger_entry_id)),
     ))
-    assert "banking.claim_owner_dividend_transaction_v1" in calls[1][0]
-    assert "claim_transaction_for_external_action_v1" not in calls[1][0]
+    assert "banking.claim_corporate_governance_transaction_v1" in calls[2][0]
+    assert "claim_transaction_for_external_action_v1" not in calls[2][0]
 
 
 def test_payment_prepare_carries_the_declaration_policy_into_completion() -> None:
@@ -252,6 +285,72 @@ def test_payment_prepare_carries_the_declaration_policy_into_completion() -> Non
     ))
     completion_request = json.loads(str(calls[1][1][0]))
     assert completion_request["accountingPolicyVersion"] == "no-holding-v1"
+
+
+def test_shareholder_loan_prepare_and_complete_use_canonical_governance_store() -> None:
+    transaction = bound_transaction()
+    command = supported_shareholder_loan()
+    loan = CorporateGovernanceService().validate_shareholder_loan(command)
+    calls: list[tuple[str, tuple[object, ...]]] = []
+    responses = iter([
+        {"result": {
+            "loan": {
+                "actionId": str(loan.action_id),
+                "companyId": str(loan.company_id),
+                "incomeYear": int(loan.income_year),
+                "loanDate": loan.loan_date.value.isoformat(),
+                "amountOre": loan.amount_ore,
+                "direction": loan.direction.value,
+                "counterpartyName": loan.counterparty_name,
+                "documentStatus": loan.document_status.value,
+                "interestModelled": loan.interest_modelled,
+                "relatedPartySecurity": False,
+                "bankTransactionId": None,
+                "documentId": None,
+            },
+            "bankTransactionDate": None,
+            "bankSignedAmount": None,
+            "bankSourceSha256": None,
+            "replay": None,
+        }},
+        {"result": {
+            "loan": {
+                "actionId": str(loan.action_id),
+                "companyId": str(loan.company_id),
+                "incomeYear": int(loan.income_year),
+                "loanDate": loan.loan_date.value.isoformat(),
+                "amountOre": loan.amount_ore,
+                "direction": loan.direction.value,
+                "counterpartyName": loan.counterparty_name,
+                "documentStatus": loan.document_status.value,
+                "interestModelled": loan.interest_modelled,
+                "relatedPartySecurity": False,
+                "bankTransactionId": None,
+                "documentId": None,
+            },
+            "accountingEntryId": str(command.ledger_entry_id),
+            "replayed": False,
+        }},
+    ])
+
+    async def rows(query: str, parameters: tuple[object, ...] = ()):
+        calls.append((query, parameters))
+        return [next(responses)]
+
+    transaction._database_rows = rows  # type: ignore[method-assign]
+    prepared = asyncio.run(transaction.prepare_shareholder_loan(command, loan))
+    assert isinstance(prepared, PreparedShareholderLoan)
+    assert prepared.loan == loan
+    result = asyncio.run(transaction.complete_shareholder_loan(
+        command, command.ledger_entry_id, prepared
+    ))
+    assert isinstance(result, RecordedShareholderLoan)
+    assert result.loan == loan
+    assert result.accounting_entry_id == command.ledger_entry_id
+    assert "corporate_governance.prepare_shareholder_loan_v1" in calls[0][0]
+    assert "corporate_governance.complete_shareholder_loan_v1" in calls[1][0]
+    completion = json.loads(str(calls[1][1][0]))
+    assert completion["ledgerEntryId"] == str(command.ledger_entry_id)
 
 
 def lifecycle_payload(state: str, *, accounting_entry_id: str | None = None) -> dict[str, object]:

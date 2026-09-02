@@ -2225,6 +2225,7 @@ class LedgerService:
             warning_accepted=False,
             source_capability=LedgerSourceCapability.CORPORATE_GOVERNANCE,
             source_record_id=command.action_id,
+            requested_entry_id=command.ledger_entry_id,
         )
 
     async def post_tax_settlement(

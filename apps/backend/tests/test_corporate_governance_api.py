@@ -269,7 +269,56 @@ def test_owner_dividend_routes_require_bearer_and_reject_extra_fields() -> None:
     assert invalid.status_code == 422
 
 
-def test_openapi_exposes_five_owner_dividend_operations() -> None:
+def test_shareholder_loan_fastapi_is_governance_owned_and_strict() -> None:
+    client, transaction = client_and_transaction()
+    payload = {
+        "companyId": str(supported_proposal().company_id),
+        "incomeYear": 2025,
+        "actionId": "12121212-1212-4212-8212-121212121212",
+        "ledgerEntryId": "13131313-1313-4313-8313-131313131313",
+        "loanDate": "2025-03-01",
+        "amount": {"amount": "1250.50", "currency": "NOK"},
+        "direction": "shareholder_to_company",
+        "counterpartyName": "Eier Holding AS",
+        "documentStatus": "attached",
+        "interestModelled": True,
+        "relatedPartySecurity": False,
+        "bankTransactionId": None,
+        "documentId": None,
+    }
+    response = client.post(
+        "/api/v1/corporate-governance/shareholder-loans",
+        headers=headers("shareholder-loan-record-0001"),
+        json=payload,
+    )
+    assert response.status_code == 201, response.text
+    assert response.json() == {
+        "actionId": payload["actionId"],
+        "companyId": payload["companyId"],
+        "incomeYear": 2025,
+        "loanDate": "2025-03-01",
+        "amountOre": 125050,
+        "direction": "shareholder_to_company",
+        "counterpartyName": "Eier Holding AS",
+        "documentStatus": "attached",
+        "interestModelled": True,
+        "relatedPartySecurity": False,
+        "bankTransactionId": None,
+        "documentId": None,
+        "accountingEntryId": payload["ledgerEntryId"],
+        "replayed": False,
+    }
+    assert [call for call in transaction.calls if call[0] == "post_entry"]
+
+    rejected = client.post(
+        "/api/v1/corporate-governance/shareholder-loans",
+        headers=headers("shareholder-loan-record-0002"),
+        json={**payload, "unexpected": True},
+    )
+    assert rejected.status_code == 422
+
+
+def test_openapi_exposes_governance_operations() -> None:
     client, _ = client_and_transaction()
     schema = client.get("/api/v1/openapi.json").json()
     operations = {
@@ -284,4 +333,5 @@ def test_openapi_exposes_five_owner_dividend_operations() -> None:
         "corporateGovernanceApproveOwnerDividend",
         "corporateGovernanceFinalizeOwnerDividend",
         "corporateGovernanceRecordOwnerDividendPayment",
+        "corporateGovernanceRecordShareholderLoan",
     } <= operations

@@ -26,6 +26,22 @@ const initPlanCleanupRollbackPath = new URL(
   "../supabase/rollback/20260902054500_corporate_governance_rls_initplan_cleanup.sql",
   import.meta.url,
 );
+const shareholderLoanPath = new URL(
+  "../supabase/migrations/20260902070000_corporate_governance_shareholder_loan.sql",
+  import.meta.url,
+);
+const shareholderLoanRollbackPath = new URL(
+  "../supabase/rollback/20260902070000_corporate_governance_shareholder_loan.sql",
+  import.meta.url,
+);
+const shareholderLoanContractPath = new URL(
+  "../supabase/contract-migrations/20260902071000_corporate_governance_shareholder_loan_contract.sql",
+  import.meta.url,
+);
+const shareholderLoanContractRollbackPath = new URL(
+  "../supabase/rollback/20260902071000_corporate_governance_shareholder_loan_contract.sql",
+  import.meta.url,
+);
 
 function artifact(path, phase) {
   assert.equal(existsSync(path), true, `missing governance ${phase} artifact`);
@@ -171,5 +187,80 @@ test("owner-dividend insert policies init-plan both actor checks", () => {
       ),
     ].length,
     5,
+  );
+});
+
+test("shareholder-loan expand moves authority behind governance contracts", () => {
+  const source = artifact(shareholderLoanPath, "shareholder-loan expand");
+  const rollback = artifact(
+    shareholderLoanRollbackPath,
+    "shareholder-loan rollback",
+  );
+  assert.match(
+    source,
+    /create table corporate_governance\.shareholder_loans/iu,
+  );
+  assert.match(
+    source,
+    /alter table corporate_governance\.shareholder_loans\s+force row level security/iu,
+  );
+  assert.match(source, /before update or delete/iu);
+  assert.match(source, /prepare_shareholder_loan_v1/iu);
+  assert.match(source, /complete_shareholder_loan_v1/iu);
+  assert.match(source, /prepare_shareholder_loan_transaction_v1/iu);
+  assert.match(source, /claim_corporate_governance_transaction_v1/iu);
+  assert.match(
+    source,
+    /'OWNER_DIVIDEND_DECLARED', 'OWNER_DIVIDEND_PAYMENT',[\s\S]+'SHAREHOLDER_LOAN'/iu,
+  );
+  assert.match(
+    source,
+    /insert into corporate_governance\.shareholder_loans[\s\S]+from public\.holding_actions/iu,
+  );
+  assert.match(
+    source,
+    /project_shareholder_loan_v1[\s\S]+insert into public\.holding_actions/iu,
+  );
+  assert.doesNotMatch(
+    source,
+    /grant execute on function[^;]+to (?:public|anon|authenticated|service_role)\s*;/iu,
+  );
+  assert.match(
+    rollback,
+    /corporate_governance_shareholder_loan_rollback_unsafe/iu,
+  );
+  assert.match(
+    rollback,
+    /drop table corporate_governance\.shareholder_loans/iu,
+  );
+  assert.match(
+    rollback,
+    /'OWNER_DIVIDEND_DECLARED', 'OWNER_DIVIDEND_PAYMENT'/iu,
+  );
+});
+
+test("shareholder-loan contract cutover capsules the predecessor writer", () => {
+  const source = artifact(
+    shareholderLoanContractPath,
+    "shareholder-loan contract",
+  );
+  const rollback = artifact(
+    shareholderLoanContractRollbackPath,
+    "shareholder-loan contract rollback",
+  );
+  assert.match(source, /contract_reconciliation_failed/iu);
+  assert.match(source, /rollback_145_prepare_shareholder_loan_v1/iu);
+  assert.match(source, /rollback_145_complete_shareholder_loan_v1/iu);
+  assert.match(
+    source,
+    /revoke execute on function backend_system\.prepare_shareholder_loan_v1/iu,
+  );
+  assert.match(
+    rollback,
+    /rename to prepare_shareholder_loan_v1/iu,
+  );
+  assert.match(
+    rollback,
+    /rename to complete_shareholder_loan_v1/iu,
   );
 });

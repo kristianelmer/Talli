@@ -22,7 +22,8 @@ test(
               'corporate_governance.owner_dividend_artifacts'::regclass,
               'corporate_governance.owner_dividend_events'::regclass,
               'corporate_governance.owner_dividend_finalizations'::regclass,
-              'corporate_governance.owner_dividend_payments'::regclass
+              'corporate_governance.owner_dividend_payments'::regclass,
+              'corporate_governance.shareholder_loans'::regclass
             ])) as every_table_forces_rls,
           (select count(distinct owner.rolname)::int
              from pg_catalog.pg_class relation
@@ -33,7 +34,8 @@ test(
               'corporate_governance.owner_dividend_artifacts'::regclass,
               'corporate_governance.owner_dividend_events'::regclass,
               'corporate_governance.owner_dividend_finalizations'::regclass,
-              'corporate_governance.owner_dividend_payments'::regclass
+              'corporate_governance.owner_dividend_payments'::regclass,
+              'corporate_governance.shareholder_loans'::regclass
             ]) and owner.rolname = 'corporate_governance_store_owner')
             as store_owner_count,
           has_table_privilege(
@@ -56,6 +58,16 @@ test(
           ) as browser_proposes,
           has_function_privilege(
             'corporate_governance_workflow_executor',
+            'corporate_governance.prepare_shareholder_loan_v1(jsonb,text)',
+            'EXECUTE'
+          ) as executor_prepares_shareholder_loan,
+          has_function_privilege(
+            'authenticated',
+            'corporate_governance.prepare_shareholder_loan_v1(jsonb,text)',
+            'EXECUTE'
+          ) as browser_prepares_shareholder_loan,
+          has_function_privilege(
+            'corporate_governance_workflow_executor',
             'ledger.post_corporate_governance_entry_v1(text,uuid,integer,text,text,jsonb,text,text,text,text,uuid)',
             'EXECUTE'
           ) as executor_posts_typed_ledger,
@@ -71,6 +83,11 @@ test(
           ) as executor_claims_typed_bank,
           has_function_privilege(
             'corporate_governance_workflow_executor',
+            'banking.claim_corporate_governance_transaction_v1(jsonb,uuid,text)',
+            'EXECUTE'
+          ) as executor_claims_governance_bank,
+          has_function_privilege(
+            'corporate_governance_workflow_executor',
             'banking.claim_transaction_for_external_action_v1(jsonb,uuid,text)',
             'EXECUTE'
           ) as executor_claims_generic_bank
@@ -82,9 +99,12 @@ test(
         browser_reads_table: false,
         executor_proposes: true,
         browser_proposes: false,
+        executor_prepares_shareholder_loan: true,
+        browser_prepares_shareholder_loan: false,
         executor_posts_typed_ledger: true,
         executor_posts_generic_ledger: false,
         executor_claims_typed_bank: true,
+        executor_claims_governance_bank: true,
         executor_claims_generic_bank: false,
       });
 

@@ -9,7 +9,6 @@ import {
   type LedgerOpeningSnapshotWire,
   type LedgerPeriodLockWire,
   type LedgerReconstructionAssessmentWire,
-  type LedgerShareholderLoanWire,
   type LedgerSourceCapability,
   type LedgerTaxSettlementWire,
   type NewYearStartWire,
@@ -270,18 +269,6 @@ export function postLedgerAdministrativeCost(
   requestId?: string,
 ) {
   return client(accessToken).ledgerPostAdministrativeCost(
-    command,
-    mutationRequest(idempotencyKey, requestId),
-  );
-}
-
-export function postLedgerShareholderLoan(
-  accessToken: string,
-  command: LedgerShareholderLoanWire,
-  idempotencyKey: string,
-  requestId?: string,
-) {
-  return client(accessToken).ledgerPostShareholderLoan(
     command,
     mutationRequest(idempotencyKey, requestId),
   );
