@@ -9,7 +9,7 @@
   "publicEntryPoint": "talli_backend.modules.corporate_governance.public",
   "exports": {
     "commands": ["ApproveOwnerDividendCommand", "FinalizeOwnerDividendCommand", "OwnerDividendProposalCommand", "RecordOwnerDividendPaymentCommand", "RegisterOwnerDividendDocumentsCommand"],
-    "queries": ["ApprovedAnnualBasis", "BoardMeeting", "BoardParticipant", "CanonicalBoardParticipant", "CanonicalDecisionShareholder", "CanonicalOwnerDividendDecision", "GeneralMeeting", "OwnerDividendAllocation", "OwnerDividendArtifactReference", "OwnerDividendConfirmations", "OwnerDividendFacts", "OwnerDividendFinancialTotals", "PersistedCompanyFacts", "PersistedShareholderFacts", "ProposedOwnerDividend", "ReviewedOwnerDividendFacts", "ReviewedShareholderFacts", "ShareholderBallot"],
+    "queries": ["ApprovedAnnualBasis", "BoardMeeting", "BoardParticipant", "CanonicalBoardParticipant", "CanonicalDecisionShareholder", "CanonicalOwnerDividendDecision", "GeneralMeeting", "OwnerDividendAllocation", "OwnerDividendArtifactReference", "OwnerDividendConfirmations", "OwnerDividendFacts", "OwnerDividendFinancialTotals", "OwnerDividendLifecycle", "PersistedCompanyFacts", "PersistedShareholderFacts", "PreparedOwnerDividendFinalization", "PreparedOwnerDividendPayment", "ProposedOwnerDividend", "ReviewedOwnerDividendFacts", "ReviewedShareholderFacts", "ShareholderBallot"],
     "events": [],
     "errors": ["CorporateGovernanceError", "CorporateGovernanceErrorCode"],
     "identifiers": ["AccountingEntryReference", "BankTransactionReference", "BoardRole", "BoardTreatmentMethod", "CorporateArtifactId", "CorporateArtifactKind", "CorporateDecisionId", "CorporateDocumentSetId", "CorporateEventId", "CorporateFinalizationId", "CorporateGovernancePersistence", "CorporateSourceReference", "DocumentReference", "MeetingForm", "OwnerDividendState", "ShareholderVote", "corporate_governance_persistence_adapter"]
@@ -43,8 +43,8 @@
   "tests": {
     "contract": "apps/backend/tests/test_corporate_governance_public_contract.py",
     "policy": "apps/backend/tests/test_corporate_governance.py",
+    "workflow": "apps/backend/tests/test_corporate_governance_workflow.py",
     "architecture": "tests/architecture_foundation.test.mjs"
   },
   "compatibilityExceptions": []
 }
-

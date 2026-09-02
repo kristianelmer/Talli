@@ -19,6 +19,7 @@ from talli_backend.shared.kernel import (
     IdempotencyKey,
     IncomeYear,
     LocalDate,
+    Money,
 )
 
 
@@ -373,6 +374,37 @@ class ProposedOwnerDividend:
 
 
 @dataclass(frozen=True, slots=True)
+class OwnerDividendLifecycle:
+    decision_id: CorporateDecisionId
+    document_set_id: CorporateDocumentSetId
+    company_id: CompanyId
+    income_year: IncomeYear
+    decision_hash: str
+    state: OwnerDividendState
+    declared_amount_ore: int
+    paid_amount_ore: int
+    remaining_amount_ore: int
+    finalization_id: CorporateFinalizationId | None
+    accounting_entry_id: AccountingEntryReference | None
+    replayed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedOwnerDividendFinalization:
+    declared_amount_ore: int
+    replay: OwnerDividendLifecycle | None
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedOwnerDividendPayment:
+    payment_amount_ore: int
+    bank_transaction_date: LocalDate
+    bank_signed_amount: Money
+    bank_source_sha256: str
+    replay: OwnerDividendLifecycle | None
+
+
+@dataclass(frozen=True, slots=True)
 class OwnerDividendArtifactReference:
     artifact_id: CorporateArtifactId
     document_id: DocumentReference
@@ -448,6 +480,40 @@ class CorporateGovernancePersistence(Protocol):
         decision: CanonicalOwnerDividendDecision,
     ) -> ProposedOwnerDividend: ...
 
+    async def register_owner_dividend_documents(
+        self,
+        command: RegisterOwnerDividendDocumentsCommand,
+    ) -> OwnerDividendLifecycle: ...
+
+    async def approve_owner_dividend(
+        self,
+        command: ApproveOwnerDividendCommand,
+    ) -> OwnerDividendLifecycle: ...
+
+    async def prepare_owner_dividend_finalization(
+        self,
+        command: FinalizeOwnerDividendCommand,
+    ) -> PreparedOwnerDividendFinalization: ...
+
+    async def complete_owner_dividend_finalization(
+        self,
+        command: FinalizeOwnerDividendCommand,
+        accounting_entry_id: AccountingEntryReference,
+        prepared: PreparedOwnerDividendFinalization,
+    ) -> OwnerDividendLifecycle: ...
+
+    async def prepare_owner_dividend_payment(
+        self,
+        command: RecordOwnerDividendPaymentCommand,
+    ) -> PreparedOwnerDividendPayment: ...
+
+    async def complete_owner_dividend_payment(
+        self,
+        command: RecordOwnerDividendPaymentCommand,
+        accounting_entry_id: AccountingEntryReference,
+        prepared: PreparedOwnerDividendPayment,
+    ) -> OwnerDividendLifecycle: ...
+
 
 CorporateGovernanceAdapter = TypeVar(
     "CorporateGovernanceAdapter", bound=type[object]
@@ -500,10 +566,13 @@ __all__ = [
     "OwnerDividendConfirmations",
     "OwnerDividendFacts",
     "OwnerDividendFinancialTotals",
+    "OwnerDividendLifecycle",
     "OwnerDividendProposalCommand",
     "OwnerDividendState",
     "PersistedCompanyFacts",
     "PersistedShareholderFacts",
+    "PreparedOwnerDividendFinalization",
+    "PreparedOwnerDividendPayment",
     "ProposedOwnerDividend",
     "RecordOwnerDividendPaymentCommand",
     "RegisterOwnerDividendDocumentsCommand",
@@ -514,4 +583,3 @@ __all__ = [
     "ShareholderVote",
     "corporate_governance_persistence_adapter",
 ]
-

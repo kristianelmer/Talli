@@ -43,7 +43,12 @@ The proposal vocabulary is `PersistedCompanyFacts`,
 uses `CanonicalOwnerDividendDecision`, `CanonicalBoardParticipant`,
 `CanonicalDecisionShareholder`, `OwnerDividendFinancialTotals`,
 `OwnerDividendFacts`, `OwnerDividendAllocation`, `OwnerDividendConfirmations`,
-`ProposedOwnerDividend`, and `OwnerDividendState`.
+`ProposedOwnerDividend`, `OwnerDividendLifecycle`, and `OwnerDividendState`.
+`PreparedOwnerDividendFinalization` and `PreparedOwnerDividendPayment` expose
+only the normalized amounts and locked bank fact needed by the application
+workflow; they do not expose persistence rows or choose accounts. The private
+`OwnerDividendAccountingPolicy` keeps the characterized `no-holding-v1`
+2050/2920/1920 mapping in Python.
 
 Stable owned identities are `CorporateDecisionId`, `CorporateDocumentSetId`,
 `CorporateArtifactId`, `CorporateEventId`, `CorporateFinalizationId`, and
