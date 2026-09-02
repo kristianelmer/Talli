@@ -837,6 +837,7 @@ h2 {
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   gap: var(--space-2);
+  min-width: 0;
 }
 
 .field input,
@@ -848,7 +849,9 @@ h2 {
   color: var(--color-text);
   font: inherit;
   min-height: var(--control-height);
+  min-width: 0;
   padding: 0 var(--space-3);
+  width: 100%;
 }
 
 .field input:focus-visible,

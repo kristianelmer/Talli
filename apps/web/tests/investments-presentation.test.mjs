@@ -920,3 +920,13 @@ test("investment actions require explicit owner and dividend attestations", () =
   );
   assert.doesNotMatch(actionsSource, /const replacementAmount\s*=/u);
 });
+
+test("investment wizard controls can shrink inside the mobile grid", () => {
+  const styles = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(styles, /\.field\s*\{[^}]*min-width:\s*0;/su);
+  assert.match(
+    styles,
+    /\.field input,[\s\S]*?\.field textarea\s*\{[^}]*min-width:\s*0;[^}]*width:\s*100%;/u,
+  );
+});
