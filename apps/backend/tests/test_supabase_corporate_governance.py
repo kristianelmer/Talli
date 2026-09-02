@@ -38,7 +38,11 @@ from talli_backend.modules.ledger.public import (
 )
 from talli_backend.shared.kernel import CorrelationId, IdempotencyKey, LocalDate, Money
 
-from test_corporate_governance import supported_proposal, supported_shareholder_loan
+from test_corporate_governance import (
+    supported_annual_close,
+    supported_proposal,
+    supported_shareholder_loan,
+)
 from test_corporate_governance_workflow import (
     DECISION_HASH,
     document_command,
@@ -95,6 +99,29 @@ def test_proposal_sends_python_canonical_facts_without_account_policy() -> None:
     assert canonical["dividend"]["amountOre"] == 10_000_001
     assert "declarationDebitAccount" not in json.dumps(canonical)
     assert "accountingPolicyVersion" not in json.dumps(canonical)
+
+
+def test_annual_close_proposal_uses_the_restricted_canonical_store() -> None:
+    transaction = bound_transaction()
+    command = supported_annual_close()
+    decision = CorporateGovernanceService().build_annual_close_decision(command)
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def rows(query: str, parameters: tuple[object, ...] = ()):
+        calls.append((query, parameters))
+        return [{"result": {"state": "proposed", "replayed": False}}]
+
+    transaction._database_rows = rows  # type: ignore[method-assign]
+    result = asyncio.run(transaction.propose_annual_close(command, decision))
+    request = json.loads(str(calls[0][1][0]))
+    canonical = json.loads(str(calls[0][1][1]))
+
+    assert result.decision == decision
+    assert result.state is OwnerDividendState.PROPOSED
+    assert "corporate_governance.propose_annual_close_v1" in calls[0][0]
+    assert request["decisionId"] == str(command.decision_id)
+    assert canonical["decisionKind"] == "annual_close"
+    assert canonical["dividend"] is None
 
 
 def test_document_approval_and_finalization_map_exact_replays() -> None:

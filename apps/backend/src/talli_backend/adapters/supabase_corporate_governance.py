@@ -37,8 +37,10 @@ from talli_backend.modules.banking.public import (
 )
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
+    AnnualCloseProposalCommand,
     ApproveOwnerDividendCommand,
     BankTransactionReference,
+    CanonicalAnnualCloseDecision,
     CanonicalShareholderLoan,
     CanonicalOwnerDividendDecision,
     CorporateDecisionId,
@@ -56,6 +58,7 @@ from talli_backend.modules.corporate_governance.public import (
     PreparedOwnerDividendFinalization,
     PreparedOwnerDividendPayment,
     PreparedShareholderLoan,
+    ProposedAnnualClose,
     ProposedOwnerDividend,
     RecordOwnerDividendPaymentCommand,
     RecordShareholderLoanCommand,
@@ -66,6 +69,7 @@ from talli_backend.modules.corporate_governance.public import (
     corporate_governance_persistence_adapter,
 )
 from talli_backend.modules.corporate_governance.service import (
+    canonical_annual_close_payload,
     canonical_owner_dividend_payload,
 )
 from talli_backend.modules.ledger.public import (
@@ -85,7 +89,9 @@ from talli_backend.modules.ledger.service import LedgerService
 from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear, LocalDate, Money
 
 
-def _proposal_request(command: OwnerDividendProposalCommand) -> dict[str, object]:
+def _proposal_request(
+    command: OwnerDividendProposalCommand | AnnualCloseProposalCommand,
+) -> dict[str, object]:
     return {
         "companyId": str(command.company_id),
         "incomeYear": int(command.income_year),
@@ -96,8 +102,15 @@ def _proposal_request(command: OwnerDividendProposalCommand) -> dict[str, object
     }
 
 
-def _canonical_decision(decision: CanonicalOwnerDividendDecision) -> dict[str, object]:
+def _canonical_decision(
+    decision: CanonicalOwnerDividendDecision | CanonicalAnnualCloseDecision,
+) -> dict[str, object]:
     return {
+        "decisionKind": (
+            "owner_dividend"
+            if isinstance(decision, CanonicalOwnerDividendDecision)
+            else "annual_close"
+        ),
         "decisionId": str(decision.decision_id),
         "documentSetId": str(decision.document_set_id),
         "companyId": str(decision.company_id),
@@ -151,18 +164,24 @@ def _canonical_decision(decision: CanonicalOwnerDividendDecision) -> dict[str, o
         ],
         "totalCompanyShares": decision.total_company_shares,
         "oneShareClassConfirmed": decision.one_share_class_confirmed,
-        "dividend": {
-            "amountOre": decision.dividend.amount_ore,
-            "paymentDate": decision.dividend.payment_date.value.isoformat(),
-            "liquidityAfterPaymentOre": decision.dividend.liquidity_after_payment_ore,
-            "allocations": [
-                {
-                    "shareholderId": allocation.shareholder_id,
-                    "amountOre": allocation.amount_ore,
-                }
-                for allocation in decision.dividend.allocations
-            ],
-        },
+        "dividend": (
+            {
+                "amountOre": decision.dividend.amount_ore,
+                "paymentDate": decision.dividend.payment_date.value.isoformat(),
+                "liquidityAfterPaymentOre": (
+                    decision.dividend.liquidity_after_payment_ore
+                ),
+                "allocations": [
+                    {
+                        "shareholderId": allocation.shareholder_id,
+                        "amountOre": allocation.amount_ore,
+                    }
+                    for allocation in decision.dividend.allocations
+                ],
+            }
+            if decision.dividend is not None
+            else None
+        ),
         "annualResultAllocationOre": decision.annual_result_allocation_ore,
         "confirmations": {
             "latestApprovedAnnualAccounts": (
@@ -469,6 +488,36 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
             raise CorporateGovernanceError.unavailable()
         result = rows[0]["result"]
         return ProposedOwnerDividend(
+            decision=decision,
+            state=OwnerDividendState(str(result["state"])),
+            replayed=bool(result["replayed"]),
+        )
+
+    async def propose_annual_close(
+        self,
+        command: AnnualCloseProposalCommand,
+        decision: CanonicalAnnualCloseDecision,
+    ) -> ProposedAnnualClose:
+        if command.actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        rows = await self._database_rows(
+            "select corporate_governance.propose_annual_close_v1("
+            "%s::jsonb, %s::jsonb, %s::jsonb, %s::text) as result",
+            (
+                json.dumps(_proposal_request(command), separators=(",", ":")),
+                json.dumps(_canonical_decision(decision), separators=(",", ":")),
+                json.dumps(
+                    canonical_annual_close_payload(decision),
+                    separators=(",", ":"),
+                    ensure_ascii=False,
+                ),
+                str(command.actor_id.subject),
+            ),
+        )
+        if len(rows) != 1 or not isinstance(rows[0].get("result"), Mapping):
+            raise CorporateGovernanceError.unavailable()
+        result = rows[0]["result"]
+        return ProposedAnnualClose(
             decision=decision,
             state=OwnerDividendState(str(result["state"])),
             replayed=bool(result["replayed"]),

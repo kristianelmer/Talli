@@ -158,15 +158,16 @@ test("annual readiness becomes stale when the persisted source facts change", ()
   assert.ok(stale.blockers.some(({ code }) => code === "corporate_documents_current_hash_mismatch"));
 });
 
-test("annual server action persists only a two-artifact immutable draft", () => {
+test("annual server action uses backend canonicalization and rendered artifacts", () => {
   assert.match(actionsSource, /export async function createAnnualCorporateDecisionDraft\s*\(formData: FormData\)/);
   const start = actionsSource.indexOf("export async function createAnnualCorporateDecisionDraft");
   const end = actionsSource.indexOf("\nexport async function ", start + 1);
   const action = actionsSource.slice(start, end < 0 ? undefined : end);
-  assert.match(action, /buildAnnualCloseDecisionInput/);
+  assert.match(action, /proposeAnnualClose/);
   assert.match(action, /annual_board_minutes/);
   assert.match(action, /annual_general_meeting_minutes/);
-  assert.match(action, /renderCorporateDocuments|persistCorporateDocumentDraft/);
+  assert.match(action, /renderedArtifacts|persistCorporateDocumentDraft/);
+  assert.doesNotMatch(action, /buildAnnualCloseDecisionInput|renderCorporateDocuments/);
   assert.match(action, /create_corporate_document_draft|persistCorporateDocumentDraft/);
   assert.doesNotMatch(action, /\.from\(["']ledger_entries["']\)\.insert/);
   assert.doesNotMatch(action, /\.from\(["']holding_actions["']\)\.insert/);

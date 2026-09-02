@@ -50,7 +50,11 @@ from talli_backend.shared.kernel import (
     Timestamp,
 )
 
-from test_corporate_governance import supported_proposal, supported_shareholder_loan
+from test_corporate_governance import (
+    supported_annual_close,
+    supported_proposal,
+    supported_shareholder_loan,
+)
 
 
 ENTRY_ID = LedgerEntryId("99999999-9999-4999-8999-999999999999")
@@ -102,6 +106,14 @@ class GovernanceTransactionStub:
     async def propose_owner_dividend(self, command, decision):
         self.calls.append(("propose", decision))
         return SimpleNamespace(decision=decision, state=OwnerDividendState.PROPOSED, replayed=False)
+
+    async def propose_annual_close(self, command, decision):
+        self.calls.append(("propose_annual_close", decision))
+        return SimpleNamespace(
+            decision=decision,
+            state=OwnerDividendState.PROPOSED,
+            replayed=False,
+        )
 
     async def register_owner_dividend_documents(self, command):
         self.calls.append(("register_documents", command))
@@ -318,6 +330,21 @@ def test_proposal_is_owner_authorized_and_persists_python_canonical_facts() -> N
     transaction.role = "reviewer"
     with pytest.raises(CorporateGovernanceError):
         asyncio.run(app.propose_owner_dividend("access-token", supported_proposal()))
+
+
+def test_annual_close_proposal_is_owner_authorized_and_persists_canonical_facts() -> None:
+    app, transaction, _, _, _ = application()
+    result = asyncio.run(app.propose_annual_close("access-token", supported_annual_close()))
+    assert result.decision.decision_hash == (
+        "2e364c248ed1d6894fd69e69b82012ddddb492d572db5e377b05988ee8349eaa"
+    )
+    assert result.decision.dividend is None
+    assert transaction.calls[0][0] == "actor_role"
+    assert transaction.calls[1][0] == "propose_annual_close"
+
+    transaction.role = "reviewer"
+    with pytest.raises(CorporateGovernanceError):
+        asyncio.run(app.propose_annual_close("access-token", supported_annual_close()))
 
 
 def document_command() -> RegisterOwnerDividendDocumentsCommand:

@@ -138,6 +138,7 @@ class CorporateGovernanceErrorCode(StrEnum):
     ZERO_ALLOCATION = "corporate_documents_zero_allocation"
     ALLOCATION_MISMATCH = "corporate_documents_allocation_mismatch"
     EQUITY_OR_LIQUIDITY_FAILED = "corporate_documents_equity_or_liquidity_failed"
+    ANNUAL_RESULT_MISMATCH = "corporate_documents_annual_result_mismatch"
     FORBIDDEN = "corporate_governance_forbidden"
     NOT_FOUND = "corporate_governance_not_found"
     CONFLICT = "corporate_documents_idempotency_conflict"
@@ -309,6 +310,31 @@ class OwnerDividendProposalCommand:
 
 
 @dataclass(frozen=True, slots=True)
+class AnnualCloseProposalCommand:
+    company_id: CompanyId
+    actor_id: ActorId
+    correlation_id: CorrelationId
+    idempotency_key: IdempotencyKey
+    income_year: IncomeYear
+    decision_id: CorporateDecisionId
+    document_set_id: CorporateDocumentSetId
+    company: PersistedCompanyFacts
+    shareholders: tuple[PersistedShareholderFacts, ...]
+    annual_basis: ApprovedAnnualBasis
+    reviewed_facts: ReviewedOwnerDividendFacts
+    board_meeting: BoardMeeting
+    board_participants: tuple[BoardParticipant, ...]
+    general_meeting: GeneralMeeting
+    shareholder_ballots: tuple[ShareholderBallot, ...]
+    one_share_class_confirmed: bool
+    full_board_participation_confirmed: bool
+    unanimous_board_confirmed: bool
+    supported_dividend_basis_confirmed: bool
+    prudent_equity_and_liquidity_confirmed: bool
+    annual_result_allocation_ore: int
+
+
+@dataclass(frozen=True, slots=True)
 class CanonicalBoardParticipant:
     participant_id: str
     name: str
@@ -385,10 +411,45 @@ class CanonicalOwnerDividendDecision:
 
 
 @dataclass(frozen=True, slots=True)
+class CanonicalAnnualCloseDecision:
+    decision_id: CorporateDecisionId
+    document_set_id: CorporateDocumentSetId
+    company_id: CompanyId
+    organization_number: str
+    legal_name: str
+    income_year: IncomeYear
+    annual_close_source_id: CorporateSourceReference
+    source_hash: str
+    template_family: str
+    template_version: str
+    annual_basis_year: IncomeYear
+    financial_totals: OwnerDividendFinancialTotals
+    board_meeting: BoardMeeting
+    board_participants: tuple[CanonicalBoardParticipant, ...]
+    general_meeting: GeneralMeeting
+    shareholders: tuple[CanonicalDecisionShareholder, ...]
+    total_company_shares: int
+    one_share_class_confirmed: bool
+    dividend: None
+    annual_result_allocation_ore: int
+    confirmations: OwnerDividendConfirmations
+    decision_hash: str
+
+
+@dataclass(frozen=True, slots=True)
 class ProposedOwnerDividend:
     decision: CanonicalOwnerDividendDecision
     state: OwnerDividendState
     replayed: bool
+    artifacts: tuple[RenderedCorporateArtifact, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ProposedAnnualClose:
+    decision: CanonicalAnnualCloseDecision
+    state: OwnerDividendState
+    replayed: bool
+    artifacts: tuple[RenderedCorporateArtifact, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -436,6 +497,17 @@ class OwnerDividendArtifactReference:
     artifact_kind: CorporateArtifactKind
     content_sha256: str
     byte_length: int
+
+
+@dataclass(frozen=True, slots=True)
+class RenderedCorporateArtifact:
+    artifact_kind: CorporateArtifactKind
+    filename: str
+    template_version: str
+    decision_hash: str
+    content_sha256: str
+    byte_length: int
+    pdf_bytes: bytes
 
 
 @dataclass(frozen=True, slots=True)
@@ -557,6 +629,12 @@ class CorporateGovernancePersistence(Protocol):
         decision: CanonicalOwnerDividendDecision,
     ) -> ProposedOwnerDividend: ...
 
+    async def propose_annual_close(
+        self,
+        command: AnnualCloseProposalCommand,
+        decision: CanonicalAnnualCloseDecision,
+    ) -> ProposedAnnualClose: ...
+
     async def register_owner_dividend_documents(
         self,
         command: RegisterOwnerDividendDocumentsCommand,
@@ -627,6 +705,7 @@ SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 __all__ = [
     "AccountingEntryReference",
+    "AnnualCloseProposalCommand",
     "ApprovedAnnualBasis",
     "ApproveOwnerDividendCommand",
     "BankTransactionReference",
@@ -635,6 +714,7 @@ __all__ = [
     "BoardRole",
     "BoardTreatmentMethod",
     "CanonicalBoardParticipant",
+    "CanonicalAnnualCloseDecision",
     "CanonicalDecisionShareholder",
     "CanonicalOwnerDividendDecision",
     "CanonicalShareholderLoan",
@@ -665,10 +745,12 @@ __all__ = [
     "PreparedOwnerDividendFinalization",
     "PreparedOwnerDividendPayment",
     "PreparedShareholderLoan",
+    "ProposedAnnualClose",
     "ProposedOwnerDividend",
     "RecordOwnerDividendPaymentCommand",
     "RecordShareholderLoanCommand",
     "RecordedShareholderLoan",
+    "RenderedCorporateArtifact",
     "RegisterOwnerDividendDocumentsCommand",
     "ReviewedOwnerDividendFacts",
     "ReviewedShareholderFacts",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from base64 import b64decode
 from datetime import date
 
 from fastapi.testclient import TestClient
@@ -10,7 +11,7 @@ from talli_backend.modules.ledger.public import (
 )
 from talli_backend.shared.kernel import Money
 
-from test_corporate_governance import supported_proposal
+from test_corporate_governance import supported_annual_close, supported_proposal
 from test_corporate_governance_workflow import (
     DocumentsSessionFactoryStub,
     DocumentsSessionStub,
@@ -149,6 +150,33 @@ def proposal_payload() -> dict[str, object]:
     }
 
 
+def annual_close_payload() -> dict[str, object]:
+    command = supported_annual_close()
+    payload = proposal_payload()
+    payload = {
+        **payload,
+        "incomeYear": int(command.income_year),
+        "decisionId": str(command.decision_id),
+        "documentSetId": str(command.document_set_id),
+        "annualBasis": {
+            **payload["annualBasis"],
+            "incomeYear": int(command.annual_basis.income_year),
+        },
+        "boardMeeting": {
+            **payload["boardMeeting"],
+            "meetingDate": command.board_meeting.meeting_date.value.isoformat(),
+        },
+        "generalMeeting": {
+            **payload["generalMeeting"],
+            "meetingDate": command.general_meeting.meeting_date.value.isoformat(),
+        },
+        "annualResultAllocationOre": command.annual_result_allocation_ore,
+    }
+    del payload["dividendAmountOre"]
+    del payload["paymentDate"]
+    return payload
+
+
 def headers(key: str) -> dict[str, str]:
     return {
         "Authorization": "Bearer access-token",
@@ -250,6 +278,34 @@ def test_owner_dividend_fastapi_lifecycle_is_typed_and_backend_owned() -> None:
     assert bank_claim[1][0].transaction_date.value == date(2025, 7, 2)
 
 
+def test_annual_close_fastapi_proposal_is_typed_and_backend_owned() -> None:
+    client, transaction = client_and_transaction()
+    proposed = client.post(
+        "/api/v1/corporate-governance/annual-closes/proposals",
+        headers=headers("annual-close-proposal-0001"),
+        json=annual_close_payload(),
+    )
+    assert proposed.status_code == 201, proposed.text
+    assert proposed.json()["decision"]["decisionKind"] == "annual_close"
+    assert proposed.json()["decision"]["decisionHash"] == (
+        "2e364c248ed1d6894fd69e69b82012ddddb492d572db5e377b05988ee8349eaa"
+    )
+    assert proposed.json()["decision"]["dividend"] is None
+    assert [artifact["artifactKind"] for artifact in proposed.json()["artifacts"]] == [
+        "annual_board_minutes",
+        "annual_general_meeting_minutes",
+    ]
+    assert [artifact["contentSha256"] for artifact in proposed.json()["artifacts"]] == [
+        "dc38c0c178f4a0bbd7e466581fae416d6ddeabfacf00027eaac95dbe7ad28e50",
+        "270bf87a72e5ced5b13490e220e352bde7a16bff019f48d46bfa88ac1d561776",
+    ]
+    assert all(
+        b64decode(artifact["contentBase64"]).startswith(b"%PDF-")
+        for artifact in proposed.json()["artifacts"]
+    )
+    assert transaction.calls[-1][0] == "propose_annual_close"
+
+
 def test_owner_dividend_routes_require_bearer_and_reject_extra_fields() -> None:
     client, _ = client_and_transaction()
     payload = proposal_payload()
@@ -329,6 +385,7 @@ def test_openapi_exposes_governance_operations() -> None:
     }
     assert {
         "corporateGovernanceProposeOwnerDividend",
+        "corporateGovernanceProposeAnnualClose",
         "corporateGovernanceRegisterOwnerDividendDocuments",
         "corporateGovernanceApproveOwnerDividend",
         "corporateGovernanceFinalizeOwnerDividend",

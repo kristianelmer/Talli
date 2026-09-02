@@ -7,6 +7,7 @@ import pytest
 
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
+    AnnualCloseProposalCommand,
     ApprovedAnnualBasis,
     BoardMeeting,
     BoardParticipant,
@@ -146,6 +147,86 @@ def test_owner_dividend_policy_reproduces_characterized_canonical_facts() -> Non
     ]
     assert decision.source_hash == "0dae8fec5faceb20edf1e51cddb97ea06a4d0afcd6a7f420ba573b621f331b80"
     assert decision.decision_hash == "b48464dfed6114e3a32f0f4da0d4ca939fae79119c7fea8b8c9838083890a776"
+
+
+def test_canonical_owner_dividend_renders_characterized_pdfs_in_process() -> None:
+    service = CorporateGovernanceService()
+    decision = service.build_owner_dividend_decision(supported_proposal())
+
+    first = service.render_corporate_documents(decision)
+    second = service.render_corporate_documents(decision)
+
+    assert first == second
+    assert [artifact.artifact_kind.value for artifact in first] == [
+        "dividend_board_proposal",
+        "dividend_general_meeting_minutes",
+    ]
+    assert [artifact.filename for artifact in first] == [
+        "styrets-forslag-til-utbytte.pdf",
+        "generalforsamlingsprotokoll-utbytte.pdf",
+    ]
+    assert [artifact.content_sha256 for artifact in first] == [
+        "19b04c086bd4d851c92ca225c71bf1d3b5cd0adeaed6835837594bf4e642d7fe",
+        "2aef1df2c8c7a2b817078810c6b2b578ad69ca5d03704d356fcb42b157e107d3",
+    ]
+    assert [artifact.byte_length for artifact in first] == [32130, 32389]
+    assert all(artifact.pdf_bytes.startswith(b"%PDF-") for artifact in first)
+    assert all(artifact.decision_hash == decision.decision_hash for artifact in first)
+
+
+def supported_annual_close() -> AnnualCloseProposalCommand:
+    owner = supported_proposal()
+    return AnnualCloseProposalCommand(
+        company_id=owner.company_id,
+        actor_id=owner.actor_id,
+        correlation_id=CorrelationId("annual-close-proposal"),
+        idempotency_key=IdempotencyKey("annual-close-proposal-0001"),
+        income_year=IncomeYear(2025),
+        decision_id=CorporateDecisionId("44444444-4444-4444-8444-444444444444"),
+        document_set_id=CorporateDocumentSetId(
+            "55555555-5555-4555-8555-555555555555"
+        ),
+        company=owner.company,
+        shareholders=owner.shareholders,
+        annual_basis=replace(owner.annual_basis, income_year=IncomeYear(2025)),
+        reviewed_facts=owner.reviewed_facts,
+        board_meeting=replace(
+            owner.board_meeting,
+            meeting_date=LocalDate(date(2026, 4, 15)),
+        ),
+        board_participants=owner.board_participants,
+        general_meeting=replace(
+            owner.general_meeting,
+            meeting_date=LocalDate(date(2026, 5, 10)),
+        ),
+        shareholder_ballots=owner.shareholder_ballots,
+        one_share_class_confirmed=True,
+        full_board_participation_confirmed=True,
+        unanimous_board_confirmed=True,
+        supported_dividend_basis_confirmed=True,
+        prudent_equity_and_liquidity_confirmed=True,
+        annual_result_allocation_ore=12_500_000,
+    )
+
+
+def test_annual_close_policy_and_renderer_reproduce_characterized_artifacts() -> None:
+    service = CorporateGovernanceService()
+
+    decision = service.build_annual_close_decision(supported_annual_close())
+    artifacts = service.render_corporate_documents(decision)
+
+    assert decision.source_hash == "0dae8fec5faceb20edf1e51cddb97ea06a4d0afcd6a7f420ba573b621f331b80"
+    assert decision.decision_hash == "2e364c248ed1d6894fd69e69b82012ddddb492d572db5e377b05988ee8349eaa"
+    assert decision.dividend is None
+    assert [artifact.artifact_kind.value for artifact in artifacts] == [
+        "annual_board_minutes",
+        "annual_general_meeting_minutes",
+    ]
+    assert [artifact.content_sha256 for artifact in artifacts] == [
+        "dc38c0c178f4a0bbd7e466581fae416d6ddeabfacf00027eaac95dbe7ad28e50",
+        "270bf87a72e5ced5b13490e220e352bde7a16bff019f48d46bfa88ac1d561776",
+    ]
+    assert [artifact.byte_length for artifact in artifacts] == [32066, 32626]
 
 
 @pytest.mark.parametrize(

@@ -1702,6 +1702,27 @@ export interface DocumentWire {
   storageKey: string;
 }
 
+export interface AnnualCloseProposalWire {
+  annualBasis: CorporateAnnualBasisWire;
+  annualResultAllocationOre: number;
+  boardMeeting: CorporateBoardMeetingWire;
+  boardParticipants: CorporateBoardParticipantWire[];
+  company: CorporateCompanyFactsWire;
+  companyId: string;
+  decisionId: string;
+  documentSetId: string;
+  fullBoardParticipationConfirmed: boolean;
+  generalMeeting: CorporateGeneralMeetingWire;
+  incomeYear: number;
+  oneShareClassConfirmed: boolean;
+  prudentEquityAndLiquidityConfirmed: boolean;
+  reviewedFacts: CorporateReviewedFactsWire;
+  shareholderBallots: CorporateShareholderBallotWire[];
+  shareholders: CorporateShareholderWire[];
+  supportedDividendBasisConfirmed: boolean;
+  unanimousBoardConfirmed: boolean;
+}
+
 export type BoardRole = "chair" | "member";
 
 export type BoardTreatmentMethod = "physical" | "video" | "written";
@@ -1750,7 +1771,8 @@ export interface CorporateCanonicalDecisionWire {
   confirmations: CorporateOwnerDividendConfirmationsWire;
   decisionHash: string;
   decisionId: string;
-  dividend: CorporateOwnerDividendFactsWire;
+  decisionKind: "owner_dividend" | "annual_close";
+  dividend: CorporateOwnerDividendFactsWire | null;
   documentSetId: string;
   financialTotals: CorporateFinancialTotalsWire;
   generalMeeting: CorporateGeneralMeetingWire;
@@ -1931,9 +1953,26 @@ export interface OwnerDividendProposalWire {
 export type OwnerDividendState = "proposed" | "documents_registered" | "facts_approved" | "finalized" | "partially_paid" | "paid" | "rejected";
 
 export interface ProposedOwnerDividendWire {
+  artifacts: RenderedCorporateArtifactWire[];
   decision: CorporateCanonicalDecisionWire;
   replayed: boolean;
   state: OwnerDividendState;
+}
+
+export interface ProposedAnnualCloseWire {
+  artifacts: RenderedCorporateArtifactWire[];
+  decision: CorporateCanonicalDecisionWire;
+  replayed: boolean;
+  state: OwnerDividendState;
+}
+
+export interface RenderedCorporateArtifactWire {
+  artifactKind: CorporateArtifactKind;
+  byteLength: number;
+  contentBase64: string;
+  contentSha256: string;
+  decisionHash: string;
+  filename: string;
 }
 
 export interface RecordedShareholderLoanWire {
@@ -4399,6 +4438,31 @@ function isDocumentWire(value: unknown): value is DocumentWire {
   );
 }
 
+function isAnnualCloseProposalWire(value: unknown): value is AnnualCloseProposalWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["annualBasis","annualResultAllocationOre","boardMeeting","boardParticipants","company","companyId","decisionId","documentSetId","fullBoardParticipationConfirmed","generalMeeting","incomeYear","oneShareClassConfirmed","prudentEquityAndLiquidityConfirmed","reviewedFacts","shareholderBallots","shareholders","supportedDividendBasisConfirmed","unanimousBoardConfirmed"]) &&
+    isCorporateAnnualBasisWire(value.annualBasis) &&
+    (typeof value.annualResultAllocationOre === "number" && Number.isInteger(value.annualResultAllocationOre) && value.annualResultAllocationOre >= -9007199254740991 && value.annualResultAllocationOre <= 9007199254740991) &&
+    isCorporateBoardMeetingWire(value.boardMeeting) &&
+    Array.isArray(value.boardParticipants) && value.boardParticipants.every((item) => isCorporateBoardParticipantWire(item)) && value.boardParticipants.length >= 1 && value.boardParticipants.length <= 100 &&
+    isCorporateCompanyFactsWire(value.company) &&
+    isUuid(value.companyId) &&
+    isUuid(value.decisionId) &&
+    isUuid(value.documentSetId) &&
+    typeof value.fullBoardParticipationConfirmed === "boolean" &&
+    isCorporateGeneralMeetingWire(value.generalMeeting) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2200) &&
+    typeof value.oneShareClassConfirmed === "boolean" &&
+    typeof value.prudentEquityAndLiquidityConfirmed === "boolean" &&
+    isCorporateReviewedFactsWire(value.reviewedFacts) &&
+    Array.isArray(value.shareholderBallots) && value.shareholderBallots.every((item) => isCorporateShareholderBallotWire(item)) && value.shareholderBallots.length >= 1 && value.shareholderBallots.length <= 10000 &&
+    Array.isArray(value.shareholders) && value.shareholders.every((item) => isCorporateShareholderWire(item)) && value.shareholders.length >= 1 && value.shareholders.length <= 10000 &&
+    typeof value.supportedDividendBasisConfirmed === "boolean" &&
+    typeof value.unanimousBoardConfirmed === "boolean"
+  );
+}
+
 function isBoardRole(value: unknown): value is BoardRole {
   return value === "chair" || value === "member";
 }
@@ -4462,7 +4526,7 @@ function isCorporateCanonicalBoardParticipantWire(value: unknown): value is Corp
 function isCorporateCanonicalDecisionWire(value: unknown): value is CorporateCanonicalDecisionWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["annualBasisYear","annualCloseSourceId","annualResultAllocationOre","boardMeeting","boardParticipants","companyId","confirmations","decisionHash","decisionId","dividend","documentSetId","financialTotals","generalMeeting","incomeYear","legalName","oneShareClassConfirmed","organizationNumber","shareholders","sourceHash","templateFamily","templateVersion","totalCompanyShares"]) &&
+    hasOnlyProperties(value, ["annualBasisYear","annualCloseSourceId","annualResultAllocationOre","boardMeeting","boardParticipants","companyId","confirmations","decisionHash","decisionId","decisionKind","dividend","documentSetId","financialTotals","generalMeeting","incomeYear","legalName","oneShareClassConfirmed","organizationNumber","shareholders","sourceHash","templateFamily","templateVersion","totalCompanyShares"]) &&
     typeof value.annualBasisYear === "number" && Number.isInteger(value.annualBasisYear) &&
     isUuid(value.annualCloseSourceId) &&
     typeof value.annualResultAllocationOre === "number" && Number.isInteger(value.annualResultAllocationOre) &&
@@ -4472,7 +4536,8 @@ function isCorporateCanonicalDecisionWire(value: unknown): value is CorporateCan
     isCorporateOwnerDividendConfirmationsWire(value.confirmations) &&
     typeof value.decisionHash === "string" &&
     isUuid(value.decisionId) &&
-    isCorporateOwnerDividendFactsWire(value.dividend) &&
+    (value.decisionKind === "owner_dividend" || value.decisionKind === "annual_close") &&
+    (isCorporateOwnerDividendFactsWire(value.dividend) || value.dividend === null) &&
     isUuid(value.documentSetId) &&
     isCorporateFinancialTotalsWire(value.financialTotals) &&
     isCorporateGeneralMeetingWire(value.generalMeeting) &&
@@ -4732,10 +4797,35 @@ function isOwnerDividendState(value: unknown): value is OwnerDividendState {
 function isProposedOwnerDividendWire(value: unknown): value is ProposedOwnerDividendWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["decision","replayed","state"]) &&
+    hasOnlyProperties(value, ["artifacts","decision","replayed","state"]) &&
+    Array.isArray(value.artifacts) && value.artifacts.every((item) => isRenderedCorporateArtifactWire(item)) &&
     isCorporateCanonicalDecisionWire(value.decision) &&
     typeof value.replayed === "boolean" &&
     isOwnerDividendState(value.state)
+  );
+}
+
+function isProposedAnnualCloseWire(value: unknown): value is ProposedAnnualCloseWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["artifacts","decision","replayed","state"]) &&
+    Array.isArray(value.artifacts) && value.artifacts.every((item) => isRenderedCorporateArtifactWire(item)) &&
+    isCorporateCanonicalDecisionWire(value.decision) &&
+    typeof value.replayed === "boolean" &&
+    isOwnerDividendState(value.state)
+  );
+}
+
+function isRenderedCorporateArtifactWire(value: unknown): value is RenderedCorporateArtifactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["artifactKind","byteLength","contentBase64","contentSha256","decisionHash","filename"]) &&
+    isCorporateArtifactKind(value.artifactKind) &&
+    typeof value.byteLength === "number" && Number.isInteger(value.byteLength) &&
+    typeof value.contentBase64 === "string" &&
+    (typeof value.contentSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.contentSha256)) &&
+    (typeof value.decisionHash === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.decisionHash)) &&
+    typeof value.filename === "string"
   );
 }
 
@@ -5915,6 +6005,19 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isProposedOwnerDividendWire,
+      );
+    },
+
+    async corporateGovernanceProposeAnnualClose(
+      body: AnnualCloseProposalWire,
+      request: TalliMutationOptions,
+    ): Promise<ProposedAnnualCloseWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/annual-closes/proposals`,
+        "POST",
+        request,
+        body,
+        isProposedAnnualCloseWire,
       );
     },
 

@@ -1,6 +1,7 @@
 export {
   approveOwnerDividend,
   finalizeOwnerDividend,
+  proposeAnnualClose,
   proposeOwnerDividend,
   recordShareholderLoan,
   recordOwnerDividendPayment,
@@ -14,6 +15,7 @@ export {
 } from "./presentation.ts";
 export type { ShareholderLoanFormDirection } from "./presentation.ts";
 export type {
+  AnnualCloseProposalWire,
   CorporateCanonicalDecisionWire,
   OwnerDividendApprovalWire,
   OwnerDividendDocumentsWire,
@@ -22,6 +24,8 @@ export type {
   OwnerDividendPaymentWire,
   OwnerDividendProposalWire,
   ProposedOwnerDividendWire,
+  ProposedAnnualCloseWire,
+  RenderedCorporateArtifactWire,
   RecordedShareholderLoanWire,
   ShareholderLoanDirection,
   ShareholderLoanDocumentStatus,

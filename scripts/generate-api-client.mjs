@@ -153,6 +153,11 @@ const documentsOperations = {
   ],
 };
 const corporateGovernanceOperations = {
+  proposeAnnualClose: [
+    "/api/v1/corporate-governance/annual-closes/proposals",
+    "post",
+    "corporateGovernanceProposeAnnualClose",
+  ],
   recordShareholderLoan: [
     "/api/v1/corporate-governance/shareholder-loans",
     "post",
@@ -596,6 +601,7 @@ const documentsSchemas = Object.fromEntries([
   "DocumentWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const corporateGovernanceSchemas = Object.fromEntries([
+  "AnnualCloseProposalWire",
   "BoardRole",
   "BoardTreatmentMethod",
   "CorporateAnnualBasisWire",
@@ -625,6 +631,8 @@ const corporateGovernanceSchemas = Object.fromEntries([
   "OwnerDividendProposalWire",
   "OwnerDividendState",
   "ProposedOwnerDividendWire",
+  "ProposedAnnualCloseWire",
+  "RenderedCorporateArtifactWire",
   "RecordedShareholderLoanWire",
   "ShareholderLoanDirection",
   "ShareholderLoanDocumentStatus",
@@ -1570,6 +1578,19 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isProposedOwnerDividendWire,
+      );
+    },
+
+    async corporateGovernanceProposeAnnualClose(
+      body: AnnualCloseProposalWire,
+      request: TalliMutationOptions,
+    ): Promise<ProposedAnnualCloseWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/annual-closes/proposals\`,
+        "POST",
+        request,
+        body,
+        isProposedAnnualCloseWire,
       );
     },
 

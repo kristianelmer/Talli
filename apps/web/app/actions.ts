@@ -50,7 +50,6 @@ import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed,
 import { buildDeadlineReminderPlan, defaultReminderPreferences } from "./lib/deadlines";
 import {
   CorporateDecisionFactsError,
-  buildAnnualCloseDecisionInput,
   corporateAnnualSourceHash,
 } from "./lib/corporate-decision-facts";
 import { buildAnnualCloseBasis } from "./lib/annual-corporate-documents";
@@ -58,7 +57,6 @@ import {
   type CorporateArtifactKind,
   type CorporateDecisionInput,
   corporateDecisionHash,
-  renderCorporateDocuments,
 } from "./lib/corporate-documents";
 import {
   requiredCorporateArtifactSigners,
@@ -133,13 +131,16 @@ import {
   corporateGovernanceActionErrorMessage,
   corporateGovernanceOutcomeMayBeUnknown,
   finalizeOwnerDividend,
+  proposeAnnualClose,
   proposeOwnerDividend,
   recordOwnerDividendPayment as recordOwnerDividendPaymentThroughApi,
   recordShareholderLoan as recordShareholderLoanThroughApi,
   registerOwnerDividendDocuments,
   shareholderLoanActionErrorMessage,
+  type AnnualCloseProposalWire,
   type CorporateCanonicalDecisionWire,
   type OwnerDividendProposalWire,
+  type RenderedCorporateArtifactWire,
 } from "../features/corporate-governance";
 import { buildLaunchSignoffRecord } from "./lib/launch-signoff";
 import { actionReturnPath } from "./lib/action-return";
@@ -511,7 +512,7 @@ function corporateDecisionInputFromWire(
     organization_number: decision.organizationNumber,
     legal_name: decision.legalName,
     income_year: decision.incomeYear,
-    decision_kind: "owner_dividend",
+    decision_kind: decision.decisionKind,
     annual_close_source_id: decision.annualCloseSourceId,
     source_hash: decision.sourceHash,
     template_family: decision.templateFamily as "norwegian_simple_as",
@@ -551,7 +552,7 @@ function corporateDecisionInputFromWire(
     })),
     total_company_shares: decision.totalCompanyShares,
     one_share_class_confirmed: decision.oneShareClassConfirmed,
-    dividend: {
+    dividend: decision.dividend === null ? null : {
       amount_ore: decision.dividend.amountOre,
       payment_date: decision.dividend.paymentDate,
       liquidity_after_payment_ore: decision.dividend.liquidityAfterPaymentOre,
@@ -578,13 +579,18 @@ async function persistCorporateDocumentDraft(input: {
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
   accessToken: string;
   decision: CorporateDecisionInput;
+  decisionHash: string;
+  renderedArtifacts: RenderedCorporateArtifactWire[];
   setId: string;
   artifactIds: CorporateDraftArtifactIds;
 }) {
-  const rendered = await renderCorporateDocuments(input.decision);
-  if (rendered.status === "blocked") {
-    throw new Error(`${rendered.issues[0].code}: ${rendered.issues[0].message}`);
-  }
+  const rendered = input.renderedArtifacts.map((artifact) => ({
+    artifactKind: artifact.artifactKind,
+    filename: artifact.filename,
+    contentSha256: artifact.contentSha256,
+    byteLength: artifact.byteLength,
+    pdfBytes: new Uint8Array(Buffer.from(artifact.contentBase64, "base64")),
+  }));
   const uploadedDocuments = [] as Array<{
     artifactKind: CorporateArtifactKind;
     documentId: string;
@@ -593,7 +599,7 @@ async function persistCorporateDocumentDraft(input: {
     byteLength: number | null;
   }>;
   try {
-    for (const artifact of rendered.artifacts) {
+    for (const artifact of rendered) {
       const ids = input.artifactIds[artifact.artifactKind];
       if (!ids) throw new Error("Dokumentsettet mangler en påkrevd PDF-identitet.");
       const document = await uploadDocumentObject({
@@ -626,8 +632,8 @@ async function persistCorporateDocumentDraft(input: {
         byteLength: document.byteLength,
       });
     }
-    const decisionHash = corporateDecisionHash(input.decision);
-    const rpcArtifacts = rendered.artifacts.map((artifact) => {
+    const decisionHash = input.decisionHash;
+    const rpcArtifacts = rendered.map((artifact) => {
       const ids = input.artifactIds[artifact.artifactKind];
       const uploaded = uploadedDocuments.find(
         (candidate) => candidate.artifactKind === artifact.artifactKind,
@@ -673,7 +679,7 @@ async function persistCorporateDocumentDraft(input: {
     }
     return {
       decisionHash,
-      rendered,
+      renderedArtifacts: rendered,
       artifacts: rpcArtifacts.map((artifact) => ({
         artifactId: artifact.id,
         documentId: artifact.document_id,
@@ -2948,6 +2954,8 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
   const decisionId = requiredFormUuid(formData, "decisionId");
   let decision: CorporateDecisionInput;
   let proposal: OwnerDividendProposalWire;
+  let decisionHash: string;
+  let renderedArtifacts: RenderedCorporateArtifactWire[];
   try {
     const annualAccountsPayload = buildAnnualAccountsPayload({
       incomeYear: annualData.income_year,
@@ -3056,6 +3064,8 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
       decisionId,
     );
     decision = corporateDecisionInputFromWire(proposed.decision);
+    decisionHash = proposed.decision.decisionHash;
+    renderedArtifacts = proposed.artifacts;
   } catch (error) {
     failTo(returnTo, corporateGovernanceActionErrorMessage(error));
   }
@@ -3070,16 +3080,16 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
       documentId: requiredFormUuid(formData, "dividendGeneralMeetingDocumentId"),
     },
   };
-  let decisionHash: string;
   try {
     const persisted = await persistCorporateDocumentDraft({
       supabase,
       accessToken,
       decision,
+      decisionHash,
+      renderedArtifacts,
       setId,
       artifactIds,
     });
-    decisionHash = persisted.decisionHash;
     await registerOwnerDividendDocuments(
       accessToken,
       decision.request_id,
@@ -3186,7 +3196,9 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
     order,
   }));
 
-  let decision: CorporateDecisionInput;
+  const decisionId = requiredFormUuid(formData, "decisionId");
+  const setId = requiredFormUuid(formData, "documentSetId");
+  let proposal: AnnualCloseProposalWire;
   try {
     const annualAccountsPayload = buildAnnualAccountsPayload({
       incomeYear,
@@ -3209,63 +3221,77 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
     const reviewedIds = formStrings(formData, "reviewedShareholderId");
     const reviewedNames = formStrings(formData, "reviewedShareholderName");
     const reviewedCounts = formStrings(formData, "reviewedShareholderShareCount");
-    decision = buildAnnualCloseDecisionInput({
+    proposal = {
+      companyId,
+      incomeYear,
+      decisionId,
+      documentSetId: setId,
       company: {
-        id: company.id,
         organizationNumber: company.org_number,
         legalName: company.name,
       },
-      shareholders: persistedShareholders,
-      annualBasis,
-      submission: {
-        requestId: requiredFormUuid(formData, "decisionId"),
-        incomeYear,
-        boardMeeting: {
-          meetingDate: formString(formData, "boardMeetingDate"),
-          meetingTime: formString(formData, "boardMeetingTime"),
-          place: formString(formData, "boardMeetingPlace"),
-          treatmentMethod: formString(formData, "boardTreatmentMethod") as "physical" | "video" | "written",
-        },
-        boardParticipants: boardParticipantIds.map((participantId, index) => ({
-          participantId,
-          name: boardParticipantNames[index] ?? "",
-          role: boardParticipantRoles[index] as "chair" | "member",
-          order: Number(boardParticipantOrders[index] ?? index),
-        })),
-        generalMeeting: {
-          meetingDate: formString(formData, "generalMeetingDate"),
-          meetingTime: formString(formData, "generalMeetingTime"),
-          place: formString(formData, "generalMeetingPlace"),
-          meetingForm: formString(formData, "generalMeetingForm") as "physical" | "video",
-          chairName: formString(formData, "generalMeetingChairName"),
-          coSignerName: formString(formData, "generalMeetingCoSignerName"),
-        },
-        shareholderVotes: shareholderVoteIds.map((shareholderId, index) => ({
-          shareholderId,
-          representedShareCount: Number(representedShareCounts[index]),
-          vote: shareholderVotes[index] as "for" | "against" | "abstain",
-        })),
-        oneShareClassConfirmed: formString(formData, "oneShareClassConfirmed") === "on",
-        fullBoardParticipationConfirmed: formString(formData, "fullBoardParticipationConfirmed") === "on",
-        unanimousBoardConfirmed: formString(formData, "unanimousBoardConfirmed") === "on",
-        supportedDividendBasisConfirmed: formString(formData, "supportedDividendBasisConfirmed") === "on",
-        prudentEquityAndLiquidityConfirmed: formString(formData, "prudentEquityAndLiquidityConfirmed") === "on",
-        reviewedFacts: {
-          organizationNumber: formString(formData, "reviewedOrganizationNumber"),
-          legalName: formString(formData, "reviewedLegalName"),
-          shareholders: reviewedIds.map((shareholderId, index) => ({
-            shareholderId,
-            name: reviewedNames[index] ?? "",
-            shareCount: Number(reviewedCounts[index]),
-          })),
-          totalCompanyShares: Number(formString(formData, "reviewedTotalCompanyShares")),
-          availableDistributionOre: Number(formString(formData, "reviewedAvailableDistributionOre")),
-          annualDataHash: formString(formData, "reviewedAnnualDataHash"),
-          annualAccountsPayloadHash: formString(formData, "reviewedAnnualAccountsPayloadHash"),
-        },
-        annualResultAllocationOre: Number(formString(formData, "annualResultAllocationOre")),
+      shareholders: persistedShareholders.map((shareholder) => ({
+        shareholderId: shareholder.id,
+        name: shareholder.name,
+        shareCount: shareholder.shareCount,
+        order: shareholder.order,
+      })),
+      annualBasis: {
+        sourceId: annualBasis.id,
+        incomeYear: annualBasis.incomeYear,
+        latestApproved: annualBasis.isLatestApproved,
+        annualDataSha256: annualBasis.annualDataHash,
+        annualAccountsPayloadSha256: annualBasis.annualAccountsPayloadHash,
+        resultAfterTaxOre: annualBasis.resultAfterTaxOre,
+        equityOre: annualBasis.equityOre,
+        availableDistributionOre: annualBasis.availableDistributionOre,
+        cashOre: annualBasis.cashOre,
       },
-    });
+      reviewedFacts: {
+        organizationNumber: formString(formData, "reviewedOrganizationNumber"),
+        legalName: formString(formData, "reviewedLegalName"),
+        shareholders: reviewedIds.map((shareholderId, index) => ({
+          shareholderId,
+          name: reviewedNames[index] ?? "",
+          shareCount: Number(reviewedCounts[index]),
+        })),
+        totalCompanyShares: Number(formString(formData, "reviewedTotalCompanyShares")),
+        availableDistributionOre: Number(formString(formData, "reviewedAvailableDistributionOre")),
+        annualDataSha256: formString(formData, "reviewedAnnualDataHash"),
+        annualAccountsPayloadSha256: formString(formData, "reviewedAnnualAccountsPayloadHash"),
+      },
+      boardMeeting: {
+        meetingDate: formString(formData, "boardMeetingDate"),
+        meetingTime: formString(formData, "boardMeetingTime"),
+        place: formString(formData, "boardMeetingPlace"),
+        treatmentMethod: formString(formData, "boardTreatmentMethod") as "physical" | "video" | "written",
+      },
+      boardParticipants: boardParticipantIds.map((participantId, index) => ({
+        participantId,
+        name: boardParticipantNames[index] ?? "",
+        role: boardParticipantRoles[index] as "chair" | "member",
+        order: Number(boardParticipantOrders[index] ?? index),
+      })),
+      generalMeeting: {
+        meetingDate: formString(formData, "generalMeetingDate"),
+        meetingTime: formString(formData, "generalMeetingTime"),
+        place: formString(formData, "generalMeetingPlace"),
+        meetingForm: formString(formData, "generalMeetingForm") as "physical" | "video",
+        chairName: formString(formData, "generalMeetingChairName"),
+        coSignerName: formString(formData, "generalMeetingCoSignerName"),
+      },
+      shareholderBallots: shareholderVoteIds.map((shareholderId, index) => ({
+        shareholderId,
+        representedShareCount: Number(representedShareCounts[index]),
+        vote: shareholderVotes[index] as "for" | "against" | "abstain",
+      })),
+      oneShareClassConfirmed: formString(formData, "oneShareClassConfirmed") === "on",
+      fullBoardParticipationConfirmed: formString(formData, "fullBoardParticipationConfirmed") === "on",
+      unanimousBoardConfirmed: formString(formData, "unanimousBoardConfirmed") === "on",
+      supportedDividendBasisConfirmed: formString(formData, "supportedDividendBasisConfirmed") === "on",
+      prudentEquityAndLiquidityConfirmed: formString(formData, "prudentEquityAndLiquidityConfirmed") === "on",
+      annualResultAllocationOre: Number(formString(formData, "annualResultAllocationOre")),
+    };
   } catch (error) {
     const message = error instanceof CorporateDecisionFactsError || error instanceof OwnerDividendDraftBasisError
       ? `${error.code}: ${error.message}`
@@ -3273,7 +3299,23 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
     failTo(returnTo, message);
   }
 
-  const setId = requiredFormUuid(formData, "documentSetId");
+  let decision: CorporateDecisionInput;
+  let decisionHash: string;
+  let renderedArtifacts: RenderedCorporateArtifactWire[];
+  try {
+    const proposed = await proposeAnnualClose(
+      accessToken,
+      proposal,
+      `annual-close-proposal:${decisionId}`,
+      decisionId,
+    );
+    decision = corporateDecisionInputFromWire(proposed.decision);
+    decisionHash = proposed.decision.decisionHash;
+    renderedArtifacts = proposed.artifacts;
+  } catch (error) {
+    failTo(returnTo, corporateGovernanceActionErrorMessage(error));
+  }
+
   const artifactIds: CorporateDraftArtifactIds = {
     annual_board_minutes: {
       artifactId: requiredFormUuid(formData, "annualBoardArtifactId"),
@@ -3284,15 +3326,16 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
       documentId: requiredFormUuid(formData, "annualGeneralMeetingDocumentId"),
     },
   };
-  let decisionHash: string;
   try {
-    ({ decisionHash } = await persistCorporateDocumentDraft({
+    await persistCorporateDocumentDraft({
       supabase,
       accessToken,
       decision,
+      decisionHash,
+      renderedArtifacts,
       setId,
       artifactIds,
-    }));
+    });
   } catch (error) {
     failTo(returnTo, error instanceof Error ? error.message : "Årsdokumentutkastet kunne ikke opprettes.");
   }

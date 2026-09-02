@@ -1,4 +1,5 @@
 import {
+  type AnnualCloseProposalWire,
   createTalliApiClient,
   type OwnerDividendApprovalWire,
   type OwnerDividendDocumentsWire,
@@ -31,6 +32,18 @@ export function proposeOwnerDividend(
   requestId?: string,
 ) {
   return client(accessToken).corporateGovernanceProposeOwnerDividend(
+    body,
+    mutation(idempotencyKey, requestId),
+  );
+}
+
+export function proposeAnnualClose(
+  accessToken: string,
+  body: AnnualCloseProposalWire,
+  idempotencyKey: string,
+  requestId?: string,
+) {
+  return client(accessToken).corporateGovernanceProposeAnnualClose(
     body,
     mutation(idempotencyKey, requestId),
   );

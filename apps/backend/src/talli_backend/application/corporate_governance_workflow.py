@@ -17,6 +17,7 @@ from talli_backend.modules.banking.public import (
 )
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
+    AnnualCloseProposalCommand,
     ApproveOwnerDividendCommand,
     CorporateArtifactKind,
     CorporateGovernanceError,
@@ -24,6 +25,7 @@ from talli_backend.modules.corporate_governance.public import (
     FinalizeOwnerDividendCommand,
     OwnerDividendLifecycle,
     OwnerDividendProposalCommand,
+    ProposedAnnualClose,
     ProposedOwnerDividend,
     RecordShareholderLoanCommand,
     RecordOwnerDividendPaymentCommand,
@@ -104,7 +106,30 @@ class CorporateGovernanceApplication:
         decision = self._service.build_owner_dividend_decision(command)
         async with session.transaction() as transaction:
             await self._require_owner(transaction, command.company_id)
-            return await transaction.propose_owner_dividend(command, decision)
+            proposed = await transaction.propose_owner_dividend(command, decision)
+        return ProposedOwnerDividend(
+            decision=proposed.decision,
+            state=proposed.state,
+            replayed=proposed.replayed,
+            artifacts=self._service.render_corporate_documents(proposed.decision),
+        )
+
+    async def propose_annual_close(
+        self,
+        access_token: str,
+        command: AnnualCloseProposalCommand,
+    ) -> ProposedAnnualClose:
+        session = await self._session(access_token, command.actor_id)
+        decision = self._service.build_annual_close_decision(command)
+        async with session.transaction() as transaction:
+            await self._require_owner(transaction, command.company_id)
+            proposed = await transaction.propose_annual_close(command, decision)
+        return ProposedAnnualClose(
+            decision=proposed.decision,
+            state=proposed.state,
+            replayed=proposed.replayed,
+            artifacts=self._service.render_corporate_documents(proposed.decision),
+        )
 
     async def register_owner_dividend_documents(
         self,
