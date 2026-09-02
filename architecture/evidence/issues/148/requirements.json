@@ -51,7 +51,7 @@
         "tests/corporate_governance_annual_close_database_runtime.test.mjs",
         "tests/corporate_governance_database_runtime.test.mjs"
       ],
-      "status": "local-immutable-lifecycle-passed"
+      "status": "partial: local lifecycle checks pass, but superseded-event preservation remains a P1 specification finding"
     },
     {
       "id": "GH-148-A3",
@@ -61,7 +61,7 @@
         "apps/backend/tests/test_corporate_governance.py",
         "apps/backend/tests/test_corporate_governance_api.py"
       ],
-      "status": "local-python-readiness-parity-passed"
+      "status": "partial: local readiness checks pass, but superseded terminal-state parity remains a P1 specification finding"
     },
     {
       "id": "GH-148-A4",
@@ -82,7 +82,7 @@
         "tests/annual_corporate_documents.test.mjs",
         "tests/corporate_documents.test.mjs"
       ],
-      "status": "local-python-only-governance-and-rendering-boundary-passed"
+      "status": "partial: rendering is Python-only, but TypeScript still derives annual basis eligibility and source hashes"
     },
     {
       "id": "GH-148-A6",
@@ -93,7 +93,7 @@
         "tests/corporate_governance_contract_migration_lifecycle.test.mjs",
         "tests/contract/web_fastapi_boundary.test.mjs"
       ],
-      "status": "local-duplicate-policy-and-predecessor-surface-removal-passed"
+      "status": "partial: predecessor surfaces are contracted, but duplicate TypeScript fact governance remains"
     },
     {
       "id": "GH-148-A7",
@@ -104,12 +104,42 @@
         "architecture/evidence/customer-ready-gates/<R1>.json",
         "architecture/evidence/customer-ready-gates/<R2>.json"
       ],
-      "status": "local-boundary-and-architecture-gates-passed; immutable-revision-gates-pending"
+      "status": "pending: three P1 specification findings, immutable-revision gates, and hosted verification remain"
     }
   ],
   "review": {
-    "standards": "pending",
-    "specification": "pending"
+    "fixedPoint": "e8e920ba3ba625fe804bc9ee14dbcde620cab8c3",
+    "reviewedRevision": "aae1c545",
+    "standards": {
+      "documentedFindings": [
+        "Handwritten corporate business DTOs remain in apps/web/app/lib/corporate-documents.ts.",
+        "TypeScript still constructs annual-account facts and source hashes in apps/web/app/lib/owner-dividend.ts and apps/web/app/actions.ts.",
+        "The Supabase adapter imports canonical_annual_close_payload from the capability-private service module."
+      ],
+      "judgementFindings": [
+        "Duplicated lifecycle event and signed-artifact wire shapes in apps/backend/src/talli_backend/main.py."
+      ],
+      "verdict": "changes-required"
+    },
+    "specification": {
+      "findings": [
+        "P1: move authoritative annual-basis construction and persisted-fact hashing from TypeScript behind FastAPI.",
+        "P1: preserve superseded lifecycle events and terminal readiness behavior before dropping the predecessor store.",
+        "P1: make contract rollback block finalization and payment writes while preserving documents, ledger entries, and reconciled hashes."
+      ],
+      "verdict": "changes-required"
+    }
+  },
+  "localValidation": {
+    "backend": "626 passed, 2 skipped",
+    "web": "143 passed",
+    "contract": "38 passed",
+    "corporateGovernanceDatabaseLifecycle": "17 passed in a fresh isolated Supabase stack",
+    "typecheck": "passed",
+    "openapi": "generated contract check passed",
+    "apiClient": "generated client check passed",
+    "architecture": "passed",
+    "diffCheck": "passed"
   },
   "completeGates": [],
   "hostedVerification": {
@@ -121,5 +151,5 @@
     "path": "architecture/evidence/issues/148/preview-verification.json",
     "verdict": "pending"
   },
-  "closeState": "implementation-review-and-release-evidence-pending"
+  "closeState": "implementation-review-findings-and-release-evidence-pending"
 }
