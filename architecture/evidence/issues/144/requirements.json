@@ -5,6 +5,12 @@
   "sourceCheckedAt": "2026-09-02T03:41:54Z",
   "claim": "https://github.com/kristianelmer/Talli/issues/144#issuecomment-5503909960",
   "completeGates": [],
+  "previewVerification": {
+    "path": "architecture/evidence/issues/144/preview-verification.json",
+    "environment": "Preview",
+    "state": "SUCCESS",
+    "access": "protected-by-project-vercel-authentication"
+  },
   "entryBlockers": [
     {
       "issue": "#147",

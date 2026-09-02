@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#144",
+  "verifiedAt": "2026-09-02T05:37:00Z",
+  "sourceRevision": "f07fb0cc0fe2c0c7de00c80d653232a14f92c44f",
+  "githubDeploymentId": 6216213865,
+  "githubDeploymentStatusId": 17660409896,
+  "environment": "Preview",
+  "productionEnvironment": false,
+  "state": "SUCCESS",
+  "provider": "Vercel",
+  "teamId": "team_vjY7Lg3yOS7gSUnFqbihoTo2",
+  "projectId": "prj_1JJkOqzGBhn438IKHYADWiRbVGeZ",
+  "project": "kristianelmers-projects/talli-web",
+  "deploymentUrl": "https://talli-q1ccndpou-kristianelmers-projects.vercel.app",
+  "providerSource": "git",
+  "providerCommitSha": "f07fb0cc0fe2c0c7de00c80d653232a14f92c44f",
+  "access": {
+    "result": "protected-by-project-vercel-authentication",
+    "basis": "The exact revision deployed successfully through the same protected Vercel project recorded in architecture/evidence/issues/147/preview-verification.json.",
+    "directProbePerformed": false,
+    "reason": "The deployment verification skill forbids fetching the deployed URL."
+  },
+  "compensatingVerification": {
+    "architectureTests": {
+      "passed": 51,
+      "failed": 0
+    },
+    "backendCorporateGovernanceTests": {
+      "passed": 21,
+      "failed": 0
+    },
+    "webContractAndCharacterizationTests": {
+      "passed": 69,
+      "failed": 0
+    },
+    "databaseLifecycleTests": {
+      "passed": 5,
+      "failed": 0,
+      "skipped": 2,
+      "skipReason": "DATABASE_URL is absent; hosted catalog and authority verification is recorded separately."
+    },
+    "browserHarnessTests": {
+      "passed": 14,
+      "failed": 0,
+      "skipped": 3,
+      "skipReason": "Local Supabase browser fixture environment is absent; fixture fail-closed behavior passed."
+    },
+    "typecheck": "pass"
+  },
+  "verdict": "pass"
+}
