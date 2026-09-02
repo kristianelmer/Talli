@@ -175,6 +175,26 @@ test("release gate runs every customer-readiness check before promotion", () => 
   );
 });
 
+test("manual release gates can retain linked immutable evidence", () => {
+  const workflow = readFileSync(workflowPath, "utf8");
+
+  assert.match(workflow, /record_evidence:/u);
+  assert.match(workflow, /previous_passing_revision:/u);
+  assert.match(workflow, /npm run gate:customer-ready/u);
+  assert.match(workflow, /--previous "\$PREVIOUS_PASSING_REVISION"/u);
+  assert.match(workflow, /uses: actions\/upload-artifact@[0-9a-f]{40}/u);
+  assert.match(
+    workflow,
+    /architecture\/evidence\/customer-ready-gates\/\$\{\{ github\.sha \}\}\.json/u,
+  );
+  assert.match(
+    workflow,
+    /architecture\/evidence\/customer-ready-gates\/\$\{\{ github\.sha \}\}\.log/u,
+  );
+  assert.match(workflow, /needs: \[application, database, evidence\]/u);
+  assert.match(workflow, /test "\$EVIDENCE_RESULT" = "success"/u);
+});
+
 test("database isolation uses the locked Python renderer environment", () => {
   const workflow = readFileSync(workflowPath, "utf8");
   const databaseJob =

@@ -5,6 +5,17 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      record_evidence:
+        description: Produce and retain the canonical immutable gate receipt
+        required: false
+        type: boolean
+        default: false
+      previous_passing_revision:
+        description: Optional ancestor revision for the second linked gate
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -134,10 +145,62 @@ jobs:
       - name: Prove the rendered public acquisition journey
         run: npm run test:browser-public-acquisition
 
+  evidence:
+    name: Immutable evidence
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.record_evidence }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the immutable revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Use Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install deterministic dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libxml2-utils
+          python -m pip install uv==0.10.2
+          uv sync --locked
+          uv sync --project apps/backend --locked
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run the canonical immutable gate producer
+        env:
+          PREVIOUS_PASSING_REVISION: ${{ inputs.previous_passing_revision }}
+        run: |
+          if [[ -n "$PREVIOUS_PASSING_REVISION" ]]; then
+            npm run gate:customer-ready -- --previous "$PREVIOUS_PASSING_REVISION"
+          else
+            npm run gate:customer-ready
+          fi
+
+      - name: Retain the exact receipt and transcript
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: customer-ready-gate-${{ github.sha }}
+          path: |
+            architecture/evidence/customer-ready-gates/${{ github.sha }}.json
+            architecture/evidence/customer-ready-gates/${{ github.sha }}.log
+          if-no-files-found: error
+          retention-days: 14
+
   release-gate:
     name: Release gate
     if: ${{ always() }}
-    needs: [application, database]
+    needs: [application, database, evidence]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -145,6 +208,13 @@ jobs:
         env:
           APPLICATION_RESULT: ${{ needs.application.result }}
           DATABASE_RESULT: ${{ needs.database.result }}
+          EVIDENCE_RESULT: ${{ needs.evidence.result }}
+          RECORD_EVIDENCE: ${{ inputs.record_evidence }}
         run: |
           test "$APPLICATION_RESULT" = "success"
           test "$DATABASE_RESULT" = "success"
+          if [[ "$RECORD_EVIDENCE" = "true" ]]; then
+            test "$EVIDENCE_RESULT" = "success"
+          else
+            test "$EVIDENCE_RESULT" = "skipped"
+          fi
