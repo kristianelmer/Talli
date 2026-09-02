@@ -57,6 +57,7 @@
     "test:ci-gate": "node --test tests/ci_release_gate.test.mjs",
     "test:corporate-documents": "node --experimental-strip-types --test tests/corporate_documents.test.mjs tests/corporate_decision_facts.test.mjs tests/corporate_document_readiness.test.mjs tests/corporate_document_schema.test.mjs tests/corporate_document_database_runtime.test.mjs",
     "test:corporate-decision-workflow": "node --experimental-strip-types --test tests/corporate_decision_workflow.test.mjs",
+    "test:corporate-governance-database-lifecycle": "node --test --test-concurrency=1 tests/corporate_governance_capability_schema.test.mjs tests/corporate_governance_database_runtime.test.mjs tests/corporate_governance_migration_lifecycle.test.mjs",
     "test:cancellation": "node --experimental-strip-types --test tests/cancellation.test.mjs",
     "test:deadlines": "node --experimental-strip-types --test tests/deadlines.test.mjs",
     "test:deployed-contract": "node --test tests/deployed_schema_contract.test.mjs",

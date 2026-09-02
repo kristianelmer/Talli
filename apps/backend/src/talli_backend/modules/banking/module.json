@@ -41,7 +41,7 @@
       "direction": "outbound",
       "contract": "talli_backend.modules.banking.public.BankTransactionClaimPersistence",
       "registrationDecorator": "talli_backend.modules.banking.public.bank_transaction_claim_persistence_adapter",
-      "adapters": ["talli_backend.adapters.supabase_investments.SupabaseInvestmentsTransaction"]
+      "adapters": ["talli_backend.adapters.supabase_corporate_governance.SupabaseCorporateGovernanceTransaction", "talli_backend.adapters.supabase_investments.SupabaseInvestmentsTransaction"]
     }
   ],
   "dependencies": [],

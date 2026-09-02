@@ -1,7 +1,7 @@
 # Corporate governance backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":[],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
+{"dependencies":[],"ownedTables":["corporate_governance.owner_dividend_artifacts","corporate_governance.owner_dividend_decisions","corporate_governance.owner_dividend_events","corporate_governance.owner_dividend_finalizations","corporate_governance.owner_dividend_payments"],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
 -->
 
 ## Purpose and ownership
@@ -68,19 +68,23 @@ FastAPI, Pydantic, database, Supabase, or web types.
 ## Workflow and persistence seam
 
 `CorporateGovernancePersistence` is the sole outbound capability port. The
-request-bound application workflow will authenticate one verified actor, open a
-restricted forced-RLS PostgreSQL transaction, ask governance to prepare or
-replay its mutation, collaborate with `documents`, `ledger`, and `banking` only
-through their public contracts, and complete governance-owned state in the same
-transaction. Provider selection, activation, credentials, consent, live calls,
-customer bank data, and production banking remain outside this capability and
-blocked independently by #189.
+request-bound application workflow authenticates one verified actor, opens a
+restricted forced-RLS PostgreSQL transaction, asks governance to prepare or
+replay its mutation, collaborates with `documents`, `ledger`, and `banking` only
+through their public contracts, and completes governance-owned state in the same
+transaction. The five append-only owner-dividend tables derive lifecycle state
+without mutable status columns. The executor has no table grants and reaches
+Ledger and Banking only through owner-dividend-specific routines. Provider
+selection, activation, credentials, consent, live calls, customer bank data, and
+production banking remain outside this capability and blocked independently by
+#189.
 
 ## Current slice state
 
-The deterministic owner-dividend policy and transport-free contract are active
-work for #144. The target schema, restricted adapter, generated FastAPI client,
-expand/contract migrations, rollback/recutover evidence, and immutable gates
-must be added before this slice exits. The existing Python subprocess renderer
-is intentionally not reclassified as complete governance ownership; #148 must
-move rendering in-process and remove the bridge before the full capability exits.
+The deterministic policy, target schema, restricted transaction adapter, and
+reversible expand migration are implemented for #144. FastAPI transport,
+generated-client cutover, legacy-writer contraction, reconciliation evidence,
+and the immutable verification gates remain before this slice exits. The
+existing Python subprocess renderer is intentionally not reclassified as
+complete governance ownership; #148 must move rendering in-process and remove
+the bridge before the full capability exits.

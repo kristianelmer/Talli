@@ -63,6 +63,7 @@ npm run test:ledger-database-lifecycle
 npm run test:banking-database-lifecycle
 npm run test:investments-database-lifecycle
 DATABASE_URL="$DB_URL" npm run test:documents-database-lifecycle
+DATABASE_URL="$DB_URL" npm run test:corporate-governance-database-lifecycle
 npm run test:marketing-measurement-database
 npm run test:validation-observation
 
