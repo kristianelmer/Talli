@@ -18,6 +18,14 @@ const cleanupRollbackPath = new URL(
   "../supabase/rollback/20260902053000_corporate_governance_advisor_cleanup.sql",
   import.meta.url,
 );
+const initPlanCleanupPath = new URL(
+  "../supabase/migrations/20260902054500_corporate_governance_rls_initplan_cleanup.sql",
+  import.meta.url,
+);
+const initPlanCleanupRollbackPath = new URL(
+  "../supabase/rollback/20260902054500_corporate_governance_rls_initplan_cleanup.sql",
+  import.meta.url,
+);
 
 function artifact(path, phase) {
   assert.equal(existsSync(path), true, `missing governance ${phase} artifact`);
@@ -139,5 +147,29 @@ test("owner-dividend cutover removes the predecessor RPC and optimizes RLS", () 
   assert.match(
     rollback,
     /grant execute on function public\.record_owner_dividend_payment\(jsonb\)\s+to authenticated/iu,
+  );
+});
+
+test("owner-dividend insert policies init-plan both actor checks", () => {
+  const cleanup = artifact(initPlanCleanupPath, "RLS init-plan cleanup");
+  const rollback = artifact(
+    initPlanCleanupRollbackPath,
+    "RLS init-plan cleanup rollback",
+  );
+  assert.equal(
+    [
+      ...cleanup.matchAll(
+        /select\s+public\.company_access_is_accepted_owner_v1\(company_id\)/giu,
+      ),
+    ].length,
+    5,
+  );
+  assert.equal(
+    [
+      ...rollback.matchAll(
+        /and\s+public\.company_access_is_accepted_owner_v1\(company_id\)/giu,
+      ),
+    ].length,
+    5,
   );
 });

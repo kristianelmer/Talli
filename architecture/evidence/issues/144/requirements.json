@@ -42,7 +42,7 @@
         "apps/web/tests/corporate-governance-presentation.test.mjs",
         "tests/browser_owner_annual_loop.mjs"
       ],
-      "status": "policy-contract-in-progress"
+      "status": "implementation-and-contract-tests-passed"
     },
     {
       "id": "GH-144-A2",
@@ -52,7 +52,7 @@
         "tests/corporate_decision_facts.test.mjs",
         "tests/owner_dividend.test.mjs"
       ],
-      "status": "source-and-decision-hash-parity-passed"
+      "status": "source-decision-hash-and-readiness-parity-passed"
     },
     {
       "id": "GH-144-A3",
@@ -61,7 +61,7 @@
         "apps/backend/tests/test_corporate_governance_workflow.py",
         "tests/corporate_governance_database_runtime.test.mjs"
       ],
-      "status": "planned"
+      "status": "authorized-auditable-idempotent-lifecycle-passed"
     },
     {
       "id": "GH-144-A4",
@@ -71,7 +71,7 @@
         "tests/owner_dividend_payment.test.mjs",
         "tests/corporate_governance_database_runtime.test.mjs"
       ],
-      "status": "planned"
+      "status": "characterization-and-restricted-ledger-bridge-passed"
     },
     {
       "id": "GH-144-A5",
@@ -81,7 +81,7 @@
         "apps/backend/tests/test_corporate_governance_workflow.py",
         "tests/architecture_foundation.test.mjs"
       ],
-      "status": "opaque-document-contract-passed"
+      "status": "opaque-approved-document-contract-passed"
     },
     {
       "id": "GH-144-A6",
@@ -92,7 +92,7 @@
         "architecture/evidence/customer-ready-gates/<R1>.json",
         "architecture/evidence/customer-ready-gates/<R2>.json"
       ],
-      "status": "planned"
+      "status": "duplicate-policy-and-predecessor-writer-removed"
     }
   ],
   "deferredToStageExit": {
@@ -107,4 +107,3 @@
   },
   "closeState": "claimed-active"
 }
-

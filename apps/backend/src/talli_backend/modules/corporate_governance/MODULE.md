@@ -80,10 +80,10 @@ production banking remain outside this capability and blocked independently by
 
 ## Current slice state
 
-The deterministic policy, target schema, restricted transaction adapter, and
-reversible expand migration are implemented for #144. FastAPI transport,
-generated-client cutover, legacy-writer contraction, reconciliation evidence,
-and the immutable verification gates remain before this slice exits. The
-existing Python subprocess renderer is intentionally not reclassified as
-complete governance ownership; #148 must move rendering in-process and remove
-the bridge before the full capability exits.
+The deterministic policy, forced-RLS store, restricted transaction adapter,
+FastAPI transport, generated client, web cutover, legacy-writer contraction,
+reconciliation import, rollback, and hosted migration verification are
+implemented for #144. Immutable customer-ready verification gates remain before
+this slice exits. The existing Python subprocess renderer is intentionally not
+reclassified as complete governance ownership; #148 must move rendering
+in-process and remove the bridge before the full capability exits.
