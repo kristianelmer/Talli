@@ -10,6 +10,14 @@ const rollbackPath = new URL(
   "../supabase/rollback/20260902040000_corporate_governance_owner_dividend.sql",
   import.meta.url,
 );
+const cleanupPath = new URL(
+  "../supabase/migrations/20260902053000_corporate_governance_advisor_cleanup.sql",
+  import.meta.url,
+);
+const cleanupRollbackPath = new URL(
+  "../supabase/rollback/20260902053000_corporate_governance_advisor_cleanup.sql",
+  import.meta.url,
+);
 
 function artifact(path, phase) {
   assert.equal(existsSync(path), true, `missing governance ${phase} artifact`);
@@ -115,4 +123,21 @@ test("owner-dividend persistence is exact-replay, append-only, and reversible", 
   assert.match(rollback, /drop function backend_system\.project_owner_dividend_finalization_v1/iu);
   assert.match(rollback, /drop function backend_system\.project_owner_dividend_payment_v1/iu);
   assert.match(rollback, /drop schema corporate_governance/iu);
+});
+
+test("owner-dividend cutover removes the predecessor RPC and optimizes RLS", () => {
+  const cleanup = artifact(cleanupPath, "advisor cleanup");
+  const rollback = artifact(cleanupRollbackPath, "advisor cleanup rollback");
+  assert.match(
+    cleanup,
+    /revoke execute on function public\.record_owner_dividend_payment\(jsonb\)[\s\S]+authenticated/iu,
+  );
+  assert.equal(
+    [...cleanup.matchAll(/created_by\s*=\s*\(\s*select\s+nullif/giu)].length,
+    5,
+  );
+  assert.match(
+    rollback,
+    /grant execute on function public\.record_owner_dividend_payment\(jsonb\)\s+to authenticated/iu,
+  );
 });

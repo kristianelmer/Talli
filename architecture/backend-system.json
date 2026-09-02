@@ -231,6 +231,7 @@
       "supabase/migrations/20260828100600_banking_overlap_trigger_policy.sql",
       "supabase/migrations/20260828102000_banking_connections.sql",
       "supabase/migrations/20260902040000_corporate_governance_owner_dividend.sql",
+      "supabase/migrations/20260902053000_corporate_governance_advisor_cleanup.sql",
       "supabase/migrations/20260828103000_marketing_funnel_measurement.sql",
       "supabase/migrations/20260829070411_marketing_measurement_small_cell_threshold.sql",
       "supabase/migrations/20260829074916_validation_observation_authority.sql",

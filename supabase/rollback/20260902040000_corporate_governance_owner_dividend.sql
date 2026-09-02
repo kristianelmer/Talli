@@ -190,6 +190,9 @@ revoke execute on function
     uuid, integer, text, uuid, jsonb, text
   )
 from corporate_governance_store_owner;
+revoke execute on function extensions.digest(text, text)
+from corporate_governance_store_owner;
+revoke usage on schema extensions from corporate_governance_store_owner;
 revoke usage on schema public from corporate_governance_store_owner;
 
 do $membership_revoke$
