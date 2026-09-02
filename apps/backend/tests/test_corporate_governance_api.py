@@ -37,11 +37,15 @@ class ApiGovernanceTransaction(GovernanceTransactionStub):
         )
 
 
-def client_and_transaction(*, annual_documents: bool = False):
+def client_and_transaction(
+    *,
+    annual_documents: bool = False,
+    commit_failures: int = 0,
+):
     transaction = ApiGovernanceTransaction()
-    governance_sessions = GovernanceSessionFactoryStub(
-        GovernanceSessionStub(transaction)
-    )
+    governance_session = GovernanceSessionStub(transaction)
+    governance_session.commit_failures = commit_failures
+    governance_sessions = GovernanceSessionFactoryStub(governance_session)
     documents = DocumentsSessionStub()
     if annual_documents:
         documents.records[0].linked_to = (
@@ -80,14 +84,10 @@ def client_and_transaction(*, annual_documents: bool = False):
         documents.records[1].byte_length = 32628
     documents_sessions = DocumentsSessionFactoryStub(documents)
 
-    async def company_facts(_access_token, _company_id):
-        return transaction.source_facts(2025).company
-
     return (
         TestClient(
             create_app(
                 corporate_governance_session_factory=governance_sessions,
-                corporate_governance_company_facts_reader=company_facts,
                 documents_session_factory=documents_sessions,
             )
         ),
@@ -366,9 +366,27 @@ def test_decision_facts_are_derived_from_backend_sources() -> None:
     assert response.json()["reviewedFacts"]["totalCompanyShares"] == 1_000
     assert [call[0] for call in transaction.calls] == [
         "actor_role",
+        "read_company_facts",
         "list_opening_snapshots",
         "list_annual_data_compatibility",
     ]
+
+
+def test_corporate_governance_retries_one_serialization_failure() -> None:
+    client, transaction = client_and_transaction(commit_failures=1)
+
+    response = client.get(
+        "/api/v1/corporate-governance/decision-facts",
+        headers={"Authorization": "Bearer access-token"},
+        params={
+            "companyId": str(supported_proposal().company_id),
+            "incomeYear": 2025,
+            "decisionKind": "owner_dividend",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert [name for name, _ in transaction.calls].count("actor_role") == 2
 
 
 def test_annual_close_fastapi_proposal_is_typed_and_backend_owned() -> None:
@@ -563,11 +581,9 @@ def test_corporate_readiness_is_a_backend_owned_query() -> None:
         "code": "corporate_documents_decision_missing",
         "message": "Årsbeslutning med dokumentsett må opprettes.",
     }]
-    assert [name for name, _ in transaction.calls[-4:]] == [
+    assert [name for name, _ in transaction.calls] == [
         "actor_role",
         "list_lifecycle",
-        "list_opening_snapshots",
-        "list_annual_data_compatibility",
     ]
 
 

@@ -287,6 +287,9 @@ class AnnualDataSourceFacts:
     completed_at: str
     updated_at: str
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "answers", _immutable_mapping(self.answers))
+
 
 @dataclass(frozen=True, slots=True)
 class CorporateDecisionFactSources:
@@ -740,8 +743,15 @@ class PreparedOwnerDividendFinalization:
     accounting_policy_version: str
     declaration_debit_account: str
     dividend_payable_account: str
-    signed_artifact_hashes: dict[str, str]
+    signed_artifact_hashes: Mapping[str, str]
     replay: OwnerDividendLifecycle | None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "signed_artifact_hashes",
+            _immutable_mapping(self.signed_artifact_hashes),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -837,6 +847,9 @@ class RecordAnnualCloseEventCommand:
     event_kind: AnnualCloseEventKind
     metadata: Mapping[str, str]
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "metadata", _immutable_mapping(self.metadata))
+
 
 @dataclass(frozen=True, slots=True)
 class FinalizeAnnualCloseCommand:
@@ -881,6 +894,9 @@ class RecordOwnerDividendEventCommand:
     event_id: CorporateEventId
     event_kind: OwnerDividendEventKind
     metadata: Mapping[str, str]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "metadata", _immutable_mapping(self.metadata))
 
 
 @dataclass(frozen=True, slots=True)

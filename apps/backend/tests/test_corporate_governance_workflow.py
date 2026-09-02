@@ -24,6 +24,7 @@ from talli_backend.modules.corporate_governance.public import (
     CorporateDocumentSetId,
     CorporateDocumentSetRecord,
     CorporateEventId,
+    CorporateEventRecord,
     CorporateFinalizationId,
     CorporateGovernanceError,
     CorporateGovernanceErrorCode,
@@ -118,10 +119,13 @@ class GovernanceTransactionStub:
         self.shareholder_loan_replay: RecordedShareholderLoan | None = None
         self.shareholder_loan_bank = False
         self.source_facts_changed = False
+        self.source_facts_unavailable = False
         self.shareholder_order_changed = False
         self.list_snapshot = CorporateLifecycleSnapshot((), (), (), (), ())
 
     def source_facts(self, annual_year: int):
+        if self.source_facts_unavailable:
+            raise CorporateGovernanceError.unavailable()
         sources = supported_fact_sources(annual_year)
         if not self.source_facts_changed:
             return sources
@@ -135,6 +139,10 @@ class GovernanceTransactionStub:
                 ),
             ),
         )
+
+    async def read_company_facts(self, company_id):
+        self.calls.append(("read_company_facts", company_id))
+        return self.source_facts(2025).company
 
     async def list_opening_snapshots(self, **kwargs):
         self.calls.append(("list_opening_snapshots", kwargs))
@@ -409,11 +417,15 @@ class GovernanceSessionStub:
         self.actor_id = transaction.actor_id
         self.transaction_stub = transaction
         self.rolled_back = False
+        self.commit_failures = 0
 
     @asynccontextmanager
     async def transaction(self):
         try:
             yield self.transaction_stub
+            if self.commit_failures:
+                self.commit_failures -= 1
+                raise CorporateGovernanceError.unavailable()
         except Exception:
             self.rolled_back = True
             raise
@@ -520,16 +532,29 @@ def application():
         ledgers.append(ledger)
         return ledger
 
-    async def company_facts(_access_token, _company_id):
-        return transaction.source_facts(2025).company
-
     app = CorporateGovernanceApplication(
         GovernanceSessionFactoryStub(session),
         DocumentsSessionFactoryStub(documents),
         ledger_factory,
-        company_facts,
     )
     return app, transaction, session, documents, ledgers
+
+
+def test_decision_facts_read_company_identity_in_governance_transaction() -> None:
+    app, transaction, _, _, _ = application()
+
+    facts = asyncio.run(
+        app.derive_decision_facts(
+            "access-token",
+            company_id=supported_proposal().company_id,
+            income_year=supported_proposal().income_year,
+            decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+            correlation_id=supported_proposal().correlation_id,
+        )
+    )
+
+    assert facts.company == supported_fact_sources(2025).company
+    assert ("read_company_facts", supported_proposal().company_id) in transaction.calls
 
 
 def test_proposal_is_owner_authorized_and_persists_python_canonical_facts() -> None:
@@ -629,6 +654,82 @@ def test_readiness_derives_current_source_server_side_and_marks_stale_evidence()
         )
     )
     assert reordered.current_source_matches is False
+    assert reordered.current_source_hash == transaction.list_snapshot.decisions[0].source_hash
+    assert reordered.current_source_hash != "0" * 64
+
+
+def test_readiness_returns_missing_decision_without_reading_mutable_sources() -> None:
+    app, transaction, _, _, _ = application()
+
+    readiness = asyncio.run(
+        app.read_readiness(
+            "access-token",
+            company_id=supported_proposal().company_id,
+            income_year=IncomeYear(2025),
+            decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+            correlation_id=CorrelationId("read-missing-governance-decision"),
+        )
+    )
+
+    assert [blocker.code for blocker in readiness.blockers] == [
+        "corporate_documents_decision_missing"
+    ]
+    assert [name for name, _ in transaction.calls] == [
+        "actor_role",
+        "list_lifecycle",
+    ]
+
+
+def test_readiness_preserves_terminal_state_when_current_sources_are_unavailable() -> None:
+    app, transaction, _, _, _ = application()
+    snapshot = asyncio.run(
+        transaction.read_lifecycle(supported_proposal().decision_id)
+    )
+    decision = snapshot.decisions[0]
+    transaction.list_snapshot = replace(
+        snapshot,
+        events=(
+            CorporateEventRecord(
+                event_id=CorporateEventId(
+                    "23232323-2323-4232-8232-232323232323"
+                ),
+                company_id=decision.company_id,
+                income_year=decision.income_year,
+                decision_id=decision.decision_id,
+                document_set_id=decision.document_set_id,
+                artifact_id=None,
+                event_kind="superseded",
+                actor_id=str(decision.company_id),
+                occurred_at=NOW.value,
+                created_at=NOW.value,
+                decision_hash=decision.decision_hash,
+                content_sha256=None,
+                metadata={},
+                idempotency_key="terminal-readiness",
+            ),
+        ),
+    )
+    transaction.calls.clear()
+    transaction.source_facts_unavailable = True
+
+    readiness = asyncio.run(
+        app.read_readiness(
+            "access-token",
+            company_id=decision.company_id,
+            income_year=decision.income_year,
+            decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+            correlation_id=CorrelationId("read-terminal-governance-decision"),
+        )
+    )
+
+    assert readiness.state is OwnerDividendState.SUPERSEDED
+    assert "corporate_documents_terminal_decision" in {
+        blocker.code for blocker in readiness.blockers
+    }
+    assert [name for name, _ in transaction.calls] == [
+        "actor_role",
+        "list_lifecycle",
+    ]
 
 
 def test_annual_close_signed_artifact_uses_documents_evidence_and_governance_store() -> None:
@@ -869,6 +970,7 @@ def test_finalization_blocks_changed_source_before_any_writer_runs() -> None:
         "actor_role",
         "prepare_finalization",
         "read_lifecycle",
+        "read_company_facts",
         "list_opening_snapshots",
         "list_annual_data_compatibility",
     ]
@@ -885,6 +987,7 @@ def test_finalization_blocks_changed_source_before_any_writer_runs() -> None:
     assert [name for name, _ in transaction.calls] == [
         "actor_role",
         "read_lifecycle",
+        "read_company_facts",
         "list_opening_snapshots",
         "list_annual_data_compatibility",
     ]

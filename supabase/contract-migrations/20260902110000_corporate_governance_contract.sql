@@ -240,28 +240,28 @@ begin
           and current.accounting_policy_version =
             legacy.metadata ->> 'accounting_policy_version'
           and current.created_by = legacy.actor_id
-          and current.created_at = legacy.occurred_at
+          and current.occurred_at = legacy.occurred_at
           and current.created_at = legacy.created_at
       )
       when legacy.event_kind = 'finalized' then not exists (
         select 1
         from corporate_governance.owner_dividend_finalizations current
         where decision.decision_kind = 'owner_dividend'
-          and current.id = legacy.id
+          and current.event_id = legacy.id
           and current.decision_id = legacy.decision_id
           and current.decision_hash = legacy.decision_hash
           and current.created_by = legacy.actor_id
-          and current.created_at = legacy.occurred_at
+          and current.occurred_at = legacy.occurred_at
           and current.created_at = legacy.created_at
         union all
         select 1
         from corporate_governance.annual_close_finalizations current
         where decision.decision_kind = 'annual_close'
-          and current.id = legacy.id
+          and current.event_id = legacy.id
           and current.decision_id = legacy.decision_id
           and current.decision_hash = legacy.decision_hash
           and current.created_by = legacy.actor_id
-          and current.created_at = legacy.occurred_at
+          and current.occurred_at = legacy.occurred_at
           and current.created_at = legacy.created_at
       )
       else true
@@ -500,9 +500,6 @@ $archive_sources$;
 
 -- Remove governance rows from the generic holding ledger only after their
 -- canonical counterparts have reconciled.
-delete from public.holding_actions
-where action_type in ('shareholder_loan', 'dividend_to_owner');
-
 drop function if exists public.create_corporate_document_draft(jsonb);
 drop function if exists public.record_corporate_document_event(jsonb);
 drop function if exists public.attest_corporate_signed_artifact(jsonb);
@@ -549,6 +546,11 @@ drop trigger if exists company_archive_track_corporate_decision_finalizations
   on public.corporate_decision_finalizations;
 drop trigger if exists prevent_corporate_decision_finalizations_mutation
   on public.corporate_decision_finalizations;
+
+delete from public.corporate_decision_finalizations;
+delete from public.holding_actions
+where action_type in ('shareholder_loan', 'dividend_to_owner');
+
 drop trigger if exists company_archive_track_corporate_document_artifacts
   on public.corporate_document_artifacts;
 drop trigger if exists prevent_corporate_document_artifacts_mutation
@@ -565,7 +567,6 @@ drop trigger if exists prevent_corporate_accounting_policies_mutation
   on public.corporate_accounting_policies;
 
 delete from public.corporate_document_events;
-delete from public.corporate_decision_finalizations;
 delete from public.corporate_document_artifacts;
 delete from public.corporate_document_sets;
 delete from public.corporate_decisions;

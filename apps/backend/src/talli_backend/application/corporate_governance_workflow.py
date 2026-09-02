@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from dataclasses import replace
 from decimal import Decimal
 from typing import Protocol
@@ -44,6 +44,7 @@ from talli_backend.modules.corporate_governance.public import (
     FinalizeOwnerDividendCommand,
     FinalizeAnnualCloseCommand,
     OwnerDividendLifecycle,
+    OwnerDividendState,
     OwnerDividendProposalCommand,
     PersistedCompanyFacts,
     PersistedShareholderFacts,
@@ -91,7 +92,6 @@ class CorporateGovernanceLedgerFacade(LedgerCommands, LedgerQueries, Protocol):
 
 
 LedgerFacadeFactory = Callable[[LedgerPersistence], CorporateGovernanceLedgerFacade]
-CompanyFactsReader = Callable[[str, CompanyId], Awaitable[PersistedCompanyFacts]]
 _REQUIRED_ARTIFACT_KINDS = {
     CorporateArtifactKind.DIVIDEND_BOARD_PROPOSAL,
     CorporateArtifactKind.DIVIDEND_GENERAL_MEETING_MINUTES,
@@ -114,12 +114,10 @@ class CorporateGovernanceApplication:
         session_factory: CorporateGovernanceSessionFactory,
         documents_session_factory: DocumentsSessionFactory,
         ledger_facade_factory: LedgerFacadeFactory,
-        company_facts_reader: CompanyFactsReader,
     ) -> None:
         self._session_factory = session_factory
         self._documents_session_factory = documents_session_factory
         self._ledger_facade_factory = ledger_facade_factory
-        self._company_facts_reader = company_facts_reader
         self._service = CorporateGovernanceService()
 
     async def authenticated_actor_id(self, access_token: str) -> ActorId:
@@ -158,6 +156,19 @@ class CorporateGovernanceApplication:
         async with session.transaction() as transaction:
             await self._require_owner(transaction, company_id)
             snapshot = await transaction.list_lifecycle((company_id,))
+            readiness = self._service.assess_lifecycle(
+                snapshot,
+                company_id=company_id,
+                income_year=income_year,
+                decision_kind=decision_kind,
+            )
+            if readiness.decision_id is None:
+                return readiness
+            if readiness.state in {
+                OwnerDividendState.REJECTED,
+                OwnerDividendState.SUPERSEDED,
+            }:
+                return readiness
             facts = await self._derive_decision_facts_in_transaction(
                 transaction,
                 access_token=access_token,
@@ -182,25 +193,15 @@ class CorporateGovernanceApplication:
                 income_year=income_year,
                 decision_kind=decision_kind,
                 current_source_hash=current_source_hash,
-            )
-            decision = next(
-                (
-                    item
-                    for item in snapshot.decisions
-                    if item.decision_id == readiness.decision_id
+                current_facts_match=self._service.current_facts_match(
+                    next(
+                        item
+                        for item in snapshot.decisions
+                        if item.decision_id == readiness.decision_id
+                    ),
+                    facts,
                 ),
-                None,
             )
-            if decision is not None and not self._service.current_facts_match(
-                decision, facts
-            ):
-                readiness = self._service.assess_lifecycle(
-                    snapshot,
-                    company_id=company_id,
-                    income_year=income_year,
-                    decision_kind=decision_kind,
-                    current_source_hash="0" * 64,
-                )
             return readiness
 
     async def _session(self, access_token: str, actor_id):
@@ -228,7 +229,7 @@ class CorporateGovernanceApplication:
         decision_kind: CorporateDecisionKind,
         correlation_id: CorrelationId,
     ) -> DerivedCorporateDecisionFacts:
-        company = await self._company_facts_reader(access_token, company_id)
+        company = await transaction.read_company_facts(company_id)
         opening_snapshots = []
         opening_cursor = None
         while True:

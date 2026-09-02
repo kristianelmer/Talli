@@ -62,7 +62,6 @@ from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceAuthenticationError,
     CorporateGovernanceSessionFactory,
 )
-from talli_backend.application.corporate_governance_workflow import CompanyFactsReader
 from talli_backend.application.investments_session import (
     InvestmentsAuthenticationError,
     InvestmentsSessionFactory,
@@ -2694,7 +2693,6 @@ def create_app(
     ledger_session_factory: LedgerSessionFactory | None = None,
     investments_session_factory: InvestmentsSessionFactory | None = None,
     corporate_governance_session_factory: CorporateGovernanceSessionFactory | None = None,
-    corporate_governance_company_facts_reader: CompanyFactsReader | None = None,
     documents_session_factory: DocumentsSessionFactory | None = None,
     banking_session_factory: BankingSessionFactory | None = None,
     banking_providers: Mapping[str, BankDataProvider] | None = None,
@@ -2732,8 +2730,6 @@ def create_app(
     corporate_governance_application = compose_corporate_governance_application(
         corporate_governance_session_factory,
         documents_application,
-        company_access_service,
-        corporate_governance_company_facts_reader,
     )
     banking_application = compose_banking_application(banking_session_factory)
 
@@ -2894,31 +2890,38 @@ def create_app(
     async def corporate_governance_call(
         call: Callable[[], Awaitable[ResponseT]],
     ) -> ResponseT:
-        try:
-            return await call()
-        except CorporateGovernanceAuthenticationError:
-            raise ApiProblem(
-                status=401,
-                code="AUTHENTICATION_REQUIRED",
-                title="Authentication required",
-                detail="A valid session is required.",
-            ) from None
-        except (CorporateGovernanceError, LedgerError) as error:
-            statuses = {
-                ErrorCategory.INVALID_INPUT: 422,
-                ErrorCategory.NOT_FOUND: 404,
-                ErrorCategory.CONFLICT: 409,
-                ErrorCategory.FORBIDDEN: 403,
-                ErrorCategory.PRECONDITION_FAILED: 409,
-                ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
-            }
-            raise ApiProblem(
-                status=statuses[error.category],
-                code=str(error.code),
-                title="Corporate-governance request failed",
-                detail=error.message
-                or "The corporate-governance request could not be completed.",
-            ) from None
+        for attempt in range(2):
+            try:
+                return await call()
+            except CorporateGovernanceAuthenticationError:
+                raise ApiProblem(
+                    status=401,
+                    code="AUTHENTICATION_REQUIRED",
+                    title="Authentication required",
+                    detail="A valid session is required.",
+                ) from None
+            except (CorporateGovernanceError, LedgerError) as error:
+                if (
+                    error.category is ErrorCategory.DEPENDENCY_UNAVAILABLE
+                    and attempt == 0
+                ):
+                    continue
+                statuses = {
+                    ErrorCategory.INVALID_INPUT: 422,
+                    ErrorCategory.NOT_FOUND: 404,
+                    ErrorCategory.CONFLICT: 409,
+                    ErrorCategory.FORBIDDEN: 403,
+                    ErrorCategory.PRECONDITION_FAILED: 409,
+                    ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
+                }
+                raise ApiProblem(
+                    status=statuses[error.category],
+                    code=str(error.code),
+                    title="Corporate-governance request failed",
+                    detail=error.message
+                    or "The corporate-governance request could not be completed.",
+                ) from None
+        raise AssertionError("Corporate-governance retry loop exhausted")
 
     async def marketing_measurement_call(call: Awaitable[ResponseT]) -> ResponseT:
         try:

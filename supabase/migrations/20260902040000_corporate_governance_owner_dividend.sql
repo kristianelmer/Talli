@@ -208,6 +208,7 @@ create table corporate_governance.owner_dividend_events (
 
 create table corporate_governance.owner_dividend_finalizations (
   id uuid primary key,
+  event_id uuid not null unique default pg_catalog.gen_random_uuid(),
   decision_id uuid not null unique references
     corporate_governance.owner_dividend_decisions(id) on delete restrict,
   document_set_id uuid not null,
@@ -235,6 +236,7 @@ create table corporate_governance.owner_dividend_finalizations (
     request_fingerprint ~ '^[0-9a-f]{64}$'
   ),
   created_by uuid not null references auth.users(id) on delete restrict,
+  occurred_at timestamptz not null default pg_catalog.statement_timestamp(),
   created_at timestamptz not null default pg_catalog.statement_timestamp(),
   unique (created_by, company_id, idempotency_key),
   unique (company_id, income_year, id),
@@ -277,6 +279,7 @@ create table corporate_governance.owner_dividend_payments (
     request_fingerprint ~ '^[0-9a-f]{64}$'
   ),
   created_by uuid not null references auth.users(id) on delete restrict,
+  occurred_at timestamptz not null default pg_catalog.statement_timestamp(),
   created_at timestamptz not null default pg_catalog.statement_timestamp(),
   unique (created_by, company_id, idempotency_key),
   unique (company_id, income_year, id),
@@ -854,14 +857,15 @@ where decision.decision_kind = 'owner_dividend'
 on conflict (id) do nothing;
 
 insert into corporate_governance.owner_dividend_finalizations (
-  id, decision_id, document_set_id, company_id, income_year,
+  id, event_id, decision_id, document_set_id, company_id, income_year,
   decision_hash, holding_action_id, accounting_entry_id,
   declared_amount_ore, signed_artifact_hashes,
   accounting_policy_version, idempotency_key, correlation_id,
-  request_fingerprint, created_by, created_at
+  request_fingerprint, created_by, occurred_at, created_at
 )
 select
-  finalization.id, finalization.decision_id, document_set.id,
+  finalization.id, coalesce(event.id, finalization.id),
+  finalization.decision_id, document_set.id,
   finalization.company_id, finalization.income_year,
   finalization.decision_hash, finalization.holding_action_id,
   finalization.ledger_entry_id,
@@ -874,12 +878,23 @@ select
     'legacyFinalizationId', finalization.id,
     'decisionHash', finalization.decision_hash
   )::text, 'sha256'), 'hex'),
-  finalization.created_by, finalization.created_at
+  finalization.created_by,
+  coalesce(event.occurred_at, finalization.created_at),
+  coalesce(event.created_at, finalization.created_at)
 from public.corporate_decision_finalizations finalization
 join public.corporate_decisions decision
   on decision.id = finalization.decision_id
 join public.corporate_document_sets document_set
   on document_set.decision_id = decision.id
+left join lateral (
+  select evidence.id, evidence.occurred_at, evidence.created_at
+  from public.corporate_document_events evidence
+  where evidence.decision_id = finalization.decision_id
+    and evidence.event_kind = 'finalized'
+    and evidence.metadata ->> 'finalization_id' = finalization.id::text
+  order by evidence.created_at, evidence.id
+  limit 1
+) event on true
 where finalization.finalization_kind = 'owner_dividend_declared'
 on conflict (id) do nothing;
 
@@ -889,7 +904,7 @@ insert into corporate_governance.owner_dividend_payments (
   bank_transaction_id, payment_amount_ore, bank_transaction_date,
   bank_signed_amount, bank_source_sha256, accounting_policy_version,
   idempotency_key, correlation_id, request_fingerprint,
-  created_by, created_at
+  created_by, occurred_at, created_at
 )
 select
   event.id, event.decision_id, event.set_id, event.company_id,
@@ -906,7 +921,7 @@ select
     'legacyPaymentEventId', event.id,
     'bankTransactionId', event.metadata ->> 'bank_transaction_id'
   )::text, 'sha256'), 'hex'),
-  event.actor_id, event.created_at
+  event.actor_id, event.occurred_at, event.created_at
 from public.corporate_document_events event
 join public.corporate_decisions decision on decision.id = event.decision_id
 join public.corporate_decision_finalizations finalization

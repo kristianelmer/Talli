@@ -9,6 +9,7 @@ from talli_backend.application.annual_data_compatibility import (
 )
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
+    AnnualCloseEventKind,
     AnnualCloseProposalCommand,
     AnnualDataSourceFacts,
     BoardMeeting,
@@ -38,8 +39,12 @@ from talli_backend.modules.corporate_governance.public import (
     GeneralMeeting,
     MeetingForm,
     OwnerDividendProposalCommand,
+    OwnerDividendEventKind,
     PersistedCompanyFacts,
     PersistedShareholderFacts,
+    PreparedOwnerDividendFinalization,
+    RecordAnnualCloseEventCommand,
+    RecordOwnerDividendEventCommand,
     RecordShareholderLoanCommand,
     ShareholderBallot,
     ShareholderLoanDirection,
@@ -101,6 +106,58 @@ def supported_ledger_lines(annual_year: int = 2024) -> tuple[CorporateAccountMov
         CorporateAccountMovementFacts(IncomeYear(annual_year), "2050", 0, 17_500_000),
         CorporateAccountMovementFacts(IncomeYear(annual_year), "1920", 40_000_000, 0),
     )
+
+
+def test_annual_source_answers_are_deeply_immutable() -> None:
+    source = supported_fact_sources().annual_data[0]
+
+    with pytest.raises(TypeError):
+        source.answers["general_meeting_approved"] = False  # type: ignore[index]
+
+
+def test_prepared_finalization_artifact_hashes_are_immutable() -> None:
+    prepared = PreparedOwnerDividendFinalization(
+        declared_amount_ore=10_000,
+        accounting_policy_version="owner-dividend-accounting-v1",
+        declaration_debit_account="2050",
+        dividend_payable_account="2920",
+        signed_artifact_hashes={"minutes": "a" * 64},
+        replay=None,
+    )
+
+    with pytest.raises(TypeError):
+        prepared.signed_artifact_hashes["minutes"] = "b" * 64  # type: ignore[index]
+
+
+def test_lifecycle_event_command_metadata_is_immutable() -> None:
+    proposal = supported_proposal()
+    shared = {
+        "company_id": proposal.company_id,
+        "actor_id": proposal.actor_id,
+        "correlation_id": CorrelationId("immutable-event-metadata"),
+        "decision_id": proposal.decision_id,
+        "document_set_id": proposal.document_set_id,
+        "decision_hash": "a" * 64,
+        "metadata": {"reason": "owner-requested"},
+    }
+    commands = (
+        RecordOwnerDividendEventCommand(
+            **shared,
+            idempotency_key=IdempotencyKey("immutable-owner-event-0001"),
+            event_id=CorporateEventId("34343434-3434-4343-8343-343434343434"),
+            event_kind=OwnerDividendEventKind.SUPERSEDED,
+        ),
+        RecordAnnualCloseEventCommand(
+            **shared,
+            idempotency_key=IdempotencyKey("immutable-annual-event-0001"),
+            event_id=CorporateEventId("45454545-4545-4454-8454-454545454545"),
+            event_kind=AnnualCloseEventKind.SUPERSEDED,
+        ),
+    )
+
+    for command in commands:
+        with pytest.raises(TypeError):
+            command.metadata["reason"] = "changed"  # type: ignore[index]
 
 
 def supported_proposal() -> OwnerDividendProposalCommand:

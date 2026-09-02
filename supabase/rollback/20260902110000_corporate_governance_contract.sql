@@ -75,6 +75,109 @@ begin
 end
 $preserve_contract_writers$;
 
+-- A contract rollback may be followed by the additive lifecycle rollback.
+-- Restore its private backup names, but keep every money-moving backup fail
+-- closed so a chained rollback cannot reactivate finalization or payment.
+create or replace function
+corporate_governance.owner_dividend_lifecycle_pre148_v1(
+  p_decision_id uuid, p_replayed boolean
+)
+returns jsonb language plpgsql stable security definer set search_path = ''
+as $function$
+declare
+  v_decision corporate_governance.owner_dividend_decisions%rowtype;
+  v_finalization corporate_governance.owner_dividend_finalizations%rowtype;
+  v_paid_ore bigint;
+  v_latest_payment_entry_id uuid;
+  v_state text;
+begin
+  select decision.* into v_decision
+  from corporate_governance.owner_dividend_decisions decision
+  where decision.id = p_decision_id;
+  if not found then
+    raise exception 'corporate_governance_not_found';
+  end if;
+  select finalization.* into v_finalization
+  from corporate_governance.owner_dividend_finalizations finalization
+  where finalization.decision_id = p_decision_id;
+  select coalesce(pg_catalog.sum(payment.payment_amount_ore), 0)
+  into v_paid_ore
+  from corporate_governance.owner_dividend_payments payment
+  where payment.decision_id = p_decision_id;
+  select payment.accounting_entry_id into v_latest_payment_entry_id
+  from corporate_governance.owner_dividend_payments payment
+  where payment.decision_id = p_decision_id
+  order by payment.created_at desc, payment.id desc
+  limit 1;
+
+  v_state := case
+    when v_paid_ore = v_decision.declared_amount_ore then 'paid'
+    when v_paid_ore > 0 then 'partially_paid'
+    when v_finalization.id is not null then 'finalized'
+    when exists (
+      select 1 from corporate_governance.owner_dividend_events event
+      where event.decision_id = p_decision_id
+        and event.event_kind = 'facts_approved'
+    ) then 'facts_approved'
+    when exists (
+      select 1 from corporate_governance.owner_dividend_events event
+      where event.decision_id = p_decision_id
+        and event.event_kind = 'documents_registered'
+    ) then 'documents_registered'
+    else 'proposed'
+  end;
+  return pg_catalog.jsonb_build_object(
+    'decisionId', v_decision.id,
+    'documentSetId', v_decision.document_set_id,
+    'companyId', v_decision.company_id,
+    'incomeYear', v_decision.income_year,
+    'decisionHash', v_decision.decision_hash,
+    'state', v_state,
+    'declaredAmountOre', v_decision.declared_amount_ore,
+    'paidAmountOre', v_paid_ore,
+    'remainingAmountOre', v_decision.declared_amount_ore - v_paid_ore,
+    'finalizationId', v_finalization.id,
+    'accountingEntryId', coalesce(
+      v_latest_payment_entry_id, v_finalization.accounting_entry_id
+    ),
+    'replayed', p_replayed
+  );
+end;
+$function$;
+
+create or replace function
+corporate_governance.prepare_owner_dividend_finalization_pre148_v1(
+  p_request jsonb, p_verified_subject text
+)
+returns jsonb language plpgsql security definer set search_path = ''
+as $function$
+begin
+  raise exception 'corporate_governance_rollback_write_blocked';
+end;
+$function$;
+
+create or replace function
+corporate_governance.complete_owner_dividend_finalization_pre148_v1(
+  p_request jsonb, p_verified_subject text
+)
+returns jsonb language plpgsql security definer set search_path = ''
+as $function$
+begin
+  raise exception 'corporate_governance_rollback_write_blocked';
+end;
+$function$;
+
+create or replace function
+corporate_governance.complete_owner_dividend_payment_pre148_v1(
+  p_request jsonb, p_verified_subject text
+)
+returns jsonb language plpgsql security definer set search_path = ''
+as $function$
+begin
+  raise exception 'corporate_governance_rollback_write_blocked';
+end;
+$function$;
+
 create or replace function
 corporate_governance.prepare_owner_dividend_finalization_v1(
   p_request jsonb, p_verified_subject text
@@ -237,6 +340,341 @@ create table if not exists public.corporate_decision_finalizations (
   created_at timestamptz not null
 );
 
+-- The predecessor projection is read-only after contract rollback, but the
+-- original owner-dividend cutover needs these private deterministic helpers
+-- when a full additive rollback is subsequently re-cut over. Restore their
+-- exact pre-contract definitions while keeping all browser execution revoked.
+create or replace function public.canonical_corporate_json_text(p_value jsonb)
+returns text
+language plpgsql
+immutable
+strict
+set search_path = public, pg_temp
+as $$
+declare
+  v_type text := jsonb_typeof(p_value);
+  v_result text;
+begin
+  if v_type = 'object' then
+    select '{' || coalesce(string_agg(to_jsonb(item.key)::text || ':' || public.canonical_corporate_json_text(item.value), ',' order by item.key), '') || '}'
+      into v_result
+    from jsonb_each(p_value) item;
+    return v_result;
+  elsif v_type = 'array' then
+    select '[' || coalesce(string_agg(public.canonical_corporate_json_text(item.value), ',' order by item.ordinality), '') || ']'
+      into v_result
+    from jsonb_array_elements(p_value) with ordinality item(value, ordinality);
+    return v_result;
+  end if;
+  return p_value::text;
+end;
+$$;
+
+revoke all on function public.canonical_corporate_json_text(jsonb)
+  from public, anon, authenticated;
+
+create or replace function public.assert_corporate_decision_persisted_facts(
+  p_company_id uuid,
+  p_income_year integer,
+  p_decision_kind text,
+  p_annual_close_source_id uuid,
+  p_canonical_input jsonb,
+  p_decision_hash text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_company public.companies%rowtype;
+  v_source public.annual_data%rowtype;
+  v_setup public.opening_balance_setups%rowtype;
+  v_financial_totals jsonb := p_canonical_input -> 'financial_totals';
+  v_shareholders jsonb := p_canonical_input -> 'shareholders';
+  v_board_participants jsonb := p_canonical_input -> 'board_participants';
+  v_confirmations jsonb := p_canonical_input -> 'confirmations';
+  v_dividend jsonb := p_canonical_input -> 'dividend';
+  v_cash_ore bigint;
+  v_result_ore bigint;
+  v_equity_ore bigint;
+  v_available_distribution_ore bigint;
+  v_shareholder_count integer;
+  v_total_shares bigint;
+  v_dividend_amount_ore bigint;
+begin
+  if jsonb_typeof(p_canonical_input) <> 'object'
+    or jsonb_typeof(v_financial_totals) <> 'object'
+    or jsonb_typeof(v_shareholders) <> 'array'
+    or jsonb_typeof(v_board_participants) <> 'array'
+    or jsonb_typeof(v_confirmations) <> 'object' then
+    raise exception 'corporate_documents_persisted_facts_mismatch';
+  end if;
+  if p_decision_hash !~ '^[0-9a-f]{64}$'
+    or encode(digest(public.canonical_corporate_json_text(p_canonical_input), 'sha256'), 'hex') <> p_decision_hash then
+    raise exception 'corporate_documents_persisted_facts_mismatch';
+  end if;
+
+  select c.* into v_company
+  from public.companies c
+  where c.id = p_company_id;
+  if not found
+    or v_company.entity_type <> 'AS'
+    or p_canonical_input ->> 'company_id' <> p_company_id::text
+    or (p_canonical_input ->> 'income_year')::integer <> p_income_year
+    or p_canonical_input ->> 'decision_kind' <> p_decision_kind
+    or p_canonical_input ->> 'organization_number' <> v_company.org_number
+    or p_canonical_input ->> 'legal_name' <> v_company.name
+    or p_canonical_input ->> 'annual_close_source_id' <> p_annual_close_source_id::text
+    or p_canonical_input ->> 'template_family' <> 'norwegian_simple_as'
+    or p_canonical_input ->> 'template_version' <> 'corporate-no-v1-reportlab-5.0.0-noto-ffebf8c1' then
+    raise exception 'corporate_documents_persisted_facts_mismatch';
+  end if;
+
+  select a.* into v_source
+  from public.annual_data a
+  where a.id = p_annual_close_source_id
+    and a.company_id = p_company_id
+    and a.income_year = (p_canonical_input ->> 'annual_basis_year')::integer;
+  if not found
+    or (
+      p_decision_kind = 'annual_close'
+      and v_source.income_year <> p_income_year
+    )
+    or (
+      p_decision_kind = 'owner_dividend'
+      and (
+        v_source.income_year > p_income_year
+        or v_source.answers ->> 'general_meeting_approved' <> 'true'
+        or exists (
+          select 1
+          from public.annual_data newer
+          where newer.company_id = p_company_id
+            and newer.income_year <= p_income_year
+            and newer.income_year > v_source.income_year
+            and newer.answers ->> 'general_meeting_approved' = 'true'
+        )
+      )
+    ) then
+    raise exception 'corporate_documents_persisted_facts_mismatch';
+  end if;
+
+  with ledger_lines as (
+    select line
+    from public.ledger_entries entry
+    cross join lateral jsonb_array_elements(entry.lines) line
+    where entry.company_id = p_company_id
+      and entry.income_year = v_source.income_year
+  ), totals as (
+    select
+      coalesce(sum(
+        case when line ->> 'account' = '1920'
+          then coalesce((line ->> 'debit')::numeric, 0) - coalesce((line ->> 'credit')::numeric, 0)
+          else 0 end
+      ), 0) as bank_balance,
+      coalesce(sum(
+        case when line ->> 'account' in ('8070', '8050')
+          then coalesce((line ->> 'credit')::numeric, 0) - coalesce((line ->> 'debit')::numeric, 0)
+          else 0 end
+      ), 0) as financial_income,
+      coalesce(sum(
+        case when line ->> 'account' in ('7770', '6700', '6705', '6420', '7790', '6720', '7795')
+          then coalesce((line ->> 'debit')::numeric, 0)
+          else 0 end
+      ), 0) as admin_costs,
+      coalesce(sum(
+        case when line ->> 'account' = '8090'
+          then coalesce((line ->> 'debit')::numeric, 0)
+          else 0 end
+      ), 0) as financial_costs,
+      coalesce(sum(
+        case when line ->> 'account' = '2000'
+          then coalesce((line ->> 'credit')::numeric, 0) - coalesce((line ->> 'debit')::numeric, 0)
+          else 0 end
+      ), 0) as share_capital,
+      coalesce(sum(
+        case when line ->> 'account' = '2050'
+          then coalesce((line ->> 'credit')::numeric, 0) - coalesce((line ->> 'debit')::numeric, 0)
+          else 0 end
+      ), 0) as retained_earnings
+    from ledger_lines
+  )
+  select
+    round(bank_balance * 100)::bigint,
+    round((financial_income - admin_costs - financial_costs) * 100)::bigint,
+    round((share_capital + retained_earnings + financial_income - admin_costs - financial_costs) * 100)::bigint,
+    greatest(0, round((retained_earnings + financial_income - admin_costs - financial_costs) * 100)::bigint)
+  into v_cash_ore, v_result_ore, v_equity_ore, v_available_distribution_ore
+  from totals;
+
+  if (v_financial_totals ->> 'cash_ore')::bigint <> v_cash_ore
+    or (v_financial_totals ->> 'result_after_tax_ore')::bigint <> v_result_ore
+    or (v_financial_totals ->> 'equity_ore')::bigint <> v_equity_ore
+    or (v_financial_totals ->> 'available_distribution_ore')::bigint <> v_available_distribution_ore
+    or (p_canonical_input ->> 'annual_result_allocation_ore')::bigint <> v_result_ore then
+    raise exception 'corporate_documents_persisted_facts_mismatch';
+  end if;
+
+  select setup.* into v_setup
+  from public.opening_balance_setups setup
+  where setup.company_id = p_company_id
+    and setup.income_year = p_income_year;
+  if not found then
+    raise exception 'corporate_documents_persisted_facts_mismatch';
+  end if;
+  select count(*), coalesce(sum(shareholder.share_count), 0)
+    into v_shareholder_count, v_total_shares
+  from public.opening_shareholders shareholder
+  where shareholder.company_id = p_company_id
+    and shareholder.setup_id = v_setup.id;
+  if v_shareholder_count = 0
+    or v_total_shares <> v_setup.share_count
+    or jsonb_array_length(v_shareholders) <> v_shareholder_count
+    or (p_canonical_input ->> 'total_company_shares')::bigint <> v_total_shares
+    or p_canonical_input ->> 'one_share_class_confirmed' <> 'true'
+    or (
+      select count(distinct item ->> 'shareholder_id')
+      from jsonb_array_elements(v_shareholders) item
+    ) <> v_shareholder_count
+    or exists (
+      select 1
+      from public.opening_shareholders shareholder
+      where shareholder.company_id = p_company_id
+        and shareholder.setup_id = v_setup.id
+        and not exists (
+          select 1
+          from jsonb_array_elements(v_shareholders) item
+          where item ->> 'shareholder_id' = shareholder.id::text
+            and item ->> 'name' = shareholder.name
+            and (item ->> 'share_count')::bigint = shareholder.share_count
+            and (item ->> 'represented_share_count')::bigint = shareholder.share_count
+            and item ->> 'vote' = 'for'
+        )
+    ) then
+    raise exception 'corporate_documents_persisted_facts_mismatch';
+  end if;
+
+  if jsonb_array_length(v_board_participants) = 0
+    or (
+      select count(distinct participant ->> 'participant_id')
+      from jsonb_array_elements(v_board_participants) participant
+    ) <> jsonb_array_length(v_board_participants)
+    or (
+      select count(*)
+      from jsonb_array_elements(v_board_participants) participant
+      where participant ->> 'role' = 'chair'
+    ) <> 1
+    or exists (
+      select 1
+      from jsonb_array_elements(v_board_participants) participant
+      where btrim(coalesce(participant ->> 'participant_id', '')) = ''
+        or btrim(coalesce(participant ->> 'name', '')) = ''
+        or participant ->> 'role' not in ('chair', 'member')
+    )
+    or coalesce(p_canonical_input -> 'board_meeting' ->> 'meeting_date', '') !~ '^\d{4}-\d{2}-\d{2}$'
+    or coalesce(p_canonical_input -> 'board_meeting' ->> 'meeting_time', '') !~ '^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$'
+    or btrim(coalesce(p_canonical_input -> 'board_meeting' ->> 'place', '')) = ''
+    or p_canonical_input -> 'board_meeting' ->> 'treatment_method' not in ('physical', 'video', 'written')
+    or coalesce(p_canonical_input -> 'general_meeting' ->> 'meeting_date', '') !~ '^\d{4}-\d{2}-\d{2}$'
+    or coalesce(p_canonical_input -> 'general_meeting' ->> 'meeting_time', '') !~ '^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$'
+    or btrim(coalesce(p_canonical_input -> 'general_meeting' ->> 'place', '')) = ''
+    or p_canonical_input -> 'general_meeting' ->> 'meeting_form' not in ('physical', 'video')
+    or btrim(coalesce(p_canonical_input -> 'general_meeting' ->> 'chair_name', '')) = ''
+    or btrim(coalesce(p_canonical_input -> 'general_meeting' ->> 'co_signer_name', '')) = ''
+    or (p_canonical_input -> 'general_meeting' ->> 'meeting_date')::date
+      < (p_canonical_input -> 'board_meeting' ->> 'meeting_date')::date then
+    raise exception 'corporate_documents_persisted_facts_mismatch';
+  end if;
+
+  if exists (
+    select 1
+    from unnest(array[
+      'latest_approved_annual_accounts',
+      'supported_dividend_basis',
+      'full_board_participation',
+      'full_share_representation',
+      'unanimous_board',
+      'unanimous_shareholders',
+      'proportional_allocation',
+      'prudent_equity_and_liquidity'
+    ]) required_confirmation
+    where v_confirmations ->> required_confirmation <> 'true'
+  ) then
+    raise exception 'corporate_documents_persisted_facts_mismatch';
+  end if;
+
+  if p_decision_kind = 'owner_dividend' then
+    if jsonb_typeof(v_dividend) <> 'object'
+      or coalesce(v_dividend ->> 'payment_date', '') !~ '^\d{4}-\d{2}-\d{2}$' then
+      raise exception 'corporate_documents_persisted_facts_mismatch';
+    end if;
+    v_dividend_amount_ore := (v_dividend ->> 'amount_ore')::bigint;
+    if v_dividend_amount_ore <= 0
+      or v_dividend_amount_ore > v_available_distribution_ore
+      or v_dividend_amount_ore > v_cash_ore
+      or (v_dividend ->> 'liquidity_after_payment_ore')::bigint <> v_cash_ore - v_dividend_amount_ore
+      or (v_dividend ->> 'payment_date')::date
+        < (p_canonical_input -> 'general_meeting' ->> 'meeting_date')::date
+      or jsonb_typeof(v_dividend -> 'allocations') <> 'array'
+      or jsonb_array_length(v_dividend -> 'allocations') <> v_shareholder_count
+      or (
+        select count(distinct allocation ->> 'shareholder_id')
+        from jsonb_array_elements(v_dividend -> 'allocations') allocation
+      ) <> v_shareholder_count
+      or (
+        select coalesce(sum((allocation ->> 'amount_ore')::bigint), 0)
+        from jsonb_array_elements(v_dividend -> 'allocations') allocation
+      ) <> v_dividend_amount_ore then
+      raise exception 'corporate_documents_persisted_facts_mismatch';
+    end if;
+
+    if exists (
+      with proportional as (
+        select
+          shareholder.id::text as shareholder_id,
+          floor(v_dividend_amount_ore::numeric * shareholder.share_count / v_total_shares)::bigint as base_ore,
+          mod(v_dividend_amount_ore::numeric * shareholder.share_count, v_total_shares)::bigint as remainder
+        from public.opening_shareholders shareholder
+        where shareholder.company_id = p_company_id
+          and shareholder.setup_id = v_setup.id
+      ), ranked as (
+        select
+          proportional.*,
+          row_number() over (order by remainder desc, shareholder_id) as remainder_rank,
+          v_dividend_amount_ore - sum(base_ore) over () as remainder_ore
+        from proportional
+      ), expected as (
+        select
+          shareholder_id,
+          base_ore + case when remainder_rank <= remainder_ore then 1 else 0 end as amount_ore
+        from ranked
+      )
+      select 1
+      from expected
+      left join lateral (
+        select (allocation ->> 'amount_ore')::bigint as amount_ore
+        from jsonb_array_elements(v_dividend -> 'allocations') allocation
+        where allocation ->> 'shareholder_id' = expected.shareholder_id
+      ) actual on true
+      where actual.amount_ore is null
+        or actual.amount_ore <= 0
+        or actual.amount_ore <> expected.amount_ore
+    ) then
+      raise exception 'corporate_documents_persisted_facts_mismatch';
+    end if;
+  elsif p_decision_kind = 'annual_close' then
+    if v_dividend is distinct from 'null'::jsonb then
+      raise exception 'corporate_documents_persisted_facts_mismatch';
+    end if;
+  else
+    raise exception 'corporate_documents_unsupported_decision_kind';
+  end if;
+end;
+$$;
+
+revoke all on function public.assert_corporate_decision_persisted_facts(uuid, integer, text, uuid, jsonb, text)
+  from public, anon, authenticated;
+
 insert into public.corporate_accounting_policies
 select * from corporate_governance.owner_dividend_accounting_policies;
 
@@ -315,7 +753,7 @@ union all
 select
   payment.id, payment.company_id, payment.income_year,
   payment.decision_id, payment.document_set_id, null::uuid,
-  'payment_recorded', payment.created_by, payment.created_at,
+  'payment_recorded', payment.created_by, payment.occurred_at,
   payment.decision_hash, null::text,
   pg_catalog.jsonb_build_object(
     'bank_transaction_id', payment.bank_transaction_id,
@@ -339,7 +777,39 @@ select
   'canonical-event:' || payment.id::text, payment.created_at
 from corporate_governance.owner_dividend_payments payment
 join corporate_governance.owner_dividend_decisions decision
-  on decision.id = payment.decision_id;
+  on decision.id = payment.decision_id
+union all
+select
+  finalization.event_id, finalization.company_id,
+  finalization.income_year, finalization.decision_id,
+  finalization.document_set_id, null::uuid, 'finalized',
+  finalization.created_by, finalization.occurred_at,
+  finalization.decision_hash, null::text,
+  pg_catalog.jsonb_build_object(
+    'finalization_id', finalization.id,
+    'finalization_kind', 'owner_dividend_declared',
+    'signed_artifact_hashes', finalization.signed_artifact_hashes,
+    'accounting_policy_version', finalization.accounting_policy_version
+  ),
+  'canonical-event:' || finalization.event_id::text,
+  finalization.created_at
+from corporate_governance.owner_dividend_finalizations finalization
+union all
+select
+  finalization.event_id, finalization.company_id,
+  finalization.income_year, finalization.decision_id,
+  finalization.document_set_id, null::uuid, 'finalized',
+  finalization.created_by, finalization.occurred_at,
+  finalization.decision_hash, null::text,
+  pg_catalog.jsonb_build_object(
+    'finalization_id', finalization.id,
+    'finalization_kind', 'annual_close_adopted',
+    'signed_artifact_hashes', finalization.signed_artifact_hashes,
+    'accounting_policy_version', null
+  ),
+  'canonical-event:' || finalization.event_id::text,
+  finalization.created_at
+from corporate_governance.annual_close_finalizations finalization;
 
 insert into public.corporate_decision_finalizations
 select

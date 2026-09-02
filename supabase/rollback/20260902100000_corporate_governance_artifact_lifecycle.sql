@@ -7,7 +7,9 @@ set local statement_timeout = '120s';
 do $membership$
 begin
   execute pg_catalog.format(
-    'grant corporate_governance_store_owner, ledger_store_owner to %I',
+    'grant corporate_governance_store_owner, ledger_store_owner, '
+      || 'backend_system_annual_data_reader, '
+      || 'company_access_executor to %I',
     current_user
   );
 end
@@ -57,11 +59,29 @@ drop function if exists
 drop function if exists
   corporate_governance.attest_owner_dividend_signed_artifact_v1(jsonb, text);
 reset role;
-set local role ledger_store_owner;
+set local role backend_system_annual_data_reader;
 drop function if exists
   backend_system.list_annual_data_legacy_v1(uuid, integer, text);
+reset role;
+set local role company_access_executor;
+drop function if exists
+  public.company_access_read_company_identity_v1(uuid, text);
+reset role;
 revoke usage on schema backend_system
 from corporate_governance_workflow_executor;
+drop policy if exists "annual data compatibility reader reads owner facts"
+on public.annual_data;
+revoke select on public.annual_data
+from backend_system_annual_data_reader;
+revoke usage on schema public
+from backend_system_annual_data_reader;
+revoke execute on function
+  public.company_access_auth_uid_v1(),
+  public.company_access_is_accepted_owner_v1(uuid)
+from backend_system_annual_data_reader;
+set local role ledger_store_owner;
+revoke usage on schema backend_system
+from backend_system_annual_data_reader;
 reset role;
 set local role corporate_governance_store_owner;
 drop function if exists
@@ -222,12 +242,16 @@ reset role;
 do $membership_revoke$
 begin
   execute pg_catalog.format(
-    'revoke corporate_governance_store_owner, ledger_store_owner from %I',
+    'revoke corporate_governance_store_owner, ledger_store_owner, '
+      || 'backend_system_annual_data_reader, '
+      || 'company_access_executor from %I',
     pg_catalog.current_setting(
       'talli.corporate_governance_lifecycle_principal'
     )
   );
 end
 $membership_revoke$;
+
+drop role backend_system_annual_data_reader;
 
 commit;

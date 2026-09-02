@@ -449,6 +449,7 @@ class CorporateGovernanceService:
         income_year: IncomeYear,
         decision_kind: CorporateDecisionKind,
         current_source_hash: str | None = None,
+        current_facts_match: bool | None = None,
     ) -> CorporateDocumentReadiness:
         """Derive lifecycle, signer, payable, and readiness policy in Python."""
 
@@ -556,10 +557,15 @@ class CorporateGovernanceService:
             ),
             None,
         )
-        current_source_matches = (
+        current_hash_matches = (
             None
             if current_source_hash is None
             else decision.source_hash == current_source_hash
+        )
+        current_source_matches = (
+            False
+            if current_hash_matches is False or current_facts_match is False
+            else current_hash_matches
         )
 
         canonical = decision.canonical_input

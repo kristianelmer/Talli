@@ -185,6 +185,7 @@ where event_kind in (
 
 create table corporate_governance.annual_close_finalizations (
   id uuid primary key,
+  event_id uuid not null unique default pg_catalog.gen_random_uuid(),
   decision_id uuid not null unique references
     corporate_governance.annual_close_decisions(id) on delete restrict,
   document_set_id uuid not null,
@@ -207,6 +208,7 @@ create table corporate_governance.annual_close_finalizations (
     request_fingerprint ~ '^[0-9a-f]{64}$'
   ),
   created_by uuid not null references auth.users(id) on delete restrict,
+  occurred_at timestamptz not null default pg_catalog.statement_timestamp(),
   created_at timestamptz not null default pg_catalog.statement_timestamp(),
   unique (created_by, company_id, idempotency_key),
   unique (company_id, income_year, id),
@@ -446,13 +448,14 @@ having pg_catalog.count(*) = 2
 on conflict (id) do nothing;
 
 insert into corporate_governance.annual_close_finalizations (
-  id, decision_id, document_set_id, company_id, income_year,
+  id, event_id, decision_id, document_set_id, company_id, income_year,
   annual_close_source_id, decision_hash, signed_artifact_hashes,
   idempotency_key, correlation_id, request_fingerprint,
-  created_by, created_at
+  created_by, occurred_at, created_at
 )
 select
-  finalization.id, finalization.decision_id, decision.document_set_id,
+  finalization.id, coalesce(event.id, finalization.id),
+  finalization.decision_id, decision.document_set_id,
   finalization.company_id, finalization.income_year,
   finalization.annual_close_source_id, finalization.decision_hash,
   finalization.signed_artifact_hashes,
@@ -462,10 +465,21 @@ select
     'legacyFinalizationId', finalization.id,
     'decisionHash', finalization.decision_hash
   )::text, 'sha256'), 'hex'),
-  finalization.created_by, finalization.created_at
+  finalization.created_by,
+  coalesce(event.occurred_at, finalization.created_at),
+  coalesce(event.created_at, finalization.created_at)
 from public.corporate_decision_finalizations finalization
 join corporate_governance.annual_close_decisions decision
   on decision.id = finalization.decision_id
+left join lateral (
+  select evidence.id, evidence.occurred_at, evidence.created_at
+  from public.corporate_document_events evidence
+  where evidence.decision_id = finalization.decision_id
+    and evidence.event_kind = 'finalized'
+    and evidence.metadata ->> 'finalization_id' = finalization.id::text
+  order by evidence.created_at, evidence.id
+  limit 1
+) event on true
 where finalization.finalization_kind = 'annual_close_adopted'
 on conflict (id) do nothing;
 

@@ -57,6 +57,14 @@ begin
       and target.holding_action_id = source.holding_action_id
       and target.decision_hash = source.decision_hash
     where target.id is null
+      or not exists (
+        select 1 from public.corporate_document_events evidence
+        where evidence.id = source.event_id
+          and evidence.decision_id = source.decision_id
+          and evidence.event_kind = 'finalized'
+          and evidence.occurred_at = source.occurred_at
+          and evidence.created_at = source.created_at
+      )
   ) or exists (
     select 1
     from corporate_governance.owner_dividend_payments source
@@ -71,6 +79,8 @@ begin
           = source.accounting_entry_id
         and (target.metadata ->> 'holding_action_id')::uuid
           = source.holding_action_id
+        and target.occurred_at = source.occurred_at
+        and target.created_at = source.created_at
     )
   ) then
     raise exception 'corporate_governance_owner_dividend_rollback_unsafe';
@@ -121,29 +131,63 @@ revoke usage on schema banking
 from corporate_governance_workflow_executor,
   corporate_governance_store_owner;
 
-revoke execute on function
-  backend_system.owner_dividend_signed_evidence_v1(
-    uuid, uuid, uuid, integer, text
-  ),
-  backend_system.project_owner_dividend_finalization_v1(
-    jsonb, text, jsonb, text
-  ),
-  backend_system.project_owner_dividend_payment_v1(
-    jsonb, bigint, text, text
-  )
-from corporate_governance_store_owner;
-drop function backend_system.project_owner_dividend_payment_v1(
+do $revoke_ledger_projections$
+begin
+  if pg_catalog.to_regprocedure(
+    'backend_system.owner_dividend_signed_evidence_v1(uuid,uuid,uuid,integer,text)'
+  ) is not null then
+    revoke execute on function
+      backend_system.owner_dividend_signed_evidence_v1(
+        uuid, uuid, uuid, integer, text
+      ) from corporate_governance_store_owner;
+  end if;
+  if pg_catalog.to_regprocedure(
+    'backend_system.project_owner_dividend_finalization_v1(jsonb,text,jsonb,text)'
+  ) is not null then
+    revoke execute on function
+      backend_system.project_owner_dividend_finalization_v1(
+        jsonb, text, jsonb, text
+      ) from corporate_governance_store_owner;
+  end if;
+  if pg_catalog.to_regprocedure(
+    'backend_system.project_owner_dividend_payment_v1(jsonb,bigint,text,text)'
+  ) is not null then
+    revoke execute on function
+      backend_system.project_owner_dividend_payment_v1(
+        jsonb, bigint, text, text
+      ) from corporate_governance_store_owner;
+  end if;
+end
+$revoke_ledger_projections$;
+drop function if exists backend_system.project_owner_dividend_payment_v1(
   jsonb, bigint, text, text
 );
-drop function backend_system.project_owner_dividend_finalization_v1(
+drop function if exists backend_system.project_owner_dividend_finalization_v1(
   jsonb, text, jsonb, text
 );
-drop function backend_system.owner_dividend_signed_evidence_v1(
+drop function if exists backend_system.owner_dividend_signed_evidence_v1(
   uuid, uuid, uuid, integer, text
 );
 revoke usage on schema backend_system from corporate_governance_store_owner;
 
 set local role corporate_governance_store_owner;
+-- The later contract rollback retains reviewed writer definitions only so it
+-- can be re-cut over. A chained rollback beyond this capability boundary must
+-- discard those private backups before dropping the owned schema.
+drop function if exists
+  corporate_governance.prepare_owner_dividend_finalization_contract_v1(
+    jsonb, text
+  );
+drop function if exists
+  corporate_governance.complete_owner_dividend_finalization_contract_v1(
+    jsonb, text
+  );
+drop function if exists
+  corporate_governance.prepare_owner_dividend_payment_contract_v1(jsonb, text);
+drop function if exists
+  corporate_governance.complete_owner_dividend_payment_contract_v1(jsonb, text);
+drop function if exists
+  corporate_governance.finalize_annual_close_contract_v1(jsonb, text);
 drop function corporate_governance.actor_company_role_v1(uuid, text);
 drop function corporate_governance.propose_owner_dividend_v1(
   jsonb, jsonb, jsonb, text
@@ -185,11 +229,19 @@ revoke execute on function
   public.company_access_auth_jwt_v1(),
   public.company_access_has_current_agreement_v1(uuid),
   public.company_access_is_accepted_owner_v1(uuid),
-  public.company_access_company_year_allows_consequential_v1(uuid, integer),
-  public.assert_corporate_decision_persisted_facts(
-    uuid, integer, text, uuid, jsonb, text
-  )
+  public.company_access_company_year_allows_consequential_v1(uuid, integer)
 from corporate_governance_store_owner;
+do $revoke_predecessor_assertion$
+begin
+  if pg_catalog.to_regprocedure(
+    'public.assert_corporate_decision_persisted_facts(uuid,integer,text,uuid,jsonb,text)'
+  ) is not null then
+    revoke execute on function public.assert_corporate_decision_persisted_facts(
+      uuid, integer, text, uuid, jsonb, text
+    ) from corporate_governance_store_owner;
+  end if;
+end
+$revoke_predecessor_assertion$;
 revoke execute on function extensions.digest(text, text)
 from corporate_governance_store_owner;
 revoke usage on schema extensions from corporate_governance_store_owner;

@@ -75,6 +75,13 @@ authenticated, always-empty mixed-revision overlap. It performs no customer-data
 query and is outside the active generated web surface; removing the shape requires
 the bounded API-major contraction governed by ADR-0012.
 
+The accepted-member company record also has one versioned, read-only database
+query contract for backend workflows that must compose company identity with
+other capability facts in the same transaction. The function is owned by the
+non-bypass `company_access_executor`, applies company-access RLS, binds the
+explicit subject to transaction-local verified actor context, and grants callers
+no direct access to `public.companies` or `public.company_memberships`.
+
 Eligibility and admission add `EligibilityAnswer`, `EligibilityDecision`,
 `EligibilityPublicFacts`, `EligibilityQuestion`, `EligibilityPrecheckRequest`,
 `EligibilityDefinitiveRequest`, `EligibilityDecisionResponse`,

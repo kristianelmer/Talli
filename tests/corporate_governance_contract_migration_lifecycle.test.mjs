@@ -15,6 +15,12 @@ async function state(client) {
       pg_catalog.to_regprocedure(
         'public.create_corporate_document_draft(jsonb)'
       ) is not null as predecessor_writer,
+      pg_catalog.to_regprocedure(
+        'public.canonical_corporate_json_text(jsonb)'
+      ) is not null as predecessor_canonicalizer,
+      pg_catalog.to_regprocedure(
+        'public.assert_corporate_decision_persisted_facts(uuid,integer,text,uuid,jsonb,text)'
+      ) is not null as predecessor_assertion,
       pg_catalog.to_regclass(
         'corporate_governance.annual_close_decisions'
       ) is not null as annual_decisions,
@@ -59,7 +65,19 @@ async function state(client) {
       ) is not null
       and pg_catalog.to_regprocedure(
         'corporate_governance.finalize_annual_close_contract_v1(jsonb,text)'
-      ) is not null as writer_backups
+      ) is not null as writer_backups,
+      pg_catalog.to_regprocedure(
+        'corporate_governance.owner_dividend_lifecycle_pre148_v1(uuid,boolean)'
+      ) is not null
+      and pg_catalog.to_regprocedure(
+        'corporate_governance.prepare_owner_dividend_finalization_pre148_v1(jsonb,text)'
+      ) is not null
+      and pg_catalog.to_regprocedure(
+        'corporate_governance.complete_owner_dividend_finalization_pre148_v1(jsonb,text)'
+      ) is not null
+      and pg_catalog.to_regprocedure(
+        'corporate_governance.complete_owner_dividend_payment_pre148_v1(jsonb,text)'
+      ) is not null as additive_rollback_backups
   `);
   return result.rows[0];
 }
@@ -145,6 +163,8 @@ test(
       const cutoverState = {
         predecessor_projection: false,
         predecessor_writer: false,
+        predecessor_canonicalizer: false,
+        predecessor_assertion: false,
         annual_decisions: true,
         annual_artifacts: true,
         annual_finalizations: true,
@@ -155,12 +175,16 @@ test(
         lifecycle_reader: true,
         writers_blocked: false,
         writer_backups: false,
+        additive_rollback_backups: false,
       };
       const rollbackState = {
         ...cutoverState,
         predecessor_projection: true,
+        predecessor_canonicalizer: true,
+        predecessor_assertion: true,
         writers_blocked: true,
         writer_backups: true,
+        additive_rollback_backups: true,
       };
 
       const initialState = await state(client);

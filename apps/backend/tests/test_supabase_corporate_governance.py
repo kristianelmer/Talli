@@ -72,6 +72,7 @@ def bound_transaction() -> SupabaseCorporateGovernanceTransaction:
 
 def test_session_uses_only_non_bypass_governance_workflow_role_and_verified_context() -> None:
     source = inspect.getsource(SupabaseCorporateGovernanceSession.transaction)
+    assert "set_isolation_level(psycopg.IsolationLevel.SERIALIZABLE)" in source
     assert "set local role corporate_governance_workflow_executor" in source
     assert "talli.verified_actor_id" in source
     assert "talli.verified_actor_claims" in source
@@ -103,6 +104,28 @@ def test_annual_data_uses_the_frozen_restricted_compatibility_reader() -> None:
 
     assert int(facts[0].income_year) == 2024
     assert "list_annual_data_legacy_v1" in calls[0][0]
+
+
+def test_company_identity_uses_the_company_access_owned_query_contract() -> None:
+    transaction = bound_transaction()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def rows(query: str, parameters: tuple[object, ...] = ()):
+        calls.append((query, parameters))
+        return [{"result": {
+            "companyId": str(supported_proposal().company_id),
+            "organizationNumber": "310279617",
+            "legalName": "LOGISK ØDE TIGER AS",
+        }}]
+
+    transaction._database_rows = rows  # type: ignore[method-assign]
+    facts = asyncio.run(
+        transaction.read_company_facts(supported_proposal().company_id)
+    )
+
+    assert facts.organization_number == "310279617"
+    assert facts.legal_name == "LOGISK ØDE TIGER AS"
+    assert "company_access_read_company_identity_v1" in calls[0][0]
 
 
 def test_proposal_sends_python_canonical_facts_without_account_policy() -> None:

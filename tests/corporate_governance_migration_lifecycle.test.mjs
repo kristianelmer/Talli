@@ -25,6 +25,445 @@ test("artifact persistence does not duplicate Python signer policy", async () =>
   assert.match(forward, /jsonb_typeof\(signer\).*'string'/isu);
 });
 
+test(
+  "company identity reader serves only an accepted member through its owned contract",
+  { skip: !databaseUrl && "DATABASE_URL is required" },
+  async () => {
+    const actorId = "95000000-0000-4000-8000-000000000147";
+    const outsiderId = "95000000-0000-4000-8000-000000000148";
+    const companyId = "95000000-0000-4000-8000-000000000146";
+    const client = new Client({ connectionString: databaseUrl });
+    await client.connect();
+    try {
+      await client.query("begin");
+      await client.query(String.raw`
+        do $authority$ begin
+          execute pg_catalog.format(
+            'grant corporate_governance_workflow_executor to %I', current_user
+          );
+        end $authority$;
+        insert into auth.users (id, is_sso_user, is_anonymous)
+        values
+          ('${actorId}', false, false),
+          ('${outsiderId}', false, false)
+        on conflict (id) do nothing;
+        insert into public.companies (
+          id, org_number, name, entity_type, created_by
+        ) values (
+          '${companyId}', '900000146', 'Company Identity Reader AS', 'AS',
+          '${actorId}'
+        ) on conflict (id) do nothing;
+        insert into public.company_memberships (
+          company_id, user_id, role, accepted_at
+        ) values (
+          '${companyId}', '${actorId}', 'owner', pg_catalog.now()
+        ) on conflict (company_id, user_id) do nothing;
+        select pg_catalog.set_config(
+          'talli.verified_actor_id', '${actorId}', true
+        );
+        select pg_catalog.set_config(
+          'talli.verified_actor_claims',
+          '{"sub":"${actorId}","aal":"aal2"}', true
+        );
+        set local role corporate_governance_workflow_executor;
+      `);
+      const result = await client.query(String.raw`
+        select public.company_access_read_company_identity_v1(
+          '${companyId}'::uuid, '${actorId}'
+        ) as result
+      `);
+      assert.deepEqual(result.rows[0].result, {
+        companyId,
+        organizationNumber: "900000146",
+        legalName: "Company Identity Reader AS",
+      });
+      await assert.rejects(
+        client.query(String.raw`
+          select public.company_access_read_company_identity_v1(
+            '${companyId}'::uuid, '${outsiderId}'
+          )
+        `),
+        /company_access_forbidden/iu,
+      );
+    } finally {
+      await client.query("rollback");
+      await client.end();
+    }
+  },
+);
+
+test(
+  "annual-data compatibility reader serves an accepted owner under the runtime role",
+  { skip: !databaseUrl && "DATABASE_URL is required" },
+  async () => {
+    const actorId = "96000000-0000-4000-8000-000000000147";
+    const companyId = "96000000-0000-4000-8000-000000000146";
+    const annualDataId = "96000000-0000-4000-8000-000000000145";
+    const client = new Client({ connectionString: databaseUrl });
+    await client.connect();
+    try {
+      await client.query("begin");
+      await client.query(String.raw`
+        do $authority$ begin
+          execute pg_catalog.format(
+            'grant corporate_governance_workflow_executor to %I', current_user
+          );
+        end $authority$;
+        insert into auth.users (id, is_sso_user, is_anonymous)
+        values ('${actorId}', false, false)
+        on conflict (id) do nothing;
+        insert into public.companies (
+          id, org_number, name, entity_type, created_by
+        ) values (
+          '${companyId}', '900000147', 'Annual Source Reader AS', 'AS',
+          '${actorId}'
+        ) on conflict (id) do nothing;
+        insert into public.company_memberships (
+          company_id, user_id, role, accepted_at
+        ) values (
+          '${companyId}', '${actorId}', 'owner', pg_catalog.now()
+        ) on conflict (company_id, user_id) do nothing;
+        insert into public.annual_data (
+          id, company_id, income_year, answers, confirmations,
+          completed_by, updated_by
+        ) values (
+          '${annualDataId}', '${companyId}', 2024,
+          '{"general_meeting_approved":true}'::jsonb, '[]'::jsonb,
+          '${actorId}', '${actorId}'
+        ) on conflict (id) do nothing;
+        select pg_catalog.set_config(
+          'talli.verified_actor_id', '${actorId}', true
+        );
+        select pg_catalog.set_config(
+          'talli.verified_actor_claims',
+          '{"sub":"${actorId}","aal":"aal2"}', true
+        );
+        set local role corporate_governance_workflow_executor;
+      `);
+      const result = await client.query(String.raw`
+        select
+          pg_catalog.jsonb_array_length(items)::int as item_count,
+          items -> 0 ->> 'sourceId' as source_id
+        from (
+          select backend_system.list_annual_data_legacy_v1(
+            '${companyId}'::uuid, 2024, '${actorId}'
+          ) as items
+        ) source
+      `);
+      assert.deepEqual(result.rows[0], {
+        item_count: 1,
+        source_id: annualDataId,
+      });
+      const authority = await client.query(String.raw`
+        select
+          pg_catalog.pg_get_userbyid(routine.proowner) as function_owner,
+          reader.rolinherit as reader_inherits,
+          reader.rolbypassrls as reader_bypasses_rls,
+          pg_catalog.has_table_privilege(
+            'backend_system_annual_data_reader',
+            'public.annual_data', 'select'
+          ) as reader_selects_annual_data,
+          pg_catalog.has_table_privilege(
+            'corporate_governance_workflow_executor',
+            'public.annual_data', 'select'
+          ) as workflow_selects_annual_data
+        from pg_catalog.pg_proc routine
+        join pg_catalog.pg_namespace namespace
+          on namespace.oid = routine.pronamespace
+        join pg_catalog.pg_roles reader
+          on reader.rolname = 'backend_system_annual_data_reader'
+        where namespace.nspname = 'backend_system'
+          and routine.proname = 'list_annual_data_legacy_v1'
+      `);
+      assert.deepEqual(authority.rows[0], {
+        function_owner: "backend_system_annual_data_reader",
+        reader_inherits: false,
+        reader_bypasses_rls: false,
+        reader_selects_annual_data: true,
+        workflow_selects_annual_data: false,
+      });
+    } finally {
+      await client.query("rollback");
+      await client.end();
+    }
+  },
+);
+
+test(
+  "lifecycle reader preserves evidence event identity and distinct timestamps",
+  { skip: !databaseUrl && "DATABASE_URL is required" },
+  async () => {
+    const client = new Client({ connectionString: databaseUrl });
+    await client.connect();
+    try {
+      await client.query("begin");
+      await client.query(String.raw`
+        insert into auth.users (id, is_sso_user, is_anonymous)
+        values ('98000000-0000-4000-8000-000000000141', false, false);
+        insert into public.companies (
+          id, org_number, name, entity_type, created_by
+        ) values (
+          '98000000-0000-4000-8000-000000000140', '900000149',
+          'Lifecycle Timestamp AS', 'AS',
+          '98000000-0000-4000-8000-000000000141'
+        );
+        insert into public.company_memberships (
+          company_id, user_id, role, accepted_at
+        ) values (
+          '98000000-0000-4000-8000-000000000140',
+          '98000000-0000-4000-8000-000000000141', 'owner',
+          pg_catalog.now()
+        );
+        insert into public.annual_data (
+          id, company_id, income_year, answers, confirmations,
+          completed_by, updated_by
+        ) values (
+          '98000000-0000-4000-8000-000000000142',
+          '98000000-0000-4000-8000-000000000140', 2024,
+          '{}'::jsonb, '[]'::jsonb,
+          '98000000-0000-4000-8000-000000000141',
+          '98000000-0000-4000-8000-000000000141'
+        );
+        do $authority$ begin
+          execute pg_catalog.format(
+            'grant corporate_governance_store_owner, ledger_store_owner, '
+              || 'banking_store_owner to %I', current_user
+          );
+        end $authority$;
+        select pg_catalog.set_config(
+          'talli.verified_actor_id',
+          '98000000-0000-4000-8000-000000000141', true
+        );
+        set local role corporate_governance_store_owner;
+        alter table corporate_governance.owner_dividend_accounting_policies
+          no force row level security;
+        alter table corporate_governance.owner_dividend_decisions
+          no force row level security;
+        alter table corporate_governance.owner_dividend_finalizations
+          no force row level security;
+        alter table corporate_governance.owner_dividend_payments
+          no force row level security;
+        alter table corporate_governance.annual_close_decisions
+          no force row level security;
+        alter table corporate_governance.annual_close_finalizations
+          no force row level security;
+        insert into corporate_governance.owner_dividend_accounting_policies (
+          policy_version, declaration_debit_account,
+          dividend_payable_account, bank_account, reviewer, reviewed_at,
+          evidence_reference, enabled, recorded_by, created_at
+        ) values (
+          'timestamp-evidence-v1', '2050', '2920', '1920', 'test',
+          '2025-01-01 00:00:00+00', 'test-evidence', true,
+          '98000000-0000-4000-8000-000000000141',
+          '2025-01-01 00:00:00+00'
+        );
+        insert into corporate_governance.owner_dividend_decisions (
+          id, document_set_id, company_id, income_year,
+          annual_close_source_id, source_hash, canonical_input,
+          decision_hash, declared_amount_ore, idempotency_key,
+          correlation_id, request_fingerprint, created_by, created_at
+        ) values (
+          '98000000-0000-4000-8000-000000000143',
+          '98000000-0000-4000-8000-000000000144',
+          '98000000-0000-4000-8000-000000000140', 2025,
+          '98000000-0000-4000-8000-000000000142', repeat('a', 64),
+          pg_catalog.jsonb_build_object(
+            'decisionId', '98000000-0000-4000-8000-000000000143',
+            'documentSetId', '98000000-0000-4000-8000-000000000144',
+            'companyId', '98000000-0000-4000-8000-000000000140',
+            'incomeYear', 2025, 'sourceHash', repeat('a', 64),
+            'decisionHash', repeat('b', 64),
+            'dividend', pg_catalog.jsonb_build_object('amountOre', 10000)
+          ), repeat('b', 64), 10000, 'timestamp-owner-decision',
+          'timestamp-owner-decision', repeat('c', 64),
+          '98000000-0000-4000-8000-000000000141',
+          '2025-01-01 00:00:00+00'
+        );
+        insert into corporate_governance.annual_close_decisions (
+          id, document_set_id, company_id, income_year,
+          annual_close_source_id, source_hash, canonical_input,
+          persisted_facts, generated_artifacts, decision_hash,
+          annual_result_allocation_ore, idempotency_key, correlation_id,
+          request_fingerprint, created_by, created_at
+        ) values (
+          '98000000-0000-4000-8000-000000000153',
+          '98000000-0000-4000-8000-000000000154',
+          '98000000-0000-4000-8000-000000000140', 2025,
+          '98000000-0000-4000-8000-000000000142', repeat('d', 64),
+          pg_catalog.jsonb_build_object(
+            'decisionId', '98000000-0000-4000-8000-000000000153',
+            'documentSetId', '98000000-0000-4000-8000-000000000154',
+            'companyId', '98000000-0000-4000-8000-000000000140',
+            'incomeYear', 2025, 'sourceHash', repeat('d', 64),
+            'decisionHash', repeat('e', 64), 'decisionKind', 'annual_close',
+            'dividend', null, 'annualResultAllocationOre', 0
+          ), '{}'::jsonb, '[{},{}]'::jsonb, repeat('e', 64), 0,
+          'timestamp-annual-decision', 'timestamp-annual-decision',
+          repeat('f', 64), '98000000-0000-4000-8000-000000000141',
+          '2025-01-01 00:00:00+00'
+        );
+        reset role;
+        set local role ledger_store_owner;
+        alter table ledger.entries no force row level security;
+        alter table ledger.entries disable trigger user;
+        insert into ledger.entries (
+          id, company_id, income_year, entry_kind, memo, lines,
+          created_by, source_capability, source_record_id,
+          correlation_id, posted_at, created_at
+        ) values
+          (
+            '98000000-0000-4000-8000-000000000148',
+            '98000000-0000-4000-8000-000000000140', 2025,
+            'OWNER_DIVIDEND_DECLARED', 'declaration',
+            '[{"account":"2050","debit":100,"credit":0,"currency":"NOK"},{"account":"2920","debit":0,"credit":100,"currency":"NOK"}]',
+            '98000000-0000-4000-8000-000000000141',
+            'CORPORATE_GOVERNANCE', 'timestamp-declaration',
+            'timestamp-declaration', '2025-05-01 10:00:00+00',
+            '2025-05-01 11:00:00+00'
+          ),
+          (
+            '98000000-0000-4000-8000-000000000149',
+            '98000000-0000-4000-8000-000000000140', 2025,
+            'OWNER_DIVIDEND_PAYMENT', 'payment',
+            '[{"account":"2920","debit":40,"credit":0,"currency":"NOK"},{"account":"1920","debit":0,"credit":40,"currency":"NOK"}]',
+            '98000000-0000-4000-8000-000000000141',
+            'CORPORATE_GOVERNANCE', 'timestamp-payment',
+            'timestamp-payment', '2025-05-02 10:00:00+00',
+            '2025-05-02 11:00:00+00'
+          );
+        alter table ledger.entries force row level security;
+        reset role;
+        set local role banking_store_owner;
+        alter table banking.transactions no force row level security;
+        alter table banking.transactions disable trigger user;
+        insert into banking.transactions (
+          id, company_id, income_year, transaction_date, text, amount,
+          source_hash, created_by, created_at
+        ) values (
+          '98000000-0000-4000-8000-000000000150',
+          '98000000-0000-4000-8000-000000000140', 2025,
+          '2025-05-02', 'payment', -40.00, repeat('1', 64),
+          '98000000-0000-4000-8000-000000000141',
+          '2025-05-02 11:00:00+00'
+        );
+        alter table banking.transactions force row level security;
+        reset role;
+        set local role corporate_governance_store_owner;
+        insert into corporate_governance.owner_dividend_finalizations (
+          id, event_id, decision_id, document_set_id, company_id,
+          income_year, decision_hash, holding_action_id,
+          accounting_entry_id, declared_amount_ore,
+          signed_artifact_hashes, accounting_policy_version,
+          idempotency_key, correlation_id, request_fingerprint,
+          created_by, occurred_at, created_at
+        ) values (
+          '98000000-0000-4000-8000-000000000145',
+          '98000000-0000-4000-8000-000000000146',
+          '98000000-0000-4000-8000-000000000143',
+          '98000000-0000-4000-8000-000000000144',
+          '98000000-0000-4000-8000-000000000140', 2025,
+          repeat('b', 64), '98000000-0000-4000-8000-000000000151',
+          '98000000-0000-4000-8000-000000000148', 10000,
+          '{}'::jsonb, 'timestamp-evidence-v1',
+          'timestamp-owner-finalization', 'timestamp-owner-finalization',
+          repeat('2', 64), '98000000-0000-4000-8000-000000000141',
+          '2025-05-01 10:00:00+00', '2025-05-01 11:00:00+00'
+        );
+        insert into corporate_governance.owner_dividend_payments (
+          id, decision_id, document_set_id, company_id, income_year,
+          decision_hash, holding_action_id, accounting_entry_id,
+          bank_transaction_id, payment_amount_ore, bank_transaction_date,
+          bank_signed_amount, bank_source_sha256,
+          accounting_policy_version, idempotency_key, correlation_id,
+          request_fingerprint, created_by, occurred_at, created_at
+        ) values (
+          '98000000-0000-4000-8000-000000000147',
+          '98000000-0000-4000-8000-000000000143',
+          '98000000-0000-4000-8000-000000000144',
+          '98000000-0000-4000-8000-000000000140', 2025,
+          repeat('b', 64), '98000000-0000-4000-8000-000000000152',
+          '98000000-0000-4000-8000-000000000149',
+          '98000000-0000-4000-8000-000000000150', 4000, '2025-05-02',
+          -40.00, repeat('1', 64), 'timestamp-evidence-v1',
+          'timestamp-owner-payment', 'timestamp-owner-payment',
+          repeat('3', 64), '98000000-0000-4000-8000-000000000141',
+          '2025-05-02 10:00:00+00', '2025-05-02 11:00:00+00'
+        );
+        insert into corporate_governance.annual_close_finalizations (
+          id, event_id, decision_id, document_set_id, company_id,
+          income_year, annual_close_source_id, decision_hash,
+          signed_artifact_hashes, idempotency_key, correlation_id,
+          request_fingerprint, created_by, occurred_at, created_at
+        ) values (
+          '98000000-0000-4000-8000-000000000155',
+          '98000000-0000-4000-8000-000000000156',
+          '98000000-0000-4000-8000-000000000153',
+          '98000000-0000-4000-8000-000000000154',
+          '98000000-0000-4000-8000-000000000140', 2025,
+          '98000000-0000-4000-8000-000000000142', repeat('e', 64),
+          '{}'::jsonb, 'timestamp-annual-finalization',
+          'timestamp-annual-finalization', repeat('4', 64),
+          '98000000-0000-4000-8000-000000000141',
+          '2025-05-03 10:00:00+00', '2025-05-03 11:00:00+00'
+        );
+        alter table corporate_governance.owner_dividend_accounting_policies
+          force row level security;
+        alter table corporate_governance.owner_dividend_decisions
+          force row level security;
+        alter table corporate_governance.owner_dividend_finalizations
+          force row level security;
+        alter table corporate_governance.owner_dividend_payments
+          force row level security;
+        alter table corporate_governance.annual_close_decisions
+          force row level security;
+        alter table corporate_governance.annual_close_finalizations
+          force row level security;
+        reset role;
+      `);
+      const result = await client.query(String.raw`
+        with lifecycle as (
+          select corporate_governance.read_corporate_lifecycle_v1(
+            array['98000000-0000-4000-8000-000000000140'::uuid],
+            null, '98000000-0000-4000-8000-000000000141'
+          ) as value
+        )
+        select
+          event ->> 'eventId' as event_id,
+          event ->> 'occurredAt' as occurred_at,
+          event ->> 'createdAt' as created_at
+        from lifecycle,
+          lateral pg_catalog.jsonb_array_elements(value -> 'events') event
+        where event ->> 'eventId' in (
+          '98000000-0000-4000-8000-000000000146',
+          '98000000-0000-4000-8000-000000000147',
+          '98000000-0000-4000-8000-000000000156'
+        )
+        order by event_id
+      `);
+      assert.deepEqual(result.rows, [
+        {
+          event_id: "98000000-0000-4000-8000-000000000146",
+          occurred_at: "2025-05-01T10:00:00+00:00",
+          created_at: "2025-05-01T11:00:00+00:00",
+        },
+        {
+          event_id: "98000000-0000-4000-8000-000000000147",
+          occurred_at: "2025-05-02T10:00:00+00:00",
+          created_at: "2025-05-02T11:00:00+00:00",
+        },
+        {
+          event_id: "98000000-0000-4000-8000-000000000156",
+          occurred_at: "2025-05-03T10:00:00+00:00",
+          created_at: "2025-05-03T11:00:00+00:00",
+        },
+      ]);
+    } finally {
+      await client.query("rollback");
+      await client.end();
+    }
+  },
+);
+
 async function state(client) {
   const result = await client.query(String.raw`
     select
@@ -138,6 +577,51 @@ async function assertSupersededEvidence(client, canonical) {
     supersedes_set_id: "97000000-0000-4000-8000-000000000144",
     occurred_at: "2025-01-02T03:04:08Z",
     created_at: "2025-01-02T04:04:08Z",
+  });
+}
+
+async function assertFinalizationEvidence(client, canonical) {
+  const result = canonical
+    ? await client.query(String.raw`
+        select
+          finalization.id::text as finalization_id,
+          finalization.event_id::text as event_id,
+          pg_catalog.to_char(
+            finalization.occurred_at at time zone 'UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS"Z"'
+          ) as occurred_at,
+          pg_catalog.to_char(
+            finalization.created_at at time zone 'UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS"Z"'
+          ) as created_at
+        from corporate_governance.owner_dividend_finalizations finalization
+        where finalization.id =
+          '97000000-0000-4000-8000-000000000162'::uuid
+      `)
+    : await client.query(String.raw`
+        select
+          finalization.id::text as finalization_id,
+          evidence.id::text as event_id,
+          pg_catalog.to_char(
+            evidence.occurred_at at time zone 'UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS"Z"'
+          ) as occurred_at,
+          pg_catalog.to_char(
+            evidence.created_at at time zone 'UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS"Z"'
+          ) as created_at
+        from public.corporate_decision_finalizations finalization
+        join public.corporate_document_events evidence
+          on evidence.id = '97000000-0000-4000-8000-000000000163'::uuid
+          and evidence.metadata ->> 'finalization_id' = finalization.id::text
+        where finalization.id =
+          '97000000-0000-4000-8000-000000000162'::uuid
+      `);
+  assert.deepEqual(result.rows[0], {
+    finalization_id: "97000000-0000-4000-8000-000000000162",
+    event_id: "97000000-0000-4000-8000-000000000163",
+    occurred_at: "2025-01-02T03:05:00Z",
+    created_at: "2025-01-02T04:05:00Z",
   });
 }
 
@@ -298,11 +782,89 @@ test(
           '97000000-0000-4000-8000-000000000147',
           '2025-01-02 03:04:05+00'::timestamptz
         ) on conflict (id) do nothing;
+        insert into public.corporate_accounting_policies (
+          policy_version, declaration_debit_account,
+          dividend_payable_account, bank_account, reviewer, reviewed_at,
+          evidence_reference, enabled, recorded_by, created_at
+        ) values (
+          'lossless-finalization-v1', '2050', '2920', '1920', 'test',
+          '2025-01-01 00:00:00+00', 'migration-rehearsal', true,
+          '97000000-0000-4000-8000-000000000147',
+          '2025-01-01 00:00:00+00'
+        ) on conflict (policy_version) do nothing;
         do $authority$ begin
           execute pg_catalog.format(
-            'grant corporate_governance_store_owner to %I', current_user
+            'grant corporate_governance_store_owner, ledger_store_owner '
+              || 'to %I', current_user
           );
         end $authority$;
+        set role ledger_store_owner;
+        alter table ledger.entries no force row level security;
+        alter table ledger.entries disable trigger user;
+        insert into ledger.entries (
+          id, company_id, income_year, entry_kind, memo, lines,
+          created_by, source_capability, source_record_id,
+          correlation_id, posted_at, created_at
+        ) values (
+          '97000000-0000-4000-8000-000000000160',
+          '97000000-0000-4000-8000-000000000146', 2025,
+          'OWNER_DIVIDEND_DECLARED', 'lossless finalization',
+          '[{"account":"2050","debit":100,"credit":0,"currency":"NOK"},{"account":"2920","debit":0,"credit":100,"currency":"NOK"}]',
+          '97000000-0000-4000-8000-000000000147',
+          'CORPORATE_GOVERNANCE', 'lossless-finalization',
+          'lossless-finalization', '2025-01-02 03:05:00+00',
+          '2025-01-02 04:05:00+00'
+        ) on conflict (id) do nothing;
+        alter table ledger.entries enable trigger user;
+        alter table ledger.entries force row level security;
+        reset role;
+        insert into public.holding_actions (
+          id, company_id, income_year, action_type, action_date,
+          payload, ledger_entry_id, risk_level, created_by, created_at
+        ) values (
+          '97000000-0000-4000-8000-000000000161',
+          '97000000-0000-4000-8000-000000000146', 2025,
+          'dividend_to_owner', '2025-01-02', '{}'::jsonb,
+          '97000000-0000-4000-8000-000000000160', 'ready',
+          '97000000-0000-4000-8000-000000000147',
+          '2025-01-02 04:05:00+00'
+        ) on conflict (id) do nothing;
+        insert into public.corporate_decision_finalizations (
+          id, company_id, income_year, decision_id, finalization_kind,
+          holding_action_id, ledger_entry_id, annual_close_source_id,
+          decision_hash, signed_artifact_hashes,
+          accounting_policy_version, created_by, created_at
+        ) values (
+          '97000000-0000-4000-8000-000000000162',
+          '97000000-0000-4000-8000-000000000146', 2025,
+          '97000000-0000-4000-8000-000000000148',
+          'owner_dividend_declared',
+          '97000000-0000-4000-8000-000000000161',
+          '97000000-0000-4000-8000-000000000160', null,
+          repeat('b', 64), '{}'::jsonb, 'lossless-finalization-v1',
+          '97000000-0000-4000-8000-000000000147',
+          '2025-01-02 04:05:00+00'
+        ) on conflict (id) do nothing;
+        insert into public.corporate_document_events (
+          id, company_id, income_year, decision_id, set_id, event_kind,
+          actor_id, occurred_at, decision_hash, metadata,
+          idempotency_key, created_at
+        ) values (
+          '97000000-0000-4000-8000-000000000163',
+          '97000000-0000-4000-8000-000000000146', 2025,
+          '97000000-0000-4000-8000-000000000148',
+          '97000000-0000-4000-8000-000000000149', 'finalized',
+          '97000000-0000-4000-8000-000000000147',
+          '2025-01-02 03:05:00+00', repeat('b', 64),
+          pg_catalog.jsonb_build_object(
+            'finalization_id',
+            '97000000-0000-4000-8000-000000000162',
+            'finalization_kind', 'owner_dividend_declared',
+            'signed_artifact_hashes', '{}'::jsonb,
+            'accounting_policy_version', 'lossless-finalization-v1'
+          ), 'lossless-finalization-event',
+          '2025-01-02 04:05:00+00'
+        ) on conflict (id) do nothing;
         set role corporate_governance_store_owner;
         select pg_catalog.set_config(
           'talli.verified_actor_id',
@@ -333,6 +895,44 @@ test(
           '97000000-0000-4000-8000-000000000147',
           '2025-01-02 03:04:05+00'::timestamptz
         ) on conflict (id) do nothing;
+        alter table corporate_governance.owner_dividend_accounting_policies
+          no force row level security;
+        insert into corporate_governance.owner_dividend_accounting_policies (
+          policy_version, declaration_debit_account,
+          dividend_payable_account, bank_account, reviewer, reviewed_at,
+          evidence_reference, enabled, recorded_by, created_at
+        ) values (
+          'lossless-finalization-v1', '2050', '2920', '1920', 'test',
+          '2025-01-01 00:00:00+00', 'migration-rehearsal', true,
+          '97000000-0000-4000-8000-000000000147',
+          '2025-01-01 00:00:00+00'
+        ) on conflict (policy_version) do nothing;
+        alter table corporate_governance.owner_dividend_accounting_policies
+          force row level security;
+        alter table corporate_governance.owner_dividend_finalizations
+          no force row level security;
+        insert into corporate_governance.owner_dividend_finalizations (
+          id, event_id, decision_id, document_set_id, company_id,
+          income_year, decision_hash, holding_action_id,
+          accounting_entry_id, declared_amount_ore,
+          signed_artifact_hashes, accounting_policy_version,
+          idempotency_key, correlation_id, request_fingerprint,
+          created_by, occurred_at, created_at
+        ) values (
+          '97000000-0000-4000-8000-000000000162',
+          '97000000-0000-4000-8000-000000000163',
+          '97000000-0000-4000-8000-000000000148',
+          '97000000-0000-4000-8000-000000000149',
+          '97000000-0000-4000-8000-000000000146', 2025,
+          repeat('b', 64), '97000000-0000-4000-8000-000000000161',
+          '97000000-0000-4000-8000-000000000160', 10000,
+          '{}'::jsonb, 'lossless-finalization-v1',
+          'lossless-finalization', 'lossless-finalization',
+          repeat('7', 64), '97000000-0000-4000-8000-000000000147',
+          '2025-01-02 03:05:00+00', '2025-01-02 04:05:00+00'
+        ) on conflict (id) do nothing;
+        alter table corporate_governance.owner_dividend_finalizations
+          force row level security;
         reset role;
         alter table corporate_governance.owner_dividend_decisions
           disable trigger owner_dividend_decisions_immutable;
@@ -455,6 +1055,7 @@ test(
         shareholder_loan_banking_bridge: true,
       });
       await assertSupersededEvidence(client, true);
+      await assertFinalizationEvidence(client, true);
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
         await client.query(lifecycleRollback);
         await client.query(annualRollback);
@@ -469,6 +1070,7 @@ test(
           shareholder_loan_banking_bridge: false,
         });
         await assertSupersededEvidence(client, false);
+        await assertFinalizationEvidence(client, false);
         await client.query(ownerForward);
         await client.query(loanForward);
         await client.query(annualForward);
@@ -482,6 +1084,7 @@ test(
           shareholder_loan_banking_bridge: true,
         });
         await assertSupersededEvidence(client, true);
+        await assertFinalizationEvidence(client, true);
       }
     } finally {
       await client.end();

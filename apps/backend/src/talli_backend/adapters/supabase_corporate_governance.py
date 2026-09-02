@@ -28,7 +28,6 @@ from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceSessionFactory,
 )
 from talli_backend.application.corporate_governance_workflow import (
-    CompanyFactsReader,
     CorporateGovernanceApplication,
 )
 from talli_backend.application.ledger_workflow import LedgerAuthenticationError
@@ -37,7 +36,6 @@ from talli_backend.modules.banking.public import (
     ClaimBankTransactionForExternalActionCommand,
     bank_transaction_claim_persistence_adapter,
 )
-from talli_backend.modules.company_access.public import CompanyAccessService
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
     AnnualCloseProposalCommand,
@@ -596,23 +594,25 @@ class SupabaseCorporateGovernanceSession:
                 self._database_url,
                 connect_timeout=5,
                 row_factory=dict_row,
-            ) as connection, connection.transaction():
-                await connection.execute(
-                    "set local role corporate_governance_workflow_executor"
-                )
-                await connection.execute(
-                    "select pg_catalog.set_config('talli.verified_actor_id', %s, true)",
-                    (str(self.actor_id.subject),),
-                )
-                await connection.execute(
-                    "select pg_catalog.set_config('talli.verified_actor_claims', %s, true)",
-                    (self._verified.claims_json,),
-                )
-                yield SupabaseCorporateGovernanceTransaction(
-                    self._database_url,
-                    self._verified,
-                    connection,
-                )
+            ) as connection:
+                await connection.set_isolation_level(psycopg.IsolationLevel.SERIALIZABLE)
+                async with connection.transaction():
+                    await connection.execute(
+                        "set local role corporate_governance_workflow_executor"
+                    )
+                    await connection.execute(
+                        "select pg_catalog.set_config('talli.verified_actor_id', %s, true)",
+                        (str(self.actor_id.subject),),
+                    )
+                    await connection.execute(
+                        "select pg_catalog.set_config('talli.verified_actor_claims', %s, true)",
+                        (self._verified.claims_json,),
+                    )
+                    yield SupabaseCorporateGovernanceTransaction(
+                        self._database_url,
+                        self._verified,
+                        connection,
+                    )
         except (CorporateGovernanceError, LedgerError):
             raise
         except psycopg.OperationalError:
@@ -661,6 +661,29 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
             raise CorporateGovernanceError.unavailable()
         role = rows[0].get("role")
         return str(role) if role is not None else None
+
+    async def read_company_facts(
+        self,
+        company_id: CompanyId,
+    ) -> PersistedCompanyFacts:
+        rows = await self._database_rows(
+            "select public.company_access_read_company_identity_v1("
+            "%s::uuid, %s::text) as result",
+            (str(company_id), str(self.actor_id.subject)),
+        )
+        if len(rows) != 1 or not isinstance(rows[0].get("result"), Mapping):
+            raise CorporateGovernanceError.unavailable()
+        result = rows[0]["result"]
+        try:
+            if str(result["companyId"]) != str(company_id):  # type: ignore[index]
+                raise CorporateGovernanceError.unavailable()
+            return PersistedCompanyFacts(
+                company_id=company_id,
+                organization_number=str(result["organizationNumber"]),  # type: ignore[index]
+                legal_name=str(result["legalName"]),  # type: ignore[index]
+            )
+        except (KeyError, TypeError, ValueError):
+            raise CorporateGovernanceError.unavailable() from None
 
     async def list_annual_data_compatibility(
         self,
@@ -1033,7 +1056,7 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
                 "ledgerEntryId": str(accounting_entry_id),
                 "declaredAmountOre": prepared.declared_amount_ore,
                 "accountingPolicyVersion": prepared.accounting_policy_version,
-                "signedArtifactHashes": prepared.signed_artifact_hashes,
+                "signedArtifactHashes": dict(prepared.signed_artifact_hashes),
             },
         ))
 
@@ -1262,24 +1285,11 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
 def compose_corporate_governance_application(
     sessions: CorporateGovernanceSessionFactory | None,
     documents: DocumentsSessionFactory,
-    company_access: CompanyAccessService,
-    company_facts_reader: CompanyFactsReader | None = None,
 ) -> CorporateGovernanceApplication:
-    async def company_facts(access_token: str, company_id: CompanyId):
-        response = await company_access.company_record(
-            access_token, company_id=str(company_id)
-        )
-        return PersistedCompanyFacts(
-            company_id=company_id,
-            organization_number=response.company.org_number,
-            legal_name=response.company.name,
-        )
-
     return CorporateGovernanceApplication(
         sessions or SupabaseCorporateGovernanceAdapter.from_environment(),
         documents,
         LedgerService,
-        company_facts_reader or company_facts,
     )
 
 

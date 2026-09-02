@@ -178,6 +178,28 @@ from corporate_governance.annual_close_events event
 where event.event_kind <> 'documents_registered'
 on conflict (id) do nothing;
 
+insert into public.corporate_document_events (
+  id, company_id, income_year, decision_id, set_id, artifact_id,
+  event_kind, actor_id, occurred_at, decision_hash, content_sha256,
+  metadata, idempotency_key, created_at
+)
+select
+  finalization.event_id, finalization.company_id,
+  finalization.income_year, finalization.decision_id,
+  finalization.document_set_id, null, 'finalized',
+  finalization.created_by, finalization.occurred_at,
+  finalization.decision_hash, null,
+  pg_catalog.jsonb_build_object(
+    'finalization_id', finalization.id,
+    'finalization_kind', 'annual_close_adopted',
+    'signed_artifact_hashes', finalization.signed_artifact_hashes,
+    'accounting_policy_version', null
+  ),
+  'canonical-event:' || finalization.event_id::text,
+  finalization.created_at
+from corporate_governance.annual_close_finalizations finalization
+on conflict (id) do nothing;
+
 insert into public.corporate_decision_finalizations (
   id, company_id, income_year, decision_id, finalization_kind,
   holding_action_id, ledger_entry_id, annual_close_source_id,

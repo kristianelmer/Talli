@@ -4,10 +4,27 @@ begin;
 set local lock_timeout = '5s';
 set local statement_timeout = '120s';
 
+do $roles$
+begin
+  if not exists (
+    select 1 from pg_catalog.pg_roles
+    where rolname = 'backend_system_annual_data_reader'
+  ) then
+    create role backend_system_annual_data_reader
+      nologin noinherit nobypassrls;
+  end if;
+end
+$roles$;
+
+alter role backend_system_annual_data_reader
+  nologin noinherit nobypassrls;
+
 do $membership$
 begin
   execute pg_catalog.format(
     'grant corporate_governance_store_owner, ledger_store_owner, '
+      || 'backend_system_annual_data_reader, '
+      || 'company_access_executor, '
       || 'corporate_governance_workflow_executor to %I',
     current_user
   );
@@ -285,11 +302,78 @@ begin
 end;
 $function$;
 
+-- Company identity remains company_access-owned. This restricted query seam
+-- lets the governance workflow read it on the same authenticated transaction
+-- without granting that workflow direct access to company_access tables.
+reset role;
+grant create on schema public to company_access_executor;
+set local role company_access_executor;
+create or replace function public.company_access_read_company_identity_v1(
+  p_company_id uuid,
+  p_verified_subject text
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  v_result jsonb;
+begin
+  if p_company_id is null
+    or p_verified_subject is null
+    or p_verified_subject !~ '^[0-9a-fA-F-]{36}$'
+    or public.company_access_auth_uid_v1()
+      is distinct from p_verified_subject::uuid
+  then
+    raise exception 'company_access_forbidden';
+  end if;
+
+  select pg_catalog.jsonb_build_object(
+    'companyId', company.id,
+    'organizationNumber', company.org_number,
+    'legalName', company.name
+  )
+  into v_result
+  from public.companies company
+  where company.id = p_company_id;
+
+  if v_result is null then
+    raise exception 'company_access_not_found';
+  end if;
+  return v_result;
+end;
+$function$;
+reset role;
+revoke create on schema public from company_access_executor;
+revoke all on function
+  public.company_access_read_company_identity_v1(uuid, text)
+from public, anon, authenticated, service_role;
+grant execute on function
+  public.company_access_read_company_identity_v1(uuid, text)
+to corporate_governance_workflow_executor;
+
 -- Frozen read-only projection for the future annual-compliance store. It is a
 -- backend-system compatibility seam, not a corporate-governance business API.
 reset role;
 set local role ledger_store_owner;
-grant usage, create on schema backend_system to ledger_store_owner;
+grant usage, create on schema backend_system
+to backend_system_annual_data_reader;
+reset role;
+grant usage on schema public to backend_system_annual_data_reader;
+grant select on public.annual_data to backend_system_annual_data_reader;
+grant execute on function
+  public.company_access_auth_uid_v1(),
+  public.company_access_is_accepted_owner_v1(uuid)
+to backend_system_annual_data_reader;
+drop policy if exists "annual data compatibility reader reads owner facts"
+on public.annual_data;
+create policy "annual data compatibility reader reads owner facts"
+on public.annual_data for select
+to backend_system_annual_data_reader
+using (public.company_access_is_accepted_owner_v1(company_id));
+set local role backend_system_annual_data_reader;
 create or replace function backend_system.list_annual_data_legacy_v1(
   p_company_id uuid,
   p_income_year integer,
@@ -332,7 +416,10 @@ begin
   ), '[]'::jsonb);
 end;
 $function$;
-revoke create on schema backend_system from ledger_store_owner;
+reset role;
+set local role ledger_store_owner;
+revoke create on schema backend_system
+from backend_system_annual_data_reader;
 reset role;
 set local role corporate_governance_store_owner;
 
@@ -580,9 +667,9 @@ begin
           p_decision_id is null and event.company_id = any(p_company_ids)
         )
         union all
-        select finalization.id, finalization.created_at occurred_at,
+        select finalization.event_id id, finalization.occurred_at,
           pg_catalog.jsonb_build_object(
-            'eventId', finalization.id,
+            'eventId', finalization.event_id,
             'companyId', finalization.company_id,
             'incomeYear', finalization.income_year,
             'decisionId', finalization.decision_id,
@@ -590,7 +677,7 @@ begin
             'artifactId', null,
             'eventKind', 'finalized',
             'actorId', finalization.created_by,
-            'occurredAt', finalization.created_at,
+            'occurredAt', finalization.occurred_at,
             'createdAt', finalization.created_at,
             'decisionHash', finalization.decision_hash,
             'contentSha256', null,
@@ -609,7 +696,7 @@ begin
           p_decision_id is null and finalization.company_id = any(p_company_ids)
         )
         union all
-        select payment.id, payment.created_at occurred_at,
+        select payment.id, payment.occurred_at,
           pg_catalog.jsonb_build_object(
             'eventId', payment.id,
             'companyId', payment.company_id,
@@ -619,7 +706,7 @@ begin
             'artifactId', null,
             'eventKind', 'payment_recorded',
             'actorId', payment.created_by,
-            'occurredAt', payment.created_at,
+            'occurredAt', payment.occurred_at,
             'createdAt', payment.created_at,
             'decisionHash', payment.decision_hash,
             'contentSha256', null,
@@ -653,9 +740,9 @@ begin
           p_decision_id is null and payment.company_id = any(p_company_ids)
         )
         union all
-        select finalization.id, finalization.created_at occurred_at,
+        select finalization.event_id id, finalization.occurred_at,
           pg_catalog.jsonb_build_object(
-            'eventId', finalization.id,
+            'eventId', finalization.event_id,
             'companyId', finalization.company_id,
             'incomeYear', finalization.income_year,
             'decisionId', finalization.decision_id,
@@ -663,7 +750,7 @@ begin
             'artifactId', null,
             'eventKind', 'finalized',
             'actorId', finalization.created_by,
-            'occurredAt', finalization.created_at,
+            'occurredAt', finalization.occurred_at,
             'createdAt', finalization.created_at,
             'decisionHash', finalization.decision_hash,
             'contentSha256', null,
@@ -1220,7 +1307,8 @@ to corporate_governance_workflow_executor;
 do $backend_system_role_authority_revoke$
 begin
   execute pg_catalog.format(
-    'revoke ledger_store_owner from %I',
+    'revoke ledger_store_owner, backend_system_annual_data_reader, '
+      || 'company_access_executor from %I',
     pg_catalog.current_setting(
       'talli.corporate_governance_lifecycle_principal'
     )

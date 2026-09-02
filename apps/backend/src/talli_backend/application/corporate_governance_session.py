@@ -11,6 +11,7 @@ from talli_backend.application.opening_snapshot_compatibility import (
 from talli_backend.modules.banking.public import BankTransactionClaimPersistence
 from talli_backend.modules.corporate_governance.public import (
     CorporateGovernancePersistence,
+    PersistedCompanyFacts,
 )
 from talli_backend.modules.ledger.public import LedgerPersistence
 from talli_backend.shared.kernel import ActorId, CompanyId, CorrelationId, IncomeYear
@@ -45,6 +46,11 @@ class CorporateGovernanceWorkflowTransaction(
         company_id: CompanyId,
         income_year: IncomeYear,
     ) -> tuple[LegacyAnnualDataView, ...]: ...
+
+    async def read_company_facts(
+        self,
+        company_id: CompanyId,
+    ) -> PersistedCompanyFacts: ...
 
 
 class AuthenticatedCorporateGovernanceSession(Protocol):
