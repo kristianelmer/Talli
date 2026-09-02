@@ -575,6 +575,7 @@ async function seedInvestmentEvidence(
     ["distributionDocumentId", "browser-fund-entitlement.pdf"],
   ];
   const result = {};
+  const registrations = [];
   for (const [key, name] of documents) {
     const documentId = randomUUID();
     const storageKey = `${companyId}/2026/${documentId}/${name}`;
@@ -590,19 +591,61 @@ async function seedInvestmentEvidence(
       });
     assert.ifError(uploadError);
     storageKeys.push(storageKey);
-    await assertNoError(admin.from("documents").insert({
-      id: documentId,
-      company_id: companyId,
-      income_year: 2026,
-      document_type: "investment_evidence",
-      name,
-      linked_to: "investments",
-      status: "attached",
-      retention_years: 5,
-      storage_key: storageKey,
-      created_by: ownerId,
-    }));
+    registrations.push({ documentId, name, pdf, storageKey });
     result[key] = documentId;
+  }
+
+  await database.query("begin");
+  try {
+    await database.query(String.raw`
+      do $browser_owner_documents_authority$ begin
+        execute pg_catalog.format('grant documents_executor to %I', current_user);
+      end $browser_owner_documents_authority$
+    `);
+    await database.query("set local role documents_executor");
+    await database.query(
+      `select
+         pg_catalog.set_config('talli.verified_actor_id', $1, true),
+         pg_catalog.set_config('talli.authorized_company_roles', $2, true)`,
+      [ownerId, JSON.stringify({ [companyId]: "owner" })],
+    );
+    for (const { documentId, name, pdf, storageKey } of registrations) {
+      const request = {
+        documentId,
+        companyId,
+        incomeYear: 2026,
+        documentType: "accounting_document",
+        linkedTo: "workspace",
+        name,
+        storageKey,
+        contentType: "application/pdf",
+        declaredByteLength: pdf.length,
+        finalStatus: "attached",
+      };
+      await database.query(
+        "select id from documents.stage_upload_v1($1::jsonb, $2)",
+        [request, ownerId],
+      );
+      await database.query(
+        "select id from documents.finalize_upload_v1($1, $2, $3, $4)",
+        [
+          documentId,
+          pdf.length,
+          createHash("sha256").update(pdf).digest("hex"),
+          ownerId,
+        ],
+      );
+    }
+    await database.query("reset role");
+    await database.query(String.raw`
+      do $browser_owner_documents_authority$ begin
+        execute pg_catalog.format('revoke documents_executor from %I', current_user);
+      end $browser_owner_documents_authority$
+    `);
+    await database.query("commit");
+  } catch (error) {
+    await database.query("rollback");
+    throw error;
   }
 
   const purchaseBankId = randomUUID();

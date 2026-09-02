@@ -308,6 +308,9 @@ test("browser owner rehearsal includes executable owned-process lifecycle covera
   assert.match(harness, /cleanupBrowserOwnerResources\(resources\)/);
   assert.match(harness, /TALLI_BACKEND_BOUND:/);
   assert.match(harness, /readinessProof:\s*"Ready in"/);
+  assert.match(harness, /documents\.stage_upload_v1/u);
+  assert.match(harness, /documents\.finalize_upload_v1/u);
+  assert.doesNotMatch(harness, /admin\.from\("documents"\)\.insert/u);
   assert.ok(
     harness.indexOf("t.after(async ()") <
       harness.indexOf("resources.databaseStarted = true"),
