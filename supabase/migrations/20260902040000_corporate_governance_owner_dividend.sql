@@ -73,6 +73,9 @@ from public, anon, authenticated, service_role;
 grant usage on schema corporate_governance
 to corporate_governance_workflow_executor;
 grant usage on schema public to corporate_governance_store_owner;
+grant usage on schema extensions to corporate_governance_store_owner;
+grant execute on function extensions.digest(text, text)
+to corporate_governance_store_owner;
 grant execute on function
   public.company_access_auth_uid_v1(),
   public.company_access_auth_jwt_v1(),

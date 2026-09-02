@@ -49,6 +49,10 @@ test("owner-dividend expand owns an isolated forced-RLS store", () => {
     source,
     /insert into corporate_governance\.owner_dividend_accounting_policies[\s\S]+from public\.corporate_accounting_policies/iu,
   );
+  assert.match(
+    source,
+    /grant usage on schema extensions to corporate_governance_store_owner[\s\S]+grant execute on function extensions\.digest\(text, text\)\s+to corporate_governance_store_owner/iu,
+  );
 });
 
 test("owner-dividend lifecycle is available only through exact restricted routines", () => {
