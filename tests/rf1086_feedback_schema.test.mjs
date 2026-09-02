@@ -643,22 +643,43 @@ test(
       ];
       for (const upload of uploads) assert.ifError(upload.error);
 
-      for (const client of [owner, operator]) {
-        const feedbackDocument = await client.from("documents").select("id").eq("id", feedbackDocumentId).maybeSingle();
-        assert.ok(feedbackDocument.error);
-        assert.equal(feedbackDocument.data, null);
-        const artifact = await client
-          .from("production_feedback_artifacts")
-          .select("document_id")
-          .eq("document_id", feedbackDocumentId)
-          .maybeSingle();
-        assert.ifError(artifact.error);
-        assert.equal(artifact.data?.document_id, feedbackDocumentId);
-        const download = await client.storage.from("company-documents").download(feedbackKey);
-        assert.ok(download.error);
-        const signed = await client.storage.from("company-documents").createSignedUrl(feedbackKey, 60);
-        assert.ok(signed.error);
-      }
+      const ownerFeedbackDocument = await owner
+        .from("documents")
+        .select("id")
+        .eq("id", feedbackDocumentId)
+        .maybeSingle();
+      assert.ok(ownerFeedbackDocument.error);
+      assert.equal(ownerFeedbackDocument.data, null);
+      const ownerArtifact = await owner
+        .from("production_feedback_artifacts")
+        .select("document_id")
+        .eq("document_id", feedbackDocumentId)
+        .maybeSingle();
+      assert.ifError(ownerArtifact.error);
+      assert.equal(ownerArtifact.data?.document_id, feedbackDocumentId);
+      const ownerDownload = await owner.storage.from("company-documents").download(feedbackKey);
+      assert.ok(ownerDownload.error);
+      const ownerSigned = await owner.storage.from("company-documents").createSignedUrl(feedbackKey, 60);
+      assert.ok(ownerSigned.error);
+
+      const operatorFeedbackDocument = await operator
+        .from("documents")
+        .select("id")
+        .eq("id", feedbackDocumentId)
+        .maybeSingle();
+      assert.ok(operatorFeedbackDocument.error);
+      assert.equal(operatorFeedbackDocument.data, null);
+      const operatorArtifact = await operator
+        .from("production_feedback_artifacts")
+        .select("document_id")
+        .eq("document_id", feedbackDocumentId)
+        .maybeSingle();
+      assert.ifError(operatorArtifact.error);
+      assert.equal(operatorArtifact.data, null);
+      const operatorDownload = await operator.storage.from("company-documents").download(feedbackKey);
+      assert.ok(operatorDownload.error);
+      const operatorSigned = await operator.storage.from("company-documents").createSignedUrl(feedbackKey, 60);
+      assert.ok(operatorSigned.error);
 
       for (const client of [reviewer, readOnly]) {
         const feedbackDocument = await client.from("documents").select("id").eq("id", feedbackDocumentId).maybeSingle();
