@@ -13,6 +13,10 @@ const wizardSource = readFileSync(
   ),
   "utf8",
 );
+const supabaseWorkspaceSource = readFileSync(
+  new URL("./supabase_workspace.test.mjs", import.meta.url),
+  "utf8",
+);
 
 function serverActionSource(name) {
   const start = actionsSource.indexOf(`export async function ${name}`);
@@ -34,11 +38,19 @@ test("shareholder-loan intent crosses only the governance generated boundary", (
     /recordShareholderLoanThroughApi\([\s\S]*?operationId,[\s\S]*?operationId/u,
   );
   assert.match(action, /corporateGovernanceOutcomeMayBeUnknown\(error\)/u);
-  assert.match(action, /corporateGovernanceActionErrorMessage\(error\)/u);
+  assert.match(action, /shareholderLoanActionErrorMessage\(error\)/u);
   assert.doesNotMatch(
     action,
     /postLedgerShareholderLoan|validateShareholderLoan|shareholderLoanLedgerLines/u,
   );
+});
+
+test("active Supabase integration no longer imports or exercises browser-owned loan policy", () => {
+  assert.doesNotMatch(
+    supabaseWorkspaceSource,
+    /lib\/shareholder-loan|validateShareholderLoan|shareholderLoanLedgerLines/u,
+  );
+  assert.doesNotMatch(supabaseWorkspaceSource, /action_type:\s*"shareholder_loan"/u);
 });
 
 test("shareholder-loan wizard submits intent without owning domain or ledger policy", () => {
@@ -48,6 +60,8 @@ test("shareholder-loan wizard submits intent without owning domain or ledger pol
   );
   assert.doesNotMatch(wizardSource, /ActionPreview|LedgerLine|useMemo/u);
   assert.doesNotMatch(wizardSource, /\b(?:1920|2255|1370)\b/u);
+  assert.match(wizardSource, /shareholderLoanFormPresentation\(direction, relatedPartySecurity\)/u);
+  assert.match(wizardSource, /presentation\.block !== null/u);
   assert.match(wizardSource, /<form action=\{recordShareholderLoan\}/u);
-  assert.match(wizardSource, /disabled=\{!ready\}/u);
+  assert.match(wizardSource, /<Banner variant=\{presentation\.block \? "danger" : "info"\}/u);
 });

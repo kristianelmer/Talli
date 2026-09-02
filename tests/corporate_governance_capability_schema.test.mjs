@@ -217,6 +217,24 @@ test("shareholder-loan expand moves authority behind governance contracts", () =
     source,
     /insert into corporate_governance\.shareholder_loans[\s\S]+from public\.holding_actions/iu,
   );
+  assert.match(source, /v_existing\.legacy_imported and \(/iu);
+  for (const field of [
+    "loan_date",
+    "amount_ore",
+    "direction",
+    "counterparty_name",
+    "document_status",
+    "interest_modelled",
+    "related_party_security",
+    "bank_transaction_id",
+    "document_id",
+  ]) {
+    assert.match(
+      source,
+      new RegExp(`v_existing\\.${field}\\s+is distinct from`, "iu"),
+      `legacy replay must compare ${field}`,
+    );
+  }
   assert.match(
     source,
     /project_shareholder_loan_v1[\s\S]+insert into public\.holding_actions/iu,
@@ -229,6 +247,14 @@ test("shareholder-loan expand moves authority behind governance contracts", () =
     rollback,
     /corporate_governance_shareholder_loan_rollback_unsafe/iu,
   );
+  for (const field of [
+    "counterparty_name",
+    "document_status",
+    "interest_modelled",
+    "related_party_security",
+  ]) {
+    assert.match(rollback, new RegExp(field, "iu"));
+  }
   assert.match(
     rollback,
     /drop table corporate_governance\.shareholder_loans/iu,
@@ -249,6 +275,7 @@ test("shareholder-loan contract cutover capsules the predecessor writer", () => 
     "shareholder-loan contract rollback",
   );
   assert.match(source, /contract_reconciliation_failed/iu);
+  assert.match(source, /related_party_security[\s\S]+target\.related_party_security/iu);
   assert.match(source, /rollback_145_prepare_shareholder_loan_v1/iu);
   assert.match(source, /rollback_145_complete_shareholder_loan_v1/iu);
   assert.match(
@@ -263,4 +290,14 @@ test("shareholder-loan contract cutover capsules the predecessor writer", () => 
     rollback,
     /rename to complete_shareholder_loan_v1/iu,
   );
+  for (const field of [
+    "counterparty_name",
+    "document_status",
+    "interest_modelled",
+    "related_party_security",
+    "bank_transaction_id",
+    "document_id",
+  ]) {
+    assert.match(rollback, new RegExp(field, "iu"));
+  }
 });

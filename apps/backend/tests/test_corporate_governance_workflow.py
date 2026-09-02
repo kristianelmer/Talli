@@ -411,6 +411,26 @@ def test_shareholder_loan_verifies_document_and_claims_optional_bank_atomically(
     assert session.rolled_back is True
 
 
+def test_committed_shareholder_loan_replay_precedes_mutable_document_check() -> None:
+    app, transaction, _, documents, ledgers = application()
+    command = replace(
+        supported_shareholder_loan(),
+        document_id=DocumentReference("66666666-6666-4666-8666-666666666666"),
+    )
+    committed = asyncio.run(app.record_shareholder_loan("access-token", command))
+    transaction.shareholder_loan_replay = replace(committed, replayed=True)
+    documents.records = ()
+
+    replay = asyncio.run(app.record_shareholder_loan("access-token", command))
+
+    assert replay.replayed is True
+    assert len(ledgers) == 1
+    assert [call[0] for call in transaction.calls][-2:] == [
+        "actor_role",
+        "prepare_shareholder_loan",
+    ]
+
+
 def finalization_command() -> FinalizeOwnerDividendCommand:
     proposal = supported_proposal()
     return FinalizeOwnerDividendCommand(

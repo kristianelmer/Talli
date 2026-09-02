@@ -54,6 +54,17 @@ begin
       and source.ledger_entry_id = target.accounting_entry_id
       and source.action_date = target.loan_date
       and source.payload ->> 'direction' = target.direction
+      and pg_catalog.btrim(source.payload ->> 'counterparty_name')
+        = target.counterparty_name
+      and source.payload ->> 'document_status' = target.document_status
+      and coalesce(
+        (source.payload ->> 'interest_modelled')::boolean, false
+      ) = target.interest_modelled
+      and coalesce(
+        (source.payload ->> 'related_party_security')::boolean, false
+      ) = target.related_party_security
+      and source.bank_transaction_id is not distinct from target.bank_transaction_id
+      and source.document_id is not distinct from target.document_id
       and pg_catalog.round(
         (source.payload ->> 'amount')::numeric * 100
       )::bigint = target.amount_ore

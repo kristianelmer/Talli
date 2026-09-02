@@ -2,8 +2,12 @@
 
 import { useState } from "react";
 
+import {
+  shareholderLoanFormPresentation,
+  type ShareholderLoanFormDirection,
+} from "../../../../features/corporate-governance";
 import { recordShareholderLoan } from "../../../actions";
-import { SubmitButton } from "../../../components/ui";
+import { Banner, SubmitButton } from "../../../components/ui";
 import { ownerCopy } from "../../../lib/copy";
 import {
   CheckboxField,
@@ -22,7 +26,7 @@ export function ShareholderLoanWizard({
   const a = ownerCopy.actions;
   const c = a.shareholderLoan;
 
-  const [direction, setDirection] = useState("shareholder_to_company");
+  const [direction, setDirection] = useState<ShareholderLoanFormDirection>("shareholder_to_company");
   const [loanDate, setLoanDate] = useState("");
   const [amount, setAmount] = useState("");
   const [counterpartyName, setCounterpartyName] = useState("");
@@ -35,6 +39,7 @@ export function ShareholderLoanWizard({
     loanDate.trim() !== "" &&
     amount.trim() !== "" &&
     counterpartyName.trim() !== "";
+  const presentation = shareholderLoanFormPresentation(direction, relatedPartySecurity);
 
   return (
     <form action={recordShareholderLoan} className="wizardForm">
@@ -47,7 +52,7 @@ export function ShareholderLoanWizard({
         label={c.directionLabel}
         name="direction"
         value={direction}
-        onChange={setDirection}
+        onChange={(value) => setDirection(value as ShareholderLoanFormDirection)}
         required
       >
         <option value="shareholder_to_company">{c.dirToCompany}</option>
@@ -98,7 +103,11 @@ export function ShareholderLoanWizard({
         onChange={setRelatedPartySecurity}
       />
 
-      <SubmitButton disabled={!ready} pendingLabel={a.pending}>
+      <Banner variant={presentation.block ? "danger" : "info"} title={presentation.title}>
+        {presentation.block ?? presentation.treatment}
+      </Banner>
+
+      <SubmitButton disabled={!ready || presentation.block !== null} pendingLabel={a.pending}>
         {a.confirmCta}
       </SubmitButton>
     </form>

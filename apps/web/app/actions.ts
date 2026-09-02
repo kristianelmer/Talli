@@ -137,6 +137,7 @@ import {
   recordOwnerDividendPayment as recordOwnerDividendPaymentThroughApi,
   recordShareholderLoan as recordShareholderLoanThroughApi,
   registerOwnerDividendDocuments,
+  shareholderLoanActionErrorMessage,
   type CorporateCanonicalDecisionWire,
   type OwnerDividendProposalWire,
 } from "../features/corporate-governance";
@@ -3716,7 +3717,7 @@ export async function recordShareholderLoan(formData: FormData) {
       ? "/actions/shareholder-loan"
       : returnTo;
     redirect(ownerPathWithQuery(retryTarget, {
-      error: corporateGovernanceActionErrorMessage(error),
+      error: shareholderLoanActionErrorMessage(error),
       shareholderLoanOperationId: outcomeMayBeUnknown ? operationId : undefined,
     }));
   }

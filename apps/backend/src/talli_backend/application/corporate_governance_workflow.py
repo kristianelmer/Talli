@@ -252,34 +252,35 @@ class CorporateGovernanceApplication:
     ) -> RecordedShareholderLoan:
         session = await self._session(access_token, command.actor_id)
         loan = self._service.validate_shareholder_loan(command)
-        if command.document_id is not None:
-            documents = await self._documents_session_factory.session(access_token)
-            if documents.actor_id != command.actor_id:
-                raise CorporateGovernanceError.forbidden()
-            records = await documents.list_documents((command.company_id,))
-            record = next(
-                (
-                    item
-                    for item in records
-                    if str(item.document_id) == str(command.document_id)
-                ),
-                None,
-            )
-            if (
-                record is None
-                or record.company_id != command.company_id
-                or record.income_year != command.income_year
-                or record.status in {DocumentStatus.QUARANTINED, DocumentStatus.REMOVED}
-            ):
-                raise CorporateGovernanceError.precondition(
-                    CorporateGovernanceErrorCode.INVALID_INPUT,
-                    "Shareholder-loan document evidence does not match the company year.",
-                )
         async with session.transaction() as transaction:
             await self._require_owner(transaction, command.company_id)
             prepared = await transaction.prepare_shareholder_loan(command, loan)
             if prepared.replay is not None:
                 return prepared.replay
+            if command.document_id is not None:
+                documents = await self._documents_session_factory.session(access_token)
+                if documents.actor_id != command.actor_id:
+                    raise CorporateGovernanceError.forbidden()
+                records = await documents.list_documents((command.company_id,))
+                record = next(
+                    (
+                        item
+                        for item in records
+                        if str(item.document_id) == str(command.document_id)
+                    ),
+                    None,
+                )
+                if (
+                    record is None
+                    or record.company_id != command.company_id
+                    or record.income_year != command.income_year
+                    or record.status
+                    in {DocumentStatus.QUARANTINED, DocumentStatus.REMOVED}
+                ):
+                    raise CorporateGovernanceError.precondition(
+                        CorporateGovernanceErrorCode.INVALID_INPUT,
+                        "Shareholder-loan document evidence does not match the company year.",
+                    )
             ledger = self._ledger_facade_factory(transaction)
             directions = {
                 "shareholder_to_company": LedgerShareholderLoanDirection.SHAREHOLDER_TO_COMPANY,

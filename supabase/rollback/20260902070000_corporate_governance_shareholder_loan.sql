@@ -34,6 +34,15 @@ begin
       and action.document_id is not distinct from loan.document_id
       and action.action_date = loan.loan_date
       and action.payload ->> 'direction' = loan.direction
+      and pg_catalog.btrim(action.payload ->> 'counterparty_name')
+        = loan.counterparty_name
+      and action.payload ->> 'document_status' = loan.document_status
+      and coalesce(
+        (action.payload ->> 'interest_modelled')::boolean, false
+      ) = loan.interest_modelled
+      and coalesce(
+        (action.payload ->> 'related_party_security')::boolean, false
+      ) = loan.related_party_security
       and pg_catalog.round(
         (action.payload ->> 'amount')::numeric * 100
       )::bigint = loan.amount_ore

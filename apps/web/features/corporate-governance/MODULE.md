@@ -9,6 +9,7 @@
 This feature is the generated-client transport and Norwegian error presentation
 boundary for owner dividends and shareholder loans. The backend owns canonical facts, readiness,
 authorization, idempotency, Ledger posting, and Banking claims. The web may
-collect form facts, render the transitional document preview, and upload through
-the Documents feature; it must not choose accounting policy or persist governance
-state directly.
+collect form facts, render plain-language shareholder-loan treatment and hard-block
+guidance without recreating account or amount policy, render the transitional
+document preview, and upload through the Documents feature; it must not choose
+accounting policy or persist governance state directly.

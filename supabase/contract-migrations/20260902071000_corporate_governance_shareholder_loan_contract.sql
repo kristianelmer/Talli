@@ -88,6 +88,9 @@ begin
         or coalesce(
           (source.payload ->> 'interest_modelled')::boolean, false
         ) <> target.interest_modelled
+        or coalesce(
+          (source.payload ->> 'related_party_security')::boolean, false
+        ) <> target.related_party_security
         or pg_catalog.round(
           (source.payload ->> 'amount')::numeric * 100
         )::bigint <> target.amount_ore

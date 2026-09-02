@@ -9,7 +9,10 @@ export {
 export {
   corporateGovernanceActionErrorMessage,
   corporateGovernanceOutcomeMayBeUnknown,
+  shareholderLoanActionErrorMessage,
+  shareholderLoanFormPresentation,
 } from "./presentation.ts";
+export type { ShareholderLoanFormDirection } from "./presentation.ts";
 export type {
   CorporateCanonicalDecisionWire,
   OwnerDividendApprovalWire,

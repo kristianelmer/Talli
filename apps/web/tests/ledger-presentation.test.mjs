@@ -1340,13 +1340,12 @@ test("unknown coordinator outcomes preserve only the scoped retry operation", ()
         : /ledgerOutcomeMayBeUnknown\(error\)/u,
       actionName,
     );
-    assert.match(
-      action,
-      governance
+    const errorPresenter = actionName === "recordShareholderLoan"
+      ? /shareholderLoanActionErrorMessage\(error\)/u
+      : governance
         ? /corporateGovernanceActionErrorMessage\(error\)/u
-        : /ledgerActionErrorMessage\(error\)/u,
-      actionName,
-    );
+        : /ledgerActionErrorMessage\(error\)/u;
+    assert.match(action, errorPresenter, actionName);
     for (const field of fields) assert.match(action, new RegExp(field, "u"), actionName);
   }
 

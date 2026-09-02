@@ -135,3 +135,129 @@ test(
     }
   },
 );
+
+test(
+  "legacy shareholder-loan replay requires every canonical fact to match",
+  { skip: !databaseUrl && "DATABASE_URL is required", timeout: 60_000 },
+  async () => {
+    const client = new Client({ connectionString: databaseUrl });
+    await client.connect();
+    const actorId = "91000000-0000-4000-8000-000000000145";
+    const companyId = "92000000-0000-4000-8000-000000000145";
+    const actionId = "93000000-0000-4000-8000-000000000145";
+    const entryId = "94000000-0000-4000-8000-000000000145";
+    const exactRequest = {
+      actionId,
+      companyId,
+      incomeYear: 2025,
+      ledgerEntryId: entryId,
+      loanDate: "2025-03-01",
+      amountOre: 125050,
+      direction: "shareholder_to_company",
+      counterpartyName: "Eier Holding AS",
+      documentStatus: "not_required",
+      interestModelled: false,
+      relatedPartySecurity: false,
+      bankTransactionId: null,
+      documentId: null,
+      idempotencyKey: "runtime-replay-legacy-145",
+      correlationId: "runtime-replay-legacy-145",
+    };
+    try {
+      await client.query("begin");
+      await client.query(
+        "insert into auth.users (id, is_sso_user, is_anonymous) values ($1::uuid, false, false)",
+        [actorId],
+      );
+      await client.query(
+        "insert into public.companies (id, org_number, name, entity_type, created_by) values ($1::uuid, '900000145', 'Replay AS', 'AS', $2::uuid)",
+        [companyId, actorId],
+      );
+      await client.query(
+        String.raw`
+          insert into ledger.entries (
+            id, company_id, income_year, entry_kind, memo, lines, risk_flags,
+            posted_at, created_by, created_at, source_capability,
+            source_record_id, correlation_id
+          ) values (
+            $1::uuid, $2::uuid, 2025, 'SHAREHOLDER_LOAN', 'Legacy replay',
+            '[{"account":"1920","description":"Bank","debit":"1250.50","credit":"0"},{"account":"2255","description":"Loan","debit":"0","credit":"1250.50"}]'::jsonb,
+            '[]'::jsonb, pg_catalog.now(), $3::uuid,
+            pg_catalog.now(), 'CORPORATE_GOVERNANCE', $4, 'legacy-replay-145'
+          )
+        `,
+        [entryId, companyId, actorId, actionId],
+      );
+      await client.query(String.raw`
+        do $authority$ begin
+          execute pg_catalog.format(
+            'grant corporate_governance_store_owner, corporate_governance_workflow_executor to %I',
+            current_user
+          );
+        end $authority$;
+        set local role corporate_governance_store_owner;
+        alter table corporate_governance.shareholder_loans no force row level security;
+      `);
+      await client.query(
+        String.raw`
+          insert into corporate_governance.shareholder_loans (
+            action_id, company_id, income_year, loan_date, amount_ore,
+            direction, counterparty_name, document_status,
+            interest_modelled, related_party_security, accounting_entry_id,
+            idempotency_key, correlation_id, request_fingerprint,
+            legacy_imported, created_by
+          ) values (
+            $1::uuid, $2::uuid, 2025, date '2025-03-01', 125050,
+            'shareholder_to_company', 'Eier Holding AS', 'not_required',
+            false, false, $3::uuid, 'legacy-import-runtime-145',
+            'legacy-import-runtime-145', repeat('a', 64), true, $4::uuid
+          )
+        `,
+        [actionId, companyId, entryId, actorId],
+      );
+      await client.query(String.raw`
+        create or replace function corporate_governance.assert_owner_v1(
+          p_company_id uuid,
+          p_income_year integer,
+          p_verified_subject text,
+          p_consequential boolean
+        ) returns uuid language sql volatile security definer set search_path = ''
+        as $function$ select p_verified_subject::uuid $function$;
+        reset role;
+        set local role corporate_governance_workflow_executor;
+      `);
+
+      const exact = await client.query(
+        "select corporate_governance.prepare_shareholder_loan_v1($1::jsonb, $2)",
+        [JSON.stringify(exactRequest), actorId],
+      );
+      assert.equal(exact.rows[0].prepare_shareholder_loan_v1.replay.replayed, true);
+
+      const variants = [
+        { amountOre: 125051 },
+        { loanDate: "2025-03-02" },
+        { direction: "company_to_corporate_shareholder" },
+        { counterpartyName: "Et annet AS" },
+        { documentStatus: "attached" },
+        { interestModelled: true },
+        { relatedPartySecurity: true },
+        { bankTransactionId: "95000000-0000-4000-8000-000000000145" },
+        { documentId: "96000000-0000-4000-8000-000000000145" },
+      ];
+      for (const [index, changed] of variants.entries()) {
+        await client.query(`savepoint changed_${index}`);
+        await assert.rejects(
+          client.query(
+            "select corporate_governance.prepare_shareholder_loan_v1($1::jsonb, $2)",
+            [JSON.stringify({ ...exactRequest, ...changed }), actorId],
+          ),
+          /corporate_governance_idempotency_conflict/iu,
+        );
+        await client.query(`rollback to savepoint changed_${index}`);
+      }
+    } finally {
+      await client.query("rollback").catch(() => undefined);
+      await client.end();
+    }
+  },
+);

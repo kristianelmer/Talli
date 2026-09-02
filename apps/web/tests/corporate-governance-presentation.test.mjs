@@ -5,6 +5,8 @@ import { TalliApiError } from "@talli/talli-api-client";
 import {
   corporateGovernanceActionErrorMessage,
   corporateGovernanceOutcomeMayBeUnknown,
+  shareholderLoanActionErrorMessage,
+  shareholderLoanFormPresentation,
 } from "../features/corporate-governance/presentation.ts";
 
 function apiError(status, code) {
@@ -39,6 +41,48 @@ test("governance errors expose stable Norwegian owner guidance", () => {
   assert.equal(
     corporateGovernanceActionErrorMessage(new Error("private detail")),
     "Forbindelsen til utbyttetjenesten ble brutt. Prøv samme forespørsel igjen.",
+  );
+});
+
+test("shareholder-loan form presentation explains treatment without exposing posting policy", () => {
+  assert.deepEqual(
+    shareholderLoanFormPresentation("shareholder_to_company", false),
+    {
+      title: "Slik behandles lånet",
+      treatment: "Talli registrerer innbetalingen som penger i banken og gjeld til aksjonæren.",
+      block: null,
+    },
+  );
+  assert.equal(
+    shareholderLoanFormPresentation("company_to_corporate_shareholder", false).treatment,
+    "Talli registrerer utbetalingen som en fordring på selskapsaksjonæren og mindre penger i banken.",
+  );
+  assert.equal(
+    shareholderLoanFormPresentation("company_to_personal_shareholder", false).block,
+    "Lån fra selskap til personlig aksjonær må håndteres av regnskapsfører.",
+  );
+  assert.equal(
+    shareholderLoanFormPresentation("shareholder_to_company", true).block,
+    "Sikkerhet eller garanti mellom nærstående må vurderes av regnskapsfører.",
+  );
+});
+
+test("shareholder-loan errors never fall through to dividend guidance", () => {
+  assert.equal(
+    shareholderLoanActionErrorMessage(apiError(422, "personal_shareholder_loan_blocked")),
+    "Lån fra selskap til personlig aksjonær må håndteres av regnskapsfører.",
+  );
+  assert.equal(
+    shareholderLoanActionErrorMessage(apiError(422, "related_party_security_blocked")),
+    "Sikkerhet eller garanti mellom nærstående må vurderes av regnskapsfører.",
+  );
+  assert.equal(
+    shareholderLoanActionErrorMessage(apiError(409, "future_code")),
+    "Aksjonærlånet kunne ikke registreres. Kontroller opplysningene.",
+  );
+  assert.equal(
+    shareholderLoanActionErrorMessage(new Error("private detail")),
+    "Forbindelsen til tjenesten for aksjonærlån ble brutt. Prøv samme forespørsel igjen.",
   );
 });
 

@@ -996,10 +996,6 @@ export const ownerCopy = {
       dirToCompany: "Aksjonær låner til selskapet",
       dirToCorporate: "Selskapet låner til selskapsaksjonær",
       dirToPersonal: "Selskapet låner til personlig aksjonær",
-      personalBlock:
-        "Lån fra selskap til personlig aksjonær må håndteres av regnskapsfører.",
-      securityBlock:
-        "Sikkerhet eller garanti mellom nærstående må vurderes av regnskapsfører.",
       dateLabel: "Lånedato",
       amountLabel: "Lånebeløp (kr)",
       counterpartyLabel: "Motpart",

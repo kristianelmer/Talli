@@ -408,6 +408,29 @@ begin
   if found then
     if (not v_existing.legacy_imported
         and v_existing.request_fingerprint <> v_fingerprint)
+      or (v_existing.legacy_imported and (
+        v_existing.loan_date
+          is distinct from (p_request ->> 'loanDate')::date
+        or v_existing.amount_ore
+          is distinct from (p_request ->> 'amountOre')::bigint
+        or v_existing.direction
+          is distinct from p_request ->> 'direction'
+        or v_existing.counterparty_name
+          is distinct from pg_catalog.btrim(p_request ->> 'counterpartyName')
+        or v_existing.document_status
+          is distinct from p_request ->> 'documentStatus'
+        or v_existing.interest_modelled is distinct from coalesce(
+          (p_request ->> 'interestModelled')::boolean, false
+        )
+        or v_existing.related_party_security is distinct from coalesce(
+          (p_request ->> 'relatedPartySecurity')::boolean, false
+        )
+        or v_existing.bank_transaction_id is distinct from
+          nullif(p_request ->> 'bankTransactionId', '')::uuid
+        or v_existing.document_id is distinct from
+          nullif(p_request ->> 'documentId', '')::uuid
+      ))
+      or v_existing.action_id <> v_action_id
       or v_existing.company_id <> v_company_id
       or v_existing.income_year <> v_income_year
       or v_existing.accounting_entry_id
@@ -518,6 +541,31 @@ begin
   if found then
     if (not v_existing.legacy_imported
         and v_existing.request_fingerprint <> v_fingerprint)
+      or (v_existing.legacy_imported and (
+        v_existing.loan_date
+          is distinct from (p_request ->> 'loanDate')::date
+        or v_existing.amount_ore
+          is distinct from (p_request ->> 'amountOre')::bigint
+        or v_existing.direction
+          is distinct from p_request ->> 'direction'
+        or v_existing.counterparty_name
+          is distinct from pg_catalog.btrim(p_request ->> 'counterpartyName')
+        or v_existing.document_status
+          is distinct from p_request ->> 'documentStatus'
+        or v_existing.interest_modelled is distinct from coalesce(
+          (p_request ->> 'interestModelled')::boolean, false
+        )
+        or v_existing.related_party_security is distinct from coalesce(
+          (p_request ->> 'relatedPartySecurity')::boolean, false
+        )
+        or v_existing.bank_transaction_id is distinct from
+          nullif(p_request ->> 'bankTransactionId', '')::uuid
+        or v_existing.document_id is distinct from
+          nullif(p_request ->> 'documentId', '')::uuid
+      ))
+      or v_existing.action_id <> v_action_id
+      or v_existing.company_id <> v_company_id
+      or v_existing.income_year <> v_income_year
       or v_existing.accounting_entry_id
         <> (p_request ->> 'ledgerEntryId')::uuid
     then
