@@ -5,7 +5,6 @@ import {
   buildDeadlineReminderPlan,
   defaultReminderPreferences,
 } from "./deadlines";
-import { summarizeDividendReceivedAnnualImpact } from "./dividend-received";
 import { reviewChecklistStatus } from "./invitations";
 import { estimateAnnualTax } from "./tax-settlement";
 import {
@@ -25,10 +24,6 @@ import {
   listFilingReviewComments,
   listFilingSubmissions,
   listProductionFilingState,
-  listHoldingActions,
-  listInvestmentPositions,
-  listInvestmentLots,
-  listInvestmentLotAllocations,
   listLedgerEntries,
   listNotificationOutbox,
   listOpeningSetups,
@@ -37,6 +32,15 @@ import {
 import { listCompanyCancellationLifecycle } from "./company-access-cancellation";
 import { listCompanyAccessContexts } from "./company-access-context";
 import { listCompanyAccessAdministration } from "./company-access-administration";
+import {
+  listPresentedAcquisitionLots,
+  listPresentedInvestmentPositions,
+  listPresentedInvestmentActivity,
+  listPresentedInvestmentCorrections,
+  effectiveInvestmentActivity,
+  summarizeReceivedDividendAnnualImpact,
+} from "../../features/investments";
+import { getCurrentSessionAccessToken } from "./supabase/auth-session";
 
 /**
  * Loads the full owner-facing workspace dataset (companies, filings, ledger,
@@ -48,6 +52,7 @@ import { listCompanyAccessAdministration } from "./company-access-administration
  */
 export async function loadWorkspaceData() {
   const user = await getCurrentUser();
+  const accessToken = user ? await getCurrentSessionAccessToken() : null;
   const { companies, error } = user ? await listCompanyAccessContexts() : { companies: [], error: null };
   const { documents } = user ? await listDocumentsForCompanies(companies.map((company) => company.id)) : { documents: [] };
   const { annualData } = user ? await listAnnualData(companies.map((company) => company.id)) : { annualData: [] };
@@ -92,12 +97,28 @@ export async function loadWorkspaceData() {
   const { acceptances: bankSuggestionAcceptances } = user
     ? await listBankSuggestionAcceptances(companies.map((company) => company.id))
     : { acceptances: [] };
-  const { actions } = user ? await listHoldingActions(companies.map((company) => company.id)) : { actions: [] };
-  const { positions } = user ? await listInvestmentPositions(companies.map((company) => company.id)) : { positions: [] };
-  const { lots: investmentLots } = user ? await listInvestmentLots(companies.map((company) => company.id)) : { lots: [] };
-  const { allocations: investmentLotAllocations } = user
-    ? await listInvestmentLotAllocations(companies.map((company) => company.id))
-    : { allocations: [] };
+  const companyIds = companies.map((company) => company.id);
+  const [activityResult, positionsResult, lotsResult, correctionsResult] = accessToken
+    ? await Promise.all([
+        listPresentedInvestmentActivity(accessToken, companyIds),
+        listPresentedInvestmentPositions(accessToken, companyIds),
+        listPresentedAcquisitionLots(accessToken, companyIds),
+        listPresentedInvestmentCorrections(accessToken, companyIds),
+      ])
+    : [
+        { actions: [], error: null },
+        { positions: [], error: null },
+        { lots: [], error: null },
+        { corrections: [], error: null },
+      ];
+  const investmentActivityHistory = activityResult.actions;
+  const positions = positionsResult.positions;
+  const investmentLots = lotsResult.lots;
+  const investmentCorrections = correctionsResult.corrections;
+  const actions = effectiveInvestmentActivity(
+    investmentActivityHistory,
+    investmentCorrections,
+  );
   const { entries } = user ? await listLedgerEntries(companies.map((company) => company.id)) : { entries: [] };
   const { locks } = user ? await listPeriodLocks(companies.map((company) => company.id)) : { locks: [] };
   const unmatchedTransactions = transactions.filter(
@@ -105,20 +126,20 @@ export async function loadWorkspaceData() {
   );
   const adminCostEntries = entries.filter((entry) => entry.entry_type === "admin_cost");
   const taxSettlementEntries = entries.filter((entry) => entry.entry_type === "tax_settlement");
-  const taxSettlementActions = actions.filter((action) => action.action_type === "tax_settlement");
+  const taxSettlementActions = taxSettlementEntries;
   const primaryShareholders = shareholders.filter((shareholder) => shareholder.company_id === primaryCompanyId);
   const dividendReceivedActions = actions.filter((action) => action.action_type === "dividend_received");
-  const dividendAnnualImpact = summarizeDividendReceivedAnnualImpact(
-    dividendReceivedActions.map((action) => ({
-      action_type: action.action_type,
-      payload: action.payload as { gross_amount?: number; taxable_add_back?: number },
-    })),
+  const dividendAnnualImpact = summarizeReceivedDividendAnnualImpact(
+    dividendReceivedActions,
   );
   const manualJournalEntries = entries.filter((entry) => entry.entry_type === "manual_journal");
   const manualJournalWarnings = manualJournalEntries.flatMap((entry) => entry.risk_flags ?? []);
   const taxEstimate = estimateAnnualTax({ ledgerEntries: entries, holdingActions: actions });
   const incomeYears = Array.from(
     new Set([
+      ...companies
+        .map((company) => company.admittedAccountingYear)
+        .filter((incomeYear): incomeYear is number => incomeYear !== null),
       ...setups.map((setup) => setup.income_year),
       ...previews.map((preview) => preview.income_year),
       ...overrides.map((override) => override.income_year),
@@ -128,7 +149,8 @@ export async function loadWorkspaceData() {
       ...locks.map((lock) => lock.income_year),
     ]),
   ).sort((a, b) => b - a);
-  const primaryIncomeYear = incomeYears[0] ?? 2025;
+  const primaryIncomeYear = companies.find((company) => company.id === primaryCompanyId)
+    ?.admittedAccountingYear ?? incomeYears[0] ?? 2025;
   const primaryBillingAccount = billingAccounts.find((account) => account.company_id === primaryCompanyId);
   const primaryBillingEvents = billingPaymentEvents.filter((event) => event.company_id === primaryCompanyId);
   const primaryReadinessSnapshots = readinessSnapshots.filter(
@@ -194,9 +216,10 @@ export async function loadWorkspaceData() {
     transactions,
     bankSuggestionAcceptances,
     actions,
+    investmentActivityHistory,
     positions,
     investmentLots,
-    investmentLotAllocations,
+    investmentCorrections,
     entries,
     locks,
     primaryCompanyId,

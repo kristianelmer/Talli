@@ -8,6 +8,10 @@ import {
   loadCompanyAccessContext,
 } from "../features/company-access/transport/load-company-access-context.ts";
 import {
+  presentCompanyAccessRecord,
+  presentCompanyAccessContext,
+} from "../features/company-access/presentation.ts";
+import {
   BackendConfigurationError,
   backendBaseUrl,
   loadSystemBoundary,
@@ -49,6 +53,15 @@ function ownerContext(overrides = {}) {
     role: "owner",
     resourceScope: "owner_sensitive",
     aal: "aal2",
+    currentAgreementAccepted: true,
+    companyYearAdmissionId: "20000000-0000-4000-8000-000000000002",
+    admittedAccountingYear: 2026,
+    currentEligibilityDecision: "supported",
+    eligibilityReasonExplanations: [],
+    eligibilityNextStepCode: "CONTINUE_COMPANY_YEAR",
+    eligibilityNextStep: "Fortsett selskapsåret i Talli.",
+    consequentialOperationsAllowed: true,
+    archiveExportAvailable: true,
     ...overrides,
   };
   return { selectedCompany: company, companies: [{ ...company }] };
@@ -152,8 +165,79 @@ test("the company-access app boundary owns its presentation model instead of a S
   assert.doesNotMatch(source, /supabase\/server|CompanyWorkspaceRow/);
   assert.match(source, /presentCompanyAccessContext/);
   assert.match(presentation, /export type CompanyAccessPresentation/);
+  assert.match(presentation, /CompanyAccessRecord/);
+  assert.doesNotMatch(presentation, /OperatorCompanyRecord/);
   assert.match(presentation, /role: "owner";/);
-  assert.doesNotMatch(presentation, /created_by|identity_confirmed_at|identity_locked_at|created_at/);
+  assert.match(presentation, /currentAgreementAccepted: boolean;/);
+  assert.match(presentation, /admittedAccountingYear: number \| null;/);
+  assert.match(presentation, /consequentialOperationsAllowed: boolean;/);
+  assert.doesNotMatch(presentation, /supabase\/server|CompanyWorkspaceRow/);
+});
+
+test("owner context preserves the admitted company-year and current safety gate", () => {
+  assert.deepEqual(
+    presentCompanyAccessContext(ownerContext().selectedCompany),
+    {
+      id: "company-1",
+      org_number: "314159265",
+      name: "Talli Holding AS",
+      entity_type: "AS",
+      address: "Testveien 1",
+      postal_code: "0150",
+      city: "Oslo",
+      status_text: "Registrert",
+      source: "Brønnøysundregistrene",
+      created_by: "owner-1",
+      identity_confirmed_at: null,
+      identity_locked_at: null,
+      created_at: "2026-07-30T00:00:00Z",
+      role: "owner",
+      currentAgreementAccepted: true,
+      companyYearAdmissionId: "20000000-0000-4000-8000-000000000002",
+      admittedAccountingYear: 2026,
+      currentEligibilityDecision: "supported",
+      eligibilityReasonExplanations: [],
+      eligibilityNextStepCode: "CONTINUE_COMPANY_YEAR",
+      eligibilityNextStep: "Fortsett selskapsåret i Talli.",
+      consequentialOperationsAllowed: true,
+      archiveExportAvailable: true,
+    },
+  );
+});
+
+test("company record presentation maps the generated camel-case contract to existing web registry facts", () => {
+  const company = {
+    id: "company-1",
+    orgNumber: "314159265",
+    name: "Talli Holding AS",
+    entityType: "AS",
+    address: "Testveien 1",
+    postalCode: "0150",
+    city: "Oslo",
+    statusText: "Registrert",
+    source: "Brønnøysundregistrene",
+    createdBy: "owner-1",
+    identityConfirmedAt: "2026-08-26T08:00:00Z",
+    identityLockedAt: null,
+    createdAt: "2026-08-26T08:00:00Z",
+  };
+
+  assert.deepEqual(presentCompanyAccessRecord({ ...company, role: "reviewer" }), {
+    id: "company-1",
+    org_number: "314159265",
+    name: "Talli Holding AS",
+    entity_type: "AS",
+    address: "Testveien 1",
+    postal_code: "0150",
+    city: "Oslo",
+    status_text: "Registrert",
+    source: "Brønnøysundregistrene",
+    created_by: "owner-1",
+    identity_confirmed_at: "2026-08-26T08:00:00Z",
+    identity_locked_at: null,
+    created_at: "2026-08-26T08:00:00Z",
+    role: "reviewer",
+  });
 });
 
 test("company-access transport fails closed on a partial context response", async () => {

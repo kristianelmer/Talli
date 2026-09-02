@@ -15,6 +15,10 @@ const archiveRoutePath = new URL(
   import.meta.url,
 );
 const archiveInventoryPath = new URL("../architecture/company-archive-sources.json", import.meta.url);
+const investmentsStageExitPath = new URL(
+  "../supabase/contract-migrations/20260831193000_investments_stage_exit.sql",
+  import.meta.url,
+);
 
 function sql(path) {
   return readFileSync(path, "utf8");
@@ -70,14 +74,49 @@ test("request derives archive and source completeness inside one atomic RPC", ()
 test("archive route and generation triggers share one complete source inventory", () => {
   const source = sql(expandPath);
   const route = sql(archiveRoutePath);
+  const investmentsStageExit = sql(investmentsStageExitPath);
   const inventory = JSON.parse(sql(archiveInventoryPath));
   const declared = new Map(inventory.sources.map((item) => [item.table, item.scope]));
   const routeTables = new Set([...route.matchAll(/\.from\("([a-z0-9_]+)"\)/gu)].map((match) => match[1]));
-  assert.deepEqual([...routeTables].sort(), [...declared.keys()].sort());
-  const triggerInventory = new Map(
+  assert.match(route, /loadAcceptedMembershipCompany\(companyId\)/u);
+  const logicalRouteSources = new Set([
+    ...routeTables,
+    "companies",
+    // Ledger is now loaded through its generated capability query instead of
+    // a direct Supabase `.from("ledger_entries")` call.
+    "ledger_entries",
+    // Documents are now loaded through their owned backup projection.
+    "documents",
+    // Investments are now loaded through generated capability queries. These
+    // are the canonical persistence sources protected by the generation lock.
+    "investments.positions",
+    "investments.acquisition_lots",
+    "investments.share_purchases",
+    "investments.share_sales",
+    "investments.share_sale_allocations",
+    "investments.received_dividends",
+  ]);
+  assert.deepEqual([...logicalRouteSources].sort(), [...declared.keys()].sort());
+  const legacyTriggerInventory = new Map(
     [...source.matchAll(/\('([a-z0-9_]+)',\s*'(year|company)',\s*'(?:id|company_id)'\)/gu)]
       .map((match) => [match[1], match[2]]),
   );
+  for (const legacyInvestmentTable of [
+    "investment_positions",
+    "investment_lots",
+    "investment_lot_allocations",
+  ]) {
+    legacyTriggerInventory.delete(legacyInvestmentTable);
+  }
+  const canonicalInvestmentTriggerInventory = new Map(
+    [...investmentsStageExit.matchAll(
+      /before insert or update or delete on (investments\.[a-z0-9_]+) for each row\s+execute function public\.company_archive_track_source_write_v1\('(year|company)', 'company_id'\)/gu,
+    )].map((match) => [match[1], match[2]]),
+  );
+  const triggerInventory = new Map([
+    ...legacyTriggerInventory,
+    ...canonicalInvestmentTriggerInventory,
+  ]);
   assert.deepEqual([...triggerInventory.entries()].sort(), [...declared.entries()].sort());
   assert.match(source, /\('companies', 'company', 'id'\)/u);
   const tracker = functionBody(source, "company_archive_track_source_write_v1");
@@ -91,7 +130,8 @@ test("archive route and generation triggers share one complete source inventory"
   assert.equal(declared.has("company_archive_export_receipts"), false);
   assert.match(functionBody(source, "company_archive_lock_scope_v1"), /company_archive_lock_company_v1\(p_company_id\)/iu);
   assert.ok(
-    route.indexOf('"company_archive_begin_export"') < route.indexOf('.from("companies")'),
+    route.indexOf('"company_archive_begin_export"')
+      < route.indexOf("loadAcceptedMembershipCompany(companyId)"),
     "every authoritative source read must follow the generation boundary",
   );
 });

@@ -1,0 +1,85 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#147",
+  "verifiedAt": "2026-09-02T02:49:08Z",
+  "sourceRevision": "32dcb77890d92c655ee589e7c6c603f27c27c625",
+  "target": {
+    "organizationId": "zwucumjvtpnyujqyzwkg",
+    "projectId": "pkpyyxryfhfehrbhbynp",
+    "name": "1st project",
+    "region": "eu-west-1",
+    "state": "ACTIVE_HEALTHY",
+    "database": "postgres",
+    "postgresVersion": "17.6.1.166"
+  },
+  "apply": {
+    "result": "pass",
+    "method": "Supabase migration API, serial exact-file application",
+    "baselineMigrationHistoryCount": 71,
+    "appliedMigrationCount": 2,
+    "migrationHistoryCount": 73,
+    "appliedMigrations": [
+      {"version": "20260902021710", "name": "documents_capability"},
+      {"version": "20260902023050", "name": "documents_advisor_cleanup"}
+    ],
+    "cleanupPreflight": "The first cleanup attempt was transactionally rejected because the migration role was not the document table owner. No DDL was committed; the authority-aware exact file was then applied successfully.",
+    "deliberatelyUnappliedMigration": "20260830093000_current_legal_evidence",
+    "unappliedReason": "#196 billing/publication condition remains closed"
+  },
+  "verification": {
+    "documentStore": {
+      "owner": "documents_store_owner",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "businessRows": 0
+    },
+    "runtimeBoundary": {
+      "backendRole": "talli_ledger_backend",
+      "backendExecutorMembership": true,
+      "executorCanStage": true,
+      "executorCanSelectTable": false,
+      "authenticatedCanSelectTable": false,
+      "serviceRoleCanSelectTable": false,
+      "authenticatedCanStage": false,
+      "authenticatedCanUseLegacyRemoval": false,
+      "authenticatedMetadataPolicies": 0,
+      "legacyBrowserStoragePolicies": 0,
+      "retainedCaseBoundSupportStoragePolicies": 1
+    },
+    "producerBoundary": {
+      "corporateProducersUseRegistrationContract": true,
+      "corporateProducersInsertDocumentRows": false,
+      "canonicalInvestmentReferenceGuard": true
+    },
+    "platformMigrationRole": {
+      "role": "postgres",
+      "capabilityMembershipAdminOption": true,
+      "inheritOption": false,
+      "setOption": false,
+      "effectiveRuntimeAuthority": false
+    },
+    "legalMigrationPresent": false
+  },
+  "advisors": {
+    "security": {
+      "total": 36,
+      "info": 5,
+      "warn": 31,
+      "documentsBoundaryFindings": 0,
+      "nameMatchedLegacyCorporateFindings": 2,
+      "note": "The two name-matched warnings are the pre-existing authenticated corporate-governance SECURITY DEFINER functions scheduled for the next serialized stage; neither can write document metadata after this cutover.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter"
+    },
+    "performance": {
+      "total": 279,
+      "info": 270,
+      "warn": 9,
+      "newDocumentsInitPlanWarnings": 0,
+      "documentsRelatedInfo": 3,
+      "documentsRelatedWarn": 1,
+      "note": "The sole Documents warning is the pre-existing pair of company-access owner/support SELECT policies. Their distinct accepted-owner and case-bound support semantics are intentionally preserved. The informational findings are two unindexed foreign keys and one unused index on an empty pre-launch store.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter"
+    }
+  },
+  "verdict": "pass"
+}

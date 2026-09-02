@@ -1,0 +1,153 @@
+.page {
+  align-items: start;
+  background: var(--color-page, #f6f7f4);
+  display: grid;
+  min-height: 100vh;
+  padding: clamp(24px, 6vw, 72px) 16px;
+}
+
+.shell {
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #d9ded8);
+  border-radius: 16px;
+  box-shadow: 0 16px 48px rgb(31 45 38 / 8%);
+  display: grid;
+  gap: 16px;
+  margin: 0 auto;
+  max-width: 680px;
+  padding: clamp(24px, 5vw, 48px);
+  width: 100%;
+}
+
+.eyebrow {
+  color: var(--color-accent, #176448);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.intro {
+  color: var(--color-text-muted, #59645e);
+  font-size: 18px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.provisional,
+.secondaryLink,
+.reasonCode {
+  color: var(--color-text-muted, #59645e);
+  font-size: 14px;
+  margin: 0;
+}
+
+.lookup,
+.interview,
+.result {
+  display: grid;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.lookup label,
+.question legend {
+  font-size: 18px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.lookup input {
+  font-size: 20px;
+  letter-spacing: .08em;
+  min-height: 52px;
+  width: 100%;
+}
+
+.lookup p {
+  color: var(--color-text-muted, #59645e);
+  font-size: 14px;
+  margin: -8px 0 0;
+}
+
+.progress {
+  color: var(--color-text-muted, #59645e);
+  display: grid;
+  font-size: 13px;
+  gap: 6px;
+}
+
+.progress progress {
+  accent-color: var(--color-accent, #176448);
+  width: 100%;
+}
+
+.question {
+  border: 0;
+  display: grid;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+}
+
+.answers {
+  display: grid;
+  gap: 10px;
+}
+
+.answer {
+  align-items: center;
+  border: 1px solid var(--color-border, #d9ded8);
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+  min-height: 50px;
+  padding: 12px 14px;
+}
+
+.answer:has(input:checked) {
+  background: #edf7f1;
+  border-color: var(--color-accent, #176448);
+}
+
+.answer input {
+  height: 20px;
+  width: 20px;
+}
+
+.controls {
+  border-top: 1px solid var(--color-border, #d9ded8);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding-top: 16px;
+}
+
+.primaryAction {
+  max-width: 360px;
+}
+
+.restartLink {
+  font-weight: 700;
+  width: fit-content;
+}
+
+@media (max-width: 420px) {
+  .page {
+    padding: 0;
+  }
+
+  .shell {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    min-height: 100vh;
+    padding: 28px 20px;
+  }
+
+  .controls > * {
+    flex: 1;
+  }
+}

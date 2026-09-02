@@ -1,7 +1,6 @@
 from fastapi import Query
 from fastapi.testclient import TestClient
-
-from talli_backend.main import ApiProblem, REQUEST_ID_PATTERN, app, create_app
+from talli_backend.main import REQUEST_ID_PATTERN, ApiProblem, app, create_app
 from talli_backend.openapi import serialize_openapi
 
 

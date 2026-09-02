@@ -1,0 +1,206 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#190",
+  "source": "https://github.com/kristianelmer/Talli/issues/190",
+  "sourceCheckedAt": "2026-08-31T22:35:26Z",
+  "completeGates": [
+    {
+      "revision": "8da241f66d987ced3812c4a1d76b69d00e075a34",
+      "previousPassingRevision": null,
+      "evidencePath": "architecture/evidence/customer-ready-gates/8da241f66d987ced3812c4a1d76b69d00e075a34.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:d42fd5b9f5ec853f51004c42eaa614076f80b07158f6d28f140d5cab4b1d5bc7"
+    },
+    {
+      "revision": "820d7ca1820fc94cd2e49642ef5bb6a26dfd2d6d",
+      "previousPassingRevision": "8da241f66d987ced3812c4a1d76b69d00e075a34",
+      "evidencePath": "architecture/evidence/customer-ready-gates/820d7ca1820fc94cd2e49642ef5bb6a26dfd2d6d.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:1df81526426a84e832b97bf2a8616d7cc0be152cc50c1946de5bad0a615d1574"
+    }
+  ],
+  "entryBlockers": [
+    {
+      "issue": "#143",
+      "requiredState": "CLOSED",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/143#issuecomment-5485666304"
+    }
+  ],
+  "serialization": {
+    "position": "post-migration investments slice after #143 and before #147",
+    "architecturePointer": "documents/#147 remains the next capability migration, but #147 is not claimable until #190 closes",
+    "forbiddenConcurrentCapabilityWork": "No #147 or later capability migration may begin while #190 is active."
+  },
+  "independentExternalGate": {
+    "issue": "#189",
+    "observedState": "OPEN",
+    "blocksProviderNeutralImplementation": false,
+    "stillBlocks": [
+      "provider choice or activation",
+      "credentials or live bank calls, data, or consent",
+      "live-bank readiness claims",
+      "#197 bank evidence",
+      "production banking",
+      "#198 unrestricted clearance"
+    ]
+  },
+  "decisionBoundary": {
+    "acceptedSource": "https://github.com/kristianelmer/Talli/issues/172#issuecomment-5423704900",
+    "validationSource": "https://github.com/kristianelmer/Talli/issues/173#issuecomment-5424089084",
+    "assuranceSource": "https://github.com/kristianelmer/Talli/issues/175#issuecomment-5424119542",
+    "routeSource": "https://github.com/kristianelmer/Talli/issues/180#issuecomment-5424361973",
+    "rule": "#190 implements every accepted domestic investment pattern named by #172 without silently narrowing the launch boundary. Removing one requires reopening #172 and obtaining a revised #180 handoff."
+  },
+  "criteria": [
+    {
+      "id": "GH-190-A1",
+      "requirement": "All accepted acquisition, disposal, dividend, distribution, and simple ownership patterns have deterministic commands, lots, rounding, errors, document identities, ledger postings, and versioned golden cases.",
+      "expectedResult": "The canonical investments capability supports Norwegian private-company shares and low-volume NOK listed shares or funds with clear tax treatment, including purchases, sales, ordinary received dividends or distributions, and simple ownership changes. Each accepted pattern produces cent-exact deterministic positions, lots, allocations, tax facts, document/source bindings, and ledger commands from versioned golden inputs.",
+      "plannedEvidence": [
+        {
+          "path": "docs/accounting/supported-investment-patterns.md",
+          "command": "node --test tests/investments_supported_pattern_evidence.test.mjs"
+        },
+        {
+          "path": "tests/fixtures/investments-supported-patterns.json",
+          "command": "node --test tests/investments_supported_pattern_evidence.test.mjs"
+        },
+        {
+          "path": "apps/backend/tests/test_investments_supported_patterns.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_investments_supported_patterns.py"
+        }
+      ],
+      "status": "supported-pattern-docs-fixtures-and-python-golden-cases-passed"
+    },
+    {
+      "id": "GH-190-A2",
+      "requirement": "Ordinary NOK broker and bank evidence plus a manual fallback are supported without creating a second accounting system.",
+      "expectedResult": "Every accepted investment command can bind immutable provider-neutral bank, broker, and document evidence or a typed owner-entered fallback. Required evidence gaps, stale identities, hash mismatches, and conflicting source facts block before mutation; fallback records facts but never invents tax or accounting judgment.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_investments_supported_patterns.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_investments_supported_patterns.py"
+        },
+        {
+          "path": "tests/investments_database_runtime.test.mjs",
+          "command": "npm run test:investments-database-lifecycle"
+        },
+        {
+          "path": "tests/browser_owner_annual_loop.mjs",
+          "command": "npm run test:browser-owner"
+        }
+      ],
+      "status": "provider-neutral-evidence-and-manual-fallback-runtime-passed"
+    },
+    {
+      "id": "GH-190-A3",
+      "requirement": "Foreign, derivatives, crypto, active trading, complex reorganizations or distributions, unclear tax, and judgment-dependent investment cases hard-block without partial state.",
+      "expectedResult": "Typed risk responses reject FX, foreign withholding or tax credit, crypto, derivatives, active or high-volume trading, property investments, unclear fund treatment, non-cash or complex distributions, reorganizations, options, warrants, treasury shares, inheritance or gift edge cases, and any ambiguous ownership or tax fact before investment, ledger, document-link, bank-match, audit, or receipt mutation.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_investments_supported_patterns.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_investments_supported_patterns.py"
+        },
+        {
+          "path": "tests/investments_database_runtime.test.mjs",
+          "command": "npm run test:investments-database-lifecycle"
+        },
+        {
+          "path": "tests/fixtures/investments-supported-patterns.json",
+          "command": "node --test tests/investments_supported_pattern_evidence.test.mjs"
+        }
+      ],
+      "status": "unsupported-and-ambiguous-cases-hard-block-before-mutation"
+    },
+    {
+      "id": "GH-190-A4",
+      "requirement": "Positions, lots, and immutable investment facts reconcile to ledger, RF-1086, company tax, annual accounts, SAF-T, and archive outputs.",
+      "expectedResult": "Each accepted golden case binds one economic-fact identity and proves exact agreement between investments positions/lots/allocations, balanced ledger entries, and the currently canonical RF-1086, tax, annual-accounts, SAF-T, and archive consumers. Missing, stale, contradictory, or merely declared output evidence cannot count as reconciliation.",
+      "plannedEvidence": [
+        {
+          "path": "tests/investments_cross_output_reconciliation.test.mjs",
+          "command": "node --test tests/investments_cross_output_reconciliation.test.mjs"
+        },
+        {
+          "path": "apps/backend/tests/test_investments_supported_patterns.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_investments_supported_patterns.py"
+        },
+        {
+          "path": "tests/browser_owner_annual_loop.mjs",
+          "command": "npm run test:browser-owner"
+        }
+      ],
+      "status": "cross-output-reconciliation-and-owner-loop-passed"
+    },
+    {
+      "id": "GH-190-A5",
+      "requirement": "Atomicity, idempotency, correction, tenant isolation, security, browser and mobile owner journeys, and old/new comparison pass for the complete supported slice.",
+      "expectedResult": "Accepted commands commit exactly once with immutable correction lineage and no partial fragments on failure. Wrong-tenant and insufficient-role access fail under forced RLS. Guided desktop and mobile owner paths use FastAPI/generated contracts and comparison fixtures preserve the characterized behavior.",
+      "plannedEvidence": [
+        {
+          "path": "tests/investments_database_runtime.test.mjs",
+          "command": "npm run test:investments-database-lifecycle"
+        },
+        {
+          "path": "apps/backend/tests/test_investments_supported_patterns.py",
+          "command": "npm run test:boundary-backend"
+        },
+        {
+          "path": "apps/web/tests/investments-presentation.test.mjs",
+          "command": "npm run test:boundary-web"
+        },
+        {
+          "path": "tests/browser_owner_annual_loop.mjs",
+          "command": "npm run test:browser-owner"
+        }
+      ],
+      "status": "atomic-idempotent-correction-rls-browser-and-mobile-passed"
+    },
+    {
+      "id": "GH-190-A6",
+      "requirement": "One Python investments implementation remains and the complete local, hosted, preview, comparison, security, architecture, and release gates pass twice on linked immutable revisions.",
+      "expectedResult": "No TypeScript business policy, legacy FIFO RPC, SQL policy duplicate, new compatibility record, or alternate writer remains. Architecture and Graphify agree; local and owner-designated hosted database evidence is reconciled; an exact immutable Preview receipt exists; and two consecutive complete customer-ready gates pass before #147 is claimed.",
+      "plannedEvidence": [
+        {
+          "path": "architecture/compatibility.json",
+          "command": "npm run check:architecture"
+        },
+        {
+          "path": "architecture/evidence/customer-ready-gates/<R1>.json",
+          "command": "npm run gate:customer-ready"
+        },
+        {
+          "path": "architecture/evidence/customer-ready-gates/<R2>.json",
+          "command": "npm run gate:customer-ready -- --previous <R1>"
+        },
+        {
+          "path": "architecture/evidence/issues/190/hosted-verification.json",
+          "command": "owner-designated Supabase inspection"
+        },
+        {
+          "path": "architecture/evidence/issues/190/preview-verification.json",
+          "command": "exact-revision protected Preview receipt"
+        }
+      ],
+      "status": "single-python-implementation-two-gates-hosted-and-preview-passed"
+    }
+  ],
+  "hostedVerification": {
+    "path": "architecture/evidence/issues/190/hosted-verification.json",
+    "verdict": "pass",
+    "projectId": "pkpyyxryfhfehrbhbynp",
+    "migrationHistoryCount": 71,
+    "investmentTableCount": 22,
+    "investmentSecurityFindings": 0
+  },
+  "previewVerification": {
+    "path": "architecture/evidence/issues/190/preview-verification.json",
+    "sourceRevision": "78c1bd40f67887a8869ded69a8aa9a00da945089",
+    "githubDeploymentId": 6212005188,
+    "verdict": "pass"
+  },
+  "closeState": "ready-for-github-evidence-and-issue-closure"
+}

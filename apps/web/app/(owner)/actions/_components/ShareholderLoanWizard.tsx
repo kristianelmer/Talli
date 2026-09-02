@@ -1,15 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
-import { recordShareholderLoan } from "../../../actions";
-import { SubmitButton } from "../../../components/ui";
-import { ownerCopy } from "../../../lib/copy";
 import {
-  shareholderLoanLedgerLines,
-  validateShareholderLoan,
-} from "../../../lib/shareholder-loan";
-import { ActionPreview, type LedgerLine } from "./ActionPreview";
+  shareholderLoanFormPresentation,
+  type ShareholderLoanFormDirection,
+} from "../../../../features/corporate-governance";
+import { recordShareholderLoan } from "../../../actions";
+import { Banner, SubmitButton } from "../../../components/ui";
+import { ownerCopy } from "../../../lib/copy";
 import {
   CheckboxField,
   DocStatusSelect,
@@ -17,74 +16,34 @@ import {
   TextField,
 } from "./fields";
 
-type Props = { companyId: string; incomeYear: number };
+type Props = { companyId: string; incomeYear: number; operationId?: string };
 
-export function ShareholderLoanWizard({ companyId, incomeYear }: Props) {
+export function ShareholderLoanWizard({
+  companyId,
+  incomeYear,
+  operationId: initialOperationId,
+}: Props) {
   const a = ownerCopy.actions;
   const c = a.shareholderLoan;
 
-  const [direction, setDirection] = useState("shareholder_to_company");
+  const [direction, setDirection] = useState<ShareholderLoanFormDirection>("shareholder_to_company");
   const [loanDate, setLoanDate] = useState("");
   const [amount, setAmount] = useState("");
   const [counterpartyName, setCounterpartyName] = useState("");
   const [interestModelled, setInterestModelled] = useState(false);
   const [relatedPartySecurity, setRelatedPartySecurity] = useState(false);
   const [documentStatus, setDocumentStatus] = useState("attached");
-
-  // These two "needs-accountant" branches are surfaced immediately, before the
-  // rest of the form is complete, so the owner is not led down a dead end.
-  const hardBlock =
-    direction === "company_to_personal_shareholder"
-      ? c.personalBlock
-      : relatedPartySecurity
-        ? c.securityBlock
-        : null;
+  const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
 
   const ready =
     loanDate.trim() !== "" &&
     amount.trim() !== "" &&
     counterpartyName.trim() !== "";
-
-  const preview = useMemo<{ block: string | null; lines: LedgerLine[] | null }>(() => {
-    if (hardBlock) return { block: hardBlock, lines: null };
-    if (!ready) return { block: null, lines: null };
-    try {
-      const payload = validateShareholderLoan({
-        loanDate,
-        amount: Number(amount),
-        direction: direction as
-          | "shareholder_to_company"
-          | "company_to_corporate_shareholder"
-          | "company_to_personal_shareholder",
-        counterpartyName,
-        documentStatus: documentStatus as
-          | "attached"
-          | "missing_accepted_warning"
-          | "not_required",
-        interestModelled,
-        relatedPartySecurity,
-      });
-      return { block: null, lines: shareholderLoanLedgerLines(payload) };
-    } catch (error) {
-      return {
-        block: error instanceof Error ? error.message : "Ugyldig aksjonærlån",
-        lines: null,
-      };
-    }
-  }, [
-    hardBlock,
-    ready,
-    loanDate,
-    amount,
-    direction,
-    counterpartyName,
-    documentStatus,
-    interestModelled,
-    relatedPartySecurity,
-  ]);
+  const presentation = shareholderLoanFormPresentation(direction, relatedPartySecurity);
 
   return (
     <form action={recordShareholderLoan} className="wizardForm">
+      <input type="hidden" name="operationId" value={operationId} />
       <input type="hidden" name="returnTo" value="/actions" />
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="incomeYear" value={incomeYear} />
@@ -93,7 +52,7 @@ export function ShareholderLoanWizard({ companyId, incomeYear }: Props) {
         label={c.directionLabel}
         name="direction"
         value={direction}
-        onChange={setDirection}
+        onChange={(value) => setDirection(value as ShareholderLoanFormDirection)}
         required
       >
         <option value="shareholder_to_company">{c.dirToCompany}</option>
@@ -144,9 +103,11 @@ export function ShareholderLoanWizard({ companyId, incomeYear }: Props) {
         onChange={setRelatedPartySecurity}
       />
 
-      <ActionPreview block={preview.block} lines={preview.lines} />
+      <Banner variant={presentation.block ? "danger" : "info"} title={presentation.title}>
+        {presentation.block ?? presentation.treatment}
+      </Banner>
 
-      <SubmitButton disabled={preview.lines === null} pendingLabel={a.pending}>
+      <SubmitButton disabled={!ready || presentation.block !== null} pendingLabel={a.pending}>
         {a.confirmCta}
       </SubmitButton>
     </form>

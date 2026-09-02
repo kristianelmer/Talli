@@ -42,6 +42,10 @@ export function startOwnedProcess({ command, args, cwd, env, readinessProof }) {
   return process;
 }
 
+export function ownedProcessDiagnostics(process) {
+  return process?.[READINESS_STATE]?.buffer ?? "not-started";
+}
+
 export async function waitForOwnedReadiness({
   process,
   url,

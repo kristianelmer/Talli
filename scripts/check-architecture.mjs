@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, relative, resolve } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -35,6 +36,80 @@ const BACKEND_SYSTEM_REQUIRED = [
 const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-](\d{2}):(\d{2}))$/u;
 const PYTHON_IMPORTS_SCRIPT = fileURLToPath(new URL("./python-imports.py", import.meta.url));
 const CHECKER_REPOSITORY_ROOT = resolve(dirname(PYTHON_IMPORTS_SCRIPT), "..");
+const FROZEN_LEGACY_SOURCE_REVISION = "d331ee2717d1eeacef0d81db42b9d4fb5848b408";
+const SUPPRESSIBLE_COMPATIBILITY_RULES = new Set([
+  "direct-web-business-persistence",
+  "direct-business-fetch",
+  "generated-client-deep-import",
+]);
+const COMPLETE_GATE_CHECKS = new Set([
+  "credential-scan",
+  "typecheck",
+  "architecture",
+  "boundary",
+  "build-web",
+  "build-backend",
+  "boundary-smoke",
+  "launch-rehearsal",
+  "production-dependency-audit",
+  "database-isolation",
+  "whitespace",
+]);
+const LEDGER_ATOMIC_COORDINATOR_RELOCATION = Object.freeze({
+  capability: "ledger",
+  issue: "#139",
+  path: "apps/web/app/actions.ts",
+  rule: "direct-web-business-persistence",
+  operations: new Set([
+    "recordAdminCost",
+    "recordDividendReceived",
+    "recordShareholderLoan",
+    "recordTaxSettlement",
+    "acceptBankTransactionSuggestion",
+    "recordSharePurchase",
+    "recordShareSale",
+  ]),
+  scopes: new Set([
+    "compat-ledger-persistence\0table:ledger_entries\0recordAdminCost",
+    "compat-ledger-persistence\0table:ledger_entries\0recordDividendReceived",
+    "compat-ledger-persistence\0table:ledger_entries\0recordShareholderLoan",
+    "compat-ledger-persistence\0table:ledger_entries\0recordTaxSettlement",
+    "compat-banking-persistence\0table:bank_transactions\0recordAdminCost",
+    "compat-banking-persistence\0table:bank_transactions\0recordDividendReceived",
+    "compat-banking-persistence\0table:bank_transactions\0recordShareholderLoan",
+    "compat-banking-persistence\0table:bank_transactions\0recordTaxSettlement",
+    "compat-banking-persistence\0rpc:accept_bank_transaction_suggestion\0acceptBankTransactionSuggestion",
+    "compat-banking-persistence\0table:bank_transactions\0acceptBankTransactionSuggestion",
+    "compat-investment-purchase-persistence\0rpc:record_share_purchase_fifo\0recordSharePurchase",
+    "compat-investment-sale-persistence\0rpc:record_share_sale_fifo\0recordShareSale",
+    "compat-investment-sale-persistence\0table:investment_lots\0recordShareSale",
+    "compat-investment-sale-persistence\0table:investment_positions\0recordShareSale",
+    "compat-investment-stage-exit-persistence\0table:holding_actions\0recordDividendReceived",
+    "compat-shareholder-loan-persistence\0table:holding_actions\0recordShareholderLoan",
+    "compat-tax-settlement-persistence\0table:holding_actions\0recordTaxSettlement",
+    "compat-documents-persistence\0table:documents\0recordDividendReceived",
+    "compat-documents-persistence\0table:documents\0recordShareholderLoan",
+    "compat-documents-persistence\0table:documents\0recordTaxSettlement",
+    "compat-audit-persistence\0table:audit_events\0recordAdminCost",
+    "compat-audit-persistence\0table:audit_events\0recordDividendReceived",
+    "compat-audit-persistence\0table:audit_events\0recordShareholderLoan",
+    "compat-audit-persistence\0table:audit_events\0recordTaxSettlement",
+  ]),
+});
+const SUPPORT_CASE_SECURITY_AMENDMENT = Object.freeze({
+  issue: "#200",
+  path: "apps/web/app/lib/supabase/server.ts",
+  operation: "searchOperatorSupportDashboard",
+  minimumCapability: "investments",
+  scopes: new Set([
+    "compat-billing-persistence\0table:billing_accounts\0searchOperatorSupportDashboard",
+    "compat-billing-persistence\0table:billing_payment_events\0searchOperatorSupportDashboard",
+    "compat-annual-compliance-persistence\0table:filing_readiness_snapshots\0searchOperatorSupportDashboard",
+    "compat-rf1086-persistence\0table:authority_permissions\0searchOperatorSupportDashboard",
+    "compat-rf1086-persistence\0table:filing_submissions\0searchOperatorSupportDashboard",
+    "compat-audit-persistence\0table:audit_events\0searchOperatorSupportDashboard",
+  ]),
+});
 
 function isBackendModule(manifest) {
   return ["backend-capability", "backend-technical-module"].includes(manifest.kind);
@@ -81,6 +156,35 @@ function readJson(path, errors) {
     errors.push(`${path}: ${error.message}`);
     return {};
   }
+}
+
+function readGitJson(root, revision, path, errors) {
+  if (!/^[a-f0-9]{40}$/u.test(revision ?? "")) {
+    errors.push(`${path}: frozen source revision is invalid`);
+    return undefined;
+  }
+  const result = spawnSync("git", ["-C", root, "show", `${revision}:${path}`], {
+    encoding: "utf8",
+  });
+  if (result.status !== 0) {
+    errors.push(`${path}: frozen source revision ${revision} is not readable`);
+    return undefined;
+  }
+  try {
+    return JSON.parse(result.stdout);
+  } catch (error) {
+    errors.push(`${path}: frozen source registry is invalid JSON (${error.message})`);
+    return undefined;
+  }
+}
+
+function isReachableGitRevision(root, revision) {
+  return spawnSync("git", ["-C", root, "merge-base", "--is-ancestor", revision, "HEAD"]).status === 0;
+}
+
+function isCommittedUnmodified(root, path) {
+  return spawnSync("git", ["-C", root, "ls-files", "--error-unmatch", path]).status === 0
+    && spawnSync("git", ["-C", root, "diff", "--quiet", "HEAD", "--", path]).status === 0;
 }
 
 function validateAgainstSchema(schema, value, label, errors) {
@@ -180,6 +284,140 @@ function webScriptKind(path) {
   if (/\.[cm]?jsx$/u.test(path)) return ts.ScriptKind.JSX;
   if (/\.[cm]?js$/u.test(path)) return ts.ScriptKind.JS;
   return /\.[cm]?tsx$/u.test(path) ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+}
+
+function functionLikeName(node) {
+  const ownName = node.name
+    && (ts.isIdentifier(node.name) || ts.isStringLiteralLike(node.name))
+    ? node.name.text
+    : undefined;
+  if (ts.isMethodDeclaration(node) && ownName && ts.isClassLike(node.parent) && node.parent.name) {
+    return `${node.parent.name.text}.${ownName}`;
+  }
+  if (ts.isMethodDeclaration(node) && ownName && ts.isObjectLiteralExpression(node.parent)) {
+    const declaration = node.parent.parent;
+    if (ts.isVariableDeclaration(declaration) && ts.isIdentifier(declaration.name)) {
+      return `${declaration.name.text}.${ownName}`;
+    }
+    return undefined;
+  }
+  if (ownName) return ownName;
+  if ((ts.isArrowFunction(node) || ts.isFunctionExpression(node))
+    && ts.isVariableDeclaration(node.parent)
+    && ts.isIdentifier(node.parent.name)) {
+    return node.parent.name.text;
+  }
+  if ((ts.isArrowFunction(node) || ts.isFunctionExpression(node))
+    && ts.isPropertyAssignment(node.parent)
+    && (ts.isIdentifier(node.parent.name) || ts.isStringLiteralLike(node.parent.name))) {
+    const property = node.parent.name.text;
+    const declaration = node.parent.parent.parent;
+    return ts.isVariableDeclaration(declaration) && ts.isIdentifier(declaration.name)
+      ? `${declaration.name.text}.${property}`
+      : undefined;
+  }
+  if ((ts.isFunctionDeclaration(node) || ts.isArrowFunction(node) || ts.isFunctionExpression(node))
+    && ts.isExportAssignment(node.parent)) {
+    return "default";
+  }
+  if (ts.isFunctionDeclaration(node)
+    && node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword)) {
+    return "default";
+  }
+  return undefined;
+}
+
+function legacyOperationAnalysis(source, path, operationName) {
+  if (typeof source !== "string") return undefined;
+  const sourceFile = ts.createSourceFile(
+    path,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    webScriptKind(path),
+  );
+  const matches = [];
+  const stringConstants = new Map();
+  function findOperation(node) {
+    if (ts.isFunctionLike(node) && functionLikeName(node) === operationName) matches.push(node);
+    if (ts.isVariableDeclaration(node)
+      && ts.isIdentifier(node.name)
+      && node.initializer
+      && ts.isStringLiteralLike(node.initializer)) {
+      stringConstants.set(node.name.text, node.initializer.text);
+    }
+    ts.forEachChild(node, findOperation);
+  }
+  findOperation(sourceFile);
+  if (matches.length === 0) {
+    return { state: "missing", resourceOccurrences: new Map(), persistenceOccurrences: new Map() };
+  }
+  if (matches.length !== 1) {
+    return { state: "ambiguous", resourceOccurrences: new Map(), persistenceOccurrences: new Map() };
+  }
+  const operation = matches[0];
+  const resourceOccurrences = new Map();
+  const persistenceOccurrences = new Map();
+  function countResource(node) {
+    if (ts.isCallExpression(node)
+      && (ts.isPropertyAccessExpression(node.expression)
+        || ts.isElementAccessExpression(node.expression))) {
+      const access = node.expression;
+      const name = ts.isPropertyAccessExpression(access)
+        ? access.name.text
+        : ts.isStringLiteralLike(access.argumentExpression)
+          ? access.argumentExpression.text
+          : undefined;
+      const argument = node.arguments[0];
+      if (["from", "rpc"].includes(name)
+        && argument
+        && (ts.isStringLiteralLike(argument) || ts.isIdentifier(argument))) {
+        const resourceName = ts.isStringLiteralLike(argument)
+          ? argument.text
+          : stringConstants.get(argument.text);
+        const receiver = access.expression;
+        const storage = name === "from"
+          && ts.isPropertyAccessExpression(receiver)
+          && receiver.name.text === "storage";
+        const resourceKind = storage ? "storage" : name === "rpc" ? "rpc" : "table";
+        const resource = resourceName === undefined
+          ? `${resourceKind}:*`
+          : `${resourceKind}:${resourceName}`;
+        resourceOccurrences.set(resource, (resourceOccurrences.get(resource) ?? 0) + 1);
+        const standardLibraryFrom = name === "from"
+          && ts.isIdentifier(receiver)
+          && ["Array", "Buffer"].includes(receiver.text);
+        if (!standardLibraryFrom) {
+          persistenceOccurrences.set(
+            resource,
+            (persistenceOccurrences.get(resource) ?? 0) + 1,
+          );
+        }
+      }
+    }
+    ts.forEachChild(node, countResource);
+  }
+  countResource(operation);
+  return {
+    state: "found",
+    sourceDigest: `sha256:${createHash("sha256").update(operation.getText(sourceFile)).digest("hex")}`,
+    resourceOccurrences,
+    persistenceOccurrences,
+  };
+}
+
+function legacyScopeProof(analysis, scope) {
+  if (analysis?.state !== "found") return undefined;
+  const resourceKind = scope.resource.split(":", 1)[0];
+  return {
+    sourceDigest: analysis.sourceDigest,
+    occurrences: (analysis.resourceOccurrences.get(scope.resource) ?? 0)
+      + (analysis.resourceOccurrences.get(`${resourceKind}:*`) ?? 0),
+  };
+}
+
+export function legacyOperationProof(source, path, scope) {
+  return legacyScopeProof(legacyOperationAnalysis(source, path, scope.operation), scope);
 }
 
 function createWebBoundaryAnalysis(root) {
@@ -520,54 +758,11 @@ function webBoundaryViolations(source, path, analysis) {
     return undefined;
   }
 
-  function declarationName(node) {
-    const ownName = node.name
-      && (ts.isIdentifier(node.name) || ts.isStringLiteralLike(node.name))
-      ? node.name.text
-      : undefined;
-    if (ts.isMethodDeclaration(node) && ownName && ts.isClassLike(node.parent) && node.parent.name) {
-      return `${node.parent.name.text}.${ownName}`;
-    }
-    if (ts.isMethodDeclaration(node) && ownName && ts.isObjectLiteralExpression(node.parent)) {
-      const declaration = node.parent.parent;
-      if (ts.isVariableDeclaration(declaration) && ts.isIdentifier(declaration.name)) {
-        return `${declaration.name.text}.${ownName}`;
-      }
-      return undefined;
-    }
-    if (ownName) {
-      return ownName;
-    }
-    if ((ts.isArrowFunction(node) || ts.isFunctionExpression(node))
-      && ts.isVariableDeclaration(node.parent)
-      && ts.isIdentifier(node.parent.name)) {
-      return node.parent.name.text;
-    }
-    if ((ts.isArrowFunction(node) || ts.isFunctionExpression(node))
-      && ts.isPropertyAssignment(node.parent)
-      && (ts.isIdentifier(node.parent.name) || ts.isStringLiteralLike(node.parent.name))) {
-      const propertyName = node.parent.name.text;
-      const declaration = node.parent.parent.parent;
-      return ts.isVariableDeclaration(declaration) && ts.isIdentifier(declaration.name)
-        ? `${declaration.name.text}.${propertyName}`
-        : undefined;
-    }
-    if ((ts.isFunctionDeclaration(node) || ts.isArrowFunction(node) || ts.isFunctionExpression(node))
-      && ts.isExportAssignment(node.parent)) {
-      return "default";
-    }
-    if (ts.isFunctionDeclaration(node)
-      && node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword)) {
-      return "default";
-    }
-    return undefined;
-  }
-
   function enclosingOperation(node) {
     let operation;
     for (let current = node.parent; current; current = current.parent) {
       if (!ts.isFunctionLike(current)) continue;
-      const name = declarationName(current);
+      const name = functionLikeName(current);
       if (name) operation = name;
     }
     return operation;
@@ -693,16 +888,18 @@ function generatedClientDeepImport(source, path, analysis) {
 
 function pythonInspection(root, paths, errors) {
   if (!paths.length) return new Map();
+  const virtualenvPython = join(root, "apps/backend/.venv/bin/python");
+  const pythonCommand = existsSync(virtualenvPython) ? virtualenvPython : "python3";
   const result = spawnSync(
-    "uv",
-    ["run", "--project", join(root, "apps/backend"), "python", PYTHON_IMPORTS_SCRIPT],
+    pythonCommand,
+    [PYTHON_IMPORTS_SCRIPT],
     {
       cwd: root,
       encoding: "utf8",
-      input: JSON.stringify({
+      input: `${JSON.stringify({
         sourceRoot: join(root, "apps/backend/src"),
         files: paths.map((path) => ({ path, source: readFileSync(path, "utf8") })),
-      }),
+      })}\n`,
     },
   );
   if (result.error || result.status !== 0) {
@@ -1079,7 +1276,7 @@ function validateSystemManifest(root, errors, schema) {
     if (!manifest.infrastructure?.[field]) errors.push(`architecture/backend-system.json: missing infrastructure.${field}`);
   }
   for (const table of technical.tables ?? []) {
-    if (!/^public\.[a-z_]+$/u.test(table)) errors.push(`architecture/backend-system.json: invalid technical table ${table}`);
+    if (!/^[a-z][a-z0-9_]*\.[a-z_]+$/u.test(table)) errors.push(`architecture/backend-system.json: invalid technical table ${table}`);
   }
   for (const migrationPath of technical.migrations ?? []) {
     const sourcePath = join(root, migrationPath);
@@ -1095,17 +1292,88 @@ function discoverMigrationTables(root) {
   const tables = new Set();
   for (const path of walk(join(root, "supabase/migrations"), (candidate) => candidate.endsWith(".sql"))) {
     const source = readFileSync(path, "utf8");
-    for (const match of source.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?(public\.[a-z_]+)/giu)) {
-      tables.add(match[1].toLowerCase());
+    const statements = source.matchAll(
+      /create\s+table\s+(?:if\s+not\s+exists\s+)?([a-z][a-z0-9_]*\.[a-z_]+)|alter\s+table\s+(?:if\s+exists\s+)?([a-z][a-z0-9_]*\.[a-z_]+)\s+set\s+schema\s+([a-z][a-z0-9_]*)|alter\s+table\s+(?:if\s+exists\s+)?([a-z][a-z0-9_]*\.[a-z_]+)\s+rename\s+to\s+([a-z_]+)/giu,
+    );
+    for (const match of statements) {
+      if (match[1]) {
+        tables.add(match[1].toLowerCase());
+        continue;
+      }
+      if (match[2] && match[3]) {
+        const previous = match[2].toLowerCase();
+        if (tables.delete(previous)) {
+          tables.add(`${match[3].toLowerCase()}.${previous.split(".")[1]}`);
+        }
+        continue;
+      }
+      if (match[4] && match[5]) {
+        const previous = match[4].toLowerCase();
+        if (tables.delete(previous)) {
+          tables.add(`${previous.split(".")[0]}.${match[5].toLowerCase()}`);
+        }
+      }
     }
   }
   return [...tables].sort();
 }
 
-function validateDatabaseCatalog(root, backendSystem, manifests, errors, schema) {
+function stagedContractTableDrops(root, retirementIssues, errors) {
+  const contractDirectory = join(root, "supabase/contract-migrations");
+  if (!existsSync(contractDirectory)) return new Set();
+  const retiredTables = new Set();
+  for (const path of walk(contractDirectory, (candidate) => candidate.endsWith(".sql"))) {
+    const source = readFileSync(path, "utf8");
+    const artifactHeader = /^-- CONTRACT RELEASE ARTIFACT:[^\n]*#[0-9]+/mu.exec(source)?.[0];
+    const artifactIssue = artifactHeader?.match(/#[0-9]+/u)?.[0];
+    if (!retirementIssues.has(artifactIssue)) continue;
+    for (const match of source.matchAll(
+      /drop\s+table\s+if\s+exists\s+(public\.[a-z_]+)\s*;/giu,
+    )) {
+      const table = match[1].toLowerCase();
+      const tableName = table.slice("public.".length);
+      const beforeDrop = source.slice(0, match.index);
+      const escapedTable = table.replace(".", "\\.");
+      const hasFailClosedPreflight = new RegExp(
+        `if\\s+pg_catalog\\.to_regclass\\('${escapedTable}'\\)\\s+is\\s+not\\s+null`
+          + `\\s+and\\s+exists\\s*\\(\\s*select\\s+1\\s+from\\s+${escapedTable}\\s*\\)`
+          + "\\s+then\\s+raise\\s+exception\\s+'[^']+'\\s*;\\s*end\\s+if\\s*;",
+        "isu",
+      ).test(beforeDrop);
+      const rollbackPath = join(root, "supabase/rollback", relative(contractDirectory, path));
+      const rollback = existsSync(rollbackPath) ? readFileSync(rollbackPath, "utf8") : "";
+      const hasRollback = new RegExp(
+        `create\\s+table\\s+if\\s+not\\s+exists\\s+public\\.${tableName}\\b`,
+        "iu",
+      ).test(rollback);
+      const label = relative(root, path);
+      if (!hasFailClosedPreflight) {
+        errors.push(`${label}: staged table drop ${table} is missing a fail-closed empty-table preflight`);
+      } else if (!hasRollback) {
+        errors.push(`${label}: staged table drop ${table} has no matching rollback table restoration`);
+      } else {
+        retiredTables.add(table);
+      }
+    }
+  }
+  return retiredTables;
+}
+
+function validateDatabaseCatalog(root, backendSystem, manifests, compatibility, errors, schema) {
   const catalog = readJson(join(root, "architecture/database-catalog.json"), errors);
   validateAgainstSchema(schema, catalog, "architecture/database-catalog.json", errors);
+  const retirementIssues = new Set([
+    compatibility.migration?.currentIssue,
+    ...(compatibility.migration?.completedStages ?? []).flatMap(
+      (stage) => stage.removalIssues ?? [],
+    ),
+  ].filter(Boolean));
   const discovered = new Set(discoverMigrationTables(root));
+  for (const retiredTable of stagedContractTableDrops(
+    root,
+    retirementIssues,
+    errors,
+  )) discovered.delete(retiredTable);
   const catalogEntries = catalog.tables ?? [];
   const catalogNames = new Set(catalogEntries.map((entry) => entry.name));
   if (catalogNames.size !== catalogEntries.length) errors.push("architecture/database-catalog.json: duplicate table name");
@@ -1144,7 +1412,41 @@ function validateDatabaseCatalog(root, backendSystem, manifests, errors, schema)
       errors.push(`architecture/database-catalog.json: capability table ownership is not catalogued ${table}`);
     }
   }
-  return catalog;
+  const nativeClaims = new Map();
+  for (const entry of catalogEntries) {
+    if (!entry.name?.startsWith("public.")) continue;
+    nativeClaims.set(`table:${entry.name.slice("public.".length)}`, entry);
+  }
+  const aliasClaims = new Map();
+  const conflictedResources = new Set();
+  for (const entry of catalogEntries) {
+    for (const resource of entry.compatibilityResources ?? []) {
+      const native = nativeClaims.get(resource);
+      if (native) {
+        errors.push(
+          `architecture/database-catalog.json: compatibility resource ${resource} on ${entry.name} collides with catalog table ${native.name}`,
+        );
+        conflictedResources.add(resource);
+      }
+      const existing = aliasClaims.get(resource);
+      if (existing) {
+        errors.push(existing === entry
+          ? `architecture/database-catalog.json: compatibility resource ${resource} is declared more than once by ${entry.name}`
+          : `architecture/database-catalog.json: compatibility resource ${resource} is declared by both ${existing.name} and ${entry.name}`);
+        conflictedResources.add(resource);
+      } else {
+        aliasClaims.set(resource, entry);
+      }
+    }
+  }
+  const resourceOwners = new Map();
+  for (const [resource, entry] of nativeClaims) {
+    if (!conflictedResources.has(resource)) resourceOwners.set(resource, entry.owner);
+  }
+  for (const [resource, entry] of aliasClaims) {
+    if (!conflictedResources.has(resource)) resourceOwners.set(resource, entry.owner);
+  }
+  return { catalog, resourceOwners };
 }
 
 function validateSystemBindings(root, system, manifests, errors) {
@@ -1198,26 +1500,565 @@ function validateSystemBindings(root, system, manifests, errors) {
   }
 }
 
-export function validateCompatibilityRegistry(path, { now = new Date(), schema, releaseState } = {}) {
+function compatibilityBaselineDigest(baseline) {
+  return `sha256:${createHash("sha256").update(JSON.stringify(stable(baseline))).digest("hex")}`;
+}
+
+function textDigest(value) {
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+function scopeSet(scopes) {
+  return new Set((Array.isArray(scopes) ? scopes : []).map((scope) => (
+    compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation)
+  )));
+}
+
+function sameSet(left, right) {
+  return left.size === right.size && [...left].every((value) => right.has(value));
+}
+
+function validateGateAttestations(label, gates, policy, errors) {
+  const {
+    registryPath,
+    reachableRevision,
+    isRevisionAncestor,
+    gateEvidenceSchema,
+    loadGateEvidence,
+    isImmutableEvidence,
+    loadGateTranscript,
+    sourceAtGateRevision,
+  } = policy;
+  const revisions = gates.map((gate) => gate.revision);
+  const loadedEvidence = [];
+  if (gates.length !== 2
+    || new Set(revisions).size !== 2
+    || revisions.some((revision) => !/^[a-f0-9]{40}$/u.test(revision))) {
+    errors.push(`${registryPath}: ${label} requires two distinct immutable gate revisions`);
+    return;
+  }
+  if (reachableRevision && revisions.some((revision) => !reachableRevision(revision))) {
+    errors.push(`${registryPath}: ${label} gate revisions must be reachable commits`);
+  } else if (isRevisionAncestor && !isRevisionAncestor(revisions[0], revisions[1])) {
+    errors.push(`${registryPath}: ${label} gate revisions are not ordered ancestors`);
+  }
+  for (const gate of gates) {
+    const expectedPath = `architecture/evidence/customer-ready-gates/${gate.revision}.json`;
+    if (gate.evidencePath !== expectedPath) {
+      errors.push(`${registryPath}: gate ${gate.revision} evidence path must be ${expectedPath}`);
+    }
+    if (isImmutableEvidence && !isImmutableEvidence(gate.evidencePath)) {
+      errors.push(`${registryPath}: gate ${gate.revision} evidence must be committed and unmodified`);
+    }
+    if (!loadGateEvidence) continue;
+    const evidence = loadGateEvidence(gate.evidencePath);
+    if (!evidence) {
+      errors.push(`${registryPath}: gate ${gate.revision} evidence is missing`);
+      continue;
+    }
+    loadedEvidence.push(evidence);
+    validateAgainstSchema(gateEvidenceSchema, evidence, gate.evidencePath, errors);
+    if (gate.evidenceDigest !== compatibilityBaselineDigest(evidence)) {
+      errors.push(`${registryPath}: gate ${gate.revision} evidence digest does not match`);
+    }
+    if (evidence.revision !== gate.revision) {
+      errors.push(`${registryPath}: gate evidence revision does not match ${gate.revision}`);
+    }
+    const evidenceChecks = Array.isArray(evidence.checks) ? evidence.checks : [];
+    if (evidence.verdict !== "pass"
+      || !sameSet(new Set(evidenceChecks.map((check) => check.name)), COMPLETE_GATE_CHECKS)
+      || evidenceChecks.some((check) => check.exitCode !== 0)) {
+      errors.push(`${registryPath}: gate ${gate.revision} does not attest the complete customer-ready gate`);
+    }
+    const expectedTranscriptPath = `architecture/evidence/customer-ready-gates/${gate.revision}.log`;
+    if (evidence.transcriptPath !== expectedTranscriptPath) {
+      errors.push(`${registryPath}: gate ${gate.revision} transcript path must be ${expectedTranscriptPath}`);
+    }
+    if (isImmutableEvidence && !isImmutableEvidence(evidence.transcriptPath)) {
+      errors.push(`${registryPath}: gate ${gate.revision} transcript must be committed and unmodified`);
+    }
+    const transcript = loadGateTranscript?.(evidence.transcriptPath);
+    if (typeof transcript !== "string" || evidence.transcriptDigest !== textDigest(transcript)) {
+      errors.push(`${registryPath}: gate ${gate.revision} transcript digest does not match`);
+    } else if (evidenceChecks.some((check) => !transcript.includes(`[${check.name}] exit=0`))) {
+      errors.push(`${registryPath}: gate ${gate.revision} transcript is missing a passing check result`);
+    }
+    const producer = sourceAtGateRevision?.(gate.revision, evidence.producer);
+    if (typeof producer !== "string" || evidence.producerDigest !== textDigest(producer)) {
+      errors.push(`${registryPath}: gate ${gate.revision} producer digest does not match its revision`);
+    }
+  }
+  if (loadedEvidence.length === 2
+    && loadedEvidence[1].previousPassingRevision !== revisions[0]) {
+    errors.push(`${registryPath}: ${label} gates are not consecutive passes`);
+  }
+}
+
+export function validateCompatibilityRegistry(path, {
+  now = new Date(),
+  schema,
+  releaseState,
+  baselinePath,
+  baselineSchema,
+  expectedBaselineDigest,
+  sourceRegistry,
+  reachableRevision,
+  isRevisionAncestor,
+  sourceAtRevision,
+  currentSource,
+  resourceOwner,
+  gateEvidenceSchema,
+  loadGateEvidence,
+  isImmutableEvidence,
+  loadGateTranscript,
+  sourceAtGateRevision,
+} = {}) {
   const errors = [];
   const registry = readJson(path, errors);
   validateAgainstSchema(schema, registry, path, errors);
-  if (registry.schemaVersion !== "1.0" || !Array.isArray(registry.exceptions)) {
+  if (registry.schemaVersion !== "2.0" || !Array.isArray(registry.records)) {
     errors.push(`${path}: invalid compatibility registry`);
     return errors;
   }
-  for (const entry of registry.exceptions) {
+
+  const resolvedBaselinePath = baselinePath ?? join(dirname(path), "compatibility-baseline.json");
+  const baseline = readJson(resolvedBaselinePath, errors);
+  validateAgainstSchema(
+    baselineSchema,
+    baseline,
+    "architecture/compatibility-baseline.json",
+    errors,
+  );
+  if (baseline.sourceRevision !== FROZEN_LEGACY_SOURCE_REVISION) {
+    errors.push(`${path}: frozen source revision must remain ${FROZEN_LEGACY_SOURCE_REVISION}`);
+  }
+  const actualBaselineDigest = expectedBaselineDigest ?? compatibilityBaselineDigest(baseline);
+  if (registry.baseline?.digest !== actualBaselineDigest) {
+    errors.push(`${path}: baseline digest does not match ${actualBaselineDigest}`);
+  }
+  if (registry.baseline?.path !== "architecture/compatibility-baseline.json") {
+    errors.push(`${path}: baseline path must be architecture/compatibility-baseline.json`);
+  }
+
+  if (sourceRegistry !== undefined) {
+    const sourceRecords = Array.isArray(sourceRegistry?.exceptions)
+      ? sourceRegistry.exceptions
+      : [];
+    if (sourceRegistry?.schemaVersion !== "1.0" || !sourceRecords.length) {
+      errors.push(`${path}: source revision does not contain the pre-existing compatibility registry`);
+    } else {
+      const sourceById = new Map(sourceRecords.map((record) => [record.id, record]));
+      for (const baselineRecord of baseline.records ?? []) {
+        const sourceRecord = sourceById.get(baselineRecord.id);
+        const prefix = `${baselineRecord.id ?? "legacy facade"}:`;
+        if (!sourceRecord) {
+          errors.push(`${prefix} has no pre-existing source-revision record`);
+          continue;
+        }
+        if (baselineRecord.removalIssue !== sourceRecord.removalIssue) {
+          errors.push(`${prefix} removal issue does not match source revision`);
+        }
+        if (!sameSet(scopeSet(baselineRecord.scopes), scopeSet(sourceRecord.scopes))) {
+          errors.push(`${prefix} frozen scopes do not match source revision`);
+        }
+        for (const scope of baselineRecord.scopes ?? []) {
+          if (!sourceAtRevision) continue;
+          const proof = legacyOperationProof(
+            sourceAtRevision(scope.path),
+            scope.path,
+            scope,
+          );
+          if (!proof
+            || proof.sourceDigest !== scope.sourceDigest
+            || proof.occurrences !== scope.occurrences) {
+            errors.push(`${prefix} source proof does not match ${scope.path} operation:${scope.operation}`);
+          }
+        }
+      }
+      for (const sourceRecord of sourceRecords) {
+        if (!(baseline.records ?? []).some((record) => record.id === sourceRecord.id)) {
+          errors.push(`${sourceRecord.id ?? "legacy facade"}: source-revision record is missing from the frozen baseline`);
+        }
+      }
+    }
+  }
+  const baselineIds = new Set();
+  for (const baselineRecord of baseline.records ?? []) {
+    if (baselineIds.has(baselineRecord.id)) {
+      errors.push(`${baselineRecord.id ?? "legacy facade"}: duplicate frozen baseline record`);
+    }
+    baselineIds.add(baselineRecord.id);
+  }
+
+  const foundationRecovery = registry.migration?.foundationRecovery;
+  if (foundationRecovery?.issue !== "#186") {
+    errors.push(`${path}: foundation recovery must remain bound to #186`);
+  }
+  if (foundationRecovery?.status === "pending") {
+    if ((foundationRecovery.gates ?? []).length !== 0) {
+      errors.push(`${path}: pending foundation recovery cannot claim gate evidence`);
+    }
+  } else if (foundationRecovery?.status === "complete") {
+    validateGateAttestations(
+      "foundation recovery #186",
+      Array.isArray(foundationRecovery.gates) ? foundationRecovery.gates : [],
+      {
+        registryPath: path,
+        reachableRevision,
+        isRevisionAncestor,
+        gateEvidenceSchema,
+        loadGateEvidence,
+        isImmutableEvidence,
+        loadGateTranscript,
+        sourceAtGateRevision,
+      },
+      errors,
+    );
+  } else {
+    errors.push(`${path}: foundation recovery status must be pending or complete`);
+  }
+
+  const order = Array.isArray(registry.migration?.order) ? registry.migration.order : [];
+  const stageIndexes = new Map();
+  const issueOwners = new Map();
+  for (const [index, stage] of order.entries()) {
+    if (stageIndexes.has(stage.capability)) {
+      errors.push(`${path}: duplicate migration capability ${stage.capability}`);
+    } else {
+      stageIndexes.set(stage.capability, index);
+    }
+    for (const issue of Array.isArray(stage.removalIssues) ? stage.removalIssues : []) {
+      if (issueOwners.has(issue)) errors.push(`${path}: duplicate migration removal issue ${issue}`);
+      else issueOwners.set(issue, stage.capability);
+    }
+  }
+  const currentCapability = registry.migration?.currentCapability;
+  const currentStageIndex = stageIndexes.get(currentCapability);
+  if (currentStageIndex === undefined) {
+    errors.push(`${path}: current capability ${currentCapability ?? "(missing)"} is not in migration order`);
+  }
+  if (issueOwners.get(registry.migration?.currentIssue) !== currentCapability) {
+    errors.push(`${path}: current issue ${registry.migration?.currentIssue ?? "(missing)"} does not belong to ${currentCapability ?? "(missing)"}`);
+  }
+  const exitedCapabilities = new Set(registry.migration?.exitedCapabilities ?? []);
+  const completedStages = Array.isArray(registry.migration?.completedStages)
+    ? registry.migration.completedStages
+    : [];
+  if (currentStageIndex !== undefined) {
+    const expectedExited = new Set(order.slice(0, currentStageIndex).map((stage) => stage.capability));
+    if (!sameSet(exitedCapabilities, expectedExited)) {
+      errors.push(`${path}: exitedCapabilities must exactly match stages before ${currentCapability}`);
+    }
+    const completedCapabilities = new Set(completedStages.map((stage) => stage.capability));
+    if (!sameSet(completedCapabilities, expectedExited)
+      || completedStages.length !== expectedExited.size) {
+      errors.push(`${path}: completedStages must exactly evidence every exited capability`);
+    }
+  }
+  for (const completed of completedStages) {
+    const declared = order.find((stage) => stage.capability === completed.capability);
+    if (!declared) {
+      errors.push(`${path}: completed stage ${completed.capability ?? "(missing)"} is not in migration order`);
+      continue;
+    }
+    if (!sameSet(new Set(completed.removalIssues ?? []), new Set(declared.removalIssues ?? []))) {
+      errors.push(`${path}: completed stage ${completed.capability} must record its exact removal issues`);
+    }
+    validateGateAttestations(
+      `completed stage ${completed.capability}`,
+      Array.isArray(completed.gates) ? completed.gates : [],
+      {
+        registryPath: path,
+        reachableRevision,
+        isRevisionAncestor,
+        gateEvidenceSchema,
+        loadGateEvidence,
+        isImmutableEvidence,
+        loadGateTranscript,
+        sourceAtGateRevision,
+      },
+      errors,
+    );
+  }
+
+  const baselineById = new Map((baseline.records ?? []).map((record) => [record.id, record]));
+  const frozenScopeOwners = new Map();
+  const frozenScopesByOperation = new Map();
+  for (const baselineRecord of baseline.records ?? []) {
+    for (const scope of baselineRecord.scopes ?? []) {
+      const scopeKey = compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation);
+      frozenScopeOwners.set(scopeKey, { record: baselineRecord, scope });
+      const operationKey = compatibilityOperationKey(scope.path, scope.operation);
+      const operationScopes = frozenScopesByOperation.get(operationKey) ?? [];
+      operationScopes.push(scope);
+      frozenScopesByOperation.set(operationKey, operationScopes);
+    }
+  }
+  const activeLegacyScopeKeys = new Set(
+    registry.records
+      .filter((entry) => entry.kind === "legacy-facade")
+      .flatMap((entry) => (entry.scopes ?? []).map((scope) => (
+        compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation)
+      ))),
+  );
+  const removedFrozenScopes = [...frozenScopeOwners]
+    .filter(([scopeKey]) => !activeLegacyScopeKeys.has(scopeKey))
+    .map(([, ownedScope]) => ownedScope);
+  const removedScopesByOperation = new Map();
+  for (const removed of removedFrozenScopes) {
+    const operationKey = compatibilityOperationKey(removed.scope.path, removed.scope.operation);
+    const operationScopes = removedScopesByOperation.get(operationKey) ?? [];
+    operationScopes.push(removed);
+    removedScopesByOperation.set(operationKey, operationScopes);
+  }
+  const ledgerRelocationStage = currentCapability === LEDGER_ATOMIC_COORDINATOR_RELOCATION.capability
+    && registry.migration?.currentIssue === LEDGER_ATOMIC_COORDINATOR_RELOCATION.issue;
+  const ledgerRelocationCompleted = exitedCapabilities.has(
+    LEDGER_ATOMIC_COORDINATOR_RELOCATION.capability,
+  ) && completedStages.some((stage) => (
+    stage.capability === LEDGER_ATOMIC_COORDINATOR_RELOCATION.capability
+    && stage.removalIssues?.includes(LEDGER_ATOMIC_COORDINATOR_RELOCATION.issue)
+  ));
+  const ledgerRelocationAuthorized = ledgerRelocationStage || ledgerRelocationCompleted;
+  const ledgerRelocationOperationKeys = new Set(
+    [...LEDGER_ATOMIC_COORDINATOR_RELOCATION.operations].map((operation) => (
+      compatibilityOperationKey(LEDGER_ATOMIC_COORDINATOR_RELOCATION.path, operation)
+    )),
+  );
+  const atomicLedgerRelocationOperations = new Set();
+  for (const [operationKey, removedScopes] of removedScopesByOperation) {
+    if (!ledgerRelocationOperationKeys.has(operationKey)) continue;
+    const frozenOperationScopes = frozenScopesByOperation.get(operationKey) ?? [];
+    const approvedFrozenScopes = frozenOperationScopes.every((scope) => {
+      const owner = frozenScopeOwners.get(compatibilityScopeKey(
+        scope.path,
+        scope.rule,
+        scope.resource,
+        scope.operation,
+      ));
+      return owner && LEDGER_ATOMIC_COORDINATOR_RELOCATION.scopes.has(
+        ledgerRelocationScopeKey(owner.record.id, scope),
+      );
+    });
+    const attemptedApprovedRelocation = removedScopes.some(({ record, scope }) => (
+      LEDGER_ATOMIC_COORDINATOR_RELOCATION.scopes.has(
+        ledgerRelocationScopeKey(record.id, scope),
+      )
+    ));
+    if (!attemptedApprovedRelocation) continue;
+    if (!ledgerRelocationAuthorized) {
+      errors.push(
+        `${operationLabel(operationKey)} atomic coordinator relocation is authorized only for ledger #139`,
+      );
+      continue;
+    }
+    if (!approvedFrozenScopes) {
+      errors.push(
+        `${operationLabel(operationKey)} atomic coordinator relocation is outside the owner-approved scope whitelist`,
+      );
+      continue;
+    }
+    if (frozenOperationScopes.some((scope) => activeLegacyScopeKeys.has(
+      compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation),
+    ))) {
+      errors.push(
+        `${operationLabel(operationKey)} atomic coordinator relocation must remove every frozen scope together`,
+      );
+      continue;
+    }
+    atomicLedgerRelocationOperations.add(operationKey);
+  }
+  const supportSecurityOperationKey = compatibilityOperationKey(
+    SUPPORT_CASE_SECURITY_AMENDMENT.path,
+    SUPPORT_CASE_SECURITY_AMENDMENT.operation,
+  );
+  const supportSecurityRemoved = removedScopesByOperation.get(supportSecurityOperationKey) ?? [];
+  const supportSecurityAttempted = supportSecurityRemoved.some(({ record, scope }) => (
+    SUPPORT_CASE_SECURITY_AMENDMENT.scopes.has(supportSecurityScopeKey(record.id, scope))
+  ));
+  const supportSecurityMinimumIndex = stageIndexes.get(
+    SUPPORT_CASE_SECURITY_AMENDMENT.minimumCapability,
+  );
+  const supportSecurityStageAuthorized = currentStageIndex !== undefined
+    && supportSecurityMinimumIndex !== undefined
+    && currentStageIndex >= supportSecurityMinimumIndex;
+  let supportSecurityAtomic = false;
+  if (supportSecurityAttempted) {
+    if (!supportSecurityStageAuthorized) {
+      errors.push(
+        `${operationLabel(supportSecurityOperationKey)} support security amendment is authorized only by #200 at investments or later`,
+      );
+    } else {
+      const retainedApprovedScope = registry.records
+        .filter((entry) => entry.kind === "legacy-facade")
+        .some((entry) => (entry.scopes ?? []).some((scope) => (
+          SUPPORT_CASE_SECURITY_AMENDMENT.scopes.has(
+            supportSecurityScopeKey(entry.id, scope),
+          )
+        )));
+      if (retainedApprovedScope) {
+        errors.push(
+          `${operationLabel(supportSecurityOperationKey)} support security amendment must remove all six #200 scopes together`,
+        );
+      } else {
+        supportSecurityAtomic = true;
+      }
+    }
+  }
+  const currentOperationAnalyses = new Map();
+  const currentOperationAnalysis = (scope) => {
+    const operationKey = compatibilityOperationKey(scope.path, scope.operation);
+    if (currentOperationAnalyses.has(operationKey)) return currentOperationAnalyses.get(operationKey);
+    let source;
+    try {
+      source = currentSource?.(scope.path);
+    } catch {
+      source = undefined;
+    }
+    const analysis = legacyOperationAnalysis(source, scope.path, scope.operation);
+    currentOperationAnalyses.set(operationKey, analysis);
+    return analysis;
+  };
+  const completedStagesByCapability = new Map(
+    completedStages.map((stage) => [stage.capability, stage]),
+  );
+  const completedGateOperationAnalyses = new Map();
+  const completedGateDeletionProven = (capability, scope, prefix) => {
+    const completed = completedStagesByCapability.get(capability);
+    const gates = completed?.gates ?? [];
+    const revision = gates[gates.length - 1]?.revision;
+    if (!revision || !sourceAtGateRevision) {
+      errors.push(`${prefix} has no completed ${capability} gate source for deletion proof`);
+      return false;
+    }
+    const operationKey = compatibilityOperationKey(scope.path, scope.operation);
+    const cacheKey = `${revision}\0${operationKey}`;
+    let analysis = completedGateOperationAnalyses.get(cacheKey);
+    if (!analysis) {
+      let gateSource;
+      try {
+        gateSource = sourceAtGateRevision(revision, scope.path);
+      } catch {
+        gateSource = undefined;
+      }
+      analysis = typeof gateSource === "string"
+        ? legacyOperationAnalysis(gateSource, scope.path, scope.operation)
+        : { state: "missing", persistenceOccurrences: new Map() };
+      completedGateOperationAnalyses.set(cacheKey, analysis);
+    }
+    if (!analysis || analysis.state === "ambiguous") {
+      errors.push(`${prefix} completed ${capability} gate has ambiguous deletion proof`);
+      return false;
+    }
+    const resourceKind = scope.resource.split(":", 1)[0];
+    const occurrences = analysis.state === "found"
+      ? (analysis.persistenceOccurrences.get(scope.resource) ?? 0)
+        + (analysis.persistenceOccurrences.get(`${resourceKind}:*`) ?? 0)
+      : 0;
+    if (occurrences !== 0) {
+      errors.push(
+        `${prefix} ${compatibilityScopeLabel(scope)} was not deleted at completed ${capability} gate`,
+      );
+      return false;
+    }
+    return true;
+  };
+  const deletionAuthorizedOperations = new Set();
+  for (const [operationKey, removedScopes] of removedScopesByOperation) {
+    let operationDeletionProven = true;
+    for (const { record, scope } of removedScopes) {
+      const prefix = `${record.id ?? "legacy facade"}:`;
+      const recordStageIndex = stageIndexes.get(record.capability);
+      const scopeResourceOwner = resourceOwner?.(scope.resource);
+      const scopeOwnerCapability = scopeResourceOwner?.startsWith("backend:")
+        ? scopeResourceOwner.slice("backend:".length)
+        : undefined;
+      let completedDeletionOwner;
+      if (recordStageIndex === undefined) {
+        errors.push(`${prefix} capability ${record.capability ?? "(missing)"} is absent from migration order`);
+        operationDeletionProven = false;
+      } else if (currentStageIndex !== undefined && recordStageIndex < currentStageIndex) {
+        if (exitedCapabilities.has(record.capability)) {
+          completedDeletionOwner = record.capability;
+        }
+      } else if (currentStageIndex !== undefined && recordStageIndex > currentStageIndex) {
+        const atomicLedgerRelocation = atomicLedgerRelocationOperations.has(operationKey)
+          && LEDGER_ATOMIC_COORDINATOR_RELOCATION.scopes.has(
+            ledgerRelocationScopeKey(record.id, scope),
+          );
+        if (atomicLedgerRelocation && ledgerRelocationCompleted) {
+          completedDeletionOwner = LEDGER_ATOMIC_COORDINATOR_RELOCATION.capability;
+        }
+        const authorizedResourceOwners = new Set([
+          currentCapability,
+          ...exitedCapabilities,
+        ].map((capability) => `backend:${capability}`));
+        const supportSecurityRemoval = supportSecurityAtomic
+          && operationKey === supportSecurityOperationKey
+          && SUPPORT_CASE_SECURITY_AMENDMENT.scopes.has(
+            supportSecurityScopeKey(record.id, scope),
+          );
+        if (!atomicLedgerRelocation && !supportSecurityRemoval
+          && !authorizedResourceOwners.has(scopeResourceOwner)) {
+          errors.push(
+            `${prefix} future frozen scope resource ${scope.resource} is not owned by active or exited capability`,
+          );
+          operationDeletionProven = false;
+        }
+      }
+      if (!completedDeletionOwner && exitedCapabilities.has(scopeOwnerCapability)) {
+        completedDeletionOwner = scopeOwnerCapability;
+      }
+      if (completedDeletionOwner
+        && !completedGateDeletionProven(completedDeletionOwner, scope, prefix)) {
+        operationDeletionProven = false;
+      }
+      const analysis = currentOperationAnalysis(scope);
+      if (!analysis || analysis.state === "ambiguous") {
+        errors.push(`${prefix} removed frozen scope lacks current-source deletion proof: ${compatibilityScopeLabel(scope)}`);
+        operationDeletionProven = false;
+        continue;
+      }
+      const resourceKind = scope.resource.split(":", 1)[0];
+      const occurrences = analysis.state === "found"
+        ? (analysis.persistenceOccurrences.get(scope.resource) ?? 0)
+          + (analysis.persistenceOccurrences.get(`${resourceKind}:*`) ?? 0)
+        : 0;
+      if (occurrences !== 0) {
+        errors.push(`${prefix} removed frozen scope still exists: ${compatibilityScopeLabel(scope)}`);
+        operationDeletionProven = false;
+      }
+    }
+    if (operationDeletionProven) deletionAuthorizedOperations.add(operationKey);
+  }
+  for (const operationKey of deletionAuthorizedOperations) {
+    const frozenOperationScopes = frozenScopesByOperation.get(operationKey) ?? [];
+    const analysis = currentOperationAnalysis(frozenOperationScopes[0]);
+    if (analysis?.state !== "found") continue;
+    const frozenResources = new Set(frozenOperationScopes.map((scope) => scope.resource));
+    for (const [resource, occurrences] of analysis.persistenceOccurrences) {
+      const knownDynamicKind = resource.endsWith(":*")
+        && [...frozenResources].some((frozen) => frozen.startsWith(resource.slice(0, -1)));
+      if (occurrences > 0 && !frozenResources.has(resource) && !knownDynamicKind) {
+        const { record } = removedScopesByOperation.get(operationKey)[0];
+        errors.push(`${record.id}: deletion-affected operation has an added writer outside the frozen baseline: ${resource} in ${operationLabel(operationKey)}`);
+      }
+    }
+  }
+  const recordsById = new Map();
+  const canonicalImplementations = new Map();
+  for (const entry of registry.records) {
     const prefix = `${entry.id ?? "compatibility exception"}:`;
     for (const field of [
       "id",
+      "kind",
+      "capability",
       "owner",
       "creationIssue",
       "removalIssue",
       "scopes",
       "approvedBy",
       "approvedAt",
-      "releaseLimit",
-      "expiresAt",
       "removalCondition",
     ]) {
       if (!(field in entry)) errors.push(`${prefix} missing ${field}`);
@@ -1226,6 +2067,11 @@ export function validateCompatibilityRegistry(path, { now = new Date(), schema, 
     if (!/^#[0-9]+$/u.test(entry.creationIssue ?? "")) errors.push(`${prefix} creationIssue must be an issue`);
     if (!/^#[0-9]+$/u.test(entry.removalIssue ?? "")) errors.push(`${prefix} removalIssue must be an issue`);
     if (!Array.isArray(entry.scopes) || !entry.scopes.length) errors.push(`${prefix} scopes must be non-empty`);
+    for (const scope of Array.isArray(entry.scopes) ? entry.scopes : []) {
+      if (!SUPPRESSIBLE_COMPATIBILITY_RULES.has(scope.rule)) {
+        errors.push(`${prefix} ${scope.rule} is not suppressible`);
+      }
+    }
     if (!String(entry.approvedBy ?? "").trim()) errors.push(`${prefix} approvedBy must identify the human approver`);
     const approvedAt = rfc3339Timestamp(entry.approvedAt);
     if (approvedAt === undefined) {
@@ -1233,32 +2079,123 @@ export function validateCompatibilityRegistry(path, { now = new Date(), schema, 
     } else if (approvedAt > now.getTime()) {
       errors.push(`${prefix} approvedAt cannot be in the future`);
     }
-    if (entry.releaseLimit !== "next-stable-customer-ready-release") {
-      errors.push(`${prefix} releaseLimit must be the next stable customer-ready release`);
+    if (!String(entry.removalCondition ?? "").trim()) errors.push(`${prefix} removalCondition must be non-empty`);
+
+    if (recordsById.has(entry.id)) errors.push(`${prefix} duplicate record id`);
+    else recordsById.set(entry.id, entry);
+    const stageIndex = stageIndexes.get(entry.capability);
+    if (stageIndex === undefined) {
+      errors.push(`${prefix} capability ${entry.capability} is not in migration order`);
     }
-    const expiry = rfc3339Timestamp(entry.expiresAt);
-    if (expiry === undefined) errors.push(`${prefix} expiresAt must be a valid RFC 3339 timestamp`);
-    else {
-      if (expiry <= now.getTime()) errors.push(`${prefix} expiresAt must be strictly in the future`);
-      if (approvedAt !== undefined) {
-        const fourteenDaysAfterApproval = approvedAt + 14 * 24 * 60 * 60 * 1000;
-        if (expiry > fourteenDaysAfterApproval) {
+    if (entry.kind === "legacy-facade") {
+      if (issueOwners.get(entry.removalIssue) !== entry.capability) {
+        errors.push(`${prefix} removalIssue ${entry.removalIssue} does not belong to capability ${entry.capability}`);
+      }
+      const baselineRecord = baselineById.get(entry.id);
+      if (!baselineRecord) {
+        errors.push(`${prefix} has no frozen baseline record`);
+        continue;
+      }
+      if (entry.decisionIssue !== baseline.decisionIssue) {
+        errors.push(`${prefix} decisionIssue must match frozen baseline decision ${baseline.decisionIssue}`);
+      }
+      if (entry.baselineRevision !== baseline.sourceRevision) {
+        errors.push(`${prefix} baselineRevision must match frozen source ${baseline.sourceRevision}`);
+      }
+      if (entry.canonicalImplementation !== `web:legacy-runtime:${entry.capability}`) {
+        errors.push(`${prefix} canonicalImplementation must name the capability's single legacy runtime`);
+      }
+      for (const field of ["capability", "removalIssue", "canonicalImplementation"]) {
+        if (entry[field] !== baselineRecord[field]) {
+          errors.push(`${prefix} ${field} differs from the frozen baseline`);
+        }
+      }
+      const priorImplementation = canonicalImplementations.get(entry.capability);
+      if (priorImplementation && priorImplementation !== entry.canonicalImplementation) {
+        errors.push(`${prefix} capability ${entry.capability} declares a second legacy implementation`);
+      } else {
+        canonicalImplementations.set(entry.capability, entry.canonicalImplementation);
+      }
+      const frozenScopes = scopeSet(baselineRecord.scopes);
+      for (const scope of Array.isArray(entry.scopes) ? entry.scopes : []) {
+        const key = compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation);
+        if (!frozenScopes.has(key)) {
+          errors.push(`${prefix} scope is outside the frozen baseline: ${compatibilityScopeLabel(scope)}`);
+          continue;
+        }
+        if (currentSource) {
+          const frozenScope = baselineRecord.scopes.find((candidate) => (
+            compatibilityScopeKey(
+              candidate.path,
+              candidate.rule,
+              candidate.resource,
+              candidate.operation,
+            ) === key
+          ));
+          const proof = legacyScopeProof(currentOperationAnalysis(scope), scope);
+          if (!proof || proof.occurrences > frozenScope.occurrences) {
+            errors.push(`${prefix} scope has an added writer: ${compatibilityScopeLabel(scope)}`);
+          } else if (proof.occurrences !== frozenScope.occurrences
+            || (proof.sourceDigest !== frozenScope.sourceDigest
+              && !deletionAuthorizedOperations.has(compatibilityOperationKey(scope.path, scope.operation)))) {
+            errors.push(`${prefix} legacy operation changed: ${scope.path} operation:${scope.operation}`);
+          }
+        }
+      }
+      if (stageIndex !== undefined && currentStageIndex !== undefined) {
+        if (stageIndex < currentStageIndex || exitedCapabilities.has(entry.capability)) {
+          errors.push(`${prefix} capability ${entry.capability} has already exited`);
+        } else if (stageIndex === currentStageIndex && registry.migration.status === "exit-review") {
+          errors.push(`${entry.capability} cannot exit while legacy-facade ${entry.id} remains`);
+        }
+      }
+    } else if (entry.kind === "active-stage-debt") {
+      if (issueOwners.get(entry.creationIssue) !== entry.capability) {
+        errors.push(`${prefix} creationIssue ${entry.creationIssue} does not belong to capability ${entry.capability}`);
+      }
+      if (entry.releaseLimit !== "next-stable-customer-ready-release") {
+        errors.push(`${prefix} releaseLimit must be the next stable customer-ready release`);
+      }
+      const expiry = rfc3339Timestamp(entry.expiresAt);
+      if (expiry === undefined) errors.push(`${prefix} expiresAt must be a valid RFC 3339 timestamp`);
+      else {
+        if (expiry <= now.getTime()) errors.push(`${prefix} expiresAt must be strictly in the future`);
+        if (approvedAt !== undefined && expiry > approvedAt + 14 * 24 * 60 * 60 * 1000) {
           errors.push(`${prefix} expiresAt must be no later than fourteen days after approval`);
         }
       }
+      const stableRelease = releaseState?.latestStableCustomerReadyRelease;
+      const stableReleasedAt = rfc3339Timestamp(stableRelease?.releasedAt);
+      if (approvedAt !== undefined
+        && stableReleasedAt !== undefined
+        && stableReleasedAt > approvedAt
+        && stableReleasedAt <= now.getTime()) {
+        errors.push(`${prefix} superseded by stable customer-ready release ${stableRelease.id}`);
+      }
+      const successorIndex = stageIndex === undefined ? undefined : stageIndex + 1;
+      const expectedSuccessor = successorIndex === undefined ? undefined : order[successorIndex]?.capability;
+      if (entry.successorCapability !== expectedSuccessor) {
+        errors.push(`${prefix} successorCapability must be ${expectedSuccessor ?? "absent"}`);
+      }
+      if (stageIndex !== undefined && currentStageIndex !== undefined) {
+        if (currentStageIndex < stageIndex) {
+          errors.push(`${prefix} cannot exist before capability ${entry.capability} is active`);
+        } else if (currentStageIndex > successorIndex) {
+          errors.push(`${prefix} may not survive beyond successor capability ${entry.successorCapability}`);
+        } else if (currentStageIndex === successorIndex && registry.migration.status === "exit-review") {
+          errors.push(`${entry.successorCapability} cannot exit while predecessor active-stage-debt ${entry.id} remains`);
+        }
+      }
+      for (const field of ["residualRisk", "rollback"]) {
+        if (!String(entry[field] ?? "").trim()) errors.push(`${prefix} ${field} must be non-empty`);
+      }
+    } else {
+      errors.push(`${prefix} kind must be legacy-facade or active-stage-debt`);
     }
-    const stableRelease = releaseState?.latestStableCustomerReadyRelease;
-    const stableReleasedAt = rfc3339Timestamp(stableRelease?.releasedAt);
-    if (approvedAt !== undefined
-      && stableReleasedAt !== undefined
-      && stableReleasedAt > approvedAt
-      && stableReleasedAt <= now.getTime()) {
-      errors.push(`${prefix} superseded by stable customer-ready release ${stableRelease.id}`);
-    }
-    if (!String(entry.removalCondition ?? "").trim()) errors.push(`${prefix} removalCondition must be non-empty`);
   }
+
   const scopeOwners = new Map();
-  for (const entry of registry.exceptions) {
+  for (const entry of registry.records) {
     for (const scope of Array.isArray(entry.scopes) ? entry.scopes : []) {
       const key = compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation);
       const previous = scopeOwners.get(key);
@@ -1269,6 +2206,25 @@ export function validateCompatibilityRegistry(path, { now = new Date(), schema, 
       } else if (!previous) {
         scopeOwners.set(key, entry);
       }
+    }
+  }
+  if (foundationRecovery?.status === "pending") {
+    if (currentCapability !== "company_access"
+      || registry.migration?.currentIssue !== "#138"
+      || registry.migration?.status !== "active"
+      || exitedCapabilities.size !== 0
+      || completedStages.length !== 0) {
+      errors.push(`${path}: pending foundation recovery blocks migration-state changes`);
+    }
+    if (registry.records.some((entry) => entry.kind !== "legacy-facade")) {
+      errors.push(`${path}: pending foundation recovery blocks active-stage debt`);
+    }
+    if (recordsById.size !== baselineById.size
+      || [...baselineById].some(([id, baselineRecord]) => {
+        const record = recordsById.get(id);
+        return !record || !sameSet(scopeSet(record.scopes), scopeSet(baselineRecord.scopes));
+      })) {
+      errors.push(`${path}: pending foundation recovery requires the untouched frozen facade inventory`);
     }
   }
   return errors;
@@ -1325,6 +2281,31 @@ function compatibilityScopeKey(path, rule, resource, operation) {
   return [path, rule, resource, operation].join("\u0000");
 }
 
+function compatibilityOperationKey(path, operation) {
+  return [path, operation].join("\u0000");
+}
+
+function ledgerRelocationScopeKey(recordId, scope) {
+  if (scope.path !== LEDGER_ATOMIC_COORDINATOR_RELOCATION.path
+    || scope.rule !== LEDGER_ATOMIC_COORDINATOR_RELOCATION.rule) {
+    return undefined;
+  }
+  return [recordId, scope.resource, scope.operation].join("\u0000");
+}
+
+function supportSecurityScopeKey(recordId, scope) {
+  if (scope.path !== SUPPORT_CASE_SECURITY_AMENDMENT.path
+    || scope.rule !== "direct-web-business-persistence") {
+    return undefined;
+  }
+  return [recordId, scope.resource, scope.operation].join("\u0000");
+}
+
+function operationLabel(operationKey) {
+  const [path, operation] = operationKey.split("\u0000");
+  return `${path} operation:${operation}`;
+}
+
 function compatibilityScopeLabel(scope) {
   return `${scope.path} ${scope.rule} ${scope.resource} operation:${scope.operation}`;
 }
@@ -1333,20 +2314,31 @@ function activeCompatibilityMatches(registry, releaseState, path, rule, resource
   const stableReleasedAt = rfc3339Timestamp(
     releaseState.latestStableCustomerReadyRelease?.releasedAt,
   );
-  return (registry.exceptions ?? []).filter((entry) => (
-    Array.isArray(entry.scopes) && entry.scopes.some((scope) => (
+  const order = registry.migration?.order ?? [];
+  const stageIndexes = new Map(order.map((stage, index) => [stage.capability, index]));
+  const currentStageIndex = stageIndexes.get(registry.migration?.currentCapability);
+  return (registry.records ?? []).filter((entry) => {
+    const scoped = Array.isArray(entry.scopes) && entry.scopes.some((scope) => (
       scope.path === path
       && scope.rule === rule
       && scope.resource === resource
       && scope.operation === operation
-    ))
-    && rfc3339Timestamp(entry.expiresAt) > now.getTime()
-    && (
+    ));
+    if (!scoped) return false;
+    const stageIndex = stageIndexes.get(entry.capability);
+    if (entry.kind === "legacy-facade") {
+      return stageIndex !== undefined
+        && currentStageIndex !== undefined
+        && stageIndex >= currentStageIndex;
+    }
+    return entry.kind === "active-stage-debt"
+      && rfc3339Timestamp(entry.expiresAt) > now.getTime()
+      && (
       stableReleasedAt === undefined
       || stableReleasedAt <= rfc3339Timestamp(entry.approvedAt)
       || stableReleasedAt > now.getTime()
-    )
-  ));
+      );
+  });
 }
 
 function checkGlobalWebBoundary(root, registry, releaseState, errors, now, webAnalysis) {
@@ -1400,7 +2392,7 @@ function checkGlobalWebBoundary(root, registry, releaseState, errors, now, webAn
       }
     }
   }
-  for (const entry of registry.exceptions ?? []) {
+  for (const entry of registry.records ?? []) {
     for (const scope of Array.isArray(entry.scopes) ? entry.scopes : []) {
       const key = compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation);
       if (!actualScopes.has(key)) {
@@ -1523,6 +2515,8 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
     ["module", "module.schema.json"],
     ["backendSystem", "backend-system.schema.json"],
     ["compatibility", "compatibility.schema.json"],
+    ["compatibilityBaseline", "compatibility-baseline.schema.json"],
+    ["customerReadyGateEvidence", "customer-ready-gate-evidence.schema.json"],
     ["releaseState", "release-state.schema.json"],
     ["sharedKernel", "shared-kernel.schema.json"],
     ["databaseCatalog", "database-catalog.schema.json"],
@@ -1537,7 +2531,46 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
   validateSystemBindings(resolvedRoot, backendSystem, manifests, errors);
   checkCompositionRoot(resolvedRoot, backendSystem, errors);
   const compatibilityPath = join(resolvedRoot, "architecture/compatibility.json");
+  const compatibilityBaselinePath = join(resolvedRoot, "architecture/compatibility-baseline.json");
   const compatibility = readJson(compatibilityPath, []);
+  const { resourceOwners: databaseResourceOwners } = validateDatabaseCatalog(
+    resolvedRoot,
+    backendSystem,
+    manifests,
+    compatibility,
+    errors,
+    schemas.databaseCatalog,
+  );
+  const compatibilityBaseline = readJson(compatibilityBaselinePath, errors);
+  const compatibilitySourceRegistry = readGitJson(
+    resolvedRoot,
+    compatibilityBaseline.sourceRevision,
+    "architecture/compatibility.json",
+    errors,
+  );
+  const frozenSourceCache = new Map();
+  const gateSourceCache = new Map();
+  const sourceAtRevision = (path) => {
+    if (frozenSourceCache.has(path)) return frozenSourceCache.get(path);
+    const result = spawnSync(
+      "git",
+      ["-C", resolvedRoot, "show", `${FROZEN_LEGACY_SOURCE_REVISION}:${path}`],
+      { encoding: "utf8" },
+    );
+    const source = result.status === 0 ? result.stdout : undefined;
+    frozenSourceCache.set(path, source);
+    return source;
+  };
+  const sourceAtGateRevision = (revision, path) => {
+    const key = `${revision}\0${path}`;
+    if (gateSourceCache.has(key)) return gateSourceCache.get(key);
+    const result = spawnSync("git", ["-C", resolvedRoot, "show", `${revision}:${path}`], {
+      encoding: "utf8",
+    });
+    const source = result.status === 0 ? result.stdout : undefined;
+    gateSourceCache.set(key, source);
+    return source;
+  };
   const releaseState = readJson(join(resolvedRoot, "architecture/release-state.json"), errors);
   validateAgainstSchema(
     schemas.releaseState,
@@ -1562,7 +2595,40 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
   };
   errors.push(...validateCompatibilityRegistry(
     compatibilityPath,
-    { now, schema: schemas.compatibility, releaseState: verifiedReleaseState },
+    {
+      now,
+      schema: schemas.compatibility,
+      releaseState: verifiedReleaseState,
+      baselinePath: compatibilityBaselinePath,
+      baselineSchema: schemas.compatibilityBaseline,
+      sourceRegistry: compatibilitySourceRegistry,
+      reachableRevision: (revision) => isReachableGitRevision(resolvedRoot, revision),
+      isRevisionAncestor: (ancestor, descendant) => (
+        spawnSync(
+          "git",
+          ["-C", resolvedRoot, "merge-base", "--is-ancestor", ancestor, descendant],
+        ).status === 0
+      ),
+      sourceAtRevision,
+      currentSource: (path) => readFileSync(join(resolvedRoot, path), "utf8"),
+      resourceOwner: (resource) => {
+        if (!/^table:[a-z_]+$/u.test(resource)) return undefined;
+        return databaseResourceOwners.get(resource);
+      },
+      gateEvidenceSchema: schemas.customerReadyGateEvidence,
+      loadGateEvidence: (path) => (
+        existsSync(join(resolvedRoot, path))
+          ? readJson(join(resolvedRoot, path), errors)
+          : undefined
+      ),
+      isImmutableEvidence: (path) => isCommittedUnmodified(resolvedRoot, path),
+      loadGateTranscript: (path) => (
+        existsSync(join(resolvedRoot, path))
+          ? readFileSync(join(resolvedRoot, path), "utf8")
+          : undefined
+      ),
+      sourceAtGateRevision,
+    },
   ));
   checkGlobalWebBoundary(resolvedRoot, compatibility, verifiedReleaseState, errors, now, webAnalysis);
   const sharedKernel = readJson(join(resolvedRoot, "architecture/shared-kernel.json"), errors);
@@ -1571,7 +2637,6 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
     errors.push("architecture/shared-kernel.json: missing minimal shared-kernel policy");
   }
   checkSharedKernel(resolvedRoot, sharedKernel, errors);
-  validateDatabaseCatalog(resolvedRoot, backendSystem, manifests, errors, schemas.databaseCatalog);
   assertAcyclic(manifests, errors);
   const evidence = stable({
     schemaVersion: "1.0",

@@ -1,0 +1,285 @@
+{
+  "schemaVersion": "1.0",
+  "manifestId": "company-year-admission",
+  "accountingYear": 2026,
+  "boundaryVersion": "2026.1",
+  "effectiveAt": "2026-08-26T00:00:00Z",
+  "changeKind": "baseline",
+  "decisionReferences": [
+    "#172",
+    "#176",
+    "#177",
+    "#178",
+    "#180"
+  ],
+  "promise": {
+    "mode": "atomic_company_year",
+    "startsOn": "2026-01-01",
+    "endsOn": "2026-12-31",
+    "reconstructFrom": "2026-01-01",
+    "earlierYearsIncluded": false,
+    "onlyAccountingAndFilingProduct": true,
+    "capabilities": [
+      "current_year_reconstruction",
+      "year_round_bookkeeping",
+      "required_corporate_documents",
+      "rf1086_direct_filing",
+      "company_tax_direct_filing",
+      "annual_accounts_direct_filing",
+      "bank_connection_with_hardened_file_fallback",
+      "saft_1_40",
+      "company_year_archive",
+      "corrections",
+      "official_outcomes",
+      "receipts"
+    ],
+    "customerClaims": [
+      "Komplett gjenoppbygging av selskapsåret fra 1. januar",
+      "Bokføring gjennom hele selskapsåret",
+      "Nødvendige selskapsdokumenter",
+      "Direkte innsending av aksjonærregisteroppgaven (RF-1086)",
+      "Direkte innsending av skattemeldingen for selskapet",
+      "Direkte innsending av årsregnskapet",
+      "Banktilkobling med robust filimport som reserve",
+      "SAF-T 1.40",
+      "Komplett selskapsårsarkiv",
+      "Sporbare rettelser",
+      "Henting av offisielle utfall",
+      "Kvitteringer for innsendingene"
+    ]
+  },
+  "publicRules": {
+    "supportedEntityTypes": ["AS"],
+    "supportedStatusTexts": ["aktiv"],
+    "legalFormBlockReasonCode": "LEGAL_FORM_NOT_SUPPORTED",
+    "statusBlockReasonCode": "COMPANY_STATUS_NOT_SUPPORTED",
+    "reasonExplanations": {
+      "ACCOUNTING_YEAR_NOT_AVAILABLE": "Talli tar foreløpig bare inn selskapsåret 2026.",
+      "LEGAL_FORM_NOT_SUPPORTED": "Selskapet er ikke registrert som et norsk AS.",
+      "COMPANY_STATUS_NOT_SUPPORTED": "Selskapets registrerte status er ikke aktiv og må avklares før Talli kan brukes."
+    }
+  },
+  "questions": [
+    {
+      "code": "is_small_enterprise",
+      "prompt": "Er selskapet et lite foretak etter regnskapsloven?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "NOT_SMALL_ENTERPRISE"
+    },
+    {
+      "code": "is_owner_managed",
+      "prompt": "Skal en eier selv bruke Talli for dette selskapet?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "OWNER_MANAGEMENT_REQUIRED"
+    },
+    {
+      "code": "conducts_regulated_finance",
+      "prompt": "Driver selskapet regulert finansvirksomhet?",
+      "supportedAnswer": "no",
+      "blockedReasonCode": "REGULATED_FINANCE_NOT_SUPPORTED"
+    },
+    {
+      "code": "uses_calendar_year",
+      "prompt": "Følger regnskapsåret kalenderåret fra 1. januar til 31. desember?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "NON_CALENDAR_YEAR_NOT_SUPPORTED"
+    },
+    {
+      "code": "has_auditor_or_audit_requirement",
+      "prompt": "Har selskapet revisor eller revisjonsplikt, også frivillig revisjon?",
+      "supportedAnswer": "no",
+      "blockedReasonCode": "AUDIT_NOT_SUPPORTED"
+    },
+    {
+      "code": "requires_consolidated_accounts",
+      "prompt": "Må selskapet lage konsernregnskap, eller gjør det frivillig?",
+      "supportedAnswer": "no",
+      "blockedReasonCode": "CONSOLIDATED_ACCOUNTS_NOT_SUPPORTED"
+    },
+    {
+      "code": "has_supported_share_structure",
+      "prompt": "Har selskapet bare én ordinær aksjeklasse med like rettigheter?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "SHARE_STRUCTURE_NOT_SUPPORTED"
+    },
+    {
+      "code": "has_only_norwegian_shareholders",
+      "prompt": "Er alle aksjonærene norske personer eller norske selskaper?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "SHAREHOLDERS_NOT_SUPPORTED"
+    },
+    {
+      "code": "uses_only_nok_bank_and_bookkeeping",
+      "prompt": "Er alle bankkontoer og hele regnskapet i norske kroner?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "FOREIGN_CURRENCY_NOT_SUPPORTED"
+    },
+    {
+      "code": "has_only_holding_or_no_activity",
+      "prompt": "Har selskapet bare vanlig holdingaktivitet eller ingen aktivitet?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "OPERATING_ACTIVITY_NOT_SUPPORTED"
+    },
+    {
+      "code": "has_supported_investments",
+      "prompt": "Består investeringene bare av norske unoterte aksjer eller enkle, identifiserbare børsnoterte aksjer og fond hjemmehørende i EØS og handlet i NOK?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "INVESTMENT_PATTERN_NOT_SUPPORTED"
+    },
+    {
+      "code": "investment_tax_treatment_is_clear",
+      "prompt": "Er skattebehandlingen av alle investeringer klar, uten investeringer utenfor EØS, utenlandsk kildeskatt, skattefradrag for utenlandsk skatt eller annen usikker behandling?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "INVESTMENT_TAX_TREATMENT_NOT_SUPPORTED"
+    },
+    {
+      "code": "has_no_complex_investment_activity",
+      "prompt": "Har selskapet unngått krypto, derivater, eiendom, aktiv handel og komplekse fondsutdelinger eller selskapshendelser?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "INVESTMENT_PATTERN_NOT_SUPPORTED"
+    },
+    {
+      "code": "has_supported_dividends",
+      "prompt": "Er alle mottatte og utdelte utbytter ordinære kontantutbytter med forholdsmessig lik rett?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "DIVIDEND_PATTERN_NOT_SUPPORTED"
+    },
+    {
+      "code": "dividend_basis_and_evidence_are_clear",
+      "prompt": "Er utbyttegrunnlag, likviditet, vedtak, dokumentasjon og bankbetaling entydige for alle utbytter?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "DIVIDEND_EVIDENCE_NOT_SUPPORTED"
+    },
+    {
+      "code": "has_supported_capital_events",
+      "prompt": "Er aksje- og kapitalendringer begrenset til enkle eierskifter, ordinær kontant kapitalforhøyelse eller registrert nedsettelse bare til tapsdekning?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "CAPITAL_EVENT_NOT_SUPPORTED"
+    },
+    {
+      "code": "has_no_complex_corporate_events",
+      "prompt": "Har selskapet unngått fusjon, fisjon, omdanning, opsjoner, tegningsretter, egne aksjer, arv eller gave, kompleks omorganisering og tilbakebetaling av innbetalt kapital?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "CORPORATE_EVENT_NOT_SUPPORTED"
+    },
+    {
+      "code": "has_supported_loans",
+      "prompt": "Har alle lån norske motparter og er de dokumenterte NOK-lån fra norsk bank, norsk eier til selskapet eller norsk konsernselskap, uten lån fra selskapet til en personlig eier?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "LOAN_PATTERN_NOT_SUPPORTED"
+    },
+    {
+      "code": "loan_terms_are_ordinary_and_clear",
+      "prompt": "Har alle lån klart hovedbeløp og renter, vanlig tilbakebetaling og ingen konvertering, ettergivelse, tvist, uvanlig sikkerhet, etterståelse, uvanlige nærståendevilkår eller andre skjønnsspørsmål?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "LOAN_TERMS_NOT_SUPPORTED"
+    },
+    {
+      "code": "has_supported_group_contributions",
+      "prompt": "Oppfyller eventuelle konsernbidrag norske konsern- og eierkrav uten behov for særskilt skjønn?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "GROUP_CONTRIBUTION_NOT_SUPPORTED"
+    },
+    {
+      "code": "group_contribution_facts_are_clear",
+      "prompt": "Er eierperiode, beløp, vedtak, dokumentasjon, tidspunkt, skattebehandling, regnskapsføring og eventuell tapsbruk entydige for alle konsernbidrag?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "GROUP_CONTRIBUTION_NOT_SUPPORTED"
+    },
+    {
+      "code": "has_only_supported_income_and_costs",
+      "prompt": "Består inntekter og kostnader bare av investeringer, renter, lån, skatt og vanlig administrasjon?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "INCOME_COST_PATTERN_NOT_SUPPORTED"
+    },
+    {
+      "code": "prior_closing_matches_opening",
+      "prompt": "Kan utgående balanse fra i fjor avstemmes mot inngående balanse 1. januar, eller ble selskapet stiftet i år?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "JANUARY_RECONSTRUCTION_NOT_READY"
+    },
+    {
+      "code": "all_bank_movements_available",
+      "prompt": "Har du, eller kan du skaffe, alle bankbevegelser fra 1. januar?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "JANUARY_RECONSTRUCTION_NOT_READY"
+    },
+    {
+      "code": "bank_accounts_reconciliable",
+      "prompt": "Kan alle bankkontoene avstemmes uten manglende eller uforklarte bevegelser?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "JANUARY_RECONSTRUCTION_NOT_READY"
+    },
+    {
+      "code": "material_company_facts_confirmable",
+      "prompt": "Kan du bekrefte investeringer, aksjonærer, lån, egenkapital, skattesaldoer og årets aktivitet?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "JANUARY_RECONSTRUCTION_NOT_READY"
+    },
+    {
+      "code": "documents_available",
+      "prompt": "Har du, eller kan du skaffe, dokumentene som underbygger aktivitet og saldoer?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "JANUARY_RECONSTRUCTION_NOT_READY"
+    },
+    {
+      "code": "no_unsupported_current_year_activity",
+      "prompt": "Har selskapet unngått aktivitet utenfor Talli-grensen tidligere i år?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "ACTIVITY_PATTERN_NOT_SUPPORTED"
+    },
+    {
+      "code": "requires_no_earlier_year_rebuild",
+      "prompt": "Kan dette året fullføres uten å bygge opp et tidligere regnskapsår på nytt?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "EARLIER_YEAR_MIGRATION_NOT_SUPPORTED"
+    },
+    {
+      "code": "is_deterministic_self_service",
+      "prompt": "Kan selskapet følge den guidede løypen uten blanke posteringer, et annet regnskapsprodukt eller løpende eksperthjelp?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "SELF_SERVICE_PATTERN_NOT_SUPPORTED"
+    },
+    {
+      "code": "has_normal_holding_volume_character",
+      "prompt": "Er aktiviteten vanlig holdingaktivitet, uten aktiv handel eller arbeidsmengde som faller utenfor den guidede løypen?",
+      "supportedAnswer": "yes",
+      "blockedReasonCode": "ACTIVITY_PATTERN_NOT_SUPPORTED"
+    }
+  ],
+  "outcomes": {
+    "clarifyReasonCode": "MATERIAL_FACT_UNKNOWN",
+    "precheckReasonCode": "MATERIAL_FACTS_REQUIRED",
+    "supportedNextStepCode": "CREATE_ACCOUNT_AND_ACCEPT",
+    "supportedNextStep": "Opprett konto og godta selskapsåret når du er klar.",
+    "precheckNextStepCode": "ANSWER_ELIGIBILITY_QUESTIONS",
+    "precheckNextStep": "Svar på spørsmålene som ikke finnes i offentlige registre.",
+    "clarifyNextStepCode": "CLARIFY_WITH_ACCOUNTANT",
+    "clarifyNextStep": "Avklar det ukjente med en regnskapsfører før du går videre.",
+    "blockedNextStepCode": "USE_ACCOUNTANT",
+    "blockedNextStep": "Bruk regnskapsfører for dette selskapsåret. Du kan ikke gå videre i Talli.",
+    "recheckSupportedNextStepCode": "CONTINUE_COMPANY_YEAR",
+    "recheckSupportedNextStep": "Fortsett selskapsåret i Talli.",
+    "recheckClarifyNextStepCode": "PAUSE_AND_CLARIFY",
+    "recheckClarifyNextStep": "Stopp berørt arbeid, avklar opplysningen og prøv igjen. Leseadgangen forblir åpen, og ferdige arkiver kan fortsatt eksporteres fra arbeidsflaten.",
+    "recheckBlockedNextStepCode": "STOP_EXPORT_AND_CONTACT",
+    "recheckBlockedNextStep": "Stopp berørt arbeid og innsending. Behold opplysningene, eksporter ferdige arkiver fra arbeidsflaten, og kontakt post@talli.no for trygg videreføring."
+  },
+  "recheckTriggers": [
+    "public_fact_changed",
+    "material_answer_changed",
+    "manifest_changed",
+    "before_payment",
+    "before_filing"
+  ],
+  "changeControl": {
+    "acceptedPromiseIsImmutable": true,
+    "additiveChangesMayPreserveAdmission": true,
+    "newSafetyOrLegalBlocksApplyImmediately": true,
+    "boundaryRemovalRequires": [
+      "reopened_172",
+      "refreshed_practical_majority_evidence",
+      "approval_180"
+    ]
+  }
+}

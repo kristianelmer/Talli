@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import Link from "next/link";
 
 import {
@@ -12,9 +13,11 @@ import {
   SubmitButton,
 } from "../../components/ui";
 import { ownerCopy } from "../../lib/copy";
-import { suggestBankTransaction } from "../../lib/bank-suggestions";
 import { loadWorkspaceData } from "../../lib/workspace-data";
 import { BankImport } from "./BankImport";
+import { BankConnections } from "./BankConnections";
+import { loadBankConnections, presentBankConnections } from "../../../features/banking";
+import { getCurrentSessionAccessToken } from "../../lib/supabase/auth-session";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +40,26 @@ function formatKr(amount: number): string {
 }
 
 type TransactionsPageProps = {
-  searchParams?: Promise<{ error?: string; posted?: string; imported?: string }>;
+  searchParams?: Promise<{
+    error?: string;
+    posted?: string;
+    imported?: string;
+    bankImportOperationId?: string;
+    bankImportAccountId?: string;
+    bankPreviewSourceFileId?: string;
+    bankPreviewDocumentSha256?: string;
+    bankPreviewTransactionCount?: string;
+    bankPreviewOperationId?: string;
+    bankActionOperationId?: string;
+    bankActionTargetId?: string;
+    bankSynced?: string;
+    bankDisconnected?: string;
+    bankConnected?: string;
+    suggestionOperationId?: string;
+    suggestionBankTransactionId?: string;
+    adminCostOperationId?: string;
+    adminCostBankTransactionId?: string;
+  }>;
 };
 
 export default async function TransactionsPage({
@@ -70,6 +92,14 @@ export default async function TransactionsPage({
     );
   }
 
+  const accessToken = await getCurrentSessionAccessToken();
+  const bankConnections = accessToken
+    ? await loadBankConnections(accessToken, primaryCompany.id).then(
+        (response) => presentBankConnections(response.items, primaryIncomeYear),
+        () => [],
+      )
+    : [];
+
   const companyTransactions = data.transactions.filter(
     (transaction) => transaction.company_id === primaryCompany.id,
   );
@@ -95,14 +125,33 @@ export default async function TransactionsPage({
       </div>
 
       {query?.imported ? <Banner variant="success">{t.imported}</Banner> : null}
+      {query?.bankSynced ? <Banner variant="success">Bankkontoen er oppdatert.</Banner> : null}
+      {query?.bankDisconnected ? <Banner variant="success">Banktilkoblingen er koblet fra.</Banner> : null}
+      {query?.bankConnected ? <Banner variant="success">Banktilkoblingen er klar.</Banner> : null}
       {query?.posted ? <Banner variant="success">{t.posted}</Banner> : null}
       {query?.error ? <Banner variant="danger">{query.error}</Banner> : null}
+
+      <BankConnections
+        connections={bankConnections}
+        companyId={primaryCompany.id}
+        incomeYear={primaryIncomeYear}
+        retryOperationId={query?.bankActionOperationId}
+        retryTargetId={query?.bankActionTargetId}
+      />
 
       <section className="txSection">
         <BankImport
           companyId={primaryCompany.id}
           incomeYear={primaryIncomeYear}
           returnTo={RETURN_TO}
+          retryOperationId={query?.bankImportOperationId}
+          retryAccountId={query?.bankImportAccountId}
+          persistedPreview={query?.bankPreviewSourceFileId && query.bankPreviewDocumentSha256 ? {
+            sourceFileId: query.bankPreviewSourceFileId,
+            documentSha256: query.bankPreviewDocumentSha256,
+            transactionCount: Number(query.bankPreviewTransactionCount ?? "0"),
+            operationId: query.bankPreviewOperationId,
+          } : undefined}
         />
       </section>
 
@@ -135,10 +184,7 @@ export default async function TransactionsPage({
               {unmatched.map((transaction) => {
                 const amount = Number(transaction.amount);
                 const outgoing = amount < 0;
-                const suggestion = suggestBankTransaction({
-                  text: transaction.text,
-                  amount,
-                });
+                const suggestion = transaction.suggestion;
                 return (
                   <details className="txRow" key={transaction.id}>
                     <summary className="txRowSummary">
@@ -163,26 +209,35 @@ export default async function TransactionsPage({
                             <h3 className="txResolveTitle">{t.queue.suggestionTitle}</h3>
                           </div>
                           <p className="fieldHelp">{suggestion.reason}</p>
-                          <ul className="txSuggestionLines">
-                            {suggestion.lines.map((line) => (
-                              <li key={`${suggestion.ruleId}-${line.account}`}>
-                                <span>
-                                  {line.debit > 0 ? "Debet" : "Kredit"} {line.account} ·{" "}
-                                  {line.description}
-                                </span>
-                                <strong>{formatKr(line.debit || line.credit)}</strong>
-                              </li>
-                            ))}
-                          </ul>
                           <p className="fieldHelp">{t.queue.suggestionHint}</p>
                           <form action={acceptBankTransactionSuggestion}>
+                            <input
+                              type="hidden"
+                              name="operationId"
+                              value={
+                                query?.suggestionBankTransactionId === transaction.id &&
+                                query.suggestionOperationId
+                                  ? query.suggestionOperationId
+                                  : randomUUID()
+                              }
+                            />
                             <input type="hidden" name="returnTo" value={RETURN_TO} />
+                            <input
+                              type="hidden"
+                              name="companyId"
+                              value={transaction.company_id}
+                            />
+                            <input
+                              type="hidden"
+                              name="incomeYear"
+                              value={transaction.income_year}
+                            />
                             <input
                               type="hidden"
                               name="bankTransactionId"
                               value={transaction.id}
                             />
-                            <input type="hidden" name="ruleId" value={suggestion.ruleId} />
+                            <input type="hidden" name="expectedSuggestion" value={suggestion.kind} />
                             <input type="hidden" name="ruleVersion" value={suggestion.ruleVersion} />
                             <SubmitButton pendingLabel={t.queue.suggestionPending}>
                               {t.queue.suggestionCta}
@@ -196,6 +251,16 @@ export default async function TransactionsPage({
                           <h3 className="txResolveTitle">{t.queue.resolveCostTitle}</h3>
                           <p className="fieldHelp">{t.queue.resolveCostHint}</p>
                           <form className="txCostForm" action={recordAdminCost}>
+                            <input
+                              type="hidden"
+                              name="operationId"
+                              value={
+                                query?.adminCostBankTransactionId === transaction.id &&
+                                query.adminCostOperationId
+                                  ? query.adminCostOperationId
+                                  : randomUUID()
+                              }
+                            />
                             <input type="hidden" name="returnTo" value={RETURN_TO} />
                             <input type="hidden" name="companyId" value={primaryCompany.id} />
                             <input type="hidden" name="incomeYear" value={transaction.income_year} />

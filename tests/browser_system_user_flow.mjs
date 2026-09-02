@@ -8,6 +8,7 @@ import {
 } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:net";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
@@ -23,6 +24,9 @@ import {
 } from "./fixtures/system-user-authority-mock.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
+const nextCli = createRequire(
+  new URL("../apps/web/package.json", import.meta.url),
+).resolve("next/dist/bin/next");
 const MOCK_PRELOAD = new URL("./fixtures/system-user-authority-mock.mjs", import.meta.url).href;
 const INCOME_YEAR = 2025;
 const CALLBACK_PATH = "/auth/systembruker/confirm";
@@ -343,14 +347,14 @@ async function seedIdentityAndCompanies(admin, database, retainFixtureForCleanup
     await assertNoError(admin.rpc("append_company_agreement_acceptance", {
       p_actor_id: actorId,
       p_company_id: companyId,
-      p_business_terms_version: "2026-07-17",
-      p_business_terms_effective_date: "2026-07-17",
+      p_business_terms_version: "2026-08-30",
+      p_business_terms_effective_date: "2026-08-30",
       p_business_terms_path: "/vilkar",
-      p_business_terms_sha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
-      p_dpa_version: "2026-07-17",
-      p_dpa_effective_date: "2026-07-17",
+      p_business_terms_sha256: "afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04",
+      p_dpa_version: "2026-08-30",
+      p_dpa_effective_date: "2026-08-30",
       p_dpa_path: "/databehandleravtale",
-      p_dpa_sha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
+      p_dpa_sha256: "1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a",
       p_authority_statement_version: "authority-v1",
       p_acceptance_method: "in_app_clickwrap",
     }));
@@ -794,7 +798,7 @@ function startNextServer({ port, siteOrigin, mockBaseUrl, localSupabase }) {
   const server = spawn(
     process.execPath,
     [
-      "node_modules/next/dist/bin/next",
+      nextCli,
       "dev",
       "apps/web",
       "--hostname",

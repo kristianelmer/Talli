@@ -113,6 +113,7 @@ export const ownerCopy = {
     yearEnd: "Årsavslutning",
     filing: "Innsending",
     connections: "Selskap",
+    eligibility: "Selskapsgrense",
     documents: "Dokumenter",
     billing: "Innstillinger",
     workspace: "Arbeidsflate",
@@ -275,7 +276,7 @@ export const ownerCopy = {
 
   legal: {
     lastUpdatedLabel: "Sist oppdatert",
-    lastUpdated: "15. juli 2026",
+    lastUpdated: "30. august 2026",
     backCta: "Tilbake til innlogging",
     backHref: "/login",
 
@@ -287,7 +288,8 @@ export const ownerCopy = {
         {
           heading: "Behandlingsansvarlig",
           body: [
-            "Betaversjonen av Talli drives av ELMER WELFIS, org.nr. 930 835 978, som er behandlingsansvarlig for personopplysningene som behandles gjennom tjenesten.",
+            "Talli drives av ELMER WELFIS, org.nr. 930 835 978, Fjøsangerveien 32D, 5053 Bergen. ELMER WELFIS er behandlingsansvarlig for begrensede opplysninger om konto, tilgang, sikkerhet, støtte, frivillig bruksmåling, betaling og egne lovpålagte opptegnelser.",
+            "Kundeselskapet er behandlingsansvarlig for personopplysninger i egne selskaps-, aksjonær-, regnskapsdokument-, smal hovedbok- og innsendingsdata. ELMER WELFIS er databehandler for dette innholdet og bruker det bare for å levere og sikre Talli etter kundens instrukser.",
             "Har du spørsmål om personvern, kan du kontakte oss på post@talli.no.",
           ],
           bullets: [],
@@ -300,22 +302,24 @@ export const ownerCopy = {
             "Selskapsopplysninger: organisasjonsnummeret du oppgir, og offentlig registerinformasjon vi henter fra Brønnøysundregistrene.",
             "Regnskaps- og innsendingsdata: tall, transaksjoner og dokumenter du legger inn for å forberede årsoppgjør og lovpålagt rapportering.",
             "Teknisk informasjon: innloggings- og øktinformasjon (informasjonskapsler) og enkel loggdata som er nødvendig for drift og sikkerhet.",
+            "Opplysninger om aksjonærer, selskapsår, betaling, refusjon, myndighetskvitteringer og sikkerhets- eller revisjonshendelser når de aktuelle funksjonene brukes.",
           ],
         },
         {
           heading: "Hvorfor vi behandler opplysningene",
           body: ["Vi behandler personopplysninger for å:"],
           bullets: [
-            "levere og drifte tjenesten du har bedt om (rettslig grunnlag: avtale, personvernforordningen artikkel 6 nr. 1 bokstav b),",
+            "administrere konto og tilgang for bedriftskunden, gi støtte og ivareta vanlig tjenestedrift (berettiget interesse, personvernforordningen artikkel 6 nr. 1 bokstav f),",
             "oppfylle rettslige forpliktelser, for eksempel bokførings- og oppbevaringskrav (artikkel 6 nr. 1 bokstav c),",
-            "gjøre det mulig å logge inn med Google når du velger det (avtale/samtykke),",
-            "ivareta sikkerhet, feilretting og forbedring av tjenesten (berettiget interesse, artikkel 6 nr. 1 bokstav f).",
+            "gjøre det mulig å logge inn med Google når du velger det, som del av vår berettigede interesse i sikker og enkel tilgang,",
+            "ivareta sikkerhet, feilretting og misbruksvern (berettiget interesse, artikkel 6 nr. 1 bokstav f), og",
+            "måle hvor den offentlige selskapsjekken og oppstarten lykkes eller stopper, men bare når du har samtykket (artikkel 6 nr. 1 bokstav a og ekomloven § 3-15).",
           ],
         },
         {
           heading: "Databehandlere og deling",
           body: [
-            "Vi selger aldri personopplysningene dine. Talli kan bruke underleverandører (databehandlere) for funksjoner som autentisering, database, lagring, hosting, valgfri innlogging, betaling og e-post. Endelig leverandørliste, roller og behandlingssteder må verifiseres mot gjeldende produksjonsavtaler og konfigurasjon før de oppgis som produksjonsfakta.",
+            "Vi selger aldri personopplysningene dine. Talli bruker ikke selskapsdata, regnskapsdata, bankdata, dokumenter eller innsendingsdata til reklame. Talli kan bruke underleverandører (databehandlere) for funksjoner som autentisering, database, lagring, hosting, valgfri innlogging, betaling og e-post. Endelig leverandørliste, roller og behandlingssteder må verifiseres mot gjeldende produksjonsavtaler og konfigurasjon før de oppgis som produksjonsfakta.",
           ],
           bullets: [],
         },
@@ -329,7 +333,8 @@ export const ownerCopy = {
         {
           heading: "Hvor lenge vi lagrer opplysningene",
           body: [
-            "Vi lagrer kontoopplysninger så lenge du har en aktiv konto hos oss. Regnskaps- og innsendingsdata oppbevares så lenge det er nødvendig for å levere tjenesten og for å oppfylle lovpålagte oppbevaringskrav, blant annet bokføringslovens krav. Når et behandlingsgrunnlag faller bort, sletter eller anonymiserer vi opplysningene.",
+            "Vi lagrer kontoopplysninger så lenge de trengs for aktiv tilgang, sikkerhet og lovlige forretningsopptegnelser. Etter avtalt lese- og eksportperiode returnerer eller sletter Talli kundekontrollert innhold etter kundens dokumenterte valg, med mindre en lov plikter Talli direkte til å beholde det eller kunden gir en lovlig oppbevaringsinstruks. Kundens egen bokføringsplikt gir ikke Talli en generell rett til å beholde alle kundedata.",
+            "For frivillig bruksmåling varer den tilfeldige økten i høyst 30 minutter. Råhendelser og minimumsbeviset for samtykke slettes senest etter 90 dager. Den korte posten som hindrer ny lagring etter tilbaketrekking, varer i høyst 30 minutter.",
           ],
           bullets: [],
         },
@@ -352,9 +357,27 @@ export const ownerCopy = {
           bullets: [],
         },
         {
-          heading: "Informasjonskapsler (cookies)",
+          heading: "Frivillig måling av den offentlige kundereisen",
           body: [
-            "Vi bruker kun nødvendige informasjonskapsler som holder deg innlogget og sikrer økten din. Vi bruker ikke informasjonskapsler til markedsføring eller sporing på tvers av nettsteder.",
+            "Hvis du velger «Tillat bruksmåling», måler ELMER WELFIS bare hvor den offentlige selskapsjekken og oppstarten lykkes eller stopper. Målingen behandler samtykkeversjon, tilfeldige økt- og hendelses-ID-er, faste koder for hendelse, steg, kilde og årsak, og tidspunkt. Dette er pseudonyme personopplysninger, ikke anonyme data.",
+            "Målingen inneholder ikke navn, e-post, organisasjonsnummer, fritekst, sideadresse, regnskapsdata, bankdata eller dokumentopplysninger. Den kobles ikke til konto, selskap, kjøp, selskapsår, støtte, refusjon eller innsending. Ingenting valgfritt lagres eller sendes før du samtykker. Talli virker på samme måte hvis du velger «Nei takk».",
+            "Du kan trekke samtykket i samme grensesnitt. Ny måling stopper med en gang, og Talli ber om sletting av råhendelsene for økten, med trygg gjentakelse hvis slettingen ikke kan bekreftes første gang. Tilbaketrekking endrer ikke lovligheten av behandling som skjedde før samtykket ble trukket.",
+            "Målingen behandles av ELMER WELFIS og databehandlere som leverer database, hosting og nødvendig teknisk logging. Navn, behandlingssteder, lagringstider og eventuelle overføringsgrunnlag skal stå i den gjeldende leverandøroversikten før målingen aktiveres. Målingen brukes ikke til automatiserte avgjørelser eller individuell profilering.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Observasjon i invitert pilot",
+          body: [
+            "En invitert pilot bruker det vanlige Talli-produktet. En separat passiv observatør kan skrive en begrenset valideringspost etter det vanlige produktresultatet. Observasjonen skal ikke endre, prøve på nytt, skjule eller erstatte resultatet. Deltakeren får nøyaktig pilotinformasjon og avtale før observasjonen starter.",
+            "Rå pilotobservasjoner slettes senest etter 90 dager. Det separate beskyttede deltakerregisteret slettes 12 måneder etter at valideringen er avsluttet, med mindre en dokumentert hendelse eller et lovkrav krever lengre lagring. Bare navngitte valideringskontrollører får tilgang. Før full offentlig lansering skal observatøren være av og alle pilottillatelser være utløpt eller fjernet.",
+          ],
+          bullets: [],
+        },
+        {
+          heading: "Personvernombud",
+          body: [
+            "ELMER WELFIS oppretter ikke et formelt personvernombud ved lansering. Talli er ikke en offentlig myndighet, gjennomfører ikke regelmessig og systematisk sporing i stor skala og har ikke behandling av sensitive eller strafferettslige opplysninger i stor skala som kjerneaktivitet. Vurderingen dokumenteres på nytt hvert år og etter en vesentlig endring i produkt eller skala.",
           ],
           bullets: [],
         },
@@ -421,8 +444,9 @@ export const ownerCopy = {
         {
           heading: "Pris og betaling",
           body: [
-            "Gjeldende pris og betalingsstatus følger kundens plan i tjenesten. En gratis plan medfører ingen betaling. Før en betalt tjeneste aktiveres, vises pris og betalingsvilkår, og kunden må gjennomføre den aktuelle aktiveringen. Avtaleaksept alene utløser ingen betaling.",
-            "En innsendingspakke kan bare belastes etter at gjeldende klargjøringsporter er bestått, og en sak utenfor støttet omfang skal ikke belastes for pakken. Dersom Talli godtar en støttet sak og den mislykkes på grunn av Tallis innsendingslogikk eller integrasjon, er innsendingspakken refusjonsberettiget. Dette gjelder ikke feil i kundeopplysninger, manglende myndighetstilgang, forhold utenfor støttet omfang, frister utenfor Tallis kontroll eller myndighetsavbrudd, med mindre leverandøren har gitt en særskilt skriftlig forpliktelse.",
+            "Talli bruker ett abonnement på NOK 1 490 per selskapsår. Prisen inkluderer merverdiavgift bare når merverdiavgift gjelder etter loven. Det er ingen månedspris, innsendingspakke, pris per innsending, etableringspris eller automatisk betalt rådgivning. En gratis plan medfører ingen betaling. Før betaling åpnes, viser Talli det nøyaktige selskapsåret, prisen, vilkårene, fullmakten, støttet omfang og trygg vei ut. Avtaleaksept alene utløser ingen betaling.",
+            "Hvis Talli bekrefter at et selskapsår støttes, men Talli senere ikke kan fullføre det på grunn av feil i Tallis egen logikk eller tilkobling, får kunden hele beløpet tilbake. Feil i kundeopplysninger, manglende dokumentasjon eller fullmakt, frister kunden ikke følger, og avbrudd hos myndigheter utenfor Tallis kontroll gir ikke automatisk refusjon.",
+            "Betaling, automatisk fornyelse og belastning er ikke åpnet. Eventuelle fremtidige regler for fornyelse, oppsigelse og betalingstidspunkt må vises tydelig og godtas uttrykkelig før kunden kan betale.",
           ],
           bullets: [],
         },
@@ -461,7 +485,7 @@ export const ownerCopy = {
           heading: "Suspensjon, oppsigelse og eksport",
           body: [
             "Kunden kan si opp tjenesten. Leverandøren kan suspendere nødvendig tilgang ved sikkerhetsrisiko, ulovlig bruk eller vesentlig mislighold, og kan si opp avtalen ved vesentlig mislighold etter rimelig mulighet til å rette når det passer.",
-            "Før avslutning skal kunden eksportere data og dokumenter kunden må beholde. Etter avslutning håndteres personopplysninger etter databehandleravtalen, lovpålagte oppbevaringskrav og tjenestens tilgjengelige eksport- og sletterutiner.",
+            "Etter betalt tilgang får kunden minst 90 dager med lesetilgang og eksport. Deretter returnerer eller sletter Talli kundekontrollerte data etter kundens dokumenterte valg, med mindre en lovplikt som gjelder Talli direkte krever fortsatt lagring. Kundens egen bokføringsplikt gir ikke Talli en generell rett til å beholde alle kundedata.",
           ],
           bullets: [],
         },
@@ -481,7 +505,9 @@ export const ownerCopy = {
         },
         {
           heading: "Kontakt",
-          body: ["Har du spørsmål om vilkårene, kontakt oss på post@talli.no."],
+          body: [
+            "Leverandør: ELMER WELFIS, org.nr. 930 835 978, Fjøsangerveien 32D, 5053 Bergen, post@talli.no. ELMER WELFIS er registrert i Enhetsregisteret og er ikke registrert i Merverdiavgiftsregisteret nå. Opplysningene oppdateres når status endres.",
+          ],
           bullets: [],
         },
       ],
@@ -495,15 +521,15 @@ export const ownerCopy = {
         {
           heading: "1. Roller og omfang",
           body: [
-            "Kunden er behandlingsansvarlig for personopplysninger i kundens selskaps-, aksjonær-, regnskapsdokument- og innsendingsdata. Leverandøren er databehandler når opplysningene behandles for å levere Talli etter kundens dokumenterte instrukser.",
-            "Leverandøren er selvstendig behandlingsansvarlig for begrenset behandling som er nødvendig for egen kontoadministrasjon, tjenestesikkerhet, oppfyllelse av rettslige plikter og egne forretningsopptegnelser.",
+            "Kunden er behandlingsansvarlig for personopplysninger i kundens selskaps-, aksjonær-, regnskapsdokument-, smal hovedbok- og innsendingsdata. Leverandøren er databehandler når opplysningene behandles for å levere Talli etter kundens dokumenterte instrukser.",
+            "Leverandøren er selvstendig behandlingsansvarlig for begrenset behandling som er nødvendig for konto og tilgang, tjenestesikkerhet, støtte, frivillig offentlig bruksmåling, betaling, oppfyllelse av rettslige plikter og egne forretningsopptegnelser.",
           ],
           bullets: [],
         },
         {
           heading: "2. Behandlingens detaljer og varighet",
           body: [
-            "Formålet og arten er å lagre, organisere, beregne, vise, eksportere og, når særskilt aktivert, overføre opplysninger for å levere kundens regnskaps- og rapporteringsarbeidsflyt. Behandlingen varer mens avtalen gjelder og deretter bare så lenge retur, sletting eller lovpålagt oppbevaring krever det.",
+            "Formålet og arten er å lagre, organisere, beregne, vise, eksportere og, når særskilt aktivert, overføre opplysninger for å levere kundens regnskaps- og rapporteringsarbeidsflyt. Behandlingen varer mens avtalen og den godkjente lese- og eksportperioden gjelder, og deretter bare så lenge kundens retur- eller slettevalg, verifisert sikkerhetskopirotasjon eller en lovplikt som gjelder Talli direkte krever det.",
             "Registrerte kan være kundens brukere, eiere, styremedlemmer, ansatte, kontaktpersoner og andre personer som inngår i kundens dokumentasjon. Opplysningene kan omfatte identitets- og kontaktopplysninger, konto- og tilgangsdata, eier- og rolleopplysninger, transaksjoner, bilag, dokumentinnhold, rapporterings- og innsendingsdata, kvitteringer og sikkerhets- og revisjonslogger.",
           ],
           bullets: [],
@@ -519,6 +545,7 @@ export const ownerCopy = {
           heading: "4. Konfidensialitet og sikkerhet",
           body: [
             "Leverandøren skal sikre at personer med tilgang er underlagt konfidensialitet og bare får nødvendig tilgang. Leverandøren skal gjennomføre egnede tekniske og organisatoriske tiltak vurdert mot risikoen. Kontrollmål kan omfatte tilgangsstyring, autentisering, kryptert transport, revisjonsspor, sikker utvikling, sikkerhetskopiering, gjenoppretting og hendelseshåndtering, men beskrives ikke som implementert før tiltaket er verifisert i gjeldende produksjonsmiljø.",
+            "Før ekte kundedata kan brukes, skal ansvarlig eier identifisere de nøyaktige Supabase- og Vercel-systemene, teste selskapsskille og privat dokumentlagring, begrense støttetilgang til en bestemt sak og tidsperiode, teste database- og dokumentgjenoppretting og kontrollere logger, regioner, eksterne tjenester, overføringer, tilgang, sletting, automatisk opprydding, overvåking og hendelseshåndtering.",
             "Kunden er ansvarlig for egne brukere, tilgangstildelinger, enheter, datakvalitet og lovlig behandlingsgrunnlag. Sikkerhetstiltak kan utvikles så lenge beskyttelsesnivået ikke samlet sett svekkes.",
           ],
           bullets: [],
@@ -563,7 +590,7 @@ export const ownerCopy = {
         {
           heading: "10. Retur, sletting og opphør",
           body: [
-            "Ved opphør skal leverandøren etter kundens valg returnere eller slette personopplysninger og eksisterende kopier, med mindre lov krever fortsatt lagring. Tjenestens operative rutiner kan fastsette rimelig tidspunkt og teknisk rekkefølge for gjennomføringen, men begrenser ikke kundens valg. Kunden skal eksportere materiale den må beholde før tilgangen avsluttes.",
+            "Etter den godkjente lese- og eksportperioden skal leverandøren etter kundens dokumenterte valg returnere eller slette personopplysninger og eksisterende kopier, med mindre en lov plikter Talli direkte til fortsatt lagring eller kunden gir en lovlig oppbevaringsinstruks. Kundens egen bokføringsplikt gir ikke Talli en generell rett til å beholde alle kundedata. Tjenestens operative rutiner kan fastsette rimelig tidspunkt og teknisk rekkefølge, men begrenser ikke kundens valg.",
             "Opplysninger som må beholdes etter lov, isoleres fra ordinær behandling og brukes bare for oppbevaringsformålet. Når sikkerhetskopiering og rotasjon er verifisert i gjeldende produksjonsmiljø, skal kopier slettes eller overskrives etter den verifiserte rotasjonen. Forpliktelsene i avtalen gjelder frem til sletting eller anonymisering.",
           ],
           bullets: [],
@@ -755,6 +782,11 @@ export const ownerCopy = {
         `${count} banktransaksjoner er registrert.`,
       cta: "Importer",
       pending: "Importerer …",
+      persistedPreviewTitle: "Kontoutskriften er klar til kontroll",
+      persistedPreviewBody: (n: number) =>
+        `${n} ${n === 1 ? "transaksjon er" : "transaksjoner er"} lest inn. Ingenting importeres før du bekrefter.`,
+      acceptCta: "Bekreft og importer",
+      acceptPending: "Importerer …",
       finish: "Fullfør og gå til oversikt",
       skip: "Hopp over",
     },
@@ -820,6 +852,8 @@ export const ownerCopy = {
       share_purchase: "Kjøp aksjer",
       share_sale: "Selg aksjer",
       dividend_received: "Mottatt utbytte",
+      fund_distribution_received: "Mottatt fondsutdeling",
+      investment_correction: "Investeringskorrigering",
       dividend_to_owner: "Utbytte til deg",
       shareholder_loan: "Aksjonærlån",
       tax_settlement: "Skatteoppgjør",
@@ -837,6 +871,22 @@ export const ownerCopy = {
       "dividend-received": {
         title: "Mottatt utbytte",
         body: "Utbytte selskapet har mottatt på sine investeringer.",
+      },
+      "fund-distribution": {
+        title: "Mottatt fondsutdeling",
+        body: "Registrer og splitt en norsk fondsutdeling etter skatteoppgaven.",
+      },
+      "investment-correction": {
+        title: "Korriger investering",
+        body: "Reverser en feil hendelse og erstatt den med korrigerte fakta.",
+      },
+      "investment-settlement": {
+        title: "Avstem investering",
+        body: "Koble et ventende kontantoppgjør til riktig bankbevegelse.",
+      },
+      "investment-measurement": {
+        title: "Mål investering ved årsslutt",
+        body: "Dokumenter virkelig eller gjenvinnbar verdi og bokfør eventuell nedskrivning.",
       },
       "owner-dividend": {
         title: "Utbytte til deg",
@@ -874,10 +924,9 @@ export const ownerCopy = {
       dateLabel: "Salgsdato",
       sharesLabel: "Antall solgte aksjer",
       proceedsLabel: "Salgsproveny (kr)",
-      gainLabel: "Beregnet gevinst",
-      lossLabel: "Beregnet tap",
-      remainingLabel: "Gjenstående aksjer",
-      ofShares: (count: number) => `${count} aksjer tilgjengelig`,
+      fifoNote:
+        "Talli fordeler salget på de eldste anskaffelsespostene (FIFO) og beregner kostpris, gevinst eller tap når du bekrefter.",
+      ofShares: (count: string) => `${count} aksjer tilgjengelig`,
     },
     dividendReceived: {
       title: "Mottatt utbytte",
@@ -892,6 +941,37 @@ export const ownerCopy = {
       amountLabel: "Brutto utbytte (kr)",
       addBackNote: (amount: number) =>
         `3 % av utbyttet (${amount} kr) legges til som skattepliktig inntekt under fritaksmetoden.`,
+      policyNote:
+        "Talli validerer fritaksmetoden, beregner 3 %-tillegget og viser den endelige posteringen etter registrering.",
+    },
+    fundDistribution: {
+      title: "Mottatt fondsutdeling",
+      intro:
+        "Registrer en utdeling fra norsk aksje- eller kombinasjonsfond med aksjeandel fra skatteoppgaven.",
+    },
+    investmentCorrection: {
+      title: "Korriger investeringshendelse",
+      intro:
+        "Bevar originalen, opprett en full reversering og registrer korrigerte fakta gjennom samme regelsett.",
+    },
+    investmentSettlement: {
+      title: "Avstem kontantoppgjør",
+      intro:
+        "Velg en regnskapsført investeringshendelse og avstem det separate kontantoppgjøret mot banken.",
+    },
+    investmentMeasurement: {
+      title: "Mål investering ved årsslutt",
+      intro:
+        "Dokumenter verdien per 31. desember. Talli holder bokført verdi og skatteverdi atskilt.",
+      positionLabel: "Investeringsposisjon",
+      positionPlaceholder: "Velg posisjon",
+      observedValueLabel: "Virkelig eller gjenvinnbar verdi (kr)",
+      observedValueHelp:
+        "Bruk markedsverdi for omløpsmidler og dokumentert gjenvinnbar verdi for langsiktige investeringer.",
+      taxValueLabel: "Skattemessig verdi (kr)",
+      taxValueHelp: "Bruk verdien fra skatteoppgaven eller annet dokumentert skattegrunnlag.",
+      policyNote:
+        "Talli anvender laveste verdis prinsipp for markedsbaserte omløpsmidler og dokumentert nedskrivning for langsiktige investeringer. Ingen verdiøkning bokføres i denne arbeidsflyten.",
     },
     ownerDividend: {
       title: "Utbytte til deg",
@@ -916,10 +996,6 @@ export const ownerCopy = {
       dirToCompany: "Aksjonær låner til selskapet",
       dirToCorporate: "Selskapet låner til selskapsaksjonær",
       dirToPersonal: "Selskapet låner til personlig aksjonær",
-      personalBlock:
-        "Lån fra selskap til personlig aksjonær må håndteres av regnskapsfører.",
-      securityBlock:
-        "Sikkerhet eller garanti mellom nærstående må vurderes av regnskapsfører.",
       dateLabel: "Lånedato",
       amountLabel: "Lånebeløp (kr)",
       counterpartyLabel: "Motpart",
@@ -1380,6 +1456,11 @@ export const ownerCopy = {
       previewEmpty: "Last opp CSV-en for å se en forhåndsvisning.",
       previewCount: (n: number) =>
         `${n} ${n === 1 ? "transaksjon" : "transaksjoner"} klar til import`,
+      persistedPreviewTitle: "Kontoutskriften er klar til kontroll",
+      persistedPreviewBody: (n: number) =>
+        `${n} ${n === 1 ? "transaksjon er" : "transaksjoner er"} lest inn. Ingenting importeres før du bekrefter.`,
+      acceptCta: "Bekreft og importer",
+      acceptPending: "Importerer …",
       moreRows: (n: number) => `+ ${n} flere`,
       missingColumns:
         "CSV-en mangler kolonnene date, text og amount. Sjekk den første linjen.",
@@ -1501,7 +1582,7 @@ export const ownerCopy = {
   billing: {
     hubTitle: "Abonnement",
     hubLede:
-      "Se prisplanen din, abonnementsstatus og innsendingspakke. Du blir ikke belastet før betaling åpnes.",
+      "Se selskapsåret, abonnementsstatusen og betalingen. Du blir ikke belastet før betaling åpnes.",
     needsCompanyTitle: "Sett opp selskapet først",
     needsCompanyBody:
       "Du må sette opp holdingselskapet før du kan se abonnementet.",
@@ -1533,13 +1614,13 @@ export const ownerCopy = {
     refund: {
       eligibleTitle: "Du har krav på refusjon",
       eligibleBody:
-        "Vi fant et avvik som Talli dekker, så innsendingspakken refunderes. Du trenger ikke gjøre noe.",
+        "Vi fant et avvik som Talli dekker, så betalingen for selskapsåret refunderes. Du trenger ikke gjøre noe.",
       completedTitle: "Refusjon fullført",
       completedBody: "Refusjonen er gjennomført.",
     },
     unsupportedTitle: "Utenfor det Talli støtter i dag",
     unsupportedBody:
-      "Saken din er mer sammensatt enn det Talli støtter i dag. Du blir ikke belastet for innsendingspakke.",
+      "Saken din er mer sammensatt enn det Talli støtter i dag. Du blir ikke belastet for selskapsåret.",
     placeholderTitle: "Betaling er ikke aktivert ennå",
     placeholderBody:
       "Du kan se planen og statusen din her. Betaling åpnes før innsending blir tilgjengelig – du blir ikke belastet før da.",

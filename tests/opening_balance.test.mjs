@@ -1,54 +1,45 @@
 import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
-import { openingBalanceLedgerLines, validateOpeningBalanceInput } from "../apps/web/app/lib/opening-balance.ts";
+const legacyPolicy = new URL("../apps/web/app/lib/opening-balance.ts", import.meta.url);
+const actions = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
+const contract = JSON.parse(readFileSync(
+  new URL("../contracts/openapi/talli-v1.json", import.meta.url),
+  "utf8",
+));
 
-const validInput = {
-  bankBalance: 30000,
-  shareCapital: 30000,
-  shareCount: 100,
-  nominalValue: 300,
-  shareholders: [
-    {
-      name: "Ola Nordmann",
-      shareholderKind: "norwegian_person",
-      nationalId: "01017012345",
-      shareCount: 100,
-    },
-  ],
-};
-
-test("validates opening balance and emits deterministic ledger lines", () => {
-  assert.doesNotThrow(() => validateOpeningBalanceInput(validInput));
-  assert.deepEqual(openingBalanceLedgerLines(validInput), [
-    { account: "1920", description: "Bankinnskudd", debit: 30000, credit: 0 },
-    { account: "2000", description: "Aksjekapital", debit: 0, credit: 30000 },
-    { account: "2050", description: "Annen egenkapital", debit: 0, credit: 0 },
-  ]);
+test("new-year start replaces the duplicate browser opening policy", () => {
+  assert.equal(existsSync(legacyPolicy), false);
+  const start = actions.indexOf("export async function createOpeningBalanceSetup");
+  const end = actions.indexOf("export async function lockCompanyYear", start);
+  const action = actions.slice(start, end);
+  assert.match(action, /startNewYear\(/u);
+  assert.doesNotMatch(action, /(?:1920|2000|2050)/u);
+  assert.doesNotMatch(action, /\.from\("(?:opening_balance_setups|opening_shareholders|ledger_entries)"\)/u);
+  assert.match(action, /persistLedgerAudit\(/u);
+  assert.match(action, /\.from\("audit_events"\)/u);
 });
 
-test("blocks unreconciled shareholder share totals", () => {
-  assert.throws(
-    () =>
-      validateOpeningBalanceInput({
-        ...validInput,
-        shareholders: [{ ...validInput.shareholders[0], shareCount: 90 }],
-      }),
-    /Sum aksjer/,
-  );
-});
-
-test("blocks share capital mismatch against nominal value", () => {
-  assert.throws(() => validateOpeningBalanceInput({ ...validInput, shareCapital: 29999 }), /Aksjekapital/);
-});
-
-test("blocks missing Norwegian shareholder identifiers", () => {
-  assert.throws(
-    () =>
-      validateOpeningBalanceInput({
-        ...validInput,
-        shareholders: [{ name: "Demo AS", shareholderKind: "norwegian_company", shareCount: 100 }],
-      }),
-    /organisasjonsnummer/,
-  );
+test("public contract accepts only new-year business facts", () => {
+  const operation = contract.paths["/api/v1/new-year-starts"].post;
+  assert.equal(operation.operationId, "ledgerStartNewYear");
+  assert.equal(contract.paths["/api/v1/ledger/opening-balances"], undefined);
+  const schemaName = operation.requestBody.content["application/json"].schema.$ref
+    .split("/")
+    .at(-1);
+  const properties = contract.components.schemas[schemaName].properties;
+  const required = contract.components.schemas[schemaName].required;
+  assert.ok(properties.openingMode);
+  assert.ok(properties.openingBasis);
+  assert.ok(properties.openingComponents);
+  assert.ok(properties.shareholders);
+  assert.ok(properties.bankBalance);
+  assert.ok(properties.shareCapital);
+  assert.ok(required.includes("bankBalance"));
+  assert.ok(required.includes("shareCapital"));
+  assert.ok(!required.includes("openingMode"));
+  assert.ok(!required.includes("openingBasis"));
+  assert.ok(!required.includes("openingComponents"));
+  assert.equal(properties.lines, undefined);
 });

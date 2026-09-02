@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "web-feature",
+  "name": "documents",
+  "path": "apps/web/features/documents",
+  "owner": "web:documents",
+  "purpose": "Carry document staging, finalization, listing, transfer, removal, and backup projection through the generated API client without recreating policy.",
+  "documentation": "apps/web/features/documents/MODULE.md",
+  "publicEntryPoint": "@/features/documents",
+  "publicImportPaths": ["@/features/documents", "apps/web/features/documents", "apps/web/features/documents/index.ts"],
+  "ownedRoutes": ["/documents", "/documents/[documentId]/download", "/documents/[documentId]/preview"],
+  "apiOperations": ["documentsBackupProjection", "documentsBeginUpload", "documentsCreateTransfer", "documentsFinalizeUpload", "documentsList", "documentsRemove"],
+  "dependencies": [],
+  "allowedImports": ["#backend-configuration", "@talli/talli-api-client"],
+  "cachePolicy": { "default": "no-store", "allowed": [] },
+  "directBrowserFlows": [
+    {
+      "name": "signed-document-upload",
+      "scope": "Upload exactly one staged object with the backend-issued signed transfer token.",
+      "reviewCondition": "The browser must not select a bucket, key, retention rule, lifecycle state, or additional object operation."
+    }
+  ],
+  "forbiddenResponsibilities": [
+    "Document validation, lifecycle, reference, retention, integrity, authorization, or step-up policy",
+    "Direct documents-table queries or broad storage-bucket access",
+    "Handwritten transport DTOs or generated-client deep imports"
+  ],
+  "tests": {
+    "feature": "apps/web/tests/documents-presentation.test.mjs",
+    "supportedPatterns": "tests/documents_supported_pattern_evidence.test.mjs",
+    "stageExit": "tests/documents_database_runtime.test.mjs",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

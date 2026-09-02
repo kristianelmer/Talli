@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-capability",
+  "name": "banking",
+  "path": "apps/backend/src/talli_backend/modules/banking",
+  "owner": "backend:banking",
+  "purpose": "Own read-only bank consent, canonical account and transaction facts, durable sync coverage, preview-first CSV/CAMT.053 fallback, deterministic account-free suggestions, explicit acceptance, reconciliation state, and locked single-use claims by external accounting actions.",
+  "documentation": "apps/backend/src/talli_backend/modules/banking/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.banking.public",
+  "exports": {
+    "commands": ["AcceptBankFileCommand", "AcceptBankSuggestionCommand", "BankFilePreviewCommand", "BankSyncCommand", "BankingCommand", "BankingCommands", "BeginBankConsentRequest", "ClaimBankTransactionForExternalActionCommand", "CompleteBankConnectionCommand", "CompleteBankConsentRequest", "FetchBankTransactionsRequest", "ImportBankStatementCommand", "RevokeBankConnectionCommand", "RevokeBankConsentRequest", "StartBankConnectionCommand"],
+    "queries": ["AcceptedBankSuggestion", "BankAccount", "BankConnection", "BankConnectionList", "BankConsentRedirect", "BankFilePreview", "BankProviderAccount", "BankProviderConnection", "BankProviderTransaction", "BankProviderTransactionPage", "BankStatementImportResult", "BankSuggestionAcceptancePage", "BankSyncContext", "BankSyncPageResult", "BankSyncResult", "BankTransaction", "BankTransactionPage", "BankingQueries", "PersistedBankFilePreview", "PreparedBankSuggestion"],
+    "events": [],
+    "errors": ["BankingError", "BankingErrorCode"],
+    "identifiers": ["AccountingEntryReference", "BankAccountId", "BankAccountStatus", "BankConnectionId", "BankConnectionPersistence", "BankConnectionStatus", "BankConnectorId", "BankDataProvider", "BankFileColumnMapping", "BankFilePersistence", "BankSourceFileId", "BankSuggestion", "BankSuggestionAcceptanceId", "BankSuggestionKind", "BankSyncAttemptId", "BankSyncMode", "BankSyncPersistence", "BankTransactionClaimPersistence", "BankTransactionId", "BankTransactionState", "BankingCursor", "BankingPage", "BankingPersistence", "CURRENT_BANK_SUGGESTION_RULE_VERSION", "ExternalActionReference", "ImportedBankTransaction", "SupportedBankDataFormat", "bank_data_provider_adapter", "bank_transaction_claim_persistence_adapter", "banking_persistence_adapter"]
+  },
+  "owns": {
+    "postgresSchemas": ["banking"],
+    "tables": ["banking.accounts", "banking.connections", "banking.coverage_intervals", "banking.source_files", "banking.suggestion_acceptances", "banking.sync_attempts", "banking.transaction_sources", "banking.transactions"],
+    "storageBuckets": [],
+    "projections": ["public.bank_transactions"],
+    "migrations": "supabase/migrations/20260828100000_banking_capability.sql"
+  },
+  "ports": [
+    {
+      "name": "BankingPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.banking.public.BankingPersistence",
+      "registrationDecorator": "talli_backend.modules.banking.public.banking_persistence_adapter",
+      "adapters": ["talli_backend.adapters.supabase_banking.SupabaseBankingSession"]
+    },
+    {
+      "name": "BankDataProvider",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.banking.public.BankDataProvider",
+      "registrationDecorator": "talli_backend.modules.banking.public.bank_data_provider_adapter",
+      "adapters": ["talli_backend.adapters.enable_banking.EnableBankingAdapter", "talli_backend.adapters.neonomics_banking.NeonomicsBankingAdapter"]
+    },
+    {
+      "name": "BankTransactionClaimPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.banking.public.BankTransactionClaimPersistence",
+      "registrationDecorator": "talli_backend.modules.banking.public.bank_transaction_claim_persistence_adapter",
+      "adapters": ["talli_backend.adapters.supabase_corporate_governance.SupabaseCorporateGovernanceTransaction", "talli_backend.adapters.supabase_investments.SupabaseInvestmentsTransaction"]
+    }
+  ],
+  "dependencies": [],
+  "allowedImports": ["__future__", "collections.abc", "csv", "dataclasses", "datetime", "decimal", "enum", "hashlib", "io", "re", "talli_backend.shared.kernel", "typing", "unicodedata", "uuid", "xml.etree.ElementTree"],
+  "forbiddenResponsibilities": [
+    "Ledger accounts, entry lines, balance enforcement, posting policy, or period locks",
+    "Provider-triggered accounting writes or provider-specific types in the public contract",
+    "FastAPI, Pydantic, Supabase, PostgreSQL, or web transport types in the public contract",
+    "Authentication, company membership, investment, governance, tax, or filing policy"
+  ],
+  "tests": {
+    "contract": "apps/backend/tests/test_banking_public_contract.py",
+    "policy": "apps/backend/tests/test_banking.py",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

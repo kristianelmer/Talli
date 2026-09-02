@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+import { hasPositiveInvestmentUnits } from "../../../features/investments";
+
 import { EmptyState, LinkButton } from "../../components/ui";
 import { buildAnnualAccountsPayload } from "../../lib/annual-accounts";
 import {
@@ -69,12 +71,21 @@ export default async function YearEndPage() {
 
   const registered = {
     shares_owned_at_year_end: positions.some(
-      (position) => position.company_id === companyId && Number(position.share_count) > 0,
+      (position) => position.company_id === companyId
+        && hasPositiveInvestmentUnits(position.share_count),
     ),
     bought_or_sold_shares: hasActionType("share_purchase", "share_sale"),
-    received_dividends: hasActionType("dividend_received"),
-    declared_owner_dividends: hasActionType("dividend_to_owner"),
-    shareholder_loans: hasActionType("shareholder_loan"),
+    received_dividends: hasActionType("dividend_received", "fund_distribution_received"),
+    declared_owner_dividends: entries.some(
+      (entry) => entry.company_id === companyId
+        && entry.income_year === year
+        && entry.entry_type === "owner_dividend_declared",
+    ),
+    shareholder_loans: entries.some(
+      (entry) => entry.company_id === companyId
+        && entry.income_year === year
+        && entry.entry_type === "shareholder_loan",
+    ),
     paid_costs: entries.some(
       (entry) =>
         entry.company_id === companyId &&

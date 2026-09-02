@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#145",
+  "verifiedAt": "2026-09-02T08:48:00Z",
+  "sourceRevision": "8141e2c1175acbafc80a9e8b7e3b7d3a72e8c68d",
+  "target": {
+    "organizationId": "zwucumjvtpnyujqyzwkg",
+    "projectId": "pkpyyxryfhfehrbhbynp",
+    "name": "1st project",
+    "region": "eu-west-1",
+    "state": "ACTIVE_HEALTHY",
+    "database": "postgres",
+    "postgresVersion": "17.6.1.166"
+  },
+  "apply": {
+    "result": "pass",
+    "method": "Supabase migration API, serial exact-file application",
+    "baselineMigrationHistoryCount": 76,
+    "appliedMigrationCount": 2,
+    "migrationHistoryCount": 78,
+    "appliedMigrations": [
+      {
+        "version": "20260902084106",
+        "name": "corporate_governance_shareholder_loan"
+      },
+      {
+        "version": "20260902084717",
+        "name": "corporate_governance_shareholder_loan_rls_initplan_cleanup"
+      }
+    ],
+    "rollback": "Both exact rollback artifacts are present and passed repeated local rollback/recutover tests. They were deliberately not executed against the owner-designated hosted target because rollback is destructive."
+  },
+  "verification": {
+    "canonicalStore": {
+      "table": "corporate_governance.shareholder_loans",
+      "owner": "corporate_governance_store_owner",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "businessRows": 0,
+      "legacyRowsBeforeApply": 0
+    },
+    "runtimeBoundary": {
+      "backendRole": "talli_ledger_backend",
+      "backendExecutorMembership": true,
+      "executorCanPrepare": true,
+      "executorCanComplete": true,
+      "executorCanSelectCanonicalTable": false,
+      "authenticatedCanSelectCanonicalTable": false,
+      "authenticatedCanPrepare": false,
+      "executorCanUseTypedLedgerBridge": true,
+      "executorCanUseGenericLedgerBridge": false,
+      "executorCanUseTypedBankingBridge": true,
+      "predecessorPrepareRetainedDuringExpand": true
+    },
+    "migrationAuthority": {
+      "storeOwnerCanCreateInBackendSystemAfterCommit": false,
+      "ledgerBridgeOwnerCanCreateInLedgerAfterCommit": false,
+      "insertPolicyActorSettingInitPlanned": true,
+      "insertPolicyOwnerCheckInitPlanned": true
+    }
+  },
+  "advisors": {
+    "security": {
+      "total": 35,
+      "info": 5,
+      "warn": 30,
+      "shareholderLoanRelatedFindings": 0,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter"
+    },
+    "performance": {
+      "total": 296,
+      "info": 281,
+      "warn": 15,
+      "shareholderLoanRelatedCachedWarn": 1,
+      "note": "The advisor continued to return one cached init-plan warning after cleanup. Direct post-migration pg_policy verification proves both the verified-actor setting and accepted-owner function are SELECT init-plans; no shareholder-loan security finding exists.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan"
+    }
+  },
+  "independentExternalGate": {
+    "issue": "#189",
+    "observedState": "OPEN",
+    "providerActivated": false,
+    "liveBankingUsed": false
+  },
+  "verdict": "pass"
+}

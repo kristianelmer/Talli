@@ -11,7 +11,6 @@ import * as customerAgreements from "../apps/web/app/lib/customer-agreements.ts"
 import { ownerCopy } from "../apps/web/app/lib/copy.ts";
 
 const {
-  assertCurrentCustomerAgreementForm,
   currentCustomerAgreements,
   customerAgreementAuthorityStatementVersion,
 } = customerAgreements;
@@ -21,19 +20,23 @@ const legalPageSource = readFileSync(
   "utf8",
 );
 const termsPageSource = readFileSync(new URL("../apps/web/app/vilkar/page.tsx", import.meta.url), "utf8");
+const ownerOnboardingActionSource = readFileSync(
+  new URL("../apps/web/app/(owner)/onboarding/actions.ts", import.meta.url),
+  "utf8",
+);
 
 test("publishes separate current Business Terms and DPA records", () => {
   assert.deepEqual(Object.keys(currentCustomerAgreements), ["businessTerms", "dpa"]);
-  assert.equal(currentCustomerAgreements.businessTerms.version, "2026-07-17");
+  assert.equal(currentCustomerAgreements.businessTerms.version, "2026-08-30");
   assert.equal(
     currentCustomerAgreements.businessTerms.contentSha256,
-    "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
+    "afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04",
   );
   assert.equal(currentCustomerAgreements.businessTerms.path, "/vilkar");
-  assert.equal(currentCustomerAgreements.dpa.version, "2026-07-17");
+  assert.equal(currentCustomerAgreements.dpa.version, "2026-08-30");
   assert.equal(
     currentCustomerAgreements.dpa.contentSha256,
-    "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
+    "1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a",
   );
   assert.equal(currentCustomerAgreements.dpa.path, "/databehandleravtale");
   assert.match(currentCustomerAgreements.businessTerms.contentSha256, /^[a-f0-9]{64}$/u);
@@ -106,31 +109,19 @@ test("uses one general supplier contract for beta and live plans", () => {
   assert.doesNotMatch(ownerCopy.legal.terms.intro, /ved å bruke/iu);
 });
 
-test("rejects absent and stale company agreement assent", () => {
-  const current = {
-    agreementAccepted: "accepted",
-    businessTermsVersion: "2026-07-17",
-    businessTermsSha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
-    dpaVersion: "2026-07-17",
-    dpaSha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
-  };
-  assert.doesNotThrow(() => assertCurrentCustomerAgreementForm(current));
-  assert.throws(
-    () => assertCurrentCustomerAgreementForm({ ...current, agreementAccepted: "" }),
-    /Du må bekrefte fullmakt og godta avtalevilkårene/u,
-  );
-  assert.throws(
-    () => assertCurrentCustomerAgreementForm({ ...current, dpaVersion: "2026-07-16" }),
-    /Avtalevilkårene er oppdatert/u,
-  );
-  assert.throws(
-    () => assertCurrentCustomerAgreementForm({ ...current, businessTermsSha256: "stale" }),
-    /Avtalevilkårene er oppdatert/u,
-  );
-  assert.throws(
-    () => assertCurrentCustomerAgreementForm({ ...current, dpaSha256: "stale" }),
-    /Avtalevilkårene er oppdatert/u,
-  );
+test("owner admission checks every current agreement version and digest", () => {
+  for (const required of [
+    /companyYearPromiseAccepted/u,
+    /businessTermsVersion[^\n]*currentCustomerAgreements\.businessTerms\.version/u,
+    /businessTermsSha256[^\n]*currentCustomerAgreements\.businessTerms\.contentSha256/u,
+    /dpaVersion[^\n]*currentCustomerAgreements\.dpa\.version/u,
+    /dpaSha256[^\n]*currentCustomerAgreements\.dpa\.contentSha256/u,
+    /privacyNoticeVersion[^\n]*currentPrivacyNotice\.version/u,
+    /privacyNoticeSha256[^\n]*currentPrivacyNotice\.contentSha256/u,
+    /Vilkårene eller Talli-grensen er oppdatert/u,
+  ]) {
+    assert.match(ownerOnboardingActionSource, required);
+  }
 });
 
 test("versioned contract pages replace the shared last-updated metadata", () => {
@@ -147,12 +138,12 @@ test("publishes the canonical Business Terms name in browser metadata", () => {
 
 test("makes return or deletion the customer's unconditional choice except for legal retention", () => {
   const dpa = JSON.stringify(ownerCopy.legal.dpa);
-  assert.match(dpa, /etter kundens valg returnere eller slette/iu);
+  assert.match(dpa, /etter kundens dokumenterte valg returnere eller slette/iu);
   assert.doesNotMatch(
     dpa,
     /etter kundens valg returnere eller slette[^.]*når tjenestens rutiner tillater det/iu,
   );
-  assert.match(dpa, /med mindre lov krever fortsatt lagring/iu);
+  assert.match(dpa, /med mindre en lov plikter Talli direkte til fortsatt lagring/iu);
 });
 
 test("requires explicit authorized reacceptance with immutable evidence for every material version", () => {
@@ -164,11 +155,14 @@ test("requires explicit authorized reacceptance with immutable evidence for ever
   assert.doesNotMatch(terms, /ny uttrykkelig aksept innhentes når det er nødvendig/iu);
 });
 
-test("publishes the filing-package refund boundary while live billing remains gated", () => {
+test("publishes the annual company-year refund boundary while live billing remains gated", () => {
   const terms = JSON.stringify(ownerCopy.legal.terms);
-  assert.match(terms, /innsendingspakke/iu);
-  assert.match(terms, /refusjonsberettiget/iu);
-  assert.match(terms, /Tallis innsendingslogikk eller integrasjon/iu);
+  assert.match(terms, /NOK 1 490 per selskapsår/iu);
+  assert.match(terms, /ingen månedspris, innsendingspakke/iu);
+  assert.match(terms, /feil i Tallis egen logikk eller tilkobling/iu);
+  assert.match(terms, /får kunden hele beløpet tilbake/iu);
+  assert.match(terms, /avbrudd hos myndigheter utenfor Tallis kontroll gir ikke automatisk refusjon/iu);
+  assert.doesNotMatch(terms, /30 dager|ubrukte hele måneder|fem virkedager/iu);
   assert.match(terms, /Betaling eller produksjonsinnsending aktiveres ikke/iu);
 });
 

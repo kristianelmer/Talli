@@ -9,26 +9,27 @@ export const REQUIRED_DEPLOYED_SCHEMA_PATHS = Object.freeze([
   "/corporate_document_events",
   "/corporate_document_sets",
   "/customer_agreement_acceptances",
-  "/investment_lot_allocations",
-  "/investment_lots",
   "/filing_approval_snapshots",
   "/production_filing_events",
   "/production_filing_submissions",
   "/production_pilot_entitlements",
-  "/rpc/accept_bank_transaction_suggestion",
   "/rpc/append_company_agreement_acceptance",
   "/rpc/append_production_filing_event",
   "/rpc/approve_production_filing",
   "/rpc/attest_corporate_signed_artifact",
   "/rpc/begin_production_filing",
   "/rpc/create_corporate_document_draft",
-  "/rpc/finalize_corporate_decision",
   "/rpc/import_company_tax_tt02_evidence",
   "/rpc/manage_production_pilot_entitlement",
   "/rpc/record_corporate_document_event",
-  "/rpc/record_owner_dividend_payment",
   "/rpc/remove_unlinked_document",
   "/rpc/restore_unlinked_document_after_storage_failure",
+]);
+
+export const FORBIDDEN_DEPLOYED_SCHEMA_PATHS = Object.freeze([
+  "/investment_lot_allocations",
+  "/investment_lots",
+  "/investment_positions",
   "/rpc/record_share_purchase_fifo",
   "/rpc/record_share_sale_fifo",
 ]);
@@ -38,6 +39,13 @@ export function missingDeployedSchemaPaths(openApi) {
     throw new Error("Expected a PostgREST OpenAPI document with a paths object.");
   }
   return REQUIRED_DEPLOYED_SCHEMA_PATHS.filter((path) => !(path in openApi.paths));
+}
+
+export function presentForbiddenDeployedSchemaPaths(openApi) {
+  if (!openApi || typeof openApi !== "object" || !openApi.paths || typeof openApi.paths !== "object") {
+    throw new Error("Expected a PostgREST OpenAPI document with a paths object.");
+  }
+  return FORBIDDEN_DEPLOYED_SCHEMA_PATHS.filter((path) => path in openApi.paths);
 }
 
 export async function inspectDeployedSchema({ supabaseUrl, serviceRoleKey, fetchImpl = fetch }) {
@@ -62,6 +70,7 @@ export async function inspectDeployedSchema({ supabaseUrl, serviceRoleKey, fetch
   return {
     endpoint: endpoint.origin,
     missing: missingDeployedSchemaPaths(openApi),
+    forbidden: presentForbiddenDeployedSchemaPaths(openApi),
   };
 }
 
@@ -70,8 +79,12 @@ async function main() {
     supabaseUrl: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
     serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
   });
-  if (result.missing.length > 0) {
-    console.error(JSON.stringify({ endpoint: result.endpoint, missing: result.missing }, null, 2));
+  if (result.missing.length > 0 || result.forbidden.length > 0) {
+    console.error(JSON.stringify({
+      endpoint: result.endpoint,
+      missing: result.missing,
+      forbidden: result.forbidden,
+    }, null, 2));
     process.exitCode = 1;
     return;
   }

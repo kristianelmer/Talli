@@ -1,0 +1,240 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#196",
+  "source": "https://github.com/kristianelmer/Talli/issues/196",
+  "sourceCheckedAt": "2026-08-31T06:58:45Z",
+  "route": {
+    "entryGate": "#187",
+    "entryGateState": "CLOSED",
+    "parallelAuthority": "#165 and #180 explicitly permit this non-business public-acquisition lane after #187",
+    "activeSerializedCapability": "investments/#141",
+    "independentExternalGateStillOpen": "#189",
+    "ownerAmendment": "2026-08-31: #189 no longer blocks provider-neutral internal #141–#154 work, but remains mandatory for live bank use, #197 bank evidence and #198 clearance"
+  },
+  "executionBoundary": {
+    "localAuthorized": [
+      "public acquisition presentation and indexable information routes",
+      "deny-by-default signup, consent, and checkout shell",
+      "first-party privacy-minimized funnel measurement and aggregate operator evidence",
+      "backend-owned passive invited-pilot observer, private run and entitlement authority, and launch-off evidence",
+      "fail-closed durable consent-proof mechanics without approving or activating a notice release",
+      "ordinary GitHub publication and protected Vercel Preview deployment under the standing owner no-cost authority",
+      "local copy, SEO, accessibility, performance, mobile, security, and release gates"
+    ],
+    "externalNotAuthorized": [
+      "production deployment or public launch",
+      "tracker or payment-provider activation",
+      "checkout, charge, refund, or paid advertising",
+      "customer contact, outreach, named-company intake, or production data"
+    ]
+  },
+  "criteria": [
+    {
+      "id": "GH-196-A1",
+      "requirement": "‘Sjekk selskapet gratis’ is the single primary public action and starts the canonical free provisional eligibility flow.",
+      "plannedEvidence": [
+        {"path": "apps/web/tests/public-acquisition.test.mjs", "command": "npm run test:boundary-web"},
+        {"path": "tests/browser_public_acquisition.mjs", "command": "npm run test:browser-public-acquisition"}
+      ],
+      "status": "local-rendered-evidence-passed"
+    },
+    {
+      "id": "GH-196-A2",
+      "requirement": "Provisional/definitive eligibility, NOK 1,490 including VAT, three filings, supported/blocked/clarify boundary, refund, operator, and non-affiliation copy exactly match the owner-approved versioned sources.",
+      "plannedEvidence": [
+        {"path": "apps/web/features/public-acquisition/offer-copy.ts", "command": "npm run test:boundary-web"},
+        {"path": "tests/launch_copy.test.mjs", "command": "npm run test:launch-copy"}
+      ],
+      "status": "local-copy-evidence-passed"
+    },
+    {
+      "id": "GH-196-A3",
+      "requirement": "Recruitment mode cannot claim or enable paid production; live claims and checkout require the exact capability version, immutable release state, runtime switches, and a definitive eligibility continuation.",
+      "plannedEvidence": [
+        {"path": "apps/web/features/public-acquisition/runtime.ts", "command": "npm run test:boundary-web"},
+        {"path": "apps/web/app/pris/page.tsx", "command": "npm run test:browser-public-acquisition"}
+      ],
+      "status": "local-runtime-gate-passed"
+    },
+    {
+      "id": "GH-196-A4",
+      "requirement": "Marketing measurement accepts no personal, account, company, purchase, financial, bank, filing, support, refund, document, or free-text data; non-essential collection requires explicit consent, exact approved notice/release binding, and a short-lived random first-party session.",
+      "plannedEvidence": [
+        {"path": "apps/web/features/public-acquisition/measurement.ts", "command": "npm run test:boundary-web"},
+        {"path": "tests/marketing_consent_proof_database_runtime.test.mjs", "command": "npm run test:marketing-measurement"}
+      ],
+      "status": "local-fail-closed-consent-proof-endpoint-database-and-retention-evidence-passed-no-release-approved-or-provisioned"
+    },
+    {
+      "id": "GH-196-A5",
+      "requirement": "Founder addendum: the first-party provider-neutral endpoint records only the bounded public check/onboarding session; it never joins account, company, purchase, company-year, support, refund or filing outcomes, and repeated reasons disclose only at five distinct sessions.",
+      "plannedEvidence": [
+        {"path": "apps/web/app/api/marketing-events/route.ts", "command": "npm run test:boundary-web"},
+        {"path": "apps/web/app/(operator)/operator/marketing/page.tsx", "command": "npm run test:boundary-web"},
+        {"path": "tests/marketing_consent_proof_database_runtime.test.mjs", "command": "npm run test:marketing-measurement-database"}
+      ],
+      "status": "local-no-longitudinal-boundary-and-five-distinct-session-evidence-passed"
+    },
+    {
+      "id": "GH-196-A6",
+      "requirement": "Homepage, scope, price, help, terms, privacy, security, and status are indexable with Norwegian metadata, canonical HTTPS URLs, sitemap, robots, social preview, favicon, semantic headings, and truthful Organization/SoftwareApplication structured data.",
+      "plannedEvidence": [
+        {"path": "apps/web/app/sitemap.ts", "command": "npm run test:boundary-web"},
+        {"path": "apps/web/app/layout.tsx", "command": "npm run build:web"}
+      ],
+      "status": "local-seo-build-passed"
+    },
+    {
+      "id": "GH-196-A7",
+      "requirement": "Rendered public and signup/checkout-shell journeys pass copy, keyboard, focus, labels/status, contrast, 200% zoom/reflow, 390px mobile, performance, and no-horizontal-overflow gates.",
+      "plannedEvidence": [
+        {"path": "tests/browser_public_acquisition.mjs", "command": "npm run test:browser-public-acquisition"},
+        {"path": "architecture/evidence/customer-ready-gates/13667d8f848101c8c93eea7c6329e09a8a347dcd.json", "command": "jq -e '.verdict == \"pass\" and .revision == \"13667d8f848101c8c93eea7c6329e09a8a347dcd\"' architecture/evidence/customer-ready-gates/13667d8f848101c8c93eea7c6329e09a8a347dcd.json"}
+      ],
+      "status": "local-rendered-evidence-and-immutable-successor-gate-passed"
+    },
+    {
+      "id": "GH-196-A8",
+      "requirement": "Ad and checkout stop rules fail closed whenever eligibility, capability, production, billing, bank, filing, security, UX, deadline, data-integrity, charge, or support-capacity evidence is red or stale.",
+      "plannedEvidence": [
+        {"path": "apps/web/features/public-acquisition/runtime.ts", "command": "npm run test:boundary-web"},
+        {"path": "apps/web/tests/public-acquisition.test.mjs", "command": "npm run test:boundary-web"},
+        {"path": "tests/validation_observation_launch_off.test.mjs", "command": "npm run test:validation-observation-launch-off"}
+      ],
+      "status": "local-stop-rules-and-exact-owner-designated-hosted-target-launch-off-state-passed-public-activation-still-blocked"
+    },
+    {
+      "id": "GH-196-A9",
+      "requirement": "No production/public deployment, tracker provider, ad purchase, or customer contact is authorized; ordinary protected Vercel Previews are inventoried under the standing owner no-cost authority.",
+      "plannedEvidence": [
+        {"path": ".github/workflows/release-gate.yml", "command": "gh api 'repos/kristianelmer/Talli/deployments?per_page=100'"},
+        {"path": "architecture/evidence/issues/196/requirements.json", "command": "verify GitHub App deployments as well as Actions before any no-deployment claim"}
+      ],
+      "status": "exact-250c0c4e-preview-ready-in-dub1-existing-public-production-remains-old-d331ee27-free-beta-no-new-production-launch-tracker-ad-purchase-or-customer-contact"
+    }
+  ],
+  "founderDecisionAddenda": {
+    "noLongitudinalMarketingCohort": "approved 2026-08-29 and enforced end-to-end by the narrowed TypeScript, Python, OpenAPI, generated client and v2 PostgreSQL report contract",
+    "repeatedSignalThreshold": "five distinct random-session hashes, not five events",
+    "invitedPilotObservation": "exact normal product with one passive post-outcome bounded writer; server and database authority only; full launch requires exact off and zero active entitlements"
+  },
+  "hostedAudit": {
+    "checkedAt": "2026-08-31T06:58:45Z",
+    "evidence": "architecture/evidence/issues/196/hosted-facts-2026-08-31.json",
+    "humanDecisionPackage": "docs/research/hosted-processors-transfer-backup-2026-08-31.md",
+    "ownerDesignatedSupabaseTarget": "zwucumjvtpnyujqyzwkg/pkpyyxryfhfehrbhbynp",
+    "databaseState": "ACTIVE_HEALTHY in eu-west-1; migrations 1-47 applied; validation observer off; zero active validation entitlements, releases, consent actions, marketing events, users, companies, memberships and storage objects",
+    "currentPreview": "dpl_EB2oDn7o9vA4E4KurGc4mUUWZmrG at source 250c0c4ed648b4135338938b1dddd4e7647ea605 is READY in dub1",
+    "existingProduction": "talli.no still resolves to dpl_HuHzBsgpcgBVTGsFiFLEEy3PqN5f at old source d331ee2717d1eeacef0d81db42b9d4fb5848b408 in iad1 and presents invitation-only free-beta copy",
+    "targetBinding": "unverified because five Vercel database variables were recorded before the owner-designated Supabase project existed and their sensitive values are write-only",
+    "unresolved": [
+      "action-time confirmation and controlled rotation for exact Supabase credentials in Vercel Preview and Production",
+      "commercial hosting authority because Vercel Hobby is not an unrestricted commercial-launch plan",
+      "database and storage backup plus restore rehearsal",
+      "processor, subprocessor and transfer review",
+      "human legal, privacy, security and production-launch clearance",
+      "legal migration serialization behind billing migration or proof that the legacy path is unreachable"
+    ]
+  },
+  "technicalSupplement": {
+    "implementationRevision": "b8c635538ea382e639ec54af09a34aee3981ef32",
+    "observerEvidence": [
+      {"path": "apps/backend/tests/test_validation_observation.py", "command": "npm run test:validation-observation"},
+      {"path": "apps/backend/tests/test_company_eligibility.py", "command": "uv run --project apps/backend pytest apps/backend/tests/test_company_eligibility.py -k 'observer or observation_authority' -q"},
+      {"path": "tests/validation_observation_database_runtime.test.mjs", "command": "npm run test:validation-observation"},
+      {"path": "tests/validation_observation_launch_off.test.mjs", "command": "npm run test:validation-observation-launch-off"}
+    ],
+    "observerState": "migration and startup create no run, entitlement, reviewer, participant mapping or observation; exact hosted target also has observer mode off and zero runs, entitlements, reviewers and observations; participant information, retention, mapping, reviewer and deletion approvals remain external",
+    "consentProofState": "mechanism passed against real PostgreSQL; exact hosted target has zero marketing releases, consent actions and events; no approved notice/release row exists and current 2026-07-15 privacy notice remains activation-blocking",
+    "ownerAuthority": {
+      "source": "AGENTS.md",
+      "revision": "b3ae370c010ad60be1ebd957a111e85ef92d46a0",
+      "scope": "ordinary GitHub operations and automatic Vercel Preview deployments are free and pre-authorized; explicit paid checkout, plan upgrade, add-on or displayed monetary charge remains gated"
+    },
+    "deploymentFacts": [
+      {
+        "provider": "Vercel GitHub App",
+        "deploymentId": 6153403669,
+        "sourceRevision": "00a29ce376a6db7016a452e029afeccaf4f7acc9",
+        "environment": "Preview",
+        "state": "success",
+        "createdAt": "2026-08-29T07:15:05Z",
+        "targetUrl": "https://talli-j5vyuxf1g-kristianelmers-projects.vercel.app"
+      },
+      {
+        "provider": "Vercel GitHub App",
+        "deploymentId": 6154166446,
+        "sourceRevision": "b3ae370c010ad60be1ebd957a111e85ef92d46a0",
+        "environment": "Preview",
+        "state": "success",
+        "createdAt": "2026-08-29T09:03:53Z",
+        "targetUrl": "https://talli-i5xajiw85-kristianelmers-projects.vercel.app",
+        "protectionVerification": "anonymous HTTP and the available in-app browser redirect to Vercel login; application routes were not claimed as anonymously rendered"
+      },
+      {
+        "provider": "Vercel GitHub App",
+        "deploymentId": "dpl_EB2oDn7o9vA4E4KurGc4mUUWZmrG",
+        "sourceRevision": "250c0c4ed648b4135338938b1dddd4e7647ea605",
+        "environment": "Preview",
+        "state": "READY",
+        "createdAt": "2026-08-31T06:57:36.131Z",
+        "region": "dub1",
+        "targetUrl": "https://talli-h0yr5k9cz-kristianelmers-projects.vercel.app"
+      }
+    ],
+    "deploymentEvidenceBoundary": "the protected implementation Preview is durable evidence for the published branch; later ledger-only commits may create additional Preview receipts recorded on the owning issue without changing the tested implementation revision"
+  },
+  "boundaryValidation": {
+    "checkedAt": "2026-08-29T08:43:54.317Z",
+    "humanDecisionPackage": "docs/legal/marketing-measurement-decision-draft.md",
+    "priorImmutableGate": {
+      "sourceRevision": "99c845b332522998278827510a7d30220a2a3137",
+      "evidenceCommit": "928f9d36c32d18031d1583639dcf387c13ca33c2",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:614dfe10e773f4882973fc36ff4262e204314618cac1d06f7645550ff4d675b4",
+      "producerDigest": "sha256:eb68ff2df183aac7e64b048d8b20cff074c826f4e80922f948608a301e7d4bff"
+    },
+    "currentImmutableGate": {
+      "sourceRevision": "13667d8f848101c8c93eea7c6329e09a8a347dcd",
+      "evidenceCommit": "e2601cc5d4d632a6e28633c7d4babafd19945d0f",
+      "verdict": "pass",
+      "checkCount": 11,
+      "executedAt": "2026-08-29T08:43:54.317Z",
+      "transcriptDigest": "sha256:9433d7eb41a6f701a216a7e725568de1c4d56b0ea057347c44fec77a86d384ca",
+      "producerDigest": "sha256:eb68ff2df183aac7e64b048d8b20cff074c826f4e80922f948608a301e7d4bff"
+    },
+    "commands": [
+      "node scripts/check-architecture.mjs --write-evidence",
+      "npm run typecheck",
+      "npm run test:boundary-web",
+      "npm run test:boundary-contract",
+      "npm run test:boundary-backend",
+      "npm run test:marketing-measurement",
+      "npm run test:validation-observation",
+      "npm run test:validation-observation-launch-off",
+      "npm run test:legal-policy",
+      "TALLI_PYTHON_BIN=.venv/bin/python npm run test:supabase:local",
+      "node --test tests/architecture_foundation.test.mjs",
+      "npm run build:web && npm run test:browser-public-acquisition:built",
+      "npm run build:backend"
+    ],
+    "focusedTests": {
+      "backend": {"passed": 466, "skipped": 2, "failed": 0},
+      "webBoundary": {"passed": 124, "failed": 0},
+      "contractBoundary": {"passed": 36, "failed": 0},
+      "architectureFoundation": {"passed": 50, "failed": 0},
+      "marketingWeb": {"passed": 10, "failed": 0},
+      "marketingBackend": {"passed": 8, "failed": 0},
+      "marketingDatabase": {"passed": 2, "failed": 0},
+      "validationObserverBackend": {"passed": 17, "skipped": 1, "failed": 0},
+      "validationObserverDatabase": {"passed": 1, "failed": 0},
+      "validationObserverLaunchOff": {"passed": 1, "failed": 0},
+      "renderedBrowser": {"passed": 1, "failed": 0},
+      "supabaseIsolation": {"passed": true, "failed": 0}
+    },
+    "renderedRouteChecks": ["/", "/sjekk-selskapet", "/signup (fail-closed and allowed continuation)", "/passer-talli", "/pris", "/hjelp", "/personvern", "/sikkerhet", "/status", "/robots.txt", "/sitemap.xml"],
+    "socialPreviewSha256": "2573755a085c1322e5affc7fdedeba565896836de8b0eb6bdafb6ce9b000e41f"
+  },
+  "closeState": "open-sensitive-target-rewire-commercial-hosting-backup-restore-transfer-legal-security-and-production-launch-clearance-pending"
+}

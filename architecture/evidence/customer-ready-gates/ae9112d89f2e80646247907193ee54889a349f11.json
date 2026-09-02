@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "1.0",
+  "revision": "ae9112d89f2e80646247907193ee54889a349f11",
+  "previousPassingRevision": "e0390826b7a3da0480d65552d1c630af951cd48b",
+  "workflow": "customer-ready-release-gate",
+  "executor": "local-script",
+  "producer": "scripts/run-customer-ready-gate.mjs",
+  "producerDigest": "sha256:eb68ff2df183aac7e64b048d8b20cff074c826f4e80922f948608a301e7d4bff",
+  "transcriptPath": "architecture/evidence/customer-ready-gates/ae9112d89f2e80646247907193ee54889a349f11.log",
+  "transcriptDigest": "sha256:360796981d43081a7ffffe81e60641b3480c46c91e54c3735a94134cdf2b22f3",
+  "startedAt": "2026-08-31T06:23:51.803Z",
+  "executedAt": "2026-08-31T06:29:20.976Z",
+  "verdict": "pass",
+  "checks": [
+    {
+      "name": "credential-scan",
+      "command": "npm run test:credential-scan",
+      "exitCode": 0,
+      "durationMs": 1049
+    },
+    {
+      "name": "typecheck",
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "durationMs": 1228
+    },
+    {
+      "name": "architecture",
+      "command": "npm run check:architecture",
+      "exitCode": 0,
+      "durationMs": 8459
+    },
+    {
+      "name": "boundary",
+      "command": "npm run test:boundary",
+      "exitCode": 0,
+      "durationMs": 23582
+    },
+    {
+      "name": "build-web",
+      "command": "TALLI_BACKEND_URL=http://127.0.0.1:8000 TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY=<local-only> npm run build:web && npm run test:browser-public-acquisition:built",
+      "exitCode": 0,
+      "durationMs": 14969
+    },
+    {
+      "name": "build-backend",
+      "command": "npm run build:backend",
+      "exitCode": 0,
+      "durationMs": 874
+    },
+    {
+      "name": "boundary-smoke",
+      "command": "npm run test:boundary-smoke",
+      "exitCode": 0,
+      "durationMs": 6784
+    },
+    {
+      "name": "launch-rehearsal",
+      "command": "TALLI_PYTHON_BIN=.venv/bin/python TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47> npm run test:launch-rehearsal",
+      "exitCode": 0,
+      "durationMs": 29034
+    },
+    {
+      "name": "production-dependency-audit",
+      "command": "npm audit --omit=dev --audit-level=high && npm audit --prefix apps/web --omit=dev --audit-level=high",
+      "exitCode": 0,
+      "durationMs": 1763
+    },
+    {
+      "name": "database-isolation",
+      "command": "TALLI_PYTHON_BIN=.venv/bin/python npm run test:supabase:local",
+      "exitCode": 0,
+      "durationMs": 218601
+    },
+    {
+      "name": "whitespace",
+      "command": "bash scripts/check-clean-worktree.sh",
+      "exitCode": 0,
+      "durationMs": 68
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-capability",
+  "name": "investments",
+  "path": "apps/backend/src/talli_backend/modules/investments",
+  "owner": "backend:investments",
+  "purpose": "Own the approved domestic private-share, NOK listed-share, and Norwegian fund boundary, including purchases, sales, dividends, distributions, immutable corrections, positions, FIFU lots, year-end measurement, separate book/tax facts, replay, and purpose-specific queries.",
+  "documentation": "apps/backend/src/talli_backend/modules/investments/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.investments.public",
+  "exports": {
+    "commands": ["CorrectInvestmentCommand", "InvestmentsCommand", "InvestmentsCommands", "RecognizeReceivedDividendCommand", "RecognizeReceivedFundDistributionCommand", "RecognizeSharePurchaseCommand", "RecognizeShareSaleCommand", "RecordInvestmentYearEndMeasurementCommand", "RecordReceivedDividendCommand", "RecordReceivedFundDistributionCommand", "RecordSharePurchaseCommand", "RecordShareSaleCommand", "SettleInvestmentCashCommand"],
+    "queries": ["AcquisitionLotPage", "AcquisitionLotView", "InvestmentActivityPage", "InvestmentActivityView", "InvestmentCorrectionPage", "InvestmentCorrectionView", "InvestmentLifecycleEventPage", "InvestmentLifecycleEventView", "InvestmentPositionPage", "InvestmentPositionView", "InvestmentYearEndMeasurementPage", "InvestmentYearEndMeasurementView", "InvestmentsQueries", "PreparedCashSettlementCorrection", "PreparedEconomicEventCorrection", "PreparedInvestmentCashSettlement", "PreparedInvestmentCorrection", "PreparedInvestmentMeasurementFacts", "PreparedInvestmentYearEndMeasurement", "PreparedReceivedDividend", "PreparedReceivedDividendFacts", "PreparedReceivedFundDistribution", "PreparedReceivedFundDistributionFacts", "PreparedSettledInvestmentCorrection", "PreparedSharePurchase", "PreparedSharePurchaseRecognition", "PreparedShareSale", "PreparedShareSaleFacts", "RecordedInvestmentCashSettlement", "RecordedInvestmentCorrection", "RecordedInvestmentEconomicEvent", "RecordedInvestmentYearEndMeasurement", "RecordedReceivedDividend", "RecordedReceivedFundDistribution", "RecordedSharePurchase", "RecordedShareSale", "ShareSaleAllocationPage", "ShareSaleAllocationView"],
+    "events": [],
+    "errors": ["InvestmentsError", "InvestmentsErrorCode"],
+    "identifiers": ["AccountingEntryReference", "AcquisitionLotId", "InvestmentActionId", "InvestmentAccountingClassification", "InvestmentActivityKind", "InvestmentCorrectionId", "InvestmentCorrectionTargetKind", "InvestmentCursor", "InvestmentDocumentStatus", "InvestmentEconomicEventId", "InvestmentEvidence", "InvestmentEvidenceMode", "InvestmentFactReference", "InvestmentKind", "InvestmentLotHistoryStatus", "InvestmentMeasurementId", "InvestmentMeasurementRule", "InvestmentPolicyVersion", "InvestmentPositionId", "InvestmentReplacementCommand", "InvestmentSaleLotCalculation", "InvestmentSaleLotFact", "InvestmentSettlementBalanceKind", "InvestmentSettlementId", "InvestmentSourceCapability", "InvestmentSourceReference", "InvestmentTaxTreatment", "InvestmentTradingProfile", "InvestmentUnits", "InvestmentsPersistence", "ShareSaleAllocationId", "investments_persistence_adapter"]
+  },
+  "owns": {
+    "postgresSchemas": ["investments"],
+    "tables": ["investments.acquisition_lots", "investments.cash_settlements", "investments.company_year_policies", "investments.corrections", "investments.economic_events", "investments.event_sources", "investments.lifecycle_correction_sources", "investments.lifecycle_corrections", "investments.measurement_sources", "investments.position_boundary_confirmations", "investments.position_classifications", "investments.positions", "investments.received_dividend_recognitions", "investments.received_dividends", "investments.received_fund_distribution_recognitions", "investments.received_fund_distributions", "investments.share_purchase_recognitions", "investments.share_purchases", "investments.share_sale_allocations", "investments.share_sales", "investments.source_fact_registry", "investments.year_end_measurements"],
+    "storageBuckets": [],
+    "projections": [],
+    "migrations": "supabase/migrations/20260831124939_investments_capability.sql"
+  },
+  "ports": [
+    {
+      "name": "InvestmentsPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.investments.public.InvestmentsPersistence",
+      "registrationDecorator": "talli_backend.modules.investments.public.investments_persistence_adapter",
+      "adapters": ["talli_backend.adapters.supabase_investments.SupabaseInvestmentsSession"]
+    }
+  ],
+  "dependencies": [],
+  "allowedImports": ["__future__", "collections.abc", "dataclasses", "datetime", "decimal", "enum", "hashlib", "json", "re", "talli_backend.shared.kernel", "typing", "uuid"],
+  "forbiddenResponsibilities": [
+    "Ledger accounts, posting lines, balance enforcement, or period-lock policy",
+    "Bank-provider selection, credentials, consent, live calls, or provider-specific types",
+    "FastAPI, Pydantic, Supabase, PostgreSQL, or web transport types in the public contract",
+    "Company tax filing, document, governance, authority submission, or archive policy",
+    "Service-role access, RLS bypass, direct browser persistence, or a second investment writer"
+  ],
+  "tests": {
+    "contract": "apps/backend/tests/test_investments_public_contract.py",
+    "policy": "apps/backend/tests/test_investments.py",
+    "supportedPatterns": "apps/backend/tests/test_investments_supported_patterns.py",
+    "workflow": "apps/backend/tests/test_investments_workflow.py",
+    "adapter": "apps/backend/tests/test_supabase_investments.py",
+    "database": "tests/investments_database_runtime.test.mjs",
+    "crossOutput": "tests/investments_cross_output_reconciliation.test.mjs",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

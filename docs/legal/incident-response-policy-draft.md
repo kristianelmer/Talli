@@ -1,8 +1,8 @@
 # Incident Response Policy Draft
 
-Status: draft for founder/security/legal review  
-Last updated: 2026-06-27  
-Blocks: #72 remains open until human/legal signoff
+Status: founder incident ownership approved; hosted exercise and evidence pending
+Last updated: 2026-08-30
+Blocks: #72 remains open until monitoring, contact channels, and hosted incident handling are tested
 
 ## Incident Categories
 
@@ -31,10 +31,11 @@ Blocks: #72 remains open until human/legal signoff
 
 ## Incident Roles (pre-incorporation)
 
-Until the Talli AS is registered, the founder (Kristian Elmer) holds all incident
-roles solely — incident owner, security/severity decision-maker, customer-notification
-decision-maker, and authority-notification decision-maker. On incorporation, these
-roles must be reassigned to named individuals and this section updated.
+Until Talli becomes a separate company, the founder (Kristian Elmer) holds all
+incident roles solely: security and incident owner, security/severity
+decision-maker, customer-notification decision-maker, and
+authority-notification decision-maker. On incorporation, these roles must be
+reassigned to named individuals and this section updated.
 
 ## Customer Notification Approach
 
@@ -82,12 +83,19 @@ For direct filing incidents, preserve:
 Duplicate or uncertain submissions must not be retried under changed payloads with
 old idempotency keys.
 
-## Required Human Review Before Publication
+## Approval and Remaining Evidence
 
 - [x] Incident roles named — founder (Kristian Elmer) holds all roles solely
   pre-incorporation; reassign to named individuals on incorporation.
-- [ ] Security reviewer approves severity model and evidence checklist.
+- [x] Founder/accountable owner approves the severity model and evidence
+  checklist, subject to a successful hosted exercise.
 - [x] Notification thresholds/timing defined — Datatilsynet within 72h (GDPR art. 33);
   high-risk user notice without undue delay (art. 34). Legal to confirm wording.
 - [x] Customer notification approach defined — content + Resend email channel; polished
   templates deferred to support owner before broad public launch.
+- [ ] Verify monitoring, Resend availability/fallback, containment, evidence,
+  restoration, and notification handling in the exact hosted systems.
+
+The 2026-08-30 review used AI-assisted legal and security research. It is not
+professional legal advice or an independent security certification. Kristian
+Elmer remains accountable for the decision and for the hosted exercise.

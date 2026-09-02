@@ -355,6 +355,11 @@ test(
     const cleanupErrors = [];
 
     try {
+      await database.query(String.raw`
+        do $authority$ begin
+          execute pg_catalog.format('grant documents_store_owner to %I', current_user);
+        end $authority$
+      `);
       const ownerUser = await createConfirmedUser(admin, "owner");
       users.push(ownerUser);
       const reviewerUser = await createConfirmedUser(admin, "reviewer");
@@ -441,9 +446,29 @@ test(
         ],
       );
 
-      // Reapplying the additive migration simulates upgrading a pre-Task-6
-      // submission whose immutable confirmation event already exists.
-      await database.query(sql);
+      // Exercise the migration's bounded immutable-event backfill without
+      // replaying predecessor document/storage policies after their cutover.
+      await database.query(String.raw`
+        with latest_succeeded_confirm as (
+          select distinct on (event.submission_id)
+            event.submission_id, event.authority_reference
+          from public.production_filing_events event
+          where event.operation_name='confirm' and event.operation_state='succeeded'
+          order by event.submission_id, event.created_at desc, event.id desc
+        ), validated_confirmation as (
+          select confirmation.submission_id,
+            public.rf1086_confirmation_forsendelse_id(
+              confirmation.authority_reference
+            ) as forsendelse_id
+          from latest_succeeded_confirm confirmation
+        )
+        update public.production_filing_submissions submission
+        set feedback_forsendelse_id=validated.forsendelse_id
+        from validated_confirmation validated
+        where submission.id=validated.submission_id
+          and submission.feedback_forsendelse_id is null
+          and validated.forsendelse_id is not null
+      `);
       const backfilled = await database.query(
         `select feedback_forsendelse_id
          from public.production_filing_submissions where id = $1`,
@@ -618,28 +643,47 @@ test(
       ];
       for (const upload of uploads) assert.ifError(upload.error);
 
-      for (const client of [owner, operator]) {
-        const feedbackDocument = await client.from("documents").select("id").eq("id", feedbackDocumentId).maybeSingle();
-        assert.ifError(feedbackDocument.error);
-        assert.equal(feedbackDocument.data?.id, feedbackDocumentId);
-        const artifact = await client
-          .from("production_feedback_artifacts")
-          .select("document_id")
-          .eq("document_id", feedbackDocumentId)
-          .maybeSingle();
-        assert.ifError(artifact.error);
-        assert.equal(artifact.data?.document_id, feedbackDocumentId);
-        const download = await client.storage.from("company-documents").download(feedbackKey);
-        assert.ifError(download.error);
-        assert.equal(await download.data.text(), "feedback");
-        const signed = await client.storage.from("company-documents").createSignedUrl(feedbackKey, 60);
-        assert.ifError(signed.error);
-        assert.match(signed.data.signedUrl, /\/storage\/v1\/object\/sign\/company-documents\//u);
-      }
+      const ownerFeedbackDocument = await owner
+        .from("documents")
+        .select("id")
+        .eq("id", feedbackDocumentId)
+        .maybeSingle();
+      assert.ok(ownerFeedbackDocument.error);
+      assert.equal(ownerFeedbackDocument.data, null);
+      const ownerArtifact = await owner
+        .from("production_feedback_artifacts")
+        .select("document_id")
+        .eq("document_id", feedbackDocumentId)
+        .maybeSingle();
+      assert.ifError(ownerArtifact.error);
+      assert.equal(ownerArtifact.data?.document_id, feedbackDocumentId);
+      const ownerDownload = await owner.storage.from("company-documents").download(feedbackKey);
+      assert.ok(ownerDownload.error);
+      const ownerSigned = await owner.storage.from("company-documents").createSignedUrl(feedbackKey, 60);
+      assert.ok(ownerSigned.error);
+
+      const operatorFeedbackDocument = await operator
+        .from("documents")
+        .select("id")
+        .eq("id", feedbackDocumentId)
+        .maybeSingle();
+      assert.ok(operatorFeedbackDocument.error);
+      assert.equal(operatorFeedbackDocument.data, null);
+      const operatorArtifact = await operator
+        .from("production_feedback_artifacts")
+        .select("document_id")
+        .eq("document_id", feedbackDocumentId)
+        .maybeSingle();
+      assert.ifError(operatorArtifact.error);
+      assert.equal(operatorArtifact.data, null);
+      const operatorDownload = await operator.storage.from("company-documents").download(feedbackKey);
+      assert.ok(operatorDownload.error);
+      const operatorSigned = await operator.storage.from("company-documents").createSignedUrl(feedbackKey, 60);
+      assert.ok(operatorSigned.error);
 
       for (const client of [reviewer, readOnly]) {
         const feedbackDocument = await client.from("documents").select("id").eq("id", feedbackDocumentId).maybeSingle();
-        assert.ifError(feedbackDocument.error);
+        assert.ok(feedbackDocument.error);
         assert.equal(feedbackDocument.data, null);
         const artifact = await client
           .from("production_feedback_artifacts")
@@ -654,11 +698,10 @@ test(
         assert.ok(signed.error);
 
         const normalDocument = await client.from("documents").select("id").eq("id", normalDocumentId).single();
-        assert.ifError(normalDocument.error);
-        assert.equal(normalDocument.data.id, normalDocumentId);
+        assert.ok(normalDocument.error);
+        assert.equal(normalDocument.data, null);
         const normalDownload = await client.storage.from("company-documents").download(normalKey);
-        assert.ifError(normalDownload.error);
-        assert.equal(await normalDownload.data.text(), "ordinary");
+        assert.ok(normalDownload.error);
       }
     } catch (error) {
       primaryError = error;
@@ -689,6 +732,14 @@ test(
       for (const user of users) {
         await collectCleanupError(() => assertNoCleanupError(admin.auth.admin.deleteUser(user.id)), cleanupErrors);
       }
+      await collectCleanupError(
+        () => database.query(String.raw`
+          do $authority$ begin
+            execute pg_catalog.format('revoke documents_store_owner from %I', current_user);
+          end $authority$
+        `),
+        cleanupErrors,
+      );
       await collectCleanupError(() => database.end(), cleanupErrors);
     }
     throwWithCleanupErrors(primaryError, cleanupErrors);

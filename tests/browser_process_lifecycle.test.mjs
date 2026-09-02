@@ -216,18 +216,23 @@ test("browser owner cleanup removes tracked sources before company and user", as
     .filter((call) => call.startsWith("delete from public."))
     .map((call) => call.match(/^delete from public\.([a-z_]+)/u)?.[1]);
   assert.deepEqual(deletedTables, [
+    "company_year_acceptances",
+    "company_year_admissions",
+    "company_eligibility_assessments",
     "customer_agreement_acceptances",
     "corporate_document_events",
     "corporate_decision_finalizations",
     "corporate_document_artifacts",
     "corporate_document_sets",
     "corporate_decisions",
+    "production_filing_events",
     "production_feedback_artifacts",
     "production_filing_submissions",
     "filing_approval_snapshots",
     "production_pilot_entitlements",
     "company_deletion_reviews",
     "bank_suggestion_acceptances",
+    "bank_transactions",
     "investment_lot_allocations",
     "investment_lots",
     "investment_positions",
@@ -238,7 +243,6 @@ test("browser owner cleanup removes tracked sources before company and user", as
     "authority_test_runs",
     "authority_permissions",
     "filing_previews",
-    "ledger_entries",
     "opening_shareholders",
     "opening_balance_setups",
     "billing_accounts",
@@ -246,15 +250,90 @@ test("browser owner cleanup removes tracked sources before company and user", as
     "company_archive_export_receipts",
     "company_archive_export_attempts",
     "company_archive_source_generations",
+    "companies",
   ]);
+  assert.ok(calls.includes(
+    "delete from backend_system.ledger_command_receipts where company_id = $1",
+  ));
+  assert.ok(calls.includes(
+    "delete from backend_system.ledger_workflow_receipts where company_id = $1",
+  ));
+  assert.ok(calls.includes("delete from ledger.entry_sources where company_id = $1"));
+  assert.ok(calls.includes("delete from ledger.entry_corrections where company_id = $1"));
+  assert.ok(calls.includes("delete from ledger.entry_contexts where company_id = $1"));
+  assert.ok(calls.includes("delete from ledger.entries where company_id = $1"));
+  assert.ok(calls.includes(
+    "delete from ledger.opening_received_dividend_settlements where company_id = $1",
+  ));
+  assert.ok(calls.includes("delete from public.companies where id = $1"));
+  assert.ok(calls.includes("set local role ledger_store_owner"));
+  assert.ok(calls.includes("set local role ledger_workflow_store_owner"));
+  assert.ok(calls.includes("set local role investments_store_owner"));
+  for (const table of [
+    "position_boundary_confirmations",
+    "share_sale_allocations",
+    "received_dividends",
+    "share_sales",
+    "share_purchases",
+    "acquisition_lots",
+    "positions",
+  ]) {
+    assert.ok(calls.includes(
+      `delete from investments.${table} where company_id = $1`,
+    ));
+  }
+  for (const table of [
+    "backend_system.ledger_command_receipts",
+    "backend_system.ledger_workflow_receipts",
+    "ledger.entries",
+  ]) {
+    const disable = calls.indexOf(
+      `alter table ${table} no force row level security`,
+    );
+    const remove = calls.indexOf(
+      `delete from ${table} where company_id = $1`,
+    );
+    const restore = calls.indexOf(
+      `alter table ${table} force row level security`,
+    );
+    assert.ok(disable < remove && remove < restore);
+  }
+  assert.ok(
+    calls.indexOf("delete from ledger.entry_corrections where company_id = $1")
+      < calls.indexOf("delete from ledger.entries where company_id = $1"),
+  );
+  assert.ok(
+    calls.indexOf("delete from ledger.entry_sources where company_id = $1")
+      < calls.indexOf("delete from ledger.entries where company_id = $1"),
+  );
   const restoreTriggerMode = calls.indexOf("set local session_replication_role = origin");
+  assert.ok(
+    calls.indexOf("delete from public.company_eligibility_assessments where company_id = $1")
+      < restoreTriggerMode,
+  );
   assert.ok(
     calls.indexOf("delete from public.corporate_decisions where company_id = $1")
       < restoreTriggerMode,
   );
   assert.ok(
+    calls.indexOf("delete from public.production_feedback_artifacts where company_id = $1")
+      < restoreTriggerMode,
+  );
+  assert.ok(
+    calls.indexOf("delete from public.company_archive_source_generations where company_id = $1")
+      < calls.indexOf("delete from public.companies where id = $1"),
+  );
+  assert.ok(
     restoreTriggerMode
-      < calls.indexOf("delete from public.production_feedback_artifacts where company_id = $1"),
+      < calls.indexOf("alter table public.companies disable trigger user"),
+  );
+  assert.ok(
+    calls.indexOf("alter table public.companies disable trigger user")
+      < calls.indexOf("delete from public.companies where id = $1"),
+  );
+  assert.ok(
+    calls.indexOf("delete from public.companies where id = $1")
+      < calls.indexOf("alter table public.companies enable trigger user"),
   );
   assert.ok(calls.indexOf("commit") < calls.indexOf("delete_company:company-created"));
   assert.deepEqual(calls.slice(-3), [
@@ -262,6 +341,34 @@ test("browser owner cleanup removes tracked sources before company and user", as
     "delete_user:owner-created",
     "database_end",
   ]);
+});
+
+test("browser owner cleanup removes every tracked company before the shared owner", async () => {
+  const calls = [];
+  const database = {
+    async query(statement) {
+      calls.push(statement.replace(/\s+/gu, " ").trim());
+    },
+    async end() {
+      calls.push("database_end");
+    },
+  };
+
+  const errors = await cleanupBrowserOwnerResources({
+    admin: cleanupAdmin(calls),
+    companyId: "company-one",
+    companyIds: ["company-one", "company-two"],
+    database,
+    databaseStarted: true,
+    ownerId: "owner-created",
+  });
+
+  assert.deepEqual(errors, []);
+  assert.deepEqual(
+    calls.filter((call) => call.startsWith("delete_company:")),
+    ["delete_company:company-one", "delete_company:company-two"],
+  );
+  assert.deepEqual(calls.slice(-2), ["delete_user:owner-created", "database_end"]);
 });
 
 test("browser owner cleanup preserves source failure and continues independent cleanup", async () => {

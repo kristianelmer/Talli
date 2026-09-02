@@ -20,6 +20,7 @@ function valid(value: unknown): value is PendingCancellationOperation {
     return Number.isInteger(item.incomeYear) && Number(item.incomeYear) >= 2000 && Number(item.incomeYear) <= 2100;
   }
   return item.command === "review"
+    && UUID.test(String(item.supportCaseId))
     && (item.decision === "approved" || item.decision === "rejected")
     && typeof item.evidenceReference === "string"
     && item.evidenceReference.length >= 1 && item.evidenceReference.length <= 500;

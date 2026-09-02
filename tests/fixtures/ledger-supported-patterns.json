@@ -1,0 +1,699 @@
+{
+  "schemaVersion": "1.0",
+  "policyVersion": "ledger-supported-patterns-2026.1",
+  "companyYear": 2026,
+  "sourceCut": "2026-08-27",
+  "normativeMap": "docs/accounting/supported-ledger-patterns.md",
+  "ownerResolution": "https://github.com/kristianelmer/Talli/issues/172#issuecomment-5423455104",
+  "patterns": [
+    {
+      "id": "opening-rebuild",
+      "section": "Opening balance and current-year rebuild",
+      "input": {
+        "eventId": "golden:opening:2026",
+        "eventDate": "2026-01-01",
+        "mode": "PRIOR_CLOSE_RECONSTRUCTION",
+        "coverageThrough": "2026-08-27",
+        "openingBasis": "annual-accounts",
+        "sources": {
+          "annual-accounts": { "capability": "ANNUAL_ACCOUNTS_FILING", "recordId": "annual-accounts:2025", "revision": 1, "factSha256": "0000000000000000000000000000000000000000000000000000000000000000" },
+          "banking": { "capability": "BANKING", "recordId": "banking:closing:2025", "revision": 2, "factSha256": "1111111111111111111111111111111111111111111111111111111111111111" },
+          "investments": { "capability": "INVESTMENTS", "recordId": "investments:positions:2025", "revision": 3, "factSha256": "2222222222222222222222222222222222222222222222222222222222222222" },
+          "governance": { "capability": "CORPORATE_GOVERNANCE", "recordId": "governance:decisions:2025", "revision": 4, "factSha256": "3333333333333333333333333333333333333333333333333333333333333333" },
+          "tax": { "capability": "COMPANY_TAX_FILING", "recordId": "company-tax:balances:2025", "revision": 5, "factSha256": "4444444444444444444444444444444444444444444444444444444444444444" },
+          "shareholder-register": { "capability": "SHAREHOLDER_REGISTER_FILING", "recordId": "shareholder-register:2025", "revision": 6, "factSha256": "5555555555555555555555555555555555555555555555555555555555555555" },
+          "documents": { "capability": "DOCUMENTS", "recordId": "archive:closing-support:2025", "revision": 7, "factSha256": "6666666666666666666666666666666666666666666666666666666666666666" }
+        },
+        "components": [
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "SUBSIDIARY_LOAN_RECEIVABLE", "referenceId": "subsidiary-loan:1", "amountNok": "100.00", "primarySource": "governance", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "GROUP_COMPANY_LOAN_RECEIVABLE", "referenceId": "group-loan:1", "amountNok": "100.00", "primarySource": "governance", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "CORPORATE_SHAREHOLDER_LOAN_RECEIVABLE", "referenceId": "corporate-owner-loan:1", "amountNok": "100.00", "primarySource": "governance", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "BANK", "referenceId": "bank-account:1", "amountNok": "200.00", "primarySource": "banking", "corroboratingSources": ["documents"] },
+          { "componentKind": "INVESTMENT", "classification": "SUBSIDIARY", "investmentReferenceId": "investment:subsidiary:1", "amountNok": "100.00", "primarySource": "investments", "corroboratingSources": ["documents"] },
+          { "componentKind": "INVESTMENT", "classification": "ASSOCIATE", "investmentReferenceId": "investment:associate:1", "amountNok": "100.00", "primarySource": "investments", "corroboratingSources": ["documents"] },
+          { "componentKind": "INVESTMENT", "classification": "OTHER_LONG_TERM", "investmentReferenceId": "investment:long-term:1", "amountNok": "100.00", "primarySource": "investments", "corroboratingSources": ["documents"] },
+          { "componentKind": "INVESTMENT", "classification": "CURRENT_LISTED_SHARE", "investmentReferenceId": "investment:listed-share:1", "amountNok": "100.00", "primarySource": "investments", "corroboratingSources": ["documents"] },
+          { "componentKind": "INVESTMENT", "classification": "CURRENT_FUND", "investmentReferenceId": "investment:fund:1", "amountNok": "100.00", "primarySource": "investments", "corroboratingSources": ["documents"] },
+          { "componentKind": "DIVIDEND_RECEIVABLE", "decisionReferenceId": "dividend-received:decision:1", "amountNok": "100.00", "primarySource": "investments", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "GROUP_CONTRIBUTION_RECEIVABLE", "referenceId": "group-contribution-receivable:1", "amountNok": "100.00", "primarySource": "governance", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "TAX_RECEIVABLE", "referenceId": "tax-receivable:1", "amountNok": "100.00", "primarySource": "tax", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "ACCRUED_INTEREST_RECEIVABLE", "referenceId": "accrued-interest-receivable:1", "amountNok": "100.00", "primarySource": "banking", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "DEFERRED_TAX_ASSET", "referenceId": "deferred-tax-asset:1", "amountNok": "100.00", "primarySource": "tax", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "REGISTERED_SHARE_CAPITAL", "referenceId": "registered-share-capital:1", "amountNok": "100.00", "primarySource": "shareholder-register", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "SHARE_PREMIUM", "referenceId": "share-premium:1", "amountNok": "100.00", "primarySource": "shareholder-register", "corroboratingSources": ["documents"] },
+          { "componentKind": "CAPITAL_INCREASE", "phase": "BINDING_SUBSCRIPTION", "capitalIncreaseReferenceId": "capital-increase:binding:1", "nominalIncreaseNok": "80.00", "sharePremiumNok": "20.00", "primarySource": "governance", "corroboratingSources": ["documents"] },
+          { "componentKind": "CAPITAL_INCREASE", "phase": "RESTRICTED_PAYMENT", "capitalIncreaseReferenceId": "capital-increase:restricted:1", "nominalIncreaseNok": "80.00", "sharePremiumNok": "20.00", "primarySource": "governance", "corroboratingSources": ["banking", "documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "OTHER_PAID_IN_EQUITY", "referenceId": "other-paid-in-equity:1", "amountNok": "100.00", "primarySource": "governance", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "RETAINED_EARNINGS", "referenceId": "retained-earnings:1", "amountNok": "200.00", "primarySource": "annual-accounts", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "UNCOVERED_LOSS", "referenceId": "uncovered-loss:1", "amountNok": "100.00", "primarySource": "annual-accounts", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "OTHER_EQUITY", "referenceId": "other-equity:1", "amountNok": "100.00", "primarySource": "annual-accounts", "corroboratingSources": ["documents"] },
+          { "componentKind": "CAPITAL_REDUCTION", "recognition": "DECIDED_NOT_REGISTERED", "capitalReductionReferenceId": "capital-reduction:decision:1", "nominalReductionNok": "100.00", "primarySource": "governance", "corroboratingSources": ["documents"] },
+          { "componentKind": "BANK_LOAN", "maturity": "LONG_TERM", "loanReferenceId": "bank-loan:long:1", "amountNok": "100.00", "primarySource": "banking", "corroboratingSources": ["documents"] },
+          { "componentKind": "BANK_LOAN", "maturity": "SHORT_TERM", "loanReferenceId": "bank-loan:short:1", "amountNok": "100.00", "primarySource": "banking", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "OWNER_LOAN_PAYABLE", "referenceId": "owner-loan:1", "amountNok": "100.00", "primarySource": "governance", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "INTERCOMPANY_LOAN_PAYABLE", "referenceId": "intercompany-loan:1", "amountNok": "100.00", "primarySource": "governance", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "SUPPLIER_PAYABLE", "referenceId": "supplier-payable:1", "amountNok": "100.00", "primarySource": "documents", "corroboratingSources": ["annual-accounts"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "CURRENT_TAX_PAYABLE", "referenceId": "current-tax-payable:1", "amountNok": "100.00", "primarySource": "tax", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "DEFERRED_TAX_LIABILITY", "referenceId": "deferred-tax-liability:1", "amountNok": "100.00", "primarySource": "tax", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "ACCRUED_INTEREST_PAYABLE", "referenceId": "accrued-interest-payable:1", "amountNok": "100.00", "primarySource": "banking", "corroboratingSources": ["documents"] },
+          { "componentKind": "DIVIDEND_PAYABLE", "decisionReferenceId": "owner-dividend:decision:1", "amountNok": "100.00", "primarySource": "governance", "corroboratingSources": ["documents"] },
+          { "componentKind": "CLASSIFIED_BALANCE", "category": "GROUP_CONTRIBUTION_PAYABLE", "referenceId": "group-contribution-payable:1", "amountNok": "100.00", "primarySource": "governance", "corroboratingSources": ["documents"] }
+        ]
+      },
+      "journals": [
+        {
+          "phase": "OPENING",
+          "company": "talli-company",
+          "lines": [
+            { "account": "SUBSIDIARY_LOAN_RECEIVABLE", "postingAccount": "1320", "componentKind": "CLASSIFIED_BALANCE", "category": "SUBSIDIARY_LOAN_RECEIVABLE", "referenceId": "subsidiary-loan:1", "lifecyclePhase": null, "debitNok": "100.00", "creditNok": "0.00" },
+            { "account": "GROUP_COMPANY_LOAN_RECEIVABLE", "postingAccount": "1325", "componentKind": "CLASSIFIED_BALANCE", "category": "GROUP_COMPANY_LOAN_RECEIVABLE", "referenceId": "group-loan:1", "lifecyclePhase": null, "debitNok": "100.00", "creditNok": "0.00" },
+            { "account": "CORPORATE_SHAREHOLDER_LOAN_RECEIVABLE", "postingAccount": "1370", "componentKind": "CLASSIFIED_BALANCE", "category": "CORPORATE_SHAREHOLDER_LOAN_RECEIVABLE", "referenceId": "corporate-owner-loan:1", "lifecyclePhase": null, "debitNok": "100.00", "creditNok": "0.00" },
+            { "account": "BANK", "postingAccount": "1920", "componentKind": "CLASSIFIED_BALANCE", "category": "BANK", "referenceId": "bank-account:1", "lifecyclePhase": null, "debitNok": "200.00", "creditNok": "0.00" },
+            { "account": "SUBSIDIARY_INVESTMENT", "postingAccount": "1300", "componentKind": "INVESTMENT", "category": "SUBSIDIARY_INVESTMENT", "referenceId": "investment:subsidiary:1", "lifecyclePhase": "SUBSIDIARY", "debitNok": "100.00", "creditNok": "0.00" },
+            { "account": "ASSOCIATE_INVESTMENT", "postingAccount": "1310", "componentKind": "INVESTMENT", "category": "ASSOCIATE_INVESTMENT", "referenceId": "investment:associate:1", "lifecyclePhase": "ASSOCIATE", "debitNok": "100.00", "creditNok": "0.00" },
+            { "account": "OTHER_LONG_TERM_INVESTMENT", "postingAccount": "1350", "componentKind": "INVESTMENT", "category": "OTHER_LONG_TERM_INVESTMENT", "referenceId": "investment:long-term:1", "lifecyclePhase": "OTHER_LONG_TERM", "debitNok": "100.00", "creditNok": "0.00" },
+            { "account": "CURRENT_LISTED_SHARE_INVESTMENT", "postingAccount": "1810", "componentKind": "INVESTMENT", "category": "CURRENT_LISTED_SHARE_INVESTMENT", "referenceId": "investment:listed-share:1", "lifecyclePhase": "CURRENT_LISTED_SHARE", "debitNok": "100.00", "creditNok": "0.00" },
+            { "account": "CURRENT_FUND_INVESTMENT", "postingAccount": "1815", "componentKind": "INVESTMENT", "category": "CURRENT_FUND_INVESTMENT", "referenceId": "investment:fund:1", "lifecyclePhase": "CURRENT_FUND", "debitNok": "100.00", "creditNok": "0.00" },
+            { "account": "DIVIDEND_RECEIVABLE", "postingAccount": "1530", "componentKind": "DIVIDEND_RECEIVABLE", "category": "DIVIDEND_RECEIVABLE", "referenceId": "dividend-received:decision:1", "lifecyclePhase": "FINAL_DECISION_UNSETTLED", "debitNok": "100.00", "creditNok": "0.00" },
+            { "account": "GROUP_CONTRIBUTION_RECEIVABLE", "postingAccount": "1560", "componentKind": "CLASSIFIED_BALANCE", "category": "GROUP_CONTRIBUTION_RECEIVABLE", "referenceId": "group-contribution-receivable:1", "lifecyclePhase": null, "debitNok": "100.00", "creditNok": "0.00" },
+            { "account": "TAX_RECEIVABLE", "postingAccount": "1570", "componentKind": "CLASSIFIED_BALANCE", "category": "TAX_RECEIVABLE", "referenceId": "tax-receivable:1", "lifecyclePhase": null, "debitNok": "100.00", "creditNok": "0.00" },
+            { "account": "ACCRUED_INTEREST_RECEIVABLE", "postingAccount": "1700", "componentKind": "CLASSIFIED_BALANCE", "category": "ACCRUED_INTEREST_RECEIVABLE", "referenceId": "accrued-interest-receivable:1", "lifecyclePhase": null, "debitNok": "100.00", "creditNok": "0.00" },
+            { "account": "DEFERRED_TAX_ASSET", "postingAccount": "1070", "componentKind": "CLASSIFIED_BALANCE", "category": "DEFERRED_TAX_ASSET", "referenceId": "deferred-tax-asset:1", "lifecyclePhase": null, "debitNok": "100.00", "creditNok": "0.00" },
+            { "account": "REGISTERED_SHARE_CAPITAL", "postingAccount": "2000", "componentKind": "CLASSIFIED_BALANCE", "category": "REGISTERED_SHARE_CAPITAL", "referenceId": "registered-share-capital:1", "lifecyclePhase": null, "debitNok": "0.00", "creditNok": "100.00" },
+            { "account": "SHARE_PREMIUM", "postingAccount": "2020", "componentKind": "CLASSIFIED_BALANCE", "category": "SHARE_PREMIUM", "referenceId": "share-premium:1", "lifecyclePhase": null, "debitNok": "0.00", "creditNok": "100.00" },
+            { "account": "SUBSCRIPTION_RECEIVABLE", "postingAccount": "1500", "componentKind": "CAPITAL_INCREASE", "category": "SUBSCRIPTION_RECEIVABLE", "referenceId": "capital-increase:binding:1", "lifecyclePhase": "BINDING_SUBSCRIPTION", "debitNok": "100.00", "creditNok": "0.00" },
+            { "account": "UNREGISTERED_CAPITAL_INCREASE", "postingAccount": "2030", "componentKind": "CAPITAL_INCREASE", "category": "UNREGISTERED_CAPITAL_INCREASE", "referenceId": "capital-increase:binding:1", "lifecyclePhase": "BINDING_SUBSCRIPTION", "debitNok": "0.00", "creditNok": "100.00" },
+            { "account": "RESTRICTED_BANK", "postingAccount": "1921", "componentKind": "CAPITAL_INCREASE", "category": "RESTRICTED_BANK", "referenceId": "capital-increase:restricted:1", "lifecyclePhase": "RESTRICTED_PAYMENT", "debitNok": "100.00", "creditNok": "0.00" },
+            { "account": "UNREGISTERED_CAPITAL_INCREASE", "postingAccount": "2030", "componentKind": "CAPITAL_INCREASE", "category": "UNREGISTERED_CAPITAL_INCREASE", "referenceId": "capital-increase:restricted:1", "lifecyclePhase": "RESTRICTED_PAYMENT", "debitNok": "0.00", "creditNok": "100.00" },
+            { "account": "OTHER_PAID_IN_EQUITY", "postingAccount": "2035", "componentKind": "CLASSIFIED_BALANCE", "category": "OTHER_PAID_IN_EQUITY", "referenceId": "other-paid-in-equity:1", "lifecyclePhase": null, "debitNok": "0.00", "creditNok": "100.00" },
+            { "account": "RETAINED_EARNINGS", "postingAccount": "2050", "componentKind": "CLASSIFIED_BALANCE", "category": "RETAINED_EARNINGS", "referenceId": "retained-earnings:1", "lifecyclePhase": null, "debitNok": "0.00", "creditNok": "200.00" },
+            { "account": "UNCOVERED_LOSS", "postingAccount": "2080", "componentKind": "CLASSIFIED_BALANCE", "category": "UNCOVERED_LOSS", "referenceId": "uncovered-loss:1", "lifecyclePhase": null, "debitNok": "100.00", "creditNok": "0.00" },
+            { "account": "OTHER_EQUITY", "postingAccount": "2050", "componentKind": "CLASSIFIED_BALANCE", "category": "OTHER_EQUITY", "referenceId": "other-equity:1", "lifecyclePhase": null, "debitNok": "0.00", "creditNok": "100.00" },
+            { "account": "UNREGISTERED_CAPITAL_REDUCTION", "postingAccount": "2033", "componentKind": "CAPITAL_REDUCTION", "category": "UNREGISTERED_CAPITAL_REDUCTION", "referenceId": "capital-reduction:decision:1", "lifecyclePhase": "DECIDED_NOT_REGISTERED", "debitNok": "100.00", "creditNok": "0.00" },
+            { "account": "UNCOVERED_LOSS", "postingAccount": "2080", "componentKind": "CAPITAL_REDUCTION", "category": "UNCOVERED_LOSS", "referenceId": "capital-reduction:decision:1", "lifecyclePhase": "DECIDED_NOT_REGISTERED", "debitNok": "0.00", "creditNok": "100.00" },
+            { "account": "LONG_TERM_BANK_LOAN_PAYABLE", "postingAccount": "2220", "componentKind": "BANK_LOAN", "category": "LONG_TERM_BANK_LOAN_PAYABLE", "referenceId": "bank-loan:long:1", "lifecyclePhase": "LONG_TERM", "debitNok": "0.00", "creditNok": "100.00" },
+            { "account": "SHORT_TERM_BANK_LOAN_PAYABLE", "postingAccount": "2380", "componentKind": "BANK_LOAN", "category": "SHORT_TERM_BANK_LOAN_PAYABLE", "referenceId": "bank-loan:short:1", "lifecyclePhase": "SHORT_TERM", "debitNok": "0.00", "creditNok": "100.00" },
+            { "account": "OWNER_LOAN_PAYABLE", "postingAccount": "2255", "componentKind": "CLASSIFIED_BALANCE", "category": "OWNER_LOAN_PAYABLE", "referenceId": "owner-loan:1", "lifecyclePhase": null, "debitNok": "0.00", "creditNok": "100.00" },
+            { "account": "INTERCOMPANY_LOAN_PAYABLE", "postingAccount": "2260", "componentKind": "CLASSIFIED_BALANCE", "category": "INTERCOMPANY_LOAN_PAYABLE", "referenceId": "intercompany-loan:1", "lifecyclePhase": null, "debitNok": "0.00", "creditNok": "100.00" },
+            { "account": "SUPPLIER_PAYABLE", "postingAccount": "2400", "componentKind": "CLASSIFIED_BALANCE", "category": "SUPPLIER_PAYABLE", "referenceId": "supplier-payable:1", "lifecyclePhase": null, "debitNok": "0.00", "creditNok": "100.00" },
+            { "account": "CURRENT_TAX_PAYABLE", "postingAccount": "2500", "componentKind": "CLASSIFIED_BALANCE", "category": "CURRENT_TAX_PAYABLE", "referenceId": "current-tax-payable:1", "lifecyclePhase": null, "debitNok": "0.00", "creditNok": "100.00" },
+            { "account": "DEFERRED_TAX_LIABILITY", "postingAccount": "2120", "componentKind": "CLASSIFIED_BALANCE", "category": "DEFERRED_TAX_LIABILITY", "referenceId": "deferred-tax-liability:1", "lifecyclePhase": null, "debitNok": "0.00", "creditNok": "100.00" },
+            { "account": "ACCRUED_INTEREST_PAYABLE", "postingAccount": "2965", "componentKind": "CLASSIFIED_BALANCE", "category": "ACCRUED_INTEREST_PAYABLE", "referenceId": "accrued-interest-payable:1", "lifecyclePhase": null, "debitNok": "0.00", "creditNok": "100.00" },
+            { "account": "DIVIDEND_PAYABLE", "postingAccount": "2800", "componentKind": "DIVIDEND_PAYABLE", "category": "DIVIDEND_PAYABLE", "referenceId": "owner-dividend:decision:1", "lifecyclePhase": "DECLARED_UNPAID", "debitNok": "0.00", "creditNok": "100.00" },
+            { "account": "GROUP_CONTRIBUTION_PAYABLE", "postingAccount": "2960", "componentKind": "CLASSIFIED_BALANCE", "category": "GROUP_CONTRIBUTION_PAYABLE", "referenceId": "group-contribution-payable:1", "lifecyclePhase": null, "debitNok": "0.00", "creditNok": "100.00" }
+          ]
+        }
+      ],
+      "projections": ["LEDGER", "BANK", "INVESTMENTS", "GOVERNANCE", "SHAREHOLDER_REGISTER", "TAX", "ANNUAL_ACCOUNTS", "SAF_T", "ARCHIVE"],
+      "projectionFacts": {
+        "LEDGER": { "compiledLineCount": 36, "distinctCategoryCount": 34, "openingMode": "PRIOR_CLOSE_RECONSTRUCTION" },
+        "BANK": { "postingAccounts": ["1920", "1921"], "source": "banking" },
+        "INVESTMENTS": { "classifications": ["SUBSIDIARY", "ASSOCIATE", "OTHER_LONG_TERM", "CURRENT_LISTED_SHARE", "CURRENT_FUND"], "source": "investments" },
+        "GOVERNANCE": { "lifecycleReferences": ["capital-increase:binding:1", "capital-increase:restricted:1", "capital-reduction:decision:1", "owner-dividend:decision:1"], "source": "governance" },
+        "SHAREHOLDER_REGISTER": { "registeredCapitalPostingAccount": "2000", "source": "shareholder-register" },
+        "TAX": { "categories": ["TAX_RECEIVABLE", "CURRENT_TAX_PAYABLE", "DEFERRED_TAX_ASSET", "DEFERRED_TAX_LIABILITY"], "source": "tax" },
+        "ANNUAL_ACCOUNTS": { "openingBasis": "annual-accounts", "distinctCategoryCount": 34 },
+        "SAF_T": { "restrictedBankPostingAccount": "1921", "restrictedBankStandardAccount": "1920", "allLinesHavePostingAccount": true },
+        "ARCHIVE": { "sourceKeys": ["annual-accounts", "banking", "investments", "governance", "tax", "shareholder-register", "documents"], "immutableHashesRequired": true }
+      },
+      "blocks": ["PRIOR_CLOSING_MISMATCH", "OPENING_BASIS_MISSING", "OPENING_EVIDENCE_SOURCE_MISMATCH", "OPENING_SOURCE_OVERLAP", "DUPLICATE_COMPONENT_IDENTITY", "UNSUPPORTED_OPENING_CLASSIFICATION", "UNBALANCED_OPENING", "OPENING_LOAN_REFERENCE_COLLISION", "OPENING_LIFECYCLE_ANCHOR_INCOMPLETE", "BANK_MOVEMENTS_INCOMPLETE", "UNSUPPORTED_ACTIVITY_FOUND"]
+    },
+    {
+      "id": "ordinary-administration-cost-paid",
+      "section": "Ordinary administration cost",
+      "input": {
+        "eventId": "golden:admin-cost:1",
+        "eventDate": "2026-02-10",
+        "documentId": "invoice:1001",
+        "businessPurpose": "Annual registered-office software",
+        "amountNok": "1250.00",
+        "paid": true
+      },
+      "journals": [
+        {
+          "phase": "PAID",
+          "company": "talli-company",
+          "lines": [
+            { "account": "ORDINARY_ADMINISTRATION_EXPENSE", "debitNok": "1250.00", "creditNok": "0.00" },
+            { "account": "BANK", "debitNok": "0.00", "creditNok": "1250.00" }
+          ]
+        }
+      ],
+      "projections": ["LEDGER", "BANK", "TAX", "SAF_T", "ARCHIVE"],
+      "blocks": ["VAT_BEARING_DOCUMENT", "BUSINESS_PURPOSE_UNPROVED", "CAPITALIZABLE_COST"]
+    },
+    {
+      "id": "norwegian-share-purchase-cost-method",
+      "section": "Norwegian share and simple listed-fund purchase or sale",
+      "input": {
+        "eventId": "golden:share-purchase:1",
+        "eventDate": "2026-03-01",
+        "instrumentId": "NO-GOLDEN-AS-A",
+        "quantity": "100",
+        "considerationNok": "10000.00",
+        "directAcquisitionCostNok": "100.00",
+        "accountingPolicy": "LONG_TERM_COST_METHOD",
+        "taxRuleVersion": "NO-2026"
+      },
+      "journals": [
+        {
+          "phase": "SETTLED_PURCHASE",
+          "company": "talli-company",
+          "lines": [
+            { "account": "LONG_TERM_NORWEGIAN_SHARE_INVESTMENT", "debitNok": "10100.00", "creditNok": "0.00" },
+            { "account": "BANK", "debitNok": "0.00", "creditNok": "10100.00" }
+          ]
+        }
+      ],
+      "projections": ["LEDGER", "INVESTMENTS", "TAX", "SHAREHOLDER_REGISTER", "SAF_T", "ARCHIVE"],
+      "blocks": ["TAX_CLASSIFICATION_UNCLEAR", "FOREIGN_INSTRUMENT_UNSUPPORTED", "ACTIVE_TRADING_FOUND"]
+    },
+    {
+      "id": "norwegian-share-sale-cost-method",
+      "section": "Norwegian share and simple listed-fund purchase or sale",
+      "input": {
+        "eventId": "golden:share-sale:1",
+        "eventDate": "2026-04-01",
+        "instrumentId": "NO-GOLDEN-AS-A",
+        "quantity": "100",
+        "grossProceedsNok": "12000.00",
+        "sellingCostNok": "0.00",
+        "disposedAccountingBasisNok": "10100.00",
+        "disposedTaxBasisNok": "10100.00",
+        "taxRuleVersion": "NO-2026"
+      },
+      "journals": [
+        {
+          "phase": "SETTLED_SALE",
+          "company": "talli-company",
+          "lines": [
+            { "account": "BANK", "debitNok": "12000.00", "creditNok": "0.00" },
+            { "account": "LONG_TERM_NORWEGIAN_SHARE_INVESTMENT", "debitNok": "0.00", "creditNok": "10100.00" },
+            { "account": "INVESTMENT_GAIN", "debitNok": "0.00", "creditNok": "1900.00" }
+          ]
+        }
+      ],
+      "projections": ["LEDGER", "INVESTMENTS", "TAX", "SHAREHOLDER_REGISTER", "SAF_T", "ARCHIVE"],
+      "blocks": ["POSITION_OVERSELL", "TAX_CLASSIFICATION_UNCLEAR", "RETURN_OF_CAPITAL_UNRESOLVED"]
+    },
+    {
+      "id": "direct-owner-share-transfer",
+      "section": "Simple ownership change and position continuity",
+      "input": {
+        "eventId": "golden:owner-transfer:1",
+        "effectiveDate": "2026-05-01",
+        "instrumentId": "TALLI-COMPANY-A",
+        "quantity": "25",
+        "seller": "owner-a",
+        "buyer": "owner-b",
+        "buyerInputValueNok": "5000.00",
+        "paidInCapitalPerShareNok": "100.00"
+      },
+      "journals": [],
+      "projections": ["GOVERNANCE", "SHAREHOLDER_REGISTER", "TAX", "ARCHIVE"],
+      "blocks": ["TRANSFER_RIGHTS_UNRESOLVED", "BENEFICIAL_OWNER_MISMATCH", "MULTIPLE_SHARE_CLASSES"]
+    },
+    {
+      "id": "cash-capital-increase",
+      "section": "Ordinary cash capital increase",
+      "input": {
+        "eventId": "golden:capital-increase:1",
+        "capitalIncreaseReferenceId": "capital-increase:1",
+        "decisionDate": "2026-05-10",
+        "paymentDate": "2026-05-12",
+        "registrationDate": "2026-05-20",
+        "newShares": "100",
+        "nominalPerShareNok": "100.00",
+        "premiumPerShareNok": "50.00",
+        "issuePricePerShareNok": "150.00",
+        "inputValuePerShareNok": "150.00",
+        "paidInCapitalPerShareNok": "150.00",
+        "nominalIncreaseNok": "10000.00",
+        "sharePremiumNok": "5000.00",
+        "cashContributionNok": "15000.00",
+        "allocations": [
+          {
+            "subscriberId": "shareholder:owner-a",
+            "shares": "100",
+            "acquisitionDate": "2026-05-10",
+            "dividendRightsDate": "2026-05-20"
+          }
+        ],
+        "sourceReferences": {
+          "decision": "corporate-governance:capital-increase:1",
+          "signedSubscription": "documents:capital-subscription:1",
+          "restrictedAccountReceipt": "banking:restricted-contribution:1",
+          "contributionConfirmation": "documents:contribution-confirmation:1",
+          "registrySubmission": "corporate-governance:registry-submission:1",
+          "registryRegistration": "corporate-governance:registry-registration:1",
+          "updatedArticles": "documents:articles:registered:1",
+          "shareholderRegister": "shareholder-register-filing:capital-increase:1"
+        }
+      },
+      "journals": [
+        {
+          "phase": "BINDING_SUBSCRIPTION",
+          "company": "talli-company",
+          "lines": [
+            { "account": "SUBSCRIPTION_RECEIVABLE", "debitNok": "15000.00", "creditNok": "0.00" },
+            { "account": "UNREGISTERED_CAPITAL_INCREASE", "debitNok": "0.00", "creditNok": "15000.00" }
+          ]
+        },
+        {
+          "phase": "RESTRICTED_PAYMENT",
+          "company": "talli-company",
+          "lines": [
+            { "account": "RESTRICTED_CONTRIBUTION_BANK", "debitNok": "15000.00", "creditNok": "0.00" },
+            { "account": "SUBSCRIPTION_RECEIVABLE", "debitNok": "0.00", "creditNok": "15000.00" }
+          ]
+        },
+        {
+          "phase": "REGISTERED",
+          "company": "talli-company",
+          "lines": [
+            { "account": "UNREGISTERED_CAPITAL_INCREASE", "debitNok": "15000.00", "creditNok": "0.00" },
+            { "account": "REGISTERED_SHARE_CAPITAL", "debitNok": "0.00", "creditNok": "10000.00" },
+            { "account": "SHARE_PREMIUM", "debitNok": "0.00", "creditNok": "5000.00" },
+            { "account": "BANK", "debitNok": "15000.00", "creditNok": "0.00" },
+            { "account": "RESTRICTED_CONTRIBUTION_BANK", "debitNok": "0.00", "creditNok": "15000.00" }
+          ]
+        }
+      ],
+      "projections": ["LEDGER", "BANK", "GOVERNANCE", "SHAREHOLDER_REGISTER", "TAX", "ANNUAL_ACCOUNTS", "SAF_T", "ARCHIVE"],
+      "blocks": ["CONTRIBUTION_CONFIRMATION_MISSING", "NON_CASH_CONTRIBUTION", "REGISTRATION_MISMATCH", "OPENING_CAPITAL_INCREASE_ANCHOR_MISSING"]
+    },
+    {
+      "id": "capital-reduction-loss-coverage",
+      "section": "Registered capital reduction solely for loss coverage",
+      "input": {
+        "eventId": "golden:capital-reduction:1",
+        "capitalReductionReferenceId": "capital-reduction:1",
+        "decisionDate": "2026-06-01",
+        "registrationDate": "2026-06-15",
+        "shareCount": "100",
+        "oldNominalPerShareNok": "500.00",
+        "newNominalPerShareNok": "300.00",
+        "paidInCapitalPerShareBeforeNok": "500.00",
+        "paidInCapitalPerShareAfterNok": "500.00",
+        "oldRegisteredShareCapitalNok": "50000.00",
+        "newRegisteredShareCapitalNok": "30000.00",
+        "nominalReductionNok": "20000.00",
+        "uncoveredLossNok": "20000.00",
+        "cashToOwnersNok": "0.00",
+        "ownersAndShareCountUnchanged": true,
+        "sourceReferences": {
+          "boardProposal": "corporate-governance:capital-reduction-proposal:1",
+          "generalMeetingDecision": "corporate-governance:capital-reduction-decision:1",
+          "balanceEvidence": "documents:capital-reduction-balance:1",
+          "registrySubmission": "corporate-governance:capital-reduction-submission:1",
+          "registryRegistration": "corporate-governance:capital-reduction-registration:1",
+          "updatedArticles": "documents:articles:capital-reduction-registered:1",
+          "shareholderRegister": "shareholder-register-filing:capital-reduction:1"
+        }
+      },
+      "lifecycleShapes": {
+        "decisionThenRegistration": ["DECIDED_NOT_REGISTERED", "REGISTERED"],
+        "firstRecognizedAfterRegistration": ["FIRST_RECOGNIZED_AFTER_REGISTRATION"]
+      },
+      "journals": [
+        {
+          "phase": "DECIDED_NOT_REGISTERED",
+          "company": "talli-company",
+          "lines": [
+            { "account": "UNREGISTERED_CAPITAL_REDUCTION", "debitNok": "20000.00", "creditNok": "0.00" },
+            { "account": "UNCOVERED_LOSS", "debitNok": "0.00", "creditNok": "20000.00" }
+          ]
+        },
+        {
+          "phase": "REGISTERED",
+          "company": "talli-company",
+          "lines": [
+            { "account": "REGISTERED_SHARE_CAPITAL", "debitNok": "20000.00", "creditNok": "0.00" },
+            { "account": "UNREGISTERED_CAPITAL_REDUCTION", "debitNok": "0.00", "creditNok": "20000.00" }
+          ]
+        }
+      ],
+      "firstRegisteredJournal": {
+        "phase": "FIRST_RECOGNIZED_AFTER_REGISTRATION",
+        "company": "talli-company",
+        "lines": [
+          { "account": "REGISTERED_SHARE_CAPITAL", "debitNok": "20000.00", "creditNok": "0.00" },
+          { "account": "UNCOVERED_LOSS", "debitNok": "0.00", "creditNok": "20000.00" }
+        ]
+      },
+      "projections": ["LEDGER", "GOVERNANCE", "SHAREHOLDER_REGISTER", "TAX", "SAF_T", "ARCHIVE"],
+      "blocks": ["PAID_IN_CAPITAL_REPAYMENT", "LOSS_EVIDENCE_INSUFFICIENT", "MINIMUM_CAPITAL_BREACH", "OPENING_CAPITAL_REDUCTION_ANCHOR_MISSING"]
+    },
+    {
+      "id": "bank-interest-income",
+      "section": "Bank interest and company tax",
+      "input": {
+        "eventId": "golden:bank-interest:1",
+        "eventDate": "2026-06-30",
+        "bankAdviceId": "bank-advice:interest:1",
+        "grossInterestNok": "500.00"
+      },
+      "journals": [
+        {
+          "phase": "PAID_INTEREST",
+          "company": "talli-company",
+          "lines": [
+            { "account": "BANK", "debitNok": "500.00", "creditNok": "0.00" },
+            { "account": "BANK_INTEREST_INCOME", "debitNok": "0.00", "creditNok": "500.00" }
+          ]
+        }
+      ],
+      "projections": ["LEDGER", "BANK", "TAX", "SAF_T", "ARCHIVE"],
+      "blocks": ["INTEREST_COMPONENTS_UNSEPARATED", "FOREIGN_WITHHOLDING_FOUND"]
+    },
+    {
+      "id": "company-tax-accrual",
+      "section": "Bank interest and company tax",
+      "input": {
+        "eventId": "golden:company-tax:1",
+        "eventDate": "2026-12-31",
+        "taxCalculationId": "tax-calculation:2026:1",
+        "taxRuleVersion": "NO-2026",
+        "currentTaxNok": "2200.00",
+        "deferredTaxIncreaseNok": "300.00"
+      },
+      "journals": [
+        {
+          "phase": "YEAR_END_TAX",
+          "company": "talli-company",
+          "lines": [
+            { "account": "CURRENT_TAX_EXPENSE", "debitNok": "2200.00", "creditNok": "0.00" },
+            { "account": "CURRENT_TAX_PAYABLE", "debitNok": "0.00", "creditNok": "2200.00" },
+            { "account": "DEFERRED_TAX_EXPENSE", "debitNok": "300.00", "creditNok": "0.00" },
+            { "account": "DEFERRED_TAX_LIABILITY", "debitNok": "0.00", "creditNok": "300.00" }
+          ]
+        }
+      ],
+      "projections": ["LEDGER", "TAX", "ANNUAL_ACCOUNTS", "SAF_T", "ARCHIVE"],
+      "blocks": ["TAX_ENGINE_RESULT_MISSING", "TAX_RULE_VERSION_UNSUPPORTED"]
+    },
+    {
+      "id": "ordinary-bank-loan",
+      "section": "Ordinary NOK bank loan",
+      "input": {
+        "eventId": "golden:bank-loan:1",
+        "agreementId": "bank-loan-agreement:1",
+        "loanReferenceId": "bank-loan:1",
+        "disbursementDate": "2026-01-15",
+        "paymentDate": "2026-07-15",
+        "principalNok": "100000.00",
+        "principalPaymentNok": "10000.00",
+        "interestPaymentNok": "2000.00"
+      },
+      "journals": [
+        {
+          "phase": "DISBURSEMENT",
+          "company": "talli-company",
+          "lines": [
+            { "account": "BANK", "debitNok": "100000.00", "creditNok": "0.00" },
+            { "account": "BANK_LOAN_PRINCIPAL", "debitNok": "0.00", "creditNok": "100000.00" }
+          ]
+        },
+        {
+          "phase": "PAYMENT",
+          "company": "talli-company",
+          "lines": [
+            { "account": "BANK_LOAN_PRINCIPAL", "debitNok": "10000.00", "creditNok": "0.00" },
+            { "account": "INTEREST_EXPENSE", "debitNok": "2000.00", "creditNok": "0.00" },
+            { "account": "BANK", "debitNok": "0.00", "creditNok": "12000.00" }
+          ]
+        }
+      ],
+      "projections": ["LEDGER", "BANK", "TAX", "ANNUAL_ACCOUNTS", "SAF_T", "ARCHIVE"],
+      "blocks": ["LOAN_ALLOCATION_MISSING", "OPENING_LOAN_ANCHOR_MISSING", "FOREIGN_CURRENCY_FOUND", "COMPLEX_LOAN_TERMS"]
+    },
+    {
+      "id": "owner-to-company-loan",
+      "section": "Owner-to-company loan",
+      "input": {
+        "eventId": "golden:owner-loan:1",
+        "eventDate": "2026-02-01",
+        "agreementId": "owner-loan-agreement:1",
+        "principalNok": "50000.00",
+        "direction": "OWNER_TO_COMPANY"
+      },
+      "journals": [
+        {
+          "phase": "FUNDING",
+          "company": "talli-company",
+          "lines": [
+            { "account": "BANK", "debitNok": "50000.00", "creditNok": "0.00" },
+            { "account": "DEBT_TO_OWNER", "debitNok": "0.00", "creditNok": "50000.00" }
+          ]
+        }
+      ],
+      "projections": ["LEDGER", "BANK", "GOVERNANCE", "TAX", "ANNUAL_ACCOUNTS", "SAF_T", "ARCHIVE"],
+      "blocks": ["COMPANY_TO_PERSONAL_LOAN", "RELATED_PARTY_APPROVAL_UNRESOLVED", "COMPLEX_LOAN_TERMS"]
+    },
+    {
+      "id": "norwegian-intercompany-loan",
+      "section": "Norwegian intercompany loan",
+      "input": {
+        "eventId": "golden:intercompany-loan:1",
+        "eventDate": "2026-02-15",
+        "agreementId": "intercompany-loan-agreement:1",
+        "lender": "talli-company",
+        "borrower": "norwegian-subsidiary",
+        "principalNok": "80000.00"
+      },
+      "journals": [
+        {
+          "phase": "LENDER_FUNDING",
+          "company": "talli-company",
+          "lines": [
+            { "account": "INTERCOMPANY_LOAN_RECEIVABLE", "debitNok": "80000.00", "creditNok": "0.00" },
+            { "account": "BANK", "debitNok": "0.00", "creditNok": "80000.00" }
+          ]
+        },
+        {
+          "phase": "BORROWER_FUNDING",
+          "company": "norwegian-subsidiary",
+          "lines": [
+            { "account": "BANK", "debitNok": "80000.00", "creditNok": "0.00" },
+            { "account": "INTERCOMPANY_LOAN_PAYABLE", "debitNok": "0.00", "creditNok": "80000.00" }
+          ]
+        }
+      ],
+      "projections": ["LEDGER", "BANK", "GOVERNANCE", "TAX", "ANNUAL_ACCOUNTS", "SAF_T", "ARCHIVE"],
+      "blocks": ["COUNTERPARTY_MISMATCH", "ARM_LENGTH_FACTS_UNRESOLVED", "INTEREST_LIMITATION_UNRESOLVED"]
+    },
+    {
+      "id": "dividend-received",
+      "section": "Dividend received by the holding company",
+      "input": {
+        "eventId": "golden:dividend-received:1",
+        "decisionDate": "2026-04-20",
+        "paymentDate": "2026-04-25",
+        "payer": "norwegian-subsidiary",
+        "grossDividendNok": "5000.00",
+        "taxRuleVersion": "NO-2026"
+      },
+      "journals": [
+        {
+          "phase": "FINAL_DECISION",
+          "company": "talli-company",
+          "lines": [
+            { "account": "DIVIDEND_RECEIVABLE", "debitNok": "5000.00", "creditNok": "0.00" },
+            { "account": "DIVIDEND_INCOME", "debitNok": "0.00", "creditNok": "5000.00" }
+          ]
+        },
+        {
+          "phase": "PAYMENT",
+          "company": "talli-company",
+          "lines": [
+            { "account": "BANK", "debitNok": "5000.00", "creditNok": "0.00" },
+            { "account": "DIVIDEND_RECEIVABLE", "debitNok": "0.00", "creditNok": "5000.00" }
+          ]
+        }
+      ],
+      "projections": ["LEDGER", "BANK", "INVESTMENTS", "TAX", "ANNUAL_ACCOUNTS", "SAF_T", "ARCHIVE"],
+      "blocks": ["DIVIDEND_DECISION_MISSING", "RETURN_OF_CAPITAL_UNRESOLVED", "EXEMPTION_METHOD_UNRESOLVED"]
+    },
+    {
+      "id": "owner-dividend",
+      "section": "Dividend to the holding company's owner",
+      "input": {
+        "eventId": "golden:owner-dividend:1",
+        "proposalDate": "2026-05-01",
+        "approvalDate": "2026-05-15",
+        "paymentDate": "2026-05-20",
+        "amountNok": "5000.00",
+        "adequateEquityAndLiquidityDecision": true
+      },
+      "journals": [
+        {
+          "phase": "SUPPORTED_YEAR_END_PROPOSAL",
+          "company": "talli-company",
+          "lines": [
+            { "account": "DISTRIBUTABLE_EQUITY", "debitNok": "5000.00", "creditNok": "0.00" },
+            { "account": "DIVIDEND_PAYABLE", "debitNok": "0.00", "creditNok": "5000.00" }
+          ]
+        },
+        {
+          "phase": "APPROVED_PAYMENT",
+          "company": "talli-company",
+          "lines": [
+            { "account": "DIVIDEND_PAYABLE", "debitNok": "5000.00", "creditNok": "0.00" },
+            { "account": "BANK", "debitNok": "0.00", "creditNok": "5000.00" }
+          ]
+        }
+      ],
+      "projections": ["LEDGER", "BANK", "GOVERNANCE", "SHAREHOLDER_REGISTER", "TAX", "ANNUAL_ACCOUNTS", "SAF_T", "ARCHIVE"],
+      "blocks": ["DISTRIBUTION_CAPACITY_UNPROVED", "DIVIDEND_DECISION_MISSING", "PAID_IN_CAPITAL_REPAYMENT"]
+    },
+    {
+      "id": "group-contribution-subsidiary-to-parent",
+      "section": "Straightforward group contribution",
+      "input": {
+        "eventId": "golden:group-contribution:sub-parent",
+        "relationship": "SUBSIDIARY_TO_PARENT",
+        "grossTaxAmountNok": "10000.00",
+        "relatedTaxNok": "2200.00",
+        "afterTaxAccountingAmountNok": "7800.00",
+        "postAcquisitionIncomeProved": true
+      },
+      "journals": [
+        {
+          "phase": "PARENT_RECOGNITION",
+          "company": "talli-company",
+          "lines": [
+            { "account": "GROUP_CONTRIBUTION_RECEIVABLE", "debitNok": "7800.00", "creditNok": "0.00" },
+            { "account": "SUBSIDIARY_INVESTMENT_INCOME", "debitNok": "0.00", "creditNok": "7800.00" }
+          ]
+        },
+        {
+          "phase": "SUBSIDIARY_RECOGNITION",
+          "company": "norwegian-subsidiary",
+          "lines": [
+            { "account": "OTHER_EQUITY", "debitNok": "7800.00", "creditNok": "0.00" },
+            { "account": "GROUP_CONTRIBUTION_PAYABLE", "debitNok": "0.00", "creditNok": "7800.00" }
+          ]
+        }
+      ],
+      "projections": ["LEDGER", "GOVERNANCE", "TAX", "ANNUAL_ACCOUNTS", "SAF_T", "ARCHIVE"],
+      "blocks": ["RETURN_OF_COST_UNRESOLVED", "GROUP_RELATIONSHIP_UNPROVED", "TAX_ALLOCATION_UNRESOLVED"]
+    },
+    {
+      "id": "group-contribution-parent-to-subsidiary",
+      "section": "Straightforward group contribution",
+      "input": {
+        "eventId": "golden:group-contribution:parent-sub",
+        "relationship": "PARENT_TO_SUBSIDIARY",
+        "grossTaxAmountNok": "10000.00",
+        "relatedTaxNok": "2200.00",
+        "afterTaxAccountingAmountNok": "7800.00",
+        "impairmentCleared": true
+      },
+      "journals": [
+        {
+          "phase": "PARENT_RECOGNITION",
+          "company": "talli-company",
+          "lines": [
+            { "account": "SUBSIDIARY_INVESTMENT", "debitNok": "7800.00", "creditNok": "0.00" },
+            { "account": "GROUP_CONTRIBUTION_PAYABLE", "debitNok": "0.00", "creditNok": "7800.00" }
+          ]
+        },
+        {
+          "phase": "SUBSIDIARY_RECOGNITION",
+          "company": "norwegian-subsidiary",
+          "lines": [
+            { "account": "GROUP_CONTRIBUTION_RECEIVABLE", "debitNok": "7800.00", "creditNok": "0.00" },
+            { "account": "OTHER_PAID_IN_EQUITY", "debitNok": "0.00", "creditNok": "7800.00" }
+          ]
+        }
+      ],
+      "projections": ["LEDGER", "GOVERNANCE", "TAX", "ANNUAL_ACCOUNTS", "SAF_T", "ARCHIVE"],
+      "blocks": ["IMPAIRMENT_UNRESOLVED", "GROUP_RELATIONSHIP_UNPROVED", "TAX_ALLOCATION_UNRESOLVED"]
+    },
+    {
+      "id": "group-contribution-sister-to-sister",
+      "section": "Straightforward group contribution",
+      "input": {
+        "eventId": "golden:group-contribution:sisters",
+        "relationship": "SISTER_TO_SISTER",
+        "grossTaxAmountNok": "10000.00",
+        "relatedTaxNok": "2200.00",
+        "afterTaxAccountingAmountNok": "7800.00"
+      },
+      "journals": [
+        {
+          "phase": "GIVER_RECOGNITION",
+          "company": "norwegian-subsidiary-a",
+          "lines": [
+            { "account": "OTHER_EQUITY", "debitNok": "7800.00", "creditNok": "0.00" },
+            { "account": "GROUP_CONTRIBUTION_PAYABLE", "debitNok": "0.00", "creditNok": "7800.00" }
+          ]
+        },
+        {
+          "phase": "RECIPIENT_RECOGNITION",
+          "company": "norwegian-subsidiary-b",
+          "lines": [
+            { "account": "GROUP_CONTRIBUTION_RECEIVABLE", "debitNok": "7800.00", "creditNok": "0.00" },
+            { "account": "OTHER_PAID_IN_EQUITY", "debitNok": "0.00", "creditNok": "7800.00" }
+          ]
+        }
+      ],
+      "projections": ["LEDGER", "GOVERNANCE", "TAX", "ANNUAL_ACCOUNTS", "SAF_T", "ARCHIVE"],
+      "blocks": ["GROUP_RELATIONSHIP_UNPROVED", "TAX_ALLOCATION_UNRESOLVED", "CIRCULAR_GROUP_CONTRIBUTION"]
+    },
+    {
+      "id": "guided-correction",
+      "section": "Corrections and duplicate prevention",
+      "input": {
+        "eventId": "golden:correction:1",
+        "originalEventId": "golden:admin-cost:1",
+        "correctionReason": "Wrong documented business category",
+        "supplierName": "Registered Office Software AS",
+        "documentDate": "2026-02-01",
+        "deliveryDate": "2026-02-01",
+        "description": "Annual registered-office software",
+        "businessPurpose": "Registered office administration",
+        "paymentConfirmed": true,
+        "correctionScope": "CURRENT_COMPANY_YEAR",
+        "blockedCharacteristics": [],
+        "replacementAccount": "LEGAL_ADVISORY_EXPENSE",
+        "amountNok": "1250.00"
+      },
+      "journals": [
+        {
+          "phase": "FULL_REVERSAL",
+          "company": "talli-company",
+          "lines": [
+            { "account": "BANK", "debitNok": "1250.00", "creditNok": "0.00" },
+            { "account": "ORDINARY_ADMINISTRATION_EXPENSE", "debitNok": "0.00", "creditNok": "1250.00" }
+          ]
+        },
+        {
+          "phase": "REPLACEMENT",
+          "company": "talli-company",
+          "lines": [
+            { "account": "LEGAL_ADVISORY_EXPENSE", "debitNok": "1250.00", "creditNok": "0.00" },
+            { "account": "BANK", "debitNok": "0.00", "creditNok": "1250.00" }
+          ]
+        }
+      ],
+      "projections": ["LEDGER", "SAF_T", "ARCHIVE"],
+      "blocks": ["ORIGINAL_EVENT_NOT_FOUND", "CORRECTION_REASON_MISSING", "PRIOR_YEAR_POLICY_UNRESOLVED"]
+    },
+    {
+      "id": "period-close",
+      "section": "Period close and locks",
+      "input": {
+        "eventId": "golden:period-close:2026-06",
+        "periodEnd": "2026-06-30",
+        "sourceComplete": true,
+        "bankReconciled": true,
+        "materialBalancesDocumented": true,
+        "unsupportedFacts": false
+      },
+      "journals": [],
+      "projections": ["LEDGER", "SAF_T", "ARCHIVE"],
+      "blocks": ["SOURCE_INCOMPLETE", "BANK_NOT_RECONCILED", "MATERIAL_BALANCE_UNDOCUMENTED"]
+    }
+  ]
+}

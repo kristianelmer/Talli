@@ -18,6 +18,7 @@ type SystemUserCallbackDependencies = {
   siteOrigin: string;
   createSupabaseClient(): Promise<CallbackSupabaseClient>;
   getCookieStore(): Promise<CallbackCookieStore>;
+  loadCompany(companyId: string): Promise<{ id: string; org_number: string; role: "owner" | "reviewer" | "read_only" } | null>;
   reconcileRequest(input: {
     supabase: CallbackSupabaseClient;
     request: Record<string, unknown>;
@@ -102,12 +103,8 @@ export function createSystemUserCallbackHandler(
         return manualRedirect(dependencies.siteOrigin);
       }
 
-      const { data: company, error: companyError } = await supabase
-        .from("companies")
-        .select("id,org_number")
-        .eq("id", request.company_id)
-        .maybeSingle();
-      if (companyError || !company || company.id !== request.company_id) {
+      const company = await dependencies.loadCompany(request.company_id);
+      if (!company || company.id !== request.company_id || company.role !== "owner") {
         return manualRedirect(dependencies.siteOrigin);
       }
 
@@ -144,6 +141,10 @@ export async function GET(request: Request) {
     async getCookieStore() {
       const { cookies } = await import("next/headers.js");
       return cookies();
+    },
+    async loadCompany(companyId) {
+      const { loadAcceptedMembershipCompany } = await import("../../../lib/company-access-context.ts");
+      return loadAcceptedMembershipCompany(companyId);
     },
     reconcileRequest: defaultReconcileRequest,
   });

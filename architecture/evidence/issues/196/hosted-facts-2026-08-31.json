@@ -1,0 +1,219 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#196",
+  "auditedAt": "2026-08-31T06:58:45Z",
+  "sourceRevision": "250c0c4ed648b4135338938b1dddd4e7647ea605",
+  "vercel": {
+    "teamId": "team_vjY7Lg3yOS7gSUnFqbihoTo2",
+    "plan": "hobby",
+    "projectId": "prj_1JJkOqzGBhn438IKHYADWiRbVGeZ",
+    "projectName": "talli-web",
+    "nodeVersion": "24.x",
+    "production": {
+      "deploymentId": "dpl_HuHzBsgpcgBVTGsFiFLEEy3PqN5f",
+      "sourceRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+      "createdAt": "2026-08-09T08:25:35.839Z",
+      "state": "READY",
+      "region": "iad1",
+      "domains": [
+        "talli.no",
+        "www.talli.no"
+      ],
+      "publicMode": "invitation-based free beta",
+      "paymentAndProductionFilingCopy": "disabled"
+    },
+    "currentPreview": {
+      "deploymentId": "dpl_EB2oDn7o9vA4E4KurGc4mUUWZmrG",
+      "sourceRevision": "250c0c4ed648b4135338938b1dddd4e7647ea605",
+      "createdAt": "2026-08-31T06:57:36.131Z",
+      "state": "READY",
+      "region": "dub1",
+      "target": null,
+      "url": "https://talli-h0yr5k9cz-kristianelmers-projects.vercel.app"
+    },
+    "runtimeEvidence": {
+      "errorsInAvailableWindow": 0,
+      "previewStatusCounts": {
+        "200": 60,
+        "204": 2
+      },
+      "webAnalyticsEnabled": false,
+      "speedInsightsEnabled": false,
+      "runtimeLogRetention": "1 hour on Hobby",
+      "buildLogRetention": "indefinite per deployment"
+    },
+    "environmentBoundary": {
+      "databaseVariableNames": [
+        "SUPABASE_URL",
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "DATABASE_URL",
+        "DIRECT_DATABASE_URL"
+      ],
+      "environments": "Production and Preview",
+      "visibleRecordedDate": "2026-06-13",
+      "values": "write-only and not revealable after save",
+      "ownerDesignatedProjectCreatedAt": "2026-08-30T05:36:36.125761Z",
+      "verdict": "unverified-target-binding-controlled-secret-rotation-required",
+      "productionAuthorityVariablesPresentWithUnknownValues": [
+        "TALLI_AUTHORITY_OPS_ENABLED",
+        "TALLI_RF1086_PRODUCTION_ENABLED",
+        "TALLI_PROD_RF1086_SCOPE"
+      ]
+    },
+    "commercialBoundary": {
+      "hobbyTerms": "Official plan documentation limits Hobby to non-commercial personal use.",
+      "unrestrictedCommercialLaunch": "blocked",
+      "paidUpgradeAuthorized": false,
+      "reference": "https://vercel.com/docs/plans/hobby"
+    },
+    "references": [
+      "https://vercel.com/docs/logs/runtime",
+      "https://vercel.com/legal/Vercel_Inc_-_Data_Processing_Addendum.pdf",
+      "https://vercel.com/legal/sub-processors"
+    ]
+  },
+  "supabase": {
+    "organizationId": "zwucumjvtpnyujqyzwkg",
+    "organizationName": "Talli",
+    "plan": "free",
+    "projectId": "pkpyyxryfhfehrbhbynp",
+    "projectCreatedAt": "2026-08-30T05:36:36.125761Z",
+    "status": "ACTIVE_HEALTHY",
+    "region": "eu-west-1",
+    "postgresVersion": "17.6",
+    "migrationState": {
+      "appliedCount": 47,
+      "lastApplied": "20260830091341_case_bound_support_access",
+      "legalMigrationApplied": false,
+      "legalMigrationHeld": "20260830093000_current_legal_evidence"
+    },
+    "launchOffState": {
+      "validationObserverMode": "off",
+      "activeValidationEntitlements": 0,
+      "marketingReleaseCount": 0,
+      "marketingConsentCount": 0,
+      "marketingEventCount": 0
+    },
+    "dataCounts": {
+      "authUsers": 0,
+      "companies": 0,
+      "memberships": 0,
+      "storageObjects": 0,
+      "marketingEvents": 0,
+      "marketingConsentActions": 0,
+      "marketingReleases": 0,
+      "validationRuns": 0,
+      "validationEntitlements": 0,
+      "validationReviewers": 0,
+      "validationObservations": 0,
+      "supportGrants": 0
+    },
+    "publicTables": {
+      "count": 53,
+      "rlsEnabled": 53
+    },
+    "recentLogs": {
+      "accessibleRetention": "1 day on Free",
+      "api": {
+        "rows": 6,
+        "statusCounts": {
+          "200": 6
+        },
+        "fields": [
+          "event_message",
+          "id",
+          "identifier",
+          "method",
+          "path",
+          "status_code",
+          "timestamp"
+        ]
+      },
+      "postgres": {
+        "returnedRows": 100,
+        "fields": [
+          "error_severity",
+          "event_message",
+          "id",
+          "identifier",
+          "timestamp"
+        ]
+      },
+      "auth": {
+        "rows": 0
+      },
+      "storage": {
+        "rows": 4
+      },
+      "realtime": {
+        "rows": 4
+      },
+      "edgeFunctions": {
+        "rows": 0
+      }
+    },
+    "backups": {
+      "automaticBackupsIncluded": false,
+      "pointInTimeRecoveryIncluded": false,
+      "storageObjectsIncludedInDatabaseBackups": false,
+      "currentRestoreRehearsal": "blocked",
+      "freeAlternative": "manual off-site database dump plus separate object backup, credentials and protected destination still required"
+    },
+    "platformAudit": {
+      "organizationPlatformAuditLogsIncluded": false,
+      "availableProjectRoles": [
+        "Owner",
+        "Admin",
+        "Developer"
+      ],
+      "leastPrivilegeReviewerRoleAvailable": false
+    },
+    "references": [
+      "https://supabase.com/pricing",
+      "https://supabase.com/docs/guides/platform/backups",
+      "https://supabase.com/docs/guides/platform/regions",
+      "https://supabase.com/downloads/docs/Supabase%2BDPA%2B260317.pdf"
+    ]
+  },
+  "residencyAndTransfer": {
+    "databasePrimaryDataRegion": "eu-west-1 (Ireland)",
+    "webFunctionRegion": "dub1 (Ireland) on exact source preview; existing production remains iad1 (United States)",
+    "processorSchedulePinned": false,
+    "transferMechanismReviewed": false,
+    "verdict": "human-legal-privacy-review-required-before-activation"
+  },
+  "blockers": [
+    {
+      "id": "vercel-target-binding",
+      "type": "sensitive-credential-transmission",
+      "state": "requires-action-time-human-confirmation"
+    },
+    {
+      "id": "commercial-hosting",
+      "type": "potential-recurring-charge",
+      "state": "cost-approval-required-before-upgrade"
+    },
+    {
+      "id": "backup-and-restore",
+      "type": "hosted-reliability",
+      "state": "no-current-backup-or-restore-evidence"
+    },
+    {
+      "id": "processor-transfer-review",
+      "type": "legal-privacy",
+      "state": "human-review-required"
+    },
+    {
+      "id": "agreement-publication",
+      "type": "serialization",
+      "state": "held-until-billing-migration-or-proven-unreachable"
+    },
+    {
+      "id": "production-launch",
+      "type": "human-authority",
+      "state": "not-authorized"
+    }
+  ],
+  "verdict": "technical-hosted-facts-pinned-external-gates-remain-red"
+}

@@ -2,6 +2,16 @@ import { createHash } from "node:crypto";
 
 import type { CorporateDecisionInput } from "./corporate-documents.ts";
 
+export class CorporateDecisionFactsError extends Error {
+  readonly code: string;
+
+  constructor(message: string, code: string) {
+    super(message);
+    this.name = "CorporateDecisionFactsError";
+    this.code = code;
+  }
+}
+
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/;
@@ -81,11 +91,6 @@ export type CorporateMeetingSubmission = {
   reviewedFacts: ReviewedCorporateFacts;
 };
 
-export type OwnerDividendDecisionSubmission = CorporateMeetingSubmission & {
-  dividendAmountOre: number;
-  paymentDate: string;
-};
-
 export type AnnualCloseDecisionSubmission = CorporateMeetingSubmission & {
   annualResultAllocationOre: number;
 };
@@ -96,22 +101,6 @@ export type CorporateDecisionFactsInput<TSubmission extends CorporateMeetingSubm
   annualBasis: ApprovedAnnualCorporateBasis;
   submission: TSubmission;
 };
-
-export type DividendAllocationInput = {
-  shareholderId: string;
-  shareCount: number;
-  order: number;
-};
-
-export class CorporateDecisionFactsError extends Error {
-  readonly code: string;
-
-  constructor(message: string, code: string) {
-    super(message);
-    this.name = "CorporateDecisionFactsError";
-    this.code = code;
-  }
-}
 
 function normalizedText(value: string) {
   return value.normalize("NFC").trim().replace(/\s+/g, " ");
@@ -149,54 +138,6 @@ function sortedShareholders(shareholders: PersistedCorporateShareholder[]) {
     }
   }
   return sorted;
-}
-
-export function allocateDividendOreProportionally(
-  amountOre: number,
-  shareholders: DividendAllocationInput[],
-): Array<{ shareholderId: string; amountOre: number }> {
-  assertSafeInteger(amountOre, "Utbyttebeløp", 1);
-  const sorted = shareholders.map((shareholder) => ({
-    ...shareholder,
-    shareholderId: normalizedText(shareholder.shareholderId),
-  })).sort((left, right) => left.order - right.order
-    || left.shareholderId.localeCompare(right.shareholderId, "en"));
-  if (sorted.length === 0
-    || new Set(sorted.map(({ shareholderId }) => shareholderId)).size !== sorted.length) {
-    throw new CorporateDecisionFactsError(
-      "Utbyttefordelingen krever unike aksjonærer.",
-      "corporate_documents_invalid_persisted_facts",
-    );
-  }
-  for (const shareholder of sorted) {
-    assertSafeInteger(shareholder.shareCount, "Aksjeantall", 1);
-    assertSafeInteger(shareholder.order, "Aksjonærrekkefølge", 0);
-  }
-  const totalShares = sorted.reduce((sum, shareholder) => sum + shareholder.shareCount, 0);
-  assertSafeInteger(totalShares, "Totalt aksjeantall", 1);
-  const totalSharesBigInt = BigInt(totalShares);
-  const allocations = sorted.map((shareholder, index) => {
-    const numerator = BigInt(amountOre) * BigInt(shareholder.shareCount);
-    return {
-      shareholderId: shareholder.shareholderId,
-      amountOre: Number(numerator / totalSharesBigInt),
-      remainder: numerator % totalSharesBigInt,
-      index,
-    };
-  });
-  const allocated = allocations.reduce((sum, allocation) => sum + allocation.amountOre, 0);
-  const remainderOre = amountOre - allocated;
-  const remainderOrder = [...allocations].sort((left, right) => {
-    if (left.remainder !== right.remainder) return left.remainder > right.remainder ? -1 : 1;
-    return left.index - right.index;
-  });
-  for (let index = 0; index < remainderOre; index += 1) {
-    remainderOrder[index].amountOre += 1;
-  }
-  return allocations.map(({ shareholderId, amountOre: allocatedOre }) => ({
-    shareholderId,
-    amountOre: allocatedOre,
-  }));
 }
 
 export function corporateAnnualSourceHash(
@@ -340,7 +281,6 @@ function normalizedMeetingFacts(
 
 function buildCommonDecisionInput<TSubmission extends CorporateMeetingSubmission>(
   input: CorporateDecisionFactsInput<TSubmission>,
-  decisionKind: "owner_dividend" | "annual_close",
 ) {
   const company = {
     ...input.company,
@@ -363,7 +303,7 @@ function buildCommonDecisionInput<TSubmission extends CorporateMeetingSubmission
     organization_number: company.organizationNumber,
     legal_name: company.legalName,
     income_year: input.submission.incomeYear,
-    decision_kind: decisionKind,
+    decision_kind: "annual_close" as const,
     annual_close_source_id: input.annualBasis.id,
     source_hash: corporateAnnualSourceHash(input.annualBasis),
     template_family: "norwegian_simple_as" as const,
@@ -395,51 +335,10 @@ function buildCommonDecisionInput<TSubmission extends CorporateMeetingSubmission
   };
 }
 
-export function buildOwnerDividendDecisionInput(
-  input: CorporateDecisionFactsInput<OwnerDividendDecisionSubmission>,
-): CorporateDecisionInput {
-  const common = buildCommonDecisionInput(input, "owner_dividend");
-  assertSafeInteger(input.submission.dividendAmountOre, "Utbyttebeløp", 1);
-  if (!DATE_PATTERN.test(input.submission.paymentDate)) {
-    throw new CorporateDecisionFactsError(
-      "Betalingsdato er ugyldig.",
-      "corporate_documents_invalid_meeting_facts",
-    );
-  }
-  const allocations = allocateDividendOreProportionally(
-    input.submission.dividendAmountOre,
-    common.sortedShareholders.map((shareholder) => ({
-      shareholderId: shareholder.id,
-      shareCount: shareholder.shareCount,
-      order: shareholder.order,
-    })),
-  );
-  if (allocations.some(({ amountOre }) => amountOre <= 0)) {
-    throw new CorporateDecisionFactsError(
-      "Utbyttebeløpet er for lite til en positiv proporsjonal fordeling.",
-      "corporate_documents_zero_allocation",
-    );
-  }
-  const { sortedShareholders: _sortedShareholders, ...decision } = common;
-  return {
-    ...decision,
-    dividend: {
-      amount_ore: input.submission.dividendAmountOre,
-      payment_date: input.submission.paymentDate,
-      liquidity_after_payment_ore: input.annualBasis.cashOre - input.submission.dividendAmountOre,
-      allocations: allocations.map((allocation) => ({
-        shareholder_id: allocation.shareholderId,
-        amount_ore: allocation.amountOre,
-      })),
-    },
-    annual_result_allocation_ore: input.annualBasis.resultAfterTaxOre,
-  };
-}
-
 export function buildAnnualCloseDecisionInput(
   input: CorporateDecisionFactsInput<AnnualCloseDecisionSubmission>,
 ): CorporateDecisionInput {
-  const common = buildCommonDecisionInput(input, "annual_close");
+  const common = buildCommonDecisionInput(input);
   assertSafeInteger(
     input.submission.annualResultAllocationOre,
     "Resultatdisponering",

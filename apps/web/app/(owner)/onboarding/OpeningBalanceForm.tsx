@@ -1,14 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { createOpeningBalanceSetup } from "../../actions";
-import {
-  Banner,
-  Button,
-  StatusBadge,
-  SubmitButton,
-} from "../../components/ui";
+import { Button, SubmitButton } from "../../components/ui";
 import { ownerCopy } from "../../lib/copy";
 
 type ShareholderKind = "norwegian_person" | "norwegian_company";
@@ -25,11 +20,8 @@ type ShareholderRow = {
 type OpeningBalanceFormProps = {
   companyId: string;
   incomeYear: number;
+  operationId?: string;
 };
-
-function round(value: number): number {
-  return Math.round(value * 100) / 100;
-}
 
 function newRow(): ShareholderRow {
   return {
@@ -45,6 +37,7 @@ function newRow(): ShareholderRow {
 export function OpeningBalanceForm({
   companyId,
   incomeYear,
+  operationId: initialOperationId,
 }: OpeningBalanceFormProps) {
   const c = ownerCopy.onboarding.balances;
   const [bankBalance, setBankBalance] = useState("");
@@ -52,49 +45,9 @@ export function OpeningBalanceForm({
   const [shareCount, setShareCount] = useState("");
   const [nominalValue, setNominalValue] = useState("");
   const [shareholders, setShareholders] = useState<ShareholderRow[]>([newRow()]);
-
-  const checks = useMemo(() => {
-    const bank = Number(bankBalance);
-    const capital = Number(shareCapital);
-    const count = Number(shareCount);
-    const nominal = Number(nominalValue);
-
-    const amountsOk =
-      Number.isFinite(bank) &&
-      bank >= 0 &&
-      Number.isFinite(capital) &&
-      capital >= 0 &&
-      Number.isFinite(count) &&
-      count > 0 &&
-      Number.isFinite(nominal) &&
-      nominal > 0;
-
-    const capitalOk = amountsOk && round(count * nominal) === round(capital);
-
-    const totalShares = shareholders.reduce(
-      (sum, row) => sum + Number(row.shareCount || 0),
-      0,
-    );
-    const sharesOk = amountsOk && totalShares === count;
-
-    const shareholdersOk =
-      shareholders.length > 0 &&
-      shareholders.every((row) => {
-        if (!row.name.trim()) return false;
-        if (Number(row.shareCount || 0) < 0) return false;
-        if (row.kind === "norwegian_person") {
-          return /^\d{11}$/.test(row.nationalId.trim());
-        }
-        return /^\d{9}$/.test(row.orgNumber.trim());
-      });
-
-    return {
-      capitalOk,
-      sharesOk,
-      shareholdersOk,
-      canSubmit: capitalOk && sharesOk && shareholdersOk,
-    };
-  }, [bankBalance, shareCapital, shareCount, nominalValue, shareholders]);
+  const [operationId] = useState(
+    () => initialOperationId ?? crypto.randomUUID(),
+  );
 
   function updateRow(key: string, patch: Partial<ShareholderRow>) {
     setShareholders((rows) =>
@@ -106,6 +59,7 @@ export function OpeningBalanceForm({
     <form action={createOpeningBalanceSetup} className="wizardForm">
       <input type="hidden" name="returnTo" value="/onboarding?step=bank" />
       <input type="hidden" name="companyId" value={companyId} />
+      <input type="hidden" name="operationId" value={operationId} />
 
       <label className="field">
         <span className="fieldLabel">{c.yearLabel}</span>
@@ -268,40 +222,7 @@ export function OpeningBalanceForm({
         </div>
       </div>
 
-      <div className="reconcilePanel" aria-live="polite">
-        <h3 className="cardLabel">{c.reconcileTitle}</h3>
-        <ul className="checkList">
-          <li className="checkRow">
-            <span>{c.checkCapital}</span>
-            <StatusBadge
-              variant={checks.capitalOk ? "success" : "warning"}
-              label={checks.capitalOk ? c.ok : c.mismatch}
-              icon={checks.capitalOk ? "check" : "alert"}
-            />
-          </li>
-          <li className="checkRow">
-            <span>{c.checkShares}</span>
-            <StatusBadge
-              variant={checks.sharesOk ? "success" : "warning"}
-              label={checks.sharesOk ? c.ok : c.mismatch}
-              icon={checks.sharesOk ? "check" : "alert"}
-            />
-          </li>
-          <li className="checkRow">
-            <span>{c.checkShareholders}</span>
-            <StatusBadge
-              variant={checks.shareholdersOk ? "success" : "warning"}
-              label={checks.shareholdersOk ? c.ok : c.mismatch}
-              icon={checks.shareholdersOk ? "check" : "alert"}
-            />
-          </li>
-        </ul>
-        {!checks.canSubmit ? (
-          <Banner variant="warning">{c.blockedHint}</Banner>
-        ) : null}
-      </div>
-
-      <SubmitButton block disabled={!checks.canSubmit} pendingLabel={c.pending}>
+      <SubmitButton block pendingLabel={c.pending}>
         {c.cta}
       </SubmitButton>
     </form>

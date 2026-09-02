@@ -1,9 +1,10 @@
 """The only supported Python import path for the system-boundary module."""
 
-from typing import Callable, Final, Literal, Protocol, TypeVar
+from collections.abc import Callable
+from typing import Final, Protocol, TypeVar
 
-SYSTEM_BOUNDARY_AVAILABLE: Final[Literal["AVAILABLE"]] = "AVAILABLE"
-BOUNDARY_UNAVAILABLE: Final[Literal["BOUNDARY_UNAVAILABLE"]] = "BOUNDARY_UNAVAILABLE"
+SYSTEM_BOUNDARY_AVAILABLE: Final = "AVAILABLE"
+BOUNDARY_UNAVAILABLE: Final = "BOUNDARY_UNAVAILABLE"
 
 
 class SystemBoundaryTransport(Protocol):
@@ -15,11 +16,11 @@ class SystemBoundaryTransport(Protocol):
 Adapter = TypeVar("Adapter", bound=Callable[..., object])
 
 
-def adapter_for(port: type[SystemBoundaryTransport]) -> Callable[[Adapter], Adapter]:
+def adapter_for(port: type[object]) -> Callable[[Adapter], Adapter]:
     """Register a source-level adapter binding for architecture verification."""
 
     def register(adapter: Adapter) -> Adapter:
-        setattr(adapter, "__talli_port__", port)
+        setattr(adapter, "__talli_port__", port)  # noqa: B010
         return adapter
 
     return register

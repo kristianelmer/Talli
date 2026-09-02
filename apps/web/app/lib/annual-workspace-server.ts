@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation.js";
 
 import { buildAnnualWorkspaceViewModel, type AnnualWorkspaceContext } from "./annual-workspace.ts";
 import { scopeAnnualWorkspaceRecords } from "./annual-workspace-scope.ts";
-import { companiesRequiringCurrentCustomerAgreement } from "./customer-agreement-reacceptance.ts";
 import { buildDeadlineDashboard } from "./deadlines.ts";
 import {
   getCurrentUser,
@@ -11,35 +10,39 @@ import {
   listAuthorityPermissions,
   listBankTransactions,
   listBillingAccounts,
-  listCustomerAgreementAcceptances,
   listDocumentsForCompanies,
   listFilingOverrides,
   listFilingPreviews,
   listFilingReadinessSnapshots,
   listFilingReviewComments,
   listFilingSubmissions,
-  listHoldingActions,
-  listInvestmentPositions,
   listLedgerEntries,
   listOpeningSetups,
   listPeriodLocks,
 } from "./supabase/server.ts";
 import { listCompanyAccessContexts } from "./company-access-context.ts";
+import {
+  effectiveInvestmentActivity,
+  listPresentedInvestmentActivity,
+  listPresentedInvestmentCorrections,
+  listPresentedInvestmentPositions,
+} from "../../features/investments";
+import { getCurrentSessionAccessToken } from "./supabase/auth-session.ts";
 
 export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext) => {
   if (!Number.isInteger(context.incomeYear) || context.incomeYear < 2000 || context.incomeYear > 2100) notFound();
 
   const user = await getCurrentUser();
   if (!user) redirect("/?error=Innlogging%20kreves");
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/?error=Innlogging%20kreves");
 
   const { companies, error: companyError } = await listCompanyAccessContexts({ companyId: context.companyId });
   if (companyError) throw new Error("Kunne ikke laste selskapsarbeidsflaten.");
   const company = companies.find((item) => item.id === context.companyId);
   if (!company) notFound();
 
-  const { acceptances, error: agreementError } = await listCustomerAgreementAcceptances([company.id]);
-  if (agreementError) throw new Error("Kunne ikke kontrollere gjeldende avtaleaksept.");
-  if (companiesRequiringCurrentCustomerAgreement([company], acceptances).length > 0) {
+  if (!company.currentAgreementAccepted) {
     redirect(company.role === "owner" ? "/dashboard" : "/dashboard?agreement=required");
   }
 
@@ -54,6 +57,7 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     overridesResult,
     transactionsResult,
     actionsResult,
+    correctionsResult,
     positionsResult,
     entriesResult,
     snapshotsResult,
@@ -69,8 +73,9 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     listFilingSubmissions(companyIds),
     listFilingOverrides(companyIds),
     listBankTransactions(companyIds),
-    listHoldingActions(companyIds),
-    listInvestmentPositions(companyIds),
+    listPresentedInvestmentActivity(accessToken, companyIds),
+    listPresentedInvestmentCorrections(accessToken, companyIds),
+    listPresentedInvestmentPositions(accessToken, companyIds),
     listLedgerEntries(companyIds),
     listFilingReadinessSnapshots(companyIds),
     listFilingReviewComments(companyIds),
@@ -88,6 +93,7 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     ["overrides", overridesResult.error],
     ["transactions", transactionsResult.error],
     ["actions", actionsResult.error],
+    ["corrections", correctionsResult.error],
     ["positions", positionsResult.error],
     ["entries", entriesResult.error],
     ["snapshots", snapshotsResult.error],
@@ -110,7 +116,10 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     submissions: submissionsResult.submissions,
     overrides: overridesResult.overrides,
     transactions: transactionsResult.transactions,
-    actions: actionsResult.actions,
+    actions: effectiveInvestmentActivity(
+      actionsResult.actions,
+      correctionsResult.corrections,
+    ),
     positions: positionsResult.positions,
     entries: entriesResult.entries,
     snapshots: snapshotsResult.readinessSnapshots,

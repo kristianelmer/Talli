@@ -21,18 +21,15 @@ from holding_core.annual import (
 from holding_core.holding_actions import (
     AdminCostCategory,
     AdminCostInput,
-    DividendReceivedInput,
     DocumentStatus,
     OpeningBalanceInput,
     ShareholderLoanDirection,
     ShareholderLoanInput,
-    TaxTreatment,
     build_admin_cost_entry,
-    build_dividend_received,
     build_opening_balance_entry,
     build_shareholder_loan,
 )
-from holding_core.ledger import LedgerLine, NarrowLedger, PostedEntry
+from holding_core.ledger import DraftEntry, LedgerLine, NarrowLedger, PostedEntry
 
 
 class AnnualSimulationTest(unittest.TestCase):
@@ -260,19 +257,16 @@ def _simple_annual_data(
                 share_capital=30000,
             )
         ),
-        build_dividend_received(
-            DividendReceivedInput(
-                company_id="314259521",
-                declared_date=date(2025, 4, 1),
-                paid_date=date(2025, 4, 15),
-                gross_amount=100000,
-                paying_company_name="PORTFOLIO AS",
-                linked_investment_id="portfolio-as",
-                tax_treatment=TaxTreatment.FRITAKSMETODEN,
-                bank_matched=True,
-                document_status=DocumentStatus.ATTACHED,
-            )
-        ).entry,
+        DraftEntry(
+            company_id="314259521",
+            entry_date=date(2025, 4, 15),
+            memo="Dividend received from PORTFOLIO AS",
+            source="investments:received-dividend:taxable_add_back:3000.00:test-fixture",
+            lines=[
+                LedgerLine(account="1920", description="Dividend received in bank", debit=100000),
+                LedgerLine(account="8070", description="Dividend from PORTFOLIO AS", credit=100000),
+            ],
+        ),
         build_admin_cost_entry(
             AdminCostInput(
                 company_id="314259521",

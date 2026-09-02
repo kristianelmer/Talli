@@ -1,15 +1,241 @@
 {
-  "schemaVersion": "1.0",
-  "exceptions": [
+  "schemaVersion": "2.0",
+  "baseline": {
+    "path": "architecture/compatibility-baseline.json",
+    "digest": "sha256:163d3e9d13cf2f15e7364d883d65909b58a81d9b8ca9d039ae126a873d1949e1"
+  },
+  "migration": {
+    "foundationRecovery": {
+      "issue": "#186",
+      "status": "complete",
+      "gates": [
+        {
+          "revision": "602629f7a8d3ce28a49de9a5e280162405b617e3",
+          "evidencePath": "architecture/evidence/customer-ready-gates/602629f7a8d3ce28a49de9a5e280162405b617e3.json",
+          "evidenceDigest": "sha256:d851ef8f560dff82f4eaf9f81fff4e2cfda23403179ab303d8cd85a3bc24a5ee"
+        },
+        {
+          "revision": "c41c11561455e117f0fc8d0fefe6083033c26ed5",
+          "evidencePath": "architecture/evidence/customer-ready-gates/c41c11561455e117f0fc8d0fefe6083033c26ed5.json",
+          "evidenceDigest": "sha256:0a9dc0d3f037de0121f92b3eb008661a30a6bc054358d8e308c329a8bc2a3aa7"
+        }
+      ]
+    },
+    "order": [
+      {
+        "capability": "company_access",
+        "removalIssues": [
+          "#138"
+        ]
+      },
+      {
+        "capability": "ledger",
+        "removalIssues": [
+          "#139"
+        ]
+      },
+      {
+        "capability": "banking",
+        "removalIssues": [
+          "#140"
+        ]
+      },
+      {
+        "capability": "investments",
+        "removalIssues": [
+          "#141",
+          "#142",
+          "#143"
+        ]
+      },
+      {
+        "capability": "documents",
+        "removalIssues": [
+          "#147"
+        ]
+      },
+      {
+        "capability": "corporate_governance",
+        "removalIssues": [
+          "#144",
+          "#145",
+          "#148"
+        ]
+      },
+      {
+        "capability": "billing",
+        "removalIssues": [
+          "#137"
+        ]
+      },
+      {
+        "capability": "authority_connections",
+        "removalIssues": [
+          "#150"
+        ]
+      },
+      {
+        "capability": "shareholder_register_filing",
+        "removalIssues": [
+          "#151"
+        ]
+      },
+      {
+        "capability": "company_tax_filing",
+        "removalIssues": [
+          "#146",
+          "#152"
+        ]
+      },
+      {
+        "capability": "annual_accounts_filing",
+        "removalIssues": [
+          "#153"
+        ]
+      },
+      {
+        "capability": "annual_compliance",
+        "removalIssues": [
+          "#149"
+        ]
+      },
+      {
+        "capability": "audit",
+        "removalIssues": [
+          "#155"
+        ]
+      },
+      {
+        "capability": "notifications",
+        "removalIssues": [
+          "#156"
+        ]
+      },
+      {
+        "capability": "company_archive",
+        "removalIssues": [
+          "#157"
+        ]
+      }
+    ],
+    "currentCapability": "corporate_governance",
+    "currentIssue": "#145",
+    "status": "active",
+    "exitedCapabilities": [
+      "company_access",
+      "ledger",
+      "banking",
+      "investments",
+      "documents"
+    ],
+    "completedStages": [
+      {
+        "capability": "company_access",
+        "removalIssues": [
+          "#138"
+        ],
+        "gates": [
+          {
+            "revision": "65ea378dd74225a56f15ace603e1343b00dbac31",
+            "evidencePath": "architecture/evidence/customer-ready-gates/65ea378dd74225a56f15ace603e1343b00dbac31.json",
+            "evidenceDigest": "sha256:75f9001fa6596bf164340bcf2e43d4516417295b020905bfc1be9945bc4da668"
+          },
+          {
+            "revision": "de35d1ead93ea28e9f9878b3cb57d460c7583c33",
+            "evidencePath": "architecture/evidence/customer-ready-gates/de35d1ead93ea28e9f9878b3cb57d460c7583c33.json",
+            "evidenceDigest": "sha256:8f6408807a94f9f207bfbba582fcd96bc4e6a4794ddbff9ee396e8dbc2ea2c88"
+          }
+        ]
+      },
+      {
+        "capability": "ledger",
+        "removalIssues": [
+          "#139"
+        ],
+        "gates": [
+          {
+            "revision": "70c843018069caeaabf6b95eb33c72852397b89e",
+            "evidencePath": "architecture/evidence/customer-ready-gates/70c843018069caeaabf6b95eb33c72852397b89e.json",
+            "evidenceDigest": "sha256:3d219e5330436e503a6d8bfcb53d15df50d305f0bfb8658f6412c0c779adf9bd"
+          },
+          {
+            "revision": "21a6c0bcdadeecfcc316e794f5c928a1533e86e3",
+            "evidencePath": "architecture/evidence/customer-ready-gates/21a6c0bcdadeecfcc316e794f5c928a1533e86e3.json",
+            "evidenceDigest": "sha256:483722977f9ade9ac6d5dfa365dfecbd67ebc3718af8055a0f7195d6d6b39672"
+          }
+        ]
+      },
+      {
+        "capability": "banking",
+        "removalIssues": [
+          "#140"
+        ],
+        "gates": [
+          {
+            "revision": "1f5d81526f4d9a41fdca072c3893baee3cf05163",
+            "evidencePath": "architecture/evidence/customer-ready-gates/1f5d81526f4d9a41fdca072c3893baee3cf05163.json",
+            "evidenceDigest": "sha256:392cd0a7232ad45fca6c583c717f9d3ea14a72f3e4759761e21a6a52fb625c18"
+          },
+          {
+            "revision": "fbcbd5b5b33f5b1a247e8fa790c7e281258437e1",
+            "evidencePath": "architecture/evidence/customer-ready-gates/fbcbd5b5b33f5b1a247e8fa790c7e281258437e1.json",
+            "evidenceDigest": "sha256:309feed1005d0768be3dd16914a69466319bdaa5e86e0405589c4ec3680bd607"
+          }
+        ]
+      },
+      {
+        "capability": "investments",
+        "removalIssues": [
+          "#141",
+          "#142",
+          "#143"
+        ],
+        "gates": [
+          {
+            "revision": "027254ab93c35b102d9429b3965fcbbbb4f033a8",
+            "evidencePath": "architecture/evidence/customer-ready-gates/027254ab93c35b102d9429b3965fcbbbb4f033a8.json",
+            "evidenceDigest": "sha256:4151b3a1330a83ad069068a09c02fb62636a3a5e4c76b544b591855753ac9f6d"
+          },
+          {
+            "revision": "abfa5c767bb1453ea3ec02af0ca463884887e63c",
+            "evidencePath": "architecture/evidence/customer-ready-gates/abfa5c767bb1453ea3ec02af0ca463884887e63c.json",
+            "evidenceDigest": "sha256:ca3f1865b1442004ea2473028ab58f2e094559c60b49b4973088414ab2898ac2"
+          }
+        ]
+      },
+      {
+        "capability": "documents",
+        "removalIssues": [
+          "#147"
+        ],
+        "gates": [
+          {
+            "revision": "32dcb77890d92c655ee589e7c6c603f27c27c625",
+            "evidencePath": "architecture/evidence/customer-ready-gates/32dcb77890d92c655ee589e7c6c603f27c27c625.json",
+            "evidenceDigest": "sha256:cec65edeeacddf6fff253df503df90fe06bb245aeba11bfd9b40b9ee3a61e317"
+          },
+          {
+            "revision": "9c8904703f738ce2d0ba3513cf2850e33cf0abd5",
+            "evidencePath": "architecture/evidence/customer-ready-gates/9c8904703f738ce2d0ba3513cf2850e33cf0abd5.json",
+            "evidenceDigest": "sha256:62df0df68c57470324d346ae47c6f013a61b5d6ed5c398192656e71167e9b570"
+          }
+        ]
+      }
+    ]
+  },
+  "records": [
     {
       "id": "compat-billing-persistence",
+      "kind": "legacy-facade",
+      "capability": "billing",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
+      "decisionIssue": "#185",
       "removalIssue": "#137",
+      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+      "canonicalImplementation": "web:legacy-runtime:billing",
       "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
+      "approvedAt": "2026-08-26T10:56:36Z",
       "removalCondition": "Remove billing and filing-entitlement persistence in #137.",
       "scopes": [
         {
@@ -113,576 +339,23 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:production_pilot_entitlements",
           "operation": "listProductionFilingState"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_accounts",
-          "operation": "searchOperatorSupportDashboard"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_payment_events",
-          "operation": "searchOperatorSupportDashboard"
-        }
-      ]
-    },
-    {
-      "id": "compat-company-onboarding-persistence",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "removalIssue": "#138",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove workspace creation and customer-agreement onboarding persistence in #138; authenticated company-context reads have no exception.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "rpc:create_company_workspace_with_acceptance",
-          "operation": "createWorkspace"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "rpc:append_company_agreement_acceptance",
-          "operation": "reacceptCompanyAgreement"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:customer_agreement_acceptances",
-          "operation": "listCustomerAgreementAcceptances"
-        }
-      ]
-    },
-    {
-      "id": "compat-ledger-persistence",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "removalIssue": "#139",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove narrow-ledger and opening-balance persistence in #139.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "createAnnualCorporateDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_balance_setups",
-          "operation": "createAnnualCorporateDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_shareholders",
-          "operation": "createAnnualCorporateDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "createOpeningBalanceSetup"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_balance_setups",
-          "operation": "createOpeningBalanceSetup"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_shareholders",
-          "operation": "createOpeningBalanceSetup"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "createOwnerDividendDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_balance_setups",
-          "operation": "createOwnerDividendDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_shareholders",
-          "operation": "createOwnerDividendDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:period_locks",
-          "operation": "createOwnerDividendDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_balance_setups",
-          "operation": "generateRf1086Preview"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_shareholders",
-          "operation": "generateRf1086Preview"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:period_locks",
-          "operation": "lockCompanyYear"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "postManualJournal"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "recordAdminCost"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "recordDividendReceived"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "recordShareholderLoan"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "recordTaxSettlement"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_balance_setups",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:period_locks",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
-          "operation": "listLedgerEntries"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_balance_setups",
-          "operation": "listOpeningSetups"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_shareholders",
-          "operation": "listOpeningSetups"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:period_locks",
-          "operation": "listPeriodLocks"
-        }
-      ]
-    },
-    {
-      "id": "compat-banking-persistence",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "removalIssue": "#140",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove bank import and reconciliation persistence in #140.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "rpc:accept_bank_transaction_suggestion",
-          "operation": "acceptBankTransactionSuggestion"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_transactions",
-          "operation": "acceptBankTransactionSuggestion"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_transactions",
-          "operation": "importBankCsv"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_transactions",
-          "operation": "recordAdminCost"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_transactions",
-          "operation": "recordDividendReceived"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_transactions",
-          "operation": "recordShareholderLoan"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_transactions",
-          "operation": "recordTaxSettlement"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_transactions",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_suggestion_acceptances",
-          "operation": "listBankSuggestionAcceptances"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:bank_transactions",
-          "operation": "listBankTransactions"
-        }
-      ]
-    },
-    {
-      "id": "compat-investment-purchase-persistence",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "removalIssue": "#141",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove share-purchase and acquisition-lot persistence in #141.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "rpc:record_share_purchase_fifo",
-          "operation": "recordSharePurchase"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:investment_lots",
-          "operation": "listInvestmentLots"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:investment_positions",
-          "operation": "listInvestmentPositions"
-        }
-      ]
-    },
-    {
-      "id": "compat-investment-sale-persistence",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "removalIssue": "#142",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove share-sale and FIFO-allocation persistence in #142.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "rpc:record_share_sale_fifo",
-          "operation": "recordShareSale"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:investment_lots",
-          "operation": "recordShareSale"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:investment_positions",
-          "operation": "recordShareSale"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:investment_lot_allocations",
-          "operation": "listInvestmentLotAllocations"
-        }
-      ]
-    },
-    {
-      "id": "compat-investment-stage-exit-persistence",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "removalIssue": "#143",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove received-dividend and shared holding-action reads in #143.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:holding_actions",
-          "operation": "recordDividendReceived"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:holding_actions",
-          "operation": "listHoldingActions"
-        }
-      ]
-    },
-    {
-      "id": "compat-owner-dividend-persistence",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "removalIssue": "#144",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove owner-dividend company and membership persistence in #144.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "createOwnerDividendDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_memberships",
-          "operation": "createOwnerDividendDecisionDraft"
-        }
-      ]
-    },
-    {
-      "id": "compat-shareholder-loan-persistence",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "removalIssue": "#145",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove shareholder-loan holding-action persistence in #145.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:holding_actions",
-          "operation": "recordShareholderLoan"
-        }
-      ]
-    },
-    {
-      "id": "compat-tax-settlement-persistence",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "removalIssue": "#146",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove tax-settlement holding-action persistence in #146.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:holding_actions",
-          "operation": "recordTaxSettlement"
-        }
-      ]
-    },
-    {
-      "id": "compat-documents-persistence",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "removalIssue": "#147",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
-      "removalCondition": "Remove accounting-document and private-storage persistence in #147.",
-      "scopes": [
-        {
-          "path": "apps/web/app/documents/[documentId]/preview/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_memberships",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "recordDividendReceived"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "recordShareholderLoan"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "recordTaxSettlement"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "rpc:remove_unlinked_document",
-          "operation": "removeUnlinkedDocument"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "rpc:restore_unlinked_document_after_storage_failure",
-          "operation": "removeUnlinkedDocument"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "storage:company-documents",
-          "operation": "removeUnlinkedDocument"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "storage:company-documents",
-          "operation": "uploadDocument"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "uploadDocument"
-        },
-        {
-          "path": "apps/web/app/documents/[documentId]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "storage:company-documents",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/documents/[documentId]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/documents/[documentId]/preview/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "storage:company-documents",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/documents/[documentId]/preview/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "listDocumentsForCompanies"
         }
       ]
     },
     {
       "id": "compat-corporate-governance-persistence",
+      "kind": "legacy-facade",
+      "capability": "corporate_governance",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
+      "decisionIssue": "#185",
       "removalIssue": "#148",
+      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+      "canonicalImplementation": "web:legacy-runtime:corporate_governance",
       "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
+      "approvedAt": "2026-08-26T10:56:36Z",
       "removalCondition": "Remove corporate-decision and document-artifact persistence at stage exit in #148.",
       "scopes": [
-        {
-          "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_memberships",
-          "operation": "CorporateDecisionPage"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "createAnnualCorporateDecisionDraft"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_memberships",
-          "operation": "createAnnualCorporateDecisionDraft"
-        },
         {
           "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
           "rule": "direct-web-business-persistence",
@@ -783,27 +456,18 @@
     },
     {
       "id": "compat-annual-compliance-persistence",
+      "kind": "legacy-facade",
+      "capability": "annual_compliance",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
+      "decisionIssue": "#185",
       "removalIssue": "#149",
+      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+      "canonicalImplementation": "web:legacy-runtime:annual_compliance",
       "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
+      "approvedAt": "2026-08-26T10:56:36Z",
       "removalCondition": "Remove annual compliance workspace persistence in #149.",
       "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_memberships",
-          "operation": "queueDeadlineReminders"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
@@ -917,32 +581,23 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_review_comments",
           "operation": "listFilingReviewComments"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:filing_readiness_snapshots",
-          "operation": "searchOperatorSupportDashboard"
         }
       ]
     },
     {
       "id": "compat-authority-connections-persistence",
+      "kind": "legacy-facade",
+      "capability": "authority_connections",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
+      "decisionIssue": "#185",
       "removalIssue": "#150",
+      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+      "canonicalImplementation": "web:legacy-runtime:authority_connections",
       "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
+      "approvedAt": "2026-08-26T10:56:36Z",
       "removalCondition": "Remove System User, authority-operation, and operator-control persistence in #150.",
       "scopes": [
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "searchOperatorSupportDashboard"
-        },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
@@ -958,31 +613,13 @@
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "table:support_operators",
-          "operation": "recordLaunchSignoff"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "table:authority_operations",
           "operation": "runProductionAuthorityOperation"
         },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "table:support_operators",
-          "operation": "runProductionAuthorityOperation"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "table:authority_operations",
-          "operation": "runProductionSystembrukerCallbackOperation"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:support_operators",
           "operation": "runProductionSystembrukerCallbackOperation"
         },
         {
@@ -994,31 +631,13 @@
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "table:support_operators",
-          "operation": "getOperatorContext"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "table:authority_operations",
           "operation": "listAuthorityOperations"
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "table:support_operators",
-          "operation": "listAuthorityOperations"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "table:launch_signoffs",
-          "operation": "listLaunchSignoffs"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:support_operators",
           "operation": "listLaunchSignoffs"
         },
         {
@@ -1026,56 +645,23 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:system_user_requests",
           "operation": "listSystemUserRequests"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:support_operators",
-          "operation": "searchOperatorSupportDashboard"
         }
       ]
     },
     {
       "id": "compat-rf1086-persistence",
+      "kind": "legacy-facade",
+      "capability": "shareholder_register_filing",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
+      "decisionIssue": "#185",
       "removalIssue": "#151",
+      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+      "canonicalImplementation": "web:legacy-runtime:shareholder_register_filing",
       "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
+      "approvedAt": "2026-08-26T10:56:36Z",
       "removalCondition": "Remove RF-1086 filing and feedback persistence in #151.",
       "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "approveProductionFiling"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "generateRf1086Preview"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "reconcileRf1086ProductionAction"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:company_memberships",
-          "operation": "reconcileRf1086ProductionAction"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "sendApprovedRf1086ProductionFiling"
-        },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
@@ -1243,38 +829,23 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:production_filing_submissions",
           "operation": "listProductionFilingState"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:authority_permissions",
-          "operation": "searchOperatorSupportDashboard"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:filing_submissions",
-          "operation": "searchOperatorSupportDashboard"
         }
       ]
     },
     {
       "id": "compat-company-tax-persistence",
+      "kind": "legacy-facade",
+      "capability": "company_tax_filing",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
+      "decisionIssue": "#185",
       "removalIssue": "#152",
+      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+      "canonicalImplementation": "web:legacy-runtime:company_tax_filing",
       "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
+      "approvedAt": "2026-08-26T10:56:36Z",
       "removalCondition": "Remove company-tax evidence persistence in #152.",
       "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "recordCompanyTaxReturnTt02Evidence"
-        },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
@@ -1285,21 +856,18 @@
     },
     {
       "id": "compat-annual-accounts-persistence",
+      "kind": "legacy-facade",
+      "capability": "annual_accounts_filing",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
+      "decisionIssue": "#185",
       "removalIssue": "#153",
+      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+      "canonicalImplementation": "web:legacy-runtime:annual_accounts_filing",
       "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
+      "approvedAt": "2026-08-26T10:56:36Z",
       "removalCondition": "Remove annual-accounts authority-evidence persistence in #153.",
       "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "recordAnnualAccountsTt02Evidence"
-        },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
@@ -1310,13 +878,16 @@
     },
     {
       "id": "compat-audit-persistence",
+      "kind": "legacy-facade",
+      "capability": "audit",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
+      "decisionIssue": "#185",
       "removalIssue": "#155",
+      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+      "canonicalImplementation": "web:legacy-runtime:audit",
       "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
+      "approvedAt": "2026-08-26T10:56:36Z",
       "removalCondition": "Remove append-only audit persistence in #155.",
       "scopes": [
         {
@@ -1425,12 +996,6 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "recordAdminCost"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
           "operation": "recordAnnualAccountsTt02Evidence"
         },
         {
@@ -1438,24 +1003,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
           "operation": "recordAuthorityTestEvidence"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
-          "operation": "recordDividendReceived"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
-          "operation": "recordShareholderLoan"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
-          "operation": "recordTaxSettlement"
         },
         {
           "path": "apps/web/app/actions.ts",
@@ -1492,24 +1039,21 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
           "operation": "uploadDocument"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
-          "operation": "searchOperatorSupportDashboard"
         }
       ]
     },
     {
       "id": "compat-notification-persistence",
+      "kind": "legacy-facade",
+      "capability": "notifications",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
+      "decisionIssue": "#185",
       "removalIssue": "#156",
+      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+      "canonicalImplementation": "web:legacy-runtime:notifications",
       "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
+      "approvedAt": "2026-08-26T10:56:36Z",
       "removalCondition": "Remove notification outbox persistence in #156.",
       "scopes": [
         {
@@ -1528,13 +1072,16 @@
     },
     {
       "id": "compat-company-archive-persistence",
+      "kind": "legacy-facade",
+      "capability": "company_archive",
       "owner": "web:legacy-runtime",
       "creationIssue": "#135",
+      "decisionIssue": "#185",
       "removalIssue": "#157",
+      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+      "canonicalImplementation": "web:legacy-runtime:company_archive",
       "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-07-30T00:00:00Z",
-      "releaseLimit": "next-stable-customer-ready-release",
-      "expiresAt": "2026-08-13T00:00:00Z",
+      "approvedAt": "2026-08-26T10:56:36Z",
       "removalCondition": "Remove cross-capability direct archive reads and the temporary receipt handoff when #157 composes and owns published export projections.",
       "scopes": [
         {
@@ -1582,12 +1129,6 @@
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "table:companies",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "table:corporate_decision_finalizations",
           "operation": "GET"
         },
@@ -1618,12 +1159,6 @@
         {
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "table:filing_previews",
           "operation": "GET"
         },
@@ -1643,30 +1178,6 @@
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:holding_actions",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:investment_lot_allocations",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:investment_lots",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:investment_positions",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:ledger_entries",
           "operation": "GET"
         },
         {

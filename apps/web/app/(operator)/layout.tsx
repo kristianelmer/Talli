@@ -28,6 +28,9 @@ export default async function OperatorLayout({
           <Link className="appNavLink" data-variant="operator" href="/operator">
             Operatør
           </Link>
+          <Link className="appNavLink" data-variant="operator" href="/operator/marketing">
+            Traktmåling
+          </Link>
         </nav>
         <div className="appNavRight">
           <span className="cardLabel">{user.email}</span>

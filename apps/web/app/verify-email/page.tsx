@@ -4,15 +4,17 @@ import { Banner, FormField, SubmitButton } from "../components/ui";
 import { resendConfirmation } from "../actions";
 import { hasSupabaseEnv } from "../lib/supabase/server";
 import { ownerCopy } from "../lib/copy";
+import { sanitizeInternalRedirect } from "../lib/internal-redirect";
 
 type VerifyEmailProps = {
-  searchParams?: Promise<{ email?: string; error?: string; resent?: string }>;
+  searchParams?: Promise<{ email?: string; error?: string; next?: string; resent?: string }>;
 };
 
 export default async function VerifyEmailPage({ searchParams }: VerifyEmailProps) {
   const params = await searchParams;
   const c = ownerCopy.verifyEmail;
   const email = params?.email ?? "";
+  const next = sanitizeInternalRedirect(params?.next);
   return (
     <div className="authShell">
       <div className="authCard">
@@ -36,6 +38,7 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailProps
         </Banner>
 
         <form className="authForm" action={resendConfirmation}>
+          <input type="hidden" name="next" value={next} />
           {email ? <input type="hidden" name="email" value={email} /> : null}
           {!email ? (
             <FormField
@@ -57,7 +60,7 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailProps
         </form>
 
         <p className="authAlt">
-          <Link href="/login">{c.backToLogin}</Link>
+          <Link href={`/login?next=${encodeURIComponent(next)}`}>{c.backToLogin}</Link>
         </p>
       </div>
     </div>

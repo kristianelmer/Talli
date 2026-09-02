@@ -10,6 +10,19 @@ const operation = contract.paths?.[path]?.get;
 const companyAccessPath = "/api/v1/company-access/context";
 const companyAccessOperation = contract.paths?.[companyAccessPath]?.get;
 const companyAccessOperations = {
+  eligibilityPrecheck: ["/api/v1/company-access/eligibility/precheck", "post", "companyAccessEligibilityPrecheck"],
+  eligibilityDefinitive: ["/api/v1/company-access/eligibility/definitive", "post", "companyAccessEligibilityDefinitive"],
+  admitCompanyYear: ["/api/v1/company-access/company-year-admissions", "post", "companyAccessAdmitCompanyYear"],
+  recheckCompanyYearEligibility: ["/api/v1/company-access/company-year-admissions/{company_year_admission_id}/eligibility-rechecks", "post", "companyAccessRecheckCompanyYearEligibility"],
+  onboardCompany: ["/api/v1/company-access/onboarding", "post", "companyAccessOnboardCompany"],
+  reacceptAgreement: ["/api/v1/company-access/agreements/reaccept", "post", "companyAccessReacceptAgreement"],
+  getCompanyRecord: ["/api/v1/company-access/companies/{company_id}", "get", "companyAccessGetCompanyRecord"],
+  getOperatorContext: ["/api/v1/company-access/operator-context", "get", "companyAccessGetOperatorContext"],
+  searchOperatorCompanies: ["/api/v1/company-access/operator-companies", "get", "companyAccessSearchOperatorCompanies"],
+  grantSupportAccess: ["/api/v1/company-access/operator-support-grants", "post", "companyAccessGrantSupportAccess"],
+  revokeSupportAccess: ["/api/v1/company-access/operator-support-grants/{case_id}/revocations", "post", "companyAccessRevokeSupportAccess"],
+  openSupportCase: ["/api/v1/company-access/operator-support-cases/{case_id}/openings", "post", "companyAccessOpenSupportCase"],
+  readSupportCase: ["/api/v1/company-access/operator-support-cases/{case_id}", "get", "companyAccessReadSupportCase"],
   listInvitations: ["/api/v1/company-access/invitations", "get", "companyAccessListInvitations"],
   createInvitation: ["/api/v1/company-access/invitations", "post", "companyAccessCreateInvitation"],
   lookupInvitation: ["/api/v1/company-access/invitations/lookup", "post", "companyAccessLookupInvitation"],
@@ -26,6 +39,185 @@ const companyAccessOperations = {
   reviewDeletion: ["/api/v1/company-access/cancellations/{cancellation_id}/reviews", "post", "companyAccessReviewDeletion"],
   finalizeDeletion: ["/api/v1/company-access/cancellations/{cancellation_id}/finalize", "post", "companyAccessFinalizeDeletion"],
 };
+const ledgerOperations = {
+  startNewYear: ["/api/v1/new-year-starts", "post", "ledgerStartNewYear"],
+  getCompanyYearCloseAssessment: [
+    "/api/v1/ledger/company-year-close-assessment",
+    "get",
+    "ledgerGetCompanyYearCloseAssessment",
+  ],
+  getReconstructionAssessment: [
+    "/api/v1/ledger/reconstruction-assessment",
+    "get",
+    "ledgerGetReconstructionAssessment",
+  ],
+  listOpeningSnapshots: ["/api/v1/ledger/opening-snapshots", "get", "ledgerListOpeningSnapshots"],
+  listEntries: ["/api/v1/ledger/entries", "get", "ledgerListEntries"],
+  listPeriodLocks: ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
+  postAdministrativeCost: ["/api/v1/ledger/administrative-costs", "post", "ledgerPostAdministrativeCost"],
+  postTaxSettlement: ["/api/v1/ledger/tax-settlements", "post", "ledgerPostTaxSettlement"],
+  finalizeCorporateDecision: ["/api/v1/ledger/corporate-decisions/finalizations", "post", "ledgerFinalizeCorporateDecision"],
+  postManualJournal: ["/api/v1/ledger/manual-journals", "post", "ledgerPostManualJournal"],
+  lockPeriod: ["/api/v1/ledger/period-locks", "post", "ledgerLockPeriod"],
+};
+const investmentsOperations = {
+  listCorrections: [
+    "/api/v1/investments/corrections",
+    "get",
+    "investmentsListCorrections",
+  ],
+  listActivity: [
+    "/api/v1/investments/activity",
+    "get",
+    "investmentsListActivity",
+  ],
+  listEconomicEvents: [
+    "/api/v1/investments/economic-events",
+    "get",
+    "investmentsListEconomicEvents",
+  ],
+  listPositions: [
+    "/api/v1/investments/positions",
+    "get",
+    "investmentsListPositions",
+  ],
+  listAcquisitionLots: [
+    "/api/v1/investments/acquisition-lots",
+    "get",
+    "investmentsListAcquisitionLots",
+  ],
+  listShareSaleAllocations: [
+    "/api/v1/investments/share-sale-allocations",
+    "get",
+    "investmentsListShareSaleAllocations",
+  ],
+  listYearEndMeasurements: [
+    "/api/v1/investments/year-end-measurements",
+    "get",
+    "investmentsListYearEndMeasurements",
+  ],
+  recognizeSharePurchase: [
+    "/api/v1/investments/share-purchase-recognitions",
+    "post",
+    "investmentsRecognizeSharePurchase",
+  ],
+  recognizeShareSale: [
+    "/api/v1/investments/share-sale-recognitions",
+    "post",
+    "investmentsRecognizeShareSale",
+  ],
+  recognizeReceivedDividend: [
+    "/api/v1/investments/received-dividend-recognitions",
+    "post",
+    "investmentsRecognizeReceivedDividend",
+  ],
+  recognizeReceivedFundDistribution: [
+    "/api/v1/investments/received-fund-distribution-recognitions",
+    "post",
+    "investmentsRecognizeReceivedFundDistribution",
+  ],
+  settleCash: [
+    "/api/v1/investments/cash-settlements",
+    "post",
+    "investmentsSettleCash",
+  ],
+  recordYearEndMeasurement: [
+    "/api/v1/investments/year-end-measurements",
+    "post",
+    "investmentsRecordYearEndMeasurement",
+  ],
+  correctInvestment: [
+    "/api/v1/investments/corrections",
+    "post",
+    "investmentsCorrectInvestment",
+  ],
+};
+const documentsOperations = {
+  list: ["/api/v1/documents", "get", "documentsList"],
+  backupProjection: [
+    "/api/v1/documents/backup-projection",
+    "get",
+    "documentsBackupProjection",
+  ],
+  beginUpload: ["/api/v1/documents/uploads", "post", "documentsBeginUpload"],
+  finalizeUpload: [
+    "/api/v1/documents/{document_id}/finalize",
+    "post",
+    "documentsFinalizeUpload",
+  ],
+  remove: ["/api/v1/documents/{document_id}/remove", "post", "documentsRemove"],
+  createTransfer: [
+    "/api/v1/documents/{document_id}/transfers",
+    "post",
+    "documentsCreateTransfer",
+  ],
+};
+const corporateGovernanceOperations = {
+  recordShareholderLoan: [
+    "/api/v1/corporate-governance/shareholder-loans",
+    "post",
+    "corporateGovernanceRecordShareholderLoan",
+  ],
+  proposeOwnerDividend: [
+    "/api/v1/corporate-governance/owner-dividends/proposals",
+    "post",
+    "corporateGovernanceProposeOwnerDividend",
+  ],
+  registerOwnerDividendDocuments: [
+    "/api/v1/corporate-governance/owner-dividends/{decision_id}/documents",
+    "post",
+    "corporateGovernanceRegisterOwnerDividendDocuments",
+  ],
+  approveOwnerDividend: [
+    "/api/v1/corporate-governance/owner-dividends/{decision_id}/approvals",
+    "post",
+    "corporateGovernanceApproveOwnerDividend",
+  ],
+  finalizeOwnerDividend: [
+    "/api/v1/corporate-governance/owner-dividends/{decision_id}/finalizations",
+    "post",
+    "corporateGovernanceFinalizeOwnerDividend",
+  ],
+  recordOwnerDividendPayment: [
+    "/api/v1/corporate-governance/owner-dividends/{decision_id}/payments",
+    "post",
+    "corporateGovernanceRecordOwnerDividendPayment",
+  ],
+};
+const bankingOperations = {
+  listConnections: ["/api/v1/banking/connections", "get", "bankingListConnections"],
+  startConnection: ["/api/v1/banking/connections", "post", "bankingStartConnection"],
+  completeConnection: ["/api/v1/banking/connections/{connection_id}/callback", "get", "bankingCompleteConnection"],
+  revokeConnection: ["/api/v1/banking/connections/{connection_id}/revoke", "post", "bankingRevokeConnection"],
+  syncAccount: ["/api/v1/banking/connections/{connection_id}/accounts/{account_id}/syncs", "post", "bankingSyncAccount"],
+  previewSourceFile: ["/api/v1/banking/source-files/previews", "post", "bankingPreviewSourceFile"],
+  acceptSourceFile: ["/api/v1/banking/source-files/{source_file_id}/acceptance", "post", "bankingAcceptSourceFile"],
+  importStatement: ["/api/v1/banking/statement-imports", "post", "bankingImportStatement"],
+  listTransactions: ["/api/v1/banking/transactions", "get", "bankingListTransactions"],
+  acceptSuggestion: ["/api/v1/banking/suggestion-acceptances", "post", "bankingAcceptSuggestion"],
+  listSuggestionAcceptances: [
+    "/api/v1/banking/suggestion-acceptances",
+    "get",
+    "bankingListSuggestionAcceptances",
+  ],
+};
+const marketingMeasurementOperations = {
+  recordEvent: [
+    "/api/v1/marketing-measurement/events",
+    "post",
+    "marketingMeasurementRecordEvent",
+  ],
+  withdrawSession: [
+    "/api/v1/marketing-measurement/withdrawals",
+    "post",
+    "marketingMeasurementWithdrawSession",
+  ],
+  getReport: [
+    "/api/v1/marketing-measurement/report",
+    "get",
+    "marketingMeasurementGetReport",
+  ],
+};
 
 if (operation?.operationId !== "systemBoundaryGetTracerStatus") {
   throw new Error(`Expected systemBoundaryGetTracerStatus at ${path}`);
@@ -34,6 +226,36 @@ if (companyAccessOperation?.operationId !== "companyAccessGetSelectedContext") {
   throw new Error(`Expected companyAccessGetSelectedContext at ${companyAccessPath}`);
 }
 for (const [name, [operationPath, method, operationId]] of Object.entries(companyAccessOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(ledgerOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(investmentsOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(documentsOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(corporateGovernanceOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(bankingOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(marketingMeasurementOperations)) {
   if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
     throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
   }
@@ -65,13 +287,16 @@ function resolveSchema(schema) {
 
 function schemaType(schema) {
   if (schema?.$ref) return schema.$ref.split("/").at(-1);
-  if (schema?.anyOf) {
-    const values = schema.anyOf.map(schemaType);
+  if (schema?.anyOf || schema?.oneOf) {
+    const values = (schema.anyOf ?? schema.oneOf).map(schemaType);
     return values.join(" | ");
   }
   if (schema?.type === "null") return "null";
-  if (schema?.type === "array") return `${schemaType(schema.items)}[]`;
-  if (schema?.type === "string" && schema.const !== undefined) {
+  if (schema?.type === "array") {
+    const itemType = schemaType(schema.items);
+    return `${itemType.includes(" | ") ? `(${itemType})` : itemType}[]`;
+  }
+  if (schema?.const !== undefined) {
     return JSON.stringify(schema.const);
   }
   if (schema?.type === "string" && schema.enum?.length) {
@@ -80,6 +305,9 @@ function schemaType(schema) {
   if (schema?.type === "string") return "string";
   if (schema?.type === "integer" || schema?.type === "number") return "number";
   if (schema?.type === "boolean") return "boolean";
+  if (schema?.type === "object" && schema.additionalProperties && schema.additionalProperties !== true) {
+    return `Record<string, ${schemaType(schema.additionalProperties)}>`;
+  }
   if (schema?.type === "object") return "Record<string, unknown>";
   throw new Error(`Unsupported generated-client schema type: ${schema?.type}`);
 }
@@ -90,29 +318,53 @@ function renderInterface(name, schema) {
     .map(([property, propertySchema]) => {
       const optional = required.has(property) ? "" : "?";
       return `  ${property}${optional}: ${schemaType(propertySchema)};`;
-    })
-    .join("\n");
-  return `export interface ${name} {\n${properties}\n}`;
+    });
+  if (schema.additionalProperties === true) {
+    properties.push("  [key: string]: unknown;");
+  }
+  return `export interface ${name} {\n${properties.join("\n")}\n}`;
+}
+
+function renderSchema(name, schema) {
+  if (schema?.type === "string" && schema.enum?.length) {
+    return `export type ${name} = ${schemaType(schema)};`;
+  }
+  return renderInterface(name, schema);
 }
 
 function renderGuard(name, schema) {
+  if (schema?.type === "string" && schema.enum?.length) {
+    return `function is${name}(value: unknown): value is ${name} {
+  return ${schema.enum.map((candidate) => `value === ${JSON.stringify(candidate)}`).join(" || ")};
+}`;
+  }
   const allowedProperties = Object.keys(schema.properties ?? {});
   const required = new Set(schema.required ?? []);
   const propertyCheck = (propertySchema, value) => {
     if (propertySchema?.$ref) return `is${schemaType(propertySchema)}(${value})`;
-    if (propertySchema?.anyOf) {
-      return `(${propertySchema.anyOf.map((candidate) => propertyCheck(candidate, value)).join(" || ")})`;
+    if (propertySchema?.anyOf || propertySchema?.oneOf) {
+      const alternatives = propertySchema.anyOf ?? propertySchema.oneOf;
+      return `(${alternatives.map((candidate) => propertyCheck(candidate, value)).join(" || ")})`;
     }
     if (propertySchema?.type === "null") return `${value} === null`;
     if (propertySchema?.type === "array") {
-      return `Array.isArray(${value}) && ${value}.every((item) => ${propertyCheck(propertySchema.items, "item")})`;
+      const checks = [
+        `Array.isArray(${value})`,
+        `${value}.every((item) => ${propertyCheck(propertySchema.items, "item")})`,
+      ];
+      if (propertySchema.minItems !== undefined) checks.push(`${value}.length >= ${propertySchema.minItems}`);
+      if (propertySchema.maxItems !== undefined) checks.push(`${value}.length <= ${propertySchema.maxItems}`);
+      return checks.join(" && ");
     }
     if (propertySchema?.const !== undefined) return `${value} === ${JSON.stringify(propertySchema.const)}`;
     if (propertySchema?.enum?.length) {
       return `(${propertySchema.enum.map((candidate) => `${value} === ${JSON.stringify(candidate)}`).join(" || ")})`;
     }
     let base;
-    if (propertySchema?.type === "object") base = `isRecord(${value})`;
+    if (propertySchema?.type === "object" && propertySchema.additionalProperties && propertySchema.additionalProperties !== true) {
+      base = `isRecord(${value}) && Object.values(${value}).every((item) => ${propertyCheck(propertySchema.additionalProperties, "item")})`;
+    }
+    else if (propertySchema?.type === "object") base = `isRecord(${value})`;
     else if (propertySchema?.type === "string" && propertySchema.format === "uuid") base = `isUuid(${value})`;
     else if (propertySchema?.type === "string" && propertySchema.format === "date-time") base = `isDateTime(${value})`;
     else if (propertySchema?.type === "integer") base = `typeof ${value} === "number" && Number.isInteger(${value})`;
@@ -129,7 +381,9 @@ function renderGuard(name, schema) {
     return constraints.length ? `(${[base, ...constraints].join(" && ")})` : base;
   };
   const checks = [
-    `    hasOnlyProperties(value, ${JSON.stringify(allowedProperties)})`,
+    ...(schema.additionalProperties === true
+      ? []
+      : [`    hasOnlyProperties(value, ${JSON.stringify(allowedProperties)})`]),
     ...Object.entries(schema.properties ?? {}).map(([property, propertySchema]) => {
       const check = propertyCheck(propertySchema, `value.${property}`);
       return required.has(property)
@@ -137,6 +391,12 @@ function renderGuard(name, schema) {
         : `    (value.${property} === undefined || ${check})`;
     }),
   ];
+  if (name === "LedgerEntryViewWire") {
+    checks.push(
+      "    (value.sourceCapability === undefined) === (value.sourceRecordId === undefined)",
+      "    (value.sourceCapability === undefined) === (value.createdAt === undefined)",
+    );
+  }
   return `function is${name}(value: unknown): value is ${name} {
   return (
     isRecord(value) &&
@@ -159,6 +419,52 @@ const additionalSchemas = Object.fromEntries([
   "CompanyMembership",
   "CompanyMembershipListResponse",
   "CompanyMembershipResponse",
+  "CompanyOnboardingRequest",
+  "CompanyOnboardingResponse",
+  "CompanyAgreementAcceptanceRequest",
+  "CompanyAgreementAcceptanceResponse",
+  "EligibilityPrecheckRequest",
+  "EligibilityDefinitiveRequest",
+  "EligibilityPublicFacts",
+  "EligibilityQuestion",
+  "CompanyYearPromise",
+  "EligibilityDecisionResponse",
+  "CompanyYearAdmissionRequest",
+  "CompanyYearAdmissionResponse",
+  "CompanyYearEligibilityRecheckRequest",
+  "CompanyYearEligibilityStateResponse",
+  "CompanyAccessRecord",
+  "CompanyAccessRecordResponse",
+  "OperatorContextResponse",
+  "OperatorCompanyRecord",
+  "OperatorCompanySearchResponse",
+  "GrantSupportAccessRequest",
+  "RevokeSupportAccessRequest",
+  "OpenSupportCaseRequest",
+  "SupportAccessGrant",
+  "SupportAccessGrantResponse",
+  "SupportCaseOpening",
+  "SupportCaseOpeningResponse",
+  "SupportCompanyResource",
+  "SupportAuditEventResource",
+  "SupportCancellationResource",
+  "SupportFilingSubmissionResource",
+  "SupportFilingReadinessResource",
+  "SupportBillingAccountResource",
+  "SupportBillingPaymentEventResource",
+  "SupportAuthorityPermissionResource",
+  "SupportAuthorityTestRunResource",
+  "SupportSystemUserRequestResource",
+  "SupportProductionPilotEntitlementResource",
+  "SupportFilingApprovalSnapshotResource",
+  "SupportProductionFilingSubmissionResource",
+  "SupportProductionFilingEventResource",
+  "SupportProductionFeedbackArtifactResource",
+  "SupportDocumentResource",
+  "SupportStorageObjectResource",
+  "SupportDeletionReviewResource",
+  "SupportCaseResources",
+  "SupportCaseSnapshotResponse",
   "AcceptCompanyInvitationRequest",
   "CreateCompanyInvitationRequest",
   "InvitationLookup",
@@ -179,6 +485,186 @@ const additionalSchemas = Object.fromEntries([
   "ReviewCompanyDeletionRequest",
   "FinalizeCompanyDeletionRequest",
 ].map((name) => [name, contract.components.schemas[name]]));
+const ledgerSchemas = Object.fromEntries([
+  "AdministrativeCostEntryWire",
+  "AdministrativeCostCategory",
+  "CompanyYearCloseGapCode",
+  "CompanyYearCloseState",
+  "LedgerAdministrativeCostWire",
+  "LedgerCorporateDecisionFinalizationWire",
+  "LedgerCompanyYearCloseAssessmentWire",
+  "LedgerEntryKind",
+  "LedgerEntryPageWire",
+  "LedgerEntryViewWire",
+  "LedgerLineWire",
+  "LedgerLockPeriodWire",
+  "LedgerManualJournalWire",
+  "LedgerMoneyWire",
+  "LedgerFactReferenceWire",
+  "OpeningBalanceCategory",
+  "OpeningPositionMode",
+  "BankLoanMaturity",
+  "InvestmentClassification",
+  "CapitalIncreasePhase",
+  "CapitalReductionRecognition",
+  "OpeningClassifiedBalanceWire",
+  "OpeningBankLoanWire",
+  "OpeningInvestmentWire",
+  "OpeningCapitalIncreaseWire",
+  "OpeningCapitalReductionWire",
+  "OpeningDividendReceivableWire",
+  "OpeningDividendPayableWire",
+  "NewYearShareholderWire",
+  "NewYearOpeningEntryWire",
+  "NewYearStartResultWire",
+  "NewYearStartWire",
+  "LedgerOpeningShareholderWire",
+  "LedgerOpeningSnapshotPageWire",
+  "LedgerOpeningSnapshotWire",
+  "LedgerPageWire",
+  "LedgerPeriodLockPageWire",
+  "LedgerPeriodLockWire",
+  "LedgerReconstructionAssessmentWire",
+  "ReconstructionGapCode",
+  "LedgerPostedEntryWire",
+  "LedgerRiskFlagWire",
+  "LedgerRiskCode",
+  "LedgerSourceCapability",
+  "LedgerTaxSettlementWire",
+  "LedgerWriterResultWire",
+  "ReconstructionState",
+  "TaxSettlementKind",
+].map((name) => [name, contract.components.schemas[name]]));
+const investmentsSchemas = Object.fromEntries([
+  "InvestmentActivityKind",
+  "InvestmentCorrectionTargetKind",
+  "InvestmentFactReferenceWire",
+  "InvestmentSourceCapability",
+  "InvestmentCorrectionPageWire",
+  "InvestmentCorrectionWire",
+  "InvestmentActivityPageWire",
+  "InvestmentActivityWire",
+  "InvestmentLifecycleEventPageWire",
+  "InvestmentLifecycleEventWire",
+  "AcquisitionLotPageWire",
+  "AcquisitionLotWire",
+  "InvestmentAccountingClassification",
+  "InvestmentDocumentStatus",
+  "InvestmentEvidenceMode",
+  "InvestmentKind",
+  "InvestmentLotHistoryStatus",
+  "InvestmentMeasurementRule",
+  "InvestmentSettlementBalanceKind",
+  "InvestmentTaxTreatment",
+  "InvestmentTradingProfile",
+  "InvestmentPositionPageWire",
+  "InvestmentPositionMovementWire",
+  "InvestmentPositionWire",
+  "InvestmentYearEndMeasurementPageWire",
+  "InvestmentYearEndMeasurementViewWire",
+  "InvestmentsPageWire",
+  "InvestmentsEconomicEventResultWire",
+  "InvestmentsCashSettlementResultWire",
+  "InvestmentsRecognizeSharePurchaseWire",
+  "InvestmentsRecognizeShareSaleWire",
+  "InvestmentsRecognizeReceivedDividendWire",
+  "InvestmentsRecognizeReceivedFundDistributionWire",
+  "InvestmentsSettleCashWire",
+  "InvestmentsYearEndMeasurementResultWire",
+  "InvestmentsYearEndMeasurementWire",
+  "InvestmentsCorrectionResultWire",
+  "InvestmentsCorrectionWire",
+  "InvestmentsSharePurchaseRecognitionWire",
+  "InvestmentsShareSaleRecognitionWire",
+  "InvestmentsDividendRecognitionWire",
+  "InvestmentsFundDistributionRecognitionWire",
+  "InvestmentsCashSettlementWire",
+  "InvestmentsReplacementCashSettlementWire",
+  "ShareSaleAllocationPageWire",
+  "ShareSaleAllocationWire",
+].map((name) => [name, contract.components.schemas[name]]));
+const documentsSchemas = Object.fromEntries([
+  "DocumentBackupObjectWire",
+  "DocumentBackupProjectionWire",
+  "DocumentBeginUploadWire",
+  "DocumentListWire",
+  "DocumentRemovalRequestWire",
+  "DocumentTransferKind",
+  "DocumentTransferRequestWire",
+  "DocumentTransferWire",
+  "DocumentUploadTransferWire",
+  "DocumentWire",
+].map((name) => [name, contract.components.schemas[name]]));
+const corporateGovernanceSchemas = Object.fromEntries([
+  "BoardRole",
+  "BoardTreatmentMethod",
+  "CorporateAnnualBasisWire",
+  "CorporateArtifactKind",
+  "CorporateBoardMeetingWire",
+  "CorporateBoardParticipantWire",
+  "CorporateCanonicalBoardParticipantWire",
+  "CorporateCanonicalDecisionWire",
+  "CorporateCanonicalShareholderWire",
+  "CorporateCompanyFactsWire",
+  "CorporateFinancialTotalsWire",
+  "CorporateGeneralMeetingWire",
+  "CorporateOwnerDividendConfirmationsWire",
+  "CorporateOwnerDividendFactsWire",
+  "CorporateReviewedFactsWire",
+  "CorporateReviewedShareholderWire",
+  "CorporateShareholderBallotWire",
+  "CorporateShareholderWire",
+  "MeetingForm",
+  "OwnerDividendAllocationWire",
+  "OwnerDividendApprovalWire",
+  "OwnerDividendArtifactWire",
+  "OwnerDividendDocumentsWire",
+  "OwnerDividendFinalizationWire",
+  "OwnerDividendLifecycleWire",
+  "OwnerDividendPaymentWire",
+  "OwnerDividendProposalWire",
+  "OwnerDividendState",
+  "ProposedOwnerDividendWire",
+  "RecordedShareholderLoanWire",
+  "ShareholderLoanDirection",
+  "ShareholderLoanDocumentStatus",
+  "ShareholderLoanWire",
+  "ShareholderVote",
+].map((name) => [name, contract.components.schemas[name]]));
+const bankingSchemas = Object.fromEntries([
+  "AcceptBankFileWire",
+  "AcceptBankSuggestionWire",
+  "AcceptedBankSuggestionWire",
+  "BankAccountWire",
+  "BankConnectionActionWire",
+  "BankConnectionListWire",
+  "BankConnectionWire",
+  "BankConsentRedirectWire",
+  "BankFileColumnMappingWire",
+  "BankFilePreviewResultWire",
+  "BankFilePreviewWire",
+  "BankStatementImportResultWire",
+  "BankStatementImportWire",
+  "BankSuggestionAcceptancePageWire",
+  "BankSuggestionKind",
+  "BankSuggestionWire",
+  "BankSyncMode",
+  "BankSyncResultWire",
+  "BankSyncWire",
+  "BankTransactionPageWire",
+  "BankTransactionWire",
+  "BankingPageWire",
+  "SupportedBankDataFormat",
+  "StartBankConnectionWire",
+].map((name) => [name, contract.components.schemas[name]]));
+const marketingMeasurementSchemas = Object.fromEntries([
+  "MarketingFunnelReportResponse",
+  "MarketingMeasurementEventResponse",
+  "MarketingMeasurementEventWire",
+  "MarketingMeasurementWithdrawalRequest",
+  "MarketingMeasurementWithdrawalResponse",
+  "MarketingRepeatedSignalWire",
+].map((name) => [name, contract.components.schemas[name]]));
 const problemSchema = resolveSchema(
   operation.responses["503"].content["application/problem+json"].schema,
 );
@@ -192,7 +678,19 @@ ${renderInterface("CompanyContext", companyContextSchema)}
 
 ${renderInterface("CompanyContextResponse", companyContextResponseSchema)}
 
-${Object.entries(additionalSchemas).map(([name, schema]) => renderInterface(name, schema)).join("\n\n")}
+${Object.entries(additionalSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
+${Object.entries(ledgerSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
+${Object.entries(investmentsSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
+${Object.entries(documentsSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
+${Object.entries(corporateGovernanceSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
+${Object.entries(bankingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
+${Object.entries(marketingMeasurementSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${renderInterface("ProblemDetails", problemSchema)}
 
@@ -243,6 +741,43 @@ ${[
   "CompanyMembership",
   "CompanyMembershipListResponse",
   "CompanyMembershipResponse",
+  "CompanyOnboardingResponse",
+  "CompanyAgreementAcceptanceResponse",
+  "EligibilityPublicFacts",
+  "EligibilityQuestion",
+  "CompanyYearPromise",
+  "EligibilityDecisionResponse",
+  "CompanyYearAdmissionResponse",
+  "CompanyYearEligibilityStateResponse",
+  "CompanyAccessRecord",
+  "CompanyAccessRecordResponse",
+  "OperatorContextResponse",
+  "OperatorCompanyRecord",
+  "OperatorCompanySearchResponse",
+  "SupportAccessGrant",
+  "SupportAccessGrantResponse",
+  "SupportCaseOpening",
+  "SupportCaseOpeningResponse",
+  "SupportCompanyResource",
+  "SupportAuditEventResource",
+  "SupportCancellationResource",
+  "SupportFilingSubmissionResource",
+  "SupportFilingReadinessResource",
+  "SupportBillingAccountResource",
+  "SupportBillingPaymentEventResource",
+  "SupportAuthorityPermissionResource",
+  "SupportAuthorityTestRunResource",
+  "SupportSystemUserRequestResource",
+  "SupportProductionPilotEntitlementResource",
+  "SupportFilingApprovalSnapshotResource",
+  "SupportProductionFilingSubmissionResource",
+  "SupportProductionFilingEventResource",
+  "SupportProductionFeedbackArtifactResource",
+  "SupportDocumentResource",
+  "SupportStorageObjectResource",
+  "SupportDeletionReviewResource",
+  "SupportCaseResources",
+  "SupportCaseSnapshotResponse",
   "InvitationLookup",
   "InvitationSideEffectContinuation",
   "InvitationSideEffectContinuationList",
@@ -254,6 +789,18 @@ ${[
   "CompanyDeletionReview",
   "CompanyDeletionReviewResponse",
 ].map((name) => renderGuard(name, additionalSchemas[name])).join("\n\n")}
+
+${Object.entries(ledgerSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
+
+${Object.entries(investmentsSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
+
+${Object.entries(documentsSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
+
+${Object.entries(corporateGovernanceSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
+
+${Object.entries(bankingSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
+
+${Object.entries(marketingMeasurementSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
 ${renderGuard("ProblemDetails", problemSchema)}
 
@@ -284,8 +831,71 @@ export interface TalliRequestOptions {
   requestId?: string;
 }
 
+export interface TalliMutationOptions extends TalliRequestOptions {
+  idempotencyKey: string;
+}
+
+export interface LedgerListRequest extends TalliRequestOptions {
+  companyIds: readonly string[];
+  cursor?: string;
+  limit?: number;
+}
+
+export interface LedgerEntryListRequest extends LedgerListRequest {
+  includeSource?: boolean;
+}
+
+export interface InvestmentsListRequest extends TalliRequestOptions {
+  companyIds: readonly string[];
+  cursor?: string;
+  limit?: number;
+}
+
+export interface DocumentsListRequest extends TalliRequestOptions {
+  companyId: string;
+}
+
+export interface DocumentsBackupProjectionRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+}
+
+export interface LedgerOpeningSnapshotListRequest extends TalliRequestOptions {
+  companyIds: readonly string[];
+  cursor?: string;
+  limit?: number;
+}
+
+export interface LedgerReconstructionRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+}
+
+export interface BankingListRequest extends TalliRequestOptions {
+  companyIds: readonly string[];
+  cursor?: string;
+  limit?: number;
+}
+
+export interface BankingConnectionCallbackRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+  code?: string;
+  state?: string;
+  resourceId?: string;
+  result?: string;
+}
+
+export interface BankingConnectionListRequest extends TalliRequestOptions {
+  companyId: string;
+}
+
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
   companyId?: string;
+}
+
+export interface MarketingMeasurementReportRequest extends TalliRequestOptions {
+  windowDays?: number;
 }
 
 export function createTalliApiClient(options: TalliApiClientOptions) {
@@ -299,6 +909,10 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     body: unknown,
     guard: (value: unknown) => value is T,
   ): Promise<T> {
+    const idempotencyKey = "idempotencyKey" in request
+      && typeof request.idempotencyKey === "string"
+      ? request.idempotencyKey
+      : undefined;
     const response = await fetchImplementation(url, {
       body: body === undefined ? undefined : JSON.stringify(body),
       cache: "no-store",
@@ -307,6 +921,9 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         ...(body === undefined ? {} : { ["Content-Type"]: "application/json" }),
         ...options.headers,
         ...request.headers,
+        ...(idempotencyKey === undefined
+          ? {}
+          : { ["Idempotency-Key"]: idempotencyKey }),
         ...(request.requestId === undefined
           ? {}
           : { [${JSON.stringify(correlationParameter.name)}]: request.requestId }),
@@ -329,6 +946,69 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     });
     if (!guard(candidate)) throw new TalliApiError(502, undefined);
     return candidate;
+  }
+
+  async function executeEmpty(
+    url: string,
+    method: string,
+    request: TalliMutationOptions,
+    body: unknown,
+  ): Promise<void> {
+    const response = await fetchImplementation(url, {
+      body: JSON.stringify(body),
+      cache: "no-store",
+      headers: {
+        Accept: "application/json, application/problem+json",
+        ["Content-Type"]: "application/json",
+        ...options.headers,
+        ...request.headers,
+        ["Idempotency-Key"]: request.idempotencyKey,
+        ...(request.requestId === undefined
+          ? {}
+          : { [${JSON.stringify(correlationParameter.name)}]: request.requestId }),
+      },
+      method,
+      signal: request.signal,
+    });
+    if (!response.ok) {
+      const contentType = response.headers.get("content-type") ?? "";
+      const candidate = contentType.includes("application/problem+json")
+        ? await response.json().catch(() => undefined)
+        : undefined;
+      throw new TalliApiError(
+        response.status,
+        isProblemDetails(candidate) ? candidate : undefined,
+      );
+    }
+  }
+
+  async function executeLedgerWriter(
+    path: string,
+    body: { companyId: string; incomeYear: number },
+    request: TalliMutationOptions,
+    expectedKind: LedgerEntryKind | null,
+  ): Promise<LedgerWriterResultWire> {
+    const result = await executeJson(
+      \`\${baseUrl}\${path}\`,
+      "POST",
+      request,
+      body,
+      isLedgerWriterResultWire,
+    );
+    if (expectedKind === null) {
+      if (result.postedEntry !== null) throw new TalliApiError(502, undefined);
+      return result;
+    }
+    if (
+      result.postedEntry === null
+      || result.postedEntry.companyId !== body.companyId
+      || result.postedEntry.incomeYear !== body.incomeYear
+      || result.postedEntry.entryKind !== expectedKind
+      || result.postedEntry.replayed !== result.replayed
+    ) {
+      throw new TalliApiError(502, undefined);
+    }
+    return result;
   }
 
   return {
@@ -399,6 +1079,178 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         throw new TalliApiError(502, undefined);
       }
       return candidate;
+    },
+
+    async companyAccessOnboardCompany(
+      body: CompanyOnboardingRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyOnboardingResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/onboarding\`,
+        "POST",
+        request,
+        body,
+        isCompanyOnboardingResponse,
+      );
+    },
+
+    async companyAccessEligibilityPrecheck(
+      body: EligibilityPrecheckRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<EligibilityDecisionResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/eligibility/precheck\`,
+        "POST",
+        request,
+        body,
+        isEligibilityDecisionResponse,
+      );
+    },
+
+    async companyAccessEligibilityDefinitive(
+      body: EligibilityDefinitiveRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<EligibilityDecisionResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/eligibility/definitive\`,
+        "POST",
+        request,
+        body,
+        isEligibilityDecisionResponse,
+      );
+    },
+
+    async companyAccessAdmitCompanyYear(
+      body: CompanyYearAdmissionRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyYearAdmissionResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/company-year-admissions\`,
+        "POST",
+        request,
+        body,
+        isCompanyYearAdmissionResponse,
+      );
+    },
+
+    async companyAccessRecheckCompanyYearEligibility(
+      companyYearAdmissionId: string,
+      body: CompanyYearEligibilityRecheckRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyYearEligibilityStateResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/company-year-admissions/\${encodeURIComponent(companyYearAdmissionId)}/eligibility-rechecks\`,
+        "POST",
+        request,
+        body,
+        isCompanyYearEligibilityStateResponse,
+      );
+    },
+
+    async companyAccessReacceptAgreement(
+      body: CompanyAgreementAcceptanceRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyAgreementAcceptanceResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/agreements/reaccept\`,
+        "POST",
+        request,
+        body,
+        isCompanyAgreementAcceptanceResponse,
+      );
+    },
+
+    async companyAccessGetCompanyRecord(
+      companyId: string,
+      request: TalliRequestOptions = {},
+    ): Promise<CompanyAccessRecordResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/companies/\${encodeURIComponent(companyId)}\`,
+        "GET",
+        request,
+        undefined,
+        isCompanyAccessRecordResponse,
+      );
+    },
+
+    async companyAccessGetOperatorContext(
+      request: TalliRequestOptions = {},
+    ): Promise<OperatorContextResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/operator-context\`,
+        "GET",
+        request,
+        undefined,
+        isOperatorContextResponse,
+      );
+    },
+
+    async companyAccessSearchOperatorCompanies(
+      query: string,
+      request: TalliRequestOptions = {},
+    ): Promise<OperatorCompanySearchResponse> {
+      const search = new URLSearchParams({ query });
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/operator-companies?\${search}\`,
+        "GET",
+        request,
+        undefined,
+        isOperatorCompanySearchResponse,
+      );
+    },
+
+    async companyAccessGrantSupportAccess(
+      body: GrantSupportAccessRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<SupportAccessGrantResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/operator-support-grants\`,
+        "POST",
+        request,
+        body,
+        isSupportAccessGrantResponse,
+      );
+    },
+
+    async companyAccessRevokeSupportAccess(
+      caseId: string,
+      body: RevokeSupportAccessRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<SupportAccessGrantResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/operator-support-grants/\${encodeURIComponent(caseId)}/revocations\`,
+        "POST",
+        request,
+        body,
+        isSupportAccessGrantResponse,
+      );
+    },
+
+    async companyAccessOpenSupportCase(
+      caseId: string,
+      body: OpenSupportCaseRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<SupportCaseOpeningResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/operator-support-cases/\${encodeURIComponent(caseId)}/openings\`,
+        "POST",
+        request,
+        body,
+        isSupportCaseOpeningResponse,
+      );
+    },
+
+    async companyAccessReadSupportCase(
+      caseId: string,
+      request: TalliRequestOptions = {},
+    ): Promise<SupportCaseSnapshotResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-access/operator-support-cases/\${encodeURIComponent(caseId)}\`,
+        "GET",
+        request,
+        undefined,
+        isSupportCaseSnapshotResponse,
+      );
     },
 
     async companyAccessListInvitations(
@@ -564,13 +1416,17 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
 
     async companyAccessReviewDeletion(
       cancellationId: string,
+      supportCaseId: string,
       body: ReviewCompanyDeletionRequest,
       request: TalliRequestOptions = {},
     ): Promise<CompanyDeletionReviewResponse> {
       return executeJson(
         \`\${baseUrl}/api/v1/company-access/cancellations/\${encodeURIComponent(cancellationId)}/reviews\`,
         "POST",
-        request,
+        {
+          ...request,
+          headers: { ...request.headers, "X-Support-Case-ID": supportCaseId },
+        },
         body,
         isCompanyDeletionReviewResponse,
       );
@@ -601,6 +1457,778 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isCompanyCancellationResponse,
+      );
+    },
+
+    async ledgerListEntries(
+      request: LedgerEntryListRequest,
+    ): Promise<LedgerEntryPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      if (request.includeSource !== undefined) query.set("includeSource", String(request.includeSource));
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/entries?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isLedgerEntryPageWire,
+      );
+    },
+
+    async documentsList(
+      request: DocumentsListRequest,
+    ): Promise<DocumentListWire> {
+      const query = new URLSearchParams({ companyId: request.companyId });
+      return executeJson(
+        \`\${baseUrl}/api/v1/documents?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isDocumentListWire,
+      );
+    },
+
+    async documentsBackupProjection(
+      request: DocumentsBackupProjectionRequest,
+    ): Promise<DocumentBackupProjectionWire> {
+      const query = new URLSearchParams({
+        company_id: request.companyId,
+        income_year: String(request.incomeYear),
+      });
+      return executeJson(
+        \`\${baseUrl}/api/v1/documents/backup-projection?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isDocumentBackupProjectionWire,
+      );
+    },
+
+    async documentsBeginUpload(
+      body: DocumentBeginUploadWire,
+      request: TalliMutationOptions,
+    ): Promise<DocumentUploadTransferWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/documents/uploads\`,
+        "POST",
+        request,
+        body,
+        isDocumentUploadTransferWire,
+      );
+    },
+
+    async documentsFinalizeUpload(
+      documentId: string,
+      request: TalliMutationOptions,
+    ): Promise<DocumentWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/documents/\${encodeURIComponent(documentId)}/finalize\`,
+        "POST",
+        request,
+        undefined,
+        isDocumentWire,
+      );
+    },
+
+    async documentsRemove(
+      documentId: string,
+      body: DocumentRemovalRequestWire,
+      request: TalliMutationOptions,
+    ): Promise<DocumentWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/documents/\${encodeURIComponent(documentId)}/remove\`,
+        "POST",
+        request,
+        body,
+        isDocumentWire,
+      );
+    },
+
+    async documentsCreateTransfer(
+      documentId: string,
+      body: DocumentTransferRequestWire,
+      request: TalliMutationOptions,
+    ): Promise<DocumentTransferWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/documents/\${encodeURIComponent(documentId)}/transfers\`,
+        "POST",
+        request,
+        body,
+        isDocumentTransferWire,
+      );
+    },
+
+    async corporateGovernanceProposeOwnerDividend(
+      body: OwnerDividendProposalWire,
+      request: TalliMutationOptions,
+    ): Promise<ProposedOwnerDividendWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/owner-dividends/proposals\`,
+        "POST",
+        request,
+        body,
+        isProposedOwnerDividendWire,
+      );
+    },
+
+    async corporateGovernanceRecordShareholderLoan(
+      body: ShareholderLoanWire,
+      request: TalliMutationOptions,
+    ): Promise<RecordedShareholderLoanWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/shareholder-loans\`,
+        "POST",
+        request,
+        body,
+        isRecordedShareholderLoanWire,
+      );
+    },
+
+    async corporateGovernanceRegisterOwnerDividendDocuments(
+      decisionId: string,
+      body: OwnerDividendDocumentsWire,
+      request: TalliMutationOptions,
+    ): Promise<OwnerDividendLifecycleWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/owner-dividends/\${encodeURIComponent(decisionId)}/documents\`,
+        "POST",
+        request,
+        body,
+        isOwnerDividendLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceApproveOwnerDividend(
+      decisionId: string,
+      body: OwnerDividendApprovalWire,
+      request: TalliMutationOptions,
+    ): Promise<OwnerDividendLifecycleWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/owner-dividends/\${encodeURIComponent(decisionId)}/approvals\`,
+        "POST",
+        request,
+        body,
+        isOwnerDividendLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceFinalizeOwnerDividend(
+      decisionId: string,
+      body: OwnerDividendFinalizationWire,
+      request: TalliMutationOptions,
+    ): Promise<OwnerDividendLifecycleWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/owner-dividends/\${encodeURIComponent(decisionId)}/finalizations\`,
+        "POST",
+        request,
+        body,
+        isOwnerDividendLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceRecordOwnerDividendPayment(
+      decisionId: string,
+      body: OwnerDividendPaymentWire,
+      request: TalliMutationOptions,
+    ): Promise<OwnerDividendLifecycleWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/owner-dividends/\${encodeURIComponent(decisionId)}/payments\`,
+        "POST",
+        request,
+        body,
+        isOwnerDividendLifecycleWire,
+      );
+    },
+
+    async investmentsRecognizeSharePurchase(
+      body: InvestmentsRecognizeSharePurchaseWire,
+      request: TalliMutationOptions,
+    ): Promise<InvestmentsEconomicEventResultWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/investments/share-purchase-recognitions\`,
+        "POST",
+        request,
+        body,
+        isInvestmentsEconomicEventResultWire,
+      );
+      if (result.eventId !== body.eventId) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async investmentsRecognizeShareSale(
+      body: InvestmentsRecognizeShareSaleWire,
+      request: TalliMutationOptions,
+    ): Promise<InvestmentsEconomicEventResultWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/investments/share-sale-recognitions\`,
+        "POST",
+        request,
+        body,
+        isInvestmentsEconomicEventResultWire,
+      );
+      if (result.eventId !== body.eventId || result.positionId !== body.positionId) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async investmentsRecognizeReceivedDividend(
+      body: InvestmentsRecognizeReceivedDividendWire,
+      request: TalliMutationOptions,
+    ): Promise<InvestmentsEconomicEventResultWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/investments/received-dividend-recognitions\`,
+        "POST",
+        request,
+        body,
+        isInvestmentsEconomicEventResultWire,
+      );
+      if (result.eventId !== body.eventId || result.positionId !== body.positionId) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async investmentsRecognizeReceivedFundDistribution(
+      body: InvestmentsRecognizeReceivedFundDistributionWire,
+      request: TalliMutationOptions,
+    ): Promise<InvestmentsEconomicEventResultWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/investments/received-fund-distribution-recognitions\`,
+        "POST",
+        request,
+        body,
+        isInvestmentsEconomicEventResultWire,
+      );
+      if (result.eventId !== body.eventId || result.positionId !== body.positionId) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async investmentsSettleCash(
+      body: InvestmentsSettleCashWire,
+      request: TalliMutationOptions,
+    ): Promise<InvestmentsCashSettlementResultWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/investments/cash-settlements\`,
+        "POST",
+        request,
+        body,
+        isInvestmentsCashSettlementResultWire,
+      );
+      if (result.settlementId !== body.settlementId || result.eventId !== body.eventId) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async investmentsRecordYearEndMeasurement(
+      body: InvestmentsYearEndMeasurementWire,
+      request: TalliMutationOptions,
+    ): Promise<InvestmentsYearEndMeasurementResultWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/investments/year-end-measurements\`,
+        "POST",
+        request,
+        body,
+        isInvestmentsYearEndMeasurementResultWire,
+      );
+      if (
+        result.measurementId !== body.measurementId ||
+        result.positionId !== body.positionId
+      ) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async investmentsCorrectInvestment(
+      body: InvestmentsCorrectionWire,
+      request: TalliMutationOptions,
+    ): Promise<InvestmentsCorrectionResultWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/investments/corrections\`,
+        "POST",
+        request,
+        body,
+        isInvestmentsCorrectionResultWire,
+      );
+      const replacementRecordId = body.replacement.replacementKind === "cash_settlement"
+        ? body.replacement.settlementId
+        : body.replacement.eventId;
+      if (
+        result.correctionId !== body.correctionId ||
+        result.targetKind !== body.targetKind ||
+        result.originalRecordId !== body.originalRecordId ||
+        result.replacementRecordId !== replacementRecordId
+      ) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async investmentsListPositions(
+      request: InvestmentsListRequest,
+    ): Promise<InvestmentPositionPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/investments/positions?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isInvestmentPositionPageWire,
+      );
+    },
+
+    async investmentsListCorrections(
+      request: InvestmentsListRequest,
+    ): Promise<InvestmentCorrectionPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/investments/corrections?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isInvestmentCorrectionPageWire,
+      );
+    },
+
+    async investmentsListActivity(
+      request: InvestmentsListRequest,
+    ): Promise<InvestmentActivityPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/investments/activity?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isInvestmentActivityPageWire,
+      );
+    },
+
+    async investmentsListEconomicEvents(
+      request: InvestmentsListRequest,
+    ): Promise<InvestmentLifecycleEventPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/investments/economic-events?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isInvestmentLifecycleEventPageWire,
+      );
+    },
+
+    async investmentsListAcquisitionLots(
+      request: InvestmentsListRequest,
+    ): Promise<AcquisitionLotPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/investments/acquisition-lots?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isAcquisitionLotPageWire,
+      );
+    },
+
+    async investmentsListShareSaleAllocations(
+      request: InvestmentsListRequest,
+    ): Promise<ShareSaleAllocationPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/investments/share-sale-allocations?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isShareSaleAllocationPageWire,
+      );
+    },
+
+    async investmentsListYearEndMeasurements(
+      request: InvestmentsListRequest,
+    ): Promise<InvestmentYearEndMeasurementPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/investments/year-end-measurements?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isInvestmentYearEndMeasurementPageWire,
+      );
+    },
+
+    async ledgerGetReconstructionAssessment(
+      request: LedgerReconstructionRequest,
+    ): Promise<LedgerReconstructionAssessmentWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+      });
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/reconstruction-assessment?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isLedgerReconstructionAssessmentWire,
+      );
+    },
+
+    async ledgerGetCompanyYearCloseAssessment(
+      request: LedgerReconstructionRequest,
+    ): Promise<LedgerCompanyYearCloseAssessmentWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+      });
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/company-year-close-assessment?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isLedgerCompanyYearCloseAssessmentWire,
+      );
+    },
+
+    async ledgerListOpeningSnapshots(
+      request: LedgerOpeningSnapshotListRequest,
+    ): Promise<LedgerOpeningSnapshotPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/opening-snapshots?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isLedgerOpeningSnapshotPageWire,
+      );
+    },
+
+    async ledgerListPeriodLocks(
+      request: LedgerListRequest,
+    ): Promise<LedgerPeriodLockPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/period-locks?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isLedgerPeriodLockPageWire,
+      );
+    },
+
+    async ledgerStartNewYear(
+      body: NewYearStartWire,
+      request: TalliMutationOptions,
+    ): Promise<NewYearStartResultWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/new-year-starts\`,
+        "POST",
+        request,
+        body,
+        isNewYearStartResultWire,
+      );
+    },
+
+    async ledgerPostAdministrativeCost(
+      body: LedgerAdministrativeCostWire,
+      request: TalliMutationOptions,
+    ): Promise<AdministrativeCostEntryWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/ledger/administrative-costs\`,
+        "POST",
+        request,
+        body,
+        isAdministrativeCostEntryWire,
+      );
+      if (result.companyId !== body.companyId || result.incomeYear !== body.incomeYear) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async ledgerPostTaxSettlement(
+      body: LedgerTaxSettlementWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/tax-settlements",
+        body,
+        request,
+        "TAX_SETTLEMENT",
+      );
+    },
+
+    async ledgerFinalizeCorporateDecision(
+      body: LedgerCorporateDecisionFinalizationWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerWriterResultWire> {
+      return executeLedgerWriter(
+        "/api/v1/ledger/corporate-decisions/finalizations",
+        body,
+        request,
+        body.ledgerEntryId === undefined || body.ledgerEntryId === null
+          ? null
+          : "OWNER_DIVIDEND_DECLARED",
+      );
+    },
+
+    async ledgerPostManualJournal(
+      body: LedgerManualJournalWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerPostedEntryWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/manual-journals\`,
+        "POST",
+        request,
+        body,
+        isLedgerPostedEntryWire,
+      );
+    },
+
+    async ledgerLockPeriod(
+      body: LedgerLockPeriodWire,
+      request: TalliMutationOptions,
+    ): Promise<LedgerPeriodLockWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/period-locks\`,
+        "POST",
+        request,
+        body,
+        isLedgerPeriodLockWire,
+      );
+    },
+
+    async bankingImportStatement(
+      body: BankStatementImportWire,
+      request: TalliMutationOptions,
+    ): Promise<BankStatementImportResultWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/banking/statement-imports\`,
+        "POST",
+        request,
+        body,
+        isBankStatementImportResultWire,
+      );
+    },
+
+    async bankingStartConnection(
+      body: StartBankConnectionWire,
+      request: TalliMutationOptions,
+    ): Promise<BankConsentRedirectWire> {
+      return executeJson(
+        baseUrl + "/api/v1/banking/connections",
+        "POST",
+        request,
+        body,
+        isBankConsentRedirectWire,
+      );
+    },
+
+    async bankingListConnections(
+      request: BankingConnectionListRequest,
+    ): Promise<BankConnectionListWire> {
+      const query = new URLSearchParams({ companyId: request.companyId });
+      return executeJson(
+        baseUrl + "/api/v1/banking/connections?" + query,
+        "GET",
+        request,
+        undefined,
+        isBankConnectionListWire,
+      );
+    },
+
+    async bankingCompleteConnection(
+      connectionId: string,
+      request: BankingConnectionCallbackRequest,
+    ): Promise<BankConnectionWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+      });
+      if (request.code !== undefined) query.set("code", request.code);
+      if (request.state !== undefined) query.set("state", request.state);
+      if (request.resourceId !== undefined) query.set("resource_id", request.resourceId);
+      if (request.result !== undefined) query.set("result", request.result);
+      return executeJson(
+        baseUrl + "/api/v1/banking/connections/" + encodeURIComponent(connectionId) + "/callback?" + query,
+        "GET",
+        request,
+        undefined,
+        isBankConnectionWire,
+      );
+    },
+
+    async bankingRevokeConnection(
+      connectionId: string,
+      body: BankConnectionActionWire,
+      request: TalliMutationOptions,
+    ): Promise<void> {
+      return executeEmpty(
+        baseUrl + "/api/v1/banking/connections/" + encodeURIComponent(connectionId) + "/revoke",
+        "POST",
+        request,
+        body,
+      );
+    },
+
+    async bankingSyncAccount(
+      connectionId: string,
+      accountId: string,
+      body: BankSyncWire,
+      request: TalliMutationOptions,
+    ): Promise<BankSyncResultWire> {
+      return executeJson(
+        baseUrl + "/api/v1/banking/connections/" + encodeURIComponent(connectionId)
+          + "/accounts/" + encodeURIComponent(accountId) + "/syncs",
+        "POST",
+        request,
+        body,
+        isBankSyncResultWire,
+      );
+    },
+
+    async bankingPreviewSourceFile(
+      body: BankFilePreviewWire,
+      request: TalliMutationOptions,
+    ): Promise<BankFilePreviewResultWire> {
+      return executeJson(
+        baseUrl + "/api/v1/banking/source-files/previews",
+        "POST",
+        request,
+        body,
+        isBankFilePreviewResultWire,
+      );
+    },
+
+    async bankingAcceptSourceFile(
+      sourceFileId: string,
+      body: AcceptBankFileWire,
+      request: TalliMutationOptions,
+    ): Promise<BankStatementImportResultWire> {
+      return executeJson(
+        baseUrl + "/api/v1/banking/source-files/" + encodeURIComponent(sourceFileId) + "/acceptance",
+        "POST",
+        request,
+        body,
+        isBankStatementImportResultWire,
+      );
+    },
+
+    async bankingListTransactions(
+      request: BankingListRequest,
+    ): Promise<BankTransactionPageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/banking/transactions?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isBankTransactionPageWire,
+      );
+    },
+
+    async bankingAcceptSuggestion(
+      body: AcceptBankSuggestionWire,
+      request: TalliMutationOptions,
+    ): Promise<AcceptedBankSuggestionWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/banking/suggestion-acceptances\`,
+        "POST",
+        request,
+        body,
+        isAcceptedBankSuggestionWire,
+      );
+    },
+
+    async bankingListSuggestionAcceptances(
+      request: BankingListRequest,
+    ): Promise<BankSuggestionAcceptancePageWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      if (request.cursor !== undefined) query.set("cursor", request.cursor);
+      if (request.limit !== undefined) query.set("limit", String(request.limit));
+      return executeJson(
+        \`\${baseUrl}/api/v1/banking/suggestion-acceptances?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isBankSuggestionAcceptancePageWire,
+      );
+    },
+
+    async marketingMeasurementRecordEvent(
+      body: MarketingMeasurementEventWire,
+      request: TalliRequestOptions = {},
+    ): Promise<MarketingMeasurementEventResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/marketing-measurement/events\`,
+        "POST",
+        request,
+        body,
+        isMarketingMeasurementEventResponse,
+      );
+    },
+
+    async marketingMeasurementWithdrawSession(
+      body: MarketingMeasurementWithdrawalRequest,
+      request: TalliRequestOptions = {},
+    ): Promise<MarketingMeasurementWithdrawalResponse> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/marketing-measurement/withdrawals\`,
+        "POST",
+        request,
+        body,
+        isMarketingMeasurementWithdrawalResponse,
+      );
+    },
+
+    async marketingMeasurementGetReport(
+      request: MarketingMeasurementReportRequest = {},
+    ): Promise<MarketingFunnelReportResponse> {
+      const query = new URLSearchParams();
+      if (request.windowDays !== undefined) query.set("window_days", String(request.windowDays));
+      const suffix = query.size ? \`?\${query}\` : "";
+      return executeJson(
+        \`\${baseUrl}/api/v1/marketing-measurement/report\${suffix}\`,
+        "GET",
+        request,
+        undefined,
+        isMarketingFunnelReportResponse,
       );
     },
   };

@@ -10,6 +10,7 @@ import {
 import { Banner, StatusBadge, SubmitButton } from "../../../components/ui";
 import type { CorporateArtifactKind, CorporateDecisionInput } from "../../../lib/corporate-documents";
 import { requiredCorporateArtifactSigners } from "../../../lib/corporate-signed-artifacts";
+import { loadAcceptedMembershipCompany } from "../../../lib/company-access-context";
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
 import { SignedArtifactUpload } from "./SignedArtifactUpload";
 
@@ -17,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ decisionId: string }>;
-  searchParams?: Promise<{ error?: string }>;
+  searchParams?: Promise<{ error?: string; finalizeDecisionOperationId?: string }>;
 };
 
 const KIND_LABELS: Record<CorporateArtifactKind, string> = {
@@ -55,15 +56,8 @@ export default async function CorporateDecisionPage({ params, searchParams }: Pr
     .maybeSingle();
   if (decisionResult.error || !decisionResult.data) notFound();
   const decision = decisionResult.data;
-  const membershipResult = await supabase
-    .from("company_memberships")
-    .select("company_id")
-    .eq("company_id", decision.company_id)
-    .eq("user_id", user.id)
-    .eq("role", "owner")
-    .not("accepted_at", "is", null)
-    .maybeSingle();
-  if (membershipResult.error || !membershipResult.data) notFound();
+  const company = await loadAcceptedMembershipCompany(decision.company_id);
+  if (!company || company.role !== "owner") notFound();
 
   const [setResult, eventsResult, finalizationResult] = await Promise.all([
     supabase
@@ -214,6 +208,7 @@ export default async function CorporateDecisionPage({ params, searchParams }: Pr
           {factsApproved && allSigned ? (
             <form action={finalizeCorporateDecision} className="wizardForm">
               <LifecycleFields decisionId={decision.id} setId={documentSet.id} decisionHash={decision.decision_hash} />
+              <input type="hidden" name="operationId" value={query?.finalizeDecisionOperationId ?? randomUUID()} />
               <input type="hidden" name="finalizationId" value={randomUUID()} />
               {decision.decision_kind === "owner_dividend" ? (
                 <>

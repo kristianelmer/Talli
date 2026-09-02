@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-capability",
+  "name": "corporate_governance",
+  "path": "apps/backend/src/talli_backend/modules/corporate_governance",
+  "owner": "backend:corporate_governance",
+  "purpose": "Own accounting policies, corporate decisions, shareholder loans, owner dividends, signing and finalization state, and deterministic corporate-document semantics without owning generic storage or ledger posting.",
+  "documentation": "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.corporate_governance.public",
+  "exports": {
+    "commands": ["ApproveOwnerDividendCommand", "FinalizeOwnerDividendCommand", "OwnerDividendProposalCommand", "RecordOwnerDividendPaymentCommand", "RecordShareholderLoanCommand", "RegisterOwnerDividendDocumentsCommand"],
+    "queries": ["ApprovedAnnualBasis", "BoardMeeting", "BoardParticipant", "CanonicalBoardParticipant", "CanonicalDecisionShareholder", "CanonicalOwnerDividendDecision", "CanonicalShareholderLoan", "GeneralMeeting", "OwnerDividendAllocation", "OwnerDividendArtifactReference", "OwnerDividendConfirmations", "OwnerDividendFacts", "OwnerDividendFinancialTotals", "OwnerDividendLifecycle", "PersistedCompanyFacts", "PersistedShareholderFacts", "PreparedOwnerDividendFinalization", "PreparedOwnerDividendPayment", "PreparedShareholderLoan", "ProposedOwnerDividend", "RecordedShareholderLoan", "ReviewedOwnerDividendFacts", "ReviewedShareholderFacts", "ShareholderBallot"],
+    "events": [],
+    "errors": ["CorporateGovernanceError", "CorporateGovernanceErrorCode"],
+    "identifiers": ["AccountingEntryReference", "BankTransactionReference", "BoardRole", "BoardTreatmentMethod", "CorporateArtifactId", "CorporateArtifactKind", "CorporateDecisionId", "CorporateDocumentSetId", "CorporateEventId", "CorporateFinalizationId", "CorporateGovernancePersistence", "CorporateSourceReference", "DocumentReference", "MeetingForm", "OwnerDividendState", "ShareholderLoanDirection", "ShareholderLoanDocumentStatus", "ShareholderVote", "corporate_governance_persistence_adapter"]
+  },
+  "owns": {
+    "postgresSchemas": ["corporate_governance"],
+    "tables": ["corporate_governance.owner_dividend_accounting_policies", "corporate_governance.owner_dividend_artifacts", "corporate_governance.owner_dividend_decisions", "corporate_governance.owner_dividend_events", "corporate_governance.owner_dividend_finalizations", "corporate_governance.owner_dividend_payments", "corporate_governance.shareholder_loans"],
+    "storageBuckets": [],
+    "projections": [],
+    "migrations": "supabase/migrations/20260902070000_corporate_governance_shareholder_loan.sql"
+  },
+  "ports": [
+    {
+      "name": "CorporateGovernancePersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.corporate_governance.public.CorporateGovernancePersistence",
+      "registrationDecorator": "talli_backend.modules.corporate_governance.public.corporate_governance_persistence_adapter",
+      "adapters": ["talli_backend.adapters.supabase_corporate_governance.SupabaseCorporateGovernanceSession"]
+    }
+  ],
+  "dependencies": [],
+  "allowedImports": ["__future__", "collections.abc", "dataclasses", "datetime", "enum", "hashlib", "json", "re", "talli_backend.modules.corporate_governance.public", "talli_backend.shared.kernel", "typing", "unicodedata", "uuid"],
+  "forbiddenResponsibilities": [
+    "Ledger accounts, posting lines, balance enforcement, or period-lock policy",
+    "Generic document metadata, blob storage, storage keys, retention, or object authorization",
+    "Bank-provider selection, credentials, consent, live calls, or provider-specific types",
+    "Annual-compliance, annual-accounts-filing, tax-filing, audit, notification, or archive policy",
+    "FastAPI, Pydantic, Supabase, PostgreSQL, or web transport types in the public contract",
+    "Service-role access, RLS bypass, direct browser persistence, or a second governance writer"
+  ],
+  "tests": {
+    "contract": "apps/backend/tests/test_corporate_governance_public_contract.py",
+    "policy": "apps/backend/tests/test_corporate_governance.py",
+    "workflow": "apps/backend/tests/test_corporate_governance_workflow.py",
+    "adapter": "apps/backend/tests/test_supabase_corporate_governance.py",
+    "database": "tests/corporate_governance_database_runtime.test.mjs",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

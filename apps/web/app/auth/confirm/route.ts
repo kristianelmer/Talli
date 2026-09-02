@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
 
   const failure = new URL("/verify-email", origin);
+  failure.searchParams.set("next", next);
   failure.searchParams.set(
     "error",
     "Bekreftelseslenken er ugyldig eller utløpt. Be om en ny nedenfor.",

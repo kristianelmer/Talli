@@ -1,0 +1,275 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#188",
+  "source": "https://github.com/kristianelmer/Talli/issues/188",
+  "sourceCheckedAt": "2026-08-28T00:30:00Z",
+  "routeDecision": {
+    "resolution": "ledger-live-reconciliation-acceptance-split",
+    "approvedAt": "2026-08-28",
+    "evidence": "https://github.com/kristianelmer/Talli/issues/188#issuecomment-5448715773",
+    "deferredIntegrationIssue": "#199",
+    "boundary": "#188 proves the canonical ledger receiver, immutable source/output bindings, deterministic postings, official mappings, golden journals, and fail-closed behavior. #199 proves actual source-owner production and executable agreement with every canonical downstream calculator after #195."
+  },
+  "completeGates": [
+    {
+      "revision": "4cdb7730c88a9b9138b284f92597e5be243a35c1",
+      "previousPassingRevision": null,
+      "evidencePath": "architecture/evidence/customer-ready-gates/4cdb7730c88a9b9138b284f92597e5be243a35c1.json",
+      "verdict": "pass"
+    },
+    {
+      "revision": "006e7e153a6d566b536004470bc66e826395f52e",
+      "previousPassingRevision": "4cdb7730c88a9b9138b284f92597e5be243a35c1",
+      "evidencePath": "architecture/evidence/customer-ready-gates/006e7e153a6d566b536004470bc66e826395f52e.json",
+      "verdict": "pass"
+    }
+  ],
+  "entryBlockers": [
+    {
+      "issue": "#139",
+      "requiredState": "CLOSED",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/139#issuecomment-5436264918"
+    }
+  ],
+  "criteria": [
+    {
+      "id": "GH-188-A1",
+      "requirement": "The canonical ledger contract reconstructs any January 1-to-as-of fact set and deterministically rejects incomplete source coverage or coded gaps before posting/close; live source-owner production is accepted only by #199.",
+      "sources": [
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/172#issuecomment-5423455104",
+          "version": "owner resolution 2026-08-26, staged by #188 split 2026-08-28"
+        },
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/188#issuecomment-5448715773",
+          "version": "owner-approved acceptance split 2026-08-28"
+        }
+      ],
+      "expectedResult": "For any as-of date, the ledger accepts only the exact January 1-through-as-of source topology and economic fact set, binds it immutably, and blocks missing coverage, declared gaps, stale evidence, replay mismatch, or an unsupported case before posting or close. Actual source-owner production remains a mandatory #199 proof.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_ledger_full_year_reconstruction.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_ledger_full_year_reconstruction.py"
+        },
+        {
+          "path": "tests/ledger_full_year_database_runtime.test.mjs",
+          "command": "node --test tests/ledger_full_year_database_runtime.test.mjs"
+        },
+        {
+          "path": "tests/browser_owner_annual_loop.mjs",
+          "command": "npm run test:browser-owner"
+        }
+      ],
+      "observedEvidence": [
+        "apps/backend ledger acceptance: 91/91 focused tests passed on 2026-08-28",
+        "customer-ready gate R1 database isolation: ledger 69/69, Supabase/RLS 45/45, browser-owner 17/17, hosted migrator 1/1"
+      ],
+      "status": "passed"
+    },
+    {
+      "id": "GH-188-A2",
+      "requirement": "Balanced immutable postings, reversals/corrections, locks, documents, actors, correlation, and idempotency are deterministic.",
+      "sources": [
+        {
+          "path": "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md",
+          "version": "accepted 2026-07-26"
+        },
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/132#issuecomment-5083588592",
+          "version": "approved ledger exit resolution"
+        }
+      ],
+      "expectedResult": "Every accepted command produces one balanced immutable result with deterministic correction, lock, document, actor, correlation and replay behavior; invalid or duplicate input creates no partial state.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_ledger_supported_patterns.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_ledger_supported_patterns.py"
+        },
+        {
+          "path": "tests/ledger_full_year_database_runtime.test.mjs",
+          "command": "node --test tests/ledger_full_year_database_runtime.test.mjs"
+        },
+        {
+          "path": "tests/ledger_capability_boundary_regressions.test.mjs",
+          "command": "node --test tests/ledger_capability_boundary_regressions.test.mjs"
+        }
+      ],
+      "observedEvidence": [
+        "apps/backend ledger acceptance: 91/91 focused tests passed on 2026-08-28",
+        "customer-ready gate R1: boundary, fresh database, rollback/recutover and browser checks passed"
+      ],
+      "status": "passed"
+    },
+    {
+      "id": "GH-188-A3",
+      "requirement": "All #172 accepted ledger patterns have pinned official-source mappings, versioned golden inputs/journals, and typed downstream projection contracts.",
+      "sources": [
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/172#issuecomment-5423455104",
+          "version": "owner resolution 2026-08-26"
+        },
+        {
+          "path": "docs/accounting/supported-ledger-patterns.md",
+          "version": "official-source cut pinned 2026-08-27"
+        },
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/188#issuecomment-5448715773",
+          "version": "owner-approved split: real calculator agreement deferred to #199"
+        }
+      ],
+      "expectedResult": "Every supported #172 ledger pattern has a versioned official-source citation, deterministic golden input and balanced canonical journal, declared typed downstream consumers, and coded fail-closed cases. No fixture declaration is represented as proof that a future calculator already agrees.",
+      "plannedEvidence": [
+        {
+          "path": "docs/accounting/supported-ledger-patterns.md",
+          "command": "node --test tests/ledger_supported_pattern_evidence.test.mjs"
+        },
+        {
+          "path": "tests/fixtures/ledger-supported-patterns.json",
+          "command": "node --test tests/ledger_supported_pattern_evidence.test.mjs"
+        }
+      ],
+      "observedEvidence": [
+        "node --test tests/ledger_supported_pattern_evidence.test.mjs: 11/11 passed",
+        "docs/accounting/supported-ledger-patterns.md and tests/fixtures/ledger-supported-patterns.json pin the 2026-08-27 source cut and 19 golden patterns"
+      ],
+      "status": "passed"
+    },
+    {
+      "id": "GH-188-A4",
+      "requirement": "Unsupported operating/foreign/complex/judgment cases fail closed before posting.",
+      "sources": [
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/172#issuecomment-5423455104",
+          "version": "owner resolution 2026-08-26"
+        }
+      ],
+      "expectedResult": "Every blocked #172 pattern returns its coded risk response before any ledger/source/document mutation.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_ledger_supported_patterns.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_ledger_supported_patterns.py"
+        },
+        {
+          "path": "tests/ledger_full_year_database_runtime.test.mjs",
+          "command": "node --test tests/ledger_full_year_database_runtime.test.mjs"
+        }
+      ],
+      "observedEvidence": [
+        "apps/backend test_ledger_supported_patterns.py passed within the 91/91 focused acceptance run",
+        "customer-ready gate R1 fresh ledger lifecycle passed 69/69 including coded reconstruction gaps and no-partial-state cases"
+      ],
+      "status": "passed"
+    },
+    {
+      "id": "GH-188-A5",
+      "requirement": "Reconstruction and close bind immutable stable-ID/revision/hash source attestations and downstream output declarations to the exact economic-fact digest; historical, unbound, stale, or mismatched evidence cannot be current. #199 proves actual source-owned derivation and cross-output agreement.",
+      "sources": [
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/179#issuecomment-5424272866",
+          "version": "launch-clearance resolution 2026-08-26, lane 3"
+        },
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/188#issuecomment-5448715773",
+          "version": "owner-approved receiving-contract/live-integration split 2026-08-28"
+        },
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/199",
+          "version": "mandatory live integration gate created 2026-08-28"
+        }
+      ],
+      "expectedResult": "The ledger independently binds all 13 typed source attestations and all seven close-output declarations to the current economic-fact digest, rejects partial or mismatched pairs, and refuses to treat historical unbound evidence as current. The contract states—and tests preserve—that these declarations are not themselves proof of source-owned derivation; #199 must supply that proof.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_ledger_full_year_reconstruction.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_ledger_full_year_reconstruction.py apps/backend/tests/test_ledger_company_year_close.py"
+        },
+        {
+          "path": "tests/ledger_full_year_database_runtime.test.mjs",
+          "command": "node --test tests/ledger_full_year_database_runtime.test.mjs tests/ledger_company_year_close_database_runtime.test.mjs"
+        },
+        {
+          "path": "supabase/migrations/20260827109400_ledger_reconstruction_source_evidence.sql",
+          "command": "npm run test:ledger-database-lifecycle"
+        }
+      ],
+      "observedEvidence": [
+        "apps/backend source/close binding tests passed within the 91/91 focused acceptance run",
+        "database contract evidence tests passed 40/40",
+        "customer-ready gate R1 fresh lifecycle independently revalidated 13 source bindings, seven output declarations, replay, historical staleness, rollback and recutover"
+      ],
+      "status": "passed"
+    },
+    {
+      "id": "GH-188-A6",
+      "requirement": "No TypeScript/SQL duplicate rules or new compatibility records.",
+      "sources": [
+        {
+          "path": "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md",
+          "version": "accepted plus amendments through 2026-08-27"
+        },
+        {
+          "path": "architecture/compatibility-baseline.json",
+          "version": "frozen source revision d331ee2717d1eeacef0d81db42b9d4fb5848b408"
+        }
+      ],
+      "expectedResult": "Architecture analysis finds one Python ledger implementation, no added facade/scope and no duplicate TypeScript or SQL accounting policy.",
+      "plannedEvidence": [
+        {
+          "path": "tests/architecture_foundation.test.mjs",
+          "command": "npm run check:architecture"
+        },
+        {
+          "path": "architecture/compatibility.json",
+          "command": "npm run check:architecture"
+        }
+      ],
+      "observedEvidence": [
+        "npm run check:architecture passed on R1",
+        "full architecture suite passed 50/50 after the framed Python inspection reliability fix",
+        "architecture/compatibility.json has no new record or scope"
+      ],
+      "status": "passed"
+    },
+    {
+      "id": "GH-188-A7",
+      "requirement": "Equivalence, fresh database, RLS/security, browser journey, and complete release gates pass.",
+      "sources": [
+        {
+          "path": "scripts/run-customer-ready-gate.mjs",
+          "version": "producer committed at each tested immutable revision"
+        },
+        {
+          "path": "architecture/customer-ready-gate-evidence.schema.json",
+          "version": "1.0"
+        }
+      ],
+      "expectedResult": "Equivalence, fresh from-zero database/RLS, real persisted browser journey and every canonical complete-gate check pass twice on linked immutable revisions R1 then R2.",
+      "plannedEvidence": [
+        {
+          "path": "tests/ledger_full_year_database_runtime.test.mjs",
+          "command": "npm run test:supabase:local"
+        },
+        {
+          "path": "tests/browser_owner_annual_loop.mjs",
+          "command": "npm run test:browser-owner"
+        },
+        {
+          "path": "architecture/evidence/customer-ready-gates/<R1>.json",
+          "command": "npm run gate:customer-ready"
+        },
+        {
+          "path": "architecture/evidence/customer-ready-gates/<R2>.json",
+          "command": "npm run gate:customer-ready -- --previous <R1>"
+        }
+      ],
+      "observedEvidence": [
+        "R1 4cdb7730c88a9b9138b284f92597e5be243a35c1 complete customer-ready gate passed all 11 checks",
+        "R2 006e7e153a6d566b536004470bc66e826395f52e passed all 11 checks with previousPassingRevision bound to R1",
+        "both passes include ledger 69/69, Supabase/RLS 45/45, browser-owner 17/17, hosted migrator 1/1, builds, pinned authority-schema rehearsal, dependency audit, credential scan and clean-worktree proof"
+      ],
+      "status": "passed"
+    }
+  ],
+  "closeState": "accepted-all-criteria-passed-and-evidence-is-immutable"
+}

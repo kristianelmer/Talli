@@ -1,0 +1,166 @@
+.page {
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+}
+
+.header,
+.main,
+.footerInner {
+  margin: 0 auto;
+  max-width: 920px;
+  width: 100%;
+}
+
+.header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  padding: 20px clamp(20px, 5vw, 44px);
+}
+
+.brand,
+.back {
+  color: var(--color-text);
+  font-weight: 720;
+  text-decoration: none;
+}
+
+.brand {
+  align-items: center;
+  display: inline-flex;
+  gap: 10px;
+}
+
+.brandMark {
+  background: var(--color-brand);
+  border-radius: 50%;
+  height: 16px;
+  width: 16px;
+}
+
+.back {
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.main {
+  display: grid;
+  gap: 32px;
+  padding: clamp(40px, 8vw, 76px) clamp(20px, 5vw, 44px) 88px;
+}
+
+.eyebrow {
+  color: var(--color-brand-strong);
+  font-size: 14px;
+  font-weight: 760;
+  margin: 0;
+}
+
+.title {
+  font-size: clamp(38px, 7vw, 62px);
+  letter-spacing: -.04em;
+  line-height: 1.04;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.lede {
+  color: var(--color-text-muted);
+  font-size: clamp(18px, 2.4vw, 22px);
+  line-height: 1.58;
+  margin: 0;
+  max-width: 72ch;
+}
+
+.notice,
+.section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: clamp(22px, 4vw, 34px);
+}
+
+.notice {
+  background: var(--color-brand-soft);
+}
+
+.section {
+  display: grid;
+  gap: 14px;
+}
+
+.section h2,
+.section h3,
+.section p,
+.notice p {
+  margin: 0;
+}
+
+.section p,
+.section li,
+.notice p {
+  color: var(--color-text-muted);
+  line-height: 1.65;
+}
+
+.section ul,
+.section ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.disabledAction {
+  background: var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  display: inline-flex;
+  font-weight: 700;
+  padding: 12px 18px;
+}
+
+.footer {
+  border-top: 1px solid var(--color-border);
+}
+
+.footerInner {
+  color: var(--color-text-muted);
+  display: grid;
+  font-size: 14px;
+  gap: 14px;
+  padding: 28px clamp(20px, 5vw, 44px);
+}
+
+.footerNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+}
+
+.footerNav a {
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 420px) {
+  .header,
+  .main,
+  .footerInner {
+    padding-inline: 18px;
+  }
+
+  .actions,
+  .actions a,
+  .disabledAction {
+    width: 100%;
+  }
+}

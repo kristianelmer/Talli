@@ -1,0 +1,234 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#140",
+  "source": "https://github.com/kristianelmer/Talli/issues/140",
+  "sourceCheckedAt": "2026-08-28T06:15:00Z",
+  "completeGates": [
+    {
+      "revision": "1f5d81526f4d9a41fdca072c3893baee3cf05163",
+      "previousPassingRevision": null,
+      "evidencePath": "architecture/evidence/customer-ready-gates/1f5d81526f4d9a41fdca072c3893baee3cf05163.json",
+      "verdict": "pass"
+    },
+    {
+      "revision": "fbcbd5b5b33f5b1a247e8fa790c7e281258437e1",
+      "previousPassingRevision": "1f5d81526f4d9a41fdca072c3893baee3cf05163",
+      "evidencePath": "architecture/evidence/customer-ready-gates/fbcbd5b5b33f5b1a247e8fa790c7e281258437e1.json",
+      "verdict": "pass"
+    }
+  ],
+  "entryBlockers": [
+    {
+      "issue": "#188",
+      "requiredState": "CLOSED",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/188#issuecomment-5449060634"
+    },
+    {
+      "issue": "#139",
+      "requiredState": "CLOSED",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/139#issuecomment-5436264918"
+    }
+  ],
+  "criteria": [
+    {
+      "id": "GH-140-A1",
+      "requirement": "Owners can import supported bank data and reconcile it through the existing web flow.",
+      "sources": [
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/132#issuecomment-5083588592",
+          "version": "approved banking stage resolution 2026-07-26"
+        }
+      ],
+      "expectedResult": "An authenticated owner imports the characterized CSV shapes through FastAPI/generated client, sees canonical tenant-scoped transactions and suggestions in the existing Norwegian web flow, explicitly accepts or otherwise reconciles each row, and receives deterministic coded failures with no partial state.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_banking.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking.py apps/backend/tests/test_banking_api.py"
+        },
+        {
+          "path": "tests/banking_database_runtime.test.mjs",
+          "command": "node --test tests/banking_database_runtime.test.mjs"
+        },
+        {
+          "path": "tests/browser_owner_annual_loop.mjs",
+          "command": "npm run test:browser-owner"
+        }
+      ],
+      "observedEvidence": [
+        "customer-ready R1 boundary: backend 414/414, web 103/103, and contract 36/36 passed",
+        "customer-ready R1 browser-owner: 17/17 passed, including canonical CSV import, no posting before consent, explicit acceptance, one ledger entry, and reconciliation"
+      ],
+      "status": "passed"
+    },
+    {
+      "id": "GH-140-A2",
+      "requirement": "Duplicate transactions remain idempotent and suggestions never post without acceptance.",
+      "sources": [
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/132#issuecomment-5083588592",
+          "version": "approved banking stage resolution 2026-07-26"
+        },
+        {
+          "path": "supabase/migrations/0003_bank_rule_suggestions.sql",
+          "version": "frozen legacy behavior characterized before #140 cutover"
+        }
+      ],
+      "expectedResult": "Canonical source identity suppresses duplicate imported rows, command replay returns the same result, a suggestion is read-only until exact owner acceptance, and conflicts, stale rules, ambiguity, wrong direction, locks, or already-reconciled rows create neither acceptance nor ledger entry.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_banking.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking.py"
+        },
+        {
+          "path": "tests/banking_database_runtime.test.mjs",
+          "command": "npm run test:banking-database-lifecycle"
+        }
+      ],
+      "observedEvidence": [
+        "banking focused backend suite passed 14/14 with duplicate, replay, stale, ambiguous, wrong-direction, locked, and already-reconciled cases",
+        "customer-ready R1 database isolation passed banking lifecycle 15/15 with no-partial-state and exact overlap reconciliation"
+      ],
+      "status": "passed"
+    },
+    {
+      "id": "GH-140-A3",
+      "requirement": "Accepted suggestions produce equivalent deterministic ledger entries through the ledger public workflow.",
+      "sources": [
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/132#issuecomment-5083588592",
+          "version": "approved banking-plus-ledger workflow 2026-07-26"
+        },
+        {
+          "path": "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md",
+          "version": "accepted 2026-07-26"
+        }
+      ],
+      "expectedResult": "One named backend-system workflow revalidates the canonical transaction and suggestion, invokes banking and ledger public contracts inside one short transaction, binds stable acceptance/transaction/ledger IDs, and atomically returns one result equivalent to the characterized legacy outcome.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_banking_workflow.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_workflow.py"
+        },
+        {
+          "path": "tests/banking_database_runtime.test.mjs",
+          "command": "npm run test:banking-database-lifecycle"
+        },
+        {
+          "path": "tests/bank_suggestion_integration.test.mjs",
+          "command": "node --test tests/bank_suggestion_integration.test.mjs"
+        }
+      ],
+      "observedEvidence": [
+        "canonical banking backend, public-contract, and workflow tests passed within the 414/414 backend boundary",
+        "customer-ready R1 banking lifecycle passed atomic posting, exact acceptance/transaction/entry binding, rollback, and recutover"
+      ],
+      "status": "passed"
+    },
+    {
+      "id": "GH-140-A4",
+      "requirement": "Provider ports cannot directly post accounting entries.",
+      "sources": [
+        {
+          "path": "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md",
+          "version": "accepted 2026-07-26"
+        },
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/132#issuecomment-5083588592",
+          "version": "provider-disabled banking boundary 2026-07-26"
+        }
+      ],
+      "expectedResult": "Bank import/provider adapters return source transactions only, have no ledger dependency or account/line vocabulary, cannot write banking or ledger state directly, and fail closed while provider implementations remain disabled.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_banking_public_contract.py",
+          "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_public_contract.py"
+        },
+        {
+          "path": "tests/architecture_foundation.test.mjs",
+          "command": "npm run check:architecture"
+        }
+      ],
+      "observedEvidence": [
+        "banking public-contract tests passed within the 414/414 backend boundary",
+        "architecture and source scans prove provider ports expose source rows only and contain no ledger/account/line dependency"
+      ],
+      "status": "passed"
+    },
+    {
+      "id": "GH-140-A5",
+      "requirement": "Legacy bank business logic, direct ledger writers, and active-stage compatibility code are removed.",
+      "sources": [
+        {
+          "path": "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md",
+          "version": "accepted plus amendments through 2026-08-28"
+        },
+        {
+          "path": "architecture/compatibility.json",
+          "version": "frozen banking record compat-banking-persistence with four remaining scopes at claim"
+        }
+      ],
+      "expectedResult": "The canonical banking module owns its schema/tables and deterministic rules; the web has zero banking persistence, no SQL or TypeScript banking rule remains authoritative, obsolete public tables/RPCs and all four frozen banking compatibility scopes are removed, and no active-stage debt remains.",
+      "plannedEvidence": [
+        {
+          "path": "tests/architecture_foundation.test.mjs",
+          "command": "npm run check:architecture"
+        },
+        {
+          "path": "tests/banking_capability_schema.test.mjs",
+          "command": "node --test tests/banking_capability_schema.test.mjs"
+        },
+        {
+          "path": "architecture/compatibility.json",
+          "command": "npm run check:architecture"
+        }
+      ],
+      "observedEvidence": [
+        "customer-ready R1 architecture and boundary checks passed with banking absent from the active compatibility registry",
+        "contract lifecycle removed the legacy RPC, coordinator, mirrors, storage, TypeScript policy, and generated ledger banking operation"
+      ],
+      "status": "passed"
+    },
+    {
+      "id": "GH-140-A6",
+      "requirement": "The complete banking stage exit criteria from issue #132 pass before investments begin.",
+      "sources": [
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/132#issuecomment-5083588592",
+          "version": "mandatory stage envelope and banking exit 2026-07-26"
+        },
+        {
+          "path": "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md",
+          "version": "accepted plus amendments through 2026-08-28"
+        }
+      ],
+      "expectedResult": "Characterization/equivalence, expand-migrate-contract, one writer, count/hash reconciliation, rollback/recutover, RLS/security, browser flow, contracts/builds, compatibility cleanup, manifests/docs/dependency evidence, and two linked immutable complete gates pass; #141 remains unclaimed until then.",
+      "plannedEvidence": [
+        {
+          "path": "tests/banking_database_runtime.test.mjs",
+          "command": "npm run test:supabase:local"
+        },
+        {
+          "path": "tests/browser_owner_annual_loop.mjs",
+          "command": "npm run test:browser-owner"
+        },
+        {
+          "path": "architecture/evidence/customer-ready-gates/<R1>.json",
+          "command": "npm run gate:customer-ready"
+        },
+        {
+          "path": "architecture/evidence/customer-ready-gates/<R2>.json",
+          "command": "npm run gate:customer-ready -- --previous <R1>"
+        }
+      ],
+      "observedEvidence": [
+        "R1 1f5d81526f4d9a41fdca072c3893baee3cf05163 passed all 11 complete customer-ready checks",
+        "R2 fbcbd5b5b33f5b1a247e8fa790c7e281258437e1 passed all 11 checks with previousPassingRevision bound to R1",
+        "both passes include banking lifecycle 15/15, ledger lifecycle 69/69, Supabase/RLS 45/45, browser-owner 17/17, hosted migrator 1/1, builds, dependency audit, credential scan, and clean-worktree proof"
+      ],
+      "status": "passed"
+    }
+  ],
+  "closeState": "accepted-all-criteria-passed-and-evidence-is-immutable"
+}

@@ -1,0 +1,253 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#143",
+  "source": "https://github.com/kristianelmer/Talli/issues/143",
+  "sourceCheckedAt": "2026-08-31T17:53:00Z",
+  "completeGates": [
+    {
+      "revision": "027254ab93c35b102d9429b3965fcbbbb4f033a8",
+      "previousPassingRevision": null,
+      "evidencePath": "architecture/evidence/customer-ready-gates/027254ab93c35b102d9429b3965fcbbbb4f033a8.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:a98e1380336327528144332e27340bcd782c5cbf7424c5654654aded516c08ed"
+    },
+    {
+      "revision": "abfa5c767bb1453ea3ec02af0ca463884887e63c",
+      "previousPassingRevision": "027254ab93c35b102d9429b3965fcbbbb4f033a8",
+      "evidencePath": "architecture/evidence/customer-ready-gates/abfa5c767bb1453ea3ec02af0ca463884887e63c.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:1d054cea4d982f99e47110b29c29984b9b97d165ea555e6dffbd5b5d899944bc"
+    }
+  ],
+  "entryBlockers": [
+    {
+      "issue": "#142",
+      "requiredState": "CLOSED",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/142#issuecomment-5482269430"
+    }
+  ],
+  "independentExternalGate": {
+    "issue": "#189",
+    "observedState": "OPEN",
+    "blocksInternalImplementation": false,
+    "stillBlocks": [
+      "provider choice or activation",
+      "live bank use or readiness claims",
+      "#197 bank tranche",
+      "production banking",
+      "#198 unrestricted clearance"
+    ]
+  },
+  "ownerAuthority": {
+    "approvedBy": "Kristian Elmer",
+    "approvedAt": "2026-08-31",
+    "scope": "Provider-neutral internal #143 implementation may use the banking, ledger, and investments public contracts while #189 remains open.",
+    "forbiddenInference": "Internal implementation and file fallback are not live-AISP evidence and authorize no provider choice, contract, activation, live call, customer bank consent/data, production use, or public claim."
+  },
+  "hostedVerification": {
+    "path": "architecture/evidence/issues/143/hosted-verification.json",
+    "verdict": "pass",
+    "projectId": "pkpyyxryfhfehrbhbynp",
+    "migrationHistoryCount": 57,
+    "canonicalTableCount": 6,
+    "legacyInvestmentSurfaceRemaining": 0,
+    "investmentAdvisorWarnings": 0,
+    "legalMigrationApplied": false
+  },
+  "previewVerification": {
+    "path": "architecture/evidence/issues/143/preview-verification.json",
+    "sourceRevision": "abfa5c767bb1453ea3ec02af0ca463884887e63c",
+    "githubDeploymentId": 6190659948,
+    "state": "SUCCESS",
+    "access": "protected-by-vercel-authentication",
+    "verdict": "pass"
+  },
+  "criteria": [
+    {
+      "id": "GH-143-A1",
+      "requirement": "A supported received dividend completes through the existing web workflow and FastAPI.",
+      "sources": [
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/143",
+          "version": "issue body checked 2026-08-31"
+        }
+      ],
+      "expectedResult": "An authenticated owner submits the characterized dividend facts through the guided web flow and generated investments client; one canonical investments transaction returns a persisted dividend result bound to its deterministic ledger entry.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_investments.py",
+          "command": "npm run test:dividend-received"
+        },
+        {
+          "path": "apps/backend/tests/test_investments_api.py",
+          "command": "npm run test:boundary-backend"
+        },
+        {
+          "path": "apps/web/tests/investments-presentation.test.mjs",
+          "command": "npm run test:boundary-web"
+        },
+        {
+          "path": "tests/browser_owner_annual_loop.mjs",
+          "command": "npm run test:browser-owner"
+        }
+      ],
+      "observedEvidence": [
+        "Both final complete gates passed the generated-client, FastAPI, web, production-build, and 17/17 owner-browser seams. The persisted owner journey records the received dividend through investmentsRecordReceivedDividend and returns its canonical action and ledger-entry identity."
+      ],
+      "status": "passed"
+    },
+    {
+      "id": "GH-143-A2",
+      "requirement": "Tax treatment and ledger results match current deterministic fixtures.",
+      "sources": [
+        {
+          "path": "tests/dividend_received.test.mjs",
+          "version": "characterized TypeScript dividend fixture at claim revision 4a5840449ba6e451c1ce843e8ab09a2b6253ce25"
+        },
+        {
+          "path": "tests/test_ledger_and_actions.py",
+          "version": "characterized Python dividend fixture at claim revision 4a5840449ba6e451c1ce843e8ab09a2b6253ce25"
+        }
+      ],
+      "expectedResult": "The supported fritaksmetoden case posts exact NOK 1920/8070 lines for gross cash/income and persists a two-decimal three-percent taxable add-back while preserving the current dates, source identity, defaults, annual summary, and error codes.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_investments_workflow.py",
+          "command": "npm run test:dividend-received"
+        },
+        {
+          "path": "tests/investments_database_runtime.test.mjs",
+          "command": "npm run test:investments-database-lifecycle"
+        }
+      ],
+      "observedEvidence": [
+        "The 17/17 PostgreSQL 17 investments lifecycle and backend characterization pass twice with exact NOK 1920/8070 posting lines, two-decimal gross cash/income, and the current three-percent fritaksmetoden taxable add-back bound to one immutable action and ledger entry."
+      ],
+      "status": "passed"
+    },
+    {
+      "id": "GH-143-A3",
+      "requirement": "Unsupported or invalid cases produce the same risk response without partial persistence.",
+      "sources": [
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/132#issuecomment-5083588592",
+          "version": "mandatory capability gate and investments failure envelope approved 2026-07-26"
+        }
+      ],
+      "expectedResult": "Non-fritaksmetoden or unclear treatment, invalid amounts/dates/references, duplicate or stale identity, cross-tenant access, locked periods, and ledger failure return deterministic coded outcomes and leave no dividend, ledger, receipt, source match, legacy action, or audit fragment.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_investments.py",
+          "command": "npm run test:dividend-received"
+        },
+        {
+          "path": "tests/investments_database_runtime.test.mjs",
+          "command": "npm run test:investments-database-lifecycle"
+        }
+      ],
+      "observedEvidence": [
+        "Policy and real-database tests reject unsupported tax treatment, invalid amount/date/reference, wrong tenant, closed period, stale or reused identity, and forced dependency mismatch; every failing case leaves zero dividend, ledger, receipt, source-match, legacy-action, and audit fragments."
+      ],
+      "status": "passed"
+    },
+    {
+      "id": "GH-143-A4",
+      "requirement": "The backend owns all received-dividend policy and data access.",
+      "sources": [
+        {
+          "path": "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md",
+          "version": "accepted 2026-07-26"
+        }
+      ],
+      "expectedResult": "Investments owns dividend commands, validation, tax facts, persistence, and queries; the web uses the generated API, ledger is invoked only through its public contract, and banking/documents remain opaque optional source references with no provider-owned accounting decision.",
+      "plannedEvidence": [
+        {
+          "path": "apps/backend/tests/test_investments_public_contract.py",
+          "command": "npm run test:boundary-backend"
+        },
+        {
+          "path": "tests/architecture_foundation.test.mjs",
+          "command": "npm run check:architecture"
+        }
+      ],
+      "observedEvidence": [
+        "Both complete gates passed the public-contract and architecture checks: investments owns validation, tax facts, persistence, positions/lots/allocations/activity reads, and the command workflow; ledger is called only through its public contract and bank/document inputs remain opaque optional identities."
+      ],
+      "status": "passed"
+    },
+    {
+      "id": "GH-143-A5",
+      "requirement": "One FIFO/investment implementation remains; all duplicate rule/RPC paths and active-stage compatibility artifacts are removed.",
+      "sources": [
+        {
+          "path": "architecture/compatibility.json",
+          "version": "compat-investment-stage-exit-persistence at claim revision 4a5840449ba6e451c1ce843e8ab09a2b6253ce25"
+        },
+        {
+          "path": "architecture/compatibility-baseline.json",
+          "version": "immutable #185 investments baseline"
+        }
+      ],
+      "expectedResult": "The legacy TypeScript and holding_core dividend rules, ledger-owned dividend coordinator/route, direct web holding-action read, exact #143 active compatibility record, and obsolete production SQL names are removed after reconciliation and rollback/recutover; investments has one public implementation and no stage-attributed debt.",
+      "plannedEvidence": [
+        {
+          "path": "tests/architecture_foundation.test.mjs",
+          "command": "npm run check:architecture"
+        },
+        {
+          "path": "tests/investments_capability_schema.test.mjs",
+          "command": "npm run test:investments-database-lifecycle"
+        },
+        {
+          "path": "architecture/compatibility.json",
+          "command": "npm run check:architecture"
+        }
+      ],
+      "observedEvidence": [
+        "Legacy TypeScript and holding_core dividend policy, ledger-owned HTTP coordination, direct browser investment reads, old public investment tables/RPCs, rollback capsules, mirror helpers, overlap triggers, and five residual overlap policies are absent. Hosted migration 57 and the local rollback/recutover lifecycle leave one private forced-RLS investments store and zero stage debt."
+      ],
+      "status": "passed"
+    },
+    {
+      "id": "GH-143-A6",
+      "requirement": "The complete investments stage exit criteria from issue #132 pass before documents begin.",
+      "sources": [
+        {
+          "url": "https://github.com/kristianelmer/Talli/issues/132#issuecomment-5083588592",
+          "version": "approved serialized migration order and exact exit criteria 2026-07-26"
+        },
+        {
+          "path": "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md",
+          "version": "accepted plus amendments through 2026-08-30"
+        }
+      ],
+      "expectedResult": "Purchases, sales, received dividends, positions, FIFO lots, allocations, rounding, errors, atomic postings, ownership, data reconciliation, restricted roles, rollback/recutover, cleanup, manifests/docs/Graphify, and two consecutive immutable complete gates pass with investments marked exited and documents still untouched.",
+      "plannedEvidence": [
+        {
+          "path": "architecture/evidence/issues/141/requirements.json",
+          "command": "npm run check:architecture"
+        },
+        {
+          "path": "architecture/evidence/issues/142/requirements.json",
+          "command": "npm run check:architecture"
+        },
+        {
+          "path": "architecture/evidence/customer-ready-gates/<R1>.json",
+          "command": "npm run gate:customer-ready"
+        },
+        {
+          "path": "architecture/evidence/customer-ready-gates/<R2>.json",
+          "command": "npm run gate:customer-ready -- --previous <R1>"
+        }
+      ],
+      "observedEvidence": [
+        "Purchases, sales, dividends, positions, FIFO lots, stable allocations, exact rounding/errors, atomic ledger binding, role restrictions, repeat-safe rollback/recutover, archive invalidation, manifest/docs/catalog agreement, hosted reconciliation, and policy cleanup all pass. The final immutable gates 027254ab and abfa5c76 each passed all 11 checks before the serialized pointer advanced to documents/#147."
+      ],
+      "status": "passed"
+    }
+  ],
+  "closeState": "complete"
+}

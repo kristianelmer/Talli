@@ -509,6 +509,7 @@ export default async function FilingObligationPage({
                 <p className="cardNote">{f.preview.generateIntro}</p>
                 <form action={generateRf1086Preview}>
                   <input type="hidden" name="returnTo" value={returnTo} />
+                  <input type="hidden" name="companyId" value={input.company.id} />
                   <input type="hidden" name="setupId" value={setup?.id ?? ""} />
                   <SubmitButton pendingLabel={f.preview.generatePending}>
                     {f.preview.generateCta}
@@ -533,6 +534,7 @@ export default async function FilingObligationPage({
                 ) : null}
                 <form action={generateRf1086Preview}>
                   <input type="hidden" name="returnTo" value={returnTo} />
+                  <input type="hidden" name="companyId" value={input.company.id} />
                   <input type="hidden" name="setupId" value={setup?.id ?? ""} />
                   <SubmitButton variant="ghost" pendingLabel={f.preview.generatePending}>
                     {f.preview.regenerateCta}

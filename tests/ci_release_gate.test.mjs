@@ -1,5 +1,17 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const workflowPath = new URL(
@@ -7,6 +19,87 @@ const workflowPath = new URL(
   import.meta.url,
 );
 const vercelConfigPath = new URL("../vercel.json", import.meta.url);
+const localGatePath = new URL(
+  "../scripts/run-customer-ready-gate.mjs",
+  import.meta.url,
+);
+const databaseHarnessPath = new URL(
+  "../scripts/test-supabase-local.sh",
+  import.meta.url,
+);
+const cleanWorktreePath = fileURLToPath(
+  new URL("../scripts/check-clean-worktree.sh", import.meta.url),
+);
+
+function run(command, args, options = {}) {
+  return spawnSync(command, args, {
+    encoding: "utf8",
+    ...options,
+  });
+}
+
+function initializeTemporaryRepository() {
+  const directory = mkdtempSync(join(tmpdir(), "talli-clean-worktree-test-"));
+  writeFileSync(join(directory, "tracked.txt"), "original\n");
+  for (const args of [
+    ["init", "--quiet"],
+    ["config", "user.name", "Talli Test"],
+    ["config", "user.email", "test@invalid.example"],
+    ["add", "tracked.txt"],
+    ["commit", "--quiet", "-m", "fixture"],
+  ]) {
+    const result = run("git", args, { cwd: directory });
+    assert.equal(result.status, 0, result.stderr);
+  }
+  return directory;
+}
+
+function createHarnessWorkspace(mode) {
+  const directory = mkdtempSync(join(tmpdir(), "talli-database-harness-test-"));
+  const nextEnvPath = join(directory, "apps/web/next-env.d.ts");
+  const tsconfigPath = join(directory, "apps/web/tsconfig.json");
+  const binDirectory = join(directory, "bin");
+  const snapshotDirectory = join(directory, "snapshots");
+  mkdirSync(dirname(nextEnvPath), { recursive: true });
+  mkdirSync(join(directory, "scripts"));
+  mkdirSync(binDirectory);
+  mkdirSync(snapshotDirectory);
+  writeFileSync(nextEnvPath, "original declaration\n");
+  writeFileSync(tsconfigPath, "original config\n");
+  writeFileSync(
+    join(directory, "scripts/prepare-isolated-supabase-workdir.mjs"),
+    "// Test fixture: the npm shim owns the isolated Supabase lifecycle.\n",
+  );
+  const npmPath = join(binDirectory, "npm");
+  writeFileSync(
+    npmPath,
+    `#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$*" == *"supabase status --workdir"* && "$*" == *"--output env"* ]]; then
+  printf '%s\\n' 'API_URL=http://127.0.0.1:54321' 'PUBLISHABLE_KEY=local-anon' 'SECRET_KEY=local-service' 'DB_URL=postgresql://127.0.0.1/local'
+  exit 0
+fi
+if [[ "$*" == "run test:browser-owner" ]]; then
+  printf 'generated declaration\\n' > apps/web/next-env.d.ts
+  printf 'generated config\\n' > apps/web/tsconfig.json
+  if [[ "${mode}" == "command-failure" ]]; then
+    exit 7
+  fi
+  if [[ "${mode}" == "restore-failure" ]]; then
+    mv apps/web apps/web-displaced
+  fi
+fi
+`,
+  );
+  chmodSync(npmPath, 0o755);
+  return {
+    directory,
+    nextEnvPath,
+    tsconfigPath,
+    snapshotDirectory,
+    binDirectory,
+  };
+}
 
 test("release gate covers pull requests and main with least privilege", () => {
   const workflow = readFileSync(workflowPath, "utf8");
@@ -82,6 +175,26 @@ test("release gate runs every customer-readiness check before promotion", () => 
   );
 });
 
+test("manual release gates can retain linked immutable evidence", () => {
+  const workflow = readFileSync(workflowPath, "utf8");
+
+  assert.match(workflow, /record_evidence:/u);
+  assert.match(workflow, /previous_passing_revision:/u);
+  assert.match(workflow, /npm run gate:customer-ready/u);
+  assert.match(workflow, /--previous "\$PREVIOUS_PASSING_REVISION"/u);
+  assert.match(workflow, /uses: actions\/upload-artifact@[0-9a-f]{40}/u);
+  assert.match(
+    workflow,
+    /architecture\/evidence\/customer-ready-gates\/\$\{\{ github\.sha \}\}\.json/u,
+  );
+  assert.match(
+    workflow,
+    /architecture\/evidence\/customer-ready-gates\/\$\{\{ github\.sha \}\}\.log/u,
+  );
+  assert.match(workflow, /needs: \[application, database, evidence\]/u);
+  assert.match(workflow, /test "\$EVIDENCE_RESULT" = "success"/u);
+});
+
 test("database isolation uses the locked Python renderer environment", () => {
   const workflow = readFileSync(workflowPath, "utf8");
   const databaseJob =
@@ -95,6 +208,103 @@ test("database isolation uses the locked Python renderer environment", () => {
   assert.ok(
     databaseJob.includes("npx playwright install --with-deps chromium"),
   );
+});
+
+test("database isolation runs the complete ledger contract lifecycle", () => {
+  const databaseHarness = readFileSync(databaseHarnessPath, "utf8");
+  const packageJson = JSON.parse(
+    readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+  );
+
+  assert.match(databaseHarness, /npm run test:ledger-database-lifecycle/u);
+  assert.equal(
+    packageJson.scripts["test:ledger-database-lifecycle"],
+    "node --test --test-concurrency=1 tests/ledger_capability_schema.test.mjs tests/ledger_capability_boundary_regressions.test.mjs tests/ledger_full_year_database_runtime.test.mjs tests/ledger_supported_patterns_database_runtime.test.mjs tests/ledger_opening_position_rebuild_schema.test.mjs tests/ledger_corrections_database_runtime.test.mjs tests/ledger_company_year_close_database_runtime.test.mjs tests/ledger_database_runtime.test.mjs",
+  );
+  assert.match(databaseHarness, /prepare-isolated-supabase-workdir\.mjs/u);
+  assert.match(databaseHarness, /supabase start --workdir "\$isolated_workdir"/u);
+  assert.match(databaseHarness, /PUBLISHABLE_KEY:-\$ANON_KEY/u);
+  assert.match(databaseHarness, /SECRET_KEY:-\$SERVICE_ROLE_KEY/u);
+  assert.doesNotMatch(databaseHarness, /supabase migration up --local/u);
+});
+
+test("local immutable gate rejects tracked, staged, and untracked drift", () => {
+  const localGate = readFileSync(localGatePath, "utf8");
+  assert.match(localGate, /scripts\/check-clean-worktree\.sh/u);
+
+  for (const scenario of ["clean", "tracked", "staged", "untracked"]) {
+    const directory = initializeTemporaryRepository();
+    try {
+      if (scenario === "tracked" || scenario === "staged") {
+        writeFileSync(join(directory, "tracked.txt"), "changed\n");
+      }
+      if (scenario === "staged") {
+        const staged = run("git", ["add", "tracked.txt"], { cwd: directory });
+        assert.equal(staged.status, 0, staged.stderr);
+      }
+      if (scenario === "untracked") {
+        writeFileSync(join(directory, "untracked.txt"), "unexpected\n");
+      }
+
+      const result = run("bash", [cleanWorktreePath], { cwd: directory });
+      assert.equal(
+        result.status === 0,
+        scenario === "clean",
+        `${scenario}: ${result.stdout}${result.stderr}`,
+      );
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  }
+});
+
+test("local immutable gate normalizes terminal output before recording it", () => {
+  const localGate = readFileSync(localGatePath, "utf8");
+
+  assert.match(localGate, /function normalizeTranscriptOutput\(value\)/u);
+  assert.match(localGate, /\.replaceAll\("\\r", ""\)/u);
+  assert.match(localGate, /\.map\(\(line\) => line\.trimEnd\(\)\)/u);
+  assert.match(
+    localGate,
+    /transcript\.push\(normalizeTranscriptOutput\(result\.stdout\)\)/u,
+  );
+  assert.match(
+    localGate,
+    /transcript\.push\(normalizeTranscriptOutput\(result\.stderr\)\)/u,
+  );
+});
+
+test("database harness restores generated drift and preserves failure semantics", () => {
+  for (const mode of ["success", "command-failure", "restore-failure"]) {
+    const workspace = createHarnessWorkspace(mode);
+    try {
+      const result = run("bash", [fileURLToPath(databaseHarnessPath)], {
+        cwd: workspace.directory,
+        env: {
+          ...process.env,
+          PATH: `${workspace.binDirectory}:${process.env.PATH}`,
+          TMPDIR: workspace.snapshotDirectory,
+        },
+      });
+
+      if (mode === "success") {
+        assert.equal(result.status, 0, result.stderr);
+        assert.equal(readFileSync(workspace.nextEnvPath, "utf8"), "original declaration\n");
+        assert.equal(readFileSync(workspace.tsconfigPath, "utf8"), "original config\n");
+        assert.deepEqual(readdirSync(workspace.snapshotDirectory), []);
+      } else if (mode === "command-failure") {
+        assert.equal(result.status, 7, result.stderr);
+        assert.equal(readFileSync(workspace.nextEnvPath, "utf8"), "original declaration\n");
+        assert.equal(readFileSync(workspace.tsconfigPath, "utf8"), "original config\n");
+        assert.deepEqual(readdirSync(workspace.snapshotDirectory), []);
+      } else {
+        assert.notEqual(result.status, 0);
+        assert.equal(readdirSync(workspace.snapshotDirectory).length, 2);
+      }
+    } finally {
+      rmSync(workspace.directory, { recursive: true, force: true });
+    }
+  }
 });
 
 test("browser owner rehearsal includes executable owned-process lifecycle coverage", () => {
@@ -114,10 +324,13 @@ test("browser owner rehearsal includes executable owned-process lifecycle covera
   assert.match(harness, /startBackendServer/);
   assert.match(harness, /allocateLoopbackPort/);
   assert.match(harness, /TALLI_BACKEND_URL:\s*backendBaseUrl/);
-  assert.match(harness, /await establishSyntheticAal2\(page, baseUrl\)/);
+  assert.match(harness, /await establishOwnerAal2\(page, baseUrl\)/);
   assert.match(harness, /cleanupBrowserOwnerResources\(resources\)/);
   assert.match(harness, /TALLI_BACKEND_BOUND:/);
   assert.match(harness, /readinessProof:\s*"Ready in"/);
+  assert.match(harness, /documents\.stage_upload_v1/u);
+  assert.match(harness, /documents\.finalize_upload_v1/u);
+  assert.doesNotMatch(harness, /admin\.from\("documents"\)\.insert/u);
   assert.ok(
     harness.indexOf("t.after(async ()") <
       harness.indexOf("resources.databaseStarted = true"),
@@ -125,8 +338,9 @@ test("browser owner rehearsal includes executable owned-process lifecycle covera
   );
 });
 
-test("Vercel deploys the Next output produced by the root build", () => {
+test("Vercel deploys the Next output near the owner-designated database", () => {
   const config = JSON.parse(readFileSync(vercelConfigPath, "utf8"));
 
-  assert.deepEqual(config, { outputDirectory: "apps/web/.next" });
+  assert.equal(config.outputDirectory, "apps/web/.next");
+  assert.deepEqual(config.regions, ["dub1"]);
 });

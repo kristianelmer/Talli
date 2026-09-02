@@ -7,6 +7,7 @@ import { currentCustomerAgreements } from "../lib/customer-agreements";
 export const metadata: Metadata = {
   title: "Databehandleravtale – Talli",
   description: "Databehandleravtale for Talli bedriftskunder.",
+  alternates: { canonical: "/databehandleravtale" },
 };
 
 export default function DatabehandleravtalePage() {

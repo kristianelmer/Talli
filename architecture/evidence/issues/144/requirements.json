@@ -1,0 +1,144 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#144",
+  "source": "https://github.com/kristianelmer/Talli/issues/144",
+  "sourceCheckedAt": "2026-09-02T03:41:54Z",
+  "claim": "https://github.com/kristianelmer/Talli/issues/144#issuecomment-5503909960",
+  "completeGates": [
+    {
+      "revision": "060aea9d883b9e131440f125986726684eb8d34c",
+      "previousPassingRevision": null,
+      "evidencePath": "architecture/evidence/customer-ready-gates/060aea9d883b9e131440f125986726684eb8d34c.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:6eef1b37ebc58a6666e8749b518059440640d4237c66152411daaf5d93996455"
+    },
+    {
+      "revision": "f1f94b9536c0b84caf7f79ea1e96ebe160ba4ea4",
+      "previousPassingRevision": "060aea9d883b9e131440f125986726684eb8d34c",
+      "evidencePath": "architecture/evidence/customer-ready-gates/f1f94b9536c0b84caf7f79ea1e96ebe160ba4ea4.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:15c3e37465838843ff1f1e0e9cd7eecc7935a0d0f479649b5607ad34c8ce7956"
+    }
+  ],
+  "previewVerification": {
+    "path": "architecture/evidence/issues/144/preview-verification.json",
+    "sourceRevision": "060aea9d883b9e131440f125986726684eb8d34c",
+    "githubDeploymentId": 6216443697,
+    "environment": "Preview",
+    "state": "SUCCESS",
+    "access": "protected-by-project-vercel-authentication",
+    "verdict": "pass"
+  },
+  "entryBlockers": [
+    {
+      "issue": "#147",
+      "requiredState": "CLOSED",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/147#issuecomment-5503906760"
+    }
+  ],
+  "serialization": {
+    "capability": "corporate_governance",
+    "slice": "1 of 3",
+    "nextIssue": "#145",
+    "stageExitIssue": "#148"
+  },
+  "independentExternalGate": {
+    "issue": "#189",
+    "observedState": "OPEN",
+    "blocksProviderNeutralImplementation": false,
+    "stillBlocks": [
+      "provider choice or activation",
+      "credentials or live bank calls, data, or consent",
+      "live-bank readiness claims",
+      "#197 bank evidence",
+      "production banking",
+      "#198 unrestricted clearance"
+    ]
+  },
+  "criteria": [
+    {
+      "id": "GH-144-A1",
+      "requirement": "Owners can propose, approve, and record payment for a supported dividend through FastAPI.",
+      "plannedEvidence": [
+        "apps/backend/tests/test_corporate_governance.py",
+        "apps/backend/tests/test_corporate_governance_api.py",
+        "apps/web/tests/corporate-governance-presentation.test.mjs",
+        "tests/browser_owner_annual_loop.mjs"
+      ],
+      "status": "implementation-and-contract-tests-passed"
+    },
+    {
+      "id": "GH-144-A2",
+      "requirement": "Distributable-basis and readiness gates match current deterministic behavior.",
+      "plannedEvidence": [
+        "apps/backend/tests/test_corporate_governance.py",
+        "tests/corporate_decision_facts.test.mjs",
+        "tests/owner_dividend.test.mjs"
+      ],
+      "status": "source-decision-hash-and-readiness-parity-passed"
+    },
+    {
+      "id": "GH-144-A3",
+      "requirement": "Approval and payment transitions are authorized, auditable, and idempotent.",
+      "plannedEvidence": [
+        "apps/backend/tests/test_corporate_governance_workflow.py",
+        "tests/corporate_governance_database_runtime.test.mjs"
+      ],
+      "status": "authorized-auditable-idempotent-lifecycle-passed"
+    },
+    {
+      "id": "GH-144-A4",
+      "requirement": "Ledger effects match existing characterization fixtures.",
+      "plannedEvidence": [
+        "apps/backend/tests/test_corporate_governance_workflow.py",
+        "tests/owner_dividend_payment.test.mjs",
+        "tests/corporate_governance_database_runtime.test.mjs"
+      ],
+      "status": "characterization-and-restricted-ledger-bridge-passed"
+    },
+    {
+      "id": "GH-144-A5",
+      "requirement": "Document collaboration occurs only through the approved documents public contract.",
+      "plannedEvidence": [
+        "apps/backend/tests/test_corporate_governance_public_contract.py",
+        "apps/backend/tests/test_corporate_governance_workflow.py",
+        "tests/architecture_foundation.test.mjs"
+      ],
+      "status": "opaque-approved-document-contract-passed"
+    },
+    {
+      "id": "GH-144-A6",
+      "requirement": "Duplicate TypeScript policy and active-slice compatibility code are removed.",
+      "plannedEvidence": [
+        "architecture/compatibility.json",
+        "tests/architecture_foundation.test.mjs",
+        "architecture/evidence/customer-ready-gates/<R1>.json",
+        "architecture/evidence/customer-ready-gates/<R2>.json"
+      ],
+      "status": "duplicate-policy-and-predecessor-writer-removed"
+    }
+  ],
+  "deferredToStageExit": {
+    "issue": "#148",
+    "items": [
+      "annual-close governance",
+      "in-process deterministic PDF rendering",
+      "complete signing and artifact lifecycle",
+      "production subprocess bridge removal",
+      "complete corporate_governance stage exit"
+    ]
+  },
+  "hostedVerification": {
+    "path": "architecture/evidence/issues/144/hosted-verification.json",
+    "verdict": "pass",
+    "projectId": "pkpyyxryfhfehrbhbynp",
+    "migrationHistoryCount": 76,
+    "businessRows": 0,
+    "ownerDividendSecurityFindings": 0
+  },
+  "closeState": "closed",
+  "closureReceipt": "https://github.com/kristianelmer/Talli/issues/144#issuecomment-5505337631"
+}

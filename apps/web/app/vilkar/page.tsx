@@ -7,6 +7,7 @@ import { currentCustomerAgreements } from "../lib/customer-agreements";
 export const metadata: Metadata = {
   title: "Brukervilkår for bedriftskunder – Talli",
   description: "Talli Business Terms for bedriftskunder.",
+  alternates: { canonical: "/vilkar" },
 };
 
 export default function VilkarPage() {

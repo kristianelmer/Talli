@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#190",
+  "verifiedAt": "2026-09-01T23:11:51Z",
+  "sourceRevision": "78c1bd40f67887a8869ded69a8aa9a00da945089",
+  "githubDeploymentId": 6212005188,
+  "githubDeploymentStatusId": 17649523690,
+  "environment": "Preview",
+  "productionEnvironment": false,
+  "state": "SUCCESS",
+  "provider": "Vercel",
+  "project": "kristianelmers-projects/talli-web",
+  "deploymentUrl": "https://talli-l1jk9vqts-kristianelmers-projects.vercel.app",
+  "providerReceiptUrl": "https://vercel.com/kristianelmers-projects/talli-web/7Djg39GpC2SyaSRknQsYSZ4u1JBs",
+  "access": {
+    "result": "protected-by-project-vercel-authentication",
+    "basis": "The exact revision deployed to the same protected Vercel project recorded in architecture/evidence/issues/143/preview-verification.json.",
+    "directProbePerformed": false,
+    "reason": "The deployment skill forbids fetching the deployed URL for verification."
+  },
+  "compensatingVerification": {
+    "gateEvidence": "architecture/evidence/customer-ready-gates/820d7ca1820fc94cd2e49642ef5bb6a26dfd2d6d.json",
+    "checks": [
+      "build-web",
+      "boundary-smoke",
+      "launch-rehearsal",
+      "database-isolation"
+    ],
+    "allExitCodes": 0
+  },
+  "verdict": "pass"
+}

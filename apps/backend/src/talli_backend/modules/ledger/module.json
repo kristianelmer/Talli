@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-capability",
+  "name": "ledger",
+  "path": "apps/backend/src/talli_backend/modules/ledger",
+  "owner": "backend:ledger",
+  "purpose": "Own Talli's narrow-ledger entries, purpose-specific posting translations, reconstruction evidence, manual-journal warnings, posting invariants, idempotency, query ordering, compatibility period locks, and evidence-bound company-year close locks.",
+  "documentation": "apps/backend/src/talli_backend/modules/ledger/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.ledger.public",
+  "exports": {
+    "commands": ["CloseCompanyYearCommand", "CorrectHoldingActionCommand", "LedgerCommands", "LockPeriodCommand", "PostAdministrativeCostCommand", "PostBankSuggestionOutcomeCommand", "PostInvestmentPurchaseCommand", "PostInvestmentSaleCommand", "PostManualJournalCommand", "PostOwnerDividendDeclaredCommand", "PostOwnerDividendPaymentCommand", "PostReceivedDividendCommand", "PostShareholderLoanCommand", "PostTaxSettlementCommand", "RebuildCompanyYearOpeningCommand", "RecognizeHoldingActionCommand", "RecordReconstructionAssessmentCommand"],
+    "queries": ["CompanyYearCloseAssessment", "CorrectedLedgerEntries", "LedgerEntryPage", "LedgerEntryView", "LedgerPage", "LedgerQueries", "PeriodLock", "PeriodLockPage", "PostedLedgerEntry", "ReconstructionAssessment", "ReconstructionEconomicFactCandidates", "ReconstructionEconomicFactSnapshot"],
+    "events": [],
+    "errors": ["LedgerError"],
+    "identifiers": ["AdministrativeCostBlock", "AdministrativeCostCategory", "AdministrativeCostCorrectionFacts", "AdministrativeCostCorrectionScope", "ApprovedLossCoverageCapitalReductionFacts", "ApprovedOneSidedIntercompanyLoanFundingFacts", "ApprovedOwnerLoanFundingFacts", "BankInterestIncomeFacts", "BankLoanEvent", "BankLoanMaturity", "BankLoanReferenceId", "BankSuggestionRule", "CashCapitalIncreaseFacts", "CapitalIncreasePhase", "CapitalIncreaseReferenceId", "CapitalReductionRecognition", "CapitalReductionReferenceId", "CompanyTaxAccrualFacts", "CompanyYearCloseAssessmentId", "CompanyYearCloseEvidence", "CompanyYearCloseEvidenceKind", "CompanyYearCloseGapCode", "CompanyYearCloseLockId", "CompanyYearCloseOutputKind", "CompanyYearCloseOutputReference", "CompanyYearCloseState", "CompiledOpeningPositionComponent", "DividendDecisionReferenceId", "GroupContributionFacts", "GroupContributionPerspective", "GroupContributionRelationship", "IntercompanyLoanPerspective", "IntercompanyLoanRelationship", "InvestmentCashSettlementFacts", "InvestmentClassification", "InvestmentDividendFacts", "InvestmentDividendPhase", "InvestmentFundDistributionRecognitionFacts", "InvestmentPurchaseRecognitionFacts", "InvestmentSaleRecognitionFacts", "InvestmentSettlementKind", "InvestmentYearEndMeasurementFacts", "LedgerCursor", "LedgerEntryId", "LedgerEntryKind", "LedgerErrorCode", "LedgerFactReference", "LedgerFactRole", "LedgerLine", "LedgerPersistence", "LedgerRiskCode", "LedgerRiskFlag", "LedgerSourceCapability", "LedgerSourceRecordId", "OpeningBalanceCategory", "OpeningBalanceComponent", "OpeningBankLoanComponent", "OpeningCapitalIncreaseComponent", "OpeningCapitalReductionComponent", "OpeningDividendPayableComponent", "OpeningDividendReceivableComponent", "OpeningInvestmentComponent", "OpeningPositionComponent", "OpeningPositionMode", "OrdinaryBankLoanFacts", "PeriodLockId", "ReconstructionAssessmentId", "ReconstructionEconomicFact", "ReconstructionEconomicFactCorrection", "ReconstructionEconomicFactSource", "ReconstructionEvidence", "ReconstructionEvidenceIssuer", "ReconstructionEvidenceKind", "ReconstructionEvidenceStatus", "ReconstructionGapCode", "ReconstructionState", "ShareholderLoanDirection", "SupportedHoldingActionFacts", "TaxSettlementKind", "ledger_persistence_adapter"]
+  },
+  "owns": {
+    "postgresSchemas": ["ledger"],
+    "tables": ["ledger.bank_loan_anchors", "ledger.bank_loan_payment_allocations", "ledger.cash_capital_increase_phases", "ledger.company_year_close_assessments", "ledger.company_year_close_evidence", "ledger.company_year_close_locks", "ledger.company_year_close_reporting_outputs", "ledger.entries", "ledger.entry_contexts", "ledger.entry_corrections", "ledger.entry_sources", "ledger.loss_coverage_capital_reduction_phases", "ledger.opening_position_component_sources", "ledger.opening_position_components", "ledger.opening_position_rebuilds", "ledger.opening_received_dividend_settlements", "ledger.period_locks", "ledger.received_dividend_decisions", "ledger.received_dividend_settlements", "ledger.reconstruction_assessments", "ledger.reconstruction_economic_fact_sets", "ledger.reconstruction_economic_facts", "ledger.reconstruction_evidence", "ledger.reconstruction_source_evidence_bindings", "ledger.reconstruction_source_evidence_sets"],
+    "storageBuckets": [],
+    "projections": [],
+    "migrations": "supabase/migrations/20260827100000_ledger_capability.sql"
+  },
+  "ports": [
+    {
+      "name": "LedgerPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.ledger.public.LedgerPersistence",
+      "registrationDecorator": "talli_backend.modules.ledger.public.ledger_persistence_adapter",
+      "adapters": ["talli_backend.adapters.supabase_ledger.SupabaseLedgerSession"]
+    }
+  ],
+  "dependencies": [],
+  "allowedImports": ["__future__", "collections.abc", "dataclasses", "datetime", "decimal", "enum", "talli_backend.shared.kernel", "typing", "uuid"],
+  "forbiddenResponsibilities": [
+    "Company identity, membership, eligibility, or authentication policy",
+    "Shareholder-register facts, investment rules, governance rules, banking rules, tax rules, or filing rules",
+    "FastAPI, Pydantic, Supabase, PostgreSQL, provider, or web transport types in the public contract",
+    "Arbitrary structured-entry commands other than the explicit manual-journal use case",
+    "Service-role access, RLS bypass, direct browser persistence, or a second posting implementation"
+  ],
+  "tests": {
+    "contract": "apps/backend/tests/test_ledger_public_contract.py",
+    "policy": "apps/backend/tests/test_ledger.py",
+    "database": "tests/ledger_database_runtime.test.mjs",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": ["compat-ledger-persistence"]
+}

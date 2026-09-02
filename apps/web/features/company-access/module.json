@@ -4,12 +4,12 @@
   "name": "company-access",
   "path": "apps/web/features/company-access",
   "owner": "web:company-access",
-  "purpose": "Load authenticated company context and perform invitation, membership administration, cancellation request/resume, deletion review, and deletion finalization through the committed generated API client.",
+  "purpose": "Carry eligibility, company access, generated case-bound operator support, agreement, invitation, membership, and cancellation/deletion workflows through the committed generated API client.",
   "documentation": "apps/web/features/company-access/MODULE.md",
   "publicEntryPoint": "@/features/company-access",
   "publicImportPaths": ["@/features/company-access", "apps/web/features/company-access", "apps/web/features/company-access/index.ts"],
-  "ownedRoutes": ["/dashboard", "/connections", "/workspace", "/operator", "/invite/accept", "/companies/[companyId]/annual-reporting/[incomeYear]"],
-  "apiOperations": ["companyAccessGetSelectedContext", "companyAccessListInvitations", "companyAccessCreateInvitation", "companyAccessLookupInvitation", "companyAccessAcceptInvitation", "companyAccessRevokeInvitation", "companyAccessResendInvitation", "companyAccessListPendingInvitationSideEffects", "companyAccessCompleteInvitationSideEffect", "companyAccessListMemberships", "companyAccessAdministerMembership", "companyAccessListCancellations", "companyAccessRequestCancellation", "companyAccessResumeCancellation", "companyAccessReviewDeletion", "companyAccessFinalizeDeletion"],
+  "ownedRoutes": ["/dashboard", "/connections", "/workspace", "/operator", "/onboarding", "/selskapsgrense", "/sjekk-selskapet", "/invite/accept", "/companies/[companyId]/annual-reporting/[incomeYear]"],
+  "apiOperations": ["companyAccessGetSelectedContext", "companyAccessGetCompanyRecord", "companyAccessGetOperatorContext", "companyAccessGrantSupportAccess", "companyAccessRevokeSupportAccess", "companyAccessOpenSupportCase", "companyAccessReadSupportCase", "companyAccessEligibilityPrecheck", "companyAccessEligibilityDefinitive", "companyAccessAdmitCompanyYear", "companyAccessRecheckCompanyYearEligibility", "companyAccessReacceptAgreement", "companyAccessListInvitations", "companyAccessCreateInvitation", "companyAccessLookupInvitation", "companyAccessAcceptInvitation", "companyAccessRevokeInvitation", "companyAccessResendInvitation", "companyAccessListPendingInvitationSideEffects", "companyAccessCompleteInvitationSideEffect", "companyAccessListMemberships", "companyAccessAdministerMembership", "companyAccessListCancellations", "companyAccessRequestCancellation", "companyAccessResumeCancellation", "companyAccessReviewDeletion", "companyAccessFinalizeDeletion"],
   "dependencies": [],
   "allowedImports": ["#backend-configuration", "@talli/talli-api-client"],
   "cachePolicy": { "default": "no-store", "allowed": [] },
@@ -20,7 +20,8 @@
     "Handwritten business DTOs or generated-client deep imports"
   ],
   "tests": {
-    "feature": "apps/web/tests/company-access-administration.test.mjs",
+    "feature": "apps/web/tests/company-eligibility.test.mjs",
+    "stageExit": "apps/web/tests/company-access-stage-exit.test.mjs",
     "architecture": "tests/architecture_foundation.test.mjs"
   },
   "compatibilityExceptions": []

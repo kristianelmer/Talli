@@ -2,43 +2,214 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://talli.no/schemas/architecture/compatibility.schema.json",
   "type": "object",
-  "required": ["schemaVersion", "exceptions"],
+  "required": ["schemaVersion", "baseline", "migration", "records"],
   "properties": {
-    "schemaVersion": { "const": "1.0" },
-    "exceptions": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["id", "owner", "creationIssue", "removalIssue", "scopes", "approvedBy", "approvedAt", "releaseLimit", "expiresAt", "removalCondition"],
-        "properties": {
-          "id": { "type": "string", "pattern": "^compat-" },
-          "owner": { "type": "string" },
-          "creationIssue": { "type": "string", "pattern": "^#[0-9]+$" },
-          "removalIssue": { "type": "string", "pattern": "^#[0-9]+$" },
-          "scopes": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": {
-              "type": "object",
-              "required": ["path", "rule", "resource", "operation"],
-              "properties": {
-                "path": { "type": "string", "pattern": "^apps/web/[^\\s]+$" },
-                "rule": { "enum": ["direct-web-business-persistence", "direct-business-fetch", "generated-client-deep-import"] },
-                "resource": { "type": "string", "pattern": "^(table|rpc|storage|url|module):[^\\s]+$" },
-                "operation": { "type": "string", "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*(?:[.#][A-Za-z_$][A-Za-z0-9_$]*)*$" }
-              },
-              "additionalProperties": false
+    "schemaVersion": { "const": "2.0" },
+    "baseline": {
+      "type": "object",
+      "required": ["path", "digest"],
+      "properties": {
+        "path": { "const": "architecture/compatibility-baseline.json" },
+        "digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "migration": {
+      "type": "object",
+      "required": ["foundationRecovery", "order", "currentCapability", "currentIssue", "status", "exitedCapabilities", "completedStages"],
+      "properties": {
+        "foundationRecovery": {
+          "type": "object",
+          "required": ["issue", "status", "gates"],
+          "properties": {
+            "issue": { "const": "#186" },
+            "status": { "enum": ["pending", "complete"] },
+            "gates": {
+              "type": "array",
+              "maxItems": 2,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/gate" }
             }
           },
-          "approvedBy": { "type": "string", "minLength": 1 },
-          "approvedAt": { "type": "string", "format": "date-time" },
-          "releaseLimit": { "const": "next-stable-customer-ready-release" },
-          "expiresAt": { "type": "string", "format": "date-time" },
-          "removalCondition": { "type": "string", "minLength": 1 }
+          "additionalProperties": false
         },
-        "additionalProperties": false
+        "order": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "required": ["capability", "removalIssues"],
+            "properties": {
+              "capability": { "$ref": "#/$defs/capability" },
+              "removalIssues": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/issue" }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "currentCapability": { "$ref": "#/$defs/capability" },
+        "currentIssue": { "$ref": "#/$defs/issue" },
+        "status": { "enum": ["active", "exit-review"] },
+        "exitedCapabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/capability" }
+        },
+        "completedStages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["capability", "removalIssues", "gates"],
+            "properties": {
+              "capability": { "$ref": "#/$defs/capability" },
+              "removalIssues": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/issue" }
+              },
+              "gates": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/gate" }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/legacyFacade" },
+          { "$ref": "#/$defs/activeStageDebt" }
+        ]
       }
+    }
+  },
+  "$defs": {
+    "issue": { "type": "string", "pattern": "^#[0-9]+$" },
+    "capability": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "gate": {
+      "type": "object",
+      "required": ["revision", "evidencePath", "evidenceDigest"],
+      "properties": {
+        "revision": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "evidencePath": { "type": "string", "pattern": "^architecture/evidence/customer-ready-gates/[a-f0-9]{40}\\.json$" },
+        "evidenceDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "scope": {
+      "type": "object",
+      "required": ["path", "rule", "resource", "operation"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^apps/web/[^\\s]+$" },
+        "rule": {
+          "enum": [
+            "direct-web-business-persistence",
+            "direct-business-fetch",
+            "generated-client-deep-import"
+          ]
+        },
+        "resource": { "type": "string", "pattern": "^(table|rpc|storage|url|module):[^\\s]+$" },
+        "operation": { "type": "string", "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*(?:[.#][A-Za-z_$][A-Za-z0-9_$]*)*$" }
+      },
+      "additionalProperties": false
+    },
+    "commonRecord": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "capability",
+        "owner",
+        "creationIssue",
+        "removalIssue",
+        "scopes",
+        "approvedBy",
+        "approvedAt",
+        "removalCondition"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^compat-" },
+        "kind": { "enum": ["legacy-facade", "active-stage-debt"] },
+        "capability": { "$ref": "#/$defs/capability" },
+        "owner": { "type": "string", "minLength": 1 },
+        "creationIssue": { "$ref": "#/$defs/issue" },
+        "removalIssue": { "$ref": "#/$defs/issue" },
+        "scopes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/scope" }
+        },
+        "approvedBy": { "type": "string", "minLength": 1 },
+        "approvedAt": { "type": "string", "format": "date-time" },
+        "removalCondition": { "type": "string", "minLength": 1 }
+      }
+    },
+    "legacyFacade": {
+      "allOf": [
+        { "$ref": "#/$defs/commonRecord" },
+        {
+          "type": "object",
+          "required": ["decisionIssue", "baselineRevision", "canonicalImplementation"],
+          "properties": {
+            "id": true,
+            "kind": { "const": "legacy-facade" },
+            "capability": true,
+            "owner": { "const": "web:legacy-runtime" },
+            "creationIssue": true,
+            "decisionIssue": { "$ref": "#/$defs/issue" },
+            "removalIssue": true,
+            "baselineRevision": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+            "canonicalImplementation": { "type": "string", "pattern": "^web:legacy-runtime:[a-z][a-z0-9_]*$" },
+            "scopes": true,
+            "approvedBy": true,
+            "approvedAt": true,
+            "removalCondition": true
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "activeStageDebt": {
+      "allOf": [
+        { "$ref": "#/$defs/commonRecord" },
+        {
+          "type": "object",
+          "required": ["successorCapability", "releaseLimit", "expiresAt", "residualRisk", "rollback"],
+          "properties": {
+            "id": true,
+            "kind": { "const": "active-stage-debt" },
+            "capability": true,
+            "owner": true,
+            "creationIssue": true,
+            "removalIssue": true,
+            "successorCapability": { "$ref": "#/$defs/capability" },
+            "scopes": true,
+            "approvedBy": true,
+            "approvedAt": true,
+            "releaseLimit": { "const": "next-stable-customer-ready-release" },
+            "expiresAt": { "type": "string", "format": "date-time" },
+            "residualRisk": { "type": "string", "minLength": 1 },
+            "rollback": { "type": "string", "minLength": 1 },
+            "removalCondition": true
+          },
+          "additionalProperties": false
+        }
+      ]
     }
   },
   "additionalProperties": false

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-capability",
+  "name": "documents",
+  "path": "apps/backend/src/talli_backend/modules/documents",
+  "owner": "backend:documents",
+  "purpose": "Own accounting-document validation, metadata, private single-object transfers, integrity, retention, safe removal, and backup projections.",
+  "documentation": "apps/backend/src/talli_backend/modules/documents/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.documents.public",
+  "exports": {
+    "commands": ["BeginDocumentUploadCommand"],
+    "queries": ["DocumentBackupObject", "DocumentObjectTransfer", "DocumentRecord", "DocumentRestoreObject", "DocumentRestorePlan", "DocumentUploadTransfer"],
+    "events": [],
+    "errors": ["DocumentsError", "DocumentErrorCode"],
+    "identifiers": ["DocumentId", "DocumentObjectStorage", "DocumentsAuthorization", "DocumentsPersistence", "DocumentStatus", "DocumentTransferKind", "DocumentsSession", "DocumentsSessionFactory", "StoredDocumentObject", "document_object_storage_adapter", "documents_authorization_adapter", "documents_persistence_adapter"]
+  },
+  "owns": {
+    "postgresSchemas": ["documents"],
+    "tables": ["public.documents"],
+    "storageBuckets": ["company-documents"],
+    "projections": ["DocumentBackupObject"],
+    "migrations": "supabase/migrations/20260901233000_documents_capability.sql"
+  },
+  "ports": [
+    {"name": "DocumentsPersistence", "direction": "outbound", "contract": "talli_backend.modules.documents.public.DocumentsPersistence", "registrationDecorator": "talli_backend.modules.documents.public.documents_persistence_adapter", "adapters": ["talli_backend.adapters.supabase_documents.SupabaseDocumentsPersistence"]},
+    {"name": "DocumentObjectStorage", "direction": "outbound", "contract": "talli_backend.modules.documents.public.DocumentObjectStorage", "registrationDecorator": "talli_backend.modules.documents.public.document_object_storage_adapter", "adapters": ["talli_backend.adapters.supabase_documents.SupabaseDocumentObjectStorage"]},
+    {"name": "DocumentsAuthorization", "direction": "outbound", "contract": "talli_backend.modules.documents.public.DocumentsAuthorization", "registrationDecorator": "talli_backend.modules.documents.public.documents_authorization_adapter", "adapters": ["talli_backend.adapters.supabase_documents.SupabaseDocumentsAuthorization"]}
+  ],
+  "dependencies": [],
+  "allowedImports": ["__future__", "collections.abc", "dataclasses", "datetime", "enum", "hashlib", "json", "re", "talli_backend.shared.kernel", "typing", "unicodedata", "uuid"],
+  "forbiddenResponsibilities": [
+    "Corporate-governance, filing, ledger, investment, authority, or archive composition policy",
+    "Provider-specific object policy in the public contract",
+    "Direct browser metadata mutation, bucket listing, arbitrary object keys, or object deletion"
+  ],
+  "tests": {
+    "policy": "apps/backend/tests/test_documents.py",
+    "adapter": "apps/backend/tests/test_supabase_documents.py",
+    "database": "tests/documents_database_runtime.test.mjs",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

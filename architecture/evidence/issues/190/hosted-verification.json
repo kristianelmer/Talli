@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#190",
+  "verifiedAt": "2026-09-01T23:11:51Z",
+  "sourceRevision": "78c1bd40f67887a8869ded69a8aa9a00da945089",
+  "target": {
+    "organizationId": "zwucumjvtpnyujqyzwkg",
+    "projectId": "pkpyyxryfhfehrbhbynp",
+    "name": "1st project",
+    "region": "eu-west-1",
+    "state": "ACTIVE_HEALTHY",
+    "database": "postgres",
+    "postgresVersion": "17.6.1.166"
+  },
+  "apply": {
+    "result": "pass",
+    "method": "Supabase migration API, serial exact-file application",
+    "baselineMigrationHistoryCount": 59,
+    "appliedMigrationCount": 12,
+    "migrationHistoryCount": 71,
+    "appliedMigrations": [
+      {"version": "20260901230748", "name": "20260901110000_investments_complete_manual_evidence"},
+      {"version": "20260901230752", "name": "20260901112000_investments_lifecycle_measurement_expand"},
+      {"version": "20260901230756", "name": "20260901113000_investments_lifecycle_workflow"},
+      {"version": "20260901230807", "name": "20260901114000_investments_share_sale_lifecycle"},
+      {"version": "20260901230811", "name": "20260901115000_investments_income_lifecycle"},
+      {"version": "20260901230814", "name": "20260901116000_investments_lifecycle_corrections"},
+      {"version": "20260901230827", "name": "20260901117000_investments_bank_fact_claim"},
+      {"version": "20260901230830", "name": "20260901118000_investments_year_end_measurement_workflow"},
+      {"version": "20260901230834", "name": "20260901203025_investments_measurement_reversals"},
+      {"version": "20260901230846", "name": "20260901204052_investments_boundary_confirmations"},
+      {"version": "20260901230848", "name": "20260901205331_investments_settled_event_corrections"},
+      {"version": "20260901230851", "name": "20260901222630_investments_lifecycle_correction_source_idempotence"}
+    ],
+    "alreadyAppliedIssue190Migrations": [
+      {"version": "20260901014339", "name": "20260901100000_investments_supported_patterns"},
+      {"version": "20260901014727", "name": "20260901103000_investments_supported_patterns_authority_cleanup"}
+    ],
+    "deliberatelyUnappliedMigration": "20260830093000_current_legal_evidence",
+    "unappliedReason": "#196 billing/publication condition remains closed"
+  },
+  "verification": {
+    "canonicalTables": {
+      "expected": 22,
+      "present": 22,
+      "owner": "investments_store_owner",
+      "rlsEnabled": 22,
+      "rlsForced": 22,
+      "totalBusinessRows": 0
+    },
+    "immutableSourceRegistry": {
+      "forcedRls": true,
+      "policies": [
+        "investments_source_fact_registry_member_select:SELECT",
+        "investments_source_fact_registry_owner_insert:INSERT"
+      ],
+      "updatePolicyPresent": false,
+      "correctionSourceFunction": "investments.record_lifecycle_correction_sources_v2(uuid,uuid,jsonb)",
+      "conflictAction": "DO NOTHING followed by exact hash reconciliation",
+      "doUpdatePresent": false,
+      "publicRoleExecute": false
+    },
+    "runtimeBoundary": {
+      "backendRole": "talli_ledger_backend",
+      "backendMemberships": [
+        "investments_executor",
+        "investments_workflow_executor"
+      ],
+      "legacyPublicInvestmentTablesPresent": 0
+    },
+    "platformMigrationRole": {
+      "role": "postgres",
+      "capabilityMembershipGrantor": "supabase_admin",
+      "inheritOption": false,
+      "setOption": false,
+      "effectiveRuntimeAuthority": false
+    },
+    "legalMigrationPresent": false
+  },
+  "advisors": {
+    "security": {
+      "total": 38,
+      "info": 5,
+      "warn": 33,
+      "investmentRelated": 0,
+      "blockingInvestmentFindings": 0,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter"
+    },
+    "performance": {
+      "total": 279,
+      "info": 270,
+      "warn": 9,
+      "investmentRelatedInfo": 50,
+      "investmentRelatedWarn": 0,
+      "note": "Investment findings are informational unused-index and unindexed-foreign-key observations on an empty pre-launch store.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter"
+    }
+  },
+  "verdict": "pass"
+}

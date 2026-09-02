@@ -501,3 +501,26 @@ test("archive download fetches only sanitized authority runs linked by submissio
   assert.doesNotMatch(route, /stepUpError\.userMessage/u);
   assert.doesNotMatch(route, /MFA\/step-up/u);
 });
+
+test("archive ledger facts come through the generated capability query with a frozen projection", () => {
+  const route = readFileSync(
+    new URL("../apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(route, /\.from\("ledger_entries"\)/u);
+  assert.match(route, /getCurrentSessionAccessToken/u);
+  assert.match(route, /loadLedgerEntriesForArchive\(accessToken, \[companyId\]\)/u);
+  assert.match(route, /presentLedgerEntriesForArchive\(entries\)/u);
+  assert.match(route, /entry\.company_id !== companyId/u);
+  assert.match(route, /entry\.income_year === incomeYear/u);
+  assert.match(
+    route,
+    /id: entry\.id,[\s\S]+company_id: entry\.company_id,[\s\S]+setup_id: entry\.setup_id,[\s\S]+income_year: entry\.income_year,[\s\S]+entry_type: entry\.entry_type,[\s\S]+memo: entry\.memo,[\s\S]+lines: entry\.lines,[\s\S]+created_by: entry\.created_by,[\s\S]+created_at: entry\.created_at/iu,
+  );
+  assert.ok(
+    route.indexOf("const accessToken = await getCurrentSessionAccessToken()")
+      < route.indexOf('"company_archive_begin_export"'),
+  );
+  assert.match(route, /loadArchiveLedgerEntries\(accessToken, companyId, incomeYear\)/u);
+  assert.match(route, /firstArchiveSourceError\(sourceResults\)/u);
+});

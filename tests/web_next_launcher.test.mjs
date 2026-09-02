@@ -9,16 +9,17 @@ import test from "node:test";
 const launcherSource = new URL("../apps/web/scripts/run-next.mjs", import.meta.url);
 const smokeSource = new URL("production_boundary_smoke.mjs", import.meta.url);
 
-test("web launcher uses the repository-root Next installation", async (t) => {
+test("web launcher uses the app-local Next installation", async (t) => {
   const fixtureRoot = await mkdtemp(join(tmpdir(), "talli-next-launcher-"));
   t.after(() => rm(fixtureRoot, { force: true, recursive: true }));
 
   await mkdir(join(fixtureRoot, "apps/web/scripts"), { recursive: true });
-  await mkdir(join(fixtureRoot, "node_modules/next/dist/bin"), { recursive: true });
+  await mkdir(join(fixtureRoot, "apps/web/node_modules/next/dist/bin"), { recursive: true });
   await copyFile(launcherSource, join(fixtureRoot, "apps/web/scripts/run-next.mjs"));
   await writeFile(join(fixtureRoot, "package.json"), "{}\n");
+  await writeFile(join(fixtureRoot, "apps/web/package.json"), "{}\n");
   await writeFile(
-    join(fixtureRoot, "node_modules/next/dist/bin/next"),
+    join(fixtureRoot, "apps/web/node_modules/next/dist/bin/next"),
     'console.log(`next ${process.argv.slice(2).join(" ")}`);\n',
   );
 
@@ -32,10 +33,10 @@ test("web launcher uses the repository-root Next installation", async (t) => {
   assert.equal(result.stdout.trim(), "next build apps/web");
 });
 
-test("production smoke resolves Next from the repository root", () => {
+test("production smoke resolves Next from the app package", () => {
   const source = readFileSync(smokeSource, "utf8");
 
   assert.match(source, /createRequire/u);
-  assert.match(source, /requireFromRepositoryRoot\.resolve\("next\/dist\/bin\/next"\)/u);
-  assert.doesNotMatch(source, /apps\/web\/node_modules\/next/u);
+  assert.match(source, /requireFromWebPackage\.resolve\("next\/dist\/bin\/next"\)/u);
+  assert.doesNotMatch(source, /requireFromRepositoryRoot/u);
 });

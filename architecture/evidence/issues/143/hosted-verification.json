@@ -1,0 +1,181 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#143",
+  "verifiedAt": "2026-08-31T22:21:06Z",
+  "sourceRevision": "027254ab93c35b102d9429b3965fcbbbb4f033a8",
+  "verifiedGateRevision": "abfa5c767bb1453ea3ec02af0ca463884887e63c",
+  "target": {
+    "organizationId": "zwucumjvtpnyujqyzwkg",
+    "projectId": "pkpyyxryfhfehrbhbynp",
+    "name": "1st project",
+    "region": "eu-west-1",
+    "state": "ACTIVE_HEALTHY",
+    "database": "postgres",
+    "postgresVersion": "17.6"
+  },
+  "preApply": {
+    "baselineMigrationHistoryCount": 47,
+    "legacyInvestmentRows": {
+      "public.holding_actions": 0,
+      "public.investment_positions": 0,
+      "public.investment_lots": 0,
+      "public.investment_lot_allocations": 0
+    }
+  },
+  "apply": {
+    "result": "pass",
+    "appliedMigrationCount": 10,
+    "migrationHistoryCount": 57,
+    "appliedMigrations": [
+      {
+        "version": "20260831212451",
+        "name": "20260831124939_investments_capability"
+      },
+      {
+        "version": "20260831212452",
+        "name": "20260831131203_investments_share_purchase_workflow"
+      },
+      {
+        "version": "20260831212454",
+        "name": "20260831162145_investments_share_sale_workflow"
+      },
+      {
+        "version": "20260831212455",
+        "name": "20260831180000_investments_allocation_identity"
+      },
+      {
+        "version": "20260831212456",
+        "name": "20260831182000_investments_received_dividend_workflow"
+      },
+      {
+        "version": "20260831213307",
+        "name": "20260831133000_investments_share_purchase_contract"
+      },
+      {
+        "version": "20260831213326",
+        "name": "20260831170000_investments_share_sale_contract"
+      },
+      {
+        "version": "20260831213327",
+        "name": "20260831190000_investments_received_dividend_contract"
+      },
+      {
+        "version": "20260831213528",
+        "name": "20260831193000_investments_stage_exit"
+      },
+      {
+        "version": "20260831220500",
+        "name": "20260901001500_investments_stage_exit_policy_cleanup"
+      }
+    ],
+    "atomicPreflightCorrections": [
+      {
+        "artifact": "20260831133000_investments_share_purchase_contract",
+        "rolledBackError": "permission denied for schema backend_system",
+        "correction": "bounded direct schema CREATE during contract and rollback only"
+      },
+      {
+        "artifact": "20260831193000_investments_stage_exit",
+        "rolledBackError": "permission denied for function public.company_archive_track_source_write_v1",
+        "correction": "bounded direct trigger-function EXECUTE during stage exit only"
+      }
+    ],
+    "deliberatelyUnappliedMigration": "20260830093000_current_legal_evidence",
+    "unappliedReason": "#196 billing/publication condition remains closed"
+  },
+  "verification": {
+    "canonicalTables": {
+      "expected": 6,
+      "present": 6,
+      "owner": "investments_store_owner",
+      "rlsEnabled": 6,
+      "rlsForced": 6,
+      "exactRows": {
+        "positions": 0,
+        "acquisition_lots": 0,
+        "share_purchases": 0,
+        "share_sales": 0,
+        "share_sale_allocations": 0,
+        "received_dividends": 0
+      }
+    },
+    "canonicalFunctions": {
+      "expected": 12,
+      "present": 12,
+      "owner": "investments_store_owner",
+      "workflowExecutorExecute": 12,
+      "anonExecute": 0,
+      "authenticatedExecute": 0,
+      "serviceRoleExecute": 0
+    },
+    "runtimeBoundary": {
+      "backendRole": "talli_ledger_backend",
+      "backendMemberships": [
+        "investments_executor",
+        "investments_workflow_executor"
+      ],
+      "directInsertUpdateDeleteGrants": 0,
+      "publicAnonAuthenticatedServiceDirectTableGrants": 0
+    },
+    "legacySurface": {
+      "absentTables": [
+        "public.investment_positions",
+        "public.investment_lots",
+        "public.investment_lot_allocations"
+      ],
+      "remainingInvestmentHoldingActions": 0,
+      "holdingActionConstraintValues": [
+        "dividend_to_owner",
+        "shareholder_loan",
+        "tax_settlement"
+      ],
+      "remainingLegacyFunctions": 0,
+      "remainingRollbackOrMirrorFunctions": 0
+    },
+    "archiveInvalidation": {
+      "expectedTriggers": 6,
+      "presentTriggers": 6,
+      "companyScoped": [
+        "positions",
+        "acquisition_lots",
+        "share_sale_allocations"
+      ],
+      "yearScoped": [
+        "share_purchases",
+        "share_sales",
+        "received_dividends"
+      ]
+    },
+    "stageExitPolicies": {
+      "retiredExpected": 5,
+      "retiredRemaining": 0,
+      "investmentRelatedSecurityWarnings": 0,
+      "investmentRelatedPerformanceWarnings": 0,
+      "investmentRelatedPerformanceInfo": 15
+    },
+    "temporaryAuthorityAfterCommit": {
+      "migratorBackendSystemCreate": false,
+      "ledgerOwnerBackendSystemCreate": false,
+      "migratorArchiveTriggerExecute": false
+    }
+  },
+  "advisors": {
+    "security": {
+      "total": 38,
+      "info": 5,
+      "warn": 33,
+      "investmentRelated": 0,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter"
+    },
+    "performance": {
+      "total": 244,
+      "info": 235,
+      "warn": 9,
+      "investmentRelatedWarnings": 0,
+      "investmentRelatedInfo": 15,
+      "note": "Investment findings are informational unused-index and unindexed-foreign-key observations on an empty pre-launch store.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter"
+    }
+  },
+  "verdict": "pass"
+}

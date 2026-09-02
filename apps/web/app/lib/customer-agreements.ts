@@ -16,19 +16,19 @@ type ContractContent = {
 
 const currentAgreementMetadata = {
   business_terms: {
-    version: "2026-07-17",
-    effectiveDate: "2026-07-17",
-    contentSha256: "f64a7f6a9758389fca8985a883a945d84c849f5b3316944621507db336992543",
+    version: "2026-08-30",
+    effectiveDate: "2026-08-30",
+    contentSha256: "afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04",
   },
   dpa: {
-    version: "2026-07-17",
-    effectiveDate: "2026-07-17",
-    contentSha256: "083ee63c1917ef227068befd7706ba2d636c52070ed4d880a8efae720528191c",
+    version: "2026-08-30",
+    effectiveDate: "2026-08-30",
+    contentSha256: "1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a",
   },
 } as const;
 
 export function assertCanonicalAgreementContent(
-  kind: "business_terms" | "dpa",
+  kind: "business_terms" | "dpa" | "privacy_notice",
   content: ContractContent,
   expectedSha256: string,
 ) {
@@ -41,43 +41,55 @@ export function assertCanonicalAgreementContent(
   return actualSha256;
 }
 
-function contractDocument(
-  kind: "business_terms" | "dpa",
+function contractDocument<
+  const Kind extends "business_terms" | "dpa",
+  const Version extends string,
+  const ContentSha256 extends string,
+>(
+  kind: Kind,
   path: "/vilkar" | "/databehandleravtale",
   content: ContractContent,
+  metadata: {
+    version: Version;
+    effectiveDate: string;
+    contentSha256: ContentSha256;
+  },
 ) {
-  const metadata = currentAgreementMetadata[kind];
-  const contentSha256 = assertCanonicalAgreementContent(kind, content, metadata.contentSha256);
+  assertCanonicalAgreementContent(kind, content, metadata.contentSha256);
   return {
     kind,
     version: metadata.version,
     effectiveDate: metadata.effectiveDate,
     path,
-    contentSha256,
+    contentSha256: metadata.contentSha256,
   } as const;
 }
 
 export const currentCustomerAgreements = {
-  businessTerms: contractDocument("business_terms", "/vilkar", ownerCopy.legal.terms),
-  dpa: contractDocument("dpa", "/databehandleravtale", ownerCopy.legal.dpa),
+  businessTerms: contractDocument(
+    "business_terms",
+    "/vilkar",
+    ownerCopy.legal.terms,
+    currentAgreementMetadata.business_terms,
+  ),
+  dpa: contractDocument(
+    "dpa",
+    "/databehandleravtale",
+    ownerCopy.legal.dpa,
+    currentAgreementMetadata.dpa,
+  ),
 } as const;
 
-export function assertCurrentCustomerAgreementForm(input: {
-  agreementAccepted: string;
-  businessTermsVersion: string;
-  businessTermsSha256: string;
-  dpaVersion: string;
-  dpaSha256: string;
-}) {
-  if (input.agreementAccepted !== "accepted") {
-    throw new Error("Du må bekrefte fullmakt og godta avtalevilkårene.");
-  }
-  if (
-    input.businessTermsVersion !== currentCustomerAgreements.businessTerms.version ||
-    input.businessTermsSha256 !== currentCustomerAgreements.businessTerms.contentSha256 ||
-    input.dpaVersion !== currentCustomerAgreements.dpa.version ||
-    input.dpaSha256 !== currentCustomerAgreements.dpa.contentSha256
-  ) {
-    throw new Error("Avtalevilkårene er oppdatert. Les dem og bekreft på nytt.");
-  }
-}
+export const currentPrivacyNotice = {
+  kind: "privacy_notice",
+  version: "2026-08-30",
+  effectiveDate: "2026-08-30",
+  path: "/personvern",
+  contentSha256: "041a65be9f020c037bd65b7097e04afdbeb2c944ef45d7bef3dd380e92f907de",
+} as const;
+
+assertCanonicalAgreementContent(
+  currentPrivacyNotice.kind,
+  ownerCopy.legal.privacy,
+  currentPrivacyNotice.contentSha256,
+);

@@ -7,7 +7,7 @@
     "schemaVersion": { "const": "1.0" }, "generatedBy": { "const": "scripts/check-architecture.mjs" },
     "modules": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
     "edges": { "type": "array", "items": { "type": "object", "required": ["from", "to", "kind", "imports"], "properties": { "from": { "type": "string" }, "to": { "type": "string" }, "kind": { "type": "string" }, "imports": { "type": "array", "items": { "type": "string" } } }, "additionalProperties": false } },
-    "technicalOwnership": { "type": "array", "items": { "type": "object", "required": ["owner", "table"], "properties": { "owner": { "const": "backend-system" }, "table": { "type": "string", "pattern": "^public\\." } }, "additionalProperties": false } }
+    "technicalOwnership": { "type": "array", "items": { "type": "object", "required": ["owner", "table"], "properties": { "owner": { "const": "backend-system" }, "table": { "type": "string", "pattern": "^[a-z][a-z0-9_]*\\.[a-z_]+$" } }, "additionalProperties": false } }
   },
   "additionalProperties": false
 }

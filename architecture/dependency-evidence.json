@@ -1,6 +1,22 @@
 {
   "edges": [
     {
+      "from": "backend-system:accounting-document-lifecycle",
+      "imports": [
+        "talli_backend.modules.documents.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:documents"
+    },
+    {
+      "from": "backend-system:banking-reconciliation",
+      "imports": [
+        "talli_backend.modules.banking.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:banking"
+    },
+    {
       "from": "backend-system:company-access-administration",
       "imports": [
         "talli_backend.modules.company_access.public"
@@ -17,6 +33,118 @@
       "to": "backend:company_access"
     },
     {
+      "from": "backend-system:company-access-onboarding-and-support",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:company-year-eligibility-and-admission",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:investment-activity",
+      "imports": [
+        "talli_backend.modules.banking.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:banking"
+    },
+    {
+      "from": "backend-system:investment-activity",
+      "imports": [
+        "talli_backend.modules.investments.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:investments"
+    },
+    {
+      "from": "backend-system:investment-activity",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:ledger-posting-and-period-control",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:marketing-funnel-measurement",
+      "imports": [
+        "talli_backend.modules.marketing_measurement.public"
+      ],
+      "kind": "workflow",
+      "to": "backend-system:marketing_measurement"
+    },
+    {
+      "from": "backend-system:new-year-start",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:new-year-start",
+      "imports": [
+        "talli_backend.modules.shareholder_register_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:shareholder_register_filing"
+    },
+    {
+      "from": "backend-system:owner-dividend-governance",
+      "imports": [
+        "talli_backend.modules.banking.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:banking"
+    },
+    {
+      "from": "backend-system:owner-dividend-governance",
+      "imports": [
+        "talli_backend.modules.corporate_governance.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:corporate_governance"
+    },
+    {
+      "from": "backend-system:owner-dividend-governance",
+      "imports": [
+        "talli_backend.modules.documents.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:documents"
+    },
+    {
+      "from": "backend-system:owner-dividend-governance",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:passive-validation-observation",
+      "imports": [
+        "talli_backend.modules.validation_observation.public"
+      ],
+      "kind": "workflow",
+      "to": "backend-system:validation_observation"
+    },
+    {
       "from": "backend-system:system-boundary-tracer",
       "imports": [
         "talli_backend.modules.system_boundary.public"
@@ -27,13 +155,107 @@
   ],
   "generatedBy": "scripts/check-architecture.mjs",
   "modules": [
+    "backend-system:marketing_measurement",
     "backend-system:system_boundary",
+    "backend-system:validation_observation",
+    "backend:banking",
     "backend:company_access",
+    "backend:corporate_governance",
+    "backend:documents",
+    "backend:investments",
+    "backend:ledger",
+    "backend:shareholder_register_filing",
+    "web:banking",
     "web:company-access",
+    "web:corporate-governance",
+    "web:documents",
+    "web:investments",
+    "web:ledger",
+    "web:public-acquisition",
     "web:system-boundary"
   ],
   "schemaVersion": "1.0",
   "technicalOwnership": [
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_command_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_migration_reconciliations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_migration_runs"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_migration_source_rows"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_command_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_cursor_signing_keys"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_quarantine"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_reconciliations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_runs"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_source_rows"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_workflow_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_consent_actions"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_funnel_events"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_funnel_withdrawals"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_measurement_releases"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_observation_control"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_observations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_pilot_entitlements"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_reviewers"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_runs"
+    },
     {
       "owner": "backend-system",
       "table": "public.company_access_command_receipts"

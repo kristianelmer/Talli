@@ -1,94 +1,73 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useState } from "react";
 
 import { recordDividendReceived } from "../../../actions";
 import { Banner, SubmitButton } from "../../../components/ui";
 import { ownerCopy } from "../../../lib/copy";
 import {
-  dividendReceivedLedgerLines,
-  validateDividendReceived,
-} from "../../../lib/dividend-received";
-import { ActionPreview, type LedgerLine } from "./ActionPreview";
-import { DocStatusSelect, SelectField, TextField } from "./fields";
+  InvestmentEvidenceFields,
+  investmentEvidenceComplete,
+  type InvestmentEvidenceOption,
+  type InvestmentEvidenceState,
+} from "./InvestmentEvidenceFields";
+import { CheckboxField, SelectField, TextField } from "./fields";
 
-export type DividendInvestment = { investment_key: string; name: string };
+export type DividendInvestment = {
+  id: string;
+  name: string;
+  kind: "norwegian_private_company" | "norwegian_listed_share" | "norwegian_equity_fund";
+};
 
 type Props = {
   companyId: string;
   incomeYear: number;
   investments: DividendInvestment[];
+  operationId?: string;
+  bankTransactions: InvestmentEvidenceOption[];
+  documents: InvestmentEvidenceOption[];
 };
 
 export function DividendReceivedWizard({
   companyId,
   incomeYear,
   investments,
+  operationId: initialOperationId,
+  bankTransactions,
+  documents,
 }: Props) {
   const a = ownerCopy.actions;
   const c = a.dividendReceived;
-
-  const [linkedInvestmentId, setLinkedInvestmentId] = useState("");
+  const [positionId, setPositionId] = useState("");
   const [payingCompanyName, setPayingCompanyName] = useState("");
   const [declaredDate, setDeclaredDate] = useState("");
-  const [paidDate, setPaidDate] = useState("");
   const [grossAmount, setGrossAmount] = useState("");
-  const [treatment, setTreatment] = useState("fritaksmetoden");
-  const [documentStatus, setDocumentStatus] = useState("attached");
-
+  const [groupException, setGroupException] = useState(false);
+  const [ownershipBasisPoints, setOwnershipBasisPoints] = useState("");
+  const [votingBasisPoints, setVotingBasisPoints] = useState("");
+  const [groupEvidence, setGroupEvidence] = useState("");
+  const [lawfulDividendConfirmed, setLawfulDividendConfirmed] = useState(false);
+  const [evidence, setEvidence] = useState<InvestmentEvidenceState>({
+    mode: "manual_fallback",
+    bankTransactionId: "",
+    documentId: "",
+    reference: "",
+    ownerAttested: false,
+  });
+  const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
+  const selectedInvestment = investments.find((investment) => investment.id === positionId);
+  const groupExceptionAvailable = selectedInvestment?.kind === "norwegian_private_company";
   const ready =
-    linkedInvestmentId.trim() !== "" &&
+    positionId.trim() !== "" &&
     payingCompanyName.trim() !== "" &&
     declaredDate.trim() !== "" &&
-    paidDate.trim() !== "" &&
-    grossAmount.trim() !== "";
-
-  const preview = useMemo<{
-    block: string | null;
-    lines: LedgerLine[] | null;
-    summary: ReactNode;
-  }>(() => {
-    if (!ready) return { block: null, lines: null, summary: null };
-    try {
-      const payload = validateDividendReceived({
-        payingCompanyName,
-        declaredDate,
-        paidDate,
-        grossAmount: Number(grossAmount),
-        linkedInvestmentId,
-        taxTreatment: treatment as
-          | "fritaksmetoden"
-          | "outside_fritaksmetoden"
-          | "needs_accountant",
-        documentStatus: documentStatus as
-          | "attached"
-          | "missing_accepted_warning"
-          | "not_required",
-      });
-      return {
-        block: null,
-        lines: dividendReceivedLedgerLines(payload),
-        summary: c.addBackNote(payload.taxable_add_back),
-      };
-    } catch (error) {
-      return {
-        block:
-          error instanceof Error ? error.message : "Ugyldig mottatt utbytte",
-        lines: null,
-        summary: null,
-      };
-    }
-  }, [
-    ready,
-    payingCompanyName,
-    declaredDate,
-    paidDate,
-    grossAmount,
-    linkedInvestmentId,
-    treatment,
-    documentStatus,
-    c,
-  ]);
+    grossAmount.trim() !== "" &&
+    lawfulDividendConfirmed &&
+    investmentEvidenceComplete(evidence) &&
+    (!groupExceptionAvailable || !groupException || (
+      ownershipBasisPoints.trim() !== "" && votingBasisPoints.trim() !== ""
+      && groupEvidence.trim() !== ""
+    ));
 
   if (investments.length === 0) {
     return <Banner variant="info">{c.noInvestments}</Banner>;
@@ -96,22 +75,33 @@ export function DividendReceivedWizard({
 
   return (
     <form action={recordDividendReceived} className="wizardForm">
+      <input type="hidden" name="operationId" value={operationId} />
       <input type="hidden" name="returnTo" value="/actions" />
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="incomeYear" value={incomeYear} />
+      <input type="hidden" name="taxTreatment" value="fritaksmetoden" />
+      <input type="hidden" name="documentStatus" value="not_required" />
 
       <SelectField
         label={c.investmentLabel}
-        name="linkedInvestmentId"
-        value={linkedInvestmentId}
-        onChange={setLinkedInvestmentId}
+        name="positionId"
+        value={positionId}
+        onChange={(value) => {
+          setPositionId(value);
+          if (investments.find((investment) => investment.id === value)?.kind !== "norwegian_private_company") {
+            setGroupException(false);
+            setOwnershipBasisPoints("");
+            setVotingBasisPoints("");
+            setGroupEvidence("");
+          }
+        }}
         required
       >
         <option value="" disabled>
           {c.investmentPlaceholder}
         </option>
         {investments.map((investment) => (
-          <option key={investment.investment_key} value={investment.investment_key}>
+          <option key={investment.id} value={investment.id}>
             {investment.name}
           </option>
         ))}
@@ -123,56 +113,83 @@ export function DividendReceivedWizard({
         onChange={setPayingCompanyName}
         required
       />
-      <div className="fieldRow">
-        <TextField
-          label={c.declaredLabel}
-          name="declaredDate"
-          value={declaredDate}
-          onChange={setDeclaredDate}
-          placeholder="2025-04-01"
-          helper={a.dateHelp}
-          required
-        />
-        <TextField
-          label={c.paidLabel}
-          name="paidDate"
-          value={paidDate}
-          onChange={setPaidDate}
-          placeholder="2025-04-15"
-          helper={a.dateHelp}
-          required
-        />
-      </div>
-      <div className="fieldRow">
-        <TextField
-          label={c.amountLabel}
-          name="grossAmount"
-          value={grossAmount}
-          onChange={setGrossAmount}
-          inputMode="decimal"
-          required
-        />
+      {groupExceptionAvailable ? (
         <SelectField
-          label={a.taxTreatment.label}
-          name="taxTreatment"
-          value={treatment}
-          onChange={setTreatment}
+          label="Konsernunntak fra 3 %-regelen"
+          name="groupExceptionClaimed"
+          value={groupException ? "true" : "false"}
+          onChange={(value) => setGroupException(value === "true")}
           required
         >
-          <option value="fritaksmetoden">{a.taxTreatment.fritak}</option>
-          <option value="outside_fritaksmetoden">{a.taxTreatment.outside}</option>
-          <option value="needs_accountant">{a.taxTreatment.needsAccountant}</option>
+          <option value="false">Nei</option>
+          <option value="true">Ja, over 90 % av aksjer og stemmer</option>
         </SelectField>
-      </div>
-      <DocStatusSelect value={documentStatus} onChange={setDocumentStatus} />
-
-      <ActionPreview
-        block={preview.block}
-        lines={preview.lines}
-        summary={preview.summary}
+      ) : (
+        <input type="hidden" name="groupExceptionClaimed" value="false" />
+      )}
+      {groupExceptionAvailable && groupException ? (
+        <>
+          <div className="fieldRow">
+            <TextField
+              label="Eierandel ved årsslutt (basispoeng)"
+              name="yearEndOwnershipBasisPoints"
+              value={ownershipBasisPoints}
+              onChange={setOwnershipBasisPoints}
+              inputMode="numeric"
+              required
+            />
+            <TextField
+              label="Stemmeandel ved årsslutt (basispoeng)"
+              name="yearEndVotingBasisPoints"
+              value={votingBasisPoints}
+              onChange={setVotingBasisPoints}
+              inputMode="numeric"
+              required
+            />
+          </div>
+          <TextField
+            label="Referanse til konserndokumentasjon"
+            name="groupEvidenceReference"
+            value={groupEvidence}
+            onChange={setGroupEvidence}
+            required
+          />
+        </>
+      ) : null}
+      <TextField
+        label={c.declaredLabel}
+        name="declaredDate"
+        value={declaredDate}
+        onChange={setDeclaredDate}
+        placeholder="2025-04-01"
+        helper={a.dateHelp}
+        required
+      />
+      <TextField
+        label={c.amountLabel}
+        name="grossAmount"
+        value={grossAmount}
+        onChange={setGrossAmount}
+        inputMode="decimal"
+        required
       />
 
-      <SubmitButton disabled={preview.lines === null} pendingLabel={a.pending}>
+      <CheckboxField
+        label="Jeg bekrefter at utdelingen er et lovlig vedtatt kontantutbytte."
+        name="lawfulDividendConfirmed"
+        checked={lawfulDividendConfirmed}
+        onChange={setLawfulDividendConfirmed}
+        required
+      />
+      <InvestmentEvidenceFields
+        documents={documents}
+        state={evidence}
+        onChange={setEvidence}
+      />
+
+      <Banner variant="info">{c.policyNote}</Banner>
+
+      <SubmitButton disabled={!ready} pendingLabel={a.pending}>
         {a.confirmCta}
       </SubmitButton>
     </form>

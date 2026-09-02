@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Personvern – Talli",
   description:
     "Slik behandler Talli personopplysninger når du bruker tjenesten på talli.no.",
+  alternates: { canonical: "/personvern" },
 };
 
 export default function PersonvernPage() {

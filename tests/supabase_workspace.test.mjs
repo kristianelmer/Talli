@@ -11,18 +11,9 @@ import { buildPersistedCompanyArchive } from "../apps/web/app/lib/archive.ts";
 import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed } from "../apps/web/app/lib/annual-data.ts";
 import { evaluateAnnualReadinessGates } from "../apps/web/app/lib/annual-readiness.ts";
 import { productionAuthorityGate } from "../apps/web/app/lib/authority-permission.ts";
-import { assertBankTransactionMatchesCost, buildAdminCostLedgerLines, parseBankCsv } from "../apps/web/app/lib/bank.ts";
 import { buildBillingAccount, productionBillingGate } from "../apps/web/app/lib/billing.ts";
 import { buildCompanyTaxReturnEvidencePersistence } from "../apps/web/app/lib/company-tax-return-submission.ts";
-import {
-  dividendReceivedLedgerLines,
-  summarizeDividendReceivedAnnualImpact,
-  validateDividendReceived,
-} from "../apps/web/app/lib/dividend-received.ts";
-import { COMPANY_DOCUMENTS_BUCKET, documentStorageKey } from "../apps/web/app/lib/documents.ts";
 import { assertNoBlockingFilingOverrides, validateFilingOverride } from "../apps/web/app/lib/filing-overrides.ts";
-import { validateManualJournal } from "../apps/web/app/lib/manual-journal.ts";
-import { openingBalanceLedgerLines } from "../apps/web/app/lib/opening-balance.ts";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../apps/web/app/lib/rf1086.ts";
 import {
   Rf1086ProductionAdapterDisabledError,
@@ -35,9 +26,6 @@ import {
   runRf1086SubmissionAdapter,
 } from "../apps/web/app/lib/rf1086-submission.ts";
 import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "../apps/web/app/lib/review.ts";
-import { validateSharePurchase } from "../apps/web/app/lib/share-purchase.ts";
-import { validateShareSale } from "../apps/web/app/lib/share-sale.ts";
-import { shareholderLoanLedgerLines, validateShareholderLoan } from "../apps/web/app/lib/shareholder-loan.ts";
 import {
   estimateAnnualTax,
   taxSettlementLedgerLines,
@@ -47,6 +35,7 @@ import {
 const requiredEnv = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
 
 const invitationTokenHash = async (token) => createHash("sha256").update(token).digest("hex");
+const bankSourceHash = (value) => createHash("sha256").update(value).digest("hex");
 const invitationExpiry = () => new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 const invitationDeliveryEvent = ({ recipientEmail, queuedAt = new Date().toISOString() }) => ({
   channel: "email",
@@ -204,6 +193,76 @@ function anonClient() {
   });
 }
 
+async function insertDocumentFixture(document) {
+  const database = new pg.Client({ ...getDatabaseConfig() });
+  try {
+    await database.connect();
+    await database.query("begin");
+    await database.query(String.raw`
+      do $authority$ begin
+        execute pg_catalog.format('grant documents_store_owner to %I', current_user);
+      end $authority$
+    `);
+    await database.query(
+      `insert into public.documents (
+        id, company_id, income_year, document_type, name, linked_to, status,
+        retention_years, storage_key, created_by, content_type, byte_length,
+        content_sha256, final_status
+      ) values ($1,$2,$3,$4,$5,$6,$7,5,$8,$9,'application/pdf',10,$10,$7)`,
+      [
+        document.id, document.company_id, document.income_year,
+        document.document_type, document.name, document.linked_to,
+        document.status, document.storage_key, document.created_by,
+        "a".repeat(64),
+      ],
+    );
+    await database.query(String.raw`
+      do $authority$ begin
+        execute pg_catalog.format('revoke documents_store_owner from %I', current_user);
+      end $authority$
+    `);
+    await database.query("commit");
+  } catch (error) {
+    await database.query("rollback").catch(() => undefined);
+    throw error;
+  } finally {
+    await database.end().catch(() => undefined);
+  }
+}
+
+async function listDocumentFixtures(companyId, incomeYear) {
+  const database = new pg.Client({ ...getDatabaseConfig() });
+  try {
+    await database.connect();
+    await database.query("begin");
+    await database.query(String.raw`
+      do $authority$ begin
+        execute pg_catalog.format('grant documents_store_owner to %I', current_user);
+      end $authority$
+    `);
+    const result = await database.query(
+      `select id, company_id, income_year, document_type, name, linked_to, status,
+        retention_years, storage_key, created_by, created_at, removed_at,
+        removed_by, removal_reason
+      from public.documents where company_id=$1 and income_year=$2
+      order by created_at, id`,
+      [companyId, incomeYear],
+    );
+    await database.query(String.raw`
+      do $authority$ begin
+        execute pg_catalog.format('revoke documents_store_owner from %I', current_user);
+      end $authority$
+    `);
+    await database.query("commit");
+    return result.rows;
+  } catch (error) {
+    await database.query("rollback").catch(() => undefined);
+    throw error;
+  } finally {
+    await database.end().catch(() => undefined);
+  }
+}
+
 async function assertNoError(resultPromise) {
   const { error } = await resultPromise;
   assert.ifError(error);
@@ -239,6 +298,19 @@ async function deleteWorkspaceCompanyFixture(companyId) {
     await database.connect();
     connected = true;
     await database.query("begin");
+    await database.query(String.raw`
+      do $authority$ begin
+        execute pg_catalog.format('grant documents_store_owner to %I', current_user);
+      end $authority$
+    `);
+    await database.query(
+      `select pg_catalog.set_config(
+        'talli.verified_actor_id',
+        (select company.created_by::text from public.companies company where company.id = $1),
+        true
+      )`,
+      [companyId],
+    );
     for (const table of [
       "production_feedback_artifacts",
       "filing_approval_snapshots",
@@ -252,6 +324,7 @@ async function deleteWorkspaceCompanyFixture(companyId) {
       "corporate_document_sets",
       "corporate_decisions",
       "bank_suggestion_acceptances",
+      "bank_transactions",
       "investment_lot_allocations",
       "investment_lots",
       "investment_positions",
@@ -272,6 +345,11 @@ async function deleteWorkspaceCompanyFixture(companyId) {
     }
     await database.query("delete from public.company_archive_source_generations where company_id = $1", [companyId]);
     await database.query("delete from public.companies where id = $1", [companyId]);
+    await database.query(String.raw`
+      do $authority$ begin
+        execute pg_catalog.format('revoke documents_store_owner from %I', current_user);
+      end $authority$
+    `);
     await database.query("commit");
   } catch (error) {
     operationError = error;
@@ -844,7 +922,11 @@ test(
         income_year: 2025,
         entry_type: "opening_balance",
         memo: "Åpningsbalanse for Talli-start",
-        lines: openingBalanceLedgerLines(openingInput),
+        lines: [
+          { account: "1920", description: "Bankinnskudd", debit: openingInput.bankBalance, credit: 0 },
+          { account: "2000", description: "Aksjekapital", debit: 0, credit: openingInput.shareCapital },
+          { account: "2050", description: "Annen egenkapital", debit: 0, credit: 0 },
+        ],
         created_by: ownerUser.id,
       })
       .select("id, lines")
@@ -2005,8 +2087,22 @@ test(
       /simulert innsending/,
     );
 
-    const bankCsv = "date,text,amount,balance\n2025-01-02,Opening,30000,30000\n2025-01-03,Bank fee,-50,29950\n";
-    const parsedBank = parseBankCsv(bankCsv);
+    const parsedBank = [
+      {
+        transactionDate: "2025-01-02",
+        text: "Opening",
+        amount: 30000,
+        balance: 30000,
+        sourceHash: "1b22d1e46d2e15f7b51c68f74d280e669fea9bc692e862a3a5eaed1ec6b80778",
+      },
+      {
+        transactionDate: "2025-01-03",
+        text: "Bank fee",
+        amount: -50,
+        balance: 29950,
+        sourceHash: "ab40e8421185f6eba0502af6427d3e38c3d76ad0849ce23ce4055ebb9732577f",
+      },
+    ];
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const { error: bankImportError } = await owner.from("bank_transactions").upsert(
         parsedBank.map((transaction) => ({
@@ -2034,8 +2130,11 @@ test(
 
     const feeTransaction = importedBankTransactions.find((transaction) => Number(transaction.amount) === -50);
     assert.ok(feeTransaction);
-    assertBankTransactionMatchesCost(Number(feeTransaction.amount), 50);
-    const adminCostLines = buildAdminCostLedgerLines({ category: "bank_fee", payee: "Bank", amount: 50 });
+    assert.equal(Number(feeTransaction.amount), -50);
+    const adminCostLines = [
+      { account: "7770", description: "Admin cost: Bank", debit: 50, credit: 0 },
+      { account: "1920", description: "Paid from bank", debit: 0, credit: 50 },
+    ];
     const { data: adminCostEntry, error: adminCostEntryError } = await owner
       .from("ledger_entries")
       .insert({
@@ -2085,7 +2184,7 @@ test(
         transaction_date: "2025-02-01",
         text: "Årsgebyr bedriftskonto",
         amount: -50,
-        source_hash: `bank-suggestion-${randomUUID()}`,
+        source_hash: bankSourceHash(`bank-suggestion-${randomUUID()}`),
         created_by: ownerUser.id,
       })
       .select("id")
@@ -2164,7 +2263,7 @@ test(
         transaction_date: "2025-02-02",
         text: "Bankgebyr og renter",
         amount: 100,
-        source_hash: `bank-ambiguous-${randomUUID()}`,
+        source_hash: bankSourceHash(`bank-ambiguous-${randomUUID()}`),
         created_by: ownerUser.id,
       })
       .select("id")
@@ -2177,151 +2276,8 @@ test(
     });
     assert.match(ambiguousSuggestionResult.error?.message ?? "", /bank_suggestion_ambiguous/);
 
-    assert.throws(
-      () =>
-        validateDividendReceived({
-          payingCompanyName: "Unclear Fund",
-          declaredDate: "2025-04-01",
-          paidDate: "2025-04-15",
-          grossAmount: 1000,
-          linkedInvestmentId: "unclear-fund",
-          taxTreatment: "needs_accountant",
-          documentStatus: "attached",
-        }),
-      (error) => error?.code === "unsupported_tax_treatment",
-    );
-    const dividendDocumentId = randomUUID();
-    const { error: dividendDocumentError } = await owner.from("documents").insert({
-      id: dividendDocumentId,
-      company_id: companyId,
-      income_year: 2025,
-      document_type: "dividend_resolution",
-      name: "dividend.pdf",
-      linked_to: "dividend_received",
-      status: "attached",
-      storage_key: `companies/${companyId}/2025/${dividendDocumentId}/dividend.pdf`,
-      created_by: ownerUser.id,
-    });
-    assert.ifError(dividendDocumentError);
-    const dividendSourceHash = `dividend-bank-${randomUUID()}`;
-    const { data: dividendBankTransaction, error: dividendBankTransactionError } = await owner
-      .from("bank_transactions")
-      .insert({
-        company_id: companyId,
-        income_year: 2025,
-        transaction_date: "2025-04-15",
-        text: "Dividend Portfolio AS",
-        amount: 1000,
-        balance: 30950,
-        source_hash: dividendSourceHash,
-        created_by: ownerUser.id,
-      })
-      .select("id, amount")
-      .single();
-    assert.ifError(dividendBankTransactionError);
-    const dividendPayload = validateDividendReceived({
-      payingCompanyName: "Portfolio AS",
-      declaredDate: "2025-04-01",
-      paidDate: "2025-04-15",
-      grossAmount: 1000,
-      linkedInvestmentId: "portfolio-as",
-      taxTreatment: "fritaksmetoden",
-      bankTransactionId: dividendBankTransaction.id,
-      documentId: dividendDocumentId,
-      documentStatus: "attached",
-    });
-    assert.equal(dividendPayload.taxable_add_back, 30);
-    const dividendLines = dividendReceivedLedgerLines(dividendPayload);
-    const { data: dividendEntry, error: dividendEntryError } = await owner
-      .from("ledger_entries")
-      .insert({
-        company_id: companyId,
-        income_year: 2025,
-        entry_type: "dividend_received",
-        memo: "Dividend received from Portfolio AS",
-        lines: dividendLines,
-        created_by: ownerUser.id,
-      })
-      .select("id, entry_type, lines")
-      .single();
-    assert.ifError(dividendEntryError);
-    assert.equal(dividendEntry.entry_type, "dividend_received");
-    assert.deepEqual(dividendEntry.lines, dividendLines);
-    const dividendActionId = randomUUID();
-    const { data: dividendAction, error: dividendActionError } = await owner
-      .from("holding_actions")
-      .insert({
-        id: dividendActionId,
-        company_id: companyId,
-        income_year: 2025,
-        action_type: "dividend_received",
-        action_date: dividendPayload.paid_date,
-        payload: dividendPayload,
-        ledger_entry_id: dividendEntry.id,
-        bank_transaction_id: dividendBankTransaction.id,
-        document_id: dividendDocumentId,
-        risk_level: "ready",
-        created_by: ownerUser.id,
-      })
-      .select("id, action_type, payload, ledger_entry_id, bank_transaction_id, document_id")
-      .single();
-    assert.ifError(dividendActionError);
-    assert.equal(dividendAction.action_type, "dividend_received");
-    assert.equal(dividendAction.ledger_entry_id, dividendEntry.id);
-    assert.equal(dividendAction.bank_transaction_id, dividendBankTransaction.id);
-    assert.equal(dividendAction.document_id, dividendDocumentId);
-    assert.deepEqual(
-      summarizeDividendReceivedAnnualImpact([{ action_type: dividendAction.action_type, payload: dividendAction.payload }]),
-      { dividendIncome: 1000, fritaksmetodenAddBack: 30 },
-    );
-    const { error: dividendBankMatchError } = await owner
-      .from("bank_transactions")
-      .update({ matched_action_id: dividendAction.id })
-      .eq("id", dividendBankTransaction.id);
-    assert.ifError(dividendBankMatchError);
-    const { data: reloadedDividendEntry, error: reloadedDividendEntryError } = await owner
-      .from("ledger_entries")
-      .select("id, entry_type")
-      .eq("id", dividendEntry.id)
-      .single();
-    assert.ifError(reloadedDividendEntryError);
-    assert.equal(reloadedDividendEntry.entry_type, "dividend_received");
-    const { data: outsiderDividendActions, error: outsiderDividendActionError } = await outsider
-      .from("holding_actions")
-      .select("id")
-      .eq("id", dividendAction.id);
-    assert.ifError(outsiderDividendActionError);
-    assert.deepEqual(outsiderDividendActions, []);
-    const { error: outsiderDividendActionInsertError } = await outsider.from("holding_actions").insert({
-      company_id: companyId,
-      income_year: 2025,
-      action_type: "dividend_received",
-      action_date: dividendPayload.paid_date,
-      payload: dividendPayload,
-      ledger_entry_id: dividendEntry.id,
-      bank_transaction_id: dividendBankTransaction.id,
-      document_id: dividendDocumentId,
-      risk_level: "ready",
-      created_by: outsiderUser.id,
-    });
-    assert.ok(outsiderDividendActionInsertError);
-
-    assert.throws(
-      () =>
-        validateSharePurchase({
-          investmentKey: "listed",
-          investmentName: "Listed ASA",
-          investmentKind: "simple_listed_security",
-          taxTreatment: "fritaksmetoden",
-          acquisitionDate: "2025-05-01",
-          shareCount: 100,
-          purchaseAmount: 50000,
-          documentStatus: "attached",
-        }),
-      (error) => error?.code === "unsupported_investment_kind",
-    );
     const purchaseDocumentId = randomUUID();
-    const { error: purchaseDocumentError } = await owner.from("documents").insert({
+    await insertDocumentFixture({
       id: purchaseDocumentId,
       company_id: companyId,
       income_year: 2025,
@@ -2332,7 +2288,6 @@ test(
       storage_key: `companies/${companyId}/2025/${purchaseDocumentId}/purchase.pdf`,
       created_by: ownerUser.id,
     });
-    assert.ifError(purchaseDocumentError);
     const { data: purchaseBankTransaction, error: purchaseBankTransactionError } = await owner
       .from("bank_transactions")
       .insert({
@@ -2342,25 +2297,27 @@ test(
         text: "Purchase Portfolio AS",
         amount: -50000,
         balance: -19050,
-        source_hash: `purchase-bank-${randomUUID()}`,
+        source_hash: bankSourceHash(`purchase-bank-${randomUUID()}`),
         created_by: ownerUser.id,
       })
       .select("id, amount")
       .single();
     assert.ifError(purchaseBankTransactionError);
-    const purchasePayload = validateSharePurchase({
-      investmentKey: "portfolio-as",
-      investmentName: "Portfolio AS",
-      investmentKind: "norwegian_private_company",
-      taxTreatment: "fritaksmetoden",
-      acquisitionDate: "2025-05-01",
-      shareCount: 100,
-      purchaseAmount: 50000,
-      orgNumber: "999888777",
-      bankTransactionId: purchaseBankTransaction.id,
-      documentId: purchaseDocumentId,
-      documentStatus: "attached",
-    });
+    // This fixture exercises the still-frozen sale compatibility path. New
+    // purchase policy is owned and tested by the backend investments capability.
+    const purchasePayload = {
+      acquisition_date: "2025-05-01",
+      bank_transaction_id: purchaseBankTransaction.id,
+      document_id: purchaseDocumentId,
+      document_status: "attached",
+      investment_key: "portfolio-as",
+      investment_kind: "norwegian_private_company",
+      investment_name: "Portfolio AS",
+      org_number: "999888777",
+      purchase_amount: 50000,
+      share_count: 100,
+      tax_treatment: "fritaksmetoden",
+    };
     const purchaseActionId = randomUUID();
     const { data: purchaseWrite, error: purchaseWriteError } = await owner.rpc("record_share_purchase_fifo", {
       p_action_id: purchaseActionId,
@@ -2452,304 +2409,26 @@ test(
     });
     assert.ok(outsiderPurchasePositionInsertError);
 
-    assert.throws(
-      () =>
-        validateShareSale({
-          positionId: purchasePosition.id,
-          investmentKey: "portfolio-as",
-          investmentName: "Portfolio AS",
-          currentShareCount: 100,
-          currentCostBasis: 50000,
-          acquisitionLots: purchaseLots.map((lot) => ({
-            id: lot.id,
-            acquisitionDate: lot.acquisition_date,
-            remainingShareCount: Number(lot.remaining_share_count),
-            remainingCostBasis: Number(lot.remaining_cost_basis),
-          })),
-          saleDate: "2025-08-01",
-          soldShareCount: 101,
-          proceeds: 30000,
-          documentStatus: "attached",
-        }),
-      (error) => error?.code === "sale_exceeds_position",
-    );
-    const saleDocumentId = randomUUID();
-    const { error: saleDocumentError } = await owner.from("documents").insert({
-      id: saleDocumentId,
-      company_id: companyId,
-      income_year: 2025,
-      document_type: "share_sale_agreement",
-      name: "sale.pdf",
-      linked_to: "share_sale",
-      status: "attached",
-      storage_key: `companies/${companyId}/2025/${saleDocumentId}/sale.pdf`,
-      created_by: ownerUser.id,
-    });
-    assert.ifError(saleDocumentError);
-    const { data: saleBankTransaction, error: saleBankTransactionError } = await owner
-      .from("bank_transactions")
-      .insert({
-        company_id: companyId,
-        income_year: 2025,
-        transaction_date: "2025-08-01",
-        text: "Sale Portfolio AS",
-        amount: 30000,
-        balance: 10950,
-        source_hash: `sale-bank-${randomUUID()}`,
-        created_by: ownerUser.id,
-      })
-      .select("id, amount")
-      .single();
-    assert.ifError(saleBankTransactionError);
-    const salePayload = validateShareSale({
-      positionId: purchasePosition.id,
-      investmentKey: "portfolio-as",
-      investmentName: "Portfolio AS",
-      currentShareCount: 100,
-      currentCostBasis: 50000,
-      acquisitionLots: purchaseLots.map((lot) => ({
-        id: lot.id,
-        acquisitionDate: lot.acquisition_date,
-        remainingShareCount: Number(lot.remaining_share_count),
-        remainingCostBasis: Number(lot.remaining_cost_basis),
-      })),
-      saleDate: "2025-08-01",
-      soldShareCount: 40,
-      proceeds: 30000,
-      bankTransactionId: saleBankTransaction.id,
-      documentId: saleDocumentId,
-      documentStatus: "attached",
-    });
-    assert.equal(salePayload.cost_basis_reduction, 20000);
-    assert.equal(salePayload.gain_or_loss, 10000);
-    const saleActionId = randomUUID();
-    const { data: saleWrite, error: saleWriteError } = await owner.rpc("record_share_sale_fifo", {
-      p_action_id: saleActionId,
-      p_company_id: companyId,
-      p_income_year: 2025,
-      p_position_id: purchasePosition.id,
-      p_sale_date: salePayload.sale_date,
-      p_sold_share_count: salePayload.sold_share_count,
-      p_proceeds: salePayload.proceeds,
-      p_bank_transaction_id: saleBankTransaction.id,
-      p_document_id: saleDocumentId,
-      p_document_status: salePayload.document_status,
-    });
-    assert.ifError(saleWriteError);
-    assert.equal(Number(saleWrite.payload.cost_basis_reduction), 20000);
-    assert.equal(Number(saleWrite.payload.gain_or_loss), 10000);
-    const { data: positionAfterPartialSale, error: partialSaleReloadError } = await owner
-      .from("investment_positions")
-      .select("id, share_count, cost_basis, movements")
-      .eq("id", purchasePosition.id)
-      .single();
-    assert.ifError(partialSaleReloadError);
-    assert.equal(Number(positionAfterPartialSale.share_count), 60);
-    assert.equal(Number(positionAfterPartialSale.cost_basis), 30000);
-    assert.equal(positionAfterPartialSale.movements.at(-1).gain_or_loss, 10000);
-    const { data: partialLots, error: partialLotsError } = await owner
-      .from("investment_lots")
-      .select("id, acquisition_date, remaining_share_count, remaining_cost_basis")
-      .eq("position_id", purchasePosition.id)
-      .gt("remaining_share_count", 0);
-    assert.ifError(partialLotsError);
-    const { data: saleRetry, error: saleRetryError } = await owner.rpc("record_share_sale_fifo", {
-      p_action_id: saleActionId,
-      p_company_id: companyId,
-      p_income_year: 2025,
-      p_position_id: purchasePosition.id,
-      p_sale_date: salePayload.sale_date,
-      p_sold_share_count: salePayload.sold_share_count,
-      p_proceeds: salePayload.proceeds,
-      p_bank_transaction_id: saleBankTransaction.id,
-      p_document_id: saleDocumentId,
-      p_document_status: salePayload.document_status,
-    });
-    assert.ifError(saleRetryError);
-    assert.equal(saleRetry.idempotent, true);
-
-    const fullSalePayload = validateShareSale({
-      positionId: purchasePosition.id,
-      investmentKey: "portfolio-as",
-      investmentName: "Portfolio AS",
-      currentShareCount: 60,
-      currentCostBasis: 30000,
-      acquisitionLots: partialLots.map((lot) => ({
-        id: lot.id,
-        acquisitionDate: lot.acquisition_date,
-        remainingShareCount: Number(lot.remaining_share_count),
-        remainingCostBasis: Number(lot.remaining_cost_basis),
-      })),
-      saleDate: "2025-09-01",
-      soldShareCount: 60,
-      proceeds: 30000,
-      documentStatus: "not_required",
-    });
-    assert.equal(fullSalePayload.remaining_share_count, 0);
-    assert.equal(fullSalePayload.remaining_cost_basis, 0);
-    const fullSaleActionId = randomUUID();
-    const { error: fullSaleError } = await owner.rpc("record_share_sale_fifo", {
-      p_action_id: fullSaleActionId,
-      p_company_id: companyId,
-      p_income_year: 2025,
-      p_position_id: purchasePosition.id,
-      p_sale_date: fullSalePayload.sale_date,
-      p_sold_share_count: fullSalePayload.sold_share_count,
-      p_proceeds: fullSalePayload.proceeds,
-      p_bank_transaction_id: null,
-      p_document_id: null,
-      p_document_status: fullSalePayload.document_status,
-    });
-    assert.ifError(fullSaleError);
-    const { data: positionAfterFullSale, error: fullSaleReloadError } = await owner
-      .from("investment_positions")
-      .select("share_count, cost_basis, movements")
-      .eq("id", purchasePosition.id)
-      .single();
-    assert.ifError(fullSaleReloadError);
-    assert.equal(Number(positionAfterFullSale.share_count), 0);
-    assert.equal(Number(positionAfterFullSale.cost_basis), 0);
-    assert.equal(positionAfterFullSale.movements.length, 3);
-
-    const { error: outsiderSaleActionInsertError } = await outsider.rpc("record_share_sale_fifo", {
-      p_action_id: randomUUID(),
-      p_company_id: companyId,
-      p_income_year: 2025,
-      p_position_id: purchasePosition.id,
-      p_sale_date: "2025-10-01",
-      p_sold_share_count: 1,
-      p_proceeds: 1,
-      p_bank_transaction_id: null,
-      p_document_id: null,
-      p_document_status: "not_required",
-    });
-    assert.ok(outsiderSaleActionInsertError);
-
-    assert.throws(
-      () =>
-        validateShareholderLoan({
-          loanDate: "2025-07-01",
-          amount: 20000,
-          direction: "company_to_personal_shareholder",
-          counterpartyName: "Ola Nordmann",
-          documentStatus: "attached",
-          interestModelled: false,
-          relatedPartySecurity: false,
-        }),
-      (error) => error?.code === "personal_shareholder_loan_blocked",
-    );
-    const loanDocumentId = randomUUID();
-    const { error: loanDocumentError } = await owner.from("documents").insert({
-      id: loanDocumentId,
-      company_id: companyId,
-      income_year: 2025,
-      document_type: "shareholder_loan_agreement",
-      name: "loan.pdf",
-      linked_to: "shareholder_loan",
-      status: "attached",
-      storage_key: `companies/${companyId}/2025/${loanDocumentId}/loan.pdf`,
-      created_by: ownerUser.id,
-    });
-    assert.ifError(loanDocumentError);
-    const { data: loanBankTransaction, error: loanBankTransactionError } = await owner
-      .from("bank_transactions")
-      .insert({
-        company_id: companyId,
-        income_year: 2025,
-        transaction_date: "2025-07-01",
-        text: "Loan from shareholder",
-        amount: 20000,
-        balance: 30950,
-        source_hash: `loan-bank-${randomUUID()}`,
-        created_by: ownerUser.id,
-      })
-      .select("id, amount")
-      .single();
-    assert.ifError(loanBankTransactionError);
-    const loanPayload = validateShareholderLoan({
-      loanDate: "2025-07-01",
-      amount: 20000,
-      direction: "shareholder_to_company",
-      counterpartyName: "Ola Nordmann",
-      documentStatus: "attached",
-      interestModelled: true,
-      relatedPartySecurity: false,
-      bankTransactionId: loanBankTransaction.id,
-      documentId: loanDocumentId,
-    });
-    const loanLines = shareholderLoanLedgerLines(loanPayload);
-    const { data: loanEntry, error: loanEntryError } = await owner
-      .from("ledger_entries")
-      .insert({
-        company_id: companyId,
-        income_year: 2025,
-        entry_type: "shareholder_loan",
-        memo: "Shareholder loan: Ola Nordmann",
-        lines: loanLines,
-        created_by: ownerUser.id,
-      })
-      .select("id, entry_type, lines")
-      .single();
-    assert.ifError(loanEntryError);
-    assert.equal(loanEntry.entry_type, "shareholder_loan");
-    assert.deepEqual(loanEntry.lines, loanLines);
-    const loanActionId = randomUUID();
-    const { data: loanAction, error: loanActionError } = await owner
-      .from("holding_actions")
-      .insert({
-        id: loanActionId,
-        company_id: companyId,
-        income_year: 2025,
-        action_type: "shareholder_loan",
-        action_date: loanPayload.loan_date,
-        payload: loanPayload,
-        ledger_entry_id: loanEntry.id,
-        bank_transaction_id: loanBankTransaction.id,
-        document_id: loanDocumentId,
-        risk_level: "ready",
-        created_by: ownerUser.id,
-      })
-      .select("id, action_type, ledger_entry_id, bank_transaction_id, document_id")
-      .single();
-    assert.ifError(loanActionError);
-    assert.equal(loanAction.action_type, "shareholder_loan");
-    assert.equal(loanAction.ledger_entry_id, loanEntry.id);
-    assert.equal(loanAction.bank_transaction_id, loanBankTransaction.id);
-    assert.equal(loanAction.document_id, loanDocumentId);
-    const { error: loanBankMatchError } = await owner
-      .from("bank_transactions")
-      .update({ matched_action_id: loanAction.id })
-      .eq("id", loanBankTransaction.id);
-    assert.ifError(loanBankMatchError);
-    const { data: reloadedLoanEntry, error: reloadedLoanEntryError } = await owner
-      .from("ledger_entries")
-      .select("id, entry_type")
-      .eq("id", loanEntry.id)
-      .single();
-    assert.ifError(reloadedLoanEntryError);
-    assert.equal(reloadedLoanEntry.entry_type, "shareholder_loan");
-    const { error: outsiderLoanActionInsertError } = await outsider.from("holding_actions").insert({
-      company_id: companyId,
-      income_year: 2025,
-      action_type: "shareholder_loan",
-      action_date: loanPayload.loan_date,
-      payload: loanPayload,
-      ledger_entry_id: loanEntry.id,
-      bank_transaction_id: loanBankTransaction.id,
-      document_id: loanDocumentId,
-      risk_level: "ready",
-      created_by: outsiderUser.id,
-    });
-    assert.ok(outsiderLoanActionInsertError);
-
     const taxEstimate = estimateAnnualTax({
-      ledgerEntries: [{ entry_type: "admin_cost", lines: adminCostEntry.lines }],
-      holdingActions: [{ action_type: "dividend_received", payload: dividendPayload }],
+      ledgerEntries: [
+        { entry_type: "admin_cost", lines: adminCostEntry.lines },
+        {
+          entry_type: "interest_income",
+          lines: [
+            { account: "1920", description: "Bankrente", debit: 100, credit: 0 },
+            { account: "8050", description: "Renteinntekt", debit: 0, credit: 100 },
+          ],
+        },
+      ],
+      holdingActions: [{
+        action_type: "dividend_received",
+        payload: { gross_amount: 1000, taxable_add_back: 30 },
+      }],
     });
     assert.equal(taxEstimate.status, "payable");
     assert.equal(taxEstimate.estimatedTax, 17.6);
     const taxDocumentId = randomUUID();
-    const { error: taxDocumentError } = await owner.from("documents").insert({
+    await insertDocumentFixture({
       id: taxDocumentId,
       company_id: companyId,
       income_year: 2025,
@@ -2760,7 +2439,6 @@ test(
       storage_key: `companies/${companyId}/2025/${taxDocumentId}/tax-settlement.pdf`,
       created_by: ownerUser.id,
     });
-    assert.ifError(taxDocumentError);
     const { data: taxBankTransaction, error: taxBankTransactionError } = await owner
       .from("bank_transactions")
       .insert({
@@ -2770,7 +2448,7 @@ test(
         text: "Tax payment",
         amount: -17.6,
         balance: 30932.4,
-        source_hash: `tax-bank-${randomUUID()}`,
+        source_hash: bankSourceHash(`tax-bank-${randomUUID()}`),
         created_by: ownerUser.id,
       })
       .select("id, amount")
@@ -2848,13 +2526,17 @@ test(
     });
     assert.ok(outsiderTaxActionInsertError);
 
-    const manualJournal = validateManualJournal({
-      warningAccepted: true,
+    const manualJournal = {
       lines: [
         { account: "1800", description: "Manual investment correction", debit: 100, credit: 0 },
         { account: "1920", description: "Bank", debit: 0, credit: 100 },
       ],
-    });
+      riskFlags: [{
+        account: "1800",
+        code: "manual_journal_sensitive_account",
+        message: "Manuell journal berører filing-sensitiv konto 1800.",
+      }],
+    };
     const { data: manualEntry, error: manualEntryError } = await owner
       .from("ledger_entries")
       .insert({
@@ -2947,7 +2629,7 @@ test(
       text: "Late locked import",
       amount: -10,
       balance: 29940,
-      source_hash: `locked-bank-${randomUUID()}`,
+      source_hash: bankSourceHash(`locked-bank-${randomUUID()}`),
       created_by: ownerUser.id,
     });
     assert.ok(lockedBankImportError);
@@ -3003,15 +2685,15 @@ test(
     assert.ok(lockedOpeningSetupError);
 
     const documentId = randomUUID();
-    const storageKey = documentStorageKey(companyId, 2025, documentId, "bank.pdf");
+    const storageKey = `${companyId}/2025/${documentId}/bank.pdf`;
     const { error: uploadError } = await owner.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
+      .from("company-documents")
       .upload(storageKey, new Blob(["test"], { type: "application/pdf" }), {
         contentType: "application/pdf",
       });
-    assert.ifError(uploadError);
+    assert.ok(uploadError, "authenticated browsers cannot create document objects directly");
 
-    const { error: documentInsertError } = await owner.from("documents").insert({
+    await insertDocumentFixture({
       id: documentId,
       company_id: companyId,
       income_year: 2025,
@@ -3022,14 +2704,15 @@ test(
       storage_key: storageKey,
       created_by: ownerUser.id,
     });
-    assert.ifError(documentInsertError);
 
-    const { data: ownerDocuments, error: ownerDocumentError } = await owner
+    const { data: directOwnerDocuments, error: ownerDocumentError } = await owner
       .from("documents")
       .select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at")
       .eq("company_id", companyId)
       .eq("income_year", 2025);
-    assert.ifError(ownerDocumentError);
+    assert.ok(ownerDocumentError);
+    assert.equal(directOwnerDocuments, null);
+    const ownerDocuments = await listDocumentFixtures(companyId, 2025);
     assert.ok(ownerDocuments.length >= 2);
 
     const { data: persistedLedgerEntries, error: persistedLedgerError } = await owner
@@ -3087,7 +2770,11 @@ test(
     assert.equal(archive.taxSettlements[0].documentId, taxDocumentId);
     assert.equal(archive.taxSettlements[0].document.id, taxDocumentId);
     assert.equal(archive.billingAccounts[0].refund_eligible, true);
-    assert.equal(archive.authorityPermissions[0].obligation, "aksjonaerregisteroppgaven");
+    assert.ok(
+      archive.authorityPermissions.some(
+        (permission) => permission.obligation === "aksjonaerregisteroppgaven",
+      ),
+    );
     assert.equal(archive.bankSuggestionAcceptances[0].rule_id, "bank_fee");
 
     const { data: outsiderArchiveCompany, error: outsiderArchiveCompanyError } = await outsider
@@ -3098,129 +2785,59 @@ test(
     assert.deepEqual(outsiderArchiveCompany, []);
 
     const { data: signed, error: signedError } = await owner.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
+      .from("company-documents")
       .createSignedUrl(storageKey, 60);
-    assert.ifError(signedError);
-    assert.ok(signed.signedUrl.includes("/storage/v1/"));
+    assert.equal(signed, null);
+    assert.ok(signedError);
 
     const { data: outsiderDocuments, error: outsiderDocumentError } = await outsider
       .from("documents")
       .select("id")
       .eq("id", documentId);
-    assert.ifError(outsiderDocumentError);
-    assert.deepEqual(outsiderDocuments, []);
+    assert.ok(outsiderDocumentError);
+    assert.equal(outsiderDocuments, null);
 
     const { data: reviewerDocuments, error: reviewerDocumentError } = await reviewer
       .from("documents")
       .select("id")
       .eq("id", documentId);
-    assert.ifError(reviewerDocumentError);
-    assert.deepEqual(reviewerDocuments, [{ id: documentId }]);
+    assert.ok(reviewerDocumentError);
+    assert.equal(reviewerDocuments, null);
 
     const { data: readOnlyDocuments, error: readOnlyDocumentError } = await readOnly
       .from("documents")
       .select("id")
       .eq("id", documentId);
-    assert.ifError(readOnlyDocumentError);
-    assert.deepEqual(readOnlyDocuments, [{ id: documentId }]);
+    assert.ok(readOnlyDocumentError);
+    assert.equal(readOnlyDocuments, null);
 
     const linkedRemoval = await owner.rpc("remove_unlinked_document", {
-      p_document_id: dividendDocumentId,
+      p_document_id: purchaseDocumentId,
     });
-    assert.match(linkedRemoval.error?.message ?? "", /document_removal_evidence_linked/);
-
-    const removableDocumentId = randomUUID();
-    const removableStorageKey = documentStorageKey(
-      companyId,
-      2025,
-      removableDocumentId,
-      "uploaded-by-mistake.pdf",
-    );
-    const { error: removableUploadError } = await owner.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
-      .upload(removableStorageKey, new Blob(["%PDF-test"], { type: "application/pdf" }), {
-        contentType: "application/pdf",
-      });
-    assert.ifError(removableUploadError);
-    const { error: removableInsertError } = await owner.from("documents").insert({
-      id: removableDocumentId,
-      company_id: companyId,
-      income_year: 2025,
-      document_type: "accounting_document",
-      name: "uploaded-by-mistake.pdf",
-      linked_to: "workspace",
-      status: "attached",
-      storage_key: removableStorageKey,
-      created_by: ownerUser.id,
-    });
-    assert.ifError(removableInsertError);
-
-    const reviewerRemoval = await reviewer.rpc("remove_unlinked_document", {
-      p_document_id: removableDocumentId,
-    });
-    assert.match(reviewerRemoval.error?.message ?? "", /document_removal_not_allowed/);
-    const outsiderRemoval = await outsider.rpc("remove_unlinked_document", {
-      p_document_id: removableDocumentId,
-    });
-    assert.match(outsiderRemoval.error?.message ?? "", /document_removal_not_allowed/);
-
-    const { data: removalResult, error: removalError } = await owner.rpc(
-      "remove_unlinked_document",
-      { p_document_id: removableDocumentId },
-    );
-    assert.ifError(removalError);
-    assert.deepEqual(removalResult, [{ storage_key: removableStorageKey }]);
-    const { data: removedDocument, error: removedDocumentError } = await owner
-      .from("documents")
-      .select("status, removed_at, removed_by, removal_reason")
-      .eq("id", removableDocumentId)
-      .single();
-    assert.ifError(removedDocumentError);
-    assert.equal(removedDocument.status, "removed");
-    assert.ok(removedDocument.removed_at);
-    assert.equal(removedDocument.removed_by, ownerUser.id);
-    assert.equal(removedDocument.removal_reason, "accidental_unlinked_upload");
-
-    const hiddenRemovedObject = await reviewer.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
-      .createSignedUrl(removableStorageKey, 60);
-    assert.equal(hiddenRemovedObject.data, null);
-    assert.ok(hiddenRemovedObject.error);
-    const { error: removableObjectDeleteError } = await owner.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
-      .remove([removableStorageKey]);
-    assert.ifError(removableObjectDeleteError);
-    const { data: removalAudit, error: removalAuditError } = await owner
-      .from("audit_events")
-      .select("action")
-      .eq("company_id", companyId)
-      .eq("action", "document_removal_requested");
-    assert.ifError(removalAuditError);
-    assert.deepEqual(removalAudit, [{ action: "document_removal_requested" }]);
+    assert.ok(linkedRemoval.error, "legacy browser removal RPC execution is revoked");
 
     const { data: outsiderSigned, error: outsiderSignedError } = await outsider.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
+      .from("company-documents")
       .createSignedUrl(storageKey, 60);
     assert.equal(outsiderSigned, null);
     assert.ok(outsiderSignedError);
 
-    const reviewerStorageKey = documentStorageKey(companyId, 2025, randomUUID(), "reviewer.pdf");
+    const reviewerStorageKey = `${companyId}/2025/${randomUUID()}/reviewer.pdf`;
     const { error: reviewerUploadError } = await reviewer.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
+      .from("company-documents")
       .upload(reviewerStorageKey, new Blob(["reviewer"], { type: "application/pdf" }), {
         contentType: "application/pdf",
       });
     assert.ok(reviewerUploadError);
 
-    const readOnlyStorageKey = documentStorageKey(companyId, 2025, randomUUID(), "readonly.pdf");
+    const readOnlyStorageKey = `${companyId}/2025/${randomUUID()}/readonly.pdf`;
     const { error: readOnlyUploadError } = await readOnly.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
+      .from("company-documents")
       .upload(readOnlyStorageKey, new Blob(["readonly"], { type: "application/pdf" }), {
         contentType: "application/pdf",
       });
     assert.ok(readOnlyUploadError);
 
-    await owner.storage.from(COMPANY_DOCUMENTS_BUCKET).remove([storageKey]);
   } catch (error) {
     primaryError = error;
   } finally {

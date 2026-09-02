@@ -13,11 +13,6 @@ import {
   parseCorporateRenderResult,
   renderCorporateDocuments,
 } from "../apps/web/app/lib/corporate-documents.ts";
-import {
-  COMPANY_DOCUMENTS_BUCKET,
-  corporateArtifactStorageKey,
-  uploadCorporateArtifacts,
-} from "../apps/web/app/lib/corporate-document-storage.ts";
 
 const fixture = JSON.parse(
   readFileSync(new URL("./fixtures/corporate_documents/owner_dividend.json", import.meta.url), "utf8"),
@@ -198,141 +193,10 @@ test("renderer uses no shell, a fixed argv, a timeout, and a restricted environm
   assert.equal(hangingChild.killed, true);
 });
 
-function fakeStorage(initialObjects = new Map(), failAt = null) {
-  const objects = new Map([...initialObjects].map(([key, value]) => [key, Buffer.from(value)]));
-  const uploads = [];
-  const removals = [];
-  const client = {
-    storage: {
-      from(bucket) {
-        assert.equal(bucket, COMPANY_DOCUMENTS_BUCKET);
-        return {
-          async upload(path, body, options) {
-            uploads.push({ path, options });
-            if (path === failAt) {
-              return { data: null, error: { message: "synthetic upload failure", statusCode: "500" } };
-            }
-            if (objects.has(path)) {
-              return { data: null, error: { message: "The resource already exists", statusCode: "409" } };
-            }
-            objects.set(path, Buffer.from(body));
-            return { data: { path }, error: null };
-          },
-          async download(path) {
-            const value = objects.get(path);
-            return value
-              ? { data: new Blob([value]), error: null }
-              : { data: null, error: { message: "not found", statusCode: "404" } };
-          },
-          async remove(paths) {
-            removals.push(...paths);
-            for (const path of paths) objects.delete(path);
-            return { data: paths, error: null };
-          },
-        };
-      },
-    },
-  };
-  return { client, objects, uploads, removals };
-}
-
-function uploadInput(artifacts, storageClient) {
-  return {
-    companyId: fixture.company_id,
-    incomeYear: fixture.income_year,
-    setId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-    artifacts,
-    storageClient,
-  };
-}
-
-test("storage keys are tenant scoped, content addressed, and reject path injection", () => {
-  const key = corporateArtifactStorageKey({
-    companyId: fixture.company_id,
-    incomeYear: 2025,
-    setId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-    artifactKind: "dividend_board_proposal",
-    contentSha256: "a".repeat(64),
-  });
-  assert.equal(
-    key,
-    `${fixture.company_id}/2025/corporate/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/dividend_board_proposal/${"a".repeat(64)}.pdf`,
-  );
-  assert.throws(
-    () => corporateArtifactStorageKey({
-      companyId: "../other-company",
-      incomeYear: 2025,
-      setId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-      artifactKind: "dividend_board_proposal",
-      contentSha256: "a".repeat(64),
-    }),
-    /storage path/i,
-  );
-  assert.throws(
-    () => corporateArtifactStorageKey({
-      companyId: fixture.company_id,
-      incomeYear: 2025,
-      setId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-      artifactKind: "../../escape",
-      contentSha256: "a".repeat(64),
-    }),
-    /storage path/i,
-  );
-});
-
-test("uploads with upsert false and verifies an exact existing object on retry", async () => {
-  const rendered = parseCorporateRenderResult(JSON.stringify(rendererPayload()), fixture);
-  assert.equal(rendered.status, "rendered");
-  const firstKey = corporateArtifactStorageKey({
-    companyId: fixture.company_id,
-    incomeYear: fixture.income_year,
-    setId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-    artifactKind: rendered.artifacts[0].artifactKind,
-    contentSha256: rendered.artifacts[0].contentSha256,
-  });
-  const storage = fakeStorage(new Map([[firstKey, rendered.artifacts[0].pdfBytes]]));
-
-  const result = await uploadCorporateArtifacts(uploadInput(rendered.artifacts, storage.client));
-  assert.deepEqual(result.artifacts.map((artifact) => artifact.status), ["existing_verified", "uploaded"]);
-  assert.ok(storage.uploads.every(({ options }) => options.upsert === false));
-  assert.ok(storage.uploads.every(({ options }) => options.contentType === "application/pdf"));
-  assert.deepEqual(storage.removals, []);
-});
-
-test("an existing object with different bytes fails closed", async () => {
-  const rendered = parseCorporateRenderResult(JSON.stringify(rendererPayload()), fixture);
-  assert.equal(rendered.status, "rendered");
-  const firstKey = corporateArtifactStorageKey({
-    companyId: fixture.company_id,
-    incomeYear: fixture.income_year,
-    setId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-    artifactKind: rendered.artifacts[0].artifactKind,
-    contentSha256: rendered.artifacts[0].contentSha256,
-  });
-  const storage = fakeStorage(new Map([[firstKey, Buffer.from("different")]]));
-  await assert.rejects(
-    uploadCorporateArtifacts(uploadInput(rendered.artifacts, storage.client)),
-    /existing corporate artifact hash mismatch/i,
-  );
-  assert.deepEqual(storage.removals, []);
-});
-
-test("a later upload failure removes only objects created by this attempt", async () => {
-  const rendered = parseCorporateRenderResult(JSON.stringify(rendererPayload()), fixture);
-  assert.equal(rendered.status, "rendered");
-  const keys = rendered.artifacts.map((artifact) => corporateArtifactStorageKey({
-    companyId: fixture.company_id,
-    incomeYear: fixture.income_year,
-    setId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-    artifactKind: artifact.artifactKind,
-    contentSha256: artifact.contentSha256,
-  }));
-  const storage = fakeStorage(new Map(), keys[1]);
-
-  await assert.rejects(
-    uploadCorporateArtifacts(uploadInput(rendered.artifacts, storage.client)),
-    /synthetic upload failure/i,
-  );
-  assert.deepEqual(storage.removals, [keys[0]]);
-  assert.equal(storage.objects.has(keys[0]), false);
+test("corporate rendering owns bytes and facts but delegates object identity to documents", () => {
+  const actions = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
+  assert.match(actions, /documentType: "corporate_document"/u);
+  assert.match(actions, /linkedTo: `corporate_decision:/u);
+  assert.match(actions, /uploadDocumentObject/u);
+  assert.doesNotMatch(actions, /corporateArtifactStorageKey|uploadCorporateArtifacts/u);
 });

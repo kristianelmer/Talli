@@ -1,83 +1,83 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { recordSharePurchase } from "../../../actions";
 import { SubmitButton } from "../../../components/ui";
 import { ownerCopy } from "../../../lib/copy";
 import {
-  sharePurchaseLedgerLines,
-  validateSharePurchase,
-} from "../../../lib/share-purchase";
-import { ActionPreview, type LedgerLine } from "./ActionPreview";
-import { DocStatusSelect, SelectField, TextField } from "./fields";
+  InvestmentEvidenceFields,
+  investmentEvidenceComplete,
+  type InvestmentEvidenceOption,
+  type InvestmentEvidenceState,
+} from "./InvestmentEvidenceFields";
+import { SelectField, TextField } from "./fields";
 
-type Props = { companyId: string; incomeYear: number };
+type Props = {
+  companyId: string;
+  incomeYear: number;
+  operationId?: string;
+  bankTransactions: InvestmentEvidenceOption[];
+  documents: InvestmentEvidenceOption[];
+};
 
-export function SharePurchaseWizard({ companyId, incomeYear }: Props) {
+export function SharePurchaseWizard({
+  companyId,
+  incomeYear,
+  operationId: initialOperationId,
+  bankTransactions,
+  documents,
+}: Props) {
   const a = ownerCopy.actions;
   const c = a.sharePurchase;
   const [investmentName, setInvestmentName] = useState("");
   const [investmentKey, setInvestmentKey] = useState("");
   const [orgNumber, setOrgNumber] = useState("");
   const [kind, setKind] = useState("norwegian_private_company");
+  const [classification, setClassification] = useState("other_long_term");
   const [treatment, setTreatment] = useState("fritaksmetoden");
   const [acquisitionDate, setAcquisitionDate] = useState("");
   const [shareCount, setShareCount] = useState("");
   const [purchaseAmount, setPurchaseAmount] = useState("");
-  const [documentStatus, setDocumentStatus] = useState("attached");
+  const [transactionCosts, setTransactionCosts] = useState("0");
+  const [fundEquityRatio, setFundEquityRatio] = useState("");
+  const [fundStatement, setFundStatement] = useState("");
+  const [boundaryConfirmed, setBoundaryConfirmed] = useState(false);
+  const [evidence, setEvidence] = useState<InvestmentEvidenceState>({
+    mode: "manual_fallback",
+    bankTransactionId: "",
+    documentId: "",
+    reference: "",
+    ownerAttested: false,
+  });
+  const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
 
   const ready =
     investmentName.trim() !== "" &&
-    investmentKey.trim() !== "" &&
+    (kind === "norwegian_private_company" || investmentKey.trim() !== "") &&
     acquisitionDate.trim() !== "" &&
     shareCount.trim() !== "" &&
-    purchaseAmount.trim() !== "";
+    purchaseAmount.trim() !== "" &&
+    investmentEvidenceComplete(evidence) &&
+    boundaryConfirmed &&
+    (kind !== "norwegian_private_company" || /^\d{9}$/.test(orgNumber)) &&
+    (kind !== "norwegian_equity_fund"
+      || (fundEquityRatio.trim() !== "" && fundStatement.trim() !== ""));
 
-  const preview = useMemo<{ block: string | null; lines: LedgerLine[] | null }>(() => {
-    if (!ready) return { block: null, lines: null };
-    try {
-      const payload = validateSharePurchase({
-        investmentKey,
-        investmentName,
-        investmentKind: kind as
-          | "norwegian_private_company"
-          | "simple_listed_security",
-        taxTreatment: treatment as
-          | "fritaksmetoden"
-          | "outside_fritaksmetoden"
-          | "needs_accountant",
-        acquisitionDate,
-        shareCount: Number(shareCount),
-        purchaseAmount: Number(purchaseAmount),
-        orgNumber: orgNumber || null,
-        documentStatus: documentStatus as
-          | "attached"
-          | "missing_accepted_warning"
-          | "not_required",
-      });
-      return { block: null, lines: sharePurchaseLedgerLines(payload) };
-    } catch (error) {
-      return {
-        block: error instanceof Error ? error.message : "Ugyldig aksjekjøp",
-        lines: null,
-      };
-    }
-  }, [
-    ready,
-    investmentKey,
-    investmentName,
-    kind,
-    treatment,
-    acquisitionDate,
-    shareCount,
-    purchaseAmount,
-    orgNumber,
-    documentStatus,
-  ]);
+  function changeKind(value: string) {
+    setKind(value);
+    setClassification(
+      value === "norwegian_equity_fund"
+        ? "current_fund"
+        : value === "norwegian_listed_share"
+          ? "current_listed_share"
+          : "other_long_term",
+    );
+  }
 
   return (
     <form action={recordSharePurchase} className="wizardForm">
+      <input type="hidden" name="operationId" value={operationId} />
       <input type="hidden" name="returnTo" value="/actions" />
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="incomeYear" value={incomeYear} />
@@ -90,14 +90,16 @@ export function SharePurchaseWizard({ companyId, incomeYear }: Props) {
         required
       />
       <div className="fieldRow">
-        <TextField
-          label={c.keyLabel}
-          name="investmentKey"
-          value={investmentKey}
-          onChange={setInvestmentKey}
-          helper={c.keyHelp}
-          required
-        />
+        {kind === "norwegian_private_company" ? null : (
+          <TextField
+            label="ISIN"
+            name="investmentKey"
+            value={investmentKey}
+            onChange={setInvestmentKey}
+            helper="12 tegn og starter med NO."
+            required
+          />
+        )}
         <TextField
           label={c.orgLabel}
           name="orgNumber"
@@ -111,15 +113,14 @@ export function SharePurchaseWizard({ companyId, incomeYear }: Props) {
           label={a.investmentKind.label}
           name="investmentKind"
           value={kind}
-          onChange={setKind}
+          onChange={changeKind}
           required
         >
           <option value="norwegian_private_company">
             {a.investmentKind.norwegianPrivate}
           </option>
-          <option value="simple_listed_security">
-            {a.investmentKind.listed}
-          </option>
+          <option value="norwegian_listed_share">Norsk børsnotert aksje (NOK)</option>
+          <option value="norwegian_equity_fund">Norsk aksje- eller kombinasjonsfond (NOK)</option>
         </SelectField>
         <SelectField
           label={a.taxTreatment.label}
@@ -129,10 +130,27 @@ export function SharePurchaseWizard({ companyId, incomeYear }: Props) {
           required
         >
           <option value="fritaksmetoden">{a.taxTreatment.fritak}</option>
-          <option value="outside_fritaksmetoden">{a.taxTreatment.outside}</option>
-          <option value="needs_accountant">{a.taxTreatment.needsAccountant}</option>
         </SelectField>
       </div>
+      <SelectField
+        label="Regnskapsklassifisering"
+        name="accountingClassification"
+        value={classification}
+        onChange={setClassification}
+        required
+      >
+        {kind === "norwegian_private_company" ? (
+          <>
+            <option value="other_long_term">Andre langsiktige investeringer</option>
+            <option value="associate">Tilknyttet selskap</option>
+            <option value="subsidiary">Datterselskap</option>
+          </>
+        ) : kind === "norwegian_listed_share" ? (
+          <option value="current_listed_share">Markedsbasert aksje</option>
+        ) : (
+          <option value="current_fund">Markedsbasert fond</option>
+        )}
+      </SelectField>
       <div className="fieldRow">
         <TextField
           label={c.dateLabel}
@@ -161,12 +179,59 @@ export function SharePurchaseWizard({ companyId, incomeYear }: Props) {
           inputMode="decimal"
           required
         />
-        <DocStatusSelect value={documentStatus} onChange={setDocumentStatus} />
+        <input type="hidden" name="documentStatus" value="not_required" />
+        <TextField
+          label="Transaksjonskostnader (kr)"
+          name="transactionCosts"
+          value={transactionCosts}
+          onChange={setTransactionCosts}
+          inputMode="decimal"
+          required
+        />
       </div>
 
-      <ActionPreview block={preview.block} lines={preview.lines} />
+      {kind === "norwegian_equity_fund" ? (
+        <div className="fieldRow">
+          <TextField
+            label="Aksjeandel ved kjøp (basispoeng)"
+            name="fundEquityRatioBasisPoints"
+            value={fundEquityRatio}
+            onChange={setFundEquityRatio}
+            inputMode="numeric"
+            helper="0–10 000. Bruk verdien fra fondets skatteoppgave."
+            required
+          />
+          <TextField
+            label="Referanse til fondets skatteoppgave"
+            name="fundTaxStatementReference"
+            value={fundStatement}
+            onChange={setFundStatement}
+            required
+          />
+        </div>
+      ) : null}
+      <label className="checkboxRow">
+        <input
+          type="checkbox"
+          name="investmentBoundaryConfirmed"
+          value="true"
+          checked={boundaryConfirmed}
+          onChange={(event) => setBoundaryConfirmed(event.target.checked)}
+          required
+        />
+        <span>
+          {kind === "norwegian_private_company"
+            ? "Jeg bekrefter at dette er en enkelt ordinær aksjeklasse med like rettigheter, uten uvanlige særrettigheter, og at handelen er begrenset og ikke aktiv virksomhet."
+            : "Jeg bekrefter at handelen er begrenset og ikke aktiv handelsvirksomhet."}
+        </span>
+      </label>
+      <InvestmentEvidenceFields
+        documents={documents}
+        state={evidence}
+        onChange={setEvidence}
+      />
 
-      <SubmitButton disabled={preview.lines === null} pendingLabel={a.pending}>
+      <SubmitButton disabled={!ready} pendingLabel={a.pending}>
         {a.confirmCta}
       </SubmitButton>
     </form>

@@ -14,12 +14,17 @@ import type {
   FilingReviewCommentRow,
   FilingSubmissionRow,
   HoldingActionRow,
-  InvestmentLotAllocationRow,
-  InvestmentLotRow,
-  InvestmentPositionRow,
   OpeningBalanceSetupRow,
   OpeningShareholderRow,
 } from "./supabase/server";
+import type {
+  AcquisitionLotPresentation as InvestmentLotRow,
+  InvestmentPositionPresentation as InvestmentPositionRow,
+  ShareSaleAllocationPresentation,
+  InvestmentCorrectionPresentation,
+  InvestmentActivityPresentation,
+} from "../../features/investments";
+import type { DocumentBackupProjectionWire } from "../../features/documents";
 
 export type LedgerEntryRow = {
   id: string;
@@ -56,10 +61,13 @@ export function buildPersistedCompanyArchive(input: {
   shareholders: OpeningShareholderRow[];
   ledgerEntries: LedgerEntryRow[];
   documents: DocumentRow[];
+  documentBackupProjection?: DocumentBackupProjectionWire;
   holdingActions?: HoldingActionRow[];
   investmentPositions?: InvestmentPositionRow[];
   investmentLots?: InvestmentLotRow[];
-  investmentLotAllocations?: InvestmentLotAllocationRow[];
+  investmentLotAllocations?: ShareSaleAllocationPresentation[];
+  investmentCorrections?: InvestmentCorrectionPresentation[];
+  effectiveInvestmentActions?: InvestmentActivityPresentation[];
   bankSuggestionAcceptances?: BankSuggestionAcceptanceRow[];
   billingAccounts?: BillingAccountRow[];
   authorityPermissions?: AuthorityPermissionRow[];
@@ -75,6 +83,14 @@ export function buildPersistedCompanyArchive(input: {
   corporateDecisionFinalizations?: CorporateDecisionFinalizationRow[];
 }) {
   const taxSettlementActions = (input.holdingActions ?? []).filter((action) => action.action_type === "tax_settlement");
+  const investmentActivityHistory = (input.holdingActions ?? []).filter(
+    (action) => [
+      "share_purchase",
+      "share_sale",
+      "dividend_received",
+      "fund_distribution_received",
+    ].includes(action.action_type),
+  );
   const taxSettlementLedgerIds = new Set(
     taxSettlementActions.map((action) => action.ledger_entry_id).filter((id): id is string => Boolean(id)),
   );
@@ -130,9 +146,12 @@ export function buildPersistedCompanyArchive(input: {
         : null,
     })),
     taxSettlementLedgerEntries: input.ledgerEntries.filter((entry) => taxSettlementLedgerIds.has(entry.id)),
+    investmentActivityHistory,
     investmentPositions: input.investmentPositions ?? [],
     investmentLots: input.investmentLots ?? [],
     investmentLotAllocations: input.investmentLotAllocations ?? [],
+    investmentCorrections: input.investmentCorrections ?? [],
+    effectiveInvestmentActions: input.effectiveInvestmentActions ?? [],
     bankSuggestionAcceptances: input.bankSuggestionAcceptances ?? [],
     billingAccounts: input.billingAccounts ?? [],
     authorityPermissions: input.authorityPermissions ?? [],
@@ -184,6 +203,7 @@ export function buildPersistedCompanyArchive(input: {
       storageKey: document.storage_key,
       createdAt: document.created_at,
     })),
+    documentBackupProjection: input.documentBackupProjection ?? null,
     filingPreviews: input.filingPreviews.map((preview) => ({
       id: preview.id,
       filing: preview.filing,

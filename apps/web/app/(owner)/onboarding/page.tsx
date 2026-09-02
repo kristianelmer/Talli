@@ -2,17 +2,28 @@ import { redirect } from "next/navigation";
 
 import { Banner, WizardShell } from "../../components/ui";
 import { ownerCopy } from "../../lib/copy";
+import { readEligibilityContinuation } from "../../lib/eligibility-continuation";
 import {
   selectOnboardingPhase,
   shouldRedirectReturningOwner,
 } from "../../lib/onboarding-presentation";
 import { loadWorkspaceData } from "../../lib/workspace-data";
 import { BankImportForm } from "./BankImportForm";
-import { CompanyLookupForm } from "./CompanyLookupForm";
+import { CompanyYearAdmissionForm } from "./CompanyYearAdmissionForm";
 import { OpeningBalanceForm } from "./OpeningBalanceForm";
 
 type OnboardingProps = {
-  searchParams?: Promise<{ error?: string; step?: string }>;
+  searchParams?: Promise<{
+    error?: string;
+    bankImportOperationId?: string;
+    bankImportAccountId?: string;
+    bankPreviewSourceFileId?: string;
+    bankPreviewDocumentSha256?: string;
+    bankPreviewTransactionCount?: string;
+    bankPreviewOperationId?: string;
+    newYearOperationId?: string;
+    step?: string;
+  }>;
 };
 
 export default async function OnboardingPage({ searchParams }: OnboardingProps) {
@@ -26,9 +37,22 @@ export default async function OnboardingPage({ searchParams }: OnboardingProps) 
   const hasSetup = primaryCompany
     ? setups.some((setup) => setup.company_id === primaryCompany.id)
     : false;
+  const eligibilityContinuation = await readEligibilityContinuation();
+  const continuationAlreadyAdmitted = eligibilityContinuation
+    ? companies.some((company) => (
+        company.org_number === eligibilityContinuation.orgNumber
+        && company.admittedAccountingYear === eligibilityContinuation.accountingYear
+      ))
+    : false;
+  const pendingAdmission = continuationAlreadyAdmitted
+    ? null
+    : eligibilityContinuation;
+  if (!primaryCompany && !pendingAdmission) {
+    redirect("/sjekk-selskapet");
+  }
   const presentation = {
-    hasCompany: Boolean(primaryCompany),
-    hasSetup,
+    hasCompany: Boolean(primaryCompany) && pendingAdmission === null,
+    hasSetup: pendingAdmission === null && hasSetup,
     hasError: Boolean(params?.error),
     step: params?.step,
   };
@@ -56,15 +80,29 @@ export default async function OnboardingPage({ searchParams }: OnboardingProps) 
     >
       {params?.error ? <Banner variant="danger">{params.error}</Banner> : null}
 
-      {phase === "lookup" ? <CompanyLookupForm /> : null}
+      {phase === "lookup" && pendingAdmission ? (
+        <CompanyYearAdmissionForm continuation={pendingAdmission} />
+      ) : null}
       {phase === "balances" && primaryCompany ? (
-        <OpeningBalanceForm companyId={primaryCompany.id} incomeYear={year} />
+        <OpeningBalanceForm
+          companyId={primaryCompany.id}
+          incomeYear={year}
+          operationId={params?.newYearOperationId}
+        />
       ) : null}
       {phase === "bank" && primaryCompany ? (
         <BankImportForm
           companyId={primaryCompany.id}
           incomeYear={year}
           importedCount={transactions.length}
+          retryOperationId={params?.bankImportOperationId}
+          retryAccountId={params?.bankImportAccountId}
+          persistedPreview={params?.bankPreviewSourceFileId && params.bankPreviewDocumentSha256 ? {
+            sourceFileId: params.bankPreviewSourceFileId,
+            documentSha256: params.bankPreviewDocumentSha256,
+            transactionCount: Number(params.bankPreviewTransactionCount ?? "0"),
+            operationId: params.bankPreviewOperationId,
+          } : undefined}
         />
       ) : null}
     </WizardShell>

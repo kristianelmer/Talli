@@ -1,96 +1,79 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useState } from "react";
 
 import { recordShareSale } from "../../../actions";
 import { Banner, SubmitButton } from "../../../components/ui";
 import { ownerCopy } from "../../../lib/copy";
 import {
-  shareSaleLedgerLines,
-  validateShareSale,
-} from "../../../lib/share-sale";
-import type { ShareAcquisitionLot } from "../../../lib/share-lots";
-import { ActionPreview, formatKr, type LedgerLine } from "./ActionPreview";
-import { DocStatusSelect, SelectField, TextField } from "./fields";
+  formatInvestmentUnits,
+  hasPositiveInvestmentUnits,
+} from "../../../../features/investments";
+import {
+  InvestmentEvidenceFields,
+  investmentEvidenceComplete,
+  type InvestmentEvidenceOption,
+  type InvestmentEvidenceState,
+} from "./InvestmentEvidenceFields";
+import { SelectField, TextField } from "./fields";
 
 export type SalePosition = {
   id: string;
-  investment_key: string;
   name: string;
-  share_count: number;
-  cost_basis: number;
+  share_count: string;
   lot_history_status: "complete" | "needs_reconstruction";
-  acquisition_lots: ShareAcquisitionLot[];
+  kind: "norwegian_private_company" | "norwegian_listed_share" | "norwegian_equity_fund";
 };
 
 type Props = {
   companyId: string;
   incomeYear: number;
   positions: SalePosition[];
+  operationId?: string;
+  bankTransactions: InvestmentEvidenceOption[];
+  documents: InvestmentEvidenceOption[];
 };
 
-export function ShareSaleWizard({ companyId, incomeYear, positions }: Props) {
+export function ShareSaleWizard({
+  companyId,
+  incomeYear,
+  positions,
+  operationId: initialOperationId,
+  bankTransactions,
+  documents,
+}: Props) {
   const a = ownerCopy.actions;
   const c = a.shareSale;
   const sellable = positions.filter(
-    (position) => position.share_count > 0 && position.lot_history_status === "complete",
+    (position) => hasPositiveInvestmentUnits(position.share_count)
+      && position.lot_history_status === "complete",
   );
 
   const [positionId, setPositionId] = useState("");
   const [saleDate, setSaleDate] = useState("");
   const [soldShareCount, setSoldShareCount] = useState("");
   const [proceeds, setProceeds] = useState("");
-  const [documentStatus, setDocumentStatus] = useState("attached");
+  const [transactionCosts, setTransactionCosts] = useState("0");
+  const [fundEquityRatio, setFundEquityRatio] = useState("");
+  const [fundStatement, setFundStatement] = useState("");
+  const [evidence, setEvidence] = useState<InvestmentEvidenceState>({
+    mode: "manual_fallback",
+    bankTransactionId: "",
+    documentId: "",
+    reference: "",
+    ownerAttested: false,
+  });
+  const [operationId] = useState(() => initialOperationId ?? crypto.randomUUID());
 
   const selected = sellable.find((position) => position.id === positionId);
   const ready =
     Boolean(selected) &&
     saleDate.trim() !== "" &&
     soldShareCount.trim() !== "" &&
-    proceeds.trim() !== "";
-
-  const preview = useMemo<{
-    block: string | null;
-    lines: LedgerLine[] | null;
-    summary: ReactNode;
-  }>(() => {
-    if (!ready || !selected) return { block: null, lines: null, summary: null };
-    try {
-      const payload = validateShareSale({
-        positionId: selected.id,
-        investmentKey: selected.investment_key,
-        investmentName: selected.name,
-        currentShareCount: selected.share_count,
-        currentCostBasis: selected.cost_basis,
-        acquisitionLots: selected.acquisition_lots,
-        saleDate,
-        soldShareCount: Number(soldShareCount),
-        proceeds: Number(proceeds),
-        documentStatus: documentStatus as
-          | "attached"
-          | "missing_accepted_warning"
-          | "not_required",
-      });
-      const summary = (
-        <>
-          {payload.gain_or_loss > 0
-            ? `${c.gainLabel}: ${formatKr(payload.gain_or_loss)}`
-            : payload.gain_or_loss < 0
-              ? `${c.lossLabel}: ${formatKr(Math.abs(payload.gain_or_loss))}`
-              : null}
-          {payload.gain_or_loss !== 0 ? " · " : ""}
-          {`${c.remainingLabel}: ${payload.remaining_share_count}`}
-        </>
-      );
-      return { block: null, lines: shareSaleLedgerLines(payload), summary };
-    } catch (error) {
-      return {
-        block: error instanceof Error ? error.message : "Ugyldig aksjesalg",
-        lines: null,
-        summary: null,
-      };
-    }
-  }, [ready, selected, saleDate, soldShareCount, proceeds, documentStatus, c]);
+    proceeds.trim() !== "" &&
+    investmentEvidenceComplete(evidence) &&
+    (selected?.kind !== "norwegian_equity_fund"
+      || (fundEquityRatio.trim() !== "" && fundStatement.trim() !== ""));
 
   if (sellable.length === 0) {
     return <Banner variant="info">{c.noPositions}</Banner>;
@@ -98,9 +81,11 @@ export function ShareSaleWizard({ companyId, incomeYear, positions }: Props) {
 
   return (
     <form action={recordShareSale} className="wizardForm">
+      <input type="hidden" name="operationId" value={operationId} />
       <input type="hidden" name="returnTo" value="/actions" />
       <input type="hidden" name="companyId" value={companyId} />
       <input type="hidden" name="incomeYear" value={incomeYear} />
+      <input type="hidden" name="documentStatus" value="not_required" />
 
       <SelectField
         label={c.positionLabel}
@@ -114,7 +99,7 @@ export function ShareSaleWizard({ companyId, incomeYear, positions }: Props) {
         </option>
         {sellable.map((position) => (
           <option key={position.id} value={position.id}>
-            {position.name} — {c.ofShares(position.share_count)}
+            {position.name} — {c.ofShares(formatInvestmentUnits(position.share_count))}
           </option>
         ))}
       </SelectField>
@@ -137,25 +122,54 @@ export function ShareSaleWizard({ companyId, incomeYear, positions }: Props) {
           required
         />
       </div>
+      <TextField
+        label={c.proceedsLabel}
+        name="proceeds"
+        value={proceeds}
+        onChange={setProceeds}
+        inputMode="decimal"
+        required
+      />
       <div className="fieldRow">
         <TextField
-          label={c.proceedsLabel}
-          name="proceeds"
-          value={proceeds}
-          onChange={setProceeds}
+          label="Transaksjonskostnader (kr)"
+          name="transactionCosts"
+          value={transactionCosts}
+          onChange={setTransactionCosts}
           inputMode="decimal"
           required
         />
-        <DocStatusSelect value={documentStatus} onChange={setDocumentStatus} />
       </div>
 
-      <ActionPreview
-        block={preview.block}
-        lines={preview.lines}
-        summary={preview.summary}
+      {selected?.kind === "norwegian_equity_fund" ? (
+        <div className="fieldRow">
+          <TextField
+            label="Aksjeandel ved salg (basispoeng)"
+            name="saleYearFundEquityRatioBasisPoints"
+            value={fundEquityRatio}
+            onChange={setFundEquityRatio}
+            inputMode="numeric"
+            required
+          />
+          <TextField
+            label="Referanse til fondets skatteoppgave"
+            name="fundTaxStatementReference"
+            value={fundStatement}
+            onChange={setFundStatement}
+            required
+          />
+        </div>
+      ) : null}
+
+      <Banner variant="info">{c.fifoNote}</Banner>
+
+      <InvestmentEvidenceFields
+        documents={documents}
+        state={evidence}
+        onChange={setEvidence}
       />
 
-      <SubmitButton disabled={preview.lines === null} pendingLabel={a.pending}>
+      <SubmitButton disabled={!ready} pendingLabel={a.pending}>
         {a.confirmCta}
       </SubmitButton>
     </form>

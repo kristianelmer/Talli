@@ -1,58 +1,67 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import {
-  ShareholderLoanValidationError,
-  shareholderLoanLedgerLines,
-  validateShareholderLoan,
-} from "../apps/web/app/lib/shareholder-loan.ts";
+const actionsSource = readFileSync(
+  new URL("../apps/web/app/actions.ts", import.meta.url),
+  "utf8",
+);
+const wizardSource = readFileSync(
+  new URL(
+    "../apps/web/app/(owner)/actions/_components/ShareholderLoanWizard.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const supabaseWorkspaceSource = readFileSync(
+  new URL("./supabase_workspace.test.mjs", import.meta.url),
+  "utf8",
+);
 
-test("builds supported shareholder-to-company loan ledger lines", () => {
-  const payload = validateShareholderLoan({
-    loanDate: "2025-07-01",
-    amount: 20000,
-    direction: "shareholder_to_company",
-    counterpartyName: "Ola Nordmann",
-    documentStatus: "attached",
-    interestModelled: true,
-    relatedPartySecurity: false,
-  });
+function serverActionSource(name) {
+  const start = actionsSource.indexOf(`export async function ${name}`);
+  assert.notEqual(start, -1, `${name} must exist`);
+  const end = actionsSource.indexOf("\nexport async function ", start + 1);
+  return actionsSource.slice(start, end < 0 ? undefined : end);
+}
 
-  assert.deepEqual(shareholderLoanLedgerLines(payload), [
-    { account: "1920", description: "Loan received from Ola Nordmann", debit: 20000, credit: 0 },
-    { account: "2255", description: "Loan payable to Ola Nordmann", debit: 0, credit: 20000 },
-  ]);
-});
+test("shareholder-loan intent crosses only the governance generated boundary", () => {
+  const action = serverActionSource("recordShareholderLoan");
 
-test("builds supported company-to-corporate-shareholder loan ledger lines", () => {
-  const payload = validateShareholderLoan({
-    loanDate: "2025-07-01",
-    amount: 20000,
-    direction: "company_to_corporate_shareholder",
-    counterpartyName: "Owner Holding AS",
-    documentStatus: "attached",
-    interestModelled: true,
-    relatedPartySecurity: false,
-  });
-
-  assert.deepEqual(shareholderLoanLedgerLines(payload), [
-    { account: "1370", description: "Loan receivable from Owner Holding AS", debit: 20000, credit: 0 },
-    { account: "1920", description: "Loan paid to Owner Holding AS", debit: 0, credit: 20000 },
-  ]);
-});
-
-test("blocks company-to-personal-shareholder loans with machine-readable reason", () => {
-  assert.throws(
-    () =>
-      validateShareholderLoan({
-        loanDate: "2025-07-01",
-        amount: 20000,
-        direction: "company_to_personal_shareholder",
-        counterpartyName: "Ola Nordmann",
-        documentStatus: "attached",
-        interestModelled: false,
-        relatedPartySecurity: false,
-      }),
-    (error) => error instanceof ShareholderLoanValidationError && error.code === "personal_shareholder_loan_blocked",
+  assert.match(action, /requiredFormUuid\(formData, "operationId"\)/u);
+  assert.match(action, /getCurrentSessionAccessToken\(\)/u);
+  assert.match(action, /await recordShareholderLoanThroughApi\(/u);
+  assert.match(action, /actionId: operationId/u);
+  assert.match(action, /ledgerEntryId: operationId/u);
+  assert.match(
+    action,
+    /recordShareholderLoanThroughApi\([\s\S]*?operationId,[\s\S]*?operationId/u,
   );
+  assert.match(action, /corporateGovernanceOutcomeMayBeUnknown\(error\)/u);
+  assert.match(action, /shareholderLoanActionErrorMessage\(error\)/u);
+  assert.doesNotMatch(
+    action,
+    /postLedgerShareholderLoan|validateShareholderLoan|shareholderLoanLedgerLines/u,
+  );
+});
+
+test("active Supabase integration no longer imports or exercises browser-owned loan policy", () => {
+  assert.doesNotMatch(
+    supabaseWorkspaceSource,
+    /lib\/shareholder-loan|validateShareholderLoan|shareholderLoanLedgerLines/u,
+  );
+  assert.doesNotMatch(supabaseWorkspaceSource, /action_type:\s*"shareholder_loan"/u);
+});
+
+test("shareholder-loan wizard submits intent without owning domain or ledger policy", () => {
+  assert.doesNotMatch(
+    wizardSource,
+    /lib\/shareholder-loan|validateShareholderLoan|shareholderLoanLedgerLines/u,
+  );
+  assert.doesNotMatch(wizardSource, /ActionPreview|LedgerLine|useMemo/u);
+  assert.doesNotMatch(wizardSource, /\b(?:1920|2255|1370)\b/u);
+  assert.match(wizardSource, /shareholderLoanFormPresentation\(direction, relatedPartySecurity\)/u);
+  assert.match(wizardSource, /presentation\.block !== null/u);
+  assert.match(wizardSource, /<form action=\{recordShareholderLoan\}/u);
+  assert.match(wizardSource, /<Banner variant=\{presentation\.block \? "danger" : "info"\}/u);
 });

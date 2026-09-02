@@ -63,7 +63,8 @@ test("reconciliation action rechecks the exact owner, submission, and verified r
   assert.ok(start >= 0 && end > start);
   const action = actions.slice(start, end);
   assert.match(action, /requiredFormUuid/u);
-  assert.match(action, /company_memberships/u);
+  assert.match(action, /loadAcceptedMembershipCompany\(submission\.company_id\)/u);
+  assert.doesNotMatch(action, /\.from\("company_memberships"\)/u);
   assert.match(action, /role.*owner/su);
   assert.match(action, /system_user_requests/u);
   assert.match(action, /preflight_verified_at/u);
@@ -90,16 +91,14 @@ test("initial send performs bounded feedback polling only after the journaled co
 });
 
 test("private artifact persistence verifies receipts and cleans up only after authoritative absence", () => {
-  assert.match(documents, /authority-feedback\/\$\{companyId\}\/\$\{submissionId\}\/\$\{sha256\}/u);
-  assert.match(actions, /createRf1086FeedbackArtifactRecorder\(service, input\)/u);
-  assert.match(feedbackPersistence, /document_type:\s*"authority_feedback"/u);
+  assert.match(documents, /rf1086FeedbackFileName/u);
+  assert.match(actions, /createRf1086FeedbackArtifactRecorder\(service, input, \{/u);
+  assert.match(actions, /documentType:\s*"authority_feedback"/u);
+  assert.match(actions, /linkedTo:\s*`production_filing_submission:/u);
   assert.match(feedbackPersistence, /record_production_feedback_artifact/u);
-  assert.match(feedbackPersistence, /bucket\.remove\(\[storageKey\]\)/u);
-  assert.match(feedbackPersistence, /from\("documents"\)\.delete\(\)/u);
-  assert.match(feedbackPersistence, /bucket\.download\(storageKey\)/u);
-  assert.match(feedbackPersistence, /bytes\.byteLength !== artifact\.byteLength/u);
-  assert.match(feedbackPersistence, /hash !== artifact\.sha256/u);
-  assert.match(feedbackPersistence, /if \(persisted\.error\)[\s\S]+if \(persisted\.data\)[\s\S]+bucket\.remove/u);
+  assert.match(feedbackPersistence, /documents\.store/u);
+  assert.match(feedbackPersistence, /documents\.remove/u);
+  assert.doesNotMatch(feedbackPersistence, /from\("documents"\)|storage\.from/u);
   assert.match(feedbackPersistence, /Rf1086FeedbackArtifactPersistenceError/u);
   assert.match(actions, /createRf1086FeedbackArtifactPersistenceError/u);
   assert.doesNotMatch(actions, /databaseTerminalFailure/u);

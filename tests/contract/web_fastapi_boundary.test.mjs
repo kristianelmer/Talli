@@ -79,6 +79,219 @@ test("the committed contract exposes company-access invitation and membership ad
   assert.deepEqual(contract.components.schemas.CompanyMembership.properties.state.enum, ["active", "removed"]);
 });
 
+test("the committed contract exposes only ledger-owned browser commands", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const operations = [
+    ["/api/v1/new-year-starts", "post", "ledgerStartNewYear"],
+    ["/api/v1/ledger/entries", "get", "ledgerListEntries"],
+    ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
+    ["/api/v1/ledger/administrative-costs", "post", "ledgerPostAdministrativeCost"],
+    ["/api/v1/ledger/tax-settlements", "post", "ledgerPostTaxSettlement"],
+    ["/api/v1/ledger/corporate-decisions/finalizations", "post", "ledgerFinalizeCorporateDecision"],
+    ["/api/v1/ledger/manual-journals", "post", "ledgerPostManualJournal"],
+    ["/api/v1/ledger/period-locks", "post", "ledgerLockPeriod"],
+  ];
+  for (const [path, method, operationId] of operations) {
+    const operation = contract.paths[path]?.[method];
+    assert.equal(operation?.operationId, operationId);
+    assert.deepEqual(operation?.security, [{ bearerAuth: [] }]);
+    assert.ok(operation?.responses["401"].content["application/problem+json"]);
+  }
+
+  for (const path of [
+    "/api/v1/ledger/opening-balances",
+    "/api/v1/ledger/owner-dividends/declared",
+    "/api/v1/ledger/owner-dividends/payments",
+    "/api/v1/ledger/structured-entries",
+    "/api/v1/ledger/investment-dividends",
+    "/api/v1/ledger/shareholder-loans",
+  ]) {
+    assert.equal(contract.paths[path], undefined);
+  }
+
+  const money = contract.components.schemas.LedgerMoneyWire;
+  assert.equal(money.properties.currency.const, "NOK");
+  assert.equal(money.properties.amount.type, "string");
+  assert.match(money.properties.amount.pattern, /\\d/u);
+  const mutation = contract.paths["/api/v1/ledger/manual-journals"].post;
+  assert.equal(
+    mutation.parameters.some(
+      (parameter) => parameter.in === "header"
+        && parameter.name === "Idempotency-Key"
+        && parameter.required === true,
+    ),
+    true,
+  );
+  for (const schemaName of [
+    "LedgerTaxSettlementWire",
+    "LedgerCorporateDecisionFinalizationWire",
+  ]) {
+    assert.equal(contract.components.schemas[schemaName].properties.lines, undefined);
+  }
+  assert.deepEqual(
+    contract.components.schemas.LedgerWriterResultWire.required,
+    ["postedEntry", "replayed"],
+  );
+});
+
+test("the committed contract assigns shareholder loans to corporate governance", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const operation = contract.paths[
+    "/api/v1/corporate-governance/shareholder-loans"
+  ]?.post;
+
+  assert.equal(
+    operation?.operationId,
+    "corporateGovernanceRecordShareholderLoan",
+  );
+  assert.deepEqual(operation?.security, [{ bearerAuth: [] }]);
+  assert.ok(operation?.responses["401"].content["application/problem+json"]);
+  assert.equal(
+    contract.components.schemas.ShareholderLoanWire.properties.lines,
+    undefined,
+  );
+  assert.equal(contract.components.schemas.LedgerShareholderLoanWire, undefined);
+});
+
+test("the committed contract gives investments its complete activity interface", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  for (const [path, method, operationId] of [
+    ["/api/v1/investments/share-purchase-recognitions", "post", "investmentsRecognizeSharePurchase"],
+    ["/api/v1/investments/share-sale-recognitions", "post", "investmentsRecognizeShareSale"],
+    ["/api/v1/investments/received-dividend-recognitions", "post", "investmentsRecognizeReceivedDividend"],
+    ["/api/v1/investments/received-fund-distribution-recognitions", "post", "investmentsRecognizeReceivedFundDistribution"],
+    ["/api/v1/investments/cash-settlements", "post", "investmentsSettleCash"],
+    ["/api/v1/investments/economic-events", "get", "investmentsListEconomicEvents"],
+    ["/api/v1/investments/activity", "get", "investmentsListActivity"],
+    ["/api/v1/investments/positions", "get", "investmentsListPositions"],
+    ["/api/v1/investments/acquisition-lots", "get", "investmentsListAcquisitionLots"],
+  ]) {
+    const operation = contract.paths[path]?.[method];
+    assert.equal(operation?.operationId, operationId);
+    assert.deepEqual(operation?.security, [{ bearerAuth: [] }]);
+    assert.ok(operation?.responses["401"].content["application/problem+json"]);
+  }
+  for (const [legacyPath, operationId] of [
+    ["/api/v1/investments/share-purchases", "investmentsRecordSharePurchase"],
+    ["/api/v1/investments/share-sales", "investmentsRecordShareSale"],
+    ["/api/v1/investments/received-dividends", "investmentsRecordReceivedDividend"],
+    ["/api/v1/investments/received-fund-distributions", "investmentsRecordReceivedFundDistribution"],
+  ]) {
+    const operation = contract.paths[legacyPath]?.post;
+    assert.equal(operation?.operationId, operationId);
+    assert.equal(operation?.deprecated, true);
+    assert.deepEqual(operation?.security, [{ bearerAuth: [] }]);
+  }
+  assert.equal(contract.paths["/api/v1/ledger/investment-purchases"], undefined);
+  assert.equal(contract.components.schemas.LedgerInvestmentPurchaseWire, undefined);
+  assert.equal(contract.paths["/api/v1/ledger/investment-sales"], undefined);
+  assert.equal(contract.components.schemas.LedgerInvestmentSaleWire, undefined);
+  assert.equal(
+    contract.components.schemas.InvestmentsRecognizeSharePurchaseWire.properties.lines,
+    undefined,
+  );
+  assert.equal(
+    contract.components.schemas.InvestmentsRecognizeShareSaleWire.properties.lines,
+    undefined,
+  );
+});
+
+test("opening snapshots use the ledger compatibility authenticated read contract", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const operation = contract.paths["/api/v1/ledger/opening-snapshots"].get;
+
+  assert.equal(
+    operation.operationId,
+    "ledgerListOpeningSnapshots",
+  );
+  assert.deepEqual(operation.security, [{ bearerAuth: [] }]);
+  const companyIds = operation.parameters.find(
+    (parameter) => parameter.in === "query" && parameter.name === "companyId",
+  );
+  assert.equal(companyIds.required, true);
+  assert.equal(companyIds.schema.minItems, 1);
+  assert.equal(companyIds.schema.maxItems, 100);
+  assert.equal(
+    operation.parameters.find((parameter) => parameter.name === "limit").schema.maximum,
+    100,
+  );
+  assert.equal(
+    operation.parameters.find((parameter) => parameter.name === "cursor")
+      .schema.anyOf.find((candidate) => candidate.type === "string").maxLength,
+    4096,
+  );
+  assert.ok(operation.responses["401"].content["application/problem+json"]);
+
+  const response = contract.components.schemas.LedgerOpeningSnapshotPageWire;
+  assert.deepEqual(response.required, ["items", "nextCursor", "hasMore"]);
+  assert.equal(
+    response.properties.items.items.$ref,
+    "#/components/schemas/LedgerOpeningSnapshotWire",
+  );
+});
+
+test("the committed contract exposes the account-free banking workflow", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const generatedClient = readFileSync(generatedClientPath, "utf8");
+  const operations = [
+    ["/api/v1/banking/statement-imports", "post", "bankingImportStatement"],
+    ["/api/v1/banking/transactions", "get", "bankingListTransactions"],
+    ["/api/v1/banking/suggestion-acceptances", "post", "bankingAcceptSuggestion"],
+    [
+      "/api/v1/banking/suggestion-acceptances",
+      "get",
+      "bankingListSuggestionAcceptances",
+    ],
+  ];
+  for (const [path, method, operationId] of operations) {
+    const operation = contract.paths[path]?.[method];
+    assert.equal(operation?.operationId, operationId);
+    assert.deepEqual(operation?.security, [{ bearerAuth: [] }]);
+    assert.ok(operation?.responses["401"].content["application/problem+json"]);
+  }
+
+  for (const operationId of ["bankingImportStatement", "bankingAcceptSuggestion"]) {
+    const operation = Object.values(contract.paths)
+      .flatMap((path) => Object.values(path))
+      .find((candidate) => candidate.operationId === operationId);
+    assert.equal(
+      operation.parameters.some(
+        (parameter) => parameter.in === "header"
+          && parameter.name === "Idempotency-Key"
+          && parameter.required === true,
+      ),
+      true,
+    );
+  }
+
+  const importRequest = contract.components.schemas.BankStatementImportWire;
+  const acceptanceRequest = contract.components.schemas.AcceptBankSuggestionWire;
+  for (const request of [importRequest, acceptanceRequest]) {
+    assert.equal(request.properties.account, undefined);
+    assert.equal(request.properties.lines, undefined);
+    assert.equal(request.properties.ledgerEntryId, undefined);
+  }
+  const suggestionSchemaName = acceptanceRequest.properties.expectedSuggestion.$ref
+    .split("/")
+    .at(-1);
+  assert.deepEqual(contract.components.schemas[suggestionSchemaName].enum, [
+    "BANK_FEE",
+    "SYSTEM_SUBSCRIPTION",
+    "DEPOSIT_INTEREST",
+  ]);
+  for (const clientSymbol of [
+    "BankStatementImportWire",
+    "BankTransactionPageWire",
+    "AcceptedBankSuggestionWire",
+    "bankingImportStatement",
+    "bankingListTransactions",
+    "bankingAcceptSuggestion",
+    "bankingListSuggestionAcceptances",
+  ]) {
+    assert.match(generatedClient, new RegExp(`\\b${clientSymbol}\\b`, "u"));
+  }
+});
+
 test("the tracer contract declares optional request and response correlation headers", () => {
   const contract = JSON.parse(readFileSync(contractPath, "utf8"));
   const operation = contract.paths["/api/v1/system-boundary/tracer"].get;
@@ -314,6 +527,10 @@ test("the generated client is committed and carries its provenance marker", () =
   assert.match(generatedClient, /systemBoundaryGetTracerStatus/);
   assert.match(generatedClient, /companyAccessResumeCancellation/);
   assert.match(generatedClient, /ResumeCompanyCancellationRequest/);
+  assert.match(generatedClient, /ledgerPostManualJournal/);
+  assert.match(generatedClient, /ledgerListEntries/);
+  assert.match(generatedClient, /ledgerListOpeningSnapshots/);
+  assert.match(generatedClient, /Idempotency-Key/);
   assert.match(generatedClient, /requestId\?: string/);
   assert.doesNotMatch(generatedClient, /ECONNREFUSED|Forbindelsen virker/);
 });

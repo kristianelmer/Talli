@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-capability",
+  "name": "shareholder_register_filing",
+  "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing",
+  "owner": "backend:shareholder_register_filing",
+  "purpose": "Declare the opening-snapshot public contract used by the new-year coordinator while the frozen legacy implementation remains canonical until serialized stage #151.",
+  "documentation": "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.shareholder_register_filing.public",
+  "exports": {
+    "commands": ["RecordOpeningSnapshotCommand", "ShareholderRegisterFilingCommands"],
+    "queries": [],
+    "events": [],
+    "errors": ["ShareholderRegisterFilingError", "ShareholderRegisterFilingErrorCode"],
+    "identifiers": ["OpeningShareholder", "OpeningSnapshotId"]
+  },
+  "owns": {
+    "postgresSchemas": [],
+    "tables": [],
+    "storageBuckets": [],
+    "projections": [],
+    "migrations": "None"
+  },
+  "ports": [],
+  "dependencies": [],
+  "allowedImports": ["__future__", "dataclasses", "enum", "re", "talli_backend.shared.kernel", "typing", "uuid"],
+  "forbiddenResponsibilities": [
+    "Owning or migrating shareholder-register tables, filing policy, submission behavior, or statutory artifacts before #151",
+    "Ledger account selection, posting lines, balance enforcement, or period locks",
+    "FastAPI, Pydantic, Supabase, PostgreSQL, provider, or web transport types in the public contract",
+    "A second opening-snapshot implementation during the compatibility window"
+  ],
+  "tests": {
+    "contract": "apps/backend/tests/test_shareholder_register_filing_contract.py",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

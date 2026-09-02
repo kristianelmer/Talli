@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#189",
+  "auditedAt": "2026-08-31T07:15:00Z",
+  "mailbox": "post@talli.no via the local Mail app",
+  "scope": [
+    "Neonomics",
+    "Enable Banking",
+    "GoCardless",
+    "Open Payments",
+    "Aritma"
+  ],
+  "results": [
+    {
+      "provider": "GoCardless",
+      "ticket": "4436853",
+      "responseDate": "2026-08-29",
+      "responseType": "substantive rejection",
+      "providerPosition": "Bank Account Data is no longer offered as a standalone product to new customers; GoCardless offers AIS together with payment collection and planned payment sending.",
+      "talliVerdict": "rejected-for-current-route",
+      "reason": "The response does not satisfy Talli's approved AIS-only, no-payment-bundle requirement."
+    },
+    {
+      "provider": "Aritma",
+      "ticket": "430965380298",
+      "responseDate": "2026-08-29",
+      "responseType": "automated receipt only",
+      "talliVerdict": "awaiting-substantive-response"
+    },
+    {
+      "provider": "Neonomics",
+      "responseType": "no inbound provider response found",
+      "talliVerdict": "awaiting-substantive-response"
+    },
+    {
+      "provider": "Enable Banking",
+      "responseType": "no inbound provider response found",
+      "talliVerdict": "awaiting-substantive-response"
+    },
+    {
+      "provider": "Open Payments",
+      "responseType": "sent enquiry found; no inbound provider response found",
+      "talliVerdict": "awaiting-substantive-response"
+    }
+  ],
+  "mailboxMutation": "none",
+  "replySent": false,
+  "providerSelected": false,
+  "bankAispGatePassed": false,
+  "verdict": "one-candidate-rejected-four-substantive-responses-pending"
+}

@@ -8,15 +8,9 @@ from pathlib import Path
 from holding_core.holding_actions import (
     AdminCostCategory,
     AdminCostInput,
-    DividendReceivedInput,
     DocumentStatus,
-    InvestmentPosition,
-    InvestmentKind,
-    SharePurchaseInput,
-    ShareSaleInput,
     ShareholderLoanDirection,
     ShareholderLoanInput,
-    TaxTreatment,
 )
 from holding_core.ledger import DraftEntry, LedgerLine
 from holding_core.workspace import (
@@ -150,58 +144,9 @@ class WorkspaceMvpTest(unittest.TestCase):
             self.assertTrue(matched.bank_transactions[0].is_matched)
             self.assertEqual(dashboard_for_company(store, "owner", "314259521", income_year=2025).unreconciled_bank_transactions, 1)
 
-    def test_persisted_actions_investment_register_period_locks_and_overrides(self) -> None:
+    def test_persisted_actions_period_locks_and_overrides(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             store = _ready_store(temp_dir)
-            purchase_input = SharePurchaseInput(
-                company_id="314259521",
-                investment_id="portfolio-as",
-                investment_name="Portfolio AS",
-                investment_kind=InvestmentKind.NORWEGIAN_PRIVATE_COMPANY,
-                tax_treatment=TaxTreatment.FRITAKSMETODEN,
-                acquisition_date=date(2025, 1, 10),
-                share_count=100,
-                purchase_amount=50000,
-                bank_matched=True,
-                document_status=DocumentStatus.ATTACHED,
-            )
-            purchased = record_holding_action(store, "owner", "314259521", income_year=2025, action_input=purchase_input)
-            sale_position = InvestmentPosition(
-                id=purchased.investment_positions[0].id,
-                company_id="314259521",
-                name=purchased.investment_positions[0].name,
-                kind=InvestmentKind.NORWEGIAN_PRIVATE_COMPANY,
-                tax_treatment=TaxTreatment.FRITAKSMETODEN,
-                share_count=purchased.investment_positions[0].share_count,
-                cost_basis=purchased.investment_positions[0].cost_basis,
-            )
-            sale_input = ShareSaleInput(
-                company_id="314259521",
-                position=sale_position,
-                sale_date=date(2025, 6, 1),
-                sold_share_count=25,
-                proceeds=20000,
-                bank_matched=True,
-                document_status=DocumentStatus.ATTACHED,
-            )
-            sold = record_holding_action(store, "owner", "314259521", income_year=2025, action_input=sale_input)
-            dividend = record_holding_action(
-                store,
-                "owner",
-                "314259521",
-                income_year=2025,
-                action_input=DividendReceivedInput(
-                    company_id="314259521",
-                    declared_date=date(2025, 7, 1),
-                    paid_date=date(2025, 7, 15),
-                    gross_amount=1000,
-                    paying_company_name="Portfolio AS",
-                    linked_investment_id="portfolio-as",
-                    tax_treatment=TaxTreatment.FRITAKSMETODEN,
-                    bank_matched=True,
-                    document_status=DocumentStatus.ATTACHED,
-                ),
-            )
             overridden = add_filing_override(
                 store,
                 "owner",
@@ -216,8 +161,6 @@ class WorkspaceMvpTest(unittest.TestCase):
             )
             locked = lock_period(store, "owner", "314259521", income_year=2025, reason="Filing preview approved")
 
-            self.assertEqual(sold.investment_positions[0].share_count, 75)
-            self.assertEqual(dividend.investment_positions[0].movements[-1].movement_type, "dividend")
             self.assertEqual(len(overridden.filing_overrides), 1)
             self.assertEqual(len(locked.period_locks), 1)
             with self.assertRaises(ValueError):
@@ -294,7 +237,7 @@ class WorkspaceMvpTest(unittest.TestCase):
     def test_corporate_documents_tax_settlement_dashboard_archive_and_validation(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             store = _ready_store(temp_dir)
-            loan = record_holding_action(
+            record_holding_action(
                 store,
                 "owner",
                 "314259521",

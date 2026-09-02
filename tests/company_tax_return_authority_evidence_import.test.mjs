@@ -216,12 +216,14 @@ test("runtime imports completed company-tax TT02 evidence through exactly one at
   assert.match(actions, /export async function recordCompanyTaxReturnTt02Evidence/u);
   assert.match(actions, /formData\.get\("evidenceFile"\)/u);
   assert.match(actions, /expectedIncomeYear: Number\(formString\(formData, "incomeYear"\)\)/u);
-  assert.match(actions, /\.select\("id, org_number"\)/u);
+  assert.match(actions, /loadAcceptedMembershipCompany/u);
   assert.match(actions, /expectedCompanyOrgNumber: company\.org_number/u);
 
   const actionBody = actions.match(
     /export async function recordCompanyTaxReturnTt02Evidence[\s\S]*?\n\}\n/u,
   )?.[0] ?? "";
+  assert.match(actionBody, /loadAcceptedMembershipCompany\(companyId\)/u);
+  assert.doesNotMatch(actionBody, /\.from\("companies"\)/u);
   assert.match(
     actionBody,
     /persistence = buildCompanyTaxReturnEvidencePersistence\(/u,

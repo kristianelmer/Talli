@@ -1,45 +1,71 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import {
-  assertOperatorSearchAllowed,
-  buildOperatorSupportSummaries,
-} from "../apps/web/app/lib/operator-support.ts";
+import { buildOperatorSupportSummaries } from "../apps/web/app/lib/operator-support.ts";
 
-test("operator search denies non-operators and too-short queries", () => {
-  assert.throws(() => assertOperatorSearchAllowed({ isOperator: false, query: "314" }), /operator_access_required/);
-  assert.throws(() => assertOperatorSearchAllowed({ isOperator: true, query: "31" }), /operator_search_query_too_short/);
-  assert.doesNotThrow(() => assertOperatorSearchAllowed({ isOperator: true, query: "314" }));
+function resources(overrides) {
+  return {
+    companies: [],
+    auditEvents: [],
+    companyCancellations: [],
+    filingSubmissions: [],
+    filingReadinessSnapshots: [],
+    billingAccounts: [],
+    billingPaymentEvents: [],
+    authorityPermissions: [],
+    authorityTestRuns: [],
+    systemUserRequests: [],
+    productionPilotEntitlements: [],
+    filingApprovalSnapshots: [],
+    productionFilingSubmissions: [],
+    productionFilingEvents: [],
+    productionFeedbackArtifacts: [],
+    documents: [],
+    storageObjects: [],
+    companyDeletionReviews: [],
+    ...overrides,
+  };
+}
+
+test("operator support exposes no legacy company-search seam", async () => {
+  const [support, server, page] = await Promise.all([
+    readFile(new URL("../apps/web/app/lib/operator-support.ts", import.meta.url), "utf8"),
+    readFile(new URL("../apps/web/app/lib/supabase/server.ts", import.meta.url), "utf8"),
+    readFile(new URL("../apps/web/app/(operator)/operator/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.doesNotMatch(`${support}\n${server}\n${page}`, /assertOperatorSearchAllowed|searchOperatorCompanyRecords/u);
+  assert.match(server, /readOperatorSupportCase/u);
+  assert.match(page, /supportCaseId/u);
 });
 
 test("operator summary highlights filing, billing, refund, restore, and audit state", () => {
-  const summaries = buildOperatorSupportSummaries({
-    companies: [{ id: "company-id", org_number: "314259521", name: "Talli Holding AS" }],
-    readinessSnapshots: [
+  const summaries = buildOperatorSupportSummaries(resources({
+    companies: [{ id: "company-id", orgNumber: "314259521", name: "Talli Holding AS" }],
+    filingReadinessSnapshots: [
       {
-        company_id: "company-id",
-        hard_blocks: [{ code: "missing_authority" }, { code: "billing_missing" }],
+        companyId: "company-id",
+        hardBlocks: [{ code: "missing_authority" }, { code: "billing_missing" }],
       },
     ],
-    submissions: [{ company_id: "company-id", status: "failed" }],
-    authorityPermissions: [{ company_id: "company-id", production_enabled: true }],
+    filingSubmissions: [{ companyId: "company-id", status: "failed" }],
+    authorityPermissions: [{ companyId: "company-id", productionEnabled: true }],
     billingAccounts: [
       {
-        company_id: "company-id",
-        subscription_active: true,
-        filing_package_paid: true,
-        refund_eligible: false,
-        refund_completed: true,
-        refund_provider_ref: "sim_refund_company-id_2025",
+        companyId: "company-id",
+        subscriptionActive: true,
+        filingPackagePaid: true,
+        refundEligible: false,
+        refundCompleted: true,
+        refundProviderRef: "sim_refund_company-id_2025",
       },
     ],
-    billingPaymentEvents: [{ company_id: "company-id", provider_reference: "sim_refund_company-id_2025" }],
-    cancellations: [{ company_id: "company-id", evidence: { missingDocumentIds: ["document-id"] } }],
+    companyCancellations: [{ companyId: "company-id", evidence: { missingDocumentIds: ["document-id"] } }],
     auditEvents: [
-      { company_id: "company-id", action: "billing_refund_completed", created_at: "2026-06-17T10:00:00.000Z" },
-      { company_id: "company-id", action: "filing_failed", created_at: "2026-06-17T09:00:00.000Z" },
+      { companyId: "company-id", action: "billing_refund_completed", createdAt: "2026-06-17T10:00:00.000Z" },
+      { companyId: "company-id", action: "filing_failed", createdAt: "2026-06-17T09:00:00.000Z" },
     ],
-  });
+  }));
 
   assert.equal(summaries[0].filingStatus, "failed");
   assert.equal(summaries[0].readinessBlockCount, 2);
@@ -51,25 +77,24 @@ test("operator summary highlights filing, billing, refund, restore, and audit st
 });
 
 test("operator summary keeps cross-company data separated", () => {
-  const summaries = buildOperatorSupportSummaries({
-    companies: [{ id: "company-a", org_number: "314259521", name: "A Holding AS" }],
-    readinessSnapshots: [
-      { company_id: "company-a", hard_blocks: [{ code: "missing_authority" }] },
-      { company_id: "company-b", hard_blocks: [{ code: "billing_missing" }, { code: "bank_missing" }] },
+  const summaries = buildOperatorSupportSummaries(resources({
+    companies: [{ id: "company-a", orgNumber: "314259521", name: "A Holding AS" }],
+    filingReadinessSnapshots: [
+      { companyId: "company-a", hardBlocks: [{ code: "missing_authority" }] },
+      { companyId: "company-b", hardBlocks: [{ code: "billing_missing" }, { code: "bank_missing" }] },
     ],
-    submissions: [
-      { company_id: "company-a", status: "submitted" },
-      { company_id: "company-b", status: "failed" },
+    filingSubmissions: [
+      { companyId: "company-a", status: "submitted" },
+      { companyId: "company-b", status: "failed" },
     ],
-    authorityPermissions: [{ company_id: "company-b", production_enabled: true }],
-    billingAccounts: [{ company_id: "company-b", refund_eligible: true }],
-    billingPaymentEvents: [],
-    cancellations: [{ company_id: "company-b", evidence: { missingDocumentIds: ["leaked"] } }],
+    authorityPermissions: [{ companyId: "company-b", productionEnabled: true }],
+    billingAccounts: [{ companyId: "company-b", refundEligible: true }],
+    companyCancellations: [{ companyId: "company-b", evidence: { missingDocumentIds: ["leaked"] } }],
     auditEvents: [
-      { company_id: "company-a", action: "visible_audit", created_at: "2026-06-17T10:00:00.000Z" },
-      { company_id: "company-b", action: "hidden_audit", created_at: "2026-06-17T11:00:00.000Z" },
+      { companyId: "company-a", action: "visible_audit", createdAt: "2026-06-17T10:00:00.000Z" },
+      { companyId: "company-b", action: "hidden_audit", createdAt: "2026-06-17T11:00:00.000Z" },
     ],
-  });
+  }));
 
   assert.equal(summaries.length, 1);
   assert.equal(summaries[0].filingStatus, "submitted");

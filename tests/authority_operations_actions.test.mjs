@@ -5,11 +5,11 @@ import test from "node:test";
 const actions = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
 const authorityAction = actions.slice(
   actions.indexOf("export async function runProductionAuthorityOperation"),
-  actions.indexOf("const RF1086_PRODUCTION_ADAPTER_VERSION"),
+  actions.indexOf("export async function runProductionSystembrukerCallbackOperation"),
 );
 const callbackAction = actions.slice(
   actions.indexOf("export async function runProductionSystembrukerCallbackOperation"),
-  actions.indexOf("const RF1086_PRODUCTION_ADAPTER_VERSION"),
+  actions.indexOf("function systemUserConnectionTarget"),
 );
 const operatorPage = readFileSync(
   new URL("../apps/web/app/(operator)/operator/page.tsx", import.meta.url),
@@ -17,10 +17,16 @@ const operatorPage = readFileSync(
 );
 const copy = readFileSync(new URL("../apps/web/app/lib/copy.ts", import.meta.url), "utf8");
 const server = readFileSync(new URL("../apps/web/app/lib/supabase/server.ts", import.meta.url), "utf8");
+const authorityQuery = server.slice(
+  server.indexOf("export async function listAuthorityOperations"),
+  server.indexOf("export async function readOperatorSupportDashboard"),
+);
 
 test("authority operation is admin-only, AAL2-gated, exact, and service-audited", () => {
   assert.match(actions, /export async function runProductionAuthorityOperation/u);
-  assert.match(actions, /eq\("role", "admin"\)/u);
+  assert.match(authorityAction, /loadAuthorizedSupportOperator\(\)/u);
+  assert.match(authorityAction, /operator\.role !== "admin"/u);
+  assert.doesNotMatch(authorityAction, /from\("support_operators"\)/u);
   assert.match(actions, /assertStepUpAllowed\("authority_operations"/u);
   assert.match(actions, /assertAuthorityOperationIntent/u);
   assert.match(actions, /authorityOperationEnvironmentFailureCode/u);
@@ -43,15 +49,22 @@ test("operator UI exposes only the immutable RF-1086 operation and redacted resu
 });
 
 test("the server query is limited to recent redacted rows for active admins", () => {
-  assert.match(server, /eq\("role", "admin"\)/u);
-  assert.match(server, /from\("authority_operations"\)/u);
-  assert.match(server, /order\("created_at", \{ ascending: false \}\)\.limit\(10\)/u);
-  assert.doesNotMatch(server, /private_key|access_token|assertion/iu);
+  assert.match(authorityQuery, /backendOperatorSession\(supabase\)/u);
+  assert.match(authorityQuery, /operator\.role !== "admin"/u);
+  assert.doesNotMatch(authorityQuery, /from\("support_operators"\)/u);
+  assert.match(authorityQuery, /from\("authority_operations"\)/u);
+  assert.match(
+    authorityQuery,
+    /order\("created_at", \{ ascending: false \}\)\s*\.limit\(10\)/u,
+  );
+  assert.doesNotMatch(authorityQuery, /private_key|access_token|assertion/iu);
 });
 
 test("callback update has a separate admin, fresh-AAL2, ops-gated audited action", () => {
   assert.match(actions, /export async function runProductionSystembrukerCallbackOperation/u);
-  assert.match(callbackAction, /eq\("role", "admin"\)/u);
+  assert.match(callbackAction, /loadAuthorizedSupportOperator\(\)/u);
+  assert.match(callbackAction, /operator\.role !== "admin"/u);
+  assert.doesNotMatch(callbackAction, /from\("support_operators"\)/u);
   assert.match(callbackAction, /assertStepUpAllowed\("authority_operations"/u);
   assert.match(callbackAction, /assertSystembrukerCallbackOperationIntent/u);
   assert.match(callbackAction, /productionAuthorityOperationEnvironment/u);

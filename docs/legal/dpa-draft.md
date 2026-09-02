@@ -1,25 +1,27 @@
 # Talli Data Processing Agreement Draft
 
-Status: draft for founder/legal/security review
-Last updated: 2026-07-17
-Blocks: #72 remains open until the required human approvals are recorded
+Status: founder/accountable-owner role and return/delete decisions approved; hosted appendix pending
+Last updated: 2026-08-30
+Blocks: #72 remains open until the production subprocessor/security appendix and final digest are recorded
 
 This Data Processing Agreement (DPA) forms part of the Talli Business Terms
 between the customer and ELMER WELFIS, org.nr. 930 835 978. It is intended to
 cover the requirements of GDPR Article 28 where Talli processes personal data
-on the customer's behalf. This draft is not legal approval.
+on the customer's behalf. The founder/accountable-owner decision does not by
+itself publish this draft or prove hosted compliance.
 
 ## 1. Parties, Roles, and Priority
 
-The customer company is expected to be controller for personal data in its
-company, shareholder, accounting-document, and filing data. Talli is expected to be
-processor when ELMER WELFIS processes that data to provide the service on the
-customer's documented instructions.
+The customer company is controller for personal data in its company,
+shareholder, accounting-document, narrow-ledger, and filing content. Talli is
+processor when ELMER WELFIS processes that content to provide the service on
+documented instructions.
 
-ELMER WELFIS may act as an independent controller for limited processing needed
-for its own account administration, service security, legal compliance, and
-business records. This role boundary requires final legal review. If this DPA
-conflicts with the Business Terms about processor activity, this DPA prevails.
+ELMER WELFIS acts as an independent controller for limited processing needed for
+account and access administration, service security, support, optional public
+measurement, billing, legal compliance, and its own business records. If this
+DPA conflicts with the Business Terms about processor activity, this DPA
+prevails.
 
 ## 2. Subject Matter, Nature, Purpose, and Duration
 
@@ -30,9 +32,10 @@ validating, exporting, and, only when separately enabled, transmitting data;
 maintaining security and audit records; providing support; and returning or
 deleting data.
 
-Processing lasts while the Business Terms apply and afterward only as needed to
-return or delete data, complete backup rotation, or meet an applicable legal
-retention duty.
+Processing lasts while the Business Terms apply, during the approved read-only
+and export period, and afterward only as needed to follow the customer's return
+or deletion instruction, complete a verified backup rotation, or meet a legal
+retention duty that applies directly to Talli.
 
 ## 3. Categories of Data Subjects and Personal Data
 
@@ -80,10 +83,13 @@ to the processing risk. The required control objectives include:
 - backup, tested restoration, continuity, and deletion controls.
 
 This list is a contractual control objective, not a certification or proof that
-the current hosted environment has passed review. Exact production measures and
-any security appendix require security re-confirmation against current hosted
-tenant-isolation, private-storage, and restore evidence before publication or
-named-company processing.
+the current hosted environment has passed review. Before named-company
+processing, the accountable owner must confirm exact Supabase and Vercel
+systems, hosted tenant isolation, private storage, case- and time-limited support
+access, database and document restore, logs, regions, external services,
+transfers, privileged access, deletion, automatic cleanup, monitoring, and
+incident handling. AI agents may collect and test evidence but do not provide an
+independent professional certification.
 
 ## 7. Subprocessors
 
@@ -101,6 +107,9 @@ is enabled. Names, roles, processing locations, certifications, international
 transfer paths, and transfer bases must be re-confirmed against current
 production contracts and configuration before publication. This draft does not
 assert an unverified location, certification, or transfer basis.
+
+Any material provider or security change requires security re-confirmation
+against the current hosted environment before customer processing continues.
 
 ## 8. International Transfers
 
@@ -144,12 +153,14 @@ protect other customers, security, and confidentiality.
 
 ## 12. Deletion and Return
 
-At the end of processing, the processor returns or deletes customer personal
-data and existing copies at the controller's choice, unless applicable law
-requires continued storage. The customer must export material it must retain
-before access ends. Lawfully retained data is isolated from ordinary processing
-and used only for the retention purpose. Backups are deleted or overwritten
-under the applicable production rotation after that rotation is verified.
+At the end of the approved read-only and export period, the processor returns or
+deletes customer personal data and existing copies at the controller's
+documented choice, unless a legal duty applies directly to Talli or the
+controller gives a lawful documented retention instruction. The customer's own
+bookkeeping duty is not a general reason for Talli to retain all customer data.
+Lawfully retained data is isolated from ordinary processing and used only for
+the retention purpose. Backups are deleted or overwritten under the applicable
+production rotation after that rotation is verified.
 
 The operational deletion sequence must distinguish account/auth data, company
 workspace data, accounting documents, filing payloads and receipts, billing
@@ -163,12 +174,14 @@ This DPA applies for as long as Talli processes personal data on the
 controller's behalf. Its confidentiality, security, audit, and deletion duties
 continue for retained personal data after the Business Terms end.
 
-## Required Human Review Before Publication
+## Approval and Remaining Evidence
 
-- Legal reviewer confirms the controller/processor boundaries, Article 28
-  completeness, retention duties, transfer language, audit terms, and final DPA.
-- Founder approves the customer-facing obligations and final subprocessor list.
-- Security reviewer confirms the technical and organizational measures and all
-  published subprocessor facts against the current hosted environment.
+- Kristian Elmer approved the controller/processor boundary, return/delete
+  position, transfer condition, and customer-facing obligations as founder and
+  accountable owner on 2026-08-30.
+- The accountable owner must confirm the technical and organizational measures
+  and all published subprocessor facts against the current hosted environment.
+- AI-assisted research informed the decision and is not professional legal or
+  security certification.
 - Production subprocessor locations, transfer bases, certifications, security
   appendix, and restore claims remain unapproved until evidenced and reviewed.

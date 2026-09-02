@@ -1,86 +1,78 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
-const actions = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
-const workspace = readFileSync(new URL("../apps/web/app/(owner)/workspace/page.tsx", import.meta.url), "utf8");
-const companyLookup = readFileSync(new URL("../apps/web/app/(owner)/onboarding/CompanyLookupForm.tsx", import.meta.url), "utf8");
-const agreementFields = readFileSync(new URL("../apps/web/app/components/CustomerAgreementAcceptanceFields.tsx", import.meta.url), "utf8");
-const copy = readFileSync(new URL("../apps/web/app/lib/copy.ts", import.meta.url), "utf8");
-const onboarding = readFileSync(new URL("../apps/web/app/lib/customer-onboarding.ts", import.meta.url), "utf8");
-const createWorkspaceAction = actions.match(
-  /export async function createWorkspace[\s\S]+?\n\}\n\nexport async function/iu,
-)?.[0] ?? "";
-const companyCreationForm = workspace.match(
-  /<form[^>]+action=\{createWorkspace\}[\s\S]+?<\/form>/iu,
-)?.[0] ?? "";
-const companyLookupForm = companyLookup.match(
-  /<form[^>]+action=\{createWorkspace\}[\s\S]+?<\/form>/iu,
-)?.[0] ?? "";
+const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("company creation requires current explicit company assent", () => {
-  assert.match(createWorkspaceAction, /onboardCustomer/iu);
-  assert.match(createWorkspaceAction, /formString\(formData, "agreementAccepted"\)/iu);
-  assert.match(createWorkspaceAction, /formString\(formData, "businessTermsVersion"\)/iu);
-  assert.match(createWorkspaceAction, /formString\(formData, "businessTermsSha256"\)/iu);
-  assert.match(createWorkspaceAction, /formString\(formData, "dpaVersion"\)/iu);
-  assert.match(createWorkspaceAction, /formString\(formData, "dpaSha256"\)/iu);
-  assert.match(createWorkspaceAction, /createSupabaseServiceRoleClient\(\)/iu);
-  assert.match(createWorkspaceAction, /\.rpc\("create_company_workspace_with_acceptance"/iu);
-  assert.match(createWorkspaceAction, /\.rpc\("create_company_workspace_with_acceptance",\s*payload\)/iu);
-  assert.doesNotMatch(createWorkspaceAction, /supabase\.rpc\("create_company_workspace_with_acceptance"/iu);
-  assert.doesNotMatch(createWorkspaceAction, /\.from\("companies"\)\s*\.insert/iu);
-  assert.doesNotMatch(createWorkspaceAction, /\.from\("company_memberships"\)\s*\.insert/iu);
-  assert.doesNotMatch(createWorkspaceAction, /\.from\("audit_events"\)\s*\.insert/iu);
-  assert.match(createWorkspaceAction, /if \(!result\.ok\) \{\s*failTo\(returnTo, result\.message\);?\s*\}/iu);
+test("company-year admission validates explicit authority and every immutable document before the generated command", async () => {
+  const actions = await read("apps/web/app/(owner)/onboarding/actions.ts");
+
+  assert.match(actions, /readEligibilityContinuation\(\)/u);
+  assert.match(actions, /getCurrentSessionAccessToken\(\)/u);
+  assert.match(actions, /companyYearPromiseAccepted/u);
+  assert.match(actions, /businessTermsVersion/u);
+  assert.match(actions, /businessTermsSha256/u);
+  assert.match(actions, /dpaVersion/u);
+  assert.match(actions, /dpaSha256/u);
+  assert.match(actions, /privacyNoticeVersion/u);
+  assert.match(actions, /privacyNoticeSha256/u);
+  assert.match(actions, /capabilityManifestVersion/u);
+  assert.match(actions, /capabilityManifestSha256/u);
+  assert.match(actions, /authorityAccepted: true/u);
+  assert.match(actions, /companyYearPromiseAccepted: true/u);
+  assert.match(actions, /agreementAccepted: true/u);
+  assert.match(actions, /admitCompanyYearThroughApi/u);
+  assert.match(actions, /clearEligibilityContinuation\(\)/u);
+  assert.doesNotMatch(actions, /createSupabaseServiceRoleClient|\.rpc\(|\.from\(/u);
 });
 
-test("the Server Action owns the server-only atomic RPC dependency", () => {
-  assert.match(createWorkspaceAction, /getAuthenticatedUser:\s*async/iu);
-  assert.match(createWorkspaceAction, /lookupCompanyIdentity:\s*fetchBrregEntity/iu);
-  assert.match(createWorkspaceAction, /assertSupportedCompanyIdentity:\s*assertSupportedBrregIdentity/iu);
-  assert.match(createWorkspaceAction, /createCompanyWorkspace:\s*async\s*\(payload\)/iu);
-  assert.match(createWorkspaceAction, /const serviceRoleClient = createSupabaseServiceRoleClient\(\)/iu);
-  assert.doesNotMatch(createWorkspaceAction, /SUPABASE_SERVICE_ROLE_KEY/iu);
-  assert.doesNotMatch(onboarding, /createSupabaseServiceRoleClient|SUPABASE_SERVICE_ROLE_KEY|\.rpc\(/iu);
+test("the customer sees and explicitly accepts the complete pinned promise", async () => {
+  const form = await read("apps/web/app/(owner)/onboarding/CompanyYearAdmissionForm.tsx");
+  const manifest = JSON.parse(await read(
+    "apps/backend/src/talli_backend/modules/company_access/capability_manifest.json",
+  ));
+
+  assert.match(form, /type="checkbox"/u);
+  assert.match(form, /name="companyYearPromiseAccepted"/u);
+  assert.match(form, /continuation\.customerClaims\.map/u);
+  assert.match(form, /required/u);
+  assert.doesNotMatch(form, /defaultChecked|checked=\{true\}/u);
+  for (const path of ["/vilkar", "/databehandleravtale", "/personvern"]) {
+    assert.match(form, new RegExp(`href="${path}"`, "u"));
+  }
+  for (const field of [
+    "businessTermsVersion",
+    "businessTermsSha256",
+    "dpaVersion",
+    "dpaSha256",
+    "privacyNoticeVersion",
+    "privacyNoticeSha256",
+    "capabilityManifestVersion",
+    "capabilityManifestSha256",
+  ]) {
+    assert.match(form, new RegExp(`name="${field}"`, "u"));
+  }
+  const claims = manifest.promise.customerClaims.join(" ");
+  assert.match(claims, /aksjonærregisteroppgaven/u);
+  assert.match(claims, /skattemeldingen/u);
+  assert.match(claims, /årsregnskapet/u);
+  assert.match(claims, /SAF-T/u);
+  assert.match(form, /eneste regnskaps- og innsendingsproduktet/u);
+  assert.match(form, /beholder leseadgangen/u);
+  assert.match(form, /Ferdige arkiver kan fortsatt eksporteres/u);
 });
 
-test("workspace creation shows an unchecked authority and agreement control", () => {
-  assert.match(companyCreationForm, /<CustomerAgreementAcceptanceFields \/>/u);
-  assert.match(agreementFields, /name="agreementAccepted"/iu);
-  assert.match(agreementFields, /id="agreementAccepted"/iu);
-  assert.match(agreementFields, /type="checkbox"/iu);
-  assert.match(agreementFields, /value="accepted"/iu);
-  assert.match(agreementFields, /required/iu);
-  assert.match(agreementFields, /aria-describedby="agreementAcceptedDescription"/iu);
-  assert.match(agreementFields, /htmlFor="agreementAccepted"/iu);
-  assert.match(agreementFields, /id="agreementAcceptedDescription"/iu);
-  assert.doesNotMatch(agreementFields, /defaultChecked|checked=\{true\}/iu);
-  assert.match(agreementFields, /href="\/vilkar"/iu);
-  assert.match(agreementFields, /href="\/databehandleravtale"/iu);
-  assert.match(agreementFields, /name="businessTermsVersion"/iu);
-  assert.match(agreementFields, /name="businessTermsSha256"/iu);
-  assert.match(agreementFields, /value=\{currentCustomerAgreements\.businessTerms\.version\}/iu);
-  assert.match(agreementFields, /value=\{currentCustomerAgreements\.businessTerms\.contentSha256\}/iu);
-  assert.match(agreementFields, /name="dpaVersion"/iu);
-  assert.match(agreementFields, /name="dpaSha256"/iu);
-  assert.match(agreementFields, /value=\{currentCustomerAgreements\.dpa\.version\}/iu);
-  assert.match(agreementFields, /value=\{currentCustomerAgreements\.dpa\.contentSha256\}/iu);
-  const agreementLabel = agreementFields.match(/<label[^>]+htmlFor="agreementAccepted"[\s\S]+?<\/label>/iu)?.[0] ?? "";
-  assert.doesNotMatch(agreementLabel, /<Link/iu);
-});
+test("legacy AS-only creation controls are absent", async () => {
+  const globalActions = await read("apps/web/app/actions.ts");
+  const workspace = await read("apps/web/app/(owner)/workspace/page.tsx");
 
-test("company lookup submits the current authority and agreement evidence", () => {
-  assert.match(companyLookupForm, /<CustomerAgreementAcceptanceFields \/>/u);
-});
-
-test("the exact authority statement is centralized as linked copy fragments", () => {
-  assert.match(copy, /authority:\s*"Jeg bekrefter at jeg har fullmakt til å inngå avtale på vegne av selskapet, og godtar Talli"/iu);
-  assert.match(copy, /businessTerms:\s*"Brukervilkår for bedriftskunder"/iu);
-  assert.match(copy, /conjunction:\s*"og"/iu);
-  assert.match(copy, /dpa:\s*"Databehandleravtalen\."/iu);
-  assert.match(agreementFields, /ownerCopy\.workspace\.agreementAcceptance\.authority/iu);
-  assert.match(agreementFields, /ownerCopy\.workspace\.agreementAcceptance\.businessTerms/iu);
-  assert.match(agreementFields, /ownerCopy\.workspace\.agreementAcceptance\.conjunction/iu);
-  assert.match(agreementFields, /ownerCopy\.workspace\.agreementAcceptance\.dpa/iu);
+  assert.doesNotMatch(globalActions, /createWorkspace|onboardCompanyThroughApi/u);
+  assert.doesNotMatch(workspace, /action=\{createWorkspace\}|CustomerAgreementAcceptanceFields/u);
+  assert.match(workspace, /href="\/sjekk-selskapet"/u);
+  for (const legacyPath of [
+    "../apps/web/app/(owner)/onboarding/CompanyLookupForm.tsx",
+    "../apps/web/app/components/CustomerAgreementAcceptanceFields.tsx",
+  ]) {
+    await assert.rejects(access(new URL(legacyPath, import.meta.url)), { code: "ENOENT" });
+  }
 });

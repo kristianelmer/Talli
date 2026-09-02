@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "web-feature",
+  "name": "public-acquisition",
+  "path": "apps/web/features/public-acquisition",
+  "owner": "web:public-acquisition",
+  "purpose": "Present the truthful free-recruitment website, approved annual offer, deny-by-default acquisition state, and privacy-minimized measurement vocabulary without owning eligibility, billing, or launch clearance.",
+  "documentation": "apps/web/features/public-acquisition/MODULE.md",
+  "publicEntryPoint": "@/features/public-acquisition",
+  "publicImportPaths": ["@/features/public-acquisition", "@/features/public-acquisition/server", "apps/web/features/public-acquisition", "apps/web/features/public-acquisition/index.ts", "apps/web/features/public-acquisition/server.ts", "apps/web/features/public-acquisition/MarketingConsent", "apps/web/features/public-acquisition/MarketingEvent", "apps/web/features/public-acquisition/measurement-client", "apps/web/features/public-acquisition/PublicPage"],
+  "ownedRoutes": ["/", "/passer-talli", "/pris", "/hjelp", "/sikkerhet", "/status", "/api/marketing-events"],
+  "apiOperations": ["marketingMeasurementGetReport", "marketingMeasurementRecordEvent", "marketingMeasurementWithdrawSession"],
+  "dependencies": [],
+  "allowedImports": ["#backend-configuration", "@talli/talli-api-client", "next/link", "node:crypto", "react"],
+  "cachePolicy": { "default": "no-store", "allowed": [] },
+  "directBrowserFlows": [],
+  "forbiddenResponsibilities": [
+    "Eligibility policy, company-year admission, billing, checkout, or provider activation",
+    "Live capability or launch-clearance decisions",
+    "Analytics persistence policy, personal data, company data, financial data, documents, bank data, or free text"
+  ],
+  "tests": {
+    "feature": "apps/web/tests/public-acquisition.test.mjs",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

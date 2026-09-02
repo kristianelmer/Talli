@@ -25,3 +25,9 @@ node_modules/
 .vercel/
 .vercel
 .worktrees/
+# Graphify's reviewable outputs are committed; machine-local incremental state is not.
+graphify-out/.graphify_python
+graphify-out/.graphify_root
+graphify-out/cache/
+graphify-out/manifest.json
+graphify-out/transcripts/

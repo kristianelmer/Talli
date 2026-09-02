@@ -13,18 +13,33 @@ export async function cleanupBrowserOwnerResources(resources) {
   await attempt(() => resources.browser?.close());
   await attempt(() => stopOwnedProcess(resources.server));
   await attempt(() => stopOwnedProcess(resources.backend));
-
-  if (resources.companyId && resources.databaseStarted) {
-    await attempt(() =>
-      deleteBrowserOwnerCompanySources(resources.database, resources.companyId),
-    );
+  await attempt(() => resources.cleanupBackendDatabaseRole?.());
+  if (resources.storageKeys?.length > 0) {
+    await attempt(async () => {
+      const { error } = await resources.admin.storage
+        .from("company-documents")
+        .remove(resources.storageKeys);
+      if (error) throw error;
+    });
   }
-  if (resources.companyId) {
+
+  const companyIds = [...new Set([
+    resources.companyId,
+    ...(resources.companyIds ?? []),
+  ].filter((companyId) => typeof companyId === "string" && companyId.length > 0))];
+  for (const companyId of companyIds) {
+    if (resources.databaseStarted) {
+      await attempt(() =>
+        deleteBrowserOwnerCompanySources(resources.database, companyId),
+      );
+    }
+  }
+  for (const companyId of companyIds) {
     await attempt(async () => {
       const { error } = await resources.admin
         .from("companies")
         .delete()
-        .eq("id", resources.companyId);
+        .eq("id", companyId);
       if (error) throw error;
     });
   }
@@ -55,13 +70,184 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
   try {
     await database.query("begin");
     transactionStarted = true;
-    // Bypass only immutable fixture guards; transaction scope restores this on
-    // every commit or rollback, and regular source cleanup runs with triggers.
+    // The disposable local fixture's migration principal borrows the private
+    // owners below so forced-RLS rows and immutable/archive triggers can be
+    // removed in one FK-safe unit. Transaction scope restores every change.
     await database.query("set local session_replication_role = replica");
+    await database.query(
+      "delete from public.company_year_acceptances where company_id = $1",
+      [companyId],
+    );
+    await database.query(
+      "delete from public.company_year_admissions where company_id = $1",
+      [companyId],
+    );
+    await database.query(
+      "delete from public.company_eligibility_assessments where company_id = $1",
+      [companyId],
+    );
     await database.query(
       "delete from public.customer_agreement_acceptances where company_id = $1",
       [companyId],
     );
+    await database.query(`do $browser_owner_cleanup_authority$
+      begin
+        execute pg_catalog.format(
+          'grant ledger_store_owner to %I', current_user
+        );
+        execute pg_catalog.format(
+          'grant ledger_workflow_store_owner to %I', current_user
+        );
+        execute pg_catalog.format(
+          'grant banking_store_owner to %I', current_user
+        );
+        execute pg_catalog.format(
+          'grant investments_store_owner to %I', current_user
+        );
+        execute pg_catalog.format(
+          'grant documents_store_owner to %I', current_user
+        );
+      end
+      $browser_owner_cleanup_authority$`);
+    const bankingTables = [
+      "transaction_sources",
+      "coverage_intervals",
+      "suggestion_acceptances",
+      "transactions",
+      "source_files",
+      "sync_attempts",
+      "accounts",
+      "connections",
+    ];
+    await database.query("set local role banking_store_owner");
+    await database.query(
+      "alter table backend_system.banking_command_receipts no force row level security",
+    );
+    for (const table of bankingTables) {
+      await database.query(
+        `alter table banking.${table} no force row level security`,
+      );
+    }
+    await database.query(
+      "delete from backend_system.banking_command_receipts where company_id = $1",
+      [companyId],
+    );
+    for (const table of bankingTables) {
+      await database.query(`delete from banking.${table} where company_id = $1`, [
+        companyId,
+      ]);
+    }
+    await database.query(
+      "alter table backend_system.banking_command_receipts force row level security",
+    );
+    for (const table of bankingTables) {
+      await database.query(
+        `alter table banking.${table} force row level security`,
+      );
+    }
+    await database.query("reset role");
+    const ledgerTables = [
+      "opening_received_dividend_settlements",
+      "opening_position_component_sources",
+      "opening_position_components",
+      "opening_position_rebuilds",
+      "entry_corrections",
+      "entry_sources",
+      "entry_contexts",
+      "entries",
+    ];
+    await database.query("set local role ledger_store_owner");
+    await database.query(
+      "alter table backend_system.ledger_command_receipts no force row level security",
+    );
+    for (const table of ledgerTables) {
+      await database.query(
+        `alter table ledger.${table} no force row level security`,
+      );
+    }
+    await database.query(
+      "delete from backend_system.ledger_command_receipts where company_id = $1",
+      [companyId],
+    );
+    for (const table of ledgerTables) {
+      await database.query(`delete from ledger.${table} where company_id = $1`, [
+        companyId,
+      ]);
+    }
+    await database.query(
+      "alter table backend_system.ledger_command_receipts force row level security",
+    );
+    for (const table of ledgerTables) {
+      await database.query(
+        `alter table ledger.${table} force row level security`,
+      );
+    }
+    await database.query("reset role");
+    const investmentTables = [
+      "lifecycle_correction_sources",
+      "lifecycle_corrections",
+      "measurement_sources",
+      "year_end_measurements",
+      "received_fund_distribution_recognitions",
+      "received_dividend_recognitions",
+      "share_purchase_recognitions",
+      "cash_settlements",
+      "event_sources",
+      "economic_events",
+      "position_boundary_confirmations",
+      "position_classifications",
+      "source_fact_registry",
+      "company_year_policies",
+      "corrections",
+      "share_sale_allocations",
+      "received_fund_distributions",
+      "received_dividends",
+      "share_sales",
+      "share_purchases",
+      "acquisition_lots",
+      "positions",
+    ];
+    await database.query("set local role investments_store_owner");
+    for (const table of investmentTables) {
+      await database.query(
+        `alter table investments.${table} no force row level security`,
+      );
+      await database.query(`delete from investments.${table} where company_id = $1`, [
+        companyId,
+      ]);
+      await database.query(
+        `alter table investments.${table} force row level security`,
+      );
+    }
+    await database.query("reset role");
+    await database.query("set local role ledger_workflow_store_owner");
+    await database.query(
+      "alter table backend_system.ledger_workflow_receipts no force row level security",
+    );
+    await database.query(
+      "delete from backend_system.ledger_workflow_receipts where company_id = $1",
+      [companyId],
+    );
+    await database.query(
+      "alter table backend_system.ledger_workflow_receipts force row level security",
+    );
+    await database.query("reset role");
+    await database.query(`do $browser_owner_cleanup_authority$
+      begin
+        execute pg_catalog.format(
+          'revoke ledger_store_owner from %I', current_user
+        );
+        execute pg_catalog.format(
+          'revoke ledger_workflow_store_owner from %I', current_user
+        );
+        execute pg_catalog.format(
+          'revoke banking_store_owner from %I', current_user
+        );
+        execute pg_catalog.format(
+          'revoke investments_store_owner from %I', current_user
+        );
+      end
+      $browser_owner_cleanup_authority$`);
     for (const table of [
       "corporate_document_events",
       "corporate_decision_finalizations",
@@ -73,7 +259,14 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
         companyId,
       ]);
     }
-    await database.query("set local session_replication_role = origin");
+    await database.query(
+      `delete from public.production_filing_events
+       where submission_id in (
+         select id from public.production_filing_submissions
+         where company_id = $1
+       )`,
+      [companyId],
+    );
     for (const table of [
       "production_feedback_artifacts",
       "production_filing_submissions",
@@ -81,6 +274,7 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
       "production_pilot_entitlements",
       "company_deletion_reviews",
       "bank_suggestion_acceptances",
+      "bank_transactions",
       "investment_lot_allocations",
       "investment_lots",
       "investment_positions",
@@ -91,7 +285,6 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
       "authority_test_runs",
       "authority_permissions",
       "filing_previews",
-      "ledger_entries",
       "opening_shareholders",
       "opening_balance_setups",
       "billing_accounts",
@@ -100,10 +293,44 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
       "company_archive_export_attempts",
       "company_archive_source_generations",
     ]) {
+      if ([
+        "investment_lot_allocations",
+        "investment_lots",
+        "investment_positions",
+      ].includes(table)) {
+        const legacyTable = await database.query(
+          "select pg_catalog.to_regclass($1) is not null as present",
+          [`public.${table}`],
+        );
+        if (legacyTable?.rows?.[0]?.present === false) continue;
+      }
+      if (table === "documents") {
+        await database.query("set local role documents_store_owner");
+        await database.query("alter table public.documents no force row level security");
+        await database.query("delete from public.documents where company_id = $1", [
+          companyId,
+        ]);
+        await database.query("alter table public.documents force row level security");
+        await database.query("reset role");
+        continue;
+      }
       await database.query(`delete from public.${table} where company_id = $1`, [
         companyId,
       ]);
     }
+    await database.query(`do $browser_owner_cleanup_authority$
+      begin
+        execute pg_catalog.format(
+          'revoke documents_store_owner from %I', current_user
+        );
+      end
+      $browser_owner_cleanup_authority$`);
+    await database.query("set local session_replication_role = origin");
+    await database.query("alter table public.companies disable trigger user");
+    await database.query("delete from public.companies where id = $1", [
+      companyId,
+    ]);
+    await database.query("alter table public.companies enable trigger user");
     await database.query("commit");
   } catch (error) {
     operationError = error;

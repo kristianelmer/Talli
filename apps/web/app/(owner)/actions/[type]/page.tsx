@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { notFound } from "next/navigation";
 
+import { investmentUnitFact } from "../../../../features/investments";
+
 import { Banner, EmptyState, LinkButton, WizardShell } from "../../../components/ui";
 import { buildAnnualAccountsPayload } from "../../../lib/annual-accounts";
 import { ownerCopy } from "../../../lib/copy";
@@ -10,6 +12,11 @@ import {
 } from "../../../lib/owner-dividend";
 import { loadWorkspaceData } from "../../../lib/workspace-data";
 import { DividendReceivedWizard } from "../_components/DividendReceivedWizard";
+import { FundDistributionWizard } from "../_components/FundDistributionWizard";
+import { InvestmentCorrectionWizard } from "../_components/InvestmentCorrectionWizard";
+import { InvestmentMeasurementWizard } from "../_components/InvestmentMeasurementWizard";
+import { InvestmentSettlementWizard } from "../_components/InvestmentSettlementWizard";
+import { InvestmentSettlementCorrectionWizard } from "../_components/InvestmentSettlementCorrectionWizard";
 import { OwnerDividendWizard } from "../_components/OwnerDividendWizard";
 import { SharePurchaseWizard } from "../_components/SharePurchaseWizard";
 import { ShareSaleWizard } from "../_components/ShareSaleWizard";
@@ -20,6 +27,10 @@ type ActionSlug =
   | "share-purchase"
   | "share-sale"
   | "dividend-received"
+  | "fund-distribution"
+  | "investment-settlement"
+  | "investment-correction"
+  | "investment-measurement"
   | "owner-dividend"
   | "shareholder-loan"
   | "tax-settlement";
@@ -28,6 +39,10 @@ const COPY_KEY: Record<ActionSlug, keyof typeof ownerCopy.actions> = {
   "share-purchase": "sharePurchase",
   "share-sale": "shareSale",
   "dividend-received": "dividendReceived",
+  "fund-distribution": "fundDistribution",
+  "investment-settlement": "investmentSettlement",
+  "investment-correction": "investmentCorrection",
+  "investment-measurement": "investmentMeasurement",
   "owner-dividend": "ownerDividend",
   "shareholder-loan": "shareholderLoan",
   "tax-settlement": "taxSettlement",
@@ -39,7 +54,23 @@ function isActionSlug(value: string): value is ActionSlug {
 
 type ActionPageProps = {
   params: Promise<{ type: string }>;
-  searchParams?: Promise<{ error?: string }>;
+  searchParams?: Promise<{
+    error?: string;
+    dividendReceivedOperationId?: string;
+    sharePurchaseOperationId?: string;
+    shareSaleOperationId?: string;
+    fundDistributionOperationId?: string;
+    investmentCorrectionOperationId?: string;
+    investmentCorrectionReplacementActionId?: string;
+    investmentEventCorrectionSettlementCorrectionId?: string;
+    investmentEventCorrectionReplacementSettlementId?: string;
+    investmentCorrectionReplacementSettlementId?: string;
+    investmentMeasurementOperationId?: string;
+    investmentSettlementCorrectionOperationId?: string;
+    investmentSettlementOperationId?: string;
+    shareholderLoanOperationId?: string;
+    taxSettlementOperationId?: string;
+  }>;
 };
 
 export default async function ActionPage({
@@ -54,14 +85,17 @@ export default async function ActionPage({
   const data = await loadWorkspaceData();
   const {
     companies,
+    documents,
     primaryCompanyId,
     primaryIncomeYear,
     positions,
-    investmentLots,
+    actions,
+    investmentCorrections,
     annualData,
     setups,
     shareholders,
     entries,
+    transactions,
   } = data;
 
   const a = ownerCopy.actions;
@@ -88,34 +122,51 @@ export default async function ActionPage({
   const companyPositions = positions.filter(
     (position) => position.company_id === companyId,
   );
+  const investmentBankTransactions = transactions
+    .filter((transaction) => transaction.company_id === companyId
+      && transaction.income_year === incomeYear)
+    .map((transaction) => ({
+      id: transaction.id,
+      label: `${transaction.transaction_date} · ${transaction.text} · ${transaction.amount} kr`,
+    }));
+  const investmentDocuments = documents
+    .filter((document) => document.company_id === companyId
+      && document.income_year === incomeYear
+      && document.removed_at === null)
+    .map((document) => ({
+      id: document.id,
+      label: `${document.name} · ${document.document_type}`,
+    }));
   const head = a[COPY_KEY[type]] as { title: string; intro: string };
   const corporateDocumentsEnabled = process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true";
 
   let body: React.ReactNode;
   switch (type) {
     case "share-purchase":
-      body = <SharePurchaseWizard companyId={companyId} incomeYear={incomeYear} />;
+      body = (
+        <SharePurchaseWizard
+          bankTransactions={investmentBankTransactions}
+          companyId={companyId}
+          documents={investmentDocuments}
+          incomeYear={incomeYear}
+          operationId={query?.sharePurchaseOperationId}
+        />
+      );
       break;
     case "share-sale":
       body = (
         <ShareSaleWizard
+          bankTransactions={investmentBankTransactions}
           companyId={companyId}
+          documents={investmentDocuments}
           incomeYear={incomeYear}
+          operationId={query?.shareSaleOperationId}
           positions={companyPositions.map((position) => ({
             id: position.id,
-            investment_key: position.investment_key,
             name: position.name,
+            kind: position.kind,
             share_count: position.share_count,
-            cost_basis: position.cost_basis,
             lot_history_status: position.lot_history_status,
-            acquisition_lots: investmentLots
-              .filter((lot) => lot.position_id === position.id && lot.remaining_share_count > 0)
-              .map((lot) => ({
-                id: lot.id,
-                acquisitionDate: lot.acquisition_date,
-                remainingShareCount: lot.remaining_share_count,
-                remainingCostBasis: lot.remaining_cost_basis,
-              })),
           }))}
         />
       );
@@ -123,15 +174,240 @@ export default async function ActionPage({
     case "dividend-received":
       body = (
         <DividendReceivedWizard
+          bankTransactions={investmentBankTransactions}
           companyId={companyId}
+          documents={investmentDocuments}
           incomeYear={incomeYear}
-          investments={companyPositions.map((position) => ({
-            investment_key: position.investment_key,
+          operationId={query?.dividendReceivedOperationId}
+          investments={companyPositions
+            .filter((position) => position.kind !== "norwegian_equity_fund")
+            .map((position) => ({
+              id: position.id,
+              name: position.name,
+              kind: position.kind,
+            }))}
+        />
+      );
+      break;
+    case "fund-distribution":
+      body = (
+        <FundDistributionWizard
+          bankTransactions={investmentBankTransactions}
+          companyId={companyId}
+          documents={investmentDocuments}
+          incomeYear={incomeYear}
+          operationId={query?.fundDistributionOperationId}
+          investments={companyPositions
+            .filter((position) => position.kind === "norwegian_equity_fund")
+            .map((position) => ({ id: position.id, name: position.name }))}
+        />
+      );
+      break;
+    case "investment-settlement": {
+      const pendingEvents = actions
+        .filter((action) => (
+          action.company_id === companyId
+          && action.income_year === incomeYear
+          && action.payload.settlement_status === "pending"
+        ))
+        .map((action) => ({
+          eventId: action.id,
+          label: `${action.action_date} · ${String(
+            action.payload.investment_name
+              ?? action.payload.fund_name
+              ?? "Investering",
+          )}`,
+          expectedAmount: Number(action.payload.expected_settlement_amount),
+        }))
+        .filter((event) => Number.isFinite(event.expectedAmount));
+      body = (
+        <InvestmentSettlementWizard
+          bankTransactions={transactions
+            .filter((transaction) => (
+              transaction.company_id === companyId
+              && transaction.income_year === incomeYear
+              && !transaction.matched_entry_id
+              && !transaction.matched_action_id
+            ))
+            .map((transaction) => ({
+              id: transaction.id,
+              label: `${transaction.transaction_date} · ${transaction.text} · ${transaction.amount} kr`,
+            }))}
+          companyId={companyId}
+          events={pendingEvents}
+          incomeYear={incomeYear}
+          operationId={query?.investmentSettlementOperationId}
+        />
+      );
+      break;
+    }
+    case "investment-measurement":
+      body = (
+        <InvestmentMeasurementWizard
+          companyId={companyId}
+          documents={investmentDocuments}
+          incomeYear={incomeYear}
+          operationId={query?.investmentMeasurementOperationId}
+          positions={companyPositions.map((position) => ({
+            id: position.id,
             name: position.name,
+            classification: position.accounting_classification,
+            bookValue: position.cost_basis,
+            taxBasis: position.tax_basis,
           }))}
         />
       );
       break;
+    case "investment-correction": {
+      const corrected = new Set(
+        investmentCorrections
+          .filter((correction) => correction.target_kind === "economic_event")
+          .map((correction) => correction.original_record_id),
+      );
+      const correctable = actions
+        .filter((action) => action.company_id === companyId
+          && action.income_year === incomeYear
+          && !corrected.has(action.id))
+        .map((action) => {
+          const payload = action.payload;
+          const numberFact = (key: string, fallback = 0) => {
+            const value = Number(payload[key] ?? fallback);
+            return Number.isFinite(value) ? value : fallback;
+          };
+          const stringFact = (key: string, fallback = "") => (
+            typeof payload[key] === "string" ? payload[key] : fallback
+          );
+          const nullableNumberFact = (key: string) => (
+            payload[key] === null || payload[key] === undefined
+              ? null
+              : numberFact(key)
+          );
+          const investmentKind = stringFact("investment_kind") as
+            | "norwegian_private_company"
+            | "norwegian_listed_share"
+            | "norwegian_equity_fund";
+          const grossAmount = action.action_type === "share_purchase"
+            ? numberFact("purchase_amount")
+            : action.action_type === "share_sale"
+              ? numberFact("proceeds")
+              : numberFact("gross_amount");
+          return {
+            id: action.id,
+            kind: action.action_type,
+            label: `${action.action_date} · ${stringFact("investment_name", stringFact("fund_name", "Investering"))}`,
+            actionDate: action.action_date,
+            positionId: stringFact("position_id"),
+            investmentName: stringFact(
+              action.action_type === "fund_distribution_received"
+                ? "fund_name"
+                : action.action_type === "dividend_received"
+                  ? "paying_company_name"
+                  : "investment_name",
+            ),
+            investmentKey: stringFact("investment_key"),
+            investmentKind,
+            accountingClassification: stringFact("accounting_classification") as
+              | "subsidiary" | "associate" | "other_long_term"
+              | "current_listed_share" | "current_fund",
+            orgNumber: stringFact("org_number") || null,
+            shareCount: action.action_type === "share_purchase"
+              ? investmentUnitFact(payload, "share_count")
+              : action.action_type === "share_sale"
+                ? investmentUnitFact(payload, "sold_share_count")
+                : null,
+            grossAmount,
+            transactionCosts: numberFact("transaction_costs"),
+            declaredDate: stringFact(
+              action.action_type === "fund_distribution_received"
+                ? "entitlement_date" : "declared_date",
+            ) || null,
+            fundEquityRatioBasisPoints: nullableNumberFact(
+              action.action_type === "fund_distribution_received"
+                ? "opening_fund_equity_ratio_basis_points"
+                : "fund_equity_ratio_basis_points",
+            ),
+            fundTaxStatementReference:
+              stringFact("fund_tax_statement_reference") || null,
+            groupExceptionClaimed: payload.group_exception_claimed === true,
+            yearEndOwnershipBasisPoints: nullableNumberFact(
+              "year_end_ownership_basis_points",
+            ),
+            yearEndVotingBasisPoints: nullableNumberFact(
+              "year_end_voting_basis_points",
+            ),
+            groupEvidenceReference:
+              stringFact("group_evidence_reference") || null,
+            settlementId: stringFact("settlement_id") || null,
+            settlementDate: stringFact("settlement_date") || null,
+          };
+        });
+      const correctedSettlements = new Set(
+        investmentCorrections
+          .filter((correction) => correction.target_kind === "cash_settlement")
+          .map((correction) => correction.original_record_id),
+      );
+      const correctableSettlements = actions
+        .filter((action) => (
+          action.company_id === companyId
+          && action.income_year === incomeYear
+          && typeof action.payload.settlement_id === "string"
+          && !correctedSettlements.has(action.payload.settlement_id)
+        ))
+        .map((action) => ({
+          settlementId: String(action.payload.settlement_id),
+          eventId: action.id,
+          activityKind: action.action_type,
+          label: `${String(action.payload.settlement_date ?? action.action_date)} · ${String(
+            action.payload.investment_name
+              ?? action.payload.fund_name
+              ?? action.payload.paying_company_name
+              ?? "Investering",
+          )}`,
+          expectedAmount: Number(action.payload.expected_settlement_amount),
+        }))
+        .filter((settlement) => Number.isFinite(settlement.expectedAmount));
+      body = (
+        <>
+          <h2>Korriger økonomisk hendelse</h2>
+          <InvestmentCorrectionWizard
+            bankTransactions={investmentBankTransactions}
+            companyId={companyId}
+            documents={investmentDocuments}
+            incomeYear={incomeYear}
+            activities={correctable}
+            operationId={query?.investmentCorrectionOperationId}
+            replacementActionId={query?.investmentCorrectionReplacementActionId}
+            settlementCorrectionId={
+              query?.investmentEventCorrectionSettlementCorrectionId
+            }
+            replacementSettlementId={
+              query?.investmentEventCorrectionReplacementSettlementId
+            }
+          />
+          <h2>Korriger kontantoppgjør</h2>
+          <InvestmentSettlementCorrectionWizard
+            bankTransactions={transactions
+              .filter((transaction) => (
+                transaction.company_id === companyId
+                && transaction.income_year === incomeYear
+                && !transaction.matched_entry_id
+                && !transaction.matched_action_id
+              ))
+              .map((transaction) => ({
+                id: transaction.id,
+                label: `${transaction.transaction_date} · ${transaction.text} · ${transaction.amount} kr`,
+              }))}
+            companyId={companyId}
+            documents={investmentDocuments}
+            incomeYear={incomeYear}
+            operationId={query?.investmentSettlementCorrectionOperationId}
+            replacementSettlementId={query?.investmentCorrectionReplacementSettlementId}
+            settlements={correctableSettlements}
+          />
+        </>
+      );
+      break;
+    }
     case "owner-dividend":
       const currentSetup = setups.find(
         (setup) => setup.company_id === companyId && setup.income_year === incomeYear,
@@ -209,11 +485,21 @@ export default async function ActionPage({
       break;
     case "shareholder-loan":
       body = (
-        <ShareholderLoanWizard companyId={companyId} incomeYear={incomeYear} />
+        <ShareholderLoanWizard
+          companyId={companyId}
+          incomeYear={incomeYear}
+          operationId={query?.shareholderLoanOperationId}
+        />
       );
       break;
     case "tax-settlement":
-      body = <TaxSettlementWizard companyId={companyId} incomeYear={incomeYear} />;
+      body = (
+        <TaxSettlementWizard
+          companyId={companyId}
+          incomeYear={incomeYear}
+          operationId={query?.taxSettlementOperationId}
+        />
+      );
       break;
   }
 

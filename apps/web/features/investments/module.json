@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "web-feature",
+  "name": "investments",
+  "path": "apps/web/features/investments",
+  "owner": "web:investments",
+  "purpose": "Carry domestic investment recognition, separate cash settlement, year-end measurement, correction, and canonical lifecycle queries through the generated API client without recreating policy.",
+  "documentation": "apps/web/features/investments/MODULE.md",
+  "publicEntryPoint": "@/features/investments",
+  "publicImportPaths": ["@/features/investments", "apps/web/features/investments", "apps/web/features/investments/index.ts"],
+  "ownedRoutes": ["/workspace", "/actions/[type]", "/year-end"],
+  "apiOperations": ["investmentsCorrectInvestment", "investmentsListAcquisitionLots", "investmentsListActivity", "investmentsListCorrections", "investmentsListEconomicEvents", "investmentsListPositions", "investmentsListShareSaleAllocations", "investmentsListYearEndMeasurements", "investmentsRecognizeReceivedDividend", "investmentsRecognizeReceivedFundDistribution", "investmentsRecognizeSharePurchase", "investmentsRecognizeShareSale", "investmentsRecordYearEndMeasurement", "investmentsSettleCash"],
+  "dependencies": [],
+  "allowedImports": ["#backend-configuration", "@talli/talli-api-client"],
+  "cachePolicy": { "default": "no-store", "allowed": [] },
+  "directBrowserFlows": [],
+  "forbiddenResponsibilities": [
+    "Investment validation, acquisition-lot mutation, ledger posting, or authorization policy",
+    "Direct Supabase investment persistence or business-endpoint fetch calls",
+    "Handwritten transport DTOs or generated-client deep imports"
+  ],
+  "tests": {
+    "feature": "apps/web/tests/investments-presentation.test.mjs",
+    "supportedPatterns": "tests/investments_supported_pattern_evidence.test.mjs",
+    "crossOutput": "tests/investments_cross_output_reconciliation.test.mjs",
+    "stageExit": "tests/investments_database_runtime.test.mjs",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

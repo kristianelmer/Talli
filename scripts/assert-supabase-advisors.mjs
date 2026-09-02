@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 
+const workdir = process.env.TALLI_SUPABASE_WORKDIR;
 const result = spawnSync(
   "npm",
-  ["exec", "--", "supabase", "db", "advisors", "--local", "--output", "json"],
+  [
+    "exec", "--", "supabase", "db", "advisors", "--local", "--output", "json",
+    ...(workdir ? ["--workdir", workdir] : []),
+  ],
   { encoding: "utf8" },
 );
 

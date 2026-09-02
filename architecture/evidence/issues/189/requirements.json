@@ -1,0 +1,189 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#189",
+  "source": "https://github.com/kristianelmer/Talli/issues/189",
+  "sourceCheckedAt": "2026-08-31T07:15:00Z",
+  "completeGates": [
+    {
+      "revision": "c2690097c3dc4e00a3d86b867a625ed5812840af",
+      "previousPassingRevision": null,
+      "evidencePath": "architecture/evidence/customer-ready-gates/c2690097c3dc4e00a3d86b867a625ed5812840af.json",
+      "verdict": "pass"
+    }
+  ],
+  "route": {
+    "predecessor": "#140",
+    "predecessorState": "CLOSED",
+    "successor": "#141",
+    "successorClosureDependsOnThisIssue": false,
+    "independentHardGates": [
+      "provider choice or activation",
+      "live bank use or readiness claims",
+      "#197 bank tranche",
+      "production banking",
+      "#198 unrestricted clearance"
+    ],
+    "decisionSources": ["#168", "#172", "#174", "#179", "#180"]
+  },
+  "ownerRouteAmendment": {
+    "approvedBy": "Kristian Elmer",
+    "approvedAt": "2026-08-31",
+    "decision": "#189 remains open as an independent external provider gate but no longer blocks provider-neutral internal implementation of #141 through #154.",
+    "preservedBoundary": "A9 and bank_aisp remain red until current written provider and representative evidence receives human signoff; no provider selection, activation, live bank use, production claim or launch is inferred from internal implementation."
+  },
+  "executionBoundary": {
+    "localAuthorized": [
+      "provider-neutral read-only banking port",
+      "Neonomics adapter exercised only through local fake transport",
+      "Enable Banking adapter exercised only through local conformance fixtures",
+      "automatic sync, consent, recovery, CSV and CAMT.053 workflows",
+      "local contract, security, recovery, load, browser, mobile and release gates"
+    ],
+    "authorizedExternalDiligence": [
+      "founder-approved non-binding written RFIs to Neonomics, Enable Banking, GoCardless, Open Payments and Aritma",
+      "read-only inspection and recording of provider replies without signup, activation, contract acceptance or spend"
+    ],
+    "externalNotAuthorized": [
+      "provider signup, activation or credentials",
+      "live provider calls or customer bank consent/data",
+      "commercial contract acceptance, purchase or fee",
+      "production deployment or production banking"
+    ],
+    "separateHostedCredentialAuthority": "Kristian authorized secure credential handling only between existing Supabase project pkpyyxryfhfehrbhbynp and Vercel project prj_1JJkOqzGBhn438IKHYADWiRbVGeZ; it does not authorize bank-provider credentials or live provider use."
+  },
+  "criteria": [
+    {
+      "id": "GH-189-A1",
+      "requirement": "The provider-neutral read-only banking port and canonical models own connection, account, consent, coverage, sync-attempt and transaction identity without provider identity becoming business identity.",
+      "sources": [
+        {"url": "https://github.com/kristianelmer/Talli/issues/174#issuecomment-5424107468", "version": "owner resolution 2026-08-26"},
+        {"path": "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md", "version": "accepted 2026-07-26"}
+      ],
+      "plannedEvidence": [
+        {"path": "apps/backend/tests/test_banking_provider_contract.py", "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_provider_contract.py"},
+        {"path": "tests/banking_database_runtime.test.mjs", "command": "npm run test:banking-database-lifecycle"}
+      ],
+      "status": "local-evidence-passed"
+    },
+    {
+      "id": "GH-189-A2",
+      "requirement": "Neonomics and Enable Banking edge adapters pass the same provider conformance suite without live calls, fees, ledger dependencies or raw secrets in diagnostics.",
+      "sources": [
+        {"url": "https://github.com/kristianelmer/Talli/issues/168#issuecomment-5421672008", "version": "owner resolution 2026-08-26"},
+        {"url": "https://github.com/kristianelmer/Talli/issues/174#issuecomment-5424107468", "version": "owner resolution 2026-08-26"}
+      ],
+      "plannedEvidence": [
+        {"path": "apps/backend/tests/test_banking_provider_adapters.py", "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_provider_adapters.py"},
+        {"path": "apps/backend/tests/fixtures/banking-providers", "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_provider_adapters.py"}
+      ],
+      "status": "local-evidence-passed"
+    },
+    {
+      "id": "GH-189-A3",
+      "requirement": "Initial backfill, nightly/on-demand/annual-close sync, pagination, pending/booked/reversed changes, stable-fact deduplication, reconnect, gap detection, retry and unknown outcomes are idempotent and fail closed.",
+      "sources": [
+        {"url": "https://github.com/kristianelmer/Talli/issues/174#issuecomment-5424107468", "version": "product behavior and canonical safety resolution 2026-08-26"}
+      ],
+      "plannedEvidence": [
+        {"path": "apps/backend/tests/test_banking_sync.py", "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_sync.py"},
+        {"path": "tests/banking_database_runtime.test.mjs", "command": "npm run test:banking-database-lifecycle"}
+      ],
+      "status": "local-workflows-passed-provider-activation-pending"
+    },
+    {
+      "id": "GH-189-A4",
+      "requirement": "Original bank CSV and ISO 20022 CAMT.053 imports preserve document SHA-256, preview account/interval/count/currency/balances/duplicates/corrections/ignored rows, expose missing periods and merge with sync without duplicates.",
+      "sources": [
+        {"url": "https://github.com/kristianelmer/Talli/issues/174#issuecomment-5424107468", "version": "required file fallback resolution 2026-08-26"}
+      ],
+      "plannedEvidence": [
+        {"path": "apps/backend/tests/test_banking_file_fallback.py", "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_file_fallback.py"},
+        {"path": "apps/backend/tests/fixtures/banking-files", "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_file_fallback.py"}
+      ],
+      "status": "local-evidence-passed"
+    },
+    {
+      "id": "GH-189-A5",
+      "requirement": "Every accepted suggestion still posts atomically only through the ledger workflow; provider failure, retry or callback can never invent a posting.",
+      "sources": [
+        {"path": "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md", "version": "accepted 2026-07-26"},
+        {"url": "https://github.com/kristianelmer/Talli/issues/189", "version": "acceptance criteria checked 2026-08-28"}
+      ],
+      "plannedEvidence": [
+        {"path": "apps/backend/tests/test_banking_workflow.py", "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_workflow.py"},
+        {"path": "tests/architecture_foundation.test.mjs", "command": "npm run check:architecture"}
+      ],
+      "status": "local-evidence-passed"
+    },
+    {
+      "id": "GH-189-A6",
+      "requirement": "The owner sees actionable consent, masked account, coverage, freshness, gap and recovery state and can complete redirect return, retry, reconnect, disconnect and missing-interval import on desktop and 390px mobile without Talli collecting bank credentials.",
+      "sources": [
+        {"url": "https://github.com/kristianelmer/Talli/issues/174#issuecomment-5424107468", "version": "consent and recovery resolution 2026-08-26"},
+        {"url": "https://github.com/kristianelmer/Talli/issues/179#issuecomment-5424272866", "version": "launch lanes 6 and 10, 2026-08-26"}
+      ],
+      "plannedEvidence": [
+        {"path": "apps/web/tests/banking-connection-presentation.test.mjs", "command": "npm run test:boundary-web"},
+        {"path": "tests/browser_owner_annual_loop.mjs", "command": "npm run test:browser-owner"}
+      ],
+      "status": "local-browser-passed-provider-activation-pending"
+    },
+    {
+      "id": "GH-189-A7",
+      "requirement": "Tenant isolation, encryption boundary, redaction, revocation/retention separation, callback/replay safety, recovery, kill switch, capacity and provider-exit rehearsal pass locally.",
+      "sources": [
+        {"url": "https://github.com/kristianelmer/Talli/issues/174#issuecomment-5424107468", "version": "privacy, reliability and exit resolution 2026-08-26"},
+        {"url": "https://github.com/kristianelmer/Talli/issues/179#issuecomment-5424272866", "version": "launch lanes 8 and 9, 2026-08-26"}
+      ],
+      "plannedEvidence": [
+        {"path": "tests/banking_database_runtime.test.mjs", "command": "npm run test:supabase:local"},
+        {"path": "apps/backend/tests/test_banking_sync.py", "command": "uv run --project apps/backend pytest apps/backend/tests/test_banking_sync.py"},
+        {"path": "tests/browser_company_onboarding.mjs", "command": "npm run test:browser-owner"}
+      ],
+      "status": "local-evidence-passed"
+    },
+    {
+      "id": "GH-189-A8",
+      "requirement": "Contract, architecture, security, dependency, recovery, load, browser/mobile, builds and the complete customer-ready release gate pass on immutable local revisions without network or fee in standard tests.",
+      "sources": [
+        {"url": "https://github.com/kristianelmer/Talli/issues/189", "version": "acceptance criteria checked 2026-08-28"},
+        {"path": "docs/architecture/mass-market-execution-control-plane.md", "version": "ticket boundary ledger checked 2026-08-28"}
+      ],
+      "plannedEvidence": [
+        {"path": "architecture/evidence/customer-ready-gates/c2690097c3dc4e00a3d86b867a625ed5812840af.json", "command": "npm run gate:customer-ready"}
+      ],
+      "observedEvidence": [
+        "Immutable customer-ready gate passed on c2690097c3dc4e00a3d86b867a625ed5812840af: credential scan, typecheck, architecture, 440 backend + 106 web + 36 contract boundary tests, web/backend builds, boundary smoke, launch rehearsal, production dependency audit, fresh database isolation, 17/17 browser-owner checks, and clean-worktree validation."
+      ],
+      "status": "passed"
+    },
+    {
+      "id": "GH-189-A9",
+      "requirement": "Current written launch-bank/account/history coverage, provider licence/role, commercial quote within ceilings, contract/DPA/DPIA/security/retention/incident/SLA/support/exit terms and representative real-company reliability evidence are approved and current before production activation or issue closure.",
+      "sources": [
+        {"url": "https://github.com/kristianelmer/Talli/issues/174#issuecomment-5424107468", "version": "coverage, privacy, reliability and commercial gates 2026-08-26"},
+        {"url": "https://github.com/kristianelmer/Talli/issues/179#issuecomment-5424272866", "version": "banking launch lane and human signoff 2026-08-26"}
+      ],
+      "plannedEvidence": [
+        {"external": "Current signed provider, coverage, privacy, commercial, production and representative-company evidence with bank_aisp human signoff"}
+      ],
+      "observedEvidence": [
+        "Read-only mailbox audit at architecture/evidence/issues/189/provider-mailbox-audit-2026-08-31.json: GoCardless ticket 4436853 rejects standalone Bank Account Data for new customers and therefore fails Talli's AIS-only route; Aritma ticket 430965380298 is an automated receipt only; no substantive response was found for Neonomics, Enable Banking, Open Payments or Aritma."
+      ],
+      "status": "one-candidate-rejected-four-substantive-responses-and-complete-provider-evidence-pending"
+    }
+  ],
+  "externalDiligence": {
+    "mailboxAudit": "architecture/evidence/issues/189/provider-mailbox-audit-2026-08-31.json",
+    "goCardless": "rejected-for-current-route",
+    "awaitingSubstantiveResponse": [
+      "Neonomics",
+      "Enable Banking",
+      "Open Payments",
+      "Aritma"
+    ],
+    "providerSelected": false,
+    "bankAispGatePassed": false
+  },
+  "closeState": "open-external-provider-evidence-required"
+}

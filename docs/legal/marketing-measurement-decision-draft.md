@@ -1,0 +1,442 @@
+# Marketing Measurement Decision Draft
+
+Status: founder/accountable-owner legal and privacy decision approved; deployed
+facts, version migration, and immutable release evidence still pending
+
+Issue: #196
+
+Last checked: 2026-08-30
+
+Historical implementation baseline reviewed: source revision
+`b8c635538ea382e639ec54af09a34aee3981ef32`. The exact integrated 2026-08-30
+copy revision and immutable release evidence must be recorded after the
+separate agreement-version migration is complete.
+
+This document separates official-source requirements from product-design
+inference. Kristian Elmer approved the exact business and privacy direction on
+2026-08-30 as founder and accountable owner. The review used AI-assisted legal
+and security research; it is not professional legal advice or an independent
+human certification. The canonical document and notice digests are recorded
+below. Publication and collection remain blocked until the hosted facts,
+version migration, integrated revision, and immutable release evidence pass.
+
+## Recorded Founder Product Decision
+
+Kristian Elmer approved the recommended **no longitudinal marketing cohort for
+launch** direction on 2026-08-29. This approval means:
+
+- the optional marketing session remains limited to 30 minutes;
+- marketing measurement is not joined to an account, company, purchase,
+  company-year, support case or refund;
+- later operational outcomes may be reported only as separately governed coarse
+  totals, without source attribution or a reversible cohort key; and
+- source-attributed company-year/refund rates and purchase-to-completion timing
+  remain `null`.
+
+This is a product-minimization decision. It is not approval of the exact notice,
+the processor schedule, a legal classification, publication, deployment or
+activation. Those gates remain below.
+
+The later 2026-08-30 founder/accountable-owner decision approved the exact
+pseudonymous classification, notice direction, retention periods, DPO position,
+and code/public-no-customer-data boundary. It did not approve activation or
+hosted facts.
+
+## Recorded Founder Checklist Decision
+
+On 2026-08-29 Kristian Elmer approved the product direction for all twelve
+plain-language review points presented for this measurement boundary:
+
+- use measurement only to learn where the public company check and onboarding
+  succeed or stop;
+- keep the service fully usable after refusal and do nothing optional before
+  affirmative consent;
+- keep the public measurement payload to a random session identifier and fixed,
+  bounded event fields, with no name, email, organization number, free text,
+  documents, bank, accounting or financial data;
+- describe the identifier as a random session ID rather than claiming the
+  measurement is anonymous;
+- keep the browser session at 30 minutes, raw events at no more than 90 days and
+  the withdrawal tombstone at no more than 30 minutes;
+- add a minimized consent proof containing time, consent/notice version and
+  digest, and the random session hash, without an account or company link;
+- stop collection and request raw-session deletion on withdrawal, with a safe
+  retry if the first deletion request fails;
+- suppress repeated-signal reporting below five separate sessions rather than
+  the previously implemented threshold of two;
+- give acceptance and refusal equal visual prominence and one action each;
+- never link public marketing measurement to account, company, purchase,
+  company-year, support or refund data;
+- keep activation blocked until the exact deployed provider, logging, backup,
+  region, recipient, transfer and privileged-access facts have been verified;
+  and
+- identify ELMER WELFIS / Talli as controller and `post@talli.no` as the privacy
+  contact. On 2026-08-30, Kristian approved no formal DPO at launch, with annual
+  and material-change reassessment.
+
+This records founder product choices and required launch conditions. It does not
+assert that the provider facts have been verified, approve a legal
+classification, approve the exact notice text/digests, or authorize activation.
+
+The 2026-08-30 decision supersedes only the still-open legal-classification and
+exact-copy parts of that 2026-08-29 checklist. Provider facts and activation
+remain unapproved.
+
+## Temporary Invited-Pilot Evaluation Mode
+
+Kristian also approved a separate, higher-resolution evaluation mode for the
+first invited testing phase so Talli can determine whether the product works
+sufficiently. This is validation evidence, not an expansion of public marketing
+analytics, and it must be disabled for full public launch.
+
+The implementation and operating design must enforce all of these conditions:
+
+- the pilot runs the exact normal production product: the same build, routes,
+  screens, calculations, eligibility rules, authorization checks, capability
+  gates, provider adapters and error behavior; there is no test-product branch;
+- the setting controls only whether a passive observer writes a bounded log
+  after a normal product outcome; it cannot unlock, block, alter, retry, replace
+  or simulate a product action;
+- mode is deny-by-default and has only `off` and `invited-pilot` states;
+- `invited-pilot` requires a server-side named pilot entitlement, an approved
+  validation run ID, a start time and a mandatory expiry; a browser flag, query
+  parameter or client request cannot enable it;
+- evidence uses case codes `V-01` through `V-12`; any mapping to a participant or
+  company stays only in the approved protected participant register and never in
+  the public marketing-measurement store;
+- the bounded evaluation record may capture critical task started/completed/
+  failed/blocked state, step and reason code, elapsed duration, intervention
+  count/type/duration, defect or difference classification, rerun result and
+  final supported company-year outcome;
+- the evaluation stream must not contain names, email addresses, organization
+  numbers, free text, document contents, filenames, bank/account facts, ledger
+  values, exact monetary amounts or source marketing attribution;
+- invited participants receive the exact validation information and agreement
+  before the mode observes their work, including purpose, fields, retention,
+  withdrawal, export and deletion expectations;
+- raw pilot observations are kept for no more than 90 days, access is limited
+  to named validation reviewers, and reporting uses the approved case matrix
+  rather than public marketing reports;
+- the protected participant register is kept for 12 months after validation
+  ends, unless a documented incident or legal requirement needs longer storage;
+- an observation-write failure never changes, rolls back or hides the normal
+  product result. It marks that test observation incomplete and must be resolved
+  or rerun before the affected acceptance can pass;
+- withdrawal stops new observation and follows the protected-register deletion
+  workflow without weakening legal-hold or incident obligations; and
+- the full-launch gate must prove the mode is `off`, all pilot entitlements are
+  expired or revoked, no public request can enable it, and disabling it preserves
+  only the evidence whose retention was explicitly approved.
+
+Before pilot intake, an equivalence test must run the same representative normal
+product actions with observation `off` and `invited-pilot` and prove identical
+product responses, persisted business state and external calls. The sole permitted
+difference is the additional bounded observation-log write. Turning the setting
+off for full launch therefore removes only that write, not product functionality.
+
+The 2+8 validation plan defines whether the product is sufficient: every
+critical journey completes, at least 90% of core tasks complete without help,
+median support is below 30 minutes per company-year, and no unexplained material
+difference, duplicate or incident remains. The temporary mode may gather the
+bounded observations needed for those decisions; it must not silently invent a
+different success standard.
+
+## Current Implemented Boundary
+
+The current local implementation:
+
+- stores a consent record and random session identifier in `sessionStorage`
+  only after an affirmative choice;
+- links one allowlisted event sequence for at most 30 minutes;
+- sends bounded public-check/onboarding event, surface, source, reason and
+  consent-version fields to a first-party endpoint;
+- rejects personal, company, financial, document, page-address and free-text
+  fields;
+- retains raw measurement rows for no more than 90 days;
+- stops collection on withdrawal, retries deletion and keeps a short-lived
+  tombstone so late requests cannot recreate withdrawn rows; and
+- exposes aggregates rather than raw identifiers to operators.
+
+The backend now fails closed unless a separately provisioned approved release
+matches the exact first-layer version/digest, full privacy-notice version/digest
+and released-workflow SHA-256. The first accepted event creates a private,
+server-timestamped consent grant; the 30-minute window begins at that time.
+Withdrawal is appended to the same proof journal and stops recreation. No
+approved release row is created by migration or application startup, so the new
+2026-08-30 notice cannot activate collection until a separate, exact release row
+is approved and provisioned.
+
+The invited-pilot observer is also implemented as a separate backend-system
+stream. It is exact-off by default, database-authoritative for approved run,
+subject-bound entitlement, start, expiry, revocation and withdrawal, and accepts
+only bounded `V-01` through `V-12` evidence after a settled normal product
+outcome. Its writer error is contained. Migration and startup create no run,
+entitlement, reviewer, participant mapping or observation.
+
+The implementation intentionally returns `null` for company-year completion,
+refund and purchase-to-completion cohort measures. A 30-minute session cannot
+truthfully link a months-long company-year lifecycle.
+
+## Implementation-Derived Data Inventory
+
+This inventory is refreshed with the #196 successor implementation and is bound
+to the exact local source/evidence revisions in the issue ledger. It describes application-controlled
+behavior only. It does not establish what a deployed CDN, hosting platform,
+database provider, proxy, backup system or incident tool logs or retains.
+
+| Layer | Application-controlled fields and behavior | Retention / access | Review state |
+| --- | --- | --- | --- |
+| Browser consent state | `sessionStorage` key `talli.marketing-consent.v1` contains consent version, random UUID session ID, allowlisted campaign source, expiry timestamp and whether `home_view` was queued. It is created only after affirmative consent. | One browser tab; expires after 30 minutes and is removed by expiry or withdrawal. | Implemented and tested. Treat the UUID as pseudonymous/personal pending the Recital 26 assessment. |
+| Browser withdrawal retry | `sessionStorage` key `talli.marketing-withdrawal.v1` contains only the random session UUID while deletion confirmation is pending. | Removed after confirmed deletion; otherwise retained in the tab for retry. | Implemented and tested. Legal review must confirm the retry state is strictly necessary for honoring withdrawal and how long an abandoned tab may retain it. |
+| Campaign input | The application reads only the `source` query parameter and maps it to `organic`, `community`, `partner`, `approved_campaign`, `direct` or `unknown`. The raw value and full page URL are not included in the measurement payload. | The bounded value follows the 30-minute session and event retention below. | Application minimization is implemented. Deployed access logs may still contain the original URL/query and remain unverified. Campaign URLs must never contain identity or company data. |
+| Same-origin browser request | POST payload fields are `clientEventId`, `anonymousSessionId`, literal `consent: true`, `consentVersion`, bounded public-check/onboarding `event`, nullable bounded `reason`, bounded `surface` and bounded `campaignSource`. Withdrawal sends only the session UUID. Bodies are JSON and limited to 2,048 bytes. | Sent only after consent to `/api/marketing-events`; responses are `no-store`. | Implemented and tested. The application rejects unknown fields, free text, page address and personal/company/financial/document fields. |
+| HTTP/runtime metadata | The Next route checks Origin, Content-Type and Content-Length. The application does not read or persist IP address, User-Agent, Referer, cookies or account identity for measurement. | Unknown at CDN, hosting, proxy, runtime and security-log layers. | Must be verified from deployed configuration and contracts. “Not used by application code” is not a no-log claim. |
+| Internal transport | The Next server hashes the random session UUID with SHA-256 and adds the exact first-layer version/digest, configured privacy-notice version/digest and release SHA-256 before sending the bounded event through the generated client. An internal server key authenticates this hop. | Request-time only unless infrastructure logs it. | Implemented and tested. Missing or malformed binding fails closed. Raw UUID remains at the browser/Next boundary; log redaction and secret handling require deployed verification. |
+| Raw database event | Private `backend_system.marketing_funnel_events` rows contain an identity key, client event UUID, 64-character session hash, consent version, event, reason, surface, source, receive time and expiry time. Direct `anon`, `authenticated` and `service_role` access is revoked; forced RLS applies. | Each row expires no later than 90 days after receipt; purge runs during ingest/report/maintenance. Only restricted ingest/report roles execute typed functions. | Local database/runtime evidence passed. Hosted migration, backup copies, privileged access and purge scheduling/monitoring remain separate gates. |
+| Withdrawal tombstone | Private `backend_system.marketing_funnel_withdrawals` contains session hash, withdrawal time and expiry. Withdrawal deletes matching raw events before writing/updating the tombstone. | Tombstone lifetime is at most 30 minutes and is purged by the same maintenance function. | Implemented and tested. It prevents a late request from recreating the withdrawn session during the active window. |
+| Operator report | Counts cover only the bounded public check/onboarding session. Purchase, account, company-year, support, refund and filing activity is rejected and never joined. Repeated reason signals require five distinct session hashes. | Computed from live retained rows. Operator access requires verified active-operator status. | Implemented and tested. Longitudinal and acquisition-cost fields remain `null`; broader report privacy review remains required before activation. |
+| Consent evidence | Private forced-RLS release and append-only action tables bind grant/withdrawal, server receive time, consent version, exact first-layer/full-notice versions and SHA-256 digests, and released-workflow SHA-256. | The grant expires after 30 minutes from server receipt. Raw and proof retention are taken only from a separately approved release, within hard maxima. | Technical mechanism and real PostgreSQL evidence passed. No release is approved or provisioned; exact copy, retention and legal/privacy activation remain pending. |
+| Backups, provider logs and recipients | No application source establishes production backup retention, CDN/platform/database log fields, processor identities, processing regions or transfer mechanisms. | Unknown. | Must remain explicitly pending until checked against the exact deployed services, settings and contracts. |
+
+### Data-flow boundary
+
+`browser tab → same-origin Next route → generated internal API client → FastAPI
+backend → private PostgreSQL functions/table → aggregate-only operator view`
+
+No application-controlled step joins the session to login, account, company,
+purchase, support case, refund, filing or company-year identity. This statement
+does not extend to unverified infrastructure logs. Until the hosted facts and
+Recital 26 assessment are approved, customer-facing copy must use “frivillig
+bruksmåling med tilfeldig økt-ID”, not “anonym måling”.
+
+## Official-Source Requirements
+
+These are source findings, not product recommendations:
+
+1. Ekomloven § 3-15 requires prior GDPR-valid consent before storing or reading
+   information on user equipment unless a narrow transmission or strictly
+   necessary exception applies. The requirement is technology-neutral.
+   Sources: [Lovdata § 3-15](https://lovdata.no/lov/2024-12-13-76/%C2%A73-15),
+   [Nkom guidance](https://nkom.no/internett/informasjonskapsler-cookies), and
+   [Datatilsynet tracking guidance](https://www.datatilsynet.no/personvern-pa-ulike-omrader/internett-og-apper/bruk-av-informasjonskapsler-og-andre-sporingsteknologier/).
+2. Consent must be voluntary, specific, informed, unambiguous, affirmative and
+   demonstrable. Refusal and withdrawal must be as easy as acceptance, and an
+   optional measurement choice cannot gate access to the service. Sources:
+   [GDPR Article 7](https://eur-lex.europa.eu/eli/reg/2016/679/art_7/oj/eng),
+   [Datatilsynet consent guidance](https://www.datatilsynet.no/rettigheter-og-plikter/virksomhetenes-plikter/om-behandlingsgrunnlag/samtykke/), and
+   [EDPB Guidelines 05/2020](https://www.edpb.europa.eu/our-work-tools/our-documents/guidelines/guidelines-052020-consent-under-regulation-2016679_en).
+3. The first layer must communicate the material consequence of the choice.
+   The full notice must cover the controller, purpose and legal basis, data
+   categories, recipients, transfers, retention, rights, withdrawal, complaint
+   route, whether provision is optional, consequences of refusal and any
+   profiling or automated decision-making. Sources:
+   [GDPR Article 13](https://eur-lex.europa.eu/eli/reg/2016/679/art_13/oj/eng),
+   [Datatilsynet information requirements](https://www.datatilsynet.no/rettigheter-og-plikter/virksomhetenes-plikter/informasjon-og-apenhet/hva-skal-virksomheten-gi-informasjon-om/), and
+   [Datatilsynet layered-notice guidance](https://www.datatilsynet.no/personvern-pa-ulike-omrader/internett-og-apper/bruk-av-informasjonskapsler-og-andre-sporingsteknologier/1-gi-klar-og-forstaelig-informasjon-i-samtykkeboksen/).
+4. Consent evidence must show when and how consent was obtained and which
+   information was presented, while remaining data-minimized. Material changes
+   to purpose or processing require renewed consideration and ordinarily a new
+   consent/notice version. Source: EDPB Guidelines 05/2020, especially
+   paragraphs 104–123.
+5. A random or hashed identifier is not automatically anonymous.
+   Pseudonymous data remains personal data where singling out or attribution is
+   reasonably possible. Sources:
+   [GDPR Article 4 and Recital 26](https://eur-lex.europa.eu/eli/reg/2016/679/oj)
+   and [EDPB anonymisation/pseudonymisation overview](https://www.edpb.europa.eu/topics/ai-and-technology/anonymisation-pseudonymisation_en).
+6. Purpose limitation, minimization, storage limitation and accountability
+   still apply to first-party or aggregate-facing analytics. A later join of
+   acquisition data to operational outcomes is secondary processing even when
+   the operator sees only aggregates. Sources:
+   [GDPR Articles 5–6](https://eur-lex.europa.eu/eli/reg/2016/679/oj) and
+   [Datatilsynet purpose-limitation guidance](https://www.datatilsynet.no/rettigheter-og-plikter/personvernprinsippene/grunnleggende-personvernprinsipper/formalsbegrensning/).
+
+## Current Review State
+
+The local 2026-08-30 copy now resolves the earlier notice inconsistencies:
+
+- the public privacy notice describes the optional measurement instead of
+  claiming that only necessary cookies are used;
+- the copy calls the data pseudonymous and does not claim anonymity;
+- `Tillat bruksmåling` and `Nei takk` use the same visual treatment and one
+  action each;
+- the first layer states the public-check/onboarding purpose, main fields,
+  exclusions, 30-minute session, 90-day raw-event period, optional choice, and
+  no loss of service after refusal; and
+- the full notice states the consent basis, withdrawal effect, provider-fact
+  boundary, exact application retention, and no account/company joins.
+
+Deployed logs, backups, recipients, providers, regions, transfers, privileged
+access, automatic purge, exact publication revision, and release evidence remain
+unverified. The approved notice must not be activated until those facts and the
+immutable release gate are recorded.
+
+## Approved Founder Product Direction
+
+The approved direction is **no longitudinal marketing cohort for launch**:
+
+- keep the current 30-minute consented measurement session;
+- keep company-year, purchase, service, support and refund records in their
+  separately governed operational capabilities;
+- report coarse weekly or monthly operational totals separately, suppressing
+  small cells where appropriate;
+- use #197 representative validation for end-to-end completion, refund and
+  support evidence; and
+- keep marketing-attributed company-year completion/refund rates and the
+  purchase-to-completion median `null`.
+
+This option preserves the approved minimization boundary. It produces honest
+operational outcomes, but it does not claim individual or source-attributed
+purchase-to-completion cohorts. The #178/#196 requirement should be explicitly
+interpreted or amended accordingly by the decision owner.
+
+### Alternative requiring separate approval and implementation
+
+If source-attributed long-lived cohorts are mandatory, approve a new restricted
+backend aggregation design before implementation:
+
+- define a precise purpose and lawful basis for the acquisition-to-company-year
+  join;
+- use only a coarse purchase cohort and allowlisted source, not the browser
+  session identifier;
+- perform the join in a restricted job, publish thresholded aggregates and
+  destroy join material as soon as the approved calculation permits;
+- define small-cell suppression, retention, consent/withdrawal and deletion
+  behavior; and
+- update the notice, consent version, data inventory, threat/privacy assessment
+  and immutable evidence.
+
+This still processes linked data during the join. Calling it operational,
+hashing a key, or exposing only aggregates does not by itself remove the legal
+and privacy review. A durable browser-to-company token has the highest linkage
+and deletion burden and is not recommended for launch.
+
+## Approved Additive Notice Section
+
+The following Norwegian text records the 2026-08-30 founder/accountable-owner
+decision. The canonical published text is in `apps/web/app/lib/copy.ts` and is
+bound to the version and digest below. It contains no provider name or location
+claim because the production processor schedule is not yet verified. That
+schedule must be completed before activation.
+
+> ### Frivillig måling av den offentlige kundereisen
+>
+> Hvis du velger «Tillat bruksmåling», bruker ELMER WELFIS frivillig måling for
+> å se hvor den offentlige selskapsjekken og oppstarten lykkes eller stopper.
+> Talli behandler samtykkeversjon, tilfeldige økt- og hendelses-ID-er, faste
+> koder for hendelse, steg, kilde og årsak, og tidspunkt. Talli sender ikke
+> navn, e-post, organisasjonsnummer, fritekst, sideadresse, regnskapsdata,
+> bankdata eller dokumentopplysninger til denne målingen.
+>
+> Målingen bruker lagring i nettleserfanen. Ingenting valgfritt lagres eller
+> sendes før du samtykker. En tilfeldig økt-ID brukes i høyst 30 minutter, og
+> råhendelser slettes senest etter 90 dager. Behandlingsgrunnlaget er samtykke,
+> jf. personvernforordningen artikkel 6 nr. 1 bokstav a og ekomloven § 3-15.
+>
+> Tjenesten virker også hvis du velger «Nei takk». Du kan når som helst trekke
+> samtykket tilbake i samme grensesnitt. Da stopper ny måling umiddelbart, og
+> Talli ber om sletting av råhendelsene for den tilfeldige økten. Tilbaketrekking
+> påvirker ikke lovligheten av behandling som skjedde før samtykket ble trukket.
+>
+> Opplysningene behandles av ELMER WELFIS og databehandlere som leverer database,
+> hosting og nødvendig teknisk logging. Navn, behandlingssteder, lagringstider og
+> eventuelle overføringsgrunnlag skal stå i den gjeldende leverandøroversikten i
+> denne personvernerklæringen før målingen tas i bruk. Målingen brukes ikke til
+> automatiserte avgjørelser eller individuell profilering.
+>
+> Du kan kontakte post@talli.no om innsyn, retting, sletting, begrensning eller
+> andre personvernspørsmål, og du kan klage til Datatilsynet.
+
+## Approved First-Layer Consent Text
+
+This is the approved short-form direction. The exact canonical string and
+version are in `apps/web/features/public-acquisition/measurement.ts`:
+
+> **Hjelp oss forbedre selskapsjekken**
+>
+> Hvis du vil, kan Talli måle hvor den offentlige selskapsjekken og oppstarten
+> lykkes eller stopper. Målingen bruker en tilfeldig økt-ID i høyst 30 minutter
+> og faste koder for hendelse, steg, kilde og årsak. Den inneholder ikke navn,
+> e-post, organisasjonsnummer, sideadresse, fritekst, bank-, dokument- eller
+> regnskapsdata. Råhendelser slettes senest etter 90 dager.
+>
+> Ingenting valgfritt lagres eller sendes før du velger «Tillat bruksmåling».
+> Talli virker på samme måte hvis du velger «Nei takk». Du kan trekke samtykket
+> tilbake når som helst. Les mer i personvernerklæringen.
+
+Controls, with equal visual prominence and one action each:
+
+- `Tillat bruksmåling`
+- `Nei takk`
+- `Les personvernerklæringen` → `/personvern`
+
+## Founder/Legal/Privacy Signoff Checklist
+
+- [x] Controller: ELMER WELFIS, org.nr. 930 835 978; privacy contact
+      `post@talli.no`; no formal DPO at launch, with annual/material-change
+      reassessment.
+- [x] Inventory application-controlled browser keys, IDs, payload fields,
+      database rows, reports, retention and access paths in the table above.
+- [ ] Confirm deployed HTTP/CDN/proxy/runtime/database logs, backups, recipients,
+      processors, regions, transfers and privileged access against current
+      settings and contracts; application source cannot prove these facts.
+- [x] Treat the session ID, hash, timestamps, events and source codes as
+      pseudonymous personal data; do not claim anonymity. Hosted logs remain
+      pending below.
+- [x] Purpose: find where the public company check and onboarding succeed or
+      stop. Basis: consent for device access and subsequent measurement.
+- [x] Record that optional device access requires consent under § 3-15; no
+      strictly-necessary exception is claimed.
+- [x] Approve the exact first-layer text and additive privacy-notice section as
+      the founder/accountable-owner decision.
+- [x] Confirm refusal is as visible and easy as acceptance, service access does
+      not depend on consent, and no optional storage/request precedes consent.
+- [x] Approve a data-minimized consent proof binding time, action, consent
+      version, exact notice digest and released workflow.
+- [x] Verify in code/local evidence that withdrawal is always findable, stops collection immediately,
+      retries deletion safely and has an approved deletion expectation.
+- [x] Approve application retention: 90 days for raw events and minimized
+      consent proof; 30 minutes for the withdrawal tombstone. Hosted logs,
+      backups and automatic-purge evidence remain pending.
+- [ ] Name every processor/recipient, processing region, transfer mechanism and
+      access role from current production contracts and configuration.
+- [ ] Verify that URLs, query strings, raw payloads and identifiers do not leak
+      into application, proxy, platform or provider logs.
+- [x] Choose explicitly: no longitudinal marketing cohort for launch (founder
+      product decision recorded 2026-08-29).
+- [x] Approve the temporary higher-resolution invited-pilot evaluation direction,
+      with protected case-code evidence, raw observations kept no more than 90
+      days, the protected participant register kept 12 months after validation,
+      and a hard `off` requirement for full public launch.
+- [x] Approver: Kristian Elmer, founder/accountable owner, 2026-08-30. Decision:
+      code/public-no-customer-data direction approved; real data and activation
+      remain blocked by the hosted conditions. Canonical notice and consent
+      versions/digests are recorded below; exact release evidence remains open.
+
+## Activation and Approved Notice Publication
+
+An approved notice change requires at least:
+
+- a new privacy-notice version, effective date and SHA-256 digest in
+  `apps/web/app/lib/customer-agreements.ts`;
+- approved copy in `apps/web/app/lib/copy.ts` and consent UI copy/version updates;
+- tests proving exact digest/version, equal choice, no pre-consent activity,
+  withdrawal and retention;
+- any approved lifecycle-aggregation design and database/runtime evidence; and
+- a new immutable release gate on the exact resulting revision.
+
+No existing acceptance or historical notice evidence may be rewritten.
+
+The canonical 2026-08-30 document bindings are:
+
+- Business Terms: version `2026-08-30`, SHA-256
+  `afc6fc3610f05056f3de8cc849a33accbf3bdff7d469aef8be57c5ccbe074c04`;
+- DPA: version `2026-08-30`, SHA-256
+  `1f5c45a882db79fb248bdff92bd1a245e97b9a7a2f174b943b761f67bda4b94a`;
+- Privacy Notice: version `2026-08-30`, SHA-256
+  `041a65be9f020c037bd65b7097e04afdbeb2c944ef45d7bef3dd380e92f907de`; and
+- first-layer measurement notice: version `2026-08-30`, SHA-256
+  `ae97c2c47622e0b6cbc9af083b5822dc8ac322f37c194b2c4967854df6496a6e`.
+
+These bindings are publication inputs, not an activation record. Hosted facts,
+the exact release revision, and the separately provisioned immutable release
+row remain fail-closed.

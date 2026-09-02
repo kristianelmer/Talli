@@ -4,22 +4,22 @@
   "name": "company_access",
   "path": "apps/backend/src/talli_backend/modules/company_access",
   "owner": "backend:company_access",
-  "purpose": "Own authenticated company context, invitation and cancellation lifecycles, non-owner membership administration, and support deletion review with validated sessions, fresh AAL2 policy, RLS, atomic transitions, and tenant concealment.",
+  "purpose": "Own the versioned Norwegian holding-company eligibility boundary, atomic company-year admission and immutable acceptance evidence, authenticated company access, invitations and cancellations, and generated case-bound support authorization through a backend-only verified-actor RLS boundary.",
   "documentation": "apps/backend/src/talli_backend/modules/company_access/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.company_access.public",
   "exports": {
-    "commands": ["AcceptCompanyInvitationRequest", "AdministerCompanyMembershipRequest", "CompanyInvitationCommandRequest", "CreateCompanyInvitationRequest", "FinalizeCompanyDeletionRequest", "InvitationTokenRequest", "RequestCompanyCancellationRequest", "ResumeCompanyCancellationRequest", "ReviewCompanyDeletionRequest"],
-    "queries": ["CompanyAccessService", "CompanyCancellationListResponse", "CompanyContextResponse", "CompanyInvitationListResponse", "CompanyMembershipListResponse", "InvitationLookup", "InvitationSideEffectContinuationList", "InvitationSideEffectCompletion"],
+    "commands": ["AcceptCompanyInvitationRequest", "AdministerCompanyMembershipRequest", "CompanyAgreementAcceptanceRequest", "CompanyInvitationCommandRequest", "CompanyOnboardingRequest", "CompanyYearAdmissionRequest", "CompanyYearEligibilityRecheckRequest", "CreateCompanyInvitationRequest", "EligibilityDefinitiveRequest", "EligibilityPrecheckRequest", "FinalizeCompanyDeletionRequest", "GrantSupportAccessRequest", "InvitationTokenRequest", "OpenSupportCaseRequest", "RequestCompanyCancellationRequest", "ResumeCompanyCancellationRequest", "RevokeSupportAccessRequest", "ReviewCompanyDeletionRequest"],
+    "queries": ["CompanyAccessRecordResponse", "CompanyAccessService", "CompanyAgreementAcceptanceResponse", "CompanyCancellationListResponse", "CompanyContextResponse", "CompanyInvitationListResponse", "CompanyMembershipListResponse", "CompanyOnboardingResponse", "CompanyYearAdmissionResponse", "CompanyYearEligibilityStateResponse", "EligibilityDecisionResponse", "InvitationLookup", "InvitationSideEffectContinuationList", "InvitationSideEffectCompletion", "OperatorContextResponse", "SupportAccessGrantResponse", "SupportCaseOpeningResponse", "SupportCaseSnapshotResponse"],
     "events": [],
     "errors": ["CompanyAccessError"],
-    "identifiers": ["CompanyAccessGateway", "CompanyCancellation", "CompanyContext", "CompanyDeletionReview", "CompanyInvitation", "CompanyMembership", "InvitationRole", "InvitationSideEffectContinuation", "MembershipState", "company_access_adapter"]
+    "identifiers": ["CompanyAccessGateway", "CompanyAccessRecord", "CompanyCancellation", "CompanyContext", "CompanyDeletionReview", "CompanyInvitation", "CompanyMembership", "CompanyRegistryGateway", "CompanyYearAdmissionGatewayCommand", "CompanyYearEligibilityRecheckGatewayCommand", "EligibilityAnswer", "EligibilityDecision", "EligibilityRecheckTrigger", "InvitationRole", "InvitationSideEffectContinuation", "MembershipState", "SupportAccessGrant", "SupportCaseOpening", "company_access_adapter", "company_registry_adapter"]
   },
   "owns": {
     "postgresSchemas": ["public"],
-    "tables": ["public.companies", "public.company_cancellations", "public.company_deletion_reviews", "public.company_invitations", "public.company_memberships"],
+    "tables": ["public.companies", "public.company_cancellations", "public.company_deletion_reviews", "public.company_eligibility_assessments", "public.company_invitations", "public.company_memberships", "public.company_year_acceptances", "public.company_year_admissions", "public.customer_agreement_acceptances", "public.support_access_grants", "public.support_access_operation_receipts", "public.support_case_openings", "public.support_operators"],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql"
+    "migrations": "supabase/migrations/20260830091341_case_bound_support_access.sql"
   },
   "ports": [
     {
@@ -28,17 +28,27 @@
       "contract": "talli_backend.modules.company_access.public.CompanyAccessGateway",
       "registrationDecorator": "talli_backend.modules.company_access.public.company_access_adapter",
       "adapters": ["talli_backend.adapters.supabase_company_access.SupabaseCompanyAccessAdapter"]
+    },
+    {
+      "name": "CompanyRegistryGateway",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_access.public.CompanyRegistryGateway",
+      "registrationDecorator": "talli_backend.modules.company_access.public.company_registry_adapter",
+      "adapters": ["talli_backend.adapters.brreg_company_registry.BrregCompanyRegistryAdapter"]
     }
   ],
   "dependencies": [],
-  "allowedImports": ["__future__", "base64", "collections.abc", "datetime", "hashlib", "json", "pydantic", "re", "secrets", "typing", "uuid"],
+  "allowedImports": ["__future__", "base64", "collections.abc", "datetime", "hashlib", "importlib.resources", "json", "pydantic", "re", "secrets", "typing", "uuid"],
   "forbiddenResponsibilities": [
-    "Company onboarding, agreement acceptance, physical business-data deletion, or general support-operator workflows",
+    "Eligibility or capability claims outside the immutable active company-year manifest",
+    "Physical business-data deletion or unrestricted general support-operator workflows",
     "Service-role access or RLS bypass for ordinary business reads",
     "Web presentation, handwritten web DTOs, or direct browser persistence"
   ],
   "tests": {
     "contract": "apps/backend/tests/test_company_access.py",
+    "eligibility": "apps/backend/tests/test_company_eligibility.py",
+    "database": "tests/company_access_onboarding_database_runtime.test.mjs",
     "architecture": "tests/architecture_foundation.test.mjs"
   },
   "compatibilityExceptions": ["compat-audit-persistence", "compat-company-archive-persistence"]

@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import Link from "next/link";
 
-import { CustomerAgreementAcceptanceFields } from "../../components/CustomerAgreementAcceptanceFields";
+import {
+  formatInvestmentUnits,
+  hasPositiveInvestmentUnits,
+} from "../../../features/investments";
+
 import {
   acknowledgeFilingReviewComment,
   activateBillingSubscription,
@@ -13,9 +17,7 @@ import {
   confirmAuthorityPermission,
   confirmSimulatedRf1086Submission,
   createOpeningBalanceSetup,
-  createWorkspace,
   generateRf1086Preview,
-  importBankCsv,
   inviteWorkspaceReviewer,
   lockCompanyYear,
   markBillingRefundEligible,
@@ -63,7 +65,6 @@ import {
 } from "../../lib/authority-permission";
 import { buildLaunchSignoffGate, launchSignoffKeys, launchSignoffLabel } from "../../lib/launch-signoff";
 import { buildDeadlineDashboard, buildDeadlineReminderPlan, deadlineStatusLabel, defaultReminderPreferences } from "../../lib/deadlines";
-import { summarizeDividendReceivedAnnualImpact } from "../../lib/dividend-received";
 import {
   deriveOpenDividendPayable,
   validateOwnerDividendPaymentInput,
@@ -86,38 +87,43 @@ import {
   listFilingReadinessSnapshots,
   listFilingReviewComments,
   listFilingSubmissions,
-  listHoldingActions,
-  listInvestmentPositions,
   listLaunchSignoffs,
   listLedgerEntries,
   listNotificationOutbox,
   listOpeningSetups,
   listPeriodLocks,
-  searchOperatorSupportDashboard,
 } from "../../lib/supabase/server";
 import { loadWorkspaceData } from "../../lib/workspace-data";
 import { ownerCopy } from "../../lib/copy";
 import { buildWorkspaceSubmissionPresentation } from "./_submission-presentation";
 import { loadPendingCancellationOperation } from "../../lib/cancellation-operation-state";
+import { BankImport } from "../transactions/BankImport";
 
 type WorkspaceProps = {
-  searchParams?: Promise<{ error?: string; operatorOrg?: string; dividendPayment?: string; recovery?: string }>;
+  searchParams?: Promise<{
+    error?: string;
+    dividendPayment?: string;
+    recovery?: string;
+    lockOperationId?: string;
+    manualOperationId?: string;
+    newYearOperationId?: string;
+    adminCostOperationId?: string;
+    bankImportOperationId?: string;
+    bankImportAccountId?: string;
+    bankPreviewSourceFileId?: string;
+    bankPreviewDocumentSha256?: string;
+    bankPreviewTransactionCount?: string;
+    bankPreviewOperationId?: string;
+    adminCostBankTransactionId?: string;
+    dividendReceivedOperationId?: string;
+    sharePurchaseOperationId?: string;
+    shareSaleOperationId?: string;
+    shareholderLoanOperationId?: string;
+    taxSettlementOperationId?: string;
+    ownerDividendPaymentOperationId?: string;
+    ownerDividendPaymentBankTransactionId?: string;
+  }>;
 };
-
-function supportBoundary(entityType: string) {
-  if (entityType !== "AS") {
-    return {
-      status: "blocked",
-      label: "Blokkert",
-      message: "Talli støtter kun AS i første versjon.",
-    };
-  }
-  return {
-    status: "ready",
-    label: "Klar",
-    message: "Selskapet passer enkel holding AS-løypen.",
-  };
-}
 
 export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
   const params = await searchParams;
@@ -209,6 +215,14 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
         return false;
       }
     });
+  const retryAdminCostBankTransactionId = unmatchedTransactions.find(
+    (transaction) =>
+      transaction.id === params?.adminCostBankTransactionId && Number(transaction.amount) < 0,
+  )?.id;
+  const retryOwnerDividendPayment = ownerDividendPayables.find((payable) =>
+    eligibleDividendTransactions(payable).some(
+      (transaction) => transaction.id === params?.ownerDividendPaymentBankTransactionId,
+    ));
   const submissionPresentation = buildWorkspaceSubmissionPresentation({
     submissions,
     authorityTestRuns: primaryAuthorityTestRuns,
@@ -286,17 +300,12 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
               <p className="eyebrow">{ownerCopy.workspace.createEyebrow}</p>
               <h2>{ownerCopy.workspace.createTitle}</h2>
             </div>
-            <form className="dataPanel formPanel widePanel" action={createWorkspace}>
-              <label>
-                Organisasjonsnummer
-                <input name="orgNumber" inputMode="numeric" pattern="[0-9]{9}" required />
-              </label>
-              <CustomerAgreementAcceptanceFields />
-              <button className="primaryButton" type="submit">
-                {ownerCopy.workspace.createCta}
-              </button>
-              <p>{ownerCopy.workspace.onlyAs}</p>
-            </form>
+            <div className="dataPanel formPanel widePanel">
+              <p>Sjekk hele selskapsåret gratis før du oppretter selskapet i Talli.</p>
+              <Link className="primaryButton" href="/sjekk-selskapet">
+                Sjekk selskapet gratis
+              </Link>
+            </div>
           </section>
 
           <section className="band mutedBand">
@@ -306,12 +315,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
             </div>
             <div className="readinessGrid">
               {companies.map((company) => {
-                const boundary = supportBoundary(company.entity_type);
                 return (
                   <div className="readinessItem" key={company.id}>
                     <span>{company.org_number}</span>
-                    <strong data-status={boundary.status}>{company.name}</strong>
-                    <p>{boundary.message}</p>
+                    <strong>{company.name}</strong>
+                    <p>Selskapet er opprettet gjennom den endelige selskapsårsjekken.</p>
                     <p>
                       {company.address ? `${company.address}, ` : ""}
                       {company.postal_code} {company.city}
@@ -341,6 +349,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                 </div>
                 <form className="dataPanel formPanel widePanel" action={createOpeningBalanceSetup}>
                   <input name="companyId" type="hidden" value={companies[0].id} />
+                  <input
+                    name="operationId"
+                    type="hidden"
+                    value={params?.newYearOperationId ?? randomUUID()}
+                  />
                   <label>
                     Inntektsår
                     <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
@@ -403,6 +416,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                           .join(", ")}
                       </p>
                       <form action={generateRf1086Preview}>
+                        <input name="companyId" type="hidden" value={setup.company_id} />
                         <input name="setupId" type="hidden" value={setup.id} />
                         <button className="secondaryButton" type="submit">
                           Generer RF-1086
@@ -543,6 +557,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                 </div>
                 <form className="dataPanel formPanel widePanel" action={lockCompanyYear}>
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
+                  <input name="operationId" type="hidden" value={params?.lockOperationId ?? randomUUID()} />
                   <label>
                     Inntektsår
                     <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
@@ -842,6 +857,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <h2>Registrer støttet aksjonær- eller konsernlån.</h2>
                 </div>
                 <form className="dataPanel formPanel widePanel" action={recordShareholderLoan}>
+                  <input
+                    name="operationId"
+                    type="hidden"
+                    value={params?.shareholderLoanOperationId ?? randomUUID()}
+                  />
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår
@@ -917,6 +937,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <h2>Beregn estimat og poster betaling eller refusjon.</h2>
                 </div>
                 <form className="dataPanel formPanel widePanel" action={recordTaxSettlement}>
+                  <input
+                    name="operationId"
+                    type="hidden"
+                    value={params?.taxSettlementOperationId ?? randomUUID()}
+                  />
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår
@@ -1559,6 +1584,8 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <div className="setupGrid">
                     {ownerDividendPayables.map((payable) => {
                       const eligible = eligibleDividendTransactions(payable);
+                      const retryingThisPayment =
+                        retryOwnerDividendPayment?.decisionId === payable.decisionId;
                       return (
                         <div className="dataPanel formPanel" key={payable.finalizationId}>
                           <span className="panelLabel">Beslutning {payable.incomeYear}</span>
@@ -1578,6 +1605,15 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                             <p data-status="warning">Ingen uavstemte utgående banktransaksjoner passer restgjelden.</p>
                           ) : (
                             <form action={recordOwnerDividendPayment}>
+                              <input
+                                name="operationId"
+                                type="hidden"
+                                value={
+                                  retryingThisPayment && params?.ownerDividendPaymentOperationId
+                                    ? params.ownerDividendPaymentOperationId
+                                    : randomUUID()
+                                }
+                              />
                               <input name="decisionId" type="hidden" value={payable.decisionId} />
                               <input name="documentSetId" type="hidden" value={payable.documentSetId} />
                               <input name="decisionHash" type="hidden" value={payable.decisionHash} />
@@ -1585,7 +1621,15 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                               <input name="ledgerEntryId" type="hidden" value={randomUUID()} />
                               <label>
                                 Utgående banktransaksjon
-                                <select name="bankTransactionId" required defaultValue="">
+                                <select
+                                  name="bankTransactionId"
+                                  required
+                                  defaultValue={
+                                    retryingThisPayment
+                                      ? params?.ownerDividendPaymentBankTransactionId
+                                      : ""
+                                  }
+                                >
                                   <option value="" disabled>Velg transaksjon</option>
                                   {eligible.map((transaction) => (
                                     <option value={transaction.id} key={transaction.id}>
@@ -1610,24 +1654,33 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <h2>Importer bank og avstem enkel administrasjonskostnad.</h2>
                 </div>
                 <div className="setupGrid">
-                  <form className="dataPanel formPanel" action={importBankCsv}>
-                    <span className="panelLabel">Bank CSV</span>
-                    <input name="companyId" type="hidden" value={primaryCompanyId} />
-                    <label>
-                      Inntektsår
-                      <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
-                    </label>
-                    <label>
-                      CSV
-                      <textarea name="csvText" placeholder="date,text,amount,balance" required />
-                    </label>
-                    <button className="primaryButton" type="submit">
-                      Importer bank
-                    </button>
-                  </form>
+                  <div className="dataPanel formPanel">
+                    <BankImport
+                      companyId={primaryCompanyId}
+                      incomeYear={primaryIncomeYear}
+                      returnTo="/workspace"
+                      retryOperationId={params?.bankImportOperationId}
+                      retryAccountId={params?.bankImportAccountId}
+                      persistedPreview={params?.bankPreviewSourceFileId && params.bankPreviewDocumentSha256 ? {
+                        sourceFileId: params.bankPreviewSourceFileId,
+                        documentSha256: params.bankPreviewDocumentSha256,
+                        transactionCount: Number(params.bankPreviewTransactionCount ?? "0"),
+                        operationId: params.bankPreviewOperationId,
+                      } : undefined}
+                    />
+                  </div>
 
                   <form className="dataPanel formPanel" action={recordAdminCost}>
                     <span className="panelLabel">Administrasjonskostnad</span>
+                    <input
+                      name="operationId"
+                      type="hidden"
+                      value={
+                        retryAdminCostBankTransactionId && params?.adminCostOperationId
+                          ? params.adminCostOperationId
+                          : randomUUID()
+                      }
+                    />
                     <input name="companyId" type="hidden" value={primaryCompanyId} />
                     <label>
                       Inntektsår
@@ -1635,7 +1688,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     </label>
                     <label>
                       Banktransaksjon
-                      <select name="bankTransactionId" required>
+                      <select
+                        name="bankTransactionId"
+                        required
+                        defaultValue={retryAdminCostBankTransactionId ?? ""}
+                      >
                         <option value="">Velg uavstemt utbetaling</option>
                         {unmatchedTransactions
                           .filter((transaction) => Number(transaction.amount) < 0)
@@ -1709,6 +1766,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <h2>Poster kvalifiserende utbytte fra porteføljeselskap.</h2>
                 </div>
                 <form className="dataPanel formPanel widePanel" action={recordDividendReceived}>
+                  <input
+                    name="operationId"
+                    type="hidden"
+                    value={params?.dividendReceivedOperationId ?? randomUUID()}
+                  />
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår
@@ -1719,8 +1781,17 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     <input name="payingCompanyName" required />
                   </label>
                   <label>
-                    Investering-ID
-                    <input name="linkedInvestmentId" placeholder="Velg samme ID som investeringen" required />
+                    Investering
+                    <select name="positionId" defaultValue="" required>
+                      <option value="" disabled>Velg investering</option>
+                      {positions
+                        .filter((position) => position.company_id === primaryCompanyId)
+                        .map((position) => (
+                          <option key={position.id} value={position.id}>
+                            {position.name}
+                          </option>
+                        ))}
+                    </select>
                   </label>
                   <label>
                     Vedtaksdato
@@ -1734,46 +1805,9 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     Brutto beløp
                     <input name="grossAmount" inputMode="decimal" placeholder="0" required />
                   </label>
-                  <label>
-                    Skattebehandling
-                    <select name="taxTreatment" defaultValue="fritaksmetoden">
-                      <option value="fritaksmetoden">Fritaksmetoden</option>
-                      <option value="outside_fritaksmetoden">Utenfor fritaksmetoden</option>
-                      <option value="needs_accountant">Må vurderes</option>
-                    </select>
-                  </label>
-                  <label>
-                    Banktransaksjon
-                    <select name="bankTransactionId" defaultValue="">
-                      <option value="">Ingen bankmatch</option>
-                      {unmatchedTransactions
-                        .filter((transaction) => Number(transaction.amount) > 0)
-                        .map((transaction) => (
-                          <option key={transaction.id} value={transaction.id}>
-                            {transaction.transaction_date} {transaction.text} {Number(transaction.amount).toFixed(2)} kr
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-                  <label>
-                    Bilag
-                    <select name="documentId" defaultValue="">
-                      <option value="">Ingen bilagskobling</option>
-                      {documents.map((document) => (
-                        <option key={document.id} value={document.id}>
-                          {document.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Dokumentstatus
-                    <select name="documentStatus" defaultValue="not_required">
-                      <option value="attached">Vedlagt</option>
-                      <option value="missing_accepted_warning">Mangler, akseptert varsel</option>
-                      <option value="not_required">Ikke påkrevd</option>
-                    </select>
-                  </label>
+                  <p className="fieldHint">
+                    Fritaksmetoden og tre prosent skattepliktig inntekt beregnes av investeringstjenesten.
+                  </p>
                   <button className="secondaryButton" type="submit">
                     Poster mottatt utbytte
                   </button>
@@ -1802,14 +1836,15 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <h2>Registrer kjøp og oppdater investeringsregister.</h2>
                 </div>
                 <form className="dataPanel formPanel widePanel" action={recordSharePurchase}>
+                  <input
+                    name="operationId"
+                    type="hidden"
+                    value={params?.sharePurchaseOperationId ?? randomUUID()}
+                  />
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår
                     <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
-                  </label>
-                  <label>
-                    Investering-ID
-                    <input name="investmentKey" placeholder="Stabil intern ID" required />
                   </label>
                   <label>
                     Selskap
@@ -1823,15 +1858,12 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     Investeringstype
                     <select name="investmentKind" defaultValue="norwegian_private_company">
                       <option value="norwegian_private_company">Norsk privat AS</option>
-                      <option value="simple_listed_security">Børsnotert/annet</option>
                     </select>
                   </label>
                   <label>
                     Skattebehandling
                     <select name="taxTreatment" defaultValue="fritaksmetoden">
                       <option value="fritaksmetoden">Fritaksmetoden</option>
-                      <option value="outside_fritaksmetoden">Utenfor fritaksmetoden</option>
-                      <option value="needs_accountant">Må vurderes</option>
                     </select>
                   </label>
                   <label>
@@ -1846,37 +1878,18 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     Kjøpsbeløp
                     <input name="purchaseAmount" inputMode="decimal" placeholder="0" required />
                   </label>
-                  <label>
-                    Banktransaksjon
-                    <select name="bankTransactionId" defaultValue="">
-                      <option value="">Ingen bankmatch</option>
-                      {unmatchedTransactions
-                        .filter((transaction) => Number(transaction.amount) < 0)
-                        .map((transaction) => (
-                          <option key={transaction.id} value={transaction.id}>
-                            {transaction.transaction_date} {transaction.text} {Number(transaction.amount).toFixed(2)} kr
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-                  <label>
-                    Bilag
-                    <select name="documentId" defaultValue="">
-                      <option value="">Ingen bilagskobling</option>
-                      {documents.map((document) => (
-                        <option key={document.id} value={document.id}>
-                          {document.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Dokumentstatus
-                    <select name="documentStatus" defaultValue="not_required">
-                      <option value="attached">Vedlagt</option>
-                      <option value="missing_accepted_warning">Mangler, akseptert varsel</option>
-                      <option value="not_required">Ikke påkrevd</option>
-                    </select>
+                  <input name="documentStatus" type="hidden" value="not_required" />
+                  <label className="checkboxField">
+                    <input
+                      name="investmentBoundaryConfirmed"
+                      type="checkbox"
+                      value="true"
+                      required
+                    />
+                    <span>
+                      Jeg bekrefter én ordinær aksjeklasse med like rettigheter,
+                      uten uvanlige særrettigheter, og begrenset, ikke-aktiv handel.
+                    </span>
                   </label>
                   <button className="secondaryButton" type="submit">
                     Poster aksjekjøp
@@ -1887,7 +1900,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     <div className="readinessItem" key={position.id}>
                       <span>{position.investment_key}</span>
                       <strong data-status="ready">{position.name}</strong>
-                      <p>{Number(position.share_count).toFixed(2)} aksjer</p>
+                      <p>{formatInvestmentUnits(position.share_count)} aksjer</p>
                       <p>Kostpris: {Number(position.cost_basis).toFixed(2)} kr</p>
                       <p>Bevegelser: {position.movements.length}</p>
                     </div>
@@ -1908,6 +1921,11 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                   <h2>Selg fra eksisterende investeringsposisjon.</h2>
                 </div>
                 <form className="dataPanel formPanel widePanel" action={recordShareSale}>
+                  <input
+                    name="operationId"
+                    type="hidden"
+                    value={params?.shareSaleOperationId ?? randomUUID()}
+                  />
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
                   <label>
                     Inntektsår
@@ -1918,10 +1936,10 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     <select name="positionId" required>
                       <option value="">Velg posisjon</option>
                       {positions
-                        .filter((position) => Number(position.share_count) > 0)
+                        .filter((position) => hasPositiveInvestmentUnits(position.share_count))
                         .map((position) => (
                           <option key={position.id} value={position.id}>
-                            {position.name} ({Number(position.share_count).toFixed(2)} aksjer)
+                            {position.name} ({formatInvestmentUnits(position.share_count)} aksjer)
                           </option>
                         ))}
                     </select>
@@ -2008,6 +2026,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                 </div>
                 <form className="dataPanel formPanel widePanel" action={postManualJournal}>
                   <input name="companyId" type="hidden" value={primaryCompanyId} />
+                  <input name="operationId" type="hidden" value={params?.manualOperationId ?? randomUUID()} />
                   <label>
                     Inntektsår
                     <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />

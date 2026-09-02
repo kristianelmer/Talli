@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
-  corporateSignedArtifactStorageKey,
   requiredCorporateArtifactSigners,
   validateSignedCorporateArtifactUpload,
 } from "../apps/web/app/lib/corporate-signed-artifacts.ts";
@@ -22,11 +21,7 @@ const previewSource = readFileSync(
   "utf8",
 );
 
-const companyId = "22222222-2222-4222-8222-222222222222";
-const setId = "33333333-3333-4333-8333-333333333333";
-const artifactId = "44444444-4444-4444-8444-444444444444";
-
-test("signed corporate upload validates PDF bytes, MIME, size, and a separate immutable key", () => {
+test("signed corporate upload validates PDF bytes and delegates immutable storage identity", () => {
   const bytes = new TextEncoder().encode("%PDF-1.7\nsigned copy\n");
   const validated = validateSignedCorporateArtifactUpload({
     filename: "Årsprotokoll signert.pdf",
@@ -36,16 +31,9 @@ test("signed corporate upload validates PDF bytes, MIME, size, and a separate im
   assert.equal(validated.byteLength, bytes.length);
   assert.match(validated.contentSha256, /^[0-9a-f]{64}$/);
   assert.equal(validated.mimeType, "application/pdf");
-  const key = corporateSignedArtifactStorageKey({
-    companyId,
-    incomeYear: 2025,
-    setId,
-    artifactId,
-    artifactKind: "annual_board_minutes",
-    contentSha256: validated.contentSha256,
-  });
-  assert.match(key, /signed-owner-attested/);
-  assert.ok(!key.endsWith(`/annual_board_minutes/${validated.contentSha256}.pdf`));
+  assert.match(actionsSource, /finalStatus: "signed_owner_attested"/u);
+  assert.match(actionsSource, /linkedTo: `corporate_decision:/u);
+  assert.match(actionsSource, /uploadDocumentObject/u);
 
   assert.throws(() => validateSignedCorporateArtifactUpload({
     filename: "fake.pdf",
@@ -103,10 +91,21 @@ test("server exposes step-up-protected immutable lifecycle actions", () => {
     assert.match(action, new RegExp(rpcMarker));
     assert.match(action, /decision_hash|decisionHash/);
   }
+  const finalizeStart = actionsSource.indexOf("export async function finalizeCorporateDecision");
+  const finalizeEnd = actionsSource.indexOf("\nexport async function ", finalizeStart + 1);
+  const finalize = actionsSource.slice(finalizeStart, finalizeEnd < 0 ? undefined : finalizeEnd);
+  assert.match(finalize, /finalizeLedgerCorporateDecision/);
+  assert.match(finalize, /requiredFormUuid\(formData, "operationId"\)/);
+  assert.match(finalize, /finalizationId:\s*operationId/);
+  assert.match(finalize, /finalizeDecisionOperationId/);
+  assert.match(finalize, /verifyCurrentAnnualSource:\s*false/);
+  assert.doesNotMatch(finalize, /\.rpc\("finalize_corporate_decision"/);
   const attestStart = actionsSource.indexOf("export async function attestSignedCorporateArtifact");
   const attestEnd = actionsSource.indexOf("\nexport async function ", attestStart + 1);
   const attest = actionsSource.slice(attestStart, attestEnd);
-  assert.match(attest, /upsert:\s*false|uploadSignedCorporateArtifact/);
+  assert.match(attest, /uploadDocumentObject/);
+  assert.match(attest, /finalStatus: "signed_owner_attested"/);
+  assert.match(attest, /document\.contentSha256 !== artifact\.contentSha256/);
   assert.doesNotMatch(attest, /remove\([^)]*unsigned/i);
 });
 
@@ -117,8 +116,10 @@ test("review, signed attestation, and preview UI use honest owner-only copy", ()
   assert.match(pageSource, /requiredCorporateArtifactSigners/);
   assert.match(uploadSource, /signert kopi bekreftet av eier/i);
   assert.doesNotMatch(`${pageSource}\n${uploadSource}`, /verifisert signatur/i);
-  assert.match(previewSource, /company_memberships/);
-  assert.match(previewSource, /role["']?,\s*["']owner|\.eq\(["']role["'],\s*["']owner["']\)/);
-  assert.match(previewSource, /Content-Disposition["']?,\s*["']inline|inline;/i);
+  assert.match(previewSource, /createDocumentTransfer/);
+  assert.match(previewSource, /"preview"/);
+  assert.doesNotMatch(previewSource, /\.from\(["']company_memberships["']\)/);
+  assert.doesNotMatch(previewSource, /\.from\(["']documents["']\)|storage\.from/u);
+  assert.match(previewSource, /redirect\(signedUrl\)/);
   assert.match(previewSource, /application\/pdf/);
 });
