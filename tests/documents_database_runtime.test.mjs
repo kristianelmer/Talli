@@ -111,6 +111,12 @@ test(
           id,org_number,name,entity_type,address,postal_code,city,status_text,source,created_by
         ) values ($1,$2,'Documents AS','AS','Testveien 1','0150','Oslo','Active','test',$3)
       `, [companyId, orgNumber, actorId]);
+      await client.query(
+        `insert into public.company_memberships(
+           company_id,user_id,role,invited_by,accepted_at
+         ) values ($1,$2,'owner',$2,pg_catalog.now())`,
+        [companyId, actorId],
+      );
 
       await client.query(String.raw`
         do $authority$ begin
@@ -218,12 +224,28 @@ test(
       });
 
       await client.query("reset role");
+      await client.query(String.raw`
+        do $investment_authority$ begin
+          execute pg_catalog.format(
+            'grant investments_store_owner to %I', current_user
+          );
+        end $investment_authority$
+      `);
+      await client.query("set local role investments_store_owner");
       await client.query(
         `insert into investments.source_fact_registry(
            company_id,source_capability,source_record_id,source_revision,fact_sha256
          ) values ($1,'DOCUMENTS',$2,1,$3)`,
         [companyId, documentId, "b".repeat(64)],
       );
+      await client.query("reset role");
+      await client.query(String.raw`
+        do $investment_authority$ begin
+          execute pg_catalog.format(
+            'revoke investments_store_owner from %I', current_user
+          );
+        end $investment_authority$
+      `);
       await client.query("set local role documents_executor");
       const investmentEvidence = await client.query(
         "select documents.has_evidence_references_v1($1) as linked",
