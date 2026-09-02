@@ -216,6 +216,28 @@ test(
         removed_at: null,
         removal_reason: null,
       });
+
+      await client.query("reset role");
+      await client.query(
+        `insert into investments.source_fact_registry(
+           company_id,source_capability,source_record_id,source_revision,fact_sha256
+         ) values ($1,'DOCUMENTS',$2,1,$3)`,
+        [companyId, documentId, "b".repeat(64)],
+      );
+      await client.query("set local role documents_executor");
+      const investmentEvidence = await client.query(
+        "select documents.has_evidence_references_v1($1) as linked",
+        [documentId],
+      );
+      assert.equal(investmentEvidence.rows[0].linked, true);
+      await expectDatabaseError(
+        client,
+        {
+          text: "select * from documents.mark_removed_v1($1,$2,$3)",
+          values: [documentId, "duplicate", actorId],
+        },
+        /documents_evidence_linked/iu,
+      );
     } finally {
       await client.query("rollback");
       await client.end();

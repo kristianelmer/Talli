@@ -254,6 +254,10 @@ as $function$
     )
     or exists (select 1 from public.production_feedback_artifacts item where item.document_id=p_document_id)
     or exists (
+      select 1 from investments.source_fact_registry item
+      where item.source_capability='DOCUMENTS' and item.source_record_id=p_document_id
+    )
+    or exists (
       select 1 from public.ledger_entries item join public.documents document on document.id=p_document_id
       where item.company_id=document.company_id and pg_catalog.strpos(item.memo, p_document_id::text)>0
     )
