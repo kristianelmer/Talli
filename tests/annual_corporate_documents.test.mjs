@@ -3,14 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
-  buildAnnualCloseDecisionInput,
-  corporateAnnualSourceHash,
-} from "../apps/web/app/lib/corporate-decision-facts.ts";
-import { evaluateCorporateDocumentReadiness } from "../apps/web/app/lib/corporate-document-readiness.ts";
-import { corporateDecisionHash, renderCorporateDocuments } from "../apps/web/app/lib/corporate-documents.ts";
-import {
   buildAnnualCloseBasis,
-  buildAnnualCloseReviewedFacts,
 } from "../apps/web/app/lib/annual-corporate-documents.ts";
 
 const actionsSource = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
@@ -28,18 +21,9 @@ const readinessSource = readFileSync(
   "utf8",
 );
 
-const company = {
-  id: "22222222-2222-4222-8222-222222222222",
-  organizationNumber: "310279617",
-  legalName: "LOGISK ØDE TIGER AS",
-};
-const shareholders = [
-  { id: "owner-1", name: "Viktig Rosin", shareCount: 60, order: 0 },
-  { id: "owner-2", name: "Jørgen Østby", shareCount: 40, order: 1 },
-];
 const annualData = {
   id: "33333333-3333-4333-8333-333333333333",
-  company_id: company.id,
+  company_id: "22222222-2222-4222-8222-222222222222",
   income_year: 2025,
   answers: { general_meeting_approved: true },
   confirmations: ["general_meeting_approved"],
@@ -58,57 +42,10 @@ const annualAccountsPayload = {
   feedback: [],
 };
 
-function annualDecisionInput() {
-  const basis = buildAnnualCloseBasis({ annualData, annualAccountsPayload });
-  const reviewedFacts = buildAnnualCloseReviewedFacts({ company, shareholders, annualBasis: basis });
-  return {
-    basis,
-    decision: buildAnnualCloseDecisionInput({
-      company,
-      shareholders,
-      annualBasis: basis,
-      submission: {
-        requestId: "11111111-1111-4111-8111-111111111111",
-        incomeYear: 2025,
-        boardMeeting: {
-          meetingDate: "2026-04-15",
-          meetingTime: "09:00:00",
-          place: "Os",
-          treatmentMethod: "physical",
-        },
-        boardParticipants: [
-          { participantId: "board-1", name: "Viktig Rosin", role: "chair", order: 0 },
-          { participantId: "board-2", name: "Jørgen Østby", role: "member", order: 1 },
-        ],
-        generalMeeting: {
-          meetingDate: "2026-05-10",
-          meetingTime: "10:00:00",
-          place: "Os",
-          meetingForm: "physical",
-          chairName: "Viktig Rosin",
-          coSignerName: "Jørgen Østby",
-        },
-        shareholderVotes: [
-          { shareholderId: "owner-1", representedShareCount: 60, vote: "for" },
-          { shareholderId: "owner-2", representedShareCount: 40, vote: "for" },
-        ],
-        oneShareClassConfirmed: true,
-        fullBoardParticipationConfirmed: true,
-        unanimousBoardConfirmed: true,
-        supportedDividendBasisConfirmed: true,
-        prudentEquityAndLiquidityConfirmed: true,
-        reviewedFacts,
-        annualResultAllocationOre: basis.resultAfterTaxOre,
-      },
-    }),
-  };
-}
-
 test("annual basis binds exact annual-data and annual-account payload hashes", () => {
-  const { basis, decision } = annualDecisionInput();
-  assert.equal(decision.decision_kind, "annual_close");
-  assert.equal(decision.source_hash, corporateAnnualSourceHash(basis));
-  assert.equal(decision.dividend, null);
+  const basis = buildAnnualCloseBasis({ annualData, annualAccountsPayload });
+  assert.match(basis.annualDataHash, /^[0-9a-f]{64}$/u);
+  assert.match(basis.annualAccountsPayloadHash, /^[0-9a-f]{64}$/u);
 
   const changedBasis = buildAnnualCloseBasis({
     annualData,
@@ -118,44 +55,41 @@ test("annual basis binds exact annual-data and annual-account payload hashes", (
         field.tag === "aarsresultat/aarets" ? { ...field, value: 125_001 } : field),
     },
   });
-  assert.notEqual(corporateAnnualSourceHash(changedBasis), decision.source_hash);
+  assert.notEqual(changedBasis.annualAccountsPayloadHash, basis.annualAccountsPayloadHash);
 });
 
-test("annual decision renders exactly the two annual PDF artifacts", async () => {
-  const { decision } = annualDecisionInput();
-  const rendered = await renderCorporateDocuments(decision);
-  assert.equal(rendered.status, "rendered");
-  assert.deepEqual(
-    rendered.artifacts.map(({ artifactKind }) => artifactKind),
-    ["annual_board_minutes", "annual_general_meeting_minutes"],
+test("annual decisions render only inside the Python backend", () => {
+  const webRenderer = readFileSync(
+    new URL("../apps/web/app/lib/corporate-documents.ts", import.meta.url),
+    "utf8",
   );
+  const backendRenderer = readFileSync(
+    new URL(
+      "../apps/backend/src/talli_backend/modules/corporate_governance/rendering.py",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.doesNotMatch(webRenderer, /child_process|holding_cli|renderCorporateDocuments/u);
+  assert.match(backendRenderer, /ANNUAL_BOARD_MINUTES/u);
+  assert.match(backendRenderer, /ANNUAL_GENERAL_MEETING_MINUTES/u);
 });
 
-test("annual readiness becomes stale when the persisted source facts change", () => {
-  const { basis, decision } = annualDecisionInput();
-  const decisionHash = corporateDecisionHash(decision);
-  const input = {
-    currentDecisionHash: decisionHash,
-    currentSourceHash: corporateAnnualSourceHash(basis),
-    decision: {
-      id: decision.request_id,
-      decision_kind: "annual_close",
-      decision_hash: decisionHash,
-      source_hash: decision.source_hash,
-    },
-    documentSet: {
-      id: "44444444-4444-4444-8444-444444444444",
-      decision_id: decision.request_id,
-      decision_hash: decisionHash,
-    },
-    artifacts: [],
-    events: [],
-    finalizations: [],
-  };
-  assert.equal(evaluateCorporateDocumentReadiness(input).currentHashMatches, true);
-  const stale = evaluateCorporateDocumentReadiness({ ...input, currentSourceHash: "f".repeat(64) });
-  assert.equal(stale.currentHashMatches, false);
-  assert.ok(stale.blockers.some(({ code }) => code === "corporate_documents_current_hash_mismatch"));
+test("annual readiness is read from the Python governance API", () => {
+  const transport = readFileSync(
+    new URL("../apps/web/features/corporate-governance/transport.ts", import.meta.url),
+    "utf8",
+  );
+  const service = readFileSync(
+    new URL(
+      "../apps/backend/src/talli_backend/modules/corporate_governance/service.py",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(transport, /corporateGovernanceReadDecisionReadiness/u);
+  assert.match(service, /def assess_lifecycle/u);
+  assert.doesNotMatch(actionsSource, /evaluateCorporateDocumentReadiness|deriveCorporateDecisionState/u);
 });
 
 test("annual server action uses backend canonicalization and rendered artifacts", () => {
@@ -175,9 +109,8 @@ test("annual server action uses backend canonicalization and rendered artifacts"
   const refreshStart = actionsSource.indexOf("export async function refreshAnnualReadinessSnapshots");
   const refreshEnd = actionsSource.indexOf("\nexport async function ", refreshStart + 1);
   const refresh = actionsSource.slice(refreshStart, refreshEnd < 0 ? undefined : refreshEnd);
-  assert.match(refresh, /corporateDocuments/);
-  assert.match(refresh, /currentAnnualSourceHash/);
-  assert.match(refresh, /corporateDecisionFinalizations/);
+  assert.match(refresh, /readCorporateDecisionReadiness/);
+  assert.doesNotMatch(refresh, /corporateDocumentEvents|corporateDecisionFinalizations/);
 });
 
 test("year-end and filing UI expose the annual corporate lifecycle honestly", () => {

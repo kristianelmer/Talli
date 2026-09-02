@@ -710,17 +710,6 @@ export interface LedgerAdministrativeCostWire {
   payee: string;
 }
 
-export interface LedgerCorporateDecisionFinalizationWire {
-  companyId: string;
-  decisionHash: string;
-  decisionId: string;
-  finalizationId: string;
-  holdingActionId?: string | null;
-  incomeYear: number;
-  ledgerEntryId?: string | null;
-  setId: string;
-}
-
 export interface LedgerCompanyYearCloseAssessmentWire {
   assessmentId: string;
   closeLockId: string | null;
@@ -1702,6 +1691,24 @@ export interface DocumentWire {
   storageKey: string;
 }
 
+export type AnnualCloseEventKind = "signing_requested" | "rejected";
+
+export interface AnnualCloseEventWire {
+  companyId: string;
+  decisionHash: string;
+  documentSetId: string;
+  eventId: string;
+  eventKind: AnnualCloseEventKind;
+  metadata: Record<string, string>;
+}
+
+export interface AnnualCloseFinalizationWire {
+  companyId: string;
+  decisionHash: string;
+  documentSetId: string;
+  finalizationId: string;
+}
+
 export interface AnnualCloseLifecycleWire {
   companyId: string;
   decisionHash: string;
@@ -1736,6 +1743,19 @@ export interface AnnualCloseProposalWire {
   unanimousBoardConfirmed: boolean;
 }
 
+export interface AnnualCloseSignedArtifactWire {
+  artifactKind: "annual_board_minutes" | "annual_general_meeting_minutes";
+  byteLength: number;
+  companyId: string;
+  contentSha256: string;
+  decisionHash: string;
+  documentSetId: string;
+  filename: string;
+  signedArtifactId: string;
+  signedDocumentId: string;
+  unsignedArtifactId: string;
+}
+
 export type BoardRole = "chair" | "member";
 
 export type BoardTreatmentMethod = "physical" | "video" | "written";
@@ -1753,6 +1773,23 @@ export interface CorporateAnnualBasisWire {
 }
 
 export type CorporateArtifactKind = "dividend_board_proposal" | "dividend_general_meeting_minutes" | "annual_board_minutes" | "annual_general_meeting_minutes";
+
+export interface CorporateArtifactRecordWire {
+  artifactId: string;
+  artifactKind: CorporateArtifactKind;
+  byteLength: number;
+  companyId: string;
+  contentSha256: string;
+  createdAt: string;
+  createdBy: string;
+  documentId: string;
+  documentSetId: string;
+  incomeYear: number;
+  supersedesArtifactId: string | null;
+  variant: CorporateArtifactVariant;
+}
+
+export type CorporateArtifactVariant = "unsigned" | "signed_owner_attested";
 
 export interface CorporateBoardMeetingWire {
   meetingDate: string;
@@ -1808,6 +1845,96 @@ export interface CorporateCanonicalShareholderWire {
   vote: ShareholderVote;
 }
 
+export type CorporateDecisionKind = "owner_dividend" | "annual_close";
+
+export interface CorporateDecisionRecordWire {
+  annualCloseSourceId: string;
+  canonicalInput: Record<string, unknown>;
+  companyId: string;
+  createdAt: string;
+  createdBy: string;
+  decisionHash: string;
+  decisionId: string;
+  decisionKind: CorporateDecisionKind;
+  documentSetId: string;
+  incomeYear: number;
+  sourceHash: string;
+}
+
+export interface CorporateDocumentReadinessBlockerWire {
+  code: string;
+  message: string;
+}
+
+export interface CorporateDocumentReadinessWire {
+  accountingPolicyVersion: string | null;
+  annualSubmissionReady: boolean;
+  blockers: CorporateDocumentReadinessBlockerWire[];
+  companyId: string;
+  currentSourceHash: string | null;
+  currentSourceMatches: boolean | null;
+  decisionHash: string | null;
+  decisionId: string | null;
+  decisionKind: CorporateDecisionKind;
+  declaredAmountOre: number | null;
+  documentSetId: string | null;
+  finalizationId: string | null;
+  finalized: boolean;
+  generatedArtifactHashes: Record<string, string>;
+  incomeYear: number;
+  paidAmountOre: number | null;
+  readyForSigning: boolean;
+  remainingAmountOre: number | null;
+  requiredSigners: Record<string, string[]>;
+  signedArtifactHashes: Record<string, string>;
+  sourceHash: string | null;
+  state: OwnerDividendState | null;
+}
+
+export interface CorporateDocumentSetRecordWire {
+  companyId: string;
+  createdAt: string;
+  createdBy: string;
+  decisionHash: string;
+  decisionId: string;
+  documentSetId: string;
+  incomeYear: number;
+  templateFamily: string;
+  templateVersion: string;
+}
+
+export interface CorporateEventRecordWire {
+  actorId: string;
+  artifactId: string | null;
+  companyId: string;
+  contentSha256: string | null;
+  decisionHash: string;
+  decisionId: string;
+  documentSetId: string;
+  eventId: string;
+  eventKind: string;
+  idempotencyKey: string;
+  incomeYear: number;
+  metadata: Record<string, unknown>;
+  occurredAt: string;
+}
+
+export interface CorporateFinalizationRecordWire {
+  accountingEntryId: string | null;
+  accountingPolicyVersion: string | null;
+  annualCloseSourceId: string | null;
+  companyId: string;
+  createdAt: string;
+  createdBy: string;
+  decisionHash: string;
+  decisionId: string;
+  finalizationId: string;
+  finalizationKind: string;
+  holdingActionId: string | null;
+  incomeYear: number;
+  signedArtifactHashes: Record<string, string>;
+}
+
 export interface CorporateCompanyFactsWire {
   legalName: string;
   organizationNumber: string;
@@ -1845,6 +1972,14 @@ export interface CorporateOwnerDividendFactsWire {
   amountOre: number;
   liquidityAfterPaymentOre: number;
   paymentDate: string;
+}
+
+export interface CorporateLifecycleSnapshotWire {
+  artifacts: CorporateArtifactRecordWire[];
+  decisions: CorporateDecisionRecordWire[];
+  documentSets: CorporateDocumentSetRecordWire[];
+  events: CorporateEventRecordWire[];
+  finalizations: CorporateFinalizationRecordWire[];
 }
 
 export interface CorporateReviewedFactsWire {
@@ -1905,6 +2040,17 @@ export interface OwnerDividendDocumentsWire {
   documentSetId: string;
 }
 
+export type OwnerDividendEventKind = "signing_requested" | "rejected";
+
+export interface OwnerDividendEventWire {
+  companyId: string;
+  decisionHash: string;
+  documentSetId: string;
+  eventId: string;
+  eventKind: OwnerDividendEventKind;
+  metadata: Record<string, string>;
+}
+
 export interface OwnerDividendFinalizationWire {
   companyId: string;
   decisionHash: string;
@@ -1963,7 +2109,20 @@ export interface OwnerDividendProposalWire {
   unanimousBoardConfirmed: boolean;
 }
 
-export type OwnerDividendState = "proposed" | "documents_registered" | "facts_approved" | "finalized" | "partially_paid" | "paid" | "rejected";
+export interface OwnerDividendSignedArtifactWire {
+  artifactKind: "dividend_board_proposal" | "dividend_general_meeting_minutes";
+  byteLength: number;
+  companyId: string;
+  contentSha256: string;
+  decisionHash: string;
+  documentSetId: string;
+  filename: string;
+  signedArtifactId: string;
+  signedDocumentId: string;
+  unsignedArtifactId: string;
+}
+
+export type OwnerDividendState = "proposed" | "documents_registered" | "facts_approved" | "signing_requested" | "signed_owner_attested" | "finalized" | "partially_paid" | "paid" | "rejected";
 
 export interface ProposedOwnerDividendWire {
   artifacts: RenderedCorporateArtifactWire[];
@@ -3110,21 +3269,6 @@ function isLedgerAdministrativeCostWire(value: unknown): value is LedgerAdminist
     (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
     typeof value.paidDate === "string" &&
     (typeof value.payee === "string" && value.payee.length >= 1 && value.payee.length <= 255)
-  );
-}
-
-function isLedgerCorporateDecisionFinalizationWire(value: unknown): value is LedgerCorporateDecisionFinalizationWire {
-  return (
-    isRecord(value) &&
-    hasOnlyProperties(value, ["companyId","decisionHash","decisionId","finalizationId","holdingActionId","incomeYear","ledgerEntryId","setId"]) &&
-    isUuid(value.companyId) &&
-    (typeof value.decisionHash === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.decisionHash)) &&
-    isUuid(value.decisionId) &&
-    isUuid(value.finalizationId) &&
-    (value.holdingActionId === undefined || (isUuid(value.holdingActionId) || value.holdingActionId === null)) &&
-    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
-    (value.ledgerEntryId === undefined || (isUuid(value.ledgerEntryId) || value.ledgerEntryId === null)) &&
-    isUuid(value.setId)
   );
 }
 
@@ -4451,6 +4595,34 @@ function isDocumentWire(value: unknown): value is DocumentWire {
   );
 }
 
+function isAnnualCloseEventKind(value: unknown): value is AnnualCloseEventKind {
+  return value === "signing_requested" || value === "rejected";
+}
+
+function isAnnualCloseEventWire(value: unknown): value is AnnualCloseEventWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","decisionHash","documentSetId","eventId","eventKind","metadata"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.decisionHash === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.decisionHash)) &&
+    isUuid(value.documentSetId) &&
+    isUuid(value.eventId) &&
+    isAnnualCloseEventKind(value.eventKind) &&
+    isRecord(value.metadata) && Object.values(value.metadata).every((item) => typeof item === "string")
+  );
+}
+
+function isAnnualCloseFinalizationWire(value: unknown): value is AnnualCloseFinalizationWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","decisionHash","documentSetId","finalizationId"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.decisionHash === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.decisionHash)) &&
+    isUuid(value.documentSetId) &&
+    isUuid(value.finalizationId)
+  );
+}
+
 function isAnnualCloseLifecycleWire(value: unknown): value is AnnualCloseLifecycleWire {
   return (
     isRecord(value) &&
@@ -4493,6 +4665,23 @@ function isAnnualCloseProposalWire(value: unknown): value is AnnualCloseProposal
   );
 }
 
+function isAnnualCloseSignedArtifactWire(value: unknown): value is AnnualCloseSignedArtifactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["artifactKind","byteLength","companyId","contentSha256","decisionHash","documentSetId","filename","signedArtifactId","signedDocumentId","unsignedArtifactId"]) &&
+    (value.artifactKind === "annual_board_minutes" || value.artifactKind === "annual_general_meeting_minutes") &&
+    (typeof value.byteLength === "number" && Number.isInteger(value.byteLength) && value.byteLength >= 1 && value.byteLength <= 10485760) &&
+    isUuid(value.companyId) &&
+    (typeof value.contentSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.contentSha256)) &&
+    (typeof value.decisionHash === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.decisionHash)) &&
+    isUuid(value.documentSetId) &&
+    (typeof value.filename === "string" && value.filename.length >= 1 && value.filename.length <= 255) &&
+    isUuid(value.signedArtifactId) &&
+    isUuid(value.signedDocumentId) &&
+    isUuid(value.unsignedArtifactId)
+  );
+}
+
 function isBoardRole(value: unknown): value is BoardRole {
   return value === "chair" || value === "member";
 }
@@ -4519,6 +4708,29 @@ function isCorporateAnnualBasisWire(value: unknown): value is CorporateAnnualBas
 
 function isCorporateArtifactKind(value: unknown): value is CorporateArtifactKind {
   return value === "dividend_board_proposal" || value === "dividend_general_meeting_minutes" || value === "annual_board_minutes" || value === "annual_general_meeting_minutes";
+}
+
+function isCorporateArtifactRecordWire(value: unknown): value is CorporateArtifactRecordWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["artifactId","artifactKind","byteLength","companyId","contentSha256","createdAt","createdBy","documentId","documentSetId","incomeYear","supersedesArtifactId","variant"]) &&
+    isUuid(value.artifactId) &&
+    isCorporateArtifactKind(value.artifactKind) &&
+    typeof value.byteLength === "number" && Number.isInteger(value.byteLength) &&
+    isUuid(value.companyId) &&
+    typeof value.contentSha256 === "string" &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    isUuid(value.documentId) &&
+    isUuid(value.documentSetId) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    (isUuid(value.supersedesArtifactId) || value.supersedesArtifactId === null) &&
+    isCorporateArtifactVariant(value.variant)
+  );
+}
+
+function isCorporateArtifactVariant(value: unknown): value is CorporateArtifactVariant {
+  return value === "unsigned" || value === "signed_owner_attested";
 }
 
 function isCorporateBoardMeetingWire(value: unknown): value is CorporateBoardMeetingWire {
@@ -4595,6 +4807,122 @@ function isCorporateCanonicalShareholderWire(value: unknown): value is Corporate
   );
 }
 
+function isCorporateDecisionKind(value: unknown): value is CorporateDecisionKind {
+  return value === "owner_dividend" || value === "annual_close";
+}
+
+function isCorporateDecisionRecordWire(value: unknown): value is CorporateDecisionRecordWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["annualCloseSourceId","canonicalInput","companyId","createdAt","createdBy","decisionHash","decisionId","decisionKind","documentSetId","incomeYear","sourceHash"]) &&
+    isUuid(value.annualCloseSourceId) &&
+    isRecord(value.canonicalInput) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    typeof value.decisionHash === "string" &&
+    isUuid(value.decisionId) &&
+    isCorporateDecisionKind(value.decisionKind) &&
+    isUuid(value.documentSetId) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.sourceHash === "string"
+  );
+}
+
+function isCorporateDocumentReadinessBlockerWire(value: unknown): value is CorporateDocumentReadinessBlockerWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["code","message"]) &&
+    typeof value.code === "string" &&
+    typeof value.message === "string"
+  );
+}
+
+function isCorporateDocumentReadinessWire(value: unknown): value is CorporateDocumentReadinessWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountingPolicyVersion","annualSubmissionReady","blockers","companyId","currentSourceHash","currentSourceMatches","decisionHash","decisionId","decisionKind","declaredAmountOre","documentSetId","finalizationId","finalized","generatedArtifactHashes","incomeYear","paidAmountOre","readyForSigning","remainingAmountOre","requiredSigners","signedArtifactHashes","sourceHash","state"]) &&
+    (typeof value.accountingPolicyVersion === "string" || value.accountingPolicyVersion === null) &&
+    typeof value.annualSubmissionReady === "boolean" &&
+    Array.isArray(value.blockers) && value.blockers.every((item) => isCorporateDocumentReadinessBlockerWire(item)) &&
+    isUuid(value.companyId) &&
+    (typeof value.currentSourceHash === "string" || value.currentSourceHash === null) &&
+    (typeof value.currentSourceMatches === "boolean" || value.currentSourceMatches === null) &&
+    (typeof value.decisionHash === "string" || value.decisionHash === null) &&
+    (isUuid(value.decisionId) || value.decisionId === null) &&
+    isCorporateDecisionKind(value.decisionKind) &&
+    (typeof value.declaredAmountOre === "number" && Number.isInteger(value.declaredAmountOre) || value.declaredAmountOre === null) &&
+    (isUuid(value.documentSetId) || value.documentSetId === null) &&
+    (isUuid(value.finalizationId) || value.finalizationId === null) &&
+    typeof value.finalized === "boolean" &&
+    isRecord(value.generatedArtifactHashes) && Object.values(value.generatedArtifactHashes).every((item) => typeof item === "string") &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    (typeof value.paidAmountOre === "number" && Number.isInteger(value.paidAmountOre) || value.paidAmountOre === null) &&
+    typeof value.readyForSigning === "boolean" &&
+    (typeof value.remainingAmountOre === "number" && Number.isInteger(value.remainingAmountOre) || value.remainingAmountOre === null) &&
+    isRecord(value.requiredSigners) && Object.values(value.requiredSigners).every((item) => Array.isArray(item) && item.every((item) => typeof item === "string")) &&
+    isRecord(value.signedArtifactHashes) && Object.values(value.signedArtifactHashes).every((item) => typeof item === "string") &&
+    (typeof value.sourceHash === "string" || value.sourceHash === null) &&
+    (isOwnerDividendState(value.state) || value.state === null)
+  );
+}
+
+function isCorporateDocumentSetRecordWire(value: unknown): value is CorporateDocumentSetRecordWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","createdAt","createdBy","decisionHash","decisionId","documentSetId","incomeYear","templateFamily","templateVersion"]) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    typeof value.decisionHash === "string" &&
+    isUuid(value.decisionId) &&
+    isUuid(value.documentSetId) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.templateFamily === "string" &&
+    typeof value.templateVersion === "string"
+  );
+}
+
+function isCorporateEventRecordWire(value: unknown): value is CorporateEventRecordWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["actorId","artifactId","companyId","contentSha256","decisionHash","decisionId","documentSetId","eventId","eventKind","idempotencyKey","incomeYear","metadata","occurredAt"]) &&
+    isUuid(value.actorId) &&
+    (isUuid(value.artifactId) || value.artifactId === null) &&
+    isUuid(value.companyId) &&
+    (typeof value.contentSha256 === "string" || value.contentSha256 === null) &&
+    typeof value.decisionHash === "string" &&
+    isUuid(value.decisionId) &&
+    isUuid(value.documentSetId) &&
+    isUuid(value.eventId) &&
+    typeof value.eventKind === "string" &&
+    typeof value.idempotencyKey === "string" &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    isRecord(value.metadata) &&
+    isDateTime(value.occurredAt)
+  );
+}
+
+function isCorporateFinalizationRecordWire(value: unknown): value is CorporateFinalizationRecordWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountingEntryId","accountingPolicyVersion","annualCloseSourceId","companyId","createdAt","createdBy","decisionHash","decisionId","finalizationId","finalizationKind","holdingActionId","incomeYear","signedArtifactHashes"]) &&
+    (isUuid(value.accountingEntryId) || value.accountingEntryId === null) &&
+    (typeof value.accountingPolicyVersion === "string" || value.accountingPolicyVersion === null) &&
+    (isUuid(value.annualCloseSourceId) || value.annualCloseSourceId === null) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    typeof value.decisionHash === "string" &&
+    isUuid(value.decisionId) &&
+    isUuid(value.finalizationId) &&
+    typeof value.finalizationKind === "string" &&
+    (isUuid(value.holdingActionId) || value.holdingActionId === null) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    isRecord(value.signedArtifactHashes) && Object.values(value.signedArtifactHashes).every((item) => typeof item === "string")
+  );
+}
+
 function isCorporateCompanyFactsWire(value: unknown): value is CorporateCompanyFactsWire {
   return (
     isRecord(value) &&
@@ -4651,6 +4979,18 @@ function isCorporateOwnerDividendFactsWire(value: unknown): value is CorporateOw
     typeof value.amountOre === "number" && Number.isInteger(value.amountOre) &&
     typeof value.liquidityAfterPaymentOre === "number" && Number.isInteger(value.liquidityAfterPaymentOre) &&
     typeof value.paymentDate === "string"
+  );
+}
+
+function isCorporateLifecycleSnapshotWire(value: unknown): value is CorporateLifecycleSnapshotWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["artifacts","decisions","documentSets","events","finalizations"]) &&
+    Array.isArray(value.artifacts) && value.artifacts.every((item) => isCorporateArtifactRecordWire(item)) &&
+    Array.isArray(value.decisions) && value.decisions.every((item) => isCorporateDecisionRecordWire(item)) &&
+    Array.isArray(value.documentSets) && value.documentSets.every((item) => isCorporateDocumentSetRecordWire(item)) &&
+    Array.isArray(value.events) && value.events.every((item) => isCorporateEventRecordWire(item)) &&
+    Array.isArray(value.finalizations) && value.finalizations.every((item) => isCorporateFinalizationRecordWire(item))
   );
 }
 
@@ -4746,6 +5086,23 @@ function isOwnerDividendDocumentsWire(value: unknown): value is OwnerDividendDoc
   );
 }
 
+function isOwnerDividendEventKind(value: unknown): value is OwnerDividendEventKind {
+  return value === "signing_requested" || value === "rejected";
+}
+
+function isOwnerDividendEventWire(value: unknown): value is OwnerDividendEventWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","decisionHash","documentSetId","eventId","eventKind","metadata"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.decisionHash === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.decisionHash)) &&
+    isUuid(value.documentSetId) &&
+    isUuid(value.eventId) &&
+    isOwnerDividendEventKind(value.eventKind) &&
+    isRecord(value.metadata) && Object.values(value.metadata).every((item) => typeof item === "string")
+  );
+}
+
 function isOwnerDividendFinalizationWire(value: unknown): value is OwnerDividendFinalizationWire {
   return (
     isRecord(value) &&
@@ -4820,8 +5177,25 @@ function isOwnerDividendProposalWire(value: unknown): value is OwnerDividendProp
   );
 }
 
+function isOwnerDividendSignedArtifactWire(value: unknown): value is OwnerDividendSignedArtifactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["artifactKind","byteLength","companyId","contentSha256","decisionHash","documentSetId","filename","signedArtifactId","signedDocumentId","unsignedArtifactId"]) &&
+    (value.artifactKind === "dividend_board_proposal" || value.artifactKind === "dividend_general_meeting_minutes") &&
+    (typeof value.byteLength === "number" && Number.isInteger(value.byteLength) && value.byteLength >= 1 && value.byteLength <= 10485760) &&
+    isUuid(value.companyId) &&
+    (typeof value.contentSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.contentSha256)) &&
+    (typeof value.decisionHash === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.decisionHash)) &&
+    isUuid(value.documentSetId) &&
+    (typeof value.filename === "string" && value.filename.length >= 1 && value.filename.length <= 255) &&
+    isUuid(value.signedArtifactId) &&
+    isUuid(value.signedDocumentId) &&
+    isUuid(value.unsignedArtifactId)
+  );
+}
+
 function isOwnerDividendState(value: unknown): value is OwnerDividendState {
-  return value === "proposed" || value === "documents_registered" || value === "facts_approved" || value === "finalized" || value === "partially_paid" || value === "paid" || value === "rejected";
+  return value === "proposed" || value === "documents_registered" || value === "facts_approved" || value === "signing_requested" || value === "signed_owner_attested" || value === "finalized" || value === "partially_paid" || value === "paid" || value === "rejected";
 }
 
 function isProposedOwnerDividendWire(value: unknown): value is ProposedOwnerDividendWire {
@@ -5323,6 +5697,19 @@ export interface DocumentsListRequest extends TalliRequestOptions {
 export interface DocumentsBackupProjectionRequest extends TalliRequestOptions {
   companyId: string;
   incomeYear: number;
+}
+
+export interface CorporateGovernanceListRequest extends TalliRequestOptions {
+  companyIds: readonly string[];
+}
+
+export interface CorporateGovernanceReadinessRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+  decisionKind: CorporateDecisionKind;
+  annualCloseSourceId?: string;
+  annualDataSha256?: string;
+  annualAccountsPayloadSha256?: string;
 }
 
 export interface LedgerOpeningSnapshotListRequest extends TalliRequestOptions {
@@ -6025,6 +6412,53 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
+    async corporateGovernanceListDecisionLifecycle(
+      request: CorporateGovernanceListRequest,
+    ): Promise<CorporateLifecycleSnapshotWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/decisions?${query}`,
+        "GET",
+        request,
+        undefined,
+        isCorporateLifecycleSnapshotWire,
+      );
+    },
+
+    async corporateGovernanceReadDecisionReadiness(
+      request: CorporateGovernanceReadinessRequest,
+    ): Promise<CorporateDocumentReadinessWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+        decisionKind: request.decisionKind,
+      });
+      if (request.annualCloseSourceId) query.set("annualCloseSourceId", request.annualCloseSourceId);
+      if (request.annualDataSha256) query.set("annualDataSha256", request.annualDataSha256);
+      if (request.annualAccountsPayloadSha256) query.set("annualAccountsPayloadSha256", request.annualAccountsPayloadSha256);
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/readiness?${query}`,
+        "GET",
+        request,
+        undefined,
+        isCorporateDocumentReadinessWire,
+      );
+    },
+
+    async corporateGovernanceReadDecisionLifecycle(
+      decisionId: string,
+      request: TalliRequestOptions = {},
+    ): Promise<CorporateLifecycleSnapshotWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/decisions/${encodeURIComponent(decisionId)}`,
+        "GET",
+        request,
+        undefined,
+        isCorporateLifecycleSnapshotWire,
+      );
+    },
+
     async corporateGovernanceProposeOwnerDividend(
       body: OwnerDividendProposalWire,
       request: TalliMutationOptions,
@@ -6058,6 +6492,62 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     ): Promise<AnnualCloseLifecycleWire> {
       return executeJson(
         `${baseUrl}/api/v1/corporate-governance/annual-closes/${encodeURIComponent(decisionId)}/documents`,
+        "POST",
+        request,
+        body,
+        isAnnualCloseLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceApproveAnnualClose(
+      decisionId: string,
+      body: OwnerDividendApprovalWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualCloseLifecycleWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/annual-closes/${encodeURIComponent(decisionId)}/approvals`,
+        "POST",
+        request,
+        body,
+        isAnnualCloseLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceRecordAnnualCloseEvent(
+      decisionId: string,
+      body: AnnualCloseEventWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualCloseLifecycleWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/annual-closes/${encodeURIComponent(decisionId)}/events`,
+        "POST",
+        request,
+        body,
+        isAnnualCloseLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceFinalizeAnnualClose(
+      decisionId: string,
+      body: AnnualCloseFinalizationWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualCloseLifecycleWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/annual-closes/${encodeURIComponent(decisionId)}/finalizations`,
+        "POST",
+        request,
+        body,
+        isAnnualCloseLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceAttestAnnualCloseSignedArtifact(
+      decisionId: string,
+      body: AnnualCloseSignedArtifactWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualCloseLifecycleWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/annual-closes/${encodeURIComponent(decisionId)}/signed-artifacts`,
         "POST",
         request,
         body,
@@ -6099,6 +6589,34 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     ): Promise<OwnerDividendLifecycleWire> {
       return executeJson(
         `${baseUrl}/api/v1/corporate-governance/owner-dividends/${encodeURIComponent(decisionId)}/approvals`,
+        "POST",
+        request,
+        body,
+        isOwnerDividendLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceRecordOwnerDividendEvent(
+      decisionId: string,
+      body: OwnerDividendEventWire,
+      request: TalliMutationOptions,
+    ): Promise<OwnerDividendLifecycleWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/owner-dividends/${encodeURIComponent(decisionId)}/events`,
+        "POST",
+        request,
+        body,
+        isOwnerDividendLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceAttestOwnerDividendSignedArtifact(
+      decisionId: string,
+      body: OwnerDividendSignedArtifactWire,
+      request: TalliMutationOptions,
+    ): Promise<OwnerDividendLifecycleWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/owner-dividends/${encodeURIComponent(decisionId)}/signed-artifacts`,
         "POST",
         request,
         body,
@@ -6479,20 +6997,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         body,
         request,
         "TAX_SETTLEMENT",
-      );
-    },
-
-    async ledgerFinalizeCorporateDecision(
-      body: LedgerCorporateDecisionFinalizationWire,
-      request: TalliMutationOptions,
-    ): Promise<LedgerWriterResultWire> {
-      return executeLedgerWriter(
-        "/api/v1/ledger/corporate-decisions/finalizations",
-        body,
-        request,
-        body.ledgerEntryId === undefined || body.ledgerEntryId === null
-          ? null
-          : "OWNER_DIVIDEND_DECLARED",
       );
     },
 

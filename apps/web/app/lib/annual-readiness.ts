@@ -4,10 +4,6 @@ import { annualAccountsPayloadFeedback } from "./annual-accounts.ts";
 import type { BillingAccount } from "./billing.ts";
 import { productionBillingGate } from "./billing.ts";
 import { companyTaxReturnPayloadFeedback } from "./company-tax-return.ts";
-import {
-  evaluateCorporateDocumentReadiness,
-  type CorporateDocumentReadinessInput,
-} from "./corporate-document-readiness.ts";
 import type {
   BankTransactionRow,
   AnnualDataRow,
@@ -60,7 +56,11 @@ export type AnnualReadinessInput = {
   filingSubmissions: FilingSubmissionRow[];
   corporateDocuments?: {
     enabled: boolean;
-    lifecycle: CorporateDocumentReadinessInput;
+    readiness: {
+      blockers: Array<{ code: string; message: string }>;
+      annualSubmissionReady: boolean;
+      state: string | null;
+    };
   };
 };
 
@@ -241,7 +241,7 @@ function skattemeldingIssues(input: AnnualReadinessInput): AnnualReadinessIssue[
 function aarsregnskapIssues(input: AnnualReadinessInput): AnnualReadinessIssue[] {
   const issues: AnnualReadinessIssue[] = [];
   if (input.corporateDocuments?.enabled) {
-    const readiness = evaluateCorporateDocumentReadiness(input.corporateDocuments.lifecycle);
+    const readiness = input.corporateDocuments.readiness;
     for (const blockerIssue of readiness.blockers) {
       issues.push(block(blockerIssue.code, blockerIssue.message, "corporate_documents"));
     }

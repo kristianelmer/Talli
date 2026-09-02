@@ -21,12 +21,10 @@ from psycopg.rows import dict_row
 
 from talli_backend.application.ledger_session import LedgerAuthenticationError
 from talli_backend.application.ledger_workflow import (
-    FinalizeCorporateDecisionCommand,
     LedgerApplication,
     LedgerSessionFactory,
     NewYearStartCommand,
     RecordAdministrativeCostCommand,
-    RecordOwnerDividendPaymentCommand,
     RecordTaxSettlementCommand,
 )
 from talli_backend.application.opening_snapshot_compatibility import (
@@ -380,28 +378,6 @@ def _writer_payload(command: LedgerCommand) -> dict[str, object]:
             documentStatus=command.document_status,
             bankTransactionId=_optional_source(command.bank_transaction_id),
             documentId=_optional_source(command.document_id),
-        )
-    elif isinstance(command, FinalizeCorporateDecisionCommand):
-        payload.update(
-            decisionId=str(command.decision_id),
-            setId=str(command.set_id),
-            decisionHash=command.decision_hash,
-            finalizationId=str(command.finalization_id),
-            holdingActionId=_optional_source(command.holding_action_id),
-            ledgerEntryId=(
-                str(command.ledger_entry_id)
-                if command.ledger_entry_id is not None
-                else None
-            ),
-        )
-    elif isinstance(command, RecordOwnerDividendPaymentCommand):
-        payload.update(
-            decisionId=str(command.decision_id),
-            setId=str(command.set_id),
-            decisionHash=command.decision_hash,
-            bankTransactionId=str(command.bank_transaction_id),
-            holdingActionId=str(command.holding_action_id),
-            ledgerEntryId=str(command.ledger_entry_id),
         )
     else:
         raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
@@ -2302,53 +2278,6 @@ class SupabaseLedgerWorkflowTransaction(SupabaseLedgerSession):
             posted_entry,
             prepared,
         )
-
-    async def prepare_corporate_decision_finalization(
-        self, command: object
-    ) -> dict[str, object]:
-        typed = self._writer_command(command, FinalizeCorporateDecisionCommand)
-        return await self._prepare_writer(
-            "select backend_system.prepare_corporate_decision_finalization_v1(%s::jsonb, %s::text) as result",
-            typed,
-        )
-
-    async def complete_corporate_decision_finalization(
-        self,
-        command: object,
-        posted_entry: PostedLedgerEntry | None,
-        prepared: dict[str, object],
-    ) -> dict[str, object]:
-        typed = self._writer_command(command, FinalizeCorporateDecisionCommand)
-        return await self._complete_writer(
-            "select backend_system.complete_corporate_decision_finalization_v1(%s::jsonb, %s::uuid, %s::jsonb, %s::text) as result",
-            typed,
-            posted_entry,
-            prepared,
-        )
-
-    async def prepare_owner_dividend_payment(
-        self, command: object
-    ) -> dict[str, object]:
-        typed = self._writer_command(command, RecordOwnerDividendPaymentCommand)
-        return await self._prepare_writer(
-            "select backend_system.prepare_owner_dividend_payment_v1(%s::jsonb, %s::text) as result",
-            typed,
-        )
-
-    async def complete_owner_dividend_payment(
-        self,
-        command: object,
-        posted_entry: PostedLedgerEntry,
-        prepared: dict[str, object],
-    ) -> dict[str, object]:
-        typed = self._writer_command(command, RecordOwnerDividendPaymentCommand)
-        return await self._complete_writer(
-            "select backend_system.complete_owner_dividend_payment_v1(%s::jsonb, %s::uuid, %s::jsonb, %s::text) as result",
-            typed,
-            posted_entry,
-            prepared,
-        )
-
 
 def compose_ledger_application(
     sessions: LedgerSessionFactory | None = None,

@@ -1,16 +1,6 @@
 import { createHash } from "node:crypto";
 
-import type { CorporateArtifactKind } from "./corporate-documents.ts";
-
 export const MAX_SIGNED_CORPORATE_PDF_BYTES = 10 * 1024 * 1024;
-
-type CanonicalSignerInput = {
-  board_participants?: Array<{ name?: unknown }>;
-  general_meeting?: {
-    chair_name?: unknown;
-    co_signer_name?: unknown;
-  };
-};
 
 export type ValidatedSignedCorporateArtifact = {
   filename: string;
@@ -51,25 +41,4 @@ export function validateSignedCorporateArtifactUpload(input: {
     contentSha256: createHash("sha256").update(input.bytes).digest("hex"),
     bytes: input.bytes,
   };
-}
-
-function normalizedSignerNames(values: unknown[]) {
-  const names = values
-    .filter((value): value is string => typeof value === "string")
-    .map((value) => value.trim().replace(/\s+/g, " "))
-    .filter(Boolean);
-  return [...new Set(names)].sort((left, right) => left.localeCompare(right, "nb"));
-}
-
-export function requiredCorporateArtifactSigners(
-  artifactKind: CorporateArtifactKind,
-  canonicalInput: CanonicalSignerInput,
-): string[] {
-  if (artifactKind === "dividend_board_proposal" || artifactKind === "annual_board_minutes") {
-    return normalizedSignerNames((canonicalInput.board_participants ?? []).map(({ name }) => name));
-  }
-  return normalizedSignerNames([
-    canonicalInput.general_meeting?.chair_name,
-    canonicalInput.general_meeting?.co_signer_name,
-  ]);
 }

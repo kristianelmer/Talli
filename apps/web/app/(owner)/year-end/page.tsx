@@ -8,8 +8,6 @@ import {
   buildAnnualCloseBasis,
   buildAnnualCloseReviewedFacts,
 } from "../../lib/annual-corporate-documents";
-import { corporateAnnualSourceHash } from "../../lib/corporate-decision-facts";
-import { evaluateCorporateDocumentReadiness } from "../../lib/corporate-document-readiness";
 import { ownerCopy } from "../../lib/copy";
 import { loadWorkspaceData } from "../../lib/workspace-data";
 import { CorporateAnnualDecisionForm } from "./CorporateAnnualDecisionForm";
@@ -31,9 +29,7 @@ export default async function YearEndPage() {
     shareholders,
     corporateDecisions,
     corporateDocumentSets,
-    corporateDocumentArtifacts,
-    corporateDocumentEvents,
-    corporateDecisionFinalizations,
+    primaryCorporateDecisionReadiness,
   } = data;
 
   const c = ownerCopy.yearEnd;
@@ -104,7 +100,7 @@ export default async function YearEndPage() {
     : [];
   let annualBasis = null;
   let reviewedFacts = null;
-  let sourceHash: string | null = null;
+  const sourceHash = primaryCorporateDecisionReadiness?.currentSourceHash ?? null;
   let annualDecisionBlocker: string | null = null;
   if (!primaryAnnualData) {
     annualDecisionBlocker = "Fullfør årsavslutningen før årsprotokollene opprettes.";
@@ -136,7 +132,6 @@ export default async function YearEndPage() {
         })),
         annualBasis,
       });
-      sourceHash = corporateAnnualSourceHash(annualBasis);
     } catch (error) {
       annualDecisionBlocker = error instanceof Error
         ? error.message
@@ -151,32 +146,7 @@ export default async function YearEndPage() {
   const currentSet = currentDecision
     ? corporateDocumentSets.find((set) => set.decision_id === currentDecision.id) ?? null
     : null;
-  const lifecycle = evaluateCorporateDocumentReadiness({
-    currentDecisionHash: currentDecision?.decision_hash ?? "",
-    currentSourceHash: sourceHash ?? "",
-    decision: currentDecision ? {
-      id: currentDecision.id,
-      decision_kind: currentDecision.decision_kind,
-      decision_hash: currentDecision.decision_hash,
-      source_hash: currentDecision.source_hash,
-    } : null,
-    documentSet: currentSet ? {
-      id: currentSet.id,
-      decision_id: currentSet.decision_id,
-      decision_hash: currentSet.decision_hash,
-    } : null,
-    artifacts: currentSet
-      ? corporateDocumentArtifacts.filter((artifact) => artifact.set_id === currentSet.id)
-      : [],
-    events: currentDecision
-      ? corporateDocumentEvents.filter((event) => event.decision_id === currentDecision.id)
-      : [],
-    finalizations: currentDecision
-      ? corporateDecisionFinalizations.filter(
-          (finalization) => finalization.decision_id === currentDecision.id,
-        )
-      : [],
-  });
+  const lifecycle = primaryCorporateDecisionReadiness;
 
   return (
     <section className="wizard">
@@ -200,13 +170,13 @@ export default async function YearEndPage() {
         sourceHash={sourceHash}
         featureEnabled={featureEnabled}
         blocker={annualDecisionBlocker}
-        lifecycle={currentDecision && currentSet ? {
+        lifecycle={currentDecision && currentSet && lifecycle ? {
           decisionId: currentDecision.id,
-          state: lifecycle.state,
+          state: lifecycle.state ?? "proposed",
           decisionHash: currentDecision.decision_hash,
           sourceHash: currentDecision.source_hash,
           templateVersion: currentSet.template_version,
-          stale: !lifecycle.currentHashMatches,
+          stale: lifecycle.currentSourceMatches === false,
         } : null}
         draftIds={{
           decisionId: randomUUID(),

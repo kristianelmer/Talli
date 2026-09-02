@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
-  requiredCorporateArtifactSigners,
   validateSignedCorporateArtifactUpload,
 } from "../apps/web/app/lib/corporate-signed-artifacts.ts";
 
@@ -52,35 +51,13 @@ test("signed corporate upload validates PDF bytes and delegates immutable storag
   }), /10 MB/i);
 });
 
-test("required signer names are derived from immutable canonical input", () => {
-  const canonicalInput = {
-    board_participants: [
-      { name: "Åse Nordmann" },
-      { name: "Jørgen Østby" },
-      { name: "Åse Nordmann" },
-    ],
-    general_meeting: {
-      chair_name: "Viktig Rosin",
-      co_signer_name: "Jørgen Østby",
-    },
-  };
-  assert.deepEqual(
-    requiredCorporateArtifactSigners("annual_board_minutes", canonicalInput),
-    ["Jørgen Østby", "Åse Nordmann"],
-  );
-  assert.deepEqual(
-    requiredCorporateArtifactSigners("annual_general_meeting_minutes", canonicalInput),
-    ["Jørgen Østby", "Viktig Rosin"],
-  );
-});
-
 test("server exposes step-up-protected immutable lifecycle actions", () => {
   const expected = [
-    ["approveCorporateDecisionFacts", "approve_corporate_facts", "facts_approved"],
-    ["recordCorporateSigningRequested", "approve_corporate_facts", "signing_requested"],
-    ["attestSignedCorporateArtifact", "attest_signed_corporate_document", "attest_corporate_signed_artifact"],
-    ["rejectCorporateDecision", "approve_corporate_facts", "rejected"],
-    ["finalizeCorporateDecision", "finalize_corporate_decision", "finalize_corporate_decision"],
+    ["approveCorporateDecisionFacts", "approve_corporate_facts", "approveOwnerDividend|approveAnnualClose"],
+    ["recordCorporateSigningRequested", "approve_corporate_facts", "recordOwnerDividendEvent|recordAnnualCloseEvent"],
+    ["attestSignedCorporateArtifact", "attest_signed_corporate_document", "attestOwnerDividendSignedArtifact|attestAnnualCloseSignedArtifact"],
+    ["rejectCorporateDecision", "approve_corporate_facts", "recordOwnerDividendEvent|recordAnnualCloseEvent"],
+    ["finalizeCorporateDecision", "finalize_corporate_decision", "finalizeOwnerDividend|finalizeAnnualClose"],
   ];
   for (const [name, sensitiveAction, rpcMarker] of expected) {
     const start = actionsSource.indexOf(`export async function ${name}`);
@@ -94,7 +71,8 @@ test("server exposes step-up-protected immutable lifecycle actions", () => {
   const finalizeStart = actionsSource.indexOf("export async function finalizeCorporateDecision");
   const finalizeEnd = actionsSource.indexOf("\nexport async function ", finalizeStart + 1);
   const finalize = actionsSource.slice(finalizeStart, finalizeEnd < 0 ? undefined : finalizeEnd);
-  assert.match(finalize, /finalizeLedgerCorporateDecision/);
+  assert.match(finalize, /finalizeOwnerDividend/);
+  assert.match(finalize, /finalizeAnnualClose/);
   assert.match(finalize, /requiredFormUuid\(formData, "operationId"\)/);
   assert.match(finalize, /finalizationId:\s*operationId/);
   assert.match(finalize, /finalizeDecisionOperationId/);
@@ -113,7 +91,8 @@ test("review, signed attestation, and preview UI use honest owner-only copy", ()
   assert.match(pageSource, /persisted facts|lagrede fakta/i);
   assert.match(pageSource, /decisionHash|beslutningshash/i);
   assert.match(pageSource, /content_sha256|innholdshash/i);
-  assert.match(pageSource, /requiredCorporateArtifactSigners/);
+  assert.match(pageSource, /requiredSigners/);
+  assert.doesNotMatch(pageSource, /requiredCorporateArtifactSigners/);
   assert.match(uploadSource, /signert kopi bekreftet av eier/i);
   assert.doesNotMatch(`${pageSource}\n${uploadSource}`, /verifisert signatur/i);
   assert.match(previewSource, /createDocumentTransfer/);

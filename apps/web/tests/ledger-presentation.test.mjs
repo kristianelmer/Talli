@@ -1230,7 +1230,7 @@ test("all relocated transactional writers use the stable operation ID at the gen
   const coordinators = {
     recordAdminCost: ["postLedgerAdministrativeCost", null],
     recordDividendReceived: ["recognizeInvestmentReceivedDividend", "eventId"],
-    finalizeCorporateDecision: ["finalizeLedgerCorporateDecision", "finalizationId"],
+    finalizeCorporateDecision: ["finalizeOwnerDividend", "finalizationId"],
     recordOwnerDividendPayment: ["recordOwnerDividendPaymentThroughApi", "paymentEventId"],
     recordShareholderLoan: ["recordShareholderLoanThroughApi", "actionId"],
     recordTaxSettlement: ["postLedgerTaxSettlement", "actionId"],
@@ -1330,6 +1330,7 @@ test("unknown coordinator outcomes preserve only the scoped retry operation", ()
   for (const [actionName, fields] of Object.entries(retryFields)) {
     const action = ledgerServerActionSource(actionName);
     const governance = [
+      "finalizeCorporateDecision",
       "recordOwnerDividendPayment",
       "recordShareholderLoan",
     ].includes(actionName);

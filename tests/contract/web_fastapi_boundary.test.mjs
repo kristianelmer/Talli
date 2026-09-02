@@ -87,7 +87,6 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
     ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
     ["/api/v1/ledger/administrative-costs", "post", "ledgerPostAdministrativeCost"],
     ["/api/v1/ledger/tax-settlements", "post", "ledgerPostTaxSettlement"],
-    ["/api/v1/ledger/corporate-decisions/finalizations", "post", "ledgerFinalizeCorporateDecision"],
     ["/api/v1/ledger/manual-journals", "post", "ledgerPostManualJournal"],
     ["/api/v1/ledger/period-locks", "post", "ledgerLockPeriod"],
   ];
@@ -105,6 +104,7 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
     "/api/v1/ledger/structured-entries",
     "/api/v1/ledger/investment-dividends",
     "/api/v1/ledger/shareholder-loans",
+    "/api/v1/ledger/corporate-decisions/finalizations",
   ]) {
     assert.equal(contract.paths[path], undefined);
   }
@@ -122,10 +122,7 @@ test("the committed contract exposes only ledger-owned browser commands", () => 
     ),
     true,
   );
-  for (const schemaName of [
-    "LedgerTaxSettlementWire",
-    "LedgerCorporateDecisionFinalizationWire",
-  ]) {
+  for (const schemaName of ["LedgerTaxSettlementWire"]) {
     assert.equal(contract.components.schemas[schemaName].properties.lines, undefined);
   }
   assert.deepEqual(

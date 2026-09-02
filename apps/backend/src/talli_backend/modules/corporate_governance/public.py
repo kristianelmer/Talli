@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import time
+from datetime import datetime, time
 from enum import StrEnum
 from typing import Protocol, TypeVar
 from uuid import UUID
@@ -103,13 +103,35 @@ class CorporateArtifactKind(StrEnum):
     ANNUAL_GENERAL_MEETING_MINUTES = "annual_general_meeting_minutes"
 
 
+class CorporateDecisionKind(StrEnum):
+    OWNER_DIVIDEND = "owner_dividend"
+    ANNUAL_CLOSE = "annual_close"
+
+
+class CorporateArtifactVariant(StrEnum):
+    UNSIGNED = "unsigned"
+    SIGNED_OWNER_ATTESTED = "signed_owner_attested"
+
+
 class OwnerDividendState(StrEnum):
     PROPOSED = "proposed"
     DOCUMENTS_REGISTERED = "documents_registered"
     FACTS_APPROVED = "facts_approved"
+    SIGNING_REQUESTED = "signing_requested"
+    SIGNED_OWNER_ATTESTED = "signed_owner_attested"
     FINALIZED = "finalized"
     PARTIALLY_PAID = "partially_paid"
     PAID = "paid"
+    REJECTED = "rejected"
+
+
+class AnnualCloseEventKind(StrEnum):
+    SIGNING_REQUESTED = "signing_requested"
+    REJECTED = "rejected"
+
+
+class OwnerDividendEventKind(StrEnum):
+    SIGNING_REQUESTED = "signing_requested"
     REJECTED = "rejected"
 
 
@@ -230,6 +252,13 @@ class ApprovedAnnualBasis:
     equity_ore: int
     available_distribution_ore: int
     cash_ore: int
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateReadinessSource:
+    source_id: CorporateSourceReference
+    annual_data_sha256: str
+    annual_accounts_payload_sha256: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -483,6 +512,125 @@ class AnnualCloseLifecycle:
 
 
 @dataclass(frozen=True, slots=True)
+class CorporateDecisionRecord:
+    decision_id: CorporateDecisionId
+    document_set_id: CorporateDocumentSetId
+    company_id: CompanyId
+    income_year: IncomeYear
+    decision_kind: CorporateDecisionKind
+    annual_close_source_id: CorporateSourceReference
+    source_hash: str
+    canonical_input: Mapping[str, object]
+    decision_hash: str
+    created_by: str
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateDocumentSetRecord:
+    document_set_id: CorporateDocumentSetId
+    company_id: CompanyId
+    income_year: IncomeYear
+    decision_id: CorporateDecisionId
+    template_family: str
+    template_version: str
+    decision_hash: str
+    created_by: str
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateArtifactRecord:
+    artifact_id: CorporateArtifactId
+    company_id: CompanyId
+    income_year: IncomeYear
+    document_set_id: CorporateDocumentSetId
+    artifact_kind: CorporateArtifactKind
+    variant: CorporateArtifactVariant
+    document_id: DocumentReference
+    content_sha256: str
+    byte_length: int
+    supersedes_artifact_id: CorporateArtifactId | None
+    created_by: str
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateEventRecord:
+    event_id: CorporateEventId
+    company_id: CompanyId
+    income_year: IncomeYear
+    decision_id: CorporateDecisionId
+    document_set_id: CorporateDocumentSetId
+    artifact_id: CorporateArtifactId | None
+    event_kind: str
+    actor_id: str
+    occurred_at: datetime
+    decision_hash: str
+    content_sha256: str | None
+    metadata: Mapping[str, object]
+    idempotency_key: str
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateFinalizationRecord:
+    finalization_id: CorporateFinalizationId
+    company_id: CompanyId
+    income_year: IncomeYear
+    decision_id: CorporateDecisionId
+    finalization_kind: str
+    holding_action_id: CorporateEventId | None
+    accounting_entry_id: AccountingEntryReference | None
+    annual_close_source_id: CorporateSourceReference | None
+    decision_hash: str
+    signed_artifact_hashes: Mapping[str, str]
+    accounting_policy_version: str | None
+    created_by: str
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateDocumentReadinessBlocker:
+    code: str
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateDocumentReadiness:
+    company_id: CompanyId
+    income_year: IncomeYear
+    decision_kind: CorporateDecisionKind
+    decision_id: CorporateDecisionId | None
+    document_set_id: CorporateDocumentSetId | None
+    decision_hash: str | None
+    source_hash: str | None
+    current_source_hash: str | None
+    state: OwnerDividendState | None
+    current_source_matches: bool | None
+    ready_for_signing: bool
+    finalized: bool
+    annual_submission_ready: bool
+    generated_artifact_hashes: Mapping[str, str]
+    signed_artifact_hashes: Mapping[str, str]
+    required_signers: Mapping[str, tuple[str, ...]]
+    declared_amount_ore: int | None
+    paid_amount_ore: int | None
+    remaining_amount_ore: int | None
+    finalization_id: CorporateFinalizationId | None
+    accounting_policy_version: str | None
+    blockers: tuple[CorporateDocumentReadinessBlocker, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateLifecycleSnapshot:
+    decisions: tuple[CorporateDecisionRecord, ...]
+    document_sets: tuple[CorporateDocumentSetRecord, ...]
+    artifacts: tuple[CorporateArtifactRecord, ...]
+    events: tuple[CorporateEventRecord, ...]
+    finalizations: tuple[CorporateFinalizationRecord, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class PreparedOwnerDividendFinalization:
     declared_amount_ore: int
     accounting_policy_version: str
@@ -558,6 +706,96 @@ class ApproveOwnerDividendCommand:
     document_set_id: CorporateDocumentSetId
     decision_hash: str
     approval_event_id: CorporateEventId
+
+
+@dataclass(frozen=True, slots=True)
+class ApproveAnnualCloseCommand:
+    company_id: CompanyId
+    actor_id: ActorId
+    correlation_id: CorrelationId
+    idempotency_key: IdempotencyKey
+    decision_id: CorporateDecisionId
+    document_set_id: CorporateDocumentSetId
+    decision_hash: str
+    approval_event_id: CorporateEventId
+
+
+@dataclass(frozen=True, slots=True)
+class RecordAnnualCloseEventCommand:
+    company_id: CompanyId
+    actor_id: ActorId
+    correlation_id: CorrelationId
+    idempotency_key: IdempotencyKey
+    decision_id: CorporateDecisionId
+    document_set_id: CorporateDocumentSetId
+    decision_hash: str
+    event_id: CorporateEventId
+    event_kind: AnnualCloseEventKind
+    metadata: Mapping[str, str]
+
+
+@dataclass(frozen=True, slots=True)
+class FinalizeAnnualCloseCommand:
+    company_id: CompanyId
+    actor_id: ActorId
+    correlation_id: CorrelationId
+    idempotency_key: IdempotencyKey
+    decision_id: CorporateDecisionId
+    document_set_id: CorporateDocumentSetId
+    decision_hash: str
+    finalization_id: CorporateFinalizationId
+
+
+@dataclass(frozen=True, slots=True)
+class AttestAnnualCloseSignedArtifactCommand:
+    company_id: CompanyId
+    actor_id: ActorId
+    correlation_id: CorrelationId
+    idempotency_key: IdempotencyKey
+    decision_id: CorporateDecisionId
+    document_set_id: CorporateDocumentSetId
+    decision_hash: str
+    unsigned_artifact_id: CorporateArtifactId
+    signed_artifact_id: CorporateArtifactId
+    signed_document_id: DocumentReference
+    artifact_kind: CorporateArtifactKind
+    filename: str
+    content_sha256: str
+    byte_length: int
+    signers: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class RecordOwnerDividendEventCommand:
+    company_id: CompanyId
+    actor_id: ActorId
+    correlation_id: CorrelationId
+    idempotency_key: IdempotencyKey
+    decision_id: CorporateDecisionId
+    document_set_id: CorporateDocumentSetId
+    decision_hash: str
+    event_id: CorporateEventId
+    event_kind: OwnerDividendEventKind
+    metadata: Mapping[str, str]
+
+
+@dataclass(frozen=True, slots=True)
+class AttestOwnerDividendSignedArtifactCommand:
+    company_id: CompanyId
+    actor_id: ActorId
+    correlation_id: CorrelationId
+    idempotency_key: IdempotencyKey
+    decision_id: CorporateDecisionId
+    document_set_id: CorporateDocumentSetId
+    decision_hash: str
+    unsigned_artifact_id: CorporateArtifactId
+    signed_artifact_id: CorporateArtifactId
+    signed_document_id: DocumentReference
+    artifact_kind: CorporateArtifactKind
+    filename: str
+    content_sha256: str
+    byte_length: int
+    signers: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -649,6 +887,16 @@ class CorporateGovernancePersistence(Protocol):
 
     async def actor_role(self, company_id: CompanyId) -> str | None: ...
 
+    async def list_lifecycle(
+        self,
+        company_ids: tuple[CompanyId, ...],
+    ) -> CorporateLifecycleSnapshot: ...
+
+    async def read_lifecycle(
+        self,
+        decision_id: CorporateDecisionId,
+    ) -> CorporateLifecycleSnapshot: ...
+
     async def propose_owner_dividend(
         self,
         command: OwnerDividendProposalCommand,
@@ -675,6 +923,36 @@ class CorporateGovernancePersistence(Protocol):
     async def approve_owner_dividend(
         self,
         command: ApproveOwnerDividendCommand,
+    ) -> OwnerDividendLifecycle: ...
+
+    async def approve_annual_close(
+        self,
+        command: ApproveAnnualCloseCommand,
+    ) -> AnnualCloseLifecycle: ...
+
+    async def record_annual_close_event(
+        self,
+        command: RecordAnnualCloseEventCommand,
+    ) -> AnnualCloseLifecycle: ...
+
+    async def finalize_annual_close(
+        self,
+        command: FinalizeAnnualCloseCommand,
+    ) -> AnnualCloseLifecycle: ...
+
+    async def attest_annual_close_signed_artifact(
+        self,
+        command: AttestAnnualCloseSignedArtifactCommand,
+    ) -> AnnualCloseLifecycle: ...
+
+    async def record_owner_dividend_event(
+        self,
+        command: RecordOwnerDividendEventCommand,
+    ) -> OwnerDividendLifecycle: ...
+
+    async def attest_owner_dividend_signed_artifact(
+        self,
+        command: AttestOwnerDividendSignedArtifactCommand,
     ) -> OwnerDividendLifecycle: ...
 
     async def prepare_owner_dividend_finalization(
@@ -738,9 +1016,13 @@ SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 __all__ = [
     "AccountingEntryReference",
     "AnnualCloseLifecycle",
+    "AnnualCloseEventKind",
     "AnnualCloseProposalCommand",
     "ApprovedAnnualBasis",
     "ApproveOwnerDividendCommand",
+    "ApproveAnnualCloseCommand",
+    "AttestAnnualCloseSignedArtifactCommand",
+    "AttestOwnerDividendSignedArtifactCommand",
     "BankTransactionReference",
     "BoardMeeting",
     "BoardParticipant",
@@ -753,16 +1035,28 @@ __all__ = [
     "CanonicalShareholderLoan",
     "CorporateArtifactId",
     "CorporateArtifactKind",
+    "CorporateArtifactRecord",
+    "CorporateArtifactVariant",
+    "CorporateDecisionKind",
     "CorporateDecisionId",
+    "CorporateDecisionRecord",
+    "CorporateDocumentReadiness",
+    "CorporateDocumentReadinessBlocker",
     "CorporateDocumentSetId",
+    "CorporateDocumentSetRecord",
     "CorporateEventId",
+    "CorporateEventRecord",
     "CorporateFinalizationId",
+    "CorporateFinalizationRecord",
     "CorporateGovernanceError",
     "CorporateGovernanceErrorCode",
     "CorporateGovernancePersistence",
+    "CorporateLifecycleSnapshot",
+    "CorporateReadinessSource",
     "CorporateSourceReference",
     "DocumentReference",
     "FinalizeOwnerDividendCommand",
+    "FinalizeAnnualCloseCommand",
     "GeneralMeeting",
     "MeetingForm",
     "OwnerDividendAllocation",
@@ -772,6 +1066,7 @@ __all__ = [
     "OwnerDividendFinancialTotals",
     "OwnerDividendLifecycle",
     "OwnerDividendProposalCommand",
+    "OwnerDividendEventKind",
     "OwnerDividendState",
     "PersistedCompanyFacts",
     "PersistedShareholderFacts",
@@ -781,6 +1076,8 @@ __all__ = [
     "ProposedAnnualClose",
     "ProposedOwnerDividend",
     "RecordOwnerDividendPaymentCommand",
+    "RecordOwnerDividendEventCommand",
+    "RecordAnnualCloseEventCommand",
     "RecordShareholderLoanCommand",
     "RecordedShareholderLoan",
     "RenderedCorporateArtifact",

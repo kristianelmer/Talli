@@ -19,6 +19,10 @@ const investmentsStageExitPath = new URL(
   "../supabase/contract-migrations/20260831193000_investments_stage_exit.sql",
   import.meta.url,
 );
+const corporateGovernanceStageExitPath = new URL(
+  "../supabase/contract-migrations/20260902110000_corporate_governance_contract.sql",
+  import.meta.url,
+);
 
 function sql(path) {
   return readFileSync(path, "utf8");
@@ -75,6 +79,7 @@ test("archive route and generation triggers share one complete source inventory"
   const source = sql(expandPath);
   const route = sql(archiveRoutePath);
   const investmentsStageExit = sql(investmentsStageExitPath);
+  const corporateGovernanceStageExit = sql(corporateGovernanceStageExitPath);
   const inventory = JSON.parse(sql(archiveInventoryPath));
   const declared = new Map(inventory.sources.map((item) => [item.table, item.scope]));
   const routeTables = new Set([...route.matchAll(/\.from\("([a-z0-9_]+)"\)/gu)].map((match) => match[1]));
@@ -95,6 +100,18 @@ test("archive route and generation triggers share one complete source inventory"
     "investments.share_sales",
     "investments.share_sale_allocations",
     "investments.received_dividends",
+    // Corporate governance is likewise read through its generated lifecycle
+    // query after the stage-exit contract removes the six public projections.
+    "corporate_governance.owner_dividend_decisions",
+    "corporate_governance.owner_dividend_artifacts",
+    "corporate_governance.owner_dividend_events",
+    "corporate_governance.owner_dividend_finalizations",
+    "corporate_governance.owner_dividend_payments",
+    "corporate_governance.shareholder_loans",
+    "corporate_governance.annual_close_decisions",
+    "corporate_governance.annual_close_artifacts",
+    "corporate_governance.annual_close_events",
+    "corporate_governance.annual_close_finalizations",
   ]);
   assert.deepEqual([...logicalRouteSources].sort(), [...declared.keys()].sort());
   const legacyTriggerInventory = new Map(
@@ -108,14 +125,29 @@ test("archive route and generation triggers share one complete source inventory"
   ]) {
     legacyTriggerInventory.delete(legacyInvestmentTable);
   }
+  for (const legacyCorporateTable of [
+    "corporate_decisions",
+    "corporate_document_sets",
+    "corporate_document_artifacts",
+    "corporate_document_events",
+    "corporate_decision_finalizations",
+  ]) {
+    legacyTriggerInventory.delete(legacyCorporateTable);
+  }
   const canonicalInvestmentTriggerInventory = new Map(
     [...investmentsStageExit.matchAll(
       /before insert or update or delete on (investments\.[a-z0-9_]+) for each row\s+execute function public\.company_archive_track_source_write_v1\('(year|company)', 'company_id'\)/gu,
     )].map((match) => [match[1], match[2]]),
   );
+  const canonicalCorporateTriggerInventory = new Map(
+    [...corporateGovernanceStageExit.matchAll(
+      /\('((?:owner_dividend|annual_close)_[a-z0-9_]+|shareholder_loans)',\s*'(year|company)',\s*'company_id'\)/gu,
+    )].map((match) => [`corporate_governance.${match[1]}`, match[2]]),
+  );
   const triggerInventory = new Map([
     ...legacyTriggerInventory,
     ...canonicalInvestmentTriggerInventory,
+    ...canonicalCorporateTriggerInventory,
   ]);
   assert.deepEqual([...triggerInventory.entries()].sort(), [...declared.entries()].sort());
   assert.match(source, /\('companies', 'company', 'id'\)/u);

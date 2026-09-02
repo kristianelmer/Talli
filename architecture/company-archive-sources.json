@@ -21,10 +21,15 @@
     { "table": "filing_review_comments", "scope": "company" },
     { "table": "audit_events", "scope": "company" },
     { "table": "bank_suggestion_acceptances", "scope": "company" },
-    { "table": "corporate_decisions", "scope": "year" },
-    { "table": "corporate_document_sets", "scope": "year" },
-    { "table": "corporate_document_artifacts", "scope": "year" },
-    { "table": "corporate_document_events", "scope": "year" },
-    { "table": "corporate_decision_finalizations", "scope": "year" }
+    { "table": "corporate_governance.owner_dividend_decisions", "scope": "year" },
+    { "table": "corporate_governance.owner_dividend_artifacts", "scope": "year" },
+    { "table": "corporate_governance.owner_dividend_events", "scope": "year" },
+    { "table": "corporate_governance.owner_dividend_finalizations", "scope": "year" },
+    { "table": "corporate_governance.owner_dividend_payments", "scope": "year" },
+    { "table": "corporate_governance.shareholder_loans", "scope": "year" },
+    { "table": "corporate_governance.annual_close_decisions", "scope": "year" },
+    { "table": "corporate_governance.annual_close_artifacts", "scope": "year" },
+    { "table": "corporate_governance.annual_close_events", "scope": "year" },
+    { "table": "corporate_governance.annual_close_finalizations", "scope": "year" }
   ]
 }

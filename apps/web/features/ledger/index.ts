@@ -1,5 +1,4 @@
 export {
-  finalizeLedgerCorporateDecision,
   loadLedgerEntries,
   loadLedgerEntriesForArchive,
   loadLedgerCompanyYearCloseAssessment,
@@ -32,7 +31,6 @@ export {
 } from "./presentation.ts";
 export type {
   LedgerAdministrativeCostWire,
-  LedgerCorporateDecisionFinalizationWire,
   LedgerLineWire,
   LedgerLockPeriodWire,
   LedgerManualJournalWire,

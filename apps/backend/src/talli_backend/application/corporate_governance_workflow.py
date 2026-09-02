@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 from decimal import Decimal
 
 from talli_backend.application.corporate_governance_session import (
@@ -19,16 +20,27 @@ from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
     AnnualCloseProposalCommand,
     AnnualCloseLifecycle,
+    ApproveAnnualCloseCommand,
+    AttestAnnualCloseSignedArtifactCommand,
+    AttestOwnerDividendSignedArtifactCommand,
     ApproveOwnerDividendCommand,
     CorporateArtifactKind,
+    CorporateDecisionKind,
+    CorporateDecisionId,
+    CorporateDocumentReadiness,
     CorporateGovernanceError,
     CorporateGovernanceErrorCode,
+    CorporateLifecycleSnapshot,
+    CorporateReadinessSource,
     FinalizeOwnerDividendCommand,
+    FinalizeAnnualCloseCommand,
     OwnerDividendLifecycle,
     OwnerDividendProposalCommand,
     ProposedAnnualClose,
     ProposedOwnerDividend,
     RecordShareholderLoanCommand,
+    RecordAnnualCloseEventCommand,
+    RecordOwnerDividendEventCommand,
     RecordOwnerDividendPaymentCommand,
     RecordedShareholderLoan,
     RegisterOwnerDividendDocumentsCommand,
@@ -52,7 +64,7 @@ from talli_backend.modules.ledger.public import (
     PostShareholderLoanCommand,
     ShareholderLoanDirection as LedgerShareholderLoanDirection,
 )
-from talli_backend.shared.kernel import ActorId, Money
+from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear, Money
 
 
 LedgerFacadeFactory = Callable[[LedgerPersistence], LedgerCommands]
@@ -88,6 +100,48 @@ class CorporateGovernanceApplication:
         """Resolve the verified actor without accepting an actor from transport input."""
 
         return (await self._session_factory.session(access_token)).actor_id
+
+    async def list_lifecycle(
+        self,
+        access_token: str,
+        company_ids: tuple[CompanyId, ...],
+    ) -> CorporateLifecycleSnapshot:
+        session = await self._session_factory.session(access_token)
+        async with session.transaction() as transaction:
+            return await transaction.list_lifecycle(company_ids)
+
+    async def read_lifecycle(
+        self,
+        access_token: str,
+        decision_id: CorporateDecisionId,
+    ) -> CorporateLifecycleSnapshot:
+        session = await self._session_factory.session(access_token)
+        async with session.transaction() as transaction:
+            return await transaction.read_lifecycle(decision_id)
+
+    async def read_readiness(
+        self,
+        access_token: str,
+        *,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        decision_kind: CorporateDecisionKind,
+        current_source: CorporateReadinessSource | None,
+    ) -> CorporateDocumentReadiness:
+        session = await self._session_factory.session(access_token)
+        async with session.transaction() as transaction:
+            snapshot = await transaction.list_lifecycle((company_id,))
+        return self._service.assess_lifecycle(
+            snapshot,
+            company_id=company_id,
+            income_year=income_year,
+            decision_kind=decision_kind,
+            current_source_hash=(
+                self._service.source_hash(current_source)
+                if current_source is not None
+                else None
+            ),
+        )
 
     async def _session(self, access_token: str, actor_id):
         session = await self._session_factory.session(access_token)
@@ -235,6 +289,142 @@ class CorporateGovernanceApplication:
         async with session.transaction() as transaction:
             await self._require_owner(transaction, command.company_id)
             return await transaction.approve_owner_dividend(command)
+
+    async def approve_annual_close(
+        self,
+        access_token: str,
+        command: ApproveAnnualCloseCommand,
+    ) -> AnnualCloseLifecycle:
+        session = await self._session(access_token, command.actor_id)
+        async with session.transaction() as transaction:
+            await self._require_owner(transaction, command.company_id)
+            return await transaction.approve_annual_close(command)
+
+    async def record_annual_close_event(
+        self,
+        access_token: str,
+        command: RecordAnnualCloseEventCommand,
+    ) -> AnnualCloseLifecycle:
+        session = await self._session(access_token, command.actor_id)
+        async with session.transaction() as transaction:
+            await self._require_owner(transaction, command.company_id)
+            return await transaction.record_annual_close_event(command)
+
+    async def finalize_annual_close(
+        self,
+        access_token: str,
+        command: FinalizeAnnualCloseCommand,
+    ) -> AnnualCloseLifecycle:
+        session = await self._session(access_token, command.actor_id)
+        async with session.transaction() as transaction:
+            await self._require_owner(transaction, command.company_id)
+            return await transaction.finalize_annual_close(command)
+
+    async def attest_annual_close_signed_artifact(
+        self,
+        access_token: str,
+        command: AttestAnnualCloseSignedArtifactCommand,
+    ) -> AnnualCloseLifecycle:
+        session = await self._session(access_token, command.actor_id)
+        documents = await self._documents_session_factory.session(access_token)
+        if documents.actor_id != command.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        records = await documents.list_documents((command.company_id,))
+        record = next(
+            (
+                item
+                for item in records
+                if str(item.document_id) == str(command.signed_document_id)
+            ),
+            None,
+        )
+        if (
+            record is None
+            or record.company_id != command.company_id
+            or record.linked_to != f"corporate_decision:{command.decision_id}"
+            or record.status is not DocumentStatus.SIGNED_OWNER_ATTESTED
+            or not SHA256_PATTERN.fullmatch(command.content_sha256)
+            or record.content_sha256 != command.content_sha256
+            or record.byte_length != command.byte_length
+            or command.artifact_kind not in _REQUIRED_ANNUAL_ARTIFACT_KINDS
+        ):
+            raise CorporateGovernanceError.precondition(
+                CorporateGovernanceErrorCode.INVALID_INPUT,
+                "Signed annual-close evidence does not match the uploaded document.",
+            )
+        async with session.transaction() as transaction:
+            await self._require_owner(transaction, command.company_id)
+            snapshot = await transaction.read_lifecycle(command.decision_id)
+            readiness = self._service.assess_lifecycle(
+                snapshot,
+                company_id=command.company_id,
+                income_year=record.income_year,
+                decision_kind=CorporateDecisionKind.ANNUAL_CLOSE,
+            )
+            signers = readiness.required_signers.get(command.artifact_kind.value)
+            if not signers:
+                raise CorporateGovernanceError.unavailable()
+            return await transaction.attest_annual_close_signed_artifact(
+                replace(command, signers=tuple(signers))
+            )
+
+    async def record_owner_dividend_event(
+        self,
+        access_token: str,
+        command: RecordOwnerDividendEventCommand,
+    ) -> OwnerDividendLifecycle:
+        session = await self._session(access_token, command.actor_id)
+        async with session.transaction() as transaction:
+            await self._require_owner(transaction, command.company_id)
+            return await transaction.record_owner_dividend_event(command)
+
+    async def attest_owner_dividend_signed_artifact(
+        self,
+        access_token: str,
+        command: AttestOwnerDividendSignedArtifactCommand,
+    ) -> OwnerDividendLifecycle:
+        session = await self._session(access_token, command.actor_id)
+        documents = await self._documents_session_factory.session(access_token)
+        if documents.actor_id != command.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        records = await documents.list_documents((command.company_id,))
+        record = next(
+            (
+                item
+                for item in records
+                if str(item.document_id) == str(command.signed_document_id)
+            ),
+            None,
+        )
+        if (
+            record is None
+            or record.company_id != command.company_id
+            or record.linked_to != f"corporate_decision:{command.decision_id}"
+            or record.status is not DocumentStatus.SIGNED_OWNER_ATTESTED
+            or not SHA256_PATTERN.fullmatch(command.content_sha256)
+            or record.content_sha256 != command.content_sha256
+            or record.byte_length != command.byte_length
+            or command.artifact_kind not in _REQUIRED_ARTIFACT_KINDS
+        ):
+            raise CorporateGovernanceError.precondition(
+                CorporateGovernanceErrorCode.INVALID_INPUT,
+                "Signed owner-dividend evidence does not match the uploaded document.",
+            )
+        async with session.transaction() as transaction:
+            await self._require_owner(transaction, command.company_id)
+            snapshot = await transaction.read_lifecycle(command.decision_id)
+            readiness = self._service.assess_lifecycle(
+                snapshot,
+                company_id=command.company_id,
+                income_year=record.income_year,
+                decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+            )
+            signers = readiness.required_signers.get(command.artifact_kind.value)
+            if not signers:
+                raise CorporateGovernanceError.unavailable()
+            return await transaction.attest_owner_dividend_signed_artifact(
+                replace(command, signers=tuple(signers))
+            )
 
     async def finalize_owner_dividend(
         self,

@@ -21,7 +21,6 @@ import {
   evaluateObligationReadiness,
   type AnnualReadinessIssue,
 } from "../../../lib/annual-readiness";
-import { evaluateCorporateDocumentReadiness } from "../../../lib/corporate-document-readiness";
 import type { AuthorityObligation } from "../../../lib/authority-permission";
 import { ownerCopy } from "../../../lib/copy";
 import {
@@ -147,7 +146,7 @@ export default async function FilingObligationPage({
   const returnTo = `/filing/${obligation}`;
   const snapshot = evaluateObligationReadiness(input, obligation);
   const corporateReadiness = input.corporateDocuments?.enabled
-    ? evaluateCorporateDocumentReadiness(input.corporateDocuments.lifecycle)
+    ? input.corporateDocuments.readiness
     : null;
   const annualCorporateDecision = data.corporateDecisions.find(
     (decision) => decision.company_id === input.company.id

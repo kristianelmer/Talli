@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import date, time
+from datetime import UTC, date, datetime, time
 
 import pytest
 
@@ -13,12 +13,24 @@ from talli_backend.modules.corporate_governance.public import (
     BoardParticipant,
     BoardRole,
     BoardTreatmentMethod,
+    CorporateArtifactId,
+    CorporateArtifactKind,
+    CorporateArtifactRecord,
+    CorporateArtifactVariant,
+    CorporateDecisionKind,
     CorporateDecisionId,
+    CorporateDecisionRecord,
     CorporateDocumentSetId,
+    CorporateDocumentSetRecord,
     CorporateEventId,
+    CorporateEventRecord,
+    CorporateFinalizationId,
+    CorporateFinalizationRecord,
     CorporateGovernanceError,
     CorporateGovernanceErrorCode,
+    CorporateLifecycleSnapshot,
     CorporateSourceReference,
+    DocumentReference,
     GeneralMeeting,
     MeetingForm,
     OwnerDividendProposalCommand,
@@ -34,6 +46,7 @@ from talli_backend.modules.corporate_governance.public import (
 )
 from talli_backend.modules.corporate_governance.service import (
     CorporateGovernanceService,
+    canonical_owner_dividend_payload,
 )
 from talli_backend.shared.kernel import (
     ActorId,
@@ -227,6 +240,154 @@ def test_annual_close_policy_and_renderer_reproduce_characterized_artifacts() ->
         "270bf87a72e5ced5b13490e220e352bde7a16bff019f48d46bfa88ac1d561776",
     ]
     assert [artifact.byte_length for artifact in artifacts] == [32066, 32626]
+
+
+def test_lifecycle_readiness_is_derived_by_the_python_governance_owner() -> None:
+    service = CorporateGovernanceService()
+    decision = service.build_owner_dividend_decision(supported_proposal())
+    created_at = datetime(2025, 6, 20, 12, tzinfo=UTC)
+    artifacts = (
+        CorporateArtifactRecord(
+            artifact_id=CorporateArtifactId(f"00000000-0000-4000-8000-00000000000{index}"),
+            company_id=decision.company_id,
+            income_year=decision.income_year,
+            document_set_id=decision.document_set_id,
+            artifact_kind=kind,
+            variant=variant,
+            document_id=DocumentReference(f"10000000-0000-4000-8000-00000000000{index}"),
+            content_sha256=str(index) * 64,
+            byte_length=100 + index,
+            supersedes_artifact_id=(
+                CorporateArtifactId(f"00000000-0000-4000-8000-00000000000{index - 2}")
+                if variant is CorporateArtifactVariant.SIGNED_OWNER_ATTESTED
+                else None
+            ),
+            created_by=str(decision.company_id),
+            created_at=created_at,
+        )
+        for index, (kind, variant) in enumerate(
+            (
+                (CorporateArtifactKind.DIVIDEND_BOARD_PROPOSAL, CorporateArtifactVariant.UNSIGNED),
+                (CorporateArtifactKind.DIVIDEND_GENERAL_MEETING_MINUTES, CorporateArtifactVariant.UNSIGNED),
+                (CorporateArtifactKind.DIVIDEND_BOARD_PROPOSAL, CorporateArtifactVariant.SIGNED_OWNER_ATTESTED),
+                (CorporateArtifactKind.DIVIDEND_GENERAL_MEETING_MINUTES, CorporateArtifactVariant.SIGNED_OWNER_ATTESTED),
+            ),
+            start=1,
+        )
+    )
+    snapshot = CorporateLifecycleSnapshot(
+        decisions=(CorporateDecisionRecord(
+            decision_id=decision.decision_id,
+            document_set_id=decision.document_set_id,
+            company_id=decision.company_id,
+            income_year=decision.income_year,
+            decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+            annual_close_source_id=decision.annual_close_source_id,
+            source_hash=decision.source_hash,
+            canonical_input=canonical_owner_dividend_payload(decision),
+            decision_hash=decision.decision_hash,
+            created_by=str(decision.company_id),
+            created_at=created_at,
+        ),),
+        document_sets=(CorporateDocumentSetRecord(
+            document_set_id=decision.document_set_id,
+            company_id=decision.company_id,
+            income_year=decision.income_year,
+            decision_id=decision.decision_id,
+            template_family=decision.template_family,
+            template_version=decision.template_version,
+            decision_hash=decision.decision_hash,
+            created_by=str(decision.company_id),
+            created_at=created_at,
+        ),),
+        artifacts=artifacts,
+        events=(
+            CorporateEventRecord(
+                event_id=CorporateEventId("20000000-0000-4000-8000-000000000001"),
+                company_id=decision.company_id,
+                income_year=decision.income_year,
+                decision_id=decision.decision_id,
+                document_set_id=decision.document_set_id,
+                artifact_id=None,
+                event_kind="facts_approved",
+                actor_id=str(decision.company_id),
+                occurred_at=created_at,
+                decision_hash=decision.decision_hash,
+                content_sha256=None,
+                metadata={},
+                idempotency_key="facts-approved",
+            ),
+            CorporateEventRecord(
+                event_id=CorporateEventId("20000000-0000-4000-8000-000000000002"),
+                company_id=decision.company_id,
+                income_year=decision.income_year,
+                decision_id=decision.decision_id,
+                document_set_id=decision.document_set_id,
+                artifact_id=None,
+                event_kind="payment_recorded",
+                actor_id=str(decision.company_id),
+                occurred_at=created_at,
+                decision_hash=decision.decision_hash,
+                content_sha256=None,
+                metadata={"amountOre": 1_000_000},
+                idempotency_key="payment-recorded",
+            ),
+        ),
+        finalizations=(CorporateFinalizationRecord(
+            finalization_id=CorporateFinalizationId("30000000-0000-4000-8000-000000000001"),
+            company_id=decision.company_id,
+            income_year=decision.income_year,
+            decision_id=decision.decision_id,
+            finalization_kind="owner_dividend_declared",
+            holding_action_id=None,
+            accounting_entry_id=None,
+            annual_close_source_id=None,
+            decision_hash=decision.decision_hash,
+            signed_artifact_hashes={},
+            accounting_policy_version="owner-dividend-accounting-v1",
+            created_by=str(decision.company_id),
+            created_at=created_at,
+        ),),
+    )
+
+    readiness = service.assess_lifecycle(
+        snapshot,
+        company_id=decision.company_id,
+        income_year=decision.income_year,
+        decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+        current_source_hash=decision.source_hash,
+    )
+
+    assert readiness.state.value == "partially_paid"
+    assert readiness.current_source_matches is True
+    assert readiness.ready_for_signing is True
+    assert readiness.finalized is True
+    assert readiness.declared_amount_ore == 10_000_001
+    assert readiness.paid_amount_ore == 1_000_000
+    assert readiness.remaining_amount_ore == 9_000_001
+    assert readiness.required_signers == {
+        "dividend_board_proposal": ("Jørgen Østby", "Åse Nordmann"),
+        "dividend_general_meeting_minutes": ("Jørgen Østby", "Åse Nordmann"),
+    }
+    assert readiness.blockers == ()
+
+
+def test_lifecycle_readiness_blocks_missing_and_stale_annual_evidence() -> None:
+    service = CorporateGovernanceService()
+    proposal = supported_annual_close()
+
+    missing = service.assess_lifecycle(
+        CorporateLifecycleSnapshot((), (), (), (), ()),
+        company_id=proposal.company_id,
+        income_year=proposal.income_year,
+        decision_kind=CorporateDecisionKind.ANNUAL_CLOSE,
+        current_source_hash="f" * 64,
+    )
+
+    assert [item.code for item in missing.blockers] == [
+        "corporate_documents_decision_missing"
+    ]
+    assert missing.annual_submission_ready is False
 
 
 @pytest.mark.parametrize(

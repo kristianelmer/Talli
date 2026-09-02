@@ -13,14 +13,19 @@ from talli_backend.application.corporate_governance_workflow import (
 )
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
+    AttestAnnualCloseSignedArtifactCommand,
     BankTransactionReference,
     CorporateArtifactId,
     CorporateArtifactKind,
+    CorporateDecisionKind,
     CorporateDecisionId,
+    CorporateDecisionRecord,
     CorporateDocumentSetId,
+    CorporateDocumentSetRecord,
     CorporateEventId,
     CorporateFinalizationId,
     CorporateGovernanceError,
+    CorporateLifecycleSnapshot,
     DocumentReference,
     FinalizeOwnerDividendCommand,
     OwnerDividendArtifactReference,
@@ -33,6 +38,11 @@ from talli_backend.modules.corporate_governance.public import (
     RecordOwnerDividendPaymentCommand,
     RecordShareholderLoanCommand,
     RegisterOwnerDividendDocumentsCommand,
+)
+from talli_backend.modules.corporate_governance.service import (
+    CorporateGovernanceService,
+    canonical_annual_close_payload,
+    canonical_owner_dividend_payload,
 )
 from talli_backend.modules.documents.public import DocumentId, DocumentStatus
 from talli_backend.modules.ledger.public import (
@@ -99,6 +109,53 @@ class GovernanceTransactionStub:
         self.shareholder_loan_replay: RecordedShareholderLoan | None = None
         self.shareholder_loan_bank = False
 
+    async def list_lifecycle(self, company_ids):
+        self.calls.append(("list_lifecycle", company_ids))
+        return CorporateLifecycleSnapshot((), (), (), (), ())
+
+    async def read_lifecycle(self, decision_id):
+        self.calls.append(("read_lifecycle", decision_id))
+        service = CorporateGovernanceService()
+        if decision_id == supported_annual_close().decision_id:
+            decision = service.build_annual_close_decision(supported_annual_close())
+            decision_kind = CorporateDecisionKind.ANNUAL_CLOSE
+        else:
+            decision = service.build_owner_dividend_decision(supported_proposal())
+            decision_kind = CorporateDecisionKind.OWNER_DIVIDEND
+        return CorporateLifecycleSnapshot(
+            decisions=(CorporateDecisionRecord(
+                decision_id=decision.decision_id,
+                document_set_id=decision.document_set_id,
+                company_id=decision.company_id,
+                income_year=decision.income_year,
+                decision_kind=decision_kind,
+                annual_close_source_id=decision.annual_close_source_id,
+                source_hash=decision.source_hash,
+                canonical_input=(
+                    canonical_annual_close_payload(decision)
+                    if decision_kind is CorporateDecisionKind.ANNUAL_CLOSE
+                    else canonical_owner_dividend_payload(decision)
+                ),
+                decision_hash=decision.decision_hash,
+                created_by=str(decision.company_id),
+                created_at=NOW.value,
+            ),),
+            document_sets=(CorporateDocumentSetRecord(
+                document_set_id=decision.document_set_id,
+                company_id=decision.company_id,
+                income_year=decision.income_year,
+                decision_id=decision.decision_id,
+                template_family=decision.template_family,
+                template_version=decision.template_version,
+                decision_hash=decision.decision_hash,
+                created_by=str(decision.company_id),
+                created_at=NOW.value,
+            ),),
+            artifacts=(),
+            events=(),
+            finalizations=(),
+        )
+
     async def actor_role(self, company_id):
         self.calls.append(("actor_role", company_id))
         return self.role
@@ -141,6 +198,41 @@ class GovernanceTransactionStub:
     async def approve_owner_dividend(self, command):
         self.calls.append(("approve", command))
         return lifecycle(OwnerDividendState.FACTS_APPROVED)
+
+    async def approve_annual_close(self, command):
+        self.calls.append(("approve_annual_close", command))
+        return self.annual_lifecycle(command, OwnerDividendState.FACTS_APPROVED)
+
+    async def record_annual_close_event(self, command):
+        self.calls.append(("record_annual_close_event", command))
+        return self.annual_lifecycle(command, OwnerDividendState(command.event_kind.value))
+
+    async def finalize_annual_close(self, command):
+        self.calls.append(("finalize_annual_close", command))
+        return self.annual_lifecycle(command, OwnerDividendState.FINALIZED)
+
+    async def attest_annual_close_signed_artifact(self, command):
+        self.calls.append(("attest_annual_close_signed_artifact", command))
+        return self.annual_lifecycle(command, OwnerDividendState.SIGNED_OWNER_ATTESTED)
+
+    @staticmethod
+    def annual_lifecycle(command, state):
+        return SimpleNamespace(
+            decision_id=command.decision_id,
+            document_set_id=command.document_set_id,
+            company_id=command.company_id,
+            income_year=IncomeYear(2025),
+            decision_hash=command.decision_hash,
+            state=state,
+            generated_artifact_hashes={},
+            signed_artifact_hashes={},
+            finalization_id=(
+                command.finalization_id
+                if state is OwnerDividendState.FINALIZED
+                else None
+            ),
+            replayed=False,
+        )
 
     async def prepare_owner_dividend_finalization(self, command):
         self.calls.append(("prepare_finalization", command))
@@ -364,6 +456,62 @@ def test_annual_close_proposal_is_owner_authorized_and_persists_canonical_facts(
     transaction.role = "reviewer"
     with pytest.raises(CorporateGovernanceError):
         asyncio.run(app.propose_annual_close("access-token", supported_annual_close()))
+
+
+def test_annual_close_signed_artifact_uses_documents_evidence_and_governance_store() -> None:
+    app, transaction, _, documents, _ = application()
+    command = AttestAnnualCloseSignedArtifactCommand(
+        company_id=supported_annual_close().company_id,
+        actor_id=supported_annual_close().actor_id,
+        correlation_id=CorrelationId("annual-close-board-signed"),
+        idempotency_key=IdempotencyKey("annual-close-board-signed-0001"),
+        decision_id=supported_annual_close().decision_id,
+        document_set_id=supported_annual_close().document_set_id,
+        decision_hash=DECISION_HASH,
+        unsigned_artifact_id=CorporateArtifactId(
+            "88888888-8888-4888-8888-888888888881"
+        ),
+        signed_artifact_id=CorporateArtifactId(
+            "88888888-8888-4888-8888-888888888891"
+        ),
+        signed_document_id=DocumentReference(
+            "99999999-9999-4999-8999-999999999991"
+        ),
+        artifact_kind=CorporateArtifactKind.ANNUAL_BOARD_MINUTES,
+        filename="signert-styreprotokoll.pdf",
+        content_sha256="e" * 64,
+        byte_length=303,
+        signers=("Ola Nordmann",),
+    )
+    documents.records += (
+        SimpleNamespace(
+            document_id=DocumentId(str(command.signed_document_id)),
+            company_id=command.company_id,
+            linked_to=f"corporate_decision:{command.decision_id}",
+            status=DocumentStatus.SIGNED_OWNER_ATTESTED,
+            content_sha256=command.content_sha256,
+            byte_length=command.byte_length,
+            income_year=IncomeYear(2025),
+        ),
+    )
+
+    result = asyncio.run(
+        app.attest_annual_close_signed_artifact("access-token", command)
+    )
+
+    assert result.state is OwnerDividendState.SIGNED_OWNER_ATTESTED
+    assert [call[0] for call in transaction.calls] == [
+        "actor_role",
+        "read_lifecycle",
+        "attest_annual_close_signed_artifact",
+    ]
+    assert transaction.calls[-1][1].signers == ("Jørgen Østby", "Åse Nordmann")
+
+    documents.records = documents.records[:-1]
+    with pytest.raises(CorporateGovernanceError):
+        asyncio.run(
+            app.attest_annual_close_signed_artifact("access-token", command)
+        )
 
 
 def document_command() -> RegisterOwnerDividendDocumentsCommand:

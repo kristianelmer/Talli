@@ -63,7 +63,6 @@ npm run test:ledger-database-lifecycle
 npm run test:banking-database-lifecycle
 npm run test:investments-database-lifecycle
 DATABASE_URL="$DB_URL" npm run test:documents-database-lifecycle
-DATABASE_URL="$DB_URL" npm run test:corporate-governance-database-lifecycle
 npm run test:marketing-measurement-database
 npm run test:validation-observation
 
@@ -80,6 +79,11 @@ SUPABASE_ANON_KEY="$local_anon_key" \
 SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
 DATABASE_URL="$DB_URL" \
 npm run test:browser-owner
+
+# Run the corporate-governance contract rehearsal after legacy-surface
+# characterization and the browser journey; the rehearsal restores its input
+# state so the remaining migration-authority check stays isolated.
+DATABASE_URL="$DB_URL" npm run test:corporate-governance-database-lifecycle
 
 TALLI_LEDGER_HOSTED_AUTHORITY_REHEARSAL=1 \
 DATABASE_URL="$DB_URL" \

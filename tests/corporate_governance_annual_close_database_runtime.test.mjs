@@ -31,7 +31,10 @@ async function state(client) {
       ) is not null as proposal_exists,
       to_regprocedure(
         'corporate_governance.register_annual_close_documents_v1(jsonb,text)'
-      ) is not null as registration_exists
+      ) is not null as registration_exists,
+      to_regprocedure(
+        'corporate_governance.attest_annual_close_signed_artifact_v1(jsonb,text)'
+      ) is not null as attestation_exists
   `);
   return result.rows[0];
 }
@@ -55,6 +58,7 @@ test(
         decisions_force_rls: true,
         proposal_exists: true,
         registration_exists: true,
+        attestation_exists: true,
       });
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
         await client.query(rollback);
@@ -66,6 +70,7 @@ test(
           decisions_force_rls: null,
           proposal_exists: false,
           registration_exists: false,
+          attestation_exists: false,
         });
         await client.query(forward);
         assert.deepEqual(await state(client), {
@@ -76,6 +81,7 @@ test(
           decisions_force_rls: true,
           proposal_exists: true,
           registration_exists: true,
+          attestation_exists: true,
         });
       }
     } finally {

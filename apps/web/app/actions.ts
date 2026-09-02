@@ -48,18 +48,12 @@ import { evaluateAnnualReadinessGates } from "./lib/annual-readiness";
 import { buildAnnualAccountsPayload } from "./lib/annual-accounts";
 import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed, yearEndAnswerKeys } from "./lib/annual-data";
 import { buildDeadlineReminderPlan, defaultReminderPreferences } from "./lib/deadlines";
-import {
-  CorporateDecisionFactsError,
-  corporateAnnualSourceHash,
-} from "./lib/corporate-decision-facts";
 import { buildAnnualCloseBasis } from "./lib/annual-corporate-documents";
 import {
   type CorporateArtifactKind,
   type CorporateDecisionInput,
-  corporateDecisionHash,
 } from "./lib/corporate-documents";
 import {
-  requiredCorporateArtifactSigners,
   validateSignedCorporateArtifactUpload,
 } from "./lib/corporate-signed-artifacts";
 import { assertNoBlockingFilingOverrides, validateFilingOverride } from "./lib/filing-overrides";
@@ -94,7 +88,6 @@ import {
   type BankSuggestionKind,
 } from "../features/banking";
 import {
-  finalizeLedgerCorporateDecision,
   ledgerActionErrorMessage,
   ledgerOutcomeMayBeUnknown,
   lockLedgerPeriod,
@@ -127,12 +120,21 @@ import {
   type SignedDocumentUploadPort,
 } from "../features/documents";
 import {
+  approveAnnualClose,
   approveOwnerDividend,
+  attestAnnualCloseSignedArtifact,
+  attestOwnerDividendSignedArtifact,
   corporateGovernanceActionErrorMessage,
   corporateGovernanceOutcomeMayBeUnknown,
+  finalizeAnnualClose,
   finalizeOwnerDividend,
+  listCorporateDecisionLifecycle,
   proposeAnnualClose,
   proposeOwnerDividend,
+  readCorporateDecisionLifecycle,
+  readCorporateDecisionReadiness,
+  recordAnnualCloseEvent,
+  recordOwnerDividendEvent,
   recordOwnerDividendPayment as recordOwnerDividendPaymentThroughApi,
   recordShareholderLoan as recordShareholderLoanThroughApi,
   registerAnnualCloseDocuments,
@@ -140,6 +142,7 @@ import {
   shareholderLoanActionErrorMessage,
   type AnnualCloseProposalWire,
   type CorporateCanonicalDecisionWire,
+  type CorporateDocumentReadinessWire,
   type OwnerDividendProposalWire,
   type RenderedCorporateArtifactWire,
 } from "../features/corporate-governance";
@@ -756,6 +759,13 @@ type CorporateLifecycleActionContext = {
     decision_hash: string;
   };
   documentSet: { id: string; decision_id: string; decision_hash: string };
+  artifacts: Array<{
+    id: string;
+    set_id: string;
+    artifact_kind: CorporateArtifactKind;
+    variant: "unsigned" | "signed_owner_attested";
+  }>;
+  readiness: CorporateDocumentReadinessWire;
 };
 
 function corporateDecisionPath(decisionId: string) {
@@ -765,30 +775,35 @@ function corporateDecisionPath(decisionId: string) {
   return `/corporate-decisions/${decisionId}`;
 }
 
+function stableCorporateEventId(decisionId: string, eventKind: string) {
+  const bytes = createHash("sha256")
+    .update(`talli:corporate-event:${decisionId}:${eventKind}`, "utf8")
+    .digest()
+    .subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const value = bytes.toString("hex");
+  return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+}
+
 async function loadCorporateLifecycleActionContext(input: {
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
-  userId: string;
+  accessToken: string;
   decisionId: string;
   setId: string;
   submittedDecisionHash: string;
   verifyCurrentAnnualSource?: boolean;
 }): Promise<CorporateLifecycleActionContext> {
-  const [decisionResult, setResult] = await Promise.all([
-    input.supabase
-      .from("corporate_decisions")
-      .select("id, company_id, income_year, decision_kind, annual_close_source_id, source_hash, canonical_input, decision_hash")
-      .eq("id", input.decisionId)
-      .maybeSingle(),
-    input.supabase
-      .from("corporate_document_sets")
-      .select("id, decision_id, decision_hash")
-      .eq("id", input.setId)
-      .maybeSingle(),
-  ]);
-  const decision = decisionResult.data as CorporateLifecycleActionContext["decision"] | null;
-  const documentSet = setResult.data as CorporateLifecycleActionContext["documentSet"] | null;
-  if (decisionResult.error || !decision || setResult.error || !documentSet) {
-    throw new Error(decisionResult.error?.message ?? setResult.error?.message ?? "Fant ikke selskapsbeslutningen.");
+  const lifecycle = await readCorporateDecisionLifecycle(
+    input.accessToken,
+    input.decisionId,
+  );
+  const decision = lifecycle.corporateDecisions[0] as unknown as CorporateLifecycleActionContext["decision"] | undefined;
+  const documentSet = lifecycle.corporateDocumentSets.find(
+    (candidate) => candidate.id === input.setId,
+  ) as CorporateLifecycleActionContext["documentSet"] | undefined;
+  if (!decision || !documentSet) {
+    throw new Error("Fant ikke selskapsbeslutningen.");
   }
 
   const company = await loadAcceptedMembershipCompany(decision.company_id);
@@ -796,19 +811,17 @@ async function loadCorporateLifecycleActionContext(input: {
     throw new Error("Bare en eier med akseptert tilgang kan behandle selskapsbeslutningen.");
   }
 
-  let recomputedDecisionHash = "";
-  try {
-    recomputedDecisionHash = corporateDecisionHash(decision.canonical_input);
-  } catch {
-    throw new Error("Det lagrede beslutningsgrunnlaget er ugyldig.");
-  }
-  if (recomputedDecisionHash !== decision.decision_hash
-    || input.submittedDecisionHash !== decision.decision_hash
+  if (input.submittedDecisionHash !== decision.decision_hash
     || documentSet.decision_id !== decision.id
     || documentSet.decision_hash !== decision.decision_hash) {
     throw new Error("Beslutningshashen er endret. Opprett og gjennomgå et nytt dokumentsett.");
   }
 
+  let currentSource: {
+    annualCloseSourceId: string;
+    annualDataSha256: string;
+    annualAccountsPayloadSha256: string;
+  } | null = null;
   if (input.verifyCurrentAnnualSource !== false) {
     let annualQuery = input.supabase
       .from("annual_data")
@@ -819,29 +832,48 @@ async function loadCorporateLifecycleActionContext(input: {
       : annualQuery.eq("income_year", decision.income_year);
     const annualResult = await annualQuery.order("income_year", { ascending: false });
     if (annualResult.error) throw new Error(annualResult.error.message);
-    const currentSource = (annualResult.data ?? []).find(
+    const currentAnnualData = (annualResult.data ?? []).find(
       (candidate) => (candidate.answers as Record<string, unknown>).general_meeting_approved === true,
     ) as AnnualDataRow | undefined;
-    if (!currentSource || currentSource.id !== decision.annual_close_source_id) {
+    if (!currentAnnualData || currentAnnualData.id !== decision.annual_close_source_id) {
       throw new Error("Årsgrunnlaget er endret siden utkastet ble laget. Opprett et nytt dokumentsett.");
     }
     const ledgerResult = await listLedgerEntries([decision.company_id]);
     if (ledgerResult.error) throw new Error(ledgerResult.error);
     const currentBasis = buildAnnualCloseBasis({
-      annualData: currentSource,
+      annualData: currentAnnualData,
       annualAccountsPayload: buildAnnualAccountsPayload({
-        incomeYear: currentSource.income_year,
-        annualData: currentSource,
+        incomeYear: currentAnnualData.income_year,
+        annualData: currentAnnualData,
         ledgerEntries: ledgerResult.entries.filter(
-          (entry) => entry.income_year === currentSource.income_year,
+          (entry) => entry.income_year === currentAnnualData.income_year,
         ),
       }),
     });
-    if (corporateAnnualSourceHash(currentBasis) !== decision.source_hash) {
-      throw new Error("Regnskapsgrunnlaget er endret siden utkastet ble laget. Opprett et nytt dokumentsett.");
-    }
+    currentSource = {
+      annualCloseSourceId: currentBasis.id,
+      annualDataSha256: currentBasis.annualDataHash,
+      annualAccountsPayloadSha256: currentBasis.annualAccountsPayloadHash,
+    };
   }
-  return { decision, documentSet };
+  const readiness = await readCorporateDecisionReadiness(input.accessToken, {
+    companyId: decision.company_id,
+    incomeYear: decision.income_year,
+    decisionKind: decision.decision_kind,
+    ...(currentSource ?? {}),
+  });
+  if (readiness.decisionId !== decision.id
+    || readiness.documentSetId !== documentSet.id
+    || readiness.decisionHash !== decision.decision_hash
+    || readiness.currentSourceMatches === false) {
+    throw new Error("Regnskapsgrunnlaget er endret siden utkastet ble laget. Opprett et nytt dokumentsett.");
+  }
+  return {
+    decision,
+    documentSet,
+    artifacts: lifecycle.corporateDocumentArtifacts as CorporateLifecycleActionContext["artifacts"],
+    readiness,
+  };
 }
 
 export async function signIn(formData: FormData) {
@@ -3008,7 +3040,7 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
       paymentDate: formString(formData, "paymentDate"),
     };
   } catch (error) {
-    const message = error instanceof CorporateDecisionFactsError || error instanceof OwnerDividendDraftBasisError
+    const message = error instanceof OwnerDividendDraftBasisError
       ? `${error.code}: ${error.message}`
       : error instanceof Error ? error.message : "Beslutningsgrunnlaget er ugyldig.";
     failTo(returnTo, message);
@@ -3249,7 +3281,7 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
       annualResultAllocationOre: Number(formString(formData, "annualResultAllocationOre")),
     };
   } catch (error) {
-    const message = error instanceof CorporateDecisionFactsError || error instanceof OwnerDividendDraftBasisError
+    const message = error instanceof OwnerDividendDraftBasisError
       ? `${error.code}: ${error.message}`
       : error instanceof Error ? error.message : "Årsbeslutningsgrunnlaget er ugyldig.";
     failTo(returnTo, message);
@@ -3346,7 +3378,7 @@ async function corporateLifecycleActionSetup(
   try {
     context = await loadCorporateLifecycleActionContext({
       supabase,
-      userId: user.id,
+      accessToken,
       decisionId,
       setId,
       submittedDecisionHash: decisionHash,
@@ -3366,8 +3398,8 @@ export async function approveCorporateDecisionFacts(formData: FormData) {
     setup.context.decision.company_id,
     "approve_corporate_facts",
   );
-  if (setup.context.decision.decision_kind === "owner_dividend") {
-    try {
+  try {
+    if (setup.context.decision.decision_kind === "owner_dividend") {
       await approveOwnerDividend(
         setup.accessToken,
         setup.decisionId,
@@ -3380,21 +3412,23 @@ export async function approveCorporateDecisionFacts(formData: FormData) {
         `owner-dividend-approval:${setup.decisionId}`,
         setup.decisionId,
       );
-    } catch (error) {
-      failTo(setup.returnTo, corporateGovernanceActionErrorMessage(error));
+    } else {
+      await approveAnnualClose(
+        setup.accessToken,
+        setup.decisionId,
+        {
+          companyId: setup.context.decision.company_id,
+          documentSetId: setup.setId,
+          decisionHash: setup.decisionHash,
+          approvalEventId: setup.decisionId,
+        },
+        `annual-close-approval:${setup.decisionId}`,
+        setup.decisionId,
+      );
     }
+  } catch (error) {
+    failTo(setup.returnTo, corporateGovernanceActionErrorMessage(error));
   }
-  const { error } = await setup.supabase.rpc("record_corporate_document_event", {
-    p_payload: {
-      decision_id: setup.decisionId,
-      set_id: setup.setId,
-      event_kind: "facts_approved",
-      decision_hash: setup.decisionHash,
-      metadata: { attestation: "owner_reviewed_persisted_facts" },
-      idempotency_key: `corporate-facts-approved:${setup.decisionId}:${setup.decisionHash}`,
-    },
-  });
-  if (error) failTo(setup.returnTo, error.message);
   revalidatePath(setup.returnTo);
   redirect(setup.returnTo);
 }
@@ -3407,17 +3441,36 @@ export async function recordCorporateSigningRequested(formData: FormData) {
     setup.context.decision.company_id,
     "approve_corporate_facts",
   );
-  const { error } = await setup.supabase.rpc("record_corporate_document_event", {
-    p_payload: {
-      decision_id: setup.decisionId,
-      set_id: setup.setId,
-      event_kind: "signing_requested",
-      decision_hash: setup.decisionHash,
-      metadata: { delivery: "external_signing_managed_by_owner" },
-      idempotency_key: `corporate-signing-requested:${setup.decisionId}:${setup.decisionHash}`,
-    },
-  });
-  if (error) failTo(setup.returnTo, error.message);
+  const eventId = stableCorporateEventId(setup.decisionId, "signing_requested");
+  const body = {
+    companyId: setup.context.decision.company_id,
+    documentSetId: setup.setId,
+    decisionHash: setup.decisionHash,
+    eventId,
+    eventKind: "signing_requested" as const,
+    metadata: { delivery: "external_signing_managed_by_owner" },
+  };
+  try {
+    if (setup.context.decision.decision_kind === "owner_dividend") {
+      await recordOwnerDividendEvent(
+        setup.accessToken,
+        setup.decisionId,
+        body,
+        `owner-dividend-signing:${setup.decisionId}`,
+        eventId,
+      );
+    } else {
+      await recordAnnualCloseEvent(
+        setup.accessToken,
+        setup.decisionId,
+        body,
+        `annual-close-signing:${setup.decisionId}`,
+        eventId,
+      );
+    }
+  } catch (error) {
+    failTo(setup.returnTo, corporateGovernanceActionErrorMessage(error));
+  }
   revalidatePath(setup.returnTo);
   redirect(setup.returnTo);
 }
@@ -3430,17 +3483,38 @@ export async function rejectCorporateDecision(formData: FormData) {
     setup.context.decision.company_id,
     "approve_corporate_facts",
   );
-  const { error } = await setup.supabase.rpc("record_corporate_document_event", {
-    p_payload: {
-      decision_id: setup.decisionId,
-      set_id: setup.setId,
-      event_kind: "rejected",
-      decision_hash: setup.decisionHash,
-      metadata: { reason: formString(formData, "reason").slice(0, 1000) || "owner_rejected" },
-      idempotency_key: `corporate-rejected:${setup.decisionId}:${setup.decisionHash}`,
+  const eventId = stableCorporateEventId(setup.decisionId, "rejected");
+  const body = {
+    companyId: setup.context.decision.company_id,
+    documentSetId: setup.setId,
+    decisionHash: setup.decisionHash,
+    eventId,
+    eventKind: "rejected" as const,
+    metadata: {
+      reason: formString(formData, "reason").slice(0, 1000) || "owner_rejected",
     },
-  });
-  if (error) failTo(setup.returnTo, error.message);
+  };
+  try {
+    if (setup.context.decision.decision_kind === "owner_dividend") {
+      await recordOwnerDividendEvent(
+        setup.accessToken,
+        setup.decisionId,
+        body,
+        `owner-dividend-rejected:${setup.decisionId}`,
+        eventId,
+      );
+    } else {
+      await recordAnnualCloseEvent(
+        setup.accessToken,
+        setup.decisionId,
+        body,
+        `annual-close-rejected:${setup.decisionId}`,
+        eventId,
+      );
+    }
+  } catch (error) {
+    failTo(setup.returnTo, corporateGovernanceActionErrorMessage(error));
+  }
   revalidatePath(setup.returnTo);
   redirect(setup.returnTo);
 }
@@ -3459,19 +3533,15 @@ export async function attestSignedCorporateArtifact(formData: FormData) {
   const unsignedArtifactId = requiredFormUuid(formData, "unsignedArtifactId");
   const signedArtifactId = requiredFormUuid(formData, "signedArtifactId");
   const signedDocumentId = requiredFormUuid(formData, "signedDocumentId");
-  const unsignedResult = await setup.supabase
-    .from("corporate_document_artifacts")
-    .select("id, set_id, artifact_kind, variant")
-    .eq("id", unsignedArtifactId)
-    .eq("set_id", setup.setId)
-    .eq("variant", "unsigned")
-    .maybeSingle();
-  if (unsignedResult.error || !unsignedResult.data) {
-    failTo(setup.returnTo, unsignedResult.error?.message ?? "Fant ikke originaldokumentet.");
+  const unsignedArtifact = setup.context.artifacts.find(
+    (candidate) => candidate.id === unsignedArtifactId
+      && candidate.set_id === setup.setId
+      && candidate.variant === "unsigned",
+  );
+  if (!unsignedArtifact) {
+    failTo(setup.returnTo, "Fant ikke originaldokumentet.");
   }
-  const artifactKind = unsignedResult.data.artifact_kind as CorporateArtifactKind;
-  const signers = requiredCorporateArtifactSigners(artifactKind, setup.context.decision.canonical_input);
-  if (signers.length === 0) failTo(setup.returnTo, "Dokumentet mangler påkrevde signatarer.");
+  const artifactKind = unsignedArtifact.artifact_kind;
   const file = formData.get("signedFile");
   if (!(file instanceof File)) failTo(setup.returnTo, "Velg en signert PDF-fil.");
 
@@ -3513,27 +3583,49 @@ export async function attestSignedCorporateArtifact(formData: FormData) {
     failTo(setup.returnTo, error instanceof Error ? error.message : "Den signerte PDF-filen kunne ikke lagres.");
   }
 
-  const { error } = await setup.supabase.rpc("attest_corporate_signed_artifact", {
-    p_payload: {
-      decision_id: setup.decisionId,
-      set_id: setup.setId,
-      unsigned_artifact_id: unsignedArtifactId,
-      decision_hash: setup.decisionHash,
-      signers,
-      signed_artifact: {
-        id: signedArtifactId,
-        document_id: signedDocumentId,
-        artifact_kind: artifactKind,
-        name: artifact.filename,
-        content_sha256: artifact.contentSha256,
-        byte_length: artifact.byteLength,
-        mime_type: artifact.mimeType,
-        storage_key: document.storageKey,
-      },
-      idempotency_key: `corporate-signed-copy:${signedArtifactId}`,
-    },
-  });
-  if (error) {
+  try {
+    const body = {
+      companyId: setup.context.decision.company_id,
+      documentSetId: setup.setId,
+      decisionHash: setup.decisionHash,
+      unsignedArtifactId,
+      signedArtifactId,
+      signedDocumentId,
+      artifactKind,
+      filename: artifact.filename,
+      contentSha256: artifact.contentSha256,
+      byteLength: artifact.byteLength,
+    };
+    if (setup.context.decision.decision_kind === "owner_dividend") {
+      if (
+        artifactKind !== "dividend_board_proposal"
+        && artifactKind !== "dividend_general_meeting_minutes"
+      ) {
+        throw new Error("Dokumenttypen tilhører ikke utbyttebeslutningen.");
+      }
+      await attestOwnerDividendSignedArtifact(
+        setup.accessToken,
+        setup.decisionId,
+        { ...body, artifactKind },
+        `owner-dividend-signed:${signedArtifactId}`,
+        signedArtifactId,
+      );
+    } else {
+      if (
+        artifactKind !== "annual_board_minutes"
+        && artifactKind !== "annual_general_meeting_minutes"
+      ) {
+        throw new Error("Dokumenttypen tilhører ikke årsbeslutningen.");
+      }
+      await attestAnnualCloseSignedArtifact(
+        setup.accessToken,
+        setup.decisionId,
+        { ...body, artifactKind },
+        `annual-close-signed:${signedArtifactId}`,
+        signedArtifactId,
+      );
+    }
+  } catch (error) {
     try {
       await removeDocument(
         setup.accessToken,
@@ -3543,11 +3635,14 @@ export async function attestSignedCorporateArtifact(formData: FormData) {
       );
     } catch (cleanupError) {
       throw new AggregateError(
-        [new Error(error.message), cleanupError],
+        [error, cleanupError],
         "Signert kopi ble ikke registrert, og det nye lagringsobjektet kunne ikke ryddes opp.",
       );
     }
-    failTo(setup.returnTo, error.message);
+    failTo(
+      setup.returnTo,
+      error instanceof Error ? error.message : "Signert kopi ble ikke registrert.",
+    );
   }
   revalidatePath(setup.returnTo);
   revalidatePath("/documents");
@@ -3594,31 +3689,23 @@ export async function finalizeCorporateDecision(formData: FormData) {
         operationId,
       );
     } else {
-      await finalizeLedgerCorporateDecision(
+      await finalizeAnnualClose(
         accessToken,
+        setup.decisionId,
         {
           companyId: setup.context.decision.company_id,
           decisionHash: setup.decisionHash,
-          decisionId: setup.decisionId,
           finalizationId: operationId,
-          holdingActionId,
-          incomeYear: setup.context.decision.income_year,
-          ledgerEntryId,
-          setId: setup.setId,
+          documentSetId: setup.setId,
         },
         operationId,
         operationId,
       );
     }
   } catch (error) {
-    const ownerDividend = setup.context.decision.decision_kind === "owner_dividend";
-    const outcomeMayBeUnknown = ownerDividend
-      ? corporateGovernanceOutcomeMayBeUnknown(error)
-      : ledgerOutcomeMayBeUnknown(error);
+    const outcomeMayBeUnknown = corporateGovernanceOutcomeMayBeUnknown(error);
     redirect(ownerPathWithQuery(setup.returnTo, {
-      error: ownerDividend
-        ? corporateGovernanceActionErrorMessage(error)
-        : ledgerActionErrorMessage(error),
+      error: corporateGovernanceActionErrorMessage(error),
       finalizeDecisionOperationId: outcomeMayBeUnknown ? operationId : undefined,
     }));
   }
@@ -4404,11 +4491,6 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     { data: authorityPermissions, error: authorityError },
     { data: filingPreviews, error: previewsError },
     { data: filingSubmissions, error: submissionsError },
-    { data: corporateDecisions, error: corporateDecisionsError },
-    { data: corporateDocumentSets, error: corporateDocumentSetsError },
-    { data: corporateDocumentArtifacts, error: corporateDocumentArtifactsError },
-    { data: corporateDocumentEvents, error: corporateDocumentEventsError },
-    { data: corporateDecisionFinalizations, error: corporateDecisionFinalizationsError },
   ] = await Promise.all([
     listOpeningSetups([companyId]).then(({ setups, error }) => ({
       data: setups.filter((setup) => setup.income_year === incomeYear),
@@ -4445,11 +4527,6 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     supabase.from("authority_permissions").select("company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled").eq("company_id", companyId),
     supabase.from("filing_previews").select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("filing_submissions").select("id, preview_id, authority_test_run_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by").eq("company_id", companyId).eq("income_year", incomeYear),
-    supabase.from("corporate_decisions").select("id, company_id, income_year, decision_kind, source_hash, decision_hash, created_at").eq("company_id", companyId).eq("income_year", incomeYear).order("created_at", { ascending: false }),
-    supabase.from("corporate_document_sets").select("id, company_id, income_year, decision_id, decision_hash").eq("company_id", companyId).eq("income_year", incomeYear),
-    supabase.from("corporate_document_artifacts").select("id, company_id, income_year, set_id, artifact_kind, variant").eq("company_id", companyId).eq("income_year", incomeYear),
-    supabase.from("corporate_document_events").select("id, company_id, income_year, decision_id, set_id, event_kind, decision_hash").eq("company_id", companyId).eq("income_year", incomeYear),
-    supabase.from("corporate_decision_finalizations").select("id, company_id, income_year, decision_id, decision_hash").eq("company_id", companyId).eq("income_year", incomeYear),
   ]);
   const firstError =
     setupsError ||
@@ -4465,12 +4542,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     (billingError?.code === "PGRST116" ? null : billingError) ||
     authorityError ||
     previewsError ||
-    submissionsError ||
-    corporateDecisionsError ||
-    corporateDocumentSetsError ||
-    corporateDocumentArtifactsError ||
-    corporateDocumentEventsError ||
-    corporateDecisionFinalizationsError;
+    submissionsError;
   if (firstError) {
     redirect(`/workspace?error=${encodeURIComponent(firstError.message)}`);
   }
@@ -4482,6 +4554,8 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
         "share_sale",
         "dividend_received",
         "fund_distribution_received",
+        "shareholder_loan",
+        "dividend_to_owner",
       ].includes(action.action_type),
     ),
     ...effectiveInvestmentActivity(
@@ -4490,13 +4564,16 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     ),
   ];
 
-  const annualCorporateDecision = (corporateDecisions ?? []).find(
-    (decision) => decision.decision_kind === "annual_close",
-  ) ?? null;
-  const annualCorporateSet = annualCorporateDecision
-    ? (corporateDocumentSets ?? []).find((set) => set.decision_id === annualCorporateDecision.id) ?? null
-    : null;
-  let currentAnnualSourceHash = "";
+  const corporateReadinessRequest = {
+    companyId,
+    incomeYear,
+    decisionKind: "annual_close" as const,
+  };
+  let currentSource: {
+    annualCloseSourceId: string;
+    annualDataSha256: string;
+    annualAccountsPayloadSha256: string;
+  } | null = null;
   if (annualData) {
     try {
       const annualBasis = buildAnnualCloseBasis({
@@ -4507,10 +4584,25 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
           ledgerEntries: (ledgerEntries ?? []) as LedgerEntryRow[],
         }),
       });
-      currentAnnualSourceHash = corporateAnnualSourceHash(annualBasis);
+      currentSource = {
+        annualCloseSourceId: annualBasis.id,
+        annualDataSha256: annualBasis.annualDataHash,
+        annualAccountsPayloadSha256: annualBasis.annualAccountsPayloadHash,
+      };
     } catch {
-      currentAnnualSourceHash = "";
+      currentSource = null;
     }
+  }
+  let corporateReadiness;
+  try {
+    corporateReadiness = await readCorporateDecisionReadiness(
+      accessToken,
+      { ...corporateReadinessRequest, ...(currentSource ?? {}) },
+    );
+  } catch (error) {
+    redirect(`/workspace?error=${encodeURIComponent(
+      error instanceof Error ? error.message : "Dokumentstatus kunne ikke leses.",
+    )}`);
   }
   const snapshots = evaluateAnnualReadinessGates({
     company,
@@ -4529,41 +4621,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     filingSubmissions: filingSubmissions ?? [],
     corporateDocuments: {
       enabled: process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true",
-      lifecycle: {
-        currentDecisionHash: annualCorporateDecision?.decision_hash ?? "",
-        currentSourceHash: currentAnnualSourceHash,
-        decision: annualCorporateDecision ? {
-          id: annualCorporateDecision.id,
-          decision_kind: annualCorporateDecision.decision_kind as "annual_close",
-          decision_hash: annualCorporateDecision.decision_hash,
-          source_hash: annualCorporateDecision.source_hash,
-        } : null,
-        documentSet: annualCorporateSet ? {
-          id: annualCorporateSet.id,
-          decision_id: annualCorporateSet.decision_id,
-          decision_hash: annualCorporateSet.decision_hash,
-        } : null,
-        artifacts: annualCorporateSet
-          ? (corporateDocumentArtifacts ?? []).filter(
-              (artifact) => artifact.set_id === annualCorporateSet.id,
-            ) as Array<{
-              id: string;
-              set_id: string;
-              artifact_kind: string;
-              variant: "unsigned" | "signed_owner_attested";
-            }>
-          : [],
-        events: annualCorporateDecision
-          ? (corporateDocumentEvents ?? []).filter(
-              (event) => event.decision_id === annualCorporateDecision.id,
-            )
-          : [],
-        finalizations: annualCorporateDecision
-          ? (corporateDecisionFinalizations ?? []).filter(
-              (finalization) => finalization.decision_id === annualCorporateDecision.id,
-            )
-          : [],
-      },
+      readiness: corporateReadiness,
     },
   });
 

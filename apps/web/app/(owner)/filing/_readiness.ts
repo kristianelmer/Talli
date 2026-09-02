@@ -1,8 +1,5 @@
 import type { AuthorityObligation } from "../../lib/authority-permission";
-import { buildAnnualAccountsPayload } from "../../lib/annual-accounts";
-import { buildAnnualCloseBasis } from "../../lib/annual-corporate-documents";
 import type { AnnualReadinessInput } from "../../lib/annual-readiness";
-import { corporateAnnualSourceHash } from "../../lib/corporate-decision-facts";
 import type { WorkspaceData } from "../../lib/workspace-data";
 
 export { obligationFilingString } from "./_presentation";
@@ -29,33 +26,6 @@ export function buildReadinessInput(data: WorkspaceData): AnnualReadinessInput |
   const companyId = company.id;
   const scope = <T extends { company_id: string }>(rows: T[]) =>
     rows.filter((row) => row.company_id === companyId);
-  const annualDecision = data.corporateDecisions.find(
-    (decision) => decision.company_id === companyId
-      && decision.income_year === data.primaryIncomeYear
-      && decision.decision_kind === "annual_close",
-  ) ?? null;
-  const annualDocumentSet = annualDecision
-    ? data.corporateDocumentSets.find((set) => set.decision_id === annualDecision.id) ?? null
-    : null;
-  let currentAnnualSourceHash = "";
-  if (data.primaryAnnualData) {
-    try {
-      const annualBasis = buildAnnualCloseBasis({
-        annualData: data.primaryAnnualData,
-        annualAccountsPayload: buildAnnualAccountsPayload({
-          incomeYear: data.primaryIncomeYear,
-          annualData: data.primaryAnnualData,
-          ledgerEntries: scope(data.entries).filter(
-            (entry) => entry.income_year === data.primaryIncomeYear,
-          ),
-        }),
-      });
-      currentAnnualSourceHash = corporateAnnualSourceHash(annualBasis);
-    } catch {
-      currentAnnualSourceHash = "";
-    }
-  }
-
   return {
     company,
     incomeYear: data.primaryIncomeYear,
@@ -73,31 +43,13 @@ export function buildReadinessInput(data: WorkspaceData): AnnualReadinessInput |
     filingSubmissions: scope(data.submissions),
     corporateDocuments: {
       enabled: process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true",
-      lifecycle: {
-        currentDecisionHash: annualDecision?.decision_hash ?? "",
-        currentSourceHash: currentAnnualSourceHash,
-        decision: annualDecision ? {
-          id: annualDecision.id,
-          decision_kind: annualDecision.decision_kind,
-          decision_hash: annualDecision.decision_hash,
-          source_hash: annualDecision.source_hash,
-        } : null,
-        documentSet: annualDocumentSet ? {
-          id: annualDocumentSet.id,
-          decision_id: annualDocumentSet.decision_id,
-          decision_hash: annualDocumentSet.decision_hash,
-        } : null,
-        artifacts: annualDocumentSet
-          ? data.corporateDocumentArtifacts.filter((artifact) => artifact.set_id === annualDocumentSet.id)
-          : [],
-        events: annualDecision
-          ? data.corporateDocumentEvents.filter((event) => event.decision_id === annualDecision.id)
-          : [],
-        finalizations: annualDecision
-          ? data.corporateDecisionFinalizations.filter(
-              (finalization) => finalization.decision_id === annualDecision.id,
-            )
-          : [],
+      readiness: data.primaryCorporateDecisionReadiness ?? {
+        annualSubmissionReady: false,
+        state: null,
+        blockers: [{
+          code: "corporate_documents_decision_missing",
+          message: "Årsbeslutning med dokumentsett må opprettes.",
+        }],
       },
     },
   };

@@ -49,6 +49,38 @@
       "to": "backend:company_access"
     },
     {
+      "from": "backend-system:corporate-governance",
+      "imports": [
+        "talli_backend.modules.banking.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:banking"
+    },
+    {
+      "from": "backend-system:corporate-governance",
+      "imports": [
+        "talli_backend.modules.corporate_governance.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:corporate_governance"
+    },
+    {
+      "from": "backend-system:corporate-governance",
+      "imports": [
+        "talli_backend.modules.documents.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:documents"
+    },
+    {
+      "from": "backend-system:corporate-governance",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
       "from": "backend-system:investment-activity",
       "imports": [
         "talli_backend.modules.banking.public"
@@ -103,38 +135,6 @@
       ],
       "kind": "workflow",
       "to": "backend:shareholder_register_filing"
-    },
-    {
-      "from": "backend-system:owner-dividend-governance",
-      "imports": [
-        "talli_backend.modules.banking.public"
-      ],
-      "kind": "workflow",
-      "to": "backend:banking"
-    },
-    {
-      "from": "backend-system:owner-dividend-governance",
-      "imports": [
-        "talli_backend.modules.corporate_governance.public"
-      ],
-      "kind": "workflow",
-      "to": "backend:corporate_governance"
-    },
-    {
-      "from": "backend-system:owner-dividend-governance",
-      "imports": [
-        "talli_backend.modules.documents.public"
-      ],
-      "kind": "workflow",
-      "to": "backend:documents"
-    },
-    {
-      "from": "backend-system:owner-dividend-governance",
-      "imports": [
-        "talli_backend.modules.ledger.public"
-      ],
-      "kind": "workflow",
-      "to": "backend:ledger"
     },
     {
       "from": "backend-system:passive-validation-observation",

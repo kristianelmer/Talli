@@ -144,6 +144,7 @@ test("server sends owner-dividend intent to governance without duplicating polic
   assert.match(action, /corporateDecisionInputFromWire\(proposed\.decision\)/);
   assert.doesNotMatch(action, /buildOwnerDividendDecisionInput/);
   assert.match(action, /renderCorporateDocuments|persistCorporateDocumentDraft/);
+  assert.doesNotMatch(action, /renderCorporateDocuments|holding_cli/);
   assert.match(action, /uploadCorporateArtifacts|persistCorporateDocumentDraft/);
   assert.match(action, /create_corporate_document_draft|persistCorporateDocumentDraft/);
   assert.doesNotMatch(action, /\.from\(["']ledger_entries["']\)\.insert/);

@@ -462,11 +462,11 @@ def test_ledger_http_contract_exposes_only_ledger_owned_user_intents() -> None:
         "ledgerPostAdministrativeCost",
         "ledgerPostManualJournal",
         "ledgerPostTaxSettlement",
-        "ledgerFinalizeCorporateDecision",
         "ledgerStartNewYear",
         "ledgerListOpeningSnapshots",
     } <= operations
     assert not {
+        "ledgerFinalizeCorporateDecision",
         "ledgerPostOwnerDividendDeclared",
         "ledgerPostOwnerDividendPayment",
         "ledgerPostInvestmentSale",
@@ -477,6 +477,7 @@ def test_ledger_http_contract_exposes_only_ledger_owned_user_intents() -> None:
         "/api/v1/ledger/owner-dividends/declared",
         "/api/v1/ledger/opening-balances",
         "/api/v1/ledger/shareholder-loans",
+        "/api/v1/ledger/corporate-decisions/finalizations",
         "/api/v1/ledger/structured-entries",
     } & client.app.openapi()["paths"].keys()
 
@@ -485,10 +486,6 @@ def test_cross_capability_writers_bind_business_facts_to_one_ledger_result() -> 
     operation_id = "70000000-0000-4000-8000-000000000070"
     bank_id = "70000000-0000-4000-8000-000000000071"
     document_id = "70000000-0000-4000-8000-000000000072"
-    decision_id = "70000000-0000-4000-8000-000000000074"
-    set_id = "70000000-0000-4000-8000-000000000075"
-    holding_action_id = "70000000-0000-4000-8000-000000000076"
-    decision_hash = "a" * 64
     common = {"companyId": str(COMPANY_ID), "incomeYear": 2026}
     cases = (
         (
@@ -503,19 +500,6 @@ def test_cross_capability_writers_bind_business_facts_to_one_ledger_result() -> 
                 "documentStatus": "attached",
                 "bankTransactionId": bank_id,
                 "documentId": document_id,
-            },
-        ),
-        (
-            "/api/v1/ledger/corporate-decisions/finalizations",
-            "OWNER_DIVIDEND_DECLARED",
-            {
-                **common,
-                "decisionId": decision_id,
-                "setId": set_id,
-                "decisionHash": decision_hash,
-                "finalizationId": operation_id,
-                "holdingActionId": holding_action_id,
-                "ledgerEntryId": str(ENTRY_ID),
             },
         ),
     )
@@ -540,48 +524,6 @@ def test_cross_capability_writers_bind_business_facts_to_one_ledger_result() -> 
         assert posting["command"].idempotency_key.value == headers()["Idempotency-Key"]
         raw_lines = client.post(path, headers=headers(), json={**body, "lines": []})
         assert raw_lines.status_code == 422, path
-
-
-def test_annual_close_finalization_has_no_synthetic_ledger_entry() -> None:
-    class AnnualCloseSession(LedgerSessionStub):
-        async def prepare_corporate_decision_finalization(
-            self, command: object
-        ) -> dict[str, object]:
-            return await self._prepare(
-                "corporate_decision_finalization",
-                command,
-                decisionKind="annual_close",
-            )
-
-    session = AnnualCloseSession()
-    client = TestClient(create_app(ledger_session_factory=session))
-    body = {
-        "companyId": str(COMPANY_ID),
-        "incomeYear": 2026,
-        "decisionId": "70000000-0000-4000-8000-000000000074",
-        "setId": "70000000-0000-4000-8000-000000000075",
-        "decisionHash": "a" * 64,
-        "finalizationId": "70000000-0000-4000-8000-000000000070",
-    }
-
-    response = client.post(
-        "/api/v1/ledger/corporate-decisions/finalizations",
-        headers=headers(),
-        json=body,
-    )
-    incomplete_owner_dividend_ids = client.post(
-        "/api/v1/ledger/corporate-decisions/finalizations",
-        headers=headers(),
-        json={
-            **body,
-            "holdingActionId": "70000000-0000-4000-8000-000000000076",
-        },
-    )
-
-    assert response.status_code == 201, response.text
-    assert response.json() == {"postedEntry": None, "replayed": False}
-    assert not any(name == "post_entry" for name, _value in session.calls)
-    assert incomplete_owner_dividend_ids.status_code == 422
 
 
 def test_opening_snapshot_query_exposes_the_frozen_projection() -> None:

@@ -11,6 +11,19 @@ const loanMigrationName =
   "20260902070000_corporate_governance_shareholder_loan.sql";
 const loanInitPlanMigrationName =
   "20260902084230_corporate_governance_shareholder_loan_rls_initplan_cleanup.sql";
+const annualMigrationName =
+  "20260902090000_corporate_governance_annual_close.sql";
+const lifecycleMigrationName =
+  "20260902100000_corporate_governance_artifact_lifecycle.sql";
+
+test("artifact persistence does not duplicate Python signer policy", async () => {
+  const forward = await readFile(
+    new URL(`../supabase/migrations/${lifecycleMigrationName}`, import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(forward, /v_required_signers|v_actual_signers/iu);
+  assert.match(forward, /jsonb_typeof\(signer\).*'string'/isu);
+});
 
 async function state(client) {
   const result = await client.query(String.raw`
@@ -40,7 +53,16 @@ test(
   "governance rollback and recutover are lossless and repeatable twice",
   { skip: !databaseUrl && "DATABASE_URL is required", timeout: 120_000 },
   async () => {
-    const [ownerForward, ownerRollback, loanForward, loanRollback] =
+    const [
+      ownerForward,
+      ownerRollback,
+      loanForward,
+      loanRollback,
+      annualForward,
+      annualRollback,
+      lifecycleForward,
+      lifecycleRollback,
+    ] =
       await Promise.all([
       readFile(
         new URL(
@@ -70,6 +92,22 @@ test(
         ),
         "utf8",
       ),
+      readFile(
+        new URL(`../supabase/migrations/${annualMigrationName}`, import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL(`../supabase/rollback/${annualMigrationName}`, import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL(`../supabase/migrations/${lifecycleMigrationName}`, import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL(`../supabase/rollback/${lifecycleMigrationName}`, import.meta.url),
+        "utf8",
+      ),
     ]);
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
@@ -83,6 +121,8 @@ test(
         shareholder_loan_banking_bridge: true,
       });
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
+        await client.query(lifecycleRollback);
+        await client.query(annualRollback);
         await client.query(loanRollback);
         await client.query(ownerRollback);
         assert.deepEqual(await state(client), {
@@ -95,6 +135,8 @@ test(
         });
         await client.query(ownerForward);
         await client.query(loanForward);
+        await client.query(annualForward);
+        await client.query(lifecycleForward);
         assert.deepEqual(await state(client), {
           capability_schema: true,
           decision_table: true,

@@ -6,7 +6,7 @@ import json
 import os
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 import psycopg
@@ -39,20 +39,35 @@ from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
     AnnualCloseProposalCommand,
     AnnualCloseLifecycle,
+    ApproveAnnualCloseCommand,
+    AttestAnnualCloseSignedArtifactCommand,
+    AttestOwnerDividendSignedArtifactCommand,
     ApproveOwnerDividendCommand,
     BankTransactionReference,
     CanonicalAnnualCloseDecision,
     CanonicalShareholderLoan,
     CanonicalOwnerDividendDecision,
+    CorporateArtifactId,
+    CorporateArtifactKind,
+    CorporateArtifactRecord,
+    CorporateArtifactVariant,
+    CorporateDecisionKind,
     CorporateDecisionId,
+    CorporateDecisionRecord,
     CorporateDocumentSetId,
+    CorporateDocumentSetRecord,
     CorporateEventId,
+    CorporateEventRecord,
     CorporateFinalizationId,
+    CorporateFinalizationRecord,
     CorporateGovernanceError,
     CorporateGovernanceErrorCode,
     CorporateGovernancePersistence,
+    CorporateLifecycleSnapshot,
+    CorporateSourceReference,
     DocumentReference,
     FinalizeOwnerDividendCommand,
+    FinalizeAnnualCloseCommand,
     OwnerDividendLifecycle,
     OwnerDividendProposalCommand,
     OwnerDividendState,
@@ -62,6 +77,8 @@ from talli_backend.modules.corporate_governance.public import (
     ProposedAnnualClose,
     ProposedOwnerDividend,
     RecordOwnerDividendPaymentCommand,
+    RecordOwnerDividendEventCommand,
+    RecordAnnualCloseEventCommand,
     RecordShareholderLoanCommand,
     RecordedShareholderLoan,
     RegisterOwnerDividendDocumentsCommand,
@@ -264,6 +281,144 @@ def _annual_close_lifecycle(value: Mapping[str, object]) -> AnnualCloseLifecycle
             else None
         ),
         replayed=bool(value["replayed"]),
+    )
+
+
+def _timestamp(value: object) -> datetime:
+    if isinstance(value, datetime):
+        return value
+    return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+
+def _lifecycle_snapshot(value: Mapping[str, object]) -> CorporateLifecycleSnapshot:
+    def objects(name: str) -> list[Mapping[str, object]]:
+        items = value.get(name)
+        if not isinstance(items, list) or not all(isinstance(item, Mapping) for item in items):
+            raise CorporateGovernanceError.unavailable()
+        return items  # type: ignore[return-value]
+
+    decisions = tuple(
+        CorporateDecisionRecord(
+            decision_id=CorporateDecisionId(str(item["decisionId"])),
+            document_set_id=CorporateDocumentSetId(str(item["documentSetId"])),
+            company_id=CompanyId(str(item["companyId"])),
+            income_year=IncomeYear(int(item["incomeYear"])),
+            decision_kind=CorporateDecisionKind(str(item["decisionKind"])),
+            annual_close_source_id=CorporateSourceReference(
+                str(item["annualCloseSourceId"])
+            ),
+            source_hash=str(item["sourceHash"]),
+            canonical_input=dict(item["canonicalInput"]),
+            decision_hash=str(item["decisionHash"]),
+            created_by=str(item["createdBy"]),
+            created_at=_timestamp(item["createdAt"]),
+        )
+        for item in objects("decisions")
+    )
+    document_sets = tuple(
+        CorporateDocumentSetRecord(
+            document_set_id=CorporateDocumentSetId(str(item["documentSetId"])),
+            company_id=CompanyId(str(item["companyId"])),
+            income_year=IncomeYear(int(item["incomeYear"])),
+            decision_id=CorporateDecisionId(str(item["decisionId"])),
+            template_family=str(item["templateFamily"]),
+            template_version=str(item["templateVersion"]),
+            decision_hash=str(item["decisionHash"]),
+            created_by=str(item["createdBy"]),
+            created_at=_timestamp(item["createdAt"]),
+        )
+        for item in objects("documentSets")
+    )
+    artifacts = tuple(
+        CorporateArtifactRecord(
+            artifact_id=CorporateArtifactId(str(item["artifactId"])),
+            company_id=CompanyId(str(item["companyId"])),
+            income_year=IncomeYear(int(item["incomeYear"])),
+            document_set_id=CorporateDocumentSetId(str(item["documentSetId"])),
+            artifact_kind=CorporateArtifactKind(str(item["artifactKind"])),
+            variant=CorporateArtifactVariant(str(item["variant"])),
+            document_id=DocumentReference(str(item["documentId"])),
+            content_sha256=str(item["contentSha256"]),
+            byte_length=int(item["byteLength"]),
+            supersedes_artifact_id=(
+                CorporateArtifactId(str(item["supersedesArtifactId"]))
+                if item.get("supersedesArtifactId") is not None
+                else None
+            ),
+            created_by=str(item["createdBy"]),
+            created_at=_timestamp(item["createdAt"]),
+        )
+        for item in objects("artifacts")
+    )
+    events = tuple(
+        CorporateEventRecord(
+            event_id=CorporateEventId(str(item["eventId"])),
+            company_id=CompanyId(str(item["companyId"])),
+            income_year=IncomeYear(int(item["incomeYear"])),
+            decision_id=CorporateDecisionId(str(item["decisionId"])),
+            document_set_id=CorporateDocumentSetId(str(item["documentSetId"])),
+            artifact_id=(
+                CorporateArtifactId(str(item["artifactId"]))
+                if item.get("artifactId") is not None
+                else None
+            ),
+            event_kind=str(item["eventKind"]),
+            actor_id=str(item["actorId"]),
+            occurred_at=_timestamp(item["occurredAt"]),
+            decision_hash=str(item["decisionHash"]),
+            content_sha256=(
+                str(item["contentSha256"])
+                if item.get("contentSha256") is not None
+                else None
+            ),
+            metadata=dict(item["metadata"]),
+            idempotency_key=str(item["idempotencyKey"]),
+        )
+        for item in objects("events")
+    )
+    finalizations = tuple(
+        CorporateFinalizationRecord(
+            finalization_id=CorporateFinalizationId(str(item["finalizationId"])),
+            company_id=CompanyId(str(item["companyId"])),
+            income_year=IncomeYear(int(item["incomeYear"])),
+            decision_id=CorporateDecisionId(str(item["decisionId"])),
+            finalization_kind=str(item["finalizationKind"]),
+            holding_action_id=(
+                CorporateEventId(str(item["holdingActionId"]))
+                if item.get("holdingActionId") is not None
+                else None
+            ),
+            accounting_entry_id=(
+                AccountingEntryReference(str(item["accountingEntryId"]))
+                if item.get("accountingEntryId") is not None
+                else None
+            ),
+            annual_close_source_id=(
+                CorporateSourceReference(str(item["annualCloseSourceId"]))
+                if item.get("annualCloseSourceId") is not None
+                else None
+            ),
+            decision_hash=str(item["decisionHash"]),
+            signed_artifact_hashes={
+                str(key): str(item_value)
+                for key, item_value in dict(item["signedArtifactHashes"]).items()
+            },
+            accounting_policy_version=(
+                str(item["accountingPolicyVersion"])
+                if item.get("accountingPolicyVersion") is not None
+                else None
+            ),
+            created_by=str(item["createdBy"]),
+            created_at=_timestamp(item["createdAt"]),
+        )
+        for item in objects("finalizations")
+    )
+    return CorporateLifecycleSnapshot(
+        decisions=decisions,
+        document_sets=document_sets,
+        artifacts=artifacts,
+        events=events,
+        finalizations=finalizations,
     )
 
 
@@ -489,6 +644,32 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
         role = rows[0].get("role")
         return str(role) if role is not None else None
 
+    async def list_lifecycle(
+        self,
+        company_ids: tuple[CompanyId, ...],
+    ) -> CorporateLifecycleSnapshot:
+        rows = await self._database_rows(
+            "select corporate_governance.read_corporate_lifecycle_v1("
+            "%s::uuid[], null::uuid, %s::text) as result",
+            ([str(company_id) for company_id in company_ids], str(self.actor_id.subject)),
+        )
+        if len(rows) != 1 or not isinstance(rows[0].get("result"), Mapping):
+            raise CorporateGovernanceError.unavailable()
+        return _lifecycle_snapshot(rows[0]["result"])  # type: ignore[arg-type]
+
+    async def read_lifecycle(
+        self,
+        decision_id: CorporateDecisionId,
+    ) -> CorporateLifecycleSnapshot:
+        rows = await self._database_rows(
+            "select corporate_governance.read_corporate_lifecycle_v1("
+            "null::uuid[], %s::uuid, %s::text) as result",
+            (str(decision_id), str(self.actor_id.subject)),
+        )
+        if len(rows) != 1 or not isinstance(rows[0].get("result"), Mapping):
+            raise CorporateGovernanceError.unavailable()
+        return _lifecycle_snapshot(rows[0]["result"])  # type: ignore[arg-type]
+
     async def propose_owner_dividend(
         self,
         command: OwnerDividendProposalCommand,
@@ -625,6 +806,114 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
             "select corporate_governance.approve_owner_dividend_v1("
             "%s::jsonb, %s::text) as result",
             {**_common_request(command), "approvalEventId": str(command.approval_event_id)},
+        ))
+
+    async def approve_annual_close(
+        self,
+        command: ApproveAnnualCloseCommand,
+    ) -> AnnualCloseLifecycle:
+        if command.actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        return _annual_close_lifecycle(await self._governance_result(
+            "select corporate_governance.approve_annual_close_v1("
+            "%s::jsonb, %s::text) as result",
+            {
+                **_common_request(command),
+                "approvalEventId": str(command.approval_event_id),
+            },
+        ))
+
+    async def record_annual_close_event(
+        self,
+        command: RecordAnnualCloseEventCommand,
+    ) -> AnnualCloseLifecycle:
+        if command.actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        return _annual_close_lifecycle(await self._governance_result(
+            "select corporate_governance.record_annual_close_event_v1("
+            "%s::jsonb, %s::text) as result",
+            {
+                **_common_request(command),
+                "eventId": str(command.event_id),
+                "eventKind": command.event_kind.value,
+                "metadata": dict(command.metadata),
+            },
+        ))
+
+    async def finalize_annual_close(
+        self,
+        command: FinalizeAnnualCloseCommand,
+    ) -> AnnualCloseLifecycle:
+        if command.actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        return _annual_close_lifecycle(await self._governance_result(
+            "select corporate_governance.finalize_annual_close_v1("
+            "%s::jsonb, %s::text) as result",
+            {
+                **_common_request(command),
+                "finalizationId": str(command.finalization_id),
+            },
+        ))
+
+    async def attest_annual_close_signed_artifact(
+        self,
+        command: AttestAnnualCloseSignedArtifactCommand,
+    ) -> AnnualCloseLifecycle:
+        if command.actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        return _annual_close_lifecycle(await self._governance_result(
+            "select corporate_governance.attest_annual_close_signed_artifact_v1("
+            "%s::jsonb, %s::text) as result",
+            {
+                **_common_request(command),
+                "unsignedArtifactId": str(command.unsigned_artifact_id),
+                "signedArtifactId": str(command.signed_artifact_id),
+                "signedDocumentId": str(command.signed_document_id),
+                "artifactKind": command.artifact_kind.value,
+                "filename": command.filename,
+                "contentSha256": command.content_sha256,
+                "byteLength": command.byte_length,
+                "signers": list(command.signers),
+            },
+        ))
+
+    async def record_owner_dividend_event(
+        self,
+        command: RecordOwnerDividendEventCommand,
+    ) -> OwnerDividendLifecycle:
+        if command.actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        return _lifecycle(await self._governance_result(
+            "select corporate_governance.record_owner_dividend_event_v1("
+            "%s::jsonb, %s::text) as result",
+            {
+                **_common_request(command),
+                "eventId": str(command.event_id),
+                "eventKind": command.event_kind.value,
+                "metadata": dict(command.metadata),
+            },
+        ))
+
+    async def attest_owner_dividend_signed_artifact(
+        self,
+        command: AttestOwnerDividendSignedArtifactCommand,
+    ) -> OwnerDividendLifecycle:
+        if command.actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        return _lifecycle(await self._governance_result(
+            "select corporate_governance.attest_owner_dividend_signed_artifact_v1("
+            "%s::jsonb, %s::text) as result",
+            {
+                **_common_request(command),
+                "unsignedArtifactId": str(command.unsigned_artifact_id),
+                "signedArtifactId": str(command.signed_artifact_id),
+                "signedDocumentId": str(command.signed_document_id),
+                "artifactKind": command.artifact_kind.value,
+                "filename": command.filename,
+                "contentSha256": command.content_sha256,
+                "byteLength": command.byte_length,
+                "signers": list(command.signers),
+            },
         ))
 
     async def prepare_owner_dividend_finalization(

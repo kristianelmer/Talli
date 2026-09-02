@@ -28,12 +28,17 @@ export const launchCriticalTables = [
   "billing_accounts",
   "authority_permissions",
   "audit_events",
-  "corporate_accounting_policies",
-  "corporate_decisions",
-  "corporate_document_sets",
-  "corporate_document_artifacts",
-  "corporate_document_events",
-  "corporate_decision_finalizations",
+  "corporate_governance.owner_dividend_accounting_policies",
+  "corporate_governance.owner_dividend_decisions",
+  "corporate_governance.owner_dividend_artifacts",
+  "corporate_governance.owner_dividend_events",
+  "corporate_governance.owner_dividend_finalizations",
+  "corporate_governance.owner_dividend_payments",
+  "corporate_governance.shareholder_loans",
+  "corporate_governance.annual_close_decisions",
+  "corporate_governance.annual_close_artifacts",
+  "corporate_governance.annual_close_events",
+  "corporate_governance.annual_close_finalizations",
 ] as const;
 
 export type RestoreGateRecord = {

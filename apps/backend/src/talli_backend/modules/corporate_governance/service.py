@@ -6,26 +6,36 @@ import hashlib
 import json
 import re
 import unicodedata
+from collections.abc import Mapping
 from dataclasses import replace
 from enum import Enum
 from typing import Any
 
 from talli_backend.modules.corporate_governance.public import (
     AnnualCloseProposalCommand,
+    ApprovedAnnualBasis,
     BoardMeeting,
     CanonicalAnnualCloseDecision,
     CanonicalBoardParticipant,
     CanonicalDecisionShareholder,
     CanonicalOwnerDividendDecision,
     CanonicalShareholderLoan,
+    CorporateArtifactKind,
+    CorporateArtifactVariant,
+    CorporateDecisionKind,
+    CorporateDocumentReadiness,
+    CorporateDocumentReadinessBlocker,
     CorporateGovernanceError,
     CorporateGovernanceErrorCode,
+    CorporateLifecycleSnapshot,
+    CorporateReadinessSource,
     GeneralMeeting,
     OwnerDividendAllocation,
     OwnerDividendConfirmations,
     OwnerDividendFacts,
     OwnerDividendFinancialTotals,
     OwnerDividendProposalCommand,
+    OwnerDividendState,
     RecordShareholderLoanCommand,
     RenderedCorporateArtifact,
     SHA256_PATTERN,
@@ -36,6 +46,7 @@ from talli_backend.modules.corporate_governance.public import (
 from talli_backend.modules.corporate_governance.rendering import (
     render_corporate_documents,
 )
+from talli_backend.shared.kernel import CompanyId, IncomeYear
 
 
 _ORG_NUMBER = re.compile(r"^[0-9]{9}$")
@@ -100,10 +111,9 @@ def _canonical_json(payload: dict[str, Any]) -> str:
     )
 
 
-def _source_hash(
-    command: OwnerDividendProposalCommand | AnnualCloseProposalCommand,
+def _basis_source_hash(
+    basis: ApprovedAnnualBasis | CorporateReadinessSource,
 ) -> str:
-    basis = command.annual_basis
     if not SHA256_PATTERN.fullmatch(basis.annual_data_sha256) or not SHA256_PATTERN.fullmatch(
         basis.annual_accounts_payload_sha256
     ):
@@ -120,6 +130,12 @@ def _source_hash(
             }
         )
     )
+
+
+def _source_hash(
+    command: OwnerDividendProposalCommand | AnnualCloseProposalCommand,
+) -> str:
+    return _basis_source_hash(command.annual_basis)
 
 
 def canonical_owner_dividend_payload(
@@ -274,6 +290,311 @@ def canonical_annual_close_payload(
 
 
 class CorporateGovernanceService:
+    def source_hash(self, source: CorporateReadinessSource) -> str:
+        return _basis_source_hash(source)
+
+    def assess_lifecycle(
+        self,
+        snapshot: CorporateLifecycleSnapshot,
+        *,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        decision_kind: CorporateDecisionKind,
+        current_source_hash: str | None = None,
+    ) -> CorporateDocumentReadiness:
+        """Derive lifecycle, signer, payable, and readiness policy in Python."""
+
+        required_kinds = (
+            (
+                CorporateArtifactKind.DIVIDEND_BOARD_PROPOSAL,
+                CorporateArtifactKind.DIVIDEND_GENERAL_MEETING_MINUTES,
+            )
+            if decision_kind is CorporateDecisionKind.OWNER_DIVIDEND
+            else (
+                CorporateArtifactKind.ANNUAL_BOARD_MINUTES,
+                CorporateArtifactKind.ANNUAL_GENERAL_MEETING_MINUTES,
+            )
+        )
+        decision = next(
+            (
+                item
+                for item in snapshot.decisions
+                if item.company_id == company_id
+                and item.income_year == income_year
+                and item.decision_kind is decision_kind
+            ),
+            None,
+        )
+        missing = CorporateDocumentReadinessBlocker(
+            "corporate_documents_decision_missing",
+            (
+                "Årsbeslutning med dokumentsett må opprettes."
+                if decision_kind is CorporateDecisionKind.ANNUAL_CLOSE
+                else "Utbyttebeslutning med dokumentsett må opprettes."
+            ),
+        )
+        if decision is None:
+            return CorporateDocumentReadiness(
+                company_id=company_id,
+                income_year=income_year,
+                decision_kind=decision_kind,
+                decision_id=None,
+                document_set_id=None,
+                decision_hash=None,
+                source_hash=None,
+                current_source_hash=current_source_hash,
+                state=None,
+                current_source_matches=(
+                    False if current_source_hash is not None else None
+                ),
+                ready_for_signing=False,
+                finalized=False,
+                annual_submission_ready=False,
+                generated_artifact_hashes={},
+                signed_artifact_hashes={},
+                required_signers={},
+                declared_amount_ore=None,
+                paid_amount_ore=None,
+                remaining_amount_ore=None,
+                finalization_id=None,
+                accounting_policy_version=None,
+                blockers=(missing,),
+            )
+
+        document_set = next(
+            (
+                item
+                for item in snapshot.document_sets
+                if item.document_set_id == decision.document_set_id
+                and item.decision_id == decision.decision_id
+                and item.decision_hash == decision.decision_hash
+            ),
+            None,
+        )
+        artifacts = tuple(
+            item
+            for item in snapshot.artifacts
+            if document_set is not None
+            and item.document_set_id == document_set.document_set_id
+        )
+        generated = {
+            item.artifact_kind.value: item.content_sha256
+            for item in artifacts
+            if item.variant is CorporateArtifactVariant.UNSIGNED
+        }
+        signed = {
+            item.artifact_kind.value: item.content_sha256
+            for item in artifacts
+            if item.variant is CorporateArtifactVariant.SIGNED_OWNER_ATTESTED
+        }
+        expected = {item.value for item in required_kinds}
+        generated_complete = set(generated) == expected
+        signed_complete = set(signed) == expected
+        events = tuple(
+            item
+            for item in snapshot.events
+            if item.decision_id == decision.decision_id
+            and document_set is not None
+            and item.document_set_id == document_set.document_set_id
+            and item.decision_hash == decision.decision_hash
+        )
+        event_kinds = {item.event_kind for item in events}
+        finalization = next(
+            (
+                item
+                for item in snapshot.finalizations
+                if item.decision_id == decision.decision_id
+                and item.decision_hash == decision.decision_hash
+            ),
+            None,
+        )
+        current_source_matches = (
+            None
+            if current_source_hash is None
+            else decision.source_hash == current_source_hash
+        )
+
+        canonical = decision.canonical_input
+        board_participants = canonical.get("boardParticipants")
+        if board_participants is None:
+            board_participants = canonical.get("board_participants")
+        general_meeting = canonical.get("generalMeeting")
+        if general_meeting is None:
+            general_meeting = canonical.get("general_meeting")
+        if not isinstance(board_participants, list) or not isinstance(
+            general_meeting, Mapping
+        ):
+            raise CorporateGovernanceError.unavailable()
+
+        def signer_names(values: list[object]) -> tuple[str, ...]:
+            names = {
+                " ".join(unicodedata.normalize("NFC", value).strip().split())
+                for value in values
+                if isinstance(value, str) and value.strip()
+            }
+            return tuple(sorted(names))
+
+        board_signers = signer_names(
+            [
+                participant.get("name")
+                for participant in board_participants
+                if isinstance(participant, Mapping)
+            ]
+        )
+        meeting_signers = signer_names(
+            [
+                general_meeting.get("chairName", general_meeting.get("chair_name")),
+                general_meeting.get(
+                    "coSignerName", general_meeting.get("co_signer_name")
+                ),
+            ]
+        )
+        required_signers = {
+            kind.value: (
+                board_signers
+                if kind
+                in {
+                    CorporateArtifactKind.DIVIDEND_BOARD_PROPOSAL,
+                    CorporateArtifactKind.ANNUAL_BOARD_MINUTES,
+                }
+                else meeting_signers
+            )
+            for kind in required_kinds
+        }
+        if any(not names for names in required_signers.values()):
+            raise CorporateGovernanceError.unavailable()
+
+        declared_amount_ore: int | None = None
+        paid_amount_ore: int | None = None
+        remaining_amount_ore: int | None = None
+        if decision_kind is CorporateDecisionKind.OWNER_DIVIDEND:
+            dividend = canonical.get("dividend")
+            if not isinstance(dividend, Mapping):
+                raise CorporateGovernanceError.unavailable()
+            declared = dividend.get("amountOre", dividend.get("amount_ore"))
+            if isinstance(declared, bool) or not isinstance(declared, int) or declared <= 0:
+                raise CorporateGovernanceError.unavailable()
+            paid = 0
+            for event in events:
+                if event.event_kind != "payment_recorded":
+                    continue
+                amount = event.metadata.get(
+                    "amountOre", event.metadata.get("amount_ore")
+                )
+                if isinstance(amount, bool) or not isinstance(amount, int) or amount <= 0:
+                    raise CorporateGovernanceError.unavailable()
+                paid += amount
+            if paid > declared:
+                raise CorporateGovernanceError.unavailable()
+            declared_amount_ore = declared
+            paid_amount_ore = paid
+            remaining_amount_ore = declared - paid
+
+        if "rejected" in event_kinds:
+            state = OwnerDividendState.REJECTED
+        elif finalization is not None:
+            if remaining_amount_ore == 0:
+                state = OwnerDividendState.PAID
+            elif paid_amount_ore:
+                state = OwnerDividendState.PARTIALLY_PAID
+            else:
+                state = OwnerDividendState.FINALIZED
+        elif signed_complete:
+            state = OwnerDividendState.SIGNED_OWNER_ATTESTED
+        elif "signing_requested" in event_kinds:
+            state = OwnerDividendState.SIGNING_REQUESTED
+        elif "facts_approved" in event_kinds:
+            state = OwnerDividendState.FACTS_APPROVED
+        elif generated_complete:
+            state = OwnerDividendState.DOCUMENTS_REGISTERED
+        else:
+            state = OwnerDividendState.PROPOSED
+
+        blockers: list[CorporateDocumentReadinessBlocker] = []
+        if current_source_matches is False:
+            blockers.append(
+                CorporateDocumentReadinessBlocker(
+                    "corporate_documents_current_hash_mismatch",
+                    "Beslutningsdokumentene er basert på et eldre årsgrunnlag.",
+                )
+            )
+        if state is OwnerDividendState.REJECTED:
+            blockers.append(
+                CorporateDocumentReadinessBlocker(
+                    "corporate_documents_terminal_decision",
+                    "Beslutningen er avvist eller erstattet og kan ikke brukes.",
+                )
+            )
+        if not generated_complete:
+            blockers.append(
+                CorporateDocumentReadinessBlocker(
+                    "corporate_documents_missing_required_artifacts",
+                    "Alle genererte beslutningsdokumenter må finnes.",
+                )
+            )
+        if "facts_approved" not in event_kinds:
+            blockers.append(
+                CorporateDocumentReadinessBlocker(
+                    "corporate_documents_facts_approval_required",
+                    "Fakta og dokumenthash må godkjennes av eier.",
+                )
+            )
+        if not signed_complete:
+            blockers.append(
+                CorporateDocumentReadinessBlocker(
+                    "corporate_documents_missing_signed_artifacts",
+                    "Alle signerte dokumenter må lastes opp og eierbekreftes.",
+                )
+            )
+        if finalization is None:
+            blockers.append(
+                CorporateDocumentReadinessBlocker(
+                    "corporate_documents_finalization_required",
+                    "Beslutningen må sluttføres etter signering.",
+                )
+            )
+
+        source_is_current = current_source_matches is not False
+        ready_for_signing = (
+            source_is_current
+            and state is not OwnerDividendState.REJECTED
+            and generated_complete
+            and "facts_approved" in event_kinds
+        )
+        finalized = finalization is not None and source_is_current
+        return CorporateDocumentReadiness(
+            company_id=company_id,
+            income_year=income_year,
+            decision_kind=decision_kind,
+            decision_id=decision.decision_id,
+            document_set_id=decision.document_set_id,
+            decision_hash=decision.decision_hash,
+            source_hash=decision.source_hash,
+            current_source_hash=current_source_hash,
+            state=state,
+            current_source_matches=current_source_matches,
+            ready_for_signing=ready_for_signing,
+            finalized=finalized,
+            annual_submission_ready=(
+                decision_kind is CorporateDecisionKind.ANNUAL_CLOSE and finalized
+            ),
+            generated_artifact_hashes=generated,
+            signed_artifact_hashes=signed,
+            required_signers=required_signers,
+            declared_amount_ore=declared_amount_ore,
+            paid_amount_ore=paid_amount_ore,
+            remaining_amount_ore=remaining_amount_ore,
+            finalization_id=(
+                finalization.finalization_id if finalization is not None else None
+            ),
+            accounting_policy_version=(
+                finalization.accounting_policy_version
+                if finalization is not None
+                else None
+            ),
+            blockers=tuple(blockers),
+        )
+
     def render_corporate_documents(
         self,
         decision: CanonicalOwnerDividendDecision | CanonicalAnnualCloseDecision,

@@ -20,8 +20,14 @@ from talli_backend.modules.banking.public import (
 )
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
+    AttestAnnualCloseSignedArtifactCommand,
+    CorporateArtifactId,
+    CorporateArtifactKind,
+    CorporateDecisionId,
+    CorporateDocumentSetId,
     ApproveOwnerDividendCommand,
     CorporateEventId,
+    DocumentReference,
     OwnerDividendState,
     PreparedShareholderLoan,
     RecordedShareholderLoan,
@@ -125,6 +131,52 @@ def test_annual_close_proposal_uses_the_restricted_canonical_store() -> None:
     assert canonical["decisionKind"] == "annual_close"
     assert canonical["dividend"] is None
     assert rendered[0]["contentSha256"] == artifacts[0].content_sha256
+
+
+def test_annual_close_signed_artifact_uses_restricted_canonical_store() -> None:
+    transaction = bound_transaction()
+    command = AttestAnnualCloseSignedArtifactCommand(
+        company_id=supported_annual_close().company_id,
+        actor_id=supported_annual_close().actor_id,
+        correlation_id=CorrelationId("annual-close-board-signed"),
+        idempotency_key=IdempotencyKey("annual-close-board-signed-0001"),
+        decision_id=CorporateDecisionId(
+            "11111111-1111-4111-8111-111111111111"
+        ),
+        document_set_id=CorporateDocumentSetId(
+            "44444444-4444-4444-8444-444444444444"
+        ),
+        decision_hash="c" * 64,
+        unsigned_artifact_id=CorporateArtifactId(
+            "88888888-8888-4888-8888-888888888881"
+        ),
+        signed_artifact_id=CorporateArtifactId(
+            "88888888-8888-4888-8888-888888888891"
+        ),
+        signed_document_id=DocumentReference(
+            "99999999-9999-4999-8999-999999999991"
+        ),
+        artifact_kind=CorporateArtifactKind.ANNUAL_BOARD_MINUTES,
+        filename="signert-styreprotokoll.pdf",
+        content_sha256="e" * 64,
+        byte_length=303,
+        signers=("Ola Nordmann",),
+    )
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def rows(query: str, parameters: tuple[object, ...] = ()):
+        calls.append((query, parameters))
+        return [{"result": annual_lifecycle_payload("signed_owner_attested")}]
+
+    transaction._database_rows = rows  # type: ignore[method-assign]
+    result = asyncio.run(transaction.attest_annual_close_signed_artifact(command))
+    request = json.loads(str(calls[0][1][0]))
+
+    assert result.state is OwnerDividendState.SIGNED_OWNER_ATTESTED
+    assert "corporate_governance.attest_annual_close_signed_artifact_v1" in calls[0][0]
+    assert request["unsignedArtifactId"] == str(command.unsigned_artifact_id)
+    assert request["signedArtifactId"] == str(command.signed_artifact_id)
+    assert request["signers"] == ["Ola Nordmann"]
 
 
 def test_document_approval_and_finalization_map_exact_replays() -> None:
@@ -399,5 +451,24 @@ def lifecycle_payload(state: str, *, accounting_entry_id: str | None = None) -> 
             str(finalization_command().finalization_id) if state == "finalized" else None
         ),
         "accountingEntryId": accounting_entry_id,
+        "replayed": False,
+    }
+
+
+def annual_lifecycle_payload(state: str) -> dict[str, object]:
+    command = supported_annual_close()
+    return {
+        "decisionId": str(command.decision_id),
+        "documentSetId": str(command.document_set_id),
+        "companyId": str(command.company_id),
+        "incomeYear": int(command.income_year),
+        "decisionHash": DECISION_HASH,
+        "state": state,
+        "generatedArtifactHashes": {
+            "annual_board_minutes": "a" * 64,
+            "annual_general_meeting_minutes": "b" * 64,
+        },
+        "signedArtifactHashes": {"annual_board_minutes": "e" * 64},
+        "finalizationId": None,
         "replayed": False,
     }

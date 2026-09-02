@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#148",
+  "source": "https://github.com/kristianelmer/Talli/issues/148",
+  "sourceCheckedAt": "2026-09-02T13:29:08Z",
+  "claim": "https://github.com/kristianelmer/Talli/issues/148#issuecomment-5508198209",
+  "entryBlockers": [
+    {
+      "issue": "#145",
+      "requiredState": "CLOSED",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/145#issuecomment-5507207404"
+    }
+  ],
+  "serialization": {
+    "capability": "corporate_governance",
+    "slice": "3 of 3",
+    "stageExitIssue": "#148",
+    "nextIssue": "#191",
+    "nextIssueState": "must-not-start-before-148-merges-to-main"
+  },
+  "independentExternalGate": {
+    "issue": "#189",
+    "observedState": "OPEN",
+    "blocksProviderNeutralImplementation": false,
+    "stillBlocks": [
+      "provider choice or activation",
+      "credentials or live bank calls, data, or consent",
+      "live-bank readiness claims",
+      "#197 bank evidence",
+      "production banking",
+      "#198 unrestricted clearance"
+    ]
+  },
+  "criteria": [
+    {
+      "id": "GH-148-A1",
+      "requirement": "Supported corporate decisions produce equivalent deterministic artifacts through FastAPI.",
+      "evidence": [
+        "apps/backend/src/talli_backend/modules/corporate_governance/rendering.py",
+        "apps/backend/tests/test_corporate_governance.py",
+        "apps/backend/tests/test_corporate_governance_api.py"
+      ],
+      "status": "local-deterministic-in-process-rendering-passed"
+    },
+    {
+      "id": "GH-148-A2",
+      "requirement": "Reviewed facts, generated versions, and signed copies follow an auditable immutable lifecycle.",
+      "evidence": [
+        "apps/backend/tests/test_corporate_governance_workflow.py",
+        "tests/corporate_governance_annual_close_database_runtime.test.mjs",
+        "tests/corporate_governance_database_runtime.test.mjs"
+      ],
+      "status": "local-immutable-lifecycle-passed"
+    },
+    {
+      "id": "GH-148-A3",
+      "requirement": "Document readiness blocks missing or stale evidence exactly as before.",
+      "evidence": [
+        "apps/backend/src/talli_backend/modules/corporate_governance/service.py",
+        "apps/backend/tests/test_corporate_governance.py",
+        "apps/backend/tests/test_corporate_governance_api.py"
+      ],
+      "status": "local-python-readiness-parity-passed"
+    },
+    {
+      "id": "GH-148-A4",
+      "requirement": "Owner-facing approval and signed-artifact upload flows remain functional.",
+      "evidence": [
+        "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
+        "tests/corporate_decision_workflow.test.mjs",
+        "apps/backend/tests/test_corporate_governance_workflow.py"
+      ],
+      "status": "local-owner-approval-upload-and-attestation-passed"
+    },
+    {
+      "id": "GH-148-A5",
+      "requirement": "Governance and rendering rules are Python-only and the production subprocess bridge is removed.",
+      "evidence": [
+        "apps/backend/src/talli_backend/modules/corporate_governance/service.py",
+        "apps/backend/src/talli_backend/modules/corporate_governance/rendering.py",
+        "tests/annual_corporate_documents.test.mjs",
+        "tests/corporate_documents.test.mjs"
+      ],
+      "status": "local-python-only-governance-and-rendering-boundary-passed"
+    },
+    {
+      "id": "GH-148-A6",
+      "requirement": "Duplicate TypeScript orchestration, legacy governance writers, and active-stage compatibility code are removed.",
+      "evidence": [
+        "architecture/compatibility.json",
+        "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql",
+        "tests/corporate_governance_contract_migration_lifecycle.test.mjs",
+        "tests/contract/web_fastapi_boundary.test.mjs"
+      ],
+      "status": "local-duplicate-policy-and-predecessor-surface-removal-passed"
+    },
+    {
+      "id": "GH-148-A7",
+      "requirement": "The complete corporate_governance Stage 6 exit gate from #132 passes before billing begins.",
+      "evidence": [
+        "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md",
+        "architecture/BACKEND-SYSTEM.md",
+        "architecture/evidence/customer-ready-gates/<R1>.json",
+        "architecture/evidence/customer-ready-gates/<R2>.json"
+      ],
+      "status": "local-boundary-and-architecture-gates-passed; immutable-revision-gates-pending"
+    }
+  ],
+  "review": {
+    "standards": "pending",
+    "specification": "pending"
+  },
+  "completeGates": [],
+  "hostedVerification": {
+    "path": "architecture/evidence/issues/148/hosted-verification.json",
+    "verdict": "pending",
+    "projectId": "pkpyyxryfhfehrbhbynp"
+  },
+  "previewVerification": {
+    "path": "architecture/evidence/issues/148/preview-verification.json",
+    "verdict": "pending"
+  },
+  "closeState": "implementation-review-and-release-evidence-pending"
+}

@@ -1,7 +1,7 @@
 # Ledger web feature
 
 <!-- architecture-inventory
-{"apiOperations":["ledgerFinalizeCorporateDecision","ledgerGetCompanyYearCloseAssessment","ledgerGetReconstructionAssessment","ledgerListEntries","ledgerListOpeningSnapshots","ledgerListPeriodLocks","ledgerLockPeriod","ledgerPostAdministrativeCost","ledgerPostManualJournal","ledgerPostShareholderLoan","ledgerPostTaxSettlement","ledgerStartNewYear"],"dependencies":[],"publicEntryPoints":["@/features/ledger","apps/web/features/ledger","apps/web/features/ledger/index.ts"],"routes":["/actions/[type]","/workspace","/year-end"]}
+{"apiOperations":["ledgerGetCompanyYearCloseAssessment","ledgerGetReconstructionAssessment","ledgerListEntries","ledgerListOpeningSnapshots","ledgerListPeriodLocks","ledgerLockPeriod","ledgerPostAdministrativeCost","ledgerPostManualJournal","ledgerPostTaxSettlement","ledgerStartNewYear"],"dependencies":[],"publicEntryPoints":["@/features/ledger","apps/web/features/ledger","apps/web/features/ledger/index.ts"],"routes":["/actions/[type]","/workspace","/year-end"]}
 -->
 
 ## Purpose and boundary
@@ -14,11 +14,12 @@ balance, choose accounts, construct postings, decide warnings, or authorize a
 company action.
 
 The browser sends only business facts and stable operation identifiers. The
-backend ledger application coordinates the supported administrative-cost,
-received-dividend, shareholder-loan, tax-settlement, corporate
-decision, and owner-dividend writers in one request-bound transaction. The
-compatibility read does not assign filing policy or persistence ownership to
-this feature, and arbitrary source lines are not a browser API.
+backend ledger application owns its administrative-cost, tax-settlement,
+manual-journal, period-lock, opening, and query interfaces. Corporate decisions,
+shareholder loans, and owner-dividend payments enter Ledger only through the
+corporate-governance workflow's public collaboration; the old ledger-facing
+corporate route and transport are absent. Arbitrary source lines are not a
+browser API.
 
 ## Transport and presentation
 
