@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#144",
+  "verifiedAt": "2026-09-02T05:27:30Z",
+  "sourceRevision": "0a20b97b2cf3d998fc0e429adff720346c59359e",
+  "target": {
+    "organizationId": "zwucumjvtpnyujqyzwkg",
+    "projectId": "pkpyyxryfhfehrbhbynp",
+    "name": "1st project",
+    "region": "eu-west-1",
+    "state": "ACTIVE_HEALTHY",
+    "database": "postgres",
+    "postgresVersion": "17.6.1.166"
+  },
+  "apply": {
+    "result": "pass",
+    "method": "Supabase migration API, serial exact-file application",
+    "baselineMigrationHistoryCount": 73,
+    "appliedMigrationCount": 3,
+    "migrationHistoryCount": 76,
+    "appliedMigrations": [
+      {
+        "version": "20260902051717",
+        "name": "corporate_governance_owner_dividend"
+      },
+      {
+        "version": "20260902052022",
+        "name": "corporate_governance_advisor_cleanup"
+      },
+      {
+        "version": "20260902052449",
+        "name": "corporate_governance_rls_initplan_cleanup"
+      }
+    ],
+    "transactionallyRejectedPreflights": [
+      "The first owner-dividend migration attempt lacked CREATE authority in backend_system. PostgreSQL rejected the transaction before commit; the exact migration was corrected to grant and revoke bounded authority through ledger_store_owner.",
+      "The second owner-dividend migration attempt lacked corporate_governance_store_owner access to extensions.digest. PostgreSQL rejected the transaction before commit; the exact migration was corrected with narrow schema USAGE and digest(text,text) EXECUTE grants."
+    ],
+    "rollback": "The exact rollback chain is present, statically parsed and covered by capability-schema tests. It was deliberately not executed against the owner-designated hosted target because rollback is destructive and the canonical store contains zero business rows."
+  },
+  "verification": {
+    "canonicalStore": {
+      "tableCount": 6,
+      "owner": "corporate_governance_store_owner",
+      "allTablesRlsEnabled": true,
+      "allTablesRlsForced": true,
+      "businessRows": 0,
+      "legacyApprovedPolicyRows": 0,
+      "canonicalApprovedPolicyRows": 0,
+      "policyImportVerdict": "pass; the existing approved-policy hard block is preserved without seeding new policy"
+    },
+    "runtimeBoundary": {
+      "backendRole": "talli_ledger_backend",
+      "backendExecutorMembership": true,
+      "executorCanPropose": true,
+      "executorCanCompletePayment": true,
+      "executorCanSelectCanonicalTable": false,
+      "authenticatedCanSelectCanonicalTable": false,
+      "authenticatedCanPropose": false,
+      "executorCanUseTypedLedgerBridge": true,
+      "authenticatedCanUseTypedLedgerBridge": false,
+      "executorCanUseTypedBankingBridge": true,
+      "authenticatedCanUseTypedBankingBridge": false,
+      "storeCanUseSignedEvidenceBridge": true,
+      "authenticatedCanUseSignedEvidenceBridge": false,
+      "authenticatedCanUseLegacyPaymentRpc": false,
+      "serviceRoleCanUseLegacyPaymentRpc": false
+    },
+    "migrationAuthority": {
+      "migrationRoleCanCreateInBackendSystemAfterCommit": false,
+      "ledgerStoreOwnerCanCreateInBackendSystemAfterCommit": false,
+      "optimizedOwnerInsertPolicyCount": 5
+    }
+  },
+  "advisors": {
+    "security": {
+      "total": 35,
+      "info": 5,
+      "warn": 30,
+      "ownerDividendRelatedFindings": 0,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter"
+    },
+    "performance": {
+      "total": 295,
+      "info": 281,
+      "warn": 14,
+      "ownerDividendRelatedInfo": 12,
+      "ownerDividendRelatedCachedWarn": 5,
+      "note": "The five cached init-plan warnings were observed at 2026-09-02T05:22:15.670Z, before the 20260902052449 cleanup. Direct post-migration catalog verification proves all five policies now wrap both the verified-actor setting and accepted-owner function in SELECT expressions. The informational findings are nine unindexed foreign keys and three unused indexes on the empty pre-launch store.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter"
+    }
+  },
+  "independentExternalGate": {
+    "issue": "#189",
+    "observedState": "OPEN",
+    "providerActivated": false,
+    "liveBankingUsed": false
+  },
+  "verdict": "pass"
+}
