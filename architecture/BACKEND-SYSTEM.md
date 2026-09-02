@@ -53,6 +53,10 @@
 -->
 
 <!-- architecture-inventory
+{"adapterBindingModes":["BankTransactionClaimPersistence=>same-request owner-dividend transaction using the governance-specific restricted banking claim","CorporateGovernancePersistence=>request-scoped verified-owner restricted PostgreSQL adapter"],"adapterBindingOwners":["BankTransactionClaimPersistence=>backend-system","CorporateGovernancePersistence=>backend-system"],"adapterBindings":["BankTransactionClaimPersistence=>talli_backend.adapters.supabase_corporate_governance.SupabaseCorporateGovernanceTransaction","CorporateGovernancePersistence=>talli_backend.adapters.supabase_corporate_governance.SupabaseCorporateGovernanceSession"],"adapterDependencies":["talli_backend.application.corporate_governance_session","talli_backend.application.corporate_governance_workflow","talli_backend.modules.banking.public","talli_backend.modules.corporate_governance.public","talli_backend.modules.documents.public","talli_backend.modules.ledger.public"],"ports":["BankTransactionClaimPersistence","CorporateGovernancePersistence"],"publicPackages":["talli_backend.modules.banking.public","talli_backend.modules.corporate_governance.public","talli_backend.modules.documents.public","talli_backend.modules.ledger.public"],"routes":["/api/v1/corporate-governance/owner-dividends/proposals","/api/v1/corporate-governance/owner-dividends/{decision_id}/approvals","/api/v1/corporate-governance/owner-dividends/{decision_id}/documents","/api/v1/corporate-governance/owner-dividends/{decision_id}/finalizations","/api/v1/corporate-governance/owner-dividends/{decision_id}/payments"],"technicalMigrations":["supabase/migrations/20260902040000_corporate_governance_owner_dividend.sql"],"transportDependencies":["talli_backend.adapters.supabase_corporate_governance","talli_backend.application.corporate_governance_session","talli_backend.modules.corporate_governance.public"],"workflowDependencies":["talli_backend.modules.banking.public","talli_backend.modules.corporate_governance.public","talli_backend.modules.documents.public","talli_backend.modules.ledger.public"],"workflowPurposes":["owner-dividend-governance=>Authenticates one verified owner, derives canonical owner-dividend facts and accounting policy in the backend, verifies immutable Documents artifacts, persists append-only proposal and approval evidence, and atomically coordinates finalization and payment with narrow Ledger and Banking contracts."],"workflows":["owner-dividend-governance"]}
+-->
+
+<!-- architecture-inventory
 {"adapterDependencies":["talli_backend.modules.shareholder_register_filing.public"],"publicPackages":["talli_backend.modules.shareholder_register_filing.public"],"transportDependencies":["talli_backend.modules.shareholder_register_filing.public"],"workflowDependencies":["talli_backend.modules.shareholder_register_filing.public"],"workflowPurposes":["new-year-start=>Coordinates the frozen shareholder-register opening snapshot and ledger opening posting through their public contracts in one backend-owned transaction."],"workflows":["new-year-start"]}
 -->
 
@@ -84,6 +88,14 @@ The `accounting-document-lifecycle` workflow serves
 `talli_backend.adapters.supabase_documents.SupabaseDocumentObjectStorage`.
 `DocumentsAuthorization` binds to
 `talli_backend.adapters.supabase_documents.SupabaseDocumentsAuthorization`.
+
+The `owner-dividend-governance` workflow serves the five proposal, document
+registration, approval, finalization, and payment routes under
+`/api/v1/corporate-governance/owner-dividends`. It accepts no actor or accounting
+policy choice from the browser. The authenticated owner session builds and
+persists the canonical decision, verifies generated evidence only through the
+Documents public contract, and completes each Ledger post and Banking claim in
+the same governance transaction through purpose-specific restricted functions.
 
 The `marketing-funnel-measurement` workflow serves
 `/api/v1/marketing-measurement/events`,

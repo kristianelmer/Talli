@@ -1728,6 +1728,242 @@ export interface DocumentWire {
   storageKey: string;
 }
 
+export type BoardRole = "chair" | "member";
+
+export type BoardTreatmentMethod = "physical" | "video" | "written";
+
+export interface CorporateAnnualBasisWire {
+  annualAccountsPayloadSha256: string;
+  annualDataSha256: string;
+  availableDistributionOre: number;
+  cashOre: number;
+  equityOre: number;
+  incomeYear: number;
+  latestApproved: boolean;
+  resultAfterTaxOre: number;
+  sourceId: string;
+}
+
+export type CorporateArtifactKind = "dividend_board_proposal" | "dividend_general_meeting_minutes" | "annual_board_minutes" | "annual_general_meeting_minutes";
+
+export interface CorporateBoardMeetingWire {
+  meetingDate: string;
+  meetingTime: string;
+  place: string;
+  treatmentMethod: BoardTreatmentMethod;
+}
+
+export interface CorporateBoardParticipantWire {
+  name: string;
+  order: number;
+  participantId: string;
+  role: BoardRole;
+}
+
+export interface CorporateCanonicalBoardParticipantWire {
+  name: string;
+  participantId: string;
+  role: BoardRole;
+}
+
+export interface CorporateCanonicalDecisionWire {
+  annualBasisYear: number;
+  annualCloseSourceId: string;
+  annualResultAllocationOre: number;
+  boardMeeting: CorporateBoardMeetingWire;
+  boardParticipants: CorporateCanonicalBoardParticipantWire[];
+  companyId: string;
+  confirmations: CorporateOwnerDividendConfirmationsWire;
+  decisionHash: string;
+  decisionId: string;
+  dividend: CorporateOwnerDividendFactsWire;
+  documentSetId: string;
+  financialTotals: CorporateFinancialTotalsWire;
+  generalMeeting: CorporateGeneralMeetingWire;
+  incomeYear: number;
+  legalName: string;
+  oneShareClassConfirmed: boolean;
+  organizationNumber: string;
+  shareholders: CorporateCanonicalShareholderWire[];
+  sourceHash: string;
+  templateFamily: string;
+  templateVersion: string;
+  totalCompanyShares: number;
+}
+
+export interface CorporateCanonicalShareholderWire {
+  name: string;
+  representedShareCount: number;
+  shareCount: number;
+  shareholderId: string;
+  vote: ShareholderVote;
+}
+
+export interface CorporateCompanyFactsWire {
+  legalName: string;
+  organizationNumber: string;
+}
+
+export interface CorporateFinancialTotalsWire {
+  availableDistributionOre: number;
+  cashOre: number;
+  equityOre: number;
+  resultAfterTaxOre: number;
+}
+
+export interface CorporateGeneralMeetingWire {
+  chairName: string;
+  coSignerName: string;
+  meetingDate: string;
+  meetingForm: MeetingForm;
+  meetingTime: string;
+  place: string;
+}
+
+export interface CorporateOwnerDividendConfirmationsWire {
+  fullBoardParticipation: boolean;
+  fullShareRepresentation: boolean;
+  latestApprovedAnnualAccounts: boolean;
+  proportionalAllocation: boolean;
+  prudentEquityAndLiquidity: boolean;
+  supportedDividendBasis: boolean;
+  unanimousBoard: boolean;
+  unanimousShareholders: boolean;
+}
+
+export interface CorporateOwnerDividendFactsWire {
+  allocations: OwnerDividendAllocationWire[];
+  amountOre: number;
+  liquidityAfterPaymentOre: number;
+  paymentDate: string;
+}
+
+export interface CorporateReviewedFactsWire {
+  annualAccountsPayloadSha256: string;
+  annualDataSha256: string;
+  availableDistributionOre: number;
+  legalName: string;
+  organizationNumber: string;
+  shareholders: CorporateReviewedShareholderWire[];
+  totalCompanyShares: number;
+}
+
+export interface CorporateReviewedShareholderWire {
+  name: string;
+  shareCount: number;
+  shareholderId: string;
+}
+
+export interface CorporateShareholderBallotWire {
+  representedShareCount: number;
+  shareholderId: string;
+  vote: ShareholderVote;
+}
+
+export interface CorporateShareholderWire {
+  name: string;
+  order: number;
+  shareCount: number;
+  shareholderId: string;
+}
+
+export type MeetingForm = "physical" | "video";
+
+export interface OwnerDividendAllocationWire {
+  amountOre: number;
+  shareholderId: string;
+}
+
+export interface OwnerDividendApprovalWire {
+  approvalEventId: string;
+  companyId: string;
+  decisionHash: string;
+  documentSetId: string;
+}
+
+export interface OwnerDividendArtifactWire {
+  artifactId: string;
+  artifactKind: CorporateArtifactKind;
+  byteLength: number;
+  contentSha256: string;
+  documentId: string;
+}
+
+export interface OwnerDividendDocumentsWire {
+  artifacts: OwnerDividendArtifactWire[];
+  companyId: string;
+  decisionHash: string;
+  documentSetId: string;
+}
+
+export interface OwnerDividendFinalizationWire {
+  companyId: string;
+  decisionHash: string;
+  documentSetId: string;
+  finalizationId: string;
+  holdingActionId: string;
+  incomeYear: number;
+  ledgerEntryId: string;
+}
+
+export interface OwnerDividendLifecycleWire {
+  accountingEntryId: string | null;
+  companyId: string;
+  decisionHash: string;
+  decisionId: string;
+  declaredAmountOre: number;
+  documentSetId: string;
+  finalizationId: string | null;
+  incomeYear: number;
+  paidAmountOre: number;
+  remainingAmountOre: number;
+  replayed: boolean;
+  state: OwnerDividendState;
+}
+
+export interface OwnerDividendPaymentWire {
+  bankTransactionId: string;
+  companyId: string;
+  decisionHash: string;
+  documentSetId: string;
+  holdingActionId: string;
+  incomeYear: number;
+  ledgerEntryId: string;
+  paymentEventId: string;
+}
+
+export interface OwnerDividendProposalWire {
+  annualBasis: CorporateAnnualBasisWire;
+  boardMeeting: CorporateBoardMeetingWire;
+  boardParticipants: CorporateBoardParticipantWire[];
+  company: CorporateCompanyFactsWire;
+  companyId: string;
+  decisionId: string;
+  dividendAmountOre: number;
+  documentSetId: string;
+  fullBoardParticipationConfirmed: boolean;
+  generalMeeting: CorporateGeneralMeetingWire;
+  incomeYear: number;
+  oneShareClassConfirmed: boolean;
+  paymentDate: string;
+  prudentEquityAndLiquidityConfirmed: boolean;
+  reviewedFacts: CorporateReviewedFactsWire;
+  shareholderBallots: CorporateShareholderBallotWire[];
+  shareholders: CorporateShareholderWire[];
+  supportedDividendBasisConfirmed: boolean;
+  unanimousBoardConfirmed: boolean;
+}
+
+export type OwnerDividendState = "proposed" | "documents_registered" | "facts_approved" | "finalized" | "partially_paid" | "paid" | "rejected";
+
+export interface ProposedOwnerDividendWire {
+  decision: CorporateCanonicalDecisionWire;
+  replayed: boolean;
+  state: OwnerDividendState;
+}
+
+export type ShareholderVote = "for" | "against" | "abstain";
+
 export interface AcceptBankFileWire {
   companyId: string;
   documentSha256: string;
@@ -4186,6 +4422,350 @@ function isDocumentWire(value: unknown): value is DocumentWire {
   );
 }
 
+function isBoardRole(value: unknown): value is BoardRole {
+  return value === "chair" || value === "member";
+}
+
+function isBoardTreatmentMethod(value: unknown): value is BoardTreatmentMethod {
+  return value === "physical" || value === "video" || value === "written";
+}
+
+function isCorporateAnnualBasisWire(value: unknown): value is CorporateAnnualBasisWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["annualAccountsPayloadSha256","annualDataSha256","availableDistributionOre","cashOre","equityOre","incomeYear","latestApproved","resultAfterTaxOre","sourceId"]) &&
+    (typeof value.annualAccountsPayloadSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.annualAccountsPayloadSha256)) &&
+    (typeof value.annualDataSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.annualDataSha256)) &&
+    (typeof value.availableDistributionOre === "number" && Number.isInteger(value.availableDistributionOre) && value.availableDistributionOre >= 0 && value.availableDistributionOre <= 9007199254740991) &&
+    (typeof value.cashOre === "number" && Number.isInteger(value.cashOre) && value.cashOre >= -9007199254740991 && value.cashOre <= 9007199254740991) &&
+    (typeof value.equityOre === "number" && Number.isInteger(value.equityOre) && value.equityOre >= -9007199254740991 && value.equityOre <= 9007199254740991) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2200) &&
+    typeof value.latestApproved === "boolean" &&
+    (typeof value.resultAfterTaxOre === "number" && Number.isInteger(value.resultAfterTaxOre) && value.resultAfterTaxOre >= -9007199254740991 && value.resultAfterTaxOre <= 9007199254740991) &&
+    isUuid(value.sourceId)
+  );
+}
+
+function isCorporateArtifactKind(value: unknown): value is CorporateArtifactKind {
+  return value === "dividend_board_proposal" || value === "dividend_general_meeting_minutes" || value === "annual_board_minutes" || value === "annual_general_meeting_minutes";
+}
+
+function isCorporateBoardMeetingWire(value: unknown): value is CorporateBoardMeetingWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["meetingDate","meetingTime","place","treatmentMethod"]) &&
+    typeof value.meetingDate === "string" &&
+    typeof value.meetingTime === "string" &&
+    (typeof value.place === "string" && value.place.length >= 1 && value.place.length <= 255) &&
+    isBoardTreatmentMethod(value.treatmentMethod)
+  );
+}
+
+function isCorporateBoardParticipantWire(value: unknown): value is CorporateBoardParticipantWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["name","order","participantId","role"]) &&
+    (typeof value.name === "string" && value.name.length >= 1 && value.name.length <= 255) &&
+    (typeof value.order === "number" && Number.isInteger(value.order) && value.order >= 0 && value.order <= 10000) &&
+    (typeof value.participantId === "string" && value.participantId.length >= 1 && value.participantId.length <= 255) &&
+    isBoardRole(value.role)
+  );
+}
+
+function isCorporateCanonicalBoardParticipantWire(value: unknown): value is CorporateCanonicalBoardParticipantWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["name","participantId","role"]) &&
+    typeof value.name === "string" &&
+    typeof value.participantId === "string" &&
+    isBoardRole(value.role)
+  );
+}
+
+function isCorporateCanonicalDecisionWire(value: unknown): value is CorporateCanonicalDecisionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["annualBasisYear","annualCloseSourceId","annualResultAllocationOre","boardMeeting","boardParticipants","companyId","confirmations","decisionHash","decisionId","dividend","documentSetId","financialTotals","generalMeeting","incomeYear","legalName","oneShareClassConfirmed","organizationNumber","shareholders","sourceHash","templateFamily","templateVersion","totalCompanyShares"]) &&
+    typeof value.annualBasisYear === "number" && Number.isInteger(value.annualBasisYear) &&
+    isUuid(value.annualCloseSourceId) &&
+    typeof value.annualResultAllocationOre === "number" && Number.isInteger(value.annualResultAllocationOre) &&
+    isCorporateBoardMeetingWire(value.boardMeeting) &&
+    Array.isArray(value.boardParticipants) && value.boardParticipants.every((item) => isCorporateCanonicalBoardParticipantWire(item)) &&
+    isUuid(value.companyId) &&
+    isCorporateOwnerDividendConfirmationsWire(value.confirmations) &&
+    typeof value.decisionHash === "string" &&
+    isUuid(value.decisionId) &&
+    isCorporateOwnerDividendFactsWire(value.dividend) &&
+    isUuid(value.documentSetId) &&
+    isCorporateFinancialTotalsWire(value.financialTotals) &&
+    isCorporateGeneralMeetingWire(value.generalMeeting) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.legalName === "string" &&
+    typeof value.oneShareClassConfirmed === "boolean" &&
+    typeof value.organizationNumber === "string" &&
+    Array.isArray(value.shareholders) && value.shareholders.every((item) => isCorporateCanonicalShareholderWire(item)) &&
+    typeof value.sourceHash === "string" &&
+    typeof value.templateFamily === "string" &&
+    typeof value.templateVersion === "string" &&
+    typeof value.totalCompanyShares === "number" && Number.isInteger(value.totalCompanyShares)
+  );
+}
+
+function isCorporateCanonicalShareholderWire(value: unknown): value is CorporateCanonicalShareholderWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["name","representedShareCount","shareCount","shareholderId","vote"]) &&
+    typeof value.name === "string" &&
+    typeof value.representedShareCount === "number" && Number.isInteger(value.representedShareCount) &&
+    typeof value.shareCount === "number" && Number.isInteger(value.shareCount) &&
+    typeof value.shareholderId === "string" &&
+    isShareholderVote(value.vote)
+  );
+}
+
+function isCorporateCompanyFactsWire(value: unknown): value is CorporateCompanyFactsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["legalName","organizationNumber"]) &&
+    (typeof value.legalName === "string" && value.legalName.length >= 1 && value.legalName.length <= 255) &&
+    (typeof value.organizationNumber === "string" && new RegExp("^\\d{9}$", "u").test(value.organizationNumber))
+  );
+}
+
+function isCorporateFinancialTotalsWire(value: unknown): value is CorporateFinancialTotalsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["availableDistributionOre","cashOre","equityOre","resultAfterTaxOre"]) &&
+    typeof value.availableDistributionOre === "number" && Number.isInteger(value.availableDistributionOre) &&
+    typeof value.cashOre === "number" && Number.isInteger(value.cashOre) &&
+    typeof value.equityOre === "number" && Number.isInteger(value.equityOre) &&
+    typeof value.resultAfterTaxOre === "number" && Number.isInteger(value.resultAfterTaxOre)
+  );
+}
+
+function isCorporateGeneralMeetingWire(value: unknown): value is CorporateGeneralMeetingWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["chairName","coSignerName","meetingDate","meetingForm","meetingTime","place"]) &&
+    (typeof value.chairName === "string" && value.chairName.length >= 1 && value.chairName.length <= 255) &&
+    (typeof value.coSignerName === "string" && value.coSignerName.length >= 1 && value.coSignerName.length <= 255) &&
+    typeof value.meetingDate === "string" &&
+    isMeetingForm(value.meetingForm) &&
+    typeof value.meetingTime === "string" &&
+    (typeof value.place === "string" && value.place.length >= 1 && value.place.length <= 255)
+  );
+}
+
+function isCorporateOwnerDividendConfirmationsWire(value: unknown): value is CorporateOwnerDividendConfirmationsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["fullBoardParticipation","fullShareRepresentation","latestApprovedAnnualAccounts","proportionalAllocation","prudentEquityAndLiquidity","supportedDividendBasis","unanimousBoard","unanimousShareholders"]) &&
+    typeof value.fullBoardParticipation === "boolean" &&
+    typeof value.fullShareRepresentation === "boolean" &&
+    typeof value.latestApprovedAnnualAccounts === "boolean" &&
+    typeof value.proportionalAllocation === "boolean" &&
+    typeof value.prudentEquityAndLiquidity === "boolean" &&
+    typeof value.supportedDividendBasis === "boolean" &&
+    typeof value.unanimousBoard === "boolean" &&
+    typeof value.unanimousShareholders === "boolean"
+  );
+}
+
+function isCorporateOwnerDividendFactsWire(value: unknown): value is CorporateOwnerDividendFactsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["allocations","amountOre","liquidityAfterPaymentOre","paymentDate"]) &&
+    Array.isArray(value.allocations) && value.allocations.every((item) => isOwnerDividendAllocationWire(item)) &&
+    typeof value.amountOre === "number" && Number.isInteger(value.amountOre) &&
+    typeof value.liquidityAfterPaymentOre === "number" && Number.isInteger(value.liquidityAfterPaymentOre) &&
+    typeof value.paymentDate === "string"
+  );
+}
+
+function isCorporateReviewedFactsWire(value: unknown): value is CorporateReviewedFactsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["annualAccountsPayloadSha256","annualDataSha256","availableDistributionOre","legalName","organizationNumber","shareholders","totalCompanyShares"]) &&
+    (typeof value.annualAccountsPayloadSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.annualAccountsPayloadSha256)) &&
+    (typeof value.annualDataSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.annualDataSha256)) &&
+    (typeof value.availableDistributionOre === "number" && Number.isInteger(value.availableDistributionOre) && value.availableDistributionOre >= 0 && value.availableDistributionOre <= 9007199254740991) &&
+    (typeof value.legalName === "string" && value.legalName.length >= 1 && value.legalName.length <= 255) &&
+    (typeof value.organizationNumber === "string" && new RegExp("^\\d{9}$", "u").test(value.organizationNumber)) &&
+    Array.isArray(value.shareholders) && value.shareholders.every((item) => isCorporateReviewedShareholderWire(item)) && value.shareholders.length >= 1 && value.shareholders.length <= 10000 &&
+    (typeof value.totalCompanyShares === "number" && Number.isInteger(value.totalCompanyShares) && value.totalCompanyShares <= 9007199254740991 && value.totalCompanyShares > 0)
+  );
+}
+
+function isCorporateReviewedShareholderWire(value: unknown): value is CorporateReviewedShareholderWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["name","shareCount","shareholderId"]) &&
+    (typeof value.name === "string" && value.name.length >= 1 && value.name.length <= 255) &&
+    (typeof value.shareCount === "number" && Number.isInteger(value.shareCount) && value.shareCount <= 9007199254740991 && value.shareCount > 0) &&
+    (typeof value.shareholderId === "string" && value.shareholderId.length >= 1 && value.shareholderId.length <= 255)
+  );
+}
+
+function isCorporateShareholderBallotWire(value: unknown): value is CorporateShareholderBallotWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["representedShareCount","shareholderId","vote"]) &&
+    (typeof value.representedShareCount === "number" && Number.isInteger(value.representedShareCount) && value.representedShareCount <= 9007199254740991 && value.representedShareCount > 0) &&
+    (typeof value.shareholderId === "string" && value.shareholderId.length >= 1 && value.shareholderId.length <= 255) &&
+    isShareholderVote(value.vote)
+  );
+}
+
+function isCorporateShareholderWire(value: unknown): value is CorporateShareholderWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["name","order","shareCount","shareholderId"]) &&
+    (typeof value.name === "string" && value.name.length >= 1 && value.name.length <= 255) &&
+    (typeof value.order === "number" && Number.isInteger(value.order) && value.order >= 0 && value.order <= 10000) &&
+    (typeof value.shareCount === "number" && Number.isInteger(value.shareCount) && value.shareCount <= 9007199254740991 && value.shareCount > 0) &&
+    (typeof value.shareholderId === "string" && value.shareholderId.length >= 1 && value.shareholderId.length <= 255)
+  );
+}
+
+function isMeetingForm(value: unknown): value is MeetingForm {
+  return value === "physical" || value === "video";
+}
+
+function isOwnerDividendAllocationWire(value: unknown): value is OwnerDividendAllocationWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["amountOre","shareholderId"]) &&
+    typeof value.amountOre === "number" && Number.isInteger(value.amountOre) &&
+    typeof value.shareholderId === "string"
+  );
+}
+
+function isOwnerDividendApprovalWire(value: unknown): value is OwnerDividendApprovalWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approvalEventId","companyId","decisionHash","documentSetId"]) &&
+    isUuid(value.approvalEventId) &&
+    isUuid(value.companyId) &&
+    (typeof value.decisionHash === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.decisionHash)) &&
+    isUuid(value.documentSetId)
+  );
+}
+
+function isOwnerDividendArtifactWire(value: unknown): value is OwnerDividendArtifactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["artifactId","artifactKind","byteLength","contentSha256","documentId"]) &&
+    isUuid(value.artifactId) &&
+    isCorporateArtifactKind(value.artifactKind) &&
+    (typeof value.byteLength === "number" && Number.isInteger(value.byteLength) && value.byteLength <= 9007199254740991 && value.byteLength > 0) &&
+    (typeof value.contentSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.contentSha256)) &&
+    isUuid(value.documentId)
+  );
+}
+
+function isOwnerDividendDocumentsWire(value: unknown): value is OwnerDividendDocumentsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["artifacts","companyId","decisionHash","documentSetId"]) &&
+    Array.isArray(value.artifacts) && value.artifacts.every((item) => isOwnerDividendArtifactWire(item)) && value.artifacts.length >= 2 && value.artifacts.length <= 2 &&
+    isUuid(value.companyId) &&
+    (typeof value.decisionHash === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.decisionHash)) &&
+    isUuid(value.documentSetId)
+  );
+}
+
+function isOwnerDividendFinalizationWire(value: unknown): value is OwnerDividendFinalizationWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","decisionHash","documentSetId","finalizationId","holdingActionId","incomeYear","ledgerEntryId"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.decisionHash === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.decisionHash)) &&
+    isUuid(value.documentSetId) &&
+    isUuid(value.finalizationId) &&
+    isUuid(value.holdingActionId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2200) &&
+    isUuid(value.ledgerEntryId)
+  );
+}
+
+function isOwnerDividendLifecycleWire(value: unknown): value is OwnerDividendLifecycleWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountingEntryId","companyId","decisionHash","decisionId","declaredAmountOre","documentSetId","finalizationId","incomeYear","paidAmountOre","remainingAmountOre","replayed","state"]) &&
+    (isUuid(value.accountingEntryId) || value.accountingEntryId === null) &&
+    isUuid(value.companyId) &&
+    typeof value.decisionHash === "string" &&
+    isUuid(value.decisionId) &&
+    typeof value.declaredAmountOre === "number" && Number.isInteger(value.declaredAmountOre) &&
+    isUuid(value.documentSetId) &&
+    (isUuid(value.finalizationId) || value.finalizationId === null) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.paidAmountOre === "number" && Number.isInteger(value.paidAmountOre) &&
+    typeof value.remainingAmountOre === "number" && Number.isInteger(value.remainingAmountOre) &&
+    typeof value.replayed === "boolean" &&
+    isOwnerDividendState(value.state)
+  );
+}
+
+function isOwnerDividendPaymentWire(value: unknown): value is OwnerDividendPaymentWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["bankTransactionId","companyId","decisionHash","documentSetId","holdingActionId","incomeYear","ledgerEntryId","paymentEventId"]) &&
+    isUuid(value.bankTransactionId) &&
+    isUuid(value.companyId) &&
+    (typeof value.decisionHash === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.decisionHash)) &&
+    isUuid(value.documentSetId) &&
+    isUuid(value.holdingActionId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2200) &&
+    isUuid(value.ledgerEntryId) &&
+    isUuid(value.paymentEventId)
+  );
+}
+
+function isOwnerDividendProposalWire(value: unknown): value is OwnerDividendProposalWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["annualBasis","boardMeeting","boardParticipants","company","companyId","decisionId","dividendAmountOre","documentSetId","fullBoardParticipationConfirmed","generalMeeting","incomeYear","oneShareClassConfirmed","paymentDate","prudentEquityAndLiquidityConfirmed","reviewedFacts","shareholderBallots","shareholders","supportedDividendBasisConfirmed","unanimousBoardConfirmed"]) &&
+    isCorporateAnnualBasisWire(value.annualBasis) &&
+    isCorporateBoardMeetingWire(value.boardMeeting) &&
+    Array.isArray(value.boardParticipants) && value.boardParticipants.every((item) => isCorporateBoardParticipantWire(item)) && value.boardParticipants.length >= 1 && value.boardParticipants.length <= 100 &&
+    isCorporateCompanyFactsWire(value.company) &&
+    isUuid(value.companyId) &&
+    isUuid(value.decisionId) &&
+    (typeof value.dividendAmountOre === "number" && Number.isInteger(value.dividendAmountOre) && value.dividendAmountOre <= 9007199254740991 && value.dividendAmountOre > 0) &&
+    isUuid(value.documentSetId) &&
+    typeof value.fullBoardParticipationConfirmed === "boolean" &&
+    isCorporateGeneralMeetingWire(value.generalMeeting) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2200) &&
+    typeof value.oneShareClassConfirmed === "boolean" &&
+    typeof value.paymentDate === "string" &&
+    typeof value.prudentEquityAndLiquidityConfirmed === "boolean" &&
+    isCorporateReviewedFactsWire(value.reviewedFacts) &&
+    Array.isArray(value.shareholderBallots) && value.shareholderBallots.every((item) => isCorporateShareholderBallotWire(item)) && value.shareholderBallots.length >= 1 && value.shareholderBallots.length <= 10000 &&
+    Array.isArray(value.shareholders) && value.shareholders.every((item) => isCorporateShareholderWire(item)) && value.shareholders.length >= 1 && value.shareholders.length <= 10000 &&
+    typeof value.supportedDividendBasisConfirmed === "boolean" &&
+    typeof value.unanimousBoardConfirmed === "boolean"
+  );
+}
+
+function isOwnerDividendState(value: unknown): value is OwnerDividendState {
+  return value === "proposed" || value === "documents_registered" || value === "facts_approved" || value === "finalized" || value === "partially_paid" || value === "paid" || value === "rejected";
+}
+
+function isProposedOwnerDividendWire(value: unknown): value is ProposedOwnerDividendWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["decision","replayed","state"]) &&
+    isCorporateCanonicalDecisionWire(value.decision) &&
+    typeof value.replayed === "boolean" &&
+    isOwnerDividendState(value.state)
+  );
+}
+
+function isShareholderVote(value: unknown): value is ShareholderVote {
+  return value === "for" || value === "against" || value === "abstain";
+}
+
 function isAcceptBankFileWire(value: unknown): value is AcceptBankFileWire {
   return (
     isRecord(value) &&
@@ -5296,6 +5876,75 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isDocumentTransferWire,
+      );
+    },
+
+    async corporateGovernanceProposeOwnerDividend(
+      body: OwnerDividendProposalWire,
+      request: TalliMutationOptions,
+    ): Promise<ProposedOwnerDividendWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/owner-dividends/proposals`,
+        "POST",
+        request,
+        body,
+        isProposedOwnerDividendWire,
+      );
+    },
+
+    async corporateGovernanceRegisterOwnerDividendDocuments(
+      decisionId: string,
+      body: OwnerDividendDocumentsWire,
+      request: TalliMutationOptions,
+    ): Promise<OwnerDividendLifecycleWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/owner-dividends/${encodeURIComponent(decisionId)}/documents`,
+        "POST",
+        request,
+        body,
+        isOwnerDividendLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceApproveOwnerDividend(
+      decisionId: string,
+      body: OwnerDividendApprovalWire,
+      request: TalliMutationOptions,
+    ): Promise<OwnerDividendLifecycleWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/owner-dividends/${encodeURIComponent(decisionId)}/approvals`,
+        "POST",
+        request,
+        body,
+        isOwnerDividendLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceFinalizeOwnerDividend(
+      decisionId: string,
+      body: OwnerDividendFinalizationWire,
+      request: TalliMutationOptions,
+    ): Promise<OwnerDividendLifecycleWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/owner-dividends/${encodeURIComponent(decisionId)}/finalizations`,
+        "POST",
+        request,
+        body,
+        isOwnerDividendLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceRecordOwnerDividendPayment(
+      decisionId: string,
+      body: OwnerDividendPaymentWire,
+      request: TalliMutationOptions,
+    ): Promise<OwnerDividendLifecycleWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/owner-dividends/${encodeURIComponent(decisionId)}/payments`,
+        "POST",
+        request,
+        body,
+        isOwnerDividendLifecycleWire,
       );
     },
 

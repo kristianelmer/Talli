@@ -23,6 +23,10 @@ from talli_backend.adapters.supabase_ledger import (
 )
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceAuthenticationError,
+    CorporateGovernanceSessionFactory,
+)
+from talli_backend.application.corporate_governance_workflow import (
+    CorporateGovernanceApplication,
 )
 from talli_backend.application.ledger_workflow import LedgerAuthenticationError
 from talli_backend.modules.banking.public import (
@@ -65,6 +69,8 @@ from talli_backend.modules.ledger.public import (
     PostOwnerDividendDeclaredCommand,
     PostOwnerDividendPaymentCommand,
 )
+from talli_backend.modules.documents.public import DocumentsSessionFactory
+from talli_backend.modules.ledger.service import LedgerService
 from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear, LocalDate, Money
 
 
@@ -605,8 +611,20 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
         return _posted_entry(row)
 
 
+def compose_corporate_governance_application(
+    sessions: CorporateGovernanceSessionFactory | None,
+    documents: DocumentsSessionFactory,
+) -> CorporateGovernanceApplication:
+    return CorporateGovernanceApplication(
+        sessions or SupabaseCorporateGovernanceAdapter.from_environment(),
+        documents,
+        LedgerService,
+    )
+
+
 __all__ = [
     "SupabaseCorporateGovernanceAdapter",
     "SupabaseCorporateGovernanceSession",
     "SupabaseCorporateGovernanceTransaction",
+    "compose_corporate_governance_application",
 ]

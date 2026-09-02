@@ -132,6 +132,23 @@
       ]
     },
     {
+      "name": "owner-dividend-governance",
+      "purpose": "Authenticates one verified owner, derives canonical owner-dividend facts and accounting policy in the backend, verifies immutable Documents artifacts, persists append-only proposal and approval evidence, and atomically coordinates finalization and payment with narrow Ledger and Banking contracts.",
+      "publicPackages": [
+        "talli_backend.modules.banking.public",
+        "talli_backend.modules.corporate_governance.public",
+        "talli_backend.modules.documents.public",
+        "talli_backend.modules.ledger.public"
+      ],
+      "routes": [
+        "/api/v1/corporate-governance/owner-dividends/proposals",
+        "/api/v1/corporate-governance/owner-dividends/{decision_id}/documents",
+        "/api/v1/corporate-governance/owner-dividends/{decision_id}/approvals",
+        "/api/v1/corporate-governance/owner-dividends/{decision_id}/finalizations",
+        "/api/v1/corporate-governance/owner-dividends/{decision_id}/payments"
+      ]
+    },
+    {
       "name": "accounting-document-lifecycle",
       "purpose": "Authenticates one verified actor and owns validated document staging, exact private-object transfers, integrity finalization, tenant-scoped listing, AAL2 download, safe removal restoration, retention metadata, and document-only backup projections.",
       "publicPackages": ["talli_backend.modules.documents.public"],
@@ -214,6 +231,7 @@
       "supabase/migrations/20260828100500_banking_workflows.sql",
       "supabase/migrations/20260828100600_banking_overlap_trigger_policy.sql",
       "supabase/migrations/20260828102000_banking_connections.sql",
+      "supabase/migrations/20260902040000_corporate_governance_owner_dividend.sql",
       "supabase/migrations/20260828103000_marketing_funnel_measurement.sql",
       "supabase/migrations/20260829070411_marketing_measurement_small_cell_threshold.sql",
       "supabase/migrations/20260829074916_validation_observation_authority.sql",
@@ -296,6 +314,18 @@
       "mode": "same-request investments transaction using the restricted locked banking claim"
     },
     {
+      "port": "CorporateGovernancePersistence",
+      "adapter": "talli_backend.adapters.supabase_corporate_governance.SupabaseCorporateGovernanceSession",
+      "owner": "backend-system",
+      "mode": "request-scoped verified-owner restricted PostgreSQL adapter"
+    },
+    {
+      "port": "BankTransactionClaimPersistence",
+      "adapter": "talli_backend.adapters.supabase_corporate_governance.SupabaseCorporateGovernanceTransaction",
+      "owner": "backend-system",
+      "mode": "same-request owner-dividend transaction using the governance-specific restricted banking claim"
+    },
+    {
       "port": "BankingPersistence",
       "adapter": "talli_backend.adapters.supabase_banking.SupabaseBankingSession",
       "owner": "backend-system",
@@ -337,18 +367,21 @@
       "talli_backend.adapters.brreg_company_registry",
       "talli_backend.adapters.supabase_banking",
       "talli_backend.adapters.supabase_company_access",
+      "talli_backend.adapters.supabase_corporate_governance",
       "talli_backend.adapters.supabase_documents",
       "talli_backend.adapters.supabase_ledger",
       "talli_backend.adapters.supabase_investments",
       "talli_backend.adapters.supabase_marketing_measurement",
       "talli_backend.adapters.supabase_validation_observation",
       "talli_backend.application.banking_session",
+      "talli_backend.application.corporate_governance_session",
       "talli_backend.application.investments_session",
       "talli_backend.application.investments_workflow",
       "talli_backend.application.ledger_workflow",
       "talli_backend.application.opening_snapshot_compatibility",
       "talli_backend.modules.banking.public",
       "talli_backend.modules.company_access.public",
+      "talli_backend.modules.corporate_governance.public",
       "talli_backend.modules.documents.public",
       "talli_backend.modules.investments.public",
       "talli_backend.modules.ledger.public",
@@ -363,6 +396,7 @@
       "talli_backend.application.opening_snapshot_compatibility",
       "talli_backend.modules.banking.public",
       "talli_backend.modules.company_access.public",
+      "talli_backend.modules.corporate_governance.public",
       "talli_backend.modules.documents.public",
       "talli_backend.modules.investments.public",
       "talli_backend.modules.ledger.public",
@@ -390,6 +424,8 @@
       "talli_backend.adapters.supabase_ledger",
       "talli_backend.application.banking_session",
       "talli_backend.application.banking_workflow",
+      "talli_backend.application.corporate_governance_session",
+      "talli_backend.application.corporate_governance_workflow",
       "talli_backend.application.investments_session",
       "talli_backend.application.investments_workflow",
       "talli_backend.application.ledger_session",
@@ -397,6 +433,7 @@
       "talli_backend.application.opening_snapshot_compatibility",
       "talli_backend.modules.banking.public",
       "talli_backend.modules.company_access.public",
+      "talli_backend.modules.corporate_governance.public",
       "talli_backend.modules.documents.public",
       "talli_backend.modules.investments.public",
       "talli_backend.modules.ledger.public",

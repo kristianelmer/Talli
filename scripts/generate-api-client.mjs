@@ -154,6 +154,33 @@ const documentsOperations = {
     "documentsCreateTransfer",
   ],
 };
+const corporateGovernanceOperations = {
+  proposeOwnerDividend: [
+    "/api/v1/corporate-governance/owner-dividends/proposals",
+    "post",
+    "corporateGovernanceProposeOwnerDividend",
+  ],
+  registerOwnerDividendDocuments: [
+    "/api/v1/corporate-governance/owner-dividends/{decision_id}/documents",
+    "post",
+    "corporateGovernanceRegisterOwnerDividendDocuments",
+  ],
+  approveOwnerDividend: [
+    "/api/v1/corporate-governance/owner-dividends/{decision_id}/approvals",
+    "post",
+    "corporateGovernanceApproveOwnerDividend",
+  ],
+  finalizeOwnerDividend: [
+    "/api/v1/corporate-governance/owner-dividends/{decision_id}/finalizations",
+    "post",
+    "corporateGovernanceFinalizeOwnerDividend",
+  ],
+  recordOwnerDividendPayment: [
+    "/api/v1/corporate-governance/owner-dividends/{decision_id}/payments",
+    "post",
+    "corporateGovernanceRecordOwnerDividendPayment",
+  ],
+};
 const bankingOperations = {
   listConnections: ["/api/v1/banking/connections", "get", "bankingListConnections"],
   startConnection: ["/api/v1/banking/connections", "post", "bankingStartConnection"],
@@ -211,6 +238,11 @@ for (const [name, [operationPath, method, operationId]] of Object.entries(invest
   }
 }
 for (const [name, [operationPath, method, operationId]] of Object.entries(documentsOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(corporateGovernanceOperations)) {
   if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
     throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
   }
@@ -562,6 +594,38 @@ const documentsSchemas = Object.fromEntries([
   "DocumentUploadTransferWire",
   "DocumentWire",
 ].map((name) => [name, contract.components.schemas[name]]));
+const corporateGovernanceSchemas = Object.fromEntries([
+  "BoardRole",
+  "BoardTreatmentMethod",
+  "CorporateAnnualBasisWire",
+  "CorporateArtifactKind",
+  "CorporateBoardMeetingWire",
+  "CorporateBoardParticipantWire",
+  "CorporateCanonicalBoardParticipantWire",
+  "CorporateCanonicalDecisionWire",
+  "CorporateCanonicalShareholderWire",
+  "CorporateCompanyFactsWire",
+  "CorporateFinancialTotalsWire",
+  "CorporateGeneralMeetingWire",
+  "CorporateOwnerDividendConfirmationsWire",
+  "CorporateOwnerDividendFactsWire",
+  "CorporateReviewedFactsWire",
+  "CorporateReviewedShareholderWire",
+  "CorporateShareholderBallotWire",
+  "CorporateShareholderWire",
+  "MeetingForm",
+  "OwnerDividendAllocationWire",
+  "OwnerDividendApprovalWire",
+  "OwnerDividendArtifactWire",
+  "OwnerDividendDocumentsWire",
+  "OwnerDividendFinalizationWire",
+  "OwnerDividendLifecycleWire",
+  "OwnerDividendPaymentWire",
+  "OwnerDividendProposalWire",
+  "OwnerDividendState",
+  "ProposedOwnerDividendWire",
+  "ShareholderVote",
+].map((name) => [name, contract.components.schemas[name]]));
 const bankingSchemas = Object.fromEntries([
   "AcceptBankFileWire",
   "AcceptBankSuggestionWire",
@@ -616,6 +680,8 @@ ${Object.entries(ledgerSchemas).map(([name, schema]) => renderSchema(name, schem
 ${Object.entries(investmentsSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(documentsSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
+${Object.entries(corporateGovernanceSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(bankingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
@@ -724,6 +790,8 @@ ${Object.entries(ledgerSchemas).map(([name, schema]) => renderGuard(name, schema
 ${Object.entries(investmentsSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
 ${Object.entries(documentsSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
+
+${Object.entries(corporateGovernanceSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
 ${Object.entries(bankingSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
@@ -1484,6 +1552,75 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isDocumentTransferWire,
+      );
+    },
+
+    async corporateGovernanceProposeOwnerDividend(
+      body: OwnerDividendProposalWire,
+      request: TalliMutationOptions,
+    ): Promise<ProposedOwnerDividendWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/owner-dividends/proposals\`,
+        "POST",
+        request,
+        body,
+        isProposedOwnerDividendWire,
+      );
+    },
+
+    async corporateGovernanceRegisterOwnerDividendDocuments(
+      decisionId: string,
+      body: OwnerDividendDocumentsWire,
+      request: TalliMutationOptions,
+    ): Promise<OwnerDividendLifecycleWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/owner-dividends/\${encodeURIComponent(decisionId)}/documents\`,
+        "POST",
+        request,
+        body,
+        isOwnerDividendLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceApproveOwnerDividend(
+      decisionId: string,
+      body: OwnerDividendApprovalWire,
+      request: TalliMutationOptions,
+    ): Promise<OwnerDividendLifecycleWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/owner-dividends/\${encodeURIComponent(decisionId)}/approvals\`,
+        "POST",
+        request,
+        body,
+        isOwnerDividendLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceFinalizeOwnerDividend(
+      decisionId: string,
+      body: OwnerDividendFinalizationWire,
+      request: TalliMutationOptions,
+    ): Promise<OwnerDividendLifecycleWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/owner-dividends/\${encodeURIComponent(decisionId)}/finalizations\`,
+        "POST",
+        request,
+        body,
+        isOwnerDividendLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceRecordOwnerDividendPayment(
+      decisionId: string,
+      body: OwnerDividendPaymentWire,
+      request: TalliMutationOptions,
+    ): Promise<OwnerDividendLifecycleWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/owner-dividends/\${encodeURIComponent(decisionId)}/payments\`,
+        "POST",
+        request,
+        body,
+        isOwnerDividendLifecycleWire,
       );
     },
 

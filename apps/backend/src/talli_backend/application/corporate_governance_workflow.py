@@ -44,7 +44,7 @@ from talli_backend.modules.ledger.public import (
     PostOwnerDividendDeclaredCommand,
     PostOwnerDividendPaymentCommand,
 )
-from talli_backend.shared.kernel import Money
+from talli_backend.shared.kernel import ActorId, Money
 
 
 LedgerFacadeFactory = Callable[[LedgerPersistence], LedgerCommands]
@@ -71,6 +71,11 @@ class CorporateGovernanceApplication:
         self._documents_session_factory = documents_session_factory
         self._ledger_facade_factory = ledger_facade_factory
         self._service = CorporateGovernanceService()
+
+    async def authenticated_actor_id(self, access_token: str) -> ActorId:
+        """Resolve the verified actor without accepting an actor from transport input."""
+
+        return (await self._session_factory.session(access_token)).actor_id
 
     async def _session(self, access_token: str, actor_id):
         session = await self._session_factory.session(access_token)

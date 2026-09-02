@@ -1210,6 +1210,23 @@
         "title": "BankingPageWire",
         "type": "object"
       },
+      "BoardRole": {
+        "enum": [
+          "chair",
+          "member"
+        ],
+        "title": "BoardRole",
+        "type": "string"
+      },
+      "BoardTreatmentMethod": {
+        "enum": [
+          "physical",
+          "video",
+          "written"
+        ],
+        "title": "BoardTreatmentMethod",
+        "type": "string"
+      },
       "CapitalIncreasePhase": {
         "enum": [
           "BINDING_SUBSCRIPTION",
@@ -2627,6 +2644,654 @@
           "customerClaims"
         ],
         "title": "CompanyYearPromise",
+        "type": "object"
+      },
+      "CorporateAnnualBasisWire": {
+        "additionalProperties": false,
+        "properties": {
+          "annualAccountsPayloadSha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Annualaccountspayloadsha256",
+            "type": "string"
+          },
+          "annualDataSha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Annualdatasha256",
+            "type": "string"
+          },
+          "availableDistributionOre": {
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Availabledistributionore",
+            "type": "integer"
+          },
+          "cashOre": {
+            "maximum": 9007199254740991.0,
+            "minimum": -9007199254740991.0,
+            "title": "Cashore",
+            "type": "integer"
+          },
+          "equityOre": {
+            "maximum": 9007199254740991.0,
+            "minimum": -9007199254740991.0,
+            "title": "Equityore",
+            "type": "integer"
+          },
+          "incomeYear": {
+            "maximum": 2200.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "latestApproved": {
+            "title": "Latestapproved",
+            "type": "boolean"
+          },
+          "resultAfterTaxOre": {
+            "maximum": 9007199254740991.0,
+            "minimum": -9007199254740991.0,
+            "title": "Resultaftertaxore",
+            "type": "integer"
+          },
+          "sourceId": {
+            "format": "uuid",
+            "title": "Sourceid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceId",
+          "incomeYear",
+          "latestApproved",
+          "annualDataSha256",
+          "annualAccountsPayloadSha256",
+          "resultAfterTaxOre",
+          "equityOre",
+          "availableDistributionOre",
+          "cashOre"
+        ],
+        "title": "CorporateAnnualBasisWire",
+        "type": "object"
+      },
+      "CorporateArtifactKind": {
+        "enum": [
+          "dividend_board_proposal",
+          "dividend_general_meeting_minutes",
+          "annual_board_minutes",
+          "annual_general_meeting_minutes"
+        ],
+        "title": "CorporateArtifactKind",
+        "type": "string"
+      },
+      "CorporateBoardMeetingWire": {
+        "additionalProperties": false,
+        "properties": {
+          "meetingDate": {
+            "format": "date",
+            "title": "Meetingdate",
+            "type": "string"
+          },
+          "meetingTime": {
+            "format": "time",
+            "title": "Meetingtime",
+            "type": "string"
+          },
+          "place": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Place",
+            "type": "string"
+          },
+          "treatmentMethod": {
+            "$ref": "#/components/schemas/BoardTreatmentMethod"
+          }
+        },
+        "required": [
+          "meetingDate",
+          "meetingTime",
+          "place",
+          "treatmentMethod"
+        ],
+        "title": "CorporateBoardMeetingWire",
+        "type": "object"
+      },
+      "CorporateBoardParticipantWire": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "order": {
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Order",
+            "type": "integer"
+          },
+          "participantId": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Participantid",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/BoardRole"
+          }
+        },
+        "required": [
+          "participantId",
+          "name",
+          "role",
+          "order"
+        ],
+        "title": "CorporateBoardParticipantWire",
+        "type": "object"
+      },
+      "CorporateCanonicalBoardParticipantWire": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "participantId": {
+            "title": "Participantid",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/BoardRole"
+          }
+        },
+        "required": [
+          "participantId",
+          "name",
+          "role"
+        ],
+        "title": "CorporateCanonicalBoardParticipantWire",
+        "type": "object"
+      },
+      "CorporateCanonicalDecisionWire": {
+        "properties": {
+          "annualBasisYear": {
+            "title": "Annualbasisyear",
+            "type": "integer"
+          },
+          "annualCloseSourceId": {
+            "format": "uuid",
+            "title": "Annualclosesourceid",
+            "type": "string"
+          },
+          "annualResultAllocationOre": {
+            "title": "Annualresultallocationore",
+            "type": "integer"
+          },
+          "boardMeeting": {
+            "$ref": "#/components/schemas/CorporateBoardMeetingWire"
+          },
+          "boardParticipants": {
+            "items": {
+              "$ref": "#/components/schemas/CorporateCanonicalBoardParticipantWire"
+            },
+            "title": "Boardparticipants",
+            "type": "array"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "confirmations": {
+            "$ref": "#/components/schemas/CorporateOwnerDividendConfirmationsWire"
+          },
+          "decisionHash": {
+            "title": "Decisionhash",
+            "type": "string"
+          },
+          "decisionId": {
+            "format": "uuid",
+            "title": "Decisionid",
+            "type": "string"
+          },
+          "dividend": {
+            "$ref": "#/components/schemas/CorporateOwnerDividendFactsWire"
+          },
+          "documentSetId": {
+            "format": "uuid",
+            "title": "Documentsetid",
+            "type": "string"
+          },
+          "financialTotals": {
+            "$ref": "#/components/schemas/CorporateFinancialTotalsWire"
+          },
+          "generalMeeting": {
+            "$ref": "#/components/schemas/CorporateGeneralMeetingWire"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "legalName": {
+            "title": "Legalname",
+            "type": "string"
+          },
+          "oneShareClassConfirmed": {
+            "title": "Oneshareclassconfirmed",
+            "type": "boolean"
+          },
+          "organizationNumber": {
+            "title": "Organizationnumber",
+            "type": "string"
+          },
+          "shareholders": {
+            "items": {
+              "$ref": "#/components/schemas/CorporateCanonicalShareholderWire"
+            },
+            "title": "Shareholders",
+            "type": "array"
+          },
+          "sourceHash": {
+            "title": "Sourcehash",
+            "type": "string"
+          },
+          "templateFamily": {
+            "title": "Templatefamily",
+            "type": "string"
+          },
+          "templateVersion": {
+            "title": "Templateversion",
+            "type": "string"
+          },
+          "totalCompanyShares": {
+            "title": "Totalcompanyshares",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "decisionId",
+          "documentSetId",
+          "companyId",
+          "organizationNumber",
+          "legalName",
+          "incomeYear",
+          "annualCloseSourceId",
+          "sourceHash",
+          "templateFamily",
+          "templateVersion",
+          "annualBasisYear",
+          "financialTotals",
+          "boardMeeting",
+          "boardParticipants",
+          "generalMeeting",
+          "shareholders",
+          "totalCompanyShares",
+          "oneShareClassConfirmed",
+          "dividend",
+          "annualResultAllocationOre",
+          "confirmations",
+          "decisionHash"
+        ],
+        "title": "CorporateCanonicalDecisionWire",
+        "type": "object"
+      },
+      "CorporateCanonicalShareholderWire": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "representedShareCount": {
+            "title": "Representedsharecount",
+            "type": "integer"
+          },
+          "shareCount": {
+            "title": "Sharecount",
+            "type": "integer"
+          },
+          "shareholderId": {
+            "title": "Shareholderid",
+            "type": "string"
+          },
+          "vote": {
+            "$ref": "#/components/schemas/ShareholderVote"
+          }
+        },
+        "required": [
+          "shareholderId",
+          "name",
+          "shareCount",
+          "representedShareCount",
+          "vote"
+        ],
+        "title": "CorporateCanonicalShareholderWire",
+        "type": "object"
+      },
+      "CorporateCompanyFactsWire": {
+        "additionalProperties": false,
+        "properties": {
+          "legalName": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Legalname",
+            "type": "string"
+          },
+          "organizationNumber": {
+            "pattern": "^\\d{9}$",
+            "title": "Organizationnumber",
+            "type": "string"
+          }
+        },
+        "required": [
+          "organizationNumber",
+          "legalName"
+        ],
+        "title": "CorporateCompanyFactsWire",
+        "type": "object"
+      },
+      "CorporateFinancialTotalsWire": {
+        "properties": {
+          "availableDistributionOre": {
+            "title": "Availabledistributionore",
+            "type": "integer"
+          },
+          "cashOre": {
+            "title": "Cashore",
+            "type": "integer"
+          },
+          "equityOre": {
+            "title": "Equityore",
+            "type": "integer"
+          },
+          "resultAfterTaxOre": {
+            "title": "Resultaftertaxore",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "resultAfterTaxOre",
+          "equityOre",
+          "availableDistributionOre",
+          "cashOre"
+        ],
+        "title": "CorporateFinancialTotalsWire",
+        "type": "object"
+      },
+      "CorporateGeneralMeetingWire": {
+        "additionalProperties": false,
+        "properties": {
+          "chairName": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Chairname",
+            "type": "string"
+          },
+          "coSignerName": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Cosignername",
+            "type": "string"
+          },
+          "meetingDate": {
+            "format": "date",
+            "title": "Meetingdate",
+            "type": "string"
+          },
+          "meetingForm": {
+            "$ref": "#/components/schemas/MeetingForm"
+          },
+          "meetingTime": {
+            "format": "time",
+            "title": "Meetingtime",
+            "type": "string"
+          },
+          "place": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Place",
+            "type": "string"
+          }
+        },
+        "required": [
+          "meetingDate",
+          "meetingTime",
+          "place",
+          "meetingForm",
+          "chairName",
+          "coSignerName"
+        ],
+        "title": "CorporateGeneralMeetingWire",
+        "type": "object"
+      },
+      "CorporateOwnerDividendConfirmationsWire": {
+        "properties": {
+          "fullBoardParticipation": {
+            "title": "Fullboardparticipation",
+            "type": "boolean"
+          },
+          "fullShareRepresentation": {
+            "title": "Fullsharerepresentation",
+            "type": "boolean"
+          },
+          "latestApprovedAnnualAccounts": {
+            "title": "Latestapprovedannualaccounts",
+            "type": "boolean"
+          },
+          "proportionalAllocation": {
+            "title": "Proportionalallocation",
+            "type": "boolean"
+          },
+          "prudentEquityAndLiquidity": {
+            "title": "Prudentequityandliquidity",
+            "type": "boolean"
+          },
+          "supportedDividendBasis": {
+            "title": "Supporteddividendbasis",
+            "type": "boolean"
+          },
+          "unanimousBoard": {
+            "title": "Unanimousboard",
+            "type": "boolean"
+          },
+          "unanimousShareholders": {
+            "title": "Unanimousshareholders",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "latestApprovedAnnualAccounts",
+          "supportedDividendBasis",
+          "fullBoardParticipation",
+          "fullShareRepresentation",
+          "unanimousBoard",
+          "unanimousShareholders",
+          "proportionalAllocation",
+          "prudentEquityAndLiquidity"
+        ],
+        "title": "CorporateOwnerDividendConfirmationsWire",
+        "type": "object"
+      },
+      "CorporateOwnerDividendFactsWire": {
+        "properties": {
+          "allocations": {
+            "items": {
+              "$ref": "#/components/schemas/OwnerDividendAllocationWire"
+            },
+            "title": "Allocations",
+            "type": "array"
+          },
+          "amountOre": {
+            "title": "Amountore",
+            "type": "integer"
+          },
+          "liquidityAfterPaymentOre": {
+            "title": "Liquidityafterpaymentore",
+            "type": "integer"
+          },
+          "paymentDate": {
+            "format": "date",
+            "title": "Paymentdate",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amountOre",
+          "paymentDate",
+          "liquidityAfterPaymentOre",
+          "allocations"
+        ],
+        "title": "CorporateOwnerDividendFactsWire",
+        "type": "object"
+      },
+      "CorporateReviewedFactsWire": {
+        "additionalProperties": false,
+        "properties": {
+          "annualAccountsPayloadSha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Annualaccountspayloadsha256",
+            "type": "string"
+          },
+          "annualDataSha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Annualdatasha256",
+            "type": "string"
+          },
+          "availableDistributionOre": {
+            "maximum": 9007199254740991.0,
+            "minimum": 0.0,
+            "title": "Availabledistributionore",
+            "type": "integer"
+          },
+          "legalName": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Legalname",
+            "type": "string"
+          },
+          "organizationNumber": {
+            "pattern": "^\\d{9}$",
+            "title": "Organizationnumber",
+            "type": "string"
+          },
+          "shareholders": {
+            "items": {
+              "$ref": "#/components/schemas/CorporateReviewedShareholderWire"
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Shareholders",
+            "type": "array"
+          },
+          "totalCompanyShares": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 9007199254740991.0,
+            "title": "Totalcompanyshares",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "organizationNumber",
+          "legalName",
+          "shareholders",
+          "totalCompanyShares",
+          "availableDistributionOre",
+          "annualDataSha256",
+          "annualAccountsPayloadSha256"
+        ],
+        "title": "CorporateReviewedFactsWire",
+        "type": "object"
+      },
+      "CorporateReviewedShareholderWire": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "shareCount": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 9007199254740991.0,
+            "title": "Sharecount",
+            "type": "integer"
+          },
+          "shareholderId": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Shareholderid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "shareholderId",
+          "name",
+          "shareCount"
+        ],
+        "title": "CorporateReviewedShareholderWire",
+        "type": "object"
+      },
+      "CorporateShareholderBallotWire": {
+        "additionalProperties": false,
+        "properties": {
+          "representedShareCount": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 9007199254740991.0,
+            "title": "Representedsharecount",
+            "type": "integer"
+          },
+          "shareholderId": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Shareholderid",
+            "type": "string"
+          },
+          "vote": {
+            "$ref": "#/components/schemas/ShareholderVote"
+          }
+        },
+        "required": [
+          "shareholderId",
+          "representedShareCount",
+          "vote"
+        ],
+        "title": "CorporateShareholderBallotWire",
+        "type": "object"
+      },
+      "CorporateShareholderWire": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "order": {
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Order",
+            "type": "integer"
+          },
+          "shareCount": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 9007199254740991.0,
+            "title": "Sharecount",
+            "type": "integer"
+          },
+          "shareholderId": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Shareholderid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "shareholderId",
+          "name",
+          "shareCount",
+          "order"
+        ],
+        "title": "CorporateShareholderWire",
         "type": "object"
       },
       "CreateCompanyInvitationRequest": {
@@ -9668,6 +10333,14 @@
         "title": "MarketingRepeatedSignalWire",
         "type": "object"
       },
+      "MeetingForm": {
+        "enum": [
+          "physical",
+          "video"
+        ],
+        "title": "MeetingForm",
+        "type": "string"
+      },
       "NewYearOpeningEntryWire": {
         "properties": {
           "companyId": {
@@ -10388,6 +11061,484 @@
         "title": "OperatorContextResponse",
         "type": "object"
       },
+      "OwnerDividendAllocationWire": {
+        "properties": {
+          "amountOre": {
+            "title": "Amountore",
+            "type": "integer"
+          },
+          "shareholderId": {
+            "title": "Shareholderid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "shareholderId",
+          "amountOre"
+        ],
+        "title": "OwnerDividendAllocationWire",
+        "type": "object"
+      },
+      "OwnerDividendApprovalWire": {
+        "additionalProperties": false,
+        "properties": {
+          "approvalEventId": {
+            "format": "uuid",
+            "title": "Approvaleventid",
+            "type": "string"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "decisionHash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Decisionhash",
+            "type": "string"
+          },
+          "documentSetId": {
+            "format": "uuid",
+            "title": "Documentsetid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "documentSetId",
+          "decisionHash",
+          "approvalEventId"
+        ],
+        "title": "OwnerDividendApprovalWire",
+        "type": "object"
+      },
+      "OwnerDividendArtifactWire": {
+        "additionalProperties": false,
+        "properties": {
+          "artifactId": {
+            "format": "uuid",
+            "title": "Artifactid",
+            "type": "string"
+          },
+          "artifactKind": {
+            "$ref": "#/components/schemas/CorporateArtifactKind"
+          },
+          "byteLength": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 9007199254740991.0,
+            "title": "Bytelength",
+            "type": "integer"
+          },
+          "contentSha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Contentsha256",
+            "type": "string"
+          },
+          "documentId": {
+            "format": "uuid",
+            "title": "Documentid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifactId",
+          "documentId",
+          "artifactKind",
+          "contentSha256",
+          "byteLength"
+        ],
+        "title": "OwnerDividendArtifactWire",
+        "type": "object"
+      },
+      "OwnerDividendDocumentsWire": {
+        "additionalProperties": false,
+        "properties": {
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/OwnerDividendArtifactWire"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Artifacts",
+            "type": "array"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "decisionHash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Decisionhash",
+            "type": "string"
+          },
+          "documentSetId": {
+            "format": "uuid",
+            "title": "Documentsetid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "documentSetId",
+          "decisionHash",
+          "artifacts"
+        ],
+        "title": "OwnerDividendDocumentsWire",
+        "type": "object"
+      },
+      "OwnerDividendFinalizationWire": {
+        "additionalProperties": false,
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "decisionHash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Decisionhash",
+            "type": "string"
+          },
+          "documentSetId": {
+            "format": "uuid",
+            "title": "Documentsetid",
+            "type": "string"
+          },
+          "finalizationId": {
+            "format": "uuid",
+            "title": "Finalizationid",
+            "type": "string"
+          },
+          "holdingActionId": {
+            "format": "uuid",
+            "title": "Holdingactionid",
+            "type": "string"
+          },
+          "incomeYear": {
+            "maximum": 2200.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "ledgerEntryId": {
+            "format": "uuid",
+            "title": "Ledgerentryid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "documentSetId",
+          "decisionHash",
+          "finalizationId",
+          "holdingActionId",
+          "ledgerEntryId"
+        ],
+        "title": "OwnerDividendFinalizationWire",
+        "type": "object"
+      },
+      "OwnerDividendLifecycleWire": {
+        "properties": {
+          "accountingEntryId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accountingentryid"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "decisionHash": {
+            "title": "Decisionhash",
+            "type": "string"
+          },
+          "decisionId": {
+            "format": "uuid",
+            "title": "Decisionid",
+            "type": "string"
+          },
+          "declaredAmountOre": {
+            "title": "Declaredamountore",
+            "type": "integer"
+          },
+          "documentSetId": {
+            "format": "uuid",
+            "title": "Documentsetid",
+            "type": "string"
+          },
+          "finalizationId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finalizationid"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "paidAmountOre": {
+            "title": "Paidamountore",
+            "type": "integer"
+          },
+          "remainingAmountOre": {
+            "title": "Remainingamountore",
+            "type": "integer"
+          },
+          "replayed": {
+            "title": "Replayed",
+            "type": "boolean"
+          },
+          "state": {
+            "$ref": "#/components/schemas/OwnerDividendState"
+          }
+        },
+        "required": [
+          "decisionId",
+          "documentSetId",
+          "companyId",
+          "incomeYear",
+          "decisionHash",
+          "state",
+          "declaredAmountOre",
+          "paidAmountOre",
+          "remainingAmountOre",
+          "finalizationId",
+          "accountingEntryId",
+          "replayed"
+        ],
+        "title": "OwnerDividendLifecycleWire",
+        "type": "object"
+      },
+      "OwnerDividendPaymentWire": {
+        "additionalProperties": false,
+        "properties": {
+          "bankTransactionId": {
+            "format": "uuid",
+            "title": "Banktransactionid",
+            "type": "string"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "decisionHash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Decisionhash",
+            "type": "string"
+          },
+          "documentSetId": {
+            "format": "uuid",
+            "title": "Documentsetid",
+            "type": "string"
+          },
+          "holdingActionId": {
+            "format": "uuid",
+            "title": "Holdingactionid",
+            "type": "string"
+          },
+          "incomeYear": {
+            "maximum": 2200.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "ledgerEntryId": {
+            "format": "uuid",
+            "title": "Ledgerentryid",
+            "type": "string"
+          },
+          "paymentEventId": {
+            "format": "uuid",
+            "title": "Paymenteventid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "documentSetId",
+          "decisionHash",
+          "paymentEventId",
+          "holdingActionId",
+          "ledgerEntryId",
+          "bankTransactionId"
+        ],
+        "title": "OwnerDividendPaymentWire",
+        "type": "object"
+      },
+      "OwnerDividendProposalWire": {
+        "additionalProperties": false,
+        "properties": {
+          "annualBasis": {
+            "$ref": "#/components/schemas/CorporateAnnualBasisWire"
+          },
+          "boardMeeting": {
+            "$ref": "#/components/schemas/CorporateBoardMeetingWire"
+          },
+          "boardParticipants": {
+            "items": {
+              "$ref": "#/components/schemas/CorporateBoardParticipantWire"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Boardparticipants",
+            "type": "array"
+          },
+          "company": {
+            "$ref": "#/components/schemas/CorporateCompanyFactsWire"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "decisionId": {
+            "format": "uuid",
+            "title": "Decisionid",
+            "type": "string"
+          },
+          "dividendAmountOre": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 9007199254740991.0,
+            "title": "Dividendamountore",
+            "type": "integer"
+          },
+          "documentSetId": {
+            "format": "uuid",
+            "title": "Documentsetid",
+            "type": "string"
+          },
+          "fullBoardParticipationConfirmed": {
+            "title": "Fullboardparticipationconfirmed",
+            "type": "boolean"
+          },
+          "generalMeeting": {
+            "$ref": "#/components/schemas/CorporateGeneralMeetingWire"
+          },
+          "incomeYear": {
+            "maximum": 2200.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "oneShareClassConfirmed": {
+            "title": "Oneshareclassconfirmed",
+            "type": "boolean"
+          },
+          "paymentDate": {
+            "format": "date",
+            "title": "Paymentdate",
+            "type": "string"
+          },
+          "prudentEquityAndLiquidityConfirmed": {
+            "title": "Prudentequityandliquidityconfirmed",
+            "type": "boolean"
+          },
+          "reviewedFacts": {
+            "$ref": "#/components/schemas/CorporateReviewedFactsWire"
+          },
+          "shareholderBallots": {
+            "items": {
+              "$ref": "#/components/schemas/CorporateShareholderBallotWire"
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Shareholderballots",
+            "type": "array"
+          },
+          "shareholders": {
+            "items": {
+              "$ref": "#/components/schemas/CorporateShareholderWire"
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Shareholders",
+            "type": "array"
+          },
+          "supportedDividendBasisConfirmed": {
+            "title": "Supporteddividendbasisconfirmed",
+            "type": "boolean"
+          },
+          "unanimousBoardConfirmed": {
+            "title": "Unanimousboardconfirmed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "decisionId",
+          "documentSetId",
+          "company",
+          "shareholders",
+          "annualBasis",
+          "reviewedFacts",
+          "boardMeeting",
+          "boardParticipants",
+          "generalMeeting",
+          "shareholderBallots",
+          "oneShareClassConfirmed",
+          "fullBoardParticipationConfirmed",
+          "unanimousBoardConfirmed",
+          "supportedDividendBasisConfirmed",
+          "prudentEquityAndLiquidityConfirmed",
+          "dividendAmountOre",
+          "paymentDate"
+        ],
+        "title": "OwnerDividendProposalWire",
+        "type": "object"
+      },
+      "OwnerDividendState": {
+        "enum": [
+          "proposed",
+          "documents_registered",
+          "facts_approved",
+          "finalized",
+          "partially_paid",
+          "paid",
+          "rejected"
+        ],
+        "title": "OwnerDividendState",
+        "type": "string"
+      },
+      "ProposedOwnerDividendWire": {
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/CorporateCanonicalDecisionWire"
+          },
+          "replayed": {
+            "title": "Replayed",
+            "type": "boolean"
+          },
+          "state": {
+            "$ref": "#/components/schemas/OwnerDividendState"
+          }
+        },
+        "required": [
+          "decision",
+          "state",
+          "replayed"
+        ],
+        "title": "ProposedOwnerDividendWire",
+        "type": "object"
+      },
       "ReconstructionGapCode": {
         "enum": [
           "PRIOR_CLOSING_MISMATCH",
@@ -10686,6 +11837,15 @@
         ],
         "title": "ShareSaleAllocationWire",
         "type": "object"
+      },
+      "ShareholderVote": {
+        "enum": [
+          "for",
+          "against",
+          "abstain"
+        ],
+        "title": "ShareholderVote",
+        "type": "string"
       },
       "StartBankConnectionWire": {
         "additionalProperties": false,
@@ -28761,6 +29921,2116 @@
         "summary": "Revoke Company Access Operator Support",
         "tags": [
           "company-access"
+        ]
+      }
+    },
+    "/api/v1/corporate-governance/owner-dividends/proposals": {
+      "post": {
+        "operationId": "corporateGovernanceProposeOwnerDividend",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 16,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnerDividendProposalWire"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposedOwnerDividendWire"
+                }
+              }
+            },
+            "description": "Owner dividend proposed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Propose Owner Dividend",
+        "tags": [
+          "corporate-governance"
+        ]
+      }
+    },
+    "/api/v1/corporate-governance/owner-dividends/{decision_id}/approvals": {
+      "post": {
+        "operationId": "corporateGovernanceApproveOwnerDividend",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "decision_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Decision Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 16,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnerDividendApprovalWire"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerDividendLifecycleWire"
+                }
+              }
+            },
+            "description": "Owner-dividend facts approved.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Approve Owner Dividend",
+        "tags": [
+          "corporate-governance"
+        ]
+      }
+    },
+    "/api/v1/corporate-governance/owner-dividends/{decision_id}/documents": {
+      "post": {
+        "operationId": "corporateGovernanceRegisterOwnerDividendDocuments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "decision_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Decision Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 16,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnerDividendDocumentsWire"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerDividendLifecycleWire"
+                }
+              }
+            },
+            "description": "Owner-dividend documents registered.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Register Owner Dividend Documents",
+        "tags": [
+          "corporate-governance"
+        ]
+      }
+    },
+    "/api/v1/corporate-governance/owner-dividends/{decision_id}/finalizations": {
+      "post": {
+        "operationId": "corporateGovernanceFinalizeOwnerDividend",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "decision_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Decision Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 16,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnerDividendFinalizationWire"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerDividendLifecycleWire"
+                }
+              }
+            },
+            "description": "Owner dividend finalized and declared in Ledger.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Finalize Owner Dividend",
+        "tags": [
+          "corporate-governance"
+        ]
+      }
+    },
+    "/api/v1/corporate-governance/owner-dividends/{decision_id}/payments": {
+      "post": {
+        "operationId": "corporateGovernanceRecordOwnerDividendPayment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "decision_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Decision Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 16,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnerDividendPaymentWire"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerDividendLifecycleWire"
+                }
+              }
+            },
+            "description": "Owner-dividend payment recorded in Ledger and Banking.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Record Owner Dividend Payment",
+        "tags": [
+          "corporate-governance"
         ]
       }
     },
