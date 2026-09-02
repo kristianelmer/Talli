@@ -70,16 +70,21 @@ test("marketing collection requires durable server-stamped approved notice proof
       "--volume", `${root}:/repo:ro`, "postgres:17-alpine",
     ]);
     assert.equal(started.status, 0, started.stderr);
-    let ready = false;
+    let readyChecks = 0;
     for (let i = 0; i < 80; i += 1) {
-      ready = docker([
+      const ready = docker([
         "exec", container, "psql", "-U", "postgres", "-d", "talli_test",
         "-Atq", "-c", "select 1",
       ]).status === 0;
-      if (ready) break;
+      if (ready) {
+        readyChecks += 1;
+        if (readyChecks === 2) break;
+      } else {
+        readyChecks = 0;
+      }
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
     }
-    assert.equal(ready, true);
+    assert.equal(readyChecks, 2, "PostgreSQL container did not become stable");
     psql(container, String.raw`
       create role anon nologin;
       create role authenticated nologin;
