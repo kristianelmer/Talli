@@ -107,8 +107,9 @@ class GovernanceTransactionStub:
         self.calls.append(("propose", decision))
         return SimpleNamespace(decision=decision, state=OwnerDividendState.PROPOSED, replayed=False)
 
-    async def propose_annual_close(self, command, decision):
+    async def propose_annual_close(self, command, decision, artifacts):
         self.calls.append(("propose_annual_close", decision))
+        assert len(artifacts) == 2
         return SimpleNamespace(
             decision=decision,
             state=OwnerDividendState.PROPOSED,
@@ -118,6 +119,24 @@ class GovernanceTransactionStub:
     async def register_owner_dividend_documents(self, command):
         self.calls.append(("register_documents", command))
         return lifecycle(OwnerDividendState.DOCUMENTS_REGISTERED)
+
+    async def register_annual_close_documents(self, command):
+        self.calls.append(("register_annual_close_documents", command))
+        return SimpleNamespace(
+            decision_id=command.decision_id,
+            document_set_id=command.document_set_id,
+            company_id=command.company_id,
+            income_year=IncomeYear(2025),
+            decision_hash=command.decision_hash,
+            state=OwnerDividendState.DOCUMENTS_REGISTERED,
+            generated_artifact_hashes={
+                artifact.artifact_kind.value: artifact.content_sha256
+                for artifact in command.artifacts
+            },
+            signed_artifact_hashes={},
+            finalization_id=None,
+            replayed=False,
+        )
 
     async def approve_owner_dividend(self, command):
         self.calls.append(("approve", command))

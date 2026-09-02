@@ -35,12 +35,28 @@ class ApiGovernanceTransaction(GovernanceTransactionStub):
         )
 
 
-def client_and_transaction():
+def client_and_transaction(*, annual_documents: bool = False):
     transaction = ApiGovernanceTransaction()
     governance_sessions = GovernanceSessionFactoryStub(
         GovernanceSessionStub(transaction)
     )
-    documents_sessions = DocumentsSessionFactoryStub(DocumentsSessionStub())
+    documents = DocumentsSessionStub()
+    if annual_documents:
+        documents.records[0].linked_to = (
+            "corporate_decision:44444444-4444-4444-8444-444444444444"
+        )
+        documents.records[0].content_sha256 = (
+            "dc38c0c178f4a0bbd7e466581fae416d6ddeabfacf00027eaac95dbe7ad28e50"
+        )
+        documents.records[0].byte_length = 32066
+        documents.records[1].content_sha256 = (
+            "270bf87a72e5ced5b13490e220e352bde7a16bff019f48d46bfa88ac1d561776"
+        )
+        documents.records[1].linked_to = (
+            "corporate_decision:44444444-4444-4444-8444-444444444444"
+        )
+        documents.records[1].byte_length = 32626
+    documents_sessions = DocumentsSessionFactoryStub(documents)
     return (
         TestClient(
             create_app(
@@ -279,7 +295,7 @@ def test_owner_dividend_fastapi_lifecycle_is_typed_and_backend_owned() -> None:
 
 
 def test_annual_close_fastapi_proposal_is_typed_and_backend_owned() -> None:
-    client, transaction = client_and_transaction()
+    client, transaction = client_and_transaction(annual_documents=True)
     proposed = client.post(
         "/api/v1/corporate-governance/annual-closes/proposals",
         headers=headers("annual-close-proposal-0001"),
@@ -304,6 +320,43 @@ def test_annual_close_fastapi_proposal_is_typed_and_backend_owned() -> None:
         for artifact in proposed.json()["artifacts"]
     )
     assert transaction.calls[-1][0] == "propose_annual_close"
+
+    registered = client.post(
+        f"/api/v1/corporate-governance/annual-closes/{annual_close_payload()['decisionId']}/documents",
+        headers=headers("annual-close-documents-0001"),
+        json={
+            "companyId": annual_close_payload()["companyId"],
+            "documentSetId": annual_close_payload()["documentSetId"],
+            "decisionHash": proposed.json()["decision"]["decisionHash"],
+            "artifacts": [
+                {
+                    "artifactId": artifact_id,
+                    "documentId": document_id,
+                    "artifactKind": artifact["artifactKind"],
+                    "contentSha256": artifact["contentSha256"],
+                    "byteLength": artifact["byteLength"],
+                }
+                for artifact, artifact_id, document_id in zip(
+                    proposed.json()["artifacts"],
+                    (
+                        "88888888-8888-4888-8888-888888888881",
+                        "88888888-8888-4888-8888-888888888882",
+                    ),
+                    (
+                        "66666666-6666-4666-8666-666666666666",
+                        "77777777-7777-4777-8777-777777777777",
+                    ),
+                    strict=True,
+                )
+            ],
+        },
+    )
+    assert registered.status_code == 201, registered.text
+    assert registered.json()["state"] == "documents_registered"
+    assert registered.json()["generatedArtifactHashes"] == {
+        artifact["artifactKind"]: artifact["contentSha256"]
+        for artifact in proposed.json()["artifacts"]
+    }
 
 
 def test_owner_dividend_routes_require_bearer_and_reject_extra_fields() -> None:

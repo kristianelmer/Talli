@@ -38,6 +38,7 @@ from talli_backend.modules.banking.public import (
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
     AnnualCloseProposalCommand,
+    AnnualCloseLifecycle,
     ApproveOwnerDividendCommand,
     BankTransactionReference,
     CanonicalAnnualCloseDecision,
@@ -64,6 +65,7 @@ from talli_backend.modules.corporate_governance.public import (
     RecordShareholderLoanCommand,
     RecordedShareholderLoan,
     RegisterOwnerDividendDocumentsCommand,
+    RegisterAnnualCloseDocumentsCommand,
     ShareholderLoanDirection,
     ShareholderLoanDocumentStatus,
     corporate_governance_persistence_adapter,
@@ -235,6 +237,30 @@ def _lifecycle(value: Mapping[str, object]) -> OwnerDividendLifecycle:
         accounting_entry_id=(
             AccountingEntryReference(str(accounting_entry_id))
             if accounting_entry_id is not None
+            else None
+        ),
+        replayed=bool(value["replayed"]),
+    )
+
+
+def _annual_close_lifecycle(value: Mapping[str, object]) -> AnnualCloseLifecycle:
+    finalization_id = value.get("finalizationId")
+    generated = value.get("generatedArtifactHashes")
+    signed = value.get("signedArtifactHashes")
+    if not isinstance(generated, Mapping) or not isinstance(signed, Mapping):
+        raise CorporateGovernanceError.unavailable()
+    return AnnualCloseLifecycle(
+        decision_id=CorporateDecisionId(str(value["decisionId"])),
+        document_set_id=CorporateDocumentSetId(str(value["documentSetId"])),
+        company_id=CompanyId(str(value["companyId"])),
+        income_year=IncomeYear(int(value["incomeYear"])),
+        decision_hash=str(value["decisionHash"]),
+        state=OwnerDividendState(str(value["state"])),
+        generated_artifact_hashes={str(key): str(item) for key, item in generated.items()},
+        signed_artifact_hashes={str(key): str(item) for key, item in signed.items()},
+        finalization_id=(
+            CorporateFinalizationId(str(finalization_id))
+            if finalization_id is not None
             else None
         ),
         replayed=bool(value["replayed"]),
@@ -497,17 +523,33 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
         self,
         command: AnnualCloseProposalCommand,
         decision: CanonicalAnnualCloseDecision,
+        artifacts,
     ) -> ProposedAnnualClose:
         if command.actor_id != self.actor_id:
             raise CorporateGovernanceError.forbidden()
         rows = await self._database_rows(
             "select corporate_governance.propose_annual_close_v1("
-            "%s::jsonb, %s::jsonb, %s::jsonb, %s::text) as result",
+            "%s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::text) as result",
             (
                 json.dumps(_proposal_request(command), separators=(",", ":")),
                 json.dumps(_canonical_decision(decision), separators=(",", ":")),
                 json.dumps(
                     canonical_annual_close_payload(decision),
+                    separators=(",", ":"),
+                    ensure_ascii=False,
+                ),
+                json.dumps(
+                    [
+                        {
+                            "artifactKind": artifact.artifact_kind.value,
+                            "filename": artifact.filename,
+                            "templateVersion": artifact.template_version,
+                            "decisionHash": artifact.decision_hash,
+                            "contentSha256": artifact.content_sha256,
+                            "byteLength": artifact.byte_length,
+                        }
+                        for artifact in artifacts
+                    ],
                     separators=(",", ":"),
                     ensure_ascii=False,
                 ),
@@ -544,6 +586,31 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
         }
         return _lifecycle(await self._governance_result(
             "select corporate_governance.register_owner_dividend_documents_v1("
+            "%s::jsonb, %s::text) as result",
+            request,
+        ))
+
+    async def register_annual_close_documents(
+        self,
+        command: RegisterAnnualCloseDocumentsCommand,
+    ) -> AnnualCloseLifecycle:
+        if command.actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        request = {
+            **_common_request(command),
+            "artifacts": [
+                {
+                    "artifactId": str(artifact.artifact_id),
+                    "documentId": str(artifact.document_id),
+                    "artifactKind": artifact.artifact_kind.value,
+                    "contentSha256": artifact.content_sha256,
+                    "byteLength": artifact.byte_length,
+                }
+                for artifact in command.artifacts
+            ],
+        }
+        return _annual_close_lifecycle(await self._governance_result(
+            "select corporate_governance.register_annual_close_documents_v1("
             "%s::jsonb, %s::text) as result",
             request,
         ))

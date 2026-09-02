@@ -1,7 +1,7 @@
 # Corporate-governance web feature
 
 <!-- architecture-inventory
-{"apiOperations":["corporateGovernanceApproveOwnerDividend","corporateGovernanceFinalizeOwnerDividend","corporateGovernanceProposeOwnerDividend","corporateGovernanceRecordOwnerDividendPayment","corporateGovernanceRecordShareholderLoan","corporateGovernanceRegisterOwnerDividendDocuments"],"dependencies":[],"publicEntryPoints":["@/features/corporate-governance","apps/web/features/corporate-governance","apps/web/features/corporate-governance/index.ts"],"routes":["/actions/[type]","/corporate-decisions/[decisionId]","/workspace"]}
+{"apiOperations":["corporateGovernanceApproveOwnerDividend","corporateGovernanceFinalizeOwnerDividend","corporateGovernanceProposeAnnualClose","corporateGovernanceProposeOwnerDividend","corporateGovernanceRecordOwnerDividendPayment","corporateGovernanceRecordShareholderLoan","corporateGovernanceRegisterAnnualCloseDocuments","corporateGovernanceRegisterOwnerDividendDocuments"],"dependencies":[],"publicEntryPoints":["@/features/corporate-governance","apps/web/features/corporate-governance","apps/web/features/corporate-governance/index.ts"],"routes":["/actions/[type]","/corporate-decisions/[decisionId]","/workspace"]}
 -->
 
 ## Purpose and boundary

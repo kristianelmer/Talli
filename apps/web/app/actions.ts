@@ -135,6 +135,7 @@ import {
   proposeOwnerDividend,
   recordOwnerDividendPayment as recordOwnerDividendPaymentThroughApi,
   recordShareholderLoan as recordShareholderLoanThroughApi,
+  registerAnnualCloseDocuments,
   registerOwnerDividendDocuments,
   shareholderLoanActionErrorMessage,
   type AnnualCloseProposalWire,
@@ -579,9 +580,7 @@ async function persistCorporateDocumentDraft(input: {
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
   accessToken: string;
   decision: CorporateDecisionInput;
-  decisionHash: string;
   renderedArtifacts: RenderedCorporateArtifactWire[];
-  setId: string;
   artifactIds: CorporateDraftArtifactIds;
 }) {
   const rendered = input.renderedArtifacts.map((artifact) => ({
@@ -594,7 +593,6 @@ async function persistCorporateDocumentDraft(input: {
   const uploadedDocuments = [] as Array<{
     artifactKind: CorporateArtifactKind;
     documentId: string;
-    storageKey: string;
     contentSha256: string | null;
     byteLength: number | null;
   }>;
@@ -627,13 +625,11 @@ async function persistCorporateDocumentDraft(input: {
       uploadedDocuments.push({
         artifactKind: artifact.artifactKind,
         documentId: ids.documentId,
-        storageKey: document.storageKey,
         contentSha256: document.contentSha256,
         byteLength: document.byteLength,
       });
     }
-    const decisionHash = input.decisionHash;
-    const rpcArtifacts = rendered.map((artifact) => {
+    const artifacts = rendered.map((artifact) => {
       const ids = input.artifactIds[artifact.artifactKind];
       const uploaded = uploadedDocuments.find(
         (candidate) => candidate.artifactKind === artifact.artifactKind,
@@ -642,52 +638,14 @@ async function persistCorporateDocumentDraft(input: {
         throw new Error("Dokumentsettet mangler en påkrevd PDF-identitet.");
       }
       return {
-        id: ids.artifactId,
-        document_id: ids.documentId,
-        artifact_kind: artifact.artifactKind,
-        name: artifact.filename,
-        content_sha256: artifact.contentSha256,
-        byte_length: artifact.byteLength,
-        mime_type: "application/pdf",
-        storage_key: uploaded.storageKey,
+        artifactId: ids.artifactId,
+        documentId: ids.documentId,
+        artifactKind: artifact.artifactKind,
+        contentSha256: artifact.contentSha256,
+        byteLength: artifact.byteLength,
       };
     });
-    const { error: draftError } = await input.supabase.rpc("create_corporate_document_draft", {
-      p_payload: {
-        decision: {
-          id: input.decision.request_id,
-          company_id: input.decision.company_id,
-          income_year: input.decision.income_year,
-          decision_kind: input.decision.decision_kind,
-          annual_close_source_id: input.decision.annual_close_source_id,
-          source_hash: input.decision.source_hash,
-          canonical_input: input.decision,
-          decision_hash: decisionHash,
-        },
-        document_set: {
-          id: input.setId,
-          template_family: input.decision.template_family,
-          template_version: input.decision.template_version,
-          decision_hash: decisionHash,
-        },
-        artifacts: rpcArtifacts,
-        idempotency_key: `corporate-draft:${input.decision.request_id}`,
-      },
-    });
-    if (draftError) {
-      throw new Error(draftError.message);
-    }
-    return {
-      decisionHash,
-      renderedArtifacts: rendered,
-      artifacts: rpcArtifacts.map((artifact) => ({
-        artifactId: artifact.id,
-        documentId: artifact.document_id,
-        artifactKind: artifact.artifact_kind,
-        contentSha256: artifact.content_sha256,
-        byteLength: artifact.byte_length,
-      })),
-    };
+    return { artifacts };
   } catch (error) {
     const cleanup = await Promise.allSettled(uploadedDocuments.map((document) => removeDocument(
       input.accessToken,
@@ -3085,9 +3043,7 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
       supabase,
       accessToken,
       decision,
-      decisionHash,
       renderedArtifacts,
-      setId,
       artifactIds,
     });
     await registerOwnerDividendDocuments(
@@ -3327,15 +3283,25 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
     },
   };
   try {
-    await persistCorporateDocumentDraft({
+    const persisted = await persistCorporateDocumentDraft({
       supabase,
       accessToken,
       decision,
-      decisionHash,
       renderedArtifacts,
-      setId,
       artifactIds,
     });
+    await registerAnnualCloseDocuments(
+      accessToken,
+      decision.request_id,
+      {
+        companyId,
+        documentSetId: setId,
+        decisionHash,
+        artifacts: persisted.artifacts,
+      },
+      `annual-close-documents:${decision.request_id}`,
+      decision.request_id,
+    );
   } catch (error) {
     failTo(returnTo, error instanceof Error ? error.message : "Årsdokumentutkastet kunne ikke opprettes.");
   }

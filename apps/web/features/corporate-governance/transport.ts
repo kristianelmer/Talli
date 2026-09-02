@@ -49,6 +49,20 @@ export function proposeAnnualClose(
   );
 }
 
+export function registerAnnualCloseDocuments(
+  accessToken: string,
+  decisionId: string,
+  body: OwnerDividendDocumentsWire,
+  idempotencyKey: string,
+  requestId?: string,
+) {
+  return client(accessToken).corporateGovernanceRegisterAnnualCloseDocuments(
+    decisionId,
+    body,
+    mutation(idempotencyKey, requestId),
+  );
+}
+
 export function recordShareholderLoan(
   accessToken: string,
   body: ShareholderLoanWire,

@@ -112,9 +112,11 @@ def test_annual_close_proposal_uses_the_restricted_canonical_store() -> None:
         return [{"result": {"state": "proposed", "replayed": False}}]
 
     transaction._database_rows = rows  # type: ignore[method-assign]
-    result = asyncio.run(transaction.propose_annual_close(command, decision))
+    artifacts = CorporateGovernanceService().render_corporate_documents(decision)
+    result = asyncio.run(transaction.propose_annual_close(command, decision, artifacts))
     request = json.loads(str(calls[0][1][0]))
     canonical = json.loads(str(calls[0][1][1]))
+    rendered = json.loads(str(calls[0][1][3]))
 
     assert result.decision == decision
     assert result.state is OwnerDividendState.PROPOSED
@@ -122,6 +124,7 @@ def test_annual_close_proposal_uses_the_restricted_canonical_store() -> None:
     assert request["decisionId"] == str(command.decision_id)
     assert canonical["decisionKind"] == "annual_close"
     assert canonical["dividend"] is None
+    assert rendered[0]["contentSha256"] == artifacts[0].content_sha256
 
 
 def test_document_approval_and_finalization_map_exact_replays() -> None:

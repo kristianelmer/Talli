@@ -469,6 +469,20 @@ class OwnerDividendLifecycle:
 
 
 @dataclass(frozen=True, slots=True)
+class AnnualCloseLifecycle:
+    decision_id: CorporateDecisionId
+    document_set_id: CorporateDocumentSetId
+    company_id: CompanyId
+    income_year: IncomeYear
+    decision_hash: str
+    state: OwnerDividendState
+    generated_artifact_hashes: dict[str, str]
+    signed_artifact_hashes: dict[str, str]
+    finalization_id: CorporateFinalizationId | None
+    replayed: bool
+
+
+@dataclass(frozen=True, slots=True)
 class PreparedOwnerDividendFinalization:
     declared_amount_ore: int
     accounting_policy_version: str
@@ -512,6 +526,18 @@ class RenderedCorporateArtifact:
 
 @dataclass(frozen=True, slots=True)
 class RegisterOwnerDividendDocumentsCommand:
+    company_id: CompanyId
+    actor_id: ActorId
+    correlation_id: CorrelationId
+    idempotency_key: IdempotencyKey
+    decision_id: CorporateDecisionId
+    document_set_id: CorporateDocumentSetId
+    decision_hash: str
+    artifacts: tuple[OwnerDividendArtifactReference, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class RegisterAnnualCloseDocumentsCommand:
     company_id: CompanyId
     actor_id: ActorId
     correlation_id: CorrelationId
@@ -633,12 +659,18 @@ class CorporateGovernancePersistence(Protocol):
         self,
         command: AnnualCloseProposalCommand,
         decision: CanonicalAnnualCloseDecision,
+        artifacts: tuple[RenderedCorporateArtifact, ...],
     ) -> ProposedAnnualClose: ...
 
     async def register_owner_dividend_documents(
         self,
         command: RegisterOwnerDividendDocumentsCommand,
     ) -> OwnerDividendLifecycle: ...
+
+    async def register_annual_close_documents(
+        self,
+        command: RegisterAnnualCloseDocumentsCommand,
+    ) -> AnnualCloseLifecycle: ...
 
     async def approve_owner_dividend(
         self,
@@ -705,6 +737,7 @@ SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 __all__ = [
     "AccountingEntryReference",
+    "AnnualCloseLifecycle",
     "AnnualCloseProposalCommand",
     "ApprovedAnnualBasis",
     "ApproveOwnerDividendCommand",
@@ -752,6 +785,7 @@ __all__ = [
     "RecordedShareholderLoan",
     "RenderedCorporateArtifact",
     "RegisterOwnerDividendDocumentsCommand",
+    "RegisterAnnualCloseDocumentsCommand",
     "ReviewedOwnerDividendFacts",
     "ReviewedShareholderFacts",
     "SHA256_PATTERN",

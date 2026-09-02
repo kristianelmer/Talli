@@ -18,6 +18,7 @@ from talli_backend.modules.banking.public import (
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
     AnnualCloseProposalCommand,
+    AnnualCloseLifecycle,
     ApproveOwnerDividendCommand,
     CorporateArtifactKind,
     CorporateGovernanceError,
@@ -31,6 +32,7 @@ from talli_backend.modules.corporate_governance.public import (
     RecordOwnerDividendPaymentCommand,
     RecordedShareholderLoan,
     RegisterOwnerDividendDocumentsCommand,
+    RegisterAnnualCloseDocumentsCommand,
     SHA256_PATTERN,
 )
 from talli_backend.modules.corporate_governance.service import (
@@ -57,6 +59,10 @@ LedgerFacadeFactory = Callable[[LedgerPersistence], LedgerCommands]
 _REQUIRED_ARTIFACT_KINDS = {
     CorporateArtifactKind.DIVIDEND_BOARD_PROPOSAL,
     CorporateArtifactKind.DIVIDEND_GENERAL_MEETING_MINUTES,
+}
+_REQUIRED_ANNUAL_ARTIFACT_KINDS = {
+    CorporateArtifactKind.ANNUAL_BOARD_MINUTES,
+    CorporateArtifactKind.ANNUAL_GENERAL_MEETING_MINUTES,
 }
 
 
@@ -121,14 +127,19 @@ class CorporateGovernanceApplication:
     ) -> ProposedAnnualClose:
         session = await self._session(access_token, command.actor_id)
         decision = self._service.build_annual_close_decision(command)
+        artifacts = self._service.render_corporate_documents(decision)
         async with session.transaction() as transaction:
             await self._require_owner(transaction, command.company_id)
-            proposed = await transaction.propose_annual_close(command, decision)
+            proposed = await transaction.propose_annual_close(
+                command,
+                decision,
+                artifacts,
+            )
         return ProposedAnnualClose(
             decision=proposed.decision,
             state=proposed.state,
             replayed=proposed.replayed,
-            artifacts=self._service.render_corporate_documents(proposed.decision),
+            artifacts=artifacts,
         )
 
     async def register_owner_dividend_documents(
@@ -172,6 +183,48 @@ class CorporateGovernanceApplication:
         async with session.transaction() as transaction:
             await self._require_owner(transaction, command.company_id)
             return await transaction.register_owner_dividend_documents(command)
+
+    async def register_annual_close_documents(
+        self,
+        access_token: str,
+        command: RegisterAnnualCloseDocumentsCommand,
+    ) -> AnnualCloseLifecycle:
+        session = await self._session(access_token, command.actor_id)
+        documents = await self._documents_session_factory.session(access_token)
+        if documents.actor_id != command.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        if (
+            len(command.artifacts) != 2
+            or {artifact.artifact_kind for artifact in command.artifacts}
+            != _REQUIRED_ANNUAL_ARTIFACT_KINDS
+            or len({str(artifact.artifact_id) for artifact in command.artifacts}) != 2
+            or len({str(artifact.document_id) for artifact in command.artifacts}) != 2
+        ):
+            raise CorporateGovernanceError.invalid(
+                CorporateGovernanceErrorCode.INVALID_INPUT,
+                "Annual-close documents must contain the exact required artifacts.",
+            )
+        records = await documents.list_documents((command.company_id,))
+        by_id = {str(record.document_id): record for record in records}
+        for artifact in command.artifacts:
+            record = by_id.get(str(artifact.document_id))
+            if (
+                record is None
+                or record.company_id != command.company_id
+                or record.linked_to != f"corporate_decision:{command.decision_id}"
+                or record.status is not DocumentStatus.GENERATED_UNSIGNED
+                or not SHA256_PATTERN.fullmatch(artifact.content_sha256)
+                or record.content_sha256 != artifact.content_sha256
+                or artifact.byte_length <= 0
+                or record.byte_length != artifact.byte_length
+            ):
+                raise CorporateGovernanceError.precondition(
+                    CorporateGovernanceErrorCode.INVALID_INPUT,
+                    "Document evidence does not match the annual-close proposal.",
+                )
+        async with session.transaction() as transaction:
+            await self._require_owner(transaction, command.company_id)
+            return await transaction.register_annual_close_documents(command)
 
     async def approve_owner_dividend(
         self,

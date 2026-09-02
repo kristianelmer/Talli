@@ -169,6 +169,7 @@ from talli_backend.modules.company_access.public import (
 )
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference as CorporateAccountingEntryReference,
+    AnnualCloseLifecycle,
     AnnualCloseProposalCommand,
     ApprovedAnnualBasis,
     ApproveOwnerDividendCommand,
@@ -203,6 +204,7 @@ from talli_backend.modules.corporate_governance.public import (
     RecordOwnerDividendPaymentCommand as CorporateRecordOwnerDividendPaymentCommand,
     RecordShareholderLoanCommand as CorporateRecordShareholderLoanCommand,
     RecordedShareholderLoan,
+    RegisterAnnualCloseDocumentsCommand,
     RegisterOwnerDividendDocumentsCommand,
     ReviewedOwnerDividendFacts,
     ReviewedShareholderFacts,
@@ -1215,6 +1217,19 @@ class OwnerDividendLifecycleWire(TransportModel):
     remaining_amount_ore: int
     finalization_id: UUID | None
     accounting_entry_id: UUID | None
+    replayed: bool
+
+
+class AnnualCloseLifecycleWire(TransportModel):
+    decision_id: UUID
+    document_set_id: UUID
+    company_id: UUID
+    income_year: int
+    decision_hash: str
+    state: OwnerDividendState
+    generated_artifact_hashes: dict[str, str]
+    signed_artifact_hashes: dict[str, str]
+    finalization_id: UUID | None
     replayed: bool
 
 
@@ -3862,6 +3877,24 @@ def create_app(
             replayed=value.replayed,
         )
 
+    def annual_close_lifecycle_wire(
+        value: AnnualCloseLifecycle,
+    ) -> AnnualCloseLifecycleWire:
+        return AnnualCloseLifecycleWire(
+            decision_id=UUID(str(value.decision_id)),
+            document_set_id=UUID(str(value.document_set_id)),
+            company_id=UUID(str(value.company_id)),
+            income_year=int(value.income_year),
+            decision_hash=value.decision_hash,
+            state=value.state,
+            generated_artifact_hashes=value.generated_artifact_hashes,
+            signed_artifact_hashes=value.signed_artifact_hashes,
+            finalization_id=(
+                UUID(str(value.finalization_id)) if value.finalization_id else None
+            ),
+            replayed=value.replayed,
+        )
+
     def shareholder_loan_wire(
         value: RecordedShareholderLoan,
     ) -> RecordedShareholderLoanWire:
@@ -4085,6 +4118,62 @@ def create_app(
                 domain_command,
             )
             return proposed_annual_close_wire(result)
+
+        return await corporate_governance_call(execute)
+
+    @application.post(
+        "/api/v1/corporate-governance/annual-closes/{decision_id}/documents",
+        operation_id="corporateGovernanceRegisterAnnualCloseDocuments",
+        response_model=AnnualCloseLifecycleWire,
+        status_code=201,
+        responses={
+            201: {"description": "Annual-close documents registered."}
+            | corporate_governance_success
+        }
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def register_annual_close_documents(
+        request: Request,
+        decision_id: UUID,
+        command: OwnerDividendDocumentsWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualCloseLifecycleWire:
+        async def execute() -> AnnualCloseLifecycleWire:
+            access_token = bearer_token(credentials)
+            actor_id = await governance_actor(access_token)
+            domain_command = corporate_governance_input(
+                lambda: RegisterAnnualCloseDocumentsCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    decision_id=CorporateDecisionId(str(decision_id)),
+                    document_set_id=CorporateDocumentSetId(
+                        str(command.document_set_id)
+                    ),
+                    decision_hash=command.decision_hash,
+                    artifacts=tuple(
+                        OwnerDividendArtifactReference(
+                            CorporateArtifactId(str(item.artifact_id)),
+                            DocumentReference(str(item.document_id)),
+                            item.artifact_kind,
+                            item.content_sha256,
+                            item.byte_length,
+                        )
+                        for item in command.artifacts
+                    ),
+                )
+            )
+            result = await corporate_governance_application.register_annual_close_documents(
+                access_token,
+                domain_command,
+            )
+            return annual_close_lifecycle_wire(result)
 
         return await corporate_governance_call(execute)
 

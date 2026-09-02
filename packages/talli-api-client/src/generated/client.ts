@@ -1702,6 +1702,19 @@ export interface DocumentWire {
   storageKey: string;
 }
 
+export interface AnnualCloseLifecycleWire {
+  companyId: string;
+  decisionHash: string;
+  decisionId: string;
+  documentSetId: string;
+  finalizationId: string | null;
+  generatedArtifactHashes: Record<string, string>;
+  incomeYear: number;
+  replayed: boolean;
+  signedArtifactHashes: Record<string, string>;
+  state: OwnerDividendState;
+}
+
 export interface AnnualCloseProposalWire {
   annualBasis: CorporateAnnualBasisWire;
   annualResultAllocationOre: number;
@@ -4438,6 +4451,23 @@ function isDocumentWire(value: unknown): value is DocumentWire {
   );
 }
 
+function isAnnualCloseLifecycleWire(value: unknown): value is AnnualCloseLifecycleWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","decisionHash","decisionId","documentSetId","finalizationId","generatedArtifactHashes","incomeYear","replayed","signedArtifactHashes","state"]) &&
+    isUuid(value.companyId) &&
+    typeof value.decisionHash === "string" &&
+    isUuid(value.decisionId) &&
+    isUuid(value.documentSetId) &&
+    (isUuid(value.finalizationId) || value.finalizationId === null) &&
+    isRecord(value.generatedArtifactHashes) && Object.values(value.generatedArtifactHashes).every((item) => typeof item === "string") &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.replayed === "boolean" &&
+    isRecord(value.signedArtifactHashes) && Object.values(value.signedArtifactHashes).every((item) => typeof item === "string") &&
+    isOwnerDividendState(value.state)
+  );
+}
+
 function isAnnualCloseProposalWire(value: unknown): value is AnnualCloseProposalWire {
   return (
     isRecord(value) &&
@@ -6018,6 +6048,20 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isProposedAnnualCloseWire,
+      );
+    },
+
+    async corporateGovernanceRegisterAnnualCloseDocuments(
+      decisionId: string,
+      body: OwnerDividendDocumentsWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualCloseLifecycleWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/annual-closes/${encodeURIComponent(decisionId)}/documents`,
+        "POST",
+        request,
+        body,
+        isAnnualCloseLifecycleWire,
       );
     },
 

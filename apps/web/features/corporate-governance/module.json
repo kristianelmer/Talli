@@ -9,7 +9,7 @@
   "publicEntryPoint": "@/features/corporate-governance",
   "publicImportPaths": ["@/features/corporate-governance", "apps/web/features/corporate-governance", "apps/web/features/corporate-governance/index.ts"],
   "ownedRoutes": ["/actions/[type]", "/corporate-decisions/[decisionId]", "/workspace"],
-  "apiOperations": ["corporateGovernanceProposeOwnerDividend", "corporateGovernanceRecordShareholderLoan", "corporateGovernanceRegisterOwnerDividendDocuments", "corporateGovernanceApproveOwnerDividend", "corporateGovernanceFinalizeOwnerDividend", "corporateGovernanceRecordOwnerDividendPayment"],
+  "apiOperations": ["corporateGovernanceProposeAnnualClose", "corporateGovernanceRegisterAnnualCloseDocuments", "corporateGovernanceProposeOwnerDividend", "corporateGovernanceRecordShareholderLoan", "corporateGovernanceRegisterOwnerDividendDocuments", "corporateGovernanceApproveOwnerDividend", "corporateGovernanceFinalizeOwnerDividend", "corporateGovernanceRecordOwnerDividendPayment"],
   "dependencies": [],
   "allowedImports": ["#backend-configuration", "@talli/talli-api-client"],
   "cachePolicy": { "default": "no-store", "allowed": [] },
