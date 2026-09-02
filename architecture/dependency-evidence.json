@@ -1,6 +1,14 @@
 {
   "edges": [
     {
+      "from": "backend-system:accounting-document-lifecycle",
+      "imports": [
+        "talli_backend.modules.documents.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:documents"
+    },
+    {
       "from": "backend-system:banking-reconciliation",
       "imports": [
         "talli_backend.modules.banking.public"
@@ -120,11 +128,13 @@
     "backend-system:validation_observation",
     "backend:banking",
     "backend:company_access",
+    "backend:documents",
     "backend:investments",
     "backend:ledger",
     "backend:shareholder_register_filing",
     "web:banking",
     "web:company-access",
+    "web:documents",
     "web:investments",
     "web:ledger",
     "web:public-acquisition",

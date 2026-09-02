@@ -42,6 +42,10 @@ import {
   type LedgerEntryPresentation,
   type LedgerPeriodLockPresentation,
 } from "../../../features/ledger";
+import {
+  listDocuments,
+  presentDocument,
+} from "../../../features/documents";
 
 async function backendAccessToken(supabase: SupabaseClient) {
   const {
@@ -660,17 +664,19 @@ export async function listDocumentsForCompanies(companyIds: string[]) {
     return { documents: [] as DocumentRow[], error: null };
   }
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("documents")
-    .select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at, removed_at, removed_by, removal_reason")
-    .in("company_id", companyIds)
-    .neq("status", "removed")
-    .order("created_at", { ascending: false });
-
-  return {
-    documents: (data ?? []) as DocumentRow[],
-    error: error?.message ?? null,
-  };
+  const accessToken = await backendAccessToken(supabase);
+  if (!accessToken) return { documents: [] as DocumentRow[], error: "Innlogging kreves." };
+  try {
+    const pages = await Promise.all(companyIds.map((companyId) => listDocuments(accessToken, companyId)));
+    const documents = pages
+      .flatMap((page) => page.documents)
+      .filter((document) => document.status !== "removed")
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .map(presentDocument);
+    return { documents, error: null };
+  } catch {
+    return { documents: [] as DocumentRow[], error: "Dokumentene kunne ikke hentes." };
+  }
 }
 
 export async function listOpeningSetups(companyIds: string[]) {

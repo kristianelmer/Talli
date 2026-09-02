@@ -58,27 +58,14 @@ function filingSubmissionCollections(archive: Record<string, any>) {
 
 export function buildBackupManifest(archive: Record<string, any>) {
   const submissionCollections = filingSubmissionCollections(archive);
-  const corporateByDocumentId = new Map(
-    (archive.corporateDocumentArtifacts ?? []).map((artifact: any) => [artifact.document_id, artifact]),
-  );
-  const objectReferences = (archive.documents ?? [])
-    .map((document: any) => {
-      const artifact: any = corporateByDocumentId.get(document.id);
-      return {
-        documentId: document.id,
-        storageKey: document.storageKey,
-        status: document.status,
-        retentionYears: document.retentionYears,
-        ...(artifact ? {
-          artifactId: artifact.id,
-          artifactKind: artifact.artifact_kind,
-          variant: artifact.variant,
-          contentSha256: artifact.content_sha256,
-          byteLength: artifact.byte_length,
-        } : {}),
-      };
-    })
-    .filter((reference: any) => reference.storageKey);
+  const documentBackupProjection = archive.documentBackupProjection ?? {
+    companyId: archive.company?.id,
+    incomeYear: archive.incomeYear,
+    objects: [],
+  };
+  const objectReferences = Array.isArray(documentBackupProjection.objects)
+    ? documentBackupProjection.objects
+    : [];
 
   return {
     manifestType: "talli_backup_restore_manifest",
@@ -94,7 +81,7 @@ export function buildBackupManifest(archive: Record<string, any>) {
     counts: {
       ledgerEntries: archive.ledgerEntries?.length ?? 0,
       holdingActions: archive.taxSettlements?.length ?? 0,
-      documents: archive.documents?.length ?? 0,
+      documents: objectReferences.length,
       filingPreviews: archive.filingPreviews?.length ?? 0,
       authorityTestRuns: archive.authorityTestRuns?.length ?? 0,
       filingSubmissions: submissionCollections.filingSubmissions.length,
@@ -122,11 +109,11 @@ export function buildBackupManifest(archive: Record<string, any>) {
 export function restoreCompanyYearArchive(archive: Record<string, any>, options: { targetCompanyId: string }) {
   const manifest = buildBackupManifest(archive);
   const submissionCollections = filingSubmissionCollections(archive);
-  const missingObjectWarnings = (archive.documents ?? [])
+  const missingObjectWarnings = manifest.objectReferences
     .filter((document: any) => !document.storageKey || String(document.status).startsWith("missing"))
     .map((document: any) => ({
       code: "document_object_missing_or_marked_missing",
-      documentId: document.id,
+      documentId: document.documentId,
       message: "Document metadata restored, but object storage content must be rehydrated or accepted as missing.",
     }));
 

@@ -134,6 +134,26 @@ const investmentsOperations = {
     "investmentsCorrectInvestment",
   ],
 };
+const documentsOperations = {
+  list: ["/api/v1/documents", "get", "documentsList"],
+  backupProjection: [
+    "/api/v1/documents/backup-projection",
+    "get",
+    "documentsBackupProjection",
+  ],
+  beginUpload: ["/api/v1/documents/uploads", "post", "documentsBeginUpload"],
+  finalizeUpload: [
+    "/api/v1/documents/{document_id}/finalize",
+    "post",
+    "documentsFinalizeUpload",
+  ],
+  remove: ["/api/v1/documents/{document_id}/remove", "post", "documentsRemove"],
+  createTransfer: [
+    "/api/v1/documents/{document_id}/transfers",
+    "post",
+    "documentsCreateTransfer",
+  ],
+};
 const bankingOperations = {
   listConnections: ["/api/v1/banking/connections", "get", "bankingListConnections"],
   startConnection: ["/api/v1/banking/connections", "post", "bankingStartConnection"],
@@ -186,6 +206,11 @@ for (const [name, [operationPath, method, operationId]] of Object.entries(ledger
   }
 }
 for (const [name, [operationPath, method, operationId]] of Object.entries(investmentsOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(documentsOperations)) {
   if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
     throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
   }
@@ -525,6 +550,18 @@ const investmentsSchemas = Object.fromEntries([
   "ShareSaleAllocationPageWire",
   "ShareSaleAllocationWire",
 ].map((name) => [name, contract.components.schemas[name]]));
+const documentsSchemas = Object.fromEntries([
+  "DocumentBackupObjectWire",
+  "DocumentBackupProjectionWire",
+  "DocumentBeginUploadWire",
+  "DocumentListWire",
+  "DocumentRemovalRequestWire",
+  "DocumentTransferKind",
+  "DocumentTransferRequestWire",
+  "DocumentTransferWire",
+  "DocumentUploadTransferWire",
+  "DocumentWire",
+].map((name) => [name, contract.components.schemas[name]]));
 const bankingSchemas = Object.fromEntries([
   "AcceptBankFileWire",
   "AcceptBankSuggestionWire",
@@ -577,6 +614,8 @@ ${Object.entries(additionalSchemas).map(([name, schema]) => renderSchema(name, s
 ${Object.entries(ledgerSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(investmentsSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
+${Object.entries(documentsSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(bankingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
@@ -684,6 +723,8 @@ ${Object.entries(ledgerSchemas).map(([name, schema]) => renderGuard(name, schema
 
 ${Object.entries(investmentsSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
+${Object.entries(documentsSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
+
 ${Object.entries(bankingSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
 ${Object.entries(marketingMeasurementSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
@@ -735,6 +776,15 @@ export interface InvestmentsListRequest extends TalliRequestOptions {
   companyIds: readonly string[];
   cursor?: string;
   limit?: number;
+}
+
+export interface DocumentsListRequest extends TalliRequestOptions {
+  companyId: string;
+}
+
+export interface DocumentsBackupProjectionRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
 }
 
 export interface LedgerOpeningSnapshotListRequest extends TalliRequestOptions {
@@ -1351,6 +1401,89 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isLedgerEntryPageWire,
+      );
+    },
+
+    async documentsList(
+      request: DocumentsListRequest,
+    ): Promise<DocumentListWire> {
+      const query = new URLSearchParams({ companyId: request.companyId });
+      return executeJson(
+        \`\${baseUrl}/api/v1/documents?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isDocumentListWire,
+      );
+    },
+
+    async documentsBackupProjection(
+      request: DocumentsBackupProjectionRequest,
+    ): Promise<DocumentBackupProjectionWire> {
+      const query = new URLSearchParams({
+        company_id: request.companyId,
+        income_year: String(request.incomeYear),
+      });
+      return executeJson(
+        \`\${baseUrl}/api/v1/documents/backup-projection?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isDocumentBackupProjectionWire,
+      );
+    },
+
+    async documentsBeginUpload(
+      body: DocumentBeginUploadWire,
+      request: TalliMutationOptions,
+    ): Promise<DocumentUploadTransferWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/documents/uploads\`,
+        "POST",
+        request,
+        body,
+        isDocumentUploadTransferWire,
+      );
+    },
+
+    async documentsFinalizeUpload(
+      documentId: string,
+      request: TalliMutationOptions,
+    ): Promise<DocumentWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/documents/\${encodeURIComponent(documentId)}/finalize\`,
+        "POST",
+        request,
+        undefined,
+        isDocumentWire,
+      );
+    },
+
+    async documentsRemove(
+      documentId: string,
+      body: DocumentRemovalRequestWire,
+      request: TalliMutationOptions,
+    ): Promise<DocumentWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/documents/\${encodeURIComponent(documentId)}/remove\`,
+        "POST",
+        request,
+        body,
+        isDocumentWire,
+      );
+    },
+
+    async documentsCreateTransfer(
+      documentId: string,
+      body: DocumentTransferRequestWire,
+      request: TalliMutationOptions,
+    ): Promise<DocumentTransferWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/documents/\${encodeURIComponent(documentId)}/transfers\`,
+        "POST",
+        request,
+        body,
+        isDocumentTransferWire,
       );
     },
 

@@ -91,16 +91,14 @@ test("initial send performs bounded feedback polling only after the journaled co
 });
 
 test("private artifact persistence verifies receipts and cleans up only after authoritative absence", () => {
-  assert.match(documents, /authority-feedback\/\$\{companyId\}\/\$\{submissionId\}\/\$\{sha256\}/u);
-  assert.match(actions, /createRf1086FeedbackArtifactRecorder\(service, input\)/u);
-  assert.match(feedbackPersistence, /document_type:\s*"authority_feedback"/u);
+  assert.match(documents, /rf1086FeedbackFileName/u);
+  assert.match(actions, /createRf1086FeedbackArtifactRecorder\(service, input, \{/u);
+  assert.match(actions, /documentType:\s*"authority_feedback"/u);
+  assert.match(actions, /linkedTo:\s*`production_filing_submission:/u);
   assert.match(feedbackPersistence, /record_production_feedback_artifact/u);
-  assert.match(feedbackPersistence, /bucket\.remove\(\[storageKey\]\)/u);
-  assert.match(feedbackPersistence, /from\("documents"\)\.delete\(\)/u);
-  assert.match(feedbackPersistence, /bucket\.download\(storageKey\)/u);
-  assert.match(feedbackPersistence, /bytes\.byteLength !== artifact\.byteLength/u);
-  assert.match(feedbackPersistence, /hash !== artifact\.sha256/u);
-  assert.match(feedbackPersistence, /if \(persisted\.error\)[\s\S]+if \(persisted\.data\)[\s\S]+bucket\.remove/u);
+  assert.match(feedbackPersistence, /documents\.store/u);
+  assert.match(feedbackPersistence, /documents\.remove/u);
+  assert.doesNotMatch(feedbackPersistence, /from\("documents"\)|storage\.from/u);
   assert.match(feedbackPersistence, /Rf1086FeedbackArtifactPersistenceError/u);
   assert.match(actions, /createRf1086FeedbackArtifactPersistenceError/u);
   assert.doesNotMatch(actions, /databaseTerminalFailure/u);

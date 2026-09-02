@@ -324,88 +324,6 @@
       ]
     },
     {
-      "id": "compat-documents-persistence",
-      "kind": "legacy-facade",
-      "capability": "documents",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
-      "removalIssue": "#147",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
-      "canonicalImplementation": "web:legacy-runtime:documents",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove accounting-document and private-storage persistence in #147.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "rpc:remove_unlinked_document",
-          "operation": "removeUnlinkedDocument"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "rpc:restore_unlinked_document_after_storage_failure",
-          "operation": "removeUnlinkedDocument"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "storage:company-documents",
-          "operation": "removeUnlinkedDocument"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "storage:company-documents",
-          "operation": "uploadDocument"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "uploadDocument"
-        },
-        {
-          "path": "apps/web/app/documents/[documentId]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "storage:company-documents",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/documents/[documentId]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/documents/[documentId]/preview/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "storage:company-documents",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/documents/[documentId]/preview/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
-          "operation": "listDocumentsForCompanies"
-        }
-      ]
-    },
-    {
       "id": "compat-corporate-governance-persistence",
       "kind": "legacy-facade",
       "capability": "corporate_governance",
@@ -1217,12 +1135,6 @@
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:corporate_document_sets",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:documents",
           "operation": "GET"
         },
         {

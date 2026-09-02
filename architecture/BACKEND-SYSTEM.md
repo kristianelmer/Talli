@@ -56,6 +56,10 @@
 {"adapterDependencies":["talli_backend.modules.shareholder_register_filing.public"],"publicPackages":["talli_backend.modules.shareholder_register_filing.public"],"transportDependencies":["talli_backend.modules.shareholder_register_filing.public"],"workflowDependencies":["talli_backend.modules.shareholder_register_filing.public"],"workflowPurposes":["new-year-start=>Coordinates the frozen shareholder-register opening snapshot and ledger opening posting through their public contracts in one backend-owned transaction."],"workflows":["new-year-start"]}
 -->
 
+<!-- architecture-inventory
+{"adapterBindingModes":["DocumentObjectStorage=>backend-only exact-object Supabase Storage adapter","DocumentsAuthorization=>request-scoped accepted-membership facts through the company-access public gateway","DocumentsPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["DocumentObjectStorage=>backend-system","DocumentsAuthorization=>backend-system","DocumentsPersistence=>backend-system"],"adapterBindings":["DocumentObjectStorage=>talli_backend.adapters.supabase_documents.SupabaseDocumentObjectStorage","DocumentsAuthorization=>talli_backend.adapters.supabase_documents.SupabaseDocumentsAuthorization","DocumentsPersistence=>talli_backend.adapters.supabase_documents.SupabaseDocumentsPersistence"],"adapterDependencies":["talli_backend.modules.documents.public"],"ports":["DocumentObjectStorage","DocumentsAuthorization","DocumentsPersistence"],"publicPackages":["talli_backend.modules.documents.public"],"routes":["/api/v1/documents","/api/v1/documents/backup-projection","/api/v1/documents/uploads","/api/v1/documents/{document_id}/finalize","/api/v1/documents/{document_id}/remove","/api/v1/documents/{document_id}/transfers"],"transportDependencies":["base64","binascii","talli_backend.adapters.supabase_documents","talli_backend.modules.documents.public"],"workflowDependencies":["talli_backend.modules.documents.public"],"workflowPurposes":["accounting-document-lifecycle=>Authenticates one verified actor and owns validated document staging, exact private-object transfers, integrity finalization, tenant-scoped listing, AAL2 download, safe removal restoration, retention metadata, and document-only backup projections."],"workflows":["accounting-document-lifecycle"]}
+-->
+
 ## Purpose
 
 `backend-system.json` is the source of truth for backend composition that no
@@ -68,6 +72,18 @@ The `system-boundary-tracer` workflow serves
 `/api/v1/system-boundary/tracer` and may call only
 `talli_backend.modules.system_boundary.public`. `main.py` is the single FastAPI
 composition root; it does not become a business capability.
+
+The `accounting-document-lifecycle` workflow serves
+`/api/v1/documents/uploads`, `/api/v1/documents/{document_id}/finalize`,
+`/api/v1/documents`, `/api/v1/documents/{document_id}/transfers`,
+`/api/v1/documents/{document_id}/remove`, and
+`/api/v1/documents/backup-projection` through
+`talli_backend.modules.documents.public`. It binds `DocumentsPersistence` to
+`talli_backend.adapters.supabase_documents.SupabaseDocumentsPersistence` and
+`DocumentObjectStorage` to
+`talli_backend.adapters.supabase_documents.SupabaseDocumentObjectStorage`.
+`DocumentsAuthorization` binds to
+`talli_backend.adapters.supabase_documents.SupabaseDocumentsAuthorization`.
 
 The `marketing-funnel-measurement` workflow serves
 `/api/v1/marketing-measurement/events`,

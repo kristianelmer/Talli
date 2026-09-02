@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+from base64 import b64decode
+from binascii import Error as Base64Error
 from hashlib import sha256
 import os
 import re
@@ -24,6 +26,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAdapter
 from talli_backend.adapters.supabase_banking import compose_banking_application
 from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
+from talli_backend.adapters.supabase_documents import SupabaseDocumentsAdapter
 from talli_backend.adapters.supabase_ledger import compose_ledger_application
 from talli_backend.adapters.supabase_investments import compose_investments_application
 from talli_backend.adapters.supabase_marketing_measurement import (
@@ -203,6 +206,18 @@ from talli_backend.modules.ledger.public import (
     ReconstructionState,
     ShareholderLoanDirection,
     TaxSettlementKind,
+)
+from talli_backend.modules.documents.public import (
+    BeginDocumentUploadCommand,
+    DocumentBackupObject,
+    DocumentId,
+    DocumentObjectTransfer,
+    DocumentRecord,
+    DocumentStatus,
+    DocumentsError,
+    DocumentsSessionFactory,
+    DocumentTransferKind,
+    DocumentUploadTransfer,
 )
 from talli_backend.modules.investments.public import (
     AcquisitionLotView,
@@ -1968,6 +1983,147 @@ def _entry_view_wire(
     )
 
 
+class DocumentBeginUploadWire(StrictTransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    document_id: UUID
+    document_type: Literal["bank_statement", "accounting_document", "corporate_document", "authority_feedback"]
+    linked_to: str = Field(min_length=1, max_length=200)
+    file_name: str = Field(min_length=1, max_length=255)
+    content_type: str = Field(max_length=100)
+    byte_length: int = Field(ge=1, le=10 * 1024 * 1024)
+    header_base64: str = Field(min_length=4, max_length=32)
+    final_status: Literal["attached", "generated_unsigned", "signed_owner_attested", "stored"] = "attached"
+
+
+class DocumentWire(TransportModel):
+    id: UUID
+    company_id: UUID
+    income_year: int
+    document_type: str
+    name: str
+    linked_to: str
+    status: str
+    retention_years: int
+    storage_key: str
+    content_type: str
+    byte_length: int | None
+    content_sha256: str | None
+    created_by: UUID
+    created_at: datetime
+    removed_at: datetime | None
+    removal_reason: str | None
+
+
+class DocumentUploadTransferWire(TransportModel):
+    document: DocumentWire
+    bucket: Literal["company-documents"]
+    storage_key: str
+    token: str
+    signed_url: str
+
+
+class DocumentListWire(TransportModel):
+    documents: list[DocumentWire]
+
+
+class DocumentTransferRequestWire(StrictTransportModel):
+    kind: DocumentTransferKind
+
+
+class DocumentTransferWire(TransportModel):
+    document: DocumentWire
+    kind: DocumentTransferKind
+    signed_url: str
+    expires_in_seconds: int
+
+
+class DocumentRemovalRequestWire(StrictTransportModel):
+    reason: str = Field(default="owner_requested", min_length=1, max_length=200)
+
+
+class DocumentBackupObjectWire(TransportModel):
+    document_id: UUID
+    document_type: str
+    name: str
+    linked_to: str
+    storage_key: str
+    status: str
+    retention_years: int
+    content_type: str
+    byte_length: int | None
+    content_sha256: str | None
+    created_by: UUID
+    created_at: datetime
+    removed_at: datetime | None
+    removal_reason: str | None
+
+
+class DocumentBackupProjectionWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    objects: list[DocumentBackupObjectWire]
+
+
+def _document_wire(value: DocumentRecord) -> DocumentWire:
+    return DocumentWire(
+        id=UUID(str(value.document_id)),
+        company_id=UUID(str(value.company_id)),
+        income_year=int(value.income_year),
+        document_type=value.document_type,
+        name=value.name,
+        linked_to=value.linked_to,
+        status=value.status.value,
+        retention_years=value.retention_years,
+        storage_key=value.storage_key,
+        content_type=value.content_type,
+        byte_length=value.byte_length,
+        content_sha256=value.content_sha256,
+        created_by=UUID(str(value.created_by.subject)),
+        created_at=value.created_at,
+        removed_at=value.removed_at,
+        removal_reason=value.removal_reason,
+    )
+
+
+def _document_upload_transfer_wire(value: DocumentUploadTransfer) -> DocumentUploadTransferWire:
+    return DocumentUploadTransferWire(
+        document=_document_wire(value.document),
+        bucket="company-documents",
+        storage_key=value.storage_key,
+        token=value.token,
+        signed_url=value.signed_url,
+    )
+
+
+def _document_transfer_wire(value: DocumentObjectTransfer) -> DocumentTransferWire:
+    return DocumentTransferWire(
+        document=_document_wire(value.document),
+        kind=value.kind,
+        signed_url=value.signed_url,
+        expires_in_seconds=value.expires_in_seconds,
+    )
+
+
+def _document_backup_wire(value: DocumentBackupObject) -> DocumentBackupObjectWire:
+    return DocumentBackupObjectWire(
+        document_id=UUID(str(value.document_id)),
+        document_type=value.document_type,
+        name=value.name,
+        linked_to=value.linked_to,
+        storage_key=value.storage_key,
+        status=value.status.value,
+        retention_years=value.retention_years,
+        content_type=value.content_type,
+        byte_length=value.byte_length,
+        content_sha256=value.content_sha256,
+        created_by=UUID(str(value.created_by.subject)),
+        created_at=value.created_at,
+        removed_at=value.removed_at,
+        removal_reason=value.removal_reason,
+    )
+
+
 class ApiProblem(Exception):
     def __init__(self, *, status: int, code: str, title: str, detail: str) -> None:
         self.status = status
@@ -2025,6 +2181,7 @@ def create_app(
     company_registry_gateway: CompanyRegistryGateway | None = None,
     ledger_session_factory: LedgerSessionFactory | None = None,
     investments_session_factory: InvestmentsSessionFactory | None = None,
+    documents_session_factory: DocumentsSessionFactory | None = None,
     banking_session_factory: BankingSessionFactory | None = None,
     banking_providers: Mapping[str, BankDataProvider] | None = None,
     marketing_measurement_gateway: MarketingMeasurementGateway | None = None,
@@ -2052,6 +2209,11 @@ def create_app(
     ledger_application = compose_ledger_application(ledger_session_factory)
     investments_application = compose_investments_application(
         investments_session_factory
+    )
+    documents_application = (
+        documents_session_factory
+        if documents_session_factory is not None
+        else SupabaseDocumentsAdapter.from_environment()
     )
     banking_application = compose_banking_application(banking_session_factory)
 
@@ -2188,6 +2350,25 @@ def create_app(
                 code=error.code,
                 title=error.title,
                 detail=error.detail,
+            ) from None
+
+    async def documents_call(call: Callable[[], Awaitable[ResponseT]]) -> ResponseT:
+        try:
+            return await call()
+        except DocumentsError as error:
+            statuses = {
+                ErrorCategory.INVALID_INPUT: 422,
+                ErrorCategory.NOT_FOUND: 404,
+                ErrorCategory.CONFLICT: 409,
+                ErrorCategory.FORBIDDEN: 403,
+                ErrorCategory.PRECONDITION_FAILED: 409,
+                ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
+            }
+            raise ApiProblem(
+                status=statuses[error.category],
+                code=str(error.code),
+                title="Document request failed",
+                detail=error.message,
             ) from None
 
     async def marketing_measurement_call(call: Awaitable[ResponseT]) -> ResponseT:
@@ -6016,6 +6197,168 @@ def create_app(
             return _lock_wire(result)
 
         return await ledger_call(execute)
+
+    documents_errors: Any = {
+        status: {
+            "description": "Document request failed.",
+            "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+            "content": {
+                "application/problem+json": {
+                    "schema": ProblemDetails.model_json_schema(by_alias=True)
+                }
+            },
+        }
+        for status in (401, 403, 404, 409, 422, 503)
+    }
+    documents_success: dict[str, Any] = {
+        "headers": {"X-Request-ID": REQUEST_ID_HEADER}
+    }
+
+    @application.post(
+        "/api/v1/documents/uploads",
+        operation_id="documentsBeginUpload",
+        response_model=DocumentUploadTransferWire,
+        status_code=201,
+        responses={201: {"description": "Exact signed upload transfer staged."} | documents_success}
+        | documents_errors,
+        tags=["documents"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def begin_document_upload(
+        command: DocumentBeginUploadWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> DocumentUploadTransferWire:
+        async def execute() -> DocumentUploadTransferWire:
+            try:
+                header = b64decode(command.header_base64, validate=True)
+            except (Base64Error, ValueError):
+                raise DocumentsError.invalid_input() from None
+            session = await documents_application.session(bearer_token(credentials))
+            result = await session.begin_upload(
+                BeginDocumentUploadCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    income_year=IncomeYear(command.income_year),
+                    document_id=DocumentId(str(command.document_id)),
+                    document_type=command.document_type,
+                    linked_to=command.linked_to,
+                    file_name=command.file_name,
+                    content_type=command.content_type,
+                    byte_length=command.byte_length,
+                    header=header,
+                    final_status=DocumentStatus(command.final_status),
+                )
+            )
+            return _document_upload_transfer_wire(result)
+
+        return await documents_call(execute)
+
+    @application.post(
+        "/api/v1/documents/{document_id}/finalize",
+        operation_id="documentsFinalizeUpload",
+        response_model=DocumentWire,
+        responses={200: {"description": "Uploaded object verified and finalized."} | documents_success}
+        | documents_errors,
+        tags=["documents"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def finalize_document_upload(
+        document_id: UUID,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> DocumentWire:
+        async def execute() -> DocumentWire:
+            session = await documents_application.session(bearer_token(credentials))
+            return _document_wire(await session.finalize_upload(DocumentId(str(document_id))))
+
+        return await documents_call(execute)
+
+    @application.get(
+        "/api/v1/documents",
+        operation_id="documentsList",
+        response_model=DocumentListWire,
+        responses={200: {"description": "Visible accounting documents."} | documents_success}
+        | documents_errors,
+        tags=["documents"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_documents(
+        company_ids: Annotated[list[UUID], Query(alias="companyId", min_length=1, max_length=100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> DocumentListWire:
+        async def execute() -> DocumentListWire:
+            session = await documents_application.session(bearer_token(credentials))
+            values = await session.list_documents(tuple(CompanyId(str(value)) for value in company_ids))
+            return DocumentListWire(documents=[_document_wire(value) for value in values])
+
+        return await documents_call(execute)
+
+    @application.post(
+        "/api/v1/documents/{document_id}/transfers",
+        operation_id="documentsCreateTransfer",
+        response_model=DocumentTransferWire,
+        responses={200: {"description": "Integrity-checked exact-object transfer."} | documents_success}
+        | documents_errors,
+        tags=["documents"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def create_document_transfer(
+        document_id: UUID,
+        command: DocumentTransferRequestWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> DocumentTransferWire:
+        async def execute() -> DocumentTransferWire:
+            session = await documents_application.session(bearer_token(credentials))
+            return _document_transfer_wire(
+                await session.create_transfer(DocumentId(str(document_id)), command.kind)
+            )
+
+        return await documents_call(execute)
+
+    @application.post(
+        "/api/v1/documents/{document_id}/remove",
+        operation_id="documentsRemove",
+        response_model=DocumentWire,
+        responses={200: {"description": "Unlinked document safely removed."} | documents_success}
+        | documents_errors,
+        tags=["documents"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def remove_document(
+        document_id: UUID,
+        command: DocumentRemovalRequestWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> DocumentWire:
+        async def execute() -> DocumentWire:
+            session = await documents_application.session(bearer_token(credentials))
+            return _document_wire(
+                await session.remove_document(DocumentId(str(document_id)), reason=command.reason)
+            )
+
+        return await documents_call(execute)
+
+    @application.get(
+        "/api/v1/documents/backup-projection",
+        operation_id="documentsBackupProjection",
+        response_model=DocumentBackupProjectionWire,
+        responses={200: {"description": "Document-owned backup object projection."} | documents_success}
+        | documents_errors,
+        tags=["documents"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def document_backup_projection(
+        company_id: UUID,
+        income_year: int = Query(ge=2000, le=2100),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> DocumentBackupProjectionWire:
+        async def execute() -> DocumentBackupProjectionWire:
+            session = await documents_application.session(bearer_token(credentials))
+            values = await session.backup_projection(CompanyId(str(company_id)), IncomeYear(income_year))
+            return DocumentBackupProjectionWire(
+                company_id=company_id,
+                income_year=income_year,
+                objects=[_document_backup_wire(value) for value in values],
+            )
+
+        return await documents_call(execute)
 
     @application.get("/health/live", include_in_schema=False)
     async def liveness() -> JSONResponse:

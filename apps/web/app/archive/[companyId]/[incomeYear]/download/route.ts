@@ -18,6 +18,9 @@ import {
   presentInvestmentCorrections,
 } from "../../../../../features/investments";
 import {
+  loadDocumentBackupProjection,
+} from "../../../../../features/documents";
+import {
   buildPersistedCompanyArchive,
   firstArchiveSourceError,
 } from "../../../../lib/archive";
@@ -58,6 +61,38 @@ async function loadArchiveLedgerEntries(
     };
   } catch {
     return { data: null, error: new Error("Ledger archive source unavailable.") };
+  }
+}
+
+async function loadArchiveDocuments(
+  accessToken: string,
+  companyId: string,
+  incomeYear: number,
+) {
+  try {
+    const result = await loadDocumentBackupProjection(accessToken, companyId, incomeYear);
+    return {
+      data: result.objects.map((document) => ({
+        id: document.documentId,
+        company_id: result.companyId,
+        income_year: result.incomeYear,
+        document_type: document.documentType,
+        name: document.name,
+        linked_to: document.linkedTo,
+        status: document.status,
+        retention_years: document.retentionYears,
+        storage_key: document.storageKey,
+        created_by: document.createdBy,
+        created_at: document.createdAt,
+        removed_at: document.removedAt,
+        removed_by: null,
+        removal_reason: document.removalReason,
+      })),
+      projection: result,
+      error: null,
+    };
+  } catch {
+    return { data: null, projection: null, error: new Error("Documents archive projection unavailable.") };
   }
 }
 
@@ -214,11 +249,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
         .eq("company_id", companyId)
         .eq("income_year", incomeYear),
       loadArchiveLedgerEntries(accessToken, companyId, incomeYear),
-      supabase
-        .from("documents")
-        .select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at, removed_at, removed_by, removal_reason")
-        .eq("company_id", companyId)
-        .eq("income_year", incomeYear),
+      loadArchiveDocuments(accessToken, companyId, incomeYear),
       supabase
         .from("filing_previews")
         .select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at")
@@ -280,7 +311,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
   }
   const [
-    { data: setups }, { data: ledgerEntries }, { data: documents }, { data: previews },
+    { data: setups }, { data: ledgerEntries }, { data: documents, projection: documentBackupProjection }, { data: previews },
     { data: holdingActions }, { data: billingAccounts }, { data: authorityPermissions },
     { data: reviewComments }, { data: auditEvents }, { data: investments },
     { data: bankSuggestionAcceptances },
@@ -306,6 +337,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     shareholders: shareholders ?? [],
     ledgerEntries: ledgerEntries ?? [],
     documents: documents ?? [],
+    documentBackupProjection: documentBackupProjection ?? undefined,
     holdingActions: [
       ...(holdingActions ?? []).filter(
         (action) => ![

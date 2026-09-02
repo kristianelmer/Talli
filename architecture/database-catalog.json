@@ -80,7 +80,7 @@
     { "name": "public.corporate_document_events", "kind": "legacy-business" },
     { "name": "public.corporate_document_sets", "kind": "legacy-business" },
     { "name": "public.customer_agreement_acceptances", "kind": "capability-business", "owner": "backend:company_access" },
-    { "name": "public.documents", "kind": "legacy-business" },
+    { "name": "public.documents", "kind": "capability-business", "owner": "backend:documents" },
     { "name": "public.filing_approval_snapshots", "kind": "legacy-business" },
     { "name": "public.filing_overrides", "kind": "legacy-business" },
     { "name": "public.filing_previews", "kind": "legacy-business" },

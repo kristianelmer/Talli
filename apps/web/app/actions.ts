@@ -49,11 +49,6 @@ import { buildAnnualAccountsPayload } from "./lib/annual-accounts";
 import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed, yearEndAnswerKeys } from "./lib/annual-data";
 import { buildDeadlineReminderPlan, defaultReminderPreferences } from "./lib/deadlines";
 import {
-  COMPANY_DOCUMENTS_BUCKET,
-  documentStorageKey,
-  validateDocumentUpload,
-} from "./lib/documents";
-import {
   CorporateDecisionFactsError,
   buildAnnualCloseDecisionInput,
   buildOwnerDividendDecisionInput,
@@ -67,13 +62,7 @@ import {
   renderCorporateDocuments,
 } from "./lib/corporate-documents";
 import {
-  type CorporateStorageClient,
-  uploadCorporateArtifacts,
-} from "./lib/corporate-document-storage";
-import {
-  corporateSignedArtifactStorageKey,
   requiredCorporateArtifactSigners,
-  uploadSignedCorporateArtifact,
   validateSignedCorporateArtifactUpload,
 } from "./lib/corporate-signed-artifacts";
 import { assertNoBlockingFilingOverrides, validateFilingOverride } from "./lib/filing-overrides";
@@ -136,6 +125,12 @@ import {
   settleInvestmentCash,
   type InvestmentsCorrectionWire,
 } from "../features/investments";
+import {
+  documentsActionErrorMessage,
+  removeDocument,
+  uploadDocumentObject,
+  type SignedDocumentUploadPort,
+} from "../features/documents";
 import { buildLaunchSignoffRecord } from "./lib/launch-signoff";
 import { actionReturnPath } from "./lib/action-return";
 import {
@@ -224,6 +219,7 @@ import {
   hasSupabaseEnv,
   listBankTransactions,
   listLedgerEntries,
+  listDocumentsForCompanies,
   listOpeningSetups,
   listPeriodLocks,
   type AnnualDataRow,
@@ -246,6 +242,22 @@ function formRawString(formData: FormData, key: string) {
 
 function formStrings(formData: FormData, key: string) {
   return formData.getAll(key).map((value) => typeof value === "string" ? value.trim() : "");
+}
+
+function signedDocumentUploadPort(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+): SignedDocumentUploadPort {
+  return {
+    async upload(input) {
+      const result = await supabase.storage
+        .from(input.bucket)
+        .uploadToSignedUrl(input.storageKey, input.token, input.body, {
+          contentType: input.contentType,
+          upsert: false,
+        });
+      return { error: result.error ? { message: result.error.message } : null };
+    },
+  };
 }
 
 function requiredFormChoice<const Choice extends string>(
@@ -486,6 +498,7 @@ type CorporateDraftArtifactIds = Partial<Record<
 
 async function persistCorporateDocumentDraft(input: {
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+  accessToken: string;
   decision: CorporateDecisionInput;
   setId: string;
   artifactIds: CorporateDraftArtifactIds;
@@ -494,18 +507,51 @@ async function persistCorporateDocumentDraft(input: {
   if (rendered.status === "blocked") {
     throw new Error(`${rendered.issues[0].code}: ${rendered.issues[0].message}`);
   }
-  const uploadResult = await uploadCorporateArtifacts({
-    companyId: input.decision.company_id,
-    incomeYear: input.decision.income_year,
-    setId: input.setId,
-    artifacts: rendered.artifacts,
-    storageClient: input.supabase as unknown as CorporateStorageClient,
-  });
+  const uploadedDocuments = [] as Array<{
+    artifactKind: CorporateArtifactKind;
+    documentId: string;
+    storageKey: string;
+    contentSha256: string | null;
+    byteLength: number | null;
+  }>;
   try {
+    for (const artifact of rendered.artifacts) {
+      const ids = input.artifactIds[artifact.artifactKind];
+      if (!ids) throw new Error("Dokumentsettet mangler en påkrevd PDF-identitet.");
+      const document = await uploadDocumentObject({
+        accessToken: input.accessToken,
+        command: {
+          companyId: input.decision.company_id,
+          incomeYear: input.decision.income_year,
+          documentId: ids.documentId,
+          documentType: "corporate_document",
+          linkedTo: `corporate_decision:${input.decision.request_id}`,
+          fileName: artifact.filename,
+          contentType: "application/pdf",
+          byteLength: artifact.byteLength,
+          headerBase64: Buffer.from(artifact.pdfBytes.subarray(0, 5)).toString("base64"),
+          finalStatus: "generated_unsigned",
+        },
+        body: artifact.pdfBytes,
+        port: signedDocumentUploadPort(input.supabase),
+        beginIdempotencyKey: `corporate-document-stage:${ids.documentId}`,
+        finalizeIdempotencyKey: `corporate-document-finalize:${ids.documentId}`,
+      });
+      if (document.contentSha256 !== artifact.contentSha256 || document.byteLength !== artifact.byteLength) {
+        throw new Error("Dokumenttjenestens integritetsbevis samsvarer ikke med den renderte PDF-filen.");
+      }
+      uploadedDocuments.push({
+        artifactKind: artifact.artifactKind,
+        documentId: ids.documentId,
+        storageKey: document.storageKey,
+        contentSha256: document.contentSha256,
+        byteLength: document.byteLength,
+      });
+    }
     const decisionHash = corporateDecisionHash(input.decision);
     const rpcArtifacts = rendered.artifacts.map((artifact) => {
       const ids = input.artifactIds[artifact.artifactKind];
-      const uploaded = uploadResult.artifacts.find(
+      const uploaded = uploadedDocuments.find(
         (candidate) => candidate.artifactKind === artifact.artifactKind,
       );
       if (!ids || !uploaded) {
@@ -549,14 +595,15 @@ async function persistCorporateDocumentDraft(input: {
     }
     return { decisionHash, rendered };
   } catch (error) {
-    const cleanup = uploadResult.newlyUploadedKeys.length
-      ? await input.supabase.storage
-          .from(COMPANY_DOCUMENTS_BUCKET)
-          .remove(uploadResult.newlyUploadedKeys)
-      : { error: null };
-    if (cleanup.error) {
+    const cleanup = await Promise.allSettled(uploadedDocuments.map((document) => removeDocument(
+      input.accessToken,
+      document.documentId,
+      { reason: "producer_rollback" },
+      `corporate-document-cleanup:${document.documentId}`,
+    )));
+    if (cleanup.some((result) => result.status === "rejected")) {
       throw new AggregateError(
-        [error, new Error(cleanup.error.message)],
+        [error, ...cleanup.filter((result) => result.status === "rejected").map((result) => result.reason)],
         "Dokumentutkastet feilet, og nye PDF-objekter kunne ikke ryddes opp.",
       );
     }
@@ -893,52 +940,49 @@ export async function uploadDocument(formData: FormData) {
   if (!user) {
     failTo(returnTo, "Innlogging kreves.");
   }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
 
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
-  const documentType = formString(formData, "documentType") || "accounting_document";
-  const linkedTo = formString(formData, "linkedTo") || "workspace";
+  const documentTypeInput = formString(formData, "documentType") || "accounting_document";
+  const documentType = documentTypeInput === "bank_statement" || documentTypeInput === "corporate_document"
+    ? documentTypeInput
+    : "accounting_document";
+  const linkedToInput = formString(formData, "linkedTo") || "workspace";
+  const linkedTo = linkedToInput === "aksjonaerregisteroppgaven"
+    || linkedToInput === "skattemelding"
+    || linkedToInput === "aarsregnskap"
+    ? linkedToInput
+    : "workspace";
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
     failTo(returnTo, "Velg et dokument for opplasting.");
   }
-
-  let validatedFile;
+  const documentId = randomUUID();
+  const idempotencyKey = randomUUID();
   try {
-    validatedFile = validateDocumentUpload({
-      name: file.name,
-      contentType: file.type,
-      size: file.size,
-      header: new Uint8Array(await file.slice(0, 5).arrayBuffer()),
+    await uploadDocumentObject({
+      accessToken,
+      command: {
+        companyId,
+        incomeYear,
+        documentId,
+        documentType,
+        linkedTo,
+        fileName: file.name,
+        contentType: file.type || "application/octet-stream",
+        byteLength: file.size,
+        headerBase64: Buffer.from(await file.slice(0, 5).arrayBuffer()).toString("base64"),
+        finalStatus: "attached",
+      },
+      body: file,
+      port: signedDocumentUploadPort(supabase),
+      beginIdempotencyKey: idempotencyKey,
+      finalizeIdempotencyKey: randomUUID(),
     });
   } catch (error) {
-    failTo(returnTo, error instanceof Error ? error.message : "Dokumentet kunne ikke valideres.");
-  }
-
-  const documentId = crypto.randomUUID();
-  const storageKey = documentStorageKey(companyId, incomeYear, documentId, validatedFile.name);
-  const { error: uploadError } = await supabase.storage.from(COMPANY_DOCUMENTS_BUCKET).upload(storageKey, file, {
-    contentType: validatedFile.contentType,
-    upsert: false,
-  });
-  if (uploadError) {
-    failTo(returnTo, uploadError.message);
-  }
-
-  const { error: metadataError } = await supabase.from("documents").insert({
-    id: documentId,
-    company_id: companyId,
-    income_year: incomeYear,
-    document_type: documentType,
-    name: validatedFile.name,
-    linked_to: linkedTo,
-    status: "attached",
-    retention_years: 5,
-    storage_key: storageKey,
-    created_by: user.id,
-  });
-  if (metadataError) {
-    failTo(returnTo, metadataError.message);
+    failTo(returnTo, documentsActionErrorMessage(error));
   }
 
   await supabase.from("audit_events").insert({
@@ -946,7 +990,7 @@ export async function uploadDocument(formData: FormData) {
     actor_id: user.id,
     category: "document",
     action: "document_uploaded",
-    message: `Dokument lastet opp: ${validatedFile.name}.`,
+    message: `Dokument lastet opp: ${file.name}.`,
   });
 
   revalidatePath("/");
@@ -958,46 +1002,21 @@ export async function removeUnlinkedDocument(formData: FormData) {
   if (!hasSupabaseEnv()) {
     failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
   }
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) {
     failTo(returnTo, "Innlogging kreves.");
   }
 
   const documentId = requiredFormUuid(formData, "documentId");
-  const { data, error } = await supabase.rpc("remove_unlinked_document", {
-    p_document_id: documentId,
-  });
-  if (error) {
-    const message = error.message.includes("document_removal_evidence_linked")
-      ? "Dokumentet brukes som regnskaps- eller innsendingsbevis og kan derfor ikke fjernes."
-      : error.message.includes("document_removal_not_allowed")
-        ? "Dokumentet finnes ikke, eller du har ikke rett til å fjerne det."
-        : "Dokumentet kunne ikke fjernes. Prøv på nytt.";
-    failTo(returnTo, message);
-  }
-
-  const storageKey = Array.isArray(data) ? data[0]?.storage_key : null;
-  if (!storageKey || typeof storageKey !== "string") {
-    failTo(returnTo, "Dokumentlageret kunne ikke identifiseres. Prøv på nytt.");
-  }
-
-  const storageRemoval = await supabase.storage
-    .from(COMPANY_DOCUMENTS_BUCKET)
-    .remove([storageKey]);
-  if (storageRemoval.error) {
-    const rollback = await supabase.rpc("restore_unlinked_document_after_storage_failure", {
-      p_document_id: documentId,
-    });
-    if (rollback.error) {
-      console.error("Document metadata restoration failed after storage removal error.", {
-        documentId,
-        errorCode: rollback.error.code,
-      });
-    }
-    failTo(returnTo, "Dokumentlageret svarte ikke. Dokumentet er beholdt; prøv igjen senere.");
+  try {
+    await removeDocument(
+      accessToken,
+      documentId,
+      { reason: "owner_requested" },
+      randomUUID(),
+    );
+  } catch (error) {
+    failTo(returnTo, documentsActionErrorMessage(error));
   }
 
   revalidatePath("/documents");
@@ -2782,6 +2801,8 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
   if (!user) {
     failTo(returnTo, "Innlogging kreves.");
   }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
 
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear"));
@@ -2943,6 +2964,7 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
   try {
     ({ decisionHash } = await persistCorporateDocumentDraft({
       supabase,
+      accessToken,
       decision,
       setId,
       artifactIds,
@@ -2985,6 +3007,8 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
   if (!user) {
     failTo(returnTo, "Innlogging kreves.");
   }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
 
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear"));
@@ -3136,6 +3160,7 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
   try {
     ({ decisionHash } = await persistCorporateDocumentDraft({
       supabase,
+      accessToken,
       decision,
       setId,
       artifactIds,
@@ -3178,6 +3203,8 @@ async function corporateLifecycleActionSetup(
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) failTo(returnTo, "Innlogging kreves.");
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   let context: CorporateLifecycleActionContext;
   try {
     context = await loadCorporateLifecycleActionContext({
@@ -3191,7 +3218,7 @@ async function corporateLifecycleActionSetup(
   } catch (error) {
     failTo(returnTo, error instanceof Error ? error.message : "Beslutningsgrunnlaget kunne ikke kontrolleres.");
   }
-  return { supabase, user, context, decisionId, setId, decisionHash, returnTo };
+  return { supabase, user, accessToken, context, decisionId, setId, decisionHash, returnTo };
 }
 
 export async function approveCorporateDecisionFacts(formData: FormData) {
@@ -3303,21 +3330,30 @@ export async function attestSignedCorporateArtifact(formData: FormData) {
   } catch (error) {
     failTo(setup.returnTo, error instanceof Error ? error.message : "Den signerte PDF-filen er ugyldig.");
   }
-  const storageKey = corporateSignedArtifactStorageKey({
-    companyId: setup.context.decision.company_id,
-    incomeYear: setup.context.decision.income_year,
-    setId: setup.setId,
-    artifactId: signedArtifactId,
-    artifactKind,
-    contentSha256: artifact.contentSha256,
-  });
-  let upload;
+  let document;
   try {
-    upload = await uploadSignedCorporateArtifact({
-      storageClient: setup.supabase as unknown as CorporateStorageClient,
-      storageKey,
-      artifact,
+    document = await uploadDocumentObject({
+      accessToken: setup.accessToken,
+      command: {
+        companyId: setup.context.decision.company_id,
+        incomeYear: setup.context.decision.income_year,
+        documentId: signedDocumentId,
+        documentType: "corporate_document",
+        linkedTo: `corporate_decision:${setup.decisionId}`,
+        fileName: artifact.filename,
+        contentType: artifact.mimeType,
+        byteLength: artifact.byteLength,
+        headerBase64: Buffer.from(artifact.bytes.subarray(0, 5)).toString("base64"),
+        finalStatus: "signed_owner_attested",
+      },
+      body: artifact.bytes,
+      port: signedDocumentUploadPort(setup.supabase),
+      beginIdempotencyKey: `corporate-signed-stage:${signedDocumentId}`,
+      finalizeIdempotencyKey: `corporate-signed-finalize:${signedDocumentId}`,
     });
+    if (document.contentSha256 !== artifact.contentSha256 || document.byteLength !== artifact.byteLength) {
+      throw new Error("Dokumenttjenestens integritetsbevis samsvarer ikke med den signerte PDF-filen.");
+    }
   } catch (error) {
     failTo(setup.returnTo, error instanceof Error ? error.message : "Den signerte PDF-filen kunne ikke lagres.");
   }
@@ -3337,20 +3373,24 @@ export async function attestSignedCorporateArtifact(formData: FormData) {
         content_sha256: artifact.contentSha256,
         byte_length: artifact.byteLength,
         mime_type: artifact.mimeType,
-        storage_key: storageKey,
+        storage_key: document.storageKey,
       },
       idempotency_key: `corporate-signed-copy:${signedArtifactId}`,
     },
   });
   if (error) {
-    if (upload.newlyUploaded) {
-      const cleanup = await setup.supabase.storage.from(COMPANY_DOCUMENTS_BUCKET).remove([storageKey]);
-      if (cleanup.error) {
-        throw new AggregateError(
-          [new Error(error.message), new Error(cleanup.error.message)],
-          "Signert kopi ble ikke registrert, og det nye lagringsobjektet kunne ikke ryddes opp.",
-        );
-      }
+    try {
+      await removeDocument(
+        setup.accessToken,
+        signedDocumentId,
+        { reason: "producer_rollback" },
+        `corporate-signed-cleanup:${signedDocumentId}`,
+      );
+    } catch (cleanupError) {
+      throw new AggregateError(
+        [new Error(error.message), cleanupError],
+        "Signert kopi ble ikke registrert, og det nye lagringsobjektet kunne ikke ryddes opp.",
+      );
     }
     failTo(setup.returnTo, error.message);
   }
@@ -4226,7 +4266,10 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
       data: transactions.filter((transaction) => transaction.income_year === incomeYear),
       error: error ? { message: error } : null,
     })),
-    supabase.from("documents").select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at, removed_at, removed_by, removal_reason").eq("company_id", companyId).eq("income_year", incomeYear),
+    listDocumentsForCompanies([companyId]).then(({ documents, error }) => ({
+      data: documents.filter((document) => document.income_year === incomeYear),
+      error: error ? { message: error } : null,
+    })),
     supabase.from("filing_overrides").select("id, preview_id, company_id, income_year, filing, field_target, old_value, new_value, reason, risk_level, owner_confirmed_by, owner_confirmed_at, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     listPeriodLocks([companyId]).then(({ locks, error }) => ({
       data: locks.filter((lock) => lock.income_year === incomeYear),
@@ -5385,6 +5428,8 @@ function createRf1086FeedbackJournal(
     userId: string;
     forsendelseId: string;
     leaseId: string;
+    accessToken: string;
+    supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
   },
 ): Rf1086ProductionJournal {
   const persistenceError = (
@@ -5392,7 +5437,37 @@ function createRf1086FeedbackJournal(
     cause: unknown,
     options: { integrityFailure?: boolean } = {},
   ) => createRf1086FeedbackArtifactPersistenceError(message, cause, options);
-  const recordArtifact = createRf1086FeedbackArtifactRecorder(service, input);
+  const recordArtifact = createRf1086FeedbackArtifactRecorder(service, input, {
+    async store({ documentId, fileName, artifact }) {
+      return uploadDocumentObject({
+        accessToken: input.accessToken,
+        command: {
+          companyId: input.companyId,
+          incomeYear: input.incomeYear,
+          documentId,
+          documentType: "authority_feedback",
+          linkedTo: `production_filing_submission:${input.submissionId}`,
+          fileName,
+          contentType: artifact.contentType,
+          byteLength: artifact.byteLength,
+          headerBase64: Buffer.from(artifact.bytes.subarray(0, 5)).toString("base64"),
+          finalStatus: "stored",
+        },
+        body: artifact.bytes,
+        port: signedDocumentUploadPort(input.supabase),
+        beginIdempotencyKey: `rf1086-feedback-stage:${documentId}`,
+        finalizeIdempotencyKey: `rf1086-feedback-finalize:${documentId}`,
+      });
+    },
+    async remove(documentId) {
+      await removeDocument(
+        input.accessToken,
+        documentId,
+        { reason: "producer_rollback" },
+        `rf1086-feedback-cleanup:${documentId}`,
+      );
+    },
+  });
 
   return {
     async readReconciliationState() {
@@ -5504,6 +5579,8 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/login");
   const { data: approval } = await supabase.from("filing_approval_snapshots").select("*").eq("id", approvalId).single();
   if (!approval || approval.invalidated_at) {
     redirect(rf1086ProductionErrorTarget(returnTo, "approval_expired"));
@@ -5610,6 +5687,8 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
                 userId: user.id,
                 forsendelseId: authoritativeForsendelseId,
                 leaseId,
+                accessToken,
+                supabase,
               }),
               authorityClient,
               {
@@ -5663,6 +5742,13 @@ export async function reconcileRf1086ProductionAction(
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
+    return buildRf1086OwnerReconciliationActionState(null, {
+      errorCode: "authentication_required",
+      requiresManualRetry: true,
+    });
+  }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) {
     return buildRf1086OwnerReconciliationActionState(null, {
       errorCode: "authentication_required",
       requiresManualRetry: true,
@@ -5818,6 +5904,8 @@ export async function reconcileRf1086ProductionAction(
         userId: user.id,
         forsendelseId: authoritativeForsendelseId,
         leaseId,
+        accessToken,
+        supabase,
       }),
       createRf1086AuthorityClient({
         environment: "production",

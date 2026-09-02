@@ -630,30 +630,6 @@ function feedbackPersistenceFixture(options = {}) {
     objectRemovals: 0,
   };
   const service = {
-    storage: {
-      from() {
-        return {
-          async upload(key, bytes) {
-            if (state.objects.has(key)) {
-              return { error: { code: "Duplicate", message: "object exists" } };
-            }
-            state.objects.set(key, new Uint8Array(bytes));
-            return { error: null };
-          },
-          async download(key) {
-            const bytes = state.objects.get(key);
-            return bytes
-              ? { data: new Blob([bytes]), error: null }
-              : { data: null, error: { code: "NoSuchKey", message: "missing" } };
-          },
-          async remove(keys) {
-            state.objectRemovals += 1;
-            for (const key of keys) state.objects.delete(key);
-            return { error: null };
-          },
-        };
-      },
-    },
     from(table) {
       if (table === "production_feedback_artifacts") {
         const query = {
@@ -666,23 +642,6 @@ function feedbackPersistenceFixture(options = {}) {
           },
         };
         return query;
-      }
-      if (table === "documents") {
-        return {
-          async insert(document) {
-            state.documents.set(document.id, document);
-            return { error: null };
-          },
-          delete() {
-            return {
-              async eq(_column, documentId) {
-                state.documentDeletes += 1;
-                state.documents.delete(documentId);
-                return { error: null };
-              },
-            };
-          },
-        };
       }
       throw new Error(`unexpected table ${table}`);
     },
@@ -701,7 +660,20 @@ function feedbackPersistenceFixture(options = {}) {
       };
     },
   };
-  return { service, state };
+  const documents = {
+    async store({ documentId, artifact }) {
+      state.documents.set(documentId, artifact);
+      state.objects.set(documentId, new Uint8Array(artifact.bytes));
+      return { contentSha256: artifact.sha256, byteLength: artifact.byteLength };
+    },
+    async remove(documentId) {
+      state.documentDeletes += 1;
+      state.objectRemovals += 1;
+      state.documents.delete(documentId);
+      state.objects.delete(documentId);
+    },
+  };
+  return { service, state, documents };
 }
 
 function persistenceArtifact() {
@@ -718,13 +690,9 @@ function persistenceArtifact() {
   };
 }
 
-function feedbackStorageKey(artifact) {
-  return `authority-feedback/company-id/submission-id/${artifact.sha256}`;
-}
-
 test("ambiguous metadata commit preserves the receipt and the next read-only attempt verifies it", async () => {
   const artifact = persistenceArtifact();
-  const { service, state } = feedbackPersistenceFixture({
+  const { service, state, documents } = feedbackPersistenceFixture({
     commitThenLoseResponse: true,
     metadataReadErrors: new Map([[2, {
       code: "PGRST003",
@@ -738,7 +706,7 @@ test("ambiguous metadata commit preserves the receipt and the next read-only att
     companyId: "company-id",
     incomeYear: 2025,
     userId: "user-id",
-  });
+  }, documents);
 
   await assert.rejects(
     recordArtifact(artifact),
@@ -746,7 +714,7 @@ test("ambiguous metadata commit preserves the receipt and the next read-only att
   );
   assert.equal(state.objectRemovals, 0);
   assert.equal(state.documentDeletes, 0);
-  assert.equal(state.objects.has(feedbackStorageKey(artifact)), true);
+  assert.equal(state.documents.size, 1);
   assert.equal(state.rpcCalls, 1);
 
   assert.equal(await recordArtifact(artifact), artifact.sha256);
@@ -756,42 +724,31 @@ test("ambiguous metadata commit preserves the receipt and the next read-only att
 
 test("authoritative metadata absence permits cleanup of resources owned by the failed attempt", async () => {
   const artifact = persistenceArtifact();
-  const { service, state } = feedbackPersistenceFixture();
+  const { service, state, documents } = feedbackPersistenceFixture();
   const recordArtifact = createRf1086FeedbackArtifactRecorder(service, {
     submissionId: "submission-id",
     companyId: "company-id",
     incomeYear: 2025,
     userId: "user-id",
-  });
+  }, documents);
 
   await assert.rejects(recordArtifact(artifact), Rf1086FeedbackArtifactPersistenceError);
   assert.equal(state.documentDeletes, 1);
   assert.equal(state.objectRemovals, 1);
-  assert.equal(state.objects.has(feedbackStorageKey(artifact)), false);
+  assert.equal(state.documents.size, 0);
 });
 
-test("existing metadata cannot accept a missing or mismatched private receipt", async () => {
+test("existing metadata retains only the canonical DocumentId relationship", async () => {
   const artifact = persistenceArtifact();
-  for (const [label, objects, retryable] of [
-    ["missing", [], true],
-    ["mismatched", [[feedbackStorageKey(artifact), new TextEncoder().encode("wrong")]], false],
-  ]) {
-    const { service } = feedbackPersistenceFixture({
-      metadata: { document_id: "document-id", sha256: artifact.sha256 },
-      objects,
-    });
-    const recordArtifact = createRf1086FeedbackArtifactRecorder(service, {
-      submissionId: "submission-id",
-      companyId: "company-id",
-      incomeYear: 2025,
-      userId: "user-id",
-    });
-
-    await assert.rejects(
-      recordArtifact(artifact),
-      (error) => error instanceof Rf1086FeedbackArtifactPersistenceError
-        && error.retryable === retryable,
-      label,
-    );
-  }
+  const { service, state, documents } = feedbackPersistenceFixture({
+    metadata: { document_id: "document-id", sha256: artifact.sha256 },
+  });
+  const recordArtifact = createRf1086FeedbackArtifactRecorder(service, {
+    submissionId: "submission-id",
+    companyId: "company-id",
+    incomeYear: 2025,
+    userId: "user-id",
+  }, documents);
+  assert.equal(await recordArtifact(artifact), artifact.sha256);
+  assert.equal(state.documents.size, 0, "the producer must not inspect or recreate document objects");
 });

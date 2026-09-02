@@ -13,7 +13,6 @@ import { evaluateAnnualReadinessGates } from "../apps/web/app/lib/annual-readine
 import { productionAuthorityGate } from "../apps/web/app/lib/authority-permission.ts";
 import { buildBillingAccount, productionBillingGate } from "../apps/web/app/lib/billing.ts";
 import { buildCompanyTaxReturnEvidencePersistence } from "../apps/web/app/lib/company-tax-return-submission.ts";
-import { COMPANY_DOCUMENTS_BUCKET, documentStorageKey } from "../apps/web/app/lib/documents.ts";
 import { assertNoBlockingFilingOverrides, validateFilingOverride } from "../apps/web/app/lib/filing-overrides.ts";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../apps/web/app/lib/rf1086.ts";
 import {
@@ -201,6 +200,46 @@ function anonClient() {
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+}
+
+async function insertDocumentFixture(document) {
+  const database = new pg.Client({ ...getDatabaseConfig() });
+  try {
+    await database.connect();
+    await database.query(
+      `insert into public.documents (
+        id, company_id, income_year, document_type, name, linked_to, status,
+        retention_years, storage_key, created_by, content_type, byte_length,
+        content_sha256, final_status
+      ) values ($1,$2,$3,$4,$5,$6,$7,5,$8,$9,'application/pdf',10,$10,$7)`,
+      [
+        document.id, document.company_id, document.income_year,
+        document.document_type, document.name, document.linked_to,
+        document.status, document.storage_key, document.created_by,
+        "a".repeat(64),
+      ],
+    );
+  } finally {
+    await database.end().catch(() => undefined);
+  }
+}
+
+async function listDocumentFixtures(companyId, incomeYear) {
+  const database = new pg.Client({ ...getDatabaseConfig() });
+  try {
+    await database.connect();
+    const result = await database.query(
+      `select id, company_id, income_year, document_type, name, linked_to, status,
+        retention_years, storage_key, created_by, created_at, removed_at,
+        removed_by, removal_reason
+      from public.documents where company_id=$1 and income_year=$2
+      order by created_at, id`,
+      [companyId, incomeYear],
+    );
+    return result.rows;
+  } finally {
+    await database.end().catch(() => undefined);
+  }
 }
 
 async function assertNoError(resultPromise) {
@@ -2207,7 +2246,7 @@ test(
     assert.match(ambiguousSuggestionResult.error?.message ?? "", /bank_suggestion_ambiguous/);
 
     const purchaseDocumentId = randomUUID();
-    const { error: purchaseDocumentError } = await owner.from("documents").insert({
+    await insertDocumentFixture({
       id: purchaseDocumentId,
       company_id: companyId,
       income_year: 2025,
@@ -2218,7 +2257,6 @@ test(
       storage_key: `companies/${companyId}/2025/${purchaseDocumentId}/purchase.pdf`,
       created_by: ownerUser.id,
     });
-    assert.ifError(purchaseDocumentError);
     const { data: purchaseBankTransaction, error: purchaseBankTransactionError } = await owner
       .from("bank_transactions")
       .insert({
@@ -2354,7 +2392,7 @@ test(
       (error) => error?.code === "personal_shareholder_loan_blocked",
     );
     const loanDocumentId = randomUUID();
-    const { error: loanDocumentError } = await owner.from("documents").insert({
+    await insertDocumentFixture({
       id: loanDocumentId,
       company_id: companyId,
       income_year: 2025,
@@ -2365,7 +2403,6 @@ test(
       storage_key: `companies/${companyId}/2025/${loanDocumentId}/loan.pdf`,
       created_by: ownerUser.id,
     });
-    assert.ifError(loanDocumentError);
     const { data: loanBankTransaction, error: loanBankTransactionError } = await owner
       .from("bank_transactions")
       .insert({
@@ -2476,7 +2513,7 @@ test(
     assert.equal(taxEstimate.status, "payable");
     assert.equal(taxEstimate.estimatedTax, 17.6);
     const taxDocumentId = randomUUID();
-    const { error: taxDocumentError } = await owner.from("documents").insert({
+    await insertDocumentFixture({
       id: taxDocumentId,
       company_id: companyId,
       income_year: 2025,
@@ -2487,7 +2524,6 @@ test(
       storage_key: `companies/${companyId}/2025/${taxDocumentId}/tax-settlement.pdf`,
       created_by: ownerUser.id,
     });
-    assert.ifError(taxDocumentError);
     const { data: taxBankTransaction, error: taxBankTransactionError } = await owner
       .from("bank_transactions")
       .insert({
@@ -2734,15 +2770,15 @@ test(
     assert.ok(lockedOpeningSetupError);
 
     const documentId = randomUUID();
-    const storageKey = documentStorageKey(companyId, 2025, documentId, "bank.pdf");
+    const storageKey = `${companyId}/2025/${documentId}/bank.pdf`;
     const { error: uploadError } = await owner.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
+      .from("company-documents")
       .upload(storageKey, new Blob(["test"], { type: "application/pdf" }), {
         contentType: "application/pdf",
       });
-    assert.ifError(uploadError);
+    assert.ok(uploadError, "authenticated browsers cannot create document objects directly");
 
-    const { error: documentInsertError } = await owner.from("documents").insert({
+    await insertDocumentFixture({
       id: documentId,
       company_id: companyId,
       income_year: 2025,
@@ -2753,14 +2789,15 @@ test(
       storage_key: storageKey,
       created_by: ownerUser.id,
     });
-    assert.ifError(documentInsertError);
 
-    const { data: ownerDocuments, error: ownerDocumentError } = await owner
+    const { data: directOwnerDocuments, error: ownerDocumentError } = await owner
       .from("documents")
       .select("id, company_id, income_year, document_type, name, linked_to, status, retention_years, storage_key, created_by, created_at")
       .eq("company_id", companyId)
       .eq("income_year", 2025);
-    assert.ifError(ownerDocumentError);
+    assert.ok(ownerDocumentError);
+    assert.equal(directOwnerDocuments, null);
+    const ownerDocuments = await listDocumentFixtures(companyId, 2025);
     assert.ok(ownerDocuments.length >= 2);
 
     const { data: persistedLedgerEntries, error: persistedLedgerError } = await owner
@@ -2833,129 +2870,59 @@ test(
     assert.deepEqual(outsiderArchiveCompany, []);
 
     const { data: signed, error: signedError } = await owner.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
+      .from("company-documents")
       .createSignedUrl(storageKey, 60);
-    assert.ifError(signedError);
-    assert.ok(signed.signedUrl.includes("/storage/v1/"));
+    assert.equal(signed, null);
+    assert.ok(signedError);
 
     const { data: outsiderDocuments, error: outsiderDocumentError } = await outsider
       .from("documents")
       .select("id")
       .eq("id", documentId);
-    assert.ifError(outsiderDocumentError);
-    assert.deepEqual(outsiderDocuments, []);
+    assert.ok(outsiderDocumentError);
+    assert.equal(outsiderDocuments, null);
 
     const { data: reviewerDocuments, error: reviewerDocumentError } = await reviewer
       .from("documents")
       .select("id")
       .eq("id", documentId);
-    assert.ifError(reviewerDocumentError);
-    assert.deepEqual(reviewerDocuments, [{ id: documentId }]);
+    assert.ok(reviewerDocumentError);
+    assert.equal(reviewerDocuments, null);
 
     const { data: readOnlyDocuments, error: readOnlyDocumentError } = await readOnly
       .from("documents")
       .select("id")
       .eq("id", documentId);
-    assert.ifError(readOnlyDocumentError);
-    assert.deepEqual(readOnlyDocuments, [{ id: documentId }]);
+    assert.ok(readOnlyDocumentError);
+    assert.equal(readOnlyDocuments, null);
 
     const linkedRemoval = await owner.rpc("remove_unlinked_document", {
       p_document_id: purchaseDocumentId,
     });
-    assert.match(linkedRemoval.error?.message ?? "", /document_removal_evidence_linked/);
-
-    const removableDocumentId = randomUUID();
-    const removableStorageKey = documentStorageKey(
-      companyId,
-      2025,
-      removableDocumentId,
-      "uploaded-by-mistake.pdf",
-    );
-    const { error: removableUploadError } = await owner.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
-      .upload(removableStorageKey, new Blob(["%PDF-test"], { type: "application/pdf" }), {
-        contentType: "application/pdf",
-      });
-    assert.ifError(removableUploadError);
-    const { error: removableInsertError } = await owner.from("documents").insert({
-      id: removableDocumentId,
-      company_id: companyId,
-      income_year: 2025,
-      document_type: "accounting_document",
-      name: "uploaded-by-mistake.pdf",
-      linked_to: "workspace",
-      status: "attached",
-      storage_key: removableStorageKey,
-      created_by: ownerUser.id,
-    });
-    assert.ifError(removableInsertError);
-
-    const reviewerRemoval = await reviewer.rpc("remove_unlinked_document", {
-      p_document_id: removableDocumentId,
-    });
-    assert.match(reviewerRemoval.error?.message ?? "", /document_removal_not_allowed/);
-    const outsiderRemoval = await outsider.rpc("remove_unlinked_document", {
-      p_document_id: removableDocumentId,
-    });
-    assert.match(outsiderRemoval.error?.message ?? "", /document_removal_not_allowed/);
-
-    const { data: removalResult, error: removalError } = await owner.rpc(
-      "remove_unlinked_document",
-      { p_document_id: removableDocumentId },
-    );
-    assert.ifError(removalError);
-    assert.deepEqual(removalResult, [{ storage_key: removableStorageKey }]);
-    const { data: removedDocument, error: removedDocumentError } = await owner
-      .from("documents")
-      .select("status, removed_at, removed_by, removal_reason")
-      .eq("id", removableDocumentId)
-      .single();
-    assert.ifError(removedDocumentError);
-    assert.equal(removedDocument.status, "removed");
-    assert.ok(removedDocument.removed_at);
-    assert.equal(removedDocument.removed_by, ownerUser.id);
-    assert.equal(removedDocument.removal_reason, "accidental_unlinked_upload");
-
-    const hiddenRemovedObject = await reviewer.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
-      .createSignedUrl(removableStorageKey, 60);
-    assert.equal(hiddenRemovedObject.data, null);
-    assert.ok(hiddenRemovedObject.error);
-    const { error: removableObjectDeleteError } = await owner.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
-      .remove([removableStorageKey]);
-    assert.ifError(removableObjectDeleteError);
-    const { data: removalAudit, error: removalAuditError } = await owner
-      .from("audit_events")
-      .select("action")
-      .eq("company_id", companyId)
-      .eq("action", "document_removal_requested");
-    assert.ifError(removalAuditError);
-    assert.deepEqual(removalAudit, [{ action: "document_removal_requested" }]);
+    assert.ok(linkedRemoval.error, "legacy browser removal RPC execution is revoked");
 
     const { data: outsiderSigned, error: outsiderSignedError } = await outsider.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
+      .from("company-documents")
       .createSignedUrl(storageKey, 60);
     assert.equal(outsiderSigned, null);
     assert.ok(outsiderSignedError);
 
-    const reviewerStorageKey = documentStorageKey(companyId, 2025, randomUUID(), "reviewer.pdf");
+    const reviewerStorageKey = `${companyId}/2025/${randomUUID()}/reviewer.pdf`;
     const { error: reviewerUploadError } = await reviewer.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
+      .from("company-documents")
       .upload(reviewerStorageKey, new Blob(["reviewer"], { type: "application/pdf" }), {
         contentType: "application/pdf",
       });
     assert.ok(reviewerUploadError);
 
-    const readOnlyStorageKey = documentStorageKey(companyId, 2025, randomUUID(), "readonly.pdf");
+    const readOnlyStorageKey = `${companyId}/2025/${randomUUID()}/readonly.pdf`;
     const { error: readOnlyUploadError } = await readOnly.storage
-      .from(COMPANY_DOCUMENTS_BUCKET)
+      .from("company-documents")
       .upload(readOnlyStorageKey, new Blob(["readonly"], { type: "application/pdf" }), {
         contentType: "application/pdf",
       });
     assert.ok(readOnlyUploadError);
 
-    await owner.storage.from(COMPANY_DOCUMENTS_BUCKET).remove([storageKey]);
   } catch (error) {
     primaryError = error;
   } finally {

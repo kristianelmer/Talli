@@ -24,6 +24,7 @@ import type {
   InvestmentCorrectionPresentation,
   InvestmentActivityPresentation,
 } from "../../features/investments";
+import type { DocumentBackupProjectionWire } from "../../features/documents";
 
 export type LedgerEntryRow = {
   id: string;
@@ -60,6 +61,7 @@ export function buildPersistedCompanyArchive(input: {
   shareholders: OpeningShareholderRow[];
   ledgerEntries: LedgerEntryRow[];
   documents: DocumentRow[];
+  documentBackupProjection?: DocumentBackupProjectionWire;
   holdingActions?: HoldingActionRow[];
   investmentPositions?: InvestmentPositionRow[];
   investmentLots?: InvestmentLotRow[];
@@ -201,6 +203,7 @@ export function buildPersistedCompanyArchive(input: {
       storageKey: document.storage_key,
       createdAt: document.created_at,
     })),
+    documentBackupProjection: input.documentBackupProjection ?? null,
     filingPreviews: input.filingPreviews.map((preview) => ({
       id: preview.id,
       filing: preview.filing,

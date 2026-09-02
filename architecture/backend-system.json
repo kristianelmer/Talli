@@ -132,6 +132,19 @@
       ]
     },
     {
+      "name": "accounting-document-lifecycle",
+      "purpose": "Authenticates one verified actor and owns validated document staging, exact private-object transfers, integrity finalization, tenant-scoped listing, AAL2 download, safe removal restoration, retention metadata, and document-only backup projections.",
+      "publicPackages": ["talli_backend.modules.documents.public"],
+      "routes": [
+        "/api/v1/documents/uploads",
+        "/api/v1/documents/{document_id}/finalize",
+        "/api/v1/documents",
+        "/api/v1/documents/{document_id}/transfers",
+        "/api/v1/documents/{document_id}/remove",
+        "/api/v1/documents/backup-projection"
+      ]
+    },
+    {
       "name": "ledger-posting-and-period-control",
       "purpose": "Authenticates one verified actor and runs intent-specific narrow-ledger posting, immutable source-owned full-year reconstruction and company-year close assessment, cross-capability writer coordination, deterministic cursor queries, the frozen opening-snapshot compatibility read, and compatibility locking without changing a future capability contract.",
       "publicPackages": ["talli_backend.modules.ledger.public"],
@@ -259,6 +272,24 @@
       "mode": "request-scoped verified-actor restricted PostgreSQL adapter"
     },
     {
+      "port": "DocumentsPersistence",
+      "adapter": "talli_backend.adapters.supabase_documents.SupabaseDocumentsPersistence",
+      "owner": "backend-system",
+      "mode": "request-scoped verified-actor restricted PostgreSQL adapter"
+    },
+    {
+      "port": "DocumentObjectStorage",
+      "adapter": "talli_backend.adapters.supabase_documents.SupabaseDocumentObjectStorage",
+      "owner": "backend-system",
+      "mode": "backend-only exact-object Supabase Storage adapter"
+    },
+    {
+      "port": "DocumentsAuthorization",
+      "adapter": "talli_backend.adapters.supabase_documents.SupabaseDocumentsAuthorization",
+      "owner": "backend-system",
+      "mode": "request-scoped accepted-membership facts through the company-access public gateway"
+    },
+    {
       "port": "BankTransactionClaimPersistence",
       "adapter": "talli_backend.adapters.supabase_investments.SupabaseInvestmentsTransaction",
       "owner": "backend-system",
@@ -287,6 +318,8 @@
     "transport": [
       "__future__",
       "asyncio",
+      "base64",
+      "binascii",
       "re",
       "collections",
       "datetime",
@@ -304,6 +337,7 @@
       "talli_backend.adapters.brreg_company_registry",
       "talli_backend.adapters.supabase_banking",
       "talli_backend.adapters.supabase_company_access",
+      "talli_backend.adapters.supabase_documents",
       "talli_backend.adapters.supabase_ledger",
       "talli_backend.adapters.supabase_investments",
       "talli_backend.adapters.supabase_marketing_measurement",
@@ -315,6 +349,7 @@
       "talli_backend.application.opening_snapshot_compatibility",
       "talli_backend.modules.banking.public",
       "talli_backend.modules.company_access.public",
+      "talli_backend.modules.documents.public",
       "talli_backend.modules.investments.public",
       "talli_backend.modules.ledger.public",
       "talli_backend.modules.marketing_measurement.public",
@@ -328,6 +363,7 @@
       "talli_backend.application.opening_snapshot_compatibility",
       "talli_backend.modules.banking.public",
       "talli_backend.modules.company_access.public",
+      "talli_backend.modules.documents.public",
       "talli_backend.modules.investments.public",
       "talli_backend.modules.ledger.public",
       "talli_backend.modules.marketing_measurement.public",
@@ -361,6 +397,7 @@
       "talli_backend.application.opening_snapshot_compatibility",
       "talli_backend.modules.banking.public",
       "talli_backend.modules.company_access.public",
+      "talli_backend.modules.documents.public",
       "talli_backend.modules.investments.public",
       "talli_backend.modules.ledger.public",
       "talli_backend.modules.ledger.service",

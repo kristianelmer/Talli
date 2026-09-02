@@ -3,52 +3,43 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const migrationUrl = new URL(
-  "../supabase/migrations/20260715143000_retention_safe_document_removal.sql",
+  "../supabase/migrations/20260901233000_documents_capability.sql",
   import.meta.url,
 );
 
-test("accidental document removal is owner-only, audited, and blocked for linked evidence", async () => {
+test("document metadata is forced-RLS capability state behind restricted functions", async () => {
   const sql = await readFile(migrationUrl, "utf8");
-
-  assert.match(sql, /add column if not exists removed_at timestamptz/i);
-  assert.match(sql, /add column if not exists removed_by uuid/i);
-  assert.match(sql, /add column if not exists removal_reason text/i);
-  assert.match(sql, /create or replace function public\.remove_unlinked_document\(p_document_id uuid\)/i);
-  assert.match(sql, /security definer[\s\S]+set search_path = public/i);
-  assert.match(sql, /m\.role = 'owner'[\s\S]+m\.accepted_at is not null/i);
-  assert.match(sql, /public\.holding_actions[\s\S]+document_id = p_document_id/i);
-  assert.match(sql, /public\.corporate_document_artifacts[\s\S]+document_id = p_document_id/i);
-  assert.match(sql, /public\.filing_submissions[\s\S]+feedback_document_ids/i);
-  assert.match(sql, /public\.ledger_entries[\s\S]+p_document_id::text/i);
-  assert.match(sql, /document_removal_evidence_linked/i);
-  assert.match(sql, /action[\s\S]+document_removal_requested/i);
-  assert.match(sql, /status = 'removed'[\s\S]+removed_by = v_actor_id/i);
-  assert.match(sql, /create policy "owners can delete removed unlinked document objects"/i);
-  assert.match(sql, /storage\.objects for delete[\s\S]+d\.status = 'removed'[\s\S]+d\.removed_by = \(select auth\.uid\(\)\)/i);
-  assert.match(sql, /create policy "company members can read company document objects"[\s\S]+not exists[\s\S]+d\.status = 'removed'/i);
-  assert.match(sql, /revoke all on function public\.remove_unlinked_document\(uuid\) from public, anon/i);
-  assert.match(sql, /grant execute on function public\.remove_unlinked_document\(uuid\) to authenticated, service_role/i);
+  assert.match(sql, /create role documents_store_owner nologin noinherit nobypassrls/iu);
+  assert.match(sql, /create role documents_executor nologin noinherit nobypassrls/iu);
+  assert.match(sql, /alter table public\.documents owner to documents_store_owner/iu);
+  assert.match(sql, /alter table public\.documents force row level security/iu);
+  assert.match(sql, /revoke all on public\.documents from public, anon, authenticated, service_role, documents_executor/iu);
+  assert.match(sql, /talli\.authorized_company_roles/iu);
+  assert.doesNotMatch(sql, /grant select on public\.company_memberships to documents_store_owner/iu);
+  assert.match(sql, /create or replace function documents\.stage_upload_v1/iu);
+  assert.match(sql, /create or replace function documents\.finalize_upload_v1/iu);
+  assert.match(sql, /create or replace function documents\.list_documents_v1/iu);
 });
 
-test("a failed object-store removal can restore only the same recent owner request", async () => {
+test("safe removal is reference-aware, audited, and metadata-restoring", async () => {
   const sql = await readFile(migrationUrl, "utf8");
-
-  assert.match(sql, /create or replace function public\.restore_unlinked_document_after_storage_failure\(p_document_id uuid\)/i);
-  assert.match(sql, /removed_by = v_actor_id/i);
-  assert.match(sql, /removed_at >= now\(\) - interval '5 minutes'/i);
-  assert.match(sql, /document_removal_storage_failed/i);
-  assert.match(sql, /revoke all on function public\.restore_unlinked_document_after_storage_failure\(uuid\) from public, anon/i);
+  assert.match(sql, /create or replace function documents\.has_evidence_references_v1/iu);
+  for (const relation of [
+    "holding_actions", "corporate_document_artifacts", "filing_submissions",
+    "production_feedback_artifacts", "ledger_entries",
+  ]) assert.match(sql, new RegExp(`public\\.${relation}`, "iu"));
+  assert.match(sql, /grant execute on function documents\.has_evidence_references_v1\(uuid\) to documents_store_owner/iu);
+  assert.match(sql, /status='removed'.*removed_at=pg_catalog\.now\(\)/isu);
+  assert.match(sql, /document_removal_requested/iu);
+  assert.match(sql, /removed_at >= pg_catalog\.now\(\)-interval '5 minutes'/iu);
+  assert.match(sql, /document_removal_storage_failed/iu);
 });
 
-test("removed documents disappear from active lists and cannot receive signed download URLs", async () => {
-  const [serverSource, downloadSource, pageSource] = await Promise.all([
-    readFile(new URL("../apps/web/app/lib/supabase/server.ts", import.meta.url), "utf8"),
-    readFile(new URL("../apps/web/app/documents/[documentId]/download/route.ts", import.meta.url), "utf8"),
-    readFile(new URL("../apps/web/app/(owner)/documents/page.tsx", import.meta.url), "utf8"),
-  ]);
-
-  assert.match(serverSource, /\.neq\("status", "removed"\)/);
-  assert.match(downloadSource, /select\("company_id, storage_key, status"\)/);
-  assert.match(downloadSource, /document\.status !== "attached"/);
-  assert.match(pageSource, /removeUnlinkedDocument|DocumentRemovalButton/);
+test("all broad browser bucket policies and legacy removal execution are revoked", async () => {
+  const sql = await readFile(migrationUrl, "utf8");
+  assert.match(sql, /drop policy if exists "company members can read company document objects" on storage\.objects/iu);
+  assert.match(sql, /drop policy if exists "owners can upload company document objects" on storage\.objects/iu);
+  assert.match(sql, /drop policy if exists "owners can delete removed unlinked document objects" on storage\.objects/iu);
+  assert.match(sql, /revoke all on function public\.remove_unlinked_document\(uuid\).*from public, anon, authenticated, service_role/isu);
+  assert.doesNotMatch(sql, /create policy .*storage\.objects/iu);
 });

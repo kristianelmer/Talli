@@ -1644,6 +1644,90 @@ export interface ShareSaleAllocationWire {
   taxableGain: LedgerMoneyWire;
 }
 
+export interface DocumentBackupObjectWire {
+  byteLength: number | null;
+  contentSha256: string | null;
+  contentType: string;
+  createdAt: string;
+  createdBy: string;
+  documentId: string;
+  documentType: string;
+  linkedTo: string;
+  name: string;
+  removalReason: string | null;
+  removedAt: string | null;
+  retentionYears: number;
+  status: string;
+  storageKey: string;
+}
+
+export interface DocumentBackupProjectionWire {
+  companyId: string;
+  incomeYear: number;
+  objects: DocumentBackupObjectWire[];
+}
+
+export interface DocumentBeginUploadWire {
+  byteLength: number;
+  companyId: string;
+  contentType: string;
+  documentId: string;
+  documentType: "bank_statement" | "accounting_document" | "corporate_document" | "authority_feedback";
+  fileName: string;
+  finalStatus?: "attached" | "generated_unsigned" | "signed_owner_attested" | "stored";
+  headerBase64: string;
+  incomeYear: number;
+  linkedTo: string;
+}
+
+export interface DocumentListWire {
+  documents: DocumentWire[];
+}
+
+export interface DocumentRemovalRequestWire {
+  reason?: string;
+}
+
+export type DocumentTransferKind = "preview" | "download";
+
+export interface DocumentTransferRequestWire {
+  kind: DocumentTransferKind;
+}
+
+export interface DocumentTransferWire {
+  document: DocumentWire;
+  expiresInSeconds: number;
+  kind: DocumentTransferKind;
+  signedUrl: string;
+}
+
+export interface DocumentUploadTransferWire {
+  bucket: "company-documents";
+  document: DocumentWire;
+  signedUrl: string;
+  storageKey: string;
+  token: string;
+}
+
+export interface DocumentWire {
+  byteLength: number | null;
+  companyId: string;
+  contentSha256: string | null;
+  contentType: string;
+  createdAt: string;
+  createdBy: string;
+  documentType: string;
+  id: string;
+  incomeYear: number;
+  linkedTo: string;
+  name: string;
+  removalReason: string | null;
+  removedAt: string | null;
+  retentionYears: number;
+  status: string;
+  storageKey: string;
+}
+
 export interface AcceptBankFileWire {
   companyId: string;
   documentSha256: string;
@@ -3980,6 +4064,128 @@ function isShareSaleAllocationWire(value: unknown): value is ShareSaleAllocation
   );
 }
 
+function isDocumentBackupObjectWire(value: unknown): value is DocumentBackupObjectWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["byteLength","contentSha256","contentType","createdAt","createdBy","documentId","documentType","linkedTo","name","removalReason","removedAt","retentionYears","status","storageKey"]) &&
+    (typeof value.byteLength === "number" && Number.isInteger(value.byteLength) || value.byteLength === null) &&
+    (typeof value.contentSha256 === "string" || value.contentSha256 === null) &&
+    typeof value.contentType === "string" &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    isUuid(value.documentId) &&
+    typeof value.documentType === "string" &&
+    typeof value.linkedTo === "string" &&
+    typeof value.name === "string" &&
+    (typeof value.removalReason === "string" || value.removalReason === null) &&
+    (isDateTime(value.removedAt) || value.removedAt === null) &&
+    typeof value.retentionYears === "number" && Number.isInteger(value.retentionYears) &&
+    typeof value.status === "string" &&
+    typeof value.storageKey === "string"
+  );
+}
+
+function isDocumentBackupProjectionWire(value: unknown): value is DocumentBackupProjectionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","objects"]) &&
+    isUuid(value.companyId) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    Array.isArray(value.objects) && value.objects.every((item) => isDocumentBackupObjectWire(item))
+  );
+}
+
+function isDocumentBeginUploadWire(value: unknown): value is DocumentBeginUploadWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["byteLength","companyId","contentType","documentId","documentType","fileName","finalStatus","headerBase64","incomeYear","linkedTo"]) &&
+    (typeof value.byteLength === "number" && Number.isInteger(value.byteLength) && value.byteLength >= 1 && value.byteLength <= 10485760) &&
+    isUuid(value.companyId) &&
+    (typeof value.contentType === "string" && value.contentType.length <= 100) &&
+    isUuid(value.documentId) &&
+    (value.documentType === "bank_statement" || value.documentType === "accounting_document" || value.documentType === "corporate_document" || value.documentType === "authority_feedback") &&
+    (typeof value.fileName === "string" && value.fileName.length >= 1 && value.fileName.length <= 255) &&
+    (value.finalStatus === undefined || (value.finalStatus === "attached" || value.finalStatus === "generated_unsigned" || value.finalStatus === "signed_owner_attested" || value.finalStatus === "stored")) &&
+    (typeof value.headerBase64 === "string" && value.headerBase64.length >= 4 && value.headerBase64.length <= 32) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (typeof value.linkedTo === "string" && value.linkedTo.length >= 1 && value.linkedTo.length <= 200)
+  );
+}
+
+function isDocumentListWire(value: unknown): value is DocumentListWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["documents"]) &&
+    Array.isArray(value.documents) && value.documents.every((item) => isDocumentWire(item))
+  );
+}
+
+function isDocumentRemovalRequestWire(value: unknown): value is DocumentRemovalRequestWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["reason"]) &&
+    (value.reason === undefined || (typeof value.reason === "string" && value.reason.length >= 1 && value.reason.length <= 200))
+  );
+}
+
+function isDocumentTransferKind(value: unknown): value is DocumentTransferKind {
+  return value === "preview" || value === "download";
+}
+
+function isDocumentTransferRequestWire(value: unknown): value is DocumentTransferRequestWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["kind"]) &&
+    isDocumentTransferKind(value.kind)
+  );
+}
+
+function isDocumentTransferWire(value: unknown): value is DocumentTransferWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["document","expiresInSeconds","kind","signedUrl"]) &&
+    isDocumentWire(value.document) &&
+    typeof value.expiresInSeconds === "number" && Number.isInteger(value.expiresInSeconds) &&
+    isDocumentTransferKind(value.kind) &&
+    typeof value.signedUrl === "string"
+  );
+}
+
+function isDocumentUploadTransferWire(value: unknown): value is DocumentUploadTransferWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["bucket","document","signedUrl","storageKey","token"]) &&
+    value.bucket === "company-documents" &&
+    isDocumentWire(value.document) &&
+    typeof value.signedUrl === "string" &&
+    typeof value.storageKey === "string" &&
+    typeof value.token === "string"
+  );
+}
+
+function isDocumentWire(value: unknown): value is DocumentWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["byteLength","companyId","contentSha256","contentType","createdAt","createdBy","documentType","id","incomeYear","linkedTo","name","removalReason","removedAt","retentionYears","status","storageKey"]) &&
+    (typeof value.byteLength === "number" && Number.isInteger(value.byteLength) || value.byteLength === null) &&
+    isUuid(value.companyId) &&
+    (typeof value.contentSha256 === "string" || value.contentSha256 === null) &&
+    typeof value.contentType === "string" &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    typeof value.documentType === "string" &&
+    isUuid(value.id) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.linkedTo === "string" &&
+    typeof value.name === "string" &&
+    (typeof value.removalReason === "string" || value.removalReason === null) &&
+    (isDateTime(value.removedAt) || value.removedAt === null) &&
+    typeof value.retentionYears === "number" && Number.isInteger(value.retentionYears) &&
+    typeof value.status === "string" &&
+    typeof value.storageKey === "string"
+  );
+}
+
 function isAcceptBankFileWire(value: unknown): value is AcceptBankFileWire {
   return (
     isRecord(value) &&
@@ -4382,6 +4588,15 @@ export interface InvestmentsListRequest extends TalliRequestOptions {
   companyIds: readonly string[];
   cursor?: string;
   limit?: number;
+}
+
+export interface DocumentsListRequest extends TalliRequestOptions {
+  companyId: string;
+}
+
+export interface DocumentsBackupProjectionRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
 }
 
 export interface LedgerOpeningSnapshotListRequest extends TalliRequestOptions {
@@ -4998,6 +5213,89 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isLedgerEntryPageWire,
+      );
+    },
+
+    async documentsList(
+      request: DocumentsListRequest,
+    ): Promise<DocumentListWire> {
+      const query = new URLSearchParams({ companyId: request.companyId });
+      return executeJson(
+        `${baseUrl}/api/v1/documents?${query}`,
+        "GET",
+        request,
+        undefined,
+        isDocumentListWire,
+      );
+    },
+
+    async documentsBackupProjection(
+      request: DocumentsBackupProjectionRequest,
+    ): Promise<DocumentBackupProjectionWire> {
+      const query = new URLSearchParams({
+        company_id: request.companyId,
+        income_year: String(request.incomeYear),
+      });
+      return executeJson(
+        `${baseUrl}/api/v1/documents/backup-projection?${query}`,
+        "GET",
+        request,
+        undefined,
+        isDocumentBackupProjectionWire,
+      );
+    },
+
+    async documentsBeginUpload(
+      body: DocumentBeginUploadWire,
+      request: TalliMutationOptions,
+    ): Promise<DocumentUploadTransferWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/documents/uploads`,
+        "POST",
+        request,
+        body,
+        isDocumentUploadTransferWire,
+      );
+    },
+
+    async documentsFinalizeUpload(
+      documentId: string,
+      request: TalliMutationOptions,
+    ): Promise<DocumentWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/documents/${encodeURIComponent(documentId)}/finalize`,
+        "POST",
+        request,
+        undefined,
+        isDocumentWire,
+      );
+    },
+
+    async documentsRemove(
+      documentId: string,
+      body: DocumentRemovalRequestWire,
+      request: TalliMutationOptions,
+    ): Promise<DocumentWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/documents/${encodeURIComponent(documentId)}/remove`,
+        "POST",
+        request,
+        body,
+        isDocumentWire,
+      );
+    },
+
+    async documentsCreateTransfer(
+      documentId: string,
+      body: DocumentTransferRequestWire,
+      request: TalliMutationOptions,
+    ): Promise<DocumentTransferWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/documents/${encodeURIComponent(documentId)}/transfers`,
+        "POST",
+        request,
+        body,
+        isDocumentTransferWire,
       );
     },
 

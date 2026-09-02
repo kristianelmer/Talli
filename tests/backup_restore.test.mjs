@@ -11,38 +11,79 @@ import {
 } from "../apps/web/app/lib/backup-restore.ts";
 
 function archiveFixture(overrides = {}) {
+  const documents = [
+    {
+      id: "document-id",
+      documentType: "accounting_document",
+      name: "document.pdf",
+      linkedTo: "workspace",
+      status: "stored",
+      retentionYears: 5,
+      storageKey: "source-company/2025/document-id/document.pdf",
+      contentType: "application/pdf",
+      byteLength: 900,
+      contentSha256: "a".repeat(64),
+    },
+    {
+      id: "missing-document-id",
+      documentType: "accounting_document",
+      name: "missing.pdf",
+      linkedTo: "workspace",
+      status: "missing_accepted_warning",
+      retentionYears: 5,
+      storageKey: null,
+      contentType: "application/pdf",
+      byteLength: null,
+      contentSha256: null,
+    },
+    {
+      id: "unsigned-document-id",
+      documentType: "corporate_document",
+      name: "unsigned.pdf",
+      linkedTo: "corporate_decision:decision-id",
+      status: "generated_unsigned",
+      retentionYears: 5,
+      storageKey: "source-company/2025/corporate/set-id/annual_board_minutes/unsigned.pdf",
+      contentType: "application/pdf",
+      byteLength: 1000,
+      contentSha256: "b".repeat(64),
+    },
+    {
+      id: "signed-document-id",
+      documentType: "corporate_document",
+      name: "signed.pdf",
+      linkedTo: "corporate_decision:decision-id",
+      status: "signed_owner_attested",
+      retentionYears: 5,
+      storageKey: "source-company/2025/corporate/set-id/annual_board_minutes/signed-owner-attested/signed.pdf",
+      contentType: "application/pdf",
+      byteLength: 1100,
+      contentSha256: "c".repeat(64),
+    },
+  ];
   return {
     archiveType: "talli_company_year_archive",
     company: { id: "source-company", org_number: "314259521", name: "Demo Holding AS" },
     incomeYear: 2025,
     ledgerEntries: [{ id: "ledger-id", entry_type: "opening_balance" }],
     taxSettlements: [{ id: "tax-action-id", ledgerEntryId: "ledger-id" }],
-    documents: [
-      {
-        id: "document-id",
-        status: "stored",
-        retentionYears: 5,
-        storageKey: "source-company/2025/document-id.pdf",
-      },
-      {
-        id: "missing-document-id",
-        status: "missing_accepted_warning",
-        retentionYears: 5,
-        storageKey: null,
-      },
-      {
-        id: "unsigned-document-id",
-        status: "generated_unsigned",
-        retentionYears: 5,
-        storageKey: "source-company/2025/corporate/set-id/annual_board_minutes/unsigned.pdf",
-      },
-      {
-        id: "signed-document-id",
-        status: "signed_owner_attested",
-        retentionYears: 5,
-        storageKey: "source-company/2025/corporate/set-id/annual_board_minutes/signed-owner-attested/signed.pdf",
-      },
-    ],
+    documents,
+    documentBackupProjection: {
+      companyId: "source-company",
+      incomeYear: 2025,
+      objects: documents.map((document) => ({
+        documentId: document.id,
+        documentType: document.documentType,
+        name: document.name,
+        linkedTo: document.linkedTo,
+        storageKey: document.storageKey,
+        status: document.status,
+        retentionYears: document.retentionYears,
+        contentType: document.contentType,
+        byteLength: document.byteLength,
+        contentSha256: document.contentSha256,
+      })),
+    },
     filingPreviews: [{ id: "preview-id", filing: "aksjonærregisteroppgaven" }],
     rf1086Submissions: [{ id: "submission-id", receiptId: "sim-rf1086" }],
     reviewComments: [{ id: "review-id", severity: "advisory" }],
@@ -143,36 +184,7 @@ test("backup manifest identifies launch-critical tables and object references", 
   assert.ok(manifest.launchCriticalTables.includes("corporate_decisions"));
   assert.ok(manifest.launchCriticalTables.includes("corporate_document_artifacts"));
   assert.ok(manifest.launchCriticalTables.includes("corporate_decision_finalizations"));
-  assert.deepEqual(manifest.objectReferences, [
-    {
-      documentId: "document-id",
-      storageKey: "source-company/2025/document-id.pdf",
-      status: "stored",
-      retentionYears: 5,
-    },
-    {
-      documentId: "unsigned-document-id",
-      storageKey: "source-company/2025/corporate/set-id/annual_board_minutes/unsigned.pdf",
-      status: "generated_unsigned",
-      retentionYears: 5,
-      artifactId: "unsigned-artifact-id",
-      artifactKind: "annual_board_minutes",
-      variant: "unsigned",
-      contentSha256: "b".repeat(64),
-      byteLength: 1000,
-    },
-    {
-      documentId: "signed-document-id",
-      storageKey: "source-company/2025/corporate/set-id/annual_board_minutes/signed-owner-attested/signed.pdf",
-      status: "signed_owner_attested",
-      retentionYears: 5,
-      artifactId: "signed-artifact-id",
-      artifactKind: "annual_board_minutes",
-      variant: "signed_owner_attested",
-      contentSha256: "c".repeat(64),
-      byteLength: 1100,
-    },
-  ]);
+  assert.deepEqual(manifest.objectReferences, archiveFixture().documentBackupProjection.objects);
   assert.equal(manifest.counts.auditEvents, 1);
   assert.equal(manifest.counts.authorityTestRuns, 0);
   assert.equal(manifest.counts.filingSubmissions, 1);

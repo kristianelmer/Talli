@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#147",
+  "source": "https://github.com/kristianelmer/Talli/issues/147",
+  "sourceCheckedAt": "2026-09-01T23:20:00Z",
+  "completeGates": [],
+  "entryBlockers": [
+    {"issue": "#143", "requiredState": "CLOSED", "observedState": "CLOSED"},
+    {"issue": "#190", "requiredState": "CLOSED", "observedState": "CLOSED", "evidence": "https://github.com/kristianelmer/Talli/issues/190#issuecomment-5501752274"}
+  ],
+  "serialization": {
+    "position": "documents stage after investments and before corporate governance",
+    "forbiddenConcurrentCapabilityWork": "No #149 or later capability migration may begin while #147 is active."
+  },
+  "criteria": [
+    {"id": "GH-147-A1", "requirement": "FastAPI owns upload, list, preview, download, and safe removal flows.", "status": "in-progress"},
+    {"id": "GH-147-A2", "requirement": "Validation, staged/finalized/quarantined lifecycle, hashes, company scope, retention, and AAL2 remain enforced.", "status": "in-progress"},
+    {"id": "GH-147-A3", "requirement": "Document backup and isolated restore evidence remain equivalent behind the documents contract.", "status": "in-progress"},
+    {"id": "GH-147-A4", "requirement": "Object-storage adapters contain no business acceptance policy.", "status": "in-progress"},
+    {"id": "GH-147-A5", "requirement": "Other capabilities retain only DocumentId plus semantic relationships and never write document rows or objects.", "status": "planned"},
+    {"id": "GH-147-A6", "requirement": "Only document-owned export projections exist; company archive composition remains deferred.", "status": "in-progress"},
+    {"id": "GH-147-A7", "requirement": "Legacy direct web storage orchestration and active-stage compatibility code are removed.", "status": "planned"},
+    {"id": "GH-147-A8", "requirement": "Complete local, hosted, Preview, architecture, rollback/recutover, and two immutable customer-ready gates pass.", "status": "planned"}
+  ],
+  "closeState": "claimed-active"
+}
