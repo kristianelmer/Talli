@@ -268,7 +268,7 @@ class ApprovedAnnualBasis:
     income_year: IncomeYear
     latest_approved: bool
     annual_data_sha256: str
-    annual_accounts_payload_sha256: str
+    governance_basis_sha256: str
     result_after_tax_ore: int
     equity_ore: int
     available_distribution_ore: int
@@ -318,7 +318,7 @@ class DerivedCorporateDecisionFacts:
 class CorporateReadinessSource:
     source_id: CorporateSourceReference
     annual_data_sha256: str
-    annual_accounts_payload_sha256: str
+    governance_basis_sha256: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -336,7 +336,7 @@ class ReviewedOwnerDividendFacts:
     total_company_shares: int
     available_distribution_ore: int
     annual_data_sha256: str
-    annual_accounts_payload_sha256: str
+    governance_basis_sha256: str
 
 
 @dataclass(frozen=True, slots=True)

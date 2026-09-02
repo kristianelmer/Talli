@@ -140,6 +140,30 @@ async function assertRollbackBlocksWriters(client) {
   }
 }
 
+async function assertAdditiveRollbackBackupsArePrivate(client) {
+  const result = await client.query(String.raw`
+    select pg_catalog.bool_or(pg_catalog.has_function_privilege(
+      principal.role_name,
+      routine.signature,
+      'EXECUTE'
+    )) as unintended_execute
+    from (values
+      ('public'),
+      ('anon'),
+      ('authenticated'),
+      ('service_role'),
+      ('corporate_governance_workflow_executor')
+    ) principal(role_name)
+    cross join (values
+      ('corporate_governance.owner_dividend_lifecycle_pre148_v1(uuid,boolean)'),
+      ('corporate_governance.prepare_owner_dividend_finalization_pre148_v1(jsonb,text)'),
+      ('corporate_governance.complete_owner_dividend_finalization_pre148_v1(jsonb,text)'),
+      ('corporate_governance.complete_owner_dividend_payment_pre148_v1(jsonb,text)')
+    ) routine(signature)
+  `);
+  assert.equal(result.rows[0].unintended_execute, false);
+}
+
 test(
   "corporate-governance contract rollback and cutover are repeatable twice",
   { skip: !databaseUrl && "DATABASE_URL is required", timeout: 120_000 },
@@ -196,6 +220,7 @@ test(
       assert.deepEqual(await state(client), rollbackState);
       assert.deepEqual(await evidence(client), canonicalEvidence);
       await assertRollbackBlocksWriters(client);
+      await assertAdditiveRollbackBackupsArePrivate(client);
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
         await client.query(forward);
         assert.deepEqual(await state(client), cutoverState);
@@ -204,6 +229,7 @@ test(
         assert.deepEqual(await state(client), rollbackState);
         assert.deepEqual(await evidence(client), canonicalEvidence);
         await assertRollbackBlocksWriters(client);
+        await assertAdditiveRollbackBackupsArePrivate(client);
       }
     } finally {
       await client.end();

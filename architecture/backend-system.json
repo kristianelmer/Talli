@@ -232,6 +232,7 @@
       "supabase/migrations/20260826110000_company_year_admission.sql",
       "supabase/migrations/20260830091341_case_bound_support_access.sql",
       "supabase/migrations/20260830093000_current_legal_evidence.sql",
+      "supabase/migrations/20260902095000_company_access_corporate_governance_identity.sql",
       "supabase/migrations/20260827100000_ledger_capability.sql",
       "supabase/migrations/20260827100500_ledger_writer_coordinators.sql",
       "supabase/migrations/20260827101000_ledger_full_year_reconstruction.sql",

@@ -2819,7 +2819,7 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
       totalCompanyShares: Number(formString(formData, "reviewedTotalCompanyShares")),
       availableDistributionOre: Number(formString(formData, "reviewedAvailableDistributionOre")),
       annualDataSha256: formString(formData, "reviewedAnnualDataHash"),
-      annualAccountsPayloadSha256: formString(formData, "reviewedAnnualAccountsPayloadHash"),
+      governanceBasisSha256: formString(formData, "reviewedGovernanceBasisHash"),
     };
 
     proposal = {
@@ -3022,7 +3022,7 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
         totalCompanyShares: Number(formString(formData, "reviewedTotalCompanyShares")),
         availableDistributionOre: Number(formString(formData, "reviewedAvailableDistributionOre")),
         annualDataSha256: formString(formData, "reviewedAnnualDataHash"),
-        annualAccountsPayloadSha256: formString(formData, "reviewedAnnualAccountsPayloadHash"),
+        governanceBasisSha256: formString(formData, "reviewedGovernanceBasisHash"),
       },
       boardMeeting: {
         meetingDate: formString(formData, "boardMeetingDate"),

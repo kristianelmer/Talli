@@ -7,9 +7,6 @@ from dataclasses import replace
 from decimal import Decimal
 from typing import Protocol
 
-from talli_backend.application.annual_data_compatibility import (
-    project_legacy_annual_basis,
-)
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceSessionFactory,
     CorporateGovernanceWorkflowTransaction,
@@ -182,8 +179,8 @@ class CorporateGovernanceApplication:
                 CorporateReadinessSource(
                     source_id=facts.annual_basis.source_id,
                     annual_data_sha256=facts.annual_basis.annual_data_sha256,
-                    annual_accounts_payload_sha256=(
-                        facts.annual_basis.annual_accounts_payload_sha256
+                    governance_basis_sha256=(
+                        facts.annual_basis.governance_basis_sha256
                     ),
                 )
             )
@@ -324,7 +321,6 @@ class CorporateGovernanceApplication:
             ledger_lines=lines,
             decision_kind=decision_kind,
             income_year=income_year,
-            annual_basis_projector=project_legacy_annual_basis,
         )
 
     async def _require_current_decision_source(
@@ -375,8 +371,8 @@ class CorporateGovernanceApplication:
                 CorporateReadinessSource(
                     source_id=facts.annual_basis.source_id,
                     annual_data_sha256=facts.annual_basis.annual_data_sha256,
-                    annual_accounts_payload_sha256=(
-                        facts.annual_basis.annual_accounts_payload_sha256
+                    governance_basis_sha256=(
+                        facts.annual_basis.governance_basis_sha256
                     ),
                 )
             ),

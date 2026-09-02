@@ -8,8 +8,7 @@ do $membership$
 begin
   execute pg_catalog.format(
     'grant corporate_governance_store_owner, ledger_store_owner, '
-      || 'backend_system_annual_data_reader, '
-      || 'company_access_executor to %I',
+      || 'backend_system_annual_data_reader to %I',
     current_user
   );
 end
@@ -62,10 +61,6 @@ reset role;
 set local role backend_system_annual_data_reader;
 drop function if exists
   backend_system.list_annual_data_legacy_v1(uuid, integer, text);
-reset role;
-set local role company_access_executor;
-drop function if exists
-  public.company_access_read_company_identity_v1(uuid, text);
 reset role;
 revoke usage on schema backend_system
 from corporate_governance_workflow_executor;

@@ -45,7 +45,7 @@ test("legacy owner-dividend accounting and placeholder helpers are gone", () => 
 test("dividend basis and fact hashes are owned by the Python governance capability", () => {
   assert.match(governanceServiceSource, /def derive_decision_facts\(/);
   assert.match(governanceServiceSource, /annual_data_sha256/);
-  assert.match(governanceServiceSource, /annual_accounts_payload_sha256/);
+  assert.match(governanceServiceSource, /governance_basis_sha256/);
   assert.match(governanceTransportSource, /corporateGovernanceDeriveDecisionFacts/);
   assert.doesNotMatch(actionsSource, /buildOwnerDividendAnnualBasis|persistedFactHash/);
 });

@@ -40,7 +40,7 @@ test("decision-facts transport sends only identity and accepts the generated res
           incomeYear: 2024,
           latestApproved: true,
           annualDataSha256: sha,
-          annualAccountsPayloadSha256: sha,
+          governanceBasisSha256: sha,
           resultAfterTaxOre: 100,
           equityOre: 200,
           availableDistributionOre: 100,
@@ -53,7 +53,7 @@ test("decision-facts transport sends only identity and accepts the generated res
           totalCompanyShares: 100,
           availableDistributionOre: 100,
           annualDataSha256: sha,
-          annualAccountsPayloadSha256: sha,
+          governanceBasisSha256: sha,
         },
       });
     },

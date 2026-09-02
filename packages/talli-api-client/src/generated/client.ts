@@ -1761,11 +1761,11 @@ export type BoardRole = "chair" | "member";
 export type BoardTreatmentMethod = "physical" | "video" | "written";
 
 export interface CorporateAnnualBasisWire {
-  annualAccountsPayloadSha256: string;
   annualDataSha256: string;
   availableDistributionOre: number;
   cashOre: number;
   equityOre: number;
+  governanceBasisSha256: string;
   incomeYear: number;
   latestApproved: boolean;
   resultAfterTaxOre: number;
@@ -1993,9 +1993,9 @@ export interface CorporateLifecycleSnapshotWire {
 }
 
 export interface CorporateReviewedFactsWire {
-  annualAccountsPayloadSha256: string;
   annualDataSha256: string;
   availableDistributionOre: number;
+  governanceBasisSha256: string;
   legalName: string;
   organizationNumber: string;
   shareholders: CorporateReviewedShareholderWire[];
@@ -4703,12 +4703,12 @@ function isBoardTreatmentMethod(value: unknown): value is BoardTreatmentMethod {
 function isCorporateAnnualBasisWire(value: unknown): value is CorporateAnnualBasisWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["annualAccountsPayloadSha256","annualDataSha256","availableDistributionOre","cashOre","equityOre","incomeYear","latestApproved","resultAfterTaxOre","sourceId"]) &&
-    (typeof value.annualAccountsPayloadSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.annualAccountsPayloadSha256)) &&
+    hasOnlyProperties(value, ["annualDataSha256","availableDistributionOre","cashOre","equityOre","governanceBasisSha256","incomeYear","latestApproved","resultAfterTaxOre","sourceId"]) &&
     (typeof value.annualDataSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.annualDataSha256)) &&
     (typeof value.availableDistributionOre === "number" && Number.isInteger(value.availableDistributionOre) && value.availableDistributionOre >= 0 && value.availableDistributionOre <= 9007199254740991) &&
     (typeof value.cashOre === "number" && Number.isInteger(value.cashOre) && value.cashOre >= -9007199254740991 && value.cashOre <= 9007199254740991) &&
     (typeof value.equityOre === "number" && Number.isInteger(value.equityOre) && value.equityOre >= -9007199254740991 && value.equityOre <= 9007199254740991) &&
+    (typeof value.governanceBasisSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.governanceBasisSha256)) &&
     (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2200) &&
     typeof value.latestApproved === "boolean" &&
     (typeof value.resultAfterTaxOre === "number" && Number.isInteger(value.resultAfterTaxOre) && value.resultAfterTaxOre >= -9007199254740991 && value.resultAfterTaxOre <= 9007199254740991) &&
@@ -5021,10 +5021,10 @@ function isCorporateLifecycleSnapshotWire(value: unknown): value is CorporateLif
 function isCorporateReviewedFactsWire(value: unknown): value is CorporateReviewedFactsWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["annualAccountsPayloadSha256","annualDataSha256","availableDistributionOre","legalName","organizationNumber","shareholders","totalCompanyShares"]) &&
-    (typeof value.annualAccountsPayloadSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.annualAccountsPayloadSha256)) &&
+    hasOnlyProperties(value, ["annualDataSha256","availableDistributionOre","governanceBasisSha256","legalName","organizationNumber","shareholders","totalCompanyShares"]) &&
     (typeof value.annualDataSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.annualDataSha256)) &&
     (typeof value.availableDistributionOre === "number" && Number.isInteger(value.availableDistributionOre) && value.availableDistributionOre >= 0 && value.availableDistributionOre <= 9007199254740991) &&
+    (typeof value.governanceBasisSha256 === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.governanceBasisSha256)) &&
     (typeof value.legalName === "string" && value.legalName.length >= 1 && value.legalName.length <= 255) &&
     (typeof value.organizationNumber === "string" && new RegExp("^\\d{9}$", "u").test(value.organizationNumber)) &&
     Array.isArray(value.shareholders) && value.shareholders.every((item) => isCorporateReviewedShareholderWire(item)) && value.shareholders.length >= 1 && value.shareholders.length <= 10000 &&
@@ -5737,9 +5737,6 @@ export interface CorporateGovernanceReadinessRequest extends TalliRequestOptions
   companyId: string;
   incomeYear: number;
   decisionKind: CorporateDecisionKind;
-  annualCloseSourceId?: string;
-  annualDataSha256?: string;
-  annualAccountsPayloadSha256?: string;
 }
 
 export interface LedgerOpeningSnapshotListRequest extends TalliRequestOptions {
@@ -6481,9 +6478,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         incomeYear: String(request.incomeYear),
         decisionKind: request.decisionKind,
       });
-      if (request.annualCloseSourceId) query.set("annualCloseSourceId", request.annualCloseSourceId);
-      if (request.annualDataSha256) query.set("annualDataSha256", request.annualDataSha256);
-      if (request.annualAccountsPayloadSha256) query.set("annualAccountsPayloadSha256", request.annualAccountsPayloadSha256);
       return executeJson(
         `${baseUrl}/api/v1/corporate-governance/readiness?${query}`,
         "GET",

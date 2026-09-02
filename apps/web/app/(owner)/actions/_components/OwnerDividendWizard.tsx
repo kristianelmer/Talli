@@ -125,7 +125,7 @@ export function OwnerDividendWizard({
       <input type="hidden" name="reviewedTotalCompanyShares" value={reviewedFacts.totalCompanyShares} />
       <input type="hidden" name="reviewedAvailableDistributionOre" value={reviewedFacts.availableDistributionOre} />
       <input type="hidden" name="reviewedAnnualDataHash" value={reviewedFacts.annualDataSha256} />
-      <input type="hidden" name="reviewedAnnualAccountsPayloadHash" value={reviewedFacts.annualAccountsPayloadSha256} />
+      <input type="hidden" name="reviewedGovernanceBasisHash" value={reviewedFacts.governanceBasisSha256} />
       {reviewedFacts.shareholders.map((shareholder) => (
         <span key={`reviewed-${shareholder.shareholderId}`} hidden>
           <input type="hidden" name="reviewedShareholderId" value={shareholder.shareholderId} />

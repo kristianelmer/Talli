@@ -186,12 +186,7 @@ export async function loadWorkspaceData() {
         );
         primaryCorporateDecisionReadiness = await readCorporateDecisionReadiness(
           accessToken,
-          {
-            ...request,
-            annualCloseSourceId: primaryCorporateDecisionFacts.annualBasis.sourceId,
-            annualDataSha256: primaryCorporateDecisionFacts.annualBasis.annualDataSha256,
-            annualAccountsPayloadSha256: primaryCorporateDecisionFacts.annualBasis.annualAccountsPayloadSha256,
-          },
+          request,
         );
       } else {
         primaryCorporateDecisionReadiness = await readCorporateDecisionReadiness(

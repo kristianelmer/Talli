@@ -966,7 +966,7 @@ class CorporateAnnualBasisWire(StrictTransportModel):
     income_year: int = Field(ge=2000, le=2200)
     latest_approved: bool
     annual_data_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-    annual_accounts_payload_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    governance_basis_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     result_after_tax_ore: int = Field(
         ge=-9_007_199_254_740_991, le=9_007_199_254_740_991
     )
@@ -984,7 +984,7 @@ class CorporateReviewedFactsWire(StrictTransportModel):
     total_company_shares: int = Field(gt=0, le=9_007_199_254_740_991)
     available_distribution_ore: int = Field(ge=0, le=9_007_199_254_740_991)
     annual_data_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-    annual_accounts_payload_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    governance_basis_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
 class CorporateDecisionFactsWire(StrictTransportModel):
@@ -4041,8 +4041,8 @@ def create_app(
                 income_year=int(value.annual_basis.income_year),
                 latest_approved=value.annual_basis.latest_approved,
                 annual_data_sha256=value.annual_basis.annual_data_sha256,
-                annual_accounts_payload_sha256=(
-                    value.annual_basis.annual_accounts_payload_sha256
+                governance_basis_sha256=(
+                    value.annual_basis.governance_basis_sha256
                 ),
                 result_after_tax_ore=value.annual_basis.result_after_tax_ore,
                 equity_ore=value.annual_basis.equity_ore,
@@ -4067,8 +4067,8 @@ def create_app(
                     value.reviewed_facts.available_distribution_ore
                 ),
                 annual_data_sha256=value.reviewed_facts.annual_data_sha256,
-                annual_accounts_payload_sha256=(
-                    value.reviewed_facts.annual_accounts_payload_sha256
+                governance_basis_sha256=(
+                    value.reviewed_facts.governance_basis_sha256
                 ),
             ),
         )
@@ -4355,8 +4355,8 @@ def create_app(
                 income_year=IncomeYear(command.annual_basis.income_year),
                 latest_approved=command.annual_basis.latest_approved,
                 annual_data_sha256=command.annual_basis.annual_data_sha256,
-                annual_accounts_payload_sha256=(
-                    command.annual_basis.annual_accounts_payload_sha256
+                governance_basis_sha256=(
+                    command.annual_basis.governance_basis_sha256
                 ),
                 result_after_tax_ore=command.annual_basis.result_after_tax_ore,
                 equity_ore=command.annual_basis.equity_ore,
@@ -4381,8 +4381,8 @@ def create_app(
                     command.reviewed_facts.available_distribution_ore
                 ),
                 annual_data_sha256=command.reviewed_facts.annual_data_sha256,
-                annual_accounts_payload_sha256=(
-                    command.reviewed_facts.annual_accounts_payload_sha256
+                governance_basis_sha256=(
+                    command.reviewed_facts.governance_basis_sha256
                 ),
             ),
             "board_meeting": BoardMeeting(

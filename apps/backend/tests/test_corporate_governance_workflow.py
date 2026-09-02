@@ -597,7 +597,7 @@ def test_annual_close_proposal_is_owner_authorized_and_persists_canonical_facts(
     app, transaction, _, _, _ = application()
     result = asyncio.run(app.propose_annual_close("access-token", supported_annual_close()))
     assert result.decision.decision_hash == (
-        "5765d1948383a6fb27c4c08cf1607cc4c5dca5cd8e95d6f004db77e446ec5c0a"
+        "22d6b2d7ddb555022813b56ebd554bdfef6a78ac5b0dd6654a3f2d208c3111d6"
     )
     assert result.decision.dividend is None
     assert transaction.calls[0][0] == "actor_role"

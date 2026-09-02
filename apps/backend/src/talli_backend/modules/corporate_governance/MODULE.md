@@ -109,12 +109,13 @@ production banking remain outside this capability and blocked independently by
 Company identity is obtained through the `company_access` public service and
 opening shareholders through the frozen Ledger opening-snapshot query. Until
 #149 and #153 establish their future public contracts, the application owns one
-narrow read-only compatibility seam for the selected legacy annual-data row and
-the exactly characterized annual-accounts basis projection. Governance receives
-only immutable source facts and the projected basis; it neither reads another
-capability's tables nor owns annual-filing field policy. The backend-system SQL
-reader is owner-authenticated, executor-only, and is removed when that future
-ownership replaces it.
+narrow read-only compatibility seam for the selected legacy annual-data row.
+Corporate governance projects only its predecessor decision basis—result,
+equity, distributable equity, liquidity, and a governance-specific digest—from
+immutable annual-data and Ledger facts. It does not construct or hash annual-
+accounts filing payloads, statutory identifiers, filing fields, or filing
+readiness. The backend-system SQL reader is owner-authenticated, executor-only,
+and is removed when future annual-compliance ownership replaces it.
 
 ## Stage-exit state
 

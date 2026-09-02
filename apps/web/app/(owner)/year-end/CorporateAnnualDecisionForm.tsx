@@ -115,7 +115,7 @@ export function CorporateAnnualDecisionForm({
   if (!annualBasis || !reviewedFacts || !sourceHash || shareholders.length === 0) {
     return (
       <Banner variant="danger">
-        {blocker ?? "Fullført årsgrunnlag, årsregnskapspayload og aksjonærgrunnlag må være klare."}
+        {blocker ?? "Fullført årsgrunnlag og aksjonærgrunnlag må være klare."}
       </Banner>
     );
   }
@@ -134,7 +134,7 @@ export function CorporateAnnualDecisionForm({
       <input type="hidden" name="reviewedTotalCompanyShares" value={reviewedFacts.totalCompanyShares} />
       <input type="hidden" name="reviewedAvailableDistributionOre" value={reviewedFacts.availableDistributionOre} />
       <input type="hidden" name="reviewedAnnualDataHash" value={reviewedFacts.annualDataSha256} />
-      <input type="hidden" name="reviewedAnnualAccountsPayloadHash" value={reviewedFacts.annualAccountsPayloadSha256} />
+      <input type="hidden" name="reviewedGovernanceBasisHash" value={reviewedFacts.governanceBasisSha256} />
       {reviewedFacts.shareholders.map((shareholder) => (
         <span key={shareholder.shareholderId} hidden>
           <input type="hidden" name="reviewedShareholderId" value={shareholder.shareholderId} />

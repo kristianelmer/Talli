@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 import unicodedata
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import replace
 from enum import Enum
 from typing import Any
@@ -100,8 +100,8 @@ def _json_value(value: Any) -> Any:
         return [_json_value(item) for item in value]
     if isinstance(value, list):
         return [_json_value(item) for item in value]
-    if isinstance(value, dict):
-        return {key: _json_value(item) for key, item in value.items()}
+    if isinstance(value, Mapping):
+        return {str(key): _json_value(item) for key, item in value.items()}
     return value
 
 
@@ -118,7 +118,7 @@ def _basis_source_hash(
     basis: ApprovedAnnualBasis | CorporateReadinessSource,
 ) -> str:
     if not SHA256_PATTERN.fullmatch(basis.annual_data_sha256) or not SHA256_PATTERN.fullmatch(
-        basis.annual_accounts_payload_sha256
+        basis.governance_basis_sha256
     ):
         _fail(
             CorporateGovernanceErrorCode.INVALID_INPUT,
@@ -127,11 +127,118 @@ def _basis_source_hash(
     return _sha256(
         _canonical_json(
             {
-                "annual_accounts_payload_hash": basis.annual_accounts_payload_sha256,
+                "governance_basis_hash": basis.governance_basis_sha256,
                 "annual_close_source_id": str(basis.source_id),
                 "annual_data_hash": basis.annual_data_sha256,
             }
         )
+    )
+
+
+def _ledger_account_balance_ore(
+    lines: tuple[CorporateAccountMovementFacts, ...],
+    account: str,
+    income_year: IncomeYear,
+) -> int:
+    return sum(
+        line.debit_ore - line.credit_ore
+        for line in lines
+        if line.income_year == income_year and line.account == account
+    )
+
+
+def _project_governance_annual_basis(
+    source: AnnualDataSourceFacts,
+    ledger_lines: tuple[CorporateAccountMovementFacts, ...],
+) -> ApprovedAnnualBasis:
+    """Project only the source facts required by corporate decisions.
+
+    This reproduces the predecessor corporate-governance basis. It deliberately
+    contains no annual-accounts filing identifiers, fields, or readiness rules.
+    """
+
+    def account_balance(account: str) -> int:
+        return _ledger_account_balance_ore(
+            ledger_lines, account, source.income_year
+        )
+
+    def account_credit(account: str) -> int:
+        return -account_balance(account)
+
+    def debit_total(accounts: set[str]) -> int:
+        return sum(
+            line.debit_ore
+            for line in ledger_lines
+            if line.income_year == source.income_year
+            and line.account in accounts
+        )
+
+    cash_ore = account_balance("1920")
+    financial_income_ore = sum(
+        account_credit(account)
+        for account in ("8070", "8071", "8074", "8050")
+    )
+    administration_costs_ore = debit_total(
+        {"7770", "6700", "6705", "6420", "7790", "6720", "7795"}
+    )
+    financial_costs_ore = debit_total({"8090", "8171", "8174"})
+    tax_expense_ore = account_balance("8300")
+    share_capital_ore = account_credit("2000")
+    retained_earnings_ore = account_credit("2050")
+    result_after_tax_ore = (
+        financial_income_ore
+        - administration_costs_ore
+        - financial_costs_ore
+        - tax_expense_ore
+    )
+    available_distribution_ore = max(
+        0, retained_earnings_ore + result_after_tax_ore
+    )
+    equity_ore = (
+        share_capital_ore
+        + retained_earnings_ore
+        + result_after_tax_ore
+    )
+    if equity_ore < 0 or cash_ore < 0:
+        _fail(
+            CorporateGovernanceErrorCode.UNSUPPORTED_DIVIDEND_BASIS,
+            "Negative equity or liquidity is outside the supported path.",
+        )
+
+    annual_snapshot = {
+        "id": str(source.source_id),
+        "company_id": str(source.company_id),
+        "income_year": int(source.income_year),
+        "answers": source.answers,
+        "confirmations": source.confirmations,
+        "no_activity_confirmed": source.no_activity_confirmed,
+        "annual_full_time_equivalents": source.annual_full_time_equivalents,
+        "completed_at": source.completed_at,
+        "updated_at": source.updated_at,
+    }
+    annual_data_sha256 = _sha256(_canonical_json(annual_snapshot))
+    governance_basis = {
+        "policy_version": "corporate-governance-basis-v1",
+        "source_id": str(source.source_id),
+        "income_year": int(source.income_year),
+        "annual_data_sha256": annual_data_sha256,
+        "result_after_tax_ore": result_after_tax_ore,
+        "equity_ore": equity_ore,
+        "available_distribution_ore": available_distribution_ore,
+        "cash_ore": cash_ore,
+    }
+    return ApprovedAnnualBasis(
+        source_id=source.source_id,
+        income_year=source.income_year,
+        latest_approved=True,
+        annual_data_sha256=annual_data_sha256,
+        governance_basis_sha256=_sha256(
+            _canonical_json(governance_basis)
+        ),
+        result_after_tax_ore=result_after_tax_ore,
+        equity_ore=equity_ore,
+        available_distribution_ore=available_distribution_ore,
+        cash_ore=cash_ore,
     )
 
 
@@ -308,10 +415,6 @@ class CorporateGovernanceService:
         ledger_lines: tuple[CorporateAccountMovementFacts, ...],
         decision_kind: CorporateDecisionKind,
         income_year: IncomeYear,
-        annual_basis_projector: Callable[
-            [AnnualDataSourceFacts, tuple[CorporateAccountMovementFacts, ...]],
-            ApprovedAnnualBasis,
-        ],
     ) -> DerivedCorporateDecisionFacts:
         candidates = [
             item
@@ -330,7 +433,7 @@ class CorporateGovernanceService:
                 "The latest approved annual accounts are required.",
             )
         source = max(candidates, key=lambda item: int(item.income_year))
-        basis = annual_basis_projector(source, ledger_lines)
+        basis = _project_governance_annual_basis(source, ledger_lines)
         shareholders = sorted(
             sources.shareholders,
             key=lambda item: (item.order, item.shareholder_id),
@@ -354,7 +457,7 @@ class CorporateGovernanceService:
             total_company_shares=sum(item.share_count for item in shareholders),
             available_distribution_ore=basis.available_distribution_ore,
             annual_data_sha256=basis.annual_data_sha256,
-            annual_accounts_payload_sha256=basis.annual_accounts_payload_sha256,
+            governance_basis_sha256=basis.governance_basis_sha256,
         )
         return DerivedCorporateDecisionFacts(
             sources.company,
@@ -407,8 +510,8 @@ class CorporateGovernanceService:
         current_source = CorporateReadinessSource(
             source_id=facts.annual_basis.source_id,
             annual_data_sha256=facts.annual_basis.annual_data_sha256,
-            annual_accounts_payload_sha256=(
-                facts.annual_basis.annual_accounts_payload_sha256
+            governance_basis_sha256=(
+                facts.annual_basis.governance_basis_sha256
             ),
         )
         return (
@@ -926,8 +1029,8 @@ class CorporateGovernanceService:
             or reviewed.available_distribution_ore
             != basis.available_distribution_ore
             or reviewed.annual_data_sha256 != basis.annual_data_sha256
-            or reviewed.annual_accounts_payload_sha256
-            != basis.annual_accounts_payload_sha256
+            or reviewed.governance_basis_sha256
+            != basis.governance_basis_sha256
         ):
             _fail(
                 CorporateGovernanceErrorCode.REVIEWED_FACTS_CHANGED,
@@ -1173,8 +1276,8 @@ class CorporateGovernanceService:
             or reviewed.total_company_shares != total_company_shares
             or reviewed.available_distribution_ore != basis.available_distribution_ore
             or reviewed.annual_data_sha256 != basis.annual_data_sha256
-            or reviewed.annual_accounts_payload_sha256
-            != basis.annual_accounts_payload_sha256
+            or reviewed.governance_basis_sha256
+            != basis.governance_basis_sha256
         ):
             _fail(
                 CorporateGovernanceErrorCode.REVIEWED_FACTS_CHANGED,

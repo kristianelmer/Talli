@@ -3000,11 +3000,6 @@
       "CorporateAnnualBasisWire": {
         "additionalProperties": false,
         "properties": {
-          "annualAccountsPayloadSha256": {
-            "pattern": "^[0-9a-f]{64}$",
-            "title": "Annualaccountspayloadsha256",
-            "type": "string"
-          },
           "annualDataSha256": {
             "pattern": "^[0-9a-f]{64}$",
             "title": "Annualdatasha256",
@@ -3027,6 +3022,11 @@
             "minimum": -9007199254740991.0,
             "title": "Equityore",
             "type": "integer"
+          },
+          "governanceBasisSha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Governancebasissha256",
+            "type": "string"
           },
           "incomeYear": {
             "maximum": 2200.0,
@@ -3055,7 +3055,7 @@
           "incomeYear",
           "latestApproved",
           "annualDataSha256",
-          "annualAccountsPayloadSha256",
+          "governanceBasisSha256",
           "resultAfterTaxOre",
           "equityOre",
           "availableDistributionOre",
@@ -4288,11 +4288,6 @@
       "CorporateReviewedFactsWire": {
         "additionalProperties": false,
         "properties": {
-          "annualAccountsPayloadSha256": {
-            "pattern": "^[0-9a-f]{64}$",
-            "title": "Annualaccountspayloadsha256",
-            "type": "string"
-          },
           "annualDataSha256": {
             "pattern": "^[0-9a-f]{64}$",
             "title": "Annualdatasha256",
@@ -4303,6 +4298,11 @@
             "minimum": 0.0,
             "title": "Availabledistributionore",
             "type": "integer"
+          },
+          "governanceBasisSha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Governancebasissha256",
+            "type": "string"
           },
           "legalName": {
             "maxLength": 255,
@@ -4338,7 +4338,7 @@
           "totalCompanyShares",
           "availableDistributionOre",
           "annualDataSha256",
-          "annualAccountsPayloadSha256"
+          "governanceBasisSha256"
         ],
         "title": "CorporateReviewedFactsWire",
         "type": "object"

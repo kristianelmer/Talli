@@ -4,9 +4,6 @@ from dataclasses import replace
 from datetime import UTC, date, datetime, time
 
 import pytest
-from talli_backend.application.annual_data_compatibility import (
-    project_legacy_annual_basis,
-)
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
     AnnualCloseEventKind,
@@ -167,7 +164,6 @@ def supported_proposal() -> OwnerDividendProposalCommand:
         ledger_lines=supported_ledger_lines(),
         decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
         income_year=IncomeYear(2025),
-        annual_basis_projector=project_legacy_annual_basis,
     )
     return OwnerDividendProposalCommand(
         company_id=company_id,
@@ -216,6 +212,54 @@ def supported_proposal() -> OwnerDividendProposalCommand:
     )
 
 
+def test_governance_basis_does_not_apply_future_annual_filing_policy() -> None:
+    sources = supported_fact_sources()
+    source = replace(
+        sources.annual_data[0],
+        confirmations=("annual_accounts_audit_required",),
+    )
+
+    facts = CorporateGovernanceService().derive_decision_facts(
+        sources=replace(sources, annual_data=(source,)),
+        ledger_lines=supported_ledger_lines(),
+        decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+        income_year=IncomeYear(2025),
+    )
+
+    assert facts.annual_basis.result_after_tax_ore == 12_500_000
+    assert facts.annual_basis.available_distribution_ore == 30_000_000
+    assert len(facts.annual_basis.governance_basis_sha256) == 64
+
+
+def test_governance_basis_preserves_all_predecessor_result_accounts() -> None:
+    year = IncomeYear(2024)
+    lines = (
+        CorporateAccountMovementFacts(year, "8070", 0, 1_000_000),
+        CorporateAccountMovementFacts(year, "8071", 0, 2_000_000),
+        CorporateAccountMovementFacts(year, "8074", 0, 3_000_000),
+        CorporateAccountMovementFacts(year, "8050", 0, 4_000_000),
+        CorporateAccountMovementFacts(year, "7770", 1_000_000, 0),
+        CorporateAccountMovementFacts(year, "8090", 500_000, 0),
+        CorporateAccountMovementFacts(year, "8171", 750_000, 0),
+        CorporateAccountMovementFacts(year, "8174", 250_000, 0),
+        CorporateAccountMovementFacts(year, "8300", 500_000, 0),
+        CorporateAccountMovementFacts(year, "2000", 0, 20_000_000),
+        CorporateAccountMovementFacts(year, "2050", 0, 17_500_000),
+        CorporateAccountMovementFacts(year, "1920", 40_000_000, 0),
+    )
+
+    facts = CorporateGovernanceService().derive_decision_facts(
+        sources=supported_fact_sources(),
+        ledger_lines=lines,
+        decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+        income_year=IncomeYear(2025),
+    )
+
+    assert facts.annual_basis.result_after_tax_ore == 7_000_000
+    assert facts.annual_basis.available_distribution_ore == 24_500_000
+    assert facts.annual_basis.equity_ore == 44_500_000
+
+
 def test_owner_dividend_policy_reproduces_characterized_canonical_facts() -> None:
     decision = CorporateGovernanceService().build_owner_dividend_decision(
         supported_proposal()
@@ -238,8 +282,8 @@ def test_owner_dividend_policy_reproduces_characterized_canonical_facts() -> Non
         ("shareholder-1", 6_000_001),
         ("shareholder-2", 4_000_000),
     ]
-    assert decision.source_hash == "5ad9e8951d1c3766dcf33b0cb59bb5dcdaa4fa09e66572199185ef37d3f98f4e"
-    assert decision.decision_hash == "b5dad184686052b9e97cea1f2ac175f08a4e081068b14b87020c329669e7c621"
+    assert decision.source_hash == "b6546ddfcafb08add7ec90e1897c807d1bf7a410b650d9139bde848805a76c52"
+    assert decision.decision_hash == "cecda1a8099d790ea128a710c3d2523cf0587828a7e8de8ebb668d7e976c1149"
 
 
 def test_canonical_owner_dividend_renders_characterized_pdfs_in_process() -> None:
@@ -259,10 +303,10 @@ def test_canonical_owner_dividend_renders_characterized_pdfs_in_process() -> Non
         "generalforsamlingsprotokoll-utbytte.pdf",
     ]
     assert [artifact.content_sha256 for artifact in first] == [
-        "9c05041cf7d5d2258f39bb30768bda8f3bae58075e9071924bcae3dcb9ddd9b6",
-        "63bf6a86aa13f76f336ac7f086bc85dc20b1e0cbf20f583cc7d203ddb0954e7e",
+        "d3c8dae43d8cbf5251080b28d8bfaa0dd3e4be77570952e3efd26dc749a8d30e",
+        "98f6fc441dc66bc469702763c5cd112b4357bb7355ef0a80f79c79f6f30de287",
     ]
-    assert [artifact.byte_length for artifact in first] == [32132, 32390]
+    assert [artifact.byte_length for artifact in first] == [32130, 32388]
     assert all(artifact.pdf_bytes.startswith(b"%PDF-") for artifact in first)
     assert all(artifact.decision_hash == decision.decision_hash for artifact in first)
 
@@ -274,7 +318,6 @@ def supported_annual_close() -> AnnualCloseProposalCommand:
         ledger_lines=supported_ledger_lines(2025),
         decision_kind=CorporateDecisionKind.ANNUAL_CLOSE,
         income_year=IncomeYear(2025),
-        annual_basis_projector=project_legacy_annual_basis,
     )
     return AnnualCloseProposalCommand(
         company_id=owner.company_id,
@@ -315,18 +358,18 @@ def test_annual_close_policy_and_renderer_reproduce_characterized_artifacts() ->
     decision = service.build_annual_close_decision(supported_annual_close())
     artifacts = service.render_corporate_documents(decision)
 
-    assert decision.source_hash == "a0f779b57f3da5dd2b2b4c1984cf47a2e225ce4ac84640b574ffa4ae5d68ce05"
-    assert decision.decision_hash == "5765d1948383a6fb27c4c08cf1607cc4c5dca5cd8e95d6f004db77e446ec5c0a"
+    assert decision.source_hash == "6c35ece9b54490461391d19e3b5f22d06d2c57b2518d632f84b4f8cbf946b70a"
+    assert decision.decision_hash == "22d6b2d7ddb555022813b56ebd554bdfef6a78ac5b0dd6654a3f2d208c3111d6"
     assert decision.dividend is None
     assert [artifact.artifact_kind.value for artifact in artifacts] == [
         "annual_board_minutes",
         "annual_general_meeting_minutes",
     ]
     assert [artifact.content_sha256 for artifact in artifacts] == [
-        "9dcb67fb0d822a72f0bc3946e0c41995a2d5479096630fed7c0a9b798d746544",
-        "901228e7a88e53579fad2d15d825244a56ef8b223ef2bfa4154755b883bd4c30",
+        "09dbe1a6e356232aa3df006cc1a434c1f8dbef519272462fb3ffc87cca681a1a",
+        "984884c2f22b8b27a2251862ac0f8e060b4dbf50cfa9348188cf7ced31a378bd",
     ]
-    assert [artifact.byte_length for artifact in artifacts] == [32069, 32628]
+    assert [artifact.byte_length for artifact in artifacts] == [32069, 32627]
 
 
 def test_lifecycle_readiness_is_derived_by_the_python_governance_owner() -> None:

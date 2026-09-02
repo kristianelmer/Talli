@@ -13,8 +13,29 @@ const loanInitPlanMigrationName =
   "20260902084230_corporate_governance_shareholder_loan_rls_initplan_cleanup.sql";
 const annualMigrationName =
   "20260902090000_corporate_governance_annual_close.sql";
+const companyIdentityMigrationName =
+  "20260902095000_company_access_corporate_governance_identity.sql";
 const lifecycleMigrationName =
   "20260902100000_corporate_governance_artifact_lifecycle.sql";
+
+async function assertGovernanceRolesCannotInheritCompanyAccessExecutor(client) {
+  const result = await client.query(String.raw`
+    select pg_catalog.count(*)::integer as unintended_members
+    from pg_catalog.pg_auth_members membership
+    join pg_catalog.pg_roles granted_role
+      on granted_role.oid = membership.roleid
+    join pg_catalog.pg_roles member_role
+      on member_role.oid = membership.member
+    where granted_role.rolname = 'company_access_executor'
+      and member_role.rolname in (
+        'corporate_governance_store_owner',
+        'corporate_governance_workflow_executor',
+        'backend_system_annual_data_reader',
+        'ledger_store_owner'
+      )
+  `);
+  assert.equal(result.rows[0].unintended_members, 0);
+}
 
 test("artifact persistence does not duplicate Python signer policy", async () => {
   const forward = await readFile(
@@ -23,6 +44,35 @@ test("artifact persistence does not duplicate Python signer policy", async () =>
   );
   assert.doesNotMatch(forward, /v_required_signers|v_actual_signers/iu);
   assert.match(forward, /jsonb_typeof\(signer\).*'string'/isu);
+});
+
+test("company access owns the governance identity query migration", async () => {
+  const [companyAccessForward, governanceForward] = await Promise.all([
+    readFile(
+      new URL(
+        `../supabase/migrations/${companyIdentityMigrationName}`,
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL(`../supabase/migrations/${lifecycleMigrationName}`, import.meta.url),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(
+    companyAccessForward,
+    /create or replace function public\.company_access_read_company_identity_v1/iu,
+  );
+  assert.doesNotMatch(
+    governanceForward,
+    /create or replace function public\.company_access_read_company_identity_v1/iu,
+  );
+  assert.match(
+    companyAccessForward,
+    /revoke company_access_executor from %I/iu,
+  );
 });
 
 test(
@@ -636,6 +686,8 @@ test(
       loanRollback,
       annualForward,
       annualRollback,
+      companyIdentityForward,
+      companyIdentityRollback,
       lifecycleForward,
       lifecycleRollback,
     ] =
@@ -674,6 +726,20 @@ test(
       ),
       readFile(
         new URL(`../supabase/rollback/${annualMigrationName}`, import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL(
+          `../supabase/migrations/${companyIdentityMigrationName}`,
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+      readFile(
+        new URL(
+          `../supabase/rollback/${companyIdentityMigrationName}`,
+          import.meta.url,
+        ),
         "utf8",
       ),
       readFile(
@@ -1060,6 +1126,8 @@ test(
         await client.query(lifecycleRollback);
         await client.query(annualRollback);
         await client.query(loanRollback);
+        await client.query(companyIdentityRollback);
+        await assertGovernanceRolesCannotInheritCompanyAccessExecutor(client);
         await client.query(ownerRollback);
         assert.deepEqual(await state(client), {
           capability_schema: false,
@@ -1074,6 +1142,8 @@ test(
         await client.query(ownerForward);
         await client.query(loanForward);
         await client.query(annualForward);
+        await client.query(companyIdentityForward);
+        await assertGovernanceRolesCannotInheritCompanyAccessExecutor(client);
         await client.query(lifecycleForward);
         assert.deepEqual(await state(client), {
           capability_schema: true,

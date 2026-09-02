@@ -24,7 +24,6 @@ begin
   execute pg_catalog.format(
     'grant corporate_governance_store_owner, ledger_store_owner, '
       || 'backend_system_annual_data_reader, '
-      || 'company_access_executor, '
       || 'corporate_governance_workflow_executor to %I',
     current_user
   );
@@ -301,58 +300,6 @@ begin
   );
 end;
 $function$;
-
--- Company identity remains company_access-owned. This restricted query seam
--- lets the governance workflow read it on the same authenticated transaction
--- without granting that workflow direct access to company_access tables.
-reset role;
-grant create on schema public to company_access_executor;
-set local role company_access_executor;
-create or replace function public.company_access_read_company_identity_v1(
-  p_company_id uuid,
-  p_verified_subject text
-)
-returns jsonb
-language plpgsql
-stable
-security definer
-set search_path = ''
-as $function$
-declare
-  v_result jsonb;
-begin
-  if p_company_id is null
-    or p_verified_subject is null
-    or p_verified_subject !~ '^[0-9a-fA-F-]{36}$'
-    or public.company_access_auth_uid_v1()
-      is distinct from p_verified_subject::uuid
-  then
-    raise exception 'company_access_forbidden';
-  end if;
-
-  select pg_catalog.jsonb_build_object(
-    'companyId', company.id,
-    'organizationNumber', company.org_number,
-    'legalName', company.name
-  )
-  into v_result
-  from public.companies company
-  where company.id = p_company_id;
-
-  if v_result is null then
-    raise exception 'company_access_not_found';
-  end if;
-  return v_result;
-end;
-$function$;
-reset role;
-revoke create on schema public from company_access_executor;
-revoke all on function
-  public.company_access_read_company_identity_v1(uuid, text)
-from public, anon, authenticated, service_role;
-grant execute on function
-  public.company_access_read_company_identity_v1(uuid, text)
-to corporate_governance_workflow_executor;
 
 -- Frozen read-only projection for the future annual-compliance store. It is a
 -- backend-system compatibility seam, not a corporate-governance business API.

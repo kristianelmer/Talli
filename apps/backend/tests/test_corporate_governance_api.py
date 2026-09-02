@@ -52,11 +52,11 @@ def client_and_transaction(
             "corporate_decision:44444444-4444-4444-8444-444444444444"
         )
         documents.records[0].content_sha256 = (
-            "9dcb67fb0d822a72f0bc3946e0c41995a2d5479096630fed7c0a9b798d746544"
+            "09dbe1a6e356232aa3df006cc1a434c1f8dbef519272462fb3ffc87cca681a1a"
         )
         documents.records[0].byte_length = 32069
         documents.records[1].content_sha256 = (
-            "901228e7a88e53579fad2d15d825244a56ef8b223ef2bfa4154755b883bd4c30"
+            "984884c2f22b8b27a2251862ac0f8e060b4dbf50cfa9348188cf7ced31a378bd"
         )
         documents.records[1].linked_to = (
             "corporate_decision:44444444-4444-4444-8444-444444444444"
@@ -81,7 +81,7 @@ def client_and_transaction(
                 income_year=IncomeYear(2025),
             ),
         )
-        documents.records[1].byte_length = 32628
+        documents.records[1].byte_length = 32627
     documents_sessions = DocumentsSessionFactoryStub(documents)
 
     return (
@@ -120,8 +120,8 @@ def proposal_payload() -> dict[str, object]:
             "incomeYear": int(command.annual_basis.income_year),
             "latestApproved": command.annual_basis.latest_approved,
             "annualDataSha256": command.annual_basis.annual_data_sha256,
-            "annualAccountsPayloadSha256": (
-                command.annual_basis.annual_accounts_payload_sha256
+            "governanceBasisSha256": (
+                command.annual_basis.governance_basis_sha256
             ),
             "resultAfterTaxOre": command.annual_basis.result_after_tax_ore,
             "equityOre": command.annual_basis.equity_ore,
@@ -146,8 +146,8 @@ def proposal_payload() -> dict[str, object]:
                 command.reviewed_facts.available_distribution_ore
             ),
             "annualDataSha256": command.reviewed_facts.annual_data_sha256,
-            "annualAccountsPayloadSha256": (
-                command.reviewed_facts.annual_accounts_payload_sha256
+            "governanceBasisSha256": (
+                command.reviewed_facts.governance_basis_sha256
             ),
         },
         "boardMeeting": {
@@ -206,7 +206,7 @@ def annual_close_payload() -> dict[str, object]:
             "incomeYear": int(command.annual_basis.income_year),
             "latestApproved": command.annual_basis.latest_approved,
             "annualDataSha256": command.annual_basis.annual_data_sha256,
-            "annualAccountsPayloadSha256": command.annual_basis.annual_accounts_payload_sha256,
+            "governanceBasisSha256": command.annual_basis.governance_basis_sha256,
             "resultAfterTaxOre": command.annual_basis.result_after_tax_ore,
             "equityOre": command.annual_basis.equity_ore,
             "availableDistributionOre": command.annual_basis.available_distribution_ore,
@@ -226,7 +226,7 @@ def annual_close_payload() -> dict[str, object]:
             "totalCompanyShares": command.reviewed_facts.total_company_shares,
             "availableDistributionOre": command.reviewed_facts.available_distribution_ore,
             "annualDataSha256": command.reviewed_facts.annual_data_sha256,
-            "annualAccountsPayloadSha256": command.reviewed_facts.annual_accounts_payload_sha256,
+            "governanceBasisSha256": command.reviewed_facts.governance_basis_sha256,
         },
         "boardMeeting": {
             **payload["boardMeeting"],
@@ -399,7 +399,7 @@ def test_annual_close_fastapi_proposal_is_typed_and_backend_owned() -> None:
     assert proposed.status_code == 201, proposed.text
     assert proposed.json()["decision"]["decisionKind"] == "annual_close"
     assert proposed.json()["decision"]["decisionHash"] == (
-        "5765d1948383a6fb27c4c08cf1607cc4c5dca5cd8e95d6f004db77e446ec5c0a"
+        "22d6b2d7ddb555022813b56ebd554bdfef6a78ac5b0dd6654a3f2d208c3111d6"
     )
     assert proposed.json()["decision"]["dividend"] is None
     assert [artifact["artifactKind"] for artifact in proposed.json()["artifacts"]] == [
@@ -407,8 +407,8 @@ def test_annual_close_fastapi_proposal_is_typed_and_backend_owned() -> None:
         "annual_general_meeting_minutes",
     ]
     assert [artifact["contentSha256"] for artifact in proposed.json()["artifacts"]] == [
-        "9dcb67fb0d822a72f0bc3946e0c41995a2d5479096630fed7c0a9b798d746544",
-        "901228e7a88e53579fad2d15d825244a56ef8b223ef2bfa4154755b883bd4c30",
+        "09dbe1a6e356232aa3df006cc1a434c1f8dbef519272462fb3ffc87cca681a1a",
+        "984884c2f22b8b27a2251862ac0f8e060b4dbf50cfa9348188cf7ced31a378bd",
     ]
     assert all(
         b64decode(artifact["contentBase64"]).startswith(b"%PDF-")
@@ -570,7 +570,7 @@ def test_corporate_readiness_is_a_backend_owned_query() -> None:
             "decisionKind": "annual_close",
             "annualCloseSourceId": "33333333-3333-4333-8333-333333333333",
             "annualDataSha256": "a" * 64,
-            "annualAccountsPayloadSha256": "b" * 64,
+            "governanceBasisSha256": "b" * 64,
         },
     )
 

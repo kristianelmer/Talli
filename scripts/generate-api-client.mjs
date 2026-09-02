@@ -954,9 +954,6 @@ export interface CorporateGovernanceReadinessRequest extends TalliRequestOptions
   companyId: string;
   incomeYear: number;
   decisionKind: CorporateDecisionKind;
-  annualCloseSourceId?: string;
-  annualDataSha256?: string;
-  annualAccountsPayloadSha256?: string;
 }
 
 export interface LedgerOpeningSnapshotListRequest extends TalliRequestOptions {
@@ -1698,9 +1695,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         incomeYear: String(request.incomeYear),
         decisionKind: request.decisionKind,
       });
-      if (request.annualCloseSourceId) query.set("annualCloseSourceId", request.annualCloseSourceId);
-      if (request.annualDataSha256) query.set("annualDataSha256", request.annualDataSha256);
-      if (request.annualAccountsPayloadSha256) query.set("annualAccountsPayloadSha256", request.annualAccountsPayloadSha256);
       return executeJson(
         \`\${baseUrl}/api/v1/corporate-governance/readiness?\${query}\`,
         "GET",

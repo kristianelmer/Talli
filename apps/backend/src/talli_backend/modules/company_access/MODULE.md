@@ -25,7 +25,7 @@ It owns `public.companies`, `public.company_cancellations`,
 `public.support_access_operation_receipts`, `public.support_case_openings`, and
 `public.support_operators`, with
 the latest ownership migration declared as
-`20260830091341_case_bound_support_access.sql`. The backend system owns
+`20260902095000_company_access_corporate_governance_identity.sql`. The backend system owns
 `public.company_access_command_receipts` as technical idempotency state. It must
 not claim eligibility outside the immutable active manifest, own physical
 business-data deletion, or own unrestricted general operator workflows.
@@ -81,6 +81,8 @@ other capability facts in the same transaction. The function is owned by the
 non-bypass `company_access_executor`, applies company-access RLS, binds the
 explicit subject to transaction-local verified actor context, and grants callers
 no direct access to `public.companies` or `public.company_memberships`.
+Its company-access-owned expand and rollback migrations keep the contract's
+lifecycle outside every consuming capability migration.
 
 Eligibility and admission add `EligibilityAnswer`, `EligibilityDecision`,
 `EligibilityPublicFacts`, `EligibilityQuestion`, `EligibilityPrecheckRequest`,

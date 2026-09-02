@@ -178,6 +178,18 @@ begin
 end;
 $function$;
 
+revoke all on function
+  corporate_governance.owner_dividend_lifecycle_pre148_v1(uuid, boolean),
+  corporate_governance.prepare_owner_dividend_finalization_pre148_v1(
+    jsonb, text
+  ),
+  corporate_governance.complete_owner_dividend_finalization_pre148_v1(
+    jsonb, text
+  ),
+  corporate_governance.complete_owner_dividend_payment_pre148_v1(jsonb, text)
+from public, anon, authenticated, service_role,
+  corporate_governance_workflow_executor;
+
 create or replace function
 corporate_governance.prepare_owner_dividend_finalization_v1(
   p_request jsonb, p_verified_subject text
