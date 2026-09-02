@@ -117,11 +117,21 @@ grant execute on function public.remove_unlinked_document(uuid),
   public.restore_unlinked_document_after_storage_failure(uuid)
 to authenticated, service_role;
 
-create policy "company members can read documents" on public.documents for select
-to authenticated using (exists (
-  select 1 from public.company_memberships membership
-  where membership.company_id=documents.company_id and membership.user_id=(select auth.uid())
-));
+drop policy if exists "company members can read document metadata" on public.documents;
+drop policy if exists "company members can read documents" on public.documents;
+create policy "company members can read document metadata" on public.documents for select
+to authenticated using (
+  case when documents.document_type = 'authority_feedback' then exists (
+    select 1 from public.company_memberships membership
+    where membership.company_id=documents.company_id
+      and membership.user_id=(select auth.uid())
+      and membership.role='owner' and membership.accepted_at is not null
+  ) else exists (
+    select 1 from public.company_memberships membership
+    where membership.company_id=documents.company_id
+      and membership.user_id=(select auth.uid())
+  ) end
+);
 create policy "owners can create document metadata" on public.documents for insert
 to authenticated with check (created_by=(select auth.uid()) and exists (
   select 1 from public.company_memberships membership

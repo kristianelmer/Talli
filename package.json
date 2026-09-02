@@ -62,7 +62,7 @@
     "test:deployed-contract": "node --test tests/deployed_schema_contract.test.mjs",
     "verify:deployed-contract": "node scripts/assert-deployed-schema-contract.mjs",
     "test:dividend-received": "uv run --project apps/backend pytest apps/backend/tests/test_investments.py apps/backend/tests/test_investments_workflow.py apps/backend/tests/test_investments_api.py apps/backend/tests/test_supabase_investments.py -k 'dividend or activity' -q && node --test apps/web/tests/investments-presentation.test.mjs && node --test tests/investments_capability_schema.test.mjs tests/investments_database_runtime.test.mjs",
-    "test:documents": "node --experimental-strip-types --test apps/web/tests/documents-presentation.test.mjs tests/documents.test.mjs tests/document_removal_schema.test.mjs tests/documents_supported_pattern_evidence.test.mjs tests/workspace_presentation.test.mjs",
+    "test:documents": "node --experimental-strip-types --test apps/web/tests/documents-presentation.test.mjs tests/documents.test.mjs tests/document_removal_schema.test.mjs tests/documents_advisor_cleanup.test.mjs tests/documents_supported_pattern_evidence.test.mjs tests/workspace_presentation.test.mjs",
     "test:documents-database-lifecycle": "node --test --test-concurrency=1 tests/documents_database_runtime.test.mjs tests/documents_migration_lifecycle.test.mjs",
     "test:filing-overrides": "node --experimental-strip-types --test tests/filing_overrides.test.mjs",
     "test:filing-release-gate": "node --experimental-strip-types --test tests/filing_release_gate.test.mjs",

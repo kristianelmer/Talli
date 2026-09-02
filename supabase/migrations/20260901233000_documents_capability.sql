@@ -53,6 +53,7 @@ alter table public.documents force row level security;
 revoke all on public.documents from public, anon, authenticated, service_role, documents_executor;
 
 drop policy if exists "company members can read documents" on public.documents;
+drop policy if exists "company members can read document metadata" on public.documents;
 drop policy if exists "owners can create document metadata" on public.documents;
 drop policy if exists documents_store_reads_visible_documents on public.documents;
 create policy documents_store_reads_visible_documents on public.documents
