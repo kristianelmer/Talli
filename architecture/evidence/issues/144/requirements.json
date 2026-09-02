@@ -139,5 +139,6 @@
     "businessRows": 0,
     "ownerDividendSecurityFindings": 0
   },
-  "closeState": "ready-for-github-evidence-and-issue-closure"
+  "closeState": "closed",
+  "closureReceipt": "https://github.com/kristianelmer/Talli/issues/144#issuecomment-5505337631"
 }
