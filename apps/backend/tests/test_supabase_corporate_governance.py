@@ -77,25 +77,13 @@ def test_session_uses_only_non_bypass_governance_workflow_role_and_verified_cont
     assert "talli.verified_actor_claims" in source
 
 
-def test_decision_fact_sources_use_the_restricted_reader() -> None:
+def test_annual_data_uses_the_frozen_restricted_compatibility_reader() -> None:
     transaction = bound_transaction()
     calls: list[tuple[str, tuple[object, ...]]] = []
 
     async def rows(query: str, parameters: tuple[object, ...] = ()):
         calls.append((query, parameters))
-        return [{"result": {
-            "company": {
-                "companyId": "22222222-2222-4222-8222-222222222222",
-                "organizationNumber": "310279617",
-                "legalName": "Talli AS",
-            },
-            "shareholders": [{
-                "shareholderId": "owner-1",
-                "name": "Owner",
-                "shareCount": 100,
-                "order": 0,
-            }],
-            "annualData": [{
+        return [{"items": [{
                 "sourceId": "33333333-3333-4333-8333-333333333333",
                 "companyId": "22222222-2222-4222-8222-222222222222",
                 "incomeYear": 2024,
@@ -105,19 +93,16 @@ def test_decision_fact_sources_use_the_restricted_reader() -> None:
                 "annualFullTimeEquivalents": 0,
                 "completedAt": "2025-05-01T10:00:00+00:00",
                 "updatedAt": "2025-05-01T10:00:00+00:00",
-            }],
-        }}]
+            }]}]
 
     transaction._database_rows = rows  # type: ignore[method-assign]
-    facts = asyncio.run(transaction.read_decision_fact_sources(
-        supported_proposal().company_id,
-        IncomeYear(2025),
-        CorporateDecisionKind.OWNER_DIVIDEND,
+    facts = asyncio.run(transaction.list_annual_data_compatibility(
+        company_id=supported_proposal().company_id,
+        income_year=IncomeYear(2025),
     ))
 
-    assert facts.company.legal_name == "Talli AS"
-    assert int(facts.annual_data[0].income_year) == 2024
-    assert "read_corporate_decision_fact_sources_v1" in calls[0][0]
+    assert int(facts[0].income_year) == 2024
+    assert "list_annual_data_legacy_v1" in calls[0][0]
 
 
 def test_proposal_sends_python_canonical_facts_without_account_policy() -> None:

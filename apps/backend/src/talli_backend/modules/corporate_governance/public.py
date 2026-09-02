@@ -7,6 +7,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, time
 from enum import StrEnum
+from types import MappingProxyType
 from typing import Protocol, TypeVar
 from uuid import UUID
 
@@ -21,6 +22,23 @@ from talli_backend.shared.kernel import (
     LocalDate,
     Money,
 )
+
+
+def _freeze_json(value: object) -> object:
+    if isinstance(value, Mapping):
+        return MappingProxyType(
+            {str(key): _freeze_json(item) for key, item in value.items()}
+        )
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze_json(item) for item in value)
+    return value
+
+
+def _immutable_mapping(value: Mapping[str, object]) -> Mapping[str, object]:
+    frozen = _freeze_json(value)
+    if not isinstance(frozen, Mapping):
+        raise TypeError("expected a mapping")
+    return frozen
 
 
 @dataclass(frozen=True, slots=True)
@@ -544,10 +562,22 @@ class AnnualCloseLifecycle:
     income_year: IncomeYear
     decision_hash: str
     state: OwnerDividendState
-    generated_artifact_hashes: dict[str, str]
-    signed_artifact_hashes: dict[str, str]
+    generated_artifact_hashes: Mapping[str, str]
+    signed_artifact_hashes: Mapping[str, str]
     finalization_id: CorporateFinalizationId | None
     replayed: bool
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "generated_artifact_hashes",
+            _immutable_mapping(self.generated_artifact_hashes),
+        )
+        object.__setattr__(
+            self,
+            "signed_artifact_hashes",
+            _immutable_mapping(self.signed_artifact_hashes),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -561,8 +591,14 @@ class CorporateDecisionRecord:
     source_hash: str
     canonical_input: Mapping[str, object]
     decision_hash: str
+    supersedes_decision_id: CorporateDecisionId | None
     created_by: str
     created_at: datetime
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "canonical_input", _immutable_mapping(self.canonical_input)
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -574,6 +610,7 @@ class CorporateDocumentSetRecord:
     template_family: str
     template_version: str
     decision_hash: str
+    supersedes_document_set_id: CorporateDocumentSetId | None
     created_by: str
     created_at: datetime
 
@@ -605,10 +642,14 @@ class CorporateEventRecord:
     event_kind: str
     actor_id: str
     occurred_at: datetime
+    created_at: datetime
     decision_hash: str
     content_sha256: str | None
     metadata: Mapping[str, object]
     idempotency_key: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "metadata", _immutable_mapping(self.metadata))
 
 
 @dataclass(frozen=True, slots=True)
@@ -626,6 +667,13 @@ class CorporateFinalizationRecord:
     accounting_policy_version: str | None
     created_by: str
     created_at: datetime
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "signed_artifact_hashes",
+            _immutable_mapping(self.signed_artifact_hashes),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -658,6 +706,23 @@ class CorporateDocumentReadiness:
     finalization_id: CorporateFinalizationId | None
     accounting_policy_version: str | None
     blockers: tuple[CorporateDocumentReadinessBlocker, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "generated_artifact_hashes",
+            _immutable_mapping(self.generated_artifact_hashes),
+        )
+        object.__setattr__(
+            self,
+            "signed_artifact_hashes",
+            _immutable_mapping(self.signed_artifact_hashes),
+        )
+        object.__setattr__(
+            self,
+            "required_signers",
+            _immutable_mapping(self.required_signers),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -921,13 +986,6 @@ class PreparedShareholderLoan:
 
 
 class CorporateGovernancePersistence(Protocol):
-    async def read_decision_fact_sources(
-        self,
-        company_id: CompanyId,
-        income_year: IncomeYear,
-        decision_kind: CorporateDecisionKind,
-    ) -> CorporateDecisionFactSources: ...
-
     @property
     def actor_id(self) -> ActorId: ...
 

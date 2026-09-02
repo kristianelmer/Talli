@@ -59,6 +59,14 @@
     {
       "from": "backend-system:corporate-governance",
       "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:corporate-governance",
+      "imports": [
         "talli_backend.modules.corporate_governance.public"
       ],
       "kind": "workflow",

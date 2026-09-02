@@ -3531,6 +3531,18 @@
           "sourceHash": {
             "title": "Sourcehash",
             "type": "string"
+          },
+          "supersedesDecisionId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedesdecisionid"
           }
         },
         "required": [
@@ -3543,6 +3555,7 @@
           "sourceHash",
           "canonicalInput",
           "decisionHash",
+          "supersedesDecisionId",
           "createdBy",
           "createdAt"
         ],
@@ -3821,6 +3834,18 @@
             "title": "Incomeyear",
             "type": "integer"
           },
+          "supersedesDocumentSetId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedesdocumentsetid"
+          },
           "templateFamily": {
             "title": "Templatefamily",
             "type": "string"
@@ -3838,6 +3863,7 @@
           "templateFamily",
           "templateVersion",
           "decisionHash",
+          "supersedesDocumentSetId",
           "createdBy",
           "createdAt"
         ],
@@ -3878,6 +3904,11 @@
               }
             ],
             "title": "Contentsha256"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
           },
           "decisionHash": {
             "title": "Decisionhash",
@@ -3931,6 +3962,7 @@
           "eventKind",
           "actorId",
           "occurredAt",
+          "createdAt",
           "decisionHash",
           "contentSha256",
           "metadata",
@@ -37952,57 +37984,6 @@
             "required": true,
             "schema": {
               "$ref": "#/components/schemas/CorporateDecisionKind"
-            }
-          },
-          {
-            "in": "query",
-            "name": "annualCloseSourceId",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Annualclosesourceid"
-            }
-          },
-          {
-            "in": "query",
-            "name": "annualDataSha256",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "pattern": "^[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Annualdatasha256"
-            }
-          },
-          {
-            "in": "query",
-            "name": "annualAccountsPayloadSha256",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "pattern": "^[0-9a-f]{64}$",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Annualaccountspayloadsha256"
             }
           }
         ],

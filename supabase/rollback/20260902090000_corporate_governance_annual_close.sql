@@ -130,7 +130,8 @@ select
       )
     )
   ),
-  decision.decision_hash, null, decision.created_by, decision.created_at
+  decision.decision_hash, decision.supersedes_decision_id,
+  decision.created_by, decision.created_at
 from corporate_governance.annual_close_decisions decision
 on conflict (id) do nothing;
 
@@ -142,7 +143,8 @@ select
   decision.document_set_id, decision.company_id, decision.income_year,
   decision.id, decision.canonical_input ->> 'templateFamily',
   decision.canonical_input ->> 'templateVersion', decision.decision_hash,
-  null, decision.created_by, decision.created_at
+  decision.supersedes_document_set_id, decision.created_by,
+  decision.created_at
 from corporate_governance.annual_close_decisions decision
 on conflict (id) do nothing;
 
@@ -169,7 +171,7 @@ insert into public.corporate_document_events (
 select
   event.id, event.company_id, event.income_year, event.decision_id,
   event.document_set_id, event.artifact_id, event.event_kind,
-  event.created_by, event.created_at, event.decision_hash,
+  event.created_by, event.occurred_at, event.decision_hash,
   event.content_sha256, event.metadata,
   'canonical-event:' || event.id::text, event.created_at
 from corporate_governance.annual_close_events event

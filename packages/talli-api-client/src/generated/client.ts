@@ -1866,6 +1866,7 @@ export interface CorporateDecisionRecordWire {
   documentSetId: string;
   incomeYear: number;
   sourceHash: string;
+  supersedesDecisionId: string | null;
 }
 
 export interface CorporateDocumentReadinessBlockerWire {
@@ -1906,6 +1907,7 @@ export interface CorporateDocumentSetRecordWire {
   decisionId: string;
   documentSetId: string;
   incomeYear: number;
+  supersedesDocumentSetId: string | null;
   templateFamily: string;
   templateVersion: string;
 }
@@ -1915,6 +1917,7 @@ export interface CorporateEventRecordWire {
   artifactId: string | null;
   companyId: string;
   contentSha256: string | null;
+  createdAt: string;
   decisionHash: string;
   decisionId: string;
   documentSetId: string;
@@ -4832,7 +4835,7 @@ function isCorporateDecisionFactsWire(value: unknown): value is CorporateDecisio
 function isCorporateDecisionRecordWire(value: unknown): value is CorporateDecisionRecordWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["annualCloseSourceId","canonicalInput","companyId","createdAt","createdBy","decisionHash","decisionId","decisionKind","documentSetId","incomeYear","sourceHash"]) &&
+    hasOnlyProperties(value, ["annualCloseSourceId","canonicalInput","companyId","createdAt","createdBy","decisionHash","decisionId","decisionKind","documentSetId","incomeYear","sourceHash","supersedesDecisionId"]) &&
     isUuid(value.annualCloseSourceId) &&
     isRecord(value.canonicalInput) &&
     isUuid(value.companyId) &&
@@ -4843,7 +4846,8 @@ function isCorporateDecisionRecordWire(value: unknown): value is CorporateDecisi
     isCorporateDecisionKind(value.decisionKind) &&
     isUuid(value.documentSetId) &&
     typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
-    typeof value.sourceHash === "string"
+    typeof value.sourceHash === "string" &&
+    (isUuid(value.supersedesDecisionId) || value.supersedesDecisionId === null)
   );
 }
 
@@ -4888,7 +4892,7 @@ function isCorporateDocumentReadinessWire(value: unknown): value is CorporateDoc
 function isCorporateDocumentSetRecordWire(value: unknown): value is CorporateDocumentSetRecordWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["companyId","createdAt","createdBy","decisionHash","decisionId","documentSetId","incomeYear","templateFamily","templateVersion"]) &&
+    hasOnlyProperties(value, ["companyId","createdAt","createdBy","decisionHash","decisionId","documentSetId","incomeYear","supersedesDocumentSetId","templateFamily","templateVersion"]) &&
     isUuid(value.companyId) &&
     isDateTime(value.createdAt) &&
     isUuid(value.createdBy) &&
@@ -4896,6 +4900,7 @@ function isCorporateDocumentSetRecordWire(value: unknown): value is CorporateDoc
     isUuid(value.decisionId) &&
     isUuid(value.documentSetId) &&
     typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    (isUuid(value.supersedesDocumentSetId) || value.supersedesDocumentSetId === null) &&
     typeof value.templateFamily === "string" &&
     typeof value.templateVersion === "string"
   );
@@ -4904,11 +4909,12 @@ function isCorporateDocumentSetRecordWire(value: unknown): value is CorporateDoc
 function isCorporateEventRecordWire(value: unknown): value is CorporateEventRecordWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["actorId","artifactId","companyId","contentSha256","decisionHash","decisionId","documentSetId","eventId","eventKind","idempotencyKey","incomeYear","metadata","occurredAt"]) &&
+    hasOnlyProperties(value, ["actorId","artifactId","companyId","contentSha256","createdAt","decisionHash","decisionId","documentSetId","eventId","eventKind","idempotencyKey","incomeYear","metadata","occurredAt"]) &&
     isUuid(value.actorId) &&
     (isUuid(value.artifactId) || value.artifactId === null) &&
     isUuid(value.companyId) &&
     (typeof value.contentSha256 === "string" || value.contentSha256 === null) &&
+    isDateTime(value.createdAt) &&
     typeof value.decisionHash === "string" &&
     isUuid(value.decisionId) &&
     isUuid(value.documentSetId) &&

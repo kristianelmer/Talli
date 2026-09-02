@@ -76,7 +76,7 @@ test("server exposes step-up-protected immutable lifecycle actions", () => {
   assert.match(finalize, /requiredFormUuid\(formData, "operationId"\)/);
   assert.match(finalize, /finalizationId:\s*operationId/);
   assert.match(finalize, /finalizeDecisionOperationId/);
-  assert.match(finalize, /verifyCurrentAnnualSource:\s*false/);
+  assert.doesNotMatch(finalize, /verifyCurrentAnnualSource:\s*false/);
   assert.doesNotMatch(finalize, /\.rpc\("finalize_corporate_decision"/);
   const attestStart = actionsSource.indexOf("export async function attestSignedCorporateArtifact");
   const attestEnd = actionsSource.indexOf("\nexport async function ", attestStart + 1);

@@ -22,11 +22,13 @@ from talli_backend.adapters.supabase_ledger import (
     _map_database_error,
     _posted_entry,
 )
+from talli_backend.application.annual_data_compatibility import LegacyAnnualDataView
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceAuthenticationError,
     CorporateGovernanceSessionFactory,
 )
 from talli_backend.application.corporate_governance_workflow import (
+    CompanyFactsReader,
     CorporateGovernanceApplication,
 )
 from talli_backend.application.ledger_workflow import LedgerAuthenticationError
@@ -35,11 +37,11 @@ from talli_backend.modules.banking.public import (
     ClaimBankTransactionForExternalActionCommand,
     bank_transaction_claim_persistence_adapter,
 )
+from talli_backend.modules.company_access.public import CompanyAccessService
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
     AnnualCloseProposalCommand,
     AnnualCloseLifecycle,
-    AnnualDataSourceFacts,
     ApproveAnnualCloseCommand,
     AttestAnnualCloseSignedArtifactCommand,
     AttestOwnerDividendSignedArtifactCommand,
@@ -53,7 +55,6 @@ from talli_backend.modules.corporate_governance.public import (
     CorporateArtifactRecord,
     CorporateArtifactVariant,
     CorporateDecisionKind,
-    CorporateDecisionFactSources,
     CorporateDecisionId,
     CorporateDecisionRecord,
     CorporateDocumentSetId,
@@ -77,7 +78,6 @@ from talli_backend.modules.corporate_governance.public import (
     PreparedOwnerDividendPayment,
     PreparedShareholderLoan,
     PersistedCompanyFacts,
-    PersistedShareholderFacts,
     ProposedAnnualClose,
     ProposedOwnerDividend,
     RecordOwnerDividendPaymentCommand,
@@ -290,64 +290,11 @@ def _timestamp(value: object) -> datetime:
     return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
 
 
-def _decision_fact_sources(value: Mapping[str, object]) -> CorporateDecisionFactSources:
-    company = value.get("company")
-    shareholders = value.get("shareholders")
-    annual_data = value.get("annualData")
-    if (
-        not isinstance(company, Mapping)
-        or not isinstance(shareholders, list)
-        or not isinstance(annual_data, list)
-        or not all(isinstance(item, Mapping) for item in shareholders + annual_data)
-    ):
+def _numeric(value: object) -> int | float:
+    if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
         raise CorporateGovernanceError.unavailable()
-
-    def numeric(value: object) -> int | float:
-        if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
-            raise CorporateGovernanceError.unavailable()
-        decimal = Decimal(str(value))
-        return int(decimal) if decimal == decimal.to_integral_value() else float(decimal)
-
-    return CorporateDecisionFactSources(
-        company=PersistedCompanyFacts(
-            company_id=CompanyId(str(company["companyId"])),
-            organization_number=str(company["organizationNumber"]),
-            legal_name=str(company["legalName"]),
-        ),
-        shareholders=tuple(
-            PersistedShareholderFacts(
-                shareholder_id=str(item["shareholderId"]),
-                name=str(item["name"]),
-                share_count=int(item["shareCount"]),
-                order=int(item["order"]),
-            )
-            for item in shareholders
-        ),
-        annual_data=tuple(
-            AnnualDataSourceFacts(
-                source_id=CorporateSourceReference(str(item["sourceId"])),
-                company_id=CompanyId(str(item["companyId"])),
-                income_year=IncomeYear(int(item["incomeYear"])),
-                answers=dict(item["answers"]),
-                confirmations=tuple(str(value) for value in item["confirmations"]),
-                no_activity_confirmed=bool(item["noActivityConfirmed"]),
-                annual_full_time_equivalents=numeric(
-                    item["annualFullTimeEquivalents"]
-                ),
-                completed_at=(
-                    item["completedAt"].isoformat()
-                    if isinstance(item["completedAt"], datetime)
-                    else str(item["completedAt"])
-                ),
-                updated_at=(
-                    item["updatedAt"].isoformat()
-                    if isinstance(item["updatedAt"], datetime)
-                    else str(item["updatedAt"])
-                ),
-            )
-            for item in annual_data
-        ),
-    )
+    decimal = Decimal(str(value))
+    return int(decimal) if decimal == decimal.to_integral_value() else float(decimal)
 
 
 def _lifecycle_snapshot(value: Mapping[str, object]) -> CorporateLifecycleSnapshot:
@@ -370,6 +317,11 @@ def _lifecycle_snapshot(value: Mapping[str, object]) -> CorporateLifecycleSnapsh
             source_hash=str(item["sourceHash"]),
             canonical_input=dict(item["canonicalInput"]),
             decision_hash=str(item["decisionHash"]),
+            supersedes_decision_id=(
+                CorporateDecisionId(str(item["supersedesDecisionId"]))
+                if item.get("supersedesDecisionId") is not None
+                else None
+            ),
             created_by=str(item["createdBy"]),
             created_at=_timestamp(item["createdAt"]),
         )
@@ -384,6 +336,11 @@ def _lifecycle_snapshot(value: Mapping[str, object]) -> CorporateLifecycleSnapsh
             template_family=str(item["templateFamily"]),
             template_version=str(item["templateVersion"]),
             decision_hash=str(item["decisionHash"]),
+            supersedes_document_set_id=(
+                CorporateDocumentSetId(str(item["supersedesDocumentSetId"]))
+                if item.get("supersedesDocumentSetId") is not None
+                else None
+            ),
             created_by=str(item["createdBy"]),
             created_at=_timestamp(item["createdAt"]),
         )
@@ -425,6 +382,7 @@ def _lifecycle_snapshot(value: Mapping[str, object]) -> CorporateLifecycleSnapsh
             event_kind=str(item["eventKind"]),
             actor_id=str(item["actorId"]),
             occurred_at=_timestamp(item["occurredAt"]),
+            created_at=_timestamp(item["createdAt"]),
             decision_hash=str(item["decisionHash"]),
             content_sha256=(
                 str(item["contentSha256"])
@@ -704,25 +662,53 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
         role = rows[0].get("role")
         return str(role) if role is not None else None
 
-    async def read_decision_fact_sources(
+    async def list_annual_data_compatibility(
         self,
+        *,
         company_id: CompanyId,
         income_year: IncomeYear,
-        decision_kind: CorporateDecisionKind,
-    ) -> CorporateDecisionFactSources:
+    ) -> tuple[LegacyAnnualDataView, ...]:
         rows = await self._database_rows(
-            "select corporate_governance.read_corporate_decision_fact_sources_v1("
-            "%s::uuid, %s::integer, %s::text, %s::text) as result",
+            "select backend_system.list_annual_data_legacy_v1("
+            "%s::uuid, %s::integer, %s::text) as items",
             (
                 str(company_id),
                 int(income_year),
-                decision_kind.value,
                 str(self.actor_id.subject),
             ),
         )
-        if len(rows) != 1 or not isinstance(rows[0].get("result"), Mapping):
+        if len(rows) != 1 or not isinstance(rows[0].get("items"), list):
             raise CorporateGovernanceError.unavailable()
-        return _decision_fact_sources(rows[0]["result"])  # type: ignore[arg-type]
+        items = rows[0]["items"]
+        if not all(isinstance(item, Mapping) for item in items):
+            raise CorporateGovernanceError.unavailable()
+        try:
+            return tuple(
+                LegacyAnnualDataView(
+                    source_id=str(item["sourceId"]),
+                    company_id=CompanyId(str(item["companyId"])),
+                    income_year=IncomeYear(int(item["incomeYear"])),
+                    answers=dict(item["answers"]),
+                    confirmations=tuple(str(value) for value in item["confirmations"]),
+                    no_activity_confirmed=bool(item["noActivityConfirmed"]),
+                    annual_full_time_equivalents=_numeric(
+                        item["annualFullTimeEquivalents"]
+                    ),
+                    completed_at=(
+                        item["completedAt"].isoformat()
+                        if isinstance(item["completedAt"], datetime)
+                        else str(item["completedAt"])
+                    ),
+                    updated_at=(
+                        item["updatedAt"].isoformat()
+                        if isinstance(item["updatedAt"], datetime)
+                        else str(item["updatedAt"])
+                    ),
+                )
+                for item in items
+            )
+        except (KeyError, TypeError, ValueError):
+            raise CorporateGovernanceError.unavailable() from None
 
     async def list_lifecycle(
         self,
@@ -1276,11 +1262,24 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
 def compose_corporate_governance_application(
     sessions: CorporateGovernanceSessionFactory | None,
     documents: DocumentsSessionFactory,
+    company_access: CompanyAccessService,
+    company_facts_reader: CompanyFactsReader | None = None,
 ) -> CorporateGovernanceApplication:
+    async def company_facts(access_token: str, company_id: CompanyId):
+        response = await company_access.company_record(
+            access_token, company_id=str(company_id)
+        )
+        return PersistedCompanyFacts(
+            company_id=company_id,
+            organization_number=response.company.org_number,
+            legal_name=response.company.name,
+        )
+
     return CorporateGovernanceApplication(
         sessions or SupabaseCorporateGovernanceAdapter.from_environment(),
         documents,
         LedgerService,
+        company_facts_reader or company_facts,
     )
 
 

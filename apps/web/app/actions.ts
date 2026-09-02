@@ -735,36 +735,16 @@ async function loadCorporateLifecycleActionContext(input: {
     throw new Error("Beslutningshashen er endret. Opprett og gjennomgå et nytt dokumentsett.");
   }
 
-  let currentSource: {
-    annualCloseSourceId: string;
-    annualDataSha256: string;
-    annualAccountsPayloadSha256: string;
-  } | null = null;
-  if (input.verifyCurrentAnnualSource !== false) {
-    const facts = await deriveCorporateDecisionFacts(input.accessToken, {
-      companyId: decision.company_id,
-      incomeYear: decision.income_year,
-      decisionKind: decision.decision_kind,
-    });
-    if (facts.annualBasis.sourceId !== decision.annual_close_source_id) {
-      throw new Error("Årsgrunnlaget er endret siden utkastet ble laget. Opprett et nytt dokumentsett.");
-    }
-    currentSource = {
-      annualCloseSourceId: facts.annualBasis.sourceId,
-      annualDataSha256: facts.annualBasis.annualDataSha256,
-      annualAccountsPayloadSha256: facts.annualBasis.annualAccountsPayloadSha256,
-    };
-  }
   const readiness = await readCorporateDecisionReadiness(input.accessToken, {
     companyId: decision.company_id,
     incomeYear: decision.income_year,
     decisionKind: decision.decision_kind,
-    ...(currentSource ?? {}),
   });
   if (readiness.decisionId !== decision.id
     || readiness.documentSetId !== documentSet.id
     || readiness.decisionHash !== decision.decision_hash
-    || readiness.currentSourceMatches === false) {
+    || (input.verifyCurrentAnnualSource !== false
+      && readiness.currentSourceMatches === false)) {
     throw new Error("Regnskapsgrunnlaget er endret siden utkastet ble laget. Opprett et nytt dokumentsett.");
   }
   return {
@@ -3444,9 +3424,7 @@ export async function attestSignedCorporateArtifact(formData: FormData) {
 }
 
 export async function finalizeCorporateDecision(formData: FormData) {
-  const setup = await corporateLifecycleActionSetup(formData, undefined, {
-    verifyCurrentAnnualSource: false,
-  });
+  const setup = await corporateLifecycleActionSetup(formData);
   await requireSensitiveActionStepUp(
     setup.supabase,
     setup.user.id,
@@ -4358,37 +4336,11 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     ),
   ];
 
-  const corporateReadinessRequest = {
-    companyId,
-    incomeYear,
-    decisionKind: "annual_close" as const,
-  };
-  let currentSource: {
-    annualCloseSourceId: string;
-    annualDataSha256: string;
-    annualAccountsPayloadSha256: string;
-  } | null = null;
-  if (annualData) {
-    try {
-      const facts = await deriveCorporateDecisionFacts(accessToken, {
-        companyId,
-        incomeYear,
-        decisionKind: "annual_close",
-      });
-      currentSource = {
-        annualCloseSourceId: facts.annualBasis.sourceId,
-        annualDataSha256: facts.annualBasis.annualDataSha256,
-        annualAccountsPayloadSha256: facts.annualBasis.annualAccountsPayloadSha256,
-      };
-    } catch {
-      currentSource = null;
-    }
-  }
   let corporateReadiness;
   try {
     corporateReadiness = await readCorporateDecisionReadiness(
       accessToken,
-      { ...corporateReadinessRequest, ...(currentSource ?? {}) },
+      { companyId, incomeYear, decisionKind: "annual_close" },
     );
   } catch (error) {
     redirect(`/workspace?error=${encodeURIComponent(

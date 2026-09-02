@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 import unicodedata
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import replace
 from enum import Enum
 from typing import Any
@@ -133,132 +133,6 @@ def _basis_source_hash(
             }
         )
     )
-
-
-def _ore_number(value: int) -> int | float:
-    return value // 100 if value % 100 == 0 else value / 100
-
-
-def _ledger_account_balance_ore(
-    lines: tuple[CorporateAccountMovementFacts, ...],
-    account: str,
-    income_year: IncomeYear,
-) -> int:
-    return sum(
-        line.debit_ore - line.credit_ore
-        for line in lines
-        if line.income_year == income_year and line.account == account
-    )
-
-
-def _annual_accounts_payload(
-    source: AnnualDataSourceFacts,
-    lines: tuple[CorporateAccountMovementFacts, ...],
-) -> dict[str, Any]:
-    account_balance = lambda account: _ledger_account_balance_ore(
-        lines, account, source.income_year
-    )
-    account_credit = lambda account: -account_balance(account)
-    debit_total = lambda accounts: sum(
-        line.debit_ore
-        for line in lines
-        if line.income_year == source.income_year and line.account in accounts
-    )
-    tax_payable = account_credit("2500")
-    investment_balance = sum(
-        account_balance(account)
-        for account in ("1300", "1310", "1350", "1800", "1810", "1815")
-    )
-    bank_balance = account_balance("1920")
-    admin_costs = debit_total(
-        {"7770", "6700", "6705", "6420", "7790", "6720", "7795"}
-    )
-    financial_income = sum(
-        account_credit(account) for account in ("8070", "8071", "8074", "8050")
-    )
-    financial_costs = debit_total({"8090", "8171", "8174"})
-    tax_expense = account_balance("8300")
-    share_capital = account_credit("2000")
-    retained_earnings = account_credit("2050")
-    short_term_debt = account_credit("2255") + tax_payable
-    result_before_tax = financial_income - admin_costs - financial_costs
-    annual_result = result_before_tax - tax_expense
-    retained = retained_earnings + annual_result
-    sum_equity = share_capital + retained
-    sum_assets = investment_balance + bank_balance
-    fte = source.annual_full_time_equivalents
-
-    feedback: list[dict[str, str]] = []
-    if fte < 0:
-        feedback.append(
-            {
-                "level": "block",
-                "code": "annual_accounts_aarsverk_negative",
-                "message": "Årsverk kan ikke være negativt.",
-                "source": "annual_accounts_payload",
-            }
-        )
-    feedback_rules = (
-        (
-            "annual_accounts_audit_required",
-            "Revisjonsplikt er utenfor enkel holding-AS-løype.",
-        ),
-        (
-            "annual_accounts_not_small_enterprise",
-            "Ikke-små foretak krever utvidet årsregnskapsmodell.",
-        ),
-        (
-            "annual_accounts_annual_report_required",
-            "Årsberetning er ikke støttet i første årsregnskapsløype.",
-        ),
-    )
-    for code, message in feedback_rules:
-        if code in source.confirmations:
-            feedback.append(
-                {
-                    "level": "block",
-                    "code": code,
-                    "message": message,
-                    "source": "annual_accounts_payload",
-                }
-            )
-
-    def field(tag: str, orid: str, value: str | float, fact_source: str):
-        return {"tag": tag, "orid": orid, "value": value, "source": fact_source}
-
-    year = int(source.income_year)
-    return {
-        "schemaType": "aarsregnskap-vanlig-202406",
-        "hovedskjemaDataFormatId": "1266",
-        "hovedskjemaDataFormatVersion": "51820",
-        "selskapsregnskapDataFormatId": "758",
-        "selskapsregnskapDataFormatVersion": "51980",
-        "notes": {"annualFullTimeEquivalents": fte},
-        "fields": [
-            field("regnskapsaar", "17102", year, "company.income_year"),
-            field("regnskapsstart", "17103", f"{year}-01-01", "calendar_year"),
-            field("regnskapsslutt", "17104", f"{year}-12-31", "calendar_year"),
-            field("valuta", "34984", "NOK", "launch_currency"),
-            field("sumDriftskostnad/aarets", "17126", _ore_number(admin_costs), "ledger.expense_accounts"),
-            field("sumFinansinntekter/aarets", "153", _ore_number(financial_income), "ledger.8070_8050"),
-            field("sumFinanskostnader/aarets", "17130", _ore_number(financial_costs), "ledger.8090"),
-            field("resultatFoerSkattekostnad/aarets", "167", _ore_number(result_before_tax), "derived"),
-            field("skattekostnad/aarets", "11835", _ore_number(tax_expense), "ledger.8300"),
-            field("aarsresultat/aarets", "172", _ore_number(annual_result), "derived"),
-            field("investeringAksjerAndeler/aarets", "7100", _ore_number(investment_balance), "ledger.1300_1310_1350_1800_1810_1815"),
-            field("sumFinansielleAnleggsmidler/aarets", "5267", _ore_number(investment_balance), "derived"),
-            field("sumBankinnskuddKontanter/aarets", "29042", _ore_number(bank_balance), "ledger.1920"),
-            field("sumEiendeler/aarets", "219", _ore_number(sum_assets), "derived"),
-            field("sumInnskuttEgenkapital/aarets", "3730", _ore_number(share_capital), "ledger.2000"),
-            field("annenEgenkapital/aarets", "3274", _ore_number(retained), "ledger.2050_and_result"),
-            field("sumEgenkapital/aarets", "250", _ore_number(sum_equity), "derived"),
-            field("betalbarSkatt/aarets", "2483", _ore_number(tax_payable), "ledger.2500"),
-            field("sumKortsiktigGjeld/aarets", "85", _ore_number(short_term_debt), "ledger.2255_2500"),
-            field("sumGjeld/aarets", "1119", _ore_number(short_term_debt), "derived"),
-            field("antallAarsverk", "37467", fte, "annual_accounts.notes"),
-        ],
-        "feedback": feedback,
-    }
 
 
 def _source_hash(
@@ -434,6 +308,10 @@ class CorporateGovernanceService:
         ledger_lines: tuple[CorporateAccountMovementFacts, ...],
         decision_kind: CorporateDecisionKind,
         income_year: IncomeYear,
+        annual_basis_projector: Callable[
+            [AnnualDataSourceFacts, tuple[CorporateAccountMovementFacts, ...]],
+            ApprovedAnnualBasis,
+        ],
     ) -> DerivedCorporateDecisionFacts:
         candidates = [
             item
@@ -452,77 +330,7 @@ class CorporateGovernanceService:
                 "The latest approved annual accounts are required.",
             )
         source = max(candidates, key=lambda item: int(item.income_year))
-        payload = _annual_accounts_payload(source, ledger_lines)
-        hard_block = next(
-            (
-                item
-                for item in payload["feedback"]
-                if isinstance(item, Mapping) and item.get("level") == "block"
-            ),
-            None,
-        )
-        if isinstance(hard_block, Mapping):
-            _fail(
-                CorporateGovernanceErrorCode.INVALID_INPUT,
-                str(hard_block.get("message") or "Annual accounts are blocked."),
-            )
-
-        def field_ore(tag: str) -> int:
-            fields = payload["fields"]
-            item = next(
-                (
-                    value
-                    for value in fields
-                    if isinstance(value, Mapping) and value.get("tag") == tag
-                ),
-                None,
-            )
-            if not isinstance(item, Mapping):
-                _fail(
-                    CorporateGovernanceErrorCode.INVALID_INPUT,
-                    f"Annual accounts are missing {tag}.",
-                )
-            value = item.get("value")
-            if isinstance(value, bool) or not isinstance(value, (int, float)):
-                _fail(
-                    CorporateGovernanceErrorCode.INVALID_INPUT,
-                    f"Annual accounts are missing {tag}.",
-                )
-            return round(value * 100)
-
-        result_after_tax_ore = field_ore("aarsresultat/aarets")
-        equity_ore = field_ore("sumEgenkapital/aarets")
-        retained_ore = field_ore("annenEgenkapital/aarets")
-        cash_ore = field_ore("sumBankinnskuddKontanter/aarets")
-        if equity_ore < 0 or cash_ore < 0:
-            _fail(
-                CorporateGovernanceErrorCode.UNSUPPORTED_DIVIDEND_BASIS,
-                "Negative equity or liquidity is outside the supported path.",
-            )
-        annual_snapshot = {
-            "id": str(source.source_id),
-            "company_id": str(source.company_id),
-            "income_year": int(source.income_year),
-            "answers": source.answers,
-            "confirmations": list(source.confirmations),
-            "no_activity_confirmed": source.no_activity_confirmed,
-            "annual_full_time_equivalents": source.annual_full_time_equivalents,
-            "completed_at": source.completed_at,
-            "updated_at": source.updated_at,
-        }
-        annual_data_sha256 = _sha256(_canonical_json(annual_snapshot))
-        annual_accounts_sha256 = _sha256(_canonical_json(payload))
-        basis = ApprovedAnnualBasis(
-            source_id=source.source_id,
-            income_year=source.income_year,
-            latest_approved=True,
-            annual_data_sha256=annual_data_sha256,
-            annual_accounts_payload_sha256=annual_accounts_sha256,
-            result_after_tax_ore=result_after_tax_ore,
-            equity_ore=equity_ore,
-            available_distribution_ore=max(0, retained_ore),
-            cash_ore=cash_ore,
-        )
+        basis = annual_basis_projector(source, ledger_lines)
         shareholders = sorted(
             sources.shareholders,
             key=lambda item: (item.order, item.shareholder_id),
@@ -557,6 +365,81 @@ class CorporateGovernanceService:
 
     def source_hash(self, source: CorporateReadinessSource) -> str:
         return _basis_source_hash(source)
+
+    def current_facts_match(
+        self,
+        decision: CorporateDecisionRecord,
+        facts: DerivedCorporateDecisionFacts,
+    ) -> bool:
+        """Compare every mutable source fact persisted into a decision."""
+
+        canonical = decision.canonical_input
+
+        def value(camel: str, snake: str) -> object:
+            return canonical.get(camel, canonical.get(snake))
+
+        financial = value("financialTotals", "financial_totals")
+        shareholders = canonical.get("shareholders")
+        if not isinstance(financial, Mapping) or not isinstance(
+            shareholders, (list, tuple)
+        ):
+            return False
+
+        def nested(mapping: Mapping[str, object], camel: str, snake: str) -> object:
+            return mapping.get(camel, mapping.get(snake))
+
+        persisted_shareholders: list[tuple[str, str, int]] = []
+        for shareholder in shareholders:
+            if not isinstance(shareholder, Mapping):
+                return False
+            shareholder_id = nested(shareholder, "shareholderId", "shareholder_id")
+            name = shareholder.get("name")
+            share_count = nested(shareholder, "shareCount", "share_count")
+            if (
+                not isinstance(shareholder_id, str)
+                or not isinstance(name, str)
+                or isinstance(share_count, bool)
+                or not isinstance(share_count, int)
+            ):
+                return False
+            persisted_shareholders.append((shareholder_id, name, share_count))
+
+        current_source = CorporateReadinessSource(
+            source_id=facts.annual_basis.source_id,
+            annual_data_sha256=facts.annual_basis.annual_data_sha256,
+            annual_accounts_payload_sha256=(
+                facts.annual_basis.annual_accounts_payload_sha256
+            ),
+        )
+        return (
+            str(value("annualCloseSourceId", "annual_close_source_id"))
+            == str(facts.annual_basis.source_id)
+            and decision.source_hash == self.source_hash(current_source)
+            and value("organizationNumber", "organization_number")
+            == facts.company.organization_number
+            and value("legalName", "legal_name") == facts.company.legal_name
+            and value("annualBasisYear", "annual_basis_year")
+            == int(facts.annual_basis.income_year)
+            and nested(financial, "resultAfterTaxOre", "result_after_tax_ore")
+            == facts.annual_basis.result_after_tax_ore
+            and nested(financial, "equityOre", "equity_ore")
+            == facts.annual_basis.equity_ore
+            and nested(
+                financial,
+                "availableDistributionOre",
+                "available_distribution_ore",
+            )
+            == facts.annual_basis.available_distribution_ore
+            and nested(financial, "cashOre", "cash_ore")
+            == facts.annual_basis.cash_ore
+            and tuple(persisted_shareholders)
+            == tuple(
+                (item.shareholder_id, item.name, item.share_count)
+                for item in facts.shareholders
+            )
+            and value("totalCompanyShares", "total_company_shares")
+            == sum(item.share_count for item in facts.shareholders)
+        )
 
     def assess_lifecycle(
         self,
@@ -686,7 +569,7 @@ class CorporateGovernanceService:
         general_meeting = canonical.get("generalMeeting")
         if general_meeting is None:
             general_meeting = canonical.get("general_meeting")
-        if not isinstance(board_participants, list) or not isinstance(
+        if not isinstance(board_participants, (list, tuple)) or not isinstance(
             general_meeting, Mapping
         ):
             raise CorporateGovernanceError.unavailable()

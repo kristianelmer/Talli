@@ -31,7 +31,7 @@
     }
   ],
   "dependencies": [],
-  "allowedImports": ["__future__", "collections.abc", "dataclasses", "datetime", "enum", "hashlib", "io", "json", "pathlib", "re", "reportlab", "reportlab.lib", "reportlab.lib.enums", "reportlab.lib.pagesizes", "reportlab.lib.styles", "reportlab.lib.units", "reportlab.pdfbase", "reportlab.pdfbase.ttfonts", "reportlab.pdfgen", "reportlab.platypus", "talli_backend.modules.corporate_governance.public", "talli_backend.shared.kernel", "typing", "unicodedata", "uuid", "xml.sax.saxutils"],
+  "allowedImports": ["__future__", "collections.abc", "dataclasses", "datetime", "enum", "hashlib", "io", "json", "pathlib", "re", "reportlab", "reportlab.lib", "reportlab.lib.enums", "reportlab.lib.pagesizes", "reportlab.lib.styles", "reportlab.lib.units", "reportlab.pdfbase", "reportlab.pdfbase.ttfonts", "reportlab.pdfgen", "reportlab.platypus", "talli_backend.modules.corporate_governance.public", "talli_backend.shared.kernel", "types", "typing", "unicodedata", "uuid", "xml.sax.saxutils"],
   "forbiddenResponsibilities": [
     "Ledger accounts, posting lines, balance enforcement, or period-lock policy",
     "Generic document metadata, blob storage, storage keys, retention, or object authorization",

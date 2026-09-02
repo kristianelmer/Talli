@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from decimal import Decimal
 from typing import Protocol
 
+from talli_backend.application.annual_data_compatibility import (
+    project_legacy_annual_basis,
+)
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceSessionFactory,
     CorporateGovernanceWorkflowTransaction,
@@ -19,6 +22,7 @@ from talli_backend.modules.banking.public import (
 )
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
+    AnnualDataSourceFacts,
     AnnualCloseProposalCommand,
     AnnualCloseLifecycle,
     ApproveAnnualCloseCommand,
@@ -27,6 +31,7 @@ from talli_backend.modules.corporate_governance.public import (
     ApproveOwnerDividendCommand,
     CorporateArtifactKind,
     CorporateDecisionKind,
+    CorporateDecisionFactSources,
     CorporateDecisionId,
     CorporateDocumentReadiness,
     CorporateGovernanceError,
@@ -34,11 +39,14 @@ from talli_backend.modules.corporate_governance.public import (
     CorporateLifecycleSnapshot,
     CorporateAccountMovementFacts,
     CorporateReadinessSource,
+    CorporateSourceReference,
     DerivedCorporateDecisionFacts,
     FinalizeOwnerDividendCommand,
     FinalizeAnnualCloseCommand,
     OwnerDividendLifecycle,
     OwnerDividendProposalCommand,
+    PersistedCompanyFacts,
+    PersistedShareholderFacts,
     ProposedAnnualClose,
     ProposedOwnerDividend,
     RecordShareholderLoanCommand,
@@ -83,6 +91,7 @@ class CorporateGovernanceLedgerFacade(LedgerCommands, LedgerQueries, Protocol):
 
 
 LedgerFacadeFactory = Callable[[LedgerPersistence], CorporateGovernanceLedgerFacade]
+CompanyFactsReader = Callable[[str, CompanyId], Awaitable[PersistedCompanyFacts]]
 _REQUIRED_ARTIFACT_KINDS = {
     CorporateArtifactKind.DIVIDEND_BOARD_PROPOSAL,
     CorporateArtifactKind.DIVIDEND_GENERAL_MEETING_MINUTES,
@@ -105,10 +114,12 @@ class CorporateGovernanceApplication:
         session_factory: CorporateGovernanceSessionFactory,
         documents_session_factory: DocumentsSessionFactory,
         ledger_facade_factory: LedgerFacadeFactory,
+        company_facts_reader: CompanyFactsReader,
     ) -> None:
         self._session_factory = session_factory
         self._documents_session_factory = documents_session_factory
         self._ledger_facade_factory = ledger_facade_factory
+        self._company_facts_reader = company_facts_reader
         self._service = CorporateGovernanceService()
 
     async def authenticated_actor_id(self, access_token: str) -> ActorId:
@@ -141,22 +152,56 @@ class CorporateGovernanceApplication:
         company_id: CompanyId,
         income_year: IncomeYear,
         decision_kind: CorporateDecisionKind,
-        current_source: CorporateReadinessSource | None,
+        correlation_id: CorrelationId,
     ) -> CorporateDocumentReadiness:
         session = await self._session_factory.session(access_token)
         async with session.transaction() as transaction:
+            await self._require_owner(transaction, company_id)
             snapshot = await transaction.list_lifecycle((company_id,))
-        return self._service.assess_lifecycle(
-            snapshot,
-            company_id=company_id,
-            income_year=income_year,
-            decision_kind=decision_kind,
-            current_source_hash=(
-                self._service.source_hash(current_source)
-                if current_source is not None
-                else None
-            ),
-        )
+            facts = await self._derive_decision_facts_in_transaction(
+                transaction,
+                access_token=access_token,
+                actor_id=session.actor_id,
+                company_id=company_id,
+                income_year=income_year,
+                decision_kind=decision_kind,
+                correlation_id=correlation_id,
+            )
+            current_source_hash = self._service.source_hash(
+                CorporateReadinessSource(
+                    source_id=facts.annual_basis.source_id,
+                    annual_data_sha256=facts.annual_basis.annual_data_sha256,
+                    annual_accounts_payload_sha256=(
+                        facts.annual_basis.annual_accounts_payload_sha256
+                    ),
+                )
+            )
+            readiness = self._service.assess_lifecycle(
+                snapshot,
+                company_id=company_id,
+                income_year=income_year,
+                decision_kind=decision_kind,
+                current_source_hash=current_source_hash,
+            )
+            decision = next(
+                (
+                    item
+                    for item in snapshot.decisions
+                    if item.decision_id == readiness.decision_id
+                ),
+                None,
+            )
+            if decision is not None and not self._service.current_facts_match(
+                decision, facts
+            ):
+                readiness = self._service.assess_lifecycle(
+                    snapshot,
+                    company_id=company_id,
+                    income_year=income_year,
+                    decision_kind=decision_kind,
+                    current_source_hash="0" * 64,
+                )
+            return readiness
 
     async def _session(self, access_token: str, actor_id):
         session = await self._session_factory.session(access_token)
@@ -176,16 +221,75 @@ class CorporateGovernanceApplication:
         self,
         transaction: CorporateGovernanceWorkflowTransaction,
         *,
+        access_token: str,
         actor_id: ActorId,
         company_id: CompanyId,
         income_year: IncomeYear,
         decision_kind: CorporateDecisionKind,
         correlation_id: CorrelationId,
     ) -> DerivedCorporateDecisionFacts:
-        sources = await transaction.read_decision_fact_sources(
-            company_id,
-            income_year,
-            decision_kind,
+        company = await self._company_facts_reader(access_token, company_id)
+        opening_snapshots = []
+        opening_cursor = None
+        while True:
+            opening_page = await transaction.list_opening_snapshots(
+                actor_id=actor_id,
+                company_ids=(company_id,),
+                correlation_id=correlation_id,
+                cursor=opening_cursor,
+                limit=100,
+            )
+            opening_snapshots.extend(opening_page.items)
+            if not opening_page.has_more:
+                break
+            if opening_page.next_cursor is None:
+                raise CorporateGovernanceError.unavailable()
+            opening_cursor = opening_page.next_cursor
+        opening = next(
+            (
+                item
+                for item in opening_snapshots
+                if item.company_id == company_id and item.income_year == income_year
+            ),
+            None,
+        )
+        if opening is None:
+            raise CorporateGovernanceError.unavailable()
+        annual_data = await transaction.list_annual_data_compatibility(
+            company_id=company_id,
+            income_year=(
+                income_year
+                if decision_kind is CorporateDecisionKind.ANNUAL_CLOSE
+                else IncomeYear(int(income_year) - 1)
+            ),
+        )
+        sources = CorporateDecisionFactSources(
+            company=company,
+            shareholders=tuple(
+                PersistedShareholderFacts(
+                    shareholder_id=item.shareholder_id,
+                    name=item.name,
+                    share_count=item.share_count,
+                    order=index,
+                )
+                for index, item in enumerate(opening.shareholders)
+            ),
+            annual_data=tuple(
+                AnnualDataSourceFacts(
+                    source_id=CorporateSourceReference(item.source_id),
+                    company_id=item.company_id,
+                    income_year=item.income_year,
+                    answers=item.answers,
+                    confirmations=item.confirmations,
+                    no_activity_confirmed=item.no_activity_confirmed,
+                    annual_full_time_equivalents=(
+                        item.annual_full_time_equivalents
+                    ),
+                    completed_at=item.completed_at,
+                    updated_at=item.updated_at,
+                )
+                for item in annual_data
+            ),
         )
         ledger = self._ledger_facade_factory(transaction)
         entries = []
@@ -219,7 +323,72 @@ class CorporateGovernanceApplication:
             ledger_lines=lines,
             decision_kind=decision_kind,
             income_year=income_year,
+            annual_basis_projector=project_legacy_annual_basis,
         )
+
+    async def _require_current_decision_source(
+        self,
+        transaction: CorporateGovernanceWorkflowTransaction,
+        *,
+        access_token: str,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear | None,
+        decision_kind: CorporateDecisionKind,
+        decision_id: CorporateDecisionId,
+        correlation_id: CorrelationId,
+        snapshot: CorporateLifecycleSnapshot | None = None,
+    ) -> None:
+        if snapshot is None:
+            snapshot = await transaction.read_lifecycle(decision_id)
+        decision = next(
+            (
+                item
+                for item in snapshot.decisions
+                if item.decision_id == decision_id
+                and item.company_id == company_id
+                and item.decision_kind is decision_kind
+            ),
+            None,
+        )
+        if decision is None:
+            raise CorporateGovernanceError.not_found()
+        authoritative_income_year = decision.income_year
+        if income_year is not None and income_year != authoritative_income_year:
+            raise CorporateGovernanceError.not_found()
+        facts = await self._derive_decision_facts_in_transaction(
+            transaction,
+            access_token=access_token,
+            actor_id=actor_id,
+            company_id=company_id,
+            income_year=authoritative_income_year,
+            decision_kind=decision_kind,
+            correlation_id=correlation_id,
+        )
+        readiness = self._service.assess_lifecycle(
+            snapshot,
+            company_id=company_id,
+            income_year=authoritative_income_year,
+            decision_kind=decision_kind,
+            current_source_hash=self._service.source_hash(
+                CorporateReadinessSource(
+                    source_id=facts.annual_basis.source_id,
+                    annual_data_sha256=facts.annual_basis.annual_data_sha256,
+                    annual_accounts_payload_sha256=(
+                        facts.annual_basis.annual_accounts_payload_sha256
+                    ),
+                )
+            ),
+        )
+        if (
+            readiness.decision_id != decision_id
+            or readiness.current_source_matches is not True
+            or not self._service.current_facts_match(decision, facts)
+        ):
+            raise CorporateGovernanceError.precondition(
+                CorporateGovernanceErrorCode.REVIEWED_FACTS_CHANGED,
+                "The approved corporate decision is based on stale source facts.",
+            )
 
     async def derive_decision_facts(
         self,
@@ -235,6 +404,7 @@ class CorporateGovernanceApplication:
             await self._require_owner(transaction, company_id)
             return await self._derive_decision_facts_in_transaction(
                 transaction,
+                access_token=access_token,
                 actor_id=session.actor_id,
                 company_id=company_id,
                 income_year=income_year,
@@ -252,6 +422,7 @@ class CorporateGovernanceApplication:
             await self._require_owner(transaction, command.company_id)
             facts = await self._derive_decision_facts_in_transaction(
                 transaction,
+                access_token=access_token,
                 actor_id=command.actor_id,
                 company_id=command.company_id,
                 income_year=command.income_year,
@@ -287,6 +458,7 @@ class CorporateGovernanceApplication:
             await self._require_owner(transaction, command.company_id)
             facts = await self._derive_decision_facts_in_transaction(
                 transaction,
+                access_token=access_token,
                 actor_id=command.actor_id,
                 company_id=command.company_id,
                 income_year=command.income_year,
@@ -436,6 +608,23 @@ class CorporateGovernanceApplication:
         session = await self._session(access_token, command.actor_id)
         async with session.transaction() as transaction:
             await self._require_owner(transaction, command.company_id)
+            snapshot = await transaction.read_lifecycle(command.decision_id)
+            if any(
+                item.decision_id == command.decision_id
+                for item in snapshot.finalizations
+            ):
+                return await transaction.finalize_annual_close(command)
+            await self._require_current_decision_source(
+                transaction,
+                access_token=access_token,
+                actor_id=command.actor_id,
+                company_id=command.company_id,
+                income_year=None,
+                decision_kind=CorporateDecisionKind.ANNUAL_CLOSE,
+                decision_id=command.decision_id,
+                correlation_id=command.correlation_id,
+                snapshot=snapshot,
+            )
             return await transaction.finalize_annual_close(command)
 
     async def attest_annual_close_signed_artifact(
@@ -555,6 +744,16 @@ class CorporateGovernanceApplication:
             prepared = await transaction.prepare_owner_dividend_finalization(command)
             if prepared.replay is not None:
                 return prepared.replay
+            await self._require_current_decision_source(
+                transaction,
+                access_token=access_token,
+                actor_id=command.actor_id,
+                company_id=command.company_id,
+                income_year=command.income_year,
+                decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+                decision_id=command.decision_id,
+                correlation_id=command.correlation_id,
+            )
             ledger = self._ledger_facade_factory(transaction)
             posted = await ledger.post_owner_dividend_declared(
                 PostOwnerDividendDeclaredCommand(
@@ -670,7 +869,9 @@ class CorporateGovernanceApplication:
             ledger = self._ledger_facade_factory(transaction)
             directions = {
                 "shareholder_to_company": LedgerShareholderLoanDirection.SHAREHOLDER_TO_COMPANY,
-                "company_to_corporate_shareholder": LedgerShareholderLoanDirection.COMPANY_TO_CORPORATE_SHAREHOLDER,
+                "company_to_corporate_shareholder": (
+                    LedgerShareholderLoanDirection.COMPANY_TO_CORPORATE_SHAREHOLDER
+                ),
             }
             posted = await ledger.post_shareholder_loan(
                 PostShareholderLoanCommand(

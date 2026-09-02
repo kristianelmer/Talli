@@ -34,6 +34,8 @@ create table corporate_governance.annual_close_decisions (
   ),
   decision_hash text not null check (decision_hash ~ '^[0-9a-f]{64}$'),
   annual_result_allocation_ore bigint not null,
+  supersedes_decision_id uuid,
+  supersedes_document_set_id uuid,
   idempotency_key text not null check (
     idempotency_key ~ '^[A-Za-z0-9._:-]{16,255}$'
   ),
@@ -156,6 +158,7 @@ create table corporate_governance.annual_close_events (
     request_fingerprint ~ '^[0-9a-f]{64}$'
   ),
   created_by uuid not null references auth.users(id) on delete restrict,
+  occurred_at timestamptz not null default pg_catalog.statement_timestamp(),
   created_at timestamptz not null default pg_catalog.statement_timestamp(),
   unique (created_by, company_id, idempotency_key),
   unique (company_id, income_year, id),
@@ -219,7 +222,8 @@ create table corporate_governance.annual_close_finalizations (
 insert into corporate_governance.annual_close_decisions (
   id, document_set_id, company_id, income_year, annual_close_source_id,
   source_hash, canonical_input, persisted_facts, generated_artifacts,
-  decision_hash, annual_result_allocation_ore, idempotency_key,
+  decision_hash, annual_result_allocation_ore, supersedes_decision_id,
+  supersedes_document_set_id, idempotency_key,
   correlation_id, request_fingerprint, created_by, created_at
 )
 select
@@ -343,6 +347,7 @@ select
     (decision.canonical_input ->> 'annualResultAllocationOre')::bigint,
     (decision.canonical_input ->> 'annual_result_allocation_ore')::bigint
   ),
+  decision.supersedes_decision_id, document_set.supersedes_set_id,
   'legacy-annual-close:' || decision.id::text,
   'legacy-annual-close:' || decision.id::text,
   pg_catalog.encode(extensions.digest(pg_catalog.jsonb_build_object(
@@ -389,7 +394,7 @@ on conflict (id) do nothing;
 insert into corporate_governance.annual_close_events (
   id, decision_id, document_set_id, company_id, income_year, artifact_id,
   event_kind, decision_hash, content_sha256, metadata, idempotency_key,
-  correlation_id, request_fingerprint, created_by, created_at
+  correlation_id, request_fingerprint, created_by, occurred_at, created_at
 )
 select
   event.id, event.decision_id, event.set_id, event.company_id,
@@ -402,7 +407,7 @@ select
   pg_catalog.encode(extensions.digest(pg_catalog.jsonb_build_object(
     'legacyEventId', event.id, 'eventKind', event.event_kind
   )::text, 'sha256'), 'hex'),
-  event.actor_id, event.created_at
+  event.actor_id, event.occurred_at, event.created_at
 from public.corporate_document_events event
 join corporate_governance.annual_close_decisions decision
   on decision.id = event.decision_id
@@ -415,7 +420,7 @@ on conflict (id) do nothing;
 insert into corporate_governance.annual_close_events (
   id, decision_id, document_set_id, company_id, income_year, event_kind,
   decision_hash, metadata, idempotency_key, correlation_id,
-  request_fingerprint, created_by, created_at
+  request_fingerprint, created_by, occurred_at, created_at
 )
 select
   pg_catalog.md5('annual-close-documents:' || decision.id::text)::uuid,
@@ -426,7 +431,8 @@ select
   pg_catalog.encode(extensions.digest(pg_catalog.jsonb_build_object(
     'legacyDecisionId', decision.id, 'eventKind', 'documents_registered'
   )::text, 'sha256'), 'hex'),
-  decision.created_by, pg_catalog.max(artifact.created_at)
+  decision.created_by, pg_catalog.max(artifact.created_at),
+  pg_catalog.max(artifact.created_at)
 from corporate_governance.annual_close_decisions decision
 join corporate_governance.annual_close_artifacts artifact
   on artifact.decision_id = decision.id and artifact.variant = 'unsigned'

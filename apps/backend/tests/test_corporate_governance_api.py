@@ -79,10 +79,15 @@ def client_and_transaction(*, annual_documents: bool = False):
         )
         documents.records[1].byte_length = 32628
     documents_sessions = DocumentsSessionFactoryStub(documents)
+
+    async def company_facts(_access_token, _company_id):
+        return transaction.source_facts(2025).company
+
     return (
         TestClient(
             create_app(
                 corporate_governance_session_factory=governance_sessions,
+                corporate_governance_company_facts_reader=company_facts,
                 documents_session_factory=documents_sessions,
             )
         ),
@@ -361,7 +366,8 @@ def test_decision_facts_are_derived_from_backend_sources() -> None:
     assert response.json()["reviewedFacts"]["totalCompanyShares"] == 1_000
     assert [call[0] for call in transaction.calls] == [
         "actor_role",
-        "read_decision_fact_sources"
+        "list_opening_snapshots",
+        "list_annual_data_compatibility",
     ]
 
 
@@ -557,7 +563,12 @@ def test_corporate_readiness_is_a_backend_owned_query() -> None:
         "code": "corporate_documents_decision_missing",
         "message": "Årsbeslutning med dokumentsett må opprettes.",
     }]
-    assert transaction.calls[-1][0] == "list_lifecycle"
+    assert [name for name, _ in transaction.calls[-4:]] == [
+        "actor_role",
+        "list_lifecycle",
+        "list_opening_snapshots",
+        "list_annual_data_compatibility",
+    ]
 
 
 def test_shareholder_loan_fastapi_is_governance_owned_and_strict() -> None:

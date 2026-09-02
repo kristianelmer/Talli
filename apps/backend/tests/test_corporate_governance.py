@@ -4,6 +4,9 @@ from dataclasses import replace
 from datetime import UTC, date, datetime, time
 
 import pytest
+from talli_backend.application.annual_data_compatibility import (
+    project_legacy_annual_basis,
+)
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
     AnnualCloseProposalCommand,
@@ -107,6 +110,7 @@ def supported_proposal() -> OwnerDividendProposalCommand:
         ledger_lines=supported_ledger_lines(),
         decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
         income_year=IncomeYear(2025),
+        annual_basis_projector=project_legacy_annual_basis,
     )
     return OwnerDividendProposalCommand(
         company_id=company_id,
@@ -213,6 +217,7 @@ def supported_annual_close() -> AnnualCloseProposalCommand:
         ledger_lines=supported_ledger_lines(2025),
         decision_kind=CorporateDecisionKind.ANNUAL_CLOSE,
         income_year=IncomeYear(2025),
+        annual_basis_projector=project_legacy_annual_basis,
     )
     return AnnualCloseProposalCommand(
         company_id=owner.company_id,
@@ -311,6 +316,7 @@ def test_lifecycle_readiness_is_derived_by_the_python_governance_owner() -> None
             source_hash=decision.source_hash,
             canonical_input=canonical_owner_dividend_payload(decision),
             decision_hash=decision.decision_hash,
+            supersedes_decision_id=None,
             created_by=str(decision.company_id),
             created_at=created_at,
         ),),
@@ -322,6 +328,7 @@ def test_lifecycle_readiness_is_derived_by_the_python_governance_owner() -> None
             template_family=decision.template_family,
             template_version=decision.template_version,
             decision_hash=decision.decision_hash,
+            supersedes_document_set_id=None,
             created_by=str(decision.company_id),
             created_at=created_at,
         ),),
@@ -337,6 +344,7 @@ def test_lifecycle_readiness_is_derived_by_the_python_governance_owner() -> None
                 event_kind="facts_approved",
                 actor_id=str(decision.company_id),
                 occurred_at=created_at,
+                created_at=created_at,
                 decision_hash=decision.decision_hash,
                 content_sha256=None,
                 metadata={},
@@ -352,9 +360,10 @@ def test_lifecycle_readiness_is_derived_by_the_python_governance_owner() -> None
                 event_kind="payment_recorded",
                 actor_id=str(decision.company_id),
                 occurred_at=created_at,
+                created_at=created_at,
                 decision_hash=decision.decision_hash,
                 content_sha256=None,
-                metadata={"amountOre": 1_000_000},
+                metadata={"amountOre": 1_000_000, "proof": {"status": "recorded"}},
                 idempotency_key="payment-recorded",
             ),
         ),
@@ -384,6 +393,15 @@ def test_lifecycle_readiness_is_derived_by_the_python_governance_owner() -> None
     )
 
     assert readiness.state.value == "partially_paid"
+
+    with pytest.raises(TypeError):
+        snapshot.decisions[0].canonical_input["financial_totals"]["cash_ore"] = 0  # type: ignore[index]
+    with pytest.raises(TypeError):
+        snapshot.events[1].metadata["proof"]["status"] = "changed"  # type: ignore[index]
+    with pytest.raises(TypeError):
+        snapshot.finalizations[0].signed_artifact_hashes["changed"] = "0" * 64  # type: ignore[index]
+    with pytest.raises(TypeError):
+        readiness.generated_artifact_hashes["changed"] = "0" * 64  # type: ignore[index]
     assert readiness.current_source_matches is True
     assert readiness.ready_for_signing is True
     assert readiness.finalized is True
@@ -413,6 +431,7 @@ def test_lifecycle_readiness_is_derived_by_the_python_governance_owner() -> None
                     event_kind="superseded",
                     actor_id=str(decision.company_id),
                     occurred_at=created_at,
+                    created_at=created_at,
                     decision_hash=decision.decision_hash,
                     content_sha256=None,
                     metadata={},

@@ -57,6 +57,10 @@
 -->
 
 <!-- architecture-inventory
+{"adapterDependencies":["talli_backend.application.annual_data_compatibility"],"publicPackages":["talli_backend.modules.company_access.public"],"transportDependencies":["talli_backend.application.corporate_governance_workflow"],"workflowDependencies":["talli_backend.application.annual_data_compatibility","talli_backend.modules.company_access.public"]}
+-->
+
+<!-- architecture-inventory
 {"adapterDependencies":["talli_backend.modules.shareholder_register_filing.public"],"publicPackages":["talli_backend.modules.shareholder_register_filing.public"],"transportDependencies":["talli_backend.modules.shareholder_register_filing.public"],"workflowDependencies":["talli_backend.modules.shareholder_register_filing.public"],"workflowPurposes":["new-year-start=>Coordinates the frozen shareholder-register opening snapshot and ledger opening posting through their public contracts in one backend-owned transaction."],"workflows":["new-year-start"]}
 -->
 

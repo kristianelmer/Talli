@@ -136,6 +136,7 @@
       "purpose": "Authenticates one verified owner, derives deterministic annual-close, owner-dividend and shareholder-loan facts and artifacts in Python, serves the immutable lifecycle, verifies Documents evidence, and atomically coordinates Ledger posting and optional Banking claims through narrow contracts.",
       "publicPackages": [
         "talli_backend.modules.banking.public",
+        "talli_backend.modules.company_access.public",
         "talli_backend.modules.corporate_governance.public",
         "talli_backend.modules.documents.public",
         "talli_backend.modules.ledger.public"
@@ -392,6 +393,7 @@
       "talli_backend.adapters.supabase_validation_observation",
       "talli_backend.application.banking_session",
       "talli_backend.application.corporate_governance_session",
+      "talli_backend.application.corporate_governance_workflow",
       "talli_backend.application.investments_session",
       "talli_backend.application.investments_workflow",
       "talli_backend.application.ledger_workflow",
@@ -410,6 +412,7 @@
       "talli_backend.shared.kernel"
     ],
     "workflows": [
+      "talli_backend.application.annual_data_compatibility",
       "talli_backend.application.opening_snapshot_compatibility",
       "talli_backend.modules.banking.public",
       "talli_backend.modules.company_access.public",
@@ -439,6 +442,7 @@
       "re",
       "talli_backend.adapters.bank_provider_http",
       "talli_backend.adapters.supabase_ledger",
+      "talli_backend.application.annual_data_compatibility",
       "talli_backend.application.banking_session",
       "talli_backend.application.banking_workflow",
       "talli_backend.application.corporate_governance_session",

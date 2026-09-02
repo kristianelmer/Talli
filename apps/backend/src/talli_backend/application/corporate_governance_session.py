@@ -3,12 +3,17 @@
 from contextlib import AbstractAsyncContextManager
 from typing import Protocol
 
+from talli_backend.application.annual_data_compatibility import LegacyAnnualDataView
+from talli_backend.application.opening_snapshot_compatibility import (
+    LegacyOpeningSnapshotCursor,
+    LegacyOpeningSnapshotPage,
+)
 from talli_backend.modules.banking.public import BankTransactionClaimPersistence
 from talli_backend.modules.corporate_governance.public import (
     CorporateGovernancePersistence,
 )
 from talli_backend.modules.ledger.public import LedgerPersistence
-from talli_backend.shared.kernel import ActorId
+from talli_backend.shared.kernel import ActorId, CompanyId, CorrelationId, IncomeYear
 
 
 class CorporateGovernanceAuthenticationError(Exception):
@@ -23,6 +28,23 @@ class CorporateGovernanceWorkflowTransaction(
 ):
     @property
     def actor_id(self) -> ActorId: ...
+
+    async def list_opening_snapshots(
+        self,
+        *,
+        actor_id: ActorId,
+        company_ids: tuple[CompanyId, ...],
+        correlation_id: CorrelationId,
+        cursor: LegacyOpeningSnapshotCursor | None,
+        limit: int,
+    ) -> LegacyOpeningSnapshotPage: ...
+
+    async def list_annual_data_compatibility(
+        self,
+        *,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+    ) -> tuple[LegacyAnnualDataView, ...]: ...
 
 
 class AuthenticatedCorporateGovernanceSession(Protocol):
@@ -47,4 +69,3 @@ __all__ = [
     "CorporateGovernanceSessionFactory",
     "CorporateGovernanceWorkflowTransaction",
 ]
-

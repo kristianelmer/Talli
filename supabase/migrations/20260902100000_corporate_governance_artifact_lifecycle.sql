@@ -7,14 +7,21 @@ set local statement_timeout = '120s';
 do $membership$
 begin
   execute pg_catalog.format(
-    'grant corporate_governance_store_owner, '
+    'grant corporate_governance_store_owner, ledger_store_owner, '
       || 'corporate_governance_workflow_executor to %I',
     current_user
   );
 end
 $membership$;
 
+select pg_catalog.set_config(
+  'talli.corporate_governance_lifecycle_principal', current_user, true
+);
 set local role corporate_governance_store_owner;
+
+alter table corporate_governance.owner_dividend_decisions
+  add column supersedes_decision_id uuid,
+  add column supersedes_document_set_id uuid;
 
 alter table corporate_governance.owner_dividend_artifacts
   drop constraint if exists owner_dividend_artifacts_decision_id_artifact_kind_key;
@@ -50,7 +57,8 @@ alter table corporate_governance.owner_dividend_events
 alter table corporate_governance.owner_dividend_events
   add column artifact_id uuid,
   add column content_sha256 text,
-  add column metadata jsonb not null default '{}'::jsonb;
+  add column metadata jsonb not null default '{}'::jsonb,
+  add column occurred_at timestamptz;
 alter table corporate_governance.owner_dividend_events
   add constraint owner_dividend_events_event_kind_check check (
     event_kind in (
@@ -88,17 +96,37 @@ where event_kind in (
 -- artifact reference, content hash, and metadata.
 drop trigger owner_dividend_events_immutable
   on corporate_governance.owner_dividend_events;
+drop trigger owner_dividend_decisions_immutable
+  on corporate_governance.owner_dividend_decisions;
 reset role;
+update corporate_governance.owner_dividend_decisions current
+set supersedes_decision_id = legacy.supersedes_decision_id,
+    supersedes_document_set_id = document_set.supersedes_set_id
+from public.corporate_decisions legacy
+join public.corporate_document_sets document_set
+  on document_set.decision_id = legacy.id
+where legacy.decision_kind = 'owner_dividend'
+  and current.id = legacy.id;
 update corporate_governance.owner_dividend_events current
 set artifact_id = legacy.artifact_id,
     content_sha256 = legacy.content_sha256,
-    metadata = legacy.metadata
+    metadata = legacy.metadata,
+    occurred_at = legacy.occurred_at
 from public.corporate_document_events legacy
 join public.corporate_decisions decision on decision.id = legacy.decision_id
 where decision.decision_kind = 'owner_dividend'
-  and legacy.event_kind = 'generated'
   and current.id = legacy.id;
+update corporate_governance.owner_dividend_events
+set occurred_at = created_at
+where occurred_at is null;
 set local role corporate_governance_store_owner;
+alter table corporate_governance.owner_dividend_events
+  alter column occurred_at set default pg_catalog.statement_timestamp(),
+  alter column occurred_at set not null;
+create trigger owner_dividend_decisions_immutable
+before update or delete on corporate_governance.owner_dividend_decisions
+for each row execute function
+  corporate_governance.prevent_corporate_governance_mutation();
 create trigger owner_dividend_events_immutable
 before update or delete on corporate_governance.owner_dividend_events
 for each row execute function
@@ -128,7 +156,7 @@ on conflict (id) do nothing;
 insert into corporate_governance.owner_dividend_events (
   id, decision_id, document_set_id, company_id, income_year, artifact_id,
   event_kind, decision_hash, content_sha256, metadata, idempotency_key,
-  correlation_id, request_fingerprint, created_by, created_at
+  correlation_id, request_fingerprint, created_by, occurred_at, created_at
 )
 select
   event.id, event.decision_id, event.set_id, event.company_id,
@@ -139,7 +167,7 @@ select
   pg_catalog.encode(extensions.digest(pg_catalog.jsonb_build_object(
     'legacyEventId', event.id, 'eventKind', event.event_kind
   )::text, 'sha256'), 'hex'),
-  event.actor_id, event.created_at
+  event.actor_id, event.occurred_at, event.created_at
 from public.corporate_document_events event
 join public.corporate_decisions decision on decision.id = event.decision_id
 where decision.decision_kind = 'owner_dividend'
@@ -257,11 +285,14 @@ begin
 end;
 $function$;
 
-create or replace function
-corporate_governance.read_corporate_decision_fact_sources_v1(
+-- Frozen read-only projection for the future annual-compliance store. It is a
+-- backend-system compatibility seam, not a corporate-governance business API.
+reset role;
+set local role ledger_store_owner;
+grant usage, create on schema backend_system to ledger_store_owner;
+create or replace function backend_system.list_annual_data_legacy_v1(
   p_company_id uuid,
   p_income_year integer,
-  p_decision_kind text,
   p_verified_subject text
 )
 returns jsonb
@@ -270,71 +301,40 @@ stable
 security definer
 set search_path = ''
 as $function$
-declare
-  v_setup_id uuid;
 begin
   if p_company_id is null or p_income_year not between 2000 and 2200
-    or p_decision_kind not in ('owner_dividend', 'annual_close')
-    or corporate_governance.actor_company_role_v1(
-      p_company_id, p_verified_subject
-    ) <> 'owner'
+    or p_verified_subject is null
+    or p_verified_subject !~ '^[0-9a-fA-F-]{36}$'
+    or public.company_access_auth_uid_v1()
+      is distinct from p_verified_subject::uuid
+    or not public.company_access_is_accepted_owner_v1(p_company_id)
   then
     raise exception 'corporate_governance_forbidden';
   end if;
 
-  select setup.id into v_setup_id
-  from public.opening_balance_setups setup
-  where setup.company_id = p_company_id
-    and setup.income_year = p_income_year;
-
-  return pg_catalog.jsonb_build_object(
-    'company', (
-      select pg_catalog.jsonb_build_object(
-        'companyId', company.id,
-        'organizationNumber', company.org_number,
-        'legalName', company.name
-      )
-      from public.companies company
-      where company.id = p_company_id
-    ),
-    'shareholders', coalesce((
-      select pg_catalog.jsonb_agg(
-        pg_catalog.jsonb_build_object(
-          'shareholderId', shareholder.id,
-          'name', shareholder.name,
-          'shareCount', shareholder.share_count,
-          'order', shareholder.row_order
-        ) order by shareholder.row_order
-      )
-      from (
-        select item.*,
-          pg_catalog.row_number() over (order by item.id) - 1 as row_order
-        from public.opening_shareholders item
-        where item.company_id = p_company_id
-          and item.setup_id = v_setup_id
-      ) shareholder
-    ), '[]'::jsonb),
-    'annualData', coalesce((
-      select pg_catalog.jsonb_agg(
-        pg_catalog.jsonb_build_object(
-          'sourceId', item.id,
-          'companyId', item.company_id,
-          'incomeYear', item.income_year,
-          'answers', item.answers,
-          'confirmations', item.confirmations,
-          'noActivityConfirmed', item.no_activity_confirmed,
-          'annualFullTimeEquivalents', item.annual_full_time_equivalents,
-          'completedAt', item.completed_at,
-          'updatedAt', item.updated_at
-        ) order by item.income_year desc, item.id
-      )
-      from public.annual_data item
-      where item.company_id = p_company_id
-        and item.income_year <= p_income_year
-    ), '[]'::jsonb)
-  );
+  return coalesce((
+    select pg_catalog.jsonb_agg(
+      pg_catalog.jsonb_build_object(
+        'sourceId', item.id,
+        'companyId', item.company_id,
+        'incomeYear', item.income_year,
+        'answers', item.answers,
+        'confirmations', item.confirmations,
+        'noActivityConfirmed', item.no_activity_confirmed,
+        'annualFullTimeEquivalents', item.annual_full_time_equivalents,
+        'completedAt', item.completed_at,
+        'updatedAt', item.updated_at
+      ) order by item.income_year desc, item.id
+    )
+    from public.annual_data item
+    where item.company_id = p_company_id
+      and item.income_year <= p_income_year
+  ), '[]'::jsonb);
 end;
 $function$;
+revoke create on schema backend_system from ledger_store_owner;
+reset role;
+set local role corporate_governance_store_owner;
 
 create or replace function corporate_governance.read_corporate_lifecycle_v1(
   p_company_ids uuid[],
@@ -403,6 +403,7 @@ begin
             'sourceHash', decision.source_hash,
             'canonicalInput', decision.canonical_input,
             'decisionHash', decision.decision_hash,
+            'supersedesDecisionId', decision.supersedes_decision_id,
             'createdBy', decision.created_by,
             'createdAt', decision.created_at
           ) payload
@@ -424,6 +425,7 @@ begin
             'sourceHash', decision.source_hash,
             'canonicalInput', decision.canonical_input,
             'decisionHash', decision.decision_hash,
+            'supersedesDecisionId', decision.supersedes_decision_id,
             'createdBy', decision.created_by,
             'createdAt', decision.created_at
           ) payload
@@ -447,6 +449,7 @@ begin
             'templateFamily', decision.canonical_input ->> 'templateFamily',
             'templateVersion', decision.canonical_input ->> 'templateVersion',
             'decisionHash', decision.decision_hash,
+            'supersedesDocumentSetId', decision.supersedes_document_set_id,
             'createdBy', decision.created_by,
             'createdAt', decision.created_at
           ) payload
@@ -466,6 +469,7 @@ begin
             'templateFamily', decision.canonical_input ->> 'templateFamily',
             'templateVersion', decision.canonical_input ->> 'templateVersion',
             'decisionHash', decision.decision_hash,
+            'supersedesDocumentSetId', decision.supersedes_document_set_id,
             'createdBy', decision.created_by,
             'createdAt', decision.created_at
           ) payload
@@ -528,7 +532,7 @@ begin
     'events', coalesce((
       select pg_catalog.jsonb_agg(item.payload order by item.occurred_at, item.id)
       from (
-        select event.id, event.created_at occurred_at,
+        select event.id, event.occurred_at,
           pg_catalog.jsonb_build_object(
             'eventId', event.id,
             'companyId', event.company_id,
@@ -538,7 +542,8 @@ begin
             'artifactId', event.artifact_id,
             'eventKind', event.event_kind,
             'actorId', event.created_by,
-            'occurredAt', event.created_at,
+            'occurredAt', event.occurred_at,
+            'createdAt', event.created_at,
             'decisionHash', event.decision_hash,
             'contentSha256', event.content_sha256,
             'metadata', event.metadata,
@@ -551,7 +556,7 @@ begin
           p_decision_id is null and event.company_id = any(p_company_ids)
         )
         union all
-        select event.id, event.created_at occurred_at,
+        select event.id, event.occurred_at,
           pg_catalog.jsonb_build_object(
             'eventId', event.id,
             'companyId', event.company_id,
@@ -561,7 +566,8 @@ begin
             'artifactId', event.artifact_id,
             'eventKind', event.event_kind,
             'actorId', event.created_by,
-            'occurredAt', event.created_at,
+            'occurredAt', event.occurred_at,
+            'createdAt', event.created_at,
             'decisionHash', event.decision_hash,
             'contentSha256', event.content_sha256,
             'metadata', event.metadata,
@@ -585,6 +591,7 @@ begin
             'eventKind', 'finalized',
             'actorId', finalization.created_by,
             'occurredAt', finalization.created_at,
+            'createdAt', finalization.created_at,
             'decisionHash', finalization.decision_hash,
             'contentSha256', null,
             'metadata', pg_catalog.jsonb_build_object(
@@ -613,6 +620,7 @@ begin
             'eventKind', 'payment_recorded',
             'actorId', payment.created_by,
             'occurredAt', payment.created_at,
+            'createdAt', payment.created_at,
             'decisionHash', payment.decision_hash,
             'contentSha256', null,
             'metadata', pg_catalog.jsonb_build_object(
@@ -656,6 +664,7 @@ begin
             'eventKind', 'finalized',
             'actorId', finalization.created_by,
             'occurredAt', finalization.created_at,
+            'createdAt', finalization.created_at,
             'decisionHash', finalization.decision_hash,
             'contentSha256', null,
             'metadata', pg_catalog.jsonb_build_object(
@@ -1182,12 +1191,13 @@ $cut_owner_legacy_projections$;
 
 reset role;
 
+grant usage on schema backend_system
+to corporate_governance_workflow_executor;
+
 revoke all on function
   corporate_governance.record_owner_dividend_event_v1(jsonb, text),
   corporate_governance.attest_owner_dividend_signed_artifact_v1(jsonb, text),
-  corporate_governance.read_corporate_decision_fact_sources_v1(
-    uuid, integer, text, text
-  ),
+  backend_system.list_annual_data_legacy_v1(uuid, integer, text),
   corporate_governance.read_corporate_lifecycle_v1(uuid[], uuid, text),
   corporate_governance.owner_dividend_lifecycle_pre148_v1(uuid, boolean),
   corporate_governance.prepare_owner_dividend_finalization_pre148_v1(
@@ -1203,10 +1213,19 @@ from public, anon, authenticated, service_role;
 grant execute on function
   corporate_governance.record_owner_dividend_event_v1(jsonb, text),
   corporate_governance.attest_owner_dividend_signed_artifact_v1(jsonb, text),
-  corporate_governance.read_corporate_decision_fact_sources_v1(
-    uuid, integer, text, text
-  ),
+  backend_system.list_annual_data_legacy_v1(uuid, integer, text),
   corporate_governance.read_corporate_lifecycle_v1(uuid[], uuid, text)
 to corporate_governance_workflow_executor;
+
+do $backend_system_role_authority_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke ledger_store_owner from %I',
+    pg_catalog.current_setting(
+      'talli.corporate_governance_lifecycle_principal'
+    )
+  );
+end
+$backend_system_role_authority_revoke$;
 
 commit;

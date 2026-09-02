@@ -62,6 +62,7 @@ from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceAuthenticationError,
     CorporateGovernanceSessionFactory,
 )
+from talli_backend.application.corporate_governance_workflow import CompanyFactsReader
 from talli_backend.application.investments_session import (
     InvestmentsAuthenticationError,
     InvestmentsSessionFactory,
@@ -202,7 +203,6 @@ from talli_backend.modules.corporate_governance.public import (
     CorporateGovernanceError,
     CorporateGovernanceErrorCode,
     CorporateLifecycleSnapshot,
-    CorporateReadinessSource,
     CorporateSourceReference,
     DocumentReference,
     FinalizeOwnerDividendCommand,
@@ -1324,6 +1324,7 @@ class CorporateDecisionRecordWire(TransportModel):
     source_hash: str
     canonical_input: dict[str, Any]
     decision_hash: str
+    supersedes_decision_id: UUID | None
     created_by: UUID
     created_at: datetime
 
@@ -1336,6 +1337,7 @@ class CorporateDocumentSetRecordWire(TransportModel):
     template_family: str
     template_version: str
     decision_hash: str
+    supersedes_document_set_id: UUID | None
     created_by: UUID
     created_at: datetime
 
@@ -1365,6 +1367,7 @@ class CorporateEventRecordWire(TransportModel):
     event_kind: str
     actor_id: UUID
     occurred_at: datetime
+    created_at: datetime
     decision_hash: str
     content_sha256: str | None
     metadata: dict[str, Any]
@@ -2691,6 +2694,7 @@ def create_app(
     ledger_session_factory: LedgerSessionFactory | None = None,
     investments_session_factory: InvestmentsSessionFactory | None = None,
     corporate_governance_session_factory: CorporateGovernanceSessionFactory | None = None,
+    corporate_governance_company_facts_reader: CompanyFactsReader | None = None,
     documents_session_factory: DocumentsSessionFactory | None = None,
     banking_session_factory: BankingSessionFactory | None = None,
     banking_providers: Mapping[str, BankDataProvider] | None = None,
@@ -2728,6 +2732,8 @@ def create_app(
     corporate_governance_application = compose_corporate_governance_application(
         corporate_governance_session_factory,
         documents_application,
+        company_access_service,
+        corporate_governance_company_facts_reader,
     )
     banking_application = compose_banking_application(banking_session_factory)
 
@@ -4141,6 +4147,11 @@ def create_app(
                     source_hash=item.source_hash,
                     canonical_input=dict(item.canonical_input),
                     decision_hash=item.decision_hash,
+                    supersedes_decision_id=(
+                        UUID(str(item.supersedes_decision_id))
+                        if item.supersedes_decision_id
+                        else None
+                    ),
                     created_by=UUID(item.created_by),
                     created_at=item.created_at,
                 )
@@ -4155,6 +4166,11 @@ def create_app(
                     template_family=item.template_family,
                     template_version=item.template_version,
                     decision_hash=item.decision_hash,
+                    supersedes_document_set_id=(
+                        UUID(str(item.supersedes_document_set_id))
+                        if item.supersedes_document_set_id
+                        else None
+                    ),
                     created_by=UUID(item.created_by),
                     created_at=item.created_at,
                 )
@@ -4192,6 +4208,7 @@ def create_app(
                     event_kind=item.event_kind,
                     actor_id=UUID(item.actor_id),
                     occurred_at=item.occurred_at,
+                    created_at=item.created_at,
                     decision_hash=item.decision_hash,
                     content_sha256=item.content_sha256,
                     metadata=dict(item.metadata),
@@ -4451,54 +4468,22 @@ def create_app(
         tags=["corporate-governance"],
     )
     async def read_corporate_document_readiness(
+        request: Request,
         company_id: Annotated[UUID, Query(alias="companyId")],
         income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2200)],
         decision_kind: Annotated[
             CorporateDecisionKind, Query(alias="decisionKind")
         ],
-        annual_close_source_id: Annotated[
-            UUID | None, Query(alias="annualCloseSourceId")
-        ] = None,
-        annual_data_sha256: Annotated[
-            str | None, Query(alias="annualDataSha256", pattern=r"^[0-9a-f]{64}$")
-        ] = None,
-        annual_accounts_payload_sha256: Annotated[
-            str | None,
-            Query(alias="annualAccountsPayloadSha256", pattern=r"^[0-9a-f]{64}$"),
-        ] = None,
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> CorporateDocumentReadinessWire:
         async def execute() -> CorporateDocumentReadinessWire:
-            source_values = (
-                annual_close_source_id,
-                annual_data_sha256,
-                annual_accounts_payload_sha256,
-            )
-            if any(value is not None for value in source_values) and not all(
-                value is not None for value in source_values
-            ):
-                raise CorporateGovernanceError.invalid(
-                    CorporateGovernanceErrorCode.INVALID_INPUT,
-                    "Current annual source identity must be complete.",
-                )
-            current_source = (
-                CorporateReadinessSource(
-                    source_id=CorporateSourceReference(str(annual_close_source_id)),
-                    annual_data_sha256=str(annual_data_sha256),
-                    annual_accounts_payload_sha256=str(
-                        annual_accounts_payload_sha256
-                    ),
-                )
-                if annual_close_source_id is not None
-                else None
-            )
             return corporate_document_readiness_wire(
                 await corporate_governance_application.read_readiness(
                     bearer_token(credentials),
                     company_id=CompanyId(str(company_id)),
                     income_year=IncomeYear(income_year),
                     decision_kind=decision_kind,
-                    current_source=current_source,
+                    correlation_id=CorrelationId(request.state.request_id),
                 )
             )
 

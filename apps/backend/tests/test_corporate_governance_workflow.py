@@ -26,8 +26,10 @@ from talli_backend.modules.corporate_governance.public import (
     CorporateEventId,
     CorporateFinalizationId,
     CorporateGovernanceError,
+    CorporateGovernanceErrorCode,
     CorporateLifecycleSnapshot,
     DocumentReference,
+    FinalizeAnnualCloseCommand,
     FinalizeOwnerDividendCommand,
     OwnerDividendArtifactReference,
     OwnerDividendLifecycle,
@@ -93,7 +95,11 @@ def lifecycle(
         remaining_amount_ore=10_000_001,
         finalization_id=(
             CorporateFinalizationId("55555555-5555-4555-8555-555555555555")
-            if state in {OwnerDividendState.FINALIZED, OwnerDividendState.PARTIALLY_PAID, OwnerDividendState.PAID}
+            if state in {
+                OwnerDividendState.FINALIZED,
+                OwnerDividendState.PARTIALLY_PAID,
+                OwnerDividendState.PAID,
+            }
             else None
         ),
         accounting_entry_id=accounting_entry_id,
@@ -111,44 +117,91 @@ class GovernanceTransactionStub:
         self.payment_replay: OwnerDividendLifecycle | None = None
         self.shareholder_loan_replay: RecordedShareholderLoan | None = None
         self.shareholder_loan_bank = False
+        self.source_facts_changed = False
+        self.shareholder_order_changed = False
+        self.list_snapshot = CorporateLifecycleSnapshot((), (), (), (), ())
 
-    async def read_decision_fact_sources(
-        self,
-        company_id,
-        income_year,
-        decision_kind,
-    ):
-        self.calls.append(("read_decision_fact_sources", decision_kind))
-        return supported_fact_sources(
-            2025 if decision_kind is CorporateDecisionKind.ANNUAL_CLOSE else 2024
+    def source_facts(self, annual_year: int):
+        sources = supported_fact_sources(annual_year)
+        if not self.source_facts_changed:
+            return sources
+        annual_data = sources.annual_data[0]
+        return replace(
+            sources,
+            annual_data=(
+                replace(
+                    annual_data,
+                    answers={**annual_data.answers, "facts_changed_after_approval": True},
+                ),
+            ),
+        )
+
+    async def list_opening_snapshots(self, **kwargs):
+        self.calls.append(("list_opening_snapshots", kwargs))
+        sources = self.source_facts(2025)
+        shareholders = sorted(sources.shareholders, key=lambda value: value.order)
+        if self.shareholder_order_changed:
+            shareholders.reverse()
+        return SimpleNamespace(
+            items=(
+                SimpleNamespace(
+                    company_id=sources.company.company_id,
+                    income_year=IncomeYear(2025),
+                    shareholders=tuple(
+                        SimpleNamespace(
+                            shareholder_id=item.shareholder_id,
+                            name=item.name,
+                            share_count=item.share_count,
+                        )
+                        for item in shareholders
+                    ),
+                ),
+            ),
+            has_more=False,
+            next_cursor=None,
+        )
+
+    async def list_annual_data_compatibility(self, **kwargs):
+        self.calls.append(("list_annual_data_compatibility", kwargs))
+        return tuple(
+            SimpleNamespace(
+                source_id=str(item.source_id),
+                company_id=item.company_id,
+                income_year=item.income_year,
+                answers=item.answers,
+                confirmations=item.confirmations,
+                no_activity_confirmed=item.no_activity_confirmed,
+                annual_full_time_equivalents=item.annual_full_time_equivalents,
+                completed_at=item.completed_at,
+                updated_at=item.updated_at,
+            )
+            for year in (2025, 2024)
+            for item in self.source_facts(year).annual_data
+            if int(item.income_year) <= int(kwargs["income_year"])
         )
 
     async def list_entries(self, **kwargs):
-        decision_kind = next(
-            (
-                value
-                for name, value in reversed(self.calls)
-                if name == "read_decision_fact_sources"
-            ),
-            CorporateDecisionKind.OWNER_DIVIDEND,
-        )
-        year = 2025 if decision_kind is CorporateDecisionKind.ANNUAL_CLOSE else 2024
-        lines = tuple(
-            SimpleNamespace(
-                account=line.account,
-                debit=Money.nok(Decimal(line.debit_ore) / Decimal(100)),
-                credit=Money.nok(Decimal(line.credit_ore) / Decimal(100)),
-            )
-            for line in supported_ledger_lines(year)
-        )
         return SimpleNamespace(
-            items=(SimpleNamespace(income_year=IncomeYear(year), lines=lines),),
+            items=tuple(
+                SimpleNamespace(
+                    income_year=IncomeYear(year),
+                    lines=tuple(
+                        SimpleNamespace(
+                            account=line.account,
+                            debit=Money.nok(Decimal(line.debit_ore) / Decimal(100)),
+                            credit=Money.nok(Decimal(line.credit_ore) / Decimal(100)),
+                        )
+                        for line in supported_ledger_lines(year)
+                    ),
+                )
+                for year in (2024, 2025)
+            ),
             page=SimpleNamespace(has_more=False, next_cursor=None),
         )
 
     async def list_lifecycle(self, company_ids):
         self.calls.append(("list_lifecycle", company_ids))
-        return CorporateLifecycleSnapshot((), (), (), (), ())
+        return self.list_snapshot
 
     async def read_lifecycle(self, decision_id):
         self.calls.append(("read_lifecycle", decision_id))
@@ -174,6 +227,7 @@ class GovernanceTransactionStub:
                     else canonical_owner_dividend_payload(decision)
                 ),
                 decision_hash=decision.decision_hash,
+                supersedes_decision_id=None,
                 created_by=str(decision.company_id),
                 created_at=NOW.value,
             ),),
@@ -185,6 +239,7 @@ class GovernanceTransactionStub:
                 template_family=decision.template_family,
                 template_version=decision.template_version,
                 decision_hash=decision.decision_hash,
+                supersedes_document_set_id=None,
                 created_by=str(decision.company_id),
                 created_at=NOW.value,
             ),),
@@ -465,10 +520,14 @@ def application():
         ledgers.append(ledger)
         return ledger
 
+    async def company_facts(_access_token, _company_id):
+        return transaction.source_facts(2025).company
+
     app = CorporateGovernanceApplication(
         GovernanceSessionFactoryStub(session),
         DocumentsSessionFactoryStub(documents),
         ledger_factory,
+        company_facts,
     )
     return app, transaction, session, documents, ledgers
 
@@ -522,6 +581,54 @@ def test_annual_close_proposal_is_owner_authorized_and_persists_canonical_facts(
     transaction.role = "reviewer"
     with pytest.raises(CorporateGovernanceError):
         asyncio.run(app.propose_annual_close("access-token", supported_annual_close()))
+
+
+def test_readiness_derives_current_source_server_side_and_marks_stale_evidence() -> None:
+    app, transaction, _, _, _ = application()
+    transaction.list_snapshot = asyncio.run(
+        transaction.read_lifecycle(supported_proposal().decision_id)
+    )
+    transaction.calls.clear()
+
+    current = asyncio.run(
+        app.read_readiness(
+            "access-token",
+            company_id=supported_proposal().company_id,
+            income_year=IncomeYear(2025),
+            decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+            correlation_id=CorrelationId("read-current-governance-source"),
+        )
+    )
+    assert current.current_source_matches is True
+
+    transaction.source_facts_changed = True
+    stale = asyncio.run(
+        app.read_readiness(
+            "access-token",
+            company_id=supported_proposal().company_id,
+            income_year=IncomeYear(2025),
+            decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+            correlation_id=CorrelationId("read-stale-governance-source"),
+        )
+    )
+
+    assert stale.current_source_matches is False
+    assert "corporate_documents_current_hash_mismatch" in {
+        blocker.code for blocker in stale.blockers
+    }
+
+    transaction.source_facts_changed = False
+    transaction.shareholder_order_changed = True
+    reordered = asyncio.run(
+        app.read_readiness(
+            "access-token",
+            company_id=supported_proposal().company_id,
+            income_year=IncomeYear(2025),
+            decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+            correlation_id=CorrelationId("read-reordered-governance-source"),
+        )
+    )
+    assert reordered.current_source_matches is False
 
 
 def test_annual_close_signed_artifact_uses_documents_evidence_and_governance_store() -> None:
@@ -708,13 +815,30 @@ def finalization_command() -> FinalizeOwnerDividendCommand:
     )
 
 
+def annual_finalization_command() -> FinalizeAnnualCloseCommand:
+    proposal = supported_annual_close()
+    decision = CorporateGovernanceService().build_annual_close_decision(proposal)
+    return FinalizeAnnualCloseCommand(
+        company_id=proposal.company_id,
+        actor_id=proposal.actor_id,
+        correlation_id=CorrelationId("annual-close-finalization"),
+        idempotency_key=IdempotencyKey("annual-close-finalization-0001"),
+        decision_id=proposal.decision_id,
+        document_set_id=proposal.document_set_id,
+        decision_hash=decision.decision_hash,
+        finalization_id=CorporateFinalizationId(
+            "abababab-abab-4bab-8bab-abababababab"
+        ),
+    )
+
+
 def test_finalization_posts_characterized_declaration_once_and_replays() -> None:
     app, transaction, _, _, ledgers = application()
     result = asyncio.run(
         app.finalize_owner_dividend("access-token", finalization_command())
     )
     assert result.state is OwnerDividendState.FINALIZED
-    ledger_command = ledgers[0].commands[0]
+    ledger_command = next(ledger.commands[0] for ledger in ledgers if ledger.commands)
     assert ledger_command.declared_amount == Money.nok("100000.01")
     assert ledger_command.declaration_debit_account == "2050"
     assert ledger_command.dividend_payable_account == "2920"
@@ -729,7 +853,43 @@ def test_finalization_posts_characterized_declaration_once_and_replays() -> None
         app.finalize_owner_dividend("access-token", finalization_command())
     )
     assert replay.replayed is True
-    assert len(ledgers) == 1
+    assert sum(len(ledger.commands) for ledger in ledgers) == 1
+
+
+def test_finalization_blocks_changed_source_before_any_writer_runs() -> None:
+    app, transaction, session, _, ledgers = application()
+    transaction.source_facts_changed = True
+
+    with pytest.raises(CorporateGovernanceError) as owner_error:
+        asyncio.run(
+            app.finalize_owner_dividend("access-token", finalization_command())
+        )
+    assert owner_error.value.code is CorporateGovernanceErrorCode.REVIEWED_FACTS_CHANGED
+    assert [name for name, _ in transaction.calls] == [
+        "actor_role",
+        "prepare_finalization",
+        "read_lifecycle",
+        "list_opening_snapshots",
+        "list_annual_data_compatibility",
+    ]
+    assert all(not ledger.commands for ledger in ledgers)
+    assert session.rolled_back is True
+
+    transaction.calls.clear()
+    session.rolled_back = False
+    with pytest.raises(CorporateGovernanceError) as annual_error:
+        asyncio.run(
+            app.finalize_annual_close("access-token", annual_finalization_command())
+        )
+    assert annual_error.value.code is CorporateGovernanceErrorCode.REVIEWED_FACTS_CHANGED
+    assert [name for name, _ in transaction.calls] == [
+        "actor_role",
+        "read_lifecycle",
+        "list_opening_snapshots",
+        "list_annual_data_compatibility",
+    ]
+    assert "finalize_annual_close" not in {name for name, _ in transaction.calls}
+    assert session.rolled_back is True
 
 
 def payment_command() -> RecordOwnerDividendPaymentCommand:
@@ -780,5 +940,5 @@ def test_posted_ledger_effect_rolls_back_when_governance_completion_fails() -> N
         asyncio.run(
             app.finalize_owner_dividend("access-token", finalization_command())
         )
-    assert len(ledgers[0].commands) == 1
+    assert sum(len(ledger.commands) for ledger in ledgers) == 1
     assert session.rolled_back is True

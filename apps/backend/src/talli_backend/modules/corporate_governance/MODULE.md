@@ -106,6 +106,16 @@ selection, activation, credentials, consent, live calls, customer bank data, and
 production banking remain outside this capability and blocked independently by
 #189.
 
+Company identity is obtained through the `company_access` public service and
+opening shareholders through the frozen Ledger opening-snapshot query. Until
+#149 and #153 establish their future public contracts, the application owns one
+narrow read-only compatibility seam for the selected legacy annual-data row and
+the exactly characterized annual-accounts basis projection. Governance receives
+only immutable source facts and the projected basis; it neither reads another
+capability's tables nor owns annual-filing field policy. The backend-system SQL
+reader is owner-authenticated, executor-only, and is removed when that future
+ownership replaces it.
+
 ## Stage-exit state
 
 Issue #148 completes the capability boundary. Both annual-close and

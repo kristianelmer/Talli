@@ -1303,7 +1303,9 @@ test("committed retries reach the coordinator before mutable legacy state can re
   assert.doesNotMatch(sale, /investment_positions|investment_lots|validateShareSale/u);
 
   const finalization = ledgerServerActionSource("finalizeCorporateDecision");
-  assert.match(finalization, /verifyCurrentAnnualSource: false/u);
+  assert.match(finalization, /await finalizeOwnerDividend\(/u);
+  assert.match(finalization, /await finalizeAnnualClose\(/u);
+  assert.doesNotMatch(finalization, /verifyCurrentAnnualSource/u);
 
   const payment = ledgerServerActionSource("recordOwnerDividendPayment");
   assert.doesNotMatch(payment, /corporate_decision_finalizations|corporate_document_events|bank_transactions|deriveOpenDividendPayable|validateOwnerDividendPaymentInput/u);

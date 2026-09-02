@@ -7,10 +7,15 @@ set local statement_timeout = '120s';
 do $membership$
 begin
   execute pg_catalog.format(
-    'grant corporate_governance_store_owner to %I', current_user
+    'grant corporate_governance_store_owner, ledger_store_owner to %I',
+    current_user
   );
 end
 $membership$;
+
+select pg_catalog.set_config(
+  'talli.corporate_governance_lifecycle_principal', current_user, true
+);
 
 insert into public.corporate_document_artifacts (
   id, company_id, income_year, set_id, artifact_kind, variant,
@@ -36,7 +41,7 @@ insert into public.corporate_document_events (
 select
   event.id, event.company_id, event.income_year, event.decision_id,
   event.document_set_id, event.artifact_id, event.event_kind,
-  event.created_by, event.created_at, event.decision_hash,
+  event.created_by, event.occurred_at, event.decision_hash,
   event.content_sha256, event.metadata,
   'canonical-event:' || event.id::text, event.created_at
 from corporate_governance.owner_dividend_events event
@@ -51,10 +56,14 @@ drop function if exists
   corporate_governance.record_owner_dividend_event_v1(jsonb, text);
 drop function if exists
   corporate_governance.attest_owner_dividend_signed_artifact_v1(jsonb, text);
+reset role;
+set local role ledger_store_owner;
 drop function if exists
-  corporate_governance.read_corporate_decision_fact_sources_v1(
-    uuid, integer, text, text
-  );
+  backend_system.list_annual_data_legacy_v1(uuid, integer, text);
+revoke usage on schema backend_system
+from corporate_governance_workflow_executor;
+reset role;
+set local role corporate_governance_store_owner;
 drop function if exists
   corporate_governance.read_corporate_lifecycle_v1(uuid[], uuid, text);
 
@@ -171,7 +180,8 @@ alter table corporate_governance.owner_dividend_events
 alter table corporate_governance.owner_dividend_events
   drop column metadata,
   drop column content_sha256,
-  drop column artifact_id;
+  drop column artifact_id,
+  drop column occurred_at;
 alter table corporate_governance.owner_dividend_events
   add constraint owner_dividend_events_event_kind_check check (
     event_kind in ('documents_registered', 'facts_approved')
@@ -194,6 +204,9 @@ alter table corporate_governance.owner_dividend_artifacts
   add constraint owner_dividend_artifacts_decision_id_artifact_kind_key unique (
     decision_id, artifact_kind
   );
+alter table corporate_governance.owner_dividend_decisions
+  drop column supersedes_document_set_id,
+  drop column supersedes_decision_id;
 
 create trigger owner_dividend_events_immutable
 before update or delete on corporate_governance.owner_dividend_events
@@ -205,4 +218,16 @@ for each row execute function
   corporate_governance.prevent_corporate_governance_mutation();
 
 reset role;
+
+do $membership_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke corporate_governance_store_owner, ledger_store_owner from %I',
+    pg_catalog.current_setting(
+      'talli.corporate_governance_lifecycle_principal'
+    )
+  );
+end
+$membership_revoke$;
+
 commit;

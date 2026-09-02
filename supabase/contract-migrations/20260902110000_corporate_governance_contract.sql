@@ -95,12 +95,24 @@ begin
   if exists (
     select 1
     from public.corporate_decisions legacy
+    join public.corporate_document_sets legacy_set
+      on legacy_set.decision_id = legacy.id
     left join corporate_governance.owner_dividend_decisions owner_decision
       on owner_decision.id = legacy.id
       and owner_decision.decision_hash = legacy.decision_hash
+      and owner_decision.document_set_id = legacy_set.id
+      and owner_decision.supersedes_decision_id
+        is not distinct from legacy.supersedes_decision_id
+      and owner_decision.supersedes_document_set_id
+        is not distinct from legacy_set.supersedes_set_id
     left join corporate_governance.annual_close_decisions annual_decision
       on annual_decision.id = legacy.id
       and annual_decision.decision_hash = legacy.decision_hash
+      and annual_decision.document_set_id = legacy_set.id
+      and annual_decision.supersedes_decision_id
+        is not distinct from legacy.supersedes_decision_id
+      and annual_decision.supersedes_document_set_id
+        is not distinct from legacy_set.supersedes_set_id
     where (legacy.decision_kind = 'owner_dividend'
         and owner_decision.id is null)
       or (legacy.decision_kind = 'annual_close'
@@ -166,7 +178,7 @@ begin
           and current.content_sha256 is not distinct from legacy.content_sha256
           and current.metadata = legacy.metadata
           and current.created_by = legacy.actor_id
-          and current.created_at = legacy.occurred_at
+          and current.occurred_at = legacy.occurred_at
           and current.created_at = legacy.created_at
       )
       when legacy.event_kind in (
@@ -190,7 +202,7 @@ begin
           and current.content_sha256 is not distinct from legacy.content_sha256
           and current.metadata = legacy.metadata
           and current.created_by = legacy.actor_id
-          and current.created_at = legacy.occurred_at
+          and current.occurred_at = legacy.occurred_at
           and current.created_at = legacy.created_at
       )
       when legacy.event_kind = 'payment_recorded'

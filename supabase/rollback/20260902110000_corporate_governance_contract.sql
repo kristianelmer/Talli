@@ -245,14 +245,14 @@ select
   decision.id, decision.company_id, decision.income_year,
   'owner_dividend', decision.annual_close_source_id,
   decision.source_hash, decision.canonical_input, decision.decision_hash,
-  null::uuid, decision.created_by, decision.created_at
+  decision.supersedes_decision_id, decision.created_by, decision.created_at
 from corporate_governance.owner_dividend_decisions decision
 union all
 select
   decision.id, decision.company_id, decision.income_year,
   'annual_close', decision.annual_close_source_id,
   decision.source_hash, decision.canonical_input, decision.decision_hash,
-  null::uuid, decision.created_by, decision.created_at
+  decision.supersedes_decision_id, decision.created_by, decision.created_at
 from corporate_governance.annual_close_decisions decision;
 
 insert into public.corporate_document_sets
@@ -260,14 +260,16 @@ select
   decision.document_set_id, decision.company_id, decision.income_year,
   decision.id, decision.canonical_input ->> 'templateFamily',
   decision.canonical_input ->> 'templateVersion', decision.decision_hash,
-  null::uuid, decision.created_by, decision.created_at
+  decision.supersedes_document_set_id, decision.created_by,
+  decision.created_at
 from corporate_governance.owner_dividend_decisions decision
 union all
 select
   decision.document_set_id, decision.company_id, decision.income_year,
   decision.id, decision.canonical_input ->> 'templateFamily',
   decision.canonical_input ->> 'templateVersion', decision.decision_hash,
-  null::uuid, decision.created_by, decision.created_at
+  decision.supersedes_document_set_id, decision.created_by,
+  decision.created_at
 from corporate_governance.annual_close_decisions decision;
 
 insert into public.corporate_document_artifacts
@@ -295,7 +297,7 @@ select
   event.document_set_id, event.artifact_id,
   case when event.event_kind = 'documents_registered'
     then 'generated' else event.event_kind end,
-  event.created_by, event.created_at, event.decision_hash,
+  event.created_by, event.occurred_at, event.decision_hash,
   event.content_sha256, event.metadata,
   'canonical-event:' || event.id::text, event.created_at
 from corporate_governance.owner_dividend_events event
@@ -305,7 +307,7 @@ select
   event.document_set_id, event.artifact_id,
   case when event.event_kind = 'documents_registered'
     then 'generated' else event.event_kind end,
-  event.created_by, event.created_at, event.decision_hash,
+  event.created_by, event.occurred_at, event.decision_hash,
   event.content_sha256, event.metadata,
   'canonical-event:' || event.id::text, event.created_at
 from corporate_governance.annual_close_events event
