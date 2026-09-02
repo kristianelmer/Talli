@@ -1,6 +1,12 @@
 -- Bounded #147 rollback before staged/canonical document state is written.
 begin;
 
+do $migration_authority$
+begin
+  execute pg_catalog.format('grant documents_store_owner to %I', current_user);
+end
+$migration_authority$;
+
 do $guard$
 begin
   if exists (
@@ -151,4 +157,11 @@ for delete to authenticated using (
 );
 
 revoke documents_executor from talli_ledger_backend;
+
+do $migration_authority_cleanup$
+begin
+  execute pg_catalog.format('revoke documents_store_owner from %I', current_user);
+end
+$migration_authority_cleanup$;
+
 commit;

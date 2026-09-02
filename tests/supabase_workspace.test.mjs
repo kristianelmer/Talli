@@ -119,14 +119,6 @@ async function applyMigration() {
       "utf8",
     );
     await client.query(companyAccessContract);
-    // #200 is later than the staged invitation contract and is deliberately
-    // repeatable so this shared current-application rehearsal always restores
-    // the final case-bound support policy/function state.
-    const supportAccessCutover = await readFile(
-      "supabase/migrations/20260830091341_case_bound_support_access.sql",
-      "utf8",
-    );
-    await client.query(supportAccessCutover);
     const contractState = await client.query(String.raw`
       select not pg_catalog.has_table_privilege(
         'authenticated', 'public.company_invitations', 'INSERT'
@@ -206,6 +198,12 @@ async function insertDocumentFixture(document) {
   const database = new pg.Client({ ...getDatabaseConfig() });
   try {
     await database.connect();
+    await database.query("begin");
+    await database.query(String.raw`
+      do $authority$ begin
+        execute pg_catalog.format('grant documents_store_owner to %I', current_user);
+      end $authority$
+    `);
     await database.query(
       `insert into public.documents (
         id, company_id, income_year, document_type, name, linked_to, status,
@@ -219,6 +217,15 @@ async function insertDocumentFixture(document) {
         "a".repeat(64),
       ],
     );
+    await database.query(String.raw`
+      do $authority$ begin
+        execute pg_catalog.format('revoke documents_store_owner from %I', current_user);
+      end $authority$
+    `);
+    await database.query("commit");
+  } catch (error) {
+    await database.query("rollback").catch(() => undefined);
+    throw error;
   } finally {
     await database.end().catch(() => undefined);
   }
@@ -228,6 +235,12 @@ async function listDocumentFixtures(companyId, incomeYear) {
   const database = new pg.Client({ ...getDatabaseConfig() });
   try {
     await database.connect();
+    await database.query("begin");
+    await database.query(String.raw`
+      do $authority$ begin
+        execute pg_catalog.format('grant documents_store_owner to %I', current_user);
+      end $authority$
+    `);
     const result = await database.query(
       `select id, company_id, income_year, document_type, name, linked_to, status,
         retention_years, storage_key, created_by, created_at, removed_at,
@@ -236,7 +249,16 @@ async function listDocumentFixtures(companyId, incomeYear) {
       order by created_at, id`,
       [companyId, incomeYear],
     );
+    await database.query(String.raw`
+      do $authority$ begin
+        execute pg_catalog.format('revoke documents_store_owner from %I', current_user);
+      end $authority$
+    `);
+    await database.query("commit");
     return result.rows;
+  } catch (error) {
+    await database.query("rollback").catch(() => undefined);
+    throw error;
   } finally {
     await database.end().catch(() => undefined);
   }
@@ -277,6 +299,11 @@ async function deleteWorkspaceCompanyFixture(companyId) {
     await database.connect();
     connected = true;
     await database.query("begin");
+    await database.query(String.raw`
+      do $authority$ begin
+        execute pg_catalog.format('grant documents_store_owner to %I', current_user);
+      end $authority$
+    `);
     await database.query(
       `select pg_catalog.set_config(
         'talli.verified_actor_id',
@@ -319,6 +346,11 @@ async function deleteWorkspaceCompanyFixture(companyId) {
     }
     await database.query("delete from public.company_archive_source_generations where company_id = $1", [companyId]);
     await database.query("delete from public.companies where id = $1", [companyId]);
+    await database.query(String.raw`
+      do $authority$ begin
+        execute pg_catalog.format('revoke documents_store_owner from %I', current_user);
+      end $authority$
+    `);
     await database.query("commit");
   } catch (error) {
     operationError = error;

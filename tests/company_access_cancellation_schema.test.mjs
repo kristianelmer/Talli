@@ -85,6 +85,8 @@ test("archive route and generation triggers share one complete source inventory"
     // Ledger is now loaded through its generated capability query instead of
     // a direct Supabase `.from("ledger_entries")` call.
     "ledger_entries",
+    // Documents are now loaded through their owned backup projection.
+    "documents",
     // Investments are now loaded through generated capability queries. These
     // are the canonical persistence sources protected by the generation lock.
     "investments.positions",

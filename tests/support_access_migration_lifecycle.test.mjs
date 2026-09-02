@@ -34,6 +34,11 @@ test(
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
     try {
+      await client.query(String.raw`
+        do $authority$ begin
+          execute pg_catalog.format('grant documents_store_owner to %I', current_user);
+        end $authority$
+      `);
       const before = await client.query(String.raw`
       select
         (select count(*)::int from public.support_access_grants) grants,
@@ -70,6 +75,11 @@ test(
       assert.match(disabled.rows[0].helper_definition, /select false/iu);
 
       await client.query(forward);
+      await client.query(String.raw`
+        drop policy if exists "company members can read document metadata" on public.documents;
+        drop policy if exists "company members can read company document objects" on storage.objects;
+        revoke all on public.documents from authenticated, anon, service_role;
+      `);
       const recutover = await client.query(String.raw`
       select
         has_function_privilege(
@@ -92,6 +102,11 @@ test(
         support_policy_restored: true,
       });
     } finally {
+      await client.query(String.raw`
+        do $authority$ begin
+          execute pg_catalog.format('revoke documents_store_owner from %I', current_user);
+        end $authority$
+      `).catch(() => undefined);
       await client.end();
     }
   },

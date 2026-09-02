@@ -112,6 +112,11 @@ test(
         ) values ($1,$2,'Documents AS','AS','Testveien 1','0150','Oslo','Active','test',$3)
       `, [companyId, orgNumber, actorId]);
 
+      await client.query(String.raw`
+        do $authority$ begin
+          execute pg_catalog.format('grant documents_executor to %I', current_user);
+        end $authority$
+      `);
       await client.query("set local role documents_executor");
       await client.query(
         "select pg_catalog.set_config('talli.verified_actor_id',$1,true)",
