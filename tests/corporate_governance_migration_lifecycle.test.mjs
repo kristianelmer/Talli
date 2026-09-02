@@ -9,6 +9,8 @@ const ownerMigrationName =
   "20260902040000_corporate_governance_owner_dividend.sql";
 const loanMigrationName =
   "20260902070000_corporate_governance_shareholder_loan.sql";
+const loanInitPlanMigrationName =
+  "20260902084230_corporate_governance_shareholder_loan_rls_initplan_cleanup.sql";
 
 async function state(client) {
   const result = await client.query(String.raw`
@@ -101,6 +103,63 @@ test(
           owner_banking_bridge: true,
           shareholder_loan_banking_bridge: true,
         });
+      }
+    } finally {
+      await client.end();
+    }
+  },
+);
+
+test(
+  "shareholder-loan RLS cleanup rollback and recutover are repeatable twice",
+  { skip: !databaseUrl && "DATABASE_URL is required", timeout: 120_000 },
+  async () => {
+    const [forward, rollback] = await Promise.all([
+      readFile(
+        new URL(
+          `../supabase/migrations/${loanInitPlanMigrationName}`,
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+      readFile(
+        new URL(
+          `../supabase/rollback/${loanInitPlanMigrationName}`,
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ]);
+    const client = new Client({ connectionString: databaseUrl });
+    await client.connect();
+    try {
+      for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
+        await client.query(rollback);
+        const restored = await client.query(String.raw`
+          select pg_catalog.pg_get_expr(policy.polwithcheck, policy.polrelid)
+            as expression
+          from pg_catalog.pg_policy policy
+          where policy.polrelid =
+            'corporate_governance.shareholder_loans'::regclass
+            and policy.polname = 'governance_owner_creates_shareholder_loans'
+        `);
+        assert.doesNotMatch(
+          restored.rows[0].expression,
+          /SELECT company_access_is_accepted_owner_v1/iu,
+        );
+        await client.query(forward);
+        const optimized = await client.query(String.raw`
+          select pg_catalog.pg_get_expr(policy.polwithcheck, policy.polrelid)
+            as expression
+          from pg_catalog.pg_policy policy
+          where policy.polrelid =
+            'corporate_governance.shareholder_loans'::regclass
+            and policy.polname = 'governance_owner_creates_shareholder_loans'
+        `);
+        assert.match(
+          optimized.rows[0].expression,
+          /SELECT company_access_is_accepted_owner_v1/iu,
+        );
       }
     } finally {
       await client.end();

@@ -42,6 +42,14 @@ const shareholderLoanContractRollbackPath = new URL(
   "../supabase/rollback/20260902071000_corporate_governance_shareholder_loan_contract.sql",
   import.meta.url,
 );
+const shareholderLoanInitPlanPath = new URL(
+  "../supabase/migrations/20260902084230_corporate_governance_shareholder_loan_rls_initplan_cleanup.sql",
+  import.meta.url,
+);
+const shareholderLoanInitPlanRollbackPath = new URL(
+  "../supabase/rollback/20260902084230_corporate_governance_shareholder_loan_rls_initplan_cleanup.sql",
+  import.meta.url,
+);
 
 function artifact(path, phase) {
   assert.equal(existsSync(path), true, `missing governance ${phase} artifact`);
@@ -300,4 +308,23 @@ test("shareholder-loan contract cutover capsules the predecessor writer", () => 
   ]) {
     assert.match(rollback, new RegExp(field, "iu"));
   }
+});
+
+test("shareholder-loan insert policy init-plans both actor checks reversibly", () => {
+  const cleanup = artifact(
+    shareholderLoanInitPlanPath,
+    "shareholder-loan RLS init-plan cleanup",
+  );
+  const rollback = artifact(
+    shareholderLoanInitPlanRollbackPath,
+    "shareholder-loan RLS init-plan cleanup rollback",
+  );
+  assert.match(
+    cleanup,
+    /created_by\s*=\s*\(\s*select\s+nullif[\s\S]+and\s*\(\s*select\s+public\.company_access_is_accepted_owner_v1\(company_id\)\s*\)/iu,
+  );
+  assert.match(
+    rollback,
+    /created_by\s*=\s*nullif[\s\S]+and\s+public\.company_access_is_accepted_owner_v1\(company_id\)/iu,
+  );
 });
