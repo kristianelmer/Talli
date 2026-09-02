@@ -67,6 +67,30 @@ grant execute on function
   )
 to corporate_governance_store_owner;
 
+create table corporate_governance.owner_dividend_accounting_policies (
+  policy_version text primary key check (pg_catalog.btrim(policy_version) <> ''),
+  declaration_debit_account text not null check (
+    declaration_debit_account ~ '^[0-9]{4}$'
+  ),
+  dividend_payable_account text not null check (
+    dividend_payable_account ~ '^[0-9]{4}$'
+  ),
+  bank_account text not null check (bank_account ~ '^[0-9]{4}$'),
+  reviewer text not null check (pg_catalog.btrim(reviewer) <> ''),
+  reviewed_at timestamptz not null,
+  evidence_reference text not null check (
+    pg_catalog.btrim(evidence_reference) <> ''
+  ),
+  supersedes_policy_version text unique references
+    corporate_governance.owner_dividend_accounting_policies(policy_version)
+    on delete restrict,
+  enabled boolean not null,
+  recorded_by uuid not null references auth.users(id) on delete restrict,
+  created_at timestamptz not null,
+  check (declaration_debit_account <> dividend_payable_account),
+  check (dividend_payable_account <> bank_account)
+);
+
 create table corporate_governance.owner_dividend_decisions (
   id uuid primary key,
   document_set_id uuid not null unique,
@@ -117,7 +141,7 @@ create table corporate_governance.owner_dividend_artifacts (
     'dividend_board_proposal',
     'dividend_general_meeting_minutes'
   )),
-  document_id uuid not null references public.documents(id) on delete restrict,
+  document_id uuid not null,
   content_sha256 text not null check (content_sha256 ~ '^[0-9a-f]{64}$'),
   byte_length bigint not null check (byte_length between 1 and 10485760),
   created_by uuid not null references auth.users(id) on delete restrict,
@@ -175,6 +199,12 @@ create table corporate_governance.owner_dividend_finalizations (
   accounting_entry_id uuid not null unique references ledger.entries(id)
     on delete restrict,
   declared_amount_ore bigint not null check (declared_amount_ore > 0),
+  signed_artifact_hashes jsonb not null check (
+    pg_catalog.jsonb_typeof(signed_artifact_hashes) = 'object'
+  ),
+  accounting_policy_version text not null references
+    corporate_governance.owner_dividend_accounting_policies(policy_version)
+    on delete restrict,
   idempotency_key text not null check (
     idempotency_key ~ '^[A-Za-z0-9._:-]{16,255}$'
   ),
@@ -214,6 +244,9 @@ create table corporate_governance.owner_dividend_payments (
   bank_source_sha256 text not null check (
     bank_source_sha256 ~ '^[0-9a-f]{64}$'
   ),
+  accounting_policy_version text not null references
+    corporate_governance.owner_dividend_accounting_policies(policy_version)
+    on delete restrict,
   idempotency_key text not null check (
     idempotency_key ~ '^[A-Za-z0-9._:-]{16,255}$'
   ),
@@ -251,6 +284,583 @@ on corporate_governance.owner_dividend_payments(
   decision_id, created_at, id
 );
 
+insert into corporate_governance.owner_dividend_accounting_policies (
+  policy_version, declaration_debit_account, dividend_payable_account,
+  bank_account, reviewer, reviewed_at, evidence_reference,
+  supersedes_policy_version, enabled, recorded_by, created_at
+)
+select
+  policy.policy_version, policy.declaration_debit_account,
+  policy.dividend_payable_account, policy.bank_account, policy.reviewer,
+  policy.reviewed_at, policy.evidence_reference,
+  policy.supersedes_policy_version, policy.enabled, policy.recorded_by,
+  policy.created_at
+from public.corporate_accounting_policies policy
+on conflict (policy_version) do nothing;
+
+-- #148 still owns the shared signed-artifact lifecycle and its owner pages.
+-- These exact, private compatibility routines preserve the characterized hard
+-- block and project committed #144 receipts until that stage exits.
+create or replace function backend_system.owner_dividend_signed_evidence_v1(
+  p_decision_id uuid,
+  p_document_set_id uuid,
+  p_company_id uuid,
+  p_income_year integer,
+  p_decision_hash text
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  v_count integer;
+  v_hashes jsonb;
+  v_primary_document_id uuid;
+begin
+  if not exists (
+    select 1
+    from public.corporate_decisions decision
+    join public.corporate_document_sets document_set
+      on document_set.decision_id = decision.id
+    where decision.id = p_decision_id
+      and decision.company_id = p_company_id
+      and decision.income_year = p_income_year
+      and decision.decision_kind = 'owner_dividend'
+      and decision.decision_hash = p_decision_hash
+      and document_set.id = p_document_set_id
+      and document_set.decision_hash = p_decision_hash
+  ) then
+    raise exception 'corporate_governance_missing_signed_artifacts';
+  end if;
+  select pg_catalog.count(*),
+    pg_catalog.jsonb_object_agg(
+      artifact.artifact_kind, artifact.content_sha256
+    )
+  into v_count, v_hashes
+  from public.corporate_document_artifacts artifact
+  where artifact.set_id = p_document_set_id
+    and artifact.variant = 'signed_owner_attested'
+    and artifact.artifact_kind in (
+      'dividend_board_proposal',
+      'dividend_general_meeting_minutes'
+    );
+  select artifact.document_id into v_primary_document_id
+  from public.corporate_document_artifacts artifact
+  where artifact.set_id = p_document_set_id
+    and artifact.variant = 'signed_owner_attested'
+    and artifact.artifact_kind = 'dividend_general_meeting_minutes';
+  if v_count <> 2
+    or not coalesce(v_hashes ? 'dividend_board_proposal', false)
+    or not coalesce(
+      v_hashes ? 'dividend_general_meeting_minutes', false
+    )
+    or v_primary_document_id is null
+  then
+    raise exception 'corporate_governance_missing_signed_artifacts';
+  end if;
+  return pg_catalog.jsonb_build_object(
+    'signedArtifactHashes', v_hashes,
+    'primaryDocumentId', v_primary_document_id
+  );
+end;
+$function$;
+
+create or replace function
+backend_system.project_owner_dividend_finalization_v1(
+  p_request jsonb,
+  p_accounting_policy_version text,
+  p_signed_artifact_hashes jsonb,
+  p_verified_subject text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_actor_id uuid := public.company_access_auth_uid_v1();
+  v_decision public.corporate_decisions%rowtype;
+  v_primary_document_id uuid;
+begin
+  if v_actor_id is null
+    or p_verified_subject !~ '^[0-9a-fA-F-]{36}$'
+    or v_actor_id is distinct from p_verified_subject::uuid
+  then
+    raise exception 'corporate_governance_forbidden';
+  end if;
+  select decision.* into v_decision
+  from public.corporate_decisions decision
+  where decision.id = (p_request ->> 'decisionId')::uuid
+    and decision.company_id = (p_request ->> 'companyId')::uuid
+    and decision.income_year = (p_request ->> 'incomeYear')::integer
+    and decision.decision_hash = p_request ->> 'decisionHash';
+  if not found or not exists (
+    select 1 from public.corporate_document_sets document_set
+    where document_set.id = (p_request ->> 'documentSetId')::uuid
+      and document_set.decision_id = v_decision.id
+      and document_set.decision_hash = v_decision.decision_hash
+  ) then
+    raise exception 'corporate_governance_invalid_input';
+  end if;
+  select artifact.document_id into v_primary_document_id
+  from public.corporate_document_artifacts artifact
+  where artifact.set_id = (p_request ->> 'documentSetId')::uuid
+    and artifact.variant = 'signed_owner_attested'
+    and artifact.artifact_kind = 'dividend_general_meeting_minutes';
+
+  insert into public.holding_actions (
+    id, company_id, income_year, action_type, action_date, payload,
+    ledger_entry_id, document_id, risk_level, created_by
+  ) values (
+    (p_request ->> 'holdingActionId')::uuid, v_decision.company_id,
+    v_decision.income_year, 'dividend_to_owner',
+    (v_decision.canonical_input -> 'general_meeting' ->> 'meeting_date')::date,
+    v_decision.canonical_input || pg_catalog.jsonb_build_object(
+      'action_kind', 'owner_dividend_declaration',
+      'corporate_decision_id', v_decision.id,
+      'accounting_policy_version', p_accounting_policy_version
+    ),
+    (p_request ->> 'ledgerEntryId')::uuid, v_primary_document_id,
+    'ready', v_actor_id
+  );
+  insert into public.corporate_decision_finalizations (
+    id, company_id, income_year, decision_id, finalization_kind,
+    holding_action_id, ledger_entry_id, decision_hash,
+    signed_artifact_hashes, accounting_policy_version, created_by
+  ) values (
+    (p_request ->> 'finalizationId')::uuid, v_decision.company_id,
+    v_decision.income_year, v_decision.id, 'owner_dividend_declared',
+    (p_request ->> 'holdingActionId')::uuid,
+    (p_request ->> 'ledgerEntryId')::uuid, v_decision.decision_hash,
+    p_signed_artifact_hashes, p_accounting_policy_version, v_actor_id
+  );
+  insert into public.corporate_document_events (
+    id, company_id, income_year, decision_id, set_id, event_kind,
+    actor_id, decision_hash, metadata, idempotency_key
+  ) values (
+    (p_request ->> 'finalizationId')::uuid, v_decision.company_id,
+    v_decision.income_year, v_decision.id,
+    (p_request ->> 'documentSetId')::uuid, 'finalized', v_actor_id,
+    v_decision.decision_hash, pg_catalog.jsonb_build_object(
+      'finalization_id', (p_request ->> 'finalizationId')::uuid,
+      'finalization_kind', 'owner_dividend_declared',
+      'signed_artifact_hashes', p_signed_artifact_hashes,
+      'accounting_policy_version', p_accounting_policy_version
+    ), p_request ->> 'idempotencyKey'
+  );
+  insert into public.audit_events (
+    company_id, actor_id, category, action, message
+  ) values (
+    v_decision.company_id, v_actor_id, 'corporate_documents',
+    'corporate_decision_finalized',
+    'Owner finalized an approved and owner-attested corporate decision.'
+  );
+end;
+$function$;
+
+create or replace function
+backend_system.project_owner_dividend_payment_v1(
+  p_request jsonb,
+  p_payment_amount_ore bigint,
+  p_accounting_policy_version text,
+  p_verified_subject text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_actor_id uuid := public.company_access_auth_uid_v1();
+  v_decision public.corporate_decisions%rowtype;
+  v_finalization public.corporate_decision_finalizations%rowtype;
+  v_remaining_ore bigint;
+begin
+  if v_actor_id is null
+    or p_verified_subject !~ '^[0-9a-fA-F-]{36}$'
+    or v_actor_id is distinct from p_verified_subject::uuid
+  then
+    raise exception 'corporate_governance_forbidden';
+  end if;
+  select decision.* into v_decision
+  from public.corporate_decisions decision
+  where decision.id = (p_request ->> 'decisionId')::uuid
+    and decision.company_id = (p_request ->> 'companyId')::uuid
+    and decision.income_year = (p_request ->> 'incomeYear')::integer
+    and decision.decision_hash = p_request ->> 'decisionHash';
+  select finalization.* into v_finalization
+  from public.corporate_decision_finalizations finalization
+  where finalization.decision_id = v_decision.id
+    and finalization.finalization_kind = 'owner_dividend_declared'
+    and finalization.accounting_policy_version = p_accounting_policy_version;
+  if v_decision.id is null or v_finalization.id is null then
+    raise exception 'corporate_governance_finalized_declaration_required';
+  end if;
+  select
+    (v_decision.canonical_input -> 'dividend' ->> 'amount_ore')::bigint
+      - coalesce(pg_catalog.sum(
+        (event.metadata ->> 'amount_ore')::bigint
+      ), 0)
+      - p_payment_amount_ore
+  into v_remaining_ore
+  from public.corporate_document_events event
+  where event.decision_id = v_decision.id
+    and event.event_kind = 'payment_recorded';
+
+  insert into public.holding_actions (
+    id, company_id, income_year, action_type, action_date, payload,
+    ledger_entry_id, bank_transaction_id, risk_level, created_by
+  ) values (
+    (p_request ->> 'holdingActionId')::uuid, v_decision.company_id,
+    v_decision.income_year, 'dividend_to_owner',
+    (p_request ->> 'bankTransactionDate')::date,
+    pg_catalog.jsonb_build_object(
+      'action_kind', 'owner_dividend_payment',
+      'corporate_decision_id', v_decision.id,
+      'corporate_finalization_id', v_finalization.id,
+      'amount_ore', p_payment_amount_ore,
+      'remaining_payable_ore', v_remaining_ore,
+      'accounting_policy_version', p_accounting_policy_version
+    ),
+    (p_request ->> 'ledgerEntryId')::uuid,
+    (p_request ->> 'bankTransactionId')::uuid, 'ready', v_actor_id
+  );
+  insert into public.corporate_document_events (
+    id, company_id, income_year, decision_id, set_id, event_kind,
+    actor_id, decision_hash, metadata, idempotency_key
+  ) values (
+    (p_request ->> 'paymentEventId')::uuid, v_decision.company_id,
+    v_decision.income_year, v_decision.id,
+    (p_request ->> 'documentSetId')::uuid, 'payment_recorded',
+    v_actor_id, v_decision.decision_hash,
+    pg_catalog.jsonb_build_object(
+      'bank_transaction_id', (p_request ->> 'bankTransactionId')::uuid,
+      'holding_action_id', (p_request ->> 'holdingActionId')::uuid,
+      'ledger_entry_id', (p_request ->> 'ledgerEntryId')::uuid,
+      'amount_ore', p_payment_amount_ore,
+      'remaining_payable_ore', v_remaining_ore,
+      'accounting_policy_version', p_accounting_policy_version
+    ), p_request ->> 'idempotencyKey'
+  );
+  insert into public.audit_events (
+    company_id, actor_id, category, action, message
+  ) values (
+    v_decision.company_id, v_actor_id, 'corporate_documents',
+    'owner_dividend_payment_recorded',
+    'Bank payment matched to finalized owner dividend payable.'
+  );
+end;
+$function$;
+
+revoke all on function
+  backend_system.owner_dividend_signed_evidence_v1(
+    uuid, uuid, uuid, integer, text
+  ),
+  backend_system.project_owner_dividend_finalization_v1(
+    jsonb, text, jsonb, text
+  ),
+  backend_system.project_owner_dividend_payment_v1(
+    jsonb, bigint, text, text
+  )
+from public, anon, authenticated, service_role,
+  corporate_governance_workflow_executor;
+grant usage on schema backend_system to corporate_governance_store_owner;
+grant execute on function
+  backend_system.owner_dividend_signed_evidence_v1(
+    uuid, uuid, uuid, integer, text
+  ),
+  backend_system.project_owner_dividend_finalization_v1(
+    jsonb, text, jsonb, text
+  ),
+  backend_system.project_owner_dividend_payment_v1(
+    jsonb, bigint, text, text
+  )
+to corporate_governance_store_owner;
+
+-- Import the predecessor owner-dividend slice before forced RLS is enabled.
+-- IDs, hashes, actors, timestamps, Ledger references, and bank references stay
+-- stable so rollback/recutover can reconcile without inventing business facts.
+insert into corporate_governance.owner_dividend_decisions (
+  id, document_set_id, company_id, income_year, annual_close_source_id,
+  source_hash, canonical_input, decision_hash, declared_amount_ore,
+  idempotency_key, correlation_id, request_fingerprint, created_by, created_at
+)
+select
+  decision.id, document_set.id, decision.company_id, decision.income_year,
+  decision.annual_close_source_id, decision.source_hash,
+  pg_catalog.jsonb_build_object(
+    'decisionId', decision.id,
+    'documentSetId', document_set.id,
+    'companyId', decision.company_id,
+    'organizationNumber', decision.canonical_input ->> 'organization_number',
+    'legalName', decision.canonical_input ->> 'legal_name',
+    'incomeYear', decision.income_year,
+    'annualCloseSourceId', decision.annual_close_source_id,
+    'sourceHash', decision.source_hash,
+    'templateFamily', decision.canonical_input ->> 'template_family',
+    'templateVersion', decision.canonical_input ->> 'template_version',
+    'annualBasisYear',
+      (decision.canonical_input ->> 'annual_basis_year')::integer,
+    'financialTotals', pg_catalog.jsonb_build_object(
+      'resultAfterTaxOre',
+        (decision.canonical_input -> 'financial_totals'
+          ->> 'result_after_tax_ore')::bigint,
+      'equityOre',
+        (decision.canonical_input -> 'financial_totals'
+          ->> 'equity_ore')::bigint,
+      'availableDistributionOre',
+        (decision.canonical_input -> 'financial_totals'
+          ->> 'available_distribution_ore')::bigint,
+      'cashOre',
+        (decision.canonical_input -> 'financial_totals'
+          ->> 'cash_ore')::bigint
+    ),
+    'boardMeeting', pg_catalog.jsonb_build_object(
+      'meetingDate', decision.canonical_input -> 'board_meeting'
+        ->> 'meeting_date',
+      'meetingTime', decision.canonical_input -> 'board_meeting'
+        ->> 'meeting_time',
+      'place', decision.canonical_input -> 'board_meeting' ->> 'place',
+      'treatmentMethod', decision.canonical_input -> 'board_meeting'
+        ->> 'treatment_method'
+    ),
+    'boardParticipants', coalesce((
+      select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+        'participantId', participant.item ->> 'participant_id',
+        'name', participant.item ->> 'name',
+        'role', participant.item ->> 'role'
+      ) order by participant.ordinality)
+      from pg_catalog.jsonb_array_elements(
+        decision.canonical_input -> 'board_participants'
+      ) with ordinality participant(item, ordinality)
+    ), '[]'::jsonb),
+    'generalMeeting', pg_catalog.jsonb_build_object(
+      'meetingDate', decision.canonical_input -> 'general_meeting'
+        ->> 'meeting_date',
+      'meetingTime', decision.canonical_input -> 'general_meeting'
+        ->> 'meeting_time',
+      'place', decision.canonical_input -> 'general_meeting' ->> 'place',
+      'meetingForm', decision.canonical_input -> 'general_meeting'
+        ->> 'meeting_form',
+      'chairName', decision.canonical_input -> 'general_meeting'
+        ->> 'chair_name',
+      'coSignerName', decision.canonical_input -> 'general_meeting'
+        ->> 'co_signer_name'
+    ),
+    'shareholders', coalesce((
+      select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+        'shareholderId', shareholder.item ->> 'shareholder_id',
+        'name', shareholder.item ->> 'name',
+        'shareCount', (shareholder.item ->> 'share_count')::bigint,
+        'representedShareCount',
+          (shareholder.item ->> 'represented_share_count')::bigint,
+        'vote', shareholder.item ->> 'vote'
+      ) order by shareholder.ordinality)
+      from pg_catalog.jsonb_array_elements(
+        decision.canonical_input -> 'shareholders'
+      ) with ordinality shareholder(item, ordinality)
+    ), '[]'::jsonb),
+    'totalCompanyShares',
+      (decision.canonical_input ->> 'total_company_shares')::bigint,
+    'oneShareClassConfirmed',
+      (decision.canonical_input ->> 'one_share_class_confirmed')::boolean,
+    'dividend', pg_catalog.jsonb_build_object(
+      'amountOre',
+        (decision.canonical_input -> 'dividend' ->> 'amount_ore')::bigint,
+      'paymentDate',
+        decision.canonical_input -> 'dividend' ->> 'payment_date',
+      'liquidityAfterPaymentOre',
+        (decision.canonical_input -> 'dividend'
+          ->> 'liquidity_after_payment_ore')::bigint,
+      'allocations', coalesce((
+        select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+          'shareholderId', allocation.item ->> 'shareholder_id',
+          'amountOre', (allocation.item ->> 'amount_ore')::bigint
+        ) order by allocation.ordinality)
+        from pg_catalog.jsonb_array_elements(
+          decision.canonical_input -> 'dividend' -> 'allocations'
+        ) with ordinality allocation(item, ordinality)
+      ), '[]'::jsonb)
+    ),
+    'annualResultAllocationOre',
+      (decision.canonical_input ->> 'annual_result_allocation_ore')::bigint,
+    'confirmations', pg_catalog.jsonb_build_object(
+      'latestApprovedAnnualAccounts',
+        (decision.canonical_input -> 'confirmations'
+          ->> 'latest_approved_annual_accounts')::boolean,
+      'supportedDividendBasis',
+        (decision.canonical_input -> 'confirmations'
+          ->> 'supported_dividend_basis')::boolean,
+      'fullBoardParticipation',
+        (decision.canonical_input -> 'confirmations'
+          ->> 'full_board_participation')::boolean,
+      'fullShareRepresentation',
+        (decision.canonical_input -> 'confirmations'
+          ->> 'full_share_representation')::boolean,
+      'unanimousBoard',
+        (decision.canonical_input -> 'confirmations'
+          ->> 'unanimous_board')::boolean,
+      'unanimousShareholders',
+        (decision.canonical_input -> 'confirmations'
+          ->> 'unanimous_shareholders')::boolean,
+      'proportionalAllocation',
+        (decision.canonical_input -> 'confirmations'
+          ->> 'proportional_allocation')::boolean,
+      'prudentEquityAndLiquidity',
+        (decision.canonical_input -> 'confirmations'
+          ->> 'prudent_equity_and_liquidity')::boolean
+    ),
+    'decisionHash', decision.decision_hash
+  ),
+  decision.decision_hash,
+  (decision.canonical_input -> 'dividend' ->> 'amount_ore')::bigint,
+  'legacy-owner-dividend:' || decision.id::text,
+  'legacy-owner-dividend:' || decision.id::text,
+  pg_catalog.encode(extensions.digest(pg_catalog.jsonb_build_object(
+    'legacyDecisionId', decision.id,
+    'decisionHash', decision.decision_hash
+  )::text, 'sha256'), 'hex'),
+  decision.created_by, decision.created_at
+from public.corporate_decisions decision
+join public.corporate_document_sets document_set
+  on document_set.decision_id = decision.id
+where decision.decision_kind = 'owner_dividend'
+on conflict (id) do nothing;
+
+insert into corporate_governance.owner_dividend_artifacts (
+  id, decision_id, document_set_id, company_id, income_year,
+  artifact_kind, document_id, content_sha256, byte_length,
+  created_by, created_at
+)
+select
+  artifact.id, document_set.decision_id, artifact.set_id,
+  artifact.company_id, artifact.income_year, artifact.artifact_kind,
+  artifact.document_id, artifact.content_sha256, artifact.byte_length,
+  artifact.created_by, artifact.created_at
+from public.corporate_document_artifacts artifact
+join public.corporate_document_sets document_set
+  on document_set.id = artifact.set_id
+join public.corporate_decisions decision
+  on decision.id = document_set.decision_id
+where decision.decision_kind = 'owner_dividend'
+  and artifact.variant = 'unsigned'
+on conflict (id) do nothing;
+
+insert into corporate_governance.owner_dividend_events (
+  id, decision_id, document_set_id, company_id, income_year,
+  event_kind, decision_hash, idempotency_key, correlation_id,
+  request_fingerprint, created_by, created_at
+)
+select
+  pg_catalog.md5('owner-dividend-documents:' || decision.id::text)::uuid,
+  decision.id, document_set.id, decision.company_id, decision.income_year,
+  'documents_registered', decision.decision_hash,
+  'legacy-documents:' || decision.id::text,
+  'legacy-documents:' || decision.id::text,
+  pg_catalog.encode(extensions.digest(pg_catalog.jsonb_build_object(
+    'legacyDecisionId', decision.id,
+    'eventKind', 'documents_registered'
+  )::text, 'sha256'), 'hex'),
+  decision.created_by, pg_catalog.max(artifact.created_at)
+from public.corporate_decisions decision
+join public.corporate_document_sets document_set
+  on document_set.decision_id = decision.id
+join public.corporate_document_artifacts artifact
+  on artifact.set_id = document_set.id and artifact.variant = 'unsigned'
+where decision.decision_kind = 'owner_dividend'
+group by decision.id, document_set.id
+having pg_catalog.count(*) = 2
+  and pg_catalog.count(distinct artifact.artifact_kind) = 2
+on conflict (id) do nothing;
+
+insert into corporate_governance.owner_dividend_events (
+  id, decision_id, document_set_id, company_id, income_year,
+  event_kind, decision_hash, idempotency_key, correlation_id,
+  request_fingerprint, created_by, created_at
+)
+select
+  event.id, event.decision_id, event.set_id, event.company_id,
+  event.income_year, 'facts_approved', event.decision_hash,
+  'legacy-approval:' || event.id::text,
+  'legacy-approval:' || event.id::text,
+  pg_catalog.encode(extensions.digest(pg_catalog.jsonb_build_object(
+    'legacyEventId', event.id, 'eventKind', 'facts_approved'
+  )::text, 'sha256'), 'hex'),
+  event.actor_id, event.created_at
+from public.corporate_document_events event
+join public.corporate_decisions decision on decision.id = event.decision_id
+where decision.decision_kind = 'owner_dividend'
+  and event.event_kind = 'facts_approved'
+on conflict (id) do nothing;
+
+insert into corporate_governance.owner_dividend_finalizations (
+  id, decision_id, document_set_id, company_id, income_year,
+  decision_hash, holding_action_id, accounting_entry_id,
+  declared_amount_ore, signed_artifact_hashes,
+  accounting_policy_version, idempotency_key, correlation_id,
+  request_fingerprint, created_by, created_at
+)
+select
+  finalization.id, finalization.decision_id, document_set.id,
+  finalization.company_id, finalization.income_year,
+  finalization.decision_hash, finalization.holding_action_id,
+  finalization.ledger_entry_id,
+  (decision.canonical_input -> 'dividend' ->> 'amount_ore')::bigint,
+  finalization.signed_artifact_hashes,
+  finalization.accounting_policy_version,
+  'legacy-finalization:' || finalization.id::text,
+  'legacy-finalization:' || finalization.id::text,
+  pg_catalog.encode(extensions.digest(pg_catalog.jsonb_build_object(
+    'legacyFinalizationId', finalization.id,
+    'decisionHash', finalization.decision_hash
+  )::text, 'sha256'), 'hex'),
+  finalization.created_by, finalization.created_at
+from public.corporate_decision_finalizations finalization
+join public.corporate_decisions decision
+  on decision.id = finalization.decision_id
+join public.corporate_document_sets document_set
+  on document_set.decision_id = decision.id
+where finalization.finalization_kind = 'owner_dividend_declared'
+on conflict (id) do nothing;
+
+insert into corporate_governance.owner_dividend_payments (
+  id, decision_id, document_set_id, company_id, income_year,
+  decision_hash, holding_action_id, accounting_entry_id,
+  bank_transaction_id, payment_amount_ore, bank_transaction_date,
+  bank_signed_amount, bank_source_sha256, accounting_policy_version,
+  idempotency_key, correlation_id, request_fingerprint,
+  created_by, created_at
+)
+select
+  event.id, event.decision_id, event.set_id, event.company_id,
+  event.income_year, event.decision_hash,
+  (event.metadata ->> 'holding_action_id')::uuid,
+  (event.metadata ->> 'ledger_entry_id')::uuid,
+  (event.metadata ->> 'bank_transaction_id')::uuid,
+  (event.metadata ->> 'amount_ore')::bigint,
+  transaction.transaction_date, transaction.amount,
+  transaction.source_hash, finalization.accounting_policy_version,
+  'legacy-payment:' || event.id::text,
+  'legacy-payment:' || event.id::text,
+  pg_catalog.encode(extensions.digest(pg_catalog.jsonb_build_object(
+    'legacyPaymentEventId', event.id,
+    'bankTransactionId', event.metadata ->> 'bank_transaction_id'
+  )::text, 'sha256'), 'hex'),
+  event.actor_id, event.created_at
+from public.corporate_document_events event
+join public.corporate_decisions decision on decision.id = event.decision_id
+join public.corporate_decision_finalizations finalization
+  on finalization.decision_id = decision.id
+join banking.transactions transaction
+  on transaction.id = (event.metadata ->> 'bank_transaction_id')::uuid
+where decision.decision_kind = 'owner_dividend'
+  and event.event_kind = 'payment_recorded'
+on conflict (id) do nothing;
+
+alter table corporate_governance.owner_dividend_accounting_policies
+  owner to corporate_governance_store_owner;
 alter table corporate_governance.owner_dividend_decisions
   owner to corporate_governance_store_owner;
 alter table corporate_governance.owner_dividend_artifacts
@@ -264,6 +874,10 @@ alter table corporate_governance.owner_dividend_payments
 
 alter table corporate_governance.owner_dividend_decisions
   enable row level security;
+alter table corporate_governance.owner_dividend_accounting_policies
+  enable row level security;
+alter table corporate_governance.owner_dividend_accounting_policies
+  force row level security;
 alter table corporate_governance.owner_dividend_decisions
   force row level security;
 alter table corporate_governance.owner_dividend_artifacts
@@ -286,6 +900,9 @@ alter table corporate_governance.owner_dividend_payments
 revoke all on corporate_governance.owner_dividend_decisions
 from public, anon, authenticated, service_role,
   corporate_governance_workflow_executor;
+revoke all on corporate_governance.owner_dividend_accounting_policies
+from public, anon, authenticated, service_role,
+  corporate_governance_workflow_executor;
 revoke all on corporate_governance.owner_dividend_artifacts
 from public, anon, authenticated, service_role,
   corporate_governance_workflow_executor;
@@ -300,6 +917,11 @@ from public, anon, authenticated, service_role,
   corporate_governance_workflow_executor;
 
 set local role corporate_governance_store_owner;
+
+create policy governance_reads_accounting_policies
+on corporate_governance.owner_dividend_accounting_policies
+for select to corporate_governance_store_owner
+using (true);
 
 create policy governance_owner_reads_decisions
 on corporate_governance.owner_dividend_decisions
@@ -384,6 +1006,11 @@ $function$;
 
 create trigger owner_dividend_decisions_immutable
 before update or delete on corporate_governance.owner_dividend_decisions
+for each row execute function
+  corporate_governance.prevent_corporate_governance_mutation();
+create trigger owner_dividend_accounting_policies_immutable
+before update or delete on
+  corporate_governance.owner_dividend_accounting_policies
 for each row execute function
   corporate_governance.prevent_corporate_governance_mutation();
 create trigger owner_dividend_artifacts_immutable
@@ -915,6 +1542,9 @@ declare
   v_actor_id uuid;
   v_decision corporate_governance.owner_dividend_decisions%rowtype;
   v_existing corporate_governance.owner_dividend_finalizations%rowtype;
+  v_policy corporate_governance.owner_dividend_accounting_policies%rowtype;
+  v_policy_count integer;
+  v_signed_evidence jsonb;
   v_fingerprint text;
 begin
   begin
@@ -955,8 +1585,15 @@ begin
     then
       raise exception 'corporate_governance_idempotency_conflict';
     end if;
+    select policy.* into v_policy
+    from corporate_governance.owner_dividend_accounting_policies policy
+    where policy.policy_version = v_existing.accounting_policy_version;
     return pg_catalog.jsonb_build_object(
       'declaredAmountOre', v_decision.declared_amount_ore,
+      'accountingPolicyVersion', v_policy.policy_version,
+      'declarationDebitAccount', v_policy.declaration_debit_account,
+      'dividendPayableAccount', v_policy.dividend_payable_account,
+      'signedArtifactHashes', v_existing.signed_artifact_hashes,
       'replay', corporate_governance.owner_dividend_lifecycle_v1(
         v_decision.id, true
       )
@@ -976,8 +1613,39 @@ begin
   then
     raise exception 'corporate_governance_invalid_input';
   end if;
+  select pg_catalog.count(*) into v_policy_count
+  from corporate_governance.owner_dividend_accounting_policies policy
+  where policy.enabled
+    and not exists (
+      select 1
+      from corporate_governance.owner_dividend_accounting_policies successor
+      where successor.enabled
+        and successor.supersedes_policy_version = policy.policy_version
+    );
+  if v_policy_count <> 1 then
+    raise exception 'corporate_governance_accounting_policy_disabled';
+  end if;
+  select policy.* into v_policy
+  from corporate_governance.owner_dividend_accounting_policies policy
+  where policy.enabled
+    and not exists (
+      select 1
+      from corporate_governance.owner_dividend_accounting_policies successor
+      where successor.enabled
+        and successor.supersedes_policy_version = policy.policy_version
+    )
+  order by policy.reviewed_at desc, policy.policy_version
+  limit 1;
+  v_signed_evidence := backend_system.owner_dividend_signed_evidence_v1(
+    v_decision.id, v_decision.document_set_id, v_decision.company_id,
+    v_decision.income_year, v_decision.decision_hash
+  );
   return pg_catalog.jsonb_build_object(
     'declaredAmountOre', v_decision.declared_amount_ore,
+    'accountingPolicyVersion', v_policy.policy_version,
+    'declarationDebitAccount', v_policy.declaration_debit_account,
+    'dividendPayableAccount', v_policy.dividend_payable_account,
+    'signedArtifactHashes', v_signed_evidence -> 'signedArtifactHashes',
     'replay', null
   );
 end;
@@ -1011,7 +1679,8 @@ begin
     p_verified_subject, true
   );
   v_fingerprint := corporate_governance.request_fingerprint_v1(
-    p_request - 'declaredAmountOre'
+    p_request - 'declaredAmountOre' - 'accountingPolicyVersion'
+      - 'signedArtifactHashes'
   );
   select finalization.* into v_existing
   from corporate_governance.owner_dividend_finalizations finalization
@@ -1034,6 +1703,14 @@ begin
     or p_request ->> 'decisionHash' <> v_decision.decision_hash
     or (p_request ->> 'declaredAmountOre')::bigint
       <> v_decision.declared_amount_ore
+    or coalesce(p_request ->> 'accountingPolicyVersion', '') = ''
+    or pg_catalog.jsonb_typeof(p_request -> 'signedArtifactHashes')
+      is distinct from 'object'
+    or not exists (
+      select 1
+      from corporate_governance.owner_dividend_accounting_policies policy
+      where policy.policy_version = p_request ->> 'accountingPolicyVersion'
+    )
     or not exists (
       select 1 from corporate_governance.owner_dividend_events event
       where event.decision_id = v_decision.id
@@ -1045,7 +1722,8 @@ begin
   insert into corporate_governance.owner_dividend_finalizations (
     id, decision_id, document_set_id, company_id, income_year,
     decision_hash, holding_action_id, accounting_entry_id,
-    declared_amount_ore, idempotency_key, correlation_id,
+    declared_amount_ore, signed_artifact_hashes,
+    accounting_policy_version, idempotency_key, correlation_id,
     request_fingerprint, created_by
   ) values (
     (p_request ->> 'finalizationId')::uuid, v_decision.id,
@@ -1053,8 +1731,15 @@ begin
     v_decision.income_year, v_decision.decision_hash,
     (p_request ->> 'holdingActionId')::uuid,
     (p_request ->> 'ledgerEntryId')::uuid,
-    v_decision.declared_amount_ore, p_request ->> 'idempotencyKey',
+    v_decision.declared_amount_ore,
+    p_request -> 'signedArtifactHashes',
+    p_request ->> 'accountingPolicyVersion',
+    p_request ->> 'idempotencyKey',
     p_request ->> 'correlationId', v_fingerprint, v_actor_id
+  );
+  perform backend_system.project_owner_dividend_finalization_v1(
+    p_request, p_request ->> 'accountingPolicyVersion',
+    p_request -> 'signedArtifactHashes', p_verified_subject
   );
   return corporate_governance.owner_dividend_lifecycle_v1(
     v_decision.id, false
@@ -1180,6 +1865,8 @@ declare
   v_actor_id uuid;
   v_decision corporate_governance.owner_dividend_decisions%rowtype;
   v_existing corporate_governance.owner_dividend_payments%rowtype;
+  v_finalization corporate_governance.owner_dividend_finalizations%rowtype;
+  v_policy corporate_governance.owner_dividend_accounting_policies%rowtype;
   v_bank jsonb;
   v_paid_ore bigint;
   v_payment_ore bigint;
@@ -1222,11 +1909,17 @@ begin
     then
       raise exception 'corporate_governance_idempotency_conflict';
     end if;
+    select policy.* into v_policy
+    from corporate_governance.owner_dividend_accounting_policies policy
+    where policy.policy_version = v_existing.accounting_policy_version;
     return pg_catalog.jsonb_build_object(
       'paymentAmountOre', v_existing.payment_amount_ore,
       'bankTransactionDate', v_existing.bank_transaction_date,
       'bankSignedAmount', v_existing.bank_signed_amount,
       'bankSourceSha256', v_existing.bank_source_sha256,
+      'accountingPolicyVersion', v_policy.policy_version,
+      'dividendPayableAccount', v_policy.dividend_payable_account,
+      'bankAccount', v_policy.bank_account,
       'replay', corporate_governance.owner_dividend_lifecycle_v1(
         v_decision.id, true
       )
@@ -1236,13 +1929,20 @@ begin
     or (p_request ->> 'incomeYear')::integer <> v_decision.income_year
     or p_request ->> 'documentSetId' <> v_decision.document_set_id::text
     or p_request ->> 'decisionHash' <> v_decision.decision_hash
-    or not exists (
-      select 1
-      from corporate_governance.owner_dividend_finalizations finalization
-      where finalization.decision_id = v_decision.id
-    )
   then
     raise exception 'corporate_governance_finalized_declaration_required';
+  end if;
+  select finalization.* into v_finalization
+  from corporate_governance.owner_dividend_finalizations finalization
+  where finalization.decision_id = v_decision.id;
+  if not found then
+    raise exception 'corporate_governance_finalized_declaration_required';
+  end if;
+  select policy.* into v_policy
+  from corporate_governance.owner_dividend_accounting_policies policy
+  where policy.policy_version = v_finalization.accounting_policy_version;
+  if not found then
+    raise exception 'corporate_governance_accounting_policy_disabled';
   end if;
   v_bank := banking.prepare_owner_dividend_transaction_v1(
     p_request, p_verified_subject
@@ -1264,6 +1964,9 @@ begin
     'bankTransactionDate', v_bank ->> 'bankTransactionDate',
     'bankSignedAmount', v_bank ->> 'bankSignedAmount',
     'bankSourceSha256', v_bank ->> 'bankSourceSha256',
+    'accountingPolicyVersion', v_policy.policy_version,
+    'dividendPayableAccount', v_policy.dividend_payable_account,
+    'bankAccount', v_policy.bank_account,
     'replay', null
   );
 end;
@@ -1300,6 +2003,7 @@ begin
   v_fingerprint := corporate_governance.request_fingerprint_v1(
     p_request - 'paymentAmountOre' - 'bankTransactionDate'
       - 'bankSignedAmount' - 'bankSourceSha256'
+      - 'accountingPolicyVersion'
   );
   select payment.* into v_existing
   from corporate_governance.owner_dividend_payments payment
@@ -1332,6 +2036,8 @@ begin
       select 1
       from corporate_governance.owner_dividend_finalizations finalization
       where finalization.decision_id = v_decision.id
+        and finalization.accounting_policy_version =
+          p_request ->> 'accountingPolicyVersion'
     )
   then
     raise exception 'corporate_governance_invalid_input';
@@ -1349,8 +2055,8 @@ begin
     id, decision_id, document_set_id, company_id, income_year,
     decision_hash, holding_action_id, accounting_entry_id,
     bank_transaction_id, payment_amount_ore, bank_transaction_date,
-    bank_signed_amount, bank_source_sha256, idempotency_key,
-    correlation_id, request_fingerprint, created_by
+    bank_signed_amount, bank_source_sha256, accounting_policy_version,
+    idempotency_key, correlation_id, request_fingerprint, created_by
   ) values (
     (p_request ->> 'paymentEventId')::uuid, v_decision.id,
     v_decision.document_set_id, v_decision.company_id,
@@ -1361,8 +2067,14 @@ begin
     (p_request ->> 'paymentAmountOre')::bigint,
     (p_request ->> 'bankTransactionDate')::date,
     (p_request ->> 'bankSignedAmount')::numeric,
-    p_request ->> 'bankSourceSha256', p_request ->> 'idempotencyKey',
+    p_request ->> 'bankSourceSha256',
+    p_request ->> 'accountingPolicyVersion',
+    p_request ->> 'idempotencyKey',
     p_request ->> 'correlationId', v_fingerprint, v_actor_id
+  );
+  perform backend_system.project_owner_dividend_payment_v1(
+    p_request, (p_request ->> 'paymentAmountOre')::bigint,
+    p_request ->> 'accountingPolicyVersion', p_verified_subject
   );
   return corporate_governance.owner_dividend_lifecycle_v1(
     v_decision.id, false

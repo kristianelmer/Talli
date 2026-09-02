@@ -461,7 +461,6 @@ def test_ledger_http_contract_exposes_only_ledger_owned_user_intents() -> None:
         "ledgerLockPeriod",
         "ledgerPostAdministrativeCost",
         "ledgerPostManualJournal",
-        "ledgerPostOwnerDividendPayment",
         "ledgerPostShareholderLoan",
         "ledgerPostTaxSettlement",
         "ledgerFinalizeCorporateDecision",
@@ -470,6 +469,7 @@ def test_ledger_http_contract_exposes_only_ledger_owned_user_intents() -> None:
     } <= operations
     assert not {
         "ledgerPostOwnerDividendDeclared",
+        "ledgerPostOwnerDividendPayment",
         "ledgerPostInvestmentSale",
         "ledgerPostStructuredEntry",
     } & operations
@@ -530,19 +530,6 @@ def test_cross_capability_writers_bind_business_facts_to_one_ledger_result() -> 
                 "setId": set_id,
                 "decisionHash": decision_hash,
                 "finalizationId": operation_id,
-                "holdingActionId": holding_action_id,
-                "ledgerEntryId": str(ENTRY_ID),
-            },
-        ),
-        (
-            "/api/v1/ledger/owner-dividends/payments",
-            "OWNER_DIVIDEND_PAYMENT",
-            {
-                **common,
-                "decisionId": decision_id,
-                "setId": set_id,
-                "decisionHash": decision_hash,
-                "bankTransactionId": bank_id,
                 "holdingActionId": holding_action_id,
                 "ledgerEntryId": str(ENTRY_ID),
             },

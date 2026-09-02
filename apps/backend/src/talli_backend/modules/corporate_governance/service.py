@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 import unicodedata
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from enum import Enum
 from typing import Any
 
@@ -31,22 +31,6 @@ from talli_backend.modules.corporate_governance.public import (
 _ORG_NUMBER = re.compile(r"^[0-9]{9}$")
 _TEMPLATE_FAMILY = "norwegian_simple_as"
 _TEMPLATE_VERSION = "corporate-no-v1-reportlab-5.0.0-noto-ffebf8c1"
-
-
-@dataclass(frozen=True, slots=True)
-class OwnerDividendAccountingPolicy:
-    version: str
-    declaration_debit_account: str
-    dividend_payable_account: str
-    bank_account: str
-
-
-_OWNER_DIVIDEND_POLICY = OwnerDividendAccountingPolicy(
-    version="no-holding-v1",
-    declaration_debit_account="2050",
-    dividend_payable_account="2920",
-    bank_account="1920",
-)
 
 
 def _fail(code: CorporateGovernanceErrorCode, message: str) -> None:
@@ -208,10 +192,6 @@ def canonical_owner_dividend_payload(
 
 
 class CorporateGovernanceService:
-    @staticmethod
-    def owner_dividend_accounting_policy() -> OwnerDividendAccountingPolicy:
-        return _OWNER_DIVIDEND_POLICY
-
     def build_owner_dividend_decision(
         self,
         command: OwnerDividendProposalCommand,
@@ -507,6 +487,5 @@ class CorporateGovernanceService:
 
 __all__ = [
     "CorporateGovernanceService",
-    "OwnerDividendAccountingPolicy",
     "canonical_owner_dividend_payload",
 ]

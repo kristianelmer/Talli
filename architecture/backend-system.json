@@ -175,7 +175,6 @@
         "/api/v1/ledger/shareholder-loans",
         "/api/v1/ledger/tax-settlements",
         "/api/v1/ledger/corporate-decisions/finalizations",
-        "/api/v1/ledger/owner-dividends/payments",
         "/api/v1/ledger/manual-journals"
       ]
     }

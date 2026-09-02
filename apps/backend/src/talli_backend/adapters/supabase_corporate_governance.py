@@ -228,6 +228,16 @@ def _map_governance_database_error(message: str):
             CorporateGovernanceErrorCode.PAYMENT_EXCEEDS_PAYABLE,
             "Owner-dividend payment exceeds the remaining payable.",
         )
+    if "corporate_governance_accounting_policy_disabled" in message:
+        return CorporateGovernanceError.precondition(
+            CorporateGovernanceErrorCode.ACCOUNTING_POLICY_NOT_APPROVED,
+            "An approved owner-dividend accounting policy is required.",
+        )
+    if "corporate_governance_missing_signed_artifacts" in message:
+        return CorporateGovernanceError.precondition(
+            CorporateGovernanceErrorCode.MISSING_SIGNED_ARTIFACTS,
+            "Both required owner-attested signed documents are required.",
+        )
     if "banking_transaction_already_reconciled" in message:
         return CorporateGovernanceError.precondition(
             CorporateGovernanceErrorCode.BANK_TRANSACTION_ALREADY_MATCHED,
@@ -445,6 +455,13 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
         replay = result.get("replay")
         return PreparedOwnerDividendFinalization(
             declared_amount_ore=int(result["declaredAmountOre"]),
+            accounting_policy_version=str(result["accountingPolicyVersion"]),
+            declaration_debit_account=str(result["declarationDebitAccount"]),
+            dividend_payable_account=str(result["dividendPayableAccount"]),
+            signed_artifact_hashes={
+                str(key): str(value)
+                for key, value in dict(result["signedArtifactHashes"]).items()
+            },
             replay=_lifecycle(replay) if isinstance(replay, Mapping) else None,
         )
 
@@ -466,6 +483,8 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
                 "holdingActionId": str(command.holding_action_id),
                 "ledgerEntryId": str(accounting_entry_id),
                 "declaredAmountOre": prepared.declared_amount_ore,
+                "accountingPolicyVersion": prepared.accounting_policy_version,
+                "signedArtifactHashes": prepared.signed_artifact_hashes,
             },
         ))
 
@@ -495,6 +514,9 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
             ),
             bank_signed_amount=Money.nok(str(result["bankSignedAmount"])),
             bank_source_sha256=str(result["bankSourceSha256"]),
+            accounting_policy_version=str(result["accountingPolicyVersion"]),
+            dividend_payable_account=str(result["dividendPayableAccount"]),
+            bank_account=str(result["bankAccount"]),
             replay=_lifecycle(replay) if isinstance(replay, Mapping) else None,
         )
 
@@ -520,6 +542,7 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
                 "bankTransactionDate": prepared.bank_transaction_date.value.isoformat(),
                 "bankSignedAmount": format(prepared.bank_signed_amount.amount, "f"),
                 "bankSourceSha256": prepared.bank_source_sha256,
+                "accountingPolicyVersion": prepared.accounting_policy_version,
             },
         ))
 

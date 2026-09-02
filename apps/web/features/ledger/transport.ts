@@ -7,7 +7,6 @@ import {
   type LedgerLockPeriodWire,
   type LedgerManualJournalWire,
   type LedgerOpeningSnapshotWire,
-  type LedgerOwnerDividendPaymentWire,
   type LedgerPeriodLockWire,
   type LedgerReconstructionAssessmentWire,
   type LedgerShareholderLoanWire,
@@ -307,18 +306,6 @@ export function finalizeLedgerCorporateDecision(
   requestId?: string,
 ) {
   return client(accessToken).ledgerFinalizeCorporateDecision(
-    command,
-    mutationRequest(idempotencyKey, requestId),
-  );
-}
-
-export function postLedgerOwnerDividendPayment(
-  accessToken: string,
-  command: LedgerOwnerDividendPaymentWire,
-  idempotencyKey: string,
-  requestId?: string,
-) {
-  return client(accessToken).ledgerPostOwnerDividendPayment(
     command,
     mutationRequest(idempotencyKey, requestId),
   );

@@ -1231,7 +1231,7 @@ test("all relocated ledger writers use the stable operation ID at the generated 
     recordAdminCost: ["postLedgerAdministrativeCost", null],
     recordDividendReceived: ["recognizeInvestmentReceivedDividend", "eventId"],
     finalizeCorporateDecision: ["finalizeLedgerCorporateDecision", "finalizationId"],
-    recordOwnerDividendPayment: ["postLedgerOwnerDividendPayment", null],
+    recordOwnerDividendPayment: ["recordOwnerDividendPaymentThroughApi", "paymentEventId"],
     recordShareholderLoan: ["postLedgerShareholderLoan", "actionId"],
     recordTaxSettlement: ["postLedgerTaxSettlement", "actionId"],
   };
@@ -1329,8 +1329,21 @@ test("unknown coordinator outcomes preserve only the scoped retry operation", ()
   };
   for (const [actionName, fields] of Object.entries(retryFields)) {
     const action = ledgerServerActionSource(actionName);
-    assert.match(action, /ledgerOutcomeMayBeUnknown\(error\)/u, actionName);
-    assert.match(action, /ledgerActionErrorMessage\(error\)/u, actionName);
+    const governance = actionName === "recordOwnerDividendPayment";
+    assert.match(
+      action,
+      governance
+        ? /corporateGovernanceOutcomeMayBeUnknown\(error\)/u
+        : /ledgerOutcomeMayBeUnknown\(error\)/u,
+      actionName,
+    );
+    assert.match(
+      action,
+      governance
+        ? /corporateGovernanceActionErrorMessage\(error\)/u
+        : /ledgerActionErrorMessage\(error\)/u,
+      actionName,
+    );
     for (const field of fields) assert.match(action, new RegExp(field, "u"), actionName);
   }
 

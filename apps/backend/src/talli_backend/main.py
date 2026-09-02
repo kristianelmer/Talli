@@ -80,7 +80,6 @@ from talli_backend.application.ledger_workflow import (
     LedgerWriterResult,
     NewYearStartCommand,
     RecordAdministrativeCostCommand,
-    RecordOwnerDividendPaymentCommand,
     RecordShareholderLoanCommand,
     RecordTaxSettlementCommand,
 )
@@ -1807,15 +1806,6 @@ class LedgerCorporateDecisionFinalizationWire(LedgerCompanyYearWire):
         if (self.holding_action_id is None) is not (self.ledger_entry_id is None):
             raise ValueError("owner-dividend identifiers must be complete")
         return self
-
-
-class LedgerOwnerDividendPaymentWire(LedgerCompanyYearWire):
-    decision_id: UUID
-    set_id: UUID
-    decision_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
-    bank_transaction_id: UUID
-    holding_action_id: UUID
-    ledger_entry_id: UUID
 
 
 class LedgerManualJournalWire(LedgerCompanyYearWire):
@@ -6878,43 +6868,6 @@ def create_app(
             return ledger_writer_wire(
                 result, company_id=command.company_id, income_year=command.income_year,
                 expected_kind=expected,
-            )
-
-        return await ledger_call(execute)
-
-    @application.post(
-        "/api/v1/ledger/owner-dividends/payments",
-        operation_id="ledgerPostOwnerDividendPayment",
-        response_model=LedgerWriterResultWire,
-        status_code=201,
-        responses={201: {"description": "Owner-dividend payment recorded atomically."} | ledger_success}
-        | ledger_errors,
-        tags=["ledger-workflows"],
-        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
-    )
-    async def record_ledger_owner_dividend_payment(
-        request: Request,
-        command: LedgerOwnerDividendPaymentWire,
-        idempotency_key: Annotated[
-            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
-        ],
-        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
-    ) -> LedgerWriterResultWire:
-        async def execute() -> LedgerWriterResultWire:
-            session = await ledger_application.session(bearer_token(credentials))
-            domain = ledger_input(lambda: RecordOwnerDividendPaymentCommand(
-                company_id=CompanyId(str(command.company_id)), actor_id=session.actor_id,
-                correlation_id=ledger_correlation(request), idempotency_key=IdempotencyKey(idempotency_key),
-                income_year=IncomeYear(command.income_year), decision_id=LedgerSourceRecordId(str(command.decision_id)),
-                set_id=LedgerSourceRecordId(str(command.set_id)), decision_hash=command.decision_hash,
-                bank_transaction_id=LedgerSourceRecordId(str(command.bank_transaction_id)),
-                holding_action_id=LedgerSourceRecordId(str(command.holding_action_id)),
-                ledger_entry_id=LedgerEntryId(str(command.ledger_entry_id)),
-            ))
-            result = await session.record_owner_dividend_payment(domain)
-            return ledger_writer_wire(
-                result, company_id=command.company_id, income_year=command.income_year,
-                expected_kind=LedgerEntryKind.OWNER_DIVIDEND_PAYMENT,
             )
 
         return await ledger_call(execute)

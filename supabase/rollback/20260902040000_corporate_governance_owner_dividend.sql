@@ -19,15 +19,59 @@ $membership$;
 do $safety$
 begin
   if exists (
-    select 1 from corporate_governance.owner_dividend_decisions
+    select 1
+    from corporate_governance.owner_dividend_decisions source
+    left join public.corporate_decisions target on target.id = source.id
+      and target.decision_hash = source.decision_hash
+    left join public.corporate_document_sets document_set
+      on document_set.id = source.document_set_id
+      and document_set.decision_id = source.id
+      and document_set.decision_hash = source.decision_hash
+    where target.id is null or document_set.id is null
   ) or exists (
-    select 1 from corporate_governance.owner_dividend_artifacts
+    select 1
+    from corporate_governance.owner_dividend_artifacts source
+    left join public.corporate_document_artifacts target
+      on target.id = source.id
+      and target.document_id = source.document_id
+      and target.content_sha256 = source.content_sha256
+      and target.byte_length = source.byte_length
+    where target.id is null
   ) or exists (
-    select 1 from corporate_governance.owner_dividend_events
+    select 1
+    from corporate_governance.owner_dividend_events source
+    where source.event_kind = 'facts_approved'
+      and not exists (
+        select 1 from public.corporate_document_events target
+        where target.decision_id = source.decision_id
+          and target.event_kind = 'facts_approved'
+          and target.decision_hash = source.decision_hash
+      )
   ) or exists (
-    select 1 from corporate_governance.owner_dividend_finalizations
+    select 1
+    from corporate_governance.owner_dividend_finalizations source
+    left join public.corporate_decision_finalizations target
+      on target.id = source.id
+      and target.decision_id = source.decision_id
+      and target.ledger_entry_id = source.accounting_entry_id
+      and target.holding_action_id = source.holding_action_id
+      and target.decision_hash = source.decision_hash
+    where target.id is null
   ) or exists (
-    select 1 from corporate_governance.owner_dividend_payments
+    select 1
+    from corporate_governance.owner_dividend_payments source
+    where not exists (
+      select 1 from public.corporate_document_events target
+      where target.id = source.id
+        and target.decision_id = source.decision_id
+        and target.event_kind = 'payment_recorded'
+        and (target.metadata ->> 'bank_transaction_id')::uuid
+          = source.bank_transaction_id
+        and (target.metadata ->> 'ledger_entry_id')::uuid
+          = source.accounting_entry_id
+        and (target.metadata ->> 'holding_action_id')::uuid
+          = source.holding_action_id
+    )
   ) then
     raise exception 'corporate_governance_owner_dividend_rollback_unsafe';
   end if;
@@ -77,6 +121,28 @@ revoke usage on schema banking
 from corporate_governance_workflow_executor,
   corporate_governance_store_owner;
 
+revoke execute on function
+  backend_system.owner_dividend_signed_evidence_v1(
+    uuid, uuid, uuid, integer, text
+  ),
+  backend_system.project_owner_dividend_finalization_v1(
+    jsonb, text, jsonb, text
+  ),
+  backend_system.project_owner_dividend_payment_v1(
+    jsonb, bigint, text, text
+  )
+from corporate_governance_store_owner;
+drop function backend_system.project_owner_dividend_payment_v1(
+  jsonb, bigint, text, text
+);
+drop function backend_system.project_owner_dividend_finalization_v1(
+  jsonb, text, jsonb, text
+);
+drop function backend_system.owner_dividend_signed_evidence_v1(
+  uuid, uuid, uuid, integer, text
+);
+revoke usage on schema backend_system from corporate_governance_store_owner;
+
 set local role corporate_governance_store_owner;
 drop function corporate_governance.actor_company_role_v1(uuid, text);
 drop function corporate_governance.propose_owner_dividend_v1(
@@ -110,6 +176,7 @@ drop table corporate_governance.owner_dividend_finalizations;
 drop table corporate_governance.owner_dividend_events;
 drop table corporate_governance.owner_dividend_artifacts;
 drop table corporate_governance.owner_dividend_decisions;
+drop table corporate_governance.owner_dividend_accounting_policies;
 drop function corporate_governance.prevent_corporate_governance_mutation();
 drop schema corporate_governance;
 reset role;

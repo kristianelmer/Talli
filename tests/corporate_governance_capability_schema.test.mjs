@@ -27,6 +27,7 @@ test("owner-dividend expand owns an isolated forced-RLS store", () => {
   assert.match(source, /create schema if not exists corporate_governance\s+authorization corporate_governance_store_owner/iu);
 
   for (const table of [
+    "owner_dividend_accounting_policies",
     "owner_dividend_decisions",
     "owner_dividend_artifacts",
     "owner_dividend_events",
@@ -42,6 +43,11 @@ test("owner-dividend expand owns an isolated forced-RLS store", () => {
   assert.doesNotMatch(
     source,
     /grant (?:select|insert|update|delete|all)[\s\S]+to (?:public|anon|authenticated|service_role)/iu,
+  );
+  assert.doesNotMatch(source, /references\s+public\.documents/iu);
+  assert.match(
+    source,
+    /insert into corporate_governance\.owner_dividend_accounting_policies[\s\S]+from public\.corporate_accounting_policies/iu,
   );
 });
 
@@ -62,8 +68,14 @@ test("owner-dividend lifecycle is available only through exact restricted routin
   }
   assert.match(source, /function ledger\.post_corporate_governance_entry_v1/iu);
   assert.match(source, /function banking\.claim_owner_dividend_transaction_v1/iu);
+  assert.match(source, /function backend_system\.owner_dividend_signed_evidence_v1/iu);
+  assert.match(source, /function\s+backend_system\.project_owner_dividend_finalization_v1/iu);
+  assert.match(source, /function\s+backend_system\.project_owner_dividend_payment_v1/iu);
   assert.match(source, /grant execute on function[\s\S]+to corporate_governance_workflow_executor/iu);
-  assert.doesNotMatch(source, /grant execute on function[\s\S]+to (?:public|anon|authenticated|service_role)/iu);
+  assert.doesNotMatch(
+    source,
+    /grant execute on function[^;]+to (?:public|anon|authenticated|service_role)\s*;/iu,
+  );
   assert.doesNotMatch(source, /\b(?:2050|2920|1920|no-holding-v1)\b/u);
 });
 
@@ -85,10 +97,14 @@ test("owner-dividend persistence is exact-replay, append-only, and reversible", 
     "owner_dividend_events",
     "owner_dividend_artifacts",
     "owner_dividend_decisions",
+    "owner_dividend_accounting_policies",
   ]) {
     assert.match(rollback, new RegExp(`drop table corporate_governance\\.${table}`, "iu"));
   }
   assert.match(rollback, /drop function ledger\.post_corporate_governance_entry_v1/iu);
   assert.match(rollback, /drop function banking\.claim_owner_dividend_transaction_v1/iu);
+  assert.match(rollback, /drop function backend_system\.owner_dividend_signed_evidence_v1/iu);
+  assert.match(rollback, /drop function backend_system\.project_owner_dividend_finalization_v1/iu);
+  assert.match(rollback, /drop function backend_system\.project_owner_dividend_payment_v1/iu);
   assert.match(rollback, /drop schema corporate_governance/iu);
 });

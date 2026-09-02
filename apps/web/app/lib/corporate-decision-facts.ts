@@ -1,15 +1,16 @@
 import { createHash } from "node:crypto";
 
 import type { CorporateDecisionInput } from "./corporate-documents.ts";
-import {
-  allocateDividendOreProportionally,
-  CorporateDecisionFactsError,
-} from "./dividend-allocation.ts";
 
-export {
-  allocateDividendOreProportionally,
-  CorporateDecisionFactsError,
-} from "./dividend-allocation.ts";
+export class CorporateDecisionFactsError extends Error {
+  readonly code: string;
+
+  constructor(message: string, code: string) {
+    super(message);
+    this.name = "CorporateDecisionFactsError";
+    this.code = code;
+  }
+}
 
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -88,11 +89,6 @@ export type CorporateMeetingSubmission = {
   supportedDividendBasisConfirmed: boolean;
   prudentEquityAndLiquidityConfirmed: boolean;
   reviewedFacts: ReviewedCorporateFacts;
-};
-
-export type OwnerDividendDecisionSubmission = CorporateMeetingSubmission & {
-  dividendAmountOre: number;
-  paymentDate: string;
 };
 
 export type AnnualCloseDecisionSubmission = CorporateMeetingSubmission & {
@@ -285,7 +281,6 @@ function normalizedMeetingFacts(
 
 function buildCommonDecisionInput<TSubmission extends CorporateMeetingSubmission>(
   input: CorporateDecisionFactsInput<TSubmission>,
-  decisionKind: "owner_dividend" | "annual_close",
 ) {
   const company = {
     ...input.company,
@@ -308,7 +303,7 @@ function buildCommonDecisionInput<TSubmission extends CorporateMeetingSubmission
     organization_number: company.organizationNumber,
     legal_name: company.legalName,
     income_year: input.submission.incomeYear,
-    decision_kind: decisionKind,
+    decision_kind: "annual_close" as const,
     annual_close_source_id: input.annualBasis.id,
     source_hash: corporateAnnualSourceHash(input.annualBasis),
     template_family: "norwegian_simple_as" as const,
@@ -340,51 +335,10 @@ function buildCommonDecisionInput<TSubmission extends CorporateMeetingSubmission
   };
 }
 
-export function buildOwnerDividendDecisionInput(
-  input: CorporateDecisionFactsInput<OwnerDividendDecisionSubmission>,
-): CorporateDecisionInput {
-  const common = buildCommonDecisionInput(input, "owner_dividend");
-  assertSafeInteger(input.submission.dividendAmountOre, "Utbyttebeløp", 1);
-  if (!DATE_PATTERN.test(input.submission.paymentDate)) {
-    throw new CorporateDecisionFactsError(
-      "Betalingsdato er ugyldig.",
-      "corporate_documents_invalid_meeting_facts",
-    );
-  }
-  const allocations = allocateDividendOreProportionally(
-    input.submission.dividendAmountOre,
-    common.sortedShareholders.map((shareholder) => ({
-      shareholderId: shareholder.id,
-      shareCount: shareholder.shareCount,
-      order: shareholder.order,
-    })),
-  );
-  if (allocations.some(({ amountOre }) => amountOre <= 0)) {
-    throw new CorporateDecisionFactsError(
-      "Utbyttebeløpet er for lite til en positiv proporsjonal fordeling.",
-      "corporate_documents_zero_allocation",
-    );
-  }
-  const { sortedShareholders: _sortedShareholders, ...decision } = common;
-  return {
-    ...decision,
-    dividend: {
-      amount_ore: input.submission.dividendAmountOre,
-      payment_date: input.submission.paymentDate,
-      liquidity_after_payment_ore: input.annualBasis.cashOre - input.submission.dividendAmountOre,
-      allocations: allocations.map((allocation) => ({
-        shareholder_id: allocation.shareholderId,
-        amount_ore: allocation.amountOre,
-      })),
-    },
-    annual_result_allocation_ore: input.annualBasis.resultAfterTaxOre,
-  };
-}
-
 export function buildAnnualCloseDecisionInput(
   input: CorporateDecisionFactsInput<AnnualCloseDecisionSubmission>,
 ): CorporateDecisionInput {
-  const common = buildCommonDecisionInput(input, "annual_close");
+  const common = buildCommonDecisionInput(input);
   assertSafeInteger(
     input.submission.annualResultAllocationOre,
     "Resultatdisponering",

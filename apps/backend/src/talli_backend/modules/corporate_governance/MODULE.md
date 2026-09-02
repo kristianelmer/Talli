@@ -1,7 +1,7 @@
 # Corporate governance backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["corporate_governance.owner_dividend_artifacts","corporate_governance.owner_dividend_decisions","corporate_governance.owner_dividend_events","corporate_governance.owner_dividend_finalizations","corporate_governance.owner_dividend_payments"],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
+{"dependencies":[],"ownedTables":["corporate_governance.owner_dividend_accounting_policies","corporate_governance.owner_dividend_artifacts","corporate_governance.owner_dividend_decisions","corporate_governance.owner_dividend_events","corporate_governance.owner_dividend_finalizations","corporate_governance.owner_dividend_payments"],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
 -->
 
 ## Purpose and ownership
@@ -45,10 +45,9 @@ uses `CanonicalOwnerDividendDecision`, `CanonicalBoardParticipant`,
 `OwnerDividendFacts`, `OwnerDividendAllocation`, `OwnerDividendConfirmations`,
 `ProposedOwnerDividend`, `OwnerDividendLifecycle`, and `OwnerDividendState`.
 `PreparedOwnerDividendFinalization` and `PreparedOwnerDividendPayment` expose
-only the normalized amounts and locked bank fact needed by the application
-workflow; they do not expose persistence rows or choose accounts. The private
-`OwnerDividendAccountingPolicy` keeps the characterized `no-holding-v1`
-2050/2920/1920 mapping in Python.
+only the normalized amounts, locked bank fact, and versioned account mapping
+selected by the append-only governance policy store. They do not expose
+persistence rows, and the application does not choose accounts.
 
 Stable owned identities are `CorporateDecisionId`, `CorporateDocumentSetId`,
 `CorporateArtifactId`, `CorporateEventId`, `CorporateFinalizationId`, and

@@ -2,10 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  CorporateDecisionFactsError,
-  allocateDividendOreProportionally,
   buildAnnualCloseDecisionInput,
-  buildOwnerDividendDecisionInput,
   corporateAnnualSourceHash,
 } from "../apps/web/app/lib/corporate-decision-facts.ts";
 import { corporateDecisionHash } from "../apps/web/app/lib/corporate-documents.ts";
@@ -79,91 +76,25 @@ const meetingSubmission = {
   reviewedFacts,
 };
 
-function ownerInput() {
+function annualInput() {
   return {
     company: structuredClone(company),
     shareholders: structuredClone(shareholders),
     annualBasis: structuredClone(annualBasis),
     submission: {
       ...structuredClone(meetingSubmission),
-      dividendAmountOre: 10_000_001,
-      paymentDate: "2025-07-01",
+      annualResultAllocationOre: annualBasis.resultAfterTaxOre,
     },
   };
 }
 
-test("largest-remainder allocation is deterministic in integer øre", () => {
-  assert.deepEqual(
-    allocateDividendOreProportionally(5, [
-      { shareholderId: "b", shareCount: 2, order: 2 },
-      { shareholderId: "a", shareCount: 1, order: 1 },
-    ]),
-    [
-      { shareholderId: "a", amountOre: 2 },
-      { shareholderId: "b", amountOre: 3 },
-    ],
-  );
-  assert.equal(
-    allocateDividendOreProportionally(10_000_001, [
-      { shareholderId: "shareholder-1", shareCount: 600, order: 1 },
-      { shareholderId: "shareholder-2", shareCount: 400, order: 2 },
-    ]).reduce((sum, allocation) => sum + allocation.amountOre, 0),
-    10_000_001,
-  );
-});
-
-test("owner-dividend facts come only from persisted identity, shareholders, and approved annual totals", () => {
-  const decision = buildOwnerDividendDecisionInput(ownerInput());
-
-  assert.equal(decision.legal_name, company.legalName);
-  assert.equal(decision.organization_number, company.organizationNumber);
-  assert.equal(decision.total_company_shares, 1000);
-  assert.deepEqual(decision.shareholders.map(({ shareholder_id, share_count }) => [shareholder_id, share_count]), [
-    ["shareholder-1", 600],
-    ["shareholder-2", 400],
-  ]);
-  assert.deepEqual(decision.board_participants.map(({ participant_id, name }) => [participant_id, name]), [
-    ["board-1", "Åse Nordmann"],
-    ["board-2", "Jørgen Østby"],
-  ]);
-  assert.equal(decision.financial_totals.available_distribution_ore, 30_000_000);
-  assert.equal(decision.dividend.liquidity_after_payment_ore, 29_999_999);
-  assert.deepEqual(decision.dividend.allocations, [
-    { shareholder_id: "shareholder-1", amount_ore: 6_000_001 },
-    { shareholder_id: "shareholder-2", amount_ore: 4_000_000 },
-  ]);
-  assert.equal(decision.source_hash, corporateAnnualSourceHash(annualBasis));
-});
-
-test("stale or tampered reviewed facts are rejected instead of silently replaced", () => {
-  const mutations = [
-    (input) => { input.submission.reviewedFacts.legalName = "OTHER AS"; },
-    (input) => { input.submission.reviewedFacts.shareholders[0].shareCount = 601; },
-    (input) => { input.submission.reviewedFacts.totalCompanyShares = 999; },
-    (input) => { input.submission.reviewedFacts.availableDistributionOre += 1; },
-    (input) => { input.submission.reviewedFacts.annualDataHash = "c".repeat(64); },
-    (input) => { input.submission.reviewedFacts.annualAccountsPayloadHash = "d".repeat(64); },
-  ];
-  for (const mutate of mutations) {
-    const input = ownerInput();
-    mutate(input);
-    assert.throws(
-      () => buildOwnerDividendDecisionInput(input),
-      (error) => error instanceof CorporateDecisionFactsError
-        && error.code === "corporate_documents_reviewed_facts_changed",
-    );
-  }
-});
-
 test("annual-close input binds both annual-data and annual-account payload hashes", () => {
-  const input = ownerInput();
+  const input = annualInput();
   input.annualBasis.incomeYear = 2025;
   input.submission.requestId = "44444444-4444-4444-8444-444444444444";
   input.submission.boardMeeting.meetingDate = "2026-04-15";
   input.submission.generalMeeting.meetingDate = "2026-05-10";
   input.submission.annualResultAllocationOre = input.annualBasis.resultAfterTaxOre;
-  delete input.submission.dividendAmountOre;
-  delete input.submission.paymentDate;
 
   const decision = buildAnnualCloseDecisionInput(input);
   assert.equal(decision.decision_kind, "annual_close");

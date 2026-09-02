@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -13,6 +13,10 @@ const ownerDividendSource = readFileSync(
   "utf8",
 );
 const actionsSource = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
+const corporateDecisionFactsSource = readFileSync(
+  new URL("../apps/web/app/lib/corporate-decision-facts.ts", import.meta.url),
+  "utf8",
+);
 const wizardSource = readFileSync(
   new URL("../apps/web/app/(owner)/actions/_components/OwnerDividendWizard.tsx", import.meta.url),
   "utf8",
@@ -39,6 +43,11 @@ test("legacy owner-dividend accounting and placeholder helpers are gone", () => 
   assert.doesNotMatch(pythonHoldingActionsSource, /Cash dividend paid to shareholders/);
   assert.doesNotMatch(pythonHoldingActionsSource, /Dividend paid from bank/);
   assert.doesNotMatch(pythonWorkspaceSource, /DividendToOwnerInput/);
+  assert.doesNotMatch(corporateDecisionFactsSource, /buildOwnerDividendDecisionInput/);
+  assert.equal(
+    existsSync(new URL("../apps/web/app/lib/dividend-allocation.ts", import.meta.url)),
+    false,
+  );
 });
 
 test("dividend basis is recomputed from approved persisted annual facts in integer ore", () => {
@@ -123,7 +132,7 @@ test("dividend basis fails closed on unapproved or blocked annual facts", () => 
   );
 });
 
-test("server exposes only the draft action and never posts accounting directly", () => {
+test("server sends owner-dividend intent to governance without duplicating policy", () => {
   assert.match(actionsSource, /export async function createOwnerDividendDecisionDraft\s*\(formData: FormData\)/);
   assert.doesNotMatch(actionsSource, /export async function recordOwnerDividend\s*\(/);
 
@@ -131,13 +140,16 @@ test("server exposes only the draft action and never posts accounting directly",
   const end = actionsSource.indexOf("\nexport async function ", start + 1);
   const action = actionsSource.slice(start, end < 0 ? undefined : end);
   assert.match(action, /TALLI_CORPORATE_DOCUMENTS_ENABLED/);
-  assert.match(action, /buildOwnerDividendDecisionInput/);
+  assert.match(action, /await proposeOwnerDividend\(/);
+  assert.match(action, /corporateDecisionInputFromWire\(proposed\.decision\)/);
+  assert.doesNotMatch(action, /buildOwnerDividendDecisionInput/);
   assert.match(action, /renderCorporateDocuments|persistCorporateDocumentDraft/);
   assert.match(action, /uploadCorporateArtifacts|persistCorporateDocumentDraft/);
   assert.match(action, /create_corporate_document_draft|persistCorporateDocumentDraft/);
   assert.doesNotMatch(action, /\.from\(["']ledger_entries["']\)\.insert/);
   assert.doesNotMatch(action, /\.from\(["']holding_actions["']\)\.insert/);
   assert.doesNotMatch(action, /\.from\(["']documents["']\)\.insert/);
+  assert.doesNotMatch(action, /loadAcceptedMembershipCompany/);
   assert.doesNotMatch(ownerDividendSource, /dividend_payable_account|bank_account|ledgerLines/i);
 });
 

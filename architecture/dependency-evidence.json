@@ -167,6 +167,7 @@
     "backend:shareholder_register_filing",
     "web:banking",
     "web:company-access",
+    "web:corporate-governance",
     "web:documents",
     "web:investments",
     "web:ledger",

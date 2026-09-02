@@ -17,6 +17,7 @@ test(
           (select bool_and(relation.relforcerowsecurity)
              from pg_catalog.pg_class relation
             where relation.oid = any(array[
+              'corporate_governance.owner_dividend_accounting_policies'::regclass,
               'corporate_governance.owner_dividend_decisions'::regclass,
               'corporate_governance.owner_dividend_artifacts'::regclass,
               'corporate_governance.owner_dividend_events'::regclass,
@@ -27,6 +28,7 @@ test(
              from pg_catalog.pg_class relation
              join pg_catalog.pg_roles owner on owner.oid = relation.relowner
             where relation.oid = any(array[
+              'corporate_governance.owner_dividend_accounting_policies'::regclass,
               'corporate_governance.owner_dividend_decisions'::regclass,
               'corporate_governance.owner_dividend_artifacts'::regclass,
               'corporate_governance.owner_dividend_events'::regclass,

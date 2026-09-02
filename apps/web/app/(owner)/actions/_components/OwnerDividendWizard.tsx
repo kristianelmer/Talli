@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { createOwnerDividendDecisionDraft } from "../../../actions";
 import { Banner, SubmitButton } from "../../../components/ui";
@@ -8,7 +8,6 @@ import {
   type ApprovedAnnualCorporateBasis,
   type ReviewedCorporateFacts,
 } from "../../../lib/corporate-decision-facts";
-import { allocateDividendOreProportionally } from "../../../lib/dividend-allocation";
 
 export type DividendShareholder = {
   id: string;
@@ -64,21 +63,6 @@ export function OwnerDividendWizard({
   const dividendAmountOre = Number.isFinite(Number(dividendAmountNok))
     ? Math.round(Number(dividendAmountNok) * 100)
     : 0;
-  const allocations = useMemo(() => {
-    if (dividendAmountOre <= 0) return [];
-    try {
-      return allocateDividendOreProportionally(
-        dividendAmountOre,
-        shareholders.map((shareholder, order) => ({
-          shareholderId: shareholder.id,
-          shareCount: shareholder.share_count,
-          order,
-        })),
-      );
-    } catch {
-      return [];
-    }
-  }, [dividendAmountOre, shareholders]);
   const requiredConfirmationNames = [
     "oneShareClassConfirmed",
     "fullBoardParticipationConfirmed",
@@ -88,8 +72,7 @@ export function OwnerDividendWizard({
   ];
   const ready = featureEnabled
     && Boolean(annualBasis && reviewedFacts)
-    && allocations.length === shareholders.length
-    && allocations.every(({ amountOre }) => amountOre > 0)
+    && dividendAmountOre > 0
     && boardParticipants.length > 0
     && boardParticipants.every((participant) => participant.name.trim())
     && Object.values(shareholderVotes).every((vote) => vote === "for")
@@ -274,14 +257,13 @@ export function OwnerDividendWizard({
       <fieldset>
         <legend>Alle aksjonærer og proporsjonal fordeling</legend>
         {shareholders.map((shareholder) => {
-          const allocation = allocations.find(({ shareholderId }) => shareholderId === shareholder.id);
           return (
             <div className="readinessItem" key={shareholder.id}>
               <input type="hidden" name="shareholderVoteId" value={shareholder.id} />
               <input type="hidden" name="shareholderRepresentedShareCount" value={shareholder.share_count} />
               <strong>{shareholder.name}</strong>
               <p>
-                {shareholder.share_count} aksjer · proporsjonal andel {((allocation?.amountOre ?? 0) / 100).toLocaleString("nb-NO")} kr
+                {shareholder.share_count} aksjer · nøyaktig proporsjonal andel beregnes av utbyttetjenesten
               </p>
               <label>
                 Stemme

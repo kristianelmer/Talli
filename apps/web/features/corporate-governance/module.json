@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "web-feature",
+  "name": "corporate-governance",
+  "path": "apps/web/features/corporate-governance",
+  "owner": "web:corporate-governance",
+  "purpose": "Carry owner-dividend proposal, evidence registration, approval, finalization, and payment through the generated backend contract without recreating governance or accounting policy.",
+  "documentation": "apps/web/features/corporate-governance/MODULE.md",
+  "publicEntryPoint": "@/features/corporate-governance",
+  "publicImportPaths": ["@/features/corporate-governance", "apps/web/features/corporate-governance", "apps/web/features/corporate-governance/index.ts"],
+  "ownedRoutes": ["/actions/[type]", "/corporate-decisions/[decisionId]", "/workspace"],
+  "apiOperations": ["corporateGovernanceProposeOwnerDividend", "corporateGovernanceRegisterOwnerDividendDocuments", "corporateGovernanceApproveOwnerDividend", "corporateGovernanceFinalizeOwnerDividend", "corporateGovernanceRecordOwnerDividendPayment"],
+  "dependencies": [],
+  "allowedImports": ["#backend-configuration", "@talli/talli-api-client"],
+  "cachePolicy": { "default": "no-store", "allowed": [] },
+  "directBrowserFlows": [],
+  "forbiddenResponsibilities": [
+    "Dividend eligibility, allocation, readiness, accounting-account, or authorization policy",
+    "Direct Supabase governance persistence or handwritten business-endpoint fetch calls",
+    "Generic document storage or Ledger and Banking transaction coordination"
+  ],
+  "tests": {
+    "feature": "apps/web/tests/corporate-governance-presentation.test.mjs",
+    "transport": "apps/web/tests/corporate-governance-transport.test.mjs",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

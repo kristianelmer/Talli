@@ -165,7 +165,6 @@ class CorporateGovernanceApplication:
             prepared = await transaction.prepare_owner_dividend_finalization(command)
             if prepared.replay is not None:
                 return prepared.replay
-            policy = self._service.owner_dividend_accounting_policy()
             ledger = self._ledger_facade_factory(transaction)
             posted = await ledger.post_owner_dividend_declared(
                 PostOwnerDividendDeclaredCommand(
@@ -176,9 +175,9 @@ class CorporateGovernanceApplication:
                     income_year=command.income_year,
                     finalization_id=LedgerSourceRecordId(str(command.finalization_id)),
                     declared_amount=_money_from_ore(prepared.declared_amount_ore),
-                    declaration_debit_account=policy.declaration_debit_account,
-                    dividend_payable_account=policy.dividend_payable_account,
-                    accounting_policy_version=policy.version,
+                    declaration_debit_account=prepared.declaration_debit_account,
+                    dividend_payable_account=prepared.dividend_payable_account,
+                    accounting_policy_version=prepared.accounting_policy_version,
                     ledger_entry_id=LedgerEntryId(str(command.ledger_entry_id)),
                 )
             )
@@ -201,7 +200,6 @@ class CorporateGovernanceApplication:
             prepared = await transaction.prepare_owner_dividend_payment(command)
             if prepared.replay is not None:
                 return prepared.replay
-            policy = self._service.owner_dividend_accounting_policy()
             ledger = self._ledger_facade_factory(transaction)
             posted = await ledger.post_owner_dividend_payment(
                 PostOwnerDividendPaymentCommand(
@@ -212,9 +210,9 @@ class CorporateGovernanceApplication:
                     income_year=command.income_year,
                     payment_event_id=LedgerSourceRecordId(str(command.payment_event_id)),
                     payment_amount=_money_from_ore(prepared.payment_amount_ore),
-                    dividend_payable_account=policy.dividend_payable_account,
-                    bank_account=policy.bank_account,
-                    accounting_policy_version=policy.version,
+                    dividend_payable_account=prepared.dividend_payable_account,
+                    bank_account=prepared.bank_account,
+                    accounting_policy_version=prepared.accounting_policy_version,
                     ledger_entry_id=LedgerEntryId(str(command.ledger_entry_id)),
                 )
             )
@@ -231,7 +229,7 @@ class CorporateGovernanceApplication:
                     transaction_date=prepared.bank_transaction_date,
                     signed_amount=prepared.bank_signed_amount,
                     source_hash=prepared.bank_source_sha256,
-                    action_reference=ExternalActionReference(str(command.payment_event_id)),
+                    action_reference=ExternalActionReference(str(command.holding_action_id)),
                 ),
                 accounting_entry_id=BankingAccountingEntryReference(
                     str(posted.entry_id)

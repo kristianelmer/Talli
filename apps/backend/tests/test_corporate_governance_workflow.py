@@ -108,6 +108,13 @@ class GovernanceTransactionStub:
         self.calls.append(("prepare_finalization", command))
         return PreparedOwnerDividendFinalization(
             declared_amount_ore=10_000_001,
+            accounting_policy_version="approved-policy-v1",
+            declaration_debit_account="2050",
+            dividend_payable_account="2920",
+            signed_artifact_hashes={
+                "dividend_board_proposal": "a" * 64,
+                "dividend_general_meeting_minutes": "b" * 64,
+            },
             replay=self.finalization_replay,
         )
 
@@ -127,6 +134,9 @@ class GovernanceTransactionStub:
             bank_transaction_date=LocalDate(date(2025, 7, 2)),
             bank_signed_amount=Money.nok("-750.00"),
             bank_source_sha256="d" * 64,
+            accounting_policy_version="approved-policy-v1",
+            dividend_payable_account="2920",
+            bank_account="1920",
             replay=self.payment_replay,
         )
 
@@ -337,7 +347,7 @@ def test_finalization_posts_characterized_declaration_once_and_replays() -> None
     assert ledger_command.declared_amount == Money.nok("100000.01")
     assert ledger_command.declaration_debit_account == "2050"
     assert ledger_command.dividend_payable_account == "2920"
-    assert ledger_command.accounting_policy_version == "no-holding-v1"
+    assert ledger_command.accounting_policy_version == "approved-policy-v1"
 
     transaction.finalization_replay = lifecycle(
         OwnerDividendState.FINALIZED,
@@ -379,6 +389,7 @@ def test_payment_posts_then_claims_bank_then_completes_in_one_transaction() -> N
     assert ledger_command.payment_amount == Money.nok("750.00")
     assert ledger_command.dividend_payable_account == "2920"
     assert ledger_command.bank_account == "1920"
+    assert ledger_command.accounting_policy_version == "approved-policy-v1"
     assert [name for name, _ in transaction.calls[-3:]] == [
         "prepare_payment",
         "claim_bank",
@@ -386,6 +397,7 @@ def test_payment_posts_then_claims_bank_then_completes_in_one_transaction() -> N
     ]
     bank_command, accounting_reference = transaction.calls[-2][1]
     assert str(bank_command.transaction_id) == str(payment_command().bank_transaction_id)
+    assert str(bank_command.action_reference) == str(payment_command().holding_action_id)
     assert bank_command.signed_amount == Money.nok("-750.00")
     assert str(accounting_reference) == str(ENTRY_ID)
 

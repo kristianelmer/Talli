@@ -110,7 +110,17 @@ def test_document_approval_and_finalization_map_exact_replays() -> None:
     responses = iter([
         {"result": lifecycle_payload("documents_registered")},
         {"result": lifecycle_payload("facts_approved")},
-        {"result": {"declaredAmountOre": 10_000_001, "replay": None}},
+        {"result": {
+            "declaredAmountOre": 10_000_001,
+            "accountingPolicyVersion": "no-holding-v1",
+            "declarationDebitAccount": "2050",
+            "dividendPayableAccount": "2920",
+            "signedArtifactHashes": {
+                "dividend_board_proposal": "a" * 64,
+                "dividend_general_meeting_minutes": "b" * 64,
+            },
+            "replay": None,
+        }},
         {"result": lifecycle_payload("finalized", accounting_entry_id=str(finalization_command().ledger_entry_id))},
     ])
 
@@ -205,6 +215,43 @@ def test_ledger_and_banking_calls_use_governance_restricted_wrappers() -> None:
     ))
     assert "banking.claim_owner_dividend_transaction_v1" in calls[1][0]
     assert "claim_transaction_for_external_action_v1" not in calls[1][0]
+
+
+def test_payment_prepare_carries_the_declaration_policy_into_completion() -> None:
+    transaction = bound_transaction()
+    command = payment_command()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+    responses = iter([
+        {"result": {
+            "paymentAmountOre": 75_000,
+            "bankTransactionDate": "2025-07-02",
+            "bankSignedAmount": "-750.00",
+            "bankSourceSha256": "d" * 64,
+            "accountingPolicyVersion": "no-holding-v1",
+            "dividendPayableAccount": "2920",
+            "bankAccount": "1920",
+            "replay": None,
+        }},
+        {"result": lifecycle_payload(
+            "partially_paid",
+            accounting_entry_id=str(command.ledger_entry_id),
+        )},
+    ])
+
+    async def rows(query: str, parameters: tuple[object, ...] = ()):
+        calls.append((query, parameters))
+        return [next(responses)]
+
+    transaction._database_rows = rows  # type: ignore[method-assign]
+    prepared = asyncio.run(transaction.prepare_owner_dividend_payment(command))
+    assert prepared.accounting_policy_version == "no-holding-v1"
+    assert prepared.dividend_payable_account == "2920"
+    assert prepared.bank_account == "1920"
+    asyncio.run(transaction.complete_owner_dividend_payment(
+        command, command.ledger_entry_id, prepared
+    ))
+    completion_request = json.loads(str(calls[1][1][0]))
+    assert completion_request["accountingPolicyVersion"] == "no-holding-v1"
 
 
 def lifecycle_payload(state: str, *, accounting_entry_id: str | None = None) -> dict[str, object]:

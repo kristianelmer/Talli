@@ -132,6 +132,10 @@ class CorporateGovernanceErrorCode(StrEnum):
     FINALIZED_DECLARATION_REQUIRED = "corporate_documents_finalized_declaration_required"
     PAYMENT_EXCEEDS_PAYABLE = "corporate_documents_payment_exceeds_payable"
     BANK_TRANSACTION_ALREADY_MATCHED = "corporate_documents_bank_transaction_already_matched"
+    ACCOUNTING_POLICY_NOT_APPROVED = (
+        "corporate_documents_accounting_policy_disabled"
+    )
+    MISSING_SIGNED_ARTIFACTS = "corporate_documents_missing_signed_artifacts"
     DEPENDENCY_UNAVAILABLE = "corporate_governance_dependency_unavailable"
 
 
@@ -392,6 +396,10 @@ class OwnerDividendLifecycle:
 @dataclass(frozen=True, slots=True)
 class PreparedOwnerDividendFinalization:
     declared_amount_ore: int
+    accounting_policy_version: str
+    declaration_debit_account: str
+    dividend_payable_account: str
+    signed_artifact_hashes: dict[str, str]
     replay: OwnerDividendLifecycle | None
 
 
@@ -401,6 +409,9 @@ class PreparedOwnerDividendPayment:
     bank_transaction_date: LocalDate
     bank_signed_amount: Money
     bank_source_sha256: str
+    accounting_policy_version: str
+    dividend_payable_account: str
+    bank_account: str
     replay: OwnerDividendLifecycle | None
 
 

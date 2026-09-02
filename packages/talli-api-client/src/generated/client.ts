@@ -1017,17 +1017,6 @@ export interface LedgerTaxSettlementWire {
   settlementKind: TaxSettlementKind;
 }
 
-export interface LedgerOwnerDividendPaymentWire {
-  bankTransactionId: string;
-  companyId: string;
-  decisionHash: string;
-  decisionId: string;
-  holdingActionId: string;
-  incomeYear: number;
-  ledgerEntryId: string;
-  setId: string;
-}
-
 export interface LedgerWriterResultWire {
   postedEntry: LedgerPostedEntryWire | null;
   replayed: boolean;
@@ -3500,21 +3489,6 @@ function isLedgerTaxSettlementWire(value: unknown): value is LedgerTaxSettlement
     (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
     typeof value.settlementDate === "string" &&
     isTaxSettlementKind(value.settlementKind)
-  );
-}
-
-function isLedgerOwnerDividendPaymentWire(value: unknown): value is LedgerOwnerDividendPaymentWire {
-  return (
-    isRecord(value) &&
-    hasOnlyProperties(value, ["bankTransactionId","companyId","decisionHash","decisionId","holdingActionId","incomeYear","ledgerEntryId","setId"]) &&
-    isUuid(value.bankTransactionId) &&
-    isUuid(value.companyId) &&
-    (typeof value.decisionHash === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.decisionHash)) &&
-    isUuid(value.decisionId) &&
-    isUuid(value.holdingActionId) &&
-    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
-    isUuid(value.ledgerEntryId) &&
-    isUuid(value.setId)
   );
 }
 
@@ -6319,18 +6293,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         body.ledgerEntryId === undefined || body.ledgerEntryId === null
           ? null
           : "OWNER_DIVIDEND_DECLARED",
-      );
-    },
-
-    async ledgerPostOwnerDividendPayment(
-      body: LedgerOwnerDividendPaymentWire,
-      request: TalliMutationOptions,
-    ): Promise<LedgerWriterResultWire> {
-      return executeLedgerWriter(
-        "/api/v1/ledger/owner-dividends/payments",
-        body,
-        request,
-        "OWNER_DIVIDEND_PAYMENT",
       );
     },
 

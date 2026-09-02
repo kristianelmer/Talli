@@ -9,7 +9,7 @@
   "publicEntryPoint": "@/features/ledger",
   "publicImportPaths": ["@/features/ledger", "apps/web/features/ledger", "apps/web/features/ledger/index.ts"],
   "ownedRoutes": ["/workspace", "/year-end", "/actions/[type]"],
-  "apiOperations": ["ledgerListEntries", "ledgerListOpeningSnapshots", "ledgerListPeriodLocks", "ledgerGetCompanyYearCloseAssessment", "ledgerGetReconstructionAssessment", "ledgerStartNewYear", "ledgerPostAdministrativeCost", "ledgerPostShareholderLoan", "ledgerPostTaxSettlement", "ledgerFinalizeCorporateDecision", "ledgerPostOwnerDividendPayment", "ledgerPostManualJournal", "ledgerLockPeriod"],
+  "apiOperations": ["ledgerListEntries", "ledgerListOpeningSnapshots", "ledgerListPeriodLocks", "ledgerGetCompanyYearCloseAssessment", "ledgerGetReconstructionAssessment", "ledgerStartNewYear", "ledgerPostAdministrativeCost", "ledgerPostShareholderLoan", "ledgerPostTaxSettlement", "ledgerFinalizeCorporateDecision", "ledgerPostManualJournal", "ledgerLockPeriod"],
   "dependencies": [],
   "allowedImports": ["#backend-configuration", "@talli/talli-api-client"],
   "cachePolicy": { "default": "no-store", "allowed": [] },

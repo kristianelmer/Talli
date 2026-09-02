@@ -58,7 +58,6 @@ const ledgerOperations = {
   postShareholderLoan: ["/api/v1/ledger/shareholder-loans", "post", "ledgerPostShareholderLoan"],
   postTaxSettlement: ["/api/v1/ledger/tax-settlements", "post", "ledgerPostTaxSettlement"],
   finalizeCorporateDecision: ["/api/v1/ledger/corporate-decisions/finalizations", "post", "ledgerFinalizeCorporateDecision"],
-  postOwnerDividendPayment: ["/api/v1/ledger/owner-dividends/payments", "post", "ledgerPostOwnerDividendPayment"],
   postManualJournal: ["/api/v1/ledger/manual-journals", "post", "ledgerPostManualJournal"],
   lockPeriod: ["/api/v1/ledger/period-locks", "post", "ledgerLockPeriod"],
 };
@@ -529,7 +528,6 @@ const ledgerSchemas = Object.fromEntries([
   "LedgerShareholderLoanWire",
   "LedgerSourceCapability",
   "LedgerTaxSettlementWire",
-  "LedgerOwnerDividendPaymentWire",
   "LedgerWriterResultWire",
   "ReconstructionState",
   "TaxSettlementKind",
@@ -1995,18 +1993,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         body.ledgerEntryId === undefined || body.ledgerEntryId === null
           ? null
           : "OWNER_DIVIDEND_DECLARED",
-      );
-    },
-
-    async ledgerPostOwnerDividendPayment(
-      body: LedgerOwnerDividendPaymentWire,
-      request: TalliMutationOptions,
-    ): Promise<LedgerWriterResultWire> {
-      return executeLedgerWriter(
-        "/api/v1/ledger/owner-dividends/payments",
-        body,
-        request,
-        "OWNER_DIVIDEND_PAYMENT",
       );
     },
 

@@ -16,7 +16,7 @@
   },
   "owns": {
     "postgresSchemas": ["corporate_governance"],
-    "tables": ["corporate_governance.owner_dividend_artifacts", "corporate_governance.owner_dividend_decisions", "corporate_governance.owner_dividend_events", "corporate_governance.owner_dividend_finalizations", "corporate_governance.owner_dividend_payments"],
+    "tables": ["corporate_governance.owner_dividend_accounting_policies", "corporate_governance.owner_dividend_artifacts", "corporate_governance.owner_dividend_decisions", "corporate_governance.owner_dividend_events", "corporate_governance.owner_dividend_finalizations", "corporate_governance.owner_dividend_payments"],
     "storageBuckets": [],
     "projections": [],
     "migrations": "supabase/migrations/20260902040000_corporate_governance_owner_dividend.sql"
