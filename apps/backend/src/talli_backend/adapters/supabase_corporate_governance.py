@@ -39,6 +39,7 @@ from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
     AnnualCloseProposalCommand,
     AnnualCloseLifecycle,
+    AnnualDataSourceFacts,
     ApproveAnnualCloseCommand,
     AttestAnnualCloseSignedArtifactCommand,
     AttestOwnerDividendSignedArtifactCommand,
@@ -52,6 +53,7 @@ from talli_backend.modules.corporate_governance.public import (
     CorporateArtifactRecord,
     CorporateArtifactVariant,
     CorporateDecisionKind,
+    CorporateDecisionFactSources,
     CorporateDecisionId,
     CorporateDecisionRecord,
     CorporateDocumentSetId,
@@ -74,6 +76,8 @@ from talli_backend.modules.corporate_governance.public import (
     PreparedOwnerDividendFinalization,
     PreparedOwnerDividendPayment,
     PreparedShareholderLoan,
+    PersistedCompanyFacts,
+    PersistedShareholderFacts,
     ProposedAnnualClose,
     ProposedOwnerDividend,
     RecordOwnerDividendPaymentCommand,
@@ -86,10 +90,6 @@ from talli_backend.modules.corporate_governance.public import (
     ShareholderLoanDirection,
     ShareholderLoanDocumentStatus,
     corporate_governance_persistence_adapter,
-)
-from talli_backend.modules.corporate_governance.service import (
-    canonical_annual_close_payload,
-    canonical_owner_dividend_payload,
 )
 from talli_backend.modules.ledger.public import (
     LedgerCommand,
@@ -288,6 +288,66 @@ def _timestamp(value: object) -> datetime:
     if isinstance(value, datetime):
         return value
     return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+
+def _decision_fact_sources(value: Mapping[str, object]) -> CorporateDecisionFactSources:
+    company = value.get("company")
+    shareholders = value.get("shareholders")
+    annual_data = value.get("annualData")
+    if (
+        not isinstance(company, Mapping)
+        or not isinstance(shareholders, list)
+        or not isinstance(annual_data, list)
+        or not all(isinstance(item, Mapping) for item in shareholders + annual_data)
+    ):
+        raise CorporateGovernanceError.unavailable()
+
+    def numeric(value: object) -> int | float:
+        if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
+            raise CorporateGovernanceError.unavailable()
+        decimal = Decimal(str(value))
+        return int(decimal) if decimal == decimal.to_integral_value() else float(decimal)
+
+    return CorporateDecisionFactSources(
+        company=PersistedCompanyFacts(
+            company_id=CompanyId(str(company["companyId"])),
+            organization_number=str(company["organizationNumber"]),
+            legal_name=str(company["legalName"]),
+        ),
+        shareholders=tuple(
+            PersistedShareholderFacts(
+                shareholder_id=str(item["shareholderId"]),
+                name=str(item["name"]),
+                share_count=int(item["shareCount"]),
+                order=int(item["order"]),
+            )
+            for item in shareholders
+        ),
+        annual_data=tuple(
+            AnnualDataSourceFacts(
+                source_id=CorporateSourceReference(str(item["sourceId"])),
+                company_id=CompanyId(str(item["companyId"])),
+                income_year=IncomeYear(int(item["incomeYear"])),
+                answers=dict(item["answers"]),
+                confirmations=tuple(str(value) for value in item["confirmations"]),
+                no_activity_confirmed=bool(item["noActivityConfirmed"]),
+                annual_full_time_equivalents=numeric(
+                    item["annualFullTimeEquivalents"]
+                ),
+                completed_at=(
+                    item["completedAt"].isoformat()
+                    if isinstance(item["completedAt"], datetime)
+                    else str(item["completedAt"])
+                ),
+                updated_at=(
+                    item["updatedAt"].isoformat()
+                    if isinstance(item["updatedAt"], datetime)
+                    else str(item["updatedAt"])
+                ),
+            )
+            for item in annual_data
+        ),
+    )
 
 
 def _lifecycle_snapshot(value: Mapping[str, object]) -> CorporateLifecycleSnapshot:
@@ -644,6 +704,26 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
         role = rows[0].get("role")
         return str(role) if role is not None else None
 
+    async def read_decision_fact_sources(
+        self,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        decision_kind: CorporateDecisionKind,
+    ) -> CorporateDecisionFactSources:
+        rows = await self._database_rows(
+            "select corporate_governance.read_corporate_decision_fact_sources_v1("
+            "%s::uuid, %s::integer, %s::text, %s::text) as result",
+            (
+                str(company_id),
+                int(income_year),
+                decision_kind.value,
+                str(self.actor_id.subject),
+            ),
+        )
+        if len(rows) != 1 or not isinstance(rows[0].get("result"), Mapping):
+            raise CorporateGovernanceError.unavailable()
+        return _decision_fact_sources(rows[0]["result"])  # type: ignore[arg-type]
+
     async def list_lifecycle(
         self,
         company_ids: tuple[CompanyId, ...],
@@ -674,6 +754,7 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
         self,
         command: OwnerDividendProposalCommand,
         decision: CanonicalOwnerDividendDecision,
+        canonical_input: Mapping[str, object],
     ) -> ProposedOwnerDividend:
         if command.actor_id != self.actor_id:
             raise CorporateGovernanceError.forbidden()
@@ -684,7 +765,7 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
                 json.dumps(_proposal_request(command), separators=(",", ":")),
                 json.dumps(_canonical_decision(decision), separators=(",", ":")),
                 json.dumps(
-                    canonical_owner_dividend_payload(decision),
+                    canonical_input,
                     separators=(",", ":"),
                     ensure_ascii=False,
                 ),
@@ -704,6 +785,7 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
         self,
         command: AnnualCloseProposalCommand,
         decision: CanonicalAnnualCloseDecision,
+        canonical_input: Mapping[str, object],
         artifacts,
     ) -> ProposedAnnualClose:
         if command.actor_id != self.actor_id:
@@ -715,7 +797,7 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
                 json.dumps(_proposal_request(command), separators=(",", ":")),
                 json.dumps(_canonical_decision(decision), separators=(",", ":")),
                 json.dumps(
-                    canonical_annual_close_payload(decision),
+                    canonical_input,
                     separators=(",", ":"),
                     ensure_ascii=False,
                 ),

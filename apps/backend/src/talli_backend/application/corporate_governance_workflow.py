@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import replace
 from decimal import Decimal
+from typing import Protocol
 
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceSessionFactory,
@@ -31,7 +32,9 @@ from talli_backend.modules.corporate_governance.public import (
     CorporateGovernanceError,
     CorporateGovernanceErrorCode,
     CorporateLifecycleSnapshot,
+    CorporateAccountMovementFacts,
     CorporateReadinessSource,
+    DerivedCorporateDecisionFacts,
     FinalizeOwnerDividendCommand,
     FinalizeAnnualCloseCommand,
     OwnerDividendLifecycle,
@@ -56,18 +59,30 @@ from talli_backend.modules.documents.public import (
 )
 from talli_backend.modules.ledger.public import (
     LedgerCommands,
+    LedgerCursor,
     LedgerEntryId,
     LedgerPersistence,
+    LedgerQueries,
     LedgerSourceRecordId,
     PostOwnerDividendDeclaredCommand,
     PostOwnerDividendPaymentCommand,
     PostShareholderLoanCommand,
     ShareholderLoanDirection as LedgerShareholderLoanDirection,
 )
-from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear, Money
+from talli_backend.shared.kernel import (
+    ActorId,
+    CompanyId,
+    CorrelationId,
+    IncomeYear,
+    Money,
+)
 
 
-LedgerFacadeFactory = Callable[[LedgerPersistence], LedgerCommands]
+class CorporateGovernanceLedgerFacade(LedgerCommands, LedgerQueries, Protocol):
+    pass
+
+
+LedgerFacadeFactory = Callable[[LedgerPersistence], CorporateGovernanceLedgerFacade]
 _REQUIRED_ARTIFACT_KINDS = {
     CorporateArtifactKind.DIVIDEND_BOARD_PROPOSAL,
     CorporateArtifactKind.DIVIDEND_GENERAL_MEETING_MINUTES,
@@ -157,16 +172,104 @@ class CorporateGovernanceApplication:
         if await transaction.actor_role(company_id) != "owner":
             raise CorporateGovernanceError.forbidden()
 
+    async def _derive_decision_facts_in_transaction(
+        self,
+        transaction: CorporateGovernanceWorkflowTransaction,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        decision_kind: CorporateDecisionKind,
+        correlation_id: CorrelationId,
+    ) -> DerivedCorporateDecisionFacts:
+        sources = await transaction.read_decision_fact_sources(
+            company_id,
+            income_year,
+            decision_kind,
+        )
+        ledger = self._ledger_facade_factory(transaction)
+        entries = []
+        cursor: LedgerCursor | None = None
+        while True:
+            page = await ledger.list_entries(
+                actor_id=actor_id,
+                company_ids=(company_id,),
+                correlation_id=correlation_id,
+                cursor=cursor,
+                limit=100,
+            )
+            entries.extend(page.items)
+            if not page.page.has_more:
+                break
+            if page.page.next_cursor is None:
+                raise CorporateGovernanceError.unavailable()
+            cursor = page.page.next_cursor
+        lines = tuple(
+            CorporateAccountMovementFacts(
+                income_year=entry.income_year,
+                account=line.account,
+                debit_ore=int(line.debit.amount * 100),
+                credit_ore=int(line.credit.amount * 100),
+            )
+            for entry in entries
+            for line in entry.lines
+        )
+        return self._service.derive_decision_facts(
+            sources=sources,
+            ledger_lines=lines,
+            decision_kind=decision_kind,
+            income_year=income_year,
+        )
+
+    async def derive_decision_facts(
+        self,
+        access_token: str,
+        *,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        decision_kind: CorporateDecisionKind,
+        correlation_id: CorrelationId,
+    ) -> DerivedCorporateDecisionFacts:
+        session = await self._session_factory.session(access_token)
+        async with session.transaction() as transaction:
+            await self._require_owner(transaction, company_id)
+            return await self._derive_decision_facts_in_transaction(
+                transaction,
+                actor_id=session.actor_id,
+                company_id=company_id,
+                income_year=income_year,
+                decision_kind=decision_kind,
+                correlation_id=correlation_id,
+            )
+
     async def propose_owner_dividend(
         self,
         access_token: str,
         command: OwnerDividendProposalCommand,
     ) -> ProposedOwnerDividend:
         session = await self._session(access_token, command.actor_id)
-        decision = self._service.build_owner_dividend_decision(command)
         async with session.transaction() as transaction:
             await self._require_owner(transaction, command.company_id)
-            proposed = await transaction.propose_owner_dividend(command, decision)
+            facts = await self._derive_decision_facts_in_transaction(
+                transaction,
+                actor_id=command.actor_id,
+                company_id=command.company_id,
+                income_year=command.income_year,
+                decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+                correlation_id=command.correlation_id,
+            )
+            authoritative = replace(
+                command,
+                company=facts.company,
+                shareholders=facts.shareholders,
+                annual_basis=facts.annual_basis,
+            )
+            decision = self._service.build_owner_dividend_decision(authoritative)
+            proposed = await transaction.propose_owner_dividend(
+                authoritative,
+                decision,
+                self._service.canonical_payload(decision),
+            )
         return ProposedOwnerDividend(
             decision=proposed.decision,
             state=proposed.state,
@@ -180,13 +283,28 @@ class CorporateGovernanceApplication:
         command: AnnualCloseProposalCommand,
     ) -> ProposedAnnualClose:
         session = await self._session(access_token, command.actor_id)
-        decision = self._service.build_annual_close_decision(command)
-        artifacts = self._service.render_corporate_documents(decision)
         async with session.transaction() as transaction:
             await self._require_owner(transaction, command.company_id)
-            proposed = await transaction.propose_annual_close(
+            facts = await self._derive_decision_facts_in_transaction(
+                transaction,
+                actor_id=command.actor_id,
+                company_id=command.company_id,
+                income_year=command.income_year,
+                decision_kind=CorporateDecisionKind.ANNUAL_CLOSE,
+                correlation_id=command.correlation_id,
+            )
+            authoritative = replace(
                 command,
+                company=facts.company,
+                shareholders=facts.shareholders,
+                annual_basis=facts.annual_basis,
+            )
+            decision = self._service.build_annual_close_decision(authoritative)
+            artifacts = self._service.render_corporate_documents(decision)
+            proposed = await transaction.propose_annual_close(
+                authoritative,
                 decision,
+                self._service.canonical_payload(decision),
                 artifacts,
             )
         return ProposedAnnualClose(

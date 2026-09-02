@@ -52,6 +52,10 @@ drop function if exists
 drop function if exists
   corporate_governance.attest_owner_dividend_signed_artifact_v1(jsonb, text);
 drop function if exists
+  corporate_governance.read_corporate_decision_fact_sources_v1(
+    uuid, integer, text, text
+  );
+drop function if exists
   corporate_governance.read_corporate_lifecycle_v1(uuid[], uuid, text);
 
 do $restore_owner_lifecycle$

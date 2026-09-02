@@ -13,8 +13,8 @@ from typing import Any
 
 from talli_backend.modules.corporate_governance.public import (
     AnnualCloseProposalCommand,
+    AnnualDataSourceFacts,
     ApprovedAnnualBasis,
-    BoardMeeting,
     CanonicalAnnualCloseDecision,
     CanonicalBoardParticipant,
     CanonicalDecisionShareholder,
@@ -23,13 +23,15 @@ from talli_backend.modules.corporate_governance.public import (
     CorporateArtifactKind,
     CorporateArtifactVariant,
     CorporateDecisionKind,
+    CorporateDecisionFactSources,
     CorporateDocumentReadiness,
     CorporateDocumentReadinessBlocker,
     CorporateGovernanceError,
     CorporateGovernanceErrorCode,
     CorporateLifecycleSnapshot,
+    CorporateAccountMovementFacts,
     CorporateReadinessSource,
-    GeneralMeeting,
+    DerivedCorporateDecisionFacts,
     OwnerDividendAllocation,
     OwnerDividendConfirmations,
     OwnerDividendFacts,
@@ -38,6 +40,8 @@ from talli_backend.modules.corporate_governance.public import (
     OwnerDividendState,
     RecordShareholderLoanCommand,
     RenderedCorporateArtifact,
+    ReviewedOwnerDividendFacts,
+    ReviewedShareholderFacts,
     SHA256_PATTERN,
     ShareholderLoanDirection,
     ShareholderLoanDocumentStatus,
@@ -130,6 +134,132 @@ def _basis_source_hash(
             }
         )
     )
+
+
+def _ore_number(value: int) -> int | float:
+    return value // 100 if value % 100 == 0 else value / 100
+
+
+def _ledger_account_balance_ore(
+    lines: tuple[CorporateAccountMovementFacts, ...],
+    account: str,
+    income_year: IncomeYear,
+) -> int:
+    return sum(
+        line.debit_ore - line.credit_ore
+        for line in lines
+        if line.income_year == income_year and line.account == account
+    )
+
+
+def _annual_accounts_payload(
+    source: AnnualDataSourceFacts,
+    lines: tuple[CorporateAccountMovementFacts, ...],
+) -> dict[str, Any]:
+    account_balance = lambda account: _ledger_account_balance_ore(
+        lines, account, source.income_year
+    )
+    account_credit = lambda account: -account_balance(account)
+    debit_total = lambda accounts: sum(
+        line.debit_ore
+        for line in lines
+        if line.income_year == source.income_year and line.account in accounts
+    )
+    tax_payable = account_credit("2500")
+    investment_balance = sum(
+        account_balance(account)
+        for account in ("1300", "1310", "1350", "1800", "1810", "1815")
+    )
+    bank_balance = account_balance("1920")
+    admin_costs = debit_total(
+        {"7770", "6700", "6705", "6420", "7790", "6720", "7795"}
+    )
+    financial_income = sum(
+        account_credit(account) for account in ("8070", "8071", "8074", "8050")
+    )
+    financial_costs = debit_total({"8090", "8171", "8174"})
+    tax_expense = account_balance("8300")
+    share_capital = account_credit("2000")
+    retained_earnings = account_credit("2050")
+    short_term_debt = account_credit("2255") + tax_payable
+    result_before_tax = financial_income - admin_costs - financial_costs
+    annual_result = result_before_tax - tax_expense
+    retained = retained_earnings + annual_result
+    sum_equity = share_capital + retained
+    sum_assets = investment_balance + bank_balance
+    fte = source.annual_full_time_equivalents
+
+    feedback: list[dict[str, str]] = []
+    if fte < 0:
+        feedback.append(
+            {
+                "level": "block",
+                "code": "annual_accounts_aarsverk_negative",
+                "message": "Årsverk kan ikke være negativt.",
+                "source": "annual_accounts_payload",
+            }
+        )
+    feedback_rules = (
+        (
+            "annual_accounts_audit_required",
+            "Revisjonsplikt er utenfor enkel holding-AS-løype.",
+        ),
+        (
+            "annual_accounts_not_small_enterprise",
+            "Ikke-små foretak krever utvidet årsregnskapsmodell.",
+        ),
+        (
+            "annual_accounts_annual_report_required",
+            "Årsberetning er ikke støttet i første årsregnskapsløype.",
+        ),
+    )
+    for code, message in feedback_rules:
+        if code in source.confirmations:
+            feedback.append(
+                {
+                    "level": "block",
+                    "code": code,
+                    "message": message,
+                    "source": "annual_accounts_payload",
+                }
+            )
+
+    def field(tag: str, orid: str, value: str | int | float, fact_source: str):
+        return {"tag": tag, "orid": orid, "value": value, "source": fact_source}
+
+    year = int(source.income_year)
+    return {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {"annualFullTimeEquivalents": fte},
+        "fields": [
+            field("regnskapsaar", "17102", year, "company.income_year"),
+            field("regnskapsstart", "17103", f"{year}-01-01", "calendar_year"),
+            field("regnskapsslutt", "17104", f"{year}-12-31", "calendar_year"),
+            field("valuta", "34984", "NOK", "launch_currency"),
+            field("sumDriftskostnad/aarets", "17126", _ore_number(admin_costs), "ledger.expense_accounts"),
+            field("sumFinansinntekter/aarets", "153", _ore_number(financial_income), "ledger.8070_8050"),
+            field("sumFinanskostnader/aarets", "17130", _ore_number(financial_costs), "ledger.8090"),
+            field("resultatFoerSkattekostnad/aarets", "167", _ore_number(result_before_tax), "derived"),
+            field("skattekostnad/aarets", "11835", _ore_number(tax_expense), "ledger.8300"),
+            field("aarsresultat/aarets", "172", _ore_number(annual_result), "derived"),
+            field("investeringAksjerAndeler/aarets", "7100", _ore_number(investment_balance), "ledger.1300_1310_1350_1800_1810_1815"),
+            field("sumFinansielleAnleggsmidler/aarets", "5267", _ore_number(investment_balance), "derived"),
+            field("sumBankinnskuddKontanter/aarets", "29042", _ore_number(bank_balance), "ledger.1920"),
+            field("sumEiendeler/aarets", "219", _ore_number(sum_assets), "derived"),
+            field("sumInnskuttEgenkapital/aarets", "3730", _ore_number(share_capital), "ledger.2000"),
+            field("annenEgenkapital/aarets", "3274", _ore_number(retained), "ledger.2050_and_result"),
+            field("sumEgenkapital/aarets", "250", _ore_number(sum_equity), "derived"),
+            field("betalbarSkatt/aarets", "2483", _ore_number(tax_payable), "ledger.2500"),
+            field("sumKortsiktigGjeld/aarets", "85", _ore_number(short_term_debt), "ledger.2255_2500"),
+            field("sumGjeld/aarets", "1119", _ore_number(short_term_debt), "derived"),
+            field("antallAarsverk", "37467", fte, "annual_accounts.notes"),
+        ],
+        "feedback": feedback,
+    }
 
 
 def _source_hash(
@@ -290,6 +420,142 @@ def canonical_annual_close_payload(
 
 
 class CorporateGovernanceService:
+    def canonical_payload(
+        self,
+        decision: CanonicalOwnerDividendDecision | CanonicalAnnualCloseDecision,
+    ) -> Mapping[str, object]:
+        if isinstance(decision, CanonicalAnnualCloseDecision):
+            return canonical_annual_close_payload(decision)
+        return canonical_owner_dividend_payload(decision)
+
+    def derive_decision_facts(
+        self,
+        *,
+        sources: CorporateDecisionFactSources,
+        ledger_lines: tuple[CorporateAccountMovementFacts, ...],
+        decision_kind: CorporateDecisionKind,
+        income_year: IncomeYear,
+    ) -> DerivedCorporateDecisionFacts:
+        candidates = [
+            item
+            for item in sources.annual_data
+            if item.company_id == sources.company.company_id
+            and (
+                item.income_year == income_year
+                if decision_kind is CorporateDecisionKind.ANNUAL_CLOSE
+                else int(item.income_year) <= int(income_year)
+            )
+            and item.answers.get("general_meeting_approved") is True
+        ]
+        if not candidates:
+            _fail(
+                CorporateGovernanceErrorCode.LATEST_ANNUAL_ACCOUNTS_REQUIRED,
+                "The latest approved annual accounts are required.",
+            )
+        source = max(candidates, key=lambda item: int(item.income_year))
+        payload = _annual_accounts_payload(source, ledger_lines)
+        hard_block = next(
+            (
+                item
+                for item in payload["feedback"]
+                if isinstance(item, Mapping) and item.get("level") == "block"
+            ),
+            None,
+        )
+        if isinstance(hard_block, Mapping):
+            _fail(
+                CorporateGovernanceErrorCode.INVALID_INPUT,
+                str(hard_block.get("message") or "Annual accounts are blocked."),
+            )
+
+        def field_ore(tag: str) -> int:
+            fields = payload["fields"]
+            item = next(
+                (
+                    value
+                    for value in fields
+                    if isinstance(value, Mapping) and value.get("tag") == tag
+                ),
+                None,
+            )
+            if not isinstance(item, Mapping):
+                _fail(
+                    CorporateGovernanceErrorCode.INVALID_INPUT,
+                    f"Annual accounts are missing {tag}.",
+                )
+            value = item.get("value")
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                _fail(
+                    CorporateGovernanceErrorCode.INVALID_INPUT,
+                    f"Annual accounts are missing {tag}.",
+                )
+            return round(value * 100)
+
+        result_after_tax_ore = field_ore("aarsresultat/aarets")
+        equity_ore = field_ore("sumEgenkapital/aarets")
+        retained_ore = field_ore("annenEgenkapital/aarets")
+        cash_ore = field_ore("sumBankinnskuddKontanter/aarets")
+        if equity_ore < 0 or cash_ore < 0:
+            _fail(
+                CorporateGovernanceErrorCode.UNSUPPORTED_DIVIDEND_BASIS,
+                "Negative equity or liquidity is outside the supported path.",
+            )
+        annual_snapshot = {
+            "id": str(source.source_id),
+            "company_id": str(source.company_id),
+            "income_year": int(source.income_year),
+            "answers": source.answers,
+            "confirmations": list(source.confirmations),
+            "no_activity_confirmed": source.no_activity_confirmed,
+            "annual_full_time_equivalents": source.annual_full_time_equivalents,
+            "completed_at": source.completed_at,
+            "updated_at": source.updated_at,
+        }
+        annual_data_sha256 = _sha256(_canonical_json(annual_snapshot))
+        annual_accounts_sha256 = _sha256(_canonical_json(payload))
+        basis = ApprovedAnnualBasis(
+            source_id=source.source_id,
+            income_year=source.income_year,
+            latest_approved=True,
+            annual_data_sha256=annual_data_sha256,
+            annual_accounts_payload_sha256=annual_accounts_sha256,
+            result_after_tax_ore=result_after_tax_ore,
+            equity_ore=equity_ore,
+            available_distribution_ore=max(0, retained_ore),
+            cash_ore=cash_ore,
+        )
+        shareholders = sorted(
+            sources.shareholders,
+            key=lambda item: (item.order, item.shareholder_id),
+        )
+        if not shareholders:
+            _fail(
+                CorporateGovernanceErrorCode.INVALID_INPUT,
+                "Shareholder facts are missing.",
+            )
+        reviewed = ReviewedOwnerDividendFacts(
+            organization_number=_text(sources.company.organization_number),
+            legal_name=_text(sources.company.legal_name),
+            shareholders=tuple(
+                ReviewedShareholderFacts(
+                    shareholder_id=_text(item.shareholder_id),
+                    name=_text(item.name),
+                    share_count=_safe_integer(item.share_count, minimum=1),
+                )
+                for item in shareholders
+            ),
+            total_company_shares=sum(item.share_count for item in shareholders),
+            available_distribution_ore=basis.available_distribution_ore,
+            annual_data_sha256=basis.annual_data_sha256,
+            annual_accounts_payload_sha256=basis.annual_accounts_payload_sha256,
+        )
+        return DerivedCorporateDecisionFacts(
+            sources.company,
+            tuple(shareholders),
+            basis,
+            reviewed,
+        )
+
     def source_hash(self, source: CorporateReadinessSource) -> str:
         return _basis_source_hash(source)
 

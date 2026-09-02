@@ -4,6 +4,7 @@ import {
   type AnnualCloseProposalWire,
   type AnnualCloseSignedArtifactWire,
   type CorporateCanonicalDecisionWire,
+  type CorporateGovernanceDecisionFactsRequest,
   type CorporateGovernanceReadinessRequest,
   type CorporateLifecycleSnapshotWire,
   createTalliApiClient,
@@ -198,6 +199,16 @@ export async function readCorporateDecisionReadiness(
   request: Omit<CorporateGovernanceReadinessRequest, "signal">,
 ) {
   return client(accessToken).corporateGovernanceReadDecisionReadiness({
+    ...request,
+    signal: AbortSignal.timeout(10_000),
+  });
+}
+
+export async function deriveCorporateDecisionFacts(
+  accessToken: string,
+  request: Omit<CorporateGovernanceDecisionFactsRequest, "signal">,
+) {
+  return client(accessToken).corporateGovernanceDeriveDecisionFacts({
     ...request,
     signal: AbortSignal.timeout(10_000),
   });

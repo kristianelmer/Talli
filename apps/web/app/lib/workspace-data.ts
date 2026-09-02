@@ -1,6 +1,4 @@
 import { productionBillingGate } from "./billing";
-import { buildAnnualAccountsPayload } from "./annual-accounts";
-import { buildAnnualCloseBasis } from "./annual-corporate-documents";
 import { buildCancellationLifecycle } from "./cancellation";
 import {
   buildDeadlineDashboard,
@@ -43,7 +41,11 @@ import {
   summarizeReceivedDividendAnnualImpact,
 } from "../../features/investments";
 import { getCurrentSessionAccessToken } from "./supabase/auth-session";
-import { readCorporateDecisionReadiness } from "../../features/corporate-governance";
+import {
+  deriveCorporateDecisionFacts,
+  readCorporateDecisionReadiness,
+  type CorporateDecisionFactsWire,
+} from "../../features/corporate-governance";
 
 /**
  * Loads the full owner-facing workspace dataset (companies, filings, ledger,
@@ -169,6 +171,7 @@ export async function loadWorkspaceData() {
       && item.decisionKind === "annual_close",
   ) ?? null;
   let corporateReadinessError: string | null = null;
+  let primaryCorporateDecisionFacts: CorporateDecisionFactsWire | null = null;
   if (accessToken && primaryCompanyId) {
     try {
       const request = {
@@ -177,24 +180,17 @@ export async function loadWorkspaceData() {
         decisionKind: "annual_close" as const,
       };
       if (primaryAnnualData) {
-        const annualBasis = buildAnnualCloseBasis({
-          annualData: primaryAnnualData,
-          annualAccountsPayload: buildAnnualAccountsPayload({
-            incomeYear: primaryIncomeYear,
-            annualData: primaryAnnualData,
-            ledgerEntries: entries.filter(
-              (entry) => entry.company_id === primaryCompanyId
-                && entry.income_year === primaryIncomeYear,
-            ),
-          }),
-        });
+        primaryCorporateDecisionFacts = await deriveCorporateDecisionFacts(
+          accessToken,
+          request,
+        );
         primaryCorporateDecisionReadiness = await readCorporateDecisionReadiness(
           accessToken,
           {
             ...request,
-            annualCloseSourceId: annualBasis.id,
-            annualDataSha256: annualBasis.annualDataHash,
-            annualAccountsPayloadSha256: annualBasis.annualAccountsPayloadHash,
+            annualCloseSourceId: primaryCorporateDecisionFacts.annualBasis.sourceId,
+            annualDataSha256: primaryCorporateDecisionFacts.annualBasis.annualDataSha256,
+            annualAccountsPayloadSha256: primaryCorporateDecisionFacts.annualBasis.annualAccountsPayloadSha256,
           },
         );
       } else {
@@ -290,6 +286,7 @@ export async function loadWorkspaceData() {
     primaryReadinessSnapshots,
     primaryAnnualData,
     primaryCorporateDecisionReadiness,
+    primaryCorporateDecisionFacts,
     primaryFilingReady,
     primaryBillingGate,
     primaryAuthorityPermissions,

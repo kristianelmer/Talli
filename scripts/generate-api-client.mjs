@@ -152,6 +152,11 @@ const documentsOperations = {
   ],
 };
 const corporateGovernanceOperations = {
+  deriveDecisionFacts: [
+    "/api/v1/corporate-governance/decision-facts",
+    "get",
+    "corporateGovernanceDeriveDecisionFacts",
+  ],
   readDecisionReadiness: [
     "/api/v1/corporate-governance/readiness",
     "get",
@@ -667,6 +672,7 @@ const corporateGovernanceSchemas = Object.fromEntries([
   "CorporateCanonicalDecisionWire",
   "CorporateCanonicalShareholderWire",
   "CorporateDecisionKind",
+  "CorporateDecisionFactsWire",
   "CorporateDecisionRecordWire",
   "CorporateDocumentReadinessBlockerWire",
   "CorporateDocumentReadinessWire",
@@ -936,6 +942,12 @@ export interface DocumentsBackupProjectionRequest extends TalliRequestOptions {
 
 export interface CorporateGovernanceListRequest extends TalliRequestOptions {
   companyIds: readonly string[];
+}
+
+export interface CorporateGovernanceDecisionFactsRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+  decisionKind: CorporateDecisionKind;
 }
 
 export interface CorporateGovernanceReadinessRequest extends TalliRequestOptions {
@@ -1658,6 +1670,23 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isCorporateLifecycleSnapshotWire,
+      );
+    },
+
+    async corporateGovernanceDeriveDecisionFacts(
+      request: CorporateGovernanceDecisionFactsRequest,
+    ): Promise<CorporateDecisionFactsWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+        decisionKind: request.decisionKind,
+      });
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/decision-facts?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isCorporateDecisionFactsWire,
       );
     },
 

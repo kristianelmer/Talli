@@ -1,10 +1,6 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
-
-import {
-  buildAnnualCloseBasis,
-} from "../apps/web/app/lib/annual-corporate-documents.ts";
 
 const actionsSource = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
 const formSource = readFileSync(
@@ -21,48 +17,16 @@ const readinessSource = readFileSync(
   "utf8",
 );
 
-const annualData = {
-  id: "33333333-3333-4333-8333-333333333333",
-  company_id: "22222222-2222-4222-8222-222222222222",
-  income_year: 2025,
-  answers: { general_meeting_approved: true },
-  confirmations: ["general_meeting_approved"],
-  no_activity_confirmed: false,
-  annual_full_time_equivalents: 0,
-  completed_at: "2026-05-01T10:00:00.000Z",
-  updated_at: "2026-05-01T10:00:00.000Z",
-};
-const annualAccountsPayload = {
-  fields: [
-    { tag: "sumEgenkapital/aarets", value: 500_000 },
-    { tag: "annenEgenkapital/aarets", value: 300_000 },
-    { tag: "sumBankinnskuddKontanter/aarets", value: 400_000 },
-    { tag: "aarsresultat/aarets", value: 125_000 },
-  ],
-  feedback: [],
-};
-
-test("annual basis binds exact annual-data and annual-account payload hashes", () => {
-  const basis = buildAnnualCloseBasis({ annualData, annualAccountsPayload });
-  assert.match(basis.annualDataHash, /^[0-9a-f]{64}$/u);
-  assert.match(basis.annualAccountsPayloadHash, /^[0-9a-f]{64}$/u);
-
-  const changedBasis = buildAnnualCloseBasis({
-    annualData,
-    annualAccountsPayload: {
-      ...annualAccountsPayload,
-      fields: annualAccountsPayload.fields.map((field) =>
-        field.tag === "aarsresultat/aarets" ? { ...field, value: 125_001 } : field),
-    },
-  });
-  assert.notEqual(changedBasis.annualAccountsPayloadHash, basis.annualAccountsPayloadHash);
+test("annual basis helpers were removed from the web authority boundary", () => {
+  assert.equal(
+    existsSync(new URL("../apps/web/app/lib/annual-corporate-documents.ts", import.meta.url)),
+    false,
+  );
+  assert.doesNotMatch(actionsSource, /buildAnnualCloseBasis|buildAnnualCloseReviewedFacts/u);
+  assert.match(actionsSource, /deriveCorporateDecisionFacts/u);
 });
 
 test("annual decisions render only inside the Python backend", () => {
-  const webRenderer = readFileSync(
-    new URL("../apps/web/app/lib/corporate-documents.ts", import.meta.url),
-    "utf8",
-  );
   const backendRenderer = readFileSync(
     new URL(
       "../apps/backend/src/talli_backend/modules/corporate_governance/rendering.py",
@@ -70,7 +34,10 @@ test("annual decisions render only inside the Python backend", () => {
     ),
     "utf8",
   );
-  assert.doesNotMatch(webRenderer, /child_process|holding_cli|renderCorporateDocuments/u);
+  assert.equal(
+    existsSync(new URL("../apps/web/app/lib/corporate-documents.ts", import.meta.url)),
+    false,
+  );
   assert.match(backendRenderer, /ANNUAL_BOARD_MINUTES/u);
   assert.match(backendRenderer, /ANNUAL_GENERAL_MEETING_MINUTES/u);
 });

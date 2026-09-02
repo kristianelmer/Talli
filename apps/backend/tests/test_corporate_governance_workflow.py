@@ -4,6 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import replace
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
@@ -31,12 +32,12 @@ from talli_backend.modules.corporate_governance.public import (
     OwnerDividendArtifactReference,
     OwnerDividendLifecycle,
     OwnerDividendState,
+    PersistedCompanyFacts,
     PreparedOwnerDividendFinalization,
     PreparedOwnerDividendPayment,
     PreparedShareholderLoan,
     RecordedShareholderLoan,
     RecordOwnerDividendPaymentCommand,
-    RecordShareholderLoanCommand,
     RegisterOwnerDividendDocumentsCommand,
 )
 from talli_backend.modules.corporate_governance.service import (
@@ -62,6 +63,8 @@ from talli_backend.shared.kernel import (
 
 from test_corporate_governance import (
     supported_annual_close,
+    supported_fact_sources,
+    supported_ledger_lines,
     supported_proposal,
     supported_shareholder_loan,
 )
@@ -108,6 +111,40 @@ class GovernanceTransactionStub:
         self.payment_replay: OwnerDividendLifecycle | None = None
         self.shareholder_loan_replay: RecordedShareholderLoan | None = None
         self.shareholder_loan_bank = False
+
+    async def read_decision_fact_sources(
+        self,
+        company_id,
+        income_year,
+        decision_kind,
+    ):
+        self.calls.append(("read_decision_fact_sources", decision_kind))
+        return supported_fact_sources(
+            2025 if decision_kind is CorporateDecisionKind.ANNUAL_CLOSE else 2024
+        )
+
+    async def list_entries(self, **kwargs):
+        decision_kind = next(
+            (
+                value
+                for name, value in reversed(self.calls)
+                if name == "read_decision_fact_sources"
+            ),
+            CorporateDecisionKind.OWNER_DIVIDEND,
+        )
+        year = 2025 if decision_kind is CorporateDecisionKind.ANNUAL_CLOSE else 2024
+        lines = tuple(
+            SimpleNamespace(
+                account=line.account,
+                debit=Money.nok(Decimal(line.debit_ore) / Decimal(100)),
+                credit=Money.nok(Decimal(line.credit_ore) / Decimal(100)),
+            )
+            for line in supported_ledger_lines(year)
+        )
+        return SimpleNamespace(
+            items=(SimpleNamespace(income_year=IncomeYear(year), lines=lines),),
+            page=SimpleNamespace(has_more=False, next_cursor=None),
+        )
 
     async def list_lifecycle(self, company_ids):
         self.calls.append(("list_lifecycle", company_ids))
@@ -160,12 +197,14 @@ class GovernanceTransactionStub:
         self.calls.append(("actor_role", company_id))
         return self.role
 
-    async def propose_owner_dividend(self, command, decision):
+    async def propose_owner_dividend(self, command, decision, canonical_input):
         self.calls.append(("propose", decision))
+        assert canonical_input["request_id"] == str(decision.decision_id)
         return SimpleNamespace(decision=decision, state=OwnerDividendState.PROPOSED, replayed=False)
 
-    async def propose_annual_close(self, command, decision, artifacts):
+    async def propose_annual_close(self, command, decision, canonical_input, artifacts):
         self.calls.append(("propose_annual_close", decision))
+        assert canonical_input["request_id"] == str(decision.decision_id)
         assert len(artifacts) == 2
         return SimpleNamespace(
             decision=decision,
@@ -377,6 +416,9 @@ class LedgerFacadeStub:
         self.transaction = transaction
         self.commands: list[object] = []
 
+    async def list_entries(self, **kwargs):
+        return await self.transaction.list_entries(**kwargs)
+
     async def post_owner_dividend_declared(self, command):
         self.commands.append(command)
         return PostedLedgerEntry(
@@ -436,22 +478,46 @@ def test_proposal_is_owner_authorized_and_persists_python_canonical_facts() -> N
     result = asyncio.run(app.propose_owner_dividend("access-token", supported_proposal()))
     assert result.decision.decision_hash
     assert transaction.calls[0][0] == "actor_role"
-    assert transaction.calls[1][0] == "propose"
+    assert transaction.calls[-1][0] == "propose"
 
     transaction.role = "reviewer"
     with pytest.raises(CorporateGovernanceError):
         asyncio.run(app.propose_owner_dividend("access-token", supported_proposal()))
 
 
+def test_proposal_ignores_claimed_source_facts_and_rederives_them() -> None:
+    app, _, _, _, _ = application()
+    command = supported_proposal()
+    claimed = replace(
+        command,
+        company=PersistedCompanyFacts(
+            command.company_id,
+            "999999999",
+            "CLAIMED COMPANY",
+        ),
+        annual_basis=replace(
+            command.annual_basis,
+            available_distribution_ore=999_999_999,
+            cash_ore=999_999_999,
+        ),
+    )
+
+    result = asyncio.run(app.propose_owner_dividend("access-token", claimed))
+
+    assert result.decision.organization_number == "310279617"
+    assert result.decision.legal_name == "LOGISK ØDE TIGER AS"
+    assert result.decision.financial_totals.available_distribution_ore == 30_000_000
+
+
 def test_annual_close_proposal_is_owner_authorized_and_persists_canonical_facts() -> None:
     app, transaction, _, _, _ = application()
     result = asyncio.run(app.propose_annual_close("access-token", supported_annual_close()))
     assert result.decision.decision_hash == (
-        "2e364c248ed1d6894fd69e69b82012ddddb492d572db5e377b05988ee8349eaa"
+        "5765d1948383a6fb27c4c08cf1607cc4c5dca5cd8e95d6f004db77e446ec5c0a"
     )
     assert result.decision.dividend is None
     assert transaction.calls[0][0] == "actor_role"
-    assert transaction.calls[1][0] == "propose_annual_close"
+    assert transaction.calls[-1][0] == "propose_annual_close"
 
     transaction.role = "reviewer"
     with pytest.raises(CorporateGovernanceError):

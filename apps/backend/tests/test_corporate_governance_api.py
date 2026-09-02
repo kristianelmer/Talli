@@ -48,11 +48,11 @@ def client_and_transaction(*, annual_documents: bool = False):
             "corporate_decision:44444444-4444-4444-8444-444444444444"
         )
         documents.records[0].content_sha256 = (
-            "dc38c0c178f4a0bbd7e466581fae416d6ddeabfacf00027eaac95dbe7ad28e50"
+            "9dcb67fb0d822a72f0bc3946e0c41995a2d5479096630fed7c0a9b798d746544"
         )
-        documents.records[0].byte_length = 32066
+        documents.records[0].byte_length = 32069
         documents.records[1].content_sha256 = (
-            "270bf87a72e5ced5b13490e220e352bde7a16bff019f48d46bfa88ac1d561776"
+            "901228e7a88e53579fad2d15d825244a56ef8b223ef2bfa4154755b883bd4c30"
         )
         documents.records[1].linked_to = (
             "corporate_decision:44444444-4444-4444-8444-444444444444"
@@ -77,7 +77,7 @@ def client_and_transaction(*, annual_documents: bool = False):
                 income_year=IncomeYear(2025),
             ),
         )
-        documents.records[1].byte_length = 32626
+        documents.records[1].byte_length = 32628
     documents_sessions = DocumentsSessionFactoryStub(documents)
     return (
         TestClient(
@@ -197,8 +197,31 @@ def annual_close_payload() -> dict[str, object]:
         "decisionId": str(command.decision_id),
         "documentSetId": str(command.document_set_id),
         "annualBasis": {
-            **payload["annualBasis"],
+            "sourceId": str(command.annual_basis.source_id),
             "incomeYear": int(command.annual_basis.income_year),
+            "latestApproved": command.annual_basis.latest_approved,
+            "annualDataSha256": command.annual_basis.annual_data_sha256,
+            "annualAccountsPayloadSha256": command.annual_basis.annual_accounts_payload_sha256,
+            "resultAfterTaxOre": command.annual_basis.result_after_tax_ore,
+            "equityOre": command.annual_basis.equity_ore,
+            "availableDistributionOre": command.annual_basis.available_distribution_ore,
+            "cashOre": command.annual_basis.cash_ore,
+        },
+        "reviewedFacts": {
+            "organizationNumber": command.reviewed_facts.organization_number,
+            "legalName": command.reviewed_facts.legal_name,
+            "shareholders": [
+                {
+                    "shareholderId": item.shareholder_id,
+                    "name": item.name,
+                    "shareCount": item.share_count,
+                }
+                for item in command.reviewed_facts.shareholders
+            ],
+            "totalCompanyShares": command.reviewed_facts.total_company_shares,
+            "availableDistributionOre": command.reviewed_facts.available_distribution_ore,
+            "annualDataSha256": command.reviewed_facts.annual_data_sha256,
+            "annualAccountsPayloadSha256": command.reviewed_facts.annual_accounts_payload_sha256,
         },
         "boardMeeting": {
             **payload["boardMeeting"],
@@ -316,6 +339,32 @@ def test_owner_dividend_fastapi_lifecycle_is_typed_and_backend_owned() -> None:
     assert bank_claim[1][0].transaction_date.value == date(2025, 7, 2)
 
 
+def test_decision_facts_are_derived_from_backend_sources() -> None:
+    client, transaction = client_and_transaction()
+
+    response = client.get(
+        "/api/v1/corporate-governance/decision-facts",
+        headers={"Authorization": "Bearer access-token"},
+        params={
+            "companyId": str(supported_proposal().company_id),
+            "incomeYear": 2025,
+            "decisionKind": "owner_dividend",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["company"] == {
+        "organizationNumber": "310279617",
+        "legalName": "LOGISK ØDE TIGER AS",
+    }
+    assert response.json()["annualBasis"]["incomeYear"] == 2024
+    assert response.json()["reviewedFacts"]["totalCompanyShares"] == 1_000
+    assert [call[0] for call in transaction.calls] == [
+        "actor_role",
+        "read_decision_fact_sources"
+    ]
+
+
 def test_annual_close_fastapi_proposal_is_typed_and_backend_owned() -> None:
     client, transaction = client_and_transaction(annual_documents=True)
     proposed = client.post(
@@ -326,7 +375,7 @@ def test_annual_close_fastapi_proposal_is_typed_and_backend_owned() -> None:
     assert proposed.status_code == 201, proposed.text
     assert proposed.json()["decision"]["decisionKind"] == "annual_close"
     assert proposed.json()["decision"]["decisionHash"] == (
-        "2e364c248ed1d6894fd69e69b82012ddddb492d572db5e377b05988ee8349eaa"
+        "5765d1948383a6fb27c4c08cf1607cc4c5dca5cd8e95d6f004db77e446ec5c0a"
     )
     assert proposed.json()["decision"]["dividend"] is None
     assert [artifact["artifactKind"] for artifact in proposed.json()["artifacts"]] == [
@@ -334,8 +383,8 @@ def test_annual_close_fastapi_proposal_is_typed_and_backend_owned() -> None:
         "annual_general_meeting_minutes",
     ]
     assert [artifact["contentSha256"] for artifact in proposed.json()["artifacts"]] == [
-        "dc38c0c178f4a0bbd7e466581fae416d6ddeabfacf00027eaac95dbe7ad28e50",
-        "270bf87a72e5ced5b13490e220e352bde7a16bff019f48d46bfa88ac1d561776",
+        "9dcb67fb0d822a72f0bc3946e0c41995a2d5479096630fed7c0a9b798d746544",
+        "901228e7a88e53579fad2d15d825244a56ef8b223ef2bfa4154755b883bd4c30",
     ]
     assert all(
         b64decode(artifact["contentBase64"]).startswith(b"%PDF-")

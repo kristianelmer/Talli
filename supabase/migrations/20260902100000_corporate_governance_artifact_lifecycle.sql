@@ -235,6 +235,85 @@ begin
 end;
 $function$;
 
+create or replace function
+corporate_governance.read_corporate_decision_fact_sources_v1(
+  p_company_id uuid,
+  p_income_year integer,
+  p_decision_kind text,
+  p_verified_subject text
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  v_setup_id uuid;
+begin
+  if p_company_id is null or p_income_year not between 2000 and 2200
+    or p_decision_kind not in ('owner_dividend', 'annual_close')
+    or corporate_governance.actor_company_role_v1(
+      p_company_id, p_verified_subject
+    ) <> 'owner'
+  then
+    raise exception 'corporate_governance_forbidden';
+  end if;
+
+  select setup.id into v_setup_id
+  from public.opening_balance_setups setup
+  where setup.company_id = p_company_id
+    and setup.income_year = p_income_year;
+
+  return pg_catalog.jsonb_build_object(
+    'company', (
+      select pg_catalog.jsonb_build_object(
+        'companyId', company.id,
+        'organizationNumber', company.org_number,
+        'legalName', company.name
+      )
+      from public.companies company
+      where company.id = p_company_id
+    ),
+    'shareholders', coalesce((
+      select pg_catalog.jsonb_agg(
+        pg_catalog.jsonb_build_object(
+          'shareholderId', shareholder.id,
+          'name', shareholder.name,
+          'shareCount', shareholder.share_count,
+          'order', shareholder.row_order
+        ) order by shareholder.row_order
+      )
+      from (
+        select item.*,
+          pg_catalog.row_number() over (order by item.id) - 1 as row_order
+        from public.opening_shareholders item
+        where item.company_id = p_company_id
+          and item.setup_id = v_setup_id
+      ) shareholder
+    ), '[]'::jsonb),
+    'annualData', coalesce((
+      select pg_catalog.jsonb_agg(
+        pg_catalog.jsonb_build_object(
+          'sourceId', item.id,
+          'companyId', item.company_id,
+          'incomeYear', item.income_year,
+          'answers', item.answers,
+          'confirmations', item.confirmations,
+          'noActivityConfirmed', item.no_activity_confirmed,
+          'annualFullTimeEquivalents', item.annual_full_time_equivalents,
+          'completedAt', item.completed_at,
+          'updatedAt', item.updated_at
+        ) order by item.income_year desc, item.id
+      )
+      from public.annual_data item
+      where item.company_id = p_company_id
+        and item.income_year <= p_income_year
+    ), '[]'::jsonb)
+  );
+end;
+$function$;
+
 create or replace function corporate_governance.read_corporate_lifecycle_v1(
   p_company_ids uuid[],
   p_decision_id uuid,
@@ -1084,6 +1163,9 @@ reset role;
 revoke all on function
   corporate_governance.record_owner_dividend_event_v1(jsonb, text),
   corporate_governance.attest_owner_dividend_signed_artifact_v1(jsonb, text),
+  corporate_governance.read_corporate_decision_fact_sources_v1(
+    uuid, integer, text, text
+  ),
   corporate_governance.read_corporate_lifecycle_v1(uuid[], uuid, text),
   corporate_governance.owner_dividend_lifecycle_pre148_v1(uuid, boolean),
   corporate_governance.prepare_owner_dividend_finalization_pre148_v1(
@@ -1099,6 +1181,9 @@ from public, anon, authenticated, service_role;
 grant execute on function
   corporate_governance.record_owner_dividend_event_v1(jsonb, text),
   corporate_governance.attest_owner_dividend_signed_artifact_v1(jsonb, text),
+  corporate_governance.read_corporate_decision_fact_sources_v1(
+    uuid, integer, text, text
+  ),
   corporate_governance.read_corporate_lifecycle_v1(uuid[], uuid, text)
 to corporate_governance_workflow_executor;
 

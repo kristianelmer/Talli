@@ -4,10 +4,10 @@ import { useState } from "react";
 
 import { createOwnerDividendDecisionDraft } from "../../../actions";
 import { Banner, SubmitButton } from "../../../components/ui";
-import {
-  type ApprovedAnnualCorporateBasis,
-  type ReviewedCorporateFacts,
-} from "../../../lib/corporate-decision-facts";
+import type {
+  CorporateAnnualBasisWire,
+  CorporateReviewedFactsWire,
+} from "../../../../features/corporate-governance";
 
 export type DividendShareholder = {
   id: string;
@@ -28,8 +28,8 @@ type Props = {
   companyId: string;
   incomeYear: number;
   shareholders: DividendShareholder[];
-  annualBasis: ApprovedAnnualCorporateBasis | null;
-  reviewedFacts: ReviewedCorporateFacts | null;
+  annualBasis: CorporateAnnualBasisWire | null;
+  reviewedFacts: CorporateReviewedFactsWire | null;
   draftIds: OwnerDividendDraftIds;
   featureEnabled: boolean;
   basisBlocker?: string | null;
@@ -124,8 +124,8 @@ export function OwnerDividendWizard({
       <input type="hidden" name="reviewedLegalName" value={reviewedFacts.legalName} />
       <input type="hidden" name="reviewedTotalCompanyShares" value={reviewedFacts.totalCompanyShares} />
       <input type="hidden" name="reviewedAvailableDistributionOre" value={reviewedFacts.availableDistributionOre} />
-      <input type="hidden" name="reviewedAnnualDataHash" value={reviewedFacts.annualDataHash} />
-      <input type="hidden" name="reviewedAnnualAccountsPayloadHash" value={reviewedFacts.annualAccountsPayloadHash} />
+      <input type="hidden" name="reviewedAnnualDataHash" value={reviewedFacts.annualDataSha256} />
+      <input type="hidden" name="reviewedAnnualAccountsPayloadHash" value={reviewedFacts.annualAccountsPayloadSha256} />
       {reviewedFacts.shareholders.map((shareholder) => (
         <span key={`reviewed-${shareholder.shareholderId}`} hidden>
           <input type="hidden" name="reviewedShareholderId" value={shareholder.shareholderId} />

@@ -190,6 +190,7 @@ from talli_backend.modules.corporate_governance.public import (
     CorporateDecisionKind,
     CorporateDecisionId,
     CorporateDecisionRecord,
+    DerivedCorporateDecisionFacts,
     CorporateDocumentReadiness,
     CorporateDocumentReadinessBlocker,
     CorporateDocumentSetId,
@@ -985,6 +986,13 @@ class CorporateReviewedFactsWire(StrictTransportModel):
     available_distribution_ore: int = Field(ge=0, le=9_007_199_254_740_991)
     annual_data_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     annual_accounts_payload_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class CorporateDecisionFactsWire(StrictTransportModel):
+    company: CorporateCompanyFactsWire
+    shareholders: list[CorporateShareholderWire]
+    annual_basis: CorporateAnnualBasisWire
+    reviewed_facts: CorporateReviewedFactsWire
 
 
 class CorporateBoardMeetingWire(StrictTransportModel):
@@ -4002,6 +4010,60 @@ def create_app(
             artifacts=[rendered_artifact_wire(item) for item in value.artifacts],
         )
 
+    def corporate_decision_facts_wire(
+        value: DerivedCorporateDecisionFacts,
+    ) -> CorporateDecisionFactsWire:
+        return CorporateDecisionFactsWire(
+            company=CorporateCompanyFactsWire(
+                organization_number=value.company.organization_number,
+                legal_name=value.company.legal_name,
+            ),
+            shareholders=[
+                CorporateShareholderWire(
+                    shareholder_id=item.shareholder_id,
+                    name=item.name,
+                    share_count=item.share_count,
+                    order=item.order,
+                )
+                for item in value.shareholders
+            ],
+            annual_basis=CorporateAnnualBasisWire(
+                source_id=UUID(str(value.annual_basis.source_id)),
+                income_year=int(value.annual_basis.income_year),
+                latest_approved=value.annual_basis.latest_approved,
+                annual_data_sha256=value.annual_basis.annual_data_sha256,
+                annual_accounts_payload_sha256=(
+                    value.annual_basis.annual_accounts_payload_sha256
+                ),
+                result_after_tax_ore=value.annual_basis.result_after_tax_ore,
+                equity_ore=value.annual_basis.equity_ore,
+                available_distribution_ore=(
+                    value.annual_basis.available_distribution_ore
+                ),
+                cash_ore=value.annual_basis.cash_ore,
+            ),
+            reviewed_facts=CorporateReviewedFactsWire(
+                organization_number=value.reviewed_facts.organization_number,
+                legal_name=value.reviewed_facts.legal_name,
+                shareholders=[
+                    CorporateReviewedShareholderWire(
+                        shareholder_id=item.shareholder_id,
+                        name=item.name,
+                        share_count=item.share_count,
+                    )
+                    for item in value.reviewed_facts.shareholders
+                ],
+                total_company_shares=value.reviewed_facts.total_company_shares,
+                available_distribution_ore=(
+                    value.reviewed_facts.available_distribution_ore
+                ),
+                annual_data_sha256=value.reviewed_facts.annual_data_sha256,
+                annual_accounts_payload_sha256=(
+                    value.reviewed_facts.annual_accounts_payload_sha256
+                ),
+            ),
+        )
+
     def rendered_artifact_wire(value) -> RenderedCorporateArtifactWire:
         return RenderedCorporateArtifactWire(
             artifact_kind=value.artifact_kind,
@@ -4346,6 +4408,39 @@ def create_app(
                 command.prudent_equity_and_liquidity_confirmed
             ),
         }
+
+    @application.get(
+        "/api/v1/corporate-governance/decision-facts",
+        operation_id="corporateGovernanceDeriveDecisionFacts",
+        response_model=CorporateDecisionFactsWire,
+        responses={
+            200: {"description": "Backend-derived current corporate facts."}
+            | corporate_governance_success
+        }
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+    )
+    async def derive_corporate_decision_facts(
+        request: Request,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2200)],
+        decision_kind: Annotated[
+            CorporateDecisionKind, Query(alias="decisionKind")
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CorporateDecisionFactsWire:
+        async def execute() -> CorporateDecisionFactsWire:
+            return corporate_decision_facts_wire(
+                await corporate_governance_application.derive_decision_facts(
+                    bearer_token(credentials),
+                    company_id=CompanyId(str(company_id)),
+                    income_year=IncomeYear(income_year),
+                    decision_kind=decision_kind,
+                    correlation_id=CorrelationId(request.state.request_id),
+                )
+            )
+
+        return await corporate_governance_call(execute)
 
     @application.get(
         "/api/v1/corporate-governance/readiness",

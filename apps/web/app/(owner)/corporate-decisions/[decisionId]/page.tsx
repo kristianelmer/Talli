@@ -8,7 +8,7 @@ import {
   rejectCorporateDecision,
 } from "../../../actions";
 import { Banner, StatusBadge, SubmitButton } from "../../../components/ui";
-import type { CorporateArtifactKind } from "../../../lib/corporate-documents";
+import type { CorporateArtifactKind } from "../../../../features/corporate-governance";
 import { loadAcceptedMembershipCompany } from "../../../lib/company-access-context";
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
 import { SignedArtifactUpload } from "./SignedArtifactUpload";

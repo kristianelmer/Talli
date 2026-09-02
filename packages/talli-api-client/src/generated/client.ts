@@ -1847,6 +1847,13 @@ export interface CorporateCanonicalShareholderWire {
 
 export type CorporateDecisionKind = "owner_dividend" | "annual_close";
 
+export interface CorporateDecisionFactsWire {
+  annualBasis: CorporateAnnualBasisWire;
+  company: CorporateCompanyFactsWire;
+  reviewedFacts: CorporateReviewedFactsWire;
+  shareholders: CorporateShareholderWire[];
+}
+
 export interface CorporateDecisionRecordWire {
   annualCloseSourceId: string;
   canonicalInput: Record<string, unknown>;
@@ -4811,6 +4818,17 @@ function isCorporateDecisionKind(value: unknown): value is CorporateDecisionKind
   return value === "owner_dividend" || value === "annual_close";
 }
 
+function isCorporateDecisionFactsWire(value: unknown): value is CorporateDecisionFactsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["annualBasis","company","reviewedFacts","shareholders"]) &&
+    isCorporateAnnualBasisWire(value.annualBasis) &&
+    isCorporateCompanyFactsWire(value.company) &&
+    isCorporateReviewedFactsWire(value.reviewedFacts) &&
+    Array.isArray(value.shareholders) && value.shareholders.every((item) => isCorporateShareholderWire(item))
+  );
+}
+
 function isCorporateDecisionRecordWire(value: unknown): value is CorporateDecisionRecordWire {
   return (
     isRecord(value) &&
@@ -5703,6 +5721,12 @@ export interface CorporateGovernanceListRequest extends TalliRequestOptions {
   companyIds: readonly string[];
 }
 
+export interface CorporateGovernanceDecisionFactsRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+  decisionKind: CorporateDecisionKind;
+}
+
 export interface CorporateGovernanceReadinessRequest extends TalliRequestOptions {
   companyId: string;
   incomeYear: number;
@@ -6423,6 +6447,23 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         undefined,
         isCorporateLifecycleSnapshotWire,
+      );
+    },
+
+    async corporateGovernanceDeriveDecisionFacts(
+      request: CorporateGovernanceDecisionFactsRequest,
+    ): Promise<CorporateDecisionFactsWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+        decisionKind: request.decisionKind,
+      });
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/decision-facts?${query}`,
+        "GET",
+        request,
+        undefined,
+        isCorporateDecisionFactsWire,
       );
     },
 

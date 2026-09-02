@@ -255,6 +255,42 @@ class ApprovedAnnualBasis:
 
 
 @dataclass(frozen=True, slots=True)
+class AnnualDataSourceFacts:
+    source_id: CorporateSourceReference
+    company_id: CompanyId
+    income_year: IncomeYear
+    answers: Mapping[str, object]
+    confirmations: tuple[str, ...]
+    no_activity_confirmed: bool
+    annual_full_time_equivalents: int | float
+    completed_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateDecisionFactSources:
+    company: PersistedCompanyFacts
+    shareholders: tuple[PersistedShareholderFacts, ...]
+    annual_data: tuple[AnnualDataSourceFacts, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateAccountMovementFacts:
+    income_year: IncomeYear
+    account: str
+    debit_ore: int
+    credit_ore: int
+
+
+@dataclass(frozen=True, slots=True)
+class DerivedCorporateDecisionFacts:
+    company: PersistedCompanyFacts
+    shareholders: tuple[PersistedShareholderFacts, ...]
+    annual_basis: ApprovedAnnualBasis
+    reviewed_facts: ReviewedOwnerDividendFacts
+
+
+@dataclass(frozen=True, slots=True)
 class CorporateReadinessSource:
     source_id: CorporateSourceReference
     annual_data_sha256: str
@@ -882,6 +918,13 @@ class PreparedShareholderLoan:
 
 
 class CorporateGovernancePersistence(Protocol):
+    async def read_decision_fact_sources(
+        self,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        decision_kind: CorporateDecisionKind,
+    ) -> CorporateDecisionFactSources: ...
+
     @property
     def actor_id(self) -> ActorId: ...
 
@@ -901,12 +944,14 @@ class CorporateGovernancePersistence(Protocol):
         self,
         command: OwnerDividendProposalCommand,
         decision: CanonicalOwnerDividendDecision,
+        canonical_input: Mapping[str, object],
     ) -> ProposedOwnerDividend: ...
 
     async def propose_annual_close(
         self,
         command: AnnualCloseProposalCommand,
         decision: CanonicalAnnualCloseDecision,
+        canonical_input: Mapping[str, object],
         artifacts: tuple[RenderedCorporateArtifact, ...],
     ) -> ProposedAnnualClose: ...
 
@@ -1018,6 +1063,7 @@ __all__ = [
     "AnnualCloseLifecycle",
     "AnnualCloseEventKind",
     "AnnualCloseProposalCommand",
+    "AnnualDataSourceFacts",
     "ApprovedAnnualBasis",
     "ApproveOwnerDividendCommand",
     "ApproveAnnualCloseCommand",
@@ -1039,6 +1085,7 @@ __all__ = [
     "CorporateArtifactVariant",
     "CorporateDecisionKind",
     "CorporateDecisionId",
+    "CorporateDecisionFactSources",
     "CorporateDecisionRecord",
     "CorporateDocumentReadiness",
     "CorporateDocumentReadinessBlocker",
@@ -1052,9 +1099,11 @@ __all__ = [
     "CorporateGovernanceErrorCode",
     "CorporateGovernancePersistence",
     "CorporateLifecycleSnapshot",
+    "CorporateAccountMovementFacts",
     "CorporateReadinessSource",
     "CorporateSourceReference",
     "DocumentReference",
+    "DerivedCorporateDecisionFacts",
     "FinalizeOwnerDividendCommand",
     "FinalizeAnnualCloseCommand",
     "GeneralMeeting",
