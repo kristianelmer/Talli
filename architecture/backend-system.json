@@ -141,6 +141,7 @@
         "talli_backend.modules.ledger.public"
       ],
       "routes": [
+        "/api/v1/corporate-governance/decision-facts",
         "/api/v1/corporate-governance/decisions",
         "/api/v1/corporate-governance/readiness",
         "/api/v1/corporate-governance/decisions/{decision_id}",

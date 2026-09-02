@@ -41,7 +41,7 @@ select
   'canonical-event:' || event.id::text, event.created_at
 from corporate_governance.owner_dividend_events event
 where event.event_kind in (
-  'signing_requested', 'signed_copy_attested', 'rejected'
+  'signing_requested', 'signed_copy_attested', 'superseded', 'rejected'
 )
 on conflict (id) do nothing;
 
@@ -151,10 +151,16 @@ drop function if exists
     jsonb, text
   );
 
+drop trigger owner_dividend_events_immutable
+  on corporate_governance.owner_dividend_events;
+drop trigger owner_dividend_artifacts_immutable
+  on corporate_governance.owner_dividend_artifacts;
+reset role;
 delete from corporate_governance.owner_dividend_events
 where event_kind in (
-  'signing_requested', 'signed_copy_attested', 'rejected'
+  'signing_requested', 'signed_copy_attested', 'superseded', 'rejected'
 );
+set local role corporate_governance_store_owner;
 drop index if exists corporate_governance.owner_dividend_events_singleton_idx;
 alter table corporate_governance.owner_dividend_events
   drop constraint if exists owner_dividend_events_signed_evidence_check,
@@ -169,13 +175,12 @@ alter table corporate_governance.owner_dividend_events
 alter table corporate_governance.owner_dividend_events
   add constraint owner_dividend_events_event_kind_check check (
     event_kind in ('documents_registered', 'facts_approved')
-  ),
-  add constraint owner_dividend_events_decision_id_event_kind_key unique (
-    decision_id, event_kind
   );
 
+reset role;
 delete from corporate_governance.owner_dividend_artifacts
 where variant = 'signed_owner_attested';
+set local role corporate_governance_store_owner;
 alter table corporate_governance.owner_dividend_artifacts
   drop constraint if exists owner_dividend_artifacts_variant_supersedes_check,
   drop constraint if exists owner_dividend_artifacts_supersedes_check,
@@ -189,6 +194,15 @@ alter table corporate_governance.owner_dividend_artifacts
   add constraint owner_dividend_artifacts_decision_id_artifact_kind_key unique (
     decision_id, artifact_kind
   );
+
+create trigger owner_dividend_events_immutable
+before update or delete on corporate_governance.owner_dividend_events
+for each row execute function
+  corporate_governance.prevent_corporate_governance_mutation();
+create trigger owner_dividend_artifacts_immutable
+before update or delete on corporate_governance.owner_dividend_artifacts
+for each row execute function
+  corporate_governance.prevent_corporate_governance_mutation();
 
 reset role;
 commit;

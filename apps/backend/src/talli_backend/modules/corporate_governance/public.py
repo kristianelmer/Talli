@@ -123,16 +123,19 @@ class OwnerDividendState(StrEnum):
     PARTIALLY_PAID = "partially_paid"
     PAID = "paid"
     REJECTED = "rejected"
+    SUPERSEDED = "superseded"
 
 
 class AnnualCloseEventKind(StrEnum):
     SIGNING_REQUESTED = "signing_requested"
     REJECTED = "rejected"
+    SUPERSEDED = "superseded"
 
 
 class OwnerDividendEventKind(StrEnum):
     SIGNING_REQUESTED = "signing_requested"
     REJECTED = "rejected"
+    SUPERSEDED = "superseded"
 
 
 class ShareholderLoanDirection(StrEnum):
@@ -1049,7 +1052,7 @@ def corporate_governance_persistence_adapter(
     """Declare a governance persistence adapter without global registration."""
 
     def decorate(adapter: CorporateGovernanceAdapter) -> CorporateGovernanceAdapter:
-        setattr(adapter, "__talli_adapter_contract__", contract)
+        adapter.__talli_adapter_contract__ = contract
         return adapter
 
     return decorate
@@ -1059,14 +1062,15 @@ SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 __all__ = [
+    "SHA256_PATTERN",
     "AccountingEntryReference",
-    "AnnualCloseLifecycle",
     "AnnualCloseEventKind",
+    "AnnualCloseLifecycle",
     "AnnualCloseProposalCommand",
     "AnnualDataSourceFacts",
-    "ApprovedAnnualBasis",
-    "ApproveOwnerDividendCommand",
     "ApproveAnnualCloseCommand",
+    "ApproveOwnerDividendCommand",
+    "ApprovedAnnualBasis",
     "AttestAnnualCloseSignedArtifactCommand",
     "AttestOwnerDividendSignedArtifactCommand",
     "BankTransactionReference",
@@ -1074,18 +1078,19 @@ __all__ = [
     "BoardParticipant",
     "BoardRole",
     "BoardTreatmentMethod",
-    "CanonicalBoardParticipant",
     "CanonicalAnnualCloseDecision",
+    "CanonicalBoardParticipant",
     "CanonicalDecisionShareholder",
     "CanonicalOwnerDividendDecision",
     "CanonicalShareholderLoan",
+    "CorporateAccountMovementFacts",
     "CorporateArtifactId",
     "CorporateArtifactKind",
     "CorporateArtifactRecord",
     "CorporateArtifactVariant",
-    "CorporateDecisionKind",
-    "CorporateDecisionId",
     "CorporateDecisionFactSources",
+    "CorporateDecisionId",
+    "CorporateDecisionKind",
     "CorporateDecisionRecord",
     "CorporateDocumentReadiness",
     "CorporateDocumentReadinessBlocker",
@@ -1099,23 +1104,22 @@ __all__ = [
     "CorporateGovernanceErrorCode",
     "CorporateGovernancePersistence",
     "CorporateLifecycleSnapshot",
-    "CorporateAccountMovementFacts",
     "CorporateReadinessSource",
     "CorporateSourceReference",
-    "DocumentReference",
     "DerivedCorporateDecisionFacts",
-    "FinalizeOwnerDividendCommand",
+    "DocumentReference",
     "FinalizeAnnualCloseCommand",
+    "FinalizeOwnerDividendCommand",
     "GeneralMeeting",
     "MeetingForm",
     "OwnerDividendAllocation",
     "OwnerDividendArtifactReference",
     "OwnerDividendConfirmations",
+    "OwnerDividendEventKind",
     "OwnerDividendFacts",
     "OwnerDividendFinancialTotals",
     "OwnerDividendLifecycle",
     "OwnerDividendProposalCommand",
-    "OwnerDividendEventKind",
     "OwnerDividendState",
     "PersistedCompanyFacts",
     "PersistedShareholderFacts",
@@ -1124,17 +1128,16 @@ __all__ = [
     "PreparedShareholderLoan",
     "ProposedAnnualClose",
     "ProposedOwnerDividend",
-    "RecordOwnerDividendPaymentCommand",
-    "RecordOwnerDividendEventCommand",
     "RecordAnnualCloseEventCommand",
+    "RecordOwnerDividendEventCommand",
+    "RecordOwnerDividendPaymentCommand",
     "RecordShareholderLoanCommand",
     "RecordedShareholderLoan",
-    "RenderedCorporateArtifact",
-    "RegisterOwnerDividendDocumentsCommand",
     "RegisterAnnualCloseDocumentsCommand",
+    "RegisterOwnerDividendDocumentsCommand",
+    "RenderedCorporateArtifact",
     "ReviewedOwnerDividendFacts",
     "ReviewedShareholderFacts",
-    "SHA256_PATTERN",
     "ShareholderBallot",
     "ShareholderLoanDirection",
     "ShareholderLoanDocumentStatus",

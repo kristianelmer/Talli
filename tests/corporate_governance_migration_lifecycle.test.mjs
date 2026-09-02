@@ -49,6 +49,37 @@ async function state(client) {
   return result.rows[0];
 }
 
+async function assertSupersededEvidence(client, canonical) {
+  const result = canonical
+    ? await client.query(String.raw`
+        select
+          (corporate_governance.owner_dividend_lifecycle_v1(
+            '97000000-0000-4000-8000-000000000148'::uuid, false
+          ) ->> 'state') as state,
+          pg_catalog.count(*)::int as event_count
+        from corporate_governance.owner_dividend_events event
+        where event.decision_id =
+          '97000000-0000-4000-8000-000000000148'::uuid
+          and event.id in (
+            '97000000-0000-4000-8000-000000000150'::uuid,
+            '97000000-0000-4000-8000-000000000151'::uuid,
+            '97000000-0000-4000-8000-000000000152'::uuid
+          )
+      `)
+    : await client.query(String.raw`
+        select 'superseded'::text as state, pg_catalog.count(*)::int as event_count
+        from public.corporate_document_events event
+        where event.decision_id =
+          '97000000-0000-4000-8000-000000000148'::uuid
+          and event.id in (
+            '97000000-0000-4000-8000-000000000150'::uuid,
+            '97000000-0000-4000-8000-000000000151'::uuid,
+            '97000000-0000-4000-8000-000000000152'::uuid
+          )
+      `);
+  assert.deepEqual(result.rows[0], { state: "superseded", event_count: 3 });
+}
+
 test(
   "governance rollback and recutover are lossless and repeatable twice",
   { skip: !databaseUrl && "DATABASE_URL is required", timeout: 120_000 },
@@ -112,6 +143,179 @@ test(
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
     try {
+      await client.query(String.raw`
+        insert into auth.users (id, is_sso_user, is_anonymous)
+        values ('97000000-0000-4000-8000-000000000147', false, false)
+        on conflict (id) do nothing;
+        insert into public.companies (
+          id, org_number, name, entity_type, created_by
+        ) values (
+          '97000000-0000-4000-8000-000000000146', '900000148',
+          'Superseded Evidence AS', 'AS',
+          '97000000-0000-4000-8000-000000000147'
+        ) on conflict (id) do nothing;
+        insert into public.company_memberships (
+          company_id, user_id, role, accepted_at
+        ) values (
+          '97000000-0000-4000-8000-000000000146',
+          '97000000-0000-4000-8000-000000000147', 'owner',
+          pg_catalog.now()
+        ) on conflict (company_id, user_id) do nothing;
+        select pg_catalog.set_config(
+          'request.jwt.claim.sub',
+          '97000000-0000-4000-8000-000000000147', false
+        );
+        select pg_catalog.set_config(
+          'request.jwt.claims',
+          '{"sub":"97000000-0000-4000-8000-000000000147","aal":"aal2"}',
+          false
+        );
+        insert into public.annual_data (
+          id, company_id, income_year, answers, completed_by, updated_by
+        ) values (
+          '97000000-0000-4000-8000-000000000145',
+          '97000000-0000-4000-8000-000000000146', 2024, '{}'::jsonb,
+          '97000000-0000-4000-8000-000000000147',
+          '97000000-0000-4000-8000-000000000147'
+        ) on conflict (id) do nothing;
+        insert into public.corporate_decisions (
+          id, company_id, income_year, decision_kind,
+          annual_close_source_id, source_hash, canonical_input,
+          decision_hash, created_by, created_at
+        ) values (
+          '97000000-0000-4000-8000-000000000148',
+          '97000000-0000-4000-8000-000000000146', 2025,
+          'owner_dividend', '97000000-0000-4000-8000-000000000145',
+          repeat('a', 64),
+          pg_catalog.jsonb_build_object(
+            'template_family', 'norwegian_simple_as',
+            'template_version', 'superseded-evidence-v1',
+            'dividend', pg_catalog.jsonb_build_object('amount_ore', 10000)
+          ), repeat('b', 64),
+          '97000000-0000-4000-8000-000000000147',
+          '2025-01-02 03:04:05+00'::timestamptz
+        ) on conflict (id) do nothing;
+        insert into public.corporate_document_sets (
+          id, company_id, income_year, decision_id, template_family,
+          template_version, decision_hash, created_by, created_at
+        ) values (
+          '97000000-0000-4000-8000-000000000149',
+          '97000000-0000-4000-8000-000000000146', 2025,
+          '97000000-0000-4000-8000-000000000148', 'norwegian_simple_as',
+          'superseded-evidence-v1', repeat('b', 64),
+          '97000000-0000-4000-8000-000000000147',
+          '2025-01-02 03:04:05+00'::timestamptz
+        ) on conflict (id) do nothing;
+        do $authority$ begin
+          execute pg_catalog.format(
+            'grant corporate_governance_store_owner to %I', current_user
+          );
+        end $authority$;
+        set role corporate_governance_store_owner;
+        select pg_catalog.set_config(
+          'talli.verified_actor_id',
+          '97000000-0000-4000-8000-000000000147', false
+        );
+        insert into corporate_governance.owner_dividend_decisions (
+          id, document_set_id, company_id, income_year,
+          annual_close_source_id, source_hash, canonical_input,
+          decision_hash, declared_amount_ore, idempotency_key,
+          correlation_id, request_fingerprint, created_by, created_at
+        ) values (
+          '97000000-0000-4000-8000-000000000148',
+          '97000000-0000-4000-8000-000000000149',
+          '97000000-0000-4000-8000-000000000146', 2025,
+          '97000000-0000-4000-8000-000000000145', repeat('a', 64),
+          pg_catalog.jsonb_build_object(
+            'decisionId', '97000000-0000-4000-8000-000000000148',
+            'documentSetId', '97000000-0000-4000-8000-000000000149',
+            'companyId', '97000000-0000-4000-8000-000000000146',
+            'incomeYear', 2025, 'sourceHash', repeat('a', 64),
+            'decisionHash', repeat('b', 64),
+            'dividend', pg_catalog.jsonb_build_object('amountOre', 10000)
+          ), repeat('b', 64), 10000, 'superseded-decision-148',
+          'superseded-decision-148', repeat('c', 64),
+          '97000000-0000-4000-8000-000000000147',
+          '2025-01-02 03:04:05+00'::timestamptz
+        ) on conflict (id) do nothing;
+        reset role;
+        insert into public.corporate_document_events (
+          id, company_id, income_year, decision_id, set_id, event_kind,
+          actor_id, occurred_at, decision_hash, metadata,
+          idempotency_key, created_at
+        ) values
+          (
+            '97000000-0000-4000-8000-000000000150',
+            '97000000-0000-4000-8000-000000000146', 2025,
+            '97000000-0000-4000-8000-000000000148',
+            '97000000-0000-4000-8000-000000000149', 'generated',
+            '97000000-0000-4000-8000-000000000147',
+            '2025-01-02 03:04:06+00', repeat('b', 64),
+            '{"artifact":"board"}'::jsonb, 'legacy-generated-board-148',
+            '2025-01-02 03:04:06+00'
+          ),
+          (
+            '97000000-0000-4000-8000-000000000151',
+            '97000000-0000-4000-8000-000000000146', 2025,
+            '97000000-0000-4000-8000-000000000148',
+            '97000000-0000-4000-8000-000000000149', 'generated',
+            '97000000-0000-4000-8000-000000000147',
+            '2025-01-02 03:04:07+00', repeat('b', 64),
+            '{"artifact":"minutes"}'::jsonb, 'legacy-generated-minutes-148',
+            '2025-01-02 03:04:07+00'
+          ),
+          (
+            '97000000-0000-4000-8000-000000000152',
+            '97000000-0000-4000-8000-000000000146', 2025,
+            '97000000-0000-4000-8000-000000000148',
+            '97000000-0000-4000-8000-000000000149', 'superseded',
+            '97000000-0000-4000-8000-000000000147',
+            '2025-01-02 03:04:08+00', repeat('b', 64), '{}'::jsonb,
+            'legacy-superseded-148', '2025-01-02 03:04:08+00'
+          )
+        on conflict (id) do nothing;
+        set role corporate_governance_store_owner;
+        insert into corporate_governance.owner_dividend_events (
+          id, decision_id, document_set_id, company_id, income_year,
+          event_kind, decision_hash, metadata, idempotency_key,
+          correlation_id, request_fingerprint, created_by, created_at
+        ) values
+          (
+            '97000000-0000-4000-8000-000000000150',
+            '97000000-0000-4000-8000-000000000148',
+            '97000000-0000-4000-8000-000000000149',
+            '97000000-0000-4000-8000-000000000146', 2025,
+            'documents_registered', repeat('b', 64),
+            '{"artifact":"board"}'::jsonb, 'canonical-generated-board-148',
+            'canonical-generated-board-148', repeat('d', 64),
+            '97000000-0000-4000-8000-000000000147',
+            '2025-01-02 03:04:06+00'
+          ),
+          (
+            '97000000-0000-4000-8000-000000000151',
+            '97000000-0000-4000-8000-000000000148',
+            '97000000-0000-4000-8000-000000000149',
+            '97000000-0000-4000-8000-000000000146', 2025,
+            'documents_registered', repeat('b', 64),
+            '{"artifact":"minutes"}'::jsonb,
+            'canonical-generated-minutes-148',
+            'canonical-generated-minutes-148', repeat('e', 64),
+            '97000000-0000-4000-8000-000000000147',
+            '2025-01-02 03:04:07+00'
+          ),
+          (
+            '97000000-0000-4000-8000-000000000152',
+            '97000000-0000-4000-8000-000000000148',
+            '97000000-0000-4000-8000-000000000149',
+            '97000000-0000-4000-8000-000000000146', 2025,
+            'superseded', repeat('b', 64), '{}'::jsonb,
+            'canonical-superseded-148', 'canonical-superseded-148',
+            repeat('f', 64), '97000000-0000-4000-8000-000000000147',
+            '2025-01-02 03:04:08+00'
+        )
+        on conflict (id) do nothing;
+        reset role;
+      `);
       assert.deepEqual(await state(client), {
         capability_schema: true,
         decision_table: true,
@@ -120,6 +324,7 @@ test(
         owner_banking_bridge: true,
         shareholder_loan_banking_bridge: true,
       });
+      await assertSupersededEvidence(client, true);
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
         await client.query(lifecycleRollback);
         await client.query(annualRollback);
@@ -133,6 +338,7 @@ test(
           owner_banking_bridge: false,
           shareholder_loan_banking_bridge: false,
         });
+        await assertSupersededEvidence(client, false);
         await client.query(ownerForward);
         await client.query(loanForward);
         await client.query(annualForward);
@@ -145,6 +351,7 @@ test(
           owner_banking_bridge: true,
           shareholder_loan_banking_bridge: true,
         });
+        await assertSupersededEvidence(client, true);
       }
     } finally {
       await client.end();

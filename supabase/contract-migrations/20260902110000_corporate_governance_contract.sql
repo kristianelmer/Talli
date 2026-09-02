@@ -22,6 +22,59 @@ begin
 end
 $membership$;
 
+-- A contract rollback replaces the canonical money-moving entry points with
+-- fail-closed definitions. Re-cutover restores the exact reviewed definitions
+-- before the predecessor projection is removed again.
+set local role corporate_governance_store_owner;
+do $restore_contract_writers$
+declare
+  routine record;
+  v_definition text;
+begin
+  for routine in select * from (values
+    (
+      'corporate_governance.prepare_owner_dividend_finalization_contract_v1(jsonb,text)',
+      'FUNCTION corporate_governance.prepare_owner_dividend_finalization_contract_v1',
+      'FUNCTION corporate_governance.prepare_owner_dividend_finalization_v1'
+    ),
+    (
+      'corporate_governance.complete_owner_dividend_finalization_contract_v1(jsonb,text)',
+      'FUNCTION corporate_governance.complete_owner_dividend_finalization_contract_v1',
+      'FUNCTION corporate_governance.complete_owner_dividend_finalization_v1'
+    ),
+    (
+      'corporate_governance.prepare_owner_dividend_payment_contract_v1(jsonb,text)',
+      'FUNCTION corporate_governance.prepare_owner_dividend_payment_contract_v1',
+      'FUNCTION corporate_governance.prepare_owner_dividend_payment_v1'
+    ),
+    (
+      'corporate_governance.complete_owner_dividend_payment_contract_v1(jsonb,text)',
+      'FUNCTION corporate_governance.complete_owner_dividend_payment_contract_v1',
+      'FUNCTION corporate_governance.complete_owner_dividend_payment_v1'
+    ),
+    (
+      'corporate_governance.finalize_annual_close_contract_v1(jsonb,text)',
+      'FUNCTION corporate_governance.finalize_annual_close_contract_v1',
+      'FUNCTION corporate_governance.finalize_annual_close_v1'
+    )
+  ) as inventory(backup_signature, backup_name, active_name)
+  loop
+    if pg_catalog.to_regprocedure(routine.backup_signature) is null then
+      continue;
+    end if;
+    v_definition := pg_catalog.pg_get_functiondef(
+      pg_catalog.to_regprocedure(routine.backup_signature)
+    );
+    v_definition := pg_catalog.replace(
+      v_definition, routine.backup_name, routine.active_name
+    );
+    execute v_definition;
+    execute 'drop function ' || routine.backup_signature;
+  end loop;
+end
+$restore_contract_writers$;
+reset role;
+
 set local role company_archive_projection_executor;
 do $archive_authority$
 begin
@@ -84,6 +137,125 @@ begin
     where owner_artifact.id is null and annual_artifact.id is null
   ) then
     raise exception 'corporate_governance_artifact_reconciliation_failed';
+  end if;
+
+  if exists (
+    select 1
+    from public.corporate_document_events legacy
+    join public.corporate_decisions decision
+      on decision.id = legacy.decision_id
+    where case
+      when legacy.event_kind in (
+        'generated', 'facts_approved', 'signing_requested',
+        'signed_copy_attested', 'superseded', 'rejected'
+      ) and decision.decision_kind = 'owner_dividend' then not exists (
+        select 1
+        from corporate_governance.owner_dividend_events current
+        where current.id = legacy.id
+          and current.decision_id = legacy.decision_id
+          and current.document_set_id = legacy.set_id
+          and current.company_id = legacy.company_id
+          and current.income_year = legacy.income_year
+          and current.event_kind = case
+            when legacy.event_kind = 'generated'
+              then 'documents_registered'
+            else legacy.event_kind
+          end
+          and current.artifact_id is not distinct from legacy.artifact_id
+          and current.decision_hash = legacy.decision_hash
+          and current.content_sha256 is not distinct from legacy.content_sha256
+          and current.metadata = legacy.metadata
+          and current.created_by = legacy.actor_id
+          and current.created_at = legacy.occurred_at
+          and current.created_at = legacy.created_at
+      )
+      when legacy.event_kind in (
+        'generated', 'facts_approved', 'signing_requested',
+        'signed_copy_attested', 'superseded', 'rejected'
+      ) and decision.decision_kind = 'annual_close' then not exists (
+        select 1
+        from corporate_governance.annual_close_events current
+        where current.id = legacy.id
+          and current.decision_id = legacy.decision_id
+          and current.document_set_id = legacy.set_id
+          and current.company_id = legacy.company_id
+          and current.income_year = legacy.income_year
+          and current.event_kind = case
+            when legacy.event_kind = 'generated'
+              then 'documents_registered'
+            else legacy.event_kind
+          end
+          and current.artifact_id is not distinct from legacy.artifact_id
+          and current.decision_hash = legacy.decision_hash
+          and current.content_sha256 is not distinct from legacy.content_sha256
+          and current.metadata = legacy.metadata
+          and current.created_by = legacy.actor_id
+          and current.created_at = legacy.occurred_at
+          and current.created_at = legacy.created_at
+      )
+      when legacy.event_kind = 'payment_recorded'
+        and decision.decision_kind = 'owner_dividend' then not exists (
+        select 1
+        from corporate_governance.owner_dividend_payments current
+        join corporate_governance.owner_dividend_decisions canonical_decision
+          on canonical_decision.id = current.decision_id
+        where current.id = legacy.id
+          and current.decision_id = legacy.decision_id
+          and current.document_set_id = legacy.set_id
+          and current.company_id = legacy.company_id
+          and current.income_year = legacy.income_year
+          and current.decision_hash = legacy.decision_hash
+          and current.bank_transaction_id =
+            (legacy.metadata ->> 'bank_transaction_id')::uuid
+          and current.holding_action_id =
+            (legacy.metadata ->> 'holding_action_id')::uuid
+          and current.accounting_entry_id =
+            (legacy.metadata ->> 'ledger_entry_id')::uuid
+          and current.payment_amount_ore =
+            (legacy.metadata ->> 'amount_ore')::bigint
+          and canonical_decision.declared_amount_ore - (
+            select coalesce(pg_catalog.sum(earlier.payment_amount_ore), 0)
+            from corporate_governance.owner_dividend_payments earlier
+            where earlier.decision_id = current.decision_id
+              and (
+                earlier.created_at < current.created_at
+                or (
+                  earlier.created_at = current.created_at
+                  and earlier.id <= current.id
+                )
+              )
+          ) = (legacy.metadata ->> 'remaining_payable_ore')::bigint
+          and current.accounting_policy_version =
+            legacy.metadata ->> 'accounting_policy_version'
+          and current.created_by = legacy.actor_id
+          and current.created_at = legacy.occurred_at
+          and current.created_at = legacy.created_at
+      )
+      when legacy.event_kind = 'finalized' then not exists (
+        select 1
+        from corporate_governance.owner_dividend_finalizations current
+        where decision.decision_kind = 'owner_dividend'
+          and current.id = legacy.id
+          and current.decision_id = legacy.decision_id
+          and current.decision_hash = legacy.decision_hash
+          and current.created_by = legacy.actor_id
+          and current.created_at = legacy.occurred_at
+          and current.created_at = legacy.created_at
+        union all
+        select 1
+        from corporate_governance.annual_close_finalizations current
+        where decision.decision_kind = 'annual_close'
+          and current.id = legacy.id
+          and current.decision_id = legacy.decision_id
+          and current.decision_hash = legacy.decision_hash
+          and current.created_by = legacy.actor_id
+          and current.created_at = legacy.occurred_at
+          and current.created_at = legacy.created_at
+      )
+      else true
+    end
+  ) then
+    raise exception 'corporate_governance_event_reconciliation_failed';
   end if;
 
   if exists (

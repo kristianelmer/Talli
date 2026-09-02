@@ -1,4 +1,4 @@
--- Restore a read-only predecessor projection while retaining canonical writers.
+-- Restore a read-only predecessor projection and fail closed canonical writers.
 begin;
 
 set local lock_timeout = '5s';
@@ -10,10 +10,139 @@ select pg_catalog.set_config(
 do $membership$
 begin
   execute pg_catalog.format(
-    'grant company_archive_projection_executor to %I', current_user
+    'grant corporate_governance_store_owner, '
+      || 'company_archive_projection_executor to %I', current_user
   );
 end
 $membership$;
+
+-- Rollback intentionally exposes only a read-only predecessor projection.
+-- Preserve the exact canonical definitions, then make every finalization and
+-- payment entry point fail before it can create documents, ledger entries, or
+-- payment evidence.
+set local role corporate_governance_store_owner;
+do $preserve_contract_writers$
+declare
+  routine record;
+  v_definition text;
+begin
+  for routine in select * from (values
+    (
+      'corporate_governance.prepare_owner_dividend_finalization_v1(jsonb,text)',
+      'corporate_governance.prepare_owner_dividend_finalization_contract_v1(jsonb,text)',
+      'FUNCTION corporate_governance.prepare_owner_dividend_finalization_v1',
+      'FUNCTION corporate_governance.prepare_owner_dividend_finalization_contract_v1'
+    ),
+    (
+      'corporate_governance.complete_owner_dividend_finalization_v1(jsonb,text)',
+      'corporate_governance.complete_owner_dividend_finalization_contract_v1(jsonb,text)',
+      'FUNCTION corporate_governance.complete_owner_dividend_finalization_v1',
+      'FUNCTION corporate_governance.complete_owner_dividend_finalization_contract_v1'
+    ),
+    (
+      'corporate_governance.prepare_owner_dividend_payment_v1(jsonb,text)',
+      'corporate_governance.prepare_owner_dividend_payment_contract_v1(jsonb,text)',
+      'FUNCTION corporate_governance.prepare_owner_dividend_payment_v1',
+      'FUNCTION corporate_governance.prepare_owner_dividend_payment_contract_v1'
+    ),
+    (
+      'corporate_governance.complete_owner_dividend_payment_v1(jsonb,text)',
+      'corporate_governance.complete_owner_dividend_payment_contract_v1(jsonb,text)',
+      'FUNCTION corporate_governance.complete_owner_dividend_payment_v1',
+      'FUNCTION corporate_governance.complete_owner_dividend_payment_contract_v1'
+    ),
+    (
+      'corporate_governance.finalize_annual_close_v1(jsonb,text)',
+      'corporate_governance.finalize_annual_close_contract_v1(jsonb,text)',
+      'FUNCTION corporate_governance.finalize_annual_close_v1',
+      'FUNCTION corporate_governance.finalize_annual_close_contract_v1'
+    )
+  ) as inventory(
+    active_signature, backup_signature, active_name, backup_name
+  )
+  loop
+    if pg_catalog.to_regprocedure(routine.backup_signature) is not null then
+      continue;
+    end if;
+    v_definition := pg_catalog.pg_get_functiondef(
+      pg_catalog.to_regprocedure(routine.active_signature)
+    );
+    v_definition := pg_catalog.replace(
+      v_definition, routine.active_name, routine.backup_name
+    );
+    execute v_definition;
+  end loop;
+end
+$preserve_contract_writers$;
+
+create or replace function
+corporate_governance.prepare_owner_dividend_finalization_v1(
+  p_request jsonb, p_verified_subject text
+)
+returns jsonb language plpgsql security definer set search_path = ''
+as $function$
+begin
+  raise exception 'corporate_governance_rollback_write_blocked';
+end;
+$function$;
+
+create or replace function
+corporate_governance.complete_owner_dividend_finalization_v1(
+  p_request jsonb, p_verified_subject text
+)
+returns jsonb language plpgsql security definer set search_path = ''
+as $function$
+begin
+  raise exception 'corporate_governance_rollback_write_blocked';
+end;
+$function$;
+
+create or replace function
+corporate_governance.prepare_owner_dividend_payment_v1(
+  p_request jsonb, p_verified_subject text
+)
+returns jsonb language plpgsql security definer set search_path = ''
+as $function$
+begin
+  raise exception 'corporate_governance_rollback_write_blocked';
+end;
+$function$;
+
+create or replace function
+corporate_governance.complete_owner_dividend_payment_v1(
+  p_request jsonb, p_verified_subject text
+)
+returns jsonb language plpgsql security definer set search_path = ''
+as $function$
+begin
+  raise exception 'corporate_governance_rollback_write_blocked';
+end;
+$function$;
+
+create or replace function
+corporate_governance.finalize_annual_close_v1(
+  p_request jsonb, p_verified_subject text
+)
+returns jsonb language plpgsql security definer set search_path = ''
+as $function$
+begin
+  raise exception 'corporate_governance_rollback_write_blocked';
+end;
+$function$;
+
+revoke all on function
+  corporate_governance.prepare_owner_dividend_finalization_contract_v1(
+    jsonb, text
+  ),
+  corporate_governance.complete_owner_dividend_finalization_contract_v1(
+    jsonb, text
+  ),
+  corporate_governance.prepare_owner_dividend_payment_contract_v1(jsonb, text),
+  corporate_governance.complete_owner_dividend_payment_contract_v1(jsonb, text),
+  corporate_governance.finalize_annual_close_contract_v1(jsonb, text)
+from public, anon, authenticated, service_role,
+  corporate_governance_workflow_executor;
+reset role;
 
 create table if not exists public.corporate_accounting_policies (
   policy_version text primary key,
@@ -179,7 +308,36 @@ select
   event.created_by, event.created_at, event.decision_hash,
   event.content_sha256, event.metadata,
   'canonical-event:' || event.id::text, event.created_at
-from corporate_governance.annual_close_events event;
+from corporate_governance.annual_close_events event
+union all
+select
+  payment.id, payment.company_id, payment.income_year,
+  payment.decision_id, payment.document_set_id, null::uuid,
+  'payment_recorded', payment.created_by, payment.created_at,
+  payment.decision_hash, null::text,
+  pg_catalog.jsonb_build_object(
+    'bank_transaction_id', payment.bank_transaction_id,
+    'holding_action_id', payment.holding_action_id,
+    'ledger_entry_id', payment.accounting_entry_id,
+    'amount_ore', payment.payment_amount_ore,
+    'remaining_payable_ore', decision.declared_amount_ore - (
+      select coalesce(pg_catalog.sum(earlier.payment_amount_ore), 0)
+      from corporate_governance.owner_dividend_payments earlier
+      where earlier.decision_id = payment.decision_id
+        and (
+          earlier.created_at < payment.created_at
+          or (
+            earlier.created_at = payment.created_at
+            and earlier.id <= payment.id
+          )
+        )
+    ),
+    'accounting_policy_version', payment.accounting_policy_version
+  ),
+  'canonical-event:' || payment.id::text, payment.created_at
+from corporate_governance.owner_dividend_payments payment
+join corporate_governance.owner_dividend_decisions decision
+  on decision.id = payment.decision_id;
 
 insert into public.corporate_decision_finalizations
 select

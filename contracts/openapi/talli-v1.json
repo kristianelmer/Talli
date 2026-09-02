@@ -382,7 +382,8 @@
       "AnnualCloseEventKind": {
         "enum": [
           "signing_requested",
-          "rejected"
+          "rejected",
+          "superseded"
         ],
         "title": "AnnualCloseEventKind",
         "type": "string"
@@ -12073,7 +12074,8 @@
       "OwnerDividendEventKind": {
         "enum": [
           "signing_requested",
-          "rejected"
+          "rejected",
+          "superseded"
         ],
         "title": "OwnerDividendEventKind",
         "type": "string"
@@ -12525,7 +12527,8 @@
           "finalized",
           "partially_paid",
           "paid",
-          "rejected"
+          "rejected",
+          "superseded"
         ],
         "title": "OwnerDividendState",
         "type": "string"

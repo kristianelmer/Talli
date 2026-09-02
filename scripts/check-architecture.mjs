@@ -110,6 +110,18 @@ const SUPPORT_CASE_SECURITY_AMENDMENT = Object.freeze({
     "compat-audit-persistence\0table:audit_events\0searchOperatorSupportDashboard",
   ]),
 });
+const CORPORATE_DECISION_FACT_CUTOVER = Object.freeze({
+  capability: "corporate_governance",
+  issue: "#148",
+  record: "compat-annual-compliance-persistence",
+  path: "apps/web/app/actions.ts",
+  rule: "direct-web-business-persistence",
+  resource: "table:annual_data",
+  operations: new Set([
+    "createAnnualCorporateDecisionDraft",
+    "createOwnerDividendDecisionDraft",
+  ]),
+});
 
 function isBackendModule(manifest) {
   return ["backend-capability", "backend-technical-module"].includes(manifest.kind);
@@ -1998,7 +2010,16 @@ export function validateCompatibilityRegistry(path, {
           && SUPPORT_CASE_SECURITY_AMENDMENT.scopes.has(
             supportSecurityScopeKey(record.id, scope),
           );
+        const corporateDecisionFactCutover =
+          currentCapability === CORPORATE_DECISION_FACT_CUTOVER.capability
+          && registry.migration?.currentIssue === CORPORATE_DECISION_FACT_CUTOVER.issue
+          && record.id === CORPORATE_DECISION_FACT_CUTOVER.record
+          && scope.path === CORPORATE_DECISION_FACT_CUTOVER.path
+          && scope.rule === CORPORATE_DECISION_FACT_CUTOVER.rule
+          && scope.resource === CORPORATE_DECISION_FACT_CUTOVER.resource
+          && CORPORATE_DECISION_FACT_CUTOVER.operations.has(scope.operation);
         if (!atomicLedgerRelocation && !supportSecurityRemoval
+          && !corporateDecisionFactCutover
           && !authorizedResourceOwners.has(scopeResourceOwner)) {
           errors.push(
             `${prefix} future frozen scope resource ${scope.resource} is not owned by active or exited capability`,

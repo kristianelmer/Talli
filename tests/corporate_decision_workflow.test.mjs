@@ -102,3 +102,9 @@ test("review, signed attestation, and preview UI use honest owner-only copy", ()
   assert.match(previewSource, /redirect\(signedUrl\)/);
   assert.match(previewSource, /application\/pdf/);
 });
+
+test("superseded decisions are terminal in the owner UI", () => {
+  assert.match(pageSource, /superseded:\s*["']Erstattet["']/u);
+  assert.match(pageSource, /const superseded = readiness\.state === ["']superseded["']/u);
+  assert.match(pageSource, /mutationsEnabled[\s\S]*&& !superseded/u);
+});

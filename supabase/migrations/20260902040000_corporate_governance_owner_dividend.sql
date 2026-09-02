@@ -198,7 +198,6 @@ create table corporate_governance.owner_dividend_events (
   ),
   created_by uuid not null references auth.users(id) on delete restrict,
   created_at timestamptz not null default pg_catalog.statement_timestamp(),
-  unique (decision_id, event_kind),
   unique (created_by, company_id, idempotency_key),
   unique (company_id, income_year, id),
   foreign key (company_id, income_year, decision_id)
@@ -788,6 +787,26 @@ insert into corporate_governance.owner_dividend_events (
   request_fingerprint, created_by, created_at
 )
 select
+  event.id, event.decision_id, event.set_id, event.company_id,
+  event.income_year, 'documents_registered', event.decision_hash,
+  'legacy-event:' || event.id::text,
+  'legacy-event:' || event.id::text,
+  pg_catalog.encode(extensions.digest(pg_catalog.jsonb_build_object(
+    'legacyEventId', event.id, 'eventKind', event.event_kind
+  )::text, 'sha256'), 'hex'),
+  event.actor_id, event.created_at
+from public.corporate_document_events event
+join public.corporate_decisions decision on decision.id = event.decision_id
+where decision.decision_kind = 'owner_dividend'
+  and event.event_kind = 'generated'
+on conflict (id) do nothing;
+
+insert into corporate_governance.owner_dividend_events (
+  id, decision_id, document_set_id, company_id, income_year,
+  event_kind, decision_hash, idempotency_key, correlation_id,
+  request_fingerprint, created_by, created_at
+)
+select
   pg_catalog.md5('owner-dividend-documents:' || decision.id::text)::uuid,
   decision.id, document_set.id, decision.company_id, decision.income_year,
   'documents_registered', decision.decision_hash,
@@ -804,6 +823,11 @@ join public.corporate_document_sets document_set
 join public.corporate_document_artifacts artifact
   on artifact.set_id = document_set.id and artifact.variant = 'unsigned'
 where decision.decision_kind = 'owner_dividend'
+  and not exists (
+    select 1 from corporate_governance.owner_dividend_events event
+    where event.decision_id = decision.id
+      and event.event_kind = 'documents_registered'
+  )
 group by decision.id, document_set.id
 having pg_catalog.count(*) = 2
   and pg_catalog.count(distinct artifact.artifact_kind) = 2
@@ -1644,6 +1668,11 @@ begin
       where event.decision_id = v_decision.id
         and event.event_kind = 'facts_approved'
     )
+    or exists (
+      select 1 from corporate_governance.owner_dividend_events event
+      where event.decision_id = v_decision.id
+        and event.event_kind in ('rejected', 'superseded')
+    )
   then
     raise exception 'corporate_governance_invalid_input';
   end if;
@@ -1749,6 +1778,11 @@ begin
       select 1 from corporate_governance.owner_dividend_events event
       where event.decision_id = v_decision.id
         and event.event_kind = 'facts_approved'
+    )
+    or exists (
+      select 1 from corporate_governance.owner_dividend_events event
+      where event.decision_id = v_decision.id
+        and event.event_kind in ('rejected', 'superseded')
     )
   then
     raise exception 'corporate_governance_invalid_input';
@@ -1963,6 +1997,11 @@ begin
     or (p_request ->> 'incomeYear')::integer <> v_decision.income_year
     or p_request ->> 'documentSetId' <> v_decision.document_set_id::text
     or p_request ->> 'decisionHash' <> v_decision.decision_hash
+    or exists (
+      select 1 from corporate_governance.owner_dividend_events event
+      where event.decision_id = v_decision.id
+        and event.event_kind in ('rejected', 'superseded')
+    )
   then
     raise exception 'corporate_governance_finalized_declaration_required';
   end if;
@@ -2072,6 +2111,11 @@ begin
       where finalization.decision_id = v_decision.id
         and finalization.accounting_policy_version =
           p_request ->> 'accountingPolicyVersion'
+    )
+    or exists (
+      select 1 from corporate_governance.owner_dividend_events event
+      where event.decision_id = v_decision.id
+        and event.event_kind in ('rejected', 'superseded')
     )
   then
     raise exception 'corporate_governance_invalid_input';

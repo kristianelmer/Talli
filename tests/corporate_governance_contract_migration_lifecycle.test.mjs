@@ -38,9 +38,88 @@ async function state(client) {
       ) is not null as owner_finalizations,
       pg_catalog.to_regprocedure(
         'corporate_governance.read_corporate_lifecycle_v1(uuid[],uuid,text)'
-      ) is not null as lifecycle_reader
+      ) is not null as lifecycle_reader,
+      pg_catalog.strpos(
+        pg_catalog.pg_get_functiondef(
+          'corporate_governance.prepare_owner_dividend_finalization_v1(jsonb,text)'::regprocedure
+        ),
+        'corporate_governance_rollback_write_blocked'
+      ) > 0 as writers_blocked,
+      pg_catalog.to_regprocedure(
+        'corporate_governance.prepare_owner_dividend_finalization_contract_v1(jsonb,text)'
+      ) is not null
+      and pg_catalog.to_regprocedure(
+        'corporate_governance.complete_owner_dividend_finalization_contract_v1(jsonb,text)'
+      ) is not null
+      and pg_catalog.to_regprocedure(
+        'corporate_governance.prepare_owner_dividend_payment_contract_v1(jsonb,text)'
+      ) is not null
+      and pg_catalog.to_regprocedure(
+        'corporate_governance.complete_owner_dividend_payment_contract_v1(jsonb,text)'
+      ) is not null
+      and pg_catalog.to_regprocedure(
+        'corporate_governance.finalize_annual_close_contract_v1(jsonb,text)'
+      ) is not null as writer_backups
   `);
   return result.rows[0];
+}
+
+async function evidence(client) {
+  const result = await client.query(String.raw`
+    select pg_catalog.jsonb_build_object(
+      'ownerDecisions', (select coalesce(pg_catalog.jsonb_agg(
+        pg_catalog.to_jsonb(item) order by item.id
+      ), '[]'::jsonb) from corporate_governance.owner_dividend_decisions item),
+      'ownerArtifacts', (select coalesce(pg_catalog.jsonb_agg(
+        pg_catalog.to_jsonb(item) order by item.id
+      ), '[]'::jsonb) from corporate_governance.owner_dividend_artifacts item),
+      'ownerEvents', (select coalesce(pg_catalog.jsonb_agg(
+        pg_catalog.to_jsonb(item) order by item.id
+      ), '[]'::jsonb) from corporate_governance.owner_dividend_events item),
+      'ownerFinalizations', (select coalesce(pg_catalog.jsonb_agg(
+        pg_catalog.to_jsonb(item) order by item.id
+      ), '[]'::jsonb) from corporate_governance.owner_dividend_finalizations item),
+      'ownerPayments', (select coalesce(pg_catalog.jsonb_agg(
+        pg_catalog.to_jsonb(item) order by item.id
+      ), '[]'::jsonb) from corporate_governance.owner_dividend_payments item),
+      'annualDecisions', (select coalesce(pg_catalog.jsonb_agg(
+        pg_catalog.to_jsonb(item) order by item.id
+      ), '[]'::jsonb) from corporate_governance.annual_close_decisions item),
+      'annualArtifacts', (select coalesce(pg_catalog.jsonb_agg(
+        pg_catalog.to_jsonb(item) order by item.id
+      ), '[]'::jsonb) from corporate_governance.annual_close_artifacts item),
+      'annualEvents', (select coalesce(pg_catalog.jsonb_agg(
+        pg_catalog.to_jsonb(item) order by item.id
+      ), '[]'::jsonb) from corporate_governance.annual_close_events item),
+      'annualFinalizations', (select coalesce(pg_catalog.jsonb_agg(
+        pg_catalog.to_jsonb(item) order by item.id
+      ), '[]'::jsonb) from corporate_governance.annual_close_finalizations item),
+      'documents', (select coalesce(pg_catalog.jsonb_agg(
+        pg_catalog.to_jsonb(item) order by item.id
+      ), '[]'::jsonb) from public.documents item),
+      'ledgerEntries', (select coalesce(pg_catalog.jsonb_agg(
+        pg_catalog.to_jsonb(item) order by item.id
+      ), '[]'::jsonb) from ledger.entries item)
+    ) as value
+  `);
+  return result.rows[0].value;
+}
+
+async function assertRollbackBlocksWriters(client) {
+  for (const routine of [
+    "prepare_owner_dividend_finalization_v1",
+    "complete_owner_dividend_finalization_v1",
+    "prepare_owner_dividend_payment_v1",
+    "complete_owner_dividend_payment_v1",
+    "finalize_annual_close_v1",
+  ]) {
+    await assert.rejects(
+      client.query(
+        `select corporate_governance.${routine}('{}'::jsonb, '')`,
+      ),
+      /corporate_governance_rollback_write_blocked/u,
+    );
+  }
 }
 
 test(
@@ -74,23 +153,33 @@ test(
         owner_artifacts: true,
         owner_finalizations: true,
         lifecycle_reader: true,
+        writers_blocked: false,
+        writer_backups: false,
       };
       const rollbackState = {
         ...cutoverState,
         predecessor_projection: true,
+        writers_blocked: true,
+        writer_backups: true,
       };
 
       const initialState = await state(client);
       if (initialState.predecessor_projection || initialState.predecessor_writer) {
         await client.query(forward);
       }
+      const canonicalEvidence = await evidence(client);
       await client.query(rollback);
       assert.deepEqual(await state(client), rollbackState);
+      assert.deepEqual(await evidence(client), canonicalEvidence);
+      await assertRollbackBlocksWriters(client);
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
         await client.query(forward);
         assert.deepEqual(await state(client), cutoverState);
+        assert.deepEqual(await evidence(client), canonicalEvidence);
         await client.query(rollback);
         assert.deepEqual(await state(client), rollbackState);
+        assert.deepEqual(await evidence(client), canonicalEvidence);
+        await assertRollbackBlocksWriters(client);
       }
     } finally {
       await client.end();
@@ -126,6 +215,7 @@ test("corporate-governance contract retires every predecessor surface", async ()
   }
 
   assert.match(forward, /corporate_governance_\w+_reconciliation_failed/i);
+  assert.match(forward, /corporate_governance_event_reconciliation_failed/i);
   assert.match(
     forward,
     /delete from public\.holding_actions[\s\S]*shareholder_loan[\s\S]*dividend_to_owner/i,
@@ -139,4 +229,13 @@ test("corporate-governance contract retires every predecessor surface", async ()
     rollback,
     /create\s+(?:or\s+replace\s+)?function\s+public\.create_corporate_document_draft/i,
   );
+  assert.match(
+    rollback,
+    /corporate_governance_rollback_write_blocked/i,
+  );
+  assert.match(
+    rollback,
+    /prepare_owner_dividend_finalization_contract_v1/i,
+  );
+  assert.match(forward, /restore_contract_writers/i);
 });

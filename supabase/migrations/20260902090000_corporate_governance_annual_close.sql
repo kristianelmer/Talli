@@ -135,7 +135,7 @@ create table corporate_governance.annual_close_events (
   income_year integer not null,
   event_kind text not null check (event_kind in (
     'documents_registered', 'facts_approved', 'signing_requested',
-    'signed_copy_attested', 'rejected'
+    'signed_copy_attested', 'superseded', 'rejected'
   )),
   artifact_id uuid,
   decision_hash text not null check (decision_hash ~ '^[0-9a-f]{64}$'),
@@ -170,15 +170,14 @@ create table corporate_governance.annual_close_events (
   check (
     (event_kind = 'signed_copy_attested'
       and artifact_id is not null and content_sha256 is not null)
-    or (event_kind <> 'signed_copy_attested'
-      and artifact_id is null and content_sha256 is null)
+    or event_kind <> 'signed_copy_attested'
   )
 );
 
 create unique index annual_close_events_singleton_idx
 on corporate_governance.annual_close_events(decision_id, event_kind)
 where event_kind in (
-  'documents_registered', 'facts_approved', 'signing_requested', 'rejected'
+  'facts_approved', 'signing_requested', 'superseded', 'rejected'
 );
 
 create table corporate_governance.annual_close_finalizations (
@@ -388,6 +387,32 @@ join corporate_governance.annual_close_decisions decision
 on conflict (id) do nothing;
 
 insert into corporate_governance.annual_close_events (
+  id, decision_id, document_set_id, company_id, income_year, artifact_id,
+  event_kind, decision_hash, content_sha256, metadata, idempotency_key,
+  correlation_id, request_fingerprint, created_by, created_at
+)
+select
+  event.id, event.decision_id, event.set_id, event.company_id,
+  event.income_year, event.artifact_id,
+  case when event.event_kind = 'generated'
+    then 'documents_registered' else event.event_kind end,
+  event.decision_hash, event.content_sha256, event.metadata,
+  'legacy-event:' || event.id::text,
+  'legacy-event:' || event.id::text,
+  pg_catalog.encode(extensions.digest(pg_catalog.jsonb_build_object(
+    'legacyEventId', event.id, 'eventKind', event.event_kind
+  )::text, 'sha256'), 'hex'),
+  event.actor_id, event.created_at
+from public.corporate_document_events event
+join corporate_governance.annual_close_decisions decision
+  on decision.id = event.decision_id
+where event.event_kind in (
+  'generated', 'facts_approved', 'signing_requested',
+  'signed_copy_attested', 'superseded', 'rejected'
+)
+on conflict (id) do nothing;
+
+insert into corporate_governance.annual_close_events (
   id, decision_id, document_set_id, company_id, income_year, event_kind,
   decision_hash, metadata, idempotency_key, correlation_id,
   request_fingerprint, created_by, created_at
@@ -405,31 +430,13 @@ select
 from corporate_governance.annual_close_decisions decision
 join corporate_governance.annual_close_artifacts artifact
   on artifact.decision_id = decision.id and artifact.variant = 'unsigned'
+where not exists (
+  select 1 from corporate_governance.annual_close_events event
+  where event.decision_id = decision.id
+    and event.event_kind = 'documents_registered'
+)
 group by decision.id
 having pg_catalog.count(*) = 2
-on conflict (id) do nothing;
-
-insert into corporate_governance.annual_close_events (
-  id, decision_id, document_set_id, company_id, income_year, artifact_id,
-  event_kind, decision_hash, content_sha256, metadata, idempotency_key,
-  correlation_id, request_fingerprint, created_by, created_at
-)
-select
-  event.id, event.decision_id, event.set_id, event.company_id,
-  event.income_year, event.artifact_id, event.event_kind,
-  event.decision_hash, event.content_sha256, event.metadata,
-  'legacy-event:' || event.id::text,
-  'legacy-event:' || event.id::text,
-  pg_catalog.encode(extensions.digest(pg_catalog.jsonb_build_object(
-    'legacyEventId', event.id, 'eventKind', event.event_kind
-  )::text, 'sha256'), 'hex'),
-  event.actor_id, event.created_at
-from public.corporate_document_events event
-join corporate_governance.annual_close_decisions decision
-  on decision.id = event.decision_id
-where event.event_kind in (
-  'facts_approved', 'signing_requested', 'signed_copy_attested', 'rejected'
-)
 on conflict (id) do nothing;
 
 insert into corporate_governance.annual_close_finalizations (
@@ -575,11 +582,16 @@ begin
   from corporate_governance.annual_close_finalizations finalization
   where finalization.decision_id = p_decision_id;
   v_state := case
-    when v_finalization_id is not null then 'finalized'
     when exists (
       select 1 from corporate_governance.annual_close_events event
       where event.decision_id = p_decision_id and event.event_kind = 'rejected'
     ) then 'rejected'
+    when exists (
+      select 1 from corporate_governance.annual_close_events event
+      where event.decision_id = p_decision_id
+        and event.event_kind = 'superseded'
+    ) then 'superseded'
+    when v_finalization_id is not null then 'finalized'
     when coalesce(v_signed, '{}'::jsonb) ? 'annual_board_minutes'
       and coalesce(v_signed, '{}'::jsonb)
         ? 'annual_general_meeting_minutes'
@@ -972,7 +984,7 @@ begin
     or exists (
       select 1 from corporate_governance.annual_close_events event
       where event.decision_id = v_decision.id
-        and event.event_kind = 'rejected'
+        and event.event_kind in ('rejected', 'superseded')
     )
   then
     raise exception 'corporate_governance_invalid_input';
@@ -1029,7 +1041,7 @@ begin
   if p_request ->> 'companyId' <> v_decision.company_id::text
     or p_request ->> 'documentSetId' <> v_decision.document_set_id::text
     or p_request ->> 'decisionHash' <> v_decision.decision_hash
-    or v_event_kind not in ('signing_requested', 'rejected')
+    or v_event_kind not in ('signing_requested', 'superseded', 'rejected')
     or coalesce(p_request ->> 'idempotencyKey', '')
       !~ '^[A-Za-z0-9._:-]{16,255}$'
     or pg_catalog.jsonb_typeof(p_request -> 'metadata')
@@ -1068,7 +1080,7 @@ begin
     or exists (
       select 1 from corporate_governance.annual_close_events event
       where event.decision_id = v_decision.id
-        and event.event_kind = 'rejected'
+        and event.event_kind in ('rejected', 'superseded')
     )
     or (
       v_event_kind = 'signing_requested'
@@ -1186,7 +1198,7 @@ begin
     or exists (
       select 1 from corporate_governance.annual_close_events event
       where event.decision_id = v_decision.id
-        and event.event_kind = 'rejected'
+        and event.event_kind in ('rejected', 'superseded')
     )
     or exists (
       select 1 from corporate_governance.annual_close_finalizations item
@@ -1318,7 +1330,7 @@ begin
     or exists (
       select 1 from corporate_governance.annual_close_events event
       where event.decision_id = v_decision.id
-        and event.event_kind = 'rejected'
+        and event.event_kind in ('rejected', 'superseded')
     )
   then
     raise exception 'corporate_governance_invalid_input';

@@ -78,6 +78,7 @@ export default async function CorporateDecisionPage({ params, searchParams }: Pr
   const signedArtifacts = artifacts.filter((artifact) => artifact.variant === "signed_owner_attested");
   const finalized = readiness.finalized;
   const rejected = readiness.state === "rejected";
+  const superseded = readiness.state === "superseded";
   const factsApproved = [
     "facts_approved",
     "signing_requested",
@@ -104,8 +105,12 @@ export default async function CorporateDecisionPage({ params, searchParams }: Pr
     partially_paid: "Delvis utbetalt",
     paid: "Utbetalt",
     rejected: "Avvist",
+    superseded: "Erstattet",
   }[readiness.state ?? "proposed"];
-  const mutationsEnabled = process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true" && !finalized && !rejected;
+  const mutationsEnabled = process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true"
+    && !finalized
+    && !rejected
+    && !superseded;
 
   return (
     <div>

@@ -12,6 +12,7 @@ from enum import Enum
 from typing import Any
 
 from talli_backend.modules.corporate_governance.public import (
+    SHA256_PATTERN,
     AnnualCloseProposalCommand,
     AnnualDataSourceFacts,
     ApprovedAnnualBasis,
@@ -20,16 +21,16 @@ from talli_backend.modules.corporate_governance.public import (
     CanonicalDecisionShareholder,
     CanonicalOwnerDividendDecision,
     CanonicalShareholderLoan,
+    CorporateAccountMovementFacts,
     CorporateArtifactKind,
     CorporateArtifactVariant,
-    CorporateDecisionKind,
     CorporateDecisionFactSources,
+    CorporateDecisionKind,
     CorporateDocumentReadiness,
     CorporateDocumentReadinessBlocker,
     CorporateGovernanceError,
     CorporateGovernanceErrorCode,
     CorporateLifecycleSnapshot,
-    CorporateAccountMovementFacts,
     CorporateReadinessSource,
     DerivedCorporateDecisionFacts,
     OwnerDividendAllocation,
@@ -42,7 +43,6 @@ from talli_backend.modules.corporate_governance.public import (
     RenderedCorporateArtifact,
     ReviewedOwnerDividendFacts,
     ReviewedShareholderFacts,
-    SHA256_PATTERN,
     ShareholderLoanDirection,
     ShareholderLoanDocumentStatus,
     ShareholderVote,
@@ -51,7 +51,6 @@ from talli_backend.modules.corporate_governance.rendering import (
     render_corporate_documents,
 )
 from talli_backend.shared.kernel import CompanyId, IncomeYear
-
 
 _ORG_NUMBER = re.compile(r"^[0-9]{9}$")
 _TEMPLATE_FAMILY = "norwegian_simple_as"
@@ -224,7 +223,7 @@ def _annual_accounts_payload(
                 }
             )
 
-    def field(tag: str, orid: str, value: str | int | float, fact_source: str):
+    def field(tag: str, orid: str, value: str | float, fact_source: str):
         return {"tag": tag, "orid": orid, "value": value, "source": fact_source}
 
     year = int(source.income_year)
@@ -758,6 +757,8 @@ class CorporateGovernanceService:
 
         if "rejected" in event_kinds:
             state = OwnerDividendState.REJECTED
+        elif "superseded" in event_kinds:
+            state = OwnerDividendState.SUPERSEDED
         elif finalization is not None:
             if remaining_amount_ore == 0:
                 state = OwnerDividendState.PAID
@@ -784,7 +785,10 @@ class CorporateGovernanceService:
                     "Beslutningsdokumentene er basert på et eldre årsgrunnlag.",
                 )
             )
-        if state is OwnerDividendState.REJECTED:
+        if state in {
+            OwnerDividendState.REJECTED,
+            OwnerDividendState.SUPERSEDED,
+        }:
             blockers.append(
                 CorporateDocumentReadinessBlocker(
                     "corporate_documents_terminal_decision",
@@ -823,11 +827,23 @@ class CorporateGovernanceService:
         source_is_current = current_source_matches is not False
         ready_for_signing = (
             source_is_current
-            and state is not OwnerDividendState.REJECTED
+            and state
+            not in {
+                OwnerDividendState.REJECTED,
+                OwnerDividendState.SUPERSEDED,
+            }
             and generated_complete
             and "facts_approved" in event_kinds
         )
-        finalized = finalization is not None and source_is_current
+        finalized = (
+            finalization is not None
+            and source_is_current
+            and state
+            not in {
+                OwnerDividendState.REJECTED,
+                OwnerDividendState.SUPERSEDED,
+            }
+        )
         return CorporateDocumentReadiness(
             company_id=company_id,
             income_year=income_year,

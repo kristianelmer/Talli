@@ -1691,7 +1691,7 @@ export interface DocumentWire {
   storageKey: string;
 }
 
-export type AnnualCloseEventKind = "signing_requested" | "rejected";
+export type AnnualCloseEventKind = "signing_requested" | "rejected" | "superseded";
 
 export interface AnnualCloseEventWire {
   companyId: string;
@@ -2047,7 +2047,7 @@ export interface OwnerDividendDocumentsWire {
   documentSetId: string;
 }
 
-export type OwnerDividendEventKind = "signing_requested" | "rejected";
+export type OwnerDividendEventKind = "signing_requested" | "rejected" | "superseded";
 
 export interface OwnerDividendEventWire {
   companyId: string;
@@ -2129,7 +2129,7 @@ export interface OwnerDividendSignedArtifactWire {
   unsignedArtifactId: string;
 }
 
-export type OwnerDividendState = "proposed" | "documents_registered" | "facts_approved" | "signing_requested" | "signed_owner_attested" | "finalized" | "partially_paid" | "paid" | "rejected";
+export type OwnerDividendState = "proposed" | "documents_registered" | "facts_approved" | "signing_requested" | "signed_owner_attested" | "finalized" | "partially_paid" | "paid" | "rejected" | "superseded";
 
 export interface ProposedOwnerDividendWire {
   artifacts: RenderedCorporateArtifactWire[];
@@ -4603,7 +4603,7 @@ function isDocumentWire(value: unknown): value is DocumentWire {
 }
 
 function isAnnualCloseEventKind(value: unknown): value is AnnualCloseEventKind {
-  return value === "signing_requested" || value === "rejected";
+  return value === "signing_requested" || value === "rejected" || value === "superseded";
 }
 
 function isAnnualCloseEventWire(value: unknown): value is AnnualCloseEventWire {
@@ -5105,7 +5105,7 @@ function isOwnerDividendDocumentsWire(value: unknown): value is OwnerDividendDoc
 }
 
 function isOwnerDividendEventKind(value: unknown): value is OwnerDividendEventKind {
-  return value === "signing_requested" || value === "rejected";
+  return value === "signing_requested" || value === "rejected" || value === "superseded";
 }
 
 function isOwnerDividendEventWire(value: unknown): value is OwnerDividendEventWire {
@@ -5213,7 +5213,7 @@ function isOwnerDividendSignedArtifactWire(value: unknown): value is OwnerDivide
 }
 
 function isOwnerDividendState(value: unknown): value is OwnerDividendState {
-  return value === "proposed" || value === "documents_registered" || value === "facts_approved" || value === "signing_requested" || value === "signed_owner_attested" || value === "finalized" || value === "partially_paid" || value === "paid" || value === "rejected";
+  return value === "proposed" || value === "documents_registered" || value === "facts_approved" || value === "signing_requested" || value === "signed_owner_attested" || value === "finalized" || value === "partially_paid" || value === "paid" || value === "rejected" || value === "superseded";
 }
 
 function isProposedOwnerDividendWire(value: unknown): value is ProposedOwnerDividendWire {

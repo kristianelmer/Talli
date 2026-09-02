@@ -4,7 +4,6 @@ from dataclasses import replace
 from datetime import UTC, date, datetime, time
 
 import pytest
-
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
     AnnualCloseProposalCommand,
@@ -13,13 +12,14 @@ from talli_backend.modules.corporate_governance.public import (
     BoardParticipant,
     BoardRole,
     BoardTreatmentMethod,
+    CorporateAccountMovementFacts,
     CorporateArtifactId,
     CorporateArtifactKind,
     CorporateArtifactRecord,
     CorporateArtifactVariant,
-    CorporateDecisionKind,
     CorporateDecisionFactSources,
     CorporateDecisionId,
+    CorporateDecisionKind,
     CorporateDecisionRecord,
     CorporateDocumentSetId,
     CorporateDocumentSetRecord,
@@ -30,7 +30,6 @@ from talli_backend.modules.corporate_governance.public import (
     CorporateGovernanceError,
     CorporateGovernanceErrorCode,
     CorporateLifecycleSnapshot,
-    CorporateAccountMovementFacts,
     CorporateSourceReference,
     DocumentReference,
     GeneralMeeting,
@@ -396,6 +395,43 @@ def test_lifecycle_readiness_is_derived_by_the_python_governance_owner() -> None
         "dividend_general_meeting_minutes": ("Jørgen Østby", "Åse Nordmann"),
     }
     assert readiness.blockers == ()
+
+    superseded = service.assess_lifecycle(
+        replace(
+            snapshot,
+            events=snapshot.events
+            + (
+                CorporateEventRecord(
+                    event_id=CorporateEventId(
+                        "20000000-0000-4000-8000-000000000003"
+                    ),
+                    company_id=decision.company_id,
+                    income_year=decision.income_year,
+                    decision_id=decision.decision_id,
+                    document_set_id=decision.document_set_id,
+                    artifact_id=None,
+                    event_kind="superseded",
+                    actor_id=str(decision.company_id),
+                    occurred_at=created_at,
+                    decision_hash=decision.decision_hash,
+                    content_sha256=None,
+                    metadata={},
+                    idempotency_key="superseded-decision",
+                ),
+            ),
+        ),
+        company_id=decision.company_id,
+        income_year=decision.income_year,
+        decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+        current_source_hash=decision.source_hash,
+    )
+
+    assert superseded.state.value == "superseded"
+    assert superseded.ready_for_signing is False
+    assert superseded.finalized is False
+    assert "corporate_documents_terminal_decision" in {
+        item.code for item in superseded.blockers
+    }
 
 
 def test_lifecycle_readiness_blocks_missing_and_stale_annual_evidence() -> None:

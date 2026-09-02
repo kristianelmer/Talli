@@ -55,7 +55,7 @@ alter table corporate_governance.owner_dividend_events
   add constraint owner_dividend_events_event_kind_check check (
     event_kind in (
       'documents_registered', 'facts_approved', 'signing_requested',
-      'signed_copy_attested', 'rejected'
+      'signed_copy_attested', 'superseded', 'rejected'
     )
   ),
   add constraint owner_dividend_events_content_sha256_check check (
@@ -75,17 +75,34 @@ alter table corporate_governance.owner_dividend_events
       and artifact_id is not null
       and content_sha256 is not null
     )
-    or (
-      event_kind <> 'signed_copy_attested'
-      and artifact_id is null
-      and content_sha256 is null
-    )
+    or event_kind <> 'signed_copy_attested'
   );
 create unique index owner_dividend_events_singleton_idx
 on corporate_governance.owner_dividend_events(decision_id, event_kind)
 where event_kind in (
-  'documents_registered', 'facts_approved', 'signing_requested', 'rejected'
+  'facts_approved', 'signing_requested', 'superseded', 'rejected'
 );
+
+-- The predecessor recorded one generated event per unsigned artifact. Restore
+-- those exact event facts now that the canonical event table can carry its
+-- artifact reference, content hash, and metadata.
+drop trigger owner_dividend_events_immutable
+  on corporate_governance.owner_dividend_events;
+reset role;
+update corporate_governance.owner_dividend_events current
+set artifact_id = legacy.artifact_id,
+    content_sha256 = legacy.content_sha256,
+    metadata = legacy.metadata
+from public.corporate_document_events legacy
+join public.corporate_decisions decision on decision.id = legacy.decision_id
+where decision.decision_kind = 'owner_dividend'
+  and legacy.event_kind = 'generated'
+  and current.id = legacy.id;
+set local role corporate_governance_store_owner;
+create trigger owner_dividend_events_immutable
+before update or delete on corporate_governance.owner_dividend_events
+for each row execute function
+  corporate_governance.prevent_corporate_governance_mutation();
 
 -- Import signed owner-dividend evidence and lifecycle transitions that #144
 -- intentionally left in the predecessor store until this stage-exit slice.
@@ -127,7 +144,7 @@ from public.corporate_document_events event
 join public.corporate_decisions decision on decision.id = event.decision_id
 where decision.decision_kind = 'owner_dividend'
   and event.event_kind in (
-    'signing_requested', 'signed_copy_attested', 'rejected'
+    'signing_requested', 'signed_copy_attested', 'superseded', 'rejected'
   )
 on conflict (id) do nothing;
 
@@ -185,14 +202,19 @@ begin
   order by payment.created_at desc, payment.id desc
   limit 1;
   v_state := case
-    when v_paid_ore = v_decision.declared_amount_ore then 'paid'
-    when v_paid_ore > 0 then 'partially_paid'
-    when v_finalization.id is not null then 'finalized'
     when exists (
       select 1 from corporate_governance.owner_dividend_events event
       where event.decision_id = p_decision_id
         and event.event_kind = 'rejected'
     ) then 'rejected'
+    when exists (
+      select 1 from corporate_governance.owner_dividend_events event
+      where event.decision_id = p_decision_id
+        and event.event_kind = 'superseded'
+    ) then 'superseded'
+    when v_paid_ore = v_decision.declared_amount_ore then 'paid'
+    when v_paid_ore > 0 then 'partially_paid'
+    when v_finalization.id is not null then 'finalized'
     when 2 = (
       select pg_catalog.count(*)
       from corporate_governance.owner_dividend_artifacts artifact
@@ -793,7 +815,7 @@ begin
     or exists (
       select 1 from corporate_governance.owner_dividend_events event
       where event.decision_id = v_decision.id
-        and event.event_kind = 'rejected'
+        and event.event_kind in ('rejected', 'superseded')
     )
     or exists (
       select 1 from corporate_governance.owner_dividend_finalizations item
@@ -953,7 +975,7 @@ begin
     or exists (
       select 1 from corporate_governance.owner_dividend_events event
       where event.decision_id = v_decision.id
-        and event.event_kind = 'rejected'
+        and event.event_kind in ('rejected', 'superseded')
     )
   then
     raise exception 'corporate_governance_invalid_input';
@@ -1041,7 +1063,7 @@ begin
   if p_request ->> 'companyId' <> v_decision.company_id::text
     or p_request ->> 'documentSetId' <> v_decision.document_set_id::text
     or p_request ->> 'decisionHash' <> v_decision.decision_hash
-    or v_event_kind not in ('signing_requested', 'rejected')
+    or v_event_kind not in ('signing_requested', 'superseded', 'rejected')
     or coalesce(p_request ->> 'idempotencyKey', '')
       !~ '^[A-Za-z0-9._:-]{16,255}$'
     or pg_catalog.jsonb_typeof(p_request -> 'metadata')
@@ -1080,7 +1102,7 @@ begin
     or exists (
       select 1 from corporate_governance.owner_dividend_events event
       where event.decision_id = v_decision.id
-        and event.event_kind = 'rejected'
+        and event.event_kind in ('rejected', 'superseded')
     )
     or (
       v_event_kind = 'signing_requested'
