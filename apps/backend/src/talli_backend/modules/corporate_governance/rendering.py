@@ -32,8 +32,7 @@ RenderableCorporateDecision = (
 
 FONT_REGULAR = "TalliNotoSans"
 FONT_BOLD = "TalliNotoSansBold"
-_SOURCE_FONT_DIR = Path(__file__).resolve().parents[6] / "holding_core" / "assets" / "fonts"
-_PACKAGED_FONT_DIR = Path(__file__).resolve().parent / "assets" / "fonts"
+_FONT_DIR = Path(__file__).resolve().parent / "assets" / "fonts"
 
 
 def render_corporate_documents(
@@ -69,9 +68,7 @@ def render_corporate_documents(
 
 
 def _font_dir() -> Path:
-    if (_PACKAGED_FONT_DIR / "NotoSans-Regular.ttf").is_file():
-        return _PACKAGED_FONT_DIR
-    return _SOURCE_FONT_DIR
+    return _FONT_DIR
 
 
 def _register_fonts() -> None:

@@ -24,11 +24,6 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/talli_backend"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"../../holding_core/assets/fonts/NotoSans-Regular.ttf" = "talli_backend/modules/corporate_governance/assets/fonts/NotoSans-Regular.ttf"
-"../../holding_core/assets/fonts/NotoSans-Bold.ttf" = "talli_backend/modules/corporate_governance/assets/fonts/NotoSans-Bold.ttf"
-"../../holding_core/assets/fonts/OFL.txt" = "talli_backend/modules/corporate_governance/assets/fonts/OFL.txt"
-
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
