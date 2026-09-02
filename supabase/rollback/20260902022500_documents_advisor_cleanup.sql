@@ -12,6 +12,16 @@ with check (
   )::jsonb ->> company_id::text = 'owner'
 );
 
+do $owner_authority$
+begin
+  execute pg_catalog.format(
+    'grant documents_store_owner to %I with set true', current_user
+  );
+end
+$owner_authority$;
+
+set local role documents_store_owner;
+
 drop policy if exists documents_store_updates_owner_documents on public.documents;
 create policy documents_store_updates_owner_documents on public.documents
 for update to documents_store_owner
@@ -60,5 +70,15 @@ using (
       and membership.user_id=(select auth.uid())
   ) end
 );
+
+reset role;
+
+do $restore_owner_authority$
+begin
+  execute pg_catalog.format(
+    'grant documents_store_owner to %I with set false', current_user
+  );
+end
+$restore_owner_authority$;
 
 commit;

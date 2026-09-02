@@ -25,6 +25,9 @@ test("documents cleanup removes the residual browser metadata policy", async () 
 
 test("documents cleanup plans request-local settings once per statement", async () => {
   const sql = await readFile(migrationUrl, "utf8");
+  assert.match(sql, /grant documents_store_owner to %I with set true/iu);
+  assert.match(sql, /set local role documents_store_owner/iu);
+  assert.match(sql, /grant documents_store_owner to %I with set false/iu);
   for (const policy of [
     "documents_store_reads_visible_documents",
     "documents_store_creates_owner_documents",
@@ -39,6 +42,7 @@ test("documents cleanup plans request-local settings once per statement", async 
 
 test("documents advisor cleanup has an explicit predecessor rollback", async () => {
   const rollback = await readFile(rollbackUrl, "utf8");
+  assert.match(rollback, /set local role documents_store_owner/iu);
   assert.match(
     rollback,
     /create policy "company members can read document metadata" on public\.documents/iu,

@@ -2,6 +2,16 @@
 -- variant and make the request-local RLS settings init-plan constants (#147).
 begin;
 
+do $owner_authority$
+begin
+  execute pg_catalog.format(
+    'grant documents_store_owner to %I with set true', current_user
+  );
+end
+$owner_authority$;
+
+set local role documents_store_owner;
+
 drop policy if exists "company members can read document metadata" on public.documents;
 
 drop policy if exists documents_store_reads_visible_documents on public.documents;
@@ -43,6 +53,8 @@ with check (
   )::jsonb ->> company_id::text = 'owner'
 );
 
+reset role;
+
 drop policy if exists documents_store_appends_document_audit on public.audit_events;
 create policy documents_store_appends_document_audit on public.audit_events
 for insert to documents_store_owner
@@ -55,5 +67,13 @@ with check (
     '{}'
   )::jsonb ->> company_id::text = 'owner'
 );
+
+do $restore_owner_authority$
+begin
+  execute pg_catalog.format(
+    'grant documents_store_owner to %I with set false', current_user
+  );
+end
+$restore_owner_authority$;
 
 commit;
