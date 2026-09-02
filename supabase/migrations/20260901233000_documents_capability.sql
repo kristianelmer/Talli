@@ -243,9 +243,23 @@ reset role;
 -- document store. Its migration owner can see every evidence table, while the
 -- document role cannot enumerate or join any of them directly.
 create or replace function documents.has_evidence_references_v1(p_document_id uuid)
-returns boolean language sql security definer set search_path = '' stable
+returns boolean language plpgsql security definer set search_path = '' stable
 as $function$
-  select exists (select 1 from public.holding_actions item where item.document_id=p_document_id)
+declare v_investment_linked boolean := false;
+begin
+  -- Older investment characterization rehearsals intentionally apply this
+  -- successor migration before the lifecycle registry exists. Resolve that
+  -- predecessor-safe dependency only when the canonical registry is present.
+  if pg_catalog.to_regclass('investments.source_fact_registry') is not null then
+    execute $query$
+      select exists (
+        select 1 from investments.source_fact_registry item
+        where item.source_capability='DOCUMENTS'
+          and item.source_record_id=$1
+      )
+    $query$ into v_investment_linked using p_document_id;
+  end if;
+  return exists (select 1 from public.holding_actions item where item.document_id=p_document_id)
     or exists (select 1 from public.corporate_document_artifacts item where item.document_id=p_document_id)
     or exists (
       select 1 from public.filing_submissions item
@@ -253,14 +267,12 @@ as $function$
          or item.receipt_id=p_document_id::text
     )
     or exists (select 1 from public.production_feedback_artifacts item where item.document_id=p_document_id)
-    or exists (
-      select 1 from investments.source_fact_registry item
-      where item.source_capability='DOCUMENTS' and item.source_record_id=p_document_id
-    )
+    or v_investment_linked
     or exists (
       select 1 from public.ledger_entries item join public.documents document on document.id=p_document_id
       where item.company_id=document.company_id and pg_catalog.strpos(item.memo, p_document_id::text)>0
-    )
+    );
+end;
 $function$;
 
 revoke all on function documents.has_evidence_references_v1(uuid)

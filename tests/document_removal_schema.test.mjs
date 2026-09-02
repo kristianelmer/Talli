@@ -29,7 +29,8 @@ test("safe removal is reference-aware, audited, and metadata-restoring", async (
     "production_feedback_artifacts", "ledger_entries",
   ]) assert.match(sql, new RegExp(`public\\.${relation}`, "iu"));
   assert.match(sql, /investments\.source_fact_registry/iu);
-  assert.match(sql, /source_capability='DOCUMENTS'.*source_record_id=p_document_id/isu);
+  assert.match(sql, /to_regclass\('investments\.source_fact_registry'\)/iu);
+  assert.match(sql, /source_capability='DOCUMENTS'.*source_record_id=\$1/isu);
   assert.match(sql, /grant execute on function documents\.has_evidence_references_v1\(uuid\) to documents_store_owner/iu);
   assert.match(sql, /status='removed'.*removed_at=pg_catalog\.now\(\)/isu);
   assert.match(sql, /document_removal_requested/iu);
