@@ -2,25 +2,117 @@
   "schemaVersion": "1.0",
   "issue": "#147",
   "source": "https://github.com/kristianelmer/Talli/issues/147",
-  "sourceCheckedAt": "2026-09-01T23:20:00Z",
-  "completeGates": [],
+  "sourceCheckedAt": "2026-09-02T03:01:56Z",
+  "completeGates": [
+    {
+      "revision": "32dcb77890d92c655ee589e7c6c603f27c27c625",
+      "previousPassingRevision": null,
+      "workflowRun": "https://github.com/kristianelmer/Talli/actions/runs/33583631755",
+      "evidencePath": "architecture/evidence/customer-ready-gates/32dcb77890d92c655ee589e7c6c603f27c27c625.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:28d6532b45ed9679ee7784c56802f67941bd6ba2343a2adea53ff8a88e1e06c5"
+    },
+    {
+      "revision": "9c8904703f738ce2d0ba3513cf2850e33cf0abd5",
+      "previousPassingRevision": "32dcb77890d92c655ee589e7c6c603f27c27c625",
+      "workflowRun": "https://github.com/kristianelmer/Talli/actions/runs/33584562131",
+      "evidencePath": "architecture/evidence/customer-ready-gates/9c8904703f738ce2d0ba3513cf2850e33cf0abd5.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:5ff7f31d4a225d4a92bf19aff8dea3f38f8333881ac81d4a10f6d481a97fc923"
+    }
+  ],
   "entryBlockers": [
     {"issue": "#143", "requiredState": "CLOSED", "observedState": "CLOSED"},
     {"issue": "#190", "requiredState": "CLOSED", "observedState": "CLOSED", "evidence": "https://github.com/kristianelmer/Talli/issues/190#issuecomment-5501752274"}
   ],
   "serialization": {
     "position": "documents stage after investments and before corporate governance",
-    "forbiddenConcurrentCapabilityWork": "No #149 or later capability migration may begin while #147 is active."
+    "nextCapabilityIssue": "#144",
+    "forbiddenConcurrentCapabilityWork": "No #144 or later capability migration began while #147 was active."
+  },
+  "independentExternalGate": {
+    "issue": "#189",
+    "observedState": "OPEN",
+    "blocksProviderNeutralImplementation": false,
+    "stillBlocks": [
+      "provider choice or activation",
+      "credentials or live bank calls, data, or consent",
+      "live-bank readiness claims",
+      "#197 bank evidence",
+      "production banking",
+      "#198 unrestricted clearance"
+    ]
   },
   "criteria": [
-    {"id": "GH-147-A1", "requirement": "FastAPI owns upload, list, preview, download, and safe removal flows.", "status": "in-progress"},
-    {"id": "GH-147-A2", "requirement": "Validation, staged/finalized/quarantined lifecycle, hashes, company scope, retention, and AAL2 remain enforced.", "status": "in-progress"},
-    {"id": "GH-147-A3", "requirement": "Document backup and isolated restore evidence remain equivalent behind the documents contract.", "status": "in-progress"},
-    {"id": "GH-147-A4", "requirement": "Object-storage adapters contain no business acceptance policy.", "status": "in-progress"},
-    {"id": "GH-147-A5", "requirement": "Other capabilities retain only DocumentId plus semantic relationships and never write document rows or objects.", "status": "planned"},
-    {"id": "GH-147-A6", "requirement": "Only document-owned export projections exist; company archive composition remains deferred.", "status": "in-progress"},
-    {"id": "GH-147-A7", "requirement": "Legacy direct web storage orchestration and active-stage compatibility code are removed.", "status": "planned"},
-    {"id": "GH-147-A8", "requirement": "Complete local, hosted, Preview, architecture, rollback/recutover, and two immutable customer-ready gates pass.", "status": "planned"}
+    {
+      "id": "GH-147-A1",
+      "requirement": "FastAPI owns upload, list, preview, download, and safe removal flows.",
+      "evidence": ["apps/backend/src/talli_backend/modules/documents/", "apps/backend/tests/test_documents.py", "tests/documents.test.mjs"],
+      "status": "fastapi-document-lifecycle-and-object-boundary-passed"
+    },
+    {
+      "id": "GH-147-A2",
+      "requirement": "Validation, staged/finalized/quarantined lifecycle, hashes, company scope, retention, and AAL2 remain enforced.",
+      "evidence": ["apps/backend/tests/test_documents.py", "tests/documents_database_runtime.test.mjs", "supabase/migrations/20260901233000_documents_capability.sql"],
+      "status": "validation-lifecycle-hash-scope-retention-and-aal2-passed"
+    },
+    {
+      "id": "GH-147-A3",
+      "requirement": "Document backup and isolated restore evidence remain equivalent behind the documents contract.",
+      "evidence": ["tests/documents_supported_pattern_evidence.test.mjs", "tests/backup_restore.test.mjs", "architecture/evidence/customer-ready-gates/9c8904703f738ce2d0ba3513cf2850e33cf0abd5.json"],
+      "status": "document-owned-backup-and-isolated-restore-passed"
+    },
+    {
+      "id": "GH-147-A4",
+      "requirement": "Object-storage adapters contain no business acceptance policy.",
+      "evidence": ["apps/backend/src/talli_backend/modules/documents/", "tests/documents.test.mjs", "tests/document_removal_schema.test.mjs"],
+      "status": "storage-adapters-transport-only-passed"
+    },
+    {
+      "id": "GH-147-A5",
+      "requirement": "Other capabilities retain only DocumentId plus semantic relationships and never write document rows or objects.",
+      "evidence": ["tests/documents.test.mjs", "tests/documents_database_runtime.test.mjs", "supabase/migrations/20260901233000_documents_capability.sql"],
+      "status": "neighboring-capabilities-use-registration-contract-without-document-writes"
+    },
+    {
+      "id": "GH-147-A6",
+      "requirement": "Only document-owned export projections exist; company archive composition remains deferred.",
+      "evidence": ["tests/documents_supported_pattern_evidence.test.mjs", "tests/archive_export.test.mjs"],
+      "status": "document-owned-export-projection-passed-and-company-archive-deferred"
+    },
+    {
+      "id": "GH-147-A7",
+      "requirement": "Legacy direct web storage orchestration and active-stage compatibility code are removed.",
+      "evidence": ["tests/documents.test.mjs", "tests/document_removal_schema.test.mjs", "architecture/evidence/issues/147/hosted-verification.json"],
+      "status": "legacy-browser-metadata-storage-and-removal-access-removed"
+    },
+    {
+      "id": "GH-147-A8",
+      "requirement": "Complete local, hosted, Preview, architecture, rollback/recutover, and two immutable customer-ready gates pass.",
+      "evidence": [
+        "architecture/evidence/issues/147/hosted-verification.json",
+        "architecture/evidence/issues/147/preview-verification.json",
+        "architecture/evidence/customer-ready-gates/32dcb77890d92c655ee589e7c6c603f27c27c625.json",
+        "architecture/evidence/customer-ready-gates/9c8904703f738ce2d0ba3513cf2850e33cf0abd5.json"
+      ],
+      "status": "local-hosted-preview-architecture-rollback-and-consecutive-gates-passed"
+    }
   ],
-  "closeState": "claimed-active"
+  "hostedVerification": {
+    "path": "architecture/evidence/issues/147/hosted-verification.json",
+    "verdict": "pass",
+    "projectId": "pkpyyxryfhfehrbhbynp",
+    "migrationHistoryCount": 73,
+    "businessRows": 0,
+    "documentsBoundarySecurityFindings": 0
+  },
+  "previewVerification": {
+    "path": "architecture/evidence/issues/147/preview-verification.json",
+    "sourceRevision": "32dcb77890d92c655ee589e7c6c603f27c27c625",
+    "githubDeploymentId": 6214263255,
+    "verdict": "pass"
+  },
+  "closeState": "ready-for-github-evidence-and-issue-closure"
 }

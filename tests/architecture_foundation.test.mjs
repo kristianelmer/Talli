@@ -218,17 +218,25 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     "backend-system:validation_observation",
     "backend:banking",
     "backend:company_access",
+    "backend:documents",
     "backend:investments",
     "backend:ledger",
     "backend:shareholder_register_filing",
     "web:banking",
     "web:company-access",
+    "web:documents",
     "web:investments",
     "web:ledger",
     "web:public-acquisition",
     "web:system-boundary",
   ]);
   assert.deepEqual(result.evidence.edges, [
+    {
+      from: "backend-system:accounting-document-lifecycle",
+      imports: ["talli_backend.modules.documents.public"],
+      kind: "workflow",
+      to: "backend:documents",
+    },
     {
       from: "backend-system:banking-reconciliation",
       imports: ["talli_backend.modules.banking.public"],
@@ -1725,7 +1733,7 @@ test("multiline web persistence requires an explicit rule-scoped exception", () 
   for (const directory of ["architecture", "apps", "supabase"]) {
     cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
   }
-  const route = "apps/web/app/documents/[documentId]/download/route.ts";
+  const route = "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts";
   const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
   const compatibility = JSON.parse(readFileSync(compatibilityPath, "utf8"));
   for (const exception of compatibility.records) {
@@ -1741,8 +1749,8 @@ test("multiline web persistence requires an explicit rule-scoped exception", () 
     writeFileSync(
       routePath,
       readFileSync(routePath, "utf8").replace(
-        'supabase\n    .from("documents")',
-        'supabase /* repository */\n    . /* table */ from("documents")',
+        'supabase\n    .from("filing_submissions")',
+        'supabase /* repository */\n    . /* table */ from("filing_submissions")',
       ),
     );
     const commentedFormatErrors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
@@ -1900,8 +1908,8 @@ test("the immutable frozen inventory remains exact while the active registry is 
   }
   assert.equal(expected.size, baseline.records.length);
 
-  assert.equal(registry.records.length, 11);
-  assert.equal(registry.records.flatMap((record) => record.scopes).length, 147);
+  assert.equal(registry.records.length, 10);
+  assert.equal(registry.records.flatMap((record) => record.scopes).length, 135);
   const baselineById = new Map(baseline.records.map((record) => [record.id, record]));
   const scopeKey = (scope) => [scope.path, scope.rule, scope.resource, scope.operation].join("\0");
   for (const record of registry.records) {
@@ -1930,6 +1938,7 @@ test("the immutable frozen inventory remains exact while the active registry is 
       "compat-owner-dividend-persistence",
       "compat-shareholder-loan-persistence",
       "compat-tax-settlement-persistence",
+      "compat-documents-persistence",
     ]),
   );
 });
