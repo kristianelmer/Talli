@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#144",
+  "source": "https://github.com/kristianelmer/Talli/issues/144",
+  "sourceCheckedAt": "2026-09-02T03:41:54Z",
+  "claim": "https://github.com/kristianelmer/Talli/issues/144#issuecomment-5503909960",
+  "completeGates": [],
+  "entryBlockers": [
+    {
+      "issue": "#147",
+      "requiredState": "CLOSED",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/147#issuecomment-5503906760"
+    }
+  ],
+  "serialization": {
+    "capability": "corporate_governance",
+    "slice": "1 of 3",
+    "nextIssue": "#145",
+    "stageExitIssue": "#148"
+  },
+  "independentExternalGate": {
+    "issue": "#189",
+    "observedState": "OPEN",
+    "blocksProviderNeutralImplementation": false,
+    "stillBlocks": [
+      "provider choice or activation",
+      "credentials or live bank calls, data, or consent",
+      "live-bank readiness claims",
+      "#197 bank evidence",
+      "production banking",
+      "#198 unrestricted clearance"
+    ]
+  },
+  "criteria": [
+    {
+      "id": "GH-144-A1",
+      "requirement": "Owners can propose, approve, and record payment for a supported dividend through FastAPI.",
+      "plannedEvidence": [
+        "apps/backend/tests/test_corporate_governance.py",
+        "apps/backend/tests/test_corporate_governance_api.py",
+        "apps/web/tests/corporate-governance-presentation.test.mjs",
+        "tests/browser_owner_annual_loop.mjs"
+      ],
+      "status": "policy-contract-in-progress"
+    },
+    {
+      "id": "GH-144-A2",
+      "requirement": "Distributable-basis and readiness gates match current deterministic behavior.",
+      "plannedEvidence": [
+        "apps/backend/tests/test_corporate_governance.py",
+        "tests/corporate_decision_facts.test.mjs",
+        "tests/owner_dividend.test.mjs"
+      ],
+      "status": "source-and-decision-hash-parity-passed"
+    },
+    {
+      "id": "GH-144-A3",
+      "requirement": "Approval and payment transitions are authorized, auditable, and idempotent.",
+      "plannedEvidence": [
+        "apps/backend/tests/test_corporate_governance_workflow.py",
+        "tests/corporate_governance_database_runtime.test.mjs"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "GH-144-A4",
+      "requirement": "Ledger effects match existing characterization fixtures.",
+      "plannedEvidence": [
+        "apps/backend/tests/test_corporate_governance_workflow.py",
+        "tests/owner_dividend_payment.test.mjs",
+        "tests/corporate_governance_database_runtime.test.mjs"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "GH-144-A5",
+      "requirement": "Document collaboration occurs only through the approved documents public contract.",
+      "plannedEvidence": [
+        "apps/backend/tests/test_corporate_governance_public_contract.py",
+        "apps/backend/tests/test_corporate_governance_workflow.py",
+        "tests/architecture_foundation.test.mjs"
+      ],
+      "status": "opaque-document-contract-passed"
+    },
+    {
+      "id": "GH-144-A6",
+      "requirement": "Duplicate TypeScript policy and active-slice compatibility code are removed.",
+      "plannedEvidence": [
+        "architecture/compatibility.json",
+        "tests/architecture_foundation.test.mjs",
+        "architecture/evidence/customer-ready-gates/<R1>.json",
+        "architecture/evidence/customer-ready-gates/<R2>.json"
+      ],
+      "status": "planned"
+    }
+  ],
+  "deferredToStageExit": {
+    "issue": "#148",
+    "items": [
+      "annual-close governance",
+      "in-process deterministic PDF rendering",
+      "complete signing and artifact lifecycle",
+      "production subprocess bridge removal",
+      "complete corporate_governance stage exit"
+    ]
+  },
+  "closeState": "claimed-active"
+}
+

@@ -128,6 +128,7 @@
     "backend-system:validation_observation",
     "backend:banking",
     "backend:company_access",
+    "backend:corporate_governance",
     "backend:documents",
     "backend:investments",
     "backend:ledger",

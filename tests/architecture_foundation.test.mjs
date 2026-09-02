@@ -218,6 +218,7 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     "backend-system:validation_observation",
     "backend:banking",
     "backend:company_access",
+    "backend:corporate_governance",
     "backend:documents",
     "backend:investments",
     "backend:ledger",
