@@ -1,0 +1,139 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#145",
+  "source": "https://github.com/kristianelmer/Talli/issues/145",
+  "sourceCheckedAt": "2026-09-02T09:04:59Z",
+  "claim": "https://github.com/kristianelmer/Talli/issues/145#issuecomment-5505514956",
+  "completeGates": [
+    {
+      "revision": "8141e2c1175acbafc80a9e8b7e3b7d3a72e8c68d",
+      "previousPassingRevision": null,
+      "evidencePath": "architecture/evidence/customer-ready-gates/8141e2c1175acbafc80a9e8b7e3b7d3a72e8c68d.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:2da5bcdbfc573f58ec6874ab41ec81ba0bbede7d25c66e398d670855409de8bc"
+    },
+    {
+      "revision": "48c09cde3e980ab72c6f5ec5616010bfbe69fef3",
+      "previousPassingRevision": "8141e2c1175acbafc80a9e8b7e3b7d3a72e8c68d",
+      "evidencePath": "architecture/evidence/customer-ready-gates/48c09cde3e980ab72c6f5ec5616010bfbe69fef3.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:e9fb4c07a34611180a1dfecb2a1174b29a84987d3a6bbbb9e41f0d75689a1ab7"
+    }
+  ],
+  "previewVerification": {
+    "path": "architecture/evidence/issues/145/preview-verification.json",
+    "sourceRevision": "48c09cde3e980ab72c6f5ec5616010bfbe69fef3",
+    "githubDeploymentId": 6218902937,
+    "environment": "Preview",
+    "state": "SUCCESS",
+    "access": "protected-by-project-vercel-authentication",
+    "verdict": "pass"
+  },
+  "entryBlockers": [
+    {
+      "issue": "#144",
+      "requiredState": "CLOSED",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/144#issuecomment-5505337631"
+    }
+  ],
+  "serialization": {
+    "capability": "corporate_governance",
+    "slice": "2 of 3",
+    "nextIssue": "#148",
+    "stageExitIssue": "#148"
+  },
+  "independentExternalGate": {
+    "issue": "#189",
+    "observedState": "OPEN",
+    "blocksProviderNeutralImplementation": false,
+    "stillBlocks": [
+      "provider choice or activation",
+      "credentials or live bank calls, data, or consent",
+      "live-bank readiness claims",
+      "#197 bank evidence",
+      "production banking",
+      "#198 unrestricted clearance"
+    ]
+  },
+  "criteria": [
+    {
+      "id": "GH-145-A1",
+      "requirement": "Supported shareholder-loan actions complete through the existing web workflow and FastAPI.",
+      "plannedEvidence": [
+        "apps/backend/tests/test_corporate_governance_api.py",
+        "apps/backend/tests/test_corporate_governance_workflow.py",
+        "apps/web/tests/corporate-governance-transport.test.mjs",
+        "tests/shareholder_loan.test.mjs"
+      ],
+      "status": "generated-web-to-fastapi-workflow-passed"
+    },
+    {
+      "id": "GH-145-A2",
+      "requirement": "Ledger effects match current fixtures and invalid cases fail atomically.",
+      "plannedEvidence": [
+        "apps/backend/tests/test_corporate_governance.py",
+        "apps/backend/tests/test_corporate_governance_workflow.py",
+        "tests/corporate_governance_database_runtime.test.mjs"
+      ],
+      "status": "deterministic-ledger-and-atomic-failure-passed"
+    },
+    {
+      "id": "GH-145-A3",
+      "requirement": "Company scope and sensitive-action policy are enforced by the backend.",
+      "plannedEvidence": [
+        "apps/backend/tests/test_corporate_governance.py",
+        "apps/backend/tests/test_corporate_governance_workflow.py",
+        "tests/corporate_governance_database_runtime.test.mjs"
+      ],
+      "status": "backend-owner-scope-and-accountant-escalation-passed"
+    },
+    {
+      "id": "GH-145-A4",
+      "requirement": "Cross-module Ledger and Documents use occurs only through public contracts.",
+      "plannedEvidence": [
+        "apps/backend/tests/test_corporate_governance_public_contract.py",
+        "apps/backend/tests/test_corporate_governance_workflow.py",
+        "tests/architecture_foundation.test.mjs"
+      ],
+      "status": "narrow-public-contracts-passed"
+    },
+    {
+      "id": "GH-145-A5",
+      "requirement": "Duplicate TypeScript policy and active-slice compatibility code are removed.",
+      "plannedEvidence": [
+        "tests/shareholder_loan.test.mjs",
+        "tests/supabase_workspace.test.mjs",
+        "architecture/compatibility.json",
+        "tests/architecture_foundation.test.mjs"
+      ],
+      "status": "browser-policy-and-predecessor-writer-removed"
+    }
+  ],
+  "review": {
+    "standards": "no remaining actionable findings",
+    "specification": "no remaining actionable findings"
+  },
+  "deferredToStageExit": {
+    "issue": "#148",
+    "items": [
+      "annual-close governance",
+      "in-process deterministic PDF rendering",
+      "complete signing and artifact lifecycle",
+      "production subprocess bridge removal",
+      "complete corporate_governance stage exit"
+    ]
+  },
+  "hostedVerification": {
+    "path": "architecture/evidence/issues/145/hosted-verification.json",
+    "verdict": "pass",
+    "projectId": "pkpyyxryfhfehrbhbynp",
+    "migrationHistoryCount": 78,
+    "businessRows": 0,
+    "shareholderLoanSecurityFindings": 0
+  },
+  "closeState": "ready-to-close",
+  "closureReceipt": null
+}

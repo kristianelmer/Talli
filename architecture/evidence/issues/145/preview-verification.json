@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#145",
+  "verifiedAt": "2026-09-02T08:56:50Z",
+  "sourceRevision": "48c09cde3e980ab72c6f5ec5616010bfbe69fef3",
+  "githubDeploymentId": 6218902937,
+  "githubDeploymentStatusId": 17667406929,
+  "environment": "Preview",
+  "productionEnvironment": false,
+  "state": "SUCCESS",
+  "provider": "Vercel",
+  "project": "kristianelmers-projects/talli-web",
+  "deploymentUrl": "https://talli-eesld60ip-kristianelmers-projects.vercel.app",
+  "providerSource": "git",
+  "providerCommitSha": "48c09cde3e980ab72c6f5ec5616010bfbe69fef3",
+  "access": {
+    "result": "protected-by-project-vercel-authentication",
+    "basis": "The exact revision deployed successfully through the same protected Vercel project recorded for the predecessor corporate-governance slice.",
+    "directProbePerformed": false
+  },
+  "compensatingVerification": {
+    "architectureTests": {
+      "passed": 51,
+      "failed": 0
+    },
+    "backendBoundaryTests": {
+      "passed": 618,
+      "skipped": 2,
+      "failed": 0
+    },
+    "webBoundaryTests": {
+      "passed": 142,
+      "failed": 0
+    },
+    "contractTests": {
+      "passed": 38,
+      "failed": 0
+    },
+    "corporateGovernanceDatabaseLifecycleTests": {
+      "passed": 13,
+      "failed": 0
+    },
+    "customerReadyGate": "architecture/evidence/customer-ready-gates/48c09cde3e980ab72c6f5ec5616010bfbe69fef3.json",
+    "databaseIsolation": "pass with a fresh local Supabase stack and browser-owner harness",
+    "review": "standards and specification axes report no remaining actionable findings"
+  },
+  "verdict": "pass"
+}
