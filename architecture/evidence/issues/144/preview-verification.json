@@ -1,10 +1,10 @@
 {
   "schemaVersion": "1.0",
   "issue": "#144",
-  "verifiedAt": "2026-09-02T05:37:00Z",
-  "sourceRevision": "f07fb0cc0fe2c0c7de00c80d653232a14f92c44f",
-  "githubDeploymentId": 6216213865,
-  "githubDeploymentStatusId": 17660409896,
+  "verifiedAt": "2026-09-02T05:57:43Z",
+  "sourceRevision": "060aea9d883b9e131440f125986726684eb8d34c",
+  "githubDeploymentId": 6216443697,
+  "githubDeploymentStatusId": 17660999001,
   "environment": "Preview",
   "productionEnvironment": false,
   "state": "SUCCESS",
@@ -12,9 +12,9 @@
   "teamId": "team_vjY7Lg3yOS7gSUnFqbihoTo2",
   "projectId": "prj_1JJkOqzGBhn438IKHYADWiRbVGeZ",
   "project": "kristianelmers-projects/talli-web",
-  "deploymentUrl": "https://talli-q1ccndpou-kristianelmers-projects.vercel.app",
+  "deploymentUrl": "https://talli-2ybu9oh10-kristianelmers-projects.vercel.app",
   "providerSource": "git",
-  "providerCommitSha": "f07fb0cc0fe2c0c7de00c80d653232a14f92c44f",
+  "providerCommitSha": "060aea9d883b9e131440f125986726684eb8d34c",
   "access": {
     "result": "protected-by-project-vercel-authentication",
     "basis": "The exact revision deployed successfully through the same protected Vercel project recorded in architecture/evidence/issues/147/preview-verification.json.",
@@ -34,18 +34,9 @@
       "passed": 69,
       "failed": 0
     },
-    "databaseLifecycleTests": {
-      "passed": 5,
-      "failed": 0,
-      "skipped": 2,
-      "skipReason": "DATABASE_URL is absent; hosted catalog and authority verification is recorded separately."
-    },
-    "browserHarnessTests": {
-      "passed": 14,
-      "failed": 0,
-      "skipped": 3,
-      "skipReason": "Local Supabase browser fixture environment is absent; fixture fail-closed behavior passed."
-    },
+    "customerReadyGate": "architecture/evidence/customer-ready-gates/060aea9d883b9e131440f125986726684eb8d34c.json",
+    "databaseIsolation": "pass with the corporate-governance runtime and rollback/recutover tests executed against local PostgreSQL",
+    "browserOwnerHarness": "pass with local Supabase fixtures",
     "typecheck": "pass"
   },
   "verdict": "pass"
