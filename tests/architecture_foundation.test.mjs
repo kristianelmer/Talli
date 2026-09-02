@@ -225,6 +225,7 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     "backend:shareholder_register_filing",
     "web:banking",
     "web:company-access",
+    "web:corporate-governance",
     "web:documents",
     "web:investments",
     "web:ledger",
@@ -309,6 +310,30 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
       imports: ["talli_backend.modules.shareholder_register_filing.public"],
       kind: "workflow",
       to: "backend:shareholder_register_filing",
+    },
+    {
+      from: "backend-system:owner-dividend-governance",
+      imports: ["talli_backend.modules.banking.public"],
+      kind: "workflow",
+      to: "backend:banking",
+    },
+    {
+      from: "backend-system:owner-dividend-governance",
+      imports: ["talli_backend.modules.corporate_governance.public"],
+      kind: "workflow",
+      to: "backend:corporate_governance",
+    },
+    {
+      from: "backend-system:owner-dividend-governance",
+      imports: ["talli_backend.modules.documents.public"],
+      kind: "workflow",
+      to: "backend:documents",
+    },
+    {
+      from: "backend-system:owner-dividend-governance",
+      imports: ["talli_backend.modules.ledger.public"],
+      kind: "workflow",
+      to: "backend:ledger",
     },
     {
       from: "backend-system:passive-validation-observation",

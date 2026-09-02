@@ -49,6 +49,23 @@ begin
 end
 $membership$;
 
+select pg_catalog.set_config(
+  'talli.corporate_governance_migration_principal', current_user, true
+);
+set local role ledger_store_owner;
+grant usage, create on schema backend_system to ledger_store_owner;
+do $backend_system_schema_authority$
+begin
+  execute pg_catalog.format(
+    'grant usage, create on schema backend_system to %I',
+    pg_catalog.current_setting(
+      'talli.corporate_governance_migration_principal'
+    )
+  );
+end
+$backend_system_schema_authority$;
+reset role;
+
 create schema if not exists corporate_governance
   authorization corporate_governance_store_owner;
 revoke all on schema corporate_governance
@@ -578,6 +595,20 @@ grant execute on function
     jsonb, bigint, text, text
   )
 to corporate_governance_store_owner;
+
+set local role ledger_store_owner;
+do $backend_system_schema_authority_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke create on schema backend_system from %I',
+    pg_catalog.current_setting(
+      'talli.corporate_governance_migration_principal'
+    )
+  );
+end
+$backend_system_schema_authority_revoke$;
+revoke create on schema backend_system from ledger_store_owner;
+reset role;
 
 -- Import the predecessor owner-dividend slice before forced RLS is enabled.
 -- IDs, hashes, actors, timestamps, Ledger references, and bank references stay

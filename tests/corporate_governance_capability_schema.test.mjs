@@ -71,6 +71,10 @@ test("owner-dividend lifecycle is available only through exact restricted routin
   assert.match(source, /function backend_system\.owner_dividend_signed_evidence_v1/iu);
   assert.match(source, /function\s+backend_system\.project_owner_dividend_finalization_v1/iu);
   assert.match(source, /function\s+backend_system\.project_owner_dividend_payment_v1/iu);
+  assert.match(
+    source,
+    /grant usage, create on schema backend_system[\s\S]+create or replace function backend_system\.owner_dividend_signed_evidence_v1[\s\S]+revoke create on schema backend_system/iu,
+  );
   assert.match(source, /grant execute on function[\s\S]+to corporate_governance_workflow_executor/iu);
   assert.doesNotMatch(
     source,
