@@ -5,6 +5,7 @@ import {
   createDocumentTransfer,
   documentsActionErrorMessage,
 } from "../../../../features/documents";
+import { loadAcceptedMembershipCompany } from "../../../lib/company-access-context";
 import { getCurrentSessionAccessToken } from "../../../lib/supabase/auth-session";
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
 
@@ -32,6 +33,10 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
       "preview",
       randomUUID(),
     );
+    const company = await loadAcceptedMembershipCompany(transfer.document.companyId);
+    if (!company || company.role !== "owner") {
+      return new Response("Ingen tilgang", { status: 403 });
+    }
     signedUrl = transfer.signedUrl;
   } catch (error) {
     return new Response(documentsActionErrorMessage(error), { status: 403 });
