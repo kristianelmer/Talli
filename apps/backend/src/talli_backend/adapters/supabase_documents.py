@@ -44,6 +44,7 @@ class DocumentsSupabaseConfiguration:
     anon_key: str
     service_role_key: str
     database_url: str
+    company_access_database_url: str
 
 
 def _document(row: dict[str, Any]) -> DocumentRecord:
@@ -293,7 +294,7 @@ class SupabaseDocumentsAdapter(DocumentsSessionFactory):
             SupabaseConfiguration(
                 url=configuration.url,
                 anon_key=configuration.anon_key,
-                database_url=configuration.database_url,
+                database_url=configuration.company_access_database_url,
             )
         ))
 
@@ -304,6 +305,9 @@ class SupabaseDocumentsAdapter(DocumentsSessionFactory):
             anon_key=os.environ.get("SUPABASE_ANON_KEY", ""),
             service_role_key=os.environ.get("SUPABASE_SERVICE_ROLE_KEY", ""),
             database_url=os.environ.get("TALLI_LEDGER_DATABASE_URL", ""),
+            company_access_database_url=os.environ.get(
+                "TALLI_COMPANY_ACCESS_DATABASE_URL", ""
+            ),
         ))
 
     async def session(self, access_token: str) -> DocumentsService:

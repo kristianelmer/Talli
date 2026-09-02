@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 from talli_backend.adapters.supabase_documents import (
     SupabaseDocumentObjectStorage,
+    SupabaseDocumentsAdapter,
     SupabaseDocumentsAuthorization,
     SupabaseDocumentsPersistence,
     _document,
@@ -137,3 +138,21 @@ def test_authorization_adapter_passes_only_accepted_supported_membership_facts()
 
     roles = asyncio.run(SupabaseDocumentsAuthorization(Gateway()).accepted_roles("bearer"))  # type: ignore[arg-type]
     assert roles == {COMPANY_ID: "owner"}
+
+
+def test_documents_adapter_keeps_authorization_and_persistence_connections_separate(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("SUPABASE_URL", "https://supabase.invalid")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "anon-key")
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+    monkeypatch.setenv("TALLI_COMPANY_ACCESS_DATABASE_URL", "postgresql://company-access")
+    monkeypatch.setenv("TALLI_LEDGER_DATABASE_URL", "postgresql://documents")
+
+    adapter = SupabaseDocumentsAdapter.from_environment()
+
+    assert adapter._configuration.database_url == "postgresql://documents"
+    assert (
+        adapter._authorization._gateway._configuration.database_url
+        == "postgresql://company-access"
+    )

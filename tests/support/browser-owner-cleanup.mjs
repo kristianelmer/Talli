@@ -104,6 +104,9 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
         execute pg_catalog.format(
           'grant investments_store_owner to %I', current_user
         );
+        execute pg_catalog.format(
+          'grant documents_store_owner to %I', current_user
+        );
       end
       $browser_owner_cleanup_authority$`);
     const bankingTables = [
@@ -301,10 +304,27 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
         );
         if (legacyTable?.rows?.[0]?.present === false) continue;
       }
+      if (table === "documents") {
+        await database.query("set local role documents_store_owner");
+        await database.query("alter table public.documents no force row level security");
+        await database.query("delete from public.documents where company_id = $1", [
+          companyId,
+        ]);
+        await database.query("alter table public.documents force row level security");
+        await database.query("reset role");
+        continue;
+      }
       await database.query(`delete from public.${table} where company_id = $1`, [
         companyId,
       ]);
     }
+    await database.query(`do $browser_owner_cleanup_authority$
+      begin
+        execute pg_catalog.format(
+          'revoke documents_store_owner from %I', current_user
+        );
+      end
+      $browser_owner_cleanup_authority$`);
     await database.query("set local session_replication_role = origin");
     await database.query("alter table public.companies disable trigger user");
     await database.query("delete from public.companies where id = $1", [
