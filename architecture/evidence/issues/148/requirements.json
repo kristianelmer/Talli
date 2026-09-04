@@ -105,7 +105,7 @@
         "architecture/evidence/customer-ready-gates/<R1>.json",
         "architecture/evidence/customer-ready-gates/<R2>.json"
       ],
-      "status": "hosted-shape correction passed the complete isolated Supabase suite; independent rereviews, replacement immutable gates, and contract retry pending"
+      "status": "complete local and hosted stage-exit evidence passed; protected PR Release, Preview, merge, and post-merge verification pending"
     }
   ],
   "review": {
@@ -169,7 +169,7 @@
   ],
   "hostedVerification": {
     "path": "architecture/evidence/issues/148/hosted-verification.json",
-    "verdict": "partial-expansion-pass-contract-transaction-rolled-back",
+    "verdict": "pass",
     "projectId": "pkpyyxryfhfehrbhbynp",
     "organizationId": "zwucumjvtpnyujqyzwkg",
     "plan": "Free",
@@ -188,12 +188,27 @@
       "statementSha256": "1a8bc0e0a53610d4cd126e9bc22368b3f9a1f2a2fc81a1106a411dbe6c67f412",
       "repairResult": "later byte-identical receipt marked reverted; one canonical receipt remains"
     },
-    "contractFailure": "PostgreSQL 42703 exposed the already-hosted #144 finalization/payment shape missing event_id and occurred_at; the contract transaction rolled back before predecessor removal.",
-    "correctiveMigration": "supabase/migrations/20260902105000_corporate_governance_hosted_shape_parity.sql"
+    "initialContractFailure": "PostgreSQL 42703 exposed the already-hosted #144 finalization/payment shape missing event_id and occurred_at; the contract transaction rolled back before predecessor removal.",
+    "correctiveMigration": "supabase/migrations/20260902105000_corporate_governance_hosted_shape_parity.sql",
+    "completedMigrations": [
+      {
+        "version": "20260904202239",
+        "name": "corporate_governance_hosted_shape_parity",
+        "statementSha256": "3e6382fea0c525666400427eaf270952d4e0a680273a4458cd53ea2ee332359f"
+      },
+      {
+        "version": "20260904202336",
+        "name": "corporate_governance_contract",
+        "statementSha256": "632ef749740e836f9bddf95e143a8f6f330034119178e39eb30ef282d8957526"
+      }
+    ],
+    "migrationHistoryCount": 84,
+    "businessRows": 0,
+    "blockingAdvisorFindings": 0
   },
   "previewVerification": {
     "path": "architecture/evidence/issues/148/preview-verification.json",
     "verdict": "pending"
   },
-  "closeState": "hosted-shape correction, independent rereviews, and linked replacement immutable R1/R2 passed; hosted contract retry, preview, and protected merge pending"
+  "closeState": "hosted parity and contract cutover, independent rereviews, linked immutable R1/R2, and architecture stage-exit evidence passed; protected PR Preview, Release, merge, and post-merge verification pending"
 }

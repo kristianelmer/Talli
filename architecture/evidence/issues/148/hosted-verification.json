@@ -1,8 +1,9 @@
 {
   "schemaVersion": "1.0",
   "issue": "#148",
-  "verifiedAt": "2026-09-04T09:52:32Z",
-  "sourceRevisionAtApply": "631c4cb6b1341ddb26331aa03d1a0044d3975d64",
+  "verifiedAt": "2026-09-04T20:24:41Z",
+  "sourceRevisionAtInitialApply": "631c4cb6b1341ddb26331aa03d1a0044d3975d64",
+  "sourceRevisionAtCompletedApply": "f520b1905f79d688cf122d4cbdf845a3e0ef12ba",
   "target": {
     "organizationId": "zwucumjvtpnyujqyzwkg",
     "projectId": "pkpyyxryfhfehrbhbynp",
@@ -10,10 +11,11 @@
     "spendCap": "enabled"
   },
   "apply": {
-    "result": "partial-expansion-pass-contract-transaction-rolled-back",
+    "result": "pass",
     "method": "Supabase migration API, serial exact-file application",
     "baselineMigrationHistoryCount": 78,
     "migrationHistoryCountAfterReceiptRepair": 82,
+    "migrationHistoryCount": 84,
     "appliedMigrations": [
       {
         "version": "20260904092215",
@@ -30,6 +32,16 @@
       {
         "version": "20260904092418",
         "name": "corporate_governance_artifact_lifecycle"
+      },
+      {
+        "version": "20260904202239",
+        "name": "corporate_governance_hosted_shape_parity",
+        "statementSha256": "3e6382fea0c525666400427eaf270952d4e0a680273a4458cd53ea2ee332359f"
+      },
+      {
+        "version": "20260904202336",
+        "name": "corporate_governance_contract",
+        "statementSha256": "632ef749740e836f9bddf95e143a8f6f330034119178e39eb30ef282d8957526"
       }
     ],
     "transactionallyRejectedContract": {
@@ -38,10 +50,7 @@
       "reason": "The already-hosted #144 owner-dividend tables did not yet have event_id and occurred_at columns.",
       "rollbackResult": "The contract transaction rolled back before any predecessor surface was removed."
     },
-    "pendingMigrations": [
-      "corporate_governance_hosted_shape_parity",
-      "corporate_governance_contract"
-    ]
+    "correctiveSequence": "The exact additive hosted-shape parity migration was applied and verified before the exact contract migration. Both stored statements match the reviewed local files byte-for-byte by SHA-256."
   },
   "duplicateReceiptReconciliation": {
     "name": "company_access_corporate_governance_identity",
@@ -60,17 +69,35 @@
       }
     ]
   },
-  "postRepairVerification": {
+  "completedVerification": {
     "companies": 0,
     "ownerDividendFinalizations": 0,
     "ownerDividendPayments": 0,
     "predecessorDocumentEvents": 0,
     "hostedParityColumnsPresent": {
-      "ownerDividendFinalizationsEventId": false,
-      "ownerDividendFinalizationsOccurredAt": false,
-      "ownerDividendPaymentsOccurredAt": false
+      "ownerDividendFinalizationsEventId": true,
+      "ownerDividendFinalizationsOccurredAt": true,
+      "ownerDividendPaymentsOccurredAt": true
     },
-    "interpretation": "The target remains at the safe pre-parity, pre-contract boundary with no business rows."
+    "parityDefaultsAndConstraints": "event_id defaults to gen_random_uuid(); both occurred_at columns default to statement_timestamp(); all are NOT NULL; event_id is unique; both immutable triggers are present.",
+    "contractState": {
+      "predecessorTablesRetired": true,
+      "predecessorWriterRetired": true,
+      "predecessorCanonicalizerRetired": true,
+      "predecessorAssertionRetired": true,
+      "canonicalGovernanceTablesPresent": true,
+      "canonicalLifecycleReaderPresent": true,
+      "canonicalWritersActive": true,
+      "contractWriterBackupsAbsent": true,
+      "additiveRollbackBackupsAbsent": true,
+      "temporaryMigrationRoleMemberships": 0
+    },
+    "interpretation": "The exact parity and contract files completed serially. Canonical corporate_governance is the sole writer, predecessor surfaces are retired, and the empty pre-launch target has no business rows to reconcile."
   },
-  "verdict": "partial; receipt history reconciled, strengthened local validation and independent rereview pending before hosted retry"
+  "advisors": {
+    "security": {"total": 30, "info": 4, "warn": 26, "error": 0},
+    "performance": {"total": 285, "info": 266, "warn": 19, "error": 0},
+    "blockingFindings": 0
+  },
+  "verdict": "pass"
 }
