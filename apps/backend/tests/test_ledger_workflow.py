@@ -1,11 +1,9 @@
 from __future__ import annotations
-
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 
 from talli_backend.application.ledger_workflow import (
-    FinalizeCorporateDecisionCommand,
     LedgerApplication,
     NewYearStartCommand,
     RecordAdministrativeCostCommand,
@@ -429,60 +427,3 @@ def test_administrative_cost_uses_one_transaction_and_python_posting_policy() ->
     ]
     assert transaction.posting is not None
     assert transaction.posting["entry_kind"] is LedgerEntryKind.ADMINISTRATIVE_COST
-
-
-def test_annual_close_finalization_commits_without_a_ledger_post() -> None:
-    class AnnualCloseTransaction(WorkflowTransactionStub):
-        async def prepare_corporate_decision_finalization(
-            self, command: FinalizeCorporateDecisionCommand
-        ) -> dict[str, object]:
-            self.events.append("prepare:finalize_corporate_decision")
-            return {"replay": None, "decisionKind": "annual_close"}
-
-        async def complete_corporate_decision_finalization(
-            self,
-            command: FinalizeCorporateDecisionCommand,
-            posted_entry: PostedLedgerEntry | None,
-            prepared: dict[str, object],
-        ) -> dict[str, object]:
-            self.events.append("complete:finalize_corporate_decision")
-            assert posted_entry is None
-            assert prepared["decisionKind"] == "annual_close"
-            return {"finalizationId": str(command.finalization_id)}
-
-    transaction = AnnualCloseTransaction()
-    session = asyncio.run(application(transaction).session("token"))
-    result = asyncio.run(
-        session.finalize_corporate_decision(
-            FinalizeCorporateDecisionCommand(
-                company_id=COMPANY_ID,
-                actor_id=ACTOR_ID,
-                correlation_id=CorrelationId("annual-close-finalization"),
-                idempotency_key=IdempotencyKey(
-                    "53000000-0000-4000-8000-000000000005"
-                ),
-                income_year=IncomeYear(2026),
-                decision_id=LedgerSourceRecordId(
-                    "64000000-0000-0000-0000-000000000006"
-                ),
-                set_id=LedgerSourceRecordId(
-                    "65000000-0000-0000-0000-000000000006"
-                ),
-                decision_hash="a" * 64,
-                finalization_id=LedgerSourceRecordId(
-                    "66000000-0000-0000-0000-000000000006"
-                ),
-                holding_action_id=None,
-                ledger_entry_id=None,
-            )
-        )
-    )
-
-    assert result.posted_entry is None
-    assert transaction.events == [
-        "begin",
-        "prepare:finalize_corporate_decision",
-        "complete:finalize_corporate_decision",
-        "commit",
-    ]
-    assert transaction.posting is None

@@ -118,15 +118,16 @@
         ]
       }
     ],
-    "currentCapability": "corporate_governance",
-    "currentIssue": "#145",
+    "currentCapability": "billing",
+    "currentIssue": "#137",
     "status": "active",
     "exitedCapabilities": [
       "company_access",
       "ledger",
       "banking",
       "investments",
-      "documents"
+      "documents",
+      "corporate_governance"
     ],
     "completedStages": [
       {
@@ -218,6 +219,26 @@
             "revision": "9c8904703f738ce2d0ba3513cf2850e33cf0abd5",
             "evidencePath": "architecture/evidence/customer-ready-gates/9c8904703f738ce2d0ba3513cf2850e33cf0abd5.json",
             "evidenceDigest": "sha256:62df0df68c57470324d346ae47c6f013a61b5d6ed5c398192656e71167e9b570"
+          }
+        ]
+      },
+      {
+        "capability": "corporate_governance",
+        "removalIssues": [
+          "#144",
+          "#145",
+          "#148"
+        ],
+        "gates": [
+          {
+            "revision": "cb5f01202793035447403078029f6a77671e3b21",
+            "evidencePath": "architecture/evidence/customer-ready-gates/cb5f01202793035447403078029f6a77671e3b21.json",
+            "evidenceDigest": "sha256:e23b7330435317dab1493d3ec0d7c9c95941db1b05a3da4d10605afc983aac6f"
+          },
+          {
+            "revision": "1cc236e90ea746fd9b13345c73e99c574e22bc16",
+            "evidencePath": "architecture/evidence/customer-ready-gates/1cc236e90ea746fd9b13345c73e99c574e22bc16.json",
+            "evidenceDigest": "sha256:609fc157aa8d911aafc5ef55c8d465fa20fbd51776aacd7c0ec2d56eeefb7895"
           }
         ]
       }
@@ -339,118 +360,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:production_pilot_entitlements",
           "operation": "listProductionFilingState"
-        }
-      ]
-    },
-    {
-      "id": "compat-corporate-governance-persistence",
-      "kind": "legacy-facade",
-      "capability": "corporate_governance",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
-      "removalIssue": "#148",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
-      "canonicalImplementation": "web:legacy-runtime:corporate_governance",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove corporate-decision and document-artifact persistence at stage exit in #148.",
-      "scopes": [
-        {
-          "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_decision_finalizations",
-          "operation": "CorporateDecisionPage"
-        },
-        {
-          "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_decisions",
-          "operation": "CorporateDecisionPage"
-        },
-        {
-          "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_document_artifacts",
-          "operation": "CorporateDecisionPage"
-        },
-        {
-          "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_document_events",
-          "operation": "CorporateDecisionPage"
-        },
-        {
-          "path": "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_document_sets",
-          "operation": "CorporateDecisionPage"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_decision_finalizations",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_decisions",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_document_artifacts",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_document_events",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_document_sets",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/documents/[documentId]/preview/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_document_artifacts",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_decision_finalizations",
-          "operation": "listCorporateDocumentLifecycle"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_decisions",
-          "operation": "listCorporateDocumentLifecycle"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_document_artifacts",
-          "operation": "listCorporateDocumentLifecycle"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_document_events",
-          "operation": "listCorporateDocumentLifecycle"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_document_sets",
-          "operation": "listCorporateDocumentLifecycle"
         }
       ]
     },
@@ -1124,36 +1033,6 @@
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:billing_accounts",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_decision_finalizations",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_decisions",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_document_artifacts",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_document_events",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:corporate_document_sets",
           "operation": "GET"
         },
         {

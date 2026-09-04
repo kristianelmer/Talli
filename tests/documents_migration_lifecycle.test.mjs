@@ -6,6 +6,10 @@ import pg from "pg";
 const { Client } = pg;
 const databaseUrl = process.env.DATABASE_URL;
 const migrationName = "20260901233000_documents_capability.sql";
+const registryMigrationName =
+  "20260902030000_documents_evidence_reference_registry.sql";
+const governanceLifecycleMigrationName =
+  "20260902100000_corporate_governance_artifact_lifecycle.sql";
 
 async function state(client) {
   const result = await client.query(String.raw`
@@ -30,9 +34,20 @@ test(
   "documents rollback preserves predecessor state and recutover is repeatable twice",
   { skip: !databaseUrl && "DATABASE_URL is required", timeout: 120_000 },
   async () => {
-    const [forward, rollback] = await Promise.all([
+    const [
+      forward,
+      rollback,
+      registryForward,
+      registryRollback,
+      governanceForward,
+      governanceRollback,
+    ] = await Promise.all([
       readFile(new URL(`../supabase/migrations/${migrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/rollback/${migrationName}`, import.meta.url), "utf8"),
+      readFile(new URL(`../supabase/migrations/${registryMigrationName}`, import.meta.url), "utf8"),
+      readFile(new URL(`../supabase/rollback/${registryMigrationName}`, import.meta.url), "utf8"),
+      readFile(new URL(`../supabase/migrations/${governanceLifecycleMigrationName}`, import.meta.url), "utf8"),
+      readFile(new URL(`../supabase/rollback/${governanceLifecycleMigrationName}`, import.meta.url), "utf8"),
     ]);
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
@@ -42,6 +57,8 @@ test(
       assert.equal(initial.capability_schema, true);
 
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
+        await client.query(governanceRollback);
+        await client.query(registryRollback);
         await client.query(rollback);
         const predecessor = await state(client);
         assert.deepEqual(
@@ -63,6 +80,8 @@ test(
         assert.match(predecessor.producer_definitions, /insert into public\.documents/iu);
 
         await client.query(forward);
+        await client.query(registryForward);
+        await client.query(governanceForward);
         const successor = await state(client);
         assert.deepEqual(
           {
@@ -82,6 +101,14 @@ test(
         );
         assert.match(successor.producer_definitions, /documents\.assert_registered_artifact_v1/iu);
         assert.doesNotMatch(successor.producer_definitions, /insert into public\.documents/iu);
+        const workflowGrant = await client.query(String.raw`
+          select has_function_privilege(
+            'corporate_governance_workflow_executor',
+            'documents.register_evidence_reference_v1(text,text,uuid,uuid,uuid,integer,text,text,text,bigint,uuid)',
+            'EXECUTE'
+          ) as allowed
+        `);
+        assert.equal(workflowGrant.rows[0].allowed, true);
       }
     } finally {
       await client.end();

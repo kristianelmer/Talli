@@ -16,10 +16,10 @@
   },
   "owns": {
     "postgresSchemas": ["documents"],
-    "tables": ["public.documents"],
+    "tables": ["documents.evidence_references", "public.documents"],
     "storageBuckets": ["company-documents"],
     "projections": ["DocumentBackupObject"],
-    "migrations": "supabase/migrations/20260901233000_documents_capability.sql"
+    "migrations": "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql"
   },
   "ports": [
     {"name": "DocumentsPersistence", "direction": "outbound", "contract": "talli_backend.modules.documents.public.DocumentsPersistence", "registrationDecorator": "talli_backend.modules.documents.public.documents_persistence_adapter", "adapters": ["talli_backend.adapters.supabase_documents.SupabaseDocumentsPersistence"]},

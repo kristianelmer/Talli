@@ -2,14 +2,14 @@ import { randomUUID } from "node:crypto";
 import { notFound } from "next/navigation";
 
 import { investmentUnitFact } from "../../../../features/investments";
+import {
+  deriveCorporateDecisionFacts,
+  type CorporateDecisionFactsWire,
+} from "../../../../features/corporate-governance";
 
 import { Banner, EmptyState, LinkButton, WizardShell } from "../../../components/ui";
-import { buildAnnualAccountsPayload } from "../../../lib/annual-accounts";
 import { ownerCopy } from "../../../lib/copy";
-import {
-  buildOwnerDividendAnnualBasis,
-  buildOwnerDividendReviewedFacts,
-} from "../../../lib/owner-dividend";
+import { getCurrentSessionAccessToken } from "../../../lib/supabase/auth-session";
 import { loadWorkspaceData } from "../../../lib/workspace-data";
 import { DividendReceivedWizard } from "../_components/DividendReceivedWizard";
 import { FundDistributionWizard } from "../_components/FundDistributionWizard";
@@ -409,67 +409,31 @@ export default async function ActionPage({
       break;
     }
     case "owner-dividend":
-      const currentSetup = setups.find(
-        (setup) => setup.company_id === companyId && setup.income_year === incomeYear,
-      );
-      const decisionShareholders = currentSetup
-        ? shareholders
-            .filter((shareholder) => shareholder.setup_id === currentSetup.id)
-            .sort((left, right) => left.id.localeCompare(right.id, "en"))
-        : [];
-      const approvedAnnualData = [...annualData]
-        .filter((candidate) => candidate.company_id === companyId
-          && candidate.income_year <= incomeYear
-          && candidate.answers.general_meeting_approved)
-        .sort((left, right) => right.income_year - left.income_year)[0];
-      let annualBasis = null;
-      let reviewedFacts = null;
+      let decisionFacts: CorporateDecisionFactsWire | null = null;
       let basisBlocker: string | null = null;
-      if (!currentSetup) {
-        basisBlocker = "Låst aksjonærgrunnlag mangler for beslutningsåret.";
-      } else if (!approvedAnnualData) {
-        basisBlocker = "Siste godkjente årsregnskap mangler.";
-      } else {
-        try {
-          const annualAccountsPayload = buildAnnualAccountsPayload({
-            incomeYear: approvedAnnualData.income_year,
-            annualData: approvedAnnualData,
-            ledgerEntries: entries.filter((entry) => entry.company_id === companyId
-              && entry.income_year === approvedAnnualData.income_year),
-          });
-          annualBasis = buildOwnerDividendAnnualBasis({
-            annualData: approvedAnnualData,
-            annualAccountsPayload,
-          });
-          reviewedFacts = buildOwnerDividendReviewedFacts({
-            company: {
-              id: primaryCompany.id,
-              organizationNumber: primaryCompany.org_number,
-              legalName: primaryCompany.name,
-            },
-            shareholders: decisionShareholders.map((shareholder, order) => ({
-              id: shareholder.id,
-              name: shareholder.name,
-              shareCount: Number(shareholder.share_count),
-              order,
-            })),
-            annualBasis,
-          });
-        } catch (error) {
-          basisBlocker = error instanceof Error ? error.message : "Årsgrunnlaget er utenfor støttet løype.";
-        }
+      try {
+        const accessToken = await getCurrentSessionAccessToken();
+        if (!accessToken) throw new Error("Innlogging kreves.");
+        decisionFacts = await deriveCorporateDecisionFacts(accessToken, {
+          companyId,
+          incomeYear,
+          decisionKind: "owner_dividend",
+        });
+      } catch (error) {
+        basisBlocker = error instanceof Error ? error.message : "Årsgrunnlaget er utenfor støttet løype.";
       }
+      const decisionShareholders = decisionFacts?.shareholders ?? [];
       body = (
         <OwnerDividendWizard
           companyId={companyId}
           incomeYear={incomeYear}
           shareholders={decisionShareholders.map((shareholder) => ({
-            id: shareholder.id,
+            id: shareholder.shareholderId,
             name: shareholder.name,
-            share_count: shareholder.share_count,
+            share_count: shareholder.shareCount,
           }))}
-          annualBasis={annualBasis}
-          reviewedFacts={reviewedFacts}
+          annualBasis={decisionFacts?.annualBasis ?? null}
+          reviewedFacts={decisionFacts?.reviewedFacts ?? null}
           featureEnabled={corporateDocumentsEnabled}
           basisBlocker={basisBlocker}
           draftIds={{

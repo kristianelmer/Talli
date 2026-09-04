@@ -103,11 +103,11 @@ try {
     execute("boundary-smoke", "npm run test:boundary-smoke", "npm", ["run", "test:boundary-smoke"]),
     execute(
       "launch-rehearsal",
-      "TALLI_PYTHON_BIN=.venv/bin/python TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47> npm run test:launch-rehearsal",
+      "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47> npm run test:launch-rehearsal",
       "npm",
       ["run", "test:launch-rehearsal"],
       {
-        TALLI_PYTHON_BIN: ".venv/bin/python",
+        TALLI_PYTHON_BIN: "apps/backend/.venv/bin/python",
         TALLI_SKATTE_XSD_DIR: join(taxSchemaRoot, "src/resources/xsd"),
       },
     ),
@@ -119,10 +119,10 @@ try {
     ),
     execute(
       "database-isolation",
-      "TALLI_PYTHON_BIN=.venv/bin/python npm run test:supabase:local",
+      "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python npm run test:supabase:local",
       "npm",
       ["run", "test:supabase:local"],
-      { TALLI_PYTHON_BIN: ".venv/bin/python" },
+      { TALLI_PYTHON_BIN: "apps/backend/.venv/bin/python" },
     ),
     execute(
       "whitespace",

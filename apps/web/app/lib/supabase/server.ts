@@ -43,6 +43,10 @@ import {
   type LedgerPeriodLockPresentation,
 } from "../../../features/ledger";
 import {
+  listCorporateDecisionLifecycle,
+  readCorporateDecisionReadiness,
+} from "../../../features/corporate-governance";
+import {
   listDocuments,
   presentDocument,
 } from "../../../features/documents";
@@ -769,50 +773,74 @@ export async function listCorporateDocumentLifecycle(companyIds: string[]) {
       corporateDocumentArtifacts: [] as CorporateDocumentArtifactRow[],
       corporateDocumentEvents: [] as CorporateDocumentEventRow[],
       corporateDecisionFinalizations: [] as CorporateDecisionFinalizationRow[],
+      corporateDecisionReadiness: [],
       error: null,
     };
   }
   const supabase = await createSupabaseServerClient();
-  const [decisions, sets, artifacts, events, finalizations] = await Promise.all([
-    supabase
-      .from("corporate_decisions")
-      .select("id, company_id, income_year, decision_kind, annual_close_source_id, source_hash, canonical_input, decision_hash, supersedes_decision_id, created_by, created_at")
-      .in("company_id", companyIds)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("corporate_document_sets")
-      .select("id, company_id, income_year, decision_id, template_family, template_version, decision_hash, supersedes_set_id, created_by, created_at")
-      .in("company_id", companyIds)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("corporate_document_artifacts")
-      .select("id, company_id, income_year, set_id, artifact_kind, variant, document_id, content_sha256, byte_length, mime_type, storage_key, supersedes_artifact_id, created_by, created_at")
-      .in("company_id", companyIds)
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("corporate_document_events")
-      .select("id, company_id, income_year, decision_id, set_id, artifact_id, event_kind, actor_id, occurred_at, decision_hash, content_sha256, metadata, idempotency_key, created_at")
-      .in("company_id", companyIds)
-      .order("occurred_at", { ascending: true }),
-    supabase
-      .from("corporate_decision_finalizations")
-      .select("id, company_id, income_year, decision_id, finalization_kind, holding_action_id, ledger_entry_id, annual_close_source_id, decision_hash, signed_artifact_hashes, accounting_policy_version, created_by, created_at")
-      .in("company_id", companyIds)
-      .order("created_at", { ascending: true }),
-  ]);
-  return {
-    corporateDecisions: (decisions.data ?? []) as CorporateDecisionRow[],
-    corporateDocumentSets: (sets.data ?? []) as CorporateDocumentSetRow[],
-    corporateDocumentArtifacts: (artifacts.data ?? []) as CorporateDocumentArtifactRow[],
-    corporateDocumentEvents: (events.data ?? []) as CorporateDocumentEventRow[],
-    corporateDecisionFinalizations: (finalizations.data ?? []) as CorporateDecisionFinalizationRow[],
-    error: decisions.error?.message
-      ?? sets.error?.message
-      ?? artifacts.error?.message
-      ?? events.error?.message
-      ?? finalizations.error?.message
-      ?? null,
-  };
+  const accessToken = await backendAccessToken(supabase);
+  if (!accessToken) {
+    return {
+      corporateDecisions: [] as CorporateDecisionRow[],
+      corporateDocumentSets: [] as CorporateDocumentSetRow[],
+      corporateDocumentArtifacts: [] as CorporateDocumentArtifactRow[],
+      corporateDocumentEvents: [] as CorporateDocumentEventRow[],
+      corporateDecisionFinalizations: [] as CorporateDecisionFinalizationRow[],
+      corporateDecisionReadiness: [],
+      error: "Innlogging kreves.",
+    };
+  }
+  try {
+    const [lifecycle, ...documentPages] = await Promise.all([
+      listCorporateDecisionLifecycle(accessToken, companyIds),
+      ...companyIds.map((companyId) => listDocuments(accessToken, companyId)),
+    ]);
+    const documentsById = new Map(
+      documentPages.flatMap((page) => page.documents).map((document) => [
+        document.id,
+        document,
+      ]),
+    );
+    const artifacts = lifecycle.corporateDocumentArtifacts.map((artifact) => {
+      const document = documentsById.get(artifact.document_id);
+      return {
+        ...artifact,
+        storage_key: document?.storageKey ?? "",
+      };
+    });
+    const corporateDecisionReadiness = await Promise.all(
+      lifecycle.corporateDecisions.map((decision) => readCorporateDecisionReadiness(
+        accessToken,
+        {
+          companyId: decision.company_id,
+          incomeYear: decision.income_year,
+          decisionKind: decision.decision_kind,
+        },
+      )),
+    );
+    const missingDocument = artifacts.some((artifact) => !artifact.storage_key);
+    return {
+      corporateDecisions: lifecycle.corporateDecisions as CorporateDecisionRow[],
+      corporateDocumentSets: lifecycle.corporateDocumentSets as CorporateDocumentSetRow[],
+      corporateDocumentArtifacts: artifacts as CorporateDocumentArtifactRow[],
+      corporateDocumentEvents: lifecycle.corporateDocumentEvents as CorporateDocumentEventRow[],
+      corporateDecisionFinalizations: lifecycle.corporateDecisionFinalizations as CorporateDecisionFinalizationRow[],
+      corporateDecisionReadiness,
+      error: missingDocument
+        ? "Selskapsdokumentenes lagringsbevis er ufullstendig."
+        : null,
+    };
+  } catch (error) {
+    return {
+      corporateDecisions: [] as CorporateDecisionRow[],
+      corporateDocumentSets: [] as CorporateDocumentSetRow[],
+      corporateDocumentArtifacts: [] as CorporateDocumentArtifactRow[],
+      corporateDocumentEvents: [] as CorporateDocumentEventRow[],
+      corporateDecisionFinalizations: [] as CorporateDecisionFinalizationRow[],
+      corporateDecisionReadiness: [],
+      error: error instanceof Error ? error.message : "Selskapsbeslutningene kunne ikke leses.",
+    };
+  }
 }
 
 export async function listFilingPreviews(companyIds: string[]) {

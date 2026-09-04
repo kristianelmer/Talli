@@ -1,7 +1,7 @@
 # Documents backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["public.documents"],"ports":["DocumentObjectStorage","DocumentsAuthorization","DocumentsPersistence"],"publicEntryPoints":["talli_backend.modules.documents.public"]}
+{"dependencies":[],"ownedTables":["documents.evidence_references","public.documents"],"ports":["DocumentObjectStorage","DocumentsAuthorization","DocumentsPersistence"],"publicEntryPoints":["talli_backend.modules.documents.public"]}
 -->
 
 `documents` owns accounting-document validation, the `public.documents` metadata
@@ -11,6 +11,15 @@ staged before the backend issues one exact signed object transfer. Finalization
 downloads and verifies the stored PDF before recording its byte length and
 SHA-256 digest. Preview and download transfers recheck those immutable facts;
 download additionally requires AAL2.
+
+The private `documents.evidence_references` registry is the removal-safety
+boundary for successor capabilities. A narrow database contract locks and
+revalidates document metadata before recording an immutable opaque consumer
+reference. Removal takes the same document lock before consulting the registry,
+so consumers never expose their tables to Documents and cannot race removal.
+The versioned `documents.register_evidence_reference_v1` command is callable
+only by explicitly declared backend-system coordinators; consumer capability
+roles receive no direct privilege.
 
 Consumers retain only `DocumentId` and a semantic relationship. They cannot
 write document metadata or object bytes. Company-archive composition remains

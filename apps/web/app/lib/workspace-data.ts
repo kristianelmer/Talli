@@ -41,6 +41,11 @@ import {
   summarizeReceivedDividendAnnualImpact,
 } from "../../features/investments";
 import { getCurrentSessionAccessToken } from "./supabase/auth-session";
+import {
+  deriveCorporateDecisionFacts,
+  readCorporateDecisionReadiness,
+  type CorporateDecisionFactsWire,
+} from "../../features/corporate-governance";
 
 /**
  * Loads the full owner-facing workspace dataset (companies, filings, ledger,
@@ -64,6 +69,7 @@ export async function loadWorkspaceData() {
         corporateDocumentArtifacts: [],
         corporateDocumentEvents: [],
         corporateDecisionFinalizations: [],
+        corporateDecisionReadiness: [],
         error: null,
       };
   const { setups, shareholders } = user ? await listOpeningSetups(companies.map((company) => company.id)) : { setups: [], shareholders: [] };
@@ -159,6 +165,41 @@ export async function loadWorkspaceData() {
   const primaryAnnualData = annualData.find(
     (item) => item.company_id === primaryCompanyId && item.income_year === primaryIncomeYear,
   );
+  let primaryCorporateDecisionReadiness = corporateLifecycle.corporateDecisionReadiness.find(
+    (item) => item.companyId === primaryCompanyId
+      && item.incomeYear === primaryIncomeYear
+      && item.decisionKind === "annual_close",
+  ) ?? null;
+  let corporateReadinessError: string | null = null;
+  let primaryCorporateDecisionFacts: CorporateDecisionFactsWire | null = null;
+  if (accessToken && primaryCompanyId) {
+    try {
+      const request = {
+        companyId: primaryCompanyId,
+        incomeYear: primaryIncomeYear,
+        decisionKind: "annual_close" as const,
+      };
+      if (primaryAnnualData) {
+        primaryCorporateDecisionFacts = await deriveCorporateDecisionFacts(
+          accessToken,
+          request,
+        );
+        primaryCorporateDecisionReadiness = await readCorporateDecisionReadiness(
+          accessToken,
+          request,
+        );
+      } else {
+        primaryCorporateDecisionReadiness = await readCorporateDecisionReadiness(
+          accessToken,
+          request,
+        );
+      }
+    } catch (caught) {
+      corporateReadinessError = caught instanceof Error
+        ? caught.message
+        : "Dokumentstatus kunne ikke leses.";
+    }
+  }
   const primaryFilingReady = primaryReadinessSnapshots.some(
     (snapshot) => snapshot.obligation === "aksjonaerregisteroppgaven" && snapshot.ready,
   );
@@ -191,7 +232,7 @@ export async function loadWorkspaceData() {
   const deadlineReminderPreferences = defaultReminderPreferences();
   return {
     user,
-    error: error ?? corporateLifecycleError ?? productionStateError ?? companyAccessAdministrationError ?? cancellationLifecycleError,
+    error: error ?? corporateLifecycleError ?? corporateReadinessError ?? productionStateError ?? companyAccessAdministrationError ?? cancellationLifecycleError,
     cancellationLifecycleError,
     companies,
     documents,
@@ -239,6 +280,8 @@ export async function loadWorkspaceData() {
     primaryBillingEvents,
     primaryReadinessSnapshots,
     primaryAnnualData,
+    primaryCorporateDecisionReadiness,
+    primaryCorporateDecisionFacts,
     primaryFilingReady,
     primaryBillingGate,
     primaryAuthorityPermissions,

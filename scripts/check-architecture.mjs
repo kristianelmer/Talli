@@ -110,7 +110,6 @@ const SUPPORT_CASE_SECURITY_AMENDMENT = Object.freeze({
     "compat-audit-persistence\0table:audit_events\0searchOperatorSupportDashboard",
   ]),
 });
-
 function isBackendModule(manifest) {
   return ["backend-capability", "backend-technical-module"].includes(manifest.kind);
 }

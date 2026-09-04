@@ -1230,7 +1230,7 @@ test("all relocated transactional writers use the stable operation ID at the gen
   const coordinators = {
     recordAdminCost: ["postLedgerAdministrativeCost", null],
     recordDividendReceived: ["recognizeInvestmentReceivedDividend", "eventId"],
-    finalizeCorporateDecision: ["finalizeLedgerCorporateDecision", "finalizationId"],
+    finalizeCorporateDecision: ["finalizeOwnerDividend", "finalizationId"],
     recordOwnerDividendPayment: ["recordOwnerDividendPaymentThroughApi", "paymentEventId"],
     recordShareholderLoan: ["recordShareholderLoanThroughApi", "actionId"],
     recordTaxSettlement: ["postLedgerTaxSettlement", "actionId"],
@@ -1303,7 +1303,9 @@ test("committed retries reach the coordinator before mutable legacy state can re
   assert.doesNotMatch(sale, /investment_positions|investment_lots|validateShareSale/u);
 
   const finalization = ledgerServerActionSource("finalizeCorporateDecision");
-  assert.match(finalization, /verifyCurrentAnnualSource: false/u);
+  assert.match(finalization, /await finalizeOwnerDividend\(/u);
+  assert.match(finalization, /await finalizeAnnualClose\(/u);
+  assert.doesNotMatch(finalization, /verifyCurrentAnnualSource/u);
 
   const payment = ledgerServerActionSource("recordOwnerDividendPayment");
   assert.doesNotMatch(payment, /corporate_decision_finalizations|corporate_document_events|bank_transactions|deriveOpenDividendPayable|validateOwnerDividendPaymentInput/u);
@@ -1330,6 +1332,7 @@ test("unknown coordinator outcomes preserve only the scoped retry operation", ()
   for (const [actionName, fields] of Object.entries(retryFields)) {
     const action = ledgerServerActionSource(actionName);
     const governance = [
+      "finalizeCorporateDecision",
       "recordOwnerDividendPayment",
       "recordShareholderLoan",
     ].includes(actionName);

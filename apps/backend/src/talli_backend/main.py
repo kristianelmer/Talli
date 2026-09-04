@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from base64 import b64decode
+from base64 import b64decode, b64encode
 from binascii import Error as Base64Error
 from hashlib import sha256
 import os
@@ -74,7 +74,6 @@ from talli_backend.application.investments_workflow import (
     LegacyShareSale,
 )
 from talli_backend.application.ledger_workflow import (
-    FinalizeCorporateDecisionCommand,
     LedgerAuthenticationError,
     LedgerSessionFactory,
     LedgerWriterResult,
@@ -169,37 +168,61 @@ from talli_backend.modules.company_access.public import (
 )
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference as CorporateAccountingEntryReference,
+    AnnualCloseLifecycle,
+    AnnualCloseEventKind,
+    AnnualCloseProposalCommand,
     ApprovedAnnualBasis,
     ApproveOwnerDividendCommand,
+    ApproveAnnualCloseCommand,
+    AttestAnnualCloseSignedArtifactCommand,
+    AttestOwnerDividendSignedArtifactCommand,
     BankTransactionReference,
     BoardMeeting,
     BoardParticipant,
     BoardRole,
     BoardTreatmentMethod,
+    CanonicalAnnualCloseDecision,
     CanonicalOwnerDividendDecision,
     CorporateArtifactId,
     CorporateArtifactKind,
+    CorporateArtifactRecord,
+    CorporateArtifactVariant,
+    CorporateDecisionKind,
     CorporateDecisionId,
+    CorporateDecisionRecord,
+    DerivedCorporateDecisionFacts,
+    CorporateDocumentReadiness,
+    CorporateDocumentReadinessBlocker,
     CorporateDocumentSetId,
+    CorporateDocumentSetRecord,
     CorporateEventId,
+    CorporateEventRecord,
     CorporateFinalizationId,
+    CorporateFinalizationRecord,
     CorporateGovernanceError,
     CorporateGovernanceErrorCode,
+    CorporateLifecycleSnapshot,
     CorporateSourceReference,
     DocumentReference,
     FinalizeOwnerDividendCommand,
+    FinalizeAnnualCloseCommand,
     GeneralMeeting,
     MeetingForm,
     OwnerDividendArtifactReference,
     OwnerDividendLifecycle,
+    OwnerDividendEventKind,
     OwnerDividendProposalCommand,
     OwnerDividendState,
     PersistedCompanyFacts,
     PersistedShareholderFacts,
+    ProposedAnnualClose,
     ProposedOwnerDividend,
     RecordOwnerDividendPaymentCommand as CorporateRecordOwnerDividendPaymentCommand,
+    RecordAnnualCloseEventCommand,
+    RecordOwnerDividendEventCommand,
     RecordShareholderLoanCommand as CorporateRecordShareholderLoanCommand,
     RecordedShareholderLoan,
+    RegisterAnnualCloseDocumentsCommand,
     RegisterOwnerDividendDocumentsCommand,
     ReviewedOwnerDividendFacts,
     ReviewedShareholderFacts,
@@ -943,7 +966,7 @@ class CorporateAnnualBasisWire(StrictTransportModel):
     income_year: int = Field(ge=2000, le=2200)
     latest_approved: bool
     annual_data_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-    annual_accounts_payload_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    governance_basis_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     result_after_tax_ore: int = Field(
         ge=-9_007_199_254_740_991, le=9_007_199_254_740_991
     )
@@ -961,7 +984,14 @@ class CorporateReviewedFactsWire(StrictTransportModel):
     total_company_shares: int = Field(gt=0, le=9_007_199_254_740_991)
     available_distribution_ore: int = Field(ge=0, le=9_007_199_254_740_991)
     annual_data_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-    annual_accounts_payload_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    governance_basis_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class CorporateDecisionFactsWire(StrictTransportModel):
+    company: CorporateCompanyFactsWire
+    shareholders: list[CorporateShareholderWire]
+    annual_basis: CorporateAnnualBasisWire
+    reviewed_facts: CorporateReviewedFactsWire
 
 
 class CorporateBoardMeetingWire(StrictTransportModel):
@@ -993,7 +1023,7 @@ class CorporateShareholderBallotWire(StrictTransportModel):
     vote: ShareholderVote
 
 
-class OwnerDividendProposalWire(StrictTransportModel):
+class CorporateDecisionProposalWire(StrictTransportModel):
     company_id: UUID
     income_year: int = Field(ge=2000, le=2200)
     decision_id: UUID
@@ -1017,8 +1047,18 @@ class OwnerDividendProposalWire(StrictTransportModel):
     unanimous_board_confirmed: bool
     supported_dividend_basis_confirmed: bool
     prudent_equity_and_liquidity_confirmed: bool
+
+
+class OwnerDividendProposalWire(CorporateDecisionProposalWire):
     dividend_amount_ore: int = Field(gt=0, le=9_007_199_254_740_991)
     payment_date: date
+
+
+class AnnualCloseProposalWire(CorporateDecisionProposalWire):
+    annual_result_allocation_ore: int = Field(
+        ge=-9_007_199_254_740_991,
+        le=9_007_199_254_740_991,
+    )
 
 
 class OwnerDividendArtifactWire(StrictTransportModel):
@@ -1041,6 +1081,61 @@ class OwnerDividendApprovalWire(StrictTransportModel):
     document_set_id: UUID
     decision_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     approval_event_id: UUID
+
+
+class AnnualCloseEventWire(StrictTransportModel):
+    company_id: UUID
+    document_set_id: UUID
+    decision_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    event_id: UUID
+    event_kind: AnnualCloseEventKind
+    metadata: dict[str, str]
+
+
+class AnnualCloseFinalizationWire(StrictTransportModel):
+    company_id: UUID
+    document_set_id: UUID
+    decision_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    finalization_id: UUID
+
+
+class AnnualCloseSignedArtifactWire(StrictTransportModel):
+    company_id: UUID
+    document_set_id: UUID
+    decision_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    unsigned_artifact_id: UUID
+    signed_artifact_id: UUID
+    signed_document_id: UUID
+    artifact_kind: Literal[
+        "annual_board_minutes", "annual_general_meeting_minutes"
+    ]
+    filename: str = Field(min_length=1, max_length=255)
+    content_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    byte_length: int = Field(ge=1, le=10_485_760)
+
+
+class OwnerDividendEventWire(StrictTransportModel):
+    company_id: UUID
+    document_set_id: UUID
+    decision_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    event_id: UUID
+    event_kind: OwnerDividendEventKind
+    metadata: dict[str, str]
+
+
+class OwnerDividendSignedArtifactWire(StrictTransportModel):
+    company_id: UUID
+    document_set_id: UUID
+    decision_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    unsigned_artifact_id: UUID
+    signed_artifact_id: UUID
+    signed_document_id: UUID
+    artifact_kind: Literal[
+        "dividend_board_proposal", "dividend_general_meeting_minutes"
+    ]
+    filename: str = Field(min_length=1, max_length=255)
+    content_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    byte_length: int = Field(ge=1, le=10_485_760)
 
 
 class OwnerDividendFinalizationWire(StrictTransportModel):
@@ -1142,6 +1237,7 @@ class CorporateOwnerDividendConfirmationsWire(TransportModel):
 
 
 class CorporateCanonicalDecisionWire(TransportModel):
+    decision_kind: Literal["owner_dividend", "annual_close"]
     decision_id: UUID
     document_set_id: UUID
     company_id: UUID
@@ -1160,7 +1256,7 @@ class CorporateCanonicalDecisionWire(TransportModel):
     shareholders: list[CorporateCanonicalShareholderWire]
     total_company_shares: int
     one_share_class_confirmed: bool
-    dividend: CorporateOwnerDividendFactsWire
+    dividend: CorporateOwnerDividendFactsWire | None
     annual_result_allocation_ore: int
     confirmations: CorporateOwnerDividendConfirmationsWire
     decision_hash: str
@@ -1170,6 +1266,23 @@ class ProposedOwnerDividendWire(TransportModel):
     decision: CorporateCanonicalDecisionWire
     state: OwnerDividendState
     replayed: bool
+    artifacts: list["RenderedCorporateArtifactWire"]
+
+
+class ProposedAnnualCloseWire(TransportModel):
+    decision: CorporateCanonicalDecisionWire
+    state: OwnerDividendState
+    replayed: bool
+    artifacts: list["RenderedCorporateArtifactWire"]
+
+
+class RenderedCorporateArtifactWire(TransportModel):
+    artifact_kind: CorporateArtifactKind
+    filename: str
+    content_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    byte_length: int
+    decision_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    content_base64: str
 
 
 class OwnerDividendLifecycleWire(TransportModel):
@@ -1185,6 +1298,133 @@ class OwnerDividendLifecycleWire(TransportModel):
     finalization_id: UUID | None
     accounting_entry_id: UUID | None
     replayed: bool
+
+
+class AnnualCloseLifecycleWire(TransportModel):
+    decision_id: UUID
+    document_set_id: UUID
+    company_id: UUID
+    income_year: int
+    decision_hash: str
+    state: OwnerDividendState
+    generated_artifact_hashes: dict[str, str]
+    signed_artifact_hashes: dict[str, str]
+    finalization_id: UUID | None
+    replayed: bool
+
+
+class CorporateDecisionRecordWire(TransportModel):
+    decision_id: UUID
+    document_set_id: UUID
+    company_id: UUID
+    income_year: int
+    decision_kind: CorporateDecisionKind
+    annual_close_source_id: UUID
+    source_hash: str
+    canonical_input: dict[str, Any]
+    decision_hash: str
+    supersedes_decision_id: UUID | None
+    created_by: UUID
+    created_at: datetime
+
+
+class CorporateDocumentSetRecordWire(TransportModel):
+    document_set_id: UUID
+    company_id: UUID
+    income_year: int
+    decision_id: UUID
+    template_family: str
+    template_version: str
+    decision_hash: str
+    supersedes_document_set_id: UUID | None
+    created_by: UUID
+    created_at: datetime
+
+
+class CorporateArtifactRecordWire(TransportModel):
+    artifact_id: UUID
+    company_id: UUID
+    income_year: int
+    document_set_id: UUID
+    artifact_kind: CorporateArtifactKind
+    variant: CorporateArtifactVariant
+    document_id: UUID
+    content_sha256: str
+    byte_length: int
+    supersedes_artifact_id: UUID | None
+    created_by: UUID
+    created_at: datetime
+
+
+class CorporateEventRecordWire(TransportModel):
+    event_id: UUID
+    company_id: UUID
+    income_year: int
+    decision_id: UUID
+    document_set_id: UUID
+    artifact_id: UUID | None
+    event_kind: str
+    actor_id: UUID
+    occurred_at: datetime
+    created_at: datetime
+    decision_hash: str
+    content_sha256: str | None
+    metadata: dict[str, Any]
+    idempotency_key: str
+
+
+class CorporateFinalizationRecordWire(TransportModel):
+    finalization_id: UUID
+    company_id: UUID
+    income_year: int
+    decision_id: UUID
+    finalization_kind: str
+    holding_action_id: UUID | None
+    accounting_entry_id: UUID | None
+    annual_close_source_id: UUID | None
+    decision_hash: str
+    signed_artifact_hashes: dict[str, str]
+    accounting_policy_version: str | None
+    created_by: UUID
+    created_at: datetime
+
+
+class CorporateLifecycleSnapshotWire(TransportModel):
+    decisions: list[CorporateDecisionRecordWire]
+    document_sets: list[CorporateDocumentSetRecordWire]
+    artifacts: list[CorporateArtifactRecordWire]
+    events: list[CorporateEventRecordWire]
+    finalizations: list[CorporateFinalizationRecordWire]
+
+
+class CorporateDocumentReadinessBlockerWire(TransportModel):
+    code: str
+    message: str
+
+
+class CorporateDocumentReadinessWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    decision_kind: CorporateDecisionKind
+    decision_id: UUID | None
+    document_set_id: UUID | None
+    decision_hash: str | None
+    source_hash: str | None
+    current_source_hash: str | None
+    state: OwnerDividendState | None
+    current_source_matches: bool | None
+    ready_for_signing: bool
+    finalized: bool
+    annual_submission_ready: bool
+    generated_artifact_hashes: dict[str, str]
+    signed_artifact_hashes: dict[str, str]
+    required_signers: dict[str, list[str]]
+    declared_amount_ore: int | None
+    paid_amount_ore: int | None
+    remaining_amount_ore: int | None
+    finalization_id: UUID | None
+    accounting_policy_version: str | None
+    blockers: list[CorporateDocumentReadinessBlockerWire]
 
 
 class InvestmentsSharePurchaseWire(LedgerCompanyYearWire):
@@ -1809,21 +2049,6 @@ class ShareSaleAllocationWire(TransportModel):
 class ShareSaleAllocationPageWire(TransportModel):
     items: list[ShareSaleAllocationWire]
     page: InvestmentsPageWire
-
-
-class LedgerCorporateDecisionFinalizationWire(LedgerCompanyYearWire):
-    decision_id: UUID
-    set_id: UUID
-    decision_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
-    finalization_id: UUID
-    holding_action_id: UUID | None = None
-    ledger_entry_id: UUID | None = None
-
-    @model_validator(mode="after")
-    def optional_ids_move_together(self) -> LedgerCorporateDecisionFinalizationWire:
-        if (self.holding_action_id is None) is not (self.ledger_entry_id is None):
-            raise ValueError("owner-dividend identifiers must be complete")
-        return self
 
 
 class LedgerManualJournalWire(LedgerCompanyYearWire):
@@ -2665,31 +2890,38 @@ def create_app(
     async def corporate_governance_call(
         call: Callable[[], Awaitable[ResponseT]],
     ) -> ResponseT:
-        try:
-            return await call()
-        except CorporateGovernanceAuthenticationError:
-            raise ApiProblem(
-                status=401,
-                code="AUTHENTICATION_REQUIRED",
-                title="Authentication required",
-                detail="A valid session is required.",
-            ) from None
-        except (CorporateGovernanceError, LedgerError) as error:
-            statuses = {
-                ErrorCategory.INVALID_INPUT: 422,
-                ErrorCategory.NOT_FOUND: 404,
-                ErrorCategory.CONFLICT: 409,
-                ErrorCategory.FORBIDDEN: 403,
-                ErrorCategory.PRECONDITION_FAILED: 409,
-                ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
-            }
-            raise ApiProblem(
-                status=statuses[error.category],
-                code=str(error.code),
-                title="Corporate-governance request failed",
-                detail=error.message
-                or "The corporate-governance request could not be completed.",
-            ) from None
+        for attempt in range(2):
+            try:
+                return await call()
+            except CorporateGovernanceAuthenticationError:
+                raise ApiProblem(
+                    status=401,
+                    code="AUTHENTICATION_REQUIRED",
+                    title="Authentication required",
+                    detail="A valid session is required.",
+                ) from None
+            except (CorporateGovernanceError, LedgerError) as error:
+                if (
+                    error.category is ErrorCategory.DEPENDENCY_UNAVAILABLE
+                    and attempt == 0
+                ):
+                    continue
+                statuses = {
+                    ErrorCategory.INVALID_INPUT: 422,
+                    ErrorCategory.NOT_FOUND: 404,
+                    ErrorCategory.CONFLICT: 409,
+                    ErrorCategory.FORBIDDEN: 403,
+                    ErrorCategory.PRECONDITION_FAILED: 409,
+                    ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
+                }
+                raise ApiProblem(
+                    status=statuses[error.category],
+                    code=str(error.code),
+                    title="Corporate-governance request failed",
+                    detail=error.message
+                    or "The corporate-governance request could not be completed.",
+                ) from None
+        raise AssertionError("Corporate-governance retry loop exhausted")
 
     async def marketing_measurement_call(call: Awaitable[ResponseT]) -> ResponseT:
         try:
@@ -3688,9 +3920,14 @@ def create_app(
             ) from None
 
     def canonical_decision_wire(
-        value: CanonicalOwnerDividendDecision,
+        value: CanonicalOwnerDividendDecision | CanonicalAnnualCloseDecision,
     ) -> CorporateCanonicalDecisionWire:
         return CorporateCanonicalDecisionWire(
+            decision_kind=(
+                "owner_dividend"
+                if isinstance(value, CanonicalOwnerDividendDecision)
+                else "annual_close"
+            ),
             decision_id=UUID(str(value.decision_id)),
             document_set_id=UUID(str(value.document_set_id)),
             company_id=UUID(str(value.company_id)),
@@ -3742,18 +3979,22 @@ def create_app(
             ],
             total_company_shares=value.total_company_shares,
             one_share_class_confirmed=value.one_share_class_confirmed,
-            dividend={
-                "amountOre": value.dividend.amount_ore,
-                "paymentDate": value.dividend.payment_date.value.isoformat(),
-                "liquidityAfterPaymentOre": value.dividend.liquidity_after_payment_ore,
-                "allocations": [
-                    {
-                        "shareholderId": item.shareholder_id,
-                        "amountOre": item.amount_ore,
-                    }
-                    for item in value.dividend.allocations
-                ],
-            },
+            dividend=(
+                {
+                    "amountOre": value.dividend.amount_ore,
+                    "paymentDate": value.dividend.payment_date.value.isoformat(),
+                    "liquidityAfterPaymentOre": value.dividend.liquidity_after_payment_ore,
+                    "allocations": [
+                        {
+                            "shareholderId": item.shareholder_id,
+                            "amountOre": item.amount_ore,
+                        }
+                        for item in value.dividend.allocations
+                    ],
+                }
+                if value.dividend is not None
+                else None
+            ),
             annual_result_allocation_ore=value.annual_result_allocation_ore,
             confirmations={
                 "latestApprovedAnnualAccounts": value.confirmations.latest_approved_annual_accounts,
@@ -3775,6 +4016,81 @@ def create_app(
             decision=canonical_decision_wire(value.decision),
             state=value.state.value,
             replayed=value.replayed,
+            artifacts=[rendered_artifact_wire(item) for item in value.artifacts],
+        )
+
+    def corporate_decision_facts_wire(
+        value: DerivedCorporateDecisionFacts,
+    ) -> CorporateDecisionFactsWire:
+        return CorporateDecisionFactsWire(
+            company=CorporateCompanyFactsWire(
+                organization_number=value.company.organization_number,
+                legal_name=value.company.legal_name,
+            ),
+            shareholders=[
+                CorporateShareholderWire(
+                    shareholder_id=item.shareholder_id,
+                    name=item.name,
+                    share_count=item.share_count,
+                    order=item.order,
+                )
+                for item in value.shareholders
+            ],
+            annual_basis=CorporateAnnualBasisWire(
+                source_id=UUID(str(value.annual_basis.source_id)),
+                income_year=int(value.annual_basis.income_year),
+                latest_approved=value.annual_basis.latest_approved,
+                annual_data_sha256=value.annual_basis.annual_data_sha256,
+                governance_basis_sha256=(
+                    value.annual_basis.governance_basis_sha256
+                ),
+                result_after_tax_ore=value.annual_basis.result_after_tax_ore,
+                equity_ore=value.annual_basis.equity_ore,
+                available_distribution_ore=(
+                    value.annual_basis.available_distribution_ore
+                ),
+                cash_ore=value.annual_basis.cash_ore,
+            ),
+            reviewed_facts=CorporateReviewedFactsWire(
+                organization_number=value.reviewed_facts.organization_number,
+                legal_name=value.reviewed_facts.legal_name,
+                shareholders=[
+                    CorporateReviewedShareholderWire(
+                        shareholder_id=item.shareholder_id,
+                        name=item.name,
+                        share_count=item.share_count,
+                    )
+                    for item in value.reviewed_facts.shareholders
+                ],
+                total_company_shares=value.reviewed_facts.total_company_shares,
+                available_distribution_ore=(
+                    value.reviewed_facts.available_distribution_ore
+                ),
+                annual_data_sha256=value.reviewed_facts.annual_data_sha256,
+                governance_basis_sha256=(
+                    value.reviewed_facts.governance_basis_sha256
+                ),
+            ),
+        )
+
+    def rendered_artifact_wire(value) -> RenderedCorporateArtifactWire:
+        return RenderedCorporateArtifactWire(
+            artifact_kind=value.artifact_kind,
+            filename=value.filename,
+            content_sha256=value.content_sha256,
+            byte_length=value.byte_length,
+            decision_hash=value.decision_hash,
+            content_base64=b64encode(value.pdf_bytes).decode("ascii"),
+        )
+
+    def proposed_annual_close_wire(
+        value: ProposedAnnualClose,
+    ) -> ProposedAnnualCloseWire:
+        return ProposedAnnualCloseWire(
+            decision=canonical_decision_wire(value.decision),
+            state=value.state.value,
+            replayed=value.replayed,
+            artifacts=[rendered_artifact_wire(item) for item in value.artifacts],
         )
 
     def dividend_lifecycle_wire(
@@ -3799,6 +4115,180 @@ def create_app(
                 else None
             ),
             replayed=value.replayed,
+        )
+
+    def annual_close_lifecycle_wire(
+        value: AnnualCloseLifecycle,
+    ) -> AnnualCloseLifecycleWire:
+        return AnnualCloseLifecycleWire(
+            decision_id=UUID(str(value.decision_id)),
+            document_set_id=UUID(str(value.document_set_id)),
+            company_id=UUID(str(value.company_id)),
+            income_year=int(value.income_year),
+            decision_hash=value.decision_hash,
+            state=value.state,
+            generated_artifact_hashes=value.generated_artifact_hashes,
+            signed_artifact_hashes=value.signed_artifact_hashes,
+            finalization_id=(
+                UUID(str(value.finalization_id)) if value.finalization_id else None
+            ),
+            replayed=value.replayed,
+        )
+
+    def corporate_lifecycle_snapshot_wire(
+        value: CorporateLifecycleSnapshot,
+    ) -> CorporateLifecycleSnapshotWire:
+        return CorporateLifecycleSnapshotWire(
+            decisions=[
+                CorporateDecisionRecordWire(
+                    decision_id=UUID(str(item.decision_id)),
+                    document_set_id=UUID(str(item.document_set_id)),
+                    company_id=UUID(str(item.company_id)),
+                    income_year=int(item.income_year),
+                    decision_kind=item.decision_kind,
+                    annual_close_source_id=UUID(str(item.annual_close_source_id)),
+                    source_hash=item.source_hash,
+                    canonical_input=dict(item.canonical_input),
+                    decision_hash=item.decision_hash,
+                    supersedes_decision_id=(
+                        UUID(str(item.supersedes_decision_id))
+                        if item.supersedes_decision_id
+                        else None
+                    ),
+                    created_by=UUID(item.created_by),
+                    created_at=item.created_at,
+                )
+                for item in value.decisions
+            ],
+            document_sets=[
+                CorporateDocumentSetRecordWire(
+                    document_set_id=UUID(str(item.document_set_id)),
+                    company_id=UUID(str(item.company_id)),
+                    income_year=int(item.income_year),
+                    decision_id=UUID(str(item.decision_id)),
+                    template_family=item.template_family,
+                    template_version=item.template_version,
+                    decision_hash=item.decision_hash,
+                    supersedes_document_set_id=(
+                        UUID(str(item.supersedes_document_set_id))
+                        if item.supersedes_document_set_id
+                        else None
+                    ),
+                    created_by=UUID(item.created_by),
+                    created_at=item.created_at,
+                )
+                for item in value.document_sets
+            ],
+            artifacts=[
+                CorporateArtifactRecordWire(
+                    artifact_id=UUID(str(item.artifact_id)),
+                    company_id=UUID(str(item.company_id)),
+                    income_year=int(item.income_year),
+                    document_set_id=UUID(str(item.document_set_id)),
+                    artifact_kind=item.artifact_kind,
+                    variant=item.variant,
+                    document_id=UUID(str(item.document_id)),
+                    content_sha256=item.content_sha256,
+                    byte_length=item.byte_length,
+                    supersedes_artifact_id=(
+                        UUID(str(item.supersedes_artifact_id))
+                        if item.supersedes_artifact_id
+                        else None
+                    ),
+                    created_by=UUID(item.created_by),
+                    created_at=item.created_at,
+                )
+                for item in value.artifacts
+            ],
+            events=[
+                CorporateEventRecordWire(
+                    event_id=UUID(str(item.event_id)),
+                    company_id=UUID(str(item.company_id)),
+                    income_year=int(item.income_year),
+                    decision_id=UUID(str(item.decision_id)),
+                    document_set_id=UUID(str(item.document_set_id)),
+                    artifact_id=(UUID(str(item.artifact_id)) if item.artifact_id else None),
+                    event_kind=item.event_kind,
+                    actor_id=UUID(item.actor_id),
+                    occurred_at=item.occurred_at,
+                    created_at=item.created_at,
+                    decision_hash=item.decision_hash,
+                    content_sha256=item.content_sha256,
+                    metadata=dict(item.metadata),
+                    idempotency_key=item.idempotency_key,
+                )
+                for item in value.events
+            ],
+            finalizations=[
+                CorporateFinalizationRecordWire(
+                    finalization_id=UUID(str(item.finalization_id)),
+                    company_id=UUID(str(item.company_id)),
+                    income_year=int(item.income_year),
+                    decision_id=UUID(str(item.decision_id)),
+                    finalization_kind=item.finalization_kind,
+                    holding_action_id=(
+                        UUID(str(item.holding_action_id))
+                        if item.holding_action_id
+                        else None
+                    ),
+                    accounting_entry_id=(
+                        UUID(str(item.accounting_entry_id))
+                        if item.accounting_entry_id
+                        else None
+                    ),
+                    annual_close_source_id=(
+                        UUID(str(item.annual_close_source_id))
+                        if item.annual_close_source_id
+                        else None
+                    ),
+                    decision_hash=item.decision_hash,
+                    signed_artifact_hashes=dict(item.signed_artifact_hashes),
+                    accounting_policy_version=item.accounting_policy_version,
+                    created_by=UUID(item.created_by),
+                    created_at=item.created_at,
+                )
+                for item in value.finalizations
+            ],
+        )
+
+    def corporate_document_readiness_wire(
+        value: CorporateDocumentReadiness,
+    ) -> CorporateDocumentReadinessWire:
+        return CorporateDocumentReadinessWire(
+            company_id=UUID(str(value.company_id)),
+            income_year=int(value.income_year),
+            decision_kind=value.decision_kind,
+            decision_id=(UUID(str(value.decision_id)) if value.decision_id else None),
+            document_set_id=(
+                UUID(str(value.document_set_id)) if value.document_set_id else None
+            ),
+            decision_hash=value.decision_hash,
+            source_hash=value.source_hash,
+            current_source_hash=value.current_source_hash,
+            state=value.state,
+            current_source_matches=value.current_source_matches,
+            ready_for_signing=value.ready_for_signing,
+            finalized=value.finalized,
+            annual_submission_ready=value.annual_submission_ready,
+            generated_artifact_hashes=dict(value.generated_artifact_hashes),
+            signed_artifact_hashes=dict(value.signed_artifact_hashes),
+            required_signers={
+                key: list(signers) for key, signers in value.required_signers.items()
+            },
+            declared_amount_ore=value.declared_amount_ore,
+            paid_amount_ore=value.paid_amount_ore,
+            remaining_amount_ore=value.remaining_amount_ore,
+            finalization_id=(
+                UUID(str(value.finalization_id)) if value.finalization_id else None
+            ),
+            accounting_policy_version=value.accounting_policy_version,
+            blockers=[
+                CorporateDocumentReadinessBlockerWire(
+                    code=item.code,
+                    message=item.message,
+                )
+                for item in value.blockers
+            ],
         )
 
     def shareholder_loan_wire(
@@ -3832,6 +4322,222 @@ def create_app(
             access_token
         )
 
+    def decision_proposal_fields(
+        request: Request,
+        command: CorporateDecisionProposalWire,
+        actor_id: ActorId,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        return {
+            "company_id": CompanyId(str(command.company_id)),
+            "actor_id": actor_id,
+            "correlation_id": CorrelationId(request.state.request_id),
+            "idempotency_key": IdempotencyKey(idempotency_key),
+            "income_year": IncomeYear(command.income_year),
+            "decision_id": CorporateDecisionId(str(command.decision_id)),
+            "document_set_id": CorporateDocumentSetId(str(command.document_set_id)),
+            "company": PersistedCompanyFacts(
+                company_id=CompanyId(str(command.company_id)),
+                organization_number=command.company.organization_number,
+                legal_name=command.company.legal_name,
+            ),
+            "shareholders": tuple(
+                PersistedShareholderFacts(
+                    shareholder_id=item.shareholder_id,
+                    name=item.name,
+                    share_count=item.share_count,
+                    order=item.order,
+                )
+                for item in command.shareholders
+            ),
+            "annual_basis": ApprovedAnnualBasis(
+                source_id=CorporateSourceReference(str(command.annual_basis.source_id)),
+                income_year=IncomeYear(command.annual_basis.income_year),
+                latest_approved=command.annual_basis.latest_approved,
+                annual_data_sha256=command.annual_basis.annual_data_sha256,
+                governance_basis_sha256=(
+                    command.annual_basis.governance_basis_sha256
+                ),
+                result_after_tax_ore=command.annual_basis.result_after_tax_ore,
+                equity_ore=command.annual_basis.equity_ore,
+                available_distribution_ore=(
+                    command.annual_basis.available_distribution_ore
+                ),
+                cash_ore=command.annual_basis.cash_ore,
+            ),
+            "reviewed_facts": ReviewedOwnerDividendFacts(
+                organization_number=command.reviewed_facts.organization_number,
+                legal_name=command.reviewed_facts.legal_name,
+                shareholders=tuple(
+                    ReviewedShareholderFacts(
+                        shareholder_id=item.shareholder_id,
+                        name=item.name,
+                        share_count=item.share_count,
+                    )
+                    for item in command.reviewed_facts.shareholders
+                ),
+                total_company_shares=command.reviewed_facts.total_company_shares,
+                available_distribution_ore=(
+                    command.reviewed_facts.available_distribution_ore
+                ),
+                annual_data_sha256=command.reviewed_facts.annual_data_sha256,
+                governance_basis_sha256=(
+                    command.reviewed_facts.governance_basis_sha256
+                ),
+            ),
+            "board_meeting": BoardMeeting(
+                meeting_date=LocalDate(command.board_meeting.meeting_date),
+                meeting_time=command.board_meeting.meeting_time,
+                place=command.board_meeting.place,
+                treatment_method=command.board_meeting.treatment_method,
+            ),
+            "board_participants": tuple(
+                BoardParticipant(
+                    participant_id=item.participant_id,
+                    name=item.name,
+                    role=item.role,
+                    order=item.order,
+                )
+                for item in command.board_participants
+            ),
+            "general_meeting": GeneralMeeting(
+                meeting_date=LocalDate(command.general_meeting.meeting_date),
+                meeting_time=command.general_meeting.meeting_time,
+                place=command.general_meeting.place,
+                meeting_form=command.general_meeting.meeting_form,
+                chair_name=command.general_meeting.chair_name,
+                co_signer_name=command.general_meeting.co_signer_name,
+            ),
+            "shareholder_ballots": tuple(
+                ShareholderBallot(
+                    shareholder_id=item.shareholder_id,
+                    represented_share_count=item.represented_share_count,
+                    vote=item.vote,
+                )
+                for item in command.shareholder_ballots
+            ),
+            "one_share_class_confirmed": command.one_share_class_confirmed,
+            "full_board_participation_confirmed": (
+                command.full_board_participation_confirmed
+            ),
+            "unanimous_board_confirmed": command.unanimous_board_confirmed,
+            "supported_dividend_basis_confirmed": (
+                command.supported_dividend_basis_confirmed
+            ),
+            "prudent_equity_and_liquidity_confirmed": (
+                command.prudent_equity_and_liquidity_confirmed
+            ),
+        }
+
+    @application.get(
+        "/api/v1/corporate-governance/decision-facts",
+        operation_id="corporateGovernanceDeriveDecisionFacts",
+        response_model=CorporateDecisionFactsWire,
+        responses={
+            200: {"description": "Backend-derived current corporate facts."}
+            | corporate_governance_success
+        }
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+    )
+    async def derive_corporate_decision_facts(
+        request: Request,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2200)],
+        decision_kind: Annotated[
+            CorporateDecisionKind, Query(alias="decisionKind")
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CorporateDecisionFactsWire:
+        async def execute() -> CorporateDecisionFactsWire:
+            return corporate_decision_facts_wire(
+                await corporate_governance_application.derive_decision_facts(
+                    bearer_token(credentials),
+                    company_id=CompanyId(str(company_id)),
+                    income_year=IncomeYear(income_year),
+                    decision_kind=decision_kind,
+                    correlation_id=CorrelationId(request.state.request_id),
+                )
+            )
+
+        return await corporate_governance_call(execute)
+
+    @application.get(
+        "/api/v1/corporate-governance/readiness",
+        operation_id="corporateGovernanceReadDecisionReadiness",
+        response_model=CorporateDocumentReadinessWire,
+        responses={200: {"description": "Backend-owned corporate readiness."} | corporate_governance_success}
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+    )
+    async def read_corporate_document_readiness(
+        request: Request,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2200)],
+        decision_kind: Annotated[
+            CorporateDecisionKind, Query(alias="decisionKind")
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CorporateDocumentReadinessWire:
+        async def execute() -> CorporateDocumentReadinessWire:
+            return corporate_document_readiness_wire(
+                await corporate_governance_application.read_readiness(
+                    bearer_token(credentials),
+                    company_id=CompanyId(str(company_id)),
+                    income_year=IncomeYear(income_year),
+                    decision_kind=decision_kind,
+                    correlation_id=CorrelationId(request.state.request_id),
+                )
+            )
+
+        return await corporate_governance_call(execute)
+
+    @application.get(
+        "/api/v1/corporate-governance/decisions",
+        operation_id="corporateGovernanceListDecisionLifecycle",
+        response_model=CorporateLifecycleSnapshotWire,
+        responses={200: {"description": "Corporate lifecycle records."} | corporate_governance_success}
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+    )
+    async def list_corporate_decision_lifecycle(
+        company_id: Annotated[list[UUID], Query(alias="companyId", min_length=1)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CorporateLifecycleSnapshotWire:
+        async def execute() -> CorporateLifecycleSnapshotWire:
+            access_token = bearer_token(credentials)
+            return corporate_lifecycle_snapshot_wire(
+                await corporate_governance_application.list_lifecycle(
+                    access_token,
+                    tuple(CompanyId(str(value)) for value in company_id),
+                )
+            )
+
+        return await corporate_governance_call(execute)
+
+    @application.get(
+        "/api/v1/corporate-governance/decisions/{decision_id}",
+        operation_id="corporateGovernanceReadDecisionLifecycle",
+        response_model=CorporateLifecycleSnapshotWire,
+        responses={200: {"description": "Corporate lifecycle record."} | corporate_governance_success}
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+    )
+    async def read_corporate_decision_lifecycle(
+        decision_id: UUID,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CorporateLifecycleSnapshotWire:
+        async def execute() -> CorporateLifecycleSnapshotWire:
+            access_token = bearer_token(credentials)
+            return corporate_lifecycle_snapshot_wire(
+                await corporate_governance_application.read_lifecycle(
+                    access_token,
+                    CorporateDecisionId(str(decision_id)),
+                )
+            )
+
+        return await corporate_governance_call(execute)
+
     @application.post(
         "/api/v1/corporate-governance/owner-dividends/proposals",
         operation_id="corporateGovernanceProposeOwnerDividend",
@@ -3858,94 +4564,12 @@ def create_app(
             actor_id = await governance_actor(access_token)
             domain_command = corporate_governance_input(
                 lambda: OwnerDividendProposalCommand(
-                    company_id=CompanyId(str(command.company_id)),
-                    actor_id=actor_id,
-                    correlation_id=CorrelationId(request.state.request_id),
-                    idempotency_key=IdempotencyKey(idempotency_key),
-                    income_year=IncomeYear(command.income_year),
-                    decision_id=CorporateDecisionId(str(command.decision_id)),
-                    document_set_id=CorporateDocumentSetId(
-                        str(command.document_set_id)
+                    **decision_proposal_fields(
+                        request,
+                        command,
+                        actor_id,
+                        idempotency_key,
                     ),
-                    company=PersistedCompanyFacts(
-                        company_id=CompanyId(str(command.company_id)),
-                        organization_number=command.company.organization_number,
-                        legal_name=command.company.legal_name,
-                    ),
-                    shareholders=tuple(
-                        PersistedShareholderFacts(
-                            shareholder_id=item.shareholder_id,
-                            name=item.name,
-                            share_count=item.share_count,
-                            order=item.order,
-                        )
-                        for item in command.shareholders
-                    ),
-                    annual_basis=ApprovedAnnualBasis(
-                        source_id=CorporateSourceReference(
-                            str(command.annual_basis.source_id)
-                        ),
-                        income_year=IncomeYear(command.annual_basis.income_year),
-                        latest_approved=command.annual_basis.latest_approved,
-                        annual_data_sha256=command.annual_basis.annual_data_sha256,
-                        annual_accounts_payload_sha256=command.annual_basis.annual_accounts_payload_sha256,
-                        result_after_tax_ore=command.annual_basis.result_after_tax_ore,
-                        equity_ore=command.annual_basis.equity_ore,
-                        available_distribution_ore=command.annual_basis.available_distribution_ore,
-                        cash_ore=command.annual_basis.cash_ore,
-                    ),
-                    reviewed_facts=ReviewedOwnerDividendFacts(
-                        organization_number=command.reviewed_facts.organization_number,
-                        legal_name=command.reviewed_facts.legal_name,
-                        shareholders=tuple(
-                            ReviewedShareholderFacts(
-                                shareholder_id=item.shareholder_id,
-                                name=item.name,
-                                share_count=item.share_count,
-                            )
-                            for item in command.reviewed_facts.shareholders
-                        ),
-                        total_company_shares=command.reviewed_facts.total_company_shares,
-                        available_distribution_ore=command.reviewed_facts.available_distribution_ore,
-                        annual_data_sha256=command.reviewed_facts.annual_data_sha256,
-                        annual_accounts_payload_sha256=command.reviewed_facts.annual_accounts_payload_sha256,
-                    ),
-                    board_meeting=BoardMeeting(
-                        meeting_date=LocalDate(command.board_meeting.meeting_date),
-                        meeting_time=command.board_meeting.meeting_time,
-                        place=command.board_meeting.place,
-                        treatment_method=command.board_meeting.treatment_method,
-                    ),
-                    board_participants=tuple(
-                        BoardParticipant(
-                            participant_id=item.participant_id,
-                            name=item.name,
-                            role=item.role,
-                            order=item.order,
-                        )
-                        for item in command.board_participants
-                    ),
-                    general_meeting=GeneralMeeting(
-                        meeting_date=LocalDate(command.general_meeting.meeting_date),
-                        meeting_time=command.general_meeting.meeting_time,
-                        place=command.general_meeting.place,
-                        meeting_form=command.general_meeting.meeting_form,
-                        chair_name=command.general_meeting.chair_name,
-                        co_signer_name=command.general_meeting.co_signer_name,
-                    ),
-                    shareholder_ballots=tuple(
-                        ShareholderBallot(
-                            shareholder_id=item.shareholder_id,
-                            represented_share_count=item.represented_share_count,
-                            vote=item.vote,
-                        )
-                        for item in command.shareholder_ballots
-                    ),
-                    one_share_class_confirmed=command.one_share_class_confirmed,
-                    full_board_participation_confirmed=command.full_board_participation_confirmed,
-                    unanimous_board_confirmed=command.unanimous_board_confirmed,
-                    supported_dividend_basis_confirmed=command.supported_dividend_basis_confirmed,
-                    prudent_equity_and_liquidity_confirmed=command.prudent_equity_and_liquidity_confirmed,
                     dividend_amount_ore=command.dividend_amount_ore,
                     payment_date=LocalDate(command.payment_date),
                 )
@@ -3954,6 +4578,289 @@ def create_app(
                 access_token, domain_command
             )
             return proposed_dividend_wire(result)
+
+        return await corporate_governance_call(execute)
+
+    @application.post(
+        "/api/v1/corporate-governance/annual-closes/proposals",
+        operation_id="corporateGovernanceProposeAnnualClose",
+        response_model=ProposedAnnualCloseWire,
+        status_code=201,
+        responses={
+            201: {"description": "Annual close proposed."}
+            | corporate_governance_success
+        }
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def propose_annual_close(
+        request: Request,
+        command: AnnualCloseProposalWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> ProposedAnnualCloseWire:
+        async def execute() -> ProposedAnnualCloseWire:
+            access_token = bearer_token(credentials)
+            actor_id = await governance_actor(access_token)
+            domain_command = corporate_governance_input(
+                lambda: AnnualCloseProposalCommand(
+                    **decision_proposal_fields(
+                        request,
+                        command,
+                        actor_id,
+                        idempotency_key,
+                    ),
+                    annual_result_allocation_ore=(
+                        command.annual_result_allocation_ore
+                    ),
+                )
+            )
+            result = await corporate_governance_application.propose_annual_close(
+                access_token,
+                domain_command,
+            )
+            return proposed_annual_close_wire(result)
+
+        return await corporate_governance_call(execute)
+
+    @application.post(
+        "/api/v1/corporate-governance/annual-closes/{decision_id}/documents",
+        operation_id="corporateGovernanceRegisterAnnualCloseDocuments",
+        response_model=AnnualCloseLifecycleWire,
+        status_code=201,
+        responses={
+            201: {"description": "Annual-close documents registered."}
+            | corporate_governance_success
+        }
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def register_annual_close_documents(
+        request: Request,
+        decision_id: UUID,
+        command: OwnerDividendDocumentsWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualCloseLifecycleWire:
+        async def execute() -> AnnualCloseLifecycleWire:
+            access_token = bearer_token(credentials)
+            actor_id = await governance_actor(access_token)
+            domain_command = corporate_governance_input(
+                lambda: RegisterAnnualCloseDocumentsCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    decision_id=CorporateDecisionId(str(decision_id)),
+                    document_set_id=CorporateDocumentSetId(
+                        str(command.document_set_id)
+                    ),
+                    decision_hash=command.decision_hash,
+                    artifacts=tuple(
+                        OwnerDividendArtifactReference(
+                            CorporateArtifactId(str(item.artifact_id)),
+                            DocumentReference(str(item.document_id)),
+                            item.artifact_kind,
+                            item.content_sha256,
+                            item.byte_length,
+                        )
+                        for item in command.artifacts
+                    ),
+                )
+            )
+            result = await corporate_governance_application.register_annual_close_documents(
+                access_token,
+                domain_command,
+            )
+            return annual_close_lifecycle_wire(result)
+
+        return await corporate_governance_call(execute)
+
+    @application.post(
+        "/api/v1/corporate-governance/annual-closes/{decision_id}/approvals",
+        operation_id="corporateGovernanceApproveAnnualClose",
+        response_model=AnnualCloseLifecycleWire,
+        status_code=201,
+        responses={201: {"description": "Annual-close facts approved."} | corporate_governance_success}
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def approve_annual_close(
+        request: Request,
+        decision_id: UUID,
+        command: OwnerDividendApprovalWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualCloseLifecycleWire:
+        async def execute() -> AnnualCloseLifecycleWire:
+            access_token = bearer_token(credentials)
+            actor_id = await governance_actor(access_token)
+            domain_command = corporate_governance_input(
+                lambda: ApproveAnnualCloseCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    decision_id=CorporateDecisionId(str(decision_id)),
+                    document_set_id=CorporateDocumentSetId(str(command.document_set_id)),
+                    decision_hash=command.decision_hash,
+                    approval_event_id=CorporateEventId(str(command.approval_event_id)),
+                )
+            )
+            return annual_close_lifecycle_wire(
+                await corporate_governance_application.approve_annual_close(
+                    access_token, domain_command
+                )
+            )
+
+        return await corporate_governance_call(execute)
+
+    @application.post(
+        "/api/v1/corporate-governance/annual-closes/{decision_id}/events",
+        operation_id="corporateGovernanceRecordAnnualCloseEvent",
+        response_model=AnnualCloseLifecycleWire,
+        status_code=201,
+        responses={201: {"description": "Annual-close lifecycle event recorded."} | corporate_governance_success}
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_annual_close_event(
+        request: Request,
+        decision_id: UUID,
+        command: AnnualCloseEventWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualCloseLifecycleWire:
+        async def execute() -> AnnualCloseLifecycleWire:
+            access_token = bearer_token(credentials)
+            actor_id = await governance_actor(access_token)
+            domain_command = corporate_governance_input(
+                lambda: RecordAnnualCloseEventCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    decision_id=CorporateDecisionId(str(decision_id)),
+                    document_set_id=CorporateDocumentSetId(str(command.document_set_id)),
+                    decision_hash=command.decision_hash,
+                    event_id=CorporateEventId(str(command.event_id)),
+                    event_kind=command.event_kind,
+                    metadata=command.metadata,
+                )
+            )
+            return annual_close_lifecycle_wire(
+                await corporate_governance_application.record_annual_close_event(
+                    access_token, domain_command
+                )
+            )
+
+        return await corporate_governance_call(execute)
+
+    @application.post(
+        "/api/v1/corporate-governance/annual-closes/{decision_id}/finalizations",
+        operation_id="corporateGovernanceFinalizeAnnualClose",
+        response_model=AnnualCloseLifecycleWire,
+        status_code=201,
+        responses={201: {"description": "Annual close finalized."} | corporate_governance_success}
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def finalize_annual_close(
+        request: Request,
+        decision_id: UUID,
+        command: AnnualCloseFinalizationWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualCloseLifecycleWire:
+        async def execute() -> AnnualCloseLifecycleWire:
+            access_token = bearer_token(credentials)
+            actor_id = await governance_actor(access_token)
+            domain_command = corporate_governance_input(
+                lambda: FinalizeAnnualCloseCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    decision_id=CorporateDecisionId(str(decision_id)),
+                    document_set_id=CorporateDocumentSetId(str(command.document_set_id)),
+                    decision_hash=command.decision_hash,
+                    finalization_id=CorporateFinalizationId(str(command.finalization_id)),
+                )
+            )
+            return annual_close_lifecycle_wire(
+                await corporate_governance_application.finalize_annual_close(
+                    access_token, domain_command
+                )
+            )
+
+        return await corporate_governance_call(execute)
+
+    @application.post(
+        "/api/v1/corporate-governance/annual-closes/{decision_id}/signed-artifacts",
+        operation_id="corporateGovernanceAttestAnnualCloseSignedArtifact",
+        response_model=AnnualCloseLifecycleWire,
+        status_code=201,
+        responses={201: {"description": "Signed annual-close artifact attested."} | corporate_governance_success}
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def attest_annual_close_signed_artifact(
+        request: Request,
+        decision_id: UUID,
+        command: AnnualCloseSignedArtifactWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualCloseLifecycleWire:
+        async def execute() -> AnnualCloseLifecycleWire:
+            access_token = bearer_token(credentials)
+            actor_id = await governance_actor(access_token)
+            domain_command = corporate_governance_input(
+                lambda: AttestAnnualCloseSignedArtifactCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    decision_id=CorporateDecisionId(str(decision_id)),
+                    document_set_id=CorporateDocumentSetId(str(command.document_set_id)),
+                    decision_hash=command.decision_hash,
+                    unsigned_artifact_id=CorporateArtifactId(
+                        str(command.unsigned_artifact_id)
+                    ),
+                    signed_artifact_id=CorporateArtifactId(
+                        str(command.signed_artifact_id)
+                    ),
+                    signed_document_id=DocumentReference(
+                        str(command.signed_document_id)
+                    ),
+                    artifact_kind=CorporateArtifactKind(command.artifact_kind),
+                    filename=command.filename,
+                    content_sha256=command.content_sha256,
+                    byte_length=command.byte_length,
+                )
+            )
+            return annual_close_lifecycle_wire(
+                await corporate_governance_application.attest_annual_close_signed_artifact(
+                    access_token, domain_command
+                )
+            )
 
         return await corporate_governance_call(execute)
 
@@ -4055,6 +4962,108 @@ def create_app(
                 access_token, domain_command
             )
             return dividend_lifecycle_wire(result)
+
+        return await corporate_governance_call(execute)
+
+    @application.post(
+        "/api/v1/corporate-governance/owner-dividends/{decision_id}/events",
+        operation_id="corporateGovernanceRecordOwnerDividendEvent",
+        response_model=OwnerDividendLifecycleWire,
+        status_code=201,
+        responses={201: {"description": "Owner-dividend lifecycle event recorded."} | corporate_governance_success}
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_owner_dividend_event(
+        request: Request,
+        decision_id: UUID,
+        command: OwnerDividendEventWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> OwnerDividendLifecycleWire:
+        async def execute() -> OwnerDividendLifecycleWire:
+            access_token = bearer_token(credentials)
+            actor_id = await governance_actor(access_token)
+            domain_command = corporate_governance_input(
+                lambda: RecordOwnerDividendEventCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    decision_id=CorporateDecisionId(str(decision_id)),
+                    document_set_id=CorporateDocumentSetId(
+                        str(command.document_set_id)
+                    ),
+                    decision_hash=command.decision_hash,
+                    event_id=CorporateEventId(str(command.event_id)),
+                    event_kind=command.event_kind,
+                    metadata=command.metadata,
+                )
+            )
+            return dividend_lifecycle_wire(
+                await corporate_governance_application.record_owner_dividend_event(
+                    access_token, domain_command
+                )
+            )
+
+        return await corporate_governance_call(execute)
+
+    @application.post(
+        "/api/v1/corporate-governance/owner-dividends/{decision_id}/signed-artifacts",
+        operation_id="corporateGovernanceAttestOwnerDividendSignedArtifact",
+        response_model=OwnerDividendLifecycleWire,
+        status_code=201,
+        responses={201: {"description": "Signed owner-dividend artifact attested."} | corporate_governance_success}
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def attest_owner_dividend_signed_artifact(
+        request: Request,
+        decision_id: UUID,
+        command: OwnerDividendSignedArtifactWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> OwnerDividendLifecycleWire:
+        async def execute() -> OwnerDividendLifecycleWire:
+            access_token = bearer_token(credentials)
+            actor_id = await governance_actor(access_token)
+            domain_command = corporate_governance_input(
+                lambda: AttestOwnerDividendSignedArtifactCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    decision_id=CorporateDecisionId(str(decision_id)),
+                    document_set_id=CorporateDocumentSetId(
+                        str(command.document_set_id)
+                    ),
+                    decision_hash=command.decision_hash,
+                    unsigned_artifact_id=CorporateArtifactId(
+                        str(command.unsigned_artifact_id)
+                    ),
+                    signed_artifact_id=CorporateArtifactId(
+                        str(command.signed_artifact_id)
+                    ),
+                    signed_document_id=DocumentReference(
+                        str(command.signed_document_id)
+                    ),
+                    artifact_kind=CorporateArtifactKind(command.artifact_kind),
+                    filename=command.filename,
+                    content_sha256=command.content_sha256,
+                    byte_length=command.byte_length,
+                )
+            )
+            return dividend_lifecycle_wire(
+                await corporate_governance_application.attest_owner_dividend_signed_artifact(
+                    access_token, domain_command
+                )
+            )
 
         return await corporate_governance_call(execute)
 
@@ -6889,48 +7898,6 @@ def create_app(
             return ledger_writer_wire(
                 result, company_id=command.company_id, income_year=command.income_year,
                 expected_kind=LedgerEntryKind.TAX_SETTLEMENT,
-            )
-
-        return await ledger_call(execute)
-
-    @application.post(
-        "/api/v1/ledger/corporate-decisions/finalizations",
-        operation_id="ledgerFinalizeCorporateDecision",
-        response_model=LedgerWriterResultWire,
-        status_code=201,
-        responses={201: {"description": "Corporate decision finalized atomically."} | ledger_success}
-        | ledger_errors,
-        tags=["ledger-workflows"],
-        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
-    )
-    async def finalize_ledger_corporate_decision(
-        request: Request,
-        command: LedgerCorporateDecisionFinalizationWire,
-        idempotency_key: Annotated[
-            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
-        ],
-        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
-    ) -> LedgerWriterResultWire:
-        async def execute() -> LedgerWriterResultWire:
-            session = await ledger_application.session(bearer_token(credentials))
-            domain = ledger_input(lambda: FinalizeCorporateDecisionCommand(
-                company_id=CompanyId(str(command.company_id)), actor_id=session.actor_id,
-                correlation_id=ledger_correlation(request), idempotency_key=IdempotencyKey(idempotency_key),
-                income_year=IncomeYear(command.income_year), decision_id=LedgerSourceRecordId(str(command.decision_id)),
-                set_id=LedgerSourceRecordId(str(command.set_id)), decision_hash=command.decision_hash,
-                finalization_id=LedgerSourceRecordId(str(command.finalization_id)),
-                holding_action_id=(LedgerSourceRecordId(str(command.holding_action_id)) if command.holding_action_id else None),
-                ledger_entry_id=(LedgerEntryId(str(command.ledger_entry_id)) if command.ledger_entry_id else None),
-            ))
-            result = await session.finalize_corporate_decision(domain)
-            expected = (
-                LedgerEntryKind.OWNER_DIVIDEND_DECLARED
-                if command.ledger_entry_id is not None
-                else None
-            )
-            return ledger_writer_wire(
-                result, company_id=command.company_id, income_year=command.income_year,
-                expected_kind=expected,
             )
 
         return await ledger_call(execute)

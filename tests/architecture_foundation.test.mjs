@@ -270,6 +270,36 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
       to: "backend:company_access",
     },
     {
+      from: "backend-system:corporate-governance",
+      imports: ["talli_backend.modules.banking.public"],
+      kind: "workflow",
+      to: "backend:banking",
+    },
+    {
+      from: "backend-system:corporate-governance",
+      imports: ["talli_backend.modules.company_access.public"],
+      kind: "workflow",
+      to: "backend:company_access",
+    },
+    {
+      from: "backend-system:corporate-governance",
+      imports: ["talli_backend.modules.corporate_governance.public"],
+      kind: "workflow",
+      to: "backend:corporate_governance",
+    },
+    {
+      from: "backend-system:corporate-governance",
+      imports: ["talli_backend.modules.documents.public"],
+      kind: "workflow",
+      to: "backend:documents",
+    },
+    {
+      from: "backend-system:corporate-governance",
+      imports: ["talli_backend.modules.ledger.public"],
+      kind: "workflow",
+      to: "backend:ledger",
+    },
+    {
       from: "backend-system:investment-activity",
       imports: ["talli_backend.modules.banking.public"],
       kind: "workflow",
@@ -310,30 +340,6 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
       imports: ["talli_backend.modules.shareholder_register_filing.public"],
       kind: "workflow",
       to: "backend:shareholder_register_filing",
-    },
-    {
-      from: "backend-system:owner-dividend-governance",
-      imports: ["talli_backend.modules.banking.public"],
-      kind: "workflow",
-      to: "backend:banking",
-    },
-    {
-      from: "backend-system:owner-dividend-governance",
-      imports: ["talli_backend.modules.corporate_governance.public"],
-      kind: "workflow",
-      to: "backend:corporate_governance",
-    },
-    {
-      from: "backend-system:owner-dividend-governance",
-      imports: ["talli_backend.modules.documents.public"],
-      kind: "workflow",
-      to: "backend:documents",
-    },
-    {
-      from: "backend-system:owner-dividend-governance",
-      imports: ["talli_backend.modules.ledger.public"],
-      kind: "workflow",
-      to: "backend:ledger",
     },
     {
       from: "backend-system:passive-validation-observation",
@@ -1934,8 +1940,8 @@ test("the immutable frozen inventory remains exact while the active registry is 
   }
   assert.equal(expected.size, baseline.records.length);
 
-  assert.equal(registry.records.length, 10);
-  assert.equal(registry.records.flatMap((record) => record.scopes).length, 135);
+  assert.equal(registry.records.length, 9);
+  assert.equal(registry.records.flatMap((record) => record.scopes).length, 114);
   const baselineById = new Map(baseline.records.map((record) => [record.id, record]));
   const scopeKey = (scope) => [scope.path, scope.rule, scope.resource, scope.operation].join("\0");
   for (const record of registry.records) {
@@ -1965,6 +1971,7 @@ test("the immutable frozen inventory remains exact while the active registry is 
       "compat-shareholder-loan-persistence",
       "compat-tax-settlement-persistence",
       "compat-documents-persistence",
+      "compat-corporate-governance-persistence",
     ]),
   );
 });

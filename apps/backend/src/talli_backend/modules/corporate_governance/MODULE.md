@@ -1,7 +1,7 @@
 # Corporate governance backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["corporate_governance.owner_dividend_accounting_policies","corporate_governance.owner_dividend_artifacts","corporate_governance.owner_dividend_decisions","corporate_governance.owner_dividend_events","corporate_governance.owner_dividend_finalizations","corporate_governance.owner_dividend_payments","corporate_governance.shareholder_loans"],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
+{"dependencies":[],"ownedTables":["corporate_governance.annual_close_artifacts","corporate_governance.annual_close_decisions","corporate_governance.annual_close_events","corporate_governance.annual_close_finalizations","corporate_governance.owner_dividend_accounting_policies","corporate_governance.owner_dividend_artifacts","corporate_governance.owner_dividend_decisions","corporate_governance.owner_dividend_events","corporate_governance.owner_dividend_finalizations","corporate_governance.owner_dividend_payments","corporate_governance.shareholder_loans"],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
 -->
 
 ## Purpose and ownership
@@ -21,6 +21,28 @@ the complete artifact lifecycle, and performs the capability-stage exit.
 ## Public interface
 
 Consumers import only `talli_backend.modules.corporate_governance.public`.
+The annual-close commands are `AnnualCloseProposalCommand`,
+`RegisterAnnualCloseDocumentsCommand`, `ApproveAnnualCloseCommand`,
+`RecordAnnualCloseEventCommand`, `AttestAnnualCloseSignedArtifactCommand`, and
+`FinalizeAnnualCloseCommand`; their deterministic results are
+`CanonicalAnnualCloseDecision`, `ProposedAnnualClose`, and
+`RenderedCorporateArtifact`. Owner signing uses
+`RecordOwnerDividendEventCommand` and
+`AttestOwnerDividendSignedArtifactCommand`.
+
+The unified read model is `CorporateLifecycleSnapshot`, composed from
+`CorporateDecisionRecord`, `CorporateDocumentSetRecord`,
+`CorporateArtifactRecord`, `CorporateEventRecord`, and
+`CorporateFinalizationRecord`. Decision facts are represented by
+`AnnualDataSourceFacts`, `CorporateAccountMovementFacts`,
+`CorporateDecisionFactSources`, and `DerivedCorporateDecisionFacts`.
+`CorporateDocumentReadiness`,
+`CorporateDocumentReadinessBlocker`, and `CorporateReadinessSource` derive and
+describe current source status, lifecycle blockers, signer requirements, and
+payable state in Python. `AnnualCloseLifecycle`, `OwnerDividendLifecycle`,
+`AnnualCloseEventKind`, `OwnerDividendEventKind`, `CorporateDecisionKind`, and
+`CorporateArtifactVariant` close the lifecycle vocabulary.
+
 `OwnerDividendProposalCommand` carries persisted identity/shareholder facts, an
 approved annual-basis snapshot, the exact owner-reviewed facts, meeting facts,
 confirmations, and an amount in integer øre. The service normalizes and sorts
@@ -88,14 +110,37 @@ selection, activation, credentials, consent, live calls, customer bank data, and
 production banking remain outside this capability and blocked independently by
 #189.
 
-## Current slice state
+Governance declares no direct Documents database dependency. The named
+backend-system `corporate-governance` workflow invokes Governance persistence
+and the Documents evidence-registration command atomically. Documents owns the
+document-row lock and opaque evidence registry, while Governance receives no
+Documents schema or function privilege and owns no cross-capability trigger.
 
-The deterministic policy, forced-RLS store, restricted transaction adapter,
-FastAPI transport, generated client, web cutover, legacy-writer contraction,
-reconciliation import, rollback, and hosted migration verification are
-implemented for #144. Issue #145 additionally owns supported shareholder-loan
-policy, persistence, API transport, and atomic Ledger/Banking coordination; its
-predecessor Ledger route and TypeScript policy have been removed. The existing
-Python subprocess renderer is intentionally not
-reclassified as complete governance ownership; #148 must move rendering
-in-process and remove the bridge before the full capability exits.
+Company identity is obtained through the `company_access` public service and
+opening shareholders through the frozen Ledger opening-snapshot query. Until
+#149 and #153 establish their future public contracts, the application owns one
+narrow read-only compatibility seam for the selected legacy annual-data row.
+Corporate governance projects only its predecessor decision basis—result,
+equity, distributable equity, liquidity, and a governance-specific digest—from
+immutable annual-data and Ledger facts. It does not construct or hash annual-
+accounts filing payloads, statutory identifiers, filing fields, or filing
+readiness. The backend-system SQL reader is owner-authenticated, executor-only,
+and is removed when future annual-compliance ownership replaces it.
+
+## Stage-exit state
+
+Issue #148 completes the capability boundary. Both annual-close and
+owner-dividend decisions expose one typed lifecycle query and immutable approval,
+signing, attestation, rejection, and finalization commands. Deterministic PDFs
+render in-process in Python. The web reads and mutates governance only through
+the generated client, while Documents remains the sole storage authority and
+Ledger/Banking remain coordinated through their public contracts.
+
+The contract migration reconciles identities and hashes, removes governance rows
+from `holding_actions`, removes all six predecessor `public.corporate_*` tables,
+old RPCs and projection helpers, and moves archive invalidation and document
+evidence checks to canonical tables. Rollback restores a read-only predecessor
+projection without reviving a second writer; corrected recutover is repeatable.
+The additive hosted-shape parity migration first restores immutable event IDs and
+occurrence times that were absent from the already-deployed #144 table revision;
+it is a no-op for fresh databases created from the current migration chain.

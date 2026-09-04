@@ -1,0 +1,225 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#148",
+  "source": "https://github.com/kristianelmer/Talli/issues/148",
+  "sourceCheckedAt": "2026-09-04T20:45:57Z",
+  "claim": "https://github.com/kristianelmer/Talli/issues/148#issuecomment-5537549928",
+  "entryBlockers": [
+    {
+      "issue": "#145",
+      "requiredState": "CLOSED",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/145#issuecomment-5507207404"
+    }
+  ],
+  "serialization": {
+    "capability": "corporate_governance",
+    "slice": "3 of 3",
+    "stageExitIssue": "#148",
+    "nextIssue": "#191",
+    "nextIssueState": "must-not-start-before-148-merges-to-main"
+  },
+  "independentExternalGate": {
+    "issue": "#189",
+    "observedState": "OPEN",
+    "blocksProviderNeutralImplementation": false,
+    "stillBlocks": [
+      "provider choice or activation",
+      "credentials or live bank calls, data, or consent",
+      "live-bank readiness claims",
+      "#197 bank evidence",
+      "production banking",
+      "#198 unrestricted clearance"
+    ]
+  },
+  "criteria": [
+    {
+      "id": "GH-148-A1",
+      "requirement": "Supported corporate decisions produce equivalent deterministic artifacts through FastAPI.",
+      "evidence": [
+        "apps/backend/src/talli_backend/modules/corporate_governance/rendering.py",
+        "apps/backend/tests/test_corporate_governance.py",
+        "apps/backend/tests/test_corporate_governance_api.py"
+      ],
+      "status": "local-deterministic-in-process-rendering-passed"
+    },
+    {
+      "id": "GH-148-A2",
+      "requirement": "Reviewed facts, generated versions, and signed copies follow an auditable immutable lifecycle.",
+      "evidence": [
+        "apps/backend/tests/test_corporate_governance_workflow.py",
+        "tests/corporate_governance_annual_close_database_runtime.test.mjs",
+        "tests/corporate_governance_database_runtime.test.mjs"
+      ],
+      "status": "immutable-generated-and-signed-artifact-lifecycle-passed"
+    },
+    {
+      "id": "GH-148-A3",
+      "requirement": "Document readiness blocks missing or stale evidence exactly as before.",
+      "evidence": [
+        "apps/backend/src/talli_backend/modules/corporate_governance/service.py",
+        "apps/backend/tests/test_corporate_governance.py",
+        "apps/backend/tests/test_corporate_governance_api.py"
+      ],
+      "status": "missing-stale-and-terminal-readiness-parity-passed"
+    },
+    {
+      "id": "GH-148-A4",
+      "requirement": "Owner-facing approval and signed-artifact upload flows remain functional.",
+      "evidence": [
+        "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx",
+        "tests/corporate_decision_workflow.test.mjs",
+        "apps/backend/tests/test_corporate_governance_workflow.py"
+      ],
+      "status": "local-owner-approval-upload-and-attestation-passed"
+    },
+    {
+      "id": "GH-148-A5",
+      "requirement": "Governance and rendering rules are Python-only and the production subprocess bridge is removed.",
+      "evidence": [
+        "apps/backend/src/talli_backend/modules/corporate_governance/service.py",
+        "apps/backend/src/talli_backend/modules/corporate_governance/rendering.py",
+        "tests/annual_corporate_documents.test.mjs",
+        "tests/corporate_documents.test.mjs"
+      ],
+      "status": "python-only-governance-rendering-and-in-process-pdf-passed"
+    },
+    {
+      "id": "GH-148-A6",
+      "requirement": "Duplicate TypeScript orchestration, legacy governance writers, and active-stage compatibility code are removed.",
+      "evidence": [
+        "architecture/compatibility.json",
+        "supabase/migrations/20260902105000_corporate_governance_hosted_shape_parity.sql",
+        "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql",
+        "tests/corporate_governance_contract_migration_lifecycle.test.mjs",
+        "tests/contract/web_fastapi_boundary.test.mjs"
+      ],
+      "status": "duplicate-orchestration-legacy-writers-and-active-compatibility-removed"
+    },
+    {
+      "id": "GH-148-A7",
+      "requirement": "The complete corporate_governance Stage 6 exit gate from #132 passes before billing begins.",
+      "evidence": [
+        "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md",
+        "architecture/BACKEND-SYSTEM.md",
+        "architecture/evidence/customer-ready-gates/<R1>.json",
+        "architecture/evidence/customer-ready-gates/<R2>.json"
+      ],
+      "status": "complete local and hosted stage-exit evidence plus protected candidate Release and Preview passed; final evidence-head checks, merge, and post-merge verification pending"
+    }
+  ],
+  "review": {
+    "fixedPoint": "e8e920ba3ba625fe804bc9ee14dbcde620cab8c3",
+    "initialReviewedRevision": "b761bb9f2392505c59ebae70bdd256e0e94d3d4e",
+    "finalReviewedRevision": "e0e30514b01bae5cb6f72501ddc7c7e81be48420",
+    "postHostedCorrectionReviewedRevision": "52640f3ce37e037398ff45336db1c9e1939a893f",
+    "standards": {
+      "resolvedFindings": [
+        "Runtime document evidence registration now binds the caller-supplied actor to the independently verified transaction actor and revalidates accepted-owner access.",
+        "Historical evidence reconciliation now uses a Documents-owned migration-principal-only backfill contract, including former-owner coverage.",
+        "The Documents registry and Company Access identity query were re-reviewed as bounded owner-controlled public contracts in the one declared corporate-governance backend-system workflow, not parallel capability migrations."
+      ],
+      "judgementFindings": [
+        "P3 non-blocking: repeated decision-kind switches in apps/web/app/actions.ts could later be consolidated behind a lifecycle-operation dispatch map."
+      ],
+      "verdict": "pass",
+      "postHostedCorrectionVerdict": "pass; populated old-shape values, constraints, triggers, authority restoration, two parity rehearsals, contract retirement, and duplicate receipt reconciliation verified"
+    },
+    "specification": {
+      "resolvedFindings": [
+        "Registration failure removes every newly persisted generated_unsigned artifact; cleanup failures preserve the primary and cleanup errors for reconciliation.",
+        "The runtime/backfill split preserves immutable lifecycle behavior while allowing deterministic migration of historical creators without current owner membership."
+      ],
+      "verdict": "pass",
+      "postHostedCorrectionVerdict": "pass; exact finalization and payment evidence survives parity repair and real contract cutover without scope creep"
+    }
+  },
+  "localValidation": {
+    "web": "146 passed",
+    "contract": "49 passed",
+    "fullIsolatedSupabase": "passed with 0 blocking advisor findings",
+    "corporateGovernanceDatabaseLifecycle": "22 passed, including populated hosted predecessor-shape exact-value recovery, two parity rollback/recutover rehearsals, and contract retirement, plus 2 contract rollback/cutover tests in a fresh isolated Supabase stack",
+    "documentsDatabaseLifecycle": "3 passed including runtime actor-forgery rejection, former-owner migration backfill, and two rollback/recutover rehearsals",
+    "typecheck": "passed",
+    "openapi": "generated contract check passed",
+    "apiClient": "generated client check passed",
+    "architecture": "passed",
+    "diffCheck": "passed",
+    "dependencyAuditContext": "Replacement R1 and linked replacement R2 passed the online production dependency audit in canonical GitHub evidence runners; the protected GitHub Release gate must independently pass again before merge."
+  },
+  "completeGates": [
+    {
+      "revision": "cb5f01202793035447403078029f6a77671e3b21",
+      "previousPassingRevision": null,
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/cb5f01202793035447403078029f6a77671e3b21.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:21f934f49e622d1b0ec8a5ea04891926f172365d47cfa8a35dfd95b1a564e5d3"
+    },
+    {
+      "revision": "1cc236e90ea746fd9b13345c73e99c574e22bc16",
+      "previousPassingRevision": "cb5f01202793035447403078029f6a77671e3b21",
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/1cc236e90ea746fd9b13345c73e99c574e22bc16.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:baf883b6580262808556881ec989911d0f96716afa21be90e3a283028eb197d3"
+    }
+  ],
+  "hostedVerification": {
+    "path": "architecture/evidence/issues/148/hosted-verification.json",
+    "verdict": "pass",
+    "projectId": "pkpyyxryfhfehrbhbynp",
+    "organizationId": "zwucumjvtpnyujqyzwkg",
+    "plan": "Free",
+    "spendCap": "enabled",
+    "baselineMigrationHistoryCount": 78,
+    "appliedReviewedMigrations": [
+      "documents_evidence_reference_registry",
+      "corporate_governance_annual_close",
+      "company_access_corporate_governance_identity",
+      "corporate_governance_artifact_lifecycle"
+    ],
+    "duplicateIdempotentHistoryReceipt": {
+      "name": "company_access_corporate_governance_identity",
+      "canonicalVersion": "20260904092233",
+      "reconciledRedundantVersion": "20260904092246",
+      "statementSha256": "1a8bc0e0a53610d4cd126e9bc22368b3f9a1f2a2fc81a1106a411dbe6c67f412",
+      "repairResult": "later byte-identical receipt marked reverted; one canonical receipt remains"
+    },
+    "initialContractFailure": "PostgreSQL 42703 exposed the already-hosted #144 finalization/payment shape missing event_id and occurred_at; the contract transaction rolled back before predecessor removal.",
+    "correctiveMigration": "supabase/migrations/20260902105000_corporate_governance_hosted_shape_parity.sql",
+    "completedMigrations": [
+      {
+        "version": "20260904202239",
+        "name": "corporate_governance_hosted_shape_parity",
+        "statementSha256": "3e6382fea0c525666400427eaf270952d4e0a680273a4458cd53ea2ee332359f"
+      },
+      {
+        "version": "20260904202336",
+        "name": "corporate_governance_contract",
+        "statementSha256": "632ef749740e836f9bddf95e143a8f6f330034119178e39eb30ef282d8957526"
+      }
+    ],
+    "migrationHistoryCount": 84,
+    "businessRows": 0,
+    "blockingAdvisorFindings": 0
+  },
+  "previewVerification": {
+    "path": "architecture/evidence/issues/148/preview-verification.json",
+    "sourceRevision": "3ecd8167ba1975856d21afcf8df0e6cac1773438",
+    "githubDeploymentId": 6272392828,
+    "workflowRun": "https://github.com/kristianelmer/Talli/actions/runs/33916981230",
+    "environment": "Preview",
+    "productionEnvironment": false,
+    "verdict": "pass"
+  },
+  "integration": {
+    "pullRequest": "https://github.com/kristianelmer/Talli/pull/202",
+    "candidateRevision": "3ecd8167ba1975856d21afcf8df0e6cac1773438",
+    "releaseProductionCommit": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+    "productionBranch": "release/production"
+  },
+  "closeState": "hosted parity and contract cutover, independent rereviews, linked immutable R1/R2, architecture stage exit, protected candidate Preview, and protected candidate Release passed; final evidence-head checks, merge, and post-merge verification pending"
+}

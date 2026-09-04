@@ -65,10 +65,6 @@ import {
 } from "../../lib/authority-permission";
 import { buildLaunchSignoffGate, launchSignoffKeys, launchSignoffLabel } from "../../lib/launch-signoff";
 import { buildDeadlineDashboard, buildDeadlineReminderPlan, deadlineStatusLabel, defaultReminderPreferences } from "../../lib/deadlines";
-import {
-  deriveOpenDividendPayable,
-  validateOwnerDividendPaymentInput,
-} from "../../lib/owner-dividend-payment";
 import { invitationStatus, reviewChecklistStatus } from "../../lib/invitations";
 import { preProductionDirectFilingCopy, requiredNonAffiliationCopy } from "../../lib/launch-copy";
 import { estimateAnnualTax } from "../../lib/tax-settlement";
@@ -156,10 +152,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
     positions,
     entries,
     locks,
-    corporateDecisions,
-    corporateDocumentSets,
-    corporateDocumentEvents,
-    corporateDecisionFinalizations,
+    corporateDecisionReadiness,
     primaryCompanyId,
     unmatchedTransactions,
     adminCostEntries,
@@ -189,32 +182,37 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
     deadlineReminderPlan,
     deadlineReminderPreferences,
   } = data;
-  const ownerDividendPayables = corporateDecisionFinalizations.flatMap((finalization) => {
-    if (finalization.finalization_kind !== "owner_dividend_declared") return [];
-    const decision = corporateDecisions.find((candidate) => candidate.id === finalization.decision_id);
-    const documentSet = corporateDocumentSets.find((candidate) => candidate.decision_id === finalization.decision_id);
-    if (!decision || !documentSet) return [];
-    try {
-      return [deriveOpenDividendPayable({
-        decision: decision as Parameters<typeof deriveOpenDividendPayable>[0]["decision"],
-        documentSet,
-        finalization,
-        events: corporateDocumentEvents.filter((event) => event.decision_id === decision.id),
-      })];
-    } catch {
-      return [];
-    }
+  const ownerDividendPayables = corporateDecisionReadiness.flatMap((readiness) => {
+    if (readiness.decisionKind !== "owner_dividend"
+      || !readiness.decisionId
+      || !readiness.documentSetId
+      || !readiness.decisionHash
+      || !readiness.finalizationId
+      || !readiness.accountingPolicyVersion
+      || readiness.declaredAmountOre === null
+      || readiness.paidAmountOre === null
+      || readiness.remainingAmountOre === null) return [];
+    return [{
+      decisionId: readiness.decisionId,
+      documentSetId: readiness.documentSetId,
+      finalizationId: readiness.finalizationId,
+      companyId: readiness.companyId,
+      incomeYear: readiness.incomeYear,
+      decisionHash: readiness.decisionHash,
+      accountingPolicyVersion: readiness.accountingPolicyVersion,
+      declaredAmountOre: readiness.declaredAmountOre,
+      paidAmountOre: readiness.paidAmountOre,
+      remainingAmountOre: readiness.remainingAmountOre,
+      settled: readiness.remainingAmountOre === 0,
+    }];
   }).filter((payable) => payable.companyId === primaryCompanyId);
   const eligibleDividendTransactions = (payable: (typeof ownerDividendPayables)[number]) =>
-    transactions.filter((transaction) => {
-      if (transaction.matched_entry_id || transaction.matched_action_id) return false;
-      try {
-        validateOwnerDividendPaymentInput({ payable, transaction });
-        return true;
-      } catch {
-        return false;
-      }
-    });
+    transactions.filter((transaction) =>
+      transaction.company_id === payable.companyId
+      && transaction.income_year === payable.incomeYear
+      && !transaction.matched_entry_id
+      && !transaction.matched_action_id
+      && Number(transaction.amount) < 0);
   const retryAdminCostBankTransactionId = unmatchedTransactions.find(
     (transaction) =>
       transaction.id === params?.adminCostBankTransactionId && Number(transaction.amount) < 0,

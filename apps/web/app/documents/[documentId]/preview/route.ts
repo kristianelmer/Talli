@@ -7,7 +7,6 @@ import {
 } from "../../../../features/documents";
 import { loadAcceptedMembershipCompany } from "../../../lib/company-access-context";
 import { getCurrentSessionAccessToken } from "../../../lib/supabase/auth-session";
-import { createSupabaseServerClient } from "../../../lib/supabase/server";
 
 export async function GET(_request: Request, { params }: { params: Promise<Record<string, string>> }) {
   const documentId = (await params).documentId;
@@ -16,15 +15,6 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
   }
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) return new Response("Innlogging kreves", { status: 401 });
-  const supabase = await createSupabaseServerClient();
-  const artifact = await supabase
-    .from("corporate_document_artifacts")
-    .select("document_id, content_sha256, byte_length, mime_type, storage_key")
-    .eq("document_id", documentId)
-    .maybeSingle();
-  if (artifact.error || !artifact.data || artifact.data.mime_type !== "application/pdf") {
-    return new Response("Dokumentet kan ikke forhåndsvises", { status: 404 });
-  }
   let signedUrl: string;
   try {
     const transfer = await createDocumentTransfer(
@@ -33,6 +23,9 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
       "preview",
       randomUUID(),
     );
+    if (transfer.document.contentType !== "application/pdf") {
+      return new Response("Dokumentet kan ikke forhåndsvises", { status: 404 });
+    }
     const company = await loadAcceptedMembershipCompany(transfer.document.companyId);
     if (!company || company.role !== "owner") {
       return new Response("Ingen tilgang", { status: 403 });

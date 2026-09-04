@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+from base64 import b64decode
 from datetime import date
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
 from talli_backend.main import create_app
+from talli_backend.modules.documents.public import DocumentStatus
 from talli_backend.modules.ledger.public import (
     PostedLedgerEntry,
 )
-from talli_backend.shared.kernel import Money
+from talli_backend.shared.kernel import IncomeYear, Money
 
-from test_corporate_governance import supported_proposal
+from test_corporate_governance import supported_annual_close, supported_proposal
 from test_corporate_governance_workflow import (
     DocumentsSessionFactoryStub,
     DocumentsSessionStub,
@@ -34,12 +37,53 @@ class ApiGovernanceTransaction(GovernanceTransactionStub):
         )
 
 
-def client_and_transaction():
+def client_and_transaction(
+    *,
+    annual_documents: bool = False,
+    commit_failures: int = 0,
+):
     transaction = ApiGovernanceTransaction()
-    governance_sessions = GovernanceSessionFactoryStub(
-        GovernanceSessionStub(transaction)
-    )
-    documents_sessions = DocumentsSessionFactoryStub(DocumentsSessionStub())
+    governance_session = GovernanceSessionStub(transaction)
+    governance_session.commit_failures = commit_failures
+    governance_sessions = GovernanceSessionFactoryStub(governance_session)
+    documents = DocumentsSessionStub()
+    if annual_documents:
+        documents.records[0].linked_to = (
+            "corporate_decision:44444444-4444-4444-8444-444444444444"
+        )
+        documents.records[0].content_sha256 = (
+            "09dbe1a6e356232aa3df006cc1a434c1f8dbef519272462fb3ffc87cca681a1a"
+        )
+        documents.records[0].byte_length = 32069
+        documents.records[1].content_sha256 = (
+            "984884c2f22b8b27a2251862ac0f8e060b4dbf50cfa9348188cf7ced31a378bd"
+        )
+        documents.records[1].linked_to = (
+            "corporate_decision:44444444-4444-4444-8444-444444444444"
+        )
+        documents.records += (
+            SimpleNamespace(
+                document_id="99999999-9999-4999-8999-999999999991",
+                company_id=supported_annual_close().company_id,
+                linked_to="corporate_decision:44444444-4444-4444-8444-444444444444",
+                status=DocumentStatus.SIGNED_OWNER_ATTESTED,
+                content_sha256="e" * 64,
+                byte_length=303,
+                income_year=IncomeYear(2025),
+            ),
+            SimpleNamespace(
+                document_id="99999999-9999-4999-8999-999999999992",
+                company_id=supported_annual_close().company_id,
+                linked_to="corporate_decision:44444444-4444-4444-8444-444444444444",
+                status=DocumentStatus.SIGNED_OWNER_ATTESTED,
+                content_sha256="f" * 64,
+                byte_length=304,
+                income_year=IncomeYear(2025),
+            ),
+        )
+        documents.records[1].byte_length = 32627
+    documents_sessions = DocumentsSessionFactoryStub(documents)
+
     return (
         TestClient(
             create_app(
@@ -76,8 +120,8 @@ def proposal_payload() -> dict[str, object]:
             "incomeYear": int(command.annual_basis.income_year),
             "latestApproved": command.annual_basis.latest_approved,
             "annualDataSha256": command.annual_basis.annual_data_sha256,
-            "annualAccountsPayloadSha256": (
-                command.annual_basis.annual_accounts_payload_sha256
+            "governanceBasisSha256": (
+                command.annual_basis.governance_basis_sha256
             ),
             "resultAfterTaxOre": command.annual_basis.result_after_tax_ore,
             "equityOre": command.annual_basis.equity_ore,
@@ -102,8 +146,8 @@ def proposal_payload() -> dict[str, object]:
                 command.reviewed_facts.available_distribution_ore
             ),
             "annualDataSha256": command.reviewed_facts.annual_data_sha256,
-            "annualAccountsPayloadSha256": (
-                command.reviewed_facts.annual_accounts_payload_sha256
+            "governanceBasisSha256": (
+                command.reviewed_facts.governance_basis_sha256
             ),
         },
         "boardMeeting": {
@@ -147,6 +191,56 @@ def proposal_payload() -> dict[str, object]:
         "dividendAmountOre": command.dividend_amount_ore,
         "paymentDate": command.payment_date.value.isoformat(),
     }
+
+
+def annual_close_payload() -> dict[str, object]:
+    command = supported_annual_close()
+    payload = proposal_payload()
+    payload = {
+        **payload,
+        "incomeYear": int(command.income_year),
+        "decisionId": str(command.decision_id),
+        "documentSetId": str(command.document_set_id),
+        "annualBasis": {
+            "sourceId": str(command.annual_basis.source_id),
+            "incomeYear": int(command.annual_basis.income_year),
+            "latestApproved": command.annual_basis.latest_approved,
+            "annualDataSha256": command.annual_basis.annual_data_sha256,
+            "governanceBasisSha256": command.annual_basis.governance_basis_sha256,
+            "resultAfterTaxOre": command.annual_basis.result_after_tax_ore,
+            "equityOre": command.annual_basis.equity_ore,
+            "availableDistributionOre": command.annual_basis.available_distribution_ore,
+            "cashOre": command.annual_basis.cash_ore,
+        },
+        "reviewedFacts": {
+            "organizationNumber": command.reviewed_facts.organization_number,
+            "legalName": command.reviewed_facts.legal_name,
+            "shareholders": [
+                {
+                    "shareholderId": item.shareholder_id,
+                    "name": item.name,
+                    "shareCount": item.share_count,
+                }
+                for item in command.reviewed_facts.shareholders
+            ],
+            "totalCompanyShares": command.reviewed_facts.total_company_shares,
+            "availableDistributionOre": command.reviewed_facts.available_distribution_ore,
+            "annualDataSha256": command.reviewed_facts.annual_data_sha256,
+            "governanceBasisSha256": command.reviewed_facts.governance_basis_sha256,
+        },
+        "boardMeeting": {
+            **payload["boardMeeting"],
+            "meetingDate": command.board_meeting.meeting_date.value.isoformat(),
+        },
+        "generalMeeting": {
+            **payload["generalMeeting"],
+            "meetingDate": command.general_meeting.meeting_date.value.isoformat(),
+        },
+        "annualResultAllocationOre": command.annual_result_allocation_ore,
+    }
+    del payload["dividendAmountOre"]
+    del payload["paymentDate"]
+    return payload
 
 
 def headers(key: str) -> dict[str, str]:
@@ -250,6 +344,202 @@ def test_owner_dividend_fastapi_lifecycle_is_typed_and_backend_owned() -> None:
     assert bank_claim[1][0].transaction_date.value == date(2025, 7, 2)
 
 
+def test_decision_facts_are_derived_from_backend_sources() -> None:
+    client, transaction = client_and_transaction()
+
+    response = client.get(
+        "/api/v1/corporate-governance/decision-facts",
+        headers={"Authorization": "Bearer access-token"},
+        params={
+            "companyId": str(supported_proposal().company_id),
+            "incomeYear": 2025,
+            "decisionKind": "owner_dividend",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["company"] == {
+        "organizationNumber": "310279617",
+        "legalName": "LOGISK ØDE TIGER AS",
+    }
+    assert response.json()["annualBasis"]["incomeYear"] == 2024
+    assert response.json()["reviewedFacts"]["totalCompanyShares"] == 1_000
+    assert [call[0] for call in transaction.calls] == [
+        "actor_role",
+        "read_company_facts",
+        "list_opening_snapshots",
+        "list_annual_data_compatibility",
+    ]
+
+
+def test_corporate_governance_retries_one_serialization_failure() -> None:
+    client, transaction = client_and_transaction(commit_failures=1)
+
+    response = client.get(
+        "/api/v1/corporate-governance/decision-facts",
+        headers={"Authorization": "Bearer access-token"},
+        params={
+            "companyId": str(supported_proposal().company_id),
+            "incomeYear": 2025,
+            "decisionKind": "owner_dividend",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert [name for name, _ in transaction.calls].count("actor_role") == 2
+
+
+def test_annual_close_fastapi_proposal_is_typed_and_backend_owned() -> None:
+    client, transaction = client_and_transaction(annual_documents=True)
+    proposed = client.post(
+        "/api/v1/corporate-governance/annual-closes/proposals",
+        headers=headers("annual-close-proposal-0001"),
+        json=annual_close_payload(),
+    )
+    assert proposed.status_code == 201, proposed.text
+    assert proposed.json()["decision"]["decisionKind"] == "annual_close"
+    assert proposed.json()["decision"]["decisionHash"] == (
+        "22d6b2d7ddb555022813b56ebd554bdfef6a78ac5b0dd6654a3f2d208c3111d6"
+    )
+    assert proposed.json()["decision"]["dividend"] is None
+    assert [artifact["artifactKind"] for artifact in proposed.json()["artifacts"]] == [
+        "annual_board_minutes",
+        "annual_general_meeting_minutes",
+    ]
+    assert [artifact["contentSha256"] for artifact in proposed.json()["artifacts"]] == [
+        "09dbe1a6e356232aa3df006cc1a434c1f8dbef519272462fb3ffc87cca681a1a",
+        "984884c2f22b8b27a2251862ac0f8e060b4dbf50cfa9348188cf7ced31a378bd",
+    ]
+    assert all(
+        b64decode(artifact["contentBase64"]).startswith(b"%PDF-")
+        for artifact in proposed.json()["artifacts"]
+    )
+    assert transaction.calls[-1][0] == "propose_annual_close"
+
+    registered = client.post(
+        f"/api/v1/corporate-governance/annual-closes/{annual_close_payload()['decisionId']}/documents",
+        headers=headers("annual-close-documents-0001"),
+        json={
+            "companyId": annual_close_payload()["companyId"],
+            "documentSetId": annual_close_payload()["documentSetId"],
+            "decisionHash": proposed.json()["decision"]["decisionHash"],
+            "artifacts": [
+                {
+                    "artifactId": artifact_id,
+                    "documentId": document_id,
+                    "artifactKind": artifact["artifactKind"],
+                    "contentSha256": artifact["contentSha256"],
+                    "byteLength": artifact["byteLength"],
+                }
+                for artifact, artifact_id, document_id in zip(
+                    proposed.json()["artifacts"],
+                    (
+                        "88888888-8888-4888-8888-888888888881",
+                        "88888888-8888-4888-8888-888888888882",
+                    ),
+                    (
+                        "66666666-6666-4666-8666-666666666666",
+                        "77777777-7777-4777-8777-777777777777",
+                    ),
+                    strict=True,
+                )
+            ],
+        },
+    )
+    assert registered.status_code == 201, registered.text
+    assert registered.json()["state"] == "documents_registered"
+    assert registered.json()["generatedArtifactHashes"] == {
+        artifact["artifactKind"]: artifact["contentSha256"]
+        for artifact in proposed.json()["artifacts"]
+    }
+
+    approved = client.post(
+        f"/api/v1/corporate-governance/annual-closes/{annual_close_payload()['decisionId']}/approvals",
+        headers=headers("annual-close-approval-0001"),
+        json={
+            "companyId": annual_close_payload()["companyId"],
+            "documentSetId": annual_close_payload()["documentSetId"],
+            "decisionHash": proposed.json()["decision"]["decisionHash"],
+            "approvalEventId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        },
+    )
+    assert approved.status_code == 201, approved.text
+    assert approved.json()["state"] == "facts_approved"
+
+    requested = client.post(
+        f"/api/v1/corporate-governance/annual-closes/{annual_close_payload()['decisionId']}/events",
+        headers=headers("annual-close-signing-0001"),
+        json={
+            "companyId": annual_close_payload()["companyId"],
+            "documentSetId": annual_close_payload()["documentSetId"],
+            "decisionHash": proposed.json()["decision"]["decisionHash"],
+            "eventId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            "eventKind": "signing_requested",
+            "metadata": {"delivery": "external_signing_managed_by_owner"},
+        },
+    )
+    assert requested.status_code == 201, requested.text
+    assert requested.json()["state"] == "signing_requested"
+
+    for index, (artifact_kind, unsigned_artifact_id, signed_artifact_id, signed_document_id) in enumerate((
+        (
+            "annual_board_minutes",
+            "88888888-8888-4888-8888-888888888881",
+            "88888888-8888-4888-8888-888888888891",
+            "99999999-9999-4999-8999-999999999991",
+        ),
+        (
+            "annual_general_meeting_minutes",
+            "88888888-8888-4888-8888-888888888882",
+            "88888888-8888-4888-8888-888888888892",
+            "99999999-9999-4999-8999-999999999992",
+        ),
+    )):
+        transaction.annual_lifecycle = lambda command, state, index=index: SimpleNamespace(
+            decision_id=command.decision_id,
+            document_set_id=command.document_set_id,
+            company_id=command.company_id,
+            income_year=IncomeYear(2025),
+            decision_hash=command.decision_hash,
+            state=state,
+            generated_artifact_hashes={},
+            signed_artifact_hashes={artifact_kind: ("e" if index == 0 else "f") * 64},
+            finalization_id=None,
+            replayed=False,
+        )
+        signed = client.post(
+            f"/api/v1/corporate-governance/annual-closes/{annual_close_payload()['decisionId']}/signed-artifacts",
+            headers=headers(f"annual-close-signed-000{index + 1}"),
+            json={
+                "companyId": annual_close_payload()["companyId"],
+                "documentSetId": annual_close_payload()["documentSetId"],
+                "decisionHash": proposed.json()["decision"]["decisionHash"],
+                "unsignedArtifactId": unsigned_artifact_id,
+                "signedArtifactId": signed_artifact_id,
+                "signedDocumentId": signed_document_id,
+                "artifactKind": artifact_kind,
+                "filename": f"signert-{index}.pdf",
+                "contentSha256": ("e" if index == 0 else "f") * 64,
+                "byteLength": 303 + index,
+            },
+        )
+        assert signed.status_code == 201, signed.text
+        assert signed.json()["state"] == "signed_owner_attested"
+
+    finalized = client.post(
+        f"/api/v1/corporate-governance/annual-closes/{annual_close_payload()['decisionId']}/finalizations",
+        headers=headers("annual-close-finalization-0001"),
+        json={
+            "companyId": annual_close_payload()["companyId"],
+            "documentSetId": annual_close_payload()["documentSetId"],
+            "decisionHash": proposed.json()["decision"]["decisionHash"],
+            "finalizationId": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        },
+    )
+    assert finalized.status_code == 201, finalized.text
+    assert finalized.json()["state"] == "finalized"
+
+
 def test_owner_dividend_routes_require_bearer_and_reject_extra_fields() -> None:
     client, _ = client_and_transaction()
     payload = proposal_payload()
@@ -267,6 +557,34 @@ def test_owner_dividend_routes_require_bearer_and_reject_extra_fields() -> None:
         json={**payload, "accountingPolicyVersion": "browser-choice"},
     )
     assert invalid.status_code == 422
+
+
+def test_corporate_readiness_is_a_backend_owned_query() -> None:
+    client, transaction = client_and_transaction()
+    response = client.get(
+        "/api/v1/corporate-governance/readiness",
+        headers={"Authorization": "Bearer access-token"},
+        params={
+            "companyId": str(supported_proposal().company_id),
+            "incomeYear": 2025,
+            "decisionKind": "annual_close",
+            "annualCloseSourceId": "33333333-3333-4333-8333-333333333333",
+            "annualDataSha256": "a" * 64,
+            "governanceBasisSha256": "b" * 64,
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["decisionId"] is None
+    assert response.json()["annualSubmissionReady"] is False
+    assert response.json()["blockers"] == [{
+        "code": "corporate_documents_decision_missing",
+        "message": "Årsbeslutning med dokumentsett må opprettes.",
+    }]
+    assert [name for name, _ in transaction.calls] == [
+        "actor_role",
+        "list_lifecycle",
+    ]
 
 
 def test_shareholder_loan_fastapi_is_governance_owned_and_strict() -> None:
@@ -329,6 +647,7 @@ def test_openapi_exposes_governance_operations() -> None:
     }
     assert {
         "corporateGovernanceProposeOwnerDividend",
+        "corporateGovernanceProposeAnnualClose",
         "corporateGovernanceRegisterOwnerDividendDocuments",
         "corporateGovernanceApproveOwnerDividend",
         "corporateGovernanceFinalizeOwnerDividend",

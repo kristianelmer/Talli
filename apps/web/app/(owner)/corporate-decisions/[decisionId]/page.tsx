@@ -8,11 +8,15 @@ import {
   rejectCorporateDecision,
 } from "../../../actions";
 import { Banner, StatusBadge, SubmitButton } from "../../../components/ui";
-import type { CorporateArtifactKind, CorporateDecisionInput } from "../../../lib/corporate-documents";
-import { requiredCorporateArtifactSigners } from "../../../lib/corporate-signed-artifacts";
+import type { CorporateArtifactKind } from "../../../../features/corporate-governance";
 import { loadAcceptedMembershipCompany } from "../../../lib/company-access-context";
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
 import { SignedArtifactUpload } from "./SignedArtifactUpload";
+import {
+  readCorporateDecisionLifecycle,
+  readCorporateDecisionReadiness,
+} from "../../../../features/corporate-governance";
+import { getCurrentSessionAccessToken } from "../../../lib/supabase/auth-session";
 
 export const dynamic = "force-dynamic";
 
@@ -48,66 +52,65 @@ export default async function CorporateDecisionPage({ params, searchParams }: Pr
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-
-  const decisionResult = await supabase
-    .from("corporate_decisions")
-    .select("id, company_id, income_year, decision_kind, annual_close_source_id, source_hash, canonical_input, decision_hash, created_at")
-    .eq("id", decisionId)
-    .maybeSingle();
-  if (decisionResult.error || !decisionResult.data) notFound();
-  const decision = decisionResult.data;
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/login");
+  let lifecycle;
+  try {
+    lifecycle = await readCorporateDecisionLifecycle(accessToken, decisionId);
+  } catch {
+    notFound();
+  }
+  const decision = lifecycle.corporateDecisions[0];
+  const documentSet = lifecycle.corporateDocumentSets[0];
+  if (!decision || !documentSet || documentSet.decision_id !== decision.id) notFound();
   const company = await loadAcceptedMembershipCompany(decision.company_id);
   if (!company || company.role !== "owner") notFound();
+  const readiness = await readCorporateDecisionReadiness(accessToken, {
+    companyId: decision.company_id,
+    incomeYear: decision.income_year,
+    decisionKind: decision.decision_kind,
+  });
 
-  const [setResult, eventsResult, finalizationResult] = await Promise.all([
-    supabase
-      .from("corporate_document_sets")
-      .select("id, decision_id, template_family, template_version, decision_hash, created_at")
-      .eq("decision_id", decision.id)
-      .maybeSingle(),
-    supabase
-      .from("corporate_document_events")
-      .select("id, event_kind, occurred_at, decision_hash, content_sha256, metadata, artifact_id")
-      .eq("decision_id", decision.id)
-      .order("occurred_at", { ascending: true }),
-    supabase
-      .from("corporate_decision_finalizations")
-      .select("id, finalization_kind, decision_hash, signed_artifact_hashes, accounting_policy_version, created_at")
-      .eq("decision_id", decision.id)
-      .maybeSingle(),
-  ]);
-  if (setResult.error || !setResult.data || eventsResult.error || finalizationResult.error) notFound();
-  const documentSet = setResult.data;
-  const artifactsResult = await supabase
-    .from("corporate_document_artifacts")
-    .select("id, artifact_kind, variant, document_id, content_sha256, byte_length, supersedes_artifact_id, created_at")
-    .eq("set_id", documentSet.id)
-    .order("created_at", { ascending: true });
-  if (artifactsResult.error) notFound();
-
-  const events = eventsResult.data ?? [];
-  const artifacts = artifactsResult.data ?? [];
-  const canonicalInput = decision.canonical_input as unknown as CorporateDecisionInput;
+  const events = lifecycle.corporateDocumentEvents;
+  const artifacts = lifecycle.corporateDocumentArtifacts;
+  const canonicalInput = decision.canonical_input;
   const unsignedArtifacts = artifacts.filter((artifact) => artifact.variant === "unsigned");
   const signedArtifacts = artifacts.filter((artifact) => artifact.variant === "signed_owner_attested");
-  const finalized = Boolean(finalizationResult.data);
-  const rejected = events.some((event) => event.event_kind === "rejected");
-  const factsApproved = events.some((event) => event.event_kind === "facts_approved");
-  const signingRequested = events.some((event) => event.event_kind === "signing_requested");
-  const allSigned = unsignedArtifacts.length === 2 && unsignedArtifacts.every((unsigned) =>
-    signedArtifacts.some((signed) => signed.supersedes_artifact_id === unsigned.id));
-  const lifecycleState = finalized
-    ? "Sluttført"
-    : rejected
-      ? "Avvist"
-      : allSigned
-        ? "Signerte kopier bekreftet"
-        : signingRequested
-          ? "Venter på signerte kopier"
-          : factsApproved
-            ? "Fakta godkjent"
-            : "Utkast";
-  const mutationsEnabled = process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true" && !finalized && !rejected;
+  const finalized = readiness.finalized;
+  const rejected = readiness.state === "rejected";
+  const superseded = readiness.state === "superseded";
+  const factsApproved = [
+    "facts_approved",
+    "signing_requested",
+    "signed_owner_attested",
+    "finalized",
+    "partially_paid",
+    "paid",
+  ].includes(readiness.state ?? "");
+  const signingRequested = [
+    "signing_requested",
+    "signed_owner_attested",
+    "finalized",
+    "partially_paid",
+    "paid",
+  ].includes(readiness.state ?? "");
+  const allSigned = Object.keys(readiness.signedArtifactHashes).length === 2;
+  const lifecycleState = {
+    proposed: "Utkast",
+    documents_registered: "Utkast",
+    facts_approved: "Fakta godkjent",
+    signing_requested: "Venter på signerte kopier",
+    signed_owner_attested: "Signerte kopier bekreftet",
+    finalized: "Sluttført",
+    partially_paid: "Delvis utbetalt",
+    paid: "Utbetalt",
+    rejected: "Avvist",
+    superseded: "Erstattet",
+  }[readiness.state ?? "proposed"];
+  const mutationsEnabled = process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true"
+    && !finalized
+    && !rejected
+    && !superseded;
 
   return (
     <div>
@@ -151,7 +154,7 @@ export default async function CorporateDecisionPage({ params, searchParams }: Pr
         <div className="docList">
           {unsignedArtifacts.map((unsigned) => {
             const artifactKind = unsigned.artifact_kind as CorporateArtifactKind;
-            const signers = requiredCorporateArtifactSigners(artifactKind, canonicalInput);
+            const signers = readiness.requiredSigners[artifactKind] ?? [];
             const signed = signedArtifacts.find((candidate) => candidate.supersedes_artifact_id === unsigned.id);
             return (
               <article className="docRow" key={unsigned.id}>

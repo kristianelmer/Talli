@@ -90,6 +90,20 @@ does not reopen banking or authorize provider-specific assumptions. Every later
 `Blocked by` edge remains serialized, and `ready-for-agent` labels do not override
 those edges.
 
+### Continuous-main integration rule
+
+A capability ticket is not complete merely because its implementation is green
+or its GitHub issue is closed. The sole integration owner must publish one
+cohesive branch, open a pull request to `main`, pass the protected Release gate
+and the Vercel Preview check on that immutable revision, and merge the pull
+request. The next serialized ticket may be claimed only after that merge is on
+`main` and the post-merge Release gate is green. A closed-but-unmerged ticket
+remains the active stage; agents must neither rotate to nor begin its successor.
+
+`release/production` is an independent production pointer. Capability PRs never
+advance it, and a green Preview deployment is not production authorization.
+The #189 provider gate and #198 final release/launch gate remain mandatory.
+
 ## Ownership zones
 
 Every business zone `L` through `AR` includes its module manifests and scoped

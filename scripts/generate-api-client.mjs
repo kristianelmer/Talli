@@ -56,7 +56,6 @@ const ledgerOperations = {
   listPeriodLocks: ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
   postAdministrativeCost: ["/api/v1/ledger/administrative-costs", "post", "ledgerPostAdministrativeCost"],
   postTaxSettlement: ["/api/v1/ledger/tax-settlements", "post", "ledgerPostTaxSettlement"],
-  finalizeCorporateDecision: ["/api/v1/ledger/corporate-decisions/finalizations", "post", "ledgerFinalizeCorporateDecision"],
   postManualJournal: ["/api/v1/ledger/manual-journals", "post", "ledgerPostManualJournal"],
   lockPeriod: ["/api/v1/ledger/period-locks", "post", "ledgerLockPeriod"],
 };
@@ -153,6 +152,56 @@ const documentsOperations = {
   ],
 };
 const corporateGovernanceOperations = {
+  deriveDecisionFacts: [
+    "/api/v1/corporate-governance/decision-facts",
+    "get",
+    "corporateGovernanceDeriveDecisionFacts",
+  ],
+  readDecisionReadiness: [
+    "/api/v1/corporate-governance/readiness",
+    "get",
+    "corporateGovernanceReadDecisionReadiness",
+  ],
+  listDecisionLifecycle: [
+    "/api/v1/corporate-governance/decisions",
+    "get",
+    "corporateGovernanceListDecisionLifecycle",
+  ],
+  readDecisionLifecycle: [
+    "/api/v1/corporate-governance/decisions/{decision_id}",
+    "get",
+    "corporateGovernanceReadDecisionLifecycle",
+  ],
+  proposeAnnualClose: [
+    "/api/v1/corporate-governance/annual-closes/proposals",
+    "post",
+    "corporateGovernanceProposeAnnualClose",
+  ],
+  registerAnnualCloseDocuments: [
+    "/api/v1/corporate-governance/annual-closes/{decision_id}/documents",
+    "post",
+    "corporateGovernanceRegisterAnnualCloseDocuments",
+  ],
+  approveAnnualClose: [
+    "/api/v1/corporate-governance/annual-closes/{decision_id}/approvals",
+    "post",
+    "corporateGovernanceApproveAnnualClose",
+  ],
+  recordAnnualCloseEvent: [
+    "/api/v1/corporate-governance/annual-closes/{decision_id}/events",
+    "post",
+    "corporateGovernanceRecordAnnualCloseEvent",
+  ],
+  finalizeAnnualClose: [
+    "/api/v1/corporate-governance/annual-closes/{decision_id}/finalizations",
+    "post",
+    "corporateGovernanceFinalizeAnnualClose",
+  ],
+  attestAnnualCloseSignedArtifact: [
+    "/api/v1/corporate-governance/annual-closes/{decision_id}/signed-artifacts",
+    "post",
+    "corporateGovernanceAttestAnnualCloseSignedArtifact",
+  ],
   recordShareholderLoan: [
     "/api/v1/corporate-governance/shareholder-loans",
     "post",
@@ -172,6 +221,16 @@ const corporateGovernanceOperations = {
     "/api/v1/corporate-governance/owner-dividends/{decision_id}/approvals",
     "post",
     "corporateGovernanceApproveOwnerDividend",
+  ],
+  recordOwnerDividendEvent: [
+    "/api/v1/corporate-governance/owner-dividends/{decision_id}/events",
+    "post",
+    "corporateGovernanceRecordOwnerDividendEvent",
+  ],
+  attestOwnerDividendSignedArtifact: [
+    "/api/v1/corporate-governance/owner-dividends/{decision_id}/signed-artifacts",
+    "post",
+    "corporateGovernanceAttestOwnerDividendSignedArtifact",
   ],
   finalizeOwnerDividend: [
     "/api/v1/corporate-governance/owner-dividends/{decision_id}/finalizations",
@@ -491,7 +550,6 @@ const ledgerSchemas = Object.fromEntries([
   "CompanyYearCloseGapCode",
   "CompanyYearCloseState",
   "LedgerAdministrativeCostWire",
-  "LedgerCorporateDecisionFinalizationWire",
   "LedgerCompanyYearCloseAssessmentWire",
   "LedgerEntryKind",
   "LedgerEntryPageWire",
@@ -596,20 +654,37 @@ const documentsSchemas = Object.fromEntries([
   "DocumentWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const corporateGovernanceSchemas = Object.fromEntries([
+  "AnnualCloseEventKind",
+  "AnnualCloseEventWire",
+  "AnnualCloseFinalizationWire",
+  "AnnualCloseLifecycleWire",
+  "AnnualCloseProposalWire",
+  "AnnualCloseSignedArtifactWire",
   "BoardRole",
   "BoardTreatmentMethod",
   "CorporateAnnualBasisWire",
   "CorporateArtifactKind",
+  "CorporateArtifactRecordWire",
+  "CorporateArtifactVariant",
   "CorporateBoardMeetingWire",
   "CorporateBoardParticipantWire",
   "CorporateCanonicalBoardParticipantWire",
   "CorporateCanonicalDecisionWire",
   "CorporateCanonicalShareholderWire",
+  "CorporateDecisionKind",
+  "CorporateDecisionFactsWire",
+  "CorporateDecisionRecordWire",
+  "CorporateDocumentReadinessBlockerWire",
+  "CorporateDocumentReadinessWire",
+  "CorporateDocumentSetRecordWire",
+  "CorporateEventRecordWire",
+  "CorporateFinalizationRecordWire",
   "CorporateCompanyFactsWire",
   "CorporateFinancialTotalsWire",
   "CorporateGeneralMeetingWire",
   "CorporateOwnerDividendConfirmationsWire",
   "CorporateOwnerDividendFactsWire",
+  "CorporateLifecycleSnapshotWire",
   "CorporateReviewedFactsWire",
   "CorporateReviewedShareholderWire",
   "CorporateShareholderBallotWire",
@@ -619,12 +694,17 @@ const corporateGovernanceSchemas = Object.fromEntries([
   "OwnerDividendApprovalWire",
   "OwnerDividendArtifactWire",
   "OwnerDividendDocumentsWire",
+  "OwnerDividendEventKind",
+  "OwnerDividendEventWire",
   "OwnerDividendFinalizationWire",
   "OwnerDividendLifecycleWire",
   "OwnerDividendPaymentWire",
   "OwnerDividendProposalWire",
+  "OwnerDividendSignedArtifactWire",
   "OwnerDividendState",
   "ProposedOwnerDividendWire",
+  "ProposedAnnualCloseWire",
+  "RenderedCorporateArtifactWire",
   "RecordedShareholderLoanWire",
   "ShareholderLoanDirection",
   "ShareholderLoanDocumentStatus",
@@ -858,6 +938,22 @@ export interface DocumentsListRequest extends TalliRequestOptions {
 export interface DocumentsBackupProjectionRequest extends TalliRequestOptions {
   companyId: string;
   incomeYear: number;
+}
+
+export interface CorporateGovernanceListRequest extends TalliRequestOptions {
+  companyIds: readonly string[];
+}
+
+export interface CorporateGovernanceDecisionFactsRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+  decisionKind: CorporateDecisionKind;
+}
+
+export interface CorporateGovernanceReadinessRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+  decisionKind: CorporateDecisionKind;
 }
 
 export interface LedgerOpeningSnapshotListRequest extends TalliRequestOptions {
@@ -1560,6 +1656,67 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
+    async corporateGovernanceListDecisionLifecycle(
+      request: CorporateGovernanceListRequest,
+    ): Promise<CorporateLifecycleSnapshotWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/decisions?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isCorporateLifecycleSnapshotWire,
+      );
+    },
+
+    async corporateGovernanceDeriveDecisionFacts(
+      request: CorporateGovernanceDecisionFactsRequest,
+    ): Promise<CorporateDecisionFactsWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+        decisionKind: request.decisionKind,
+      });
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/decision-facts?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isCorporateDecisionFactsWire,
+      );
+    },
+
+    async corporateGovernanceReadDecisionReadiness(
+      request: CorporateGovernanceReadinessRequest,
+    ): Promise<CorporateDocumentReadinessWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+        decisionKind: request.decisionKind,
+      });
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/readiness?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isCorporateDocumentReadinessWire,
+      );
+    },
+
+    async corporateGovernanceReadDecisionLifecycle(
+      decisionId: string,
+      request: TalliRequestOptions = {},
+    ): Promise<CorporateLifecycleSnapshotWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/decisions/\${encodeURIComponent(decisionId)}\`,
+        "GET",
+        request,
+        undefined,
+        isCorporateLifecycleSnapshotWire,
+      );
+    },
+
     async corporateGovernanceProposeOwnerDividend(
       body: OwnerDividendProposalWire,
       request: TalliMutationOptions,
@@ -1570,6 +1727,89 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isProposedOwnerDividendWire,
+      );
+    },
+
+    async corporateGovernanceProposeAnnualClose(
+      body: AnnualCloseProposalWire,
+      request: TalliMutationOptions,
+    ): Promise<ProposedAnnualCloseWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/annual-closes/proposals\`,
+        "POST",
+        request,
+        body,
+        isProposedAnnualCloseWire,
+      );
+    },
+
+    async corporateGovernanceRegisterAnnualCloseDocuments(
+      decisionId: string,
+      body: OwnerDividendDocumentsWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualCloseLifecycleWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/annual-closes/\${encodeURIComponent(decisionId)}/documents\`,
+        "POST",
+        request,
+        body,
+        isAnnualCloseLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceApproveAnnualClose(
+      decisionId: string,
+      body: OwnerDividendApprovalWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualCloseLifecycleWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/annual-closes/\${encodeURIComponent(decisionId)}/approvals\`,
+        "POST",
+        request,
+        body,
+        isAnnualCloseLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceRecordAnnualCloseEvent(
+      decisionId: string,
+      body: AnnualCloseEventWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualCloseLifecycleWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/annual-closes/\${encodeURIComponent(decisionId)}/events\`,
+        "POST",
+        request,
+        body,
+        isAnnualCloseLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceFinalizeAnnualClose(
+      decisionId: string,
+      body: AnnualCloseFinalizationWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualCloseLifecycleWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/annual-closes/\${encodeURIComponent(decisionId)}/finalizations\`,
+        "POST",
+        request,
+        body,
+        isAnnualCloseLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceAttestAnnualCloseSignedArtifact(
+      decisionId: string,
+      body: AnnualCloseSignedArtifactWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualCloseLifecycleWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/annual-closes/\${encodeURIComponent(decisionId)}/signed-artifacts\`,
+        "POST",
+        request,
+        body,
+        isAnnualCloseLifecycleWire,
       );
     },
 
@@ -1607,6 +1847,34 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     ): Promise<OwnerDividendLifecycleWire> {
       return executeJson(
         \`\${baseUrl}/api/v1/corporate-governance/owner-dividends/\${encodeURIComponent(decisionId)}/approvals\`,
+        "POST",
+        request,
+        body,
+        isOwnerDividendLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceRecordOwnerDividendEvent(
+      decisionId: string,
+      body: OwnerDividendEventWire,
+      request: TalliMutationOptions,
+    ): Promise<OwnerDividendLifecycleWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/owner-dividends/\${encodeURIComponent(decisionId)}/events\`,
+        "POST",
+        request,
+        body,
+        isOwnerDividendLifecycleWire,
+      );
+    },
+
+    async corporateGovernanceAttestOwnerDividendSignedArtifact(
+      decisionId: string,
+      body: OwnerDividendSignedArtifactWire,
+      request: TalliMutationOptions,
+    ): Promise<OwnerDividendLifecycleWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/owner-dividends/\${encodeURIComponent(decisionId)}/signed-artifacts\`,
         "POST",
         request,
         body,
@@ -1987,20 +2255,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         body,
         request,
         "TAX_SETTLEMENT",
-      );
-    },
-
-    async ledgerFinalizeCorporateDecision(
-      body: LedgerCorporateDecisionFinalizationWire,
-      request: TalliMutationOptions,
-    ): Promise<LedgerWriterResultWire> {
-      return executeLedgerWriter(
-        "/api/v1/ledger/corporate-decisions/finalizations",
-        body,
-        request,
-        body.ledgerEntryId === undefined || body.ledgerEntryId === null
-          ? null
-          : "OWNER_DIVIDEND_DECLARED",
       );
     },
 

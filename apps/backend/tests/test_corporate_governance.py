@@ -1,30 +1,47 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import date, time
+from datetime import UTC, date, datetime, time
 
 import pytest
-
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference,
-    ApprovedAnnualBasis,
+    AnnualCloseEventKind,
+    AnnualCloseProposalCommand,
+    AnnualDataSourceFacts,
     BoardMeeting,
     BoardParticipant,
     BoardRole,
     BoardTreatmentMethod,
+    CorporateAccountMovementFacts,
+    CorporateArtifactId,
+    CorporateArtifactKind,
+    CorporateArtifactRecord,
+    CorporateArtifactVariant,
+    CorporateDecisionFactSources,
     CorporateDecisionId,
+    CorporateDecisionKind,
+    CorporateDecisionRecord,
     CorporateDocumentSetId,
+    CorporateDocumentSetRecord,
     CorporateEventId,
+    CorporateEventRecord,
+    CorporateFinalizationId,
+    CorporateFinalizationRecord,
     CorporateGovernanceError,
     CorporateGovernanceErrorCode,
+    CorporateLifecycleSnapshot,
     CorporateSourceReference,
+    DocumentReference,
     GeneralMeeting,
     MeetingForm,
     OwnerDividendProposalCommand,
+    OwnerDividendEventKind,
     PersistedCompanyFacts,
     PersistedShareholderFacts,
-    ReviewedOwnerDividendFacts,
-    ReviewedShareholderFacts,
+    PreparedOwnerDividendFinalization,
+    RecordAnnualCloseEventCommand,
+    RecordOwnerDividendEventCommand,
     RecordShareholderLoanCommand,
     ShareholderBallot,
     ShareholderLoanDirection,
@@ -33,6 +50,7 @@ from talli_backend.modules.corporate_governance.public import (
 )
 from talli_backend.modules.corporate_governance.service import (
     CorporateGovernanceService,
+    canonical_owner_dividend_payload,
 )
 from talli_backend.shared.kernel import (
     ActorId,
@@ -47,22 +65,105 @@ from talli_backend.shared.kernel import (
 )
 
 
-def supported_proposal() -> OwnerDividendProposalCommand:
+def supported_fact_sources(annual_year: int = 2024) -> CorporateDecisionFactSources:
     company_id = CompanyId("22222222-2222-4222-8222-222222222222")
     shareholders = (
         PersistedShareholderFacts("shareholder-2", "Jørgen Østby", 400, 2),
         PersistedShareholderFacts("shareholder-1", "Åse Nordmann", 600, 1),
     )
-    annual_basis = ApprovedAnnualBasis(
-        CorporateSourceReference("33333333-3333-4333-8333-333333333333"),
-        IncomeYear(2024),
-        True,
-        "a" * 64,
-        "b" * 64,
-        12_500_000,
-        50_000_000,
-        30_000_000,
-        40_000_000,
+    return CorporateDecisionFactSources(
+        company=PersistedCompanyFacts(
+            company_id,
+            "310279617",
+            "LOGISK ØDE TIGER AS",
+        ),
+        shareholders=shareholders,
+        annual_data=(
+            AnnualDataSourceFacts(
+                CorporateSourceReference(
+                    "33333333-3333-4333-8333-333333333333"
+                ),
+                company_id,
+                IncomeYear(annual_year),
+                {"general_meeting_approved": True},
+                (),
+                False,
+                0,
+                f"{annual_year + 1}-05-01T10:00:00+00:00",
+                f"{annual_year + 1}-05-01T10:00:00+00:00",
+            ),
+        ),
+    )
+
+
+def supported_ledger_lines(annual_year: int = 2024) -> tuple[CorporateAccountMovementFacts, ...]:
+    return (
+        CorporateAccountMovementFacts(IncomeYear(annual_year), "8070", 0, 12_500_000),
+        CorporateAccountMovementFacts(IncomeYear(annual_year), "2000", 0, 20_000_000),
+        CorporateAccountMovementFacts(IncomeYear(annual_year), "2050", 0, 17_500_000),
+        CorporateAccountMovementFacts(IncomeYear(annual_year), "1920", 40_000_000, 0),
+    )
+
+
+def test_annual_source_answers_are_deeply_immutable() -> None:
+    source = supported_fact_sources().annual_data[0]
+
+    with pytest.raises(TypeError):
+        source.answers["general_meeting_approved"] = False  # type: ignore[index]
+
+
+def test_prepared_finalization_artifact_hashes_are_immutable() -> None:
+    prepared = PreparedOwnerDividendFinalization(
+        declared_amount_ore=10_000,
+        accounting_policy_version="owner-dividend-accounting-v1",
+        declaration_debit_account="2050",
+        dividend_payable_account="2920",
+        signed_artifact_hashes={"minutes": "a" * 64},
+        replay=None,
+    )
+
+    with pytest.raises(TypeError):
+        prepared.signed_artifact_hashes["minutes"] = "b" * 64  # type: ignore[index]
+
+
+def test_lifecycle_event_command_metadata_is_immutable() -> None:
+    proposal = supported_proposal()
+    shared = {
+        "company_id": proposal.company_id,
+        "actor_id": proposal.actor_id,
+        "correlation_id": CorrelationId("immutable-event-metadata"),
+        "decision_id": proposal.decision_id,
+        "document_set_id": proposal.document_set_id,
+        "decision_hash": "a" * 64,
+        "metadata": {"reason": "owner-requested"},
+    }
+    commands = (
+        RecordOwnerDividendEventCommand(
+            **shared,
+            idempotency_key=IdempotencyKey("immutable-owner-event-0001"),
+            event_id=CorporateEventId("34343434-3434-4343-8343-343434343434"),
+            event_kind=OwnerDividendEventKind.SUPERSEDED,
+        ),
+        RecordAnnualCloseEventCommand(
+            **shared,
+            idempotency_key=IdempotencyKey("immutable-annual-event-0001"),
+            event_id=CorporateEventId("45454545-4545-4454-8454-454545454545"),
+            event_kind=AnnualCloseEventKind.SUPERSEDED,
+        ),
+    )
+
+    for command in commands:
+        with pytest.raises(TypeError):
+            command.metadata["reason"] = "changed"  # type: ignore[index]
+
+
+def supported_proposal() -> OwnerDividendProposalCommand:
+    company_id = CompanyId("22222222-2222-4222-8222-222222222222")
+    facts = CorporateGovernanceService().derive_decision_facts(
+        sources=supported_fact_sources(),
+        ledger_lines=supported_ledger_lines(),
+        decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+        income_year=IncomeYear(2025),
     )
     return OwnerDividendProposalCommand(
         company_id=company_id,
@@ -75,21 +176,10 @@ def supported_proposal() -> OwnerDividendProposalCommand:
         income_year=IncomeYear(2025),
         decision_id=CorporateDecisionId("11111111-1111-4111-8111-111111111111"),
         document_set_id=CorporateDocumentSetId("44444444-4444-4444-8444-444444444444"),
-        company=PersistedCompanyFacts(company_id, "310279617", "LOGISK ØDE TIGER AS"),
-        shareholders=shareholders,
-        annual_basis=annual_basis,
-        reviewed_facts=ReviewedOwnerDividendFacts(
-            "310279617",
-            "LOGISK ØDE TIGER AS",
-            (
-                ReviewedShareholderFacts("shareholder-1", "Åse Nordmann", 600),
-                ReviewedShareholderFacts("shareholder-2", "Jørgen Østby", 400),
-            ),
-            1_000,
-            30_000_000,
-            "a" * 64,
-            "b" * 64,
-        ),
+        company=facts.company,
+        shareholders=facts.shareholders,
+        annual_basis=facts.annual_basis,
+        reviewed_facts=facts.reviewed_facts,
         board_meeting=BoardMeeting(
             LocalDate(date(2025, 6, 10)),
             time(9, 0),
@@ -122,6 +212,54 @@ def supported_proposal() -> OwnerDividendProposalCommand:
     )
 
 
+def test_governance_basis_does_not_apply_future_annual_filing_policy() -> None:
+    sources = supported_fact_sources()
+    source = replace(
+        sources.annual_data[0],
+        confirmations=("annual_accounts_audit_required",),
+    )
+
+    facts = CorporateGovernanceService().derive_decision_facts(
+        sources=replace(sources, annual_data=(source,)),
+        ledger_lines=supported_ledger_lines(),
+        decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+        income_year=IncomeYear(2025),
+    )
+
+    assert facts.annual_basis.result_after_tax_ore == 12_500_000
+    assert facts.annual_basis.available_distribution_ore == 30_000_000
+    assert len(facts.annual_basis.governance_basis_sha256) == 64
+
+
+def test_governance_basis_preserves_all_predecessor_result_accounts() -> None:
+    year = IncomeYear(2024)
+    lines = (
+        CorporateAccountMovementFacts(year, "8070", 0, 1_000_000),
+        CorporateAccountMovementFacts(year, "8071", 0, 2_000_000),
+        CorporateAccountMovementFacts(year, "8074", 0, 3_000_000),
+        CorporateAccountMovementFacts(year, "8050", 0, 4_000_000),
+        CorporateAccountMovementFacts(year, "7770", 1_000_000, 0),
+        CorporateAccountMovementFacts(year, "8090", 500_000, 0),
+        CorporateAccountMovementFacts(year, "8171", 750_000, 0),
+        CorporateAccountMovementFacts(year, "8174", 250_000, 0),
+        CorporateAccountMovementFacts(year, "8300", 500_000, 0),
+        CorporateAccountMovementFacts(year, "2000", 0, 20_000_000),
+        CorporateAccountMovementFacts(year, "2050", 0, 17_500_000),
+        CorporateAccountMovementFacts(year, "1920", 40_000_000, 0),
+    )
+
+    facts = CorporateGovernanceService().derive_decision_facts(
+        sources=supported_fact_sources(),
+        ledger_lines=lines,
+        decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+        income_year=IncomeYear(2025),
+    )
+
+    assert facts.annual_basis.result_after_tax_ore == 7_000_000
+    assert facts.annual_basis.available_distribution_ore == 24_500_000
+    assert facts.annual_basis.equity_ore == 44_500_000
+
+
 def test_owner_dividend_policy_reproduces_characterized_canonical_facts() -> None:
     decision = CorporateGovernanceService().build_owner_dividend_decision(
         supported_proposal()
@@ -144,8 +282,373 @@ def test_owner_dividend_policy_reproduces_characterized_canonical_facts() -> Non
         ("shareholder-1", 6_000_001),
         ("shareholder-2", 4_000_000),
     ]
-    assert decision.source_hash == "0dae8fec5faceb20edf1e51cddb97ea06a4d0afcd6a7f420ba573b621f331b80"
-    assert decision.decision_hash == "b48464dfed6114e3a32f0f4da0d4ca939fae79119c7fea8b8c9838083890a776"
+    assert decision.source_hash == "b6546ddfcafb08add7ec90e1897c807d1bf7a410b650d9139bde848805a76c52"
+    assert decision.decision_hash == "cecda1a8099d790ea128a710c3d2523cf0587828a7e8de8ebb668d7e976c1149"
+
+
+def test_migrated_decision_uses_persisted_facts_when_legacy_hash_cannot_be_recomputed() -> None:
+    service = CorporateGovernanceService()
+    proposal = supported_proposal()
+    decision = service.build_owner_dividend_decision(proposal)
+    facts = service.derive_decision_facts(
+        sources=supported_fact_sources(),
+        ledger_lines=supported_ledger_lines(),
+        decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+        income_year=proposal.income_year,
+    )
+    record = CorporateDecisionRecord(
+        decision_id=decision.decision_id,
+        document_set_id=decision.document_set_id,
+        company_id=decision.company_id,
+        income_year=decision.income_year,
+        decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+        annual_close_source_id=decision.annual_close_source_id,
+        source_hash="f" * 64,
+        canonical_input=canonical_owner_dividend_payload(decision),
+        decision_hash=decision.decision_hash,
+        supersedes_decision_id=None,
+        created_by=str(decision.company_id),
+        created_at=datetime(2025, 6, 20, 12, tzinfo=UTC),
+        source_hash_uses_current_basis=False,
+    )
+
+    assert service.current_facts_match(record, facts)
+    assert not service.current_facts_match(
+        replace(record, source_hash_uses_current_basis=True),
+        facts,
+    )
+
+
+def test_canonical_owner_dividend_renders_characterized_pdfs_in_process() -> None:
+    service = CorporateGovernanceService()
+    decision = service.build_owner_dividend_decision(supported_proposal())
+
+    first = service.render_corporate_documents(decision)
+    second = service.render_corporate_documents(decision)
+
+    assert first == second
+    assert [artifact.artifact_kind.value for artifact in first] == [
+        "dividend_board_proposal",
+        "dividend_general_meeting_minutes",
+    ]
+    assert [artifact.filename for artifact in first] == [
+        "styrets-forslag-til-utbytte.pdf",
+        "generalforsamlingsprotokoll-utbytte.pdf",
+    ]
+    assert [artifact.content_sha256 for artifact in first] == [
+        "d3c8dae43d8cbf5251080b28d8bfaa0dd3e4be77570952e3efd26dc749a8d30e",
+        "98f6fc441dc66bc469702763c5cd112b4357bb7355ef0a80f79c79f6f30de287",
+    ]
+    assert [artifact.byte_length for artifact in first] == [32130, 32388]
+    assert all(artifact.pdf_bytes.startswith(b"%PDF-") for artifact in first)
+    assert all(artifact.decision_hash == decision.decision_hash for artifact in first)
+
+
+def supported_annual_close() -> AnnualCloseProposalCommand:
+    owner = supported_proposal()
+    facts = CorporateGovernanceService().derive_decision_facts(
+        sources=supported_fact_sources(2025),
+        ledger_lines=supported_ledger_lines(2025),
+        decision_kind=CorporateDecisionKind.ANNUAL_CLOSE,
+        income_year=IncomeYear(2025),
+    )
+    return AnnualCloseProposalCommand(
+        company_id=owner.company_id,
+        actor_id=owner.actor_id,
+        correlation_id=CorrelationId("annual-close-proposal"),
+        idempotency_key=IdempotencyKey("annual-close-proposal-0001"),
+        income_year=IncomeYear(2025),
+        decision_id=CorporateDecisionId("44444444-4444-4444-8444-444444444444"),
+        document_set_id=CorporateDocumentSetId(
+            "55555555-5555-4555-8555-555555555555"
+        ),
+        company=facts.company,
+        shareholders=facts.shareholders,
+        annual_basis=facts.annual_basis,
+        reviewed_facts=facts.reviewed_facts,
+        board_meeting=replace(
+            owner.board_meeting,
+            meeting_date=LocalDate(date(2026, 4, 15)),
+        ),
+        board_participants=owner.board_participants,
+        general_meeting=replace(
+            owner.general_meeting,
+            meeting_date=LocalDate(date(2026, 5, 10)),
+        ),
+        shareholder_ballots=owner.shareholder_ballots,
+        one_share_class_confirmed=True,
+        full_board_participation_confirmed=True,
+        unanimous_board_confirmed=True,
+        supported_dividend_basis_confirmed=True,
+        prudent_equity_and_liquidity_confirmed=True,
+        annual_result_allocation_ore=12_500_000,
+    )
+
+
+def test_annual_close_policy_and_renderer_reproduce_characterized_artifacts() -> None:
+    service = CorporateGovernanceService()
+
+    decision = service.build_annual_close_decision(supported_annual_close())
+    artifacts = service.render_corporate_documents(decision)
+
+    assert decision.source_hash == "6c35ece9b54490461391d19e3b5f22d06d2c57b2518d632f84b4f8cbf946b70a"
+    assert decision.decision_hash == "22d6b2d7ddb555022813b56ebd554bdfef6a78ac5b0dd6654a3f2d208c3111d6"
+    assert decision.dividend is None
+    assert [artifact.artifact_kind.value for artifact in artifacts] == [
+        "annual_board_minutes",
+        "annual_general_meeting_minutes",
+    ]
+    assert [artifact.content_sha256 for artifact in artifacts] == [
+        "09dbe1a6e356232aa3df006cc1a434c1f8dbef519272462fb3ffc87cca681a1a",
+        "984884c2f22b8b27a2251862ac0f8e060b4dbf50cfa9348188cf7ced31a378bd",
+    ]
+    assert [artifact.byte_length for artifact in artifacts] == [32069, 32627]
+
+
+def test_lifecycle_readiness_is_derived_by_the_python_governance_owner() -> None:
+    service = CorporateGovernanceService()
+    decision = service.build_owner_dividend_decision(supported_proposal())
+    created_at = datetime(2025, 6, 20, 12, tzinfo=UTC)
+    artifacts = tuple(
+        CorporateArtifactRecord(
+            artifact_id=CorporateArtifactId(f"00000000-0000-4000-8000-00000000000{index}"),
+            company_id=decision.company_id,
+            income_year=decision.income_year,
+            document_set_id=decision.document_set_id,
+            artifact_kind=kind,
+            variant=variant,
+            document_id=DocumentReference(f"10000000-0000-4000-8000-00000000000{index}"),
+            content_sha256=str(index) * 64,
+            byte_length=100 + index,
+            supersedes_artifact_id=(
+                CorporateArtifactId(f"00000000-0000-4000-8000-00000000000{index - 2}")
+                if variant is CorporateArtifactVariant.SIGNED_OWNER_ATTESTED
+                else None
+            ),
+            created_by=str(decision.company_id),
+            created_at=created_at,
+        )
+        for index, (kind, variant) in enumerate(
+            (
+                (CorporateArtifactKind.DIVIDEND_BOARD_PROPOSAL, CorporateArtifactVariant.UNSIGNED),
+                (CorporateArtifactKind.DIVIDEND_GENERAL_MEETING_MINUTES, CorporateArtifactVariant.UNSIGNED),
+                (CorporateArtifactKind.DIVIDEND_BOARD_PROPOSAL, CorporateArtifactVariant.SIGNED_OWNER_ATTESTED),
+                (CorporateArtifactKind.DIVIDEND_GENERAL_MEETING_MINUTES, CorporateArtifactVariant.SIGNED_OWNER_ATTESTED),
+            ),
+            start=1,
+        )
+    )
+    snapshot = CorporateLifecycleSnapshot(
+        decisions=(CorporateDecisionRecord(
+            decision_id=decision.decision_id,
+            document_set_id=decision.document_set_id,
+            company_id=decision.company_id,
+            income_year=decision.income_year,
+            decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+            annual_close_source_id=decision.annual_close_source_id,
+            source_hash=decision.source_hash,
+            canonical_input=canonical_owner_dividend_payload(decision),
+            decision_hash=decision.decision_hash,
+            supersedes_decision_id=None,
+            created_by=str(decision.company_id),
+            created_at=created_at,
+        ),),
+        document_sets=(CorporateDocumentSetRecord(
+            document_set_id=decision.document_set_id,
+            company_id=decision.company_id,
+            income_year=decision.income_year,
+            decision_id=decision.decision_id,
+            template_family=decision.template_family,
+            template_version=decision.template_version,
+            decision_hash=decision.decision_hash,
+            supersedes_document_set_id=None,
+            created_by=str(decision.company_id),
+            created_at=created_at,
+        ),),
+        artifacts=artifacts,
+        events=(
+            CorporateEventRecord(
+                event_id=CorporateEventId("20000000-0000-4000-8000-000000000001"),
+                company_id=decision.company_id,
+                income_year=decision.income_year,
+                decision_id=decision.decision_id,
+                document_set_id=decision.document_set_id,
+                artifact_id=None,
+                event_kind="facts_approved",
+                actor_id=str(decision.company_id),
+                occurred_at=created_at,
+                created_at=created_at,
+                decision_hash=decision.decision_hash,
+                content_sha256=None,
+                metadata={},
+                idempotency_key="facts-approved",
+            ),
+            CorporateEventRecord(
+                event_id=CorporateEventId("20000000-0000-4000-8000-000000000002"),
+                company_id=decision.company_id,
+                income_year=decision.income_year,
+                decision_id=decision.decision_id,
+                document_set_id=decision.document_set_id,
+                artifact_id=None,
+                event_kind="payment_recorded",
+                actor_id=str(decision.company_id),
+                occurred_at=created_at,
+                created_at=created_at,
+                decision_hash=decision.decision_hash,
+                content_sha256=None,
+                metadata={"amountOre": 1_000_000, "proof": {"status": "recorded"}},
+                idempotency_key="payment-recorded",
+            ),
+        ),
+        finalizations=(CorporateFinalizationRecord(
+            finalization_id=CorporateFinalizationId("30000000-0000-4000-8000-000000000001"),
+            company_id=decision.company_id,
+            income_year=decision.income_year,
+            decision_id=decision.decision_id,
+            finalization_kind="owner_dividend_declared",
+            holding_action_id=None,
+            accounting_entry_id=None,
+            annual_close_source_id=None,
+            decision_hash=decision.decision_hash,
+            signed_artifact_hashes={},
+            accounting_policy_version="owner-dividend-accounting-v1",
+            created_by=str(decision.company_id),
+            created_at=created_at,
+        ),),
+    )
+
+    readiness = service.assess_lifecycle(
+        snapshot,
+        company_id=decision.company_id,
+        income_year=decision.income_year,
+        decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+        current_source_hash=decision.source_hash,
+    )
+
+    assert readiness.state.value == "partially_paid"
+
+    with pytest.raises(TypeError):
+        snapshot.decisions[0].canonical_input["financial_totals"]["cash_ore"] = 0  # type: ignore[index]
+    with pytest.raises(TypeError):
+        snapshot.events[1].metadata["proof"]["status"] = "changed"  # type: ignore[index]
+    with pytest.raises(TypeError):
+        snapshot.finalizations[0].signed_artifact_hashes["changed"] = "0" * 64  # type: ignore[index]
+    with pytest.raises(TypeError):
+        readiness.generated_artifact_hashes["changed"] = "0" * 64  # type: ignore[index]
+    assert readiness.current_source_matches is True
+    assert readiness.ready_for_signing is True
+    assert readiness.finalized is True
+    assert readiness.declared_amount_ore == 10_000_001
+    assert readiness.paid_amount_ore == 1_000_000
+    assert readiness.remaining_amount_ore == 9_000_001
+    assert readiness.required_signers == {
+        "dividend_board_proposal": ("Jørgen Østby", "Åse Nordmann"),
+        "dividend_general_meeting_minutes": ("Jørgen Østby", "Åse Nordmann"),
+    }
+    assert readiness.blockers == ()
+
+    migrated_snapshot = replace(
+        snapshot,
+        decisions=(
+            replace(
+                snapshot.decisions[0],
+                source_hash="f" * 64,
+                source_hash_uses_current_basis=False,
+            ),
+        ),
+    )
+    migrated = service.assess_lifecycle(
+        migrated_snapshot,
+        company_id=decision.company_id,
+        income_year=decision.income_year,
+        decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+        current_source_hash=decision.source_hash,
+        current_facts_match=True,
+    )
+
+    assert migrated.current_source_matches is True
+    assert migrated.ready_for_signing is True
+    assert "corporate_documents_current_hash_mismatch" not in {
+        item.code for item in migrated.blockers
+    }
+
+    migrated_with_current_hash_basis = service.assess_lifecycle(
+        replace(
+            migrated_snapshot,
+            decisions=(
+                replace(
+                    migrated_snapshot.decisions[0],
+                    source_hash_uses_current_basis=True,
+                ),
+            ),
+        ),
+        company_id=decision.company_id,
+        income_year=decision.income_year,
+        decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+        current_source_hash=decision.source_hash,
+        current_facts_match=True,
+    )
+
+    assert migrated_with_current_hash_basis.current_source_matches is False
+    assert "corporate_documents_current_hash_mismatch" in {
+        item.code for item in migrated_with_current_hash_basis.blockers
+    }
+
+    superseded = service.assess_lifecycle(
+        replace(
+            snapshot,
+            events=snapshot.events
+            + (
+                CorporateEventRecord(
+                    event_id=CorporateEventId(
+                        "20000000-0000-4000-8000-000000000003"
+                    ),
+                    company_id=decision.company_id,
+                    income_year=decision.income_year,
+                    decision_id=decision.decision_id,
+                    document_set_id=decision.document_set_id,
+                    artifact_id=None,
+                    event_kind="superseded",
+                    actor_id=str(decision.company_id),
+                    occurred_at=created_at,
+                    created_at=created_at,
+                    decision_hash=decision.decision_hash,
+                    content_sha256=None,
+                    metadata={},
+                    idempotency_key="superseded-decision",
+                ),
+            ),
+        ),
+        company_id=decision.company_id,
+        income_year=decision.income_year,
+        decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+        current_source_hash=decision.source_hash,
+    )
+
+    assert superseded.state.value == "superseded"
+    assert superseded.ready_for_signing is False
+    assert superseded.finalized is False
+    assert "corporate_documents_terminal_decision" in {
+        item.code for item in superseded.blockers
+    }
+
+
+def test_lifecycle_readiness_blocks_missing_and_stale_annual_evidence() -> None:
+    service = CorporateGovernanceService()
+    proposal = supported_annual_close()
+
+    missing = service.assess_lifecycle(
+        CorporateLifecycleSnapshot((), (), (), (), ()),
+        company_id=proposal.company_id,
+        income_year=proposal.income_year,
+        decision_kind=CorporateDecisionKind.ANNUAL_CLOSE,
+        current_source_hash="f" * 64,
+    )
+
+    assert [item.code for item in missing.blockers] == [
+        "corporate_documents_decision_missing"
+    ]
+    assert missing.annual_submission_ready is False
 
 
 @pytest.mark.parametrize(

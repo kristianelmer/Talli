@@ -70,11 +70,19 @@ drop policy governance_owner_reads_shareholder_loans
 drop table corporate_governance.shareholder_loans;
 reset role;
 
-revoke execute on function backend_system.project_shareholder_loan_v1(
-  jsonb, text
-) from corporate_governance_store_owner;
+do $revoke_ledger_projection$
+begin
+  if pg_catalog.to_regprocedure(
+    'backend_system.project_shareholder_loan_v1(jsonb,text)'
+  ) is not null then
+    revoke execute on function backend_system.project_shareholder_loan_v1(
+      jsonb, text
+    ) from corporate_governance_store_owner;
+  end if;
+end
+$revoke_ledger_projection$;
 set local role ledger_store_owner;
-drop function backend_system.project_shareholder_loan_v1(jsonb, text);
+drop function if exists backend_system.project_shareholder_loan_v1(jsonb, text);
 reset role;
 
 revoke execute on function banking.claim_corporate_governance_transaction_v1(

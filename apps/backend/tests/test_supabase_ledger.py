@@ -1983,8 +1983,6 @@ def test_transaction_adapter_names_all_remaining_exact_prepare_and_complete_rout
     for operation in (
         "administrative_cost",
         "tax_settlement",
-        "corporate_decision_finalization",
-        "owner_dividend_payment",
     ):
         assert f"backend_system.prepare_{operation}_v1" in source
         assert f"backend_system.complete_{operation}_v1" in source
@@ -1992,6 +1990,8 @@ def test_transaction_adapter_names_all_remaining_exact_prepare_and_complete_rout
     assert "backend_system.complete_bank_transaction_suggestion_v1" not in source
     assert "backend_system.prepare_investment_dividend_v1" not in source
     assert "backend_system.complete_investment_dividend_v1" not in source
+    assert "corporate_decision_finalization" not in source
+    assert "owner_dividend_payment" not in source
 
 
 def test_adapter_never_uses_a_service_role_business_path() -> None:

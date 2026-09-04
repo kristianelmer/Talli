@@ -5,8 +5,6 @@ import inspect
 import json
 from datetime import UTC, date, datetime
 
-import pytest
-
 from talli_backend.adapters.supabase_corporate_governance import (
     SupabaseCorporateGovernanceSession,
     SupabaseCorporateGovernanceTransaction,
@@ -19,9 +17,15 @@ from talli_backend.modules.banking.public import (
     ExternalActionReference,
 )
 from talli_backend.modules.corporate_governance.public import (
-    AccountingEntryReference,
+    AttestAnnualCloseSignedArtifactCommand,
+    CorporateArtifactId,
+    CorporateArtifactKind,
+    CorporateDecisionKind,
+    CorporateDecisionId,
+    CorporateDocumentSetId,
     ApproveOwnerDividendCommand,
     CorporateEventId,
+    DocumentReference,
     OwnerDividendState,
     PreparedShareholderLoan,
     RecordedShareholderLoan,
@@ -36,9 +40,13 @@ from talli_backend.modules.ledger.public import (
     PostShareholderLoanCommand,
     ShareholderLoanDirection as LedgerShareholderLoanDirection,
 )
-from talli_backend.shared.kernel import CorrelationId, IdempotencyKey, LocalDate, Money
+from talli_backend.shared.kernel import CorrelationId, IdempotencyKey, IncomeYear, LocalDate, Money
 
-from test_corporate_governance import supported_proposal, supported_shareholder_loan
+from test_corporate_governance import (
+    supported_annual_close,
+    supported_proposal,
+    supported_shareholder_loan,
+)
 from test_corporate_governance_workflow import (
     DECISION_HASH,
     document_command,
@@ -64,15 +72,92 @@ def bound_transaction() -> SupabaseCorporateGovernanceTransaction:
 
 def test_session_uses_only_non_bypass_governance_workflow_role_and_verified_context() -> None:
     source = inspect.getsource(SupabaseCorporateGovernanceSession.transaction)
+    assert "set_isolation_level(psycopg.IsolationLevel.SERIALIZABLE)" in source
     assert "set local role corporate_governance_workflow_executor" in source
     assert "talli.verified_actor_id" in source
     assert "talli.verified_actor_claims" in source
 
 
+def test_annual_data_uses_the_frozen_restricted_compatibility_reader() -> None:
+    transaction = bound_transaction()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def rows(query: str, parameters: tuple[object, ...] = ()):
+        calls.append((query, parameters))
+        return [{"items": [{
+                "sourceId": "33333333-3333-4333-8333-333333333333",
+                "companyId": "22222222-2222-4222-8222-222222222222",
+                "incomeYear": 2024,
+                "answers": {"general_meeting_approved": True},
+                "confirmations": [],
+                "noActivityConfirmed": False,
+                "annualFullTimeEquivalents": 0,
+                "completedAt": "2025-05-01T10:00:00+00:00",
+                "updatedAt": "2025-05-01T10:00:00+00:00",
+            }]}]
+
+    transaction._database_rows = rows  # type: ignore[method-assign]
+    facts = asyncio.run(transaction.list_annual_data_compatibility(
+        company_id=supported_proposal().company_id,
+        income_year=IncomeYear(2025),
+    ))
+
+    assert int(facts[0].income_year) == 2024
+    assert "list_annual_data_legacy_v1" in calls[0][0]
+
+
+def test_annual_data_normalizes_legacy_null_fte_to_zero() -> None:
+    transaction = bound_transaction()
+
+    async def rows(query: str, parameters: tuple[object, ...] = ()):
+        return [{"items": [{
+                "sourceId": "33333333-3333-4333-8333-333333333333",
+                "companyId": "22222222-2222-4222-8222-222222222222",
+                "incomeYear": 2024,
+                "answers": {"general_meeting_approved": True},
+                "confirmations": [],
+                "noActivityConfirmed": False,
+                "annualFullTimeEquivalents": None,
+                "completedAt": "2025-05-01T10:00:00+00:00",
+                "updatedAt": "2025-05-01T10:00:00+00:00",
+            }]}]
+
+    transaction._database_rows = rows  # type: ignore[method-assign]
+    facts = asyncio.run(transaction.list_annual_data_compatibility(
+        company_id=supported_proposal().company_id,
+        income_year=IncomeYear(2025),
+    ))
+
+    assert facts[0].annual_full_time_equivalents == 0
+
+
+def test_company_identity_uses_the_company_access_owned_query_contract() -> None:
+    transaction = bound_transaction()
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def rows(query: str, parameters: tuple[object, ...] = ()):
+        calls.append((query, parameters))
+        return [{"result": {
+            "companyId": str(supported_proposal().company_id),
+            "organizationNumber": "310279617",
+            "legalName": "LOGISK ØDE TIGER AS",
+        }}]
+
+    transaction._database_rows = rows  # type: ignore[method-assign]
+    facts = asyncio.run(
+        transaction.read_company_facts(supported_proposal().company_id)
+    )
+
+    assert facts.organization_number == "310279617"
+    assert facts.legal_name == "LOGISK ØDE TIGER AS"
+    assert "company_access_read_company_identity_v1" in calls[0][0]
+
+
 def test_proposal_sends_python_canonical_facts_without_account_policy() -> None:
     transaction = bound_transaction()
     command = supported_proposal()
-    decision = CorporateGovernanceService().build_owner_dividend_decision(command)
+    service = CorporateGovernanceService()
+    decision = service.build_owner_dividend_decision(command)
     calls: list[tuple[str, tuple[object, ...]]] = []
 
     async def rows(query: str, parameters: tuple[object, ...] = ()):
@@ -83,7 +168,13 @@ def test_proposal_sends_python_canonical_facts_without_account_policy() -> None:
         }}]
 
     transaction._database_rows = rows  # type: ignore[method-assign]
-    result = asyncio.run(transaction.propose_owner_dividend(command, decision))
+    result = asyncio.run(
+        transaction.propose_owner_dividend(
+            command,
+            decision,
+            service.canonical_payload(decision),
+        )
+    )
     request = json.loads(str(calls[0][1][0]))
     canonical = json.loads(str(calls[0][1][1]))
 
@@ -95,6 +186,86 @@ def test_proposal_sends_python_canonical_facts_without_account_policy() -> None:
     assert canonical["dividend"]["amountOre"] == 10_000_001
     assert "declarationDebitAccount" not in json.dumps(canonical)
     assert "accountingPolicyVersion" not in json.dumps(canonical)
+
+
+def test_annual_close_proposal_uses_the_restricted_canonical_store() -> None:
+    transaction = bound_transaction()
+    command = supported_annual_close()
+    service = CorporateGovernanceService()
+    decision = service.build_annual_close_decision(command)
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def rows(query: str, parameters: tuple[object, ...] = ()):
+        calls.append((query, parameters))
+        return [{"result": {"state": "proposed", "replayed": False}}]
+
+    transaction._database_rows = rows  # type: ignore[method-assign]
+    artifacts = CorporateGovernanceService().render_corporate_documents(decision)
+    result = asyncio.run(
+        transaction.propose_annual_close(
+            command,
+            decision,
+            service.canonical_payload(decision),
+            artifacts,
+        )
+    )
+    request = json.loads(str(calls[0][1][0]))
+    canonical = json.loads(str(calls[0][1][1]))
+    rendered = json.loads(str(calls[0][1][3]))
+
+    assert result.decision == decision
+    assert result.state is OwnerDividendState.PROPOSED
+    assert "corporate_governance.propose_annual_close_v1" in calls[0][0]
+    assert request["decisionId"] == str(command.decision_id)
+    assert canonical["decisionKind"] == "annual_close"
+    assert canonical["dividend"] is None
+    assert rendered[0]["contentSha256"] == artifacts[0].content_sha256
+
+
+def test_annual_close_signed_artifact_uses_restricted_canonical_store() -> None:
+    transaction = bound_transaction()
+    command = AttestAnnualCloseSignedArtifactCommand(
+        company_id=supported_annual_close().company_id,
+        actor_id=supported_annual_close().actor_id,
+        correlation_id=CorrelationId("annual-close-board-signed"),
+        idempotency_key=IdempotencyKey("annual-close-board-signed-0001"),
+        decision_id=CorporateDecisionId(
+            "11111111-1111-4111-8111-111111111111"
+        ),
+        document_set_id=CorporateDocumentSetId(
+            "44444444-4444-4444-8444-444444444444"
+        ),
+        decision_hash="c" * 64,
+        unsigned_artifact_id=CorporateArtifactId(
+            "88888888-8888-4888-8888-888888888881"
+        ),
+        signed_artifact_id=CorporateArtifactId(
+            "88888888-8888-4888-8888-888888888891"
+        ),
+        signed_document_id=DocumentReference(
+            "99999999-9999-4999-8999-999999999991"
+        ),
+        artifact_kind=CorporateArtifactKind.ANNUAL_BOARD_MINUTES,
+        filename="signert-styreprotokoll.pdf",
+        content_sha256="e" * 64,
+        byte_length=303,
+        signers=("Ola Nordmann",),
+    )
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def rows(query: str, parameters: tuple[object, ...] = ()):
+        calls.append((query, parameters))
+        return [{"result": annual_lifecycle_payload("signed_owner_attested")}]
+
+    transaction._database_rows = rows  # type: ignore[method-assign]
+    result = asyncio.run(transaction.attest_annual_close_signed_artifact(command))
+    request = json.loads(str(calls[0][1][0]))
+
+    assert result.state is OwnerDividendState.SIGNED_OWNER_ATTESTED
+    assert "backend_system.attest_corporate_governance_signed_artifact_v1" in calls[0][0]
+    assert request["unsignedArtifactId"] == str(command.unsigned_artifact_id)
+    assert request["signedArtifactId"] == str(command.signed_artifact_id)
+    assert request["signers"] == ["Ola Nordmann"]
 
 
 def test_document_approval_and_finalization_map_exact_replays() -> None:
@@ -142,7 +313,7 @@ def test_document_approval_and_finalization_map_exact_replays() -> None:
     ))
     assert completed.state is OwnerDividendState.FINALIZED
     assert [name in query for name, query in [
-        ("register_owner_dividend_documents_v1", calls[0][0]),
+        ("backend_system.register_corporate_governance_documents_v1", calls[0][0]),
         ("approve_owner_dividend_v1", calls[1][0]),
         ("prepare_owner_dividend_finalization_v1", calls[2][0]),
         ("complete_owner_dividend_finalization_v1", calls[3][0]),
@@ -348,7 +519,7 @@ def test_shareholder_loan_prepare_and_complete_use_canonical_governance_store() 
     assert result.loan == loan
     assert result.accounting_entry_id == command.ledger_entry_id
     assert "corporate_governance.prepare_shareholder_loan_v1" in calls[0][0]
-    assert "corporate_governance.complete_shareholder_loan_v1" in calls[1][0]
+    assert "backend_system.complete_corporate_governance_shareholder_loan_v1" in calls[1][0]
     completion = json.loads(str(calls[1][1][0]))
     assert completion["ledgerEntryId"] == str(command.ledger_entry_id)
 
@@ -369,5 +540,24 @@ def lifecycle_payload(state: str, *, accounting_entry_id: str | None = None) -> 
             str(finalization_command().finalization_id) if state == "finalized" else None
         ),
         "accountingEntryId": accounting_entry_id,
+        "replayed": False,
+    }
+
+
+def annual_lifecycle_payload(state: str) -> dict[str, object]:
+    command = supported_annual_close()
+    return {
+        "decisionId": str(command.decision_id),
+        "documentSetId": str(command.document_set_id),
+        "companyId": str(command.company_id),
+        "incomeYear": int(command.income_year),
+        "decisionHash": DECISION_HASH,
+        "state": state,
+        "generatedArtifactHashes": {
+            "annual_board_minutes": "a" * 64,
+            "annual_general_meeting_minutes": "b" * 64,
+        },
+        "signedArtifactHashes": {"annual_board_minutes": "e" * 64},
+        "finalizationId": None,
         "replayed": False,
     }

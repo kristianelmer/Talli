@@ -25,6 +25,54 @@ function lifecycle(state = "finalized") {
   };
 }
 
+test("decision-facts transport sends only identity and accepts the generated response", async () => {
+  const captured = [];
+  const sha = "b".repeat(64);
+  const client = createTalliApiClient({
+    baseUrl: "https://backend.example/",
+    fetch: async (url, request) => {
+      captured.push({ url: String(url), request });
+      return Response.json({
+        company: { organizationNumber: "310279617", legalName: "Talli AS" },
+        shareholders: [{ shareholderId: "owner-1", name: "Owner", shareCount: 100, order: 0 }],
+        annualBasis: {
+          sourceId: "33333333-3333-4333-8333-333333333333",
+          incomeYear: 2024,
+          latestApproved: true,
+          annualDataSha256: sha,
+          governanceBasisSha256: sha,
+          resultAfterTaxOre: 100,
+          equityOre: 200,
+          availableDistributionOre: 100,
+          cashOre: 300,
+        },
+        reviewedFacts: {
+          organizationNumber: "310279617",
+          legalName: "Talli AS",
+          shareholders: [{ shareholderId: "owner-1", name: "Owner", shareCount: 100 }],
+          totalCompanyShares: 100,
+          availableDistributionOre: 100,
+          annualDataSha256: sha,
+          governanceBasisSha256: sha,
+        },
+      });
+    },
+  });
+
+  const result = await client.corporateGovernanceDeriveDecisionFacts({
+    companyId,
+    incomeYear: 2025,
+    decisionKind: "owner_dividend",
+  });
+
+  assert.equal(result.annualBasis.incomeYear, 2024);
+  assert.equal(
+    captured[0].url,
+    `https://backend.example/api/v1/corporate-governance/decision-facts?companyId=${companyId}&incomeYear=2025&decisionKind=owner_dividend`,
+  );
+  assert.equal(captured[0].request.method, "GET");
+});
+
 test("owner-dividend lifecycle transport preserves path and idempotency evidence", async () => {
   const captured = [];
   const client = createTalliApiClient({

@@ -54,8 +54,6 @@ from talli_backend.modules.ledger.public import (
     PostAdministrativeCostCommand,
     PostedLedgerEntry,
     PostManualJournalCommand,
-    PostOwnerDividendDeclaredCommand,
-    PostOwnerDividendPaymentCommand,
     PostTaxSettlementCommand,
     RebuildCompanyYearOpeningCommand,
     ReconstructionAssessment,
@@ -104,26 +102,6 @@ class RecordTaxSettlementCommand(LedgerCommand):
     document_status: str
     bank_transaction_id: LedgerSourceRecordId | None
     document_id: LedgerSourceRecordId | None
-
-
-@dataclass(frozen=True, slots=True)
-class FinalizeCorporateDecisionCommand(LedgerCommand):
-    decision_id: LedgerSourceRecordId
-    set_id: LedgerSourceRecordId
-    decision_hash: str
-    finalization_id: LedgerSourceRecordId
-    holding_action_id: LedgerSourceRecordId | None
-    ledger_entry_id: LedgerEntryId | None
-
-
-@dataclass(frozen=True, slots=True)
-class RecordOwnerDividendPaymentCommand(LedgerCommand):
-    decision_id: LedgerSourceRecordId
-    set_id: LedgerSourceRecordId
-    decision_hash: str
-    bank_transaction_id: LedgerSourceRecordId
-    holding_action_id: LedgerSourceRecordId
-    ledger_entry_id: LedgerEntryId
 
 
 @dataclass(frozen=True, slots=True)
@@ -605,105 +583,6 @@ class LedgerApplicationSession:
             )
             return LedgerWriterResult(posted, result, False)
 
-    async def finalize_corporate_decision(
-        self, command: FinalizeCorporateDecisionCommand
-    ) -> LedgerWriterResult:
-        if command.actor_id != self.actor_id:
-            raise LedgerError.forbidden()
-        async with self._persistence.transaction() as transaction:
-            prepared = await transaction.prepare_corporate_decision_finalization(
-                command
-            )
-            replay = prepared.get("replay")
-            if replay is not None:
-                if not isinstance(replay, dict):
-                    raise LedgerError.unavailable()
-                expected = (
-                    LedgerEntryKind.OWNER_DIVIDEND_DECLARED
-                    if replay.get("entryId") is not None
-                    else None
-                )
-                return _replayed_writer(replay, command, expected)
-            posted: PostedLedgerEntry | None = None
-            if prepared.get("decisionKind") == "owner_dividend":
-                if command.ledger_entry_id is None:
-                    raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
-                try:
-                    posted = await self._facade_factory(
-                        transaction
-                    ).post_owner_dividend_declared(
-                        PostOwnerDividendDeclaredCommand(
-                            company_id=command.company_id,
-                            actor_id=command.actor_id,
-                            correlation_id=command.correlation_id,
-                            idempotency_key=command.idempotency_key,
-                            income_year=command.income_year,
-                            finalization_id=command.finalization_id,
-                            declared_amount=Money.nok(str(prepared["declaredAmount"])),
-                            declaration_debit_account=str(
-                                prepared["declarationDebitAccount"]
-                            ),
-                            dividend_payable_account=str(
-                                prepared["dividendPayableAccount"]
-                            ),
-                            accounting_policy_version=str(
-                                prepared["accountingPolicyVersion"]
-                            ),
-                            ledger_entry_id=command.ledger_entry_id,
-                        )
-                    )
-                except (KeyError, TypeError, ValueError):
-                    raise LedgerError.unavailable() from None
-            elif prepared.get("decisionKind") != "annual_close":
-                raise LedgerError.unavailable()
-            result = await transaction.complete_corporate_decision_finalization(
-                command, posted, prepared
-            )
-            return LedgerWriterResult(posted, result, False)
-
-    async def record_owner_dividend_payment(
-        self, command: RecordOwnerDividendPaymentCommand
-    ) -> LedgerWriterResult:
-        if command.actor_id != self.actor_id:
-            raise LedgerError.forbidden()
-        async with self._persistence.transaction() as transaction:
-            prepared = await transaction.prepare_owner_dividend_payment(command)
-            replay = prepared.get("replay")
-            if replay is not None:
-                if not isinstance(replay, dict):
-                    raise LedgerError.unavailable()
-                return _replayed_writer(
-                    replay, command, LedgerEntryKind.OWNER_DIVIDEND_PAYMENT
-                )
-            try:
-                posted = await self._facade_factory(
-                    transaction
-                ).post_owner_dividend_payment(
-                    PostOwnerDividendPaymentCommand(
-                        company_id=command.company_id,
-                        actor_id=command.actor_id,
-                        correlation_id=command.correlation_id,
-                        idempotency_key=command.idempotency_key,
-                        income_year=command.income_year,
-                        payment_event_id=command.holding_action_id,
-                        payment_amount=Money.nok(str(prepared["paymentAmount"])),
-                        dividend_payable_account=str(
-                            prepared["dividendPayableAccount"]
-                        ),
-                        bank_account=str(prepared["bankAccount"]),
-                        accounting_policy_version=str(
-                            prepared["accountingPolicyVersion"]
-                        ),
-                        ledger_entry_id=command.ledger_entry_id,
-                    )
-                )
-            except (KeyError, TypeError, ValueError):
-                raise LedgerError.unavailable() from None
-            result = await transaction.complete_owner_dividend_payment(
-                command, posted, prepared
-            )
-            return LedgerWriterResult(posted, result, False)
-
     async def post_manual_journal(
         self, command: PostManualJournalCommand
     ) -> PostedLedgerEntry:
@@ -853,7 +732,6 @@ class LedgerApplication:
 
 
 __all__ = [
-    "FinalizeCorporateDecisionCommand",
     "LedgerApplication",
     "LedgerAuthenticationError",
     "LedgerFacadeFactory",
@@ -862,6 +740,5 @@ __all__ = [
     "NewYearStartCommand",
     "NewYearStartResult",
     "RecordAdministrativeCostCommand",
-    "RecordOwnerDividendPaymentCommand",
     "RecordTaxSettlementCommand",
 ]

@@ -151,9 +151,18 @@ test("owner-dividend persistence is exact-replay, append-only, and reversible", 
   }
   assert.match(rollback, /drop function ledger\.post_corporate_governance_entry_v1/iu);
   assert.match(rollback, /drop function banking\.claim_owner_dividend_transaction_v1/iu);
-  assert.match(rollback, /drop function backend_system\.owner_dividend_signed_evidence_v1/iu);
-  assert.match(rollback, /drop function backend_system\.project_owner_dividend_finalization_v1/iu);
-  assert.match(rollback, /drop function backend_system\.project_owner_dividend_payment_v1/iu);
+  assert.match(
+    rollback,
+    /drop function(?: if exists)? backend_system\.owner_dividend_signed_evidence_v1/iu,
+  );
+  assert.match(
+    rollback,
+    /drop function(?: if exists)? backend_system\.project_owner_dividend_finalization_v1/iu,
+  );
+  assert.match(
+    rollback,
+    /drop function(?: if exists)? backend_system\.project_owner_dividend_payment_v1/iu,
+  );
   assert.match(rollback, /drop schema corporate_governance/iu);
 });
 

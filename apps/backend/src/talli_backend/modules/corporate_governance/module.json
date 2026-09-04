@@ -8,18 +8,18 @@
   "documentation": "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.corporate_governance.public",
   "exports": {
-    "commands": ["ApproveOwnerDividendCommand", "FinalizeOwnerDividendCommand", "OwnerDividendProposalCommand", "RecordOwnerDividendPaymentCommand", "RecordShareholderLoanCommand", "RegisterOwnerDividendDocumentsCommand"],
-    "queries": ["ApprovedAnnualBasis", "BoardMeeting", "BoardParticipant", "CanonicalBoardParticipant", "CanonicalDecisionShareholder", "CanonicalOwnerDividendDecision", "CanonicalShareholderLoan", "GeneralMeeting", "OwnerDividendAllocation", "OwnerDividendArtifactReference", "OwnerDividendConfirmations", "OwnerDividendFacts", "OwnerDividendFinancialTotals", "OwnerDividendLifecycle", "PersistedCompanyFacts", "PersistedShareholderFacts", "PreparedOwnerDividendFinalization", "PreparedOwnerDividendPayment", "PreparedShareholderLoan", "ProposedOwnerDividend", "RecordedShareholderLoan", "ReviewedOwnerDividendFacts", "ReviewedShareholderFacts", "ShareholderBallot"],
+    "commands": ["AnnualCloseProposalCommand", "ApproveAnnualCloseCommand", "ApproveOwnerDividendCommand", "AttestAnnualCloseSignedArtifactCommand", "AttestOwnerDividendSignedArtifactCommand", "FinalizeAnnualCloseCommand", "FinalizeOwnerDividendCommand", "OwnerDividendProposalCommand", "RecordAnnualCloseEventCommand", "RecordOwnerDividendEventCommand", "RecordOwnerDividendPaymentCommand", "RecordShareholderLoanCommand", "RegisterAnnualCloseDocumentsCommand", "RegisterOwnerDividendDocumentsCommand"],
+    "queries": ["AnnualCloseEventKind", "AnnualCloseLifecycle", "AnnualDataSourceFacts", "ApprovedAnnualBasis", "BoardMeeting", "BoardParticipant", "CanonicalAnnualCloseDecision", "CanonicalBoardParticipant", "CanonicalDecisionShareholder", "CanonicalOwnerDividendDecision", "CanonicalShareholderLoan", "CorporateAccountMovementFacts", "CorporateArtifactRecord", "CorporateArtifactVariant", "CorporateDecisionFactSources", "CorporateDecisionKind", "CorporateDecisionRecord", "CorporateDocumentReadiness", "CorporateDocumentReadinessBlocker", "CorporateDocumentSetRecord", "CorporateEventRecord", "CorporateFinalizationRecord", "CorporateLifecycleSnapshot", "CorporateReadinessSource", "DerivedCorporateDecisionFacts", "GeneralMeeting", "OwnerDividendAllocation", "OwnerDividendArtifactReference", "OwnerDividendConfirmations", "OwnerDividendEventKind", "OwnerDividendFacts", "OwnerDividendFinancialTotals", "OwnerDividendLifecycle", "PersistedCompanyFacts", "PersistedShareholderFacts", "PreparedOwnerDividendFinalization", "PreparedOwnerDividendPayment", "PreparedShareholderLoan", "ProposedAnnualClose", "ProposedOwnerDividend", "RecordedShareholderLoan", "RenderedCorporateArtifact", "ReviewedOwnerDividendFacts", "ReviewedShareholderFacts", "ShareholderBallot"],
     "events": [],
     "errors": ["CorporateGovernanceError", "CorporateGovernanceErrorCode"],
     "identifiers": ["AccountingEntryReference", "BankTransactionReference", "BoardRole", "BoardTreatmentMethod", "CorporateArtifactId", "CorporateArtifactKind", "CorporateDecisionId", "CorporateDocumentSetId", "CorporateEventId", "CorporateFinalizationId", "CorporateGovernancePersistence", "CorporateSourceReference", "DocumentReference", "MeetingForm", "OwnerDividendState", "ShareholderLoanDirection", "ShareholderLoanDocumentStatus", "ShareholderVote", "corporate_governance_persistence_adapter"]
   },
   "owns": {
     "postgresSchemas": ["corporate_governance"],
-    "tables": ["corporate_governance.owner_dividend_accounting_policies", "corporate_governance.owner_dividend_artifacts", "corporate_governance.owner_dividend_decisions", "corporate_governance.owner_dividend_events", "corporate_governance.owner_dividend_finalizations", "corporate_governance.owner_dividend_payments", "corporate_governance.shareholder_loans"],
+    "tables": ["corporate_governance.annual_close_artifacts", "corporate_governance.annual_close_decisions", "corporate_governance.annual_close_events", "corporate_governance.annual_close_finalizations", "corporate_governance.owner_dividend_accounting_policies", "corporate_governance.owner_dividend_artifacts", "corporate_governance.owner_dividend_decisions", "corporate_governance.owner_dividend_events", "corporate_governance.owner_dividend_finalizations", "corporate_governance.owner_dividend_payments", "corporate_governance.shareholder_loans"],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "supabase/migrations/20260902070000_corporate_governance_shareholder_loan.sql"
+    "migrations": "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql"
   },
   "ports": [
     {
@@ -31,7 +31,7 @@
     }
   ],
   "dependencies": [],
-  "allowedImports": ["__future__", "collections.abc", "dataclasses", "datetime", "enum", "hashlib", "json", "re", "talli_backend.modules.corporate_governance.public", "talli_backend.shared.kernel", "typing", "unicodedata", "uuid"],
+  "allowedImports": ["__future__", "collections.abc", "dataclasses", "datetime", "enum", "hashlib", "io", "json", "pathlib", "re", "reportlab", "reportlab.lib", "reportlab.lib.enums", "reportlab.lib.pagesizes", "reportlab.lib.styles", "reportlab.lib.units", "reportlab.pdfbase", "reportlab.pdfbase.ttfonts", "reportlab.pdfgen", "reportlab.platypus", "talli_backend.modules.corporate_governance.public", "talli_backend.shared.kernel", "types", "typing", "unicodedata", "uuid", "xml.sax.saxutils"],
   "forbiddenResponsibilities": [
     "Ledger accounts, posting lines, balance enforcement, or period-lock policy",
     "Generic document metadata, blob storage, storage keys, retention, or object authorization",

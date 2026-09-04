@@ -20,6 +20,7 @@ import {
 import {
   loadDocumentBackupProjection,
 } from "../../../../../features/documents";
+import { listCorporateDecisionLifecycle } from "../../../../../features/corporate-governance";
 import {
   buildPersistedCompanyArchive,
   firstArchiveSourceError,
@@ -93,6 +94,51 @@ async function loadArchiveDocuments(
     };
   } catch {
     return { data: null, projection: null, error: new Error("Documents archive projection unavailable.") };
+  }
+}
+
+async function loadArchiveCorporateLifecycle(
+  accessToken: string,
+  companyId: string,
+  incomeYear: number,
+) {
+  try {
+    const [lifecycle, documents] = await Promise.all([
+      listCorporateDecisionLifecycle(accessToken, [companyId]),
+      loadDocumentBackupProjection(accessToken, companyId, incomeYear),
+    ]);
+    const documentsById = new Map(
+      documents.objects.map((document) => [document.documentId, document]),
+    );
+    const artifacts = lifecycle.corporateDocumentArtifacts
+      .filter((item) => item.income_year === incomeYear)
+      .map((artifact) => ({
+        ...artifact,
+        storage_key: documentsById.get(artifact.document_id)?.storageKey ?? "",
+      }));
+    if (artifacts.some((artifact) => !artifact.storage_key)) {
+      throw new Error("Corporate artifact document evidence is incomplete.");
+    }
+    return {
+      data: {
+        corporateDecisions: lifecycle.corporateDecisions.filter(
+          (item) => item.income_year === incomeYear,
+        ),
+        corporateDocumentSets: lifecycle.corporateDocumentSets.filter(
+          (item) => item.income_year === incomeYear,
+        ),
+        corporateDocumentArtifacts: artifacts,
+        corporateDocumentEvents: lifecycle.corporateDocumentEvents.filter(
+          (item) => item.income_year === incomeYear,
+        ),
+        corporateDecisionFinalizations: lifecycle.corporateDecisionFinalizations.filter(
+          (item) => item.income_year === incomeYear,
+        ),
+      },
+      error: null,
+    };
+  } catch {
+    return { data: null, error: new Error("Corporate-governance archive source unavailable.") };
   }
 }
 
@@ -281,31 +327,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
         .from("bank_suggestion_acceptances")
         .select("id, company_id, bank_transaction_id, ledger_entry_id, rule_id, rule_version, reason, lines, accepted_by, accepted_at")
         .eq("company_id", companyId),
-      supabase
-        .from("corporate_decisions")
-        .select("id, company_id, income_year, decision_kind, annual_close_source_id, source_hash, canonical_input, decision_hash, supersedes_decision_id, created_by, created_at")
-        .eq("company_id", companyId)
-        .eq("income_year", incomeYear),
-      supabase
-        .from("corporate_document_sets")
-        .select("id, company_id, income_year, decision_id, template_family, template_version, decision_hash, supersedes_set_id, created_by, created_at")
-        .eq("company_id", companyId)
-        .eq("income_year", incomeYear),
-      supabase
-        .from("corporate_document_artifacts")
-        .select("id, company_id, income_year, set_id, artifact_kind, variant, document_id, content_sha256, byte_length, mime_type, storage_key, supersedes_artifact_id, created_by, created_at")
-        .eq("company_id", companyId)
-        .eq("income_year", incomeYear),
-      supabase
-        .from("corporate_document_events")
-        .select("id, company_id, income_year, decision_id, set_id, artifact_id, event_kind, actor_id, occurred_at, decision_hash, content_sha256, metadata, idempotency_key, created_at")
-        .eq("company_id", companyId)
-        .eq("income_year", incomeYear),
-      supabase
-        .from("corporate_decision_finalizations")
-        .select("id, company_id, income_year, decision_id, finalization_kind, holding_action_id, ledger_entry_id, annual_close_source_id, decision_hash, signed_artifact_hashes, accounting_policy_version, created_by, created_at")
-        .eq("company_id", companyId)
-        .eq("income_year", incomeYear),
+      loadArchiveCorporateLifecycle(accessToken, companyId, incomeYear),
     ]);
   if (firstArchiveSourceError(sourceResults)) {
     return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
@@ -315,8 +337,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     { data: holdingActions }, { data: billingAccounts }, { data: authorityPermissions },
     { data: reviewComments }, { data: auditEvents }, { data: investments },
     { data: bankSuggestionAcceptances },
-    { data: corporateDecisions }, { data: corporateDocumentSets }, { data: corporateDocumentArtifacts },
-    { data: corporateDocumentEvents }, { data: corporateDecisionFinalizations },
+    { data: corporateLifecycle },
   ] = sourceResults;
 
   const setupIds = (setups ?? []).map((setup) => setup.id);
@@ -345,6 +366,8 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
           "share_sale",
           "dividend_received",
           "fund_distribution_received",
+          "shareholder_loan",
+          "dividend_to_owner",
         ].includes(action.action_type),
       ),
       ...(investments?.holdingActions ?? []),
@@ -365,11 +388,11 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     reviewComments: reviewComments ?? [],
     filingPreviews: previews ?? [],
     filingSubmissions: submissions ?? [],
-    corporateDecisions: corporateDecisions ?? [],
-    corporateDocumentSets: corporateDocumentSets ?? [],
-    corporateDocumentArtifacts: corporateDocumentArtifacts ?? [],
-    corporateDocumentEvents: corporateDocumentEvents ?? [],
-    corporateDecisionFinalizations: corporateDecisionFinalizations ?? [],
+    corporateDecisions: corporateLifecycle?.corporateDecisions ?? [],
+    corporateDocumentSets: corporateLifecycle?.corporateDocumentSets ?? [],
+    corporateDocumentArtifacts: corporateLifecycle?.corporateDocumentArtifacts ?? [],
+    corporateDocumentEvents: corporateLifecycle?.corporateDocumentEvents ?? [],
+    corporateDecisionFinalizations: corporateLifecycle?.corporateDecisionFinalizations ?? [],
   });
 
   const archiveBody = JSON.stringify(archive, null, 2);

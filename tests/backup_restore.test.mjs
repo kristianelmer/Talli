@@ -181,9 +181,12 @@ test("backup manifest identifies launch-critical tables and object references", 
   assert.ok(manifest.launchCriticalTables.includes("investments.share_sale_allocations"));
   assert.ok(manifest.launchCriticalTables.includes("investments.received_dividends"));
   assert.ok(manifest.launchCriticalTables.includes("bank_suggestion_acceptances"));
-  assert.ok(manifest.launchCriticalTables.includes("corporate_decisions"));
-  assert.ok(manifest.launchCriticalTables.includes("corporate_document_artifacts"));
-  assert.ok(manifest.launchCriticalTables.includes("corporate_decision_finalizations"));
+  assert.ok(manifest.launchCriticalTables.includes("corporate_governance.owner_dividend_decisions"));
+  assert.ok(manifest.launchCriticalTables.includes("corporate_governance.owner_dividend_artifacts"));
+  assert.ok(manifest.launchCriticalTables.includes("corporate_governance.owner_dividend_finalizations"));
+  assert.ok(manifest.launchCriticalTables.includes("corporate_governance.annual_close_decisions"));
+  assert.ok(manifest.launchCriticalTables.includes("corporate_governance.annual_close_artifacts"));
+  assert.ok(manifest.launchCriticalTables.includes("corporate_governance.annual_close_finalizations"));
   assert.deepEqual(manifest.objectReferences, archiveFixture().documentBackupProjection.objects);
   assert.equal(manifest.counts.auditEvents, 1);
   assert.equal(manifest.counts.authorityTestRuns, 0);

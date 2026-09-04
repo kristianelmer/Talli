@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+: "${TALLI_PYTHON_BIN:=apps/backend/.venv/bin/python}"
+export TALLI_PYTHON_BIN
+
 started_here=0
 isolated_workdir="$(mktemp -d "${TMPDIR:-/tmp}/talli-supabase-local.XXXXXX")"
 next_env_path="apps/web/next-env.d.ts"
@@ -63,7 +66,6 @@ npm run test:ledger-database-lifecycle
 npm run test:banking-database-lifecycle
 npm run test:investments-database-lifecycle
 DATABASE_URL="$DB_URL" npm run test:documents-database-lifecycle
-DATABASE_URL="$DB_URL" npm run test:corporate-governance-database-lifecycle
 npm run test:marketing-measurement-database
 npm run test:validation-observation
 
@@ -84,3 +86,8 @@ npm run test:browser-owner
 TALLI_LEDGER_HOSTED_AUTHORITY_REHEARSAL=1 \
 DATABASE_URL="$DB_URL" \
 npm run test:ledger-hosted-migration-authority
+
+# Run the corporate-governance contract rehearsal after every predecessor
+# consumer, including the ledger recutover authority rehearsal. Its contract
+# intentionally retires the legacy governance-owned ledger coordinators.
+DATABASE_URL="$DB_URL" npm run test:corporate-governance-database-lifecycle

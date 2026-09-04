@@ -11,12 +11,6 @@ import {
 test("deployed schema contract covers every post-baseline product capability", () => {
   assert.deepEqual(REQUIRED_DEPLOYED_SCHEMA_PATHS, [
     "/bank_suggestion_acceptances",
-    "/corporate_accounting_policies",
-    "/corporate_decision_finalizations",
-    "/corporate_decisions",
-    "/corporate_document_artifacts",
-    "/corporate_document_events",
-    "/corporate_document_sets",
     "/customer_agreement_acceptances",
     "/filing_approval_snapshots",
     "/production_filing_events",
@@ -25,19 +19,27 @@ test("deployed schema contract covers every post-baseline product capability", (
     "/rpc/append_company_agreement_acceptance",
     "/rpc/append_production_filing_event",
     "/rpc/approve_production_filing",
-    "/rpc/attest_corporate_signed_artifact",
     "/rpc/begin_production_filing",
-    "/rpc/create_corporate_document_draft",
     "/rpc/import_company_tax_tt02_evidence",
     "/rpc/manage_production_pilot_entitlement",
-    "/rpc/record_corporate_document_event",
     "/rpc/remove_unlinked_document",
     "/rpc/restore_unlinked_document_after_storage_failure",
   ]);
   assert.deepEqual(FORBIDDEN_DEPLOYED_SCHEMA_PATHS, [
+    "/corporate_accounting_policies",
+    "/corporate_decision_finalizations",
+    "/corporate_decisions",
+    "/corporate_document_artifacts",
+    "/corporate_document_events",
+    "/corporate_document_sets",
     "/investment_lot_allocations",
     "/investment_lots",
     "/investment_positions",
+    "/rpc/attest_corporate_signed_artifact",
+    "/rpc/create_corporate_document_draft",
+    "/rpc/finalize_corporate_decision",
+    "/rpc/record_corporate_document_event",
+    "/rpc/record_owner_dividend_payment",
     "/rpc/record_share_purchase_fifo",
     "/rpc/record_share_sale_fifo",
   ]);
@@ -56,7 +58,7 @@ test("reports only missing OpenAPI paths in stable order", () => {
     ));
 });
 
-test("reports public investment compatibility paths that survived stage exit", () => {
+test("reports compatibility paths that survived a completed stage exit", () => {
   const openApi = {
     paths: {
       "/corporate_decisions": {},
@@ -66,6 +68,7 @@ test("reports public investment compatibility paths that survived stage exit", (
   };
 
   assert.deepEqual(presentForbiddenDeployedSchemaPaths(openApi), [
+    "/corporate_decisions",
     "/investment_lots",
     "/rpc/record_share_purchase_fifo",
   ]);

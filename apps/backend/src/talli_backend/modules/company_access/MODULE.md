@@ -25,7 +25,7 @@ It owns `public.companies`, `public.company_cancellations`,
 `public.support_access_operation_receipts`, `public.support_case_openings`, and
 `public.support_operators`, with
 the latest ownership migration declared as
-`20260830091341_case_bound_support_access.sql`. The backend system owns
+`20260902095000_company_access_corporate_governance_identity.sql`. The backend system owns
 `public.company_access_command_receipts` as technical idempotency state. It must
 not claim eligibility outside the immutable active manifest, own physical
 business-data deletion, or own unrestricted general operator workflows.
@@ -74,6 +74,15 @@ The previous v1 operator-company search shape remains temporarily as a deprecate
 authenticated, always-empty mixed-revision overlap. It performs no customer-data
 query and is outside the active generated web surface; removing the shape requires
 the bounded API-major contraction governed by ADR-0012.
+
+The accepted-member company record also has one versioned, read-only database
+query contract for backend workflows that must compose company identity with
+other capability facts in the same transaction. The function is owned by the
+non-bypass `company_access_executor`, applies company-access RLS, binds the
+explicit subject to transaction-local verified actor context, and grants callers
+no direct access to `public.companies` or `public.company_memberships`.
+Its company-access-owned expand and rollback migrations keep the contract's
+lifecycle outside every consuming capability migration.
 
 Eligibility and admission add `EligibilityAnswer`, `EligibilityDecision`,
 `EligibilityPublicFacts`, `EligibilityQuestion`, `EligibilityPrecheckRequest`,

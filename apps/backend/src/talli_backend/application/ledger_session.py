@@ -62,23 +62,6 @@ class LedgerWorkflowTransaction(LedgerPersistence, Protocol):
     async def complete_tax_settlement(
         self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
     ) -> dict[str, object]: ...
-    async def prepare_corporate_decision_finalization(
-        self, command: object
-    ) -> dict[str, object]: ...
-    async def complete_corporate_decision_finalization(
-        self,
-        command: object,
-        posted_entry: PostedLedgerEntry | None,
-        prepared: dict[str, object],
-    ) -> dict[str, object]: ...
-    async def prepare_owner_dividend_payment(
-        self, command: object
-    ) -> dict[str, object]: ...
-    async def complete_owner_dividend_payment(
-        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
-    ) -> dict[str, object]: ...
-
-
 class AuthenticatedLedgerSession(LedgerPersistence, Protocol):
     @property
     def actor_id(self) -> ActorId: ...

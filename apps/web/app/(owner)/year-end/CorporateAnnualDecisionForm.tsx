@@ -5,9 +5,9 @@ import { useState } from "react";
 import { createAnnualCorporateDecisionDraft } from "../../actions";
 import { Banner, SubmitButton } from "../../components/ui";
 import type {
-  ApprovedAnnualCorporateBasis,
-  ReviewedCorporateFacts,
-} from "../../lib/corporate-decision-facts";
+  CorporateAnnualBasisWire,
+  CorporateReviewedFactsWire,
+} from "../../../features/corporate-governance";
 
 type AnnualDecisionShareholder = {
   id: string;
@@ -37,8 +37,8 @@ type Props = {
   companyId: string;
   incomeYear: number;
   shareholders: AnnualDecisionShareholder[];
-  annualBasis: ApprovedAnnualCorporateBasis | null;
-  reviewedFacts: ReviewedCorporateFacts | null;
+  annualBasis: CorporateAnnualBasisWire | null;
+  reviewedFacts: CorporateReviewedFactsWire | null;
   sourceHash: string | null;
   draftIds: AnnualDecisionDraftIds;
   lifecycle: AnnualDecisionLifecycleSummary;
@@ -115,7 +115,7 @@ export function CorporateAnnualDecisionForm({
   if (!annualBasis || !reviewedFacts || !sourceHash || shareholders.length === 0) {
     return (
       <Banner variant="danger">
-        {blocker ?? "Fullført årsgrunnlag, årsregnskapspayload og aksjonærgrunnlag må være klare."}
+        {blocker ?? "Fullført årsgrunnlag og aksjonærgrunnlag må være klare."}
       </Banner>
     );
   }
@@ -133,8 +133,8 @@ export function CorporateAnnualDecisionForm({
       <input type="hidden" name="reviewedLegalName" value={reviewedFacts.legalName} />
       <input type="hidden" name="reviewedTotalCompanyShares" value={reviewedFacts.totalCompanyShares} />
       <input type="hidden" name="reviewedAvailableDistributionOre" value={reviewedFacts.availableDistributionOre} />
-      <input type="hidden" name="reviewedAnnualDataHash" value={reviewedFacts.annualDataHash} />
-      <input type="hidden" name="reviewedAnnualAccountsPayloadHash" value={reviewedFacts.annualAccountsPayloadHash} />
+      <input type="hidden" name="reviewedAnnualDataHash" value={reviewedFacts.annualDataSha256} />
+      <input type="hidden" name="reviewedGovernanceBasisHash" value={reviewedFacts.governanceBasisSha256} />
       {reviewedFacts.shareholders.map((shareholder) => (
         <span key={shareholder.shareholderId} hidden>
           <input type="hidden" name="reviewedShareholderId" value={shareholder.shareholderId} />
