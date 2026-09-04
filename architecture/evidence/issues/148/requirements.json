@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#148",
   "source": "https://github.com/kristianelmer/Talli/issues/148",
-  "sourceCheckedAt": "2026-09-04T20:45:57Z",
+  "sourceCheckedAt": "2026-09-04T21:09:12Z",
   "claim": "https://github.com/kristianelmer/Talli/issues/148#issuecomment-5537549928",
   "entryBlockers": [
     {
@@ -105,7 +105,7 @@
         "architecture/evidence/customer-ready-gates/<R1>.json",
         "architecture/evidence/customer-ready-gates/<R2>.json"
       ],
-      "status": "complete local and hosted stage-exit evidence plus protected candidate Release and Preview passed; final evidence-head checks, merge, and post-merge verification pending"
+      "status": "complete local, hosted, protected candidate, merge, and post-merge stage-exit evidence passed"
     }
   ],
   "review": {
@@ -218,8 +218,18 @@
   "integration": {
     "pullRequest": "https://github.com/kristianelmer/Talli/pull/202",
     "candidateRevision": "3ecd8167ba1975856d21afcf8df0e6cac1773438",
+    "finalHeadRevision": "b3e39a8b45223d41a4ddd16d848de0c8d1342f51",
+    "mergedAt": "2026-09-04T20:58:13Z",
+    "mainCommit": "2612eb2e392db4d8584eee88a7b0a0beb8a0a867",
+    "issueClosedAt": "2026-09-04T20:58:14Z",
+    "postMergeWorkflowRun": "https://github.com/kristianelmer/Talli/actions/runs/33918848001",
+    "postMergePreviewDeploymentId": 6272714941,
+    "postMergePreviewEnvironment": "Preview",
+    "postMergePreviewProductionEnvironment": false,
     "releaseProductionCommit": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
-    "productionBranch": "release/production"
+    "productionBranch": "release/production",
+    "productionDeploymentChanged": false,
+    "verdict": "pass"
   },
-  "closeState": "hosted parity and contract cutover, independent rereviews, linked immutable R1/R2, architecture stage exit, protected candidate Preview, and protected candidate Release passed; final evidence-head checks, merge, and post-merge verification pending"
+  "closeState": "complete; PR #202 merged to main, #148 closed, post-merge Release and Preview passed, and release/production remained unchanged"
 }

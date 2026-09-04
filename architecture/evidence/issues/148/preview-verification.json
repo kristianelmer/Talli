@@ -41,12 +41,30 @@
   },
   "releaseBoundary": {
     "vercelProductionBranch": "release/production",
-    "configurationVerifiedAt": "2026-09-04T20:47:03Z",
+    "configurationVerifiedAt": "2026-09-04T21:09:12Z",
     "mainCommitBefore": "a4be791d706bc1115884d7676ffc355872704a59",
+    "mainCommitAfter": "2612eb2e392db4d8584eee88a7b0a0beb8a0a867",
     "releaseProductionCommitBefore": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+    "releaseProductionCommitAfter": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
     "latestProductionDeploymentId": 5816953583,
     "latestProductionDeploymentCommit": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
     "productionDeploymentChanged": false
+  },
+  "postMergeVerification": {
+    "pullRequest": "https://github.com/kristianelmer/Talli/pull/202",
+    "mergedAt": "2026-09-04T20:58:13Z",
+    "mainCommit": "2612eb2e392db4d8584eee88a7b0a0beb8a0a867",
+    "issueClosedAt": "2026-09-04T20:58:14Z",
+    "workflowRun": "https://github.com/kristianelmer/Talli/actions/runs/33918848001",
+    "releaseGateJob": "https://github.com/kristianelmer/Talli/actions/runs/33918848001/job/101174958222",
+    "githubDeploymentId": 6272714941,
+    "githubDeploymentStatusId": 17842393507,
+    "environment": "Preview",
+    "productionEnvironment": false,
+    "state": "SUCCESS",
+    "deploymentUrl": "https://talli-bkcpoeo6t-kristianelmers-projects.vercel.app",
+    "providerReceiptUrl": "https://vercel.com/kristianelmers-projects/talli-web/JCSpq8LZQ1xfs16iiSshR4yZrk5w",
+    "verdict": "pass"
   },
   "verdict": "pass"
 }
