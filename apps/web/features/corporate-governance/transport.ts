@@ -15,7 +15,9 @@ import {
   type OwnerDividendPaymentWire,
   type OwnerDividendProposalWire,
   type OwnerDividendSignedArtifactWire,
+  type ReverseSupportedCorporateEventWire,
   type ShareholderLoanWire,
+  type SupportedCorporateEventWire,
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
 
@@ -244,6 +246,42 @@ export function proposeAnnualClose(
   requestId?: string,
 ) {
   return client(accessToken).corporateGovernanceProposeAnnualClose(
+    body,
+    mutation(idempotencyKey, requestId),
+  );
+}
+
+export function listSupportedCorporateEvents(
+  accessToken: string,
+  companyIds: readonly string[],
+) {
+  return client(accessToken).corporateGovernanceListSupportedEvents({
+    companyIds,
+    signal: AbortSignal.timeout(10_000),
+  });
+}
+
+export function recordSupportedCorporateEvent(
+  accessToken: string,
+  body: SupportedCorporateEventWire,
+  idempotencyKey: string,
+  requestId?: string,
+) {
+  return client(accessToken).corporateGovernanceRecordSupportedEvent(
+    body,
+    mutation(idempotencyKey, requestId),
+  );
+}
+
+export function reverseSupportedCorporateEvent(
+  accessToken: string,
+  eventId: string,
+  body: ReverseSupportedCorporateEventWire,
+  idempotencyKey: string,
+  requestId?: string,
+) {
+  return client(accessToken).corporateGovernanceReverseSupportedEvent(
+    eventId,
     body,
     mutation(idempotencyKey, requestId),
   );

@@ -7,7 +7,8 @@ import json
 import re
 import unicodedata
 from collections.abc import Mapping
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, fields, is_dataclass, replace
+from decimal import Decimal
 from enum import Enum
 from typing import Any
 
@@ -17,11 +18,14 @@ from talli_backend.modules.corporate_governance.public import (
     AnnualDataSourceFacts,
     ApprovedAnnualBasis,
     BoardMeeting,
+    BankLoanEventFacts,
     CanonicalAnnualCloseDecision,
     CanonicalBoardParticipant,
     CanonicalDecisionShareholder,
     CanonicalOwnerDividendDecision,
     CanonicalShareholderLoan,
+    CanonicalSupportedCorporateEvent,
+    CashCapitalIncreaseEventFacts,
     CorporateAccountMovementFacts,
     CorporateArtifactKind,
     CorporateArtifactVariant,
@@ -35,20 +39,30 @@ from talli_backend.modules.corporate_governance.public import (
     CorporateReadinessSource,
     DerivedCorporateDecisionFacts,
     GeneralMeeting,
+    GroupContributionEventFacts,
+    IntercompanyLoanEventFacts,
+    LossCoverageCapitalReductionEventFacts,
     OwnerDividendAllocation,
     OwnerDividendConfirmations,
     OwnerDividendFacts,
     OwnerDividendFinancialTotals,
     OwnerDividendProposalCommand,
     OwnerDividendState,
+    OwnerLoanEventFacts,
     PersistedShareholderFacts,
     RecordShareholderLoanCommand,
+    RecordSupportedCorporateEventCommand,
     RenderedCorporateArtifact,
     ReviewedOwnerDividendFacts,
     ReviewedShareholderFacts,
     ShareholderLoanDirection,
     ShareholderLoanDocumentStatus,
     ShareholderVote,
+    SupportedCorporateEventKind,
+    SupportedCorporateEventPhase,
+    SupportedCorporateEvidenceKind,
+    SupportedCorporatePerspective,
+    SupportedCorporateRelationship,
 )
 from talli_backend.modules.corporate_governance.rendering import (
     render_corporate_documents,
@@ -58,6 +72,7 @@ from talli_backend.shared.kernel import CompanyId, IncomeYear
 _ORG_NUMBER = re.compile(r"^[0-9]{9}$")
 _TEMPLATE_FAMILY = "norwegian_simple_as"
 _TEMPLATE_VERSION = "corporate-no-v1-reportlab-5.0.0-noto-ffebf8c1"
+_SUPPORTED_EVENT_POLICY_VERSION = "corporate-governance-supported-events-2026.1"
 
 
 def _fail(code: CorporateGovernanceErrorCode, message: str) -> None:
@@ -85,11 +100,52 @@ def _safe_integer(
     return value
 
 
+def _require_supported(condition: bool, message: str) -> None:
+    if condition is not True:
+        _fail(CorporateGovernanceErrorCode.UNSUPPORTED_CORPORATE_EVENT, message)
+
+
+def _require_judgment_cleared(condition: bool, message: str) -> None:
+    if condition is not True:
+        _fail(CorporateGovernanceErrorCode.CORPORATE_EVENT_JUDGMENT_REQUIRED, message)
+
+
+def _positive_nok(value: object, label: str) -> None:
+    if (
+        not hasattr(value, "currency")
+        or getattr(getattr(value, "currency"), "value", None) != "NOK"
+        or getattr(value, "amount", 0) <= 0
+    ):
+        _fail(
+            CorporateGovernanceErrorCode.INVALID_INPUT,
+            f"{label} must be positive NOK.",
+        )
+
+
+def _non_negative_nok(value: object, label: str) -> None:
+    if (
+        not hasattr(value, "currency")
+        or getattr(getattr(value, "currency"), "value", None) != "NOK"
+        or getattr(value, "amount", -1) < 0
+    ):
+        _fail(
+            CorporateGovernanceErrorCode.INVALID_INPUT,
+            f"{label} must be non-negative NOK.",
+        )
+
+
 def _sha256(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def _json_value(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        return format(value, "f")
+    if is_dataclass(value) and not isinstance(value, type):
+        return {
+            item.name: _json_value(getattr(value, item.name))
+            for item in fields(value)
+        }
     if isinstance(value, Enum):
         return value.value
     if hasattr(value, "value") and value.__class__.__module__.startswith("talli_backend"):
@@ -1064,6 +1120,347 @@ class CorporateGovernanceService:
         decision: CanonicalOwnerDividendDecision | CanonicalAnnualCloseDecision,
     ) -> tuple[RenderedCorporateArtifact, ...]:
         return render_corporate_documents(decision)
+
+    def prepare_supported_event(
+        self,
+        command: RecordSupportedCorporateEventCommand,
+    ) -> CanonicalSupportedCorporateEvent:
+        """Validate and freeze one deliberately narrow #191 occurrence."""
+
+        if command.event_date.value.year != int(command.income_year):
+            _fail(
+                CorporateGovernanceErrorCode.INVALID_INPUT,
+                "Corporate-event date must belong to the company year.",
+            )
+        if (
+            not command.document_facts
+            or len(command.document_facts) > 12
+            or len({str(item.document_id) for item in command.document_facts})
+            != len(command.document_facts)
+        ):
+            _fail(
+                CorporateGovernanceErrorCode.CORPORATE_EVENT_EVIDENCE_INCOMPLETE,
+                "Corporate-event documents must be complete and unique.",
+            )
+        evidence_kinds = {item.evidence_kind for item in command.document_facts}
+        facts = command.facts
+
+        if isinstance(facts, CashCapitalIncreaseEventFacts):
+            if command.event_kind is not SupportedCorporateEventKind.CASH_CAPITAL_INCREASE:
+                self._unsupported_kind()
+            if command.phase not in {
+                SupportedCorporateEventPhase.BINDING_SUBSCRIPTION,
+                SupportedCorporateEventPhase.RESTRICTED_PAYMENT,
+                SupportedCorporateEventPhase.REGISTERED,
+            }:
+                self._invalid_phase()
+            _positive_nok(facts.nominal_increase, "Nominal increase")
+            _non_negative_nok(facts.share_premium, "Share premium")
+            _require_supported(facts.issued_share_count > 0, "Issued share count is required.")
+            for condition, message in (
+                (facts.single_ordinary_class, "Multiple or special share classes are unsupported."),
+                (facts.cash_only, "Non-cash capital and debt conversion are unsupported."),
+                (facts.binding_subscription, "A binding subscription is required."),
+                (facts.norwegian_subscribers_only, "Foreign subscribers are unsupported."),
+                (facts.no_special_terms, "Conditional or special subscription terms are unsupported."),
+                (facts.no_direct_use_exception, "Direct use of contribution cash before registration is unsupported."),
+            ):
+                _require_supported(condition, message)
+            _require_judgment_cleared(
+                facts.issue_costs_resolved,
+                "Capital-increase issue-cost or tax treatment requires review.",
+            )
+            required = {SupportedCorporateEvidenceKind.SIGNED_DECISION}
+            if command.phase in {
+                SupportedCorporateEventPhase.RESTRICTED_PAYMENT,
+                SupportedCorporateEventPhase.REGISTERED,
+            }:
+                _require_supported(
+                    facts.full_timely_payment and facts.independent_confirmation,
+                    "Full timely payment and independent confirmation are required.",
+                )
+                required.add(SupportedCorporateEvidenceKind.CONTRIBUTION_CONFIRMATION)
+                if command.bank_fact is None:
+                    self._incomplete_evidence("Bank evidence is required for paid capital.")
+                if command.bank_fact.signed_amount.amount != (
+                    facts.nominal_increase.amount + facts.share_premium.amount
+                ):
+                    self._incomplete_evidence(
+                        "Capital-payment bank evidence does not match the subscribed amount."
+                    )
+            if command.phase is SupportedCorporateEventPhase.REGISTERED:
+                _require_supported(
+                    facts.register_reconciled,
+                    "Registered capital must reconcile to the shareholder register.",
+                )
+                required.update(
+                    {
+                        SupportedCorporateEvidenceKind.AMENDED_ARTICLES,
+                        SupportedCorporateEvidenceKind.REGISTRATION_RECEIPT,
+                    }
+                )
+                if command.shareholder_register_fact is None:
+                    self._incomplete_evidence("Shareholder-register evidence is required.")
+            self._require_document_kinds(required, evidence_kinds)
+
+        elif isinstance(facts, LossCoverageCapitalReductionEventFacts):
+            if (
+                command.event_kind
+                is not SupportedCorporateEventKind.LOSS_COVERAGE_CAPITAL_REDUCTION
+            ):
+                self._unsupported_kind()
+            if command.phase not in {
+                SupportedCorporateEventPhase.DECIDED_NOT_REGISTERED,
+                SupportedCorporateEventPhase.REGISTERED,
+                SupportedCorporateEventPhase.FIRST_RECOGNIZED_AFTER_REGISTRATION,
+            }:
+                self._invalid_phase()
+            _positive_nok(facts.nominal_reduction, "Nominal reduction")
+            _positive_nok(facts.old_share_capital, "Old share capital")
+            _positive_nok(facts.new_share_capital, "New share capital")
+            if (
+                facts.old_share_capital.amount - facts.new_share_capital.amount
+                != facts.nominal_reduction.amount
+                or facts.new_share_capital.amount < Decimal("30000.00")
+            ):
+                _fail(
+                    CorporateGovernanceErrorCode.INVALID_INPUT,
+                    "Loss-coverage reduction does not reconcile to lawful minimum capital.",
+                )
+            for condition, message in (
+                (facts.single_ordinary_class, "Multiple or special share classes are unsupported."),
+                (facts.unchanged_owners_and_share_count, "Cancellation, redemption or unequal reductions are unsupported."),
+                (facts.loss_only, "Only a reduction solely covering loss is supported."),
+                (facts.loss_evidenced, "Approved loss evidence is required."),
+                (facts.other_equity_exhausted, "Other available equity must first cover the loss."),
+                (facts.no_value_transfer, "Any cash or owner-value transfer is unsupported."),
+                (facts.no_creditor_notice, "The creditor-notice route is outside this workflow."),
+                (facts.no_simultaneous_capital_change, "Simultaneous capital changes are unsupported."),
+            ):
+                _require_supported(condition, message)
+            required = {
+                SupportedCorporateEvidenceKind.SIGNED_DECISION,
+                SupportedCorporateEvidenceKind.AMENDED_ARTICLES,
+            }
+            if command.phase is not SupportedCorporateEventPhase.DECIDED_NOT_REGISTERED:
+                _require_supported(
+                    facts.register_reconciled,
+                    "The registered reduction must reconcile to the shareholder register.",
+                )
+                required.add(SupportedCorporateEvidenceKind.REGISTRATION_RECEIPT)
+                if command.shareholder_register_fact is None:
+                    self._incomplete_evidence("Shareholder-register evidence is required.")
+            self._require_document_kinds(required, evidence_kinds)
+
+        elif isinstance(facts, IntercompanyLoanEventFacts):
+            if command.event_kind is not SupportedCorporateEventKind.INTERCOMPANY_LOAN:
+                self._unsupported_kind()
+            if command.phase is not SupportedCorporateEventPhase.FUNDING:
+                self._invalid_phase()
+            _positive_nok(facts.principal, "Intercompany principal")
+            _text(facts.counterparty_name)
+            if _ORG_NUMBER.fullmatch(facts.counterparty_organization_number) is None:
+                _fail(CorporateGovernanceErrorCode.INVALID_INPUT, "Counterparty organization number is invalid.")
+            _require_supported(facts.perspective in {SupportedCorporatePerspective.LENDER, SupportedCorporatePerspective.BORROWER}, "Intercompany perspective is unsupported.")
+            _require_supported(facts.relationship in {SupportedCorporateRelationship.PARENT_TO_SUBSIDIARY, SupportedCorporateRelationship.OTHER_SAME_GROUP}, "Intercompany relationship is unsupported.")
+            for condition, message in (
+                (facts.norwegian_counterparty, "Foreign intercompany lending is unsupported."),
+                (facts.signed_agreement, "A signed intercompany agreement is required."),
+                (facts.ordinary_terms, "Unusual loan terms require specialist review."),
+                (facts.approval_or_exemption_evidenced, "Corporate approval or a statutory exemption must be evidenced."),
+                (facts.arm_length_confirmed, "Arm's-length facts must be confirmed by the company."),
+                (facts.interest_limitation_cleared, "Interest-limitation exposure requires tax review."),
+                (facts.no_complex_terms, "Subordination, conversion, waiver, cash pooling or netting is unsupported."),
+            ):
+                _require_judgment_cleared(condition, message)
+            if command.bank_fact is None:
+                self._incomplete_evidence("Bank evidence is required for intercompany funding.")
+            expected_signed_amount = (
+                -facts.principal.amount
+                if facts.perspective is SupportedCorporatePerspective.LENDER
+                else facts.principal.amount
+            )
+            if command.bank_fact.signed_amount.amount != expected_signed_amount:
+                self._incomplete_evidence(
+                    "Intercompany bank evidence does not match the company perspective."
+                )
+            self._require_document_kinds({SupportedCorporateEvidenceKind.SIGNED_AGREEMENT}, evidence_kinds)
+
+        elif isinstance(facts, OwnerLoanEventFacts):
+            if command.event_kind is not SupportedCorporateEventKind.OWNER_LOAN:
+                self._unsupported_kind()
+            if command.phase is not SupportedCorporateEventPhase.FUNDING:
+                self._invalid_phase()
+            _positive_nok(facts.principal, "Owner-loan principal")
+            _text(facts.owner_name)
+            for condition, message in (
+                (facts.owner_is_recorded_shareholder, "The lender must be a recorded shareholder."),
+                (facts.norwegian_owner, "Foreign owner lending is unsupported."),
+                (facts.signed_agreement, "A signed owner-loan agreement is required."),
+                (facts.ordinary_terms, "Unusual owner-loan terms require specialist review."),
+                (facts.approval_or_exemption_evidenced, "Corporate approval or a statutory exemption must be evidenced."),
+                (facts.interest_and_tax_treatment_cleared, "Unresolved interest or tax treatment requires review."),
+                (facts.no_security_or_conversion, "Security, guarantees, conversion or equity-linked terms are unsupported."),
+                (facts.no_complex_terms, "Waiver, subordination, netting or other complex terms are unsupported."),
+            ):
+                _require_judgment_cleared(condition, message)
+            if command.bank_fact is None or command.bank_fact.signed_amount.amount != facts.principal.amount:
+                self._incomplete_evidence(
+                    "Owner-loan bank evidence must show the full amount received by the company."
+                )
+            self._require_document_kinds(
+                {SupportedCorporateEvidenceKind.SIGNED_AGREEMENT}, evidence_kinds
+            )
+
+        elif isinstance(facts, BankLoanEventFacts):
+            if command.event_kind is not SupportedCorporateEventKind.BANK_LOAN:
+                self._unsupported_kind()
+            if command.phase not in {
+                SupportedCorporateEventPhase.DISBURSEMENT,
+                SupportedCorporateEventPhase.PAYMENT,
+            }:
+                self._invalid_phase()
+            _non_negative_nok(facts.principal, "Bank-loan principal")
+            _non_negative_nok(facts.interest, "Bank-loan interest")
+            _non_negative_nok(facts.fee, "Bank-loan fee")
+            _text(facts.lender_name)
+            if command.phase is SupportedCorporateEventPhase.DISBURSEMENT:
+                _require_supported(
+                    facts.principal.amount > 0
+                    and facts.interest.amount == 0
+                    and facts.fee.amount == 0,
+                    "A disbursement must contain principal only.",
+                )
+                required = {SupportedCorporateEvidenceKind.SIGNED_AGREEMENT}
+            else:
+                _require_supported(
+                    facts.principal.amount + facts.interest.amount + facts.fee.amount > 0,
+                    "A payment allocation cannot be zero.",
+                )
+                required = {SupportedCorporateEvidenceKind.LENDER_STATEMENT}
+            for condition, message in (
+                (facts.norwegian_lender, "Foreign or foreign-currency bank debt is unsupported."),
+                (facts.signed_agreement, "A signed ordinary bank-loan agreement is required."),
+                (facts.lender_allocation_confirmed, "The lender must supply the payment allocation."),
+                (facts.ordinary_terms, "Non-ordinary bank debt requires specialist review."),
+                (facts.no_complex_terms, "Overdraft, refinancing, covenant change or complex debt is unsupported."),
+            ):
+                _require_supported(condition, message)
+            if command.bank_fact is None:
+                self._incomplete_evidence("Bank evidence is required for bank-loan cash movement.")
+            expected_bank_amount = (
+                facts.principal.amount
+                if command.phase is SupportedCorporateEventPhase.DISBURSEMENT
+                else -(
+                    facts.principal.amount + facts.interest.amount + facts.fee.amount
+                )
+            )
+            if command.bank_fact.signed_amount.amount != expected_bank_amount:
+                self._incomplete_evidence(
+                    "Bank-loan transaction does not match the lender allocation."
+                )
+            self._require_document_kinds(required, evidence_kinds)
+
+        elif isinstance(facts, GroupContributionEventFacts):
+            if command.event_kind is not SupportedCorporateEventKind.GROUP_CONTRIBUTION:
+                self._unsupported_kind()
+            if command.phase is not SupportedCorporateEventPhase.DECISION:
+                self._invalid_phase()
+            for amount, label in (
+                (facts.gross_tax_amount, "Gross group contribution"),
+                (facts.related_tax, "Related tax"),
+                (facts.after_tax_accounting_amount, "After-tax contribution"),
+            ):
+                _non_negative_nok(amount, label)
+            if (
+                facts.gross_tax_amount.amount
+                != facts.related_tax.amount + facts.after_tax_accounting_amount.amount
+                or facts.after_tax_accounting_amount.amount <= 0
+            ):
+                _fail(CorporateGovernanceErrorCode.INVALID_INPUT, "Group-contribution tax and accounting amounts do not reconcile.")
+            _text(facts.counterparty_name)
+            if _ORG_NUMBER.fullmatch(facts.counterparty_organization_number) is None:
+                _fail(CorporateGovernanceErrorCode.INVALID_INPUT, "Counterparty organization number is invalid.")
+            _require_supported(facts.relationship in {SupportedCorporateRelationship.SUBSIDIARY_TO_PARENT, SupportedCorporateRelationship.PARENT_TO_SUBSIDIARY, SupportedCorporateRelationship.SISTER_TO_SISTER}, "Group-contribution relationship is unsupported.")
+            _require_supported(facts.perspective in {SupportedCorporatePerspective.GIVER, SupportedCorporatePerspective.RECIPIENT}, "Group-contribution perspective is unsupported.")
+            for condition, message in (
+                (facts.both_norwegian, "Foreign or EEA-extension group contributions are unsupported."),
+                (facts.ownership_basis_points > 9000 and facts.voting_basis_points > 9000, "Ownership and voting rights must both exceed 90 percent."),
+                (facts.year_end_group_eligibility_proved, "Year-end tax-group eligibility must be proved."),
+                (facts.corporate_approval_evidenced, "Corporate approval must be evidenced."),
+                (facts.distribution_capacity_confirmed, "Lawful distribution capacity must be confirmed."),
+                (facts.prudent_equity_and_liquidity_confirmed, "Adequate equity and liquidity must be confirmed."),
+                (facts.no_equity_method, "Equity-method accounting is unsupported."),
+                (facts.no_non_cash_or_circular_route, "Non-cash, circular or multiple contribution routes are unsupported."),
+                (facts.consolidation_not_required, "Required or uncertain consolidation is outside this workflow."),
+            ):
+                _require_supported(condition, message)
+            if facts.relationship is SupportedCorporateRelationship.SUBSIDIARY_TO_PARENT:
+                _require_judgment_cleared(facts.post_acquisition_income_proved, "Post-acquisition income or return-of-cost treatment is unresolved.")
+            if facts.relationship is SupportedCorporateRelationship.PARENT_TO_SUBSIDIARY:
+                _require_judgment_cleared(facts.impairment_cleared, "Investment impairment must be resolved.")
+            if command.tax_calculation_fact is None:
+                self._incomplete_evidence("A versioned company-tax calculation is required.")
+            self._require_document_kinds({SupportedCorporateEvidenceKind.SIGNED_DECISION}, evidence_kinds)
+        else:
+            self._unsupported_kind()
+
+        payload = {
+            "policyVersion": _SUPPORTED_EVENT_POLICY_VERSION,
+            "eventId": str(command.event_id),
+            "eventReference": str(command.event_reference),
+            "companyId": str(command.company_id),
+            "incomeYear": int(command.income_year),
+            "eventDate": command.event_date.value.isoformat(),
+            "eventKind": command.event_kind.value,
+            "phase": command.phase.value,
+            "businessFacts": _json_value(command.facts),
+            "documentFacts": sorted(
+                (_json_value(item) for item in command.document_facts),
+                key=lambda item: (str(item["evidence_kind"]), str(item["document_id"])),
+            ),
+            "bankFact": _json_value(command.bank_fact),
+            "shareholderRegisterFact": _json_value(command.shareholder_register_fact),
+            "taxCalculationFact": _json_value(command.tax_calculation_fact),
+        }
+        canonical_json = _canonical_json(payload)
+        return CanonicalSupportedCorporateEvent(
+            event_id=command.event_id,
+            event_reference=command.event_reference,
+            company_id=command.company_id,
+            income_year=command.income_year,
+            event_date=command.event_date,
+            event_kind=command.event_kind,
+            phase=command.phase,
+            policy_version=_SUPPORTED_EVENT_POLICY_VERSION,
+            canonical_facts=json.loads(canonical_json),
+            facts_sha256=_sha256(canonical_json),
+        )
+
+    @staticmethod
+    def _require_document_kinds(
+        required: set[SupportedCorporateEvidenceKind],
+        actual: set[SupportedCorporateEvidenceKind],
+    ) -> None:
+        missing = required - actual
+        if missing:
+            CorporateGovernanceService._incomplete_evidence(
+                "Missing corporate-event evidence: "
+                + ", ".join(sorted(item.value for item in missing))
+                + "."
+            )
+
+    @staticmethod
+    def _incomplete_evidence(message: str) -> None:
+        _fail(CorporateGovernanceErrorCode.CORPORATE_EVENT_EVIDENCE_INCOMPLETE, message)
+
+    @staticmethod
+    def _invalid_phase() -> None:
+        _fail(CorporateGovernanceErrorCode.CORPORATE_EVENT_PHASE_INVALID, "Corporate-event phase is invalid for this pattern.")
+
+    @staticmethod
+    def _unsupported_kind() -> None:
+        _fail(CorporateGovernanceErrorCode.UNSUPPORTED_CORPORATE_EVENT, "Corporate-event kind and facts do not match.")
 
     def validate_shareholder_loan(
         self,

@@ -133,6 +133,8 @@ import {
   recordOwnerDividendEvent,
   recordOwnerDividendPayment as recordOwnerDividendPaymentThroughApi,
   recordShareholderLoan as recordShareholderLoanThroughApi,
+  recordSupportedCorporateEvent as recordSupportedCorporateEventThroughApi,
+  reverseSupportedCorporateEvent as reverseSupportedCorporateEventThroughApi,
   registerAnnualCloseDocuments,
   registerOwnerDividendDocuments,
   shareholderLoanActionErrorMessage,
@@ -142,6 +144,10 @@ import {
   type CorporateDocumentReadinessWire,
   type OwnerDividendProposalWire,
   type RenderedCorporateArtifactWire,
+  type SupportedCorporateDocumentFactWire,
+  type SupportedCorporateEventKind,
+  type SupportedCorporateEventPhase,
+  type SupportedCorporateEventWire,
 } from "../features/corporate-governance";
 import { buildLaunchSignoffRecord } from "./lib/launch-signoff";
 import { actionReturnPath } from "./lib/action-return";
@@ -3674,6 +3680,293 @@ export async function recordShareholderLoan(formData: FormData) {
     }));
   }
 
+  revalidatePath("/");
+  succeedTo(returnTo);
+}
+
+function supportedDocumentFact(
+  formData: FormData,
+  prefix: string,
+): SupportedCorporateDocumentFactWire | null {
+  const documentId = formString(formData, `${prefix}Id`);
+  const contentSha256 = formString(formData, `${prefix}Hash`).toLowerCase();
+  const evidenceKind = formString(formData, `${prefix}Kind`);
+  if (!documentId && !contentSha256 && !evidenceKind) return null;
+  if (
+    !/^[0-9a-f-]{36}$/i.test(documentId)
+    || !/^[0-9a-f]{64}$/.test(contentSha256)
+    || ![
+      "signed_decision",
+      "signed_agreement",
+      "amended_articles",
+      "contribution_confirmation",
+      "registration_receipt",
+      "shareholder_register",
+      "tax_calculation",
+      "lender_statement",
+      "correction_memo",
+    ].includes(evidenceKind)
+  ) {
+    throw new Error("Dokumentbeviset er ufullstendig.");
+  }
+  return {
+    documentId,
+    contentSha256,
+    evidenceKind: evidenceKind as SupportedCorporateDocumentFactWire["evidenceKind"],
+    revision: 1,
+  };
+}
+
+function checked(formData: FormData, name: string) {
+  return formData.get(name) === "on";
+}
+
+export async function recordSupportedCorporateEventAction(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  if (!hasSupabaseEnv()) {
+    failTo(returnTo, "Tjenesten er midlertidig utilgjengelig.");
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) failTo(returnTo, "Innlogging kreves.");
+
+  const operationId = requiredFormUuid(formData, "operationId");
+  const companyId = requiredFormUuid(formData, "companyId");
+  const incomeYear = Number(formString(formData, "incomeYear"));
+  await requireSensitiveActionStepUp(
+    supabase,
+    user.id,
+    companyId,
+    "finalize_corporate_decision",
+  );
+  const eventKind = formString(formData, "eventKind") as SupportedCorporateEventKind;
+  const phase = formString(formData, "phase") as SupportedCorporateEventPhase;
+  const documentFacts = [
+    "primaryDocument",
+    "supportingDocument1",
+    "supportingDocument2",
+    "supportingDocument3",
+  ]
+    .map((prefix) => supportedDocumentFact(formData, prefix))
+    .filter((fact): fact is SupportedCorporateDocumentFactWire => fact !== null);
+  const amount = (name: string) => ({
+    amount: formString(formData, name) || "0",
+    currency: "NOK" as const,
+  });
+  const principal = amount("principal");
+
+  let facts: SupportedCorporateEventWire["facts"];
+  switch (eventKind) {
+    case "cash_capital_increase":
+      facts = {
+        factType: eventKind,
+        nominalIncrease: amount("nominalIncrease"),
+        sharePremium: amount("sharePremium"),
+        issuedShareCount: Number(formString(formData, "issuedShareCount")),
+        singleOrdinaryClass: checked(formData, "singleOrdinaryClass"),
+        cashOnly: checked(formData, "cashOnly"),
+        bindingSubscription: checked(formData, "bindingSubscription"),
+        fullTimelyPayment: checked(formData, "fullTimelyPayment"),
+        independentConfirmation: checked(formData, "independentConfirmation"),
+        registerReconciled: checked(formData, "registerReconciled"),
+        norwegianSubscribersOnly: checked(formData, "norwegianSubscribersOnly"),
+        noSpecialTerms: checked(formData, "noSpecialTerms"),
+        noDirectUseException: checked(formData, "noDirectUseException"),
+        issueCostsResolved: checked(formData, "issueCostsResolved"),
+      };
+      break;
+    case "loss_coverage_capital_reduction":
+      facts = {
+        factType: eventKind,
+        nominalReduction: amount("nominalReduction"),
+        oldShareCapital: amount("oldShareCapital"),
+        newShareCapital: amount("newShareCapital"),
+        singleOrdinaryClass: checked(formData, "singleOrdinaryClass"),
+        unchangedOwnersAndShareCount: checked(formData, "unchangedOwnersAndShareCount"),
+        lossOnly: checked(formData, "lossOnly"),
+        lossEvidenced: checked(formData, "lossEvidenced"),
+        otherEquityExhausted: checked(formData, "otherEquityExhausted"),
+        noValueTransfer: checked(formData, "noValueTransfer"),
+        noCreditorNotice: checked(formData, "noCreditorNotice"),
+        noSimultaneousCapitalChange: checked(formData, "noSimultaneousCapitalChange"),
+        registerReconciled: checked(formData, "registerReconciled"),
+      };
+      break;
+    case "owner_loan":
+      facts = {
+        factType: eventKind,
+        principal,
+        ownerName: formString(formData, "counterpartyName"),
+        ownerIsRecordedShareholder: checked(formData, "ownerIsRecordedShareholder"),
+        norwegianOwner: checked(formData, "norwegianCounterparty"),
+        signedAgreement: checked(formData, "signedAgreement"),
+        ordinaryTerms: checked(formData, "ordinaryTerms"),
+        approvalOrExemptionEvidenced: checked(formData, "approvalOrExemptionEvidenced"),
+        interestAndTaxTreatmentCleared: checked(formData, "interestAndTaxTreatmentCleared"),
+        noSecurityOrConversion: checked(formData, "noSecurityOrConversion"),
+        noComplexTerms: checked(formData, "noComplexTerms"),
+      };
+      break;
+    case "intercompany_loan":
+      facts = {
+        factType: eventKind,
+        principal,
+        counterpartyName: formString(formData, "counterpartyName"),
+        counterpartyOrganizationNumber: formString(formData, "counterpartyOrganizationNumber"),
+        perspective: formString(formData, "perspective") as "lender" | "borrower",
+        relationship: formString(formData, "relationship") as
+          | "parent_to_subsidiary"
+          | "other_same_group",
+        norwegianCounterparty: checked(formData, "norwegianCounterparty"),
+        signedAgreement: checked(formData, "signedAgreement"),
+        ordinaryTerms: checked(formData, "ordinaryTerms"),
+        approvalOrExemptionEvidenced: checked(formData, "approvalOrExemptionEvidenced"),
+        armLengthConfirmed: checked(formData, "armLengthConfirmed"),
+        interestLimitationCleared: checked(formData, "interestLimitationCleared"),
+        noComplexTerms: checked(formData, "noComplexTerms"),
+      };
+      break;
+    case "bank_loan":
+      facts = {
+        factType: eventKind,
+        principal,
+        interest: amount("interest"),
+        fee: amount("fee"),
+        lenderName: formString(formData, "counterpartyName"),
+        norwegianLender: checked(formData, "norwegianCounterparty"),
+        signedAgreement: checked(formData, "signedAgreement"),
+        lenderAllocationConfirmed: checked(formData, "lenderAllocationConfirmed"),
+        ordinaryTerms: checked(formData, "ordinaryTerms"),
+        noComplexTerms: checked(formData, "noComplexTerms"),
+      };
+      break;
+    case "group_contribution":
+      facts = {
+        factType: eventKind,
+        grossTaxAmount: amount("grossTaxAmount"),
+        relatedTax: amount("relatedTax"),
+        afterTaxAccountingAmount: amount("afterTaxAccountingAmount"),
+        counterpartyName: formString(formData, "counterpartyName"),
+        counterpartyOrganizationNumber: formString(formData, "counterpartyOrganizationNumber"),
+        perspective: formString(formData, "perspective") as "giver" | "recipient",
+        relationship: formString(formData, "relationship") as
+          | "parent_to_subsidiary"
+          | "subsidiary_to_parent"
+          | "sister_to_sister",
+        bothNorwegian: checked(formData, "norwegianCounterparty"),
+        ownershipBasisPoints: Number(formString(formData, "ownershipBasisPoints")),
+        votingBasisPoints: Number(formString(formData, "votingBasisPoints")),
+        yearEndGroupEligibilityProved: checked(formData, "yearEndGroupEligibilityProved"),
+        corporateApprovalEvidenced: checked(formData, "corporateApprovalEvidenced"),
+        distributionCapacityConfirmed: checked(formData, "distributionCapacityConfirmed"),
+        prudentEquityAndLiquidityConfirmed: checked(
+          formData,
+          "prudentEquityAndLiquidityConfirmed",
+        ),
+        postAcquisitionIncomeProved: checked(formData, "postAcquisitionIncomeProved"),
+        impairmentCleared: checked(formData, "impairmentCleared"),
+        noEquityMethod: checked(formData, "noEquityMethod"),
+        noNonCashOrCircularRoute: checked(formData, "noNonCashOrCircularRoute"),
+        consolidationNotRequired: checked(formData, "consolidationNotRequired"),
+      };
+      break;
+    default:
+      failTo(returnTo, "Denne selskapshendelsen støttes ikke.");
+  }
+
+  const bankId = formString(formData, "bankTransactionId");
+  const sourceId = formString(formData, "sourceDocumentId");
+  const sourceHash = formString(formData, "sourceDocumentHash").toLowerCase();
+  const body: SupportedCorporateEventWire = {
+    companyId,
+    incomeYear,
+    eventId: operationId,
+    eventReference: requiredFormUuid(formData, "eventReference"),
+    eventDate: formString(formData, "eventDate"),
+    eventKind,
+    phase,
+    facts,
+    documentFacts,
+    bankFact: bankId
+      ? {
+          transactionId: requiredFormUuid(formData, "bankTransactionId"),
+          transactionDate: formString(formData, "bankTransactionDate"),
+          signedAmount: amount("bankSignedAmount"),
+          sourceSha256: formString(formData, "bankSourceHash").toLowerCase(),
+        }
+      : null,
+    shareholderRegisterFact: formString(formData, "sourceKind") === "shareholder_register"
+      ? { recordId: sourceId, revision: 1, factSha256: sourceHash }
+      : null,
+    taxCalculationFact: formString(formData, "sourceKind") === "tax_calculation"
+      ? { recordId: sourceId, revision: 1, factSha256: sourceHash }
+      : null,
+  };
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
+  try {
+    await recordSupportedCorporateEventThroughApi(
+      accessToken,
+      body,
+      operationId,
+      operationId,
+    );
+  } catch (error) {
+    const outcomeMayBeUnknown = corporateGovernanceOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery(returnTo, {
+      error: corporateGovernanceActionErrorMessage(error),
+      corporateEventOperationId: outcomeMayBeUnknown ? operationId : undefined,
+    }));
+  }
+  revalidatePath("/");
+  succeedTo(returnTo);
+}
+
+export async function reverseSupportedCorporateEventAction(formData: FormData) {
+  const returnTo = returnTarget(formData);
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) failTo(returnTo, "Innlogging kreves.");
+  const operationId = requiredFormUuid(formData, "operationId");
+  const companyId = requiredFormUuid(formData, "companyId");
+  await requireSensitiveActionStepUp(
+    supabase,
+    user.id,
+    companyId,
+    "finalize_corporate_decision",
+  );
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
+  const correction = supportedDocumentFact(formData, "correctionDocument");
+  if (!correction || correction.evidenceKind !== "correction_memo") {
+    failTo(returnTo, "Velg et korrigeringsnotat.");
+  }
+  try {
+    await reverseSupportedCorporateEventThroughApi(
+      accessToken,
+      requiredFormUuid(formData, "originalEventId"),
+      {
+        companyId,
+        incomeYear: Number(formString(formData, "incomeYear")),
+        reversalDate: formString(formData, "reversalDate"),
+        reason: formString(formData, "reason"),
+        correctionDocumentFact: correction,
+      },
+      operationId,
+      operationId,
+    );
+  } catch (error) {
+    redirect(ownerPathWithQuery(returnTo, {
+      error: corporateGovernanceActionErrorMessage(error),
+      corporateEventOperationId: corporateGovernanceOutcomeMayBeUnknown(error)
+        ? operationId
+        : undefined,
+    }));
+  }
   revalidatePath("/");
   succeedTo(returnTo);
 }

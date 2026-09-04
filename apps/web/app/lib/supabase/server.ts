@@ -114,6 +114,7 @@ export type DocumentRow = {
   status: string;
   retention_years: number;
   storage_key: string;
+  content_sha256?: string | null;
   created_by: string;
   created_at: string;
   removed_at: string | null;

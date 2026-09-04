@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, time
 from enum import StrEnum
 from types import MappingProxyType
-from typing import Protocol, TypeVar
+from typing import Literal, Protocol, TypeAlias, TypeVar
 from uuid import UUID
 
 from talli_backend.shared.kernel import (
@@ -92,6 +92,14 @@ class DocumentReference(_UuidReference):
     pass
 
 
+class SupportedCorporateEventId(_UuidReference):
+    """Stable identity for one approved accounting-relevant occurrence."""
+
+
+class SupportedCorporateEventReference(_UuidReference):
+    """Stable lifecycle identity shared by related event phases."""
+
+
 class BoardTreatmentMethod(StrEnum):
     PHYSICAL = "physical"
     VIDEO = "video"
@@ -168,6 +176,53 @@ class ShareholderLoanDocumentStatus(StrEnum):
     NOT_REQUIRED = "not_required"
 
 
+class SupportedCorporateEventKind(StrEnum):
+    CASH_CAPITAL_INCREASE = "cash_capital_increase"
+    LOSS_COVERAGE_CAPITAL_REDUCTION = "loss_coverage_capital_reduction"
+    INTERCOMPANY_LOAN = "intercompany_loan"
+    OWNER_LOAN = "owner_loan"
+    BANK_LOAN = "bank_loan"
+    GROUP_CONTRIBUTION = "group_contribution"
+
+
+class SupportedCorporateEventPhase(StrEnum):
+    BINDING_SUBSCRIPTION = "binding_subscription"
+    RESTRICTED_PAYMENT = "restricted_payment"
+    REGISTERED = "registered"
+    DECIDED_NOT_REGISTERED = "decided_not_registered"
+    FIRST_RECOGNIZED_AFTER_REGISTRATION = "first_recognized_after_registration"
+    FUNDING = "funding"
+    DISBURSEMENT = "disbursement"
+    PAYMENT = "payment"
+    DECISION = "decision"
+
+
+class SupportedCorporateRelationship(StrEnum):
+    PARENT_TO_SUBSIDIARY = "parent_to_subsidiary"
+    SUBSIDIARY_TO_PARENT = "subsidiary_to_parent"
+    SISTER_TO_SISTER = "sister_to_sister"
+    OTHER_SAME_GROUP = "other_same_group"
+
+
+class SupportedCorporatePerspective(StrEnum):
+    LENDER = "lender"
+    BORROWER = "borrower"
+    GIVER = "giver"
+    RECIPIENT = "recipient"
+
+
+class SupportedCorporateEvidenceKind(StrEnum):
+    SIGNED_DECISION = "signed_decision"
+    SIGNED_AGREEMENT = "signed_agreement"
+    AMENDED_ARTICLES = "amended_articles"
+    CONTRIBUTION_CONFIRMATION = "contribution_confirmation"
+    REGISTRATION_RECEIPT = "registration_receipt"
+    SHAREHOLDER_REGISTER = "shareholder_register"
+    TAX_CALCULATION = "tax_calculation"
+    LENDER_STATEMENT = "lender_statement"
+    CORRECTION_MEMO = "correction_memo"
+
+
 class CorporateGovernanceErrorCode(StrEnum):
     INVALID_INPUT = "corporate_documents_invalid_persisted_facts"
     INVALID_MEETING_FACTS = "corporate_documents_invalid_meeting_facts"
@@ -194,6 +249,12 @@ class CorporateGovernanceErrorCode(StrEnum):
     MISSING_SIGNED_ARTIFACTS = "corporate_documents_missing_signed_artifacts"
     PERSONAL_SHAREHOLDER_LOAN_BLOCKED = "personal_shareholder_loan_blocked"
     RELATED_PARTY_SECURITY_BLOCKED = "related_party_security_blocked"
+    UNSUPPORTED_CORPORATE_EVENT = "unsupported_corporate_event"
+    CORPORATE_EVENT_EVIDENCE_INCOMPLETE = (
+        "corporate_event_evidence_incomplete"
+    )
+    CORPORATE_EVENT_JUDGMENT_REQUIRED = "corporate_event_judgment_required"
+    CORPORATE_EVENT_PHASE_INVALID = "corporate_event_phase_invalid"
     DEPENDENCY_UNAVAILABLE = "corporate_governance_dependency_unavailable"
 
 
@@ -1002,6 +1063,268 @@ class PreparedShareholderLoan:
     replay: RecordedShareholderLoan | None
 
 
+@dataclass(frozen=True, slots=True)
+class SupportedCorporateDocumentFact:
+    document_id: DocumentReference
+    evidence_kind: SupportedCorporateEvidenceKind
+    revision: int
+    content_sha256: str
+
+    def __post_init__(self) -> None:
+        digest = self.content_sha256.strip().lower()
+        if self.revision < 1 or SHA256_PATTERN.fullmatch(digest) is None:
+            raise CorporateGovernanceError.invalid(
+                CorporateGovernanceErrorCode.INVALID_INPUT,
+                "Corporate-event document evidence is invalid.",
+            )
+        object.__setattr__(self, "content_sha256", digest)
+
+
+@dataclass(frozen=True, slots=True)
+class SupportedCorporateSourceFact:
+    record_id: CorporateSourceReference
+    revision: int
+    fact_sha256: str
+
+    def __post_init__(self) -> None:
+        digest = self.fact_sha256.strip().lower()
+        if self.revision < 1 or SHA256_PATTERN.fullmatch(digest) is None:
+            raise CorporateGovernanceError.invalid(
+                CorporateGovernanceErrorCode.INVALID_INPUT,
+                "Corporate-event source evidence is invalid.",
+            )
+        object.__setattr__(self, "fact_sha256", digest)
+
+
+@dataclass(frozen=True, slots=True)
+class SupportedCorporateBankFact:
+    transaction_id: BankTransactionReference
+    transaction_date: LocalDate
+    signed_amount: Money
+    source_sha256: str
+
+    def __post_init__(self) -> None:
+        digest = self.source_sha256.strip().lower()
+        if (
+            self.signed_amount.currency.value != "NOK"
+            or self.signed_amount.amount == 0
+            or SHA256_PATTERN.fullmatch(digest) is None
+        ):
+            raise CorporateGovernanceError.invalid(
+                CorporateGovernanceErrorCode.INVALID_INPUT,
+                "Corporate-event bank evidence is invalid.",
+            )
+        object.__setattr__(self, "source_sha256", digest)
+
+
+@dataclass(frozen=True, slots=True)
+class CashCapitalIncreaseEventFacts:
+    nominal_increase: Money
+    share_premium: Money
+    issued_share_count: int
+    single_ordinary_class: bool
+    cash_only: bool
+    binding_subscription: bool
+    full_timely_payment: bool
+    independent_confirmation: bool
+    register_reconciled: bool
+    norwegian_subscribers_only: bool
+    no_special_terms: bool
+    no_direct_use_exception: bool
+    issue_costs_resolved: bool
+
+
+@dataclass(frozen=True, slots=True)
+class LossCoverageCapitalReductionEventFacts:
+    nominal_reduction: Money
+    old_share_capital: Money
+    new_share_capital: Money
+    single_ordinary_class: bool
+    unchanged_owners_and_share_count: bool
+    loss_only: bool
+    loss_evidenced: bool
+    other_equity_exhausted: bool
+    no_value_transfer: bool
+    no_creditor_notice: bool
+    no_simultaneous_capital_change: bool
+    register_reconciled: bool
+
+
+@dataclass(frozen=True, slots=True)
+class IntercompanyLoanEventFacts:
+    perspective: SupportedCorporatePerspective
+    relationship: SupportedCorporateRelationship
+    principal: Money
+    counterparty_name: str
+    counterparty_organization_number: str
+    norwegian_counterparty: bool
+    signed_agreement: bool
+    ordinary_terms: bool
+    approval_or_exemption_evidenced: bool
+    arm_length_confirmed: bool
+    interest_limitation_cleared: bool
+    no_complex_terms: bool
+
+
+@dataclass(frozen=True, slots=True)
+class OwnerLoanEventFacts:
+    principal: Money
+    owner_name: str
+    owner_is_recorded_shareholder: bool
+    norwegian_owner: bool
+    signed_agreement: bool
+    ordinary_terms: bool
+    approval_or_exemption_evidenced: bool
+    interest_and_tax_treatment_cleared: bool
+    no_security_or_conversion: bool
+    no_complex_terms: bool
+
+
+@dataclass(frozen=True, slots=True)
+class BankLoanEventFacts:
+    principal: Money
+    interest: Money
+    fee: Money
+    lender_name: str
+    norwegian_lender: bool
+    signed_agreement: bool
+    lender_allocation_confirmed: bool
+    ordinary_terms: bool
+    no_complex_terms: bool
+
+
+@dataclass(frozen=True, slots=True)
+class GroupContributionEventFacts:
+    relationship: SupportedCorporateRelationship
+    perspective: SupportedCorporatePerspective
+    gross_tax_amount: Money
+    related_tax: Money
+    after_tax_accounting_amount: Money
+    counterparty_name: str
+    counterparty_organization_number: str
+    both_norwegian: bool
+    ownership_basis_points: int
+    voting_basis_points: int
+    year_end_group_eligibility_proved: bool
+    corporate_approval_evidenced: bool
+    distribution_capacity_confirmed: bool
+    prudent_equity_and_liquidity_confirmed: bool
+    post_acquisition_income_proved: bool
+    impairment_cleared: bool
+    no_equity_method: bool
+    no_non_cash_or_circular_route: bool
+    consolidation_not_required: bool
+
+
+SupportedCorporateEventFacts: TypeAlias = (
+    BankLoanEventFacts
+    | CashCapitalIncreaseEventFacts
+    | GroupContributionEventFacts
+    | IntercompanyLoanEventFacts
+    | LossCoverageCapitalReductionEventFacts
+    | OwnerLoanEventFacts
+)
+
+
+@dataclass(frozen=True, slots=True)
+class RecordSupportedCorporateEventCommand:
+    company_id: CompanyId
+    actor_id: ActorId
+    correlation_id: CorrelationId
+    idempotency_key: IdempotencyKey
+    income_year: IncomeYear
+    event_id: SupportedCorporateEventId
+    event_reference: SupportedCorporateEventReference
+    event_date: LocalDate
+    event_kind: SupportedCorporateEventKind
+    phase: SupportedCorporateEventPhase
+    facts: SupportedCorporateEventFacts
+    document_facts: tuple[SupportedCorporateDocumentFact, ...]
+    bank_fact: SupportedCorporateBankFact | None = None
+    shareholder_register_fact: SupportedCorporateSourceFact | None = None
+    tax_calculation_fact: SupportedCorporateSourceFact | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ReverseSupportedCorporateEventCommand:
+    company_id: CompanyId
+    actor_id: ActorId
+    correlation_id: CorrelationId
+    idempotency_key: IdempotencyKey
+    income_year: IncomeYear
+    original_event_id: SupportedCorporateEventId
+    reversal_date: LocalDate
+    reason: str
+    correction_document_fact: SupportedCorporateDocumentFact
+
+    def __post_init__(self) -> None:
+        reason = " ".join(self.reason.strip().split())
+        if (
+            not reason
+            or len(reason) > 500
+            or self.correction_document_fact.evidence_kind
+            is not SupportedCorporateEvidenceKind.CORRECTION_MEMO
+        ):
+            raise CorporateGovernanceError.invalid(
+                CorporateGovernanceErrorCode.INVALID_INPUT,
+                "A reversal reason is required.",
+            )
+        object.__setattr__(self, "reason", reason)
+
+
+@dataclass(frozen=True, slots=True)
+class CanonicalSupportedCorporateEvent:
+    event_id: SupportedCorporateEventId
+    event_reference: SupportedCorporateEventReference
+    company_id: CompanyId
+    income_year: IncomeYear
+    event_date: LocalDate
+    event_kind: SupportedCorporateEventKind
+    phase: SupportedCorporateEventPhase
+    policy_version: Literal["corporate-governance-supported-events-2026.1"]
+    canonical_facts: Mapping[str, object]
+    facts_sha256: str
+
+    def __post_init__(self) -> None:
+        digest = self.facts_sha256.strip().lower()
+        if SHA256_PATTERN.fullmatch(digest) is None:
+            raise CorporateGovernanceError.invalid(
+                CorporateGovernanceErrorCode.INVALID_INPUT,
+                "Corporate-event fact digest is invalid.",
+            )
+        object.__setattr__(
+            self, "canonical_facts", _immutable_mapping(self.canonical_facts)
+        )
+        object.__setattr__(self, "facts_sha256", digest)
+
+
+@dataclass(frozen=True, slots=True)
+class RecordedSupportedCorporateEvent:
+    event: CanonicalSupportedCorporateEvent
+    accounting_entry_id: AccountingEntryReference
+    bank_transaction_id: BankTransactionReference | None
+    correction_of_event_id: SupportedCorporateEventId | None
+    recorded_at: datetime
+    replayed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ReversedSupportedCorporateEvent:
+    original_event_id: SupportedCorporateEventId
+    original_accounting_entry_id: AccountingEntryReference
+    reversal_accounting_entry_id: AccountingEntryReference
+    company_id: CompanyId
+    income_year: IncomeYear
+    reversed_at: datetime
+    replayed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedSupportedCorporateEvent:
+    event: CanonicalSupportedCorporateEvent
+    replay: RecordedSupportedCorporateEvent | None
+
+
 class CorporateGovernancePersistence(Protocol):
     @property
     def actor_id(self) -> ActorId: ...
@@ -1115,6 +1438,24 @@ class CorporateGovernancePersistence(Protocol):
         prepared: PreparedShareholderLoan,
     ) -> RecordedShareholderLoan: ...
 
+    async def prepare_supported_event(
+        self,
+        command: RecordSupportedCorporateEventCommand,
+        event: CanonicalSupportedCorporateEvent,
+    ) -> PreparedSupportedCorporateEvent: ...
+
+    async def complete_supported_event(
+        self,
+        command: RecordSupportedCorporateEventCommand,
+        accounting_entry_id: AccountingEntryReference,
+        prepared: PreparedSupportedCorporateEvent,
+    ) -> RecordedSupportedCorporateEvent: ...
+
+    async def list_supported_events(
+        self,
+        company_ids: tuple[CompanyId, ...],
+    ) -> tuple[RecordedSupportedCorporateEvent, ...]: ...
+
 
 CorporateGovernanceAdapter = TypeVar(
     "CorporateGovernanceAdapter", bound=type[object]
@@ -1139,6 +1480,7 @@ SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 __all__ = [
     "SHA256_PATTERN",
     "AccountingEntryReference",
+    "BankLoanEventFacts",
     "AnnualCloseEventKind",
     "AnnualCloseLifecycle",
     "AnnualCloseProposalCommand",
@@ -1158,6 +1500,8 @@ __all__ = [
     "CanonicalDecisionShareholder",
     "CanonicalOwnerDividendDecision",
     "CanonicalShareholderLoan",
+    "CanonicalSupportedCorporateEvent",
+    "CashCapitalIncreaseEventFacts",
     "CorporateAccountMovementFacts",
     "CorporateArtifactId",
     "CorporateArtifactKind",
@@ -1183,6 +1527,10 @@ __all__ = [
     "CorporateSourceReference",
     "DerivedCorporateDecisionFacts",
     "DocumentReference",
+    "GroupContributionEventFacts",
+    "IntercompanyLoanEventFacts",
+    "LossCoverageCapitalReductionEventFacts",
+    "OwnerLoanEventFacts",
     "FinalizeAnnualCloseCommand",
     "FinalizeOwnerDividendCommand",
     "GeneralMeeting",
@@ -1201,12 +1549,17 @@ __all__ = [
     "PreparedOwnerDividendFinalization",
     "PreparedOwnerDividendPayment",
     "PreparedShareholderLoan",
+    "PreparedSupportedCorporateEvent",
     "ProposedAnnualClose",
     "ProposedOwnerDividend",
     "RecordAnnualCloseEventCommand",
     "RecordOwnerDividendEventCommand",
     "RecordOwnerDividendPaymentCommand",
     "RecordShareholderLoanCommand",
+    "RecordSupportedCorporateEventCommand",
+    "ReverseSupportedCorporateEventCommand",
+    "RecordedSupportedCorporateEvent",
+    "ReversedSupportedCorporateEvent",
     "RecordedShareholderLoan",
     "RegisterAnnualCloseDocumentsCommand",
     "RegisterOwnerDividendDocumentsCommand",
@@ -1217,5 +1570,16 @@ __all__ = [
     "ShareholderLoanDirection",
     "ShareholderLoanDocumentStatus",
     "ShareholderVote",
+    "SupportedCorporateBankFact",
+    "SupportedCorporateDocumentFact",
+    "SupportedCorporateEventFacts",
+    "SupportedCorporateEventId",
+    "SupportedCorporateEventKind",
+    "SupportedCorporateEventPhase",
+    "SupportedCorporateEventReference",
+    "SupportedCorporateEvidenceKind",
+    "SupportedCorporatePerspective",
+    "SupportedCorporateRelationship",
+    "SupportedCorporateSourceFact",
     "corporate_governance_persistence_adapter",
 ]

@@ -773,6 +773,20 @@ class CorrectHoldingActionCommand(LedgerCommand):
 
 
 @dataclass(frozen=True, slots=True)
+class ReverseSupportedHoldingActionCommand(LedgerCommand):
+    event_date: LocalDate
+    original_entry_id: LedgerEntryId
+    reason: str
+    correction_source: LedgerFactReference
+
+    def __post_init__(self) -> None:
+        reason = self.reason.strip()
+        if not reason or len(reason) > 500:
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        object.__setattr__(self, "reason", reason)
+
+
+@dataclass(frozen=True, slots=True)
 class PostAdministrativeCostCommand(LedgerCommand):
     bank_transaction_id: LedgerSourceRecordId
     category: AdministrativeCostCategory
@@ -1433,6 +1447,16 @@ class CorrectedLedgerEntries:
 
 
 @dataclass(frozen=True, slots=True)
+class ReversedLedgerEntry:
+    original_entry_id: LedgerEntryId
+    reversal_entry_id: LedgerEntryId
+    company_id: CompanyId
+    income_year: IncomeYear
+    reversed_at: Timestamp
+    replayed: bool
+
+
+@dataclass(frozen=True, slots=True)
 class PeriodLock:
     period_lock_id: PeriodLockId
     company_id: CompanyId
@@ -1697,6 +1721,11 @@ class LedgerPersistence(Protocol):
         lines: tuple[LedgerLine, ...],
     ) -> CorrectedLedgerEntries: ...
 
+    async def reverse_supported_entry(
+        self,
+        command: ReverseSupportedHoldingActionCommand,
+    ) -> ReversedLedgerEntry: ...
+
     async def post_entry(
         self,
         command: LedgerCommand,
@@ -1802,6 +1831,10 @@ class LedgerCommands(Protocol):
     async def correct_holding_action(
         self, command: CorrectHoldingActionCommand
     ) -> CorrectedLedgerEntries: ...
+
+    async def reverse_supported_holding_action(
+        self, command: ReverseSupportedHoldingActionCommand
+    ) -> ReversedLedgerEntry: ...
 
     async def recognize_holding_action(
         self, command: RecognizeHoldingActionCommand
@@ -1952,6 +1985,8 @@ __all__ = [
     "CompiledOpeningPositionComponent",
     "CorrectHoldingActionCommand",
     "CorrectedLedgerEntries",
+    "ReverseSupportedHoldingActionCommand",
+    "ReversedLedgerEntry",
     "DividendDecisionReferenceId",
     "GroupContributionFacts",
     "GroupContributionPerspective",

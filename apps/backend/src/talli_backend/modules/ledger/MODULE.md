@@ -4,6 +4,10 @@
 {"dependencies":[],"ownedTables":["ledger.bank_loan_anchors","ledger.bank_loan_payment_allocations","ledger.cash_capital_increase_phases","ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.loss_coverage_capital_reduction_phases","ledger.opening_position_component_sources","ledger.opening_position_components","ledger.opening_position_rebuilds","ledger.opening_received_dividend_settlements","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_economic_fact_sets","ledger.reconstruction_economic_facts","ledger.reconstruction_evidence","ledger.reconstruction_source_evidence_bindings","ledger.reconstruction_source_evidence_sets"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
 -->
 
+<!-- architecture-inventory
+{"ownedTables":["ledger.entry_reversals"]}
+-->
+
 ## Purpose and ownership
 
 `ledger` owns narrow-ledger entries, purpose-specific posting translations,
@@ -22,7 +26,7 @@ close locks. It owns
 `ledger.company_year_close_locks`,
 `ledger.company_year_close_reporting_outputs`,
 `ledger.entries`,
-`ledger.entry_contexts`, `ledger.entry_corrections`, `ledger.entry_sources`,
+`ledger.entry_contexts`, `ledger.entry_corrections`, `ledger.entry_reversals`, `ledger.entry_sources`,
 `ledger.period_locks`,
 `ledger.received_dividend_decisions`, `ledger.received_dividend_settlements`,
 `ledger.reconstruction_assessments`, `ledger.reconstruction_economic_fact_sets`,
@@ -81,6 +85,11 @@ closed phase and relationship values are `BankLoanEvent`, `InvestmentDividendPha
 `GroupContributionRelationship`, and
 `GroupContributionPerspective`. Callers cannot select an account, line,
 pattern, or rule version.
+
+`ReverseSupportedHoldingActionCommand` is the narrow correction intent for
+these supported entries. Ledger clones the stored lines with debit and credit
+swapped, records immutable linkage in `ledger.entry_reversals`, and returns a
+`ReversedLedgerEntry`; callers cannot supply replacement accounts or lines.
 
 The investment receivers keep ownership/trade/entitlement recognition separate
 from bank settlement. Purchases recognize the classified investment against a

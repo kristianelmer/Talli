@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Callable
 from dataclasses import replace
 from decimal import Decimal
@@ -22,6 +23,7 @@ from talli_backend.modules.corporate_governance.public import (
     AnnualDataSourceFacts,
     AnnualCloseProposalCommand,
     AnnualCloseLifecycle,
+    BankLoanEventFacts,
     ApproveAnnualCloseCommand,
     AttestAnnualCloseSignedArtifactCommand,
     AttestOwnerDividendSignedArtifactCommand,
@@ -37,24 +39,38 @@ from talli_backend.modules.corporate_governance.public import (
     CorporateAccountMovementFacts,
     CorporateReadinessSource,
     CorporateSourceReference,
+    CashCapitalIncreaseEventFacts,
     DerivedCorporateDecisionFacts,
     FinalizeOwnerDividendCommand,
     FinalizeAnnualCloseCommand,
+    GroupContributionEventFacts,
+    IntercompanyLoanEventFacts,
+    LossCoverageCapitalReductionEventFacts,
     OwnerDividendLifecycle,
     OwnerDividendState,
+    OwnerLoanEventFacts,
     OwnerDividendProposalCommand,
     PersistedCompanyFacts,
     PersistedShareholderFacts,
     ProposedAnnualClose,
     ProposedOwnerDividend,
     RecordShareholderLoanCommand,
+    RecordSupportedCorporateEventCommand,
+    ReverseSupportedCorporateEventCommand,
     RecordAnnualCloseEventCommand,
     RecordOwnerDividendEventCommand,
     RecordOwnerDividendPaymentCommand,
     RecordedShareholderLoan,
+    RecordedSupportedCorporateEvent,
+    ReversedSupportedCorporateEvent,
     RegisterOwnerDividendDocumentsCommand,
     RegisterAnnualCloseDocumentsCommand,
     SHA256_PATTERN,
+    SupportedCorporateEventKind,
+    SupportedCorporateEventPhase,
+    SupportedCorporateEvidenceKind,
+    SupportedCorporatePerspective,
+    SupportedCorporateRelationship,
 )
 from talli_backend.modules.corporate_governance.service import (
     CorporateGovernanceService,
@@ -64,6 +80,23 @@ from talli_backend.modules.documents.public import (
     DocumentsSessionFactory,
 )
 from talli_backend.modules.ledger.public import (
+    ApprovedLossCoverageCapitalReductionFacts,
+    ApprovedOneSidedIntercompanyLoanFundingFacts,
+    ApprovedOwnerLoanFundingFacts,
+    BankLoanEvent,
+    BankLoanReferenceId,
+    CashCapitalIncreaseFacts,
+    CapitalIncreasePhase,
+    CapitalIncreaseReferenceId,
+    CapitalReductionRecognition,
+    CapitalReductionReferenceId,
+    GroupContributionFacts,
+    GroupContributionPerspective,
+    GroupContributionRelationship,
+    IntercompanyLoanPerspective,
+    IntercompanyLoanRelationship,
+    LedgerFactReference,
+    LedgerSourceCapability,
     LedgerCommands,
     LedgerCursor,
     LedgerEntryId,
@@ -73,6 +106,9 @@ from talli_backend.modules.ledger.public import (
     PostOwnerDividendDeclaredCommand,
     PostOwnerDividendPaymentCommand,
     PostShareholderLoanCommand,
+    OrdinaryBankLoanFacts,
+    RecognizeHoldingActionCommand,
+    ReverseSupportedHoldingActionCommand,
     ShareholderLoanDirection as LedgerShareholderLoanDirection,
 )
 from talli_backend.shared.kernel import (
@@ -103,6 +139,179 @@ def _money_from_ore(value: int) -> Money:
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise CorporateGovernanceError.unavailable()
     return Money.nok(Decimal(value) / Decimal(100))
+
+
+def _document_pack_fact(
+    command: RecordSupportedCorporateEventCommand,
+) -> LedgerFactReference:
+    evidence = "\n".join(
+        f"{item.evidence_kind.value}:{item.document_id}:{item.revision}:{item.content_sha256}"
+        for item in sorted(
+            command.document_facts,
+            key=lambda item: (item.evidence_kind.value, str(item.document_id)),
+        )
+    )
+    return LedgerFactReference(
+        capability=LedgerSourceCapability.DOCUMENTS,
+        record_id=LedgerSourceRecordId(f"corporate-document-pack:{command.event_id}"),
+        revision=1,
+        fact_sha256=hashlib.sha256(evidence.encode("utf-8")).hexdigest(),
+    )
+
+
+def _ledger_sources(
+    command: RecordSupportedCorporateEventCommand,
+    facts_sha256: str,
+) -> tuple[LedgerFactReference, tuple[LedgerFactReference, ...]]:
+    governance = LedgerFactReference(
+        capability=LedgerSourceCapability.CORPORATE_GOVERNANCE,
+        record_id=LedgerSourceRecordId(str(command.event_id)),
+        revision=1,
+        fact_sha256=facts_sha256,
+    )
+    documents = _document_pack_fact(command)
+    bank = (
+        LedgerFactReference(
+            capability=LedgerSourceCapability.BANKING,
+            record_id=LedgerSourceRecordId(str(command.bank_fact.transaction_id)),
+            revision=1,
+            fact_sha256=command.bank_fact.source_sha256,
+        )
+        if command.bank_fact is not None
+        else None
+    )
+    shareholder_register = (
+        LedgerFactReference(
+            capability=LedgerSourceCapability.SHAREHOLDER_REGISTER_FILING,
+            record_id=LedgerSourceRecordId(
+                str(command.shareholder_register_fact.record_id)
+            ),
+            revision=command.shareholder_register_fact.revision,
+            fact_sha256=command.shareholder_register_fact.fact_sha256,
+        )
+        if command.shareholder_register_fact is not None
+        else None
+    )
+    tax = (
+        LedgerFactReference(
+            capability=LedgerSourceCapability.COMPANY_TAX_FILING,
+            record_id=LedgerSourceRecordId(str(command.tax_calculation_fact.record_id)),
+            revision=command.tax_calculation_fact.revision,
+            fact_sha256=command.tax_calculation_fact.fact_sha256,
+        )
+        if command.tax_calculation_fact is not None
+        else None
+    )
+    if command.event_kind is SupportedCorporateEventKind.CASH_CAPITAL_INCREASE:
+        corroborating = [documents]
+        if command.phase is not SupportedCorporateEventPhase.BINDING_SUBSCRIPTION:
+            if bank is None:
+                raise CorporateGovernanceError.unavailable()
+            corroborating.insert(0, bank)
+        if command.phase is SupportedCorporateEventPhase.REGISTERED:
+            if shareholder_register is None:
+                raise CorporateGovernanceError.unavailable()
+            corroborating.append(shareholder_register)
+    elif (
+        command.event_kind
+        is SupportedCorporateEventKind.LOSS_COVERAGE_CAPITAL_REDUCTION
+    ):
+        corroborating = [documents]
+        if command.phase is not SupportedCorporateEventPhase.DECIDED_NOT_REGISTERED:
+            if shareholder_register is None:
+                raise CorporateGovernanceError.unavailable()
+            corroborating.append(shareholder_register)
+    elif command.event_kind is SupportedCorporateEventKind.BANK_LOAN:
+        if bank is None:
+            raise CorporateGovernanceError.unavailable()
+        return bank, (documents,)
+    elif command.event_kind in {
+        SupportedCorporateEventKind.INTERCOMPANY_LOAN,
+        SupportedCorporateEventKind.OWNER_LOAN,
+    }:
+        if bank is None:
+            raise CorporateGovernanceError.unavailable()
+        corroborating = [bank]
+    elif command.event_kind is SupportedCorporateEventKind.GROUP_CONTRIBUTION:
+        if tax is None:
+            raise CorporateGovernanceError.unavailable()
+        corroborating = [tax]
+    else:
+        raise CorporateGovernanceError.unavailable()
+    return governance, tuple(corroborating)
+
+
+def _ledger_supported_facts(command: RecordSupportedCorporateEventCommand):
+    facts = command.facts
+    if isinstance(facts, CashCapitalIncreaseEventFacts):
+        return CashCapitalIncreaseFacts(
+            phase={
+                SupportedCorporateEventPhase.BINDING_SUBSCRIPTION: CapitalIncreasePhase.BINDING_SUBSCRIPTION,
+                SupportedCorporateEventPhase.RESTRICTED_PAYMENT: CapitalIncreasePhase.RESTRICTED_PAYMENT,
+                SupportedCorporateEventPhase.REGISTERED: CapitalIncreasePhase.REGISTERED,
+            }[command.phase],
+            capital_increase_reference_id=CapitalIncreaseReferenceId(
+                str(command.event_reference)
+            ),
+            nominal_increase=facts.nominal_increase,
+            share_premium=facts.share_premium,
+        )
+    if isinstance(facts, LossCoverageCapitalReductionEventFacts):
+        return ApprovedLossCoverageCapitalReductionFacts(
+            recognition={
+                SupportedCorporateEventPhase.DECIDED_NOT_REGISTERED: CapitalReductionRecognition.DECIDED_NOT_REGISTERED,
+                SupportedCorporateEventPhase.REGISTERED: CapitalReductionRecognition.REGISTERED,
+                SupportedCorporateEventPhase.FIRST_RECOGNIZED_AFTER_REGISTRATION: CapitalReductionRecognition.FIRST_RECOGNIZED_AFTER_REGISTRATION,
+            }[command.phase],
+            capital_reduction_reference_id=CapitalReductionReferenceId(
+                str(command.event_reference)
+            ),
+            nominal_reduction=facts.nominal_reduction,
+        )
+    if isinstance(facts, IntercompanyLoanEventFacts):
+        return ApprovedOneSidedIntercompanyLoanFundingFacts(
+            perspective={
+                SupportedCorporatePerspective.LENDER: IntercompanyLoanPerspective.LENDER,
+                SupportedCorporatePerspective.BORROWER: IntercompanyLoanPerspective.BORROWER,
+            }[facts.perspective],
+            relationship={
+                SupportedCorporateRelationship.PARENT_TO_SUBSIDIARY: IntercompanyLoanRelationship.PARENT_TO_SUBSIDIARY,
+                SupportedCorporateRelationship.OTHER_SAME_GROUP: IntercompanyLoanRelationship.OTHER_SAME_GROUP,
+            }[facts.relationship],
+            principal=facts.principal,
+        )
+    if isinstance(facts, OwnerLoanEventFacts):
+        return ApprovedOwnerLoanFundingFacts(principal=facts.principal)
+    if isinstance(facts, BankLoanEventFacts):
+        return OrdinaryBankLoanFacts(
+            event=(
+                BankLoanEvent.DISBURSEMENT
+                if command.phase is SupportedCorporateEventPhase.DISBURSEMENT
+                else BankLoanEvent.PAYMENT
+            ),
+            loan_reference_id=BankLoanReferenceId(str(command.event_reference)),
+            principal=facts.principal,
+            interest=facts.interest,
+            fee=facts.fee,
+        )
+    if isinstance(facts, GroupContributionEventFacts):
+        return GroupContributionFacts(
+            relationship={
+                SupportedCorporateRelationship.SUBSIDIARY_TO_PARENT: GroupContributionRelationship.SUBSIDIARY_TO_PARENT,
+                SupportedCorporateRelationship.PARENT_TO_SUBSIDIARY: GroupContributionRelationship.PARENT_TO_SUBSIDIARY,
+                SupportedCorporateRelationship.SISTER_TO_SISTER: GroupContributionRelationship.SISTER_TO_SISTER,
+            }[facts.relationship],
+            perspective={
+                SupportedCorporatePerspective.GIVER: GroupContributionPerspective.GIVER,
+                SupportedCorporatePerspective.RECIPIENT: GroupContributionPerspective.RECIPIENT,
+            }[facts.perspective],
+            gross_tax_amount=facts.gross_tax_amount,
+            related_tax=facts.related_tax,
+            after_tax_accounting_amount=facts.after_tax_accounting_amount,
+            post_acquisition_income_proved=facts.post_acquisition_income_proved,
+            impairment_cleared=facts.impairment_cleared,
+        )
+    raise CorporateGovernanceError.unavailable()
 
 
 class CorporateGovernanceApplication:
@@ -139,6 +348,15 @@ class CorporateGovernanceApplication:
         session = await self._session_factory.session(access_token)
         async with session.transaction() as transaction:
             return await transaction.read_lifecycle(decision_id)
+
+    async def list_supported_events(
+        self,
+        access_token: str,
+        company_ids: tuple[CompanyId, ...],
+    ) -> tuple[RecordedSupportedCorporateEvent, ...]:
+        session = await self._session_factory.session(access_token)
+        async with session.transaction() as transaction:
+            return await transaction.list_supported_events(company_ids)
 
     async def read_readiness(
         self,
@@ -918,6 +1136,174 @@ class CorporateGovernanceApplication:
                 command,
                 AccountingEntryReference(str(posted.entry_id)),
                 prepared,
+            )
+
+    async def record_supported_event(
+        self,
+        access_token: str,
+        command: RecordSupportedCorporateEventCommand,
+    ) -> RecordedSupportedCorporateEvent:
+        session = await self._session(access_token, command.actor_id)
+        canonical = self._service.prepare_supported_event(command)
+        documents = await self._documents_session_factory.session(access_token)
+        if documents.actor_id != command.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        records = await documents.list_documents((command.company_id,))
+        by_id = {str(record.document_id): record for record in records}
+        for fact in command.document_facts:
+            record = by_id.get(str(fact.document_id))
+            if (
+                record is None
+                or record.company_id != command.company_id
+                or record.income_year != command.income_year
+                or record.status in {DocumentStatus.QUARANTINED, DocumentStatus.REMOVED}
+                or record.content_sha256 != fact.content_sha256
+            ):
+                raise CorporateGovernanceError.precondition(
+                    CorporateGovernanceErrorCode.CORPORATE_EVENT_EVIDENCE_INCOMPLETE,
+                    "Corporate-event document evidence does not match the company year.",
+                )
+
+        async with session.transaction() as transaction:
+            await self._require_owner(transaction, command.company_id)
+            prepared = await transaction.prepare_supported_event(command, canonical)
+            if prepared.replay is not None:
+                return prepared.replay
+            primary, corroborating = _ledger_sources(command, canonical.facts_sha256)
+            posted = await self._ledger_facade_factory(
+                transaction
+            ).recognize_holding_action(
+                RecognizeHoldingActionCommand(
+                    company_id=command.company_id,
+                    actor_id=command.actor_id,
+                    correlation_id=command.correlation_id,
+                    idempotency_key=command.idempotency_key,
+                    income_year=command.income_year,
+                    event_date=command.event_date,
+                    primary_source=primary,
+                    corroborating_sources=corroborating,
+                    facts=_ledger_supported_facts(command),
+                )
+            )
+            cash_phase = command.event_kind in {
+                SupportedCorporateEventKind.BANK_LOAN,
+                SupportedCorporateEventKind.INTERCOMPANY_LOAN,
+                SupportedCorporateEventKind.OWNER_LOAN,
+            } or (
+                command.event_kind
+                is SupportedCorporateEventKind.CASH_CAPITAL_INCREASE
+                and command.phase is SupportedCorporateEventPhase.RESTRICTED_PAYMENT
+            )
+            if cash_phase:
+                if command.bank_fact is None:
+                    raise CorporateGovernanceError.unavailable()
+                await transaction.claim_transaction_for_external_action(
+                    ClaimBankTransactionForExternalActionCommand(
+                        company_id=command.company_id,
+                        actor_id=command.actor_id,
+                        correlation_id=command.correlation_id,
+                        idempotency_key=command.idempotency_key,
+                        income_year=command.income_year,
+                        transaction_id=BankTransactionId(
+                            str(command.bank_fact.transaction_id)
+                        ),
+                        transaction_date=command.bank_fact.transaction_date,
+                        signed_amount=command.bank_fact.signed_amount,
+                        source_hash=command.bank_fact.source_sha256,
+                        action_reference=ExternalActionReference(str(command.event_id)),
+                    ),
+                    accounting_entry_id=BankingAccountingEntryReference(
+                        str(posted.entry_id)
+                    ),
+                )
+            return await transaction.complete_supported_event(
+                command,
+                AccountingEntryReference(str(posted.entry_id)),
+                prepared,
+            )
+
+    async def reverse_supported_event(
+        self,
+        access_token: str,
+        command: ReverseSupportedCorporateEventCommand,
+    ) -> ReversedSupportedCorporateEvent:
+        session = await self._session(access_token, command.actor_id)
+        documents = await self._documents_session_factory.session(access_token)
+        if documents.actor_id != command.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        records = await documents.list_documents((command.company_id,))
+        correction = next(
+            (
+                record
+                for record in records
+                if str(record.document_id)
+                == str(command.correction_document_fact.document_id)
+            ),
+            None,
+        )
+        if (
+            correction is None
+            or correction.company_id != command.company_id
+            or correction.income_year != command.income_year
+            or correction.status in {DocumentStatus.QUARANTINED, DocumentStatus.REMOVED}
+            or correction.content_sha256
+            != command.correction_document_fact.content_sha256
+        ):
+            raise CorporateGovernanceError.precondition(
+                CorporateGovernanceErrorCode.CORPORATE_EVENT_EVIDENCE_INCOMPLETE,
+                "The reversal document does not match the company year.",
+            )
+
+        async with session.transaction() as transaction:
+            await self._require_owner(transaction, command.company_id)
+            events = await transaction.list_supported_events((command.company_id,))
+            original = next(
+                (
+                    event
+                    for event in events
+                    if event.event.event_id == command.original_event_id
+                    and event.event.income_year == command.income_year
+                ),
+                None,
+            )
+            if original is None:
+                raise CorporateGovernanceError.not_found()
+            reversed_entry = await self._ledger_facade_factory(
+                transaction
+            ).reverse_supported_holding_action(
+                ReverseSupportedHoldingActionCommand(
+                    company_id=command.company_id,
+                    actor_id=command.actor_id,
+                    correlation_id=command.correlation_id,
+                    idempotency_key=command.idempotency_key,
+                    income_year=command.income_year,
+                    event_date=command.reversal_date,
+                    original_entry_id=LedgerEntryId(
+                        str(original.accounting_entry_id)
+                    ),
+                    reason=command.reason,
+                    correction_source=LedgerFactReference(
+                        capability=LedgerSourceCapability.DOCUMENTS,
+                        record_id=LedgerSourceRecordId(
+                            str(command.correction_document_fact.document_id)
+                        ),
+                        revision=command.correction_document_fact.revision,
+                        fact_sha256=command.correction_document_fact.content_sha256,
+                    ),
+                )
+            )
+            return ReversedSupportedCorporateEvent(
+                original_event_id=command.original_event_id,
+                original_accounting_entry_id=AccountingEntryReference(
+                    str(reversed_entry.original_entry_id)
+                ),
+                reversal_accounting_entry_id=AccountingEntryReference(
+                    str(reversed_entry.reversal_entry_id)
+                ),
+                company_id=command.company_id,
+                income_year=command.income_year,
+                reversed_at=reversed_entry.reversed_at.value,
+                replayed=reversed_entry.replayed,
             )
 
 

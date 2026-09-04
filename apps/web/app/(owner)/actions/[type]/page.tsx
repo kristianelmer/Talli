@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { investmentUnitFact } from "../../../../features/investments";
 import {
   deriveCorporateDecisionFacts,
+  listSupportedCorporateEvents,
   type CorporateDecisionFactsWire,
 } from "../../../../features/corporate-governance";
 
@@ -21,6 +22,7 @@ import { OwnerDividendWizard } from "../_components/OwnerDividendWizard";
 import { SharePurchaseWizard } from "../_components/SharePurchaseWizard";
 import { ShareSaleWizard } from "../_components/ShareSaleWizard";
 import { ShareholderLoanWizard } from "../_components/ShareholderLoanWizard";
+import { SupportedCorporateEventWizard } from "../_components/SupportedCorporateEventWizard";
 import { TaxSettlementWizard } from "../_components/TaxSettlementWizard";
 
 type ActionSlug =
@@ -33,6 +35,7 @@ type ActionSlug =
   | "investment-measurement"
   | "owner-dividend"
   | "shareholder-loan"
+  | "corporate-event"
   | "tax-settlement";
 
 const COPY_KEY: Record<ActionSlug, keyof typeof ownerCopy.actions> = {
@@ -45,6 +48,7 @@ const COPY_KEY: Record<ActionSlug, keyof typeof ownerCopy.actions> = {
   "investment-measurement": "investmentMeasurement",
   "owner-dividend": "ownerDividend",
   "shareholder-loan": "shareholderLoan",
+  "corporate-event": "corporateEvent",
   "tax-settlement": "taxSettlement",
 };
 
@@ -69,6 +73,7 @@ type ActionPageProps = {
     investmentSettlementCorrectionOperationId?: string;
     investmentSettlementOperationId?: string;
     shareholderLoanOperationId?: string;
+    corporateEventOperationId?: string;
     taxSettlementOperationId?: string;
   }>;
 };
@@ -456,6 +461,51 @@ export default async function ActionPage({
         />
       );
       break;
+    case "corporate-event": {
+      const accessToken = await getCurrentSessionAccessToken();
+      const existingEvents = accessToken
+        ? await listSupportedCorporateEvents(accessToken, [companyId])
+        : [];
+      body = (
+        <SupportedCorporateEventWizard
+          companyId={companyId}
+          incomeYear={incomeYear}
+          operationId={query?.corporateEventOperationId}
+          existingEvents={existingEvents.filter(
+            (event) => event.incomeYear === incomeYear,
+          )}
+          documents={documents
+            .filter(
+              (document) =>
+                document.company_id === companyId &&
+                document.income_year === incomeYear &&
+                document.removed_at === null &&
+                document.content_sha256,
+            )
+            .map((document) => ({
+              id: document.id,
+              label: `${document.name} · ${document.document_type}`,
+              hash: document.content_sha256!,
+            }))}
+          bankTransactions={transactions
+            .filter(
+              (transaction) =>
+                transaction.company_id === companyId &&
+                transaction.income_year === incomeYear &&
+                !transaction.matched_entry_id &&
+                !transaction.matched_action_id,
+            )
+            .map((transaction) => ({
+              id: transaction.id,
+              label: `${transaction.transaction_date} · ${transaction.text} · ${transaction.amount} kr`,
+              date: transaction.transaction_date,
+              amount: String(transaction.amount),
+              hash: transaction.source_hash,
+            }))}
+        />
+      );
+      break;
+    }
     case "tax-settlement":
       body = (
         <TaxSettlementWizard

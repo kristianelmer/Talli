@@ -1,14 +1,14 @@
 # Corporate governance backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["corporate_governance.annual_close_artifacts","corporate_governance.annual_close_decisions","corporate_governance.annual_close_events","corporate_governance.annual_close_finalizations","corporate_governance.owner_dividend_accounting_policies","corporate_governance.owner_dividend_artifacts","corporate_governance.owner_dividend_decisions","corporate_governance.owner_dividend_events","corporate_governance.owner_dividend_finalizations","corporate_governance.owner_dividend_payments","corporate_governance.shareholder_loans"],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
+{"dependencies":[],"ownedTables":["corporate_governance.annual_close_artifacts","corporate_governance.annual_close_decisions","corporate_governance.annual_close_events","corporate_governance.annual_close_finalizations","corporate_governance.owner_dividend_accounting_policies","corporate_governance.owner_dividend_artifacts","corporate_governance.owner_dividend_decisions","corporate_governance.owner_dividend_events","corporate_governance.owner_dividend_finalizations","corporate_governance.owner_dividend_payments","corporate_governance.shareholder_loans","corporate_governance.supported_events"],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
 -->
 
 ## Purpose and ownership
 
 `corporate_governance` owns accounting-policy selection, corporate decisions,
-shareholder loans, owner dividends, approval/finalization state, and deterministic
-corporate-document semantics. Generic document metadata and private object
+shareholder loans, owner dividends, supported domestic capital, financing and
+group-event facts, approval/finalization state, and deterministic corporate-document semantics. Generic document metadata and private object
 storage remain owned by `documents`; accounting entries remain owned by
 `ledger`; bank facts remain owned by `banking`.
 
@@ -16,7 +16,8 @@ Issue #144 is the first of three serialized slices. It moves the supported
 owner-dividend proposal, distributable-basis validation, approval, declaration,
 payment recognition, and readiness state. Issue #145 adds shareholder loans.
 Issue #148 moves annual-close decisions, deterministic PDF rendering, signing,
-the complete artifact lifecycle, and performs the capability-stage exit.
+the complete artifact lifecycle, and performs the capability-stage exit. Issue
+#191 adds the versioned, fail-closed supported event boundary.
 
 ## Public interface
 
@@ -80,6 +81,23 @@ uses `CanonicalOwnerDividendDecision`, `CanonicalBoardParticipant`,
 only the normalized amounts, locked bank fact, and versioned account mapping
 selected by the append-only governance policy store. They do not expose
 persistence rows, and the application does not choose accounts.
+
+`RecordSupportedCorporateEventCommand` closes the ordinary domestic event set.
+Its `CashCapitalIncreaseEventFacts`, `LossCoverageCapitalReductionEventFacts`,
+`IntercompanyLoanEventFacts`, `OwnerLoanEventFacts`, `BankLoanEventFacts`, and
+`GroupContributionEventFacts` variants are discriminated by
+`SupportedCorporateEventKind` and `SupportedCorporateEventPhase`.
+`SupportedCorporateDocumentFact`, `SupportedCorporateBankFact`, and
+`SupportedCorporateSourceFact` freeze versioned evidence; the related
+`SupportedCorporateEvidenceKind`, `SupportedCorporatePerspective`, and
+`SupportedCorporateRelationship` enums keep unsupported structures outside the
+contract. `CanonicalSupportedCorporateEvent`,
+`PreparedSupportedCorporateEvent`, and `RecordedSupportedCorporateEvent` form
+the immutable prepare/complete result. `SupportedCorporateEventId` and
+`SupportedCorporateEventReference` are its stable identities.
+`ReverseSupportedCorporateEventCommand` requires an immutable correction
+document and produces `ReversedSupportedCorporateEvent` through Ledger's
+mechanical reversal contract.
 
 Stable owned identities are `CorporateDecisionId`, `CorporateDocumentSetId`,
 `CorporateArtifactId`, `CorporateEventId`, `CorporateFinalizationId`, and

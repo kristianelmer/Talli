@@ -1194,6 +1194,65 @@
         "title": "BankFilePreviewWire",
         "type": "object"
       },
+      "BankLoanEventFactsWire": {
+        "additionalProperties": false,
+        "properties": {
+          "factType": {
+            "const": "bank_loan",
+            "title": "Facttype",
+            "type": "string"
+          },
+          "fee": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "interest": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "lenderAllocationConfirmed": {
+            "title": "Lenderallocationconfirmed",
+            "type": "boolean"
+          },
+          "lenderName": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Lendername",
+            "type": "string"
+          },
+          "noComplexTerms": {
+            "title": "Nocomplexterms",
+            "type": "boolean"
+          },
+          "norwegianLender": {
+            "title": "Norwegianlender",
+            "type": "boolean"
+          },
+          "ordinaryTerms": {
+            "title": "Ordinaryterms",
+            "type": "boolean"
+          },
+          "principal": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "signedAgreement": {
+            "title": "Signedagreement",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "factType",
+          "principal",
+          "interest",
+          "fee",
+          "lenderName",
+          "norwegianLender",
+          "signedAgreement",
+          "lenderAllocationConfirmed",
+          "ordinaryTerms",
+          "noComplexTerms"
+        ],
+        "title": "BankLoanEventFactsWire",
+        "type": "object"
+      },
       "BankLoanMaturity": {
         "enum": [
           "LONG_TERM",
@@ -1595,6 +1654,85 @@
         ],
         "title": "CapitalReductionRecognition",
         "type": "string"
+      },
+      "CashCapitalIncreaseEventFactsWire": {
+        "additionalProperties": false,
+        "properties": {
+          "bindingSubscription": {
+            "title": "Bindingsubscription",
+            "type": "boolean"
+          },
+          "cashOnly": {
+            "title": "Cashonly",
+            "type": "boolean"
+          },
+          "factType": {
+            "const": "cash_capital_increase",
+            "title": "Facttype",
+            "type": "string"
+          },
+          "fullTimelyPayment": {
+            "title": "Fulltimelypayment",
+            "type": "boolean"
+          },
+          "independentConfirmation": {
+            "title": "Independentconfirmation",
+            "type": "boolean"
+          },
+          "issueCostsResolved": {
+            "title": "Issuecostsresolved",
+            "type": "boolean"
+          },
+          "issuedShareCount": {
+            "minimum": 1.0,
+            "title": "Issuedsharecount",
+            "type": "integer"
+          },
+          "noDirectUseException": {
+            "title": "Nodirectuseexception",
+            "type": "boolean"
+          },
+          "noSpecialTerms": {
+            "title": "Nospecialterms",
+            "type": "boolean"
+          },
+          "nominalIncrease": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "norwegianSubscribersOnly": {
+            "title": "Norwegiansubscribersonly",
+            "type": "boolean"
+          },
+          "registerReconciled": {
+            "title": "Registerreconciled",
+            "type": "boolean"
+          },
+          "sharePremium": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "singleOrdinaryClass": {
+            "title": "Singleordinaryclass",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "factType",
+          "nominalIncrease",
+          "sharePremium",
+          "issuedShareCount",
+          "singleOrdinaryClass",
+          "cashOnly",
+          "bindingSubscription",
+          "fullTimelyPayment",
+          "independentConfirmation",
+          "registerReconciled",
+          "norwegianSubscribersOnly",
+          "noSpecialTerms",
+          "noDirectUseException",
+          "issueCostsResolved"
+        ],
+        "title": "CashCapitalIncreaseEventFactsWire",
+        "type": "object"
       },
       "CompanyAccessRecord": {
         "additionalProperties": false,
@@ -5291,6 +5429,193 @@
           "expiresAt"
         ],
         "title": "GrantSupportAccessRequest",
+        "type": "object"
+      },
+      "GroupContributionEventFactsWire": {
+        "additionalProperties": false,
+        "properties": {
+          "afterTaxAccountingAmount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "bothNorwegian": {
+            "title": "Bothnorwegian",
+            "type": "boolean"
+          },
+          "consolidationNotRequired": {
+            "title": "Consolidationnotrequired",
+            "type": "boolean"
+          },
+          "corporateApprovalEvidenced": {
+            "title": "Corporateapprovalevidenced",
+            "type": "boolean"
+          },
+          "counterpartyName": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Counterpartyname",
+            "type": "string"
+          },
+          "counterpartyOrganizationNumber": {
+            "pattern": "^\\d{9}$",
+            "title": "Counterpartyorganizationnumber",
+            "type": "string"
+          },
+          "distributionCapacityConfirmed": {
+            "title": "Distributioncapacityconfirmed",
+            "type": "boolean"
+          },
+          "factType": {
+            "const": "group_contribution",
+            "title": "Facttype",
+            "type": "string"
+          },
+          "grossTaxAmount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "impairmentCleared": {
+            "title": "Impairmentcleared",
+            "type": "boolean"
+          },
+          "noEquityMethod": {
+            "title": "Noequitymethod",
+            "type": "boolean"
+          },
+          "noNonCashOrCircularRoute": {
+            "title": "Nononcashorcircularroute",
+            "type": "boolean"
+          },
+          "ownershipBasisPoints": {
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Ownershipbasispoints",
+            "type": "integer"
+          },
+          "perspective": {
+            "$ref": "#/components/schemas/SupportedCorporatePerspective"
+          },
+          "postAcquisitionIncomeProved": {
+            "title": "Postacquisitionincomeproved",
+            "type": "boolean"
+          },
+          "prudentEquityAndLiquidityConfirmed": {
+            "title": "Prudentequityandliquidityconfirmed",
+            "type": "boolean"
+          },
+          "relatedTax": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "relationship": {
+            "$ref": "#/components/schemas/SupportedCorporateRelationship"
+          },
+          "votingBasisPoints": {
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Votingbasispoints",
+            "type": "integer"
+          },
+          "yearEndGroupEligibilityProved": {
+            "title": "Yearendgroupeligibilityproved",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "factType",
+          "relationship",
+          "perspective",
+          "grossTaxAmount",
+          "relatedTax",
+          "afterTaxAccountingAmount",
+          "counterpartyName",
+          "counterpartyOrganizationNumber",
+          "bothNorwegian",
+          "ownershipBasisPoints",
+          "votingBasisPoints",
+          "yearEndGroupEligibilityProved",
+          "corporateApprovalEvidenced",
+          "distributionCapacityConfirmed",
+          "prudentEquityAndLiquidityConfirmed",
+          "postAcquisitionIncomeProved",
+          "impairmentCleared",
+          "noEquityMethod",
+          "noNonCashOrCircularRoute",
+          "consolidationNotRequired"
+        ],
+        "title": "GroupContributionEventFactsWire",
+        "type": "object"
+      },
+      "IntercompanyLoanEventFactsWire": {
+        "additionalProperties": false,
+        "properties": {
+          "approvalOrExemptionEvidenced": {
+            "title": "Approvalorexemptionevidenced",
+            "type": "boolean"
+          },
+          "armLengthConfirmed": {
+            "title": "Armlengthconfirmed",
+            "type": "boolean"
+          },
+          "counterpartyName": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Counterpartyname",
+            "type": "string"
+          },
+          "counterpartyOrganizationNumber": {
+            "pattern": "^\\d{9}$",
+            "title": "Counterpartyorganizationnumber",
+            "type": "string"
+          },
+          "factType": {
+            "const": "intercompany_loan",
+            "title": "Facttype",
+            "type": "string"
+          },
+          "interestLimitationCleared": {
+            "title": "Interestlimitationcleared",
+            "type": "boolean"
+          },
+          "noComplexTerms": {
+            "title": "Nocomplexterms",
+            "type": "boolean"
+          },
+          "norwegianCounterparty": {
+            "title": "Norwegiancounterparty",
+            "type": "boolean"
+          },
+          "ordinaryTerms": {
+            "title": "Ordinaryterms",
+            "type": "boolean"
+          },
+          "perspective": {
+            "$ref": "#/components/schemas/SupportedCorporatePerspective"
+          },
+          "principal": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "relationship": {
+            "$ref": "#/components/schemas/SupportedCorporateRelationship"
+          },
+          "signedAgreement": {
+            "title": "Signedagreement",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "factType",
+          "perspective",
+          "relationship",
+          "principal",
+          "counterpartyName",
+          "counterpartyOrganizationNumber",
+          "norwegianCounterparty",
+          "signedAgreement",
+          "ordinaryTerms",
+          "approvalOrExemptionEvidenced",
+          "armLengthConfirmed",
+          "interestLimitationCleared",
+          "noComplexTerms"
+        ],
+        "title": "IntercompanyLoanEventFactsWire",
         "type": "object"
       },
       "InvestmentAccountingClassification": {
@@ -10934,6 +11259,78 @@
         "title": "LedgerWriterResultWire",
         "type": "object"
       },
+      "LossCoverageCapitalReductionEventFactsWire": {
+        "additionalProperties": false,
+        "properties": {
+          "factType": {
+            "const": "loss_coverage_capital_reduction",
+            "title": "Facttype",
+            "type": "string"
+          },
+          "lossEvidenced": {
+            "title": "Lossevidenced",
+            "type": "boolean"
+          },
+          "lossOnly": {
+            "title": "Lossonly",
+            "type": "boolean"
+          },
+          "newShareCapital": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "noCreditorNotice": {
+            "title": "Nocreditornotice",
+            "type": "boolean"
+          },
+          "noSimultaneousCapitalChange": {
+            "title": "Nosimultaneouscapitalchange",
+            "type": "boolean"
+          },
+          "noValueTransfer": {
+            "title": "Novaluetransfer",
+            "type": "boolean"
+          },
+          "nominalReduction": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "oldShareCapital": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "otherEquityExhausted": {
+            "title": "Otherequityexhausted",
+            "type": "boolean"
+          },
+          "registerReconciled": {
+            "title": "Registerreconciled",
+            "type": "boolean"
+          },
+          "singleOrdinaryClass": {
+            "title": "Singleordinaryclass",
+            "type": "boolean"
+          },
+          "unchangedOwnersAndShareCount": {
+            "title": "Unchangedownersandsharecount",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "factType",
+          "nominalReduction",
+          "oldShareCapital",
+          "newShareCapital",
+          "singleOrdinaryClass",
+          "unchangedOwnersAndShareCount",
+          "lossOnly",
+          "lossEvidenced",
+          "otherEquityExhausted",
+          "noValueTransfer",
+          "noCreditorNotice",
+          "noSimultaneousCapitalChange",
+          "registerReconciled"
+        ],
+        "title": "LossCoverageCapitalReductionEventFactsWire",
+        "type": "object"
+      },
       "MarketingFunnelReportResponse": {
         "properties": {
           "counts": {
@@ -12565,6 +12962,72 @@
         "title": "OwnerDividendState",
         "type": "string"
       },
+      "OwnerLoanEventFactsWire": {
+        "additionalProperties": false,
+        "properties": {
+          "approvalOrExemptionEvidenced": {
+            "title": "Approvalorexemptionevidenced",
+            "type": "boolean"
+          },
+          "factType": {
+            "const": "owner_loan",
+            "title": "Facttype",
+            "type": "string"
+          },
+          "interestAndTaxTreatmentCleared": {
+            "title": "Interestandtaxtreatmentcleared",
+            "type": "boolean"
+          },
+          "noComplexTerms": {
+            "title": "Nocomplexterms",
+            "type": "boolean"
+          },
+          "noSecurityOrConversion": {
+            "title": "Nosecurityorconversion",
+            "type": "boolean"
+          },
+          "norwegianOwner": {
+            "title": "Norwegianowner",
+            "type": "boolean"
+          },
+          "ordinaryTerms": {
+            "title": "Ordinaryterms",
+            "type": "boolean"
+          },
+          "ownerIsRecordedShareholder": {
+            "title": "Ownerisrecordedshareholder",
+            "type": "boolean"
+          },
+          "ownerName": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Ownername",
+            "type": "string"
+          },
+          "principal": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "signedAgreement": {
+            "title": "Signedagreement",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "factType",
+          "principal",
+          "ownerName",
+          "ownerIsRecordedShareholder",
+          "norwegianOwner",
+          "signedAgreement",
+          "ordinaryTerms",
+          "approvalOrExemptionEvidenced",
+          "interestAndTaxTreatmentCleared",
+          "noSecurityOrConversion",
+          "noComplexTerms"
+        ],
+        "title": "OwnerLoanEventFactsWire",
+        "type": "object"
+      },
       "ProposedAnnualCloseWire": {
         "properties": {
           "artifacts": {
@@ -12744,6 +13207,111 @@
         "title": "RecordedShareholderLoanWire",
         "type": "object"
       },
+      "RecordedSupportedCorporateEventWire": {
+        "properties": {
+          "accountingEntryId": {
+            "format": "uuid",
+            "title": "Accountingentryid",
+            "type": "string"
+          },
+          "bankTransactionId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banktransactionid"
+          },
+          "canonicalFacts": {
+            "additionalProperties": true,
+            "title": "Canonicalfacts",
+            "type": "object"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "correctionOfEventId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correctionofeventid"
+          },
+          "eventDate": {
+            "format": "date",
+            "title": "Eventdate",
+            "type": "string"
+          },
+          "eventId": {
+            "format": "uuid",
+            "title": "Eventid",
+            "type": "string"
+          },
+          "eventKind": {
+            "$ref": "#/components/schemas/SupportedCorporateEventKind"
+          },
+          "eventReference": {
+            "format": "uuid",
+            "title": "Eventreference",
+            "type": "string"
+          },
+          "factsSha256": {
+            "title": "Factssha256",
+            "type": "string"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "phase": {
+            "$ref": "#/components/schemas/SupportedCorporateEventPhase"
+          },
+          "policyVersion": {
+            "const": "corporate-governance-supported-events-2026.1",
+            "title": "Policyversion",
+            "type": "string"
+          },
+          "recordedAt": {
+            "format": "date-time",
+            "title": "Recordedat",
+            "type": "string"
+          },
+          "replayed": {
+            "title": "Replayed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "eventId",
+          "eventReference",
+          "companyId",
+          "incomeYear",
+          "eventDate",
+          "eventKind",
+          "phase",
+          "policyVersion",
+          "canonicalFacts",
+          "factsSha256",
+          "accountingEntryId",
+          "bankTransactionId",
+          "correctionOfEventId",
+          "recordedAt",
+          "replayed"
+        ],
+        "title": "RecordedSupportedCorporateEventWire",
+        "type": "object"
+      },
       "RenderedCorporateArtifactWire": {
         "properties": {
           "artifactKind": {
@@ -12850,6 +13418,93 @@
           "expectedUpdatedAt"
         ],
         "title": "ResumeCompanyCancellationRequest",
+        "type": "object"
+      },
+      "ReverseSupportedCorporateEventWire": {
+        "additionalProperties": false,
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "correctionDocumentFact": {
+            "$ref": "#/components/schemas/SupportedCorporateDocumentFactWire"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "reversalDate": {
+            "format": "date",
+            "title": "Reversaldate",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "reversalDate",
+          "reason",
+          "correctionDocumentFact"
+        ],
+        "title": "ReverseSupportedCorporateEventWire",
+        "type": "object"
+      },
+      "ReversedSupportedCorporateEventWire": {
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "originalAccountingEntryId": {
+            "format": "uuid",
+            "title": "Originalaccountingentryid",
+            "type": "string"
+          },
+          "originalEventId": {
+            "format": "uuid",
+            "title": "Originaleventid",
+            "type": "string"
+          },
+          "replayed": {
+            "title": "Replayed",
+            "type": "boolean"
+          },
+          "reversalAccountingEntryId": {
+            "format": "uuid",
+            "title": "Reversalaccountingentryid",
+            "type": "string"
+          },
+          "reversedAt": {
+            "format": "date-time",
+            "title": "Reversedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "originalEventId",
+          "originalAccountingEntryId",
+          "reversalAccountingEntryId",
+          "companyId",
+          "incomeYear",
+          "reversedAt",
+          "replayed"
+        ],
+        "title": "ReversedSupportedCorporateEventWire",
         "type": "object"
       },
       "ReviewCompanyDeletionRequest": {
@@ -14691,6 +15346,280 @@
         ],
         "title": "SupportedBankDataFormat",
         "type": "string"
+      },
+      "SupportedCorporateBankFactWire": {
+        "additionalProperties": false,
+        "properties": {
+          "signedAmount": {
+            "$ref": "#/components/schemas/LedgerMoneyWire"
+          },
+          "sourceSha256": {
+            "pattern": "^[0-9a-fA-F]{64}$",
+            "title": "Sourcesha256",
+            "type": "string"
+          },
+          "transactionDate": {
+            "format": "date",
+            "title": "Transactiondate",
+            "type": "string"
+          },
+          "transactionId": {
+            "format": "uuid",
+            "title": "Transactionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transactionId",
+          "transactionDate",
+          "signedAmount",
+          "sourceSha256"
+        ],
+        "title": "SupportedCorporateBankFactWire",
+        "type": "object"
+      },
+      "SupportedCorporateDocumentFactWire": {
+        "additionalProperties": false,
+        "properties": {
+          "contentSha256": {
+            "pattern": "^[0-9a-fA-F]{64}$",
+            "title": "Contentsha256",
+            "type": "string"
+          },
+          "documentId": {
+            "format": "uuid",
+            "title": "Documentid",
+            "type": "string"
+          },
+          "evidenceKind": {
+            "$ref": "#/components/schemas/SupportedCorporateEvidenceKind"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "documentId",
+          "evidenceKind",
+          "revision",
+          "contentSha256"
+        ],
+        "title": "SupportedCorporateDocumentFactWire",
+        "type": "object"
+      },
+      "SupportedCorporateEventKind": {
+        "enum": [
+          "cash_capital_increase",
+          "loss_coverage_capital_reduction",
+          "intercompany_loan",
+          "owner_loan",
+          "bank_loan",
+          "group_contribution"
+        ],
+        "title": "SupportedCorporateEventKind",
+        "type": "string"
+      },
+      "SupportedCorporateEventPhase": {
+        "enum": [
+          "binding_subscription",
+          "restricted_payment",
+          "registered",
+          "decided_not_registered",
+          "first_recognized_after_registration",
+          "funding",
+          "disbursement",
+          "payment",
+          "decision"
+        ],
+        "title": "SupportedCorporateEventPhase",
+        "type": "string"
+      },
+      "SupportedCorporateEventWire": {
+        "additionalProperties": false,
+        "properties": {
+          "bankFact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SupportedCorporateBankFactWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "documentFacts": {
+            "items": {
+              "$ref": "#/components/schemas/SupportedCorporateDocumentFactWire"
+            },
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Documentfacts",
+            "type": "array"
+          },
+          "eventDate": {
+            "format": "date",
+            "title": "Eventdate",
+            "type": "string"
+          },
+          "eventId": {
+            "format": "uuid",
+            "title": "Eventid",
+            "type": "string"
+          },
+          "eventKind": {
+            "$ref": "#/components/schemas/SupportedCorporateEventKind"
+          },
+          "eventReference": {
+            "format": "uuid",
+            "title": "Eventreference",
+            "type": "string"
+          },
+          "facts": {
+            "discriminator": {
+              "mapping": {
+                "bank_loan": "#/components/schemas/BankLoanEventFactsWire",
+                "cash_capital_increase": "#/components/schemas/CashCapitalIncreaseEventFactsWire",
+                "group_contribution": "#/components/schemas/GroupContributionEventFactsWire",
+                "intercompany_loan": "#/components/schemas/IntercompanyLoanEventFactsWire",
+                "loss_coverage_capital_reduction": "#/components/schemas/LossCoverageCapitalReductionEventFactsWire",
+                "owner_loan": "#/components/schemas/OwnerLoanEventFactsWire"
+              },
+              "propertyName": "factType"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CashCapitalIncreaseEventFactsWire"
+              },
+              {
+                "$ref": "#/components/schemas/LossCoverageCapitalReductionEventFactsWire"
+              },
+              {
+                "$ref": "#/components/schemas/IntercompanyLoanEventFactsWire"
+              },
+              {
+                "$ref": "#/components/schemas/OwnerLoanEventFactsWire"
+              },
+              {
+                "$ref": "#/components/schemas/BankLoanEventFactsWire"
+              },
+              {
+                "$ref": "#/components/schemas/GroupContributionEventFactsWire"
+              }
+            ],
+            "title": "Facts"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "phase": {
+            "$ref": "#/components/schemas/SupportedCorporateEventPhase"
+          },
+          "shareholderRegisterFact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SupportedCorporateSourceFactWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "taxCalculationFact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SupportedCorporateSourceFactWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "eventId",
+          "eventReference",
+          "eventDate",
+          "eventKind",
+          "phase",
+          "facts",
+          "documentFacts"
+        ],
+        "title": "SupportedCorporateEventWire",
+        "type": "object"
+      },
+      "SupportedCorporateEvidenceKind": {
+        "enum": [
+          "signed_decision",
+          "signed_agreement",
+          "amended_articles",
+          "contribution_confirmation",
+          "registration_receipt",
+          "shareholder_register",
+          "tax_calculation",
+          "lender_statement",
+          "correction_memo"
+        ],
+        "title": "SupportedCorporateEvidenceKind",
+        "type": "string"
+      },
+      "SupportedCorporatePerspective": {
+        "enum": [
+          "lender",
+          "borrower",
+          "giver",
+          "recipient"
+        ],
+        "title": "SupportedCorporatePerspective",
+        "type": "string"
+      },
+      "SupportedCorporateRelationship": {
+        "enum": [
+          "parent_to_subsidiary",
+          "subsidiary_to_parent",
+          "sister_to_sister",
+          "other_same_group"
+        ],
+        "title": "SupportedCorporateRelationship",
+        "type": "string"
+      },
+      "SupportedCorporateSourceFactWire": {
+        "additionalProperties": false,
+        "properties": {
+          "factSha256": {
+            "pattern": "^[0-9a-fA-F]{64}$",
+            "title": "Factsha256",
+            "type": "string"
+          },
+          "recordId": {
+            "format": "uuid",
+            "title": "Recordid",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "recordId",
+          "revision",
+          "factSha256"
+        ],
+        "title": "SupportedCorporateSourceFactWire",
+        "type": "object"
       },
       "SystemBoundaryStatus": {
         "properties": {
@@ -38775,6 +39704,1245 @@
           }
         ],
         "summary": "Record Corporate Shareholder Loan",
+        "tags": [
+          "corporate-governance"
+        ]
+      }
+    },
+    "/api/v1/corporate-governance/supported-events": {
+      "get": {
+        "operationId": "corporateGovernanceListSupportedEvents",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "companyId",
+            "required": true,
+            "schema": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "title": "Companyid",
+              "type": "array"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RecordedSupportedCorporateEventWire"
+                  },
+                  "title": "Response Corporategovernancelistsupportedevents",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Supported capital, financing and group events.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List Corporate Supported Events",
+        "tags": [
+          "corporate-governance"
+        ]
+      },
+      "post": {
+        "operationId": "corporateGovernanceRecordSupportedEvent",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 16,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportedCorporateEventWire"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordedSupportedCorporateEventWire"
+                }
+              }
+            },
+            "description": "Supported corporate event recorded atomically with Ledger.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Record Corporate Supported Event",
+        "tags": [
+          "corporate-governance"
+        ]
+      }
+    },
+    "/api/v1/corporate-governance/supported-events/{event_id}/reversal": {
+      "post": {
+        "operationId": "corporateGovernanceReverseSupportedEvent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 16,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReverseSupportedCorporateEventWire"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReversedSupportedCorporateEventWire"
+                }
+              }
+            },
+            "description": "Supported event reversed with immutable Ledger lineage.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Corporate-governance request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Reverse Corporate Supported Event",
         "tags": [
           "corporate-governance"
         ]

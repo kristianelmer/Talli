@@ -896,6 +896,10 @@ export const ownerCopy = {
         title: "Aksjonærlån",
         body: "Lån mellom selskapet og en aksjonær.",
       },
+      "corporate-event": {
+        title: "Kapital, lån og konsernbidrag",
+        body: "Kapitalendringer, ordinære lån og enkle konsernbidrag med dokumentasjon.",
+      },
       "tax-settlement": {
         title: "Skatteoppgjør",
         body: "Betalbar skatt, betaling eller refusjon.",
@@ -1001,6 +1005,11 @@ export const ownerCopy = {
       counterpartyLabel: "Motpart",
       securityLabel: "Sikkerhet eller garanti mellom nærstående",
       interestLabel: "Rente er beregnet",
+    },
+    corporateEvent: {
+      title: "Kapital, lån og konsernbidrag",
+      intro:
+        "Registrer en støttet selskaps- eller finansieringshendelse med dokumentasjon, bankavstemming og tydelige stoppunkter.",
     },
     taxSettlement: {
       title: "Skatteoppgjør",

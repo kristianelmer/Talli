@@ -1760,6 +1760,36 @@ export type BoardRole = "chair" | "member";
 
 export type BoardTreatmentMethod = "physical" | "video" | "written";
 
+export interface BankLoanEventFactsWire {
+  factType: "bank_loan";
+  fee: LedgerMoneyWire;
+  interest: LedgerMoneyWire;
+  lenderAllocationConfirmed: boolean;
+  lenderName: string;
+  noComplexTerms: boolean;
+  norwegianLender: boolean;
+  ordinaryTerms: boolean;
+  principal: LedgerMoneyWire;
+  signedAgreement: boolean;
+}
+
+export interface CashCapitalIncreaseEventFactsWire {
+  bindingSubscription: boolean;
+  cashOnly: boolean;
+  factType: "cash_capital_increase";
+  fullTimelyPayment: boolean;
+  independentConfirmation: boolean;
+  issueCostsResolved: boolean;
+  issuedShareCount: number;
+  noDirectUseException: boolean;
+  noSpecialTerms: boolean;
+  nominalIncrease: LedgerMoneyWire;
+  norwegianSubscribersOnly: boolean;
+  registerReconciled: boolean;
+  sharePremium: LedgerMoneyWire;
+  singleOrdinaryClass: boolean;
+}
+
 export interface CorporateAnnualBasisWire {
   annualDataSha256: string;
   availableDistributionOre: number;
@@ -2021,6 +2051,61 @@ export interface CorporateShareholderWire {
   shareholderId: string;
 }
 
+export interface GroupContributionEventFactsWire {
+  afterTaxAccountingAmount: LedgerMoneyWire;
+  bothNorwegian: boolean;
+  consolidationNotRequired: boolean;
+  corporateApprovalEvidenced: boolean;
+  counterpartyName: string;
+  counterpartyOrganizationNumber: string;
+  distributionCapacityConfirmed: boolean;
+  factType: "group_contribution";
+  grossTaxAmount: LedgerMoneyWire;
+  impairmentCleared: boolean;
+  noEquityMethod: boolean;
+  noNonCashOrCircularRoute: boolean;
+  ownershipBasisPoints: number;
+  perspective: SupportedCorporatePerspective;
+  postAcquisitionIncomeProved: boolean;
+  prudentEquityAndLiquidityConfirmed: boolean;
+  relatedTax: LedgerMoneyWire;
+  relationship: SupportedCorporateRelationship;
+  votingBasisPoints: number;
+  yearEndGroupEligibilityProved: boolean;
+}
+
+export interface IntercompanyLoanEventFactsWire {
+  approvalOrExemptionEvidenced: boolean;
+  armLengthConfirmed: boolean;
+  counterpartyName: string;
+  counterpartyOrganizationNumber: string;
+  factType: "intercompany_loan";
+  interestLimitationCleared: boolean;
+  noComplexTerms: boolean;
+  norwegianCounterparty: boolean;
+  ordinaryTerms: boolean;
+  perspective: SupportedCorporatePerspective;
+  principal: LedgerMoneyWire;
+  relationship: SupportedCorporateRelationship;
+  signedAgreement: boolean;
+}
+
+export interface LossCoverageCapitalReductionEventFactsWire {
+  factType: "loss_coverage_capital_reduction";
+  lossEvidenced: boolean;
+  lossOnly: boolean;
+  newShareCapital: LedgerMoneyWire;
+  noCreditorNotice: boolean;
+  noSimultaneousCapitalChange: boolean;
+  noValueTransfer: boolean;
+  nominalReduction: LedgerMoneyWire;
+  oldShareCapital: LedgerMoneyWire;
+  otherEquityExhausted: boolean;
+  registerReconciled: boolean;
+  singleOrdinaryClass: boolean;
+  unchangedOwnersAndShareCount: boolean;
+}
+
 export type MeetingForm = "physical" | "video";
 
 export interface OwnerDividendAllocationWire {
@@ -2132,6 +2217,20 @@ export interface OwnerDividendSignedArtifactWire {
   unsignedArtifactId: string;
 }
 
+export interface OwnerLoanEventFactsWire {
+  approvalOrExemptionEvidenced: boolean;
+  factType: "owner_loan";
+  interestAndTaxTreatmentCleared: boolean;
+  noComplexTerms: boolean;
+  noSecurityOrConversion: boolean;
+  norwegianOwner: boolean;
+  ordinaryTerms: boolean;
+  ownerIsRecordedShareholder: boolean;
+  ownerName: string;
+  principal: LedgerMoneyWire;
+  signedAgreement: boolean;
+}
+
 export type OwnerDividendState = "proposed" | "documents_registered" | "facts_approved" | "signing_requested" | "signed_owner_attested" | "finalized" | "partially_paid" | "paid" | "rejected" | "superseded";
 
 export interface ProposedOwnerDividendWire {
@@ -2174,6 +2273,42 @@ export interface RecordedShareholderLoanWire {
   replayed: boolean;
 }
 
+export interface RecordedSupportedCorporateEventWire {
+  accountingEntryId: string;
+  bankTransactionId: string | null;
+  canonicalFacts: Record<string, unknown>;
+  companyId: string;
+  correctionOfEventId: string | null;
+  eventDate: string;
+  eventId: string;
+  eventKind: SupportedCorporateEventKind;
+  eventReference: string;
+  factsSha256: string;
+  incomeYear: number;
+  phase: SupportedCorporateEventPhase;
+  policyVersion: "corporate-governance-supported-events-2026.1";
+  recordedAt: string;
+  replayed: boolean;
+}
+
+export interface ReverseSupportedCorporateEventWire {
+  companyId: string;
+  correctionDocumentFact: SupportedCorporateDocumentFactWire;
+  incomeYear: number;
+  reason: string;
+  reversalDate: string;
+}
+
+export interface ReversedSupportedCorporateEventWire {
+  companyId: string;
+  incomeYear: number;
+  originalAccountingEntryId: string;
+  originalEventId: string;
+  replayed: boolean;
+  reversalAccountingEntryId: string;
+  reversedAt: string;
+}
+
 export type ShareholderLoanDirection = "shareholder_to_company" | "company_to_corporate_shareholder" | "company_to_personal_shareholder";
 
 export type ShareholderLoanDocumentStatus = "attached" | "missing_accepted_warning" | "not_required";
@@ -2195,6 +2330,51 @@ export interface ShareholderLoanWire {
 }
 
 export type ShareholderVote = "for" | "against" | "abstain";
+
+export interface SupportedCorporateBankFactWire {
+  signedAmount: LedgerMoneyWire;
+  sourceSha256: string;
+  transactionDate: string;
+  transactionId: string;
+}
+
+export interface SupportedCorporateDocumentFactWire {
+  contentSha256: string;
+  documentId: string;
+  evidenceKind: SupportedCorporateEvidenceKind;
+  revision: number;
+}
+
+export type SupportedCorporateEvidenceKind = "signed_decision" | "signed_agreement" | "amended_articles" | "contribution_confirmation" | "registration_receipt" | "shareholder_register" | "tax_calculation" | "lender_statement" | "correction_memo";
+
+export type SupportedCorporateEventKind = "cash_capital_increase" | "loss_coverage_capital_reduction" | "intercompany_loan" | "owner_loan" | "bank_loan" | "group_contribution";
+
+export type SupportedCorporateEventPhase = "binding_subscription" | "restricted_payment" | "registered" | "decided_not_registered" | "first_recognized_after_registration" | "funding" | "disbursement" | "payment" | "decision";
+
+export interface SupportedCorporateEventWire {
+  bankFact?: SupportedCorporateBankFactWire | null;
+  companyId: string;
+  documentFacts: SupportedCorporateDocumentFactWire[];
+  eventDate: string;
+  eventId: string;
+  eventKind: SupportedCorporateEventKind;
+  eventReference: string;
+  facts: CashCapitalIncreaseEventFactsWire | LossCoverageCapitalReductionEventFactsWire | IntercompanyLoanEventFactsWire | OwnerLoanEventFactsWire | BankLoanEventFactsWire | GroupContributionEventFactsWire;
+  incomeYear: number;
+  phase: SupportedCorporateEventPhase;
+  shareholderRegisterFact?: SupportedCorporateSourceFactWire | null;
+  taxCalculationFact?: SupportedCorporateSourceFactWire | null;
+}
+
+export type SupportedCorporatePerspective = "lender" | "borrower" | "giver" | "recipient";
+
+export type SupportedCorporateRelationship = "parent_to_subsidiary" | "subsidiary_to_parent" | "sister_to_sister" | "other_same_group";
+
+export interface SupportedCorporateSourceFactWire {
+  factSha256: string;
+  recordId: string;
+  revision: number;
+}
 
 export interface AcceptBankFileWire {
   companyId: string;
@@ -4700,6 +4880,44 @@ function isBoardTreatmentMethod(value: unknown): value is BoardTreatmentMethod {
   return value === "physical" || value === "video" || value === "written";
 }
 
+function isBankLoanEventFactsWire(value: unknown): value is BankLoanEventFactsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["factType","fee","interest","lenderAllocationConfirmed","lenderName","noComplexTerms","norwegianLender","ordinaryTerms","principal","signedAgreement"]) &&
+    value.factType === "bank_loan" &&
+    isLedgerMoneyWire(value.fee) &&
+    isLedgerMoneyWire(value.interest) &&
+    typeof value.lenderAllocationConfirmed === "boolean" &&
+    (typeof value.lenderName === "string" && value.lenderName.length >= 1 && value.lenderName.length <= 255) &&
+    typeof value.noComplexTerms === "boolean" &&
+    typeof value.norwegianLender === "boolean" &&
+    typeof value.ordinaryTerms === "boolean" &&
+    isLedgerMoneyWire(value.principal) &&
+    typeof value.signedAgreement === "boolean"
+  );
+}
+
+function isCashCapitalIncreaseEventFactsWire(value: unknown): value is CashCapitalIncreaseEventFactsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["bindingSubscription","cashOnly","factType","fullTimelyPayment","independentConfirmation","issueCostsResolved","issuedShareCount","noDirectUseException","noSpecialTerms","nominalIncrease","norwegianSubscribersOnly","registerReconciled","sharePremium","singleOrdinaryClass"]) &&
+    typeof value.bindingSubscription === "boolean" &&
+    typeof value.cashOnly === "boolean" &&
+    value.factType === "cash_capital_increase" &&
+    typeof value.fullTimelyPayment === "boolean" &&
+    typeof value.independentConfirmation === "boolean" &&
+    typeof value.issueCostsResolved === "boolean" &&
+    (typeof value.issuedShareCount === "number" && Number.isInteger(value.issuedShareCount) && value.issuedShareCount >= 1) &&
+    typeof value.noDirectUseException === "boolean" &&
+    typeof value.noSpecialTerms === "boolean" &&
+    isLedgerMoneyWire(value.nominalIncrease) &&
+    typeof value.norwegianSubscribersOnly === "boolean" &&
+    typeof value.registerReconciled === "boolean" &&
+    isLedgerMoneyWire(value.sharePremium) &&
+    typeof value.singleOrdinaryClass === "boolean"
+  );
+}
+
 function isCorporateAnnualBasisWire(value: unknown): value is CorporateAnnualBasisWire {
   return (
     isRecord(value) &&
@@ -5063,6 +5281,73 @@ function isCorporateShareholderWire(value: unknown): value is CorporateSharehold
   );
 }
 
+function isGroupContributionEventFactsWire(value: unknown): value is GroupContributionEventFactsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["afterTaxAccountingAmount","bothNorwegian","consolidationNotRequired","corporateApprovalEvidenced","counterpartyName","counterpartyOrganizationNumber","distributionCapacityConfirmed","factType","grossTaxAmount","impairmentCleared","noEquityMethod","noNonCashOrCircularRoute","ownershipBasisPoints","perspective","postAcquisitionIncomeProved","prudentEquityAndLiquidityConfirmed","relatedTax","relationship","votingBasisPoints","yearEndGroupEligibilityProved"]) &&
+    isLedgerMoneyWire(value.afterTaxAccountingAmount) &&
+    typeof value.bothNorwegian === "boolean" &&
+    typeof value.consolidationNotRequired === "boolean" &&
+    typeof value.corporateApprovalEvidenced === "boolean" &&
+    (typeof value.counterpartyName === "string" && value.counterpartyName.length >= 1 && value.counterpartyName.length <= 255) &&
+    (typeof value.counterpartyOrganizationNumber === "string" && new RegExp("^\\d{9}$", "u").test(value.counterpartyOrganizationNumber)) &&
+    typeof value.distributionCapacityConfirmed === "boolean" &&
+    value.factType === "group_contribution" &&
+    isLedgerMoneyWire(value.grossTaxAmount) &&
+    typeof value.impairmentCleared === "boolean" &&
+    typeof value.noEquityMethod === "boolean" &&
+    typeof value.noNonCashOrCircularRoute === "boolean" &&
+    (typeof value.ownershipBasisPoints === "number" && Number.isInteger(value.ownershipBasisPoints) && value.ownershipBasisPoints >= 0 && value.ownershipBasisPoints <= 10000) &&
+    isSupportedCorporatePerspective(value.perspective) &&
+    typeof value.postAcquisitionIncomeProved === "boolean" &&
+    typeof value.prudentEquityAndLiquidityConfirmed === "boolean" &&
+    isLedgerMoneyWire(value.relatedTax) &&
+    isSupportedCorporateRelationship(value.relationship) &&
+    (typeof value.votingBasisPoints === "number" && Number.isInteger(value.votingBasisPoints) && value.votingBasisPoints >= 0 && value.votingBasisPoints <= 10000) &&
+    typeof value.yearEndGroupEligibilityProved === "boolean"
+  );
+}
+
+function isIntercompanyLoanEventFactsWire(value: unknown): value is IntercompanyLoanEventFactsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approvalOrExemptionEvidenced","armLengthConfirmed","counterpartyName","counterpartyOrganizationNumber","factType","interestLimitationCleared","noComplexTerms","norwegianCounterparty","ordinaryTerms","perspective","principal","relationship","signedAgreement"]) &&
+    typeof value.approvalOrExemptionEvidenced === "boolean" &&
+    typeof value.armLengthConfirmed === "boolean" &&
+    (typeof value.counterpartyName === "string" && value.counterpartyName.length >= 1 && value.counterpartyName.length <= 255) &&
+    (typeof value.counterpartyOrganizationNumber === "string" && new RegExp("^\\d{9}$", "u").test(value.counterpartyOrganizationNumber)) &&
+    value.factType === "intercompany_loan" &&
+    typeof value.interestLimitationCleared === "boolean" &&
+    typeof value.noComplexTerms === "boolean" &&
+    typeof value.norwegianCounterparty === "boolean" &&
+    typeof value.ordinaryTerms === "boolean" &&
+    isSupportedCorporatePerspective(value.perspective) &&
+    isLedgerMoneyWire(value.principal) &&
+    isSupportedCorporateRelationship(value.relationship) &&
+    typeof value.signedAgreement === "boolean"
+  );
+}
+
+function isLossCoverageCapitalReductionEventFactsWire(value: unknown): value is LossCoverageCapitalReductionEventFactsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["factType","lossEvidenced","lossOnly","newShareCapital","noCreditorNotice","noSimultaneousCapitalChange","noValueTransfer","nominalReduction","oldShareCapital","otherEquityExhausted","registerReconciled","singleOrdinaryClass","unchangedOwnersAndShareCount"]) &&
+    value.factType === "loss_coverage_capital_reduction" &&
+    typeof value.lossEvidenced === "boolean" &&
+    typeof value.lossOnly === "boolean" &&
+    isLedgerMoneyWire(value.newShareCapital) &&
+    typeof value.noCreditorNotice === "boolean" &&
+    typeof value.noSimultaneousCapitalChange === "boolean" &&
+    typeof value.noValueTransfer === "boolean" &&
+    isLedgerMoneyWire(value.nominalReduction) &&
+    isLedgerMoneyWire(value.oldShareCapital) &&
+    typeof value.otherEquityExhausted === "boolean" &&
+    typeof value.registerReconciled === "boolean" &&
+    typeof value.singleOrdinaryClass === "boolean" &&
+    typeof value.unchangedOwnersAndShareCount === "boolean"
+  );
+}
+
 function isMeetingForm(value: unknown): value is MeetingForm {
   return value === "physical" || value === "video";
 }
@@ -5218,6 +5503,24 @@ function isOwnerDividendSignedArtifactWire(value: unknown): value is OwnerDivide
   );
 }
 
+function isOwnerLoanEventFactsWire(value: unknown): value is OwnerLoanEventFactsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approvalOrExemptionEvidenced","factType","interestAndTaxTreatmentCleared","noComplexTerms","noSecurityOrConversion","norwegianOwner","ordinaryTerms","ownerIsRecordedShareholder","ownerName","principal","signedAgreement"]) &&
+    typeof value.approvalOrExemptionEvidenced === "boolean" &&
+    value.factType === "owner_loan" &&
+    typeof value.interestAndTaxTreatmentCleared === "boolean" &&
+    typeof value.noComplexTerms === "boolean" &&
+    typeof value.noSecurityOrConversion === "boolean" &&
+    typeof value.norwegianOwner === "boolean" &&
+    typeof value.ordinaryTerms === "boolean" &&
+    typeof value.ownerIsRecordedShareholder === "boolean" &&
+    (typeof value.ownerName === "string" && value.ownerName.length >= 1 && value.ownerName.length <= 255) &&
+    isLedgerMoneyWire(value.principal) &&
+    typeof value.signedAgreement === "boolean"
+  );
+}
+
 function isOwnerDividendState(value: unknown): value is OwnerDividendState {
   return value === "proposed" || value === "documents_registered" || value === "facts_approved" || value === "signing_requested" || value === "signed_owner_attested" || value === "finalized" || value === "partially_paid" || value === "paid" || value === "rejected" || value === "superseded";
 }
@@ -5278,6 +5581,54 @@ function isRecordedShareholderLoanWire(value: unknown): value is RecordedShareho
   );
 }
 
+function isRecordedSupportedCorporateEventWire(value: unknown): value is RecordedSupportedCorporateEventWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountingEntryId","bankTransactionId","canonicalFacts","companyId","correctionOfEventId","eventDate","eventId","eventKind","eventReference","factsSha256","incomeYear","phase","policyVersion","recordedAt","replayed"]) &&
+    isUuid(value.accountingEntryId) &&
+    (isUuid(value.bankTransactionId) || value.bankTransactionId === null) &&
+    isRecord(value.canonicalFacts) &&
+    isUuid(value.companyId) &&
+    (isUuid(value.correctionOfEventId) || value.correctionOfEventId === null) &&
+    typeof value.eventDate === "string" &&
+    isUuid(value.eventId) &&
+    isSupportedCorporateEventKind(value.eventKind) &&
+    isUuid(value.eventReference) &&
+    typeof value.factsSha256 === "string" &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    isSupportedCorporateEventPhase(value.phase) &&
+    value.policyVersion === "corporate-governance-supported-events-2026.1" &&
+    isDateTime(value.recordedAt) &&
+    typeof value.replayed === "boolean"
+  );
+}
+
+function isReverseSupportedCorporateEventWire(value: unknown): value is ReverseSupportedCorporateEventWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","correctionDocumentFact","incomeYear","reason","reversalDate"]) &&
+    isUuid(value.companyId) &&
+    isSupportedCorporateDocumentFactWire(value.correctionDocumentFact) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (typeof value.reason === "string" && value.reason.length >= 1 && value.reason.length <= 500) &&
+    typeof value.reversalDate === "string"
+  );
+}
+
+function isReversedSupportedCorporateEventWire(value: unknown): value is ReversedSupportedCorporateEventWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","originalAccountingEntryId","originalEventId","replayed","reversalAccountingEntryId","reversedAt"]) &&
+    isUuid(value.companyId) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    isUuid(value.originalAccountingEntryId) &&
+    isUuid(value.originalEventId) &&
+    typeof value.replayed === "boolean" &&
+    isUuid(value.reversalAccountingEntryId) &&
+    isDateTime(value.reversedAt)
+  );
+}
+
 function isShareholderLoanDirection(value: unknown): value is ShareholderLoanDirection {
   return value === "shareholder_to_company" || value === "company_to_corporate_shareholder" || value === "company_to_personal_shareholder";
 }
@@ -5308,6 +5659,77 @@ function isShareholderLoanWire(value: unknown): value is ShareholderLoanWire {
 
 function isShareholderVote(value: unknown): value is ShareholderVote {
   return value === "for" || value === "against" || value === "abstain";
+}
+
+function isSupportedCorporateBankFactWire(value: unknown): value is SupportedCorporateBankFactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["signedAmount","sourceSha256","transactionDate","transactionId"]) &&
+    isLedgerMoneyWire(value.signedAmount) &&
+    (typeof value.sourceSha256 === "string" && new RegExp("^[0-9a-fA-F]{64}$", "u").test(value.sourceSha256)) &&
+    typeof value.transactionDate === "string" &&
+    isUuid(value.transactionId)
+  );
+}
+
+function isSupportedCorporateDocumentFactWire(value: unknown): value is SupportedCorporateDocumentFactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["contentSha256","documentId","evidenceKind","revision"]) &&
+    (typeof value.contentSha256 === "string" && new RegExp("^[0-9a-fA-F]{64}$", "u").test(value.contentSha256)) &&
+    isUuid(value.documentId) &&
+    isSupportedCorporateEvidenceKind(value.evidenceKind) &&
+    (typeof value.revision === "number" && Number.isInteger(value.revision) && value.revision >= 1)
+  );
+}
+
+function isSupportedCorporateEvidenceKind(value: unknown): value is SupportedCorporateEvidenceKind {
+  return value === "signed_decision" || value === "signed_agreement" || value === "amended_articles" || value === "contribution_confirmation" || value === "registration_receipt" || value === "shareholder_register" || value === "tax_calculation" || value === "lender_statement" || value === "correction_memo";
+}
+
+function isSupportedCorporateEventKind(value: unknown): value is SupportedCorporateEventKind {
+  return value === "cash_capital_increase" || value === "loss_coverage_capital_reduction" || value === "intercompany_loan" || value === "owner_loan" || value === "bank_loan" || value === "group_contribution";
+}
+
+function isSupportedCorporateEventPhase(value: unknown): value is SupportedCorporateEventPhase {
+  return value === "binding_subscription" || value === "restricted_payment" || value === "registered" || value === "decided_not_registered" || value === "first_recognized_after_registration" || value === "funding" || value === "disbursement" || value === "payment" || value === "decision";
+}
+
+function isSupportedCorporateEventWire(value: unknown): value is SupportedCorporateEventWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["bankFact","companyId","documentFacts","eventDate","eventId","eventKind","eventReference","facts","incomeYear","phase","shareholderRegisterFact","taxCalculationFact"]) &&
+    (value.bankFact === undefined || (isSupportedCorporateBankFactWire(value.bankFact) || value.bankFact === null)) &&
+    isUuid(value.companyId) &&
+    Array.isArray(value.documentFacts) && value.documentFacts.every((item) => isSupportedCorporateDocumentFactWire(item)) && value.documentFacts.length >= 1 && value.documentFacts.length <= 12 &&
+    typeof value.eventDate === "string" &&
+    isUuid(value.eventId) &&
+    isSupportedCorporateEventKind(value.eventKind) &&
+    isUuid(value.eventReference) &&
+    (isCashCapitalIncreaseEventFactsWire(value.facts) || isLossCoverageCapitalReductionEventFactsWire(value.facts) || isIntercompanyLoanEventFactsWire(value.facts) || isOwnerLoanEventFactsWire(value.facts) || isBankLoanEventFactsWire(value.facts) || isGroupContributionEventFactsWire(value.facts)) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    isSupportedCorporateEventPhase(value.phase) &&
+    (value.shareholderRegisterFact === undefined || (isSupportedCorporateSourceFactWire(value.shareholderRegisterFact) || value.shareholderRegisterFact === null)) &&
+    (value.taxCalculationFact === undefined || (isSupportedCorporateSourceFactWire(value.taxCalculationFact) || value.taxCalculationFact === null))
+  );
+}
+
+function isSupportedCorporatePerspective(value: unknown): value is SupportedCorporatePerspective {
+  return value === "lender" || value === "borrower" || value === "giver" || value === "recipient";
+}
+
+function isSupportedCorporateRelationship(value: unknown): value is SupportedCorporateRelationship {
+  return value === "parent_to_subsidiary" || value === "subsidiary_to_parent" || value === "sister_to_sister" || value === "other_same_group";
+}
+
+function isSupportedCorporateSourceFactWire(value: unknown): value is SupportedCorporateSourceFactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["factSha256","recordId","revision"]) &&
+    (typeof value.factSha256 === "string" && new RegExp("^[0-9a-fA-F]{64}$", "u").test(value.factSha256)) &&
+    isUuid(value.recordId) &&
+    (typeof value.revision === "number" && Number.isInteger(value.revision) && value.revision >= 1)
+  );
 }
 
 function isAcceptBankFileWire(value: unknown): value is AcceptBankFileWire {
@@ -6606,6 +7028,48 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isRecordedShareholderLoanWire,
+      );
+    },
+
+    async corporateGovernanceListSupportedEvents(
+      request: CorporateGovernanceListRequest,
+    ): Promise<RecordedSupportedCorporateEventWire[]> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/supported-events?${query}`,
+        "GET",
+        request,
+        undefined,
+        (value): value is RecordedSupportedCorporateEventWire[] =>
+          Array.isArray(value) && value.every(isRecordedSupportedCorporateEventWire),
+      );
+    },
+
+    async corporateGovernanceRecordSupportedEvent(
+      body: SupportedCorporateEventWire,
+      request: TalliMutationOptions,
+    ): Promise<RecordedSupportedCorporateEventWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/supported-events`,
+        "POST",
+        request,
+        body,
+        isRecordedSupportedCorporateEventWire,
+      );
+    },
+
+    async corporateGovernanceReverseSupportedEvent(
+      eventId: string,
+      body: ReverseSupportedCorporateEventWire,
+      request: TalliMutationOptions,
+    ): Promise<ReversedSupportedCorporateEventWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/corporate-governance/supported-events/${encodeURIComponent(eventId)}/reversal`,
+        "POST",
+        request,
+        body,
+        isReversedSupportedCorporateEventWire,
       );
     },
 

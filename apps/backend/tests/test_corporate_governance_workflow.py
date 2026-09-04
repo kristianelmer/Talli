@@ -39,7 +39,9 @@ from talli_backend.modules.corporate_governance.public import (
     PreparedOwnerDividendFinalization,
     PreparedOwnerDividendPayment,
     PreparedShareholderLoan,
+    PreparedSupportedCorporateEvent,
     RecordedShareholderLoan,
+    RecordedSupportedCorporateEvent,
     RecordOwnerDividendPaymentCommand,
     RegisterOwnerDividendDocumentsCommand,
 )
@@ -53,6 +55,7 @@ from talli_backend.modules.ledger.public import (
     LedgerEntryId,
     LedgerEntryKind,
     PostedLedgerEntry,
+    ReversedLedgerEntry,
     ShareholderLoanDirection as LedgerShareholderLoanDirection,
 )
 from talli_backend.shared.kernel import (
@@ -117,6 +120,7 @@ class GovernanceTransactionStub:
         self.finalization_replay: OwnerDividendLifecycle | None = None
         self.payment_replay: OwnerDividendLifecycle | None = None
         self.shareholder_loan_replay: RecordedShareholderLoan | None = None
+        self.supported_events: tuple[RecordedSupportedCorporateEvent, ...] = ()
         self.shareholder_loan_bank = False
         self.source_facts_changed = False
         self.source_facts_unavailable = False
@@ -210,6 +214,10 @@ class GovernanceTransactionStub:
     async def list_lifecycle(self, company_ids):
         self.calls.append(("list_lifecycle", company_ids))
         return self.list_snapshot
+
+    async def list_supported_events(self, company_ids):
+        self.calls.append(("list_supported_events", company_ids))
+        return self.supported_events
 
     async def read_lifecycle(self, decision_id):
         self.calls.append(("read_lifecycle", decision_id))
@@ -405,6 +413,25 @@ class GovernanceTransactionStub:
             replayed=False,
         )
 
+    async def prepare_supported_event(self, command, event):
+        self.calls.append(("prepare_supported_event", event))
+        return PreparedSupportedCorporateEvent(event=event, replay=None)
+
+    async def complete_supported_event(self, command, accounting_entry_id, prepared):
+        self.calls.append(("complete_supported_event", accounting_entry_id))
+        result = RecordedSupportedCorporateEvent(
+            event=prepared.event,
+            accounting_entry_id=accounting_entry_id,
+            bank_transaction_id=(
+                command.bank_fact.transaction_id if command.bank_fact else None
+            ),
+            correction_of_event_id=None,
+            recorded_at=NOW.value,
+            replayed=False,
+        )
+        self.supported_events = (*self.supported_events, result)
+        return result
+
     async def post_entry(self, command, **kwargs):
         raise AssertionError("Injected ledger facade must own posting policy")
 
@@ -517,6 +544,30 @@ class LedgerFacadeStub:
             LedgerEntryKind.SHAREHOLDER_LOAN,
             NOW,
             False,
+        )
+
+    async def recognize_holding_action(self, command):
+        self.commands.append(command)
+        return PostedLedgerEntry(
+            ENTRY_ID,
+            command.company_id,
+            command.income_year,
+            LedgerEntryKind.CAPITAL_INCREASE,
+            NOW,
+            False,
+        )
+
+    async def reverse_supported_holding_action(self, command):
+        self.commands.append(command)
+        return ReversedLedgerEntry(
+            original_entry_id=command.original_entry_id,
+            reversal_entry_id=LedgerEntryId(
+                "98989898-9898-4898-8989-989898989898"
+            ),
+            company_id=command.company_id,
+            income_year=command.income_year,
+            reversed_at=NOW,
+            replayed=False,
         )
 
 

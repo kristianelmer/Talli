@@ -181,6 +181,8 @@ from talli_backend.modules.corporate_governance.public import (
     BoardParticipant,
     BoardRole,
     BoardTreatmentMethod,
+    BankLoanEventFacts,
+    CashCapitalIncreaseEventFacts,
     CanonicalAnnualCloseDecision,
     CanonicalOwnerDividendDecision,
     CorporateArtifactId,
@@ -207,6 +209,10 @@ from talli_backend.modules.corporate_governance.public import (
     FinalizeOwnerDividendCommand,
     FinalizeAnnualCloseCommand,
     GeneralMeeting,
+    GroupContributionEventFacts,
+    IntercompanyLoanEventFacts,
+    LossCoverageCapitalReductionEventFacts,
+    OwnerLoanEventFacts,
     MeetingForm,
     OwnerDividendArtifactReference,
     OwnerDividendLifecycle,
@@ -221,7 +227,11 @@ from talli_backend.modules.corporate_governance.public import (
     RecordAnnualCloseEventCommand,
     RecordOwnerDividendEventCommand,
     RecordShareholderLoanCommand as CorporateRecordShareholderLoanCommand,
+    RecordSupportedCorporateEventCommand,
+    ReverseSupportedCorporateEventCommand,
     RecordedShareholderLoan,
+    RecordedSupportedCorporateEvent,
+    ReversedSupportedCorporateEvent,
     RegisterAnnualCloseDocumentsCommand,
     RegisterOwnerDividendDocumentsCommand,
     ReviewedOwnerDividendFacts,
@@ -230,6 +240,16 @@ from talli_backend.modules.corporate_governance.public import (
     ShareholderLoanDirection as CorporateShareholderLoanDirection,
     ShareholderLoanDocumentStatus,
     ShareholderVote,
+    SupportedCorporateBankFact,
+    SupportedCorporateDocumentFact,
+    SupportedCorporateEvidenceKind,
+    SupportedCorporateEventId,
+    SupportedCorporateEventKind,
+    SupportedCorporateEventPhase,
+    SupportedCorporateEventReference,
+    SupportedCorporatePerspective,
+    SupportedCorporateRelationship,
+    SupportedCorporateSourceFact,
 )
 from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
@@ -1173,6 +1193,189 @@ class ShareholderLoanWire(StrictTransportModel):
     related_party_security: bool
     bank_transaction_id: UUID | None
     document_id: UUID | None
+
+
+class SupportedCorporateDocumentFactWire(StrictTransportModel):
+    document_id: UUID
+    evidence_kind: SupportedCorporateEvidenceKind
+    revision: int = Field(ge=1)
+    content_sha256: str = Field(pattern=r"^[0-9a-fA-F]{64}$")
+
+
+class SupportedCorporateSourceFactWire(StrictTransportModel):
+    record_id: UUID
+    revision: int = Field(ge=1)
+    fact_sha256: str = Field(pattern=r"^[0-9a-fA-F]{64}$")
+
+
+class SupportedCorporateBankFactWire(StrictTransportModel):
+    transaction_id: UUID
+    transaction_date: date
+    signed_amount: LedgerMoneyWire
+    source_sha256: str = Field(pattern=r"^[0-9a-fA-F]{64}$")
+
+
+class CashCapitalIncreaseEventFactsWire(StrictTransportModel):
+    fact_type: Literal["cash_capital_increase"]
+    nominal_increase: LedgerMoneyWire
+    share_premium: LedgerMoneyWire
+    issued_share_count: int = Field(ge=1)
+    single_ordinary_class: bool
+    cash_only: bool
+    binding_subscription: bool
+    full_timely_payment: bool
+    independent_confirmation: bool
+    register_reconciled: bool
+    norwegian_subscribers_only: bool
+    no_special_terms: bool
+    no_direct_use_exception: bool
+    issue_costs_resolved: bool
+
+
+class LossCoverageCapitalReductionEventFactsWire(StrictTransportModel):
+    fact_type: Literal["loss_coverage_capital_reduction"]
+    nominal_reduction: LedgerMoneyWire
+    old_share_capital: LedgerMoneyWire
+    new_share_capital: LedgerMoneyWire
+    single_ordinary_class: bool
+    unchanged_owners_and_share_count: bool
+    loss_only: bool
+    loss_evidenced: bool
+    other_equity_exhausted: bool
+    no_value_transfer: bool
+    no_creditor_notice: bool
+    no_simultaneous_capital_change: bool
+    register_reconciled: bool
+
+
+class IntercompanyLoanEventFactsWire(StrictTransportModel):
+    fact_type: Literal["intercompany_loan"]
+    perspective: SupportedCorporatePerspective
+    relationship: SupportedCorporateRelationship
+    principal: LedgerMoneyWire
+    counterparty_name: str = Field(min_length=1, max_length=255)
+    counterparty_organization_number: str = Field(pattern=r"^\d{9}$")
+    norwegian_counterparty: bool
+    signed_agreement: bool
+    ordinary_terms: bool
+    approval_or_exemption_evidenced: bool
+    arm_length_confirmed: bool
+    interest_limitation_cleared: bool
+    no_complex_terms: bool
+
+
+class OwnerLoanEventFactsWire(StrictTransportModel):
+    fact_type: Literal["owner_loan"]
+    principal: LedgerMoneyWire
+    owner_name: str = Field(min_length=1, max_length=255)
+    owner_is_recorded_shareholder: bool
+    norwegian_owner: bool
+    signed_agreement: bool
+    ordinary_terms: bool
+    approval_or_exemption_evidenced: bool
+    interest_and_tax_treatment_cleared: bool
+    no_security_or_conversion: bool
+    no_complex_terms: bool
+
+
+class BankLoanEventFactsWire(StrictTransportModel):
+    fact_type: Literal["bank_loan"]
+    principal: LedgerMoneyWire
+    interest: LedgerMoneyWire
+    fee: LedgerMoneyWire
+    lender_name: str = Field(min_length=1, max_length=255)
+    norwegian_lender: bool
+    signed_agreement: bool
+    lender_allocation_confirmed: bool
+    ordinary_terms: bool
+    no_complex_terms: bool
+
+
+class GroupContributionEventFactsWire(StrictTransportModel):
+    fact_type: Literal["group_contribution"]
+    relationship: SupportedCorporateRelationship
+    perspective: SupportedCorporatePerspective
+    gross_tax_amount: LedgerMoneyWire
+    related_tax: LedgerMoneyWire
+    after_tax_accounting_amount: LedgerMoneyWire
+    counterparty_name: str = Field(min_length=1, max_length=255)
+    counterparty_organization_number: str = Field(pattern=r"^\d{9}$")
+    both_norwegian: bool
+    ownership_basis_points: int = Field(ge=0, le=10_000)
+    voting_basis_points: int = Field(ge=0, le=10_000)
+    year_end_group_eligibility_proved: bool
+    corporate_approval_evidenced: bool
+    distribution_capacity_confirmed: bool
+    prudent_equity_and_liquidity_confirmed: bool
+    post_acquisition_income_proved: bool
+    impairment_cleared: bool
+    no_equity_method: bool
+    no_non_cash_or_circular_route: bool
+    consolidation_not_required: bool
+
+
+SupportedCorporateEventFactsWire = Annotated[
+    CashCapitalIncreaseEventFactsWire
+    | LossCoverageCapitalReductionEventFactsWire
+    | IntercompanyLoanEventFactsWire
+    | OwnerLoanEventFactsWire
+    | BankLoanEventFactsWire
+    | GroupContributionEventFactsWire,
+    Field(discriminator="fact_type"),
+]
+
+
+class SupportedCorporateEventWire(StrictTransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    event_id: UUID
+    event_reference: UUID
+    event_date: date
+    event_kind: SupportedCorporateEventKind
+    phase: SupportedCorporateEventPhase
+    facts: SupportedCorporateEventFactsWire
+    document_facts: list[SupportedCorporateDocumentFactWire] = Field(
+        min_length=1, max_length=12
+    )
+    bank_fact: SupportedCorporateBankFactWire | None = None
+    shareholder_register_fact: SupportedCorporateSourceFactWire | None = None
+    tax_calculation_fact: SupportedCorporateSourceFactWire | None = None
+
+
+class RecordedSupportedCorporateEventWire(TransportModel):
+    event_id: UUID
+    event_reference: UUID
+    company_id: UUID
+    income_year: int
+    event_date: date
+    event_kind: SupportedCorporateEventKind
+    phase: SupportedCorporateEventPhase
+    policy_version: Literal["corporate-governance-supported-events-2026.1"]
+    canonical_facts: dict[str, Any]
+    facts_sha256: str
+    accounting_entry_id: UUID
+    bank_transaction_id: UUID | None
+    correction_of_event_id: UUID | None
+    recorded_at: datetime
+    replayed: bool
+
+
+class ReverseSupportedCorporateEventWire(StrictTransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    reversal_date: date
+    reason: str = Field(min_length=1, max_length=500)
+    correction_document_fact: SupportedCorporateDocumentFactWire
+
+
+class ReversedSupportedCorporateEventWire(TransportModel):
+    original_event_id: UUID
+    original_accounting_entry_id: UUID
+    reversal_accounting_entry_id: UUID
+    company_id: UUID
+    income_year: int
+    reversed_at: datetime
+    replayed: bool
 
 
 class RecordedShareholderLoanWire(TransportModel):
@@ -4317,6 +4520,80 @@ def create_app(
             replayed=value.replayed,
         )
 
+    def supported_event_facts(
+        value: SupportedCorporateEventFactsWire,
+    ):
+        common = value.model_dump(exclude={"fact_type"})
+        for key, item in tuple(common.items()):
+            if isinstance(item, dict) and set(item) == {"amount", "currency"}:
+                common[key] = Money.nok(item["amount"])
+        if isinstance(value, CashCapitalIncreaseEventFactsWire):
+            return CashCapitalIncreaseEventFacts(**common)
+        if isinstance(value, LossCoverageCapitalReductionEventFactsWire):
+            return LossCoverageCapitalReductionEventFacts(**common)
+        if isinstance(value, IntercompanyLoanEventFactsWire):
+            return IntercompanyLoanEventFacts(**common)
+        if isinstance(value, OwnerLoanEventFactsWire):
+            return OwnerLoanEventFacts(**common)
+        if isinstance(value, BankLoanEventFactsWire):
+            return BankLoanEventFacts(**common)
+        if isinstance(value, GroupContributionEventFactsWire):
+            return GroupContributionEventFacts(**common)
+        raise TypeError("Unsupported corporate-event fact shape.")
+
+    def supported_event_wire(
+        value: RecordedSupportedCorporateEvent,
+    ) -> RecordedSupportedCorporateEventWire:
+        def plain(item: object) -> object:
+            if isinstance(item, Mapping):
+                return {str(key): plain(child) for key, child in item.items()}
+            if isinstance(item, (tuple, list)):
+                return [plain(child) for child in item]
+            return item
+
+        return RecordedSupportedCorporateEventWire(
+            event_id=UUID(str(value.event.event_id)),
+            event_reference=UUID(str(value.event.event_reference)),
+            company_id=UUID(str(value.event.company_id)),
+            income_year=int(value.event.income_year),
+            event_date=value.event.event_date.value,
+            event_kind=value.event.event_kind,
+            phase=value.event.phase,
+            policy_version=value.event.policy_version,
+            canonical_facts=cast(dict[str, Any], plain(value.event.canonical_facts)),
+            facts_sha256=value.event.facts_sha256,
+            accounting_entry_id=UUID(str(value.accounting_entry_id)),
+            bank_transaction_id=(
+                UUID(str(value.bank_transaction_id))
+                if value.bank_transaction_id
+                else None
+            ),
+            correction_of_event_id=(
+                UUID(str(value.correction_of_event_id))
+                if value.correction_of_event_id
+                else None
+            ),
+            recorded_at=value.recorded_at,
+            replayed=value.replayed,
+        )
+
+    def reversed_supported_event_wire(
+        value: ReversedSupportedCorporateEvent,
+    ) -> ReversedSupportedCorporateEventWire:
+        return ReversedSupportedCorporateEventWire(
+            original_event_id=UUID(str(value.original_event_id)),
+            original_accounting_entry_id=UUID(
+                str(value.original_accounting_entry_id)
+            ),
+            reversal_accounting_entry_id=UUID(
+                str(value.reversal_accounting_entry_id)
+            ),
+            company_id=UUID(str(value.company_id)),
+            income_year=int(value.income_year),
+            reversed_at=value.reversed_at,
+            replayed=value.replayed,
+        )
+
     async def governance_actor(access_token: str):
         return await corporate_governance_application.authenticated_actor_id(
             access_token
@@ -5238,6 +5515,180 @@ def create_app(
                 access_token, domain_command
             )
             return shareholder_loan_wire(result)
+
+        return await corporate_governance_call(execute)
+
+    @application.get(
+        "/api/v1/corporate-governance/supported-events",
+        operation_id="corporateGovernanceListSupportedEvents",
+        response_model=list[RecordedSupportedCorporateEventWire],
+        responses={
+            200: {"description": "Supported capital, financing and group events."}
+            | corporate_governance_success
+        }
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+    )
+    async def list_corporate_supported_events(
+        company_ids: Annotated[
+            list[UUID], Query(alias="companyId", min_length=1, max_length=100)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> list[RecordedSupportedCorporateEventWire]:
+        async def execute() -> list[RecordedSupportedCorporateEventWire]:
+            values = await corporate_governance_application.list_supported_events(
+                bearer_token(credentials),
+                tuple(CompanyId(str(company_id)) for company_id in company_ids),
+            )
+            return [supported_event_wire(value) for value in values]
+
+        return await corporate_governance_call(execute)
+
+    @application.post(
+        "/api/v1/corporate-governance/supported-events",
+        operation_id="corporateGovernanceRecordSupportedEvent",
+        response_model=RecordedSupportedCorporateEventWire,
+        status_code=201,
+        responses={
+            201: {
+                "description": "Supported corporate event recorded atomically with Ledger."
+            }
+            | corporate_governance_success
+        }
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_corporate_supported_event(
+        request: Request,
+        command: SupportedCorporateEventWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RecordedSupportedCorporateEventWire:
+        async def execute() -> RecordedSupportedCorporateEventWire:
+            access_token = bearer_token(credentials)
+            actor_id = await governance_actor(access_token)
+            domain_command = corporate_governance_input(
+                lambda: RecordSupportedCorporateEventCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    income_year=IncomeYear(command.income_year),
+                    event_id=SupportedCorporateEventId(str(command.event_id)),
+                    event_reference=SupportedCorporateEventReference(
+                        str(command.event_reference)
+                    ),
+                    event_date=LocalDate(command.event_date),
+                    event_kind=command.event_kind,
+                    phase=command.phase,
+                    facts=supported_event_facts(command.facts),
+                    document_facts=tuple(
+                        SupportedCorporateDocumentFact(
+                            document_id=DocumentReference(str(item.document_id)),
+                            evidence_kind=item.evidence_kind,
+                            revision=item.revision,
+                            content_sha256=item.content_sha256,
+                        )
+                        for item in command.document_facts
+                    ),
+                    bank_fact=(
+                        SupportedCorporateBankFact(
+                            transaction_id=BankTransactionReference(
+                                str(command.bank_fact.transaction_id)
+                            ),
+                            transaction_date=LocalDate(
+                                command.bank_fact.transaction_date
+                            ),
+                            signed_amount=command.bank_fact.signed_amount.to_domain(),
+                            source_sha256=command.bank_fact.source_sha256,
+                        )
+                        if command.bank_fact
+                        else None
+                    ),
+                    shareholder_register_fact=(
+                        SupportedCorporateSourceFact(
+                            record_id=CorporateSourceReference(
+                                str(command.shareholder_register_fact.record_id)
+                            ),
+                            revision=command.shareholder_register_fact.revision,
+                            fact_sha256=command.shareholder_register_fact.fact_sha256,
+                        )
+                        if command.shareholder_register_fact
+                        else None
+                    ),
+                    tax_calculation_fact=(
+                        SupportedCorporateSourceFact(
+                            record_id=CorporateSourceReference(
+                                str(command.tax_calculation_fact.record_id)
+                            ),
+                            revision=command.tax_calculation_fact.revision,
+                            fact_sha256=command.tax_calculation_fact.fact_sha256,
+                        )
+                        if command.tax_calculation_fact
+                        else None
+                    ),
+                )
+            )
+            result = await corporate_governance_application.record_supported_event(
+                access_token, domain_command
+            )
+            return supported_event_wire(result)
+
+        return await corporate_governance_call(execute)
+
+    @application.post(
+        "/api/v1/corporate-governance/supported-events/{event_id}/reversal",
+        operation_id="corporateGovernanceReverseSupportedEvent",
+        response_model=ReversedSupportedCorporateEventWire,
+        status_code=201,
+        responses={
+            201: {
+                "description": "Supported event reversed with immutable Ledger lineage."
+            }
+            | corporate_governance_success
+        }
+        | corporate_governance_errors,
+        tags=["corporate-governance"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def reverse_corporate_supported_event(
+        event_id: UUID,
+        request: Request,
+        command: ReverseSupportedCorporateEventWire,
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=16, max_length=255)
+        ],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> ReversedSupportedCorporateEventWire:
+        async def execute() -> ReversedSupportedCorporateEventWire:
+            access_token = bearer_token(credentials)
+            actor_id = await governance_actor(access_token)
+            fact = command.correction_document_fact
+            domain_command = corporate_governance_input(
+                lambda: ReverseSupportedCorporateEventCommand(
+                    company_id=CompanyId(str(command.company_id)),
+                    actor_id=actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    idempotency_key=IdempotencyKey(idempotency_key),
+                    income_year=IncomeYear(command.income_year),
+                    original_event_id=SupportedCorporateEventId(str(event_id)),
+                    reversal_date=LocalDate(command.reversal_date),
+                    reason=command.reason,
+                    correction_document_fact=SupportedCorporateDocumentFact(
+                        document_id=DocumentReference(str(fact.document_id)),
+                        evidence_kind=fact.evidence_kind,
+                        revision=fact.revision,
+                        content_sha256=fact.content_sha256,
+                    ),
+                )
+            )
+            result = await corporate_governance_application.reverse_supported_event(
+                access_token, domain_command
+            )
+            return reversed_supported_event_wire(result)
 
         return await corporate_governance_call(execute)
 

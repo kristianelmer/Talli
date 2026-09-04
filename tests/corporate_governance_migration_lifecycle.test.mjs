@@ -21,6 +21,8 @@ const hostedShapeParityMigrationName =
   "20260902105000_corporate_governance_hosted_shape_parity.sql";
 const contractMigrationName =
   "20260902110000_corporate_governance_contract.sql";
+const supportedEventsMigrationName =
+  "20260904220000_corporate_governance_supported_events.sql";
 
 function withoutTransactionWrapper(sql) {
   return sql
@@ -1094,6 +1096,8 @@ test(
       companyIdentityRollback,
       lifecycleForward,
       lifecycleRollback,
+      supportedEventsForward,
+      supportedEventsRollback,
     ] =
       await Promise.all([
       readFile(
@@ -1152,6 +1156,20 @@ test(
       ),
       readFile(
         new URL(`../supabase/rollback/${lifecycleMigrationName}`, import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL(
+          `../supabase/migrations/${supportedEventsMigrationName}`,
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+      readFile(
+        new URL(
+          `../supabase/rollback/${supportedEventsMigrationName}`,
+          import.meta.url,
+        ),
         "utf8",
       ),
     ]);
@@ -1527,6 +1545,7 @@ test(
       await assertSupersededEvidence(client, true);
       await assertFinalizationEvidence(client, true);
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
+        await client.query(supportedEventsRollback);
         await client.query(lifecycleRollback);
         await client.query(annualRollback);
         await client.query(loanRollback);
@@ -1549,6 +1568,7 @@ test(
         await client.query(companyIdentityForward);
         await assertGovernanceRolesCannotInheritCompanyAccessExecutor(client);
         await client.query(lifecycleForward);
+        await client.query(supportedEventsForward);
         assert.deepEqual(await state(client), {
           capability_schema: true,
           decision_table: true,

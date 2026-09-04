@@ -1507,6 +1507,30 @@ h2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.wizardSection {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+}
+
+.wizardSection legend {
+  font-weight: var(--weight-semibold);
+  padding: 0 var(--space-2);
+}
+
+@media (max-width: 640px) {
+  .fieldRow {
+    grid-template-columns: 1fr;
+  }
+
+  .wizard {
+    padding: var(--space-4);
+  }
+}
+
 .shareholderBlock {
   display: grid;
   gap: var(--space-3);
