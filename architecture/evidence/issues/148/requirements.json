@@ -145,28 +145,17 @@
     "apiClient": "generated client check passed",
     "architecture": "passed",
     "diffCheck": "passed",
-    "dependencyAuditContext": "R1 reported zero vulnerabilities from npm's local advisory cache after the official registry bulk-audit endpoint timed out in two discarded runs; the protected GitHub Release gate must independently pass its online audit before merge."
+    "dependencyAuditContext": "Replacement R1 passed the online production dependency audit in the canonical GitHub evidence runner; the protected GitHub Release gate must independently pass again before merge."
   },
   "completeGates": [
     {
-      "revision": "f287952fa174f42a84718682e62e0feff1874c8d",
+      "revision": "cb5f01202793035447403078029f6a77671e3b21",
       "previousPassingRevision": null,
       "executor": "local-script",
-      "evidencePath": "architecture/evidence/customer-ready-gates/f287952fa174f42a84718682e62e0feff1874c8d.json",
+      "evidencePath": "architecture/evidence/customer-ready-gates/cb5f01202793035447403078029f6a77671e3b21.json",
       "verdict": "pass",
       "checkCount": 11,
-      "transcriptDigest": "sha256:aeea16f0250a68353599d25a5700e5b37bb62c5e874516ba01c5b6b809803adc"
-      ,"supersededByHostedShapeParityRepair": true
-    },
-    {
-      "revision": "4db6171d71273638eb29e192c731be5a72da7309",
-      "previousPassingRevision": "f287952fa174f42a84718682e62e0feff1874c8d",
-      "executor": "local-script",
-      "evidencePath": "architecture/evidence/customer-ready-gates/4db6171d71273638eb29e192c731be5a72da7309.json",
-      "verdict": "pass",
-      "checkCount": 11,
-      "transcriptDigest": "sha256:5b20450514070f88024da1dbfacabc247ce7331cab16d46adc5c7cd3dadea885"
-      ,"supersededByHostedShapeParityRepair": true
+      "transcriptDigest": "sha256:21f934f49e622d1b0ec8a5ea04891926f172365d47cfa8a35dfd95b1a564e5d3"
     }
   ],
   "hostedVerification": {
@@ -197,5 +186,5 @@
     "path": "architecture/evidence/issues/148/preview-verification.json",
     "verdict": "pending"
   },
-  "closeState": "hosted-shape correction and independent rereviews passed; replacement immutable gates, hosted contract retry, preview, and protected merge pending"
+  "closeState": "hosted-shape correction, independent rereviews, and replacement immutable R1 passed; R2, hosted contract retry, preview, and protected merge pending"
 }
