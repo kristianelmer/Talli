@@ -112,7 +112,7 @@
     "fixedPoint": "e8e920ba3ba625fe804bc9ee14dbcde620cab8c3",
     "initialReviewedRevision": "b761bb9f2392505c59ebae70bdd256e0e94d3d4e",
     "finalReviewedRevision": "e0e30514b01bae5cb6f72501ddc7c7e81be48420",
-    "postHostedCorrectionReviewedRevision": null,
+    "postHostedCorrectionReviewedRevision": "52640f3ce37e037398ff45336db1c9e1939a893f",
     "standards": {
       "resolvedFindings": [
         "Runtime document evidence registration now binds the caller-supplied actor to the independently verified transaction actor and revalidates accepted-owner access.",
@@ -122,14 +122,16 @@
       "judgementFindings": [
         "P3 non-blocking: repeated decision-kind switches in apps/web/app/actions.ts could later be consolidated behind a lifecycle-operation dispatch map."
       ],
-      "verdict": "pass"
+      "verdict": "pass",
+      "postHostedCorrectionVerdict": "pass; populated old-shape values, constraints, triggers, authority restoration, two parity rehearsals, contract retirement, and duplicate receipt reconciliation verified"
     },
     "specification": {
       "resolvedFindings": [
         "Registration failure removes every newly persisted generated_unsigned artifact; cleanup failures preserve the primary and cleanup errors for reconciliation.",
         "The runtime/backfill split preserves immutable lifecycle behavior while allowing deterministic migration of historical creators without current owner membership."
       ],
-      "verdict": "pass"
+      "verdict": "pass",
+      "postHostedCorrectionVerdict": "pass; exact finalization and payment evidence survives parity repair and real contract cutover without scope creep"
     }
   },
   "localValidation": {
