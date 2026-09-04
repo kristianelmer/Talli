@@ -40,6 +40,7 @@ test("document presentation is a transport-only shape conversion", () => {
     status: "attached",
     retention_years: 5,
     storage_key: document.storageKey,
+    content_sha256: "a".repeat(64),
     created_by: actorId,
     created_at: "2026-09-01T12:00:00Z",
     removed_at: null,
