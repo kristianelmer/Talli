@@ -145,7 +145,7 @@
     "apiClient": "generated client check passed",
     "architecture": "passed",
     "diffCheck": "passed",
-    "dependencyAuditContext": "Replacement R1 passed the online production dependency audit in the canonical GitHub evidence runner; the protected GitHub Release gate must independently pass again before merge."
+    "dependencyAuditContext": "Replacement R1 and linked replacement R2 passed the online production dependency audit in canonical GitHub evidence runners; the protected GitHub Release gate must independently pass again before merge."
   },
   "completeGates": [
     {
@@ -156,6 +156,15 @@
       "verdict": "pass",
       "checkCount": 11,
       "transcriptDigest": "sha256:21f934f49e622d1b0ec8a5ea04891926f172365d47cfa8a35dfd95b1a564e5d3"
+    },
+    {
+      "revision": "1cc236e90ea746fd9b13345c73e99c574e22bc16",
+      "previousPassingRevision": "cb5f01202793035447403078029f6a77671e3b21",
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/1cc236e90ea746fd9b13345c73e99c574e22bc16.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:baf883b6580262808556881ec989911d0f96716afa21be90e3a283028eb197d3"
     }
   ],
   "hostedVerification": {
@@ -186,5 +195,5 @@
     "path": "architecture/evidence/issues/148/preview-verification.json",
     "verdict": "pending"
   },
-  "closeState": "hosted-shape correction, independent rereviews, and replacement immutable R1 passed; R2, hosted contract retry, preview, and protected merge pending"
+  "closeState": "hosted-shape correction, independent rereviews, and linked replacement immutable R1/R2 passed; hosted contract retry, preview, and protected merge pending"
 }
