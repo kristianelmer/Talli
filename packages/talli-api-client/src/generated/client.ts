@@ -2279,16 +2279,20 @@ export interface RecordedSupportedCorporateEventWire {
   canonicalFacts: Record<string, unknown>;
   companyId: string;
   correctionOfEventId: string | null;
+  documentFacts: SupportedCorporateDocumentFactWire[];
   eventDate: string;
   eventId: string;
   eventKind: SupportedCorporateEventKind;
   eventReference: string;
   factsSha256: string;
+  finalizationSha256: string;
   incomeYear: number;
+  lifecycleState: "finalized";
   phase: SupportedCorporateEventPhase;
   policyVersion: "corporate-governance-supported-events-2026.1";
   recordedAt: string;
   replayed: boolean;
+  signedArtifactHashes: Record<string, string>;
 }
 
 export interface ReverseSupportedCorporateEventWire {
@@ -5584,22 +5588,26 @@ function isRecordedShareholderLoanWire(value: unknown): value is RecordedShareho
 function isRecordedSupportedCorporateEventWire(value: unknown): value is RecordedSupportedCorporateEventWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["accountingEntryId","bankTransactionId","canonicalFacts","companyId","correctionOfEventId","eventDate","eventId","eventKind","eventReference","factsSha256","incomeYear","phase","policyVersion","recordedAt","replayed"]) &&
+    hasOnlyProperties(value, ["accountingEntryId","bankTransactionId","canonicalFacts","companyId","correctionOfEventId","documentFacts","eventDate","eventId","eventKind","eventReference","factsSha256","finalizationSha256","incomeYear","lifecycleState","phase","policyVersion","recordedAt","replayed","signedArtifactHashes"]) &&
     isUuid(value.accountingEntryId) &&
     (isUuid(value.bankTransactionId) || value.bankTransactionId === null) &&
     isRecord(value.canonicalFacts) &&
     isUuid(value.companyId) &&
     (isUuid(value.correctionOfEventId) || value.correctionOfEventId === null) &&
+    Array.isArray(value.documentFacts) && value.documentFacts.every((item) => isSupportedCorporateDocumentFactWire(item)) &&
     typeof value.eventDate === "string" &&
     isUuid(value.eventId) &&
     isSupportedCorporateEventKind(value.eventKind) &&
     isUuid(value.eventReference) &&
     typeof value.factsSha256 === "string" &&
+    typeof value.finalizationSha256 === "string" &&
     typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    value.lifecycleState === "finalized" &&
     isSupportedCorporateEventPhase(value.phase) &&
     value.policyVersion === "corporate-governance-supported-events-2026.1" &&
     isDateTime(value.recordedAt) &&
-    typeof value.replayed === "boolean"
+    typeof value.replayed === "boolean" &&
+    isRecord(value.signedArtifactHashes) && Object.values(value.signedArtifactHashes).every((item) => typeof item === "string")
   );
 }
 

@@ -1,14 +1,6 @@
 -- Roll back the additive supported corporate-event source (#191).
 begin;
 
-select pg_catalog.set_config(
-  'talli.corporate_governance_191_rollback_had_store_owner',
-  pg_catalog.pg_has_role(
-    current_user, 'corporate_governance_store_owner', 'member'
-  )::text,
-  true
-);
-
 do $membership$
 begin
   execute pg_catalog.format(
@@ -36,13 +28,9 @@ reset role;
 
 do $membership_revoke$
 begin
-  if pg_catalog.current_setting(
-    'talli.corporate_governance_191_rollback_had_store_owner'
-  )::boolean is false then
-    execute pg_catalog.format(
-      'revoke corporate_governance_store_owner from %I', current_user
-    );
-  end if;
+  execute pg_catalog.format(
+    'revoke corporate_governance_store_owner from %I', current_user
+  );
 end
 $membership_revoke$;
 

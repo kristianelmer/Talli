@@ -13248,6 +13248,13 @@
             ],
             "title": "Correctionofeventid"
           },
+          "documentFacts": {
+            "items": {
+              "$ref": "#/components/schemas/SupportedCorporateDocumentFactWire"
+            },
+            "title": "Documentfacts",
+            "type": "array"
+          },
           "eventDate": {
             "format": "date",
             "title": "Eventdate",
@@ -13270,9 +13277,18 @@
             "title": "Factssha256",
             "type": "string"
           },
+          "finalizationSha256": {
+            "title": "Finalizationsha256",
+            "type": "string"
+          },
           "incomeYear": {
             "title": "Incomeyear",
             "type": "integer"
+          },
+          "lifecycleState": {
+            "const": "finalized",
+            "title": "Lifecyclestate",
+            "type": "string"
           },
           "phase": {
             "$ref": "#/components/schemas/SupportedCorporateEventPhase"
@@ -13290,6 +13306,13 @@
           "replayed": {
             "title": "Replayed",
             "type": "boolean"
+          },
+          "signedArtifactHashes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Signedartifacthashes",
+            "type": "object"
           }
         },
         "required": [
@@ -13303,6 +13326,10 @@
           "policyVersion",
           "canonicalFacts",
           "factsSha256",
+          "documentFacts",
+          "signedArtifactHashes",
+          "finalizationSha256",
+          "lifecycleState",
           "accountingEntryId",
           "bankTransactionId",
           "correctionOfEventId",

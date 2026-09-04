@@ -25,6 +25,7 @@ import type {
   InvestmentActivityPresentation,
 } from "../../features/investments";
 import type { DocumentBackupProjectionWire } from "../../features/documents";
+import type { RecordedSupportedCorporateEventWire } from "../../features/corporate-governance";
 
 export type LedgerEntryRow = {
   id: string;
@@ -81,6 +82,7 @@ export function buildPersistedCompanyArchive(input: {
   corporateDocumentArtifacts?: CorporateDocumentArtifactRow[];
   corporateDocumentEvents?: CorporateDocumentEventRow[];
   corporateDecisionFinalizations?: CorporateDecisionFinalizationRow[];
+  supportedCorporateEvents?: RecordedSupportedCorporateEventWire[];
 }) {
   const taxSettlementActions = (input.holdingActions ?? []).filter((action) => action.action_type === "tax_settlement");
   const investmentActivityHistory = (input.holdingActions ?? []).filter(
@@ -192,6 +194,26 @@ export function buildPersistedCompanyArchive(input: {
     })),
     corporateDocumentEvents: input.corporateDocumentEvents ?? [],
     corporateDecisionFinalizations: input.corporateDecisionFinalizations ?? [],
+    supportedCorporateEvents: (input.supportedCorporateEvents ?? []).map((event) => ({
+      eventId: event.eventId,
+      eventReference: event.eventReference,
+      companyId: event.companyId,
+      incomeYear: event.incomeYear,
+      eventDate: event.eventDate,
+      eventKind: event.eventKind,
+      phase: event.phase,
+      policyVersion: event.policyVersion,
+      canonicalFacts: event.canonicalFacts,
+      factsSha256: event.factsSha256,
+      documentFacts: event.documentFacts,
+      signedArtifactHashes: event.signedArtifactHashes,
+      finalizationSha256: event.finalizationSha256,
+      lifecycleState: event.lifecycleState,
+      accountingEntryId: event.accountingEntryId,
+      bankTransactionId: event.bankTransactionId,
+      correctionOfEventId: event.correctionOfEventId,
+      recordedAt: event.recordedAt,
+    })),
     documents: input.documents.map((document) => ({
       id: document.id,
       incomeYear: document.income_year,

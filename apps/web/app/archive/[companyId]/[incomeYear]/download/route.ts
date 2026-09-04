@@ -20,7 +20,10 @@ import {
 import {
   loadDocumentBackupProjection,
 } from "../../../../../features/documents";
-import { listCorporateDecisionLifecycle } from "../../../../../features/corporate-governance";
+import {
+  listCorporateDecisionLifecycle,
+  listSupportedCorporateEvents,
+} from "../../../../../features/corporate-governance";
 import {
   buildPersistedCompanyArchive,
   firstArchiveSourceError,
@@ -103,8 +106,9 @@ async function loadArchiveCorporateLifecycle(
   incomeYear: number,
 ) {
   try {
-    const [lifecycle, documents] = await Promise.all([
+    const [lifecycle, supportedEvents, documents] = await Promise.all([
       listCorporateDecisionLifecycle(accessToken, [companyId]),
+      listSupportedCorporateEvents(accessToken, [companyId]),
       loadDocumentBackupProjection(accessToken, companyId, incomeYear),
     ]);
     const documentsById = new Map(
@@ -133,6 +137,9 @@ async function loadArchiveCorporateLifecycle(
         ),
         corporateDecisionFinalizations: lifecycle.corporateDecisionFinalizations.filter(
           (item) => item.income_year === incomeYear,
+        ),
+        supportedCorporateEvents: supportedEvents.filter(
+          (item) => item.companyId === companyId && item.incomeYear === incomeYear,
         ),
       },
       error: null,
@@ -393,6 +400,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     corporateDocumentArtifacts: corporateLifecycle?.corporateDocumentArtifacts ?? [],
     corporateDocumentEvents: corporateLifecycle?.corporateDocumentEvents ?? [],
     corporateDecisionFinalizations: corporateLifecycle?.corporateDecisionFinalizations ?? [],
+    supportedCorporateEvents: corporateLifecycle?.supportedCorporateEvents ?? [],
   });
 
   const archiveBody = JSON.stringify(archive, null, 2);

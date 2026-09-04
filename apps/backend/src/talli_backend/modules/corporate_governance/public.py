@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -39,6 +41,14 @@ def _immutable_mapping(value: Mapping[str, object]) -> Mapping[str, object]:
     if not isinstance(frozen, Mapping):
         raise TypeError("expected a mapping")
     return frozen
+
+
+def _plain_json(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {str(key): _plain_json(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_plain_json(item) for item in value]
+    return value
 
 
 @dataclass(frozen=True, slots=True)
@@ -1306,6 +1316,57 @@ class RecordedSupportedCorporateEvent:
     correction_of_event_id: SupportedCorporateEventId | None
     recorded_at: datetime
     replayed: bool
+
+    @property
+    def signed_artifact_hashes(self) -> Mapping[str, str]:
+        """Return the exact signed evidence set frozen into this final event."""
+
+        raw = self.event.canonical_facts.get("documentFacts")
+        if not isinstance(raw, (tuple, list)):
+            raise CorporateGovernanceError.unavailable()
+        artifacts: dict[str, str] = {}
+        for item in raw:
+            if not isinstance(item, Mapping):
+                raise CorporateGovernanceError.unavailable()
+            kind = item.get("evidence_kind")
+            raw_document_id = item.get("document_id")
+            document_id = (
+                raw_document_id.get("value")
+                if isinstance(raw_document_id, Mapping)
+                else raw_document_id
+            )
+            digest = item.get("content_sha256")
+            if not all(
+                isinstance(value, str) for value in (kind, document_id, digest)
+            ):
+                raise CorporateGovernanceError.unavailable()
+            artifacts[f"{kind}:{document_id}"] = digest
+        return MappingProxyType(dict(sorted(artifacts.items())))
+
+    @property
+    def finalization_sha256(self) -> str:
+        """Bind governance, signed artifacts, Ledger, and cash into one receipt."""
+
+        payload = {
+            "accountingEntryId": str(self.accounting_entry_id),
+            "bankTransactionId": (
+                str(self.bank_transaction_id) if self.bank_transaction_id else None
+            ),
+            "canonicalFacts": _plain_json(self.event.canonical_facts),
+            "correctionOfEventId": (
+                str(self.correction_of_event_id)
+                if self.correction_of_event_id
+                else None
+            ),
+            "factsSha256": self.event.facts_sha256,
+        }
+        canonical = json.dumps(
+            payload,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 @dataclass(frozen=True, slots=True)

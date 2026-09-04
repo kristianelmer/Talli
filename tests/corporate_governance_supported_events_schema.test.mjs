@@ -40,6 +40,12 @@ test("supported corporate events are immutable, tenant-scoped and atomic", async
   );
   assert.match(forward, /company_archive_projection_executor to %I/iu);
   assert.match(forward, /company_archive_projection_executor from %I/iu);
+  assert.doesNotMatch(forward, /pg_has_role/iu);
+  assert.doesNotMatch(forward, /_had_(?:store|banking|ledger|archive)_owner/iu);
+  assert.match(
+    forward,
+    /revoke corporate_governance_store_owner, banking_store_owner, '\s*\|\| 'ledger_store_owner, '\s*\|\| 'company_archive_projection_executor from %I'/iu,
+  );
 
   assert.match(
     rollback,
@@ -48,5 +54,10 @@ test("supported corporate events are immutable, tenant-scoped and atomic", async
   assert.match(
     rollback,
     /drop function if exists corporate_governance\.prepare_supported_event_v1/iu,
+  );
+  assert.doesNotMatch(rollback, /pg_has_role/iu);
+  assert.match(
+    rollback,
+    /revoke corporate_governance_store_owner from %I/iu,
   );
 });

@@ -4,31 +4,6 @@ begin;
 set local lock_timeout = '5s';
 set local statement_timeout = '120s';
 
-select pg_catalog.set_config(
-  'talli.corporate_governance_191_had_store_owner',
-  pg_catalog.pg_has_role(
-    current_user, 'corporate_governance_store_owner', 'member'
-  )::text,
-  true
-);
-select pg_catalog.set_config(
-  'talli.corporate_governance_191_had_banking_owner',
-  pg_catalog.pg_has_role(current_user, 'banking_store_owner', 'member')::text,
-  true
-);
-select pg_catalog.set_config(
-  'talli.corporate_governance_191_had_ledger_owner',
-  pg_catalog.pg_has_role(current_user, 'ledger_store_owner', 'member')::text,
-  true
-);
-select pg_catalog.set_config(
-  'talli.corporate_governance_191_had_archive_owner',
-  pg_catalog.pg_has_role(
-    current_user, 'company_archive_projection_executor', 'member'
-  )::text,
-  true
-);
-
 do $membership$
 begin
   execute pg_catalog.format(
@@ -403,34 +378,12 @@ to corporate_governance_workflow_executor;
 
 do $revoke_membership$
 begin
-  if pg_catalog.current_setting(
-    'talli.corporate_governance_191_had_store_owner'
-  )::boolean is false then
-    execute pg_catalog.format(
-      'revoke corporate_governance_store_owner from %I', current_user
-    );
-  end if;
-  if pg_catalog.current_setting(
-    'talli.corporate_governance_191_had_banking_owner'
-  )::boolean is false then
-    execute pg_catalog.format(
-      'revoke banking_store_owner from %I', current_user
-    );
-  end if;
-  if pg_catalog.current_setting(
-    'talli.corporate_governance_191_had_ledger_owner'
-  )::boolean is false then
-    execute pg_catalog.format(
-      'revoke ledger_store_owner from %I', current_user
-    );
-  end if;
-  if pg_catalog.current_setting(
-    'talli.corporate_governance_191_had_archive_owner'
-  )::boolean is false then
-    execute pg_catalog.format(
-      'revoke company_archive_projection_executor from %I', current_user
-    );
-  end if;
+  execute pg_catalog.format(
+    'revoke corporate_governance_store_owner, banking_store_owner, '
+      || 'ledger_store_owner, '
+      || 'company_archive_projection_executor from %I',
+    current_user
+  );
 end
 $revoke_membership$;
 

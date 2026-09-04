@@ -1353,6 +1353,10 @@ class RecordedSupportedCorporateEventWire(TransportModel):
     policy_version: Literal["corporate-governance-supported-events-2026.1"]
     canonical_facts: dict[str, Any]
     facts_sha256: str
+    document_facts: list[SupportedCorporateDocumentFactWire]
+    signed_artifact_hashes: dict[str, str]
+    finalization_sha256: str
+    lifecycle_state: Literal["finalized"]
     accounting_entry_id: UUID
     bank_transaction_id: UUID | None
     correction_of_event_id: UUID | None
@@ -4551,6 +4555,30 @@ def create_app(
                 return [plain(child) for child in item]
             return item
 
+        raw_documents = value.event.canonical_facts.get("documentFacts")
+        if not isinstance(raw_documents, (tuple, list)):
+            raise CorporateGovernanceError.unavailable()
+        document_facts: list[SupportedCorporateDocumentFactWire] = []
+        for item in raw_documents:
+            if not isinstance(item, Mapping):
+                raise CorporateGovernanceError.unavailable()
+            raw_document_id = item["document_id"]
+            document_id = (
+                raw_document_id.get("value")
+                if isinstance(raw_document_id, Mapping)
+                else raw_document_id
+            )
+            document_facts.append(
+                SupportedCorporateDocumentFactWire(
+                    document_id=UUID(str(document_id)),
+                    evidence_kind=SupportedCorporateEvidenceKind(
+                        str(item["evidence_kind"])
+                    ),
+                    revision=int(cast(int, item["revision"])),
+                    content_sha256=str(item["content_sha256"]),
+                )
+            )
+
         return RecordedSupportedCorporateEventWire(
             event_id=UUID(str(value.event.event_id)),
             event_reference=UUID(str(value.event.event_reference)),
@@ -4562,6 +4590,10 @@ def create_app(
             policy_version=value.event.policy_version,
             canonical_facts=cast(dict[str, Any], plain(value.event.canonical_facts)),
             facts_sha256=value.event.facts_sha256,
+            document_facts=document_facts,
+            signed_artifact_hashes=dict(value.signed_artifact_hashes),
+            finalization_sha256=value.finalization_sha256,
+            lifecycle_state="finalized",
             accounting_entry_id=UUID(str(value.accounting_entry_id)),
             bank_transaction_id=(
                 UUID(str(value.bank_transaction_id))

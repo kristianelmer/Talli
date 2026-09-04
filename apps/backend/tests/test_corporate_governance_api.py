@@ -714,6 +714,12 @@ def test_supported_capital_event_round_trips_through_strict_api() -> None:
     assert result["policyVersion"] == "corporate-governance-supported-events-2026.1"
     assert result["accountingEntryId"] == str(ENTRY_ID)
     assert len(result["factsSha256"]) == 64
+    assert result["lifecycleState"] == "finalized"
+    assert result["documentFacts"] == payload["documentFacts"]
+    assert result["signedArtifactHashes"] == {
+        f"signed_decision:{payload['documentFacts'][0]['documentId']}": "a" * 64
+    }
+    assert len(result["finalizationSha256"]) == 64
 
     listed = client.get(
         "/api/v1/corporate-governance/supported-events",
@@ -722,6 +728,7 @@ def test_supported_capital_event_round_trips_through_strict_api() -> None:
     )
     assert listed.status_code == 200, listed.text
     assert [item["eventId"] for item in listed.json()] == [payload["eventId"]]
+    assert listed.json()[0]["finalizationSha256"] == result["finalizationSha256"]
     call_names = [name for name, _ in transaction.calls]
     assert call_names.index("prepare_supported_event") < call_names.index(
         "record_cash_capital_increase_subscription"

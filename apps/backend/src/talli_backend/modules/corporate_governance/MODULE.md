@@ -93,7 +93,11 @@ Its `CashCapitalIncreaseEventFacts`, `LossCoverageCapitalReductionEventFacts`,
 `SupportedCorporateRelationship` enums keep unsupported structures outside the
 contract. `CanonicalSupportedCorporateEvent`,
 `PreparedSupportedCorporateEvent`, and `RecordedSupportedCorporateEvent` form
-the immutable prepare/complete result. `SupportedCorporateEventId` and
+the immutable prepare/complete result. A recorded event is already finalized:
+its `signed_artifact_hashes` exposes the exact verified Documents evidence and
+its deterministic `finalization_sha256` binds the canonical facts, signed
+artifacts, Ledger entry, Banking reference, and correction lineage into one
+reproducible receipt. `SupportedCorporateEventId` and
 `SupportedCorporateEventReference` are its stable identities.
 `ReverseSupportedCorporateEventCommand` requires an immutable correction
 document and produces `ReversedSupportedCorporateEvent` through Ledger's
@@ -127,6 +131,14 @@ Ledger and Banking only through governance-specific routines. Provider
 selection, activation, credentials, consent, live calls, customer bank data, and
 production banking remain outside this capability and blocked independently by
 #189.
+
+The supported-event query is also the only governance source used by the
+company-year archive adapter. The archive stores the finalization receipt and
+artifact manifest without copying document bytes or reading governance tables.
+RF-1086, company-tax, annual-accounts, and SAF-T generators remain owned by
+their later route capabilities; #191 publishes stable event/fact/evidence IDs
+and golden projection expectations for those consumers instead of duplicating
+their filing rules here.
 
 Governance declares no direct Documents database dependency. The named
 backend-system `corporate-governance` workflow invokes Governance persistence

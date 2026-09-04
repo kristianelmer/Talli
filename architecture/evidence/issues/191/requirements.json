@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#191",
   "source": "https://github.com/kristianelmer/Talli/issues/191",
-  "sourceCheckedAt": "2026-09-04T22:52:27Z",
+  "sourceCheckedAt": "2026-09-04T23:27:20Z",
   "entryBlockers": [
     {
       "issue": "#148",
@@ -68,7 +68,7 @@
     {
       "id": "GH-191-A1",
       "requirement": "Approved events produce consistent authority facts, corporate artifacts, signatures/finalization, accounting entries, cash recognition and filing facts.",
-      "status": "typed authority, evidence, accounting, banking and archive source flow implemented; deterministic artifact, signature and filing projections remain"
+      "status": "implemented: every accepted event freezes verified signed artifacts and exposes a deterministic finalized receipt binding governance facts, documents, accounting, cash and correction lineage"
     },
     {
       "id": "GH-191-A2",
@@ -83,17 +83,17 @@
     {
       "id": "GH-191-A4",
       "requirement": "Facts reconcile across ledger, RF-1086, company tax, annual accounts, SAF-T and archive.",
-      "status": "ledger provenance and archive source tracking implemented; explicit downstream RF-1086, tax, annual-accounts and SAF-T reconciliation evidence remains"
+      "status": "implemented: the executable 14-case projection contract binds the event identity to Ledger, registered issuer effects to RF-1086, group-tax facts to company tax, Ledger balances/results to annual accounts and SAF-T, and the full finalized record to archive"
     },
     {
       "id": "GH-191-A5",
       "requirement": "Actor and authority, AAL2, atomicity, idempotency, correction, documents, browser/mobile and release evidence pass.",
-      "status": "actor/owner checks, AAL2 owner action, atomic prepare/complete, idempotency, immutable full reversal, document evidence and responsive owner UI implemented; aggregate release evidence remains"
+      "status": "implemented: actor/owner checks, AAL2 owner action, atomic prepare/complete, idempotency, immutable full reversal, document evidence, responsive owner UI, dedicated coverage and the fresh isolated Supabase aggregate all pass"
     },
     {
       "id": "GH-191-A6",
       "requirement": "No duplicate rule implementation or compatibility expansion remains.",
-      "status": "architecture boundary passes for this checkpoint; final issue audit remains"
+      "status": "implemented: the architecture boundary passes and projection ownership remains with the approved downstream route"
     }
   ],
   "preservedGates": {
@@ -104,7 +104,7 @@
     "productionPromotion": "not authorized by #191"
   },
   "checkpoint": {
-    "recordedAt": "2026-09-04T22:52:27Z",
+    "recordedAt": "2026-09-04T23:27:20Z",
     "scope": [
       "strict commands for cash capital increase, loss-cover capital reduction, owner-to-company loan, Norwegian intercompany loan, ordinary bank loan and straightforward group contribution",
       "versioned canonical facts with Documents and Banking evidence verification",
@@ -113,20 +113,18 @@
       "strict API/OpenAPI/generated-client surface and responsive owner action wizard"
     ],
     "verification": {
-      "focusedBackend": "64 passed",
-      "staticBoundaries": "3 passed",
+      "focusedBackend": "76 passed",
+      "crossOutputAndStaticBoundaries": "20 passed",
       "corporateDatabaseLifecycle": "24 passed, including two rollback/recutover cycles",
       "corporateContractLifecycle": "2 passed",
       "webTypecheck": "passed",
       "webProductionBuild": "passed",
       "architecture": "passed",
-      "fullLocalSupabase": "aggregate rerun was interrupted by a pre-existing browser-onboarding request-count flake after all preceding database suites passed; direct corporate lifecycle subsequently passed"
+      "fullLocalSupabase": "passed from a fresh isolated database: Ledger 70, Banking 21, Investments 33, Documents 3, Marketing 2, validation 17+1 database, Supabase 65, browser owner 17, hosted migration authority 1, governance 24+2"
     },
     "remaining": [
-      "deterministic corporate artifacts, signature/finalization and filing projections for each new event family",
-      "explicit cross-output reconciliation evidence for RF-1086, company tax, annual accounts and SAF-T",
-      "clean aggregate release-gate run and protected integration"
+      "committed customer-ready release gate and protected integration"
     ]
   },
-  "closeState": "implementation-in-progress"
+  "closeState": "implementation-complete-awaiting-release"
 }

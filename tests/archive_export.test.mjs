@@ -428,6 +428,32 @@ test("builds company-year archive from persisted workspace rows", () => {
       created_by: "owner",
       created_at: "2026-01-03T00:00:00Z",
     }],
+    supportedCorporateEvents: [{
+      eventId: "14141414-1414-4414-8414-141414141414",
+      eventReference: "15151515-1515-4515-8515-151515151515",
+      companyId: "company-id",
+      incomeYear: 2025,
+      eventDate: "2025-04-01",
+      eventKind: "cash_capital_increase",
+      phase: "registered",
+      policyVersion: "corporate-governance-supported-events-2026.1",
+      canonicalFacts: { policyVersion: "corporate-governance-supported-events-2026.1" },
+      factsSha256: "d".repeat(64),
+      documentFacts: [{
+        documentId: "document-id",
+        evidenceKind: "signed_decision",
+        revision: 1,
+        contentSha256: "c".repeat(64),
+      }],
+      signedArtifactHashes: { "signed_decision:document-id": "c".repeat(64) },
+      finalizationSha256: "e".repeat(64),
+      lifecycleState: "finalized",
+      accountingEntryId: "ledger-id",
+      bankTransactionId: "bank-id",
+      correctionOfEventId: null,
+      recordedAt: "2026-01-03T00:00:00Z",
+      replayed: false,
+    }],
   });
 
   assert.equal(archive.archiveType, "talli_company_year_archive");
@@ -478,6 +504,12 @@ test("builds company-year archive from persisted workspace rows", () => {
   assert.equal(archive.corporateDocumentEvents[0].event_kind, "finalized");
   assert.equal(archive.corporateDecisionFinalizations[0].id, "finalization-id");
   assert.equal(archive.corporateDecisionFinalizations[0].accounting_policy_version, null);
+  assert.equal(archive.supportedCorporateEvents[0].lifecycleState, "finalized");
+  assert.equal(archive.supportedCorporateEvents[0].finalizationSha256, "e".repeat(64));
+  assert.equal(archive.supportedCorporateEvents[0].accountingEntryId, "ledger-id");
+  assert.deepEqual(archive.supportedCorporateEvents[0].signedArtifactHashes, {
+    "signed_decision:document-id": "c".repeat(64),
+  });
   assert.equal("pdfBytes" in archive.corporateDocumentArtifacts[0], false);
 });
 
@@ -522,5 +554,7 @@ test("archive ledger facts come through the generated capability query with a fr
       < route.indexOf('"company_archive_begin_export"'),
   );
   assert.match(route, /loadArchiveLedgerEntries\(accessToken, companyId, incomeYear\)/u);
+  assert.match(route, /listSupportedCorporateEvents\(accessToken, \[companyId\]\)/u);
+  assert.match(route, /supportedCorporateEvents: corporateLifecycle\?\.supportedCorporateEvents \?\? \[\]/u);
   assert.match(route, /firstArchiveSourceError\(sourceResults\)/u);
 });
