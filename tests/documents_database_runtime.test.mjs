@@ -246,6 +246,17 @@ test(
         end $workflow_authority$
       `);
       await client.query("set local role corporate_governance_workflow_executor");
+      await expectDatabaseError(
+        client,
+        {
+          text: `select documents.register_evidence_reference_v1(
+            'corporate_governance','shareholder_loans',$1,$2,$3,2026,
+            null,null,null,null,$4
+          )`,
+          values: [randomUUID(), documentId, companyId, randomUUID()],
+        },
+        /documents_forbidden/iu,
+      );
       await client.query(
         `select backend_system.register_corporate_governance_evidence_v1(
            'shareholder_loans',$1,$2,$3,2026,

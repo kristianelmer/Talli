@@ -25,6 +25,8 @@ export {
   shareholderLoanActionErrorMessage,
   shareholderLoanFormPresentation,
 } from "./presentation.ts";
+export { persistAndRegisterCorporateDocumentDraft } from "./draft-lifecycle.ts";
+export type { PersistedCorporateDocumentArtifact } from "./draft-lifecycle.ts";
 export type { ShareholderLoanFormDirection } from "./presentation.ts";
 export type {
   AnnualCloseEventWire,

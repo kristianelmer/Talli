@@ -16,6 +16,9 @@ select pg_catalog.set_config(
   'talli.documents_evidence_registry_principal', current_user, true
 );
 
+grant execute on function public.company_access_is_accepted_owner_v1(uuid)
+to documents_store_owner;
+
 set local role documents_store_owner;
 
 create table documents.evidence_references (
@@ -62,10 +65,18 @@ create or replace function documents.register_evidence_reference_v1(
   p_actor_id uuid
 ) returns void language plpgsql security definer set search_path = ''
 as $function$
+declare
+  v_actor_id uuid;
 begin
-  perform pg_catalog.set_config(
-    'talli.verified_actor_id', p_actor_id::text, true
-  );
+  v_actor_id := nullif(
+    pg_catalog.current_setting('talli.verified_actor_id', true), ''
+  )::uuid;
+  if v_actor_id is null
+    or v_actor_id <> p_actor_id
+    or not public.company_access_is_accepted_owner_v1(p_company_id)
+  then
+    raise exception 'documents_forbidden';
+  end if;
   perform pg_catalog.set_config(
     'talli.authorized_company_roles',
     pg_catalog.jsonb_build_object(p_company_id::text, 'owner')::text,

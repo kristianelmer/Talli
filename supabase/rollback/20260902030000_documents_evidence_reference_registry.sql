@@ -93,6 +93,9 @@ drop table documents.evidence_references;
 
 reset role;
 
+revoke execute on function public.company_access_is_accepted_owner_v1(uuid)
+from documents_store_owner;
+
 do $membership_revoke$
 begin
   execute pg_catalog.format(

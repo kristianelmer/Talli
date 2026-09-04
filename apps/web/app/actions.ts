@@ -124,6 +124,7 @@ import {
   finalizeAnnualClose,
   finalizeOwnerDividend,
   listCorporateDecisionLifecycle,
+  persistAndRegisterCorporateDocumentDraft,
   proposeAnnualClose,
   proposeOwnerDividend,
   readCorporateDecisionLifecycle,
@@ -2923,25 +2924,33 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
     },
   };
   try {
-    const persisted = await persistCorporateDocumentDraft({
-      supabase,
-      accessToken,
-      decision,
-      renderedArtifacts,
-      artifactIds,
+    await persistAndRegisterCorporateDocumentDraft({
+      persist: () => persistCorporateDocumentDraft({
+        supabase,
+        accessToken,
+        decision,
+        renderedArtifacts,
+        artifactIds,
+      }),
+      register: (artifacts) => registerOwnerDividendDocuments(
+        accessToken,
+        decision.decisionId,
+        {
+          companyId,
+          documentSetId: setId,
+          decisionHash,
+          artifacts,
+        },
+        `owner-dividend-documents:${decision.decisionId}`,
+        decision.decisionId,
+      ).then(() => undefined),
+      remove: (artifact) => removeDocument(
+        accessToken,
+        artifact.documentId,
+        { reason: "producer_rollback" },
+        `corporate-document-cleanup:${artifact.documentId}`,
+      ).then(() => undefined),
     });
-    await registerOwnerDividendDocuments(
-      accessToken,
-      decision.decisionId,
-      {
-        companyId,
-        documentSetId: setId,
-        decisionHash,
-        artifacts: persisted.artifacts,
-      },
-      `owner-dividend-documents:${decision.decisionId}`,
-      decision.decisionId,
-    );
   } catch (error) {
     const message = error instanceof Error && !(error instanceof AggregateError)
       ? corporateGovernanceActionErrorMessage(error) === "Forbindelsen til utbyttetjenesten ble brutt. Prøv samme forespørsel igjen."
@@ -3139,25 +3148,33 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
     },
   };
   try {
-    const persisted = await persistCorporateDocumentDraft({
-      supabase,
-      accessToken,
-      decision,
-      renderedArtifacts,
-      artifactIds,
+    await persistAndRegisterCorporateDocumentDraft({
+      persist: () => persistCorporateDocumentDraft({
+        supabase,
+        accessToken,
+        decision,
+        renderedArtifacts,
+        artifactIds,
+      }),
+      register: (artifacts) => registerAnnualCloseDocuments(
+        accessToken,
+        decision.decisionId,
+        {
+          companyId,
+          documentSetId: setId,
+          decisionHash,
+          artifacts,
+        },
+        `annual-close-documents:${decision.decisionId}`,
+        decision.decisionId,
+      ).then(() => undefined),
+      remove: (artifact) => removeDocument(
+        accessToken,
+        artifact.documentId,
+        { reason: "producer_rollback" },
+        `corporate-document-cleanup:${artifact.documentId}`,
+      ).then(() => undefined),
     });
-    await registerAnnualCloseDocuments(
-      accessToken,
-      decision.decisionId,
-      {
-        companyId,
-        documentSetId: setId,
-        decisionHash,
-        artifacts: persisted.artifacts,
-      },
-      `annual-close-documents:${decision.decisionId}`,
-      decision.decisionId,
-    );
   } catch (error) {
     failTo(returnTo, error instanceof Error ? error.message : "Årsdokumentutkastet kunne ikke opprettes.");
   }

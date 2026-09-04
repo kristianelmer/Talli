@@ -117,6 +117,28 @@ test("document evidence ownership is acyclic and declared", async () => {
   assert.doesNotMatch(contract, /documents\.has_evidence_references_v1/iu);
 });
 
+test("document evidence registration cannot forge trusted actor or owner context", async () => {
+  const registry = await text(
+    "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql",
+  );
+  const registration = registry.match(
+    /function documents\.register_evidence_reference_v1[\s\S]+?\$function\$;/iu,
+  )?.[0];
+
+  assert.ok(registration);
+  assert.match(registration, /current_setting\('talli\.verified_actor_id', true\)/iu);
+  assert.match(registration, /v_actor_id is null[\s\S]+v_actor_id <> p_actor_id/iu);
+  assert.match(registration, /company_access_is_accepted_owner_v1\(p_company_id\)/iu);
+  assert.doesNotMatch(
+    registration,
+    /set_config\(\s*'talli\.verified_actor_id'\s*,\s*p_actor_id/iu,
+  );
+  assert.match(
+    registry,
+    /grant execute on function public\.company_access_is_accepted_owner_v1\(uuid\)[\s\S]+to documents_store_owner/iu,
+  );
+});
+
 test("future annual-data compatibility scopes remain frozen without a checker bypass", async () => {
   const [registry, checker, actions] = await Promise.all([
     json("architecture/compatibility.json"),
