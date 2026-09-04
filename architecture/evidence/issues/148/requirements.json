@@ -136,7 +136,7 @@
     "web": "146 passed",
     "contract": "49 passed",
     "fullIsolatedSupabase": "passed with 0 blocking advisor findings",
-    "corporateGovernanceDatabaseLifecycle": "23 passed, including the hosted predecessor-shape recutover, plus 2 contract rollback/cutover tests in a fresh isolated Supabase stack",
+    "corporateGovernanceDatabaseLifecycle": "22 passed, including populated hosted predecessor-shape exact-value recovery, two parity rollback/recutover rehearsals, and contract retirement, plus 2 contract rollback/cutover tests in a fresh isolated Supabase stack",
     "documentsDatabaseLifecycle": "3 passed including runtime actor-forgery rejection, former-owner migration backfill, and two rollback/recutover rehearsals",
     "typecheck": "passed",
     "openapi": "generated contract check passed",
@@ -183,8 +183,10 @@
     ],
     "duplicateIdempotentHistoryReceipt": {
       "name": "company_access_corporate_governance_identity",
-      "versions": ["20260904092233", "20260904092246"],
-      "repairAttempted": false
+      "canonicalVersion": "20260904092233",
+      "reconciledRedundantVersion": "20260904092246",
+      "statementSha256": "1a8bc0e0a53610d4cd126e9bc22368b3f9a1f2a2fc81a1106a411dbe6c67f412",
+      "repairResult": "later byte-identical receipt marked reverted; one canonical receipt remains"
     },
     "contractFailure": "PostgreSQL 42703 exposed the already-hosted #144 finalization/payment shape missing event_id and occurred_at; the contract transaction rolled back before predecessor removal.",
     "correctiveMigration": "supabase/migrations/20260902105000_corporate_governance_hosted_shape_parity.sql"
@@ -193,5 +195,5 @@
     "path": "architecture/evidence/issues/148/preview-verification.json",
     "verdict": "pending"
   },
-  "closeState": "hosted-shape correction passed locally; independent rereviews, replacement immutable gates, hosted contract retry, preview, and protected merge pending"
+  "closeState": "hosted-shape correction and independent rereviews passed; replacement immutable gates, hosted contract retry, preview, and protected merge pending"
 }

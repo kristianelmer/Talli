@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#148",
+  "verifiedAt": "2026-09-04T09:52:32Z",
+  "sourceRevisionAtApply": "631c4cb6b1341ddb26331aa03d1a0044d3975d64",
+  "target": {
+    "organizationId": "zwucumjvtpnyujqyzwkg",
+    "projectId": "pkpyyxryfhfehrbhbynp",
+    "plan": "Free",
+    "spendCap": "enabled"
+  },
+  "apply": {
+    "result": "partial-expansion-pass-contract-transaction-rolled-back",
+    "method": "Supabase migration API, serial exact-file application",
+    "baselineMigrationHistoryCount": 78,
+    "migrationHistoryCountAfterReceiptRepair": 82,
+    "appliedMigrations": [
+      {
+        "version": "20260904092215",
+        "name": "documents_evidence_reference_registry"
+      },
+      {
+        "version": "20260904092216",
+        "name": "corporate_governance_annual_close"
+      },
+      {
+        "version": "20260904092233",
+        "name": "company_access_corporate_governance_identity"
+      },
+      {
+        "version": "20260904092418",
+        "name": "corporate_governance_artifact_lifecycle"
+      }
+    ],
+    "transactionallyRejectedContract": {
+      "name": "corporate_governance_contract",
+      "postgresCode": "42703",
+      "reason": "The already-hosted #144 owner-dividend tables did not yet have event_id and occurred_at columns.",
+      "rollbackResult": "The contract transaction rolled back before any predecessor surface was removed."
+    },
+    "pendingMigrations": [
+      "corporate_governance_hosted_shape_parity",
+      "corporate_governance_contract"
+    ]
+  },
+  "duplicateReceiptReconciliation": {
+    "name": "company_access_corporate_governance_identity",
+    "canonicalVersion": "20260904092233",
+    "redundantVersion": "20260904092246",
+    "statementCountEach": 1,
+    "statementBytesEach": 2158,
+    "canonicalStatementSha256": "1a8bc0e0a53610d4cd126e9bc22368b3f9a1f2a2fc81a1106a411dbe6c67f412",
+    "redundantStatementSha256": "1a8bc0e0a53610d4cd126e9bc22368b3f9a1f2a2fc81a1106a411dbe6c67f412",
+    "reviewedLocalFileSha256": "1a8bc0e0a53610d4cd126e9bc22368b3f9a1f2a2fc81a1106a411dbe6c67f412",
+    "repair": "The exact later redundant history row was marked reverted with supabase migration repair; schema and business data were not reversed.",
+    "postRepairMatchingReceipts": [
+      {
+        "version": "20260904092233",
+        "name": "company_access_corporate_governance_identity"
+      }
+    ]
+  },
+  "postRepairVerification": {
+    "companies": 0,
+    "ownerDividendFinalizations": 0,
+    "ownerDividendPayments": 0,
+    "predecessorDocumentEvents": 0,
+    "hostedParityColumnsPresent": {
+      "ownerDividendFinalizationsEventId": false,
+      "ownerDividendFinalizationsOccurredAt": false,
+      "ownerDividendPaymentsOccurredAt": false
+    },
+    "interpretation": "The target remains at the safe pre-parity, pre-contract boundary with no business rows."
+  },
+  "verdict": "partial; receipt history reconciled, strengthened local validation and independent rereview pending before hosted retry"
+}

@@ -19,6 +19,14 @@ const lifecycleMigrationName =
   "20260902100000_corporate_governance_artifact_lifecycle.sql";
 const hostedShapeParityMigrationName =
   "20260902105000_corporate_governance_hosted_shape_parity.sql";
+const contractMigrationName =
+  "20260902110000_corporate_governance_contract.sql";
+
+function withoutTransactionWrapper(sql) {
+  return sql
+    .replace(/(^|\n)begin;\s*/iu, "$1")
+    .replace(/\ncommit;\s*$/iu, "\n");
+}
 
 async function assertGovernanceRolesCannotInheritCompanyAccessExecutor(client) {
   const result = await client.query(String.raw`
@@ -86,66 +94,6 @@ test("hosted owner-dividend shape is upgraded before contract", async () => {
   assert.match(forward, /alter column occurred_at set not null/iu);
   assert.doesNotMatch(rollback, /drop column/iu);
 });
-
-test(
-  "hosted owner-dividend predecessor shape recuts to the current canonical shape",
-  { skip: !databaseUrl && "DATABASE_URL is required" },
-  async () => {
-    const forward = await readFile(
-      new URL(
-        `../supabase/migrations/${hostedShapeParityMigrationName}`,
-        import.meta.url,
-      ),
-      "utf8",
-    );
-    const client = new Client({ connectionString: databaseUrl });
-    await client.connect();
-    try {
-      await client.query(String.raw`
-        do $authority$ begin
-          execute pg_catalog.format(
-            'grant corporate_governance_store_owner to %I with set true',
-            current_user
-          );
-        end $authority$;
-        set role corporate_governance_store_owner;
-        alter table corporate_governance.owner_dividend_finalizations
-          drop column if exists event_id,
-          drop column if exists occurred_at;
-        alter table corporate_governance.owner_dividend_payments
-          drop column if exists occurred_at;
-        reset role;
-        do $authority$ begin
-          execute pg_catalog.format(
-            'revoke corporate_governance_store_owner from %I', current_user
-          );
-        end $authority$;
-      `);
-
-      await client.query(forward);
-      const result = await client.query(String.raw`
-        select table_name, pg_catalog.array_agg(column_name order by column_name)
-          as columns
-        from information_schema.columns
-        where table_schema = 'corporate_governance'
-          and table_name in (
-            'owner_dividend_finalizations', 'owner_dividend_payments'
-          )
-        group by table_name
-        order by table_name
-      `);
-      const columnsByTable = Object.fromEntries(
-        result.rows.map((row) => [row.table_name, row.columns]),
-      );
-      assert.ok(columnsByTable.owner_dividend_finalizations.includes("event_id"));
-      assert.ok(columnsByTable.owner_dividend_finalizations.includes("occurred_at"));
-      assert.ok(columnsByTable.owner_dividend_payments.includes("occurred_at"));
-    } finally {
-      await client.query(forward).catch(() => undefined);
-      await client.end();
-    }
-  },
-);
 
 test("governance evidence is locked and revalidated before immutable insertion", async () => {
   const [forward, rollback, documents] = await Promise.all([
@@ -414,12 +362,50 @@ test(
 );
 
 test(
-  "lifecycle reader preserves evidence event identity and distinct timestamps",
-  { skip: !databaseUrl && "DATABASE_URL is required" },
+  "populated hosted shape preserves evidence through parity and contract cutover",
+  { skip: !databaseUrl && "DATABASE_URL is required", timeout: 120_000 },
   async () => {
+    const [parityForwardRaw, parityRollbackRaw, contractForwardRaw] =
+      await Promise.all([
+        readFile(
+          new URL(
+            `../supabase/migrations/${hostedShapeParityMigrationName}`,
+            import.meta.url,
+          ),
+          "utf8",
+        ),
+        readFile(
+          new URL(
+            `../supabase/rollback/${hostedShapeParityMigrationName}`,
+            import.meta.url,
+          ),
+          "utf8",
+        ),
+        readFile(
+          new URL(
+            `../supabase/contract-migrations/${contractMigrationName}`,
+            import.meta.url,
+          ),
+          "utf8",
+        ),
+      ]);
+    const parityForward = withoutTransactionWrapper(parityForwardRaw);
+    const parityRollback = withoutTransactionWrapper(parityRollbackRaw);
+    const contractForward = withoutTransactionWrapper(contractForwardRaw);
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
     try {
+      const membershipBefore = await client.query(String.raw`
+        select exists (
+          select 1
+          from pg_catalog.pg_auth_members membership
+          join pg_catalog.pg_roles granted on granted.oid = membership.roleid
+          join pg_catalog.pg_roles member on member.oid = membership.member
+          where granted.rolname = 'corporate_governance_store_owner'
+            and member.rolname = current_user
+            and membership.set_option
+        ) as value
+      `);
       await client.query("begin");
       await client.query(String.raw`
         insert into auth.users (id, is_sso_user, is_anonymous)
@@ -447,6 +433,33 @@ test(
           '{}'::jsonb, '[]'::jsonb,
           '98000000-0000-4000-8000-000000000141',
           '98000000-0000-4000-8000-000000000141'
+        );
+        insert into public.corporate_decisions (
+          id, company_id, income_year, decision_kind,
+          annual_close_source_id, source_hash, canonical_input,
+          decision_hash, created_by, created_at
+        ) values (
+          '98000000-0000-4000-8000-000000000143',
+          '98000000-0000-4000-8000-000000000140', 2025,
+          'owner_dividend', '98000000-0000-4000-8000-000000000142',
+          repeat('a', 64), pg_catalog.jsonb_build_object(
+            'template_family', 'norwegian_simple_as',
+            'template_version', 'timestamp-evidence-v1',
+            'dividend', pg_catalog.jsonb_build_object('amount_ore', 10000)
+          ), repeat('b', 64),
+          '98000000-0000-4000-8000-000000000141',
+          '2025-01-01 00:00:00+00'
+        );
+        insert into public.corporate_document_sets (
+          id, company_id, income_year, decision_id, template_family,
+          template_version, decision_hash, created_by, created_at
+        ) values (
+          '98000000-0000-4000-8000-000000000144',
+          '98000000-0000-4000-8000-000000000140', 2025,
+          '98000000-0000-4000-8000-000000000143',
+          'norwegian_simple_as', 'timestamp-evidence-v1', repeat('b', 64),
+          '98000000-0000-4000-8000-000000000141',
+          '2025-01-01 00:00:00+00'
         );
         do $authority$ begin
           execute pg_catalog.format(
@@ -643,7 +656,224 @@ test(
         alter table corporate_governance.annual_close_finalizations
           force row level security;
         reset role;
+        insert into public.corporate_document_events (
+          id, company_id, income_year, decision_id, set_id, event_kind,
+          actor_id, occurred_at, decision_hash, metadata,
+          idempotency_key, created_at
+        ) values
+          (
+            '98000000-0000-4000-8000-000000000146',
+            '98000000-0000-4000-8000-000000000140', 2025,
+            '98000000-0000-4000-8000-000000000143',
+            '98000000-0000-4000-8000-000000000144', 'finalized',
+            '98000000-0000-4000-8000-000000000141',
+            '2025-05-01 10:00:00+00', repeat('b', 64),
+            pg_catalog.jsonb_build_object(
+              'finalization_id',
+              '98000000-0000-4000-8000-000000000145'
+            ), 'timestamp-finalized-event', '2025-05-01 11:00:00+00'
+          ),
+          (
+            '98000000-0000-4000-8000-000000000147',
+            '98000000-0000-4000-8000-000000000140', 2025,
+            '98000000-0000-4000-8000-000000000143',
+            '98000000-0000-4000-8000-000000000144', 'payment_recorded',
+            '98000000-0000-4000-8000-000000000141',
+            '2025-05-02 10:00:00+00', repeat('b', 64),
+            pg_catalog.jsonb_build_object(
+              'bank_transaction_id',
+              '98000000-0000-4000-8000-000000000150',
+              'holding_action_id',
+              '98000000-0000-4000-8000-000000000152',
+              'ledger_entry_id',
+              '98000000-0000-4000-8000-000000000149',
+              'amount_ore', 4000,
+              'remaining_payable_ore', 6000,
+              'accounting_policy_version', 'timestamp-evidence-v1'
+            ), 'timestamp-payment-event', '2025-05-02 11:00:00+00'
+          );
       `);
+
+      await client.query(String.raw`
+        set local role corporate_governance_store_owner;
+        alter table corporate_governance.owner_dividend_finalizations
+          drop column event_id,
+          drop column occurred_at;
+        alter table corporate_governance.owner_dividend_payments
+          drop column occurred_at;
+        reset role;
+      `);
+
+      for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
+        await client.query(parityForward);
+        const repaired = await client.query(String.raw`
+          select
+            finalization.id::text as finalization_id,
+            finalization.event_id::text as finalization_event_id,
+            pg_catalog.to_char(
+              finalization.occurred_at at time zone 'UTC',
+              'YYYY-MM-DD"T"HH24:MI:SS"Z"'
+            ) as finalization_occurred_at,
+            pg_catalog.to_char(
+              finalization.created_at at time zone 'UTC',
+              'YYYY-MM-DD"T"HH24:MI:SS"Z"'
+            ) as finalization_created_at,
+            payment.id::text as payment_id,
+            pg_catalog.to_char(
+              payment.occurred_at at time zone 'UTC',
+              'YYYY-MM-DD"T"HH24:MI:SS"Z"'
+            ) as payment_occurred_at,
+            pg_catalog.to_char(
+              payment.created_at at time zone 'UTC',
+              'YYYY-MM-DD"T"HH24:MI:SS"Z"'
+            ) as payment_created_at
+          from corporate_governance.owner_dividend_finalizations finalization
+          cross join corporate_governance.owner_dividend_payments payment
+          where finalization.id =
+              '98000000-0000-4000-8000-000000000145'::uuid
+            and payment.id =
+              '98000000-0000-4000-8000-000000000147'::uuid
+        `);
+        assert.deepEqual(repaired.rows[0], {
+          finalization_id: "98000000-0000-4000-8000-000000000145",
+          finalization_event_id: "98000000-0000-4000-8000-000000000146",
+          finalization_occurred_at: "2025-05-01T10:00:00Z",
+          finalization_created_at: "2025-05-01T11:00:00Z",
+          payment_id: "98000000-0000-4000-8000-000000000147",
+          payment_occurred_at: "2025-05-02T10:00:00Z",
+          payment_created_at: "2025-05-02T11:00:00Z",
+        });
+
+        const shape = await client.query(String.raw`
+          select pg_catalog.jsonb_build_object(
+            'columns', (
+              select pg_catalog.jsonb_object_agg(
+                table_name || '.' || column_name,
+                pg_catalog.jsonb_build_object(
+                  'nullable', is_nullable,
+                  'default', column_default
+                )
+              )
+              from information_schema.columns
+              where table_schema = 'corporate_governance'
+                and (table_name, column_name) in (
+                  ('owner_dividend_finalizations', 'event_id'),
+                  ('owner_dividend_finalizations', 'occurred_at'),
+                  ('owner_dividend_payments', 'occurred_at')
+                )
+            ),
+            'uniqueEventId', exists (
+              select 1 from pg_catalog.pg_constraint constraint_item
+              where constraint_item.conrelid =
+                  'corporate_governance.owner_dividend_finalizations'::regclass
+                and constraint_item.conname =
+                  'owner_dividend_finalizations_event_id_key'
+                and constraint_item.contype = 'u'
+            ),
+            'immutableTriggers', (
+              select pg_catalog.count(*)
+              from pg_catalog.pg_trigger trigger_item
+              where trigger_item.tgrelid in (
+                'corporate_governance.owner_dividend_finalizations'::regclass,
+                'corporate_governance.owner_dividend_payments'::regclass
+              )
+                and trigger_item.tgname in (
+                  'owner_dividend_finalizations_immutable',
+                  'owner_dividend_payments_immutable'
+                )
+                and trigger_item.tgenabled = 'O'
+            ),
+            'storeOwnerSetMembership', exists (
+              select 1
+              from pg_catalog.pg_auth_members membership
+              join pg_catalog.pg_roles granted
+                on granted.oid = membership.roleid
+              join pg_catalog.pg_roles member
+                on member.oid = membership.member
+              where granted.rolname = 'corporate_governance_store_owner'
+                and member.rolname = current_user
+                and membership.set_option
+            )
+          ) as value
+        `);
+        assert.deepEqual(shape.rows[0].value, {
+          columns: {
+            "owner_dividend_finalizations.event_id": {
+              nullable: "NO",
+              default: "gen_random_uuid()",
+            },
+            "owner_dividend_finalizations.occurred_at": {
+              nullable: "NO",
+              default: "statement_timestamp()",
+            },
+            "owner_dividend_payments.occurred_at": {
+              nullable: "NO",
+              default: "statement_timestamp()",
+            },
+          },
+          uniqueEventId: true,
+          immutableTriggers: 2,
+          storeOwnerSetMembership: membershipBefore.rows[0].value,
+        });
+
+        if (!membershipBefore.rows[0].value) {
+          await client.query(String.raw`
+            do $authority$ begin
+              execute pg_catalog.format(
+                'grant corporate_governance_store_owner to %I with set true',
+                current_user
+              );
+            end $authority$;
+          `);
+        }
+        await client.query("savepoint parity_immutability");
+        await client.query("set local role corporate_governance_store_owner");
+        await client.query(String.raw`
+          alter table corporate_governance.owner_dividend_finalizations
+            no force row level security
+        `);
+        await assert.rejects(
+          client.query(String.raw`
+            update corporate_governance.owner_dividend_finalizations
+            set occurred_at = occurred_at + interval '1 second'
+            where id = '98000000-0000-4000-8000-000000000145'::uuid
+          `),
+          /immutable|mutation/iu,
+        );
+        await client.query("rollback to savepoint parity_immutability");
+        await client.query("reset role");
+        if (!membershipBefore.rows[0].value) {
+          await client.query(String.raw`
+            do $authority$ begin
+              execute pg_catalog.format(
+                'revoke corporate_governance_store_owner from %I', current_user
+              );
+            end $authority$;
+          `);
+        }
+        await client.query(parityRollback);
+      }
+
+      await client.query(contractForward);
+      const retirement = await client.query(String.raw`
+        select
+          pg_catalog.to_regclass('public.corporate_decisions') is null
+            as decisions_retired,
+          pg_catalog.to_regclass('public.corporate_document_sets') is null
+            as sets_retired,
+          pg_catalog.to_regclass('public.corporate_document_events') is null
+            as events_retired,
+          pg_catalog.to_regclass(
+            'public.corporate_decision_finalizations'
+          ) is null as finalizations_retired
+      `);
+      assert.deepEqual(retirement.rows[0], {
+        decisions_retired: true,
+        sets_retired: true,
+        events_retired: true,
+        finalizations_retired: true,
+      });
+
       const result = await client.query(String.raw`
         with lifecycle as (
           select corporate_governance.read_corporate_lifecycle_v1(
