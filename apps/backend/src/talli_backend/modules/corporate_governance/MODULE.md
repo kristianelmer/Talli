@@ -141,3 +141,6 @@ from `holding_actions`, removes all six predecessor `public.corporate_*` tables,
 old RPCs and projection helpers, and moves archive invalidation and document
 evidence checks to canonical tables. Rollback restores a read-only predecessor
 projection without reviving a second writer; corrected recutover is repeatable.
+The additive hosted-shape parity migration first restores immutable event IDs and
+occurrence times that were absent from the already-deployed #144 table revision;
+it is a no-op for fresh databases created from the current migration chain.

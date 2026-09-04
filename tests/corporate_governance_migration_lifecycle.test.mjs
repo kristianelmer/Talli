@@ -17,6 +17,8 @@ const companyIdentityMigrationName =
   "20260902095000_company_access_corporate_governance_identity.sql";
 const lifecycleMigrationName =
   "20260902100000_corporate_governance_artifact_lifecycle.sql";
+const hostedShapeParityMigrationName =
+  "20260902105000_corporate_governance_hosted_shape_parity.sql";
 
 async function assertGovernanceRolesCannotInheritCompanyAccessExecutor(client) {
   const result = await client.query(String.raw`
@@ -45,6 +47,105 @@ test("artifact persistence does not duplicate Python signer policy", async () =>
   assert.doesNotMatch(forward, /v_required_signers|v_actual_signers/iu);
   assert.match(forward, /jsonb_typeof\(signer\).*'string'/isu);
 });
+
+test("hosted owner-dividend shape is upgraded before contract", async () => {
+  const [forward, rollback] = await Promise.all([
+    readFile(
+      new URL(
+        `../supabase/migrations/${hostedShapeParityMigrationName}`,
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        `../supabase/rollback/${hostedShapeParityMigrationName}`,
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(
+    forward,
+    /owner_dividend_finalizations[\s\S]+add column if not exists event_id uuid/iu,
+  );
+  assert.match(
+    forward,
+    /owner_dividend_finalizations[\s\S]+add column if not exists occurred_at timestamptz/iu,
+  );
+  assert.match(
+    forward,
+    /owner_dividend_payments[\s\S]+add column if not exists occurred_at timestamptz/iu,
+  );
+  assert.match(
+    forward,
+    /public\.corporate_document_events[\s\S]+event_kind = 'finalized'/iu,
+  );
+  assert.match(forward, /alter column event_id set not null/iu);
+  assert.match(forward, /alter column occurred_at set not null/iu);
+  assert.doesNotMatch(rollback, /drop column/iu);
+});
+
+test(
+  "hosted owner-dividend predecessor shape recuts to the current canonical shape",
+  { skip: !databaseUrl && "DATABASE_URL is required" },
+  async () => {
+    const forward = await readFile(
+      new URL(
+        `../supabase/migrations/${hostedShapeParityMigrationName}`,
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    const client = new Client({ connectionString: databaseUrl });
+    await client.connect();
+    try {
+      await client.query(String.raw`
+        do $authority$ begin
+          execute pg_catalog.format(
+            'grant corporate_governance_store_owner to %I with set true',
+            current_user
+          );
+        end $authority$;
+        set role corporate_governance_store_owner;
+        alter table corporate_governance.owner_dividend_finalizations
+          drop column if exists event_id,
+          drop column if exists occurred_at;
+        alter table corporate_governance.owner_dividend_payments
+          drop column if exists occurred_at;
+        reset role;
+        do $authority$ begin
+          execute pg_catalog.format(
+            'revoke corporate_governance_store_owner from %I', current_user
+          );
+        end $authority$;
+      `);
+
+      await client.query(forward);
+      const result = await client.query(String.raw`
+        select table_name, pg_catalog.array_agg(column_name order by column_name)
+          as columns
+        from information_schema.columns
+        where table_schema = 'corporate_governance'
+          and table_name in (
+            'owner_dividend_finalizations', 'owner_dividend_payments'
+          )
+        group by table_name
+        order by table_name
+      `);
+      const columnsByTable = Object.fromEntries(
+        result.rows.map((row) => [row.table_name, row.columns]),
+      );
+      assert.ok(columnsByTable.owner_dividend_finalizations.includes("event_id"));
+      assert.ok(columnsByTable.owner_dividend_finalizations.includes("occurred_at"));
+      assert.ok(columnsByTable.owner_dividend_payments.includes("occurred_at"));
+    } finally {
+      await client.query(forward).catch(() => undefined);
+      await client.end();
+    }
+  },
+);
 
 test("governance evidence is locked and revalidated before immutable insertion", async () => {
   const [forward, rollback, documents] = await Promise.all([

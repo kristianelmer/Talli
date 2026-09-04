@@ -89,6 +89,7 @@
       "requirement": "Duplicate TypeScript orchestration, legacy governance writers, and active-stage compatibility code are removed.",
       "evidence": [
         "architecture/compatibility.json",
+        "supabase/migrations/20260902105000_corporate_governance_hosted_shape_parity.sql",
         "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql",
         "tests/corporate_governance_contract_migration_lifecycle.test.mjs",
         "tests/contract/web_fastapi_boundary.test.mjs"
@@ -104,13 +105,14 @@
         "architecture/evidence/customer-ready-gates/<R1>.json",
         "architecture/evidence/customer-ready-gates/<R2>.json"
       ],
-      "status": "implementation-and-independent-reviews-passed; immutable-revision-gates-and-hosted-verification-pending"
+      "status": "hosted-shape correction passed the complete isolated Supabase suite; independent rereviews, replacement immutable gates, and contract retry pending"
     }
   ],
   "review": {
     "fixedPoint": "e8e920ba3ba625fe804bc9ee14dbcde620cab8c3",
     "initialReviewedRevision": "b761bb9f2392505c59ebae70bdd256e0e94d3d4e",
     "finalReviewedRevision": "e0e30514b01bae5cb6f72501ddc7c7e81be48420",
+    "postHostedCorrectionReviewedRevision": null,
     "standards": {
       "resolvedFindings": [
         "Runtime document evidence registration now binds the caller-supplied actor to the independently verified transaction actor and revalidates accepted-owner access.",
@@ -134,7 +136,7 @@
     "web": "146 passed",
     "contract": "49 passed",
     "fullIsolatedSupabase": "passed with 0 blocking advisor findings",
-    "corporateGovernanceDatabaseLifecycle": "21 passed plus 2 contract rollback/cutover tests in a fresh isolated Supabase stack",
+    "corporateGovernanceDatabaseLifecycle": "23 passed, including the hosted predecessor-shape recutover, plus 2 contract rollback/cutover tests in a fresh isolated Supabase stack",
     "documentsDatabaseLifecycle": "3 passed including runtime actor-forgery rejection, former-owner migration backfill, and two rollback/recutover rehearsals",
     "typecheck": "passed",
     "openapi": "generated contract check passed",
@@ -152,6 +154,7 @@
       "verdict": "pass",
       "checkCount": 11,
       "transcriptDigest": "sha256:aeea16f0250a68353599d25a5700e5b37bb62c5e874516ba01c5b6b809803adc"
+      ,"supersededByHostedShapeParityRepair": true
     },
     {
       "revision": "4db6171d71273638eb29e192c731be5a72da7309",
@@ -161,16 +164,34 @@
       "verdict": "pass",
       "checkCount": 11,
       "transcriptDigest": "sha256:5b20450514070f88024da1dbfacabc247ce7331cab16d46adc5c7cd3dadea885"
+      ,"supersededByHostedShapeParityRepair": true
     }
   ],
   "hostedVerification": {
     "path": "architecture/evidence/issues/148/hosted-verification.json",
-    "verdict": "pending",
-    "projectId": "pkpyyxryfhfehrbhbynp"
+    "verdict": "partial-expansion-pass-contract-transaction-rolled-back",
+    "projectId": "pkpyyxryfhfehrbhbynp",
+    "organizationId": "zwucumjvtpnyujqyzwkg",
+    "plan": "Free",
+    "spendCap": "enabled",
+    "baselineMigrationHistoryCount": 78,
+    "appliedReviewedMigrations": [
+      "documents_evidence_reference_registry",
+      "corporate_governance_annual_close",
+      "company_access_corporate_governance_identity",
+      "corporate_governance_artifact_lifecycle"
+    ],
+    "duplicateIdempotentHistoryReceipt": {
+      "name": "company_access_corporate_governance_identity",
+      "versions": ["20260904092233", "20260904092246"],
+      "repairAttempted": false
+    },
+    "contractFailure": "PostgreSQL 42703 exposed the already-hosted #144 finalization/payment shape missing event_id and occurred_at; the contract transaction rolled back before predecessor removal.",
+    "correctiveMigration": "supabase/migrations/20260902105000_corporate_governance_hosted_shape_parity.sql"
   },
   "previewVerification": {
     "path": "architecture/evidence/issues/148/preview-verification.json",
     "verdict": "pending"
   },
-  "closeState": "implementation-independent-reviews-and-two-immutable-gates-passed; hosted-preview-and-protected-merge-pending"
+  "closeState": "hosted-shape correction passed locally; independent rereviews, replacement immutable gates, hosted contract retry, preview, and protected merge pending"
 }

@@ -250,6 +250,7 @@
       "supabase/migrations/20260902084230_corporate_governance_shareholder_loan_rls_initplan_cleanup.sql",
       "supabase/migrations/20260902090000_corporate_governance_annual_close.sql",
       "supabase/migrations/20260902100000_corporate_governance_artifact_lifecycle.sql",
+      "supabase/migrations/20260902105000_corporate_governance_hosted_shape_parity.sql",
       "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql",
       "supabase/migrations/20260828103000_marketing_funnel_measurement.sql",
       "supabase/migrations/20260829070411_marketing_measurement_small_cell_threshold.sql",
