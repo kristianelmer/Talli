@@ -2,8 +2,8 @@
   "schemaVersion": "1.0",
   "issue": "#148",
   "source": "https://github.com/kristianelmer/Talli/issues/148",
-  "sourceCheckedAt": "2026-09-02T13:29:08Z",
-  "claim": "https://github.com/kristianelmer/Talli/issues/148#issuecomment-5508198209",
+  "sourceCheckedAt": "2026-09-04T08:32:31Z",
+  "claim": "https://github.com/kristianelmer/Talli/issues/148#issuecomment-5537549928",
   "entryBlockers": [
     {
       "issue": "#145",
@@ -51,7 +51,7 @@
         "tests/corporate_governance_annual_close_database_runtime.test.mjs",
         "tests/corporate_governance_database_runtime.test.mjs"
       ],
-      "status": "partial: local lifecycle checks pass, but superseded-event preservation remains a P1 specification finding"
+      "status": "immutable-generated-and-signed-artifact-lifecycle-passed"
     },
     {
       "id": "GH-148-A3",
@@ -61,7 +61,7 @@
         "apps/backend/tests/test_corporate_governance.py",
         "apps/backend/tests/test_corporate_governance_api.py"
       ],
-      "status": "partial: local readiness checks pass, but superseded terminal-state parity remains a P1 specification finding"
+      "status": "missing-stale-and-terminal-readiness-parity-passed"
     },
     {
       "id": "GH-148-A4",
@@ -82,7 +82,7 @@
         "tests/annual_corporate_documents.test.mjs",
         "tests/corporate_documents.test.mjs"
       ],
-      "status": "partial: rendering is Python-only, but TypeScript still derives annual basis eligibility and source hashes"
+      "status": "python-only-governance-rendering-and-in-process-pdf-passed"
     },
     {
       "id": "GH-148-A6",
@@ -93,7 +93,7 @@
         "tests/corporate_governance_contract_migration_lifecycle.test.mjs",
         "tests/contract/web_fastapi_boundary.test.mjs"
       ],
-      "status": "partial: predecessor surfaces are contracted, but duplicate TypeScript fact governance remains"
+      "status": "duplicate-orchestration-legacy-writers-and-active-compatibility-removed"
     },
     {
       "id": "GH-148-A7",
@@ -104,37 +104,38 @@
         "architecture/evidence/customer-ready-gates/<R1>.json",
         "architecture/evidence/customer-ready-gates/<R2>.json"
       ],
-      "status": "pending: three P1 specification findings, immutable-revision gates, and hosted verification remain"
+      "status": "implementation-and-independent-reviews-passed; immutable-revision-gates-and-hosted-verification-pending"
     }
   ],
   "review": {
     "fixedPoint": "e8e920ba3ba625fe804bc9ee14dbcde620cab8c3",
-    "reviewedRevision": "aae1c545",
+    "initialReviewedRevision": "b761bb9f2392505c59ebae70bdd256e0e94d3d4e",
+    "finalReviewedRevision": "e0e30514b01bae5cb6f72501ddc7c7e81be48420",
     "standards": {
-      "documentedFindings": [
-        "Handwritten corporate business DTOs remain in apps/web/app/lib/corporate-documents.ts.",
-        "TypeScript still constructs annual-account facts and source hashes in apps/web/app/lib/owner-dividend.ts and apps/web/app/actions.ts.",
-        "The Supabase adapter imports canonical_annual_close_payload from the capability-private service module."
+      "resolvedFindings": [
+        "Runtime document evidence registration now binds the caller-supplied actor to the independently verified transaction actor and revalidates accepted-owner access.",
+        "Historical evidence reconciliation now uses a Documents-owned migration-principal-only backfill contract, including former-owner coverage.",
+        "The Documents registry and Company Access identity query were re-reviewed as bounded owner-controlled public contracts in the one declared corporate-governance backend-system workflow, not parallel capability migrations."
       ],
       "judgementFindings": [
-        "Duplicated lifecycle event and signed-artifact wire shapes in apps/backend/src/talli_backend/main.py."
+        "P3 non-blocking: repeated decision-kind switches in apps/web/app/actions.ts could later be consolidated behind a lifecycle-operation dispatch map."
       ],
-      "verdict": "changes-required"
+      "verdict": "pass"
     },
     "specification": {
-      "findings": [
-        "P1: move authoritative annual-basis construction and persisted-fact hashing from TypeScript behind FastAPI.",
-        "P1: preserve superseded lifecycle events and terminal readiness behavior before dropping the predecessor store.",
-        "P1: make contract rollback block finalization and payment writes while preserving documents, ledger entries, and reconciled hashes."
+      "resolvedFindings": [
+        "Registration failure removes every newly persisted generated_unsigned artifact; cleanup failures preserve the primary and cleanup errors for reconciliation.",
+        "The runtime/backfill split preserves immutable lifecycle behavior while allowing deterministic migration of historical creators without current owner membership."
       ],
-      "verdict": "changes-required"
+      "verdict": "pass"
     }
   },
   "localValidation": {
-    "backend": "626 passed, 2 skipped",
-    "web": "143 passed",
-    "contract": "38 passed",
-    "corporateGovernanceDatabaseLifecycle": "17 passed in a fresh isolated Supabase stack",
+    "web": "146 passed",
+    "contract": "49 passed",
+    "fullIsolatedSupabase": "passed with 0 blocking advisor findings",
+    "corporateGovernanceDatabaseLifecycle": "21 passed plus 2 contract rollback/cutover tests in a fresh isolated Supabase stack",
+    "documentsDatabaseLifecycle": "3 passed including runtime actor-forgery rejection, former-owner migration backfill, and two rollback/recutover rehearsals",
     "typecheck": "passed",
     "openapi": "generated contract check passed",
     "apiClient": "generated client check passed",
@@ -151,5 +152,5 @@
     "path": "architecture/evidence/issues/148/preview-verification.json",
     "verdict": "pending"
   },
-  "closeState": "implementation-review-findings-and-release-evidence-pending"
+  "closeState": "implementation-and-independent-reviews-passed; immutable-gates-hosted-preview-and-protected-merge-pending"
 }
