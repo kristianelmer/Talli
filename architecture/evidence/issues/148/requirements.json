@@ -152,6 +152,15 @@
       "verdict": "pass",
       "checkCount": 11,
       "transcriptDigest": "sha256:aeea16f0250a68353599d25a5700e5b37bb62c5e874516ba01c5b6b809803adc"
+    },
+    {
+      "revision": "4db6171d71273638eb29e192c731be5a72da7309",
+      "previousPassingRevision": "f287952fa174f42a84718682e62e0feff1874c8d",
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/4db6171d71273638eb29e192c731be5a72da7309.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:5b20450514070f88024da1dbfacabc247ce7331cab16d46adc5c7cd3dadea885"
     }
   ],
   "hostedVerification": {
@@ -163,5 +172,5 @@
     "path": "architecture/evidence/issues/148/preview-verification.json",
     "verdict": "pending"
   },
-  "closeState": "implementation-and-independent-reviews-passed; immutable-gates-hosted-preview-and-protected-merge-pending"
+  "closeState": "implementation-independent-reviews-and-two-immutable-gates-passed; hosted-preview-and-protected-merge-pending"
 }
