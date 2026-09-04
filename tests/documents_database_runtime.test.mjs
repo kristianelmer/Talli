@@ -37,6 +37,7 @@ test(
           has_function_privilege('documents_executor','documents.stage_upload_v1(jsonb,text)','EXECUTE') as executor_stages,
           has_function_privilege('documents_executor','documents.register_evidence_reference_v1(text,text,uuid,uuid,uuid,integer,text,text,text,bigint,uuid)','EXECUTE') as executor_registers_evidence,
           has_function_privilege('corporate_governance_workflow_executor','documents.register_evidence_reference_v1(text,text,uuid,uuid,uuid,integer,text,text,text,bigint,uuid)','EXECUTE') as workflow_registers_evidence,
+          has_function_privilege('corporate_governance_workflow_executor','documents.backfill_evidence_reference_v1(text,text,uuid,uuid,uuid,integer,text,text,text,bigint,uuid)','EXECUTE') as workflow_backfills_evidence,
           has_function_privilege('authenticated','documents.stage_upload_v1(jsonb,text)','EXECUTE') as browser_stages,
           has_function_privilege('authenticated','public.remove_unlinked_document(uuid)','EXECUTE') as browser_legacy_removal,
           (select owner.rolname from pg_catalog.pg_proc procedure
@@ -67,6 +68,7 @@ test(
         executor_stages: true,
         executor_registers_evidence: false,
         workflow_registers_evidence: true,
+        workflow_backfills_evidence: false,
         browser_stages: false,
         browser_legacy_removal: false,
         evidence_owner: "postgres",
@@ -324,6 +326,30 @@ test(
         },
         /documents_evidence_linked/iu,
       );
+
+      await client.query("reset role");
+      await client.query(
+        "update public.company_memberships set accepted_at=null where company_id=$1 and user_id=$2",
+        [companyId, actorId],
+      );
+      const historicalSourceId = randomUUID();
+      await client.query(
+        `select documents.backfill_evidence_reference_v1(
+           'corporate_governance','shareholder_loans',$1,$2,$3,2026,
+           null,null,null,null,$4
+         )`,
+        [historicalSourceId, documentId, companyId, actorId],
+      );
+      const historicalEvidence = await client.query(
+        `select count(*)::int as count
+           from documents.evidence_references
+          where source_capability='corporate_governance'
+            and source_record_type='shareholder_loans'
+            and source_record_id=$1
+            and created_by=$2`,
+        [historicalSourceId, actorId],
+      );
+      assert.equal(historicalEvidence.rows[0].count, 1);
     } finally {
       await client.query("rollback");
       await client.end();

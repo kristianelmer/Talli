@@ -1440,7 +1440,8 @@ begin
       item.byte_length, item.created_by
     from corporate_governance.annual_close_artifacts item
   loop
-    perform backend_system.register_corporate_governance_evidence_v1(
+    perform documents.backfill_evidence_reference_v1(
+      'corporate_governance',
       artifact.source_record_type,
       artifact.id,
       artifact.document_id,
@@ -1464,7 +1465,8 @@ begin
     from corporate_governance.shareholder_loans item
     where item.document_id is not null
   loop
-    perform backend_system.register_corporate_governance_evidence_v1(
+    perform documents.backfill_evidence_reference_v1(
+      'corporate_governance',
       'shareholder_loans',
       artifact.id,
       artifact.document_id,

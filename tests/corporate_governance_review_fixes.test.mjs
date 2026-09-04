@@ -139,6 +139,25 @@ test("document evidence registration cannot forge trusted actor or owner context
   );
 });
 
+test("historical document evidence uses a migration-only backfill contract", async () => {
+  const [registry, lifecycle] = await Promise.all([
+    text("supabase/migrations/20260902030000_documents_evidence_reference_registry.sql"),
+    text("supabase/migrations/20260902100000_corporate_governance_artifact_lifecycle.sql"),
+  ]);
+  const backfill = lifecycle.match(
+    /do \$backfill_document_evidence\$[\s\S]+?\$backfill_document_evidence\$;/iu,
+  )?.[0];
+
+  assert.ok(backfill);
+  assert.match(registry, /function documents\.backfill_evidence_reference_v1/iu);
+  assert.match(
+    registry,
+    /revoke all on function documents\.backfill_evidence_reference_v1[\s\S]+from public, anon, authenticated, service_role, documents_executor/iu,
+  );
+  assert.match(backfill, /documents\.backfill_evidence_reference_v1/iu);
+  assert.doesNotMatch(backfill, /register_corporate_governance_evidence_v1/iu);
+});
+
 test("future annual-data compatibility scopes remain frozen without a checker bypass", async () => {
   const [registry, checker, actions] = await Promise.all([
     json("architecture/compatibility.json"),

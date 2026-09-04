@@ -51,7 +51,10 @@ create table documents.evidence_references (
 create index documents_evidence_references_document_idx
 on documents.evidence_references(document_id);
 
-create or replace function documents.register_evidence_reference_v1(
+-- Migration-only entry point for deterministic predecessor reconciliation.
+-- It remains executable only by the platform migration principal; runtime
+-- roles receive the actor-bound wrapper below.
+create or replace function documents.backfill_evidence_reference_v1(
   p_source_capability text,
   p_source_record_type text,
   p_source_record_id uuid,
@@ -65,18 +68,7 @@ create or replace function documents.register_evidence_reference_v1(
   p_actor_id uuid
 ) returns void language plpgsql security definer set search_path = ''
 as $function$
-declare
-  v_actor_id uuid;
 begin
-  v_actor_id := nullif(
-    pg_catalog.current_setting('talli.verified_actor_id', true), ''
-  )::uuid;
-  if v_actor_id is null
-    or v_actor_id <> p_actor_id
-    or not public.company_access_is_accepted_owner_v1(p_company_id)
-  then
-    raise exception 'documents_forbidden';
-  end if;
   perform pg_catalog.set_config(
     'talli.authorized_company_roles',
     pg_catalog.jsonb_build_object(p_company_id::text, 'owner')::text,
@@ -132,11 +124,66 @@ begin
 end
 $function$;
 
+create or replace function documents.register_evidence_reference_v1(
+  p_source_capability text,
+  p_source_record_type text,
+  p_source_record_id uuid,
+  p_document_id uuid,
+  p_company_id uuid,
+  p_income_year integer,
+  p_linked_to text,
+  p_status text,
+  p_content_sha256 text,
+  p_byte_length bigint,
+  p_actor_id uuid
+) returns void language plpgsql security definer set search_path = ''
+as $function$
+declare
+  v_actor_id uuid;
+begin
+  v_actor_id := nullif(
+    pg_catalog.current_setting('talli.verified_actor_id', true), ''
+  )::uuid;
+  if v_actor_id is null
+    or v_actor_id <> p_actor_id
+    or not public.company_access_is_accepted_owner_v1(p_company_id)
+  then
+    raise exception 'documents_forbidden';
+  end if;
+  perform documents.backfill_evidence_reference_v1(
+    p_source_capability,
+    p_source_record_type,
+    p_source_record_id,
+    p_document_id,
+    p_company_id,
+    p_income_year,
+    p_linked_to,
+    p_status,
+    p_content_sha256,
+    p_byte_length,
+    p_actor_id
+  );
+end
+$function$;
+
 reset role;
 
+revoke all on function documents.backfill_evidence_reference_v1(
+  text, text, uuid, uuid, uuid, integer, text, text, text, bigint, uuid
+) from public, anon, authenticated, service_role, documents_executor;
 revoke all on function documents.register_evidence_reference_v1(
   text, text, uuid, uuid, uuid, integer, text, text, text, bigint, uuid
 ) from public, anon, authenticated, service_role, documents_executor;
+
+do $backfill_authority$
+begin
+  execute pg_catalog.format(
+    'grant execute on function documents.backfill_evidence_reference_v1('
+      || 'text,text,uuid,uuid,uuid,integer,text,text,text,bigint,uuid) to %I',
+    pg_catalog.current_setting('talli.documents_evidence_registry_principal')
+  );
+end
+$backfill_authority$;
 
 -- The migration owner retains the predecessor compatibility reads. Dynamic
 -- lookup avoids coupling this Documents contract to a table retired later.

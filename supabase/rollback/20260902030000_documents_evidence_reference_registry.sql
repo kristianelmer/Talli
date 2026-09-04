@@ -89,6 +89,9 @@ $function$;
 drop function documents.register_evidence_reference_v1(
   text, text, uuid, uuid, uuid, integer, text, text, text, bigint, uuid
 );
+drop function documents.backfill_evidence_reference_v1(
+  text, text, uuid, uuid, uuid, integer, text, text, text, bigint, uuid
+);
 drop table documents.evidence_references;
 
 reset role;
