@@ -597,6 +597,7 @@ class CorporateDecisionRecord:
     supersedes_decision_id: CorporateDecisionId | None
     created_by: str
     created_at: datetime
+    source_hash_uses_current_basis: bool = True
 
     def __post_init__(self) -> None:
         object.__setattr__(

@@ -286,6 +286,39 @@ def test_owner_dividend_policy_reproduces_characterized_canonical_facts() -> Non
     assert decision.decision_hash == "cecda1a8099d790ea128a710c3d2523cf0587828a7e8de8ebb668d7e976c1149"
 
 
+def test_migrated_decision_uses_persisted_facts_when_legacy_hash_cannot_be_recomputed() -> None:
+    service = CorporateGovernanceService()
+    proposal = supported_proposal()
+    decision = service.build_owner_dividend_decision(proposal)
+    facts = service.derive_decision_facts(
+        sources=supported_fact_sources(),
+        ledger_lines=supported_ledger_lines(),
+        decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+        income_year=proposal.income_year,
+    )
+    record = CorporateDecisionRecord(
+        decision_id=decision.decision_id,
+        document_set_id=decision.document_set_id,
+        company_id=decision.company_id,
+        income_year=decision.income_year,
+        decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+        annual_close_source_id=decision.annual_close_source_id,
+        source_hash="f" * 64,
+        canonical_input=canonical_owner_dividend_payload(decision),
+        decision_hash=decision.decision_hash,
+        supersedes_decision_id=None,
+        created_by=str(decision.company_id),
+        created_at=datetime(2025, 6, 20, 12, tzinfo=UTC),
+        source_hash_uses_current_basis=False,
+    )
+
+    assert service.current_facts_match(record, facts)
+    assert not service.current_facts_match(
+        replace(record, source_hash_uses_current_basis=True),
+        facts,
+    )
+
+
 def test_canonical_owner_dividend_renders_characterized_pdfs_in_process() -> None:
     service = CorporateGovernanceService()
     decision = service.build_owner_dividend_decision(supported_proposal())

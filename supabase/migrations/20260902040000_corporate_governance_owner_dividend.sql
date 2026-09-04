@@ -119,6 +119,7 @@ create table corporate_governance.owner_dividend_decisions (
   annual_close_source_id uuid not null references public.annual_data(id)
     on delete restrict,
   source_hash text not null check (source_hash ~ '^[0-9a-f]{64}$'),
+  source_hash_uses_current_basis boolean not null default true,
   canonical_input jsonb not null check (
     pg_catalog.jsonb_typeof(canonical_input) = 'object'
   ),
@@ -620,12 +621,13 @@ reset role;
 -- stable so rollback/recutover can reconcile without inventing business facts.
 insert into corporate_governance.owner_dividend_decisions (
   id, document_set_id, company_id, income_year, annual_close_source_id,
-  source_hash, canonical_input, decision_hash, declared_amount_ore,
+  source_hash, source_hash_uses_current_basis, canonical_input,
+  decision_hash, declared_amount_ore,
   idempotency_key, correlation_id, request_fingerprint, created_by, created_at
 )
 select
   decision.id, document_set.id, decision.company_id, decision.income_year,
-  decision.annual_close_source_id, decision.source_hash,
+  decision.annual_close_source_id, decision.source_hash, false,
   pg_catalog.jsonb_build_object(
     'decisionId', decision.id,
     'documentSetId', document_set.id,

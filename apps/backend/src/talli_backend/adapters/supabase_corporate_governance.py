@@ -322,6 +322,9 @@ def _lifecycle_snapshot(value: Mapping[str, object]) -> CorporateLifecycleSnapsh
             ),
             created_by=str(item["createdBy"]),
             created_at=_timestamp(item["createdAt"]),
+            source_hash_uses_current_basis=bool(
+                item["sourceHashUsesCurrentBasis"]
+            ),
         )
         for item in objects("decisions")
     )
@@ -716,6 +719,8 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
                     no_activity_confirmed=bool(item["noActivityConfirmed"]),
                     annual_full_time_equivalents=_numeric(
                         item["annualFullTimeEquivalents"]
+                        if item["annualFullTimeEquivalents"] is not None
+                        else 0
                     ),
                     completed_at=(
                         item["completedAt"].isoformat()

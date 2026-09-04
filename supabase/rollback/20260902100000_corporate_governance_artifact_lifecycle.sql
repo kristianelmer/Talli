@@ -11,6 +11,9 @@ begin
       || 'backend_system_annual_data_reader to %I',
     current_user
   );
+  execute pg_catalog.format(
+    'grant documents_store_owner to %I with set true', current_user
+  );
 end
 $membership$;
 
@@ -53,11 +56,69 @@ on conflict (id) do nothing;
 
 set local role corporate_governance_store_owner;
 
+drop trigger if exists owner_dividend_artifacts_document_evidence
+  on corporate_governance.owner_dividend_artifacts;
+drop trigger if exists annual_close_artifacts_document_evidence
+  on corporate_governance.annual_close_artifacts;
+drop function if exists
+  corporate_governance.assert_corporate_governance_artifact_document_v1();
+
 drop function if exists
   corporate_governance.record_owner_dividend_event_v1(jsonb, text);
 drop function if exists
   corporate_governance.attest_owner_dividend_signed_artifact_v1(jsonb, text);
 reset role;
+
+grant usage on schema corporate_governance to documents_store_owner;
+set local role documents_store_owner;
+create or replace function documents.mark_removed_v1(
+  p_document_id uuid, p_reason text, p_verified_subject text
+) returns setof public.documents language plpgsql security definer set search_path = ''
+as $function$
+declare v_actor uuid; v_company uuid;
+begin
+  v_actor := nullif(
+    pg_catalog.current_setting('talli.verified_actor_id', true), ''
+  )::uuid;
+  if v_actor is null or v_actor::text <> p_verified_subject then
+    raise exception 'documents_forbidden';
+  end if;
+  if documents.has_evidence_references_v1(p_document_id) then
+    raise exception 'documents_evidence_linked';
+  end if;
+  select company_id into v_company
+  from public.documents
+  where id = p_document_id
+    and status in (
+      'attached', 'generated_unsigned', 'signed_owner_attested', 'stored'
+    )
+  for update;
+  if not found then
+    raise exception 'documents_not_found';
+  end if;
+  return query
+  update public.documents
+  set removed_from_status = status,
+      status = 'removed',
+      removed_at = pg_catalog.now(),
+      removed_by = v_actor,
+      removal_reason = left(p_reason, 200)
+  where id = p_document_id
+  returning *;
+  insert into public.audit_events(
+    company_id, actor_id, category, action, message
+  ) values (
+    v_company, v_actor, 'document', 'document_removal_requested',
+    'Unlinked document marked for removal.'
+  );
+end
+$function$;
+drop function if exists corporate_governance.assert_document_evidence_v1(
+  uuid, uuid, integer, text, text, text, bigint, uuid
+);
+reset role;
+revoke usage on schema corporate_governance from documents_store_owner;
+
 set local role backend_system_annual_data_reader;
 drop function if exists
   backend_system.list_annual_data_legacy_v1(uuid, integer, text);
@@ -240,6 +301,12 @@ begin
     'revoke corporate_governance_store_owner, ledger_store_owner, '
       || 'backend_system_annual_data_reader, '
       || 'company_access_executor from %I',
+    pg_catalog.current_setting(
+      'talli.corporate_governance_lifecycle_principal'
+    )
+  );
+  execute pg_catalog.format(
+    'grant documents_store_owner to %I with set false',
     pg_catalog.current_setting(
       'talli.corporate_governance_lifecycle_principal'
     )

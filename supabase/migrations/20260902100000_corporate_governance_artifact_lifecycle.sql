@@ -27,12 +27,115 @@ begin
       || 'corporate_governance_workflow_executor to %I',
     current_user
   );
+  execute pg_catalog.format(
+    'grant documents_store_owner to %I with set true', current_user
+  );
 end
 $membership$;
 
 select pg_catalog.set_config(
   'talli.corporate_governance_lifecycle_principal', current_user, true
 );
+
+-- Documents owns the evidence assertion and the document-row lock. Governance
+-- receives only execute authority, never direct access to the document table.
+grant usage, create on schema corporate_governance to documents_store_owner;
+set local role documents_store_owner;
+
+create or replace function corporate_governance.assert_document_evidence_v1(
+  p_document_id uuid,
+  p_company_id uuid,
+  p_income_year integer,
+  p_linked_to text,
+  p_status text,
+  p_content_sha256 text,
+  p_byte_length bigint,
+  p_actor_id uuid
+) returns void language plpgsql security definer set search_path = ''
+as $function$
+begin
+  perform pg_catalog.set_config(
+    'talli.verified_actor_id', p_actor_id::text, true
+  );
+  perform pg_catalog.set_config(
+    'talli.authorized_company_roles',
+    pg_catalog.jsonb_build_object(p_company_id::text, 'owner')::text,
+    true
+  );
+  perform 1
+  from public.documents document
+  where document.id = p_document_id
+    and document.company_id = p_company_id
+    and document.income_year = p_income_year
+    and document.document_type = 'corporate_document'
+    and document.linked_to = p_linked_to
+    and document.status = p_status
+    and document.content_sha256 = p_content_sha256
+    and document.byte_length = p_byte_length
+  for update;
+  if not found then
+    raise exception 'documents_governance_evidence_mismatch';
+  end if;
+end
+$function$;
+
+-- Serialize removal with evidence registration. Checking references only after
+-- the row lock means either governance wins and removal sees the new reference,
+-- or removal wins and the later governance assertion rejects the removed row.
+create or replace function documents.mark_removed_v1(
+  p_document_id uuid, p_reason text, p_verified_subject text
+) returns setof public.documents language plpgsql security definer set search_path = ''
+as $function$
+declare v_actor uuid; v_company uuid;
+begin
+  v_actor := nullif(
+    pg_catalog.current_setting('talli.verified_actor_id', true), ''
+  )::uuid;
+  if v_actor is null or v_actor::text <> p_verified_subject then
+    raise exception 'documents_forbidden';
+  end if;
+  select company_id into v_company
+  from public.documents
+  where id = p_document_id
+    and status in (
+      'attached', 'generated_unsigned', 'signed_owner_attested', 'stored'
+    )
+  for update;
+  if not found then
+    raise exception 'documents_not_found';
+  end if;
+  if documents.has_evidence_references_v1(p_document_id) then
+    raise exception 'documents_evidence_linked';
+  end if;
+  return query
+  update public.documents
+  set removed_from_status = status,
+      status = 'removed',
+      removed_at = pg_catalog.now(),
+      removed_by = v_actor,
+      removal_reason = left(p_reason, 200)
+  where id = p_document_id
+  returning *;
+  insert into public.audit_events(
+    company_id, actor_id, category, action, message
+  ) values (
+    v_company, v_actor, 'document', 'document_removal_requested',
+    'Unlinked document marked for removal.'
+  );
+end
+$function$;
+
+reset role;
+
+revoke usage, create on schema corporate_governance from documents_store_owner;
+revoke all on function corporate_governance.assert_document_evidence_v1(
+  uuid, uuid, integer, text, text, text, bigint, uuid
+) from public, anon, authenticated, service_role,
+  corporate_governance_workflow_executor;
+grant execute on function corporate_governance.assert_document_evidence_v1(
+  uuid, uuid, integer, text, text, text, bigint, uuid
+) to corporate_governance_store_owner;
+
 set local role corporate_governance_store_owner;
 
 alter table corporate_governance.owner_dividend_decisions
@@ -435,6 +538,8 @@ begin
             'decisionKind', 'owner_dividend',
             'annualCloseSourceId', decision.annual_close_source_id,
             'sourceHash', decision.source_hash,
+            'sourceHashUsesCurrentBasis',
+              decision.source_hash_uses_current_basis,
             'canonicalInput', decision.canonical_input,
             'decisionHash', decision.decision_hash,
             'supersedesDecisionId', decision.supersedes_decision_id,
@@ -457,6 +562,8 @@ begin
             'decisionKind', 'annual_close',
             'annualCloseSourceId', decision.annual_close_source_id,
             'sourceHash', decision.source_hash,
+            'sourceHashUsesCurrentBasis',
+              decision.source_hash_uses_current_basis,
             'canonicalInput', decision.canonical_input,
             'decisionHash', decision.decision_hash,
             'supersedesDecisionId', decision.supersedes_decision_id,
@@ -1225,8 +1332,50 @@ $cut_owner_legacy_projections$;
 
 reset role;
 
+set local role corporate_governance_store_owner;
+
+create or replace function
+corporate_governance.assert_corporate_governance_artifact_document_v1()
+returns trigger language plpgsql security definer set search_path = ''
+as $function$
+begin
+  perform corporate_governance.assert_document_evidence_v1(
+    new.document_id,
+    new.company_id,
+    new.income_year,
+    'corporate_decision:' || new.decision_id::text,
+    case new.variant
+      when 'unsigned' then 'generated_unsigned'
+      when 'signed_owner_attested' then 'signed_owner_attested'
+      else null
+    end,
+    new.content_sha256,
+    new.byte_length,
+    new.created_by
+  );
+  return new;
+end
+$function$;
+
+create trigger owner_dividend_artifacts_document_evidence
+before insert on corporate_governance.owner_dividend_artifacts
+for each row execute function
+  corporate_governance.assert_corporate_governance_artifact_document_v1();
+
+create trigger annual_close_artifacts_document_evidence
+before insert on corporate_governance.annual_close_artifacts
+for each row execute function
+  corporate_governance.assert_corporate_governance_artifact_document_v1();
+
+reset role;
+
 grant usage on schema backend_system
 to corporate_governance_workflow_executor;
+
+revoke all on function
+  corporate_governance.assert_corporate_governance_artifact_document_v1()
+from public, anon, authenticated, service_role,
+  corporate_governance_workflow_executor;
 
 revoke all on function
   corporate_governance.record_owner_dividend_event_v1(jsonb, text),
@@ -1256,6 +1405,12 @@ begin
   execute pg_catalog.format(
     'revoke ledger_store_owner, backend_system_annual_data_reader, '
       || 'company_access_executor from %I',
+    pg_catalog.current_setting(
+      'talli.corporate_governance_lifecycle_principal'
+    )
+  );
+  execute pg_catalog.format(
+    'grant documents_store_owner to %I with set false',
     pg_catalog.current_setting(
       'talli.corporate_governance_lifecycle_principal'
     )

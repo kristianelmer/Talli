@@ -106,6 +106,31 @@ def test_annual_data_uses_the_frozen_restricted_compatibility_reader() -> None:
     assert "list_annual_data_legacy_v1" in calls[0][0]
 
 
+def test_annual_data_normalizes_legacy_null_fte_to_zero() -> None:
+    transaction = bound_transaction()
+
+    async def rows(query: str, parameters: tuple[object, ...] = ()):
+        return [{"items": [{
+                "sourceId": "33333333-3333-4333-8333-333333333333",
+                "companyId": "22222222-2222-4222-8222-222222222222",
+                "incomeYear": 2024,
+                "answers": {"general_meeting_approved": True},
+                "confirmations": [],
+                "noActivityConfirmed": False,
+                "annualFullTimeEquivalents": None,
+                "completedAt": "2025-05-01T10:00:00+00:00",
+                "updatedAt": "2025-05-01T10:00:00+00:00",
+            }]}]
+
+    transaction._database_rows = rows  # type: ignore[method-assign]
+    facts = asyncio.run(transaction.list_annual_data_compatibility(
+        company_id=supported_proposal().company_id,
+        income_year=IncomeYear(2025),
+    ))
+
+    assert facts[0].annual_full_time_equivalents == 0
+
+
 def test_company_identity_uses_the_company_access_owned_query_contract() -> None:
     transaction = bound_transaction()
     calls: list[tuple[str, tuple[object, ...]]] = []

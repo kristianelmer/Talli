@@ -80,11 +80,11 @@ SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
 DATABASE_URL="$DB_URL" \
 npm run test:browser-owner
 
-# Run the corporate-governance contract rehearsal after legacy-surface
-# characterization and the browser journey; the rehearsal restores its input
-# state so the remaining migration-authority check stays isolated.
-DATABASE_URL="$DB_URL" npm run test:corporate-governance-database-lifecycle
-
 TALLI_LEDGER_HOSTED_AUTHORITY_REHEARSAL=1 \
 DATABASE_URL="$DB_URL" \
 npm run test:ledger-hosted-migration-authority
+
+# Run the corporate-governance contract rehearsal after every predecessor
+# consumer, including the ledger recutover authority rehearsal. Its contract
+# intentionally retires the legacy governance-owned ledger coordinators.
+DATABASE_URL="$DB_URL" npm run test:corporate-governance-database-lifecycle

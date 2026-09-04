@@ -46,6 +46,44 @@ test("artifact persistence does not duplicate Python signer policy", async () =>
   assert.match(forward, /jsonb_typeof\(signer\).*'string'/isu);
 });
 
+test("governance evidence is locked and revalidated before immutable insertion", async () => {
+  const forward = await readFile(
+    new URL(`../supabase/migrations/${lifecycleMigrationName}`, import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    forward,
+    /set local role documents_store_owner;[\s\S]+function corporate_governance\.assert_document_evidence_v1[\s\S]+for update/iu,
+  );
+  assert.match(forward, /grant documents_store_owner to %I with set true/iu);
+  assert.match(forward, /grant documents_store_owner to %I with set false/iu);
+  assert.match(
+    forward,
+    /before insert on corporate_governance\.owner_dividend_artifacts[\s\S]+assert_corporate_governance_artifact_document_v1/iu,
+  );
+  assert.match(
+    forward,
+    /before insert on corporate_governance\.annual_close_artifacts[\s\S]+assert_corporate_governance_artifact_document_v1/iu,
+  );
+  const removal = forward.match(
+    /function documents\.mark_removed_v1[\s\S]+?\$function\$;/iu,
+  )?.[0];
+  assert.ok(removal);
+  assert.ok(removal.indexOf("for update") < removal.indexOf("has_evidence_references_v1"));
+});
+
+test("annual-close keeps compatibility source identity without a cross-capability foreign key", async () => {
+  const forward = await readFile(
+    new URL(`../supabase/migrations/${annualMigrationName}`, import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(forward, /annual_close_source_id uuid[^,]+references public\.annual_data/iu);
+  assert.match(forward, /source_hash_uses_current_basis boolean not null default true/iu);
+  assert.match(forward, /decision\.annual_close_source_id, decision\.source_hash, false/iu);
+});
+
 test("company access owns the governance identity query migration", async () => {
   const [companyAccessForward, governanceForward] = await Promise.all([
     readFile(

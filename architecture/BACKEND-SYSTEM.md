@@ -93,14 +93,6 @@ The `accounting-document-lifecycle` workflow serves
 `DocumentsAuthorization` binds to
 `talli_backend.adapters.supabase_documents.SupabaseDocumentsAuthorization`.
 
-The `owner-dividend-governance` workflow serves the five proposal, document
-registration, approval, finalization, and payment routes under
-`/api/v1/corporate-governance/owner-dividends`. It accepts no actor or accounting
-policy choice from the browser. The authenticated owner session builds and
-persists the canonical decision, verifies generated evidence only through the
-Documents public contract, and completes each Ledger post and Banking claim in
-the same governance transaction through purpose-specific restricted functions.
-
 The `marketing-funnel-measurement` workflow serves
 `/api/v1/marketing-measurement/events`,
 `/api/v1/marketing-measurement/withdrawals`, and

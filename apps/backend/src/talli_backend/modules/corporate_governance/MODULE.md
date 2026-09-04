@@ -33,10 +33,14 @@ The annual-close commands are `AnnualCloseProposalCommand`,
 The unified read model is `CorporateLifecycleSnapshot`, composed from
 `CorporateDecisionRecord`, `CorporateDocumentSetRecord`,
 `CorporateArtifactRecord`, `CorporateEventRecord`, and
-`CorporateFinalizationRecord`. `CorporateDocumentReadiness`,
+`CorporateFinalizationRecord`. Decision facts are represented by
+`AnnualDataSourceFacts`, `CorporateAccountMovementFacts`,
+`CorporateDecisionFactSources`, and `DerivedCorporateDecisionFacts`.
+`CorporateDocumentReadiness`,
 `CorporateDocumentReadinessBlocker`, and `CorporateReadinessSource` derive and
 describe current source status, lifecycle blockers, signer requirements, and
-payable state in Python. `CorporateDecisionKind` and
+payable state in Python. `AnnualCloseLifecycle`, `OwnerDividendLifecycle`,
+`AnnualCloseEventKind`, `OwnerDividendEventKind`, `CorporateDecisionKind`, and
 `CorporateArtifactVariant` close the lifecycle vocabulary.
 
 `OwnerDividendProposalCommand` carries persisted identity/shareholder facts, an

@@ -24,7 +24,10 @@ test("server delegates policy-bound accounting atomically to governance", () => 
   assert.doesNotMatch(action, /validateOwnerDividendPaymentInput/);
   assert.doesNotMatch(action, /postLedgerOwnerDividendPayment/);
   assert.match(action, /verifyCurrentAnnualSource:\s*false/);
-  assert.match(actionsSource, /if \(input\.verifyCurrentAnnualSource !== false\)/);
+  assert.match(
+    actionsSource,
+    /input\.verifyCurrentAnnualSource !== false\s*&&\s*readiness\.currentSourceMatches === false/,
+  );
   assert.doesNotMatch(action, /dividend_payable_account|bank_account|account:\s*["'](?:1920|2920)["']/);
   assert.match(action, /corporateGovernanceOutcomeMayBeUnknown\(error\)/);
   assert.match(action, /corporateGovernanceActionErrorMessage\(error\)/);

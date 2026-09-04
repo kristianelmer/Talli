@@ -173,6 +173,15 @@ test(
         "insert into public.companies (id, org_number, name, entity_type, created_by) values ($1::uuid, '900000145', 'Replay AS', 'AS', $2::uuid)",
         [companyId, actorId],
       );
+      await client.query(String.raw`
+        do $authority$ begin
+          execute pg_catalog.format(
+            'grant ledger_store_owner to %I with set true', current_user
+          );
+        end $authority$;
+        set local role ledger_store_owner;
+        alter table ledger.entries no force row level security;
+      `);
       await client.query(
         String.raw`
           insert into ledger.entries (
@@ -188,6 +197,15 @@ test(
         `,
         [entryId, companyId, actorId, actionId],
       );
+      await client.query(String.raw`
+        alter table ledger.entries force row level security;
+        reset role;
+        do $authority$ begin
+          execute pg_catalog.format(
+            'grant ledger_store_owner to %I with set false', current_user
+          );
+        end $authority$;
+      `);
       await client.query(String.raw`
         do $authority$ begin
           execute pg_catalog.format(
