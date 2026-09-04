@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#148",
+  "verifiedAt": "2026-09-04T20:45:57Z",
+  "sourceRevision": "3ecd8167ba1975856d21afcf8df0e6cac1773438",
+  "githubDeploymentId": 6272392828,
+  "githubDeploymentStatusId": 17841566562,
+  "environment": "Preview",
+  "productionEnvironment": false,
+  "state": "SUCCESS",
+  "provider": "Vercel",
+  "teamId": "team_vjY7Lg3yOS7gSUnFqbihoTo2",
+  "projectId": "prj_1JJkOqzGBhn438IKHYADWiRbVGeZ",
+  "project": "kristianelmers-projects/talli-web",
+  "deploymentUrl": "https://talli-fqjudxt7z-kristianelmers-projects.vercel.app",
+  "providerReceiptUrl": "https://vercel.com/kristianelmers-projects/talli-web/3bsNJT95emfXPPg5PQAuviWBDK19",
+  "providerSource": "git",
+  "providerCommitSha": "3ecd8167ba1975856d21afcf8df0e6cac1773438",
+  "access": {
+    "result": "protected-by-project-vercel-authentication",
+    "basis": "The exact revision deployed successfully through the same protected Vercel project recorded for the predecessor corporate-governance slice.",
+    "directProbePerformed": false,
+    "reason": "The deployment verification skill forbids fetching the deployed URL."
+  },
+  "compensatingVerification": {
+    "workflowRun": "https://github.com/kristianelmer/Talli/actions/runs/33916981230",
+    "applicationJob": "https://github.com/kristianelmer/Talli/actions/runs/33916981230/job/101166411227",
+    "databaseIsolationJob": "https://github.com/kristianelmer/Talli/actions/runs/33916981230/job/101166411465",
+    "releaseGateJob": "https://github.com/kristianelmer/Talli/actions/runs/33916981230/job/101168924578",
+    "checks": [
+      "typecheck and declared architecture",
+      "web-to-FastAPI contract boundary",
+      "production web and backend builds",
+      "production artifact smoke",
+      "complete launch rehearsal",
+      "production dependency audit",
+      "isolated migrations, RLS, storage, and owner persistence",
+      "rendered public acquisition journey"
+    ],
+    "allRequiredJobs": "SUCCESS"
+  },
+  "releaseBoundary": {
+    "vercelProductionBranch": "release/production",
+    "configurationVerifiedAt": "2026-09-04T20:47:03Z",
+    "mainCommitBefore": "a4be791d706bc1115884d7676ffc355872704a59",
+    "releaseProductionCommitBefore": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+    "latestProductionDeploymentId": 5816953583,
+    "latestProductionDeploymentCommit": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+    "productionDeploymentChanged": false
+  },
+  "verdict": "pass"
+}

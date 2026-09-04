@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#148",
   "source": "https://github.com/kristianelmer/Talli/issues/148",
-  "sourceCheckedAt": "2026-09-04T08:32:31Z",
+  "sourceCheckedAt": "2026-09-04T20:45:57Z",
   "claim": "https://github.com/kristianelmer/Talli/issues/148#issuecomment-5537549928",
   "entryBlockers": [
     {
@@ -105,7 +105,7 @@
         "architecture/evidence/customer-ready-gates/<R1>.json",
         "architecture/evidence/customer-ready-gates/<R2>.json"
       ],
-      "status": "complete local and hosted stage-exit evidence passed; protected PR Release, Preview, merge, and post-merge verification pending"
+      "status": "complete local and hosted stage-exit evidence plus protected candidate Release and Preview passed; final evidence-head checks, merge, and post-merge verification pending"
     }
   ],
   "review": {
@@ -208,7 +208,18 @@
   },
   "previewVerification": {
     "path": "architecture/evidence/issues/148/preview-verification.json",
-    "verdict": "pending"
+    "sourceRevision": "3ecd8167ba1975856d21afcf8df0e6cac1773438",
+    "githubDeploymentId": 6272392828,
+    "workflowRun": "https://github.com/kristianelmer/Talli/actions/runs/33916981230",
+    "environment": "Preview",
+    "productionEnvironment": false,
+    "verdict": "pass"
   },
-  "closeState": "hosted parity and contract cutover, independent rereviews, linked immutable R1/R2, and architecture stage-exit evidence passed; protected PR Preview, Release, merge, and post-merge verification pending"
+  "integration": {
+    "pullRequest": "https://github.com/kristianelmer/Talli/pull/202",
+    "candidateRevision": "3ecd8167ba1975856d21afcf8df0e6cac1773438",
+    "releaseProductionCommit": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+    "productionBranch": "release/production"
+  },
+  "closeState": "hosted parity and contract cutover, independent rereviews, linked immutable R1/R2, architecture stage exit, protected candidate Preview, and protected candidate Release passed; final evidence-head checks, merge, and post-merge verification pending"
 }
