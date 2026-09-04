@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+: "${TALLI_PYTHON_BIN:=apps/backend/.venv/bin/python}"
+export TALLI_PYTHON_BIN
+
 started_here=0
 isolated_workdir="$(mktemp -d "${TMPDIR:-/tmp}/talli-supabase-local.XXXXXX")"
 next_env_path="apps/web/next-env.d.ts"

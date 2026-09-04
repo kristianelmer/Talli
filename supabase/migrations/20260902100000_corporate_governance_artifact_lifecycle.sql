@@ -37,104 +37,14 @@ select pg_catalog.set_config(
   'talli.corporate_governance_lifecycle_principal', current_user, true
 );
 
--- Documents owns the evidence assertion and the document-row lock. Governance
--- receives only execute authority, never direct access to the document table.
-grant usage, create on schema corporate_governance to documents_store_owner;
+-- Documents owns the evidence registry and the document-row lock. Governance
+-- receives only its narrow public database contract, never table access.
 set local role documents_store_owner;
-
-create or replace function corporate_governance.assert_document_evidence_v1(
-  p_document_id uuid,
-  p_company_id uuid,
-  p_income_year integer,
-  p_linked_to text,
-  p_status text,
-  p_content_sha256 text,
-  p_byte_length bigint,
-  p_actor_id uuid
-) returns void language plpgsql security definer set search_path = ''
-as $function$
-begin
-  perform pg_catalog.set_config(
-    'talli.verified_actor_id', p_actor_id::text, true
-  );
-  perform pg_catalog.set_config(
-    'talli.authorized_company_roles',
-    pg_catalog.jsonb_build_object(p_company_id::text, 'owner')::text,
-    true
-  );
-  perform 1
-  from public.documents document
-  where document.id = p_document_id
-    and document.company_id = p_company_id
-    and document.income_year = p_income_year
-    and document.document_type = 'corporate_document'
-    and document.linked_to = p_linked_to
-    and document.status = p_status
-    and document.content_sha256 = p_content_sha256
-    and document.byte_length = p_byte_length
-  for update;
-  if not found then
-    raise exception 'documents_governance_evidence_mismatch';
-  end if;
-end
-$function$;
-
--- Serialize removal with evidence registration. Checking references only after
--- the row lock means either governance wins and removal sees the new reference,
--- or removal wins and the later governance assertion rejects the removed row.
-create or replace function documents.mark_removed_v1(
-  p_document_id uuid, p_reason text, p_verified_subject text
-) returns setof public.documents language plpgsql security definer set search_path = ''
-as $function$
-declare v_actor uuid; v_company uuid;
-begin
-  v_actor := nullif(
-    pg_catalog.current_setting('talli.verified_actor_id', true), ''
-  )::uuid;
-  if v_actor is null or v_actor::text <> p_verified_subject then
-    raise exception 'documents_forbidden';
-  end if;
-  select company_id into v_company
-  from public.documents
-  where id = p_document_id
-    and status in (
-      'attached', 'generated_unsigned', 'signed_owner_attested', 'stored'
-    )
-  for update;
-  if not found then
-    raise exception 'documents_not_found';
-  end if;
-  if documents.has_evidence_references_v1(p_document_id) then
-    raise exception 'documents_evidence_linked';
-  end if;
-  return query
-  update public.documents
-  set removed_from_status = status,
-      status = 'removed',
-      removed_at = pg_catalog.now(),
-      removed_by = v_actor,
-      removal_reason = left(p_reason, 200)
-  where id = p_document_id
-  returning *;
-  insert into public.audit_events(
-    company_id, actor_id, category, action, message
-  ) values (
-    v_company, v_actor, 'document', 'document_removal_requested',
-    'Unlinked document marked for removal.'
-  );
-end
-$function$;
-
-reset role;
-
-revoke usage, create on schema corporate_governance from documents_store_owner;
-revoke all on function corporate_governance.assert_document_evidence_v1(
-  uuid, uuid, integer, text, text, text, bigint, uuid
-) from public, anon, authenticated, service_role,
-  corporate_governance_workflow_executor;
-grant execute on function corporate_governance.assert_document_evidence_v1(
-  uuid, uuid, integer, text, text, text, bigint, uuid
+grant usage on schema documents to corporate_governance_store_owner;
+grant execute on function documents.register_evidence_reference_v1(
+  text, text, uuid, uuid, uuid, integer, text, text, text, bigint, uuid
 ) to corporate_governance_store_owner;
+reset role;
 
 set local role corporate_governance_store_owner;
 
@@ -1339,7 +1249,26 @@ corporate_governance.assert_corporate_governance_artifact_document_v1()
 returns trigger language plpgsql security definer set search_path = ''
 as $function$
 begin
-  perform corporate_governance.assert_document_evidence_v1(
+  if tg_table_name = 'shareholder_loans' then
+    perform documents.register_evidence_reference_v1(
+      'corporate_governance',
+      tg_table_name,
+      new.action_id,
+      new.document_id,
+      new.company_id,
+      new.income_year,
+      null,
+      null,
+      null,
+      null,
+      new.created_by
+    );
+    return new;
+  end if;
+  perform documents.register_evidence_reference_v1(
+    'corporate_governance',
+    tg_table_name,
+    new.id,
     new.document_id,
     new.company_id,
     new.income_year,
@@ -1366,6 +1295,71 @@ create trigger annual_close_artifacts_document_evidence
 before insert on corporate_governance.annual_close_artifacts
 for each row execute function
   corporate_governance.assert_corporate_governance_artifact_document_v1();
+
+create trigger shareholder_loans_document_evidence
+before insert on corporate_governance.shareholder_loans
+for each row when (new.document_id is not null) execute function
+  corporate_governance.assert_corporate_governance_artifact_document_v1();
+
+do $backfill_document_evidence$
+declare artifact record;
+begin
+  for artifact in
+    select
+      'owner_dividend_artifacts'::text as source_record_type,
+      item.id, item.document_id, item.company_id, item.income_year,
+      item.decision_id, item.variant, item.content_sha256,
+      item.byte_length, item.created_by
+    from corporate_governance.owner_dividend_artifacts item
+    union all
+    select
+      'annual_close_artifacts'::text as source_record_type,
+      item.id, item.document_id, item.company_id, item.income_year,
+      item.decision_id, item.variant, item.content_sha256,
+      item.byte_length, item.created_by
+    from corporate_governance.annual_close_artifacts item
+  loop
+    perform documents.register_evidence_reference_v1(
+      'corporate_governance',
+      artifact.source_record_type,
+      artifact.id,
+      artifact.document_id,
+      artifact.company_id,
+      artifact.income_year,
+      'corporate_decision:' || artifact.decision_id::text,
+      case artifact.variant
+        when 'unsigned' then 'generated_unsigned'
+        when 'signed_owner_attested' then 'signed_owner_attested'
+        else null
+      end,
+      artifact.content_sha256,
+      artifact.byte_length,
+      artifact.created_by
+    );
+  end loop;
+  for artifact in
+    select
+      item.action_id as id, item.document_id, item.company_id,
+      item.income_year, item.created_by
+    from corporate_governance.shareholder_loans item
+    where item.document_id is not null
+  loop
+    perform documents.register_evidence_reference_v1(
+      'corporate_governance',
+      'shareholder_loans',
+      artifact.id,
+      artifact.document_id,
+      artifact.company_id,
+      artifact.income_year,
+      null,
+      null,
+      null,
+      null,
+      artifact.created_by
+    );
+  end loop;
+end
+$backfill_document_evidence$;
 
 reset role;
 

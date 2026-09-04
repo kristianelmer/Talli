@@ -116,8 +116,7 @@ create table corporate_governance.owner_dividend_decisions (
   document_set_id uuid not null unique,
   company_id uuid not null references public.companies(id) on delete restrict,
   income_year integer not null check (income_year between 2000 and 2100),
-  annual_close_source_id uuid not null references public.annual_data(id)
-    on delete restrict,
+  annual_close_source_id uuid not null,
   source_hash text not null check (source_hash ~ '^[0-9a-f]{64}$'),
   source_hash_uses_current_basis boolean not null default true,
   canonical_input jsonb not null check (

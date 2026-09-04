@@ -47,17 +47,35 @@ test("artifact persistence does not duplicate Python signer policy", async () =>
 });
 
 test("governance evidence is locked and revalidated before immutable insertion", async () => {
-  const forward = await readFile(
-    new URL(`../supabase/migrations/${lifecycleMigrationName}`, import.meta.url),
-    "utf8",
-  );
+  const [forward, rollback, documents] = await Promise.all([
+    readFile(
+      new URL(`../supabase/migrations/${lifecycleMigrationName}`, import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL(`../supabase/rollback/${lifecycleMigrationName}`, import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../supabase/migrations/20260901233000_documents_capability.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ]);
 
   assert.match(
-    forward,
-    /set local role documents_store_owner;[\s\S]+function corporate_governance\.assert_document_evidence_v1[\s\S]+for update/iu,
+    documents,
+    /create table if not exists documents\.evidence_references[\s\S]+function documents\.register_evidence_reference_v1[\s\S]+for update/iu,
   );
   assert.match(forward, /grant documents_store_owner to %I with set true/iu);
   assert.match(forward, /grant documents_store_owner to %I with set false/iu);
+  assert.match(
+    forward,
+    /grant execute on function documents\.register_evidence_reference_v1[\s\S]+to corporate_governance_store_owner/iu,
+  );
+  assert.doesNotMatch(forward, /create or replace function documents\./iu);
   assert.match(
     forward,
     /before insert on corporate_governance\.owner_dividend_artifacts[\s\S]+assert_corporate_governance_artifact_document_v1/iu,
@@ -66,22 +84,38 @@ test("governance evidence is locked and revalidated before immutable insertion",
     forward,
     /before insert on corporate_governance\.annual_close_artifacts[\s\S]+assert_corporate_governance_artifact_document_v1/iu,
   );
-  const removal = forward.match(
+  assert.match(
+    forward,
+    /before insert on corporate_governance\.shareholder_loans[\s\S]+assert_corporate_governance_artifact_document_v1/iu,
+  );
+  const removal = documents.match(
     /function documents\.mark_removed_v1[\s\S]+?\$function\$;/iu,
   )?.[0];
   assert.ok(removal);
   assert.ok(removal.indexOf("for update") < removal.indexOf("has_evidence_references_v1"));
+  assert.match(
+    rollback,
+    /drop trigger if exists shareholder_loans_document_evidence[\s\S]+drop function if exists[\s\S]+assert_corporate_governance_artifact_document_v1/iu,
+  );
+  assert.doesNotMatch(rollback, /create or replace function documents\./iu);
 });
 
-test("annual-close keeps compatibility source identity without a cross-capability foreign key", async () => {
-  const forward = await readFile(
-    new URL(`../supabase/migrations/${annualMigrationName}`, import.meta.url),
-    "utf8",
-  );
+test("governance decisions keep compatibility source identity without cross-capability foreign keys", async () => {
+  const [ownerForward, annualForward] = await Promise.all([
+    readFile(
+      new URL(`../supabase/migrations/${ownerMigrationName}`, import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL(`../supabase/migrations/${annualMigrationName}`, import.meta.url),
+      "utf8",
+    ),
+  ]);
 
-  assert.doesNotMatch(forward, /annual_close_source_id uuid[^,]+references public\.annual_data/iu);
-  assert.match(forward, /source_hash_uses_current_basis boolean not null default true/iu);
-  assert.match(forward, /decision\.annual_close_source_id, decision\.source_hash, false/iu);
+  assert.doesNotMatch(ownerForward, /annual_close_source_id uuid[^,]+references public\.annual_data/iu);
+  assert.doesNotMatch(annualForward, /annual_close_source_id uuid[^,]+references public\.annual_data/iu);
+  assert.match(annualForward, /source_hash_uses_current_basis boolean not null default true/iu);
+  assert.match(annualForward, /decision\.annual_close_source_id, decision\.source_hash, false/iu);
 });
 
 test("company access owns the governance identity query migration", async () => {

@@ -16,7 +16,7 @@
   },
   "owns": {
     "postgresSchemas": ["documents"],
-    "tables": ["public.documents"],
+    "tables": ["documents.evidence_references", "public.documents"],
     "storageBuckets": ["company-documents"],
     "projections": ["DocumentBackupObject"],
     "migrations": "supabase/migrations/20260901233000_documents_capability.sql"

@@ -159,6 +159,14 @@
       ],
       "kind": "workflow",
       "to": "backend-system:system_boundary"
+    },
+    {
+      "from": "backend:corporate_governance",
+      "imports": [
+        "documents.register_evidence_reference_v1"
+      ],
+      "kind": "query",
+      "to": "backend:documents"
     }
   ],
   "generatedBy": "scripts/check-architecture.mjs",

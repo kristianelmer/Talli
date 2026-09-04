@@ -16,9 +16,6 @@ begin
       || 'company_archive_projection_executor, ledger_store_owner to %I',
     current_user
   );
-  execute pg_catalog.format(
-    'grant documents_store_owner to %I with set true', current_user
-  );
 end
 $membership$;
 
@@ -379,93 +376,6 @@ begin
 end
 $cut_remaining_projections$;
 
--- Documents retains only its boolean evidence boundary, now backed by the
--- canonical governance stores.
-set local role documents_store_owner;
-do $documents_authority$
-begin
-  execute pg_catalog.format(
-    'grant usage on schema documents to %I',
-    pg_catalog.current_setting(
-      'talli.corporate_governance_contract_principal'
-    )
-  );
-end
-$documents_authority$;
-reset role;
-
-create or replace function documents.has_evidence_references_v1(
-  p_document_id uuid
-)
-returns boolean
-language plpgsql
-security definer
-set search_path = ''
-stable
-as $function$
-declare
-  v_investment_linked boolean := false;
-begin
-  if pg_catalog.to_regclass('investments.source_fact_registry') is not null then
-    execute $query$
-      select exists (
-        select 1 from investments.source_fact_registry item
-        where item.source_capability='DOCUMENTS'
-          and item.source_record_id=$1
-      )
-    $query$ into v_investment_linked using p_document_id;
-  end if;
-  return exists (
-      select 1 from public.holding_actions item
-      where item.document_id = p_document_id
-        and item.action_type not in ('shareholder_loan', 'dividend_to_owner')
-    )
-    or exists (
-      select 1 from corporate_governance.owner_dividend_artifacts item
-      where item.document_id = p_document_id
-    )
-    or exists (
-      select 1 from corporate_governance.annual_close_artifacts item
-      where item.document_id = p_document_id
-    )
-    or exists (
-      select 1 from corporate_governance.shareholder_loans item
-      where item.document_id = p_document_id
-    )
-    or exists (
-      select 1 from public.filing_submissions item
-      where coalesce(item.feedback_document_ids, '[]'::jsonb)
-          @> pg_catalog.jsonb_build_array(p_document_id::text)
-        or item.receipt_id = p_document_id::text
-    )
-    or exists (
-      select 1 from public.production_feedback_artifacts item
-      where item.document_id = p_document_id
-    )
-    or v_investment_linked
-    or exists (
-      select 1
-      from public.ledger_entries item
-      join public.documents document on document.id = p_document_id
-      where item.company_id = document.company_id
-        and pg_catalog.strpos(item.memo, p_document_id::text) > 0
-    );
-end;
-$function$;
-
-set local role documents_store_owner;
-do $documents_authority_revoke$
-begin
-  execute pg_catalog.format(
-    'revoke usage on schema documents from %I',
-    pg_catalog.current_setting(
-      'talli.corporate_governance_contract_principal'
-    )
-  );
-end
-$documents_authority_revoke$;
-reset role;
-
 -- Canonical writes invalidate archive generations directly.
 do $archive_sources$
 declare
@@ -644,12 +554,6 @@ do $archive_membership_revoke$
 begin
   execute pg_catalog.format(
     'revoke company_archive_projection_executor, ledger_store_owner from %I',
-    pg_catalog.current_setting(
-      'talli.corporate_governance_contract_principal'
-    )
-  );
-  execute pg_catalog.format(
-    'grant documents_store_owner to %I with set false',
     pg_catalog.current_setting(
       'talli.corporate_governance_contract_principal'
     )

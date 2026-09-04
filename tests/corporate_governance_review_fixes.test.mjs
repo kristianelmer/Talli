@@ -79,3 +79,48 @@ test("complete gate uses the backend-managed Python runtime", async () => {
     /TALLI_PYTHON_BIN:\s*"apps\/backend\/\.venv\/bin\/python"/u,
   );
 });
+
+test("governance review regressions run in the complete acceptance boundary", async () => {
+  const packageJson = await json("package.json");
+
+  assert.match(
+    packageJson.scripts["test:boundary-contract"],
+    /tests\/corporate_governance_review_fixes\.test\.mjs/u,
+  );
+});
+
+test("document evidence ownership is acyclic and declared", async () => {
+  const [governance, documents, lifecycle, contract] = await Promise.all([
+    json("apps/backend/src/talli_backend/modules/corporate_governance/module.json"),
+    json("apps/backend/src/talli_backend/modules/documents/module.json"),
+    text("supabase/migrations/20260902100000_corporate_governance_artifact_lifecycle.sql"),
+    text("supabase/contract-migrations/20260902110000_corporate_governance_contract.sql"),
+  ]);
+
+  assert.deepEqual(governance.dependencies, [{
+    module: "documents",
+    kind: "query",
+    imports: ["documents.register_evidence_reference_v1"],
+  }]);
+  assert.deepEqual(documents.dependencies, []);
+  assert.ok(documents.owns.tables.includes("documents.evidence_references"));
+  assert.match(lifecycle, /documents\.register_evidence_reference_v1/iu);
+  assert.doesNotMatch(lifecycle, /create or replace function documents\./iu);
+  assert.doesNotMatch(contract, /create or replace function documents\./iu);
+  assert.doesNotMatch(contract, /documents\.has_evidence_references_v1/iu);
+});
+
+test("canonical decision payloads share one serializer", async () => {
+  const service = await text(
+    "apps/backend/src/talli_backend/modules/corporate_governance/service.py",
+  );
+
+  assert.equal(
+    [...service.matchAll(/def _canonical_decision_payload\(/gu)].length,
+    1,
+  );
+  assert.equal(
+    [...service.matchAll(/["']financial_totals["']:/gu)].length,
+    1,
+  );
+});

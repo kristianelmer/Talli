@@ -251,8 +251,11 @@ def _source_hash(
     return _basis_source_hash(command.annual_basis)
 
 
-def canonical_owner_dividend_payload(
-    decision: CanonicalOwnerDividendDecision,
+def _canonical_decision_payload(
+    decision: CanonicalOwnerDividendDecision | CanonicalAnnualCloseDecision,
+    *,
+    decision_kind: str,
+    dividend: dict[str, Any] | None,
 ) -> dict[str, Any]:
     return {
         "request_id": str(decision.decision_id),
@@ -260,7 +263,7 @@ def canonical_owner_dividend_payload(
         "organization_number": decision.organization_number,
         "legal_name": decision.legal_name,
         "income_year": int(decision.income_year),
-        "decision_kind": "owner_dividend",
+        "decision_kind": decision_kind,
         "annual_close_source_id": str(decision.annual_close_source_id),
         "source_hash": decision.source_hash,
         "template_family": decision.template_family,
@@ -306,7 +309,28 @@ def canonical_owner_dividend_payload(
         ],
         "total_company_shares": decision.total_company_shares,
         "one_share_class_confirmed": decision.one_share_class_confirmed,
-        "dividend": {
+        "dividend": dividend,
+        "annual_result_allocation_ore": decision.annual_result_allocation_ore,
+        "confirmations": {
+            "latest_approved_annual_accounts": decision.confirmations.latest_approved_annual_accounts,
+            "supported_dividend_basis": decision.confirmations.supported_dividend_basis,
+            "full_board_participation": decision.confirmations.full_board_participation,
+            "full_share_representation": decision.confirmations.full_share_representation,
+            "unanimous_board": decision.confirmations.unanimous_board,
+            "unanimous_shareholders": decision.confirmations.unanimous_shareholders,
+            "proportional_allocation": decision.confirmations.proportional_allocation,
+            "prudent_equity_and_liquidity": decision.confirmations.prudent_equity_and_liquidity,
+        },
+}
+
+
+def canonical_owner_dividend_payload(
+    decision: CanonicalOwnerDividendDecision,
+) -> dict[str, Any]:
+    return _canonical_decision_payload(
+        decision,
+        decision_kind="owner_dividend",
+        dividend={
             "amount_ore": decision.dividend.amount_ore,
             "payment_date": decision.dividend.payment_date.value.isoformat(),
             "liquidity_after_payment_ore": decision.dividend.liquidity_after_payment_ore,
@@ -318,88 +342,17 @@ def canonical_owner_dividend_payload(
                 for allocation in decision.dividend.allocations
             ],
         },
-        "annual_result_allocation_ore": decision.annual_result_allocation_ore,
-        "confirmations": {
-            "latest_approved_annual_accounts": decision.confirmations.latest_approved_annual_accounts,
-            "supported_dividend_basis": decision.confirmations.supported_dividend_basis,
-            "full_board_participation": decision.confirmations.full_board_participation,
-            "full_share_representation": decision.confirmations.full_share_representation,
-            "unanimous_board": decision.confirmations.unanimous_board,
-            "unanimous_shareholders": decision.confirmations.unanimous_shareholders,
-            "proportional_allocation": decision.confirmations.proportional_allocation,
-            "prudent_equity_and_liquidity": decision.confirmations.prudent_equity_and_liquidity,
-        },
-    }
+    )
 
 
 def canonical_annual_close_payload(
     decision: CanonicalAnnualCloseDecision,
 ) -> dict[str, Any]:
-    return {
-        "request_id": str(decision.decision_id),
-        "company_id": str(decision.company_id),
-        "organization_number": decision.organization_number,
-        "legal_name": decision.legal_name,
-        "income_year": int(decision.income_year),
-        "decision_kind": "annual_close",
-        "annual_close_source_id": str(decision.annual_close_source_id),
-        "source_hash": decision.source_hash,
-        "template_family": decision.template_family,
-        "template_version": decision.template_version,
-        "annual_basis_year": int(decision.annual_basis_year),
-        "financial_totals": {
-            "result_after_tax_ore": decision.financial_totals.result_after_tax_ore,
-            "equity_ore": decision.financial_totals.equity_ore,
-            "available_distribution_ore": decision.financial_totals.available_distribution_ore,
-            "cash_ore": decision.financial_totals.cash_ore,
-        },
-        "board_meeting": {
-            "meeting_date": decision.board_meeting.meeting_date.value.isoformat(),
-            "meeting_time": decision.board_meeting.meeting_time.isoformat(),
-            "place": decision.board_meeting.place,
-            "treatment_method": decision.board_meeting.treatment_method.value,
-        },
-        "board_participants": [
-            {
-                "participant_id": participant.participant_id,
-                "name": participant.name,
-                "role": participant.role.value,
-            }
-            for participant in decision.board_participants
-        ],
-        "general_meeting": {
-            "meeting_date": decision.general_meeting.meeting_date.value.isoformat(),
-            "meeting_time": decision.general_meeting.meeting_time.isoformat(),
-            "place": decision.general_meeting.place,
-            "meeting_form": decision.general_meeting.meeting_form.value,
-            "chair_name": decision.general_meeting.chair_name,
-            "co_signer_name": decision.general_meeting.co_signer_name,
-        },
-        "shareholders": [
-            {
-                "shareholder_id": shareholder.shareholder_id,
-                "name": shareholder.name,
-                "share_count": shareholder.share_count,
-                "represented_share_count": shareholder.represented_share_count,
-                "vote": shareholder.vote.value,
-            }
-            for shareholder in decision.shareholders
-        ],
-        "total_company_shares": decision.total_company_shares,
-        "one_share_class_confirmed": decision.one_share_class_confirmed,
-        "dividend": None,
-        "annual_result_allocation_ore": decision.annual_result_allocation_ore,
-        "confirmations": {
-            "latest_approved_annual_accounts": decision.confirmations.latest_approved_annual_accounts,
-            "supported_dividend_basis": decision.confirmations.supported_dividend_basis,
-            "full_board_participation": decision.confirmations.full_board_participation,
-            "full_share_representation": decision.confirmations.full_share_representation,
-            "unanimous_board": decision.confirmations.unanimous_board,
-            "unanimous_shareholders": decision.confirmations.unanimous_shareholders,
-            "proportional_allocation": decision.confirmations.proportional_allocation,
-            "prudent_equity_and_liquidity": decision.confirmations.prudent_equity_and_liquidity,
-        },
-    }
+    return _canonical_decision_payload(
+        decision,
+        decision_kind="annual_close",
+        dividend=None,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -897,7 +850,10 @@ class CorporateGovernanceService:
         current_hash_matches = (
             None
             if current_source_hash is None
-            else decision.source_hash == current_source_hash
+            else (
+                not decision.source_hash_uses_current_basis
+                or decision.source_hash == current_source_hash
+            )
         )
         current_source_matches = (
             False

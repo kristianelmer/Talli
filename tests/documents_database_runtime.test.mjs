@@ -33,12 +33,21 @@ test(
           has_table_privilege('authenticated','public.documents','SELECT') as browser_reads_table,
           has_table_privilege('documents_store_owner','public.company_memberships','SELECT') as store_reads_memberships,
           has_table_privilege('documents_store_owner','public.holding_actions','SELECT') as store_reads_evidence,
+          has_table_privilege('corporate_governance_store_owner','documents.evidence_references','SELECT') as governance_reads_registry,
           has_function_privilege('documents_executor','documents.stage_upload_v1(jsonb,text)','EXECUTE') as executor_stages,
+          has_function_privilege('documents_executor','documents.register_evidence_reference_v1(text,text,uuid,uuid,uuid,integer,text,text,text,bigint,uuid)','EXECUTE') as executor_registers_evidence,
+          has_function_privilege('corporate_governance_store_owner','documents.register_evidence_reference_v1(text,text,uuid,uuid,uuid,integer,text,text,text,bigint,uuid)','EXECUTE') as governance_registers_evidence,
           has_function_privilege('authenticated','documents.stage_upload_v1(jsonb,text)','EXECUTE') as browser_stages,
           has_function_privilege('authenticated','public.remove_unlinked_document(uuid)','EXECUTE') as browser_legacy_removal,
           (select owner.rolname from pg_catalog.pg_proc procedure
             join pg_catalog.pg_roles owner on owner.oid=procedure.proowner
             where procedure.oid='documents.has_evidence_references_v1(uuid)'::regprocedure) as evidence_owner,
+          (select owner.rolname from pg_catalog.pg_proc procedure
+            join pg_catalog.pg_roles owner on owner.oid=procedure.proowner
+            where procedure.oid='documents.register_evidence_reference_v1(text,text,uuid,uuid,uuid,integer,text,text,text,bigint,uuid)'::regprocedure) as registry_function_owner,
+          (select owner.rolname from pg_catalog.pg_class relation
+            join pg_catalog.pg_roles owner on owner.oid=relation.relowner
+            where relation.oid='documents.evidence_references'::regclass) as registry_table_owner,
           (select count(*)::int from pg_catalog.pg_policies
             where schemaname='storage' and tablename='objects'
               and policyname in (
@@ -54,10 +63,15 @@ test(
         browser_reads_table: false,
         store_reads_memberships: false,
         store_reads_evidence: false,
+        governance_reads_registry: false,
         executor_stages: true,
+        executor_registers_evidence: false,
+        governance_registers_evidence: true,
         browser_stages: false,
         browser_legacy_removal: false,
         evidence_owner: "postgres",
+        registry_function_owner: "documents_store_owner",
+        registry_table_owner: "documents_store_owner",
         legacy_storage_policies: 0,
       });
 
@@ -222,6 +236,45 @@ test(
         removed_at: null,
         removal_reason: null,
       });
+
+      await client.query("reset role");
+      await client.query(String.raw`
+        do $governance_authority$ begin
+          execute pg_catalog.format(
+            'grant corporate_governance_store_owner to %I', current_user
+          );
+        end $governance_authority$
+      `);
+      await client.query("set local role corporate_governance_store_owner");
+      await client.query(
+        `select documents.register_evidence_reference_v1(
+           'corporate_governance','shareholder_loans',$1,$2,$3,2026,
+           null,null,null,null,$4
+         )`,
+        [randomUUID(), documentId, companyId, actorId],
+      );
+      await client.query("reset role");
+      await client.query(String.raw`
+        do $governance_authority$ begin
+          execute pg_catalog.format(
+            'revoke corporate_governance_store_owner from %I', current_user
+          );
+        end $governance_authority$
+      `);
+      await client.query("set local role documents_executor");
+      const governanceEvidence = await client.query(
+        "select documents.has_evidence_references_v1($1) as linked",
+        [documentId],
+      );
+      assert.equal(governanceEvidence.rows[0].linked, true);
+      await expectDatabaseError(
+        client,
+        {
+          text: "select * from documents.mark_removed_v1($1,$2,$3)",
+          values: [documentId, "duplicate", actorId],
+        },
+        /documents_evidence_linked/iu,
+      );
 
       await client.query("reset role");
       await client.query(String.raw`

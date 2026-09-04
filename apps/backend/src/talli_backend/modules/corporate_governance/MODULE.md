@@ -1,7 +1,7 @@
 # Corporate governance backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["corporate_governance.annual_close_artifacts","corporate_governance.annual_close_decisions","corporate_governance.annual_close_events","corporate_governance.annual_close_finalizations","corporate_governance.owner_dividend_accounting_policies","corporate_governance.owner_dividend_artifacts","corporate_governance.owner_dividend_decisions","corporate_governance.owner_dividend_events","corporate_governance.owner_dividend_finalizations","corporate_governance.owner_dividend_payments","corporate_governance.shareholder_loans"],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
+{"dependencies":["query:documents"],"ownedTables":["corporate_governance.annual_close_artifacts","corporate_governance.annual_close_decisions","corporate_governance.annual_close_events","corporate_governance.annual_close_finalizations","corporate_governance.owner_dividend_accounting_policies","corporate_governance.owner_dividend_artifacts","corporate_governance.owner_dividend_decisions","corporate_governance.owner_dividend_events","corporate_governance.owner_dividend_finalizations","corporate_governance.owner_dividend_payments","corporate_governance.shareholder_loans"],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
 -->
 
 ## Purpose and ownership
@@ -109,6 +109,12 @@ Ledger and Banking only through governance-specific routines. Provider
 selection, activation, credentials, consent, live calls, customer bank data, and
 production banking remain outside this capability and blocked independently by
 #189.
+
+Governance declares one acyclic `query:documents` database dependency. Its
+artifact and optional shareholder-loan reference triggers can execute only
+`documents.register_evidence_reference_v1`; Documents owns the document-row
+lock and opaque evidence registry, while Governance receives no Documents table
+access.
 
 Company identity is obtained through the `company_access` public service and
 opening shareholders through the frozen Ledger opening-snapshot query. Until

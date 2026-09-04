@@ -409,7 +409,7 @@ def test_lifecycle_readiness_is_derived_by_the_python_governance_owner() -> None
     service = CorporateGovernanceService()
     decision = service.build_owner_dividend_decision(supported_proposal())
     created_at = datetime(2025, 6, 20, 12, tzinfo=UTC)
-    artifacts = (
+    artifacts = tuple(
         CorporateArtifactRecord(
             artifact_id=CorporateArtifactId(f"00000000-0000-4000-8000-00000000000{index}"),
             company_id=decision.company_id,
@@ -546,6 +546,53 @@ def test_lifecycle_readiness_is_derived_by_the_python_governance_owner() -> None
         "dividend_general_meeting_minutes": ("Jørgen Østby", "Åse Nordmann"),
     }
     assert readiness.blockers == ()
+
+    migrated_snapshot = replace(
+        snapshot,
+        decisions=(
+            replace(
+                snapshot.decisions[0],
+                source_hash="f" * 64,
+                source_hash_uses_current_basis=False,
+            ),
+        ),
+    )
+    migrated = service.assess_lifecycle(
+        migrated_snapshot,
+        company_id=decision.company_id,
+        income_year=decision.income_year,
+        decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+        current_source_hash=decision.source_hash,
+        current_facts_match=True,
+    )
+
+    assert migrated.current_source_matches is True
+    assert migrated.ready_for_signing is True
+    assert "corporate_documents_current_hash_mismatch" not in {
+        item.code for item in migrated.blockers
+    }
+
+    migrated_with_current_hash_basis = service.assess_lifecycle(
+        replace(
+            migrated_snapshot,
+            decisions=(
+                replace(
+                    migrated_snapshot.decisions[0],
+                    source_hash_uses_current_basis=True,
+                ),
+            ),
+        ),
+        company_id=decision.company_id,
+        income_year=decision.income_year,
+        decision_kind=CorporateDecisionKind.OWNER_DIVIDEND,
+        current_source_hash=decision.source_hash,
+        current_facts_match=True,
+    )
+
+    assert migrated_with_current_hash_basis.current_source_matches is False
+    assert "corporate_documents_current_hash_mismatch" in {
+        item.code for item in migrated_with_current_hash_basis.blockers
+    }
 
     superseded = service.assess_lifecycle(
         replace(
