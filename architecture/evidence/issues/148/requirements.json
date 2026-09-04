@@ -140,9 +140,20 @@
     "openapi": "generated contract check passed",
     "apiClient": "generated client check passed",
     "architecture": "passed",
-    "diffCheck": "passed"
+    "diffCheck": "passed",
+    "dependencyAuditContext": "R1 reported zero vulnerabilities from npm's local advisory cache after the official registry bulk-audit endpoint timed out in two discarded runs; the protected GitHub Release gate must independently pass its online audit before merge."
   },
-  "completeGates": [],
+  "completeGates": [
+    {
+      "revision": "f287952fa174f42a84718682e62e0feff1874c8d",
+      "previousPassingRevision": null,
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/f287952fa174f42a84718682e62e0feff1874c8d.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:aeea16f0250a68353599d25a5700e5b37bb62c5e874516ba01c5b6b809803adc"
+    }
+  ],
   "hostedVerification": {
     "path": "architecture/evidence/issues/148/hosted-verification.json",
     "verdict": "pending",
