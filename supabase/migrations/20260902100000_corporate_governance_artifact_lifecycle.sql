@@ -37,13 +37,14 @@ select pg_catalog.set_config(
   'talli.corporate_governance_lifecycle_principal', current_user, true
 );
 
--- Documents owns the evidence registry and the document-row lock. Governance
--- receives only its narrow public database contract, never table access.
+-- Documents owns the evidence registry and document-row lock. Only the named
+-- backend-system workflow receives its command contract; Governance itself
+-- receives no Documents privilege or table access.
 set local role documents_store_owner;
-grant usage on schema documents to corporate_governance_store_owner;
+grant usage on schema documents to corporate_governance_workflow_executor;
 grant execute on function documents.register_evidence_reference_v1(
   text, text, uuid, uuid, uuid, integer, text, text, text, bigint, uuid
-) to corporate_governance_store_owner;
+) to corporate_governance_workflow_executor;
 reset role;
 
 set local role corporate_governance_store_owner;
@@ -1242,64 +1243,184 @@ $cut_owner_legacy_projections$;
 
 reset role;
 
-set local role corporate_governance_store_owner;
+-- Explicit backend-system coordinators compose Governance commands with the
+-- Documents evidence command in one request-bound transaction.
+set local role ledger_store_owner;
+grant usage, create on schema backend_system
+to corporate_governance_workflow_executor;
+reset role;
+
+set local role corporate_governance_workflow_executor;
 
 create or replace function
-corporate_governance.assert_corporate_governance_artifact_document_v1()
-returns trigger language plpgsql security definer set search_path = ''
+backend_system.register_corporate_governance_evidence_v1(
+  p_source_record_type text,
+  p_source_record_id uuid,
+  p_document_id uuid,
+  p_company_id uuid,
+  p_income_year integer,
+  p_linked_to text,
+  p_status text,
+  p_content_sha256 text,
+  p_byte_length bigint,
+  p_actor_id uuid
+)
+returns void language plpgsql security definer set search_path = ''
 as $function$
 begin
-  if tg_table_name = 'shareholder_loans' then
-    perform documents.register_evidence_reference_v1(
-      'corporate_governance',
-      tg_table_name,
-      new.action_id,
-      new.document_id,
-      new.company_id,
-      new.income_year,
-      null,
-      null,
-      null,
-      null,
-      new.created_by
-    );
-    return new;
+  if p_source_record_type not in (
+    'owner_dividend_artifacts',
+    'annual_close_artifacts',
+    'shareholder_loans'
+  ) then
+    raise exception 'corporate_governance_invalid_input';
   end if;
   perform documents.register_evidence_reference_v1(
     'corporate_governance',
-    tg_table_name,
-    new.id,
-    new.document_id,
-    new.company_id,
-    new.income_year,
-    'corporate_decision:' || new.decision_id::text,
-    case new.variant
-      when 'unsigned' then 'generated_unsigned'
-      when 'signed_owner_attested' then 'signed_owner_attested'
-      else null
-    end,
-    new.content_sha256,
-    new.byte_length,
-    new.created_by
+    p_source_record_type,
+    p_source_record_id,
+    p_document_id,
+    p_company_id,
+    p_income_year,
+    p_linked_to,
+    p_status,
+    p_content_sha256,
+    p_byte_length,
+    p_actor_id
   );
-  return new;
 end
 $function$;
 
-create trigger owner_dividend_artifacts_document_evidence
-before insert on corporate_governance.owner_dividend_artifacts
-for each row execute function
-  corporate_governance.assert_corporate_governance_artifact_document_v1();
+create or replace function
+backend_system.register_corporate_governance_documents_v1(
+  p_decision_kind text,
+  p_request jsonb,
+  p_verified_subject text
+)
+returns jsonb language plpgsql security definer set search_path = ''
+as $function$
+declare
+  v_artifact jsonb;
+  v_result jsonb;
+  v_source_record_type text;
+begin
+  if p_decision_kind = 'owner_dividend' then
+    v_result := corporate_governance.register_owner_dividend_documents_v1(
+      p_request, p_verified_subject
+    );
+    v_source_record_type := 'owner_dividend_artifacts';
+  elsif p_decision_kind = 'annual_close' then
+    v_result := corporate_governance.register_annual_close_documents_v1(
+      p_request, p_verified_subject
+    );
+    v_source_record_type := 'annual_close_artifacts';
+  else
+    raise exception 'corporate_governance_invalid_input';
+  end if;
+  for v_artifact in
+    select value from pg_catalog.jsonb_array_elements(p_request -> 'artifacts')
+  loop
+    perform backend_system.register_corporate_governance_evidence_v1(
+      v_source_record_type,
+      (v_artifact ->> 'artifactId')::uuid,
+      (v_artifact ->> 'documentId')::uuid,
+      (p_request ->> 'companyId')::uuid,
+      (p_request ->> 'incomeYear')::integer,
+      'corporate_decision:' || (p_request ->> 'decisionId'),
+      'generated_unsigned',
+      v_artifact ->> 'contentSha256',
+      (v_artifact ->> 'byteLength')::bigint,
+      p_verified_subject::uuid
+    );
+  end loop;
+  return v_result;
+end
+$function$;
 
-create trigger annual_close_artifacts_document_evidence
-before insert on corporate_governance.annual_close_artifacts
-for each row execute function
-  corporate_governance.assert_corporate_governance_artifact_document_v1();
+create or replace function
+backend_system.attest_corporate_governance_signed_artifact_v1(
+  p_decision_kind text,
+  p_request jsonb,
+  p_verified_subject text
+)
+returns jsonb language plpgsql security definer set search_path = ''
+as $function$
+declare
+  v_result jsonb;
+  v_source_record_type text;
+begin
+  if p_decision_kind = 'owner_dividend' then
+    v_result := corporate_governance.attest_owner_dividend_signed_artifact_v1(
+      p_request, p_verified_subject
+    );
+    v_source_record_type := 'owner_dividend_artifacts';
+  elsif p_decision_kind = 'annual_close' then
+    v_result := corporate_governance.attest_annual_close_signed_artifact_v1(
+      p_request, p_verified_subject
+    );
+    v_source_record_type := 'annual_close_artifacts';
+  else
+    raise exception 'corporate_governance_invalid_input';
+  end if;
+  perform backend_system.register_corporate_governance_evidence_v1(
+    v_source_record_type,
+    (p_request ->> 'signedArtifactId')::uuid,
+    (p_request ->> 'signedDocumentId')::uuid,
+    (p_request ->> 'companyId')::uuid,
+    (p_request ->> 'incomeYear')::integer,
+    'corporate_decision:' || (p_request ->> 'decisionId'),
+    'signed_owner_attested',
+    p_request ->> 'contentSha256',
+    (p_request ->> 'byteLength')::bigint,
+    p_verified_subject::uuid
+  );
+  return v_result;
+end
+$function$;
 
-create trigger shareholder_loans_document_evidence
-before insert on corporate_governance.shareholder_loans
-for each row when (new.document_id is not null) execute function
-  corporate_governance.assert_corporate_governance_artifact_document_v1();
+create or replace function
+backend_system.complete_corporate_governance_shareholder_loan_v1(
+  p_request jsonb,
+  p_verified_subject text
+)
+returns jsonb language plpgsql security definer set search_path = ''
+as $function$
+declare v_result jsonb;
+begin
+  v_result := corporate_governance.complete_shareholder_loan_v1(
+    p_request, p_verified_subject
+  );
+  if nullif(p_request ->> 'documentId', '') is not null then
+    perform backend_system.register_corporate_governance_evidence_v1(
+      'shareholder_loans',
+      (p_request ->> 'actionId')::uuid,
+      (p_request ->> 'documentId')::uuid,
+      (p_request ->> 'companyId')::uuid,
+      (p_request ->> 'incomeYear')::integer,
+      null, null, null, null,
+      p_verified_subject::uuid
+    );
+  end if;
+  return v_result;
+end
+$function$;
+
+revoke all on function
+  backend_system.register_corporate_governance_evidence_v1(
+    text, uuid, uuid, uuid, integer, text, text, text, bigint, uuid
+  ),
+  backend_system.register_corporate_governance_documents_v1(
+    text, jsonb, text
+  ),
+  backend_system.attest_corporate_governance_signed_artifact_v1(
+    text, jsonb, text
+  ),
+  backend_system.complete_corporate_governance_shareholder_loan_v1(
+    jsonb, text
+  )
+from public, anon, authenticated, service_role;
+
+reset role;
 
 do $backfill_document_evidence$
 declare artifact record;
@@ -1319,8 +1440,7 @@ begin
       item.byte_length, item.created_by
     from corporate_governance.annual_close_artifacts item
   loop
-    perform documents.register_evidence_reference_v1(
-      'corporate_governance',
+    perform backend_system.register_corporate_governance_evidence_v1(
       artifact.source_record_type,
       artifact.id,
       artifact.document_id,
@@ -1344,8 +1464,7 @@ begin
     from corporate_governance.shareholder_loans item
     where item.document_id is not null
   loop
-    perform documents.register_evidence_reference_v1(
-      'corporate_governance',
+    perform backend_system.register_corporate_governance_evidence_v1(
       'shareholder_loans',
       artifact.id,
       artifact.document_id,
@@ -1363,13 +1482,13 @@ $backfill_document_evidence$;
 
 reset role;
 
+set local role ledger_store_owner;
+revoke create on schema backend_system
+from corporate_governance_workflow_executor;
+reset role;
+
 grant usage on schema backend_system
 to corporate_governance_workflow_executor;
-
-revoke all on function
-  corporate_governance.assert_corporate_governance_artifact_document_v1()
-from public, anon, authenticated, service_role,
-  corporate_governance_workflow_executor;
 
 revoke all on function
   corporate_governance.record_owner_dividend_event_v1(jsonb, text),
@@ -1404,7 +1523,7 @@ begin
     )
   );
   execute pg_catalog.format(
-    'grant documents_store_owner to %I with set false',
+    'revoke documents_store_owner from %I',
     pg_catalog.current_setting(
       'talli.corporate_governance_lifecycle_principal'
     )

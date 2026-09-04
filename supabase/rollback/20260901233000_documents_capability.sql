@@ -103,9 +103,6 @@ alter table public.documents owner to postgres;
 drop function if exists documents.restore_after_storage_failure_v1(uuid,text);
 drop function if exists documents.mark_removed_v1(uuid,text,text);
 drop function if exists documents.has_evidence_references_v1(uuid);
-drop function if exists documents.register_evidence_reference_v1(
-  text, text, uuid, uuid, uuid, integer, text, text, text, bigint, uuid
-);
 drop function if exists documents.assert_registered_artifact_v1(uuid,uuid,integer,text,text,text,text,text,text,bigint,text,uuid);
 drop function if exists documents.finalize_upload_v1(uuid,bigint,text,text);
 drop function if exists documents.quarantine_upload_v1(uuid,text,text);
@@ -113,7 +110,6 @@ drop function if exists documents.list_documents_v1(uuid[],text);
 drop function if exists documents.get_document_v1(uuid,text);
 drop function if exists documents.stage_upload_v1(jsonb,text);
 drop function if exists documents.actor_company_role_v1(uuid);
-drop table if exists documents.evidence_references;
 drop schema if exists documents;
 
 grant select, insert on public.documents to authenticated;

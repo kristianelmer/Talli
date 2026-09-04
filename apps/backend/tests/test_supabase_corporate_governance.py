@@ -262,7 +262,7 @@ def test_annual_close_signed_artifact_uses_restricted_canonical_store() -> None:
     request = json.loads(str(calls[0][1][0]))
 
     assert result.state is OwnerDividendState.SIGNED_OWNER_ATTESTED
-    assert "corporate_governance.attest_annual_close_signed_artifact_v1" in calls[0][0]
+    assert "backend_system.attest_corporate_governance_signed_artifact_v1" in calls[0][0]
     assert request["unsignedArtifactId"] == str(command.unsigned_artifact_id)
     assert request["signedArtifactId"] == str(command.signed_artifact_id)
     assert request["signers"] == ["Ola Nordmann"]
@@ -313,7 +313,7 @@ def test_document_approval_and_finalization_map_exact_replays() -> None:
     ))
     assert completed.state is OwnerDividendState.FINALIZED
     assert [name in query for name, query in [
-        ("register_owner_dividend_documents_v1", calls[0][0]),
+        ("backend_system.register_corporate_governance_documents_v1", calls[0][0]),
         ("approve_owner_dividend_v1", calls[1][0]),
         ("prepare_owner_dividend_finalization_v1", calls[2][0]),
         ("complete_owner_dividend_finalization_v1", calls[3][0]),
@@ -519,7 +519,7 @@ def test_shareholder_loan_prepare_and_complete_use_canonical_governance_store() 
     assert result.loan == loan
     assert result.accounting_entry_id == command.ledger_entry_id
     assert "corporate_governance.prepare_shareholder_loan_v1" in calls[0][0]
-    assert "corporate_governance.complete_shareholder_loan_v1" in calls[1][0]
+    assert "backend_system.complete_corporate_governance_shareholder_loan_v1" in calls[1][0]
     completion = json.loads(str(calls[1][1][0]))
     assert completion["ledgerEntryId"] == str(command.ledger_entry_id)
 

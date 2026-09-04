@@ -17,6 +17,9 @@ boundary for successor capabilities. A narrow database contract locks and
 revalidates document metadata before recording an immutable opaque consumer
 reference. Removal takes the same document lock before consulting the registry,
 so consumers never expose their tables to Documents and cannot race removal.
+The versioned `documents.register_evidence_reference_v1` command is callable
+only by explicitly declared backend-system coordinators; consumer capability
+roles receive no direct privilege.
 
 Consumers retain only `DocumentId` and a semantic relationship. They cannot
 write document metadata or object bytes. Company-archive composition remains

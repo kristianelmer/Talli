@@ -2773,13 +2773,19 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
     failTo(returnTo, "Inntektsåret er ugyldig.");
   }
 
-  const [factsResult, lockResult] = await Promise.allSettled([
+  const [factsResult, lockResult, annualResult] = await Promise.allSettled([
     deriveCorporateDecisionFacts(accessToken, {
       companyId,
       incomeYear,
       decisionKind: "owner_dividend",
     }),
     listPeriodLocks([companyId]),
+    supabase
+      .from("annual_data")
+      .select("id, income_year, answers")
+      .eq("company_id", companyId)
+      .lte("income_year", incomeYear)
+      .order("income_year", { ascending: false }),
   ]);
   if (factsResult.status === "rejected") {
     failTo(returnTo, corporateGovernanceActionErrorMessage(factsResult.reason));
@@ -2787,10 +2793,30 @@ export async function createOwnerDividendDecisionDraft(formData: FormData) {
   if (lockResult.status === "rejected") {
     failTo(returnTo, "Regnskapslåsen kunne ikke leses.");
   }
+  if (annualResult.status === "rejected" || annualResult.value.error) {
+    failTo(
+      returnTo,
+      annualResult.status === "rejected"
+        ? "Siste godkjente årsregnskap kunne ikke leses."
+        : annualResult.value.error?.message ?? "Siste godkjente årsregnskap kunne ikke leses.",
+    );
+  }
   if (lockResult.value.error || lockResult.value.locks.some((lock) => lock.income_year === incomeYear)) {
     failTo(returnTo, lockResult.value.error ?? "Regnskapsåret er låst og kan ikke få et nytt utbytteutkast.");
   }
   const facts = factsResult.value;
+  const approvedAnnualData = (annualResult.value.data ?? []).find(
+    (candidate) => (candidate.answers as Record<string, unknown>).general_meeting_approved === true,
+  );
+  if (!approvedAnnualData) {
+    failTo(returnTo, "Siste godkjente årsregnskap mangler.");
+  }
+  if (
+    approvedAnnualData.id !== facts.annualBasis.sourceId
+    || approvedAnnualData.income_year !== facts.annualBasis.incomeYear
+  ) {
+    failTo(returnTo, "Årsgrunnlaget ble endret. Last siden på nytt.");
+  }
   const setId = requiredFormUuid(formData, "documentSetId");
   const decisionId = requiredFormUuid(formData, "decisionId");
   let decision: CorporateCanonicalDecisionWire;
@@ -2967,13 +2993,19 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
   if (!Number.isInteger(incomeYear) || incomeYear < 2000 || incomeYear > 2100) {
     failTo(returnTo, "Inntektsåret er ugyldig.");
   }
-  const [company, factsResult] = await Promise.allSettled([
+  const [company, factsResult, annualResult] = await Promise.allSettled([
     loadAcceptedMembershipCompany(companyId),
     deriveCorporateDecisionFacts(accessToken, {
       companyId,
       incomeYear,
       decisionKind: "annual_close",
     }),
+    supabase
+      .from("annual_data")
+      .select("id, income_year")
+      .eq("company_id", companyId)
+      .eq("income_year", incomeYear)
+      .maybeSingle(),
   ]);
   if (company.status === "rejected" || !company.value || company.value.entity_type !== "AS") {
     failTo(returnTo, "Fant ikke et støttet AS for årsbeslutningen.");
@@ -2984,7 +3016,25 @@ export async function createAnnualCorporateDecisionDraft(formData: FormData) {
   if (factsResult.status === "rejected") {
     failTo(returnTo, corporateGovernanceActionErrorMessage(factsResult.reason));
   }
+  if (
+    annualResult.status === "rejected"
+    || annualResult.value.error
+    || !annualResult.value.data
+  ) {
+    failTo(
+      returnTo,
+      annualResult.status === "rejected"
+        ? "Fullført årsgrunnlag mangler."
+        : annualResult.value.error?.message ?? "Fullført årsgrunnlag mangler.",
+    );
+  }
   const facts = factsResult.value;
+  if (
+    annualResult.value.data.id !== facts.annualBasis.sourceId
+    || annualResult.value.data.income_year !== facts.annualBasis.incomeYear
+  ) {
+    failTo(returnTo, "Årsgrunnlaget ble endret. Last siden på nytt.");
+  }
 
   const decisionId = requiredFormUuid(formData, "decisionId");
   const setId = requiredFormUuid(formData, "documentSetId");

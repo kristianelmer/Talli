@@ -8,7 +8,8 @@ do $membership$
 begin
   execute pg_catalog.format(
     'grant corporate_governance_store_owner, ledger_store_owner, '
-      || 'backend_system_annual_data_reader to %I',
+      || 'backend_system_annual_data_reader, '
+      || 'corporate_governance_workflow_executor to %I',
     current_user
   );
   execute pg_catalog.format(
@@ -54,16 +55,26 @@ where event.event_kind in (
 )
 on conflict (id) do nothing;
 
-set local role corporate_governance_store_owner;
-
-drop trigger if exists owner_dividend_artifacts_document_evidence
-  on corporate_governance.owner_dividend_artifacts;
-drop trigger if exists annual_close_artifacts_document_evidence
-  on corporate_governance.annual_close_artifacts;
-drop trigger if exists shareholder_loans_document_evidence
-  on corporate_governance.shareholder_loans;
+set local role corporate_governance_workflow_executor;
 drop function if exists
-  corporate_governance.assert_corporate_governance_artifact_document_v1();
+  backend_system.register_corporate_governance_documents_v1(
+    text, jsonb, text
+  );
+drop function if exists
+  backend_system.attest_corporate_governance_signed_artifact_v1(
+    text, jsonb, text
+  );
+drop function if exists
+  backend_system.complete_corporate_governance_shareholder_loan_v1(
+    jsonb, text
+  );
+drop function if exists
+  backend_system.register_corporate_governance_evidence_v1(
+    text, uuid, uuid, uuid, integer, text, text, text, bigint, uuid
+  );
+reset role;
+
+set local role corporate_governance_store_owner;
 
 drop function if exists
   corporate_governance.record_owner_dividend_event_v1(jsonb, text);
@@ -72,10 +83,12 @@ drop function if exists
 reset role;
 
 set local role documents_store_owner;
+delete from documents.evidence_references
+where source_capability = 'corporate_governance';
 revoke execute on function documents.register_evidence_reference_v1(
   text, text, uuid, uuid, uuid, integer, text, text, text, bigint, uuid
-) from corporate_governance_store_owner;
-revoke usage on schema documents from corporate_governance_store_owner;
+) from corporate_governance_workflow_executor;
+revoke usage on schema documents from corporate_governance_workflow_executor;
 reset role;
 
 set local role backend_system_annual_data_reader;
@@ -259,13 +272,14 @@ begin
   execute pg_catalog.format(
     'revoke corporate_governance_store_owner, ledger_store_owner, '
       || 'backend_system_annual_data_reader, '
+      || 'corporate_governance_workflow_executor, '
       || 'company_access_executor from %I',
     pg_catalog.current_setting(
       'talli.corporate_governance_lifecycle_principal'
     )
   );
   execute pg_catalog.format(
-    'grant documents_store_owner to %I with set false',
+    'revoke documents_store_owner from %I',
     pg_catalog.current_setting(
       'talli.corporate_governance_lifecycle_principal'
     )

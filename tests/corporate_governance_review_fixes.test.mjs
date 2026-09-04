@@ -90,24 +90,55 @@ test("governance review regressions run in the complete acceptance boundary", as
 });
 
 test("document evidence ownership is acyclic and declared", async () => {
-  const [governance, documents, lifecycle, contract] = await Promise.all([
+  const [governance, documents, registry, lifecycle, adapter, contract] = await Promise.all([
     json("apps/backend/src/talli_backend/modules/corporate_governance/module.json"),
     json("apps/backend/src/talli_backend/modules/documents/module.json"),
+    text("supabase/migrations/20260902030000_documents_evidence_reference_registry.sql"),
     text("supabase/migrations/20260902100000_corporate_governance_artifact_lifecycle.sql"),
+    text("apps/backend/src/talli_backend/adapters/supabase_corporate_governance.py"),
     text("supabase/contract-migrations/20260902110000_corporate_governance_contract.sql"),
   ]);
 
-  assert.deepEqual(governance.dependencies, [{
-    module: "documents",
-    kind: "query",
-    imports: ["documents.register_evidence_reference_v1"],
-  }]);
+  assert.deepEqual(governance.dependencies, []);
   assert.deepEqual(documents.dependencies, []);
   assert.ok(documents.owns.tables.includes("documents.evidence_references"));
-  assert.match(lifecycle, /documents\.register_evidence_reference_v1/iu);
+  assert.equal(
+    documents.owns.migrations,
+    "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql",
+  );
+  assert.match(registry, /documents\.register_evidence_reference_v1/iu);
+  assert.match(lifecycle, /backend_system\.register_corporate_governance_documents_v1/iu);
+  assert.match(adapter, /backend_system\.register_corporate_governance_documents_v1/iu);
+  assert.match(adapter, /backend_system\.attest_corporate_governance_signed_artifact_v1/iu);
+  assert.match(adapter, /backend_system\.complete_corporate_governance_shareholder_loan_v1/iu);
+  assert.doesNotMatch(lifecycle, /create trigger[^\n]*document_evidence/iu);
   assert.doesNotMatch(lifecycle, /create or replace function documents\./iu);
   assert.doesNotMatch(contract, /create or replace function documents\./iu);
   assert.doesNotMatch(contract, /documents\.has_evidence_references_v1/iu);
+});
+
+test("future annual-data compatibility scopes remain frozen without a checker bypass", async () => {
+  const [registry, checker, actions] = await Promise.all([
+    json("architecture/compatibility.json"),
+    text("scripts/check-architecture.mjs"),
+    text("apps/web/app/actions.ts"),
+  ]);
+  const annualCompliance = registry.records.find(
+    (record) => record.id === "compat-annual-compliance-persistence",
+  );
+  assert.ok(annualCompliance);
+  for (const operation of [
+    "createAnnualCorporateDecisionDraft",
+    "createOwnerDividendDecisionDraft",
+  ]) {
+    assert.ok(annualCompliance.scopes.some(
+      (scope) => scope.resource === "table:annual_data"
+        && scope.operation === operation,
+    ));
+  }
+  assert.doesNotMatch(checker, /CORPORATE_DECISION_FACT_CUTOVER/u);
+  assert.match(actions, /createOwnerDividendDecisionDraft[\s\S]+from\("annual_data"\)/u);
+  assert.match(actions, /createAnnualCorporateDecisionDraft[\s\S]+from\("annual_data"\)/u);
 });
 
 test("canonical decision payloads share one serializer", async () => {

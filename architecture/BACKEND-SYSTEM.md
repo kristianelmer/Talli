@@ -212,6 +212,10 @@ attestation, finalization and payment routes plus
 governance owns deterministic Python policy/rendering and canonical immutable
 records, verifies Documents evidence, and uses only restricted Ledger and
 Banking public contracts for atomic accounting effects.
+Its explicit database coordinators register unsigned artifacts, signed copies,
+and optional shareholder-loan evidence through the Documents command in the
+same transaction as the Governance command; no capability-owned trigger hides
+that cross-module write.
 
 The `investment-activity` workflow serves canonical position, acquisition-lot,
 FIFU-allocation, activity, economic-event, and correction pages. Domestic share

@@ -395,6 +395,18 @@
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
+          "resource": "table:annual_data",
+          "operation": "createAnnualCorporateDecisionDraft"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
+          "resource": "table:annual_data",
+          "operation": "createOwnerDividendDecisionDraft"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "rule": "direct-web-business-persistence",
           "resource": "table:filing_readiness_snapshots",
           "operation": "queueDeadlineReminders"
         },

@@ -58,7 +58,7 @@ test("governance evidence is locked and revalidated before immutable insertion",
     ),
     readFile(
       new URL(
-        "../supabase/migrations/20260901233000_documents_capability.sql",
+        "../supabase/migrations/20260902030000_documents_evidence_reference_registry.sql",
         import.meta.url,
       ),
       "utf8",
@@ -67,27 +67,28 @@ test("governance evidence is locked and revalidated before immutable insertion",
 
   assert.match(
     documents,
-    /create table if not exists documents\.evidence_references[\s\S]+function documents\.register_evidence_reference_v1[\s\S]+for update/iu,
+    /create table documents\.evidence_references[\s\S]+function documents\.register_evidence_reference_v1[\s\S]+for update/iu,
   );
   assert.match(forward, /grant documents_store_owner to %I with set true/iu);
-  assert.match(forward, /grant documents_store_owner to %I with set false/iu);
+  assert.match(forward, /revoke documents_store_owner from %I/iu);
   assert.match(
     forward,
-    /grant execute on function documents\.register_evidence_reference_v1[\s\S]+to corporate_governance_store_owner/iu,
+    /grant execute on function documents\.register_evidence_reference_v1[\s\S]+to corporate_governance_workflow_executor/iu,
   );
   assert.doesNotMatch(forward, /create or replace function documents\./iu);
   assert.match(
     forward,
-    /before insert on corporate_governance\.owner_dividend_artifacts[\s\S]+assert_corporate_governance_artifact_document_v1/iu,
+    /function[\s\S]+backend_system\.register_corporate_governance_documents_v1/iu,
   );
   assert.match(
     forward,
-    /before insert on corporate_governance\.annual_close_artifacts[\s\S]+assert_corporate_governance_artifact_document_v1/iu,
+    /function[\s\S]+backend_system\.attest_corporate_governance_signed_artifact_v1/iu,
   );
   assert.match(
     forward,
-    /before insert on corporate_governance\.shareholder_loans[\s\S]+assert_corporate_governance_artifact_document_v1/iu,
+    /function[\s\S]+backend_system\.complete_corporate_governance_shareholder_loan_v1/iu,
   );
+  assert.doesNotMatch(forward, /create trigger[^\n]*document_evidence/iu);
   const removal = documents.match(
     /function documents\.mark_removed_v1[\s\S]+?\$function\$;/iu,
   )?.[0];
@@ -95,7 +96,7 @@ test("governance evidence is locked and revalidated before immutable insertion",
   assert.ok(removal.indexOf("for update") < removal.indexOf("has_evidence_references_v1"));
   assert.match(
     rollback,
-    /drop trigger if exists shareholder_loans_document_evidence[\s\S]+drop function if exists[\s\S]+assert_corporate_governance_artifact_document_v1/iu,
+    /drop function if exists[\s\S]+backend_system\.register_corporate_governance_documents_v1[\s\S]+delete from documents\.evidence_references/iu,
   );
   assert.doesNotMatch(rollback, /create or replace function documents\./iu);
 });

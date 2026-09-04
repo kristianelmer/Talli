@@ -862,8 +862,8 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
             ],
         }
         return _lifecycle(await self._governance_result(
-            "select corporate_governance.register_owner_dividend_documents_v1("
-            "%s::jsonb, %s::text) as result",
+            "select backend_system.register_corporate_governance_documents_v1("
+            "'owner_dividend', %s::jsonb, %s::text) as result",
             request,
         ))
 
@@ -887,8 +887,8 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
             ],
         }
         return _annual_close_lifecycle(await self._governance_result(
-            "select corporate_governance.register_annual_close_documents_v1("
-            "%s::jsonb, %s::text) as result",
+            "select backend_system.register_corporate_governance_documents_v1("
+            "'annual_close', %s::jsonb, %s::text) as result",
             request,
         ))
 
@@ -958,8 +958,8 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
         if command.actor_id != self.actor_id:
             raise CorporateGovernanceError.forbidden()
         return _annual_close_lifecycle(await self._governance_result(
-            "select corporate_governance.attest_annual_close_signed_artifact_v1("
-            "%s::jsonb, %s::text) as result",
+            "select backend_system.attest_corporate_governance_signed_artifact_v1("
+            "'annual_close', %s::jsonb, %s::text) as result",
             {
                 **_common_request(command),
                 "unsignedArtifactId": str(command.unsigned_artifact_id),
@@ -997,8 +997,8 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
         if command.actor_id != self.actor_id:
             raise CorporateGovernanceError.forbidden()
         return _lifecycle(await self._governance_result(
-            "select corporate_governance.attest_owner_dividend_signed_artifact_v1("
-            "%s::jsonb, %s::text) as result",
+            "select backend_system.attest_corporate_governance_signed_artifact_v1("
+            "'owner_dividend', %s::jsonb, %s::text) as result",
             {
                 **_common_request(command),
                 "unsignedArtifactId": str(command.unsigned_artifact_id),
@@ -1175,7 +1175,7 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
         if command.actor_id != self.actor_id:
             raise CorporateGovernanceError.forbidden()
         result = await self._governance_result(
-            "select corporate_governance.complete_shareholder_loan_v1("
+            "select backend_system.complete_corporate_governance_shareholder_loan_v1("
             "%s::jsonb, %s::text) as result",
             {
                 **_shareholder_loan_request(command, prepared.loan),
