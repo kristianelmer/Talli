@@ -1,6 +1,7 @@
 import {
   createTalliApiClient,
   TalliApiError,
+  type BillingAccountWire,
   type BillingCompanyWire,
   type BillingConfigureWire,
   type BillingEntitlementRequest,
@@ -38,6 +39,49 @@ export function loadBillingEntitlement(
   input: BillingEntitlementRequest,
 ) {
   return client(accessToken).billingReadEntitlement({ ...input, ...request(input.requestId) });
+}
+
+export async function loadAnnualBillingEntitlements(
+  accessToken: string,
+  companyId: string,
+  incomeYear: number,
+) {
+  const entries = await Promise.all(
+    (["aksjonaerregisteroppgaven", "skattemelding", "aarsregnskap"] as const).map(
+      async (obligation) => [obligation, await loadBillingEntitlement(accessToken, {
+        companyId,
+        incomeYear,
+        obligation,
+        ...(obligation === "aksjonaerregisteroppgaven"
+          ? { caseProfile: "rf1086_no_activity_v1" }
+          : {}),
+      })] as const,
+    ),
+  );
+  return Object.fromEntries(entries);
+}
+
+export function presentBillingAccount(account: BillingAccountWire) {
+  return {
+    company_id: account.companyId,
+    pricing_plan: account.pricingPlan,
+    monthly_nok: account.monthlyNok,
+    filing_package_nok: account.filingPackageNok,
+    founder_cohort_number: account.founderCohortNumber,
+    subscription_active: account.subscriptionActive,
+    filing_package_paid: account.filingPackagePaid,
+    supported_case: account.supportedCase,
+    refund_eligible: account.refundEligible,
+    refund_completed: account.refundCompleted,
+    no_charge_reason: account.noChargeReason,
+    provider_customer_ref: account.providerCustomerReference,
+    subscription_provider_ref: account.subscriptionProviderReference,
+    filing_package_payment_ref: account.filingPackagePaymentReference,
+    refund_provider_ref: account.refundProviderReference,
+    updated_by: account.updatedBy,
+    created_at: account.createdAt,
+    updated_at: account.updatedAt,
+  };
 }
 
 export function configureBillingAccount(

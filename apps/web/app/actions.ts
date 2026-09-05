@@ -72,6 +72,7 @@ import {
   manageProductionPilotEntitlement,
   markBillingCaseUnsupported,
   loadBillingEntitlement,
+  loadAnnualBillingEntitlements,
   loadBillingSnapshot,
   purchaseBillingFilingPackage,
   refundBillingFilingPackage,
@@ -4543,18 +4544,8 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
       error: error ? { message: error } : null,
     })),
     supabase.from("annual_data").select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at").eq("company_id", companyId).eq("income_year", incomeYear).maybeSingle(),
-    Promise.all(
-      (["aksjonaerregisteroppgaven", "skattemelding", "aarsregnskap"] as const).map(
-        async (obligation) => [obligation, await loadBillingEntitlement(accessToken, {
-          companyId,
-          incomeYear,
-          obligation,
-          ...(obligation === "aksjonaerregisteroppgaven"
-            ? { caseProfile: "rf1086_no_activity_v1" }
-            : {}),
-        })] as const,
-      ),
-    ).then((entries) => ({ data: Object.fromEntries(entries), error: null }))
+    loadAnnualBillingEntitlements(accessToken, companyId, incomeYear)
+      .then((data) => ({ data, error: null }))
       .catch((error: unknown) => ({
         data: {},
         error: { message: billingActionErrorMessage(error) },
@@ -5968,7 +5959,9 @@ export async function reconcileRf1086ProductionAction(
     return buildRf1086OwnerReconciliationActionState(storedState);
   }
 
-  const [company, approvalResult, billingSnapshot, billingDecision] = await Promise.all([
+  // Feedback recovery uses the stored filing identity even after current
+  // billing eligibility expires; it never initiates a new submission.
+  const [company, approvalResult, billingSnapshot] = await Promise.all([
     loadAcceptedMembershipCompany(submission.company_id),
     supabase
       .from("filing_approval_snapshots")
@@ -5976,12 +5969,6 @@ export async function reconcileRf1086ProductionAction(
       .eq("id", submission.approval_id)
       .single(),
     loadBillingSnapshot(accessToken, { companyIds: [submission.company_id] }),
-    loadBillingEntitlement(accessToken, {
-      companyId: submission.company_id,
-      incomeYear: submission.income_year,
-      obligation: "aksjonaerregisteroppgaven",
-      caseProfile: "rf1086_no_activity_v1",
-    }),
   ]);
   const approval = approvalResult.data;
   const entitlement = billingSnapshot.pilotEntitlements.find(
@@ -5999,8 +5986,6 @@ export async function reconcileRf1086ProductionAction(
     || approval.obligation !== submission.obligation
     || approval.case_profile !== submission.case_profile
     || !entitlement
-    || !billingDecision.allowed
-    || billingDecision.pilotEntitlementId !== entitlement.entitlementId
     || entitlement.companyId !== submission.company_id
     || entitlement.userId !== user.id
     || entitlement.incomeYear !== submission.income_year

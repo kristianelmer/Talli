@@ -24,7 +24,7 @@ import {
   listCorporateDecisionLifecycle,
   listSupportedCorporateEvents,
 } from "../../../../../features/corporate-governance";
-import { loadBillingSnapshot } from "../../../../../features/billing";
+import { loadBillingSnapshot, presentBillingAccount } from "../../../../../features/billing";
 import {
   buildPersistedCompanyArchive,
   firstArchiveSourceError,
@@ -105,26 +105,7 @@ async function loadArchiveBilling(accessToken: string, companyId: string) {
   try {
     const snapshot = await loadBillingSnapshot(accessToken, { companyIds: [companyId] });
     return {
-      data: snapshot.accounts.map((account) => ({
-        company_id: account.companyId,
-        pricing_plan: account.pricingPlan,
-        monthly_nok: account.monthlyNok,
-        filing_package_nok: account.filingPackageNok,
-        founder_cohort_number: account.founderCohortNumber,
-        subscription_active: account.subscriptionActive,
-        filing_package_paid: account.filingPackagePaid,
-        supported_case: account.supportedCase,
-        refund_eligible: account.refundEligible,
-        refund_completed: account.refundCompleted,
-        no_charge_reason: account.noChargeReason,
-        provider_customer_ref: account.providerCustomerReference,
-        subscription_provider_ref: account.subscriptionProviderReference,
-        filing_package_payment_ref: account.filingPackagePaymentReference,
-        refund_provider_ref: account.refundProviderReference,
-        updated_by: account.updatedBy,
-        created_at: account.createdAt,
-        updated_at: account.updatedAt,
-      })),
+      data: snapshot.accounts.map(presentBillingAccount),
       error: null,
     };
   } catch {

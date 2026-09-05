@@ -197,7 +197,7 @@
   "localValidation": {
     "billingFocused": {
       "backendPassed": 66,
-      "nodePassed": 11,
+      "nodePassed": 14,
       "failed": 0
     },
     "webTypecheck": "passed",
@@ -227,7 +227,7 @@
     "customerReadyGates": "replacement linked immutable runs pending",
     "billingProviderRecovery": {
       "command": "npm run test:billing-database-lifecycle",
-      "runtimePassed": 4,
+      "runtimePassed": 6,
       "lifecyclePassed": 1,
       "note": "Fresh isolated stack; independent-connection pre-I/O durability, timeout/process/storage failures, concurrent reconciliation, and pending-intent retention across twice-repeated rollback/recutover."
     }
@@ -242,7 +242,7 @@
       "readiness is rechecked after filing-package payment",
       "billing-exempt pilot entitlement skips billing only and still requires filing readiness",
       "payment and refund retries replay before mutable-state preconditions",
-      "ambiguous provider results and exceptions persist failed quarantine events",
+      "ambiguous provider results retain a durable intent for read-only reconciliation without granting entitlement",
       "sensitive owner/admin authorization precedes payment replay lookup and provider invocation",
       "filing-package finalization rechecks readiness in the same database statement that records the provider outcome",
       "payment replay preserves the original charged amount across later pricing changes",
@@ -263,7 +263,10 @@
       "provider intent commits before I/O and unknown results reconcile by original key, amount and obligation without executing twice",
       "lost response, process loss, failed result persistence and concurrent settlement recover against real restricted-role Postgres",
       "closed pilot case-profile type preserves open-string entitlement-query HTTP compatibility",
-      "four explicit typed HTTP handlers replace string-based dispatch"
+      "four explicit typed HTTP handlers replace string-based dispatch",
+      "persistence bounds statement, lock and full transaction/commit deadlines and preserves recovery after lock contention",
+      "existing filing feedback recovery uses stored identity after pilot expiry/suspension or changed readiness, while new submission eligibility remains enforced",
+      "shared web billing presentation and annual query transport mappings remove duplicate consumers"
     ],
     "previousFinalReview": {
       "revision": "abd77efd72e789372901d8e2c29c02f8fd372a89",

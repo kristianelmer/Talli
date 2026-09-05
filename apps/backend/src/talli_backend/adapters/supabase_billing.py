@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from asyncio import timeout
 from collections.abc import Callable, Mapping
 from hashlib import sha256
 
@@ -266,8 +267,9 @@ class SupabaseBillingSession:
         if not self._database_url:
             raise BillingError.unavailable()
         try:
-            async with await psycopg.AsyncConnection.connect(
-                self._database_url, connect_timeout=5, row_factory=dict_row
+            async with timeout(10), await psycopg.AsyncConnection.connect(
+                self._database_url, connect_timeout=5, row_factory=dict_row,
+                options="-c statement_timeout=5000 -c lock_timeout=1000",
             ) as connection, connection.transaction():
                 await connection.execute(f"set local role {role}")
                 await connection.execute(
@@ -282,7 +284,7 @@ class SupabaseBillingSession:
                 return list(await cursor.fetchall())
         except BillingError:
             raise
-        except psycopg.OperationalError:
+        except (TimeoutError, psycopg.OperationalError):
             raise BillingError.unavailable() from None
         except psycopg.DatabaseError as error:
             raise _map_error(str(error)) from None
@@ -300,8 +302,9 @@ class SupabaseBillingSession:
         if not self._database_url:
             raise BillingError.unavailable()
         try:
-            async with await psycopg.AsyncConnection.connect(
-                self._database_url, connect_timeout=5, row_factory=dict_row
+            async with timeout(10), await psycopg.AsyncConnection.connect(
+                self._database_url, connect_timeout=5, row_factory=dict_row,
+                options="-c statement_timeout=5000 -c lock_timeout=1000",
             ) as connection, connection.transaction():
                 await connection.execute("set local role billing_store_owner")
                 await connection.execute(
@@ -364,7 +367,7 @@ class SupabaseBillingSession:
                 return result
         except BillingError:
             raise
-        except psycopg.OperationalError:
+        except (TimeoutError, psycopg.OperationalError):
             raise BillingError.unavailable() from None
         except psycopg.DatabaseError as error:
             raise _map_error(str(error)) from None

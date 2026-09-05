@@ -103,3 +103,9 @@ role. Apply it after expansion. On expansion rollback, first apply its matching
 rollback to withdraw settlement authority; pending intents and confirmed outcomes
 remain in the event table through rollback and recutover. Reapply the reconciliation
 migration after expansion on recutover. This adds no live provider or paid I/O.
+
+Persistence bounds the entire connection/transaction/commit scope to ten seconds,
+with five-second statement and one-second lock limits. Timeout failures leave
+committed intents available for later reconciliation; an uncommitted configuration
+receipt rolls back with its account mutation. Lock-contention runtime tests prove
+both paths recover using the same operation key.

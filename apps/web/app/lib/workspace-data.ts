@@ -44,7 +44,8 @@ import {
   type CorporateDecisionFactsWire,
 } from "../../features/corporate-governance";
 import {
-  loadBillingEntitlement,
+  loadAnnualBillingEntitlements,
+  presentBillingAccount,
   loadBillingSnapshot,
 } from "../../features/billing";
 
@@ -107,26 +108,7 @@ export async function loadWorkspaceData() {
     monthly_nok: item.monthlyNok,
     filing_package_nok: item.filingPackageNok,
   }));
-  const billingAccounts = billingSnapshot.accounts.map((account) => ({
-    company_id: account.companyId,
-    pricing_plan: account.pricingPlan,
-    monthly_nok: account.monthlyNok,
-    filing_package_nok: account.filingPackageNok,
-    founder_cohort_number: account.founderCohortNumber,
-    subscription_active: account.subscriptionActive,
-    filing_package_paid: account.filingPackagePaid,
-    supported_case: account.supportedCase,
-    refund_eligible: account.refundEligible,
-    refund_completed: account.refundCompleted,
-    no_charge_reason: account.noChargeReason,
-    provider_customer_ref: account.providerCustomerReference,
-    subscription_provider_ref: account.subscriptionProviderReference,
-    filing_package_payment_ref: account.filingPackagePaymentReference,
-    refund_provider_ref: account.refundProviderReference,
-    updated_by: account.updatedBy,
-    created_at: account.createdAt,
-    updated_at: account.updatedAt,
-  }));
+  const billingAccounts = billingSnapshot.accounts.map(presentBillingAccount);
   const billingPaymentEvents = billingSnapshot.paymentEvents.map((event) => ({
     id: event.eventId,
     company_id: event.companyId,
@@ -263,18 +245,7 @@ export async function loadWorkspaceData() {
     (snapshot) => snapshot.obligation === "aksjonaerregisteroppgaven" && snapshot.ready,
   );
   const primaryBillingEntitlements = accessToken && primaryCompanyId
-    ? Object.fromEntries(await Promise.all(
-        (["aksjonaerregisteroppgaven", "skattemelding", "aarsregnskap"] as const).map(
-          async (obligation) => [obligation, await loadBillingEntitlement(accessToken, {
-            companyId: primaryCompanyId,
-            incomeYear: primaryIncomeYear,
-            obligation,
-            ...(obligation === "aksjonaerregisteroppgaven"
-              ? { caseProfile: "rf1086_no_activity_v1" }
-              : {}),
-          })] as const,
-        ),
-      ))
+    ? await loadAnnualBillingEntitlements(accessToken, primaryCompanyId, primaryIncomeYear)
     : {};
   const primaryBillingGate = primaryBillingEntitlements.aksjonaerregisteroppgaven ?? null;
   const primaryAuthorityPermissions = authorityPermissions.filter((permission) => permission.company_id === primaryCompanyId);
