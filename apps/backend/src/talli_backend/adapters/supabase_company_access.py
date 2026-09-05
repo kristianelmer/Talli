@@ -602,6 +602,33 @@ class SupabaseCompanyAccessAdapter:
         )
         return rows[0] if len(rows) == 1 else None
 
+    async def company_year_purchase_basis(
+        self, access_token: str, company_id: str, accounting_year: int,
+        assessment_id: str,
+    ) -> Mapping[str, object] | None:
+        if not self._configuration.database_url:
+            raise self._unavailable()
+        try:
+            async with asyncio.timeout(10):
+                actor_id, claims = await self._verified_actor_context(access_token)
+                async with await psycopg.AsyncConnection.connect(
+                    self._configuration.database_url, connect_timeout=5, row_factory=dict_row,
+                    options="-c statement_timeout=5000 -c lock_timeout=1000",
+                ) as connection, connection.transaction():
+                    await connection.execute("set local role company_access_executor")
+                    await connection.execute(
+                        "select set_config('talli.verified_actor_id', %s, true), set_config('talli.verified_actor_claims', %s, true)",
+                        (actor_id, json.dumps(claims, separators=(",", ":"))),
+                    )
+                    cursor = await connection.execute(
+                        "select public.company_access_purchase_basis_v1(%s::uuid, %s::integer, %s::uuid, null) as basis",
+                        (company_id, accounting_year, assessment_id),
+                    )
+                    row = await cursor.fetchone()
+                    return row["basis"] if row else None
+        except (TimeoutError, psycopg.DatabaseError):
+            raise self._unavailable() from None
+
     async def record_company_year_eligibility_recheck(
         self, access_token: str, command: CompanyYearEligibilityRecheckGatewayCommand
     ) -> Mapping[str, object]:

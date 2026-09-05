@@ -18,7 +18,7 @@
     {
       "id": "GH-192-A1",
       "requirement": "Exact immutable price, VAT, company/year, scope, terms, renewal and separate consent versions.",
-      "status": "policy-tested-persistence-and-cutover-pending"
+      "status": "policy-and-source-owned-purchase-basis-tested-billing-persistence-and-cutover-pending"
     },
     {
       "id": "GH-192-A2",
@@ -59,7 +59,8 @@
   "localValidation": {
     "annualPolicy": "24 tests pass; bounded independent Standards PASS, runtime not wired",
     "vippsProviderAndWebhook": "52 local HTTP/authentication cases pass; bounded independent review PASS with 76 combined policy/provider/authentication tests; no actual provider requests",
-    "billingSuite": "142 Python and 14 Node tests pass; architecture check passes"
+    "billingSuite": "142 Python and 14 Node tests pass; architecture check passes",
+    "purchaseBasis": "Company Access owned locked evidence projection: 12 real-database tests pass including tenant/MFA/stale/blocked/lock contention and two rollback/recutover cycles; 91 Company Access domain tests pass; bounded independent Standards PASS; architecture passes; advisors 0 blocking and 34 performance warnings."
   },
   "externalEvidence": {
     "vippsMerchantTest": "pending designated existing test sales unit, backend-only test credentials, test user/app and callback setup; local fixtures cannot substitute",

@@ -698,6 +698,47 @@ class CurrentAgreementRequest(CompanyAccessCommandModel):
     ]
 
 
+class CompanyYearLegalEvidence(CompanyAccessResponseModel):
+    id: UUID
+    accepted_by: UUID
+    accepted_at: AwareDatetime
+    customer_legal_name: str
+    customer_org_number: str = Field(pattern=r"^[0-9]{9}$")
+    business_terms_version: str
+    business_terms_effective_date: str
+    business_terms_path: str
+    business_terms_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    dpa_version: str
+    dpa_effective_date: str
+    dpa_path: str
+    dpa_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    authority_statement_version: str
+    acceptance_method: Literal["in_app_clickwrap"]
+
+
+class CompanyYearPurchaseBasis(CompanyAccessResponseModel):
+    """Owned acceptance projection; a claimant must revalidate it under the DB lock."""
+
+    company_id: UUID
+    accounting_year: int
+    admission_id: UUID
+    assessment_id: UUID
+    assessed_at: AwareDatetime
+    accepted_assessment_id: UUID
+    accepted_answers_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    current_answers_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    acceptance_id: UUID
+    accepted_at: AwareDatetime
+    accepted_by: UUID
+    customer_legal_name: str
+    customer_org_number: str = Field(pattern=r"^[0-9]{9}$")
+    capability_manifest_version: str
+    capability_manifest_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    company_year_promise: CompanyYearPromise
+    company_year_promise_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    legal_evidence: CompanyYearLegalEvidence
+
+
 class CompanyYearAdmissionRequest(CurrentAgreementRequest):
     operation_id: UUID
     org_number: str = Field(pattern=r"^[0-9]{9}$")
@@ -1177,6 +1218,11 @@ class CompanyAccessGateway(Protocol):
         self, access_token: str, company_year_admission_id: str, operation_id: str
     ) -> Mapping[str, object] | None: ...
 
+    async def company_year_purchase_basis(
+        self, access_token: str, company_id: str, accounting_year: int,
+        assessment_id: str,
+    ) -> Mapping[str, object] | None: ...
+
     async def record_company_year_eligibility_recheck(
         self, access_token: str, command: CompanyYearEligibilityRecheckGatewayCommand
     ) -> Mapping[str, object]: ...
@@ -1458,6 +1504,39 @@ class CompanyAccessService:
     ) -> None:
         self._gateway = gateway
         self._company_registry = company_registry
+
+    async def purchase_basis(
+        self, access_token: str, state: CompanyYearEligibilityStateResponse,
+    ) -> CompanyYearPurchaseBasis:
+        if (
+            state.trigger != "before_payment" or state.decision != "supported"
+            or not state.consequential_operations_allowed
+            or state.accounting_year != CURRENT_CAPABILITY_ACCOUNTING_YEAR
+        ):
+            raise _company_access_not_found()
+        row = await self._gateway.company_year_purchase_basis(
+            access_token, str(state.company_id), state.accounting_year,
+            str(state.company_year_eligibility_assessment_id),
+        )
+        if row is None:
+            raise _company_access_not_found()
+        try:
+            basis = CompanyYearPurchaseBasis.model_validate(row)
+        except (TypeError, ValueError):
+            raise _company_access_unavailable() from None
+        if (
+            basis.company_id != state.company_id
+            or basis.accounting_year != state.accounting_year
+            or basis.admission_id != state.company_year_admission_id
+            or basis.assessment_id != state.company_year_eligibility_assessment_id
+            or basis.capability_manifest_version != CURRENT_CAPABILITY_MANIFEST_VERSION
+            or basis.capability_manifest_sha256 != CURRENT_CAPABILITY_MANIFEST_SHA256
+            or basis.company_year_promise != state.accepted_company_year_promise
+            or basis.company_year_promise_sha256 != _canonical_sha256(basis.company_year_promise.model_dump(mode="json", by_alias=True))
+            or not _is_current_agreement(basis.legal_evidence.model_dump())
+        ):
+            raise _company_access_unavailable()
+        return basis
 
     async def selected_context(
         self,
@@ -2919,6 +2998,8 @@ def _invitation_not_found() -> CompanyAccessError:
 
 
 __all__ = [
+    "CompanyYearLegalEvidence",
+    "CompanyYearPurchaseBasis",
     "AcceptCompanyInvitationRequest",
     "AdministerCompanyMembershipRequest",
     "CompanyAccessError",
