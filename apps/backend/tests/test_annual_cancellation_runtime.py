@@ -252,6 +252,7 @@ def test_cancellation_evidence_survives_full_predecessor_rollback_and_recutover(
     request = command(setup, purchase)
     result = asyncio.run(cancellation(setup).cancel_renewal(request))
     migrations = [
+        "20260905145000_annual_refund_agreement_cleanup.sql",
         "20260905141500_annual_refund_requests.sql",
         "20260905115700_legacy_billing_acquisition_retirement.sql",
         "20260905103149_annual_agreement_cleanup.sql",

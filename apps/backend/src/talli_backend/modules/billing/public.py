@@ -734,6 +734,10 @@ class AnnualCancellationId(_UuidId):
     pass
 
 
+class AnnualRefundRequestId(_UuidId):
+    pass
+
+
 @dataclass(frozen=True, slots=True)
 class CancelAnnualRenewalCommand(_BillingCommand):
     purchase_id: AnnualPurchaseId
@@ -779,11 +783,18 @@ class AnnualAgreementCleanup:
     """One durable agreement-stop intent, separate from purchase settlement."""
 
     purchase_id: AnnualPurchaseId
-    cancellation_id: AnnualCancellationId
+    cancellation_id: AnnualCancellationId | None
     provider: str
     provider_account: str
     intent: AnnualProviderIntent
     observation: AnnualProviderObservation | None = None
+    refund_request_id: AnnualRefundRequestId | None = None
+
+    def __post_init__(self) -> None:
+        if ((self.cancellation_id is None) == (self.refund_request_id is None)
+                or (self.cancellation_id is not None and not isinstance(self.cancellation_id, AnnualCancellationId))
+                or (self.refund_request_id is not None and not isinstance(self.refund_request_id, AnnualRefundRequestId))):
+            raise BillingError.invalid()
 
 
 @dataclass(frozen=True, slots=True)
@@ -802,9 +813,12 @@ class AnnualAgreementCleanupPersistence(Protocol):
     ) -> AnnualAgreementCleanupClaim | None:
         """Require current owner and fresh MFA; lock purchase before operation.
 
-        Bind a persisted same-purchase cancellation receipt and a verified
-        terminal original checkout with a known agreement. Defer unresolved
-        payments or competing charge intents by returning None. Never infer
+        Bind exactly one persisted cancellation or refund request to the actual
+        same-purchase renewal stop. Require a terminal original checkout or exact
+        confirmed full cumulative refund evidence for that original charge.
+        Neither receipt alone nor an unresolved payment/refund authorizes STOP.
+        Defer unsafe unconfirmed cleanup, competing charges or shared agreements
+        by returning None; preserve already confirmed cleanup evidence. Never infer
         future agreement/year lineage. Commit one immutable STOP_AGREEMENT
         operation per purchase before returning; all retries reuse its identity,
         provider/account and original references. No eligibility/readiness gate
@@ -1163,6 +1177,7 @@ __all__ = [
     "AnnualAgreementCleanupPersistence",
     "settle_annual_agreement_cleanup",
     "AnnualCancellationId",
+    "AnnualRefundRequestId",
     "AnnualCancellationPersistence",
     "AnnualRenewalCancellation",
     "CancelAnnualRenewalCommand",

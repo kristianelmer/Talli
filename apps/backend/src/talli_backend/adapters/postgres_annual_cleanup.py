@@ -17,11 +17,11 @@ from talli_backend.modules.billing.public import (
     AnnualAgreementCleanupClaim,
     AnnualAgreementCleanupPersistence,
     AnnualCancellationId,
+    AnnualRefundRequestId,
     AnnualProviderObservation,
     AnnualProviderOperation,
     AnnualProviderStatus,
     AnnualPurchaseId,
-    AnnualPurchaseStatus,
     BillingError,
     BillingErrorCode,
     BillingPaymentEventId,
@@ -47,7 +47,8 @@ def _cleanup(row):
         )
     return AnnualAgreementCleanup(
         purchase_id=AnnualPurchaseId(str(row["purchase_id"])),
-        cancellation_id=AnnualCancellationId(saved["cancellation_id"]),
+        cancellation_id=AnnualCancellationId(saved["cancellation_id"]) if saved.get("cancellation_id") else None,
+        refund_request_id=AnnualRefundRequestId(saved["refund_request_id"]) if saved.get("refund_request_id") else None,
         provider=saved["provider"],
         provider_account=saved["provider_account"],
         intent=_provider_intent(saved["provider_intent"]),
@@ -77,53 +78,34 @@ class PostgresAnnualCleanupSession:
             await self._database._authorize(connection, company_id)
             checkout = await self._database._load(connection, company_id, purchase_id, lock=True)
             existing = await self._find(connection, purchase_id)
-            if existing:
+            if existing and existing['status'] == 'confirmed':
                 return AnnualAgreementCleanupClaim(_cleanup(existing), False)
             previous = checkout.observation
-            if (
-                checkout.renewal_canceled_at is None
-                or previous is None
-                or not previous.agreement_reference
-                or checkout.status is AnnualPurchaseStatus.PENDING
-                or (
-                    checkout.status in {AnnualPurchaseStatus.PAID, AnnualPurchaseStatus.REFUNDED}
-                    and (
-                        previous.status is not AnnualProviderStatus.CONFIRMED
-                        or previous.captured_minor != checkout.offer.gross_minor
-                    )
-                )
-                or (
-                    checkout.status is AnnualPurchaseStatus.FAILED
-                    and (previous.status is not AnnualProviderStatus.FAILED or previous.captured_minor != 0)
-                )
-            ):
+            resolved = await (await connection.execute(
+                'select billing.annual_original_charge_resolved_v1(%s::uuid) as resolved',
+                (str(purchase_id),),
+            )).fetchone()
+            if (checkout.renewal_canceled_at is None or previous is None
+                    or not previous.agreement_reference or not resolved['resolved']):
                 return None
+            if existing:
+                return AnnualAgreementCleanupClaim(_cleanup(existing), False)
             receipt = await (
                 await connection.execute(
-                    """select id from billing.annual_cancellation_requests where purchase_id=%s::uuid
+                    """select id, 'cancellation' as kind from billing.annual_cancellation_requests where purchase_id=%s::uuid
                 and company_id=%s::uuid and effective_at=%s order by requested_at,id limit 1""",
                     (str(purchase_id), str(company_id), checkout.renewal_canceled_at.value),
                 )
             ).fetchone()
             if receipt is None:
-                return None
-            # Only original checkout agreements are supported. Future shared
-            # agreements require explicit year lineage and worker authority.
-            competing = await (
-                await connection.execute(
-                    """select 1 from billing.annual_operations where purchase_id=%s::uuid
-                and operation='renewal' union all select 1 from billing.annual_purchases
-                where id<>%s::uuid and provider=%s and provider_account=%s and agreement_reference=%s limit 1""",
-                    (
-                        str(purchase_id),
-                        str(purchase_id),
-                        checkout.provider,
-                        checkout.provider_account,
-                        previous.agreement_reference,
-                    ),
-                )
-            ).fetchone()
-            if competing:
+                receipt = await (await connection.execute(
+                    """select id, 'refund' as kind from billing.annual_refund_requests
+                    where purchase_id=%s::uuid and company_id=%s::uuid and income_year=%s
+                    and requested_at=%s order by requested_at,id limit 1""",
+                    (str(purchase_id), str(company_id), checkout.offer.income_year.value,
+                     checkout.renewal_canceled_at.value),
+                )).fetchone()
+            if receipt is None:
                 return None
             intent = replace(
                 checkout.intent,
@@ -135,7 +117,8 @@ class PostgresAnnualCleanupSession:
             )
             saved = {
                 "provider_intent": _record(intent),
-                "cancellation_id": str(receipt["id"]),
+                "cancellation_id": str(receipt["id"]) if receipt["kind"] == "cancellation" else None,
+                "refund_request_id": str(receipt["id"]) if receipt["kind"] == "refund" else None,
                 "provider": checkout.provider,
                 "provider_account": checkout.provider_account,
             }
@@ -174,6 +157,7 @@ class PostgresAnnualCleanupSession:
             if (
                 current.intent != cleanup.intent
                 or current.cancellation_id != cleanup.cancellation_id
+                or current.refund_request_id != cleanup.refund_request_id
                 or current.provider != cleanup.provider
                 or current.provider_account != cleanup.provider_account
             ):

@@ -252,3 +252,27 @@ def test_misbound_stored_cleanup_never_reaches_provider(mode):
     with pytest.raises(BillingError):
         asyncio.run(service.cleanup(QUERY))
     assert provider.executions == provider.reads == []
+
+
+def test_refund_request_is_an_explicit_alternative_to_manual_cancellation():
+    from talli_backend.modules.billing.public import AnnualRefundRequestId
+    service, store, provider = fixture()
+    store.saved = replace(candidate(), cancellation_id=None, refund_request_id=AnnualRefundRequestId(str(uuid4())))
+    original = store.saved
+    result = asyncio.run(service.cleanup(QUERY))
+    assert result.refund_request_id == original.refund_request_id and result.cancellation_id is None
+    assert result.observation.status is AnnualProviderStatus.CONFIRMED
+    assert provider.executions == provider.reads == [original.intent]
+
+
+@pytest.mark.parametrize('mode', ['neither', 'both', 'wrong_type'])
+def test_cleanup_requires_exactly_one_typed_stop_receipt(mode):
+    from talli_backend.modules.billing.public import AnnualRefundRequestId
+    original = candidate()
+    with pytest.raises(BillingError):
+        if mode == 'neither':
+            replace(original, cancellation_id=None)
+        elif mode == 'both':
+            replace(original, refund_request_id=AnnualRefundRequestId(str(uuid4())))
+        else:
+            replace(original, cancellation_id=AnnualRefundRequestId(str(uuid4())))

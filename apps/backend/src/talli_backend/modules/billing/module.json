@@ -96,7 +96,8 @@
       "AnnualRefundClaim",
       "AnnualRefundPersistence",
       "annual_refund_decision",
-      "settle_annual_refund"
+      "settle_annual_refund",
+      "AnnualRefundRequestId"
     ]
   },
   "owns": {
@@ -119,7 +120,7 @@
       "BillingEntitlementDecision",
       "BillingSnapshot"
     ],
-    "migrations": "supabase/migrations/20260905141500_annual_refund_requests.sql"
+    "migrations": "supabase/migrations/20260905145000_annual_refund_agreement_cleanup.sql"
   },
   "ports": [
     {
@@ -238,7 +239,8 @@
     "legacyRetirementDatabase": "apps/backend/tests/test_legacy_billing_retirement_runtime.py",
     "annualCheckoutApi": "apps/backend/tests/test_annual_checkout_api.py",
     "annualRefund": "apps/backend/tests/test_annual_refund_service.py",
-    "annualRefundDatabase": "apps/backend/tests/test_annual_refund_runtime.py"
+    "annualRefundDatabase": "apps/backend/tests/test_annual_refund_runtime.py",
+    "annualRefundCleanupDatabase": "apps/backend/tests/test_annual_refund_cleanup_runtime.py"
   },
   "compatibilityExceptions": []
 }

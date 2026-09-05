@@ -468,3 +468,12 @@ or worker is composed; synthetic resolver evidence is not production authority.
 <!-- architecture-inventory
 {"ports":["AnnualRefundPersistence"],"adapterBindings":["AnnualRefundPersistence=>talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundSession"],"adapterBindingOwners":["AnnualRefundPersistence=>backend-system"],"adapterBindingModes":["AnnualRefundPersistence=>verified owner or explicitly opened billing support case; durable refund requests/reservation/settlement; source resolver unavailable by default, no runtime or worker binding"]}
 -->
+
+
+The existing `PostgresAnnualCleanupSession` now accepts the exact refund request
+that caused renewal to stop as an alternative to a manual cancellation receipt.
+It shares the database's private original-charge resolution predicate, including
+verified full-refund recovery when checkout remains unknown. Current owner/fresh
+MFA and the provider's fresh charge-safety check remain mandatory. Stored original
+identity and terminal evidence are retained; no worker/support cleanup caller or
+new HTTP operation is composed.

@@ -277,8 +277,9 @@ lineage; current next-year admission remains blocked.
 ## Annual agreement cleanup orchestration
 
 `AnnualAgreementCleanupService` uses `AnnualAgreementCleanupPersistence` to claim
-one durable `AnnualAgreementCleanup` for a persisted cancellation receipt and a
-terminal original purchase. `AnnualAgreementCleanupClaim` identifies the first
+one durable `AnnualAgreementCleanup` for a persisted cancellation or refund
+request and resolved original charge evidence. `AnnualRefundRequestId` is the
+explicit alternative to `AnnualCancellationId`; exactly one must be present. `AnnualAgreementCleanupClaim` identifies the first
 claim. The store must defer unresolved payments and competing charge intents,
 verify current owner/fresh MFA, and preserve exact provider/account and references.
 Its PostgreSQL adapter is `PostgresAnnualCleanupSession`; runtime composition
@@ -297,7 +298,9 @@ The cleanup adapter reauthorizes every claim and settlement, locks the original
 purchase before operations, and chooses a persisted receipt. A unique partial
 index enforces one agreement stop per purchase. The insert guard in
 `supabase/migrations/20260905103149_annual_agreement_cleanup.sql` verifies receipt,
-terminal checkout and exact original provider intent fields. Cleanup settlement
+terminal checkout and exact original provider intent fields. The later refund
+cleanup migration extends those receipt and terminal-proof alternatives as
+described below. Cleanup settlement
 never updates purchase money, status or access. Roll back this guard before the
 cancellation and annual-ledger migrations; all operation evidence is retained.
 
@@ -445,6 +448,38 @@ rollback preserve records across retirement/recutover and restore borrowed SET
 and REFERENCES authority. The receipt table has forced RLS and no browser,
 service-role or billing-executor grants. Real database tests cover durable recovery,
 concurrency, deferral, exact binding, source mismatch, support revocation and
-retained history. Provider agreement cleanup for refund-triggered cancellation,
-actual source implementations, worker/support HTTP composition and final automatic
-refund acceptance remain due.
+retained history. Actual source implementations, worker/support HTTP composition and final automatic
+refund acceptance remain due. Owner-authorized original-agreement cleanup can
+consume the refund request that caused the local renewal stop.
+
+
+## Refund-triggered original agreement cleanup
+
+`supabase/migrations/20260905145000_annual_refund_agreement_cleanup.sql` extends
+the existing cleanup guard. The adapter and database share the private
+`billing.annual_original_charge_resolved_v1` predicate under the purchase lock.
+Ordinary terminal checkout evidence remains valid. An exact confirmed refund
+operation can alternatively establish full cumulative capture and refund of the
+original charge, even when its checkout operation remains unknown. This does not
+rewrite checkout evidence or grant paid access. The final refund operation may
+cover only the remaining balance; original provider/account/agreement/charge,
+company/year, amount and first-capture identity must still match. Malformed
+observations cannot provide that proof.
+
+Financial resolution and stop intent are separate requirements. The chosen
+manual cancellation or refund request must belong to the same purchase and match
+its actual renewal-stop time. Later refund requests cannot replace the original
+stop receipt. SQL rejects absent, conflicting, foreign or mismatched receipt
+choices. Cleanup replay and settlement preserve the chosen typed receipt and
+original operation, without changing purchase money, status or access/export.
+
+Unresolved refunds, incomplete original charges, shared agreements and unsupported
+renewal lineage defer new or unconfirmed cleanup. A confirmed cleanup remains
+replayable after current owner/fresh-MFA authorization. The provider still checks
+fresh original-charge safety immediately before STOP. The local MockTransport
+rehearsal proves this adapter path and lost-response recovery, not actual MT.
+
+Rollback restores the predecessor manual-receipt guard and removes the new
+resolution function while retaining all provider operations and receipts. The
+predecessor cannot initiate new refund-receipt cleanup; recutover restores its
+forward recovery. No worker or support cleanup caller is activated by this change.

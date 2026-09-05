@@ -216,9 +216,11 @@ def test_rollback_recutover_preserves_request_case_operation_and_role_authority(
     for _ in range(2):
         with psycopg.connect(DATABASE_URL, autocommit=True) as connection:
             before = connection.execute("select pg_has_role(current_user,'billing_store_owner','SET')").fetchone()
+            connection.execute((ROOT/'supabase/rollback/20260905145000_annual_refund_agreement_cleanup.sql').read_text())
             connection.execute((ROOT/'supabase/rollback'/MIGRATION).read_text())
             assert connection.execute("select to_regclass('billing.annual_refund_requests')").fetchone()[0] is None
             connection.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+            connection.execute((ROOT/'supabase/migrations/20260905145000_annual_refund_agreement_cleanup.sql').read_text())
             assert connection.execute("select pg_has_role(current_user,'billing_store_owner','SET')").fetchone() == before
         assert asyncio.run(store(setup).claim_refund(request)).resolution == original
 
