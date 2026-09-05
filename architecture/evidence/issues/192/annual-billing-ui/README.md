@@ -20,3 +20,11 @@ and valid error responses. No billing/provider policy was weakened.
 The page exposes annual history and local cancellation only. Legacy acquisition
 and entitlement retirement, annual checkout/refund/worker integration, real MT,
 source-owned readiness and the complete #192 release gates remain outstanding.
+
+Follow-up review found that Company Access recovery dropped a selected company;
+the corrected page preserves all scoped retry fields and distinguishes sign-in.
+The billing route also uses its own account layout so the workspace agreement
+gate cannot hide cancellation or replace its MFA destination. Actual Next.js
+browser checks passed with context-level MFA, context-level 401 and unaccepted
+new terms. Ownership and fresh MFA remain required by the annual API. The
+workspace agreement gate is unchanged for accounting work.

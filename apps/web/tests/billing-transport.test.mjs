@@ -99,7 +99,7 @@ test("billing entitlement is read from the backend and malformed policy is rejec
 
 test("billing page renders every backend-owned price without TypeScript policy", () => {
   const pages = [
-    new URL("../app/(owner)/billing/page.tsx", import.meta.url),
+    new URL("../app/(account)/billing/page.tsx", import.meta.url),
     new URL("../app/(owner)/workspace/page.tsx", import.meta.url),
   ].map((path) => readFileSync(path, "utf8"));
   assert.match(pages[0], /loadAnnualBillingSnapshot/u);

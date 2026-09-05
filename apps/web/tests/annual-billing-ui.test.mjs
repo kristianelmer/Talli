@@ -138,7 +138,7 @@ test("missing session reaches sign-in with replay context before any mutation", 
   assert.match(target.searchParams.get("next"), new RegExp(operationId));
 });
 
-const pageSource = readFileSync(new URL("../app/(owner)/billing/page.tsx", import.meta.url), "utf8");
+const pageSource = readFileSync(new URL("../app/(account)/billing/page.tsx", import.meta.url), "utf8");
 const company = { id: companyId, name: "Holding AS", admittedAccountingYear: 2026 };
 function pageHarness({ companies = [company], token = "session", contextError, requiresAal2, requiresSignIn, failure, purchases = [purchase] } = {}) {
   const reads = [];
@@ -215,3 +215,20 @@ for (const recovery of ["mfa", "login", "retry"]) {
     assert.doesNotMatch(html, /Fornyelsen ble stoppet|Stopp fornyelse/);
   });
 }
+
+const accountLayoutSource = readFileSync(new URL("../app/(account)/layout.tsx", import.meta.url), "utf8");
+test("billing account layout leaves legal and company recovery to its authorized page", async () => {
+  const child = React.createElement("p", {}, "Scoped billing recovery");
+  for (const user of [null, { email: "owner@example.test", email_confirmed_at: "2026-09-05" }]) {
+    const { default: AccountLayout } = compile(accountLayoutSource, {
+      "next/navigation": { redirect: () => { throw new Error("unexpected redirect"); } },
+      "../(owner)/AppNav": { AppNav: ({ children }) => children },
+      "../actions": { signOut: async () => {} },
+      "../lib/copy": { ownerCopy: { brand: "Talli", nav: { signOut: "Logg ut" } } },
+      "../lib/supabase/server": { getOperatorContext: async () => ({ user, isOperator: false }), needsEmailVerification: () => false },
+    });
+    const html = renderToStaticMarkup(await AccountLayout({ children: child }));
+    assert.match(html, /Scoped billing recovery/);
+  }
+  assert.doesNotMatch(accountLayoutSource, /listCompanyAccessContexts|currentAgreementAccepted|reacceptCompanyAgreement/);
+});
