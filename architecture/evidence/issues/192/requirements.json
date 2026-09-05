@@ -228,6 +228,21 @@
         "spec": "PASS exactdf152768963b6f64019e6628349450af9bf8177d, zero findings, read-only"
       },
       "limits": "Test incident/submission resolvers are synthetic. Digest consistency does not establish source authenticity. Real source-owned incident and submission authority, runtime/support/worker composition, refund-triggered agreement cleanup, actual MT, customer actionability and complete192 gates remain due. No production or hosted mutation; mainccf1dcba and release/productiond331ee27 unchanged. Full165 goal ACTIVE;150 unclaimed."
+    },
+    "annualRefundAgreementCleanup": {
+      "implementationRevision": "11304d1e8425ba3b56be3f0fa2e564651b1a11fa",
+      "scope": "Typed original cancellation or refund receipt, private billing-owned terminal-charge predicate, original agreement cleanup adapter, migration20260905145000 and predecessor rollback/recutover integration. No new caller, provider activation or source authority.",
+      "behavior": "Bind exactly one same-purchase receipt to the actual renewal-stop timestamp. Preserve original STOP intent and confirmed replay under current owner/fresh MFA. Unresolved refund or original charge, shared agreement and unsupported renewal lineage defer new/unconfirmed cleanup. Exact confirmed full cumulative refund may resolve UNKNOWN original checkout for cleanup without rewriting checkout evidence or granting paid access; final operation may refund only the remaining balance. Provider rechecks current original-charge safety before STOP.",
+      "focusedDatabase": "31 real isolated PostgreSQL cases pass within the final full lane: receipt choice/misbinding, UNKNOWN checkout/full refund, final partial refund with cumulative full resolution, malformed observations and integer claim basis, two direct-trigger/adapter lock wait interleavings, receipt/intent retention, rollback/recutover and real provider-adapter MockTransport lost-response/unresolved-charge behavior. MockTransport is synthetic and is not Merchant Test evidence.",
+      "completeDatabase": "Fresh task-owned Supabase2.109.1 fixture tallig46149:226 Python+1 Node pass, zero skips. All predecessor and new rollback/recutover rehearsals pass. Advisors0 blocking security/error findings and34 performance warnings. Owned fixtures tallig44463 and tallig46149 stopped; no matching containers retained.",
+      "otherValidation": "Ordinary backend1047 pass,2 existing skips,226 DB cases deselected; CI12 pass; billing383 Python+40 Node pass; git diff --check clean.",
+      "corrections": "Initial focused runs against a stale copied migration exposed missing checkout URL/float checks; migration roundtrip followed by25 focused passes. Preliminary Spec review found claim-basis JSON strings accepted by ->> numeric casts. Two new negative tests reproduced the gap against the prior copied SQL (29pass/2fail); explicit JSON-number checks plus integer syntax now pass in the fresh final full lane. Both direct-trigger and adapter lock wait tests prove pending-refund visibility after acquiring the purchase lock; STABLE helper retained.",
+      "independentReviews": {
+        "standards": "PASS exact11304d1e8425ba3b56be3f0fa2e564651b1a11fa, zero findings, read-only",
+        "spec": "PASS exact11304d1e8425ba3b56be3f0fa2e564651b1a11fa, zero remaining findings, read-only"
+      },
+      "architecture": "Exact implementation final full suite49/51: only existing four unapproved future-owned deletion scopes and active inventory92vs96. Deterministic evidence and all other architecture tests pass. No checker/baseline/ADR/order changes. NOT architecture PASS.",
+      "limits": "Refund-triggered original agreement cleanup persistence is implemented; source-owned incident/submission facts, caller/worker/support composition, actual MT, customer actionability and complete192 gates remain due. No production or hosted mutation. Remote mainccf1dcba and release/productiond331ee27 unchanged. Full165 goal ACTIVE;150 unclaimed."
     }
   },
   "externalEvidence": {
