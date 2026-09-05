@@ -166,16 +166,16 @@
       "requirement": "The complete billing stage exit criteria from #132 pass before authority connections begin.",
       "evidence": [
         {
-          "path": "architecture/evidence/customer-ready-gates/abd77efd72e789372901d8e2c29c02f8fd372a89.json",
+          "path": "architecture/evidence/customer-ready-gates/2716429a6699ae1b280524d960f97233736c715a.json",
           "command": "npm run gate:customer-ready",
-          "revision": "abd77efd72e789372901d8e2c29c02f8fd372a89",
-          "evidenceDigest": "sha256:cf482b016cb4cf34819e71f2ca0c50ed81ef371a20062b4a2d724c43ed5f0825"
+          "revision": "2716429a6699ae1b280524d960f97233736c715a",
+          "evidenceDigest": "sha256:a79cb9f31019d7e18dc9bccf5d4ef83cdc55e8be2769cb692cf49990de2b8ba9"
         },
         {
-          "path": "architecture/evidence/customer-ready-gates/281ba127f645c90fda98ca74cd344f8a87f194ba.json",
-          "command": "npm run gate:customer-ready -- --previous abd77efd72e789372901d8e2c29c02f8fd372a89",
-          "revision": "281ba127f645c90fda98ca74cd344f8a87f194ba",
-          "evidenceDigest": "sha256:fb6301a04e9fee45b91337cde7ebec8727cbfb82a708aed17aca9fd8cf0dde6f"
+          "path": "architecture/evidence/customer-ready-gates/b137088c5cb6d6abd66761c05b332e318ab8b05d.json",
+          "command": "npm run gate:customer-ready -- --previous 2716429a6699ae1b280524d960f97233736c715a",
+          "revision": "b137088c5cb6d6abd66761c05b332e318ab8b05d",
+          "evidenceDigest": "sha256:f3beb3a1f39c0d20ec52509f30f66db1b2f7677c026c8f41142d5abe7249ae9f"
         },
         {
           "path": "architecture/compatibility.json",
