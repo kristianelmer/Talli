@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#191",
   "source": "https://github.com/kristianelmer/Talli/issues/191",
-  "sourceCheckedAt": "2026-09-04T23:53:04Z",
+  "sourceCheckedAt": "2026-09-05T00:18:46Z",
   "entryBlockers": [
     {
       "issue": "#148",
@@ -104,7 +104,7 @@
     "productionPromotion": "not authorized by #191"
   },
   "checkpoint": {
-    "recordedAt": "2026-09-04T23:53:04Z",
+    "recordedAt": "2026-09-05T00:18:46Z",
     "scope": [
       "strict commands for cash capital increase, loss-cover capital reduction, owner-to-company loan, Norwegian intercompany loan, ordinary bank loan and straightforward group contribution",
       "versioned canonical facts with Documents and Banking evidence verification",
@@ -123,9 +123,7 @@
       "fullLocalSupabase": "passed from a fresh isolated database: Ledger 70, Banking 21, Investments 33, Documents 3, Marketing 2, validation 17+1 database, Supabase 65, browser owner 17, hosted migration authority 1, governance 24+2",
       "customerReadyGate": "passed all 11 checks at 182ecaf951c23bd10df9bfe3d471de2efe7a62b5"
     },
-    "remaining": [
-      "protected Release PR integration and post-merge verification"
-    ]
+    "remaining": []
   },
   "gateRepair": {
     "initialRevision": "4b4172cf56f4ffced298f892983578a629c6e61b",
@@ -145,5 +143,25 @@
       "transcriptDigest": "sha256:88e40c622ca92fe6226b3426ae595debaa3595779da71999d3ca92b873a25cbc"
     }
   ],
-  "closeState": "implementation-and-local-release-gate-complete-awaiting-protected-integration"
+  "integration": {
+    "pullRequest": "https://github.com/kristianelmer/Talli/pull/204",
+    "candidateRevision": "8735e40a7bbdfba493614f4a246aed95dd74235f",
+    "localPassingRevision": "182ecaf951c23bd10df9bfe3d471de2efe7a62b5",
+    "mergedAt": "2026-09-05T00:06:39Z",
+    "mainCommit": "cc977b0e186665cb90db28d5a2bd0e9081c9b647",
+    "issueClosedAt": "2026-09-05T00:06:40Z",
+    "postMergeWorkflowRun": "https://github.com/kristianelmer/Talli/actions/runs/33931878867",
+    "postMergeReleaseGateJob": "https://github.com/kristianelmer/Talli/actions/runs/33931878867/job/101213607076",
+    "postMergeGithubDeploymentId": 6274986655,
+    "postMergeVercelDeploymentId": "dpl_8o6JVBpHHiDWkzBWJx7ENfZJ44GL",
+    "postMergeVercelInspector": "https://vercel.com/kristianelmers-projects/talli-web/8o6JVBpHHiDWkzBWJx7ENfZJ44GL",
+    "postMergePreviewEnvironment": "Preview",
+    "postMergePreviewProductionEnvironment": false,
+    "productionBranch": "release/production",
+    "releaseProductionCommit": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+    "latestProductionDeploymentId": 5816953583,
+    "productionDeploymentChanged": false,
+    "verdict": "pass"
+  },
+  "closeState": "complete: pull request 204 merged through protected Release, issue 191 closed, post-merge Release and Preview passed, and release/production remained unchanged"
 }

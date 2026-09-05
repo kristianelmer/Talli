@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#191",
+  "verifiedAt": "2026-09-05T00:18:46Z",
+  "sourceRevision": "8735e40a7bbdfba493614f4a246aed95dd74235f",
+  "githubDeploymentId": 6274868990,
+  "githubDeploymentStatusId": 17851377130,
+  "environment": "Preview",
+  "productionEnvironment": false,
+  "state": "SUCCESS",
+  "provider": "Vercel",
+  "teamId": "team_vjY7Lg3yOS7gSUnFqbihoTo2",
+  "projectId": "prj_1JJkOqzGBhn438IKHYADWiRbVGeZ",
+  "project": "kristianelmers-projects/talli-web",
+  "deploymentUrl": "https://talli-a5iwygtrm-kristianelmers-projects.vercel.app",
+  "providerReceiptUrl": "https://vercel.com/kristianelmers-projects/talli-web/64S191aE43A7YKpi8gpMvE3YJMJk",
+  "providerSource": "git",
+  "providerCommitSha": "8735e40a7bbdfba493614f4a246aed95dd74235f",
+  "compensatingVerification": {
+    "workflowRun": "https://github.com/kristianelmer/Talli/actions/runs/33931275992",
+    "checks": [
+      "typecheck and declared architecture",
+      "web-to-FastAPI contract boundary",
+      "production web and backend builds",
+      "production artifact smoke",
+      "complete launch rehearsal",
+      "production dependency audit",
+      "isolated migrations, RLS, storage, and owner persistence",
+      "rendered public acquisition journey"
+    ],
+    "allRequiredJobs": "SUCCESS"
+  },
+  "releaseBoundary": {
+    "vercelProductionBranch": "release/production",
+    "configurationVerifiedAt": "2026-09-05T00:18:46Z",
+    "mainCommitBefore": "1ec0844bf81473b2e8b18904a9bde3ba05214cc8",
+    "mainCommitAfter": "cc977b0e186665cb90db28d5a2bd0e9081c9b647",
+    "releaseProductionCommitBefore": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+    "releaseProductionCommitAfter": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+    "latestProductionDeploymentId": 5816953583,
+    "latestProductionDeploymentCommit": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+    "productionDeploymentChanged": false
+  },
+  "postMergeVerification": {
+    "pullRequest": "https://github.com/kristianelmer/Talli/pull/204",
+    "mergedAt": "2026-09-05T00:06:39Z",
+    "mainCommit": "cc977b0e186665cb90db28d5a2bd0e9081c9b647",
+    "issueClosedAt": "2026-09-05T00:06:40Z",
+    "workflowRun": "https://github.com/kristianelmer/Talli/actions/runs/33931878867",
+    "releaseGateJob": "https://github.com/kristianelmer/Talli/actions/runs/33931878867/job/101213607076",
+    "githubDeploymentId": 6274986655,
+    "githubDeploymentStatusId": 17851708786,
+    "environment": "Preview",
+    "productionEnvironment": false,
+    "state": "SUCCESS",
+    "deploymentUrl": "https://talli-fwq1qn1jt-kristianelmers-projects.vercel.app",
+    "providerReceiptUrl": "https://vercel.com/kristianelmers-projects/talli-web/8o6JVBpHHiDWkzBWJx7ENfZJ44GL",
+    "verdict": "pass"
+  },
+  "verdict": "pass"
+}
