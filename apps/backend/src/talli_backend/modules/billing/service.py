@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import UTC, datetime
 
 from talli_backend.modules.billing.public import (
@@ -116,7 +117,8 @@ class BillingService:
         return await self._persistence.manage_pilot_entitlement(command)
 
     async def snapshot(self, query: BillingSnapshotQuery) -> BillingSnapshot:
-        return await self._persistence.snapshot(query)
+        snapshot = await self._persistence.snapshot(query)
+        return replace(snapshot, pricing=tuple(_PRICING.values()))
 
     async def entitlement(
         self, query: BillingEntitlementQuery

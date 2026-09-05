@@ -1857,8 +1857,7 @@
             "type": "boolean"
           },
           "status": {
-            "title": "Status",
-            "type": "string"
+            "$ref": "#/components/schemas/BillingStatus"
           }
         },
         "required": [
@@ -1953,8 +1952,7 @@
             "title": "Incomeyear"
           },
           "kind": {
-            "title": "Kind",
-            "type": "string"
+            "$ref": "#/components/schemas/BillingPaymentKind"
           },
           "provider": {
             "title": "Provider",
@@ -1969,8 +1967,7 @@
             "type": "boolean"
           },
           "status": {
-            "title": "Status",
-            "type": "string"
+            "$ref": "#/components/schemas/BillingPaymentStatus"
           }
         },
         "required": [
@@ -1989,6 +1986,27 @@
         ],
         "title": "BillingPaymentEventWire",
         "type": "object"
+      },
+      "BillingPaymentKind": {
+        "enum": [
+          "subscription",
+          "subscription_cancellation",
+          "filing_package",
+          "refund"
+        ],
+        "title": "BillingPaymentKind",
+        "type": "string"
+      },
+      "BillingPaymentStatus": {
+        "enum": [
+          "created",
+          "succeeded",
+          "failed",
+          "refunded",
+          "canceled"
+        ],
+        "title": "BillingPaymentStatus",
+        "type": "string"
       },
       "BillingPilotEntitlementCommandWire": {
         "additionalProperties": false,
@@ -2167,6 +2185,28 @@
         "title": "BillingPlan",
         "type": "string"
       },
+      "BillingPricingWire": {
+        "properties": {
+          "filingPackageNok": {
+            "title": "Filingpackagenok",
+            "type": "integer"
+          },
+          "monthlyNok": {
+            "title": "Monthlynok",
+            "type": "integer"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/BillingPlan"
+          }
+        },
+        "required": [
+          "plan",
+          "monthlyNok",
+          "filingPackageNok"
+        ],
+        "title": "BillingPricingWire",
+        "type": "object"
+      },
       "BillingSnapshotWire": {
         "properties": {
           "accounts": {
@@ -2189,15 +2229,36 @@
             },
             "title": "Pilotentitlements",
             "type": "array"
+          },
+          "pricing": {
+            "items": {
+              "$ref": "#/components/schemas/BillingPricingWire"
+            },
+            "title": "Pricing",
+            "type": "array"
           }
         },
         "required": [
           "accounts",
           "paymentEvents",
-          "pilotEntitlements"
+          "pilotEntitlements",
+          "pricing"
         ],
         "title": "BillingSnapshotWire",
         "type": "object"
+      },
+      "BillingStatus": {
+        "enum": [
+          "active",
+          "subscription_required",
+          "filing_package_required",
+          "ready_for_production_filing",
+          "unsupported_case",
+          "refund_eligible",
+          "pilot_entitlement_active"
+        ],
+        "title": "BillingStatus",
+        "type": "string"
       },
       "BillingUnsupportedWire": {
         "additionalProperties": false,

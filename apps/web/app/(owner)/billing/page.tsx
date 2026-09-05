@@ -35,6 +35,7 @@ export default async function BillingPage() {
 
   const account = data.primaryBillingAccount;
   const activePlan = account?.pricing_plan;
+  const pricing = data.billingPricing;
 
   return (
     <div>
@@ -64,19 +65,27 @@ export default async function BillingPage() {
       <section className="billingSection">
         <h2 className="sectionTitle">{t.planTitle}</h2>
         <div className="planGrid">
-          {account && activePlan ? (
-            <div className="planCard planCard--current">
-              <div className="planCardHead">
-                <span className="planName">{t.plans[activePlan]}</span>
-                <StatusBadge variant="info" label={t.currentPlanLabel} />
+          {pricing.map((item) => {
+            const isCurrent = activePlan === item.plan;
+            return (
+              <div
+                className={isCurrent ? "planCard planCard--current" : "planCard"}
+                key={item.plan}
+              >
+                <div className="planCardHead">
+                  <span className="planName">{t.plans[item.plan]}</span>
+                  {isCurrent ? (
+                    <StatusBadge variant="info" label={t.currentPlanLabel} />
+                  ) : null}
+                </div>
+                <p className="planPrice">{t.perMonth(item.monthly_nok)}</p>
+                <p className="planPackage">{t.packagePrice(item.filing_package_nok)}</p>
+                {isCurrent && item.plan === "founder" && account?.founder_cohort_number ? (
+                  <p className="cardNote">{t.founderCohort(account.founder_cohort_number)}</p>
+                ) : null}
               </div>
-              <p className="planPrice">{t.perMonth(account.monthly_nok)}</p>
-              <p className="planPackage">{t.packagePrice(account.filing_package_nok)}</p>
-              {activePlan === "founder" && account.founder_cohort_number ? (
-                <p className="cardNote">{t.founderCohort(account.founder_cohort_number)}</p>
-              ) : null}
-            </div>
-          ) : null}
+            );
+          })}
         </div>
       </section>
 

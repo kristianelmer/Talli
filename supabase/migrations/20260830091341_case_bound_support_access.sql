@@ -10,6 +10,9 @@ begin;
 do $borrow_support_function_owner$
 begin
   execute pg_catalog.format('grant company_access_executor to %I', current_user);
+  if pg_catalog.to_regclass('billing.billing_accounts') is not null then
+    execute pg_catalog.format('grant billing_store_owner to %I', current_user);
+  end if;
 end
 $borrow_support_function_owner$;
 
@@ -579,12 +582,29 @@ drop policy if exists "support operators can read audit events" on public.audit_
 drop policy if exists "support operators can read cancellation state" on public.company_cancellations;
 drop policy if exists "support operators can read filing submissions" on public.filing_submissions;
 drop policy if exists "support operators can read filing readiness snapshots" on public.filing_readiness_snapshots;
-drop policy if exists "support operators can read billing accounts" on public.billing_accounts;
-drop policy if exists "support operators can read billing payment events" on public.billing_payment_events;
+do $drop_legacy_billing_support_policies$
+begin
+  if pg_catalog.to_regclass('billing.billing_accounts') is not null then
+    drop policy if exists "support operators can read billing accounts" on billing.billing_accounts;
+    drop policy if exists "support operators can read billing payment events" on billing.billing_payment_events;
+  else
+    drop policy if exists "support operators can read billing accounts" on public.billing_accounts;
+    drop policy if exists "support operators can read billing payment events" on public.billing_payment_events;
+  end if;
+end
+$drop_legacy_billing_support_policies$;
 drop policy if exists "support operators can read authority permissions" on public.authority_permissions;
 drop policy if exists "support operators can read authority test runs" on public.authority_test_runs;
 drop policy if exists system_user_requests_operator_read on public.system_user_requests;
-drop policy if exists "active operators read production pilot entitlements" on public.production_pilot_entitlements;
+do $drop_legacy_pilot_support_policy$
+begin
+  if pg_catalog.to_regclass('billing.production_pilot_entitlements') is not null then
+    drop policy if exists "active operators read production pilot entitlements" on billing.production_pilot_entitlements;
+  else
+    drop policy if exists "active operators read production pilot entitlements" on public.production_pilot_entitlements;
+  end if;
+end
+$drop_legacy_pilot_support_policy$;
 drop policy if exists "active operators read filing approval snapshots" on public.filing_approval_snapshots;
 drop policy if exists "active operators read production filing submissions" on public.production_filing_submissions;
 drop policy if exists "active operators read production filing events" on public.production_filing_events;
@@ -640,12 +660,22 @@ using (
 
 grant select on public.companies, public.audit_events, public.company_cancellations,
   public.filing_submissions, public.filing_readiness_snapshots,
-  public.billing_accounts, public.billing_payment_events,
   public.authority_permissions, public.authority_test_runs,
-  public.system_user_requests, public.production_pilot_entitlements,
-  public.filing_approval_snapshots, public.production_filing_submissions,
-  public.production_filing_events, public.production_feedback_artifacts,
-  public.documents, public.company_deletion_reviews to company_access_executor;
+  public.system_user_requests, public.filing_approval_snapshots,
+  public.production_filing_submissions, public.production_filing_events,
+  public.production_feedback_artifacts, public.documents,
+  public.company_deletion_reviews to company_access_executor;
+do $grant_billing_support_reads$
+begin
+  if pg_catalog.to_regclass('public.billing_accounts') is not null then
+    grant select on public.billing_accounts, public.billing_payment_events,
+      public.production_pilot_entitlements to company_access_executor;
+  else
+    grant select on billing.billing_accounts, billing.billing_payment_events,
+      billing.production_pilot_entitlements to company_access_executor;
+  end if;
+end
+$grant_billing_support_reads$;
 grant select on storage.objects to company_access_executor;
 
 drop policy if exists "company access commands read companies" on public.companies;
@@ -674,12 +704,29 @@ using (
 drop policy if exists support_case_read_audit_events on public.audit_events;
 drop policy if exists support_case_read_filing_submissions on public.filing_submissions;
 drop policy if exists support_case_read_filing_readiness on public.filing_readiness_snapshots;
-drop policy if exists support_case_read_billing_accounts on public.billing_accounts;
-drop policy if exists support_case_read_billing_events on public.billing_payment_events;
+do $drop_billing_support_policies$
+begin
+  if pg_catalog.to_regclass('billing.billing_accounts') is not null then
+    drop policy if exists support_case_read_billing_accounts on billing.billing_accounts;
+    drop policy if exists support_case_read_billing_events on billing.billing_payment_events;
+  else
+    drop policy if exists support_case_read_billing_accounts on public.billing_accounts;
+    drop policy if exists support_case_read_billing_events on public.billing_payment_events;
+  end if;
+end
+$drop_billing_support_policies$;
 drop policy if exists support_case_read_authority_permissions on public.authority_permissions;
 drop policy if exists support_case_read_authority_runs on public.authority_test_runs;
 drop policy if exists support_case_read_system_user_requests on public.system_user_requests;
-drop policy if exists support_case_read_pilot_entitlements on public.production_pilot_entitlements;
+do $drop_pilot_support_policy$
+begin
+  if pg_catalog.to_regclass('billing.production_pilot_entitlements') is not null then
+    drop policy if exists support_case_read_pilot_entitlements on billing.production_pilot_entitlements;
+  else
+    drop policy if exists support_case_read_pilot_entitlements on public.production_pilot_entitlements;
+  end if;
+end
+$drop_pilot_support_policy$;
 drop policy if exists support_case_read_approval_snapshots on public.filing_approval_snapshots;
 drop policy if exists support_case_read_production_submissions on public.production_filing_submissions;
 drop policy if exists support_case_read_production_events on public.production_filing_events;
@@ -705,18 +752,37 @@ for select to company_access_executor using (
     public.company_access_current_support_case_id_v1(), company_id, 'filing'
   )
 );
-create policy support_case_read_billing_accounts on public.billing_accounts
-for select to company_access_executor using (
-  public.company_access_has_open_support_case_v1(
-    public.company_access_current_support_case_id_v1(), company_id, 'billing'
-  )
-);
-create policy support_case_read_billing_events on public.billing_payment_events
-for select to company_access_executor using (
-  public.company_access_has_open_support_case_v1(
-    public.company_access_current_support_case_id_v1(), company_id, 'billing'
-  )
-);
+do $create_billing_support_policies$
+begin
+  if pg_catalog.to_regclass('billing.billing_accounts') is not null then
+    create policy support_case_read_billing_accounts on billing.billing_accounts
+    for select to company_access_executor using (
+      public.company_access_has_open_support_case_v1(
+        public.company_access_current_support_case_id_v1(), company_id, 'billing'
+      )
+    );
+    create policy support_case_read_billing_events on billing.billing_payment_events
+    for select to company_access_executor using (
+      public.company_access_has_open_support_case_v1(
+        public.company_access_current_support_case_id_v1(), company_id, 'billing'
+      )
+    );
+  else
+    create policy support_case_read_billing_accounts on public.billing_accounts
+    for select to company_access_executor using (
+      public.company_access_has_open_support_case_v1(
+        public.company_access_current_support_case_id_v1(), company_id, 'billing'
+      )
+    );
+    create policy support_case_read_billing_events on public.billing_payment_events
+    for select to company_access_executor using (
+      public.company_access_has_open_support_case_v1(
+        public.company_access_current_support_case_id_v1(), company_id, 'billing'
+      )
+    );
+  end if;
+end
+$create_billing_support_policies$;
 create policy support_case_read_authority_permissions on public.authority_permissions
 for select to company_access_executor using (
   public.company_access_has_open_support_case_v1(
@@ -735,12 +801,25 @@ for select to company_access_executor using (
     public.company_access_current_support_case_id_v1(), company_id, 'authority'
   )
 );
-create policy support_case_read_pilot_entitlements on public.production_pilot_entitlements
-for select to company_access_executor using (
-  public.company_access_has_open_support_case_v1(
-    public.company_access_current_support_case_id_v1(), company_id, 'production'
-  )
-);
+do $create_pilot_support_policy$
+begin
+  if pg_catalog.to_regclass('billing.production_pilot_entitlements') is not null then
+    create policy support_case_read_pilot_entitlements on billing.production_pilot_entitlements
+    for select to company_access_executor using (
+      public.company_access_has_open_support_case_v1(
+        public.company_access_current_support_case_id_v1(), company_id, 'production'
+      )
+    );
+  else
+    create policy support_case_read_pilot_entitlements on public.production_pilot_entitlements
+    for select to company_access_executor using (
+      public.company_access_has_open_support_case_v1(
+        public.company_access_current_support_case_id_v1(), company_id, 'production'
+      )
+    );
+  end if;
+end
+$create_pilot_support_policy$;
 create policy support_case_read_approval_snapshots on public.filing_approval_snapshots
 for select to company_access_executor using (
   public.company_access_has_open_support_case_v1(
@@ -1352,9 +1431,41 @@ grant execute on function public.company_access_current_support_case_id_v1(),
 to company_access_executor;
 reset role;
 
+-- A current-state support recutover can run after billing's public compatibility
+-- views have been removed. Keep the historical expand usable in both topologies
+-- by rewriting only its support reader to the canonical private relations.
+do $rewrite_support_billing_reader$
+declare
+  definition text;
+begin
+  if pg_catalog.to_regclass('public.billing_accounts') is null
+    and pg_catalog.to_regclass('billing.billing_accounts') is not null
+  then
+    definition := pg_catalog.pg_get_functiondef(
+      'public.company_access_read_support_case(uuid)'::regprocedure
+    );
+    definition := pg_catalog.replace(
+      definition, 'public.billing_accounts', 'billing.billing_accounts'
+    );
+    definition := pg_catalog.replace(
+      definition, 'public.billing_payment_events', 'billing.billing_payment_events'
+    );
+    definition := pg_catalog.replace(
+      definition,
+      'public.production_pilot_entitlements',
+      'billing.production_pilot_entitlements'
+    );
+    execute definition;
+  end if;
+end
+$rewrite_support_billing_reader$;
+
 do $function_ownership_cleanup$
 begin
   execute pg_catalog.format('revoke company_access_executor from %I', current_user);
+  if exists (select 1 from pg_catalog.pg_roles where rolname = 'billing_store_owner') then
+    execute pg_catalog.format('revoke billing_store_owner from %I', current_user);
+  end if;
 end
 $function_ownership_cleanup$;
 

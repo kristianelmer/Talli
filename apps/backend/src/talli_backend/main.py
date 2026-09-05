@@ -179,12 +179,16 @@ from talli_backend.modules.billing.public import (
     BillingEntitlementDecision,
     BillingEntitlementQuery,
     BillingError,
+    BillingErrorCode,
     BillingObligation,
     BillingPaymentEvent,
+    BillingPaymentKind,
     BillingPaymentProvider,
+    BillingPaymentStatus,
     BillingPlan,
     BillingSnapshot,
     BillingSnapshotQuery,
+    BillingStatus,
     CancelSubscriptionCommand,
     ConfigureBillingAccountCommand,
     ManageProductionPilotEntitlementCommand,
@@ -515,14 +519,20 @@ class BillingAccountWire(TransportModel):
     updated_at: datetime
 
 
+class BillingPricingWire(TransportModel):
+    plan: BillingPlan
+    monthly_nok: int
+    filing_package_nok: int
+
+
 class BillingPaymentEventWire(TransportModel):
     event_id: UUID
     company_id: UUID
     provider: str
     provider_reference: str
     idempotency_key: str
-    kind: str
-    status: str
+    kind: BillingPaymentKind
+    status: BillingPaymentStatus
     amount_nok: int
     income_year: int | None
     created_by: UUID
@@ -553,7 +563,7 @@ class BillingEntitlementDecisionWire(TransportModel):
     company_id: UUID
     income_year: int
     obligation: BillingObligation
-    status: str
+    status: BillingStatus
     allowed: bool
     charge_allowed: bool
     readiness_allowed: bool
@@ -566,6 +576,7 @@ class BillingSnapshotWire(TransportModel):
     accounts: list[BillingAccountWire]
     payment_events: list[BillingPaymentEventWire]
     pilot_entitlements: list[BillingPilotEntitlementWire]
+    pricing: list[BillingPricingWire]
 
 
 MARKETING_REASONS_BY_EVENT: dict[MarketingEventName, tuple[MarketingReasonCode, ...]] = {
@@ -3387,6 +3398,21 @@ def create_app(
                 title="Authentication required",
                 detail="A valid session is required.",
             ) from None
+        except BankingError as error:
+            statuses = {
+                ErrorCategory.INVALID_INPUT: 422,
+                ErrorCategory.NOT_FOUND: 404,
+                ErrorCategory.CONFLICT: 409,
+                ErrorCategory.FORBIDDEN: 403,
+                ErrorCategory.PRECONDITION_FAILED: 409,
+                ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
+            }
+            raise ApiProblem(
+                status=statuses[error.category],
+                code=error.code,
+                title="Banking request failed",
+                detail=error.message or "The banking request could not be completed.",
+            ) from None
 
     async def billing_call(call: Callable[[], Awaitable[ResponseT]]) -> ResponseT:
         try:
@@ -3407,26 +3433,27 @@ def create_app(
                 ErrorCategory.PRECONDITION_FAILED: 409,
                 ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
             }
-            raise ApiProblem(
-                status=statuses[error.category],
-                code=error.code,
-                title="Billing request failed",
-                detail=error.message or "The billing request could not be completed.",
-            ) from None
-        except BankingError as error:
-            statuses = {
-                ErrorCategory.INVALID_INPUT: 422,
-                ErrorCategory.NOT_FOUND: 404,
-                ErrorCategory.CONFLICT: 409,
-                ErrorCategory.FORBIDDEN: 403,
-                ErrorCategory.PRECONDITION_FAILED: 409,
-                ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
+            details = {
+                BillingErrorCode.INVALID_INPUT: "Ugyldig billingforespørsel.",
+                BillingErrorCode.NOT_FOUND: "Billingkonto mangler.",
+                BillingErrorCode.FORBIDDEN: "Du har ikke tilgang til billingkontoen.",
+                BillingErrorCode.STEP_UP_REQUIRED: "Ny tofaktorbekreftelse kreves.",
+                BillingErrorCode.IDEMPOTENCY_KEY_REUSED: "Operasjonsnøkkelen er allerede brukt med andre data.",
+                BillingErrorCode.IDEMPOTENCY_IN_PROGRESS: "Billingoperasjonen behandles allerede.",
+                BillingErrorCode.SUBSCRIPTION_REQUIRED: "Aktivt abonnement kreves før produksjonsfiling.",
+                BillingErrorCode.FILING_NOT_READY: "Filing readiness må være klar før filingpakke kan betales.",
+                BillingErrorCode.FILING_PACKAGE_REQUIRED: "Filingpakke må betales før produksjonsinnsending.",
+                BillingErrorCode.UNSUPPORTED_CASE: "Saken er utenfor Talli-støtte. Ikke ta betalt for filingpakke.",
+                BillingErrorCode.REFUND_NOT_ALLOWED: "Kun støttet betalt filingpakke kan refunderes.",
+                BillingErrorCode.PROVIDER_DISABLED: "Betalingsleverandøren er deaktivert.",
+                BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN: "Betalingsutfallet er ukjent og må avstemmes.",
+                BillingErrorCode.DEPENDENCY_UNAVAILABLE: "Billing er midlertidig utilgjengelig.",
             }
             raise ApiProblem(
                 status=statuses[error.category],
                 code=error.code,
-                title="Banking request failed",
-                detail=error.message or "The banking request could not be completed.",
+                title="Billing request failed",
+                detail=error.message or details[BillingErrorCode(error.code)],
             ) from None
 
     def ledger_input(factory: Callable[[], ResponseT]) -> ResponseT:
@@ -3538,6 +3565,14 @@ def create_app(
             accounts=[billing_account_wire(item) for item in value.accounts],
             payment_events=[billing_event_wire(item) for item in value.payment_events],
             pilot_entitlements=[billing_pilot_wire(item) for item in value.pilot_entitlements],
+            pricing=[
+                BillingPricingWire(
+                    plan=item.plan,
+                    monthly_nok=item.monthly_nok,
+                    filing_package_nok=item.filing_package_nok,
+                )
+                for item in value.pricing
+            ],
         )
 
     @application.exception_handler(ApiProblem)

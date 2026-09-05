@@ -101,7 +101,12 @@ export async function loadWorkspaceData() {
   const companyIds = companies.map((company) => company.id);
   const billingSnapshot = accessToken && companyIds.length
     ? await loadBillingSnapshot(accessToken, { companyIds })
-    : { accounts: [], paymentEvents: [], pilotEntitlements: [] };
+    : { accounts: [], paymentEvents: [], pilotEntitlements: [], pricing: [] };
+  const billingPricing = billingSnapshot.pricing.map((item) => ({
+    plan: item.plan,
+    monthly_nok: item.monthlyNok,
+    filing_package_nok: item.filingPackageNok,
+  }));
   const billingAccounts = billingSnapshot.accounts.map((account) => ({
     company_id: account.companyId,
     pricing_plan: account.pricingPlan,
@@ -319,6 +324,7 @@ export async function loadWorkspaceData() {
     notifications,
     cancellations,
     billingAccounts,
+    billingPricing,
     billingPaymentEvents,
     transactions,
     bankSuggestionAcceptances,

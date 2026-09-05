@@ -1,0 +1,122 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#137",
+  "source": "https://github.com/kristianelmer/Talli/issues/137",
+  "sourceCheckedAt": "2026-09-05T02:10:01Z",
+  "entryBlockers": [
+    {
+      "issue": "#191",
+      "requiredState": "CLOSED",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/191#issuecomment-5548132452"
+    },
+    {
+      "issue": "#148",
+      "requiredState": "CLOSED",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/148#issuecomment-5546585275"
+    }
+  ],
+  "decisionBoundary": {
+    "migrationOrderSource": "https://github.com/kristianelmer/Talli/issues/132#issuecomment-5083588592",
+    "routeSource": "https://github.com/kristianelmer/Talli/issues/165",
+    "rule": "#137 moves billing policy and data behind the Python public contract while retaining only the simulated provider. It selects or activates no paid provider and cannot advance production filing or launch authority."
+  },
+  "criteria": [
+    {
+      "id": "GH-137-A1",
+      "requirement": "Billing and filing-entitlement decisions come from the backend public API.",
+      "evidence": [
+        {"path": "apps/backend/src/talli_backend/modules/billing/public.py", "command": "npm run test:billing"},
+        {"path": "apps/backend/src/talli_backend/modules/billing/service.py", "command": "npm run test:billing"},
+        {"path": "apps/web/features/billing/transport.ts", "command": "npm run test:billing"}
+      ],
+      "status": "implemented-and-focused-tests-passed"
+    },
+    {
+      "id": "GH-137-A2",
+      "requirement": "The existing billing page presents equivalent supported, blocked, refund, cancellation, plan and price states.",
+      "evidence": [
+        {"path": "apps/web/app/(owner)/billing/page.tsx", "command": "npm run test:billing"},
+        {"path": "apps/web/app/(owner)/workspace/page.tsx", "command": "npm run typecheck"},
+        {"path": "apps/web/tests/billing-transport.test.mjs", "command": "npm run test:billing"}
+      ],
+      "status": "implemented-with-backend-owned-pricing-and-focused-tests-passed"
+    },
+    {
+      "id": "GH-137-A3",
+      "requirement": "Provider events are idempotent and cannot bypass filing gates.",
+      "evidence": [
+        {"path": "apps/backend/tests/test_billing.py", "command": "npm run test:billing"},
+        {"path": "apps/backend/tests/test_billing_provider.py", "command": "npm run test:billing"},
+        {"path": "tests/billing_database_runtime.test.mjs", "command": "npm run test:supabase:local"}
+      ],
+      "status": "implemented-and-focused-tests-passed"
+    },
+    {
+      "id": "GH-137-A4",
+      "requirement": "Company scope and sensitive-action authorization are enforced.",
+      "evidence": [
+        {"path": "apps/backend/src/talli_backend/systems/billing/session.py", "command": "npm run test:billing"},
+        {"path": "apps/backend/src/talli_backend/adapters/supabase_billing.py", "command": "npm run test:supabase:local"},
+        {"path": "supabase/migrations/20260905010000_billing_capability.sql", "command": "npm run test:supabase:local"}
+      ],
+      "status": "implemented-and-fresh-runtime-tests-passed"
+    },
+    {
+      "id": "GH-137-A5",
+      "requirement": "One entitlement path remains and provider-port contract tests pass.",
+      "evidence": [
+        {"path": "apps/backend/src/talli_backend/modules/billing/service.py", "command": "npm run test:billing"},
+        {"path": "apps/backend/tests/test_billing_provider.py", "command": "npm run test:billing"},
+        {"path": "contracts/openapi/talli-v1.json", "command": "npm run generate:openapi && npm run generate:api-client && git diff --exit-code"}
+      ],
+      "status": "implemented-and-focused-tests-passed"
+    },
+    {
+      "id": "GH-137-A6",
+      "requirement": "Duplicate TypeScript billing policy and active-stage compatibility code are removed.",
+      "evidence": [
+        {"path": "tests/billing_persisted.test.mjs", "command": "npm run test:billing"},
+        {"path": "supabase/contract-migrations/20260905013000_billing_contract.sql", "command": "npm run test:supabase:local"},
+        {"path": "architecture/compatibility.json", "command": "npm run check:architecture"}
+      ],
+      "status": "implemented-and-static-boundaries-passed"
+    },
+    {
+      "id": "GH-137-A7",
+      "requirement": "The complete billing stage exit criteria from #132 pass before authority connections begin.",
+      "evidence": [
+        {"path": "architecture/evidence/customer-ready-gates/<R1>.json", "command": "npm run gate:customer-ready"},
+        {"path": "architecture/evidence/customer-ready-gates/<R2>.json", "command": "npm run gate:customer-ready -- --previous <R1>"},
+        {"path": "architecture/compatibility.json", "command": "npm run check:architecture"}
+      ],
+      "status": "pending-two-linked-immutable-gates-and-protected-integration"
+    }
+  ],
+  "preservedGates": {
+    "bankProvider": "#189",
+    "productionFiling": "#193",
+    "representativeCompanies": "#197",
+    "humanLaunchAuthority": "#198",
+    "paymentProvider": "simulation-only; no paid provider selected or activated",
+    "productionPromotion": "not authorized by #137"
+  },
+  "localValidation": {
+    "billingFocused": {"backendPassed": 14, "nodePassed": 5, "failed": 0},
+    "webTypecheck": "passed",
+    "architecture": "passed",
+    "freshSupabase": {
+      "status": "passed",
+      "command": "npm run test:supabase:local",
+      "databaseContractsPassed": 65,
+      "ownerBrowserPassed": 17,
+      "hostedAuthorityRehearsalPassed": 1,
+      "corporateGovernancePassed": 26,
+      "billingLifecyclePassed": 1,
+      "failed": 0
+    },
+    "customerReadyGates": "pending"
+  },
+  "closeState": "review candidate in progress; protected integration not yet attempted"
+}

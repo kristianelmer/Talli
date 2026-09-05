@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { createTalliApiClient, TalliApiError } from "@talli/talli-api-client";
@@ -88,4 +89,16 @@ test("billing entitlement is read from the backend and malformed policy is rejec
     }),
     (error) => error instanceof TalliApiError && error.status === 502,
   );
+});
+
+test("billing page renders every backend-owned price without TypeScript policy", () => {
+  const page = readFileSync(
+    new URL("../app/(owner)/billing/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(page, /data\.billingPricing/u);
+  assert.match(page, /pricing\.map\(\(item\)/u);
+  assert.doesNotMatch(page, /billingPricing\(/u);
+  assert.doesNotMatch(page, /monthly_nok:\s*(?:29|49)/u);
+  assert.doesNotMatch(page, /filing_package_nok:\s*(?:299|499)/u);
 });

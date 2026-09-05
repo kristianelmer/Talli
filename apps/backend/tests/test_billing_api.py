@@ -63,6 +63,10 @@ def test_configure_and_snapshot_use_authenticated_backend_contract() -> None:
     )
     assert snapshot.status_code == 200
     assert snapshot.json()["accounts"][0]["companyId"] == COMPANY
+    assert snapshot.json()["pricing"] == [
+        {"plan": "founder", "monthlyNok": 29, "filingPackageNok": 299},
+        {"plan": "standard", "monthlyNok": 49, "filingPackageNok": 499},
+    ]
 
 
 def test_provider_retry_returns_same_event_without_bypassing_entitlement() -> None:
@@ -118,6 +122,9 @@ def test_filing_purchase_fails_closed_when_readiness_is_missing() -> None:
     )
     assert response.status_code == 409
     assert response.json()["code"] == "BILLING_FILING_NOT_READY"
+    assert response.json()["detail"] == (
+        "Filing readiness må være klar før filingpakke kan betales."
+    )
     assert stub.events == {}
 
 

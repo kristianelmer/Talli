@@ -226,6 +226,7 @@ class BillingSnapshot:
     accounts: tuple[BillingAccount, ...]
     payment_events: tuple[BillingPaymentEvent, ...]
     pilot_entitlements: tuple[ProductionPilotEntitlement, ...]
+    pricing: tuple[BillingPricing, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

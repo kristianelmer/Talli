@@ -2605,7 +2605,7 @@ export interface BillingEntitlementDecisionWire {
   obligation: BillingObligation;
   pilotEntitlementId: string | null;
   readinessAllowed: boolean;
-  status: string;
+  status: BillingStatus;
 }
 
 export interface BillingFilingPackageWire {
@@ -2616,6 +2616,8 @@ export interface BillingFilingPackageWire {
 
 export type BillingObligation = "aksjonaerregisteroppgaven" | "skattemelding" | "aarsregnskap";
 
+export type BillingPaymentKind = "subscription" | "subscription_cancellation" | "filing_package" | "refund";
+
 export interface BillingPaymentEventWire {
   amountNok: number;
   companyId: string;
@@ -2624,12 +2626,14 @@ export interface BillingPaymentEventWire {
   eventId: string;
   idempotencyKey: string;
   incomeYear: number | null;
-  kind: string;
+  kind: BillingPaymentKind;
   provider: string;
   providerReference: string;
   replayed: boolean;
-  status: string;
+  status: BillingPaymentStatus;
 }
+
+export type BillingPaymentStatus = "created" | "succeeded" | "failed" | "refunded" | "canceled";
 
 export interface BillingPilotEntitlementCommandWire {
   billingExempt: boolean;
@@ -2665,11 +2669,20 @@ export interface BillingPilotEntitlementWire {
 
 export type BillingPlan = "founder" | "standard";
 
+export interface BillingPricingWire {
+  filingPackageNok: number;
+  monthlyNok: number;
+  plan: BillingPlan;
+}
+
 export interface BillingSnapshotWire {
   accounts: BillingAccountWire[];
   paymentEvents: BillingPaymentEventWire[];
   pilotEntitlements: BillingPilotEntitlementWire[];
+  pricing: BillingPricingWire[];
 }
+
+export type BillingStatus = "active" | "subscription_required" | "filing_package_required" | "ready_for_production_filing" | "unsupported_case" | "refund_eligible" | "pilot_entitlement_active";
 
 export interface BillingUnsupportedWire {
   companyId: string;
@@ -6184,7 +6197,7 @@ function isBillingEntitlementDecisionWire(value: unknown): value is BillingEntit
     isBillingObligation(value.obligation) &&
     (isUuid(value.pilotEntitlementId) || value.pilotEntitlementId === null) &&
     typeof value.readinessAllowed === "boolean" &&
-    typeof value.status === "string"
+    isBillingStatus(value.status)
   );
 }
 
@@ -6202,6 +6215,10 @@ function isBillingObligation(value: unknown): value is BillingObligation {
   return value === "aksjonaerregisteroppgaven" || value === "skattemelding" || value === "aarsregnskap";
 }
 
+function isBillingPaymentKind(value: unknown): value is BillingPaymentKind {
+  return value === "subscription" || value === "subscription_cancellation" || value === "filing_package" || value === "refund";
+}
+
 function isBillingPaymentEventWire(value: unknown): value is BillingPaymentEventWire {
   return (
     isRecord(value) &&
@@ -6213,12 +6230,16 @@ function isBillingPaymentEventWire(value: unknown): value is BillingPaymentEvent
     isUuid(value.eventId) &&
     typeof value.idempotencyKey === "string" &&
     (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) || value.incomeYear === null) &&
-    typeof value.kind === "string" &&
+    isBillingPaymentKind(value.kind) &&
     typeof value.provider === "string" &&
     typeof value.providerReference === "string" &&
     typeof value.replayed === "boolean" &&
-    typeof value.status === "string"
+    isBillingPaymentStatus(value.status)
   );
+}
+
+function isBillingPaymentStatus(value: unknown): value is BillingPaymentStatus {
+  return value === "created" || value === "succeeded" || value === "failed" || value === "refunded" || value === "canceled";
 }
 
 function isBillingPilotEntitlementCommandWire(value: unknown): value is BillingPilotEntitlementCommandWire {
@@ -6265,14 +6286,29 @@ function isBillingPlan(value: unknown): value is BillingPlan {
   return value === "founder" || value === "standard";
 }
 
+function isBillingPricingWire(value: unknown): value is BillingPricingWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["filingPackageNok","monthlyNok","plan"]) &&
+    typeof value.filingPackageNok === "number" && Number.isInteger(value.filingPackageNok) &&
+    typeof value.monthlyNok === "number" && Number.isInteger(value.monthlyNok) &&
+    isBillingPlan(value.plan)
+  );
+}
+
 function isBillingSnapshotWire(value: unknown): value is BillingSnapshotWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["accounts","paymentEvents","pilotEntitlements"]) &&
+    hasOnlyProperties(value, ["accounts","paymentEvents","pilotEntitlements","pricing"]) &&
     Array.isArray(value.accounts) && value.accounts.every((item) => isBillingAccountWire(item)) &&
     Array.isArray(value.paymentEvents) && value.paymentEvents.every((item) => isBillingPaymentEventWire(item)) &&
-    Array.isArray(value.pilotEntitlements) && value.pilotEntitlements.every((item) => isBillingPilotEntitlementWire(item))
+    Array.isArray(value.pilotEntitlements) && value.pilotEntitlements.every((item) => isBillingPilotEntitlementWire(item)) &&
+    Array.isArray(value.pricing) && value.pricing.every((item) => isBillingPricingWire(item))
   );
+}
+
+function isBillingStatus(value: unknown): value is BillingStatus {
+  return value === "active" || value === "subscription_required" || value === "filing_package_required" || value === "ready_for_production_filing" || value === "unsupported_case" || value === "refund_eligible" || value === "pilot_entitlement_active";
 }
 
 function isBillingUnsupportedWire(value: unknown): value is BillingUnsupportedWire {

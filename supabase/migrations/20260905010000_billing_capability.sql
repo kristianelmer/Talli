@@ -194,6 +194,10 @@ grant select, insert, update on public.billing_accounts,
   public.billing_payment_events,
   public.production_pilot_entitlements
 to authenticated, service_role;
+grant select on public.billing_accounts,
+  public.billing_payment_events,
+  public.production_pilot_entitlements
+to company_access_executor;
 
 do $backend_membership$
 begin
