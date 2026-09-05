@@ -217,6 +217,7 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     "backend-system:system_boundary",
     "backend-system:validation_observation",
     "backend:banking",
+    "backend:billing",
     "backend:company_access",
     "backend:corporate_governance",
     "backend:documents",
@@ -224,6 +225,7 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     "backend:ledger",
     "backend:shareholder_register_filing",
     "web:banking",
+    "web:billing",
     "web:company-access",
     "web:corporate-governance",
     "web:documents",
@@ -244,6 +246,12 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
       imports: ["talli_backend.modules.banking.public"],
       kind: "workflow",
       to: "backend:banking",
+    },
+    {
+      from: "backend-system:billing-and-filing-entitlement",
+      imports: ["talli_backend.modules.billing.public"],
+      kind: "workflow",
+      to: "backend:billing",
     },
     {
       from: "backend-system:company-access-administration",
@@ -1940,8 +1948,8 @@ test("the immutable frozen inventory remains exact while the active registry is 
   }
   assert.equal(expected.size, baseline.records.length);
 
-  assert.equal(registry.records.length, 9);
-  assert.equal(registry.records.flatMap((record) => record.scopes).length, 114);
+  assert.equal(registry.records.length, 8);
+  assert.equal(registry.records.flatMap((record) => record.scopes).length, 96);
   const baselineById = new Map(baseline.records.map((record) => [record.id, record]));
   const scopeKey = (scope) => [scope.path, scope.rule, scope.resource, scope.operation].join("\0");
   for (const record of registry.records) {
@@ -1972,6 +1980,7 @@ test("the immutable frozen inventory remains exact while the active registry is 
       "compat-tax-settlement-persistence",
       "compat-documents-persistence",
       "compat-corporate-governance-persistence",
+      "compat-billing-persistence",
     ]),
   );
 });
@@ -2016,7 +2025,8 @@ test("#200 removes the exact six support-search scopes atomically without changi
   try {
     const compatibilityPath = join(temporaryRoot, "architecture/compatibility.json");
     const partial = JSON.parse(readFileSync(compatibilityPath, "utf8"));
-    const [recordId, path, rule, resource, operation] = frozen[0].split("\0");
+    const selected = frozen.find((item) => item.startsWith("compat-annual-compliance-persistence\0"));
+    const [recordId, path, rule, resource, operation] = selected.split("\0");
     partial.records.find((record) => record.id === recordId).scopes.push({ path, rule, resource, operation });
     writeFileSync(compatibilityPath, `${JSON.stringify(partial, null, 2)}\n`);
     const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
@@ -2469,12 +2479,19 @@ test("generated-client deep imports reject ambiguous same-ticket exceptions", ()
     resource: "module:@talli/talli-api-client/*",
     operation: "module",
   };
-  compatibility.records.push({
+  const billingFacade = {
     ...compatibility.records[0],
-    id: "compat-billing-persistence-duplicate",
+    id: "compat-billing-persistence",
+    capability: "billing",
+    creationIssue: "#135",
+    removalIssue: "#137",
+    canonicalImplementation: "web:legacy-runtime:billing",
     scopes: [scope],
+  };
+  compatibility.records.push(billingFacade, {
+    ...billingFacade,
+    id: "compat-billing-persistence-duplicate",
   });
-  compatibility.records[0].scopes.push(scope);
   writeFileSync(compatibilityPath, JSON.stringify(compatibility));
 
   try {

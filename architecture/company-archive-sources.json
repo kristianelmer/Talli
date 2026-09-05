@@ -15,7 +15,7 @@
     { "table": "investments.share_sales", "scope": "year" },
     { "table": "investments.share_sale_allocations", "scope": "company" },
     { "table": "investments.received_dividends", "scope": "year" },
-    { "table": "billing_accounts", "scope": "company" },
+    { "table": "billing.billing_accounts", "scope": "company" },
     { "table": "authority_permissions", "scope": "company" },
     { "table": "authority_test_runs", "scope": "company" },
     { "table": "filing_review_comments", "scope": "company" },

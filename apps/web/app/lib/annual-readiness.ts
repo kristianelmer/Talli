@@ -1,8 +1,7 @@
 import type { AuthorityObligation, AuthorityPermission } from "./authority-permission.ts";
 import { productionAuthorityGate } from "./authority-permission.ts";
 import { annualAccountsPayloadFeedback } from "./annual-accounts.ts";
-import type { BillingAccount } from "./billing.ts";
-import { productionBillingGate } from "./billing.ts";
+import type { BillingEntitlementDecisionWire } from "../../features/billing";
 import { companyTaxReturnPayloadFeedback } from "./company-tax-return.ts";
 import type {
   BankTransactionRow,
@@ -50,7 +49,7 @@ export type AnnualReadinessInput = {
   overrides: FilingOverrideRow[];
   locks: PeriodLockRow[];
   annualData: AnnualDataRow | null;
-  billingAccount: BillingAccount | null;
+  billingEntitlements: Partial<Record<AuthorityObligation, BillingEntitlementDecisionWire>>;
   authorityPermissions: Pick<AuthorityPermission, "obligation" | "confirmed_at" | "production_enabled">[];
   filingPreviews: FilingPreviewRow[];
   filingSubmissions: FilingSubmissionRow[];
@@ -171,13 +170,11 @@ function commonReadinessIssues(input: AnnualReadinessInput, obligation: Authorit
     issues.push(block(authorityGate.status, authorityGate.message, "authority_permission"));
   }
 
-  if (!input.billingAccount) {
+  const billingDecision = input.billingEntitlements[obligation];
+  if (!billingDecision) {
     issues.push(block("billing_account_missing", "Billingkonto må finnes før filingpakke og innsending.", "billing"));
-  } else {
-    const billingGate = productionBillingGate(input.billingAccount, true);
-    if (!["ready_for_production_filing", "filing_package_required"].includes(billingGate.status)) {
-      issues.push(block(billingGate.status, billingGate.message, "billing"));
-    }
+  } else if (!billingDecision.readinessAllowed) {
+    issues.push(block(billingDecision.status, billingDecision.message, "billing"));
   }
   return issues;
 }

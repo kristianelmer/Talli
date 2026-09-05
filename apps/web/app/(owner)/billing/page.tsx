@@ -1,12 +1,10 @@
 import { Banner, EmptyState, LinkButton, StatusBadge } from "../../components/ui";
-import { billingPricing, type BillingPlan } from "../../lib/billing";
 import { ownerCopy } from "../../lib/copy";
 import { loadWorkspaceData } from "../../lib/workspace-data";
 
 export const dynamic = "force-dynamic";
 
 const t = ownerCopy.billing;
-const PLAN_ORDER: BillingPlan[] = ["founder", "standard"];
 
 export default async function BillingPage() {
   const data = await loadWorkspaceData();
@@ -66,28 +64,19 @@ export default async function BillingPage() {
       <section className="billingSection">
         <h2 className="sectionTitle">{t.planTitle}</h2>
         <div className="planGrid">
-          {PLAN_ORDER.map((plan) => {
-            const pricing = billingPricing(plan);
-            const isCurrent = activePlan === plan;
-            return (
-              <div
-                className={isCurrent ? "planCard planCard--current" : "planCard"}
-                key={plan}
-              >
-                <div className="planCardHead">
-                  <span className="planName">{t.plans[plan]}</span>
-                  {isCurrent ? (
-                    <StatusBadge variant="info" label={t.currentPlanLabel} />
-                  ) : null}
-                </div>
-                <p className="planPrice">{t.perMonth(pricing.monthly_nok)}</p>
-                <p className="planPackage">{t.packagePrice(pricing.filing_package_nok)}</p>
-                {isCurrent && plan === "founder" && account?.founder_cohort_number ? (
-                  <p className="cardNote">{t.founderCohort(account.founder_cohort_number)}</p>
-                ) : null}
+          {account && activePlan ? (
+            <div className="planCard planCard--current">
+              <div className="planCardHead">
+                <span className="planName">{t.plans[activePlan]}</span>
+                <StatusBadge variant="info" label={t.currentPlanLabel} />
               </div>
-            );
-          })}
+              <p className="planPrice">{t.perMonth(account.monthly_nok)}</p>
+              <p className="planPackage">{t.packagePrice(account.filing_package_nok)}</p>
+              {activePlan === "founder" && account.founder_cohort_number ? (
+                <p className="cardNote">{t.founderCohort(account.founder_cohort_number)}</p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </section>
 

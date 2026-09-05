@@ -275,6 +275,17 @@ const bankingOperations = {
     "bankingListSuggestionAcceptances",
   ],
 };
+const billingOperations = {
+  snapshot: ["/api/v1/billing/snapshot", "get", "billingReadSnapshot"],
+  entitlement: ["/api/v1/billing/entitlement", "get", "billingReadEntitlement"],
+  configure: ["/api/v1/billing/accounts/configuration", "post", "billingConfigureAccount"],
+  activate: ["/api/v1/billing/subscriptions/activation", "post", "billingActivateSubscription"],
+  cancel: ["/api/v1/billing/subscriptions/cancellation", "post", "billingCancelSubscription"],
+  purchase: ["/api/v1/billing/filing-package/purchase", "post", "billingPurchaseFilingPackage"],
+  refund: ["/api/v1/billing/filing-package/refund", "post", "billingRefundFilingPackage"],
+  unsupported: ["/api/v1/billing/unsupported", "post", "billingMarkUnsupported"],
+  pilot: ["/api/v1/billing/pilot-entitlements", "post", "billingManagePilotEntitlement"],
+};
 const marketingMeasurementOperations = {
   recordEvent: [
     "/api/v1/marketing-measurement/events",
@@ -325,6 +336,11 @@ for (const [name, [operationPath, method, operationId]] of Object.entries(corpor
   }
 }
 for (const [name, [operationPath, method, operationId]] of Object.entries(bankingOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(billingOperations)) {
   if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
     throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
   }
@@ -770,6 +786,21 @@ const bankingSchemas = Object.fromEntries([
   "SupportedBankDataFormat",
   "StartBankConnectionWire",
 ].map((name) => [name, contract.components.schemas[name]]));
+const billingSchemas = Object.fromEntries([
+  "BillingAccountWire",
+  "BillingCompanyWire",
+  "BillingConfigureWire",
+  "BillingEntitlementDecisionWire",
+  "BillingFilingPackageWire",
+  "BillingObligation",
+  "BillingPaymentEventWire",
+  "BillingPilotEntitlementCommandWire",
+  "BillingPilotEntitlementWire",
+  "BillingPlan",
+  "BillingSnapshotWire",
+  "BillingUnsupportedWire",
+  "ProductionPilotStatus",
+].map((name) => [name, contract.components.schemas[name]]));
 const marketingMeasurementSchemas = Object.fromEntries([
   "MarketingFunnelReportResponse",
   "MarketingMeasurementEventResponse",
@@ -802,6 +833,8 @@ ${Object.entries(documentsSchemas).map(([name, schema]) => renderSchema(name, sc
 ${Object.entries(corporateGovernanceSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(bankingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
+${Object.entries(billingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(marketingMeasurementSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
@@ -913,6 +946,8 @@ ${Object.entries(corporateGovernanceSchemas).map(([name, schema]) => renderGuard
 
 ${Object.entries(bankingSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
+${Object.entries(billingSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
+
 ${Object.entries(marketingMeasurementSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
 ${renderGuard("ProblemDetails", problemSchema)}
@@ -1017,6 +1052,17 @@ export interface BankingConnectionCallbackRequest extends TalliRequestOptions {
 
 export interface BankingConnectionListRequest extends TalliRequestOptions {
   companyId: string;
+}
+
+export interface BillingSnapshotRequest extends TalliRequestOptions {
+  companyIds: readonly string[];
+}
+
+export interface BillingEntitlementRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+  obligation: BillingObligation;
+  caseProfile?: string;
 }
 
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
@@ -2518,6 +2564,87 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async billingReadSnapshot(
+      request: BillingSnapshotRequest,
+    ): Promise<BillingSnapshotWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyIds", companyId);
+      return executeJson(
+        baseUrl + "/api/v1/billing/snapshot?" + query,
+        "GET",
+        request,
+        undefined,
+        isBillingSnapshotWire,
+      );
+    },
+
+    async billingReadEntitlement(
+      request: BillingEntitlementRequest,
+    ): Promise<BillingEntitlementDecisionWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+        obligation: request.obligation,
+      });
+      if (request.caseProfile !== undefined) query.set("caseProfile", request.caseProfile);
+      return executeJson(
+        baseUrl + "/api/v1/billing/entitlement?" + query,
+        "GET",
+        request,
+        undefined,
+        isBillingEntitlementDecisionWire,
+      );
+    },
+
+    async billingConfigureAccount(
+      body: BillingConfigureWire,
+      request: TalliMutationOptions,
+    ): Promise<BillingAccountWire> {
+      return executeJson(baseUrl + "/api/v1/billing/accounts/configuration", "POST", request, body, isBillingAccountWire);
+    },
+
+    async billingActivateSubscription(
+      body: BillingCompanyWire,
+      request: TalliMutationOptions,
+    ): Promise<BillingPaymentEventWire> {
+      return executeJson(baseUrl + "/api/v1/billing/subscriptions/activation", "POST", request, body, isBillingPaymentEventWire);
+    },
+
+    async billingCancelSubscription(
+      body: BillingCompanyWire,
+      request: TalliMutationOptions,
+    ): Promise<BillingPaymentEventWire> {
+      return executeJson(baseUrl + "/api/v1/billing/subscriptions/cancellation", "POST", request, body, isBillingPaymentEventWire);
+    },
+
+    async billingPurchaseFilingPackage(
+      body: BillingFilingPackageWire,
+      request: TalliMutationOptions,
+    ): Promise<BillingPaymentEventWire> {
+      return executeJson(baseUrl + "/api/v1/billing/filing-package/purchase", "POST", request, body, isBillingPaymentEventWire);
+    },
+
+    async billingRefundFilingPackage(
+      body: BillingFilingPackageWire,
+      request: TalliMutationOptions,
+    ): Promise<BillingPaymentEventWire> {
+      return executeJson(baseUrl + "/api/v1/billing/filing-package/refund", "POST", request, body, isBillingPaymentEventWire);
+    },
+
+    async billingMarkUnsupported(
+      body: BillingUnsupportedWire,
+      request: TalliMutationOptions,
+    ): Promise<BillingAccountWire> {
+      return executeJson(baseUrl + "/api/v1/billing/unsupported", "POST", request, body, isBillingAccountWire);
+    },
+
+    async billingManagePilotEntitlement(
+      body: BillingPilotEntitlementCommandWire,
+      request: TalliMutationOptions,
+    ): Promise<BillingPilotEntitlementWire> {
+      return executeJson(baseUrl + "/api/v1/billing/pilot-entitlements", "POST", request, body, isBillingPilotEntitlementWire);
     },
 
     async marketingMeasurementRecordEvent(

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { AuthorityObligation } from "./authority-permission.ts";
-import type { ProductionPilotCaseProfile } from "./production-pilot.ts";
+type ProductionPilotCaseProfile = "rf1086_no_activity_v1";
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
 

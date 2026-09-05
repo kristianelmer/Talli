@@ -72,6 +72,10 @@
 {"adapterBindingModes":["DocumentObjectStorage=>backend-only exact-object Supabase Storage adapter","DocumentsAuthorization=>request-scoped accepted-membership facts through the company-access public gateway","DocumentsPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["DocumentObjectStorage=>backend-system","DocumentsAuthorization=>backend-system","DocumentsPersistence=>backend-system"],"adapterBindings":["DocumentObjectStorage=>talli_backend.adapters.supabase_documents.SupabaseDocumentObjectStorage","DocumentsAuthorization=>talli_backend.adapters.supabase_documents.SupabaseDocumentsAuthorization","DocumentsPersistence=>talli_backend.adapters.supabase_documents.SupabaseDocumentsPersistence"],"adapterDependencies":["talli_backend.modules.documents.public"],"ports":["DocumentObjectStorage","DocumentsAuthorization","DocumentsPersistence"],"publicPackages":["talli_backend.modules.documents.public"],"routes":["/api/v1/documents","/api/v1/documents/backup-projection","/api/v1/documents/uploads","/api/v1/documents/{document_id}/finalize","/api/v1/documents/{document_id}/remove","/api/v1/documents/{document_id}/transfers"],"transportDependencies":["base64","binascii","talli_backend.adapters.supabase_documents","talli_backend.modules.documents.public"],"workflowDependencies":["talli_backend.modules.documents.public"],"workflowPurposes":["accounting-document-lifecycle=>Authenticates one verified actor and owns validated document staging, exact private-object transfers, integrity finalization, tenant-scoped listing, AAL2 download, safe removal restoration, retention metadata, and document-only backup projections."],"workflows":["accounting-document-lifecycle"]}
 -->
 
+<!-- architecture-inventory
+{"adapterBindingModes":["BillingPaymentProvider=>production-disabled deterministic simulation adapter","BillingPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["BillingPaymentProvider=>backend-system","BillingPersistence=>backend-system"],"adapterBindings":["BillingPaymentProvider=>talli_backend.adapters.simulation_billing.SimulationBillingProvider","BillingPersistence=>talli_backend.adapters.supabase_billing.SupabaseBillingSession"],"adapterDependencies":["talli_backend.adapters.simulation_billing","talli_backend.adapters.supabase_billing","talli_backend.application.billing_session","talli_backend.application.billing_workflow","talli_backend.modules.billing.public"],"ports":["BillingPaymentProvider","BillingPersistence"],"publicPackages":["talli_backend.modules.billing.public"],"routes":["/api/v1/billing/accounts/configuration","/api/v1/billing/entitlement","/api/v1/billing/filing-package/purchase","/api/v1/billing/filing-package/refund","/api/v1/billing/pilot-entitlements","/api/v1/billing/snapshot","/api/v1/billing/subscriptions/activation","/api/v1/billing/subscriptions/cancellation","/api/v1/billing/unsupported"],"technicalMigrations":["supabase/contract-migrations/20260905013000_billing_contract.sql","supabase/migrations/20260905010000_billing_capability.sql"],"transportDependencies":["talli_backend.adapters.simulation_billing","talli_backend.adapters.supabase_billing","talli_backend.application.billing_session","talli_backend.application.billing_workflow","talli_backend.modules.billing.public"],"workflowDependencies":["talli_backend.modules.billing.public"],"workflowPurposes":["billing-and-filing-entitlement=>Authenticates one verified actor, owns server-selected legacy pricing and idempotent simulated provider outcomes, and returns the single billing decision used by readiness and production filing gates."],"workflows":["billing-and-filing-entitlement"]}
+-->
+
 ## Purpose
 
 `backend-system.json` is the source of truth for backend composition that no
@@ -96,6 +100,14 @@ The `accounting-document-lifecycle` workflow serves
 `talli_backend.adapters.supabase_documents.SupabaseDocumentObjectStorage`.
 `DocumentsAuthorization` binds to
 `talli_backend.adapters.supabase_documents.SupabaseDocumentsAuthorization`.
+
+The `billing-and-filing-entitlement` workflow serves billing snapshot,
+entitlement, configuration, subscription activation/cancellation,
+filing-package purchase/refund, unsupported-case, and pilot-entitlement routes
+through `talli_backend.modules.billing.public`. It binds `BillingPersistence`
+to `talli_backend.adapters.supabase_billing.SupabaseBillingSession` and
+`BillingPaymentProvider` to the production-disabled
+`talli_backend.adapters.simulation_billing.SimulationBillingProvider`.
 
 The `marketing-funnel-measurement` workflow serves
 `/api/v1/marketing-measurement/events`,

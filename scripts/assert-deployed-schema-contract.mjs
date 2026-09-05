@@ -6,18 +6,17 @@ export const REQUIRED_DEPLOYED_SCHEMA_PATHS = Object.freeze([
   "/filing_approval_snapshots",
   "/production_filing_events",
   "/production_filing_submissions",
-  "/production_pilot_entitlements",
   "/rpc/append_company_agreement_acceptance",
   "/rpc/append_production_filing_event",
   "/rpc/approve_production_filing",
   "/rpc/begin_production_filing",
   "/rpc/import_company_tax_tt02_evidence",
-  "/rpc/manage_production_pilot_entitlement",
   "/rpc/remove_unlinked_document",
   "/rpc/restore_unlinked_document_after_storage_failure",
 ]);
 
 export const FORBIDDEN_DEPLOYED_SCHEMA_PATHS = Object.freeze([
+  "/production_pilot_entitlements",
   "/corporate_accounting_policies",
   "/corporate_decision_finalizations",
   "/corporate_decisions",
@@ -30,6 +29,7 @@ export const FORBIDDEN_DEPLOYED_SCHEMA_PATHS = Object.freeze([
   "/rpc/attest_corporate_signed_artifact",
   "/rpc/create_corporate_document_draft",
   "/rpc/finalize_corporate_decision",
+  "/rpc/manage_production_pilot_entitlement",
   "/rpc/record_corporate_document_event",
   "/rpc/record_owner_dividend_payment",
   "/rpc/record_share_purchase_fifo",

@@ -5,6 +5,23 @@ import { buildPersistedCompanyArchive } from "../apps/web/app/lib/archive.ts";
 import { buildCompanyTaxReturnPayload } from "../apps/web/app/lib/company-tax-return.ts";
 import { evaluateAnnualReadinessGates } from "../apps/web/app/lib/annual-readiness.ts";
 
+const readyBillingEntitlements = Object.fromEntries([
+  "aksjonaerregisteroppgaven",
+  "skattemelding",
+  "aarsregnskap",
+].map((obligation) => [obligation, {
+  companyId: "company-id",
+  incomeYear: 2025,
+  obligation,
+  status: "ready_for_production_filing",
+  allowed: true,
+  chargeAllowed: false,
+  readinessAllowed: true,
+  billingExempt: false,
+  message: "Billing and filing-package entitlement are ready.",
+  pilotEntitlementId: null,
+}]));
+
 const annualData = {
   id: "annual-data-id",
   company_id: "company-id",
@@ -273,7 +290,7 @@ test("persists tax return payload feedback into skattemelding readiness", () => 
     overrides: [],
     locks: [{ id: "lock-id", company_id: "company-id", income_year: 2025, reason: "locked", locked_by: "owner", locked_at: "2026-01-01T00:00:00Z" }],
     annualData,
-    billingAccount: { company_id: "company-id", pricing_plan: "founder", monthly_nok: 29, filing_package_nok: 299, founder_cohort_number: 1, subscription_active: true, filing_package_paid: true, supported_case: true, refund_eligible: false, no_charge_reason: null },
+    billingEntitlements: readyBillingEntitlements,
     authorityPermissions: [
       { obligation: "aksjonaerregisteroppgaven", confirmed_at: "2026-01-01T00:00:00Z", production_enabled: true },
       { obligation: "skattemelding", confirmed_at: "2026-01-01T00:00:00Z", production_enabled: true },

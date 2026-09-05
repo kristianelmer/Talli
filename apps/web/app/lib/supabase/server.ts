@@ -919,8 +919,7 @@ export async function listProductionFilingState(companyIds: string[]) {
     };
   }
   const supabase = await createSupabaseServerClient();
-  const [entitlements, approvals, submissions, artifacts] = await Promise.all([
-    supabase.from("production_pilot_entitlements").select("*").in("company_id", companyIds).order("updated_at", { ascending: false }),
+  const [approvals, submissions, artifacts] = await Promise.all([
     supabase.from("filing_approval_snapshots").select("*").in("company_id", companyIds).order("approved_at", { ascending: false }),
     supabase.from("production_filing_submissions")
       .select("id,approval_id,entitlement_id,company_id,user_id,income_year,obligation,case_profile,payload_hash,adapter_version,environment,status,supersedes_submission_id,submitted_by,feedback_state,feedback_artifact_count,feedback_last_checked_at,feedback_last_changed_at,feedback_safe_error_code,feedback_correlation_id,created_at,updated_at")
@@ -931,17 +930,17 @@ export async function listProductionFilingState(companyIds: string[]) {
       .in("company_id", companyIds)
       .order("retrieved_at", { ascending: false }),
   ]);
-  const errors = [entitlements.error, approvals.error, submissions.error, artifacts.error];
+  const errors = [approvals.error, submissions.error, artifacts.error];
   const rolloutSchemaPending = process.env.TALLI_RF1086_PRODUCTION_ENABLED !== "true"
     && productionPilotSchemaUnavailable(errors);
   return {
-    productionPilotEntitlements: (entitlements.data ?? []) as ProductionPilotEntitlementRow[],
+    productionPilotEntitlements: [] as ProductionPilotEntitlementRow[],
     filingApprovalSnapshots: (approvals.data ?? []) as FilingApprovalSnapshotRow[],
     productionFilingSubmissions: (submissions.data ?? []) as ProductionFilingSubmissionRow[],
     productionFeedbackArtifacts: (artifacts.data ?? []) as ProductionFeedbackArtifactRow[],
     error: rolloutSchemaPending
       ? null
-      : entitlements.error?.message ?? approvals.error?.message ?? submissions.error?.message ?? artifacts.error?.message ?? null,
+      : approvals.error?.message ?? submissions.error?.message ?? artifacts.error?.message ?? null,
   };
 }
 
@@ -1061,42 +1060,6 @@ export async function listFilingReviewComments(companyIds: string[]) {
 
   return {
     comments: (data ?? []) as FilingReviewCommentRow[],
-    error: error?.message ?? null,
-  };
-}
-
-export async function listBillingAccounts(companyIds: string[]) {
-  if (!hasSupabaseEnv() || companyIds.length === 0) {
-    return { billingAccounts: [] as BillingAccountRow[], error: null };
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("billing_accounts")
-    .select(
-      "company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref, updated_by, created_at, updated_at",
-    )
-    .in("company_id", companyIds)
-    .order("updated_at", { ascending: false });
-
-  return {
-    billingAccounts: (data ?? []) as BillingAccountRow[],
-    error: error?.message ?? null,
-  };
-}
-
-export async function listBillingPaymentEvents(companyIds: string[]) {
-  if (!hasSupabaseEnv() || companyIds.length === 0) {
-    return { billingPaymentEvents: [] as BillingPaymentEventRow[], error: null };
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("billing_payment_events")
-    .select("id, company_id, provider, provider_reference, idempotency_key, kind, status, amount_nok, income_year, payload, created_by, created_at")
-    .in("company_id", companyIds)
-    .order("created_at", { ascending: false });
-
-  return {
-    billingPaymentEvents: (data ?? []) as BillingPaymentEventRow[],
     error: error?.message ?? null,
   };
 }

@@ -2564,6 +2564,120 @@ export interface StartBankConnectionWire {
   returnUrl: string;
 }
 
+export interface BillingAccountWire {
+  companyId: string;
+  createdAt: string;
+  filingPackageNok: number;
+  filingPackagePaid: boolean;
+  filingPackagePaymentReference: string | null;
+  founderCohortNumber: number | null;
+  monthlyNok: number;
+  noChargeReason: string | null;
+  pricingPlan: BillingPlan;
+  providerCustomerReference: string | null;
+  refundCompleted: boolean;
+  refundEligible: boolean;
+  refundProviderReference: string | null;
+  subscriptionActive: boolean;
+  subscriptionProviderReference: string | null;
+  supportedCase: boolean;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface BillingCompanyWire {
+  companyId: string;
+}
+
+export interface BillingConfigureWire {
+  companyId: string;
+  founderCohortNumber?: number | null;
+  pricingPlan: BillingPlan;
+}
+
+export interface BillingEntitlementDecisionWire {
+  allowed: boolean;
+  billingExempt: boolean;
+  chargeAllowed: boolean;
+  companyId: string;
+  incomeYear: number;
+  message: string;
+  obligation: BillingObligation;
+  pilotEntitlementId: string | null;
+  readinessAllowed: boolean;
+  status: string;
+}
+
+export interface BillingFilingPackageWire {
+  companyId: string;
+  incomeYear: number;
+  obligation?: BillingObligation;
+}
+
+export type BillingObligation = "aksjonaerregisteroppgaven" | "skattemelding" | "aarsregnskap";
+
+export interface BillingPaymentEventWire {
+  amountNok: number;
+  companyId: string;
+  createdAt: string;
+  createdBy: string;
+  eventId: string;
+  idempotencyKey: string;
+  incomeYear: number | null;
+  kind: string;
+  provider: string;
+  providerReference: string;
+  replayed: boolean;
+  status: string;
+}
+
+export interface BillingPilotEntitlementCommandWire {
+  billingExempt: boolean;
+  companyId: string;
+  entitlementId?: string | null;
+  evidenceReference: string;
+  expiresAt: string;
+  incomeYear: number;
+  startsAt: string;
+  status: ProductionPilotStatus;
+  systemUserRequestId: string;
+  userId: string;
+}
+
+export interface BillingPilotEntitlementWire {
+  approvedBy: string;
+  billingExempt: boolean;
+  caseProfile: string;
+  companyId: string;
+  createdAt: string;
+  entitlementId: string;
+  evidenceReference: string;
+  expiresAt: string;
+  incomeYear: number;
+  obligation: BillingObligation;
+  startsAt: string;
+  status: ProductionPilotStatus;
+  systemUserExternalReference: string;
+  systemUserRequestId: string;
+  updatedAt: string;
+  userId: string;
+}
+
+export type BillingPlan = "founder" | "standard";
+
+export interface BillingSnapshotWire {
+  accounts: BillingAccountWire[];
+  paymentEvents: BillingPaymentEventWire[];
+  pilotEntitlements: BillingPilotEntitlementWire[];
+}
+
+export interface BillingUnsupportedWire {
+  companyId: string;
+  reason: string;
+}
+
+export type ProductionPilotStatus = "pending" | "active" | "suspended" | "completed" | "revoked";
+
 export interface MarketingFunnelReportResponse {
   counts: Record<string, number>;
   medianSeconds: Record<string, number | number | null>;
@@ -6014,6 +6128,166 @@ function isStartBankConnectionWire(value: unknown): value is StartBankConnection
   );
 }
 
+function isBillingAccountWire(value: unknown): value is BillingAccountWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","createdAt","filingPackageNok","filingPackagePaid","filingPackagePaymentReference","founderCohortNumber","monthlyNok","noChargeReason","pricingPlan","providerCustomerReference","refundCompleted","refundEligible","refundProviderReference","subscriptionActive","subscriptionProviderReference","supportedCase","updatedAt","updatedBy"]) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    typeof value.filingPackageNok === "number" && Number.isInteger(value.filingPackageNok) &&
+    typeof value.filingPackagePaid === "boolean" &&
+    (typeof value.filingPackagePaymentReference === "string" || value.filingPackagePaymentReference === null) &&
+    (typeof value.founderCohortNumber === "number" && Number.isInteger(value.founderCohortNumber) || value.founderCohortNumber === null) &&
+    typeof value.monthlyNok === "number" && Number.isInteger(value.monthlyNok) &&
+    (typeof value.noChargeReason === "string" || value.noChargeReason === null) &&
+    isBillingPlan(value.pricingPlan) &&
+    (typeof value.providerCustomerReference === "string" || value.providerCustomerReference === null) &&
+    typeof value.refundCompleted === "boolean" &&
+    typeof value.refundEligible === "boolean" &&
+    (typeof value.refundProviderReference === "string" || value.refundProviderReference === null) &&
+    typeof value.subscriptionActive === "boolean" &&
+    (typeof value.subscriptionProviderReference === "string" || value.subscriptionProviderReference === null) &&
+    typeof value.supportedCase === "boolean" &&
+    isDateTime(value.updatedAt) &&
+    isUuid(value.updatedBy)
+  );
+}
+
+function isBillingCompanyWire(value: unknown): value is BillingCompanyWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId"]) &&
+    isUuid(value.companyId)
+  );
+}
+
+function isBillingConfigureWire(value: unknown): value is BillingConfigureWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","founderCohortNumber","pricingPlan"]) &&
+    isUuid(value.companyId) &&
+    (value.founderCohortNumber === undefined || ((typeof value.founderCohortNumber === "number" && Number.isInteger(value.founderCohortNumber) && value.founderCohortNumber >= 1 && value.founderCohortNumber <= 100) || value.founderCohortNumber === null)) &&
+    isBillingPlan(value.pricingPlan)
+  );
+}
+
+function isBillingEntitlementDecisionWire(value: unknown): value is BillingEntitlementDecisionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["allowed","billingExempt","chargeAllowed","companyId","incomeYear","message","obligation","pilotEntitlementId","readinessAllowed","status"]) &&
+    typeof value.allowed === "boolean" &&
+    typeof value.billingExempt === "boolean" &&
+    typeof value.chargeAllowed === "boolean" &&
+    isUuid(value.companyId) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.message === "string" &&
+    isBillingObligation(value.obligation) &&
+    (isUuid(value.pilotEntitlementId) || value.pilotEntitlementId === null) &&
+    typeof value.readinessAllowed === "boolean" &&
+    typeof value.status === "string"
+  );
+}
+
+function isBillingFilingPackageWire(value: unknown): value is BillingFilingPackageWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","obligation"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (value.obligation === undefined || isBillingObligation(value.obligation))
+  );
+}
+
+function isBillingObligation(value: unknown): value is BillingObligation {
+  return value === "aksjonaerregisteroppgaven" || value === "skattemelding" || value === "aarsregnskap";
+}
+
+function isBillingPaymentEventWire(value: unknown): value is BillingPaymentEventWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["amountNok","companyId","createdAt","createdBy","eventId","idempotencyKey","incomeYear","kind","provider","providerReference","replayed","status"]) &&
+    typeof value.amountNok === "number" && Number.isInteger(value.amountNok) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    isUuid(value.eventId) &&
+    typeof value.idempotencyKey === "string" &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) || value.incomeYear === null) &&
+    typeof value.kind === "string" &&
+    typeof value.provider === "string" &&
+    typeof value.providerReference === "string" &&
+    typeof value.replayed === "boolean" &&
+    typeof value.status === "string"
+  );
+}
+
+function isBillingPilotEntitlementCommandWire(value: unknown): value is BillingPilotEntitlementCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["billingExempt","companyId","entitlementId","evidenceReference","expiresAt","incomeYear","startsAt","status","systemUserRequestId","userId"]) &&
+    typeof value.billingExempt === "boolean" &&
+    isUuid(value.companyId) &&
+    (value.entitlementId === undefined || (isUuid(value.entitlementId) || value.entitlementId === null)) &&
+    (typeof value.evidenceReference === "string" && value.evidenceReference.length >= 1 && value.evidenceReference.length <= 1000) &&
+    isDateTime(value.expiresAt) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    isDateTime(value.startsAt) &&
+    isProductionPilotStatus(value.status) &&
+    isUuid(value.systemUserRequestId) &&
+    isUuid(value.userId)
+  );
+}
+
+function isBillingPilotEntitlementWire(value: unknown): value is BillingPilotEntitlementWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approvedBy","billingExempt","caseProfile","companyId","createdAt","entitlementId","evidenceReference","expiresAt","incomeYear","obligation","startsAt","status","systemUserExternalReference","systemUserRequestId","updatedAt","userId"]) &&
+    isUuid(value.approvedBy) &&
+    typeof value.billingExempt === "boolean" &&
+    typeof value.caseProfile === "string" &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.entitlementId) &&
+    typeof value.evidenceReference === "string" &&
+    isDateTime(value.expiresAt) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    isBillingObligation(value.obligation) &&
+    isDateTime(value.startsAt) &&
+    isProductionPilotStatus(value.status) &&
+    typeof value.systemUserExternalReference === "string" &&
+    isUuid(value.systemUserRequestId) &&
+    isDateTime(value.updatedAt) &&
+    isUuid(value.userId)
+  );
+}
+
+function isBillingPlan(value: unknown): value is BillingPlan {
+  return value === "founder" || value === "standard";
+}
+
+function isBillingSnapshotWire(value: unknown): value is BillingSnapshotWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accounts","paymentEvents","pilotEntitlements"]) &&
+    Array.isArray(value.accounts) && value.accounts.every((item) => isBillingAccountWire(item)) &&
+    Array.isArray(value.paymentEvents) && value.paymentEvents.every((item) => isBillingPaymentEventWire(item)) &&
+    Array.isArray(value.pilotEntitlements) && value.pilotEntitlements.every((item) => isBillingPilotEntitlementWire(item))
+  );
+}
+
+function isBillingUnsupportedWire(value: unknown): value is BillingUnsupportedWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","reason"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.reason === "string" && value.reason.length >= 1 && value.reason.length <= 500)
+  );
+}
+
+function isProductionPilotStatus(value: unknown): value is ProductionPilotStatus {
+  return value === "pending" || value === "active" || value === "suspended" || value === "completed" || value === "revoked";
+}
+
 function isMarketingFunnelReportResponse(value: unknown): value is MarketingFunnelReportResponse {
   return (
     isRecord(value) &&
@@ -6197,6 +6471,17 @@ export interface BankingConnectionCallbackRequest extends TalliRequestOptions {
 
 export interface BankingConnectionListRequest extends TalliRequestOptions {
   companyId: string;
+}
+
+export interface BillingSnapshotRequest extends TalliRequestOptions {
+  companyIds: readonly string[];
+}
+
+export interface BillingEntitlementRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+  obligation: BillingObligation;
+  caseProfile?: string;
 }
 
 export interface CompanyAccessContextRequest extends TalliRequestOptions {
@@ -7698,6 +7983,87 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async billingReadSnapshot(
+      request: BillingSnapshotRequest,
+    ): Promise<BillingSnapshotWire> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyIds", companyId);
+      return executeJson(
+        baseUrl + "/api/v1/billing/snapshot?" + query,
+        "GET",
+        request,
+        undefined,
+        isBillingSnapshotWire,
+      );
+    },
+
+    async billingReadEntitlement(
+      request: BillingEntitlementRequest,
+    ): Promise<BillingEntitlementDecisionWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+        obligation: request.obligation,
+      });
+      if (request.caseProfile !== undefined) query.set("caseProfile", request.caseProfile);
+      return executeJson(
+        baseUrl + "/api/v1/billing/entitlement?" + query,
+        "GET",
+        request,
+        undefined,
+        isBillingEntitlementDecisionWire,
+      );
+    },
+
+    async billingConfigureAccount(
+      body: BillingConfigureWire,
+      request: TalliMutationOptions,
+    ): Promise<BillingAccountWire> {
+      return executeJson(baseUrl + "/api/v1/billing/accounts/configuration", "POST", request, body, isBillingAccountWire);
+    },
+
+    async billingActivateSubscription(
+      body: BillingCompanyWire,
+      request: TalliMutationOptions,
+    ): Promise<BillingPaymentEventWire> {
+      return executeJson(baseUrl + "/api/v1/billing/subscriptions/activation", "POST", request, body, isBillingPaymentEventWire);
+    },
+
+    async billingCancelSubscription(
+      body: BillingCompanyWire,
+      request: TalliMutationOptions,
+    ): Promise<BillingPaymentEventWire> {
+      return executeJson(baseUrl + "/api/v1/billing/subscriptions/cancellation", "POST", request, body, isBillingPaymentEventWire);
+    },
+
+    async billingPurchaseFilingPackage(
+      body: BillingFilingPackageWire,
+      request: TalliMutationOptions,
+    ): Promise<BillingPaymentEventWire> {
+      return executeJson(baseUrl + "/api/v1/billing/filing-package/purchase", "POST", request, body, isBillingPaymentEventWire);
+    },
+
+    async billingRefundFilingPackage(
+      body: BillingFilingPackageWire,
+      request: TalliMutationOptions,
+    ): Promise<BillingPaymentEventWire> {
+      return executeJson(baseUrl + "/api/v1/billing/filing-package/refund", "POST", request, body, isBillingPaymentEventWire);
+    },
+
+    async billingMarkUnsupported(
+      body: BillingUnsupportedWire,
+      request: TalliMutationOptions,
+    ): Promise<BillingAccountWire> {
+      return executeJson(baseUrl + "/api/v1/billing/unsupported", "POST", request, body, isBillingAccountWire);
+    },
+
+    async billingManagePilotEntitlement(
+      body: BillingPilotEntitlementCommandWire,
+      request: TalliMutationOptions,
+    ): Promise<BillingPilotEntitlementWire> {
+      return executeJson(baseUrl + "/api/v1/billing/pilot-entitlements", "POST", request, body, isBillingPilotEntitlementWire);
     },
 
     async marketingMeasurementRecordEvent(

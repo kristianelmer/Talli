@@ -91,3 +91,7 @@ npm run test:ledger-hosted-migration-authority
 # consumer, including the ledger recutover authority rehearsal. Its contract
 # intentionally retires the legacy governance-owned ledger coordinators.
 DATABASE_URL="$DB_URL" npm run test:corporate-governance-database-lifecycle
+
+# Billing is last because its contract removes the temporary public overlap
+# views still exercised by predecessor browser and Supabase characterization.
+DATABASE_URL="$DB_URL" npm run test:billing-database-lifecycle

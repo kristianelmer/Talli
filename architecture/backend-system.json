@@ -191,6 +191,22 @@
         "/api/v1/ledger/tax-settlements",
         "/api/v1/ledger/manual-journals"
       ]
+    },
+    {
+      "name": "billing-and-filing-entitlement",
+      "purpose": "Authenticates one verified actor, owns server-selected legacy pricing and idempotent simulated provider outcomes, and returns the single billing decision used by readiness and production filing gates.",
+      "publicPackages": ["talli_backend.modules.billing.public"],
+      "routes": [
+        "/api/v1/billing/snapshot",
+        "/api/v1/billing/entitlement",
+        "/api/v1/billing/accounts/configuration",
+        "/api/v1/billing/subscriptions/activation",
+        "/api/v1/billing/subscriptions/cancellation",
+        "/api/v1/billing/filing-package/purchase",
+        "/api/v1/billing/filing-package/refund",
+        "/api/v1/billing/unsupported",
+        "/api/v1/billing/pilot-entitlements"
+      ]
     }
   ],
   "operationalControlState": {
@@ -255,6 +271,8 @@
       "supabase/migrations/20260902105000_corporate_governance_hosted_shape_parity.sql",
       "supabase/migrations/20260904220000_corporate_governance_supported_events.sql",
       "supabase/migrations/20260904223000_ledger_supported_event_reversals.sql",
+      "supabase/migrations/20260905010000_billing_capability.sql",
+      "supabase/contract-migrations/20260905013000_billing_contract.sql",
       "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql",
       "supabase/migrations/20260828103000_marketing_funnel_measurement.sql",
       "supabase/migrations/20260829070411_marketing_measurement_small_cell_threshold.sql",
@@ -344,6 +362,18 @@
       "mode": "request-scoped verified-owner restricted PostgreSQL adapter"
     },
     {
+      "port": "BillingPersistence",
+      "adapter": "talli_backend.adapters.supabase_billing.SupabaseBillingSession",
+      "owner": "backend-system",
+      "mode": "request-scoped verified-actor restricted PostgreSQL adapter"
+    },
+    {
+      "port": "BillingPaymentProvider",
+      "adapter": "talli_backend.adapters.simulation_billing.SimulationBillingProvider",
+      "owner": "backend-system",
+      "mode": "production-disabled deterministic simulation adapter"
+    },
+    {
       "port": "BankTransactionClaimPersistence",
       "adapter": "talli_backend.adapters.supabase_corporate_governance.SupabaseCorporateGovernanceTransaction",
       "owner": "backend-system",
@@ -389,7 +419,9 @@
       "pydantic",
       "starlette",
       "talli_backend.adapters.brreg_company_registry",
+      "talli_backend.adapters.simulation_billing",
       "talli_backend.adapters.supabase_banking",
+      "talli_backend.adapters.supabase_billing",
       "talli_backend.adapters.supabase_company_access",
       "talli_backend.adapters.supabase_corporate_governance",
       "talli_backend.adapters.supabase_documents",
@@ -398,6 +430,8 @@
       "talli_backend.adapters.supabase_marketing_measurement",
       "talli_backend.adapters.supabase_validation_observation",
       "talli_backend.application.banking_session",
+      "talli_backend.application.billing_session",
+      "talli_backend.application.billing_workflow",
       "talli_backend.application.corporate_governance_session",
       "talli_backend.application.corporate_governance_workflow",
       "talli_backend.application.investments_session",
@@ -405,6 +439,7 @@
       "talli_backend.application.ledger_workflow",
       "talli_backend.application.opening_snapshot_compatibility",
       "talli_backend.modules.banking.public",
+      "talli_backend.modules.billing.public",
       "talli_backend.modules.company_access.public",
       "talli_backend.modules.corporate_governance.public",
       "talli_backend.modules.documents.public",
@@ -421,6 +456,7 @@
       "talli_backend.application.annual_data_compatibility",
       "talli_backend.application.opening_snapshot_compatibility",
       "talli_backend.modules.banking.public",
+      "talli_backend.modules.billing.public",
       "talli_backend.modules.company_access.public",
       "talli_backend.modules.corporate_governance.public",
       "talli_backend.modules.documents.public",
@@ -447,10 +483,14 @@
       "psycopg.rows",
       "re",
       "talli_backend.adapters.bank_provider_http",
+      "talli_backend.adapters.simulation_billing",
+      "talli_backend.adapters.supabase_billing",
       "talli_backend.adapters.supabase_ledger",
       "talli_backend.application.annual_data_compatibility",
       "talli_backend.application.banking_session",
       "talli_backend.application.banking_workflow",
+      "talli_backend.application.billing_session",
+      "talli_backend.application.billing_workflow",
       "talli_backend.application.corporate_governance_session",
       "talli_backend.application.corporate_governance_workflow",
       "talli_backend.application.investments_session",
@@ -459,6 +499,7 @@
       "talli_backend.application.ledger_workflow",
       "talli_backend.application.opening_snapshot_compatibility",
       "talli_backend.modules.banking.public",
+      "talli_backend.modules.billing.public",
       "talli_backend.modules.company_access.public",
       "talli_backend.modules.corporate_governance.public",
       "talli_backend.modules.documents.public",

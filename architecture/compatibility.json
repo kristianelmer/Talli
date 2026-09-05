@@ -246,124 +246,6 @@
   },
   "records": [
     {
-      "id": "compat-billing-persistence",
-      "kind": "legacy-facade",
-      "capability": "billing",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
-      "removalIssue": "#137",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
-      "canonicalImplementation": "web:legacy-runtime:billing",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove billing and filing-entitlement persistence in #137.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_accounts",
-          "operation": "activateBillingSubscription"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_payment_events",
-          "operation": "activateBillingSubscription"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_accounts",
-          "operation": "cancelBillingSubscription"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_payment_events",
-          "operation": "cancelBillingSubscription"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_accounts",
-          "operation": "markBillingRefundEligible"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_payment_events",
-          "operation": "markBillingRefundEligible"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_accounts",
-          "operation": "markBillingUnsupported"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:production_pilot_entitlements",
-          "operation": "reconcileRf1086ProductionAction"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_accounts",
-          "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_accounts",
-          "operation": "requestFilingPackagePayment"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_payment_events",
-          "operation": "requestFilingPackagePayment"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_accounts",
-          "operation": "saveBillingAccount"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:production_pilot_entitlements",
-          "operation": "sendApprovedRf1086ProductionFiling"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "rpc:manage_production_pilot_entitlement",
-          "operation": "upsertProductionPilotEntitlement"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_accounts",
-          "operation": "listBillingAccounts"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_payment_events",
-          "operation": "listBillingPaymentEvents"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:production_pilot_entitlements",
-          "operation": "listProductionFilingState"
-        }
-      ]
-    },
-    {
       "id": "compat-annual-compliance-persistence",
       "kind": "legacy-facade",
       "capability": "annual_compliance",
@@ -1027,12 +909,6 @@
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:bank_suggestion_acceptances",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:billing_accounts",
           "operation": "GET"
         },
         {

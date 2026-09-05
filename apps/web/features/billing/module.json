@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "web-feature",
+  "name": "billing",
+  "path": "apps/web/features/billing",
+  "owner": "web:billing",
+  "purpose": "Carry billing commands and entitlement decisions through the generated backend client without recreating billing policy.",
+  "documentation": "apps/web/features/billing/MODULE.md",
+  "publicEntryPoint": "@/features/billing",
+  "publicImportPaths": ["@/features/billing", "apps/web/features/billing", "apps/web/features/billing/index.ts"],
+  "ownedRoutes": ["/billing", "/workspace", "/operator", "/filing/aksjonaerregisteroppgaven"],
+  "apiOperations": ["billingActivateSubscription", "billingCancelSubscription", "billingConfigureAccount", "billingManagePilotEntitlement", "billingMarkUnsupported", "billingPurchaseFilingPackage", "billingReadEntitlement", "billingReadSnapshot", "billingRefundFilingPackage"],
+  "dependencies": [],
+  "allowedImports": ["#backend-configuration", "@talli/talli-api-client"],
+  "cachePolicy": { "default": "no-store", "allowed": [] },
+  "directBrowserFlows": [],
+  "forbiddenResponsibilities": [
+    "Billing pricing, entitlement, refund, provider-event, or authorization policy",
+    "Direct Supabase billing persistence or handwritten business DTOs"
+  ],
+  "tests": {
+    "feature": "apps/web/tests/billing-transport.test.mjs",
+    "stageExit": "tests/billing_database_runtime.test.mjs",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

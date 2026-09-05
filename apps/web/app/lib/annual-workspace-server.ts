@@ -9,7 +9,6 @@ import {
   listAnnualData,
   listAuthorityPermissions,
   listBankTransactions,
-  listBillingAccounts,
   listDocumentsForCompanies,
   listFilingOverrides,
   listFilingPreviews,
@@ -28,6 +27,7 @@ import {
   listPresentedInvestmentPositions,
 } from "../../features/investments";
 import { getCurrentSessionAccessToken } from "./supabase/auth-session.ts";
+import { loadBillingSnapshot } from "../../features/billing";
 
 export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext) => {
   if (!Number.isInteger(context.incomeYear) || context.incomeYear < 2000 || context.incomeYear > 2100) notFound();
@@ -79,7 +79,29 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     listLedgerEntries(companyIds),
     listFilingReadinessSnapshots(companyIds),
     listFilingReviewComments(companyIds),
-    listBillingAccounts(companyIds),
+    loadBillingSnapshot(accessToken, { companyIds }).then((snapshot) => ({
+      billingAccounts: snapshot.accounts.map((account) => ({
+        company_id: account.companyId,
+        pricing_plan: account.pricingPlan,
+        monthly_nok: account.monthlyNok,
+        filing_package_nok: account.filingPackageNok,
+        founder_cohort_number: account.founderCohortNumber,
+        subscription_active: account.subscriptionActive,
+        filing_package_paid: account.filingPackagePaid,
+        supported_case: account.supportedCase,
+        refund_eligible: account.refundEligible,
+        refund_completed: account.refundCompleted,
+        no_charge_reason: account.noChargeReason,
+        provider_customer_ref: account.providerCustomerReference,
+        subscription_provider_ref: account.subscriptionProviderReference,
+        filing_package_payment_ref: account.filingPackagePaymentReference,
+        refund_provider_ref: account.refundProviderReference,
+        updated_by: account.updatedBy,
+        created_at: account.createdAt,
+        updated_at: account.updatedAt,
+      })),
+      error: null,
+    })),
     listAuthorityPermissions(companyIds),
   ]);
 

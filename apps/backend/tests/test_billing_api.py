@@ -1,0 +1,135 @@
+from __future__ import annotations
+
+from fastapi.testclient import TestClient
+
+from talli_backend.main import create_app
+from talli_backend.shared.kernel import ActorId, ActorKind, UserId
+
+from test_billing import MemoryPersistence, account
+
+
+ACTOR = ActorId(
+    ActorKind.USER, UserId("20000000-0000-4000-8000-000000000001")
+)
+COMPANY = "10000000-0000-4000-8000-000000000001"
+
+
+class BillingSessionStub(MemoryPersistence):
+    def __init__(self, value=None, *, ready=False) -> None:
+        super().__init__(value, ready=ready)
+        self.tokens: list[str] = []
+
+    @property
+    def actor_id(self):
+        return ACTOR
+
+    async def session(self, access_token: str):
+        self.tokens.append(access_token)
+        return self
+
+
+def client(stub: BillingSessionStub) -> TestClient:
+    return TestClient(create_app(billing_session_factory=stub))
+
+
+def headers(operation: str) -> dict[str, str]:
+    return {
+        "Authorization": "Bearer verified-session",
+        "Idempotency-Key": f"billing-api-{operation}-00000001",
+        "X-Request-ID": f"billing-api-{operation}",
+    }
+
+
+def test_configure_and_snapshot_use_authenticated_backend_contract() -> None:
+    stub = BillingSessionStub()
+    response = client(stub).post(
+        "/api/v1/billing/accounts/configuration",
+        headers=headers("configure"),
+        json={
+            "companyId": COMPANY,
+            "pricingPlan": "founder",
+            "founderCohortNumber": 100,
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["monthlyNok"] == 29
+    assert response.json()["filingPackageNok"] == 299
+    assert stub.tokens == ["verified-session"]
+
+    snapshot = client(stub).get(
+        "/api/v1/billing/snapshot",
+        headers={"Authorization": "Bearer verified-session"},
+        params={"companyIds": COMPANY},
+    )
+    assert snapshot.status_code == 200
+    assert snapshot.json()["accounts"][0]["companyId"] == COMPANY
+
+
+def test_provider_retry_returns_same_event_without_bypassing_entitlement() -> None:
+    stub = BillingSessionStub(account(subscription_active=True), ready=True)
+    api = client(stub)
+    first = api.post(
+        "/api/v1/billing/filing-package/purchase",
+        headers=headers("filing"),
+        json={
+            "companyId": COMPANY,
+            "incomeYear": 2025,
+            "obligation": "aksjonaerregisteroppgaven",
+        },
+    )
+    replay = api.post(
+        "/api/v1/billing/filing-package/purchase",
+        headers=headers("filing"),
+        json={
+            "companyId": COMPANY,
+            "incomeYear": 2025,
+            "obligation": "aksjonaerregisteroppgaven",
+        },
+    )
+    assert first.status_code == 200
+    assert replay.status_code == 200
+    assert replay.json()["eventId"] == first.json()["eventId"]
+    assert replay.json()["replayed"] is True
+
+    entitlement = api.get(
+        "/api/v1/billing/entitlement",
+        headers={"Authorization": "Bearer verified-session"},
+        params={
+            "companyId": COMPANY,
+            "incomeYear": 2025,
+            "obligation": "aksjonaerregisteroppgaven",
+        },
+    )
+    assert entitlement.status_code == 200
+    assert entitlement.json()["status"] == "ready_for_production_filing"
+    assert entitlement.json()["allowed"] is True
+
+
+def test_filing_purchase_fails_closed_when_readiness_is_missing() -> None:
+    stub = BillingSessionStub(account(subscription_active=True), ready=False)
+    response = client(stub).post(
+        "/api/v1/billing/filing-package/purchase",
+        headers=headers("blocked"),
+        json={
+            "companyId": COMPANY,
+            "incomeYear": 2025,
+            "obligation": "aksjonaerregisteroppgaven",
+        },
+    )
+    assert response.status_code == 409
+    assert response.json()["code"] == "BILLING_FILING_NOT_READY"
+    assert stub.events == {}
+
+
+def test_billing_rejects_missing_bearer_and_weak_operation_key() -> None:
+    stub = BillingSessionStub()
+    missing = client(stub).get(
+        "/api/v1/billing/snapshot", params={"companyIds": COMPANY}
+    )
+    assert missing.status_code == 401
+    weak = client(stub).post(
+        "/api/v1/billing/subscriptions/activation",
+        headers={"Authorization": "Bearer verified-session", "Idempotency-Key": "weak"},
+        json={"companyId": COMPANY},
+    )
+    assert weak.status_code == 422

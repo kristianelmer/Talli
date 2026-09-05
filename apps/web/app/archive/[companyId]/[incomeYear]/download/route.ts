@@ -24,6 +24,7 @@ import {
   listCorporateDecisionLifecycle,
   listSupportedCorporateEvents,
 } from "../../../../../features/corporate-governance";
+import { loadBillingSnapshot } from "../../../../../features/billing";
 import {
   buildPersistedCompanyArchive,
   firstArchiveSourceError,
@@ -97,6 +98,37 @@ async function loadArchiveDocuments(
     };
   } catch {
     return { data: null, projection: null, error: new Error("Documents archive projection unavailable.") };
+  }
+}
+
+async function loadArchiveBilling(accessToken: string, companyId: string) {
+  try {
+    const snapshot = await loadBillingSnapshot(accessToken, { companyIds: [companyId] });
+    return {
+      data: snapshot.accounts.map((account) => ({
+        company_id: account.companyId,
+        pricing_plan: account.pricingPlan,
+        monthly_nok: account.monthlyNok,
+        filing_package_nok: account.filingPackageNok,
+        founder_cohort_number: account.founderCohortNumber,
+        subscription_active: account.subscriptionActive,
+        filing_package_paid: account.filingPackagePaid,
+        supported_case: account.supportedCase,
+        refund_eligible: account.refundEligible,
+        refund_completed: account.refundCompleted,
+        no_charge_reason: account.noChargeReason,
+        provider_customer_ref: account.providerCustomerReference,
+        subscription_provider_ref: account.subscriptionProviderReference,
+        filing_package_payment_ref: account.filingPackagePaymentReference,
+        refund_provider_ref: account.refundProviderReference,
+        updated_by: account.updatedBy,
+        created_at: account.createdAt,
+        updated_at: account.updatedAt,
+      })),
+      error: null,
+    };
+  } catch {
+    return { data: null, error: new Error("Billing archive source unavailable.") };
   }
 }
 
@@ -313,10 +345,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
         .select("id, company_id, income_year, action_type, action_date, payload, ledger_entry_id, bank_transaction_id, document_id, risk_level, blocker_code, created_by, created_at")
         .eq("company_id", companyId)
         .eq("income_year", incomeYear),
-      supabase
-        .from("billing_accounts")
-        .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref, updated_by, created_at, updated_at")
-        .eq("company_id", companyId),
+      loadArchiveBilling(accessToken, companyId),
       supabase
         .from("authority_permissions")
         .select("id, company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled, updated_at")
