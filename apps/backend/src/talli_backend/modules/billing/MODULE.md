@@ -126,7 +126,7 @@ both paths recover using the same operation key.
 `AnnualProviderObservation`, using `AnnualProviderOperation` and
 `AnnualProviderStatus`. The registered `VippsTestBillingProvider` is restricted to
 `https://apitest.vipps.no`; it has no production switch. Its runtime composition
-and annual persistence are still pending. Local HTTP fixtures verify request and
+remains pending. The annual PostgreSQL adapter below is internal only. Local HTTP fixtures verify request and
 recovery behavior; they are not evidence of actual Vipps merchant-test execution.
 
 An ambiguous checkout recovers through a bounded, read-only search for its unique
@@ -196,10 +196,30 @@ pins Company Access evidence; `AnnualCheckoutPrerequisites` adds the source
 readiness reference, digest and evaluation time.
 
 `AnnualCheckoutPersistence` declares claim/load/settle operations with purchase-
-then-operation locking and monotonic financial settlement. Its PostgreSQL adapter
-is still pending; the orchestration tests use an isolated in-memory adapter and
-do not establish production persistence integration. Provider account identity
-is pinned, and mismatched/malformed capture evidence cannot grant paid access.
+then-operation locking and monotonic financial settlement.
+`PostgresAnnualCheckoutSession` implements the port using restricted verified-actor
+transactions. Claims serialize by company/year and recheck idempotency after
+waiting. The source-owned purchase-basis function holds the eligibility lock; the
+adapter compares its references and stores the exact returned JSONB. Full billing
+terms are exposed on `AnnualBillingOffer` and saved alongside their digest. The
+original operation stores provider intent plus readiness reference/digest/evaluation
+and notice dates. No provider I/O occurs inside the persistence transaction.
+
+The injected readiness verifier must validate the exact source-owned evidence,
+including current identity, company/year and digest. Its default returns unavailable;
+only isolated fixtures supply a verifier in this unit. This is not a production
+readiness binding, and the adapter is not composed into HTTP/runtime yet.
+
+Settlement locks purchase before operation, invokes billing-owned public
+`settle_annual_checkout` against that latest state, and commits both records
+atomically. Terminal purchases and obsolete observations return the latest result
+without updating terminal operation evidence. Only confirmed full capture grants
+paid access; full capture already refunded in full becomes refunded, while a
+refunded partial capture stays unresolved. The first capture timestamp, merchant
+identity, bound agreement and monotonic totals remain immutable. Real independent-
+connection tests cover claim races, visibility before provider execution, response
+loss after commit, rollback between writes, lock ordering, current-source negatives,
+tenant/MFA boundaries and two evidence-preserving rollback/recutover cycles.
 
 The application prerequisite binding currently returns `FILING_NOT_READY`.
 Company Access owns definitive eligibility. The eventual source for authoritative

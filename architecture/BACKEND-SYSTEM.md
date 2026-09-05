@@ -380,3 +380,13 @@ production payments or complete the annual application workflow.
 <!-- architecture-inventory
 {"ports":["AnnualBillingProvider"],"adapterBindings":["AnnualBillingProvider=>talli_backend.adapters.vipps_billing.VippsTestBillingProvider"],"adapterBindingOwners":["AnnualBillingProvider=>backend-system"],"adapterBindingModes":["AnnualBillingProvider=>test-origin-only adapter; runtime composition pending #192, no production activation"]}
 -->
+
+`AnnualCheckoutPersistence` is registered to
+`talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCheckoutSession`.
+It commits annual purchase/operation claims before external I/O and serializes
+settlement against the latest locked purchase and operation. Readiness defaults
+to unavailable; no annual HTTP/runtime composition is enabled by this adapter.
+
+<!-- architecture-inventory
+{"ports":["AnnualCheckoutPersistence"],"adapterBindings":["AnnualCheckoutPersistence=>talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCheckoutSession"],"adapterBindingOwners":["AnnualCheckoutPersistence=>backend-system"],"adapterBindingModes":["AnnualCheckoutPersistence=>restricted verified-actor PostgreSQL claims and settlement; readiness defaults unavailable; runtime cutover pending #192"]}
+-->

@@ -1,0 +1,421 @@
+"""Annual claims and settlement in short, verified-actor PostgreSQL transactions.
+
+No runtime binds this adapter yet. The readiness verifier defaults to unavailable;
+fixtures may supply a verifier, but cannot provide real-company charge authority.
+"""
+
+from asyncio import timeout
+from collections.abc import Awaitable, Callable
+from dataclasses import fields, replace
+from datetime import UTC, date, datetime, timedelta
+import json
+
+import psycopg
+from psycopg.rows import dict_row
+
+from talli_backend.adapters.supabase_ledger import _VerifiedActor
+from talli_backend.modules.billing.public import (
+    AnnualBillingOffer,
+    AnnualCheckout,
+    AnnualCheckoutClaim,
+    AnnualCheckoutPersistence,
+    AnnualCheckoutPrerequisites,
+    AnnualProviderIntent,
+    AnnualProviderObservation,
+    AnnualProviderOperation,
+    AnnualProviderStatus,
+    AnnualPurchaseId,
+    AnnualPurchaseStatus,
+    BillingError,
+    BillingErrorCode,
+    BillingPaymentEventId,
+    billing_persistence_adapter,
+    settle_annual_checkout,
+)
+from talli_backend.shared.kernel import CompanyId, IdempotencyKey, IncomeYear, Timestamp, UserId
+
+
+def _json_value(value):
+    if isinstance(value, (Timestamp, IncomeYear)):
+        return _json_value(value.value)
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    if value is None or isinstance(value, (str, int, bool)):
+        return value
+    return str(value)
+
+
+def _record(value):
+    return {field.name: _json_value(getattr(value, field.name)) for field in fields(value)}
+
+
+def _timestamp(value):
+    return Timestamp(datetime.fromisoformat(value)) if value else None
+
+
+def _checkout(purchase, operation):
+    saved = operation["intent"]
+    intent = saved["provider_intent"]
+    offer = AnnualBillingOffer(
+        company_id=CompanyId(str(purchase["company_id"])),
+        income_year=IncomeYear(purchase["income_year"]),
+        **{
+            key: purchase[key]
+            for key in (
+                "offer_version",
+                "terms_digest",
+                "terms_text",
+                "currency",
+                "gross_minor",
+                "net_minor",
+                "vat_minor",
+                "vat_basis_points",
+                "paid_through",
+                "export_through",
+                "renewal_date",
+            )
+        },
+        renewal_reminder_by=date.fromisoformat(saved["renewal_reminder_by"]),
+        price_change_notice_by=date.fromisoformat(saved["price_change_notice_by"]),
+    )
+    observation = operation["observation"]
+    if observation is not None:
+        observation = AnnualProviderObservation(
+            **(
+                observation
+                | {
+                    "operation": AnnualProviderOperation(observation["operation"]),
+                    "status": AnnualProviderStatus(observation["status"]),
+                    "captured_at": _timestamp(observation["captured_at"]),
+                }
+            )
+        )
+        # Purchase totals can advance through another durable operation (refund).
+        observation = replace(
+            observation,
+            captured_minor=purchase["captured_minor"],
+            refunded_minor=purchase["refunded_minor"],
+            agreement_reference=purchase["agreement_reference"],
+            captured_at=Timestamp(purchase["captured_at"]) if purchase["captured_at"] else None,
+        )
+    return AnnualCheckout(
+        purchase_id=AnnualPurchaseId(str(purchase["id"])),
+        offer=offer,
+        accepted_by=UserId(str(purchase["accepted_by"])),
+        request_fingerprint=operation["request_fingerprint"],
+        idempotency_key=IdempotencyKey(operation["idempotency_key"]),
+        provider=purchase["provider"],
+        provider_account=purchase["provider_account"],
+        intent=AnnualProviderIntent(
+            **(
+                intent
+                | {
+                    "operation_id": BillingPaymentEventId(intent["operation_id"]),
+                    "company_id": CompanyId(intent["company_id"]),
+                    "income_year": IncomeYear(intent["income_year"]),
+                    "operation": AnnualProviderOperation(intent["operation"]),
+                    "created_at": _timestamp(intent["created_at"]),
+                    "due_date": date.fromisoformat(intent["due_date"]) if intent["due_date"] else None,
+                }
+            )
+        ),
+        status=AnnualPurchaseStatus(purchase["status"]),
+        observation=observation,
+    )
+
+
+async def _unavailable_readiness(evidence: AnnualCheckoutPrerequisites) -> bool:
+    return False
+
+
+@billing_persistence_adapter(AnnualCheckoutPersistence)
+class PostgresAnnualCheckoutSession:
+    def __init__(
+        self,
+        database_url: str,
+        verified: _VerifiedActor,
+        *,
+        readiness_is_current: Callable[
+            [AnnualCheckoutPrerequisites], Awaitable[bool]
+        ] = _unavailable_readiness,
+    ) -> None:
+        self._database_url = database_url
+        self._verified = verified
+        # Must validate the exact source-owned identity, scope and digest. No
+        # browser field or legacy readiness snapshot is an acceptable binding.
+        self._readiness_is_current = readiness_is_current
+
+    @property
+    def actor_id(self):
+        return self._verified.actor_id
+
+    async def _transaction(self, work):
+        if not self._database_url:
+            raise BillingError.unavailable()
+        try:
+            async with (
+                timeout(10),
+                await psycopg.AsyncConnection.connect(
+                    self._database_url,
+                    connect_timeout=5,
+                    row_factory=dict_row,
+                    options="-c statement_timeout=5000 -c lock_timeout=1000",
+                ) as connection,
+                connection.transaction(),
+            ):
+                await connection.execute("set local role billing_store_owner")
+                await connection.execute(
+                    "select set_config('talli.verified_actor_id', %s, true), set_config('talli.verified_actor_claims', %s, true)",
+                    (str(self.actor_id.subject), self._verified.claims_json),
+                )
+                return await work(connection)
+        except BillingError:
+            raise
+        except psycopg.errors.UniqueViolation:
+            # Global key constraints never reveal another tenant's purchase.
+            raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED) from None
+        except psycopg.errors.InsufficientPrivilege:
+            raise BillingError.forbidden() from None
+        except (TimeoutError, psycopg.DatabaseError):
+            raise BillingError.unavailable() from None
+
+    async def _authorize(self, connection, company_id):
+        row = await (
+            await connection.execute(
+                "select public.company_access_is_accepted_owner_v1(%s::uuid) as owner, public.company_access_has_fresh_mfa_v1() as fresh",
+                (str(company_id),),
+            )
+        ).fetchone()
+        if not row["owner"]:
+            raise BillingError.forbidden()
+        if not row["fresh"]:
+            raise BillingError.step_up_required()
+
+    async def authorize_owner_command(self, company_id: CompanyId) -> None:
+        await self._transaction(lambda connection: self._authorize(connection, company_id))
+
+    async def _find(self, connection, company_id, key):
+        row = await (
+            await connection.execute(
+                """select to_jsonb(p) as purchase, to_jsonb(o) as operation
+            from billing.annual_operations o join billing.annual_purchases p on p.id=o.purchase_id
+            where o.company_id=%s::uuid and o.idempotency_key=%s and o.operation='checkout'""",
+                (str(company_id), str(key)),
+            )
+        ).fetchone()
+        if row is None:
+            return None
+        # to_jsonb serializes date/timestamp purchase columns; restore their types.
+        purchase = row["purchase"]
+        for key in ("paid_through", "export_through", "renewal_date"):
+            purchase[key] = date.fromisoformat(purchase[key])
+        if purchase["captured_at"]:
+            purchase["captured_at"] = datetime.fromisoformat(purchase["captured_at"])
+        return _checkout(purchase, row["operation"])
+
+    async def find_checkout(self, company_id: CompanyId, key: IdempotencyKey) -> AnnualCheckout | None:
+        async def work(connection):
+            await self._authorize(connection, company_id)
+            return await self._find(connection, company_id, key)
+
+        return await self._transaction(work)
+
+    async def _load(self, connection, company_id, purchase_id, *, lock=False):
+        suffix = " for update" if lock else ""
+        purchase = await (
+            await connection.execute(
+                "select * from billing.annual_purchases where company_id=%s::uuid and id=%s::uuid" + suffix,
+                (str(company_id), str(purchase_id)),
+            )
+        ).fetchone()
+        if purchase is None:
+            raise BillingError.not_found()
+        operation = await (
+            await connection.execute(
+                "select * from billing.annual_operations where purchase_id=%s::uuid and operation='checkout'"
+                + suffix,
+                (str(purchase_id),),
+            )
+        ).fetchone()
+        if operation is None:
+            raise BillingError.unavailable()
+        return _checkout(purchase, operation)
+
+    async def load_checkout(self, company_id: CompanyId, purchase_id: AnnualPurchaseId) -> AnnualCheckout:
+        async def work(connection):
+            await self._authorize(connection, company_id)
+            # Also serialize reads, so purchase totals and operation observation
+            # cannot come from different committed settlements.
+            return await self._load(connection, company_id, purchase_id, lock=True)
+
+        return await self._transaction(work)
+
+    async def claim_checkout(
+        self, checkout: AnnualCheckout, prerequisites: AnnualCheckoutPrerequisites
+    ) -> AnnualCheckoutClaim:
+        async def work(connection):
+            offer, intent = checkout.offer, checkout.intent
+            await self._authorize(connection, offer.company_id)
+            if (
+                checkout.accepted_by != self.actor_id.subject
+                or checkout.status is not AnnualPurchaseStatus.PENDING
+                or checkout.observation is not None
+                or intent.operation is not AnnualProviderOperation.CHECKOUT
+                or intent.company_id != offer.company_id
+                or intent.income_year != offer.income_year
+                or intent.amount_minor != offer.gross_minor
+                or intent.agreement_reference is not None
+            ):
+                raise BillingError.invalid()
+            await connection.execute(
+                "select pg_advisory_xact_lock(hashtextextended(%s, 192))",
+                (f"annual-checkout|{offer.company_id}|{offer.income_year.value}",),
+            )
+            existing = await self._find(connection, offer.company_id, checkout.idempotency_key)
+            if existing:
+                if existing.request_fingerprint != checkout.request_fingerprint:
+                    raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
+                return AnnualCheckoutClaim(existing, False)
+            basis = prerequisites.basis
+            if basis.company_id != offer.company_id or basis.income_year != offer.income_year:
+                raise BillingError.precondition(BillingErrorCode.FILING_NOT_READY)
+            accepted = await (
+                await connection.execute(
+                    "select public.company_access_purchase_basis_v1(%s::uuid, %s, %s::uuid, %s::uuid) as basis",
+                    (
+                        str(offer.company_id),
+                        offer.income_year.value,
+                        basis.assessment_id,
+                        basis.legal_acceptance_id,
+                    ),
+                )
+            ).fetchone()
+            raw = accepted["basis"]
+            if raw is None or (
+                raw["admission_id"],
+                raw["company_year_promise_sha256"],
+                raw["capability_manifest_sha256"],
+            ) != (basis.admission_id, basis.promise_digest, basis.manifest_digest):
+                raise BillingError.precondition(BillingErrorCode.UNSUPPORTED_CASE)
+            if (
+                prerequisites.ready is not True
+                or await self._readiness_is_current(prerequisites) is not True
+                or not timedelta(0)
+                <= datetime.now(UTC) - prerequisites.evaluated_at.value
+                <= timedelta(minutes=5)
+            ):
+                raise BillingError.precondition(BillingErrorCode.FILING_NOT_READY)
+            occupied = await (
+                await connection.execute(
+                    "select id from billing.annual_purchases where company_id=%s::uuid and income_year=%s and status in ('pending','paid')",
+                    (str(offer.company_id), offer.income_year.value),
+                )
+            ).fetchone()
+            if occupied:
+                raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_IN_PROGRESS)
+            await connection.execute(
+                """insert into billing.annual_purchases (id,company_id,income_year,accepted_by,accepted_at,
+                offer_version,terms_digest,terms_text,currency,gross_minor,net_minor,vat_minor,vat_basis_points,
+                paid_through,export_through,renewal_date,accepted_basis,recurring_consent,consent_version,
+                provider,provider_account,agreement_external_reference,charge_reference)
+                values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)""",
+                (
+                    str(checkout.purchase_id),
+                    str(offer.company_id),
+                    offer.income_year.value,
+                    str(checkout.accepted_by),
+                    intent.created_at.value,
+                    offer.offer_version,
+                    offer.terms_digest,
+                    offer.terms_text,
+                    offer.currency,
+                    offer.gross_minor,
+                    offer.net_minor,
+                    offer.vat_minor,
+                    offer.vat_basis_points,
+                    offer.paid_through,
+                    offer.export_through,
+                    offer.renewal_date,
+                    json.dumps(raw),
+                    intent.recurring_consent,
+                    offer.offer_version,
+                    checkout.provider,
+                    checkout.provider_account,
+                    intent.agreement_external_reference,
+                    intent.charge_reference,
+                ),
+            )
+            saved = {
+                "provider_intent": _record(intent),
+                "readiness": {
+                    "reference": prerequisites.readiness_reference,
+                    "digest": prerequisites.readiness_digest,
+                    "evaluated_at": prerequisites.evaluated_at.value.isoformat(),
+                    "ready": prerequisites.ready,
+                },
+                "renewal_reminder_by": offer.renewal_reminder_by.isoformat(),
+                "price_change_notice_by": offer.price_change_notice_by.isoformat(),
+            }
+            await connection.execute(
+                """insert into billing.annual_operations
+                (id,purchase_id,company_id,income_year,created_by,created_at,idempotency_key,request_fingerprint,operation,amount_minor,intent)
+                values (%s,%s,%s,%s,%s,%s,%s,%s,'checkout',%s,%s::jsonb)""",
+                (
+                    str(intent.operation_id),
+                    str(checkout.purchase_id),
+                    str(offer.company_id),
+                    offer.income_year.value,
+                    str(checkout.accepted_by),
+                    intent.created_at.value,
+                    str(checkout.idempotency_key),
+                    checkout.request_fingerprint,
+                    offer.gross_minor,
+                    json.dumps(saved),
+                ),
+            )
+            return AnnualCheckoutClaim(
+                await self._load(connection, offer.company_id, checkout.purchase_id), True
+            )
+
+        return await self._transaction(work)
+
+    async def settle_checkout(
+        self, checkout: AnnualCheckout, observation: AnnualProviderObservation
+    ) -> AnnualCheckout:
+        async def work(connection):
+            await self._authorize(connection, checkout.offer.company_id)
+            current = await self._load(connection, checkout.offer.company_id, checkout.purchase_id, lock=True)
+            if (
+                current.intent != checkout.intent
+                or current.request_fingerprint != checkout.request_fingerprint
+                or current.provider != checkout.provider
+                or current.provider_account != checkout.provider_account
+            ):
+                raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
+            result = settle_annual_checkout(current, observation, Timestamp(datetime.now(UTC)))
+            if result == current:
+                return current
+            await connection.execute(
+                """update billing.annual_purchases set status=%s,agreement_reference=%s,captured_minor=%s,
+                refunded_minor=%s,captured_at=%s,updated_at=statement_timestamp() where id=%s::uuid""",
+                (
+                    result.status.value,
+                    observation.agreement_reference,
+                    observation.captured_minor,
+                    observation.refunded_minor,
+                    observation.captured_at.value if observation.captured_at else None,
+                    str(current.purchase_id),
+                ),
+            )
+            await connection.execute(
+                """update billing.annual_operations set status=%s,observation=%s::jsonb,
+                updated_at=statement_timestamp() where id=%s::uuid""",
+                (
+                    observation.status.value,
+                    json.dumps(_record(observation)),
+                    str(current.intent.operation_id),
+                ),
+            )
+            return result
+
+        return await self._transaction(work)

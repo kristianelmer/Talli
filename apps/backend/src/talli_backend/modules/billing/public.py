@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from enum import StrEnum
+from hashlib import sha256
 from typing import Protocol, TypeVar, runtime_checkable
 from uuid import UUID
 
@@ -386,6 +387,7 @@ class AnnualBillingOffer:
     income_year: IncomeYear
     offer_version: str
     terms_digest: str
+    terms_text: str
     currency: str
     gross_minor: int
     net_minor: int
@@ -412,6 +414,8 @@ class AnnualBillingOffer:
             or self.export_through < self.paid_through + timedelta(days=90)
             or not self.offer_version
             or len(self.terms_digest) != 64
+            or not 1 <= len(self.terms_text) <= 20000
+            or sha256(self.terms_text.encode()).hexdigest() != self.terms_digest
         ):
             raise BillingError.invalid()
 
@@ -658,6 +662,15 @@ class AnnualCheckoutClaim:
     newly_claimed: bool
 
 
+def settle_annual_checkout(
+    checkout: AnnualCheckout, observation: AnnualProviderObservation, at: Timestamp,
+) -> AnnualCheckout:
+    """Apply billing settlement policy to the latest locked purchase snapshot."""
+    from talli_backend.modules.billing.annual_settlement import settle
+
+    return settle(checkout, observation, at)
+
+
 @runtime_checkable
 class AnnualCheckoutPersistence(Protocol):
     @property
@@ -828,6 +841,7 @@ def billing_provider_adapter(port: type[object]) -> Callable[[Adapter], Adapter]
 
 
 __all__ = [
+    "settle_annual_checkout",
     "AnnualPurchaseStatus",
     "AnnualCheckoutPersistence",
     "AnnualCheckoutClaim",

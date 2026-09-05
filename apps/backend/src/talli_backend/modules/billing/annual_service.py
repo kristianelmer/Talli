@@ -14,7 +14,7 @@ from talli_backend.modules.billing.public import (
     AnnualCheckoutPrerequisites, AnnualCheckoutQuery, AnnualProviderIntent,
     AnnualProviderObservation, AnnualProviderOperation, AnnualProviderStatus,
     AnnualPurchaseId, AnnualPurchaseStatus, BillingError, BillingErrorCode,
-    BillingPaymentEventId, StartAnnualCheckoutCommand,
+    BillingPaymentEventId, StartAnnualCheckoutCommand, settle_annual_checkout,
 )
 from talli_backend.shared.kernel import Timestamp
 
@@ -133,24 +133,4 @@ class AnnualCheckoutService:
         return await self._store.settle_checkout(checkout, observation)
 
     def _validate(self, checkout, observation):
-        if not isinstance(observation, AnnualProviderObservation):
-            raise BillingError.invalid()
-        old = checkout.observation
-        if (
-            observation.provider != checkout.provider
-            or observation.operation is not AnnualProviderOperation.CHECKOUT
-            or not isinstance(observation.status, AnnualProviderStatus)
-            or observation.charge_reference != checkout.intent.charge_reference
-            or observation.amount_minor != checkout.offer.gross_minor
-            or any(type(value) is not int for value in (observation.amount_minor, observation.captured_minor, observation.refunded_minor))
-            or not 0 <= observation.refunded_minor <= observation.captured_minor <= checkout.offer.gross_minor
-            or (old and (observation.captured_minor < old.captured_minor or observation.refunded_minor < old.refunded_minor))
-            or (old and old.captured_at and observation.captured_at != old.captured_at)
-            or (old and old.agreement_reference and observation.agreement_reference != old.agreement_reference)
-            or (observation.captured_minor > 0 and (not observation.agreement_reference or observation.captured_at is None
-                or not checkout.intent.created_at.value <= observation.captured_at.value <= self._now()))
-            or (observation.captured_minor == 0 and observation.captured_at is not None)
-            or (observation.status is AnnualProviderStatus.CONFIRMED and observation.captured_minor != checkout.offer.gross_minor)
-            or (observation.status is AnnualProviderStatus.FAILED and observation.captured_minor != 0)
-        ):
-            raise BillingError.invalid()
+        settle_annual_checkout(checkout, observation, Timestamp(self._now()))

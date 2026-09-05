@@ -404,6 +404,12 @@
       "adapter": "talli_backend.adapters.vipps_billing.VippsTestBillingProvider",
       "owner": "backend-system",
       "mode": "test-origin-only adapter; runtime composition pending #192, no production activation"
+    },
+    {
+      "port": "AnnualCheckoutPersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCheckoutSession",
+      "owner": "backend-system",
+      "mode": "restricted verified-actor PostgreSQL claims and settlement; readiness defaults unavailable; runtime cutover pending #192"
     }
   ],
   "allowedDependencies": {

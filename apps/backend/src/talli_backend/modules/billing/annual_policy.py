@@ -47,6 +47,7 @@ def annual_offer(company_id: CompanyId, income_year: IncomeYear) -> AnnualBillin
         income_year=income_year,
         offer_version="annual-company-year-2026-09-05",
         terms_digest=ANNUAL_TERMS_DIGEST,
+        terms_text=ANNUAL_TERMS,
         currency="NOK",
         gross_minor=149000,
         net_minor=119200,

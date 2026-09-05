@@ -71,7 +71,8 @@
       "AnnualCheckoutPrerequisites",
       "AnnualCheckout",
       "AnnualCheckoutClaim",
-      "AnnualCheckoutPersistence"
+      "AnnualCheckoutPersistence",
+      "settle_annual_checkout"
     ]
   },
   "owns": {
@@ -127,7 +128,9 @@
       "direction": "outbound",
       "contract": "talli_backend.modules.billing.public.AnnualCheckoutPersistence",
       "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
-      "adapters": []
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCheckoutSession"
+      ]
     }
   ],
   "dependencies": [],
@@ -162,7 +165,8 @@
     "vippsProvider": "apps/backend/tests/test_vipps_billing.py",
     "vippsWebhook": "apps/backend/tests/test_vipps_webhook.py",
     "annualLedger": "apps/backend/tests/test_annual_purchase_ledger_runtime.py",
-    "annualCheckout": "apps/backend/tests/test_annual_checkout_service.py"
+    "annualCheckout": "apps/backend/tests/test_annual_checkout_service.py",
+    "annualCheckoutDatabase": "apps/backend/tests/test_annual_checkout_runtime.py"
   },
   "compatibilityExceptions": []
 }
