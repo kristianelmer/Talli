@@ -4,7 +4,7 @@
   "capability": "billing",
   "status": "implementation-in-progress",
   "canonicalRoute": "#137 \u2192 #192 \u2192 #150",
-  "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5550252042",
+  "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5550934090",
   "routeCorrection": "Oversight reconciled source-handoff #137\u2192#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
   "baseline": {
     "revision": "ccf1dcba56a4eb05c5252b00286dba6b2b8b480e",
@@ -65,7 +65,20 @@
     "purchaseLedger": "38 Python billing database lifecycle tests plus Node predecessor lifecycle pass on a reset isolated database; final 20 annual-ledger cases pass. Includes case-bound admin negatives, concurrent full-refund replay, repurchase after full refund, immutable evidence, and two mixed predecessor rollback/recutover cycles. Bounded independent Standards PASS. Architecture check passes; advisors 0 blocking and 34 performance warnings. Runtime remains unwired.",
     "firstCapture": "Regression reproduced partial-to-full capture changing the ledger timestamp. Provider now reports first successful capture; partial capture remains pending. 87 provider/webhook/policy tests pass; actual MT evidence pending. Bounded independent review PASS with 8 capture-focused cases.",
     "architectureRegression": "Full architecture suite: 50 pass, one stale fixture failure after #137 stage exit. Updated only the ambiguity fixture to duplicate the current active stage; focused rerun passes. Architecture checker and dependency evidence pass unchanged.",
-    "initialCheckoutService": "28 focused service tests pass, including concurrent claim, lost claim/provider/settlement response, scoped fresh readiness, merchant identity, pre-intent capture rejection, refunded-first observation, and stale pending/capture/reference interleavings. Independent bounded Standards and adversarial reviews PASS. PostgreSQL adapter and HTTP/runtime integration remain pending. Full billing suite 181 Python and 14 Node tests pass; architecture check/dependency evidence pass."
+    "initialCheckoutService": "28 focused service tests pass, including concurrent claim, lost claim/provider/settlement response, scoped fresh readiness, merchant identity, pre-intent capture rejection, refunded-first observation, and stale pending/capture/reference interleavings. Independent bounded Standards and adversarial reviews PASS. PostgreSQL adapter and HTTP/runtime integration remain pending. Full billing suite 181 Python and 14 Node tests pass; architecture check/dependency evidence pass.",
+    "annualCheckoutPostgres": {
+      "revision": "5e60a7e04d5abc06285badb96f52058c20f55518",
+      "scope": "Internal PostgreSQL AnnualCheckoutPersistence only; HTTP/runtime and trusted readiness/real MT remain pending.",
+      "database": "36 new real independent-connection cases pass. Fresh isolated reset: 74 Python lifecycle cases plus Node two-cycle predecessor rollback/recutover pass. Claims, response loss, atomic rollback, current-source race, lock order, tenant/MFA, malformed/stale settlement and two annual recutover cycles covered.",
+      "billing": "181 Python +14 Node pass.",
+      "architecture": "Architecture checker/dependency evidence and all 51 architecture regression cases pass.",
+      "advisors": "0 blocking security/error findings; 34 performance warnings.",
+      "independentReviews": {
+        "standards": "PASS on exact 5e60a7e04d5abc06285badb96f52058c20f55518",
+        "spec": "PASS on exact 5e60a7e04d5abc06285badb96f52058c20f55518"
+      },
+      "diagnosticNote": "An earlier combined run returned unavailable basis/denied claims; the smaller reproductions and subsequent full run passed. Fresh reset full lifecycle passed; no production rule was weakened."
+    }
   },
   "externalEvidence": {
     "vippsMerchantTest": "pending designated existing test sales unit, backend-only test credentials, test user/app and callback setup; local fixtures cannot substitute",
