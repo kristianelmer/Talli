@@ -27,11 +27,25 @@ alter role billing_executor nologin noinherit nobypassrls;
 do $membership$
 begin
   execute pg_catalog.format(
-    'grant billing_store_owner, billing_executor, company_access_executor to %I',
+    'grant billing_store_owner, billing_executor, company_access_executor, ledger_store_owner to %I',
     current_user
   );
 end
 $membership$;
+
+select pg_catalog.set_config(
+  'talli.billing_migration_principal', current_user, true
+);
+set local role ledger_store_owner;
+do $backend_system_authority$
+begin
+  execute pg_catalog.format(
+    'grant usage on schema backend_system to %I',
+    pg_catalog.current_setting('talli.billing_migration_principal')
+  );
+end
+$backend_system_authority$;
+reset role;
 
 create schema if not exists billing authorization billing_store_owner;
 revoke all on schema billing from public, anon, authenticated, service_role;
@@ -39,7 +53,16 @@ grant usage on schema billing to billing_executor, billing_store_owner;
 grant usage on schema billing to company_access_executor;
 grant usage on schema billing to authenticated, service_role;
 
-create table billing.billing_command_receipts (
+do $restore_command_receipts$
+begin
+  if pg_catalog.to_regclass('billing.billing_command_receipts') is null
+    and pg_catalog.to_regclass('backend_system.billing_command_receipts') is not null then
+    alter table backend_system.billing_command_receipts set schema billing;
+  end if;
+end
+$restore_command_receipts$;
+
+create table if not exists billing.billing_command_receipts (
   idempotency_key text primary key check (idempotency_key <> ''),
   company_id uuid not null references public.companies(id) on delete cascade,
   operation text not null check (operation in (
@@ -54,6 +77,8 @@ alter table billing.billing_command_receipts owner to billing_store_owner;
 alter table billing.billing_command_receipts enable row level security;
 alter table billing.billing_command_receipts force row level security;
 
+drop policy if exists billing_command_receipts_backend_owner_write
+on billing.billing_command_receipts;
 create policy billing_command_receipts_backend_owner_write
 on billing.billing_command_receipts for all to billing_store_owner
 using (
@@ -251,10 +276,21 @@ begin
 end
 $backend_membership$;
 
+set local role ledger_store_owner;
+do $backend_system_authority_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke usage on schema backend_system from %I',
+    pg_catalog.current_setting('talli.billing_migration_principal')
+  );
+end
+$backend_system_authority_revoke$;
+reset role;
+
 do $cleanup$
 begin
   execute pg_catalog.format(
-    'revoke billing_store_owner, billing_executor, company_access_executor from %I',
+    'revoke billing_store_owner, billing_executor, company_access_executor, ledger_store_owner from %I',
     current_user
   );
 end

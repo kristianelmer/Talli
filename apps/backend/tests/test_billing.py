@@ -34,6 +34,7 @@ from talli_backend.modules.billing.public import (
     PurchaseFilingPackageCommand,
     RefundFilingPackageCommand,
     SystemUserRequestReference,
+    expected_payment_status,
 )
 from talli_backend.modules.billing.service import BillingService
 from talli_backend.shared.kernel import (
@@ -91,8 +92,18 @@ class MemoryPersistence:
     def __init__(self, value: BillingAccount | None = None, *, ready: bool = False) -> None:
         self.account = value
         self.ready = ready
+        self.owner_authorized = True
+        self.admin_authorized = True
         self.events: dict[str, BillingPaymentEvent] = {}
         self.pilot: ProductionPilotEntitlement | None = None
+
+    async def authorize_owner_command(self, _company_id: CompanyId) -> None:
+        if not self.owner_authorized:
+            raise BillingError.forbidden()
+
+    async def authorize_admin_command(self) -> None:
+        if not self.admin_authorized:
+            raise BillingError.forbidden()
 
     async def find_account(self, company_id: CompanyId):
         assert company_id == COMPANY_ID
@@ -118,7 +129,7 @@ class MemoryPersistence:
         )
 
     async def find_payment_event(
-        self, *, company_id, idempotency_key, kind, amount_nok, income_year
+        self, *, company_id, idempotency_key, kind, income_year
     ):
         event = self.events.get(str(idempotency_key))
         if event is None:
@@ -126,7 +137,6 @@ class MemoryPersistence:
         if (
             event.company_id != company_id
             or event.kind is not kind
-            or event.amount_nok != amount_nok
             or event.income_year != income_year
         ):
             raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
@@ -163,10 +173,7 @@ class MemoryPersistence:
         )
         self.events[key] = event
         assert self.account is not None
-        expected_status = {
-            BillingPaymentKind.SUBSCRIPTION_CANCELLATION: BillingPaymentStatus.CANCELED,
-            BillingPaymentKind.REFUND: BillingPaymentStatus.REFUNDED,
-        }.get(event.kind, BillingPaymentStatus.SUCCEEDED)
+        expected_status = expected_payment_status(event.kind)
         if event.status is not expected_status:
             return event
         if event.kind is BillingPaymentKind.SUBSCRIPTION:
@@ -362,10 +369,15 @@ def test_cancellation_unsupported_and_refund_preserve_safe_states() -> None:
     ))
     assert refund.status is BillingPaymentStatus.REFUNDED
     assert persistence.account is not None and persistence.account.refund_completed
+    persistence.account = replace(
+        persistence.account,
+        pricing=BillingPricing(BillingPlan.FOUNDER, 29, 299),
+    )
     replay = asyncio.run(service.refund_filing_package(
         RefundFilingPackageCommand(**metadata("refund"), income_year=IncomeYear(2025))
     ))
     assert replay.event_id == refund.event_id
+    assert replay.amount_nok == 499
     assert replay.replayed is True
 
     canceled = asyncio.run(service.cancel_subscription(
@@ -434,7 +446,44 @@ def test_provider_exception_is_quarantined_without_retrying_the_provider() -> No
     assert event.status is BillingPaymentStatus.FAILED
     assert event.provider_reference.startswith("quarantine_")
     assert provider.calls == 1
-    assert persistence.account is not None and not persistence.account.subscription_active
+
+
+def test_sensitive_authorization_precedes_provider_calls_and_event_replay() -> None:
+    class RecordingProvider:
+        provider = "recording"
+        production_enabled = False
+
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def execute(self, _intent):
+            self.calls += 1
+            return BillingProviderResult(
+                provider=self.provider,
+                provider_reference="recording-subscription",
+                status=BillingPaymentStatus.SUCCEEDED,
+            )
+
+    persistence = MemoryPersistence(account())
+    provider = RecordingProvider()
+    service = BillingService(persistence, provider, now=lambda: NOW.value)
+    command = ActivateSubscriptionCommand(**metadata("authorized-first"))
+    first = asyncio.run(service.activate_subscription(command))
+    assert first.status is BillingPaymentStatus.SUCCEEDED
+    assert provider.calls == 1
+
+    persistence.owner_authorized = False
+    with pytest.raises(BillingError) as replay_error:
+        asyncio.run(service.activate_subscription(command))
+    assert replay_error.value.code == BillingErrorCode.FORBIDDEN
+    with pytest.raises(BillingError) as new_error:
+        asyncio.run(
+            service.activate_subscription(
+                ActivateSubscriptionCommand(**metadata("unauthorized-new"))
+            )
+        )
+    assert new_error.value.code == BillingErrorCode.FORBIDDEN
+    assert provider.calls == 1
 
 
 def test_public_commands_reject_invalid_founder_and_pilot_ranges() -> None:

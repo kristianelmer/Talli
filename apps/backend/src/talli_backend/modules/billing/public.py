@@ -79,6 +79,13 @@ class BillingPaymentStatus(StrEnum):
     CANCELED = "canceled"
 
 
+def expected_payment_status(kind: BillingPaymentKind) -> BillingPaymentStatus:
+    return {
+        BillingPaymentKind.SUBSCRIPTION_CANCELLATION: BillingPaymentStatus.CANCELED,
+        BillingPaymentKind.REFUND: BillingPaymentStatus.REFUNDED,
+    }.get(kind, BillingPaymentStatus.SUCCEEDED)
+
+
 class ProductionPilotStatus(StrEnum):
     PENDING = "pending"
     ACTIVE = "active"
@@ -367,6 +374,10 @@ class BillingPaymentProvider(Protocol):
 
 
 class BillingPersistence(Protocol):
+    async def authorize_owner_command(self, company_id: CompanyId) -> None: ...
+
+    async def authorize_admin_command(self) -> None: ...
+
     async def find_account(self, company_id: CompanyId) -> BillingAccount | None: ...
 
     async def filing_ready(
@@ -392,7 +403,6 @@ class BillingPersistence(Protocol):
         company_id: CompanyId,
         idempotency_key: IdempotencyKey,
         kind: BillingPaymentKind,
-        amount_nok: int,
         income_year: IncomeYear | None,
     ) -> BillingPaymentEvent | None: ...
 
@@ -494,4 +504,5 @@ __all__ = [
     "SystemUserRequestReference",
     "billing_persistence_adapter",
     "billing_provider_adapter",
+    "expected_payment_status",
 ]

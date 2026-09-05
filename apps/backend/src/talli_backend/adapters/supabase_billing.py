@@ -47,6 +47,7 @@ from talli_backend.modules.billing.public import (
     RefundFilingPackageCommand,
     SystemUserRequestReference,
     billing_persistence_adapter,
+    expected_payment_status,
 )
 from talli_backend.shared.kernel import CompanyId, IdempotencyKey, IncomeYear, UserId
 
@@ -350,6 +351,30 @@ class SupabaseBillingSession:
         except psycopg.DatabaseError as error:
             raise _map_error(str(error)) from None
 
+    async def authorize_owner_command(self, company_id: CompanyId) -> None:
+        rows = await self._rows(
+            "billing_store_owner",
+            """select
+              public.company_access_is_accepted_owner_v1(%s::uuid) as authorized,
+              public.company_access_has_fresh_mfa_v1() as fresh_mfa""",
+            (str(company_id),),
+        )
+        if len(rows) != 1 or not rows[0]["authorized"]:
+            raise BillingError.forbidden()
+        if not rows[0]["fresh_mfa"]:
+            raise BillingError.step_up_required()
+
+    async def authorize_admin_command(self) -> None:
+        rows = await self._rows(
+            "billing_store_owner",
+            """select public.company_access_is_active_admin_v1() as authorized,
+              public.company_access_has_fresh_mfa_v1() as fresh_mfa""",
+        )
+        if len(rows) != 1 or not rows[0]["authorized"]:
+            raise BillingError.forbidden()
+        if not rows[0]["fresh_mfa"]:
+            raise BillingError.step_up_required()
+
     async def find_account(self, company_id: CompanyId) -> BillingAccount | None:
         rows = await self._rows(
             "billing_executor",
@@ -409,7 +434,7 @@ class SupabaseBillingSession:
         )
 
     async def find_payment_event(
-        self, *, company_id, idempotency_key, kind, amount_nok, income_year
+        self, *, company_id, idempotency_key, kind, income_year
     ):
         rows = await self._rows(
             "billing_executor",
@@ -422,7 +447,6 @@ class SupabaseBillingSession:
         if (
             event.company_id != company_id
             or event.kind is not kind
-            or event.amount_nok != amount_nok
             or event.income_year != income_year
         ):
             raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
@@ -486,7 +510,15 @@ class SupabaseBillingSession:
                     company_id, provider, provider_reference, idempotency_key,
                     kind, status, amount_nok, income_year, payload, created_by
                   ) select
-                    %s::uuid, %s::text, %s::text, %s::text, %s::text, %s::text,
+                    %s::uuid, %s::text, %s::text, %s::text, %s::text,
+                    case
+                      when %s::text = 'filing_package'
+                        and not billing.read_legacy_filing_readiness_v1(
+                          %s::uuid, %s::integer, %s::text
+                        )
+                      then 'failed'
+                      else %s::text
+                    end,
                     %s::integer, %s::integer, %s::jsonb, %s::uuid
                   from billing.billing_accounts account
                   where account.company_id = %s::uuid
@@ -527,26 +559,26 @@ class SupabaseBillingSession:
                     and exists (select 1 from inserted)
                     and exists (
                       select 1 from inserted event
-                      where event.status = case event.kind
-                        when 'subscription_cancellation' then 'canceled'
-                        when 'refund' then 'refunded'
-                        else 'succeeded'
-                      end
+                      where event.status = %s::text
                     )
                   returning account.company_id
                 )
                 select * from selected""",
             (
                 str(command.company_id), result.provider, result.provider_reference,
-                str(command.idempotency_key), kind.value, result.status.value,
+                str(command.idempotency_key), kind.value,
+                kind.value, str(command.company_id),
+                int(income_year) if income_year else None,
+                getattr(command, "obligation", BillingObligation.SHAREHOLDER_REGISTER).value,
+                result.status.value,
                 amount_nok, int(income_year) if income_year else None, payload,
                 str(command.actor_id.subject), str(command.company_id),
                 str(command.idempotency_key),
                 kind.value, kind.value, kind.value, kind.value,
-                result.provider_reference, kind.value, kind.value,
+                result.provider_reference, kind.value, kind.value, kind.value,
                 result.provider_reference, kind.value, kind.value, kind.value,
                 result.provider_reference, str(command.actor_id.subject),
-                str(command.company_id),
+                str(command.company_id), expected_payment_status(kind).value,
             ),
         )
         if len(rows) != 1:
@@ -555,7 +587,6 @@ class SupabaseBillingSession:
         if (
             event.company_id != command.company_id
             or event.kind is not kind
-            or event.amount_nok != amount_nok
             or event.income_year != income_year
         ):
             raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)

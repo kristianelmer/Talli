@@ -36,7 +36,8 @@ is `BillingAccount`, `BillingCommands`, `BillingQueries`, `BillingObligation`,
 `BillingPaymentEventId`, `BillingPaymentKind`, `BillingPaymentStatus`,
 `BillingProviderIntent`, `BillingProviderResult`, `ProductionPilotEntitlement`,
 `ProductionPilotEntitlementId`, `ProductionPilotStatus`, and
-`SystemUserRequestReference`. Failures use `BillingError` and
+`SystemUserRequestReference`. `expected_payment_status` is the canonical mapping
+from a payment kind to its successful terminal state. Failures use `BillingError` and
 `BillingErrorCode`.
 
 `BillingEntitlementDecision` is the only production billing gate. It expresses
@@ -68,4 +69,6 @@ private schema and temporarily exposes security-invoker views for deployment
 overlap. `20260905013000_billing_contract.sql` rewrites downstream database
 readers and removes those views plus the obsolete write RPC. Matching rollback
 artifacts restore the immediately preceding topology; the lifecycle test
-rehearses expansion and contract rollback/cutover twice.
+rehearses expansion and contract rollback/cutover twice. Durable command receipts
+move to a quarantined `backend_system` relation during expansion rollback and
+return to `billing` on recutover, so rollback never erases replay history.

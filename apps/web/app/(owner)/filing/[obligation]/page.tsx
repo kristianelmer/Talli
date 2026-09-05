@@ -314,16 +314,10 @@ export default async function FilingObligationPage({
     (item) => item.filing === filingString && item.income_year === input.incomeYear,
   );
   const previewReady = preview?.status === "ready";
-  const pilotEntitlement = data.productionPilotEntitlements.find(
-    (item) => item.company_id === input.company.id
-      && item.user_id === data.user?.id
-      && item.income_year === input.incomeYear
-      && item.obligation === obligation
-      && item.case_profile === "rf1086_no_activity_v1"
-      && item.status === "active"
-      && new Date(item.starts_at) <= new Date()
-      && new Date(item.expires_at) > new Date(),
-  );
+  const billingDecision = data.primaryBillingEntitlements[obligation];
+  const pilotEntitlementId = billingDecision?.pilotEntitlementId ?? null;
+  const productionBillingReady = billingDecision?.allowed === true
+    && pilotEntitlementId !== null;
   const productionApproval = preview
     ? data.filingApprovalSnapshots.find(
       (item) => item.preview_id === preview.id && item.invalidated_at === null,
@@ -402,7 +396,7 @@ export default async function FilingObligationPage({
       <Stepper steps={steps} current={currentStep} className="filingStepper" />
 
       <div className="filingFlow">
-        {productionSubmission || (pilotEntitlement && previewReady) ? (
+        {productionSubmission || (productionBillingReady && previewReady) ? (
           <section className="filingStep">
             <div className="filingStepHead">
               <h2 className="filingStepTitle">{f.production.title}</h2>
@@ -449,7 +443,7 @@ export default async function FilingObligationPage({
                 <form action={approveProductionFiling} className="filingConfirmForm">
                   <input type="hidden" name="returnTo" value={returnTo} />
                   <input type="hidden" name="previewId" value={preview?.id ?? ""} />
-                  <input type="hidden" name="entitlementId" value={pilotEntitlement?.id ?? ""} />
+                  <input type="hidden" name="entitlementId" value={pilotEntitlementId ?? ""} />
                   <label className="filingCheck">
                     <input type="checkbox" name="realFilingConfirmed" required />
                     {f.production.approveCheck}

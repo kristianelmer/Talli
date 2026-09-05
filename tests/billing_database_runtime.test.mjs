@@ -44,6 +44,91 @@ async function canonicalEvidence(client) {
   return result.rows[0].value;
 }
 
+async function grantBillingStoreRole(client) {
+  await client.query(String.raw`
+    do $grant_billing_store_role$
+    begin
+      execute pg_catalog.format('grant billing_store_owner to %I', current_user);
+    end
+    $grant_billing_store_role$;
+  `);
+}
+
+async function revokeBillingStoreRole(client) {
+  await client.query(String.raw`
+    do $revoke_billing_store_role$
+    begin
+      execute pg_catalog.format('revoke billing_store_owner from %I', current_user);
+    end
+    $revoke_billing_store_role$;
+  `);
+}
+
+async function commandReceiptEvidence(client) {
+  await grantBillingStoreRole(client);
+  try {
+    await client.query("begin");
+    try {
+      await client.query("set local role billing_store_owner");
+      await client.query(
+        "select pg_catalog.set_config('talli.verified_actor_id', $1, true), pg_catalog.set_config('talli.verified_actor_claims', $2, true)",
+        [ownerId, JSON.stringify({
+          sub: ownerId,
+          aal: "aal2",
+          amr: [{ method: "totp", timestamp: Date.now() / 1000 }],
+        })],
+      );
+      const result = await client.query(String.raw`
+        select idempotency_key, company_id::text, operation, request_fingerprint,
+          result, created_by::text
+        from billing.billing_command_receipts
+        where idempotency_key = 'billing-rollback-receipt-00000001'
+      `);
+      await client.query("commit");
+      assert.equal(result.rows.length, 1);
+      return result.rows[0];
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    }
+  } finally {
+    await revokeBillingStoreRole(client);
+  }
+}
+
+async function seedCommandReceipt(client) {
+  await grantBillingStoreRole(client);
+  try {
+    await client.query("begin");
+    try {
+      await client.query("set local role billing_store_owner");
+      await client.query(
+        "select pg_catalog.set_config('talli.verified_actor_id', $1, true), pg_catalog.set_config('talli.verified_actor_claims', $2, true)",
+        [ownerId, JSON.stringify({
+          sub: ownerId,
+          aal: "aal2",
+          amr: [{ method: "totp", timestamp: Date.now() / 1000 }],
+        })],
+      );
+      await client.query(
+        String.raw`insert into billing.billing_command_receipts (
+          idempotency_key, company_id, operation, request_fingerprint, result, created_by
+        ) values (
+          'billing-rollback-receipt-00000001', $1::uuid, 'configure_account',
+          repeat('a', 64), '{"pricingPlan":"founder"}'::jsonb, $2::uuid
+        ) on conflict (idempotency_key) do nothing`,
+        [companyId, ownerId],
+      );
+      await client.query("commit");
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    }
+  } finally {
+    await revokeBillingStoreRole(client);
+  }
+}
+
 async function assertTenantBoundaryAndReadiness(client) {
   await client.query(String.raw`
     do $grant_test_role$
@@ -202,7 +287,9 @@ test(
         ) on conflict (company_id, income_year, obligation) do update set ready=true,
           status='ready', hard_blocks='[]'::jsonb;
       `);
+      await seedCommandReceipt(client);
       const evidence = await canonicalEvidence(client);
+      const commandReceipt = await commandReceiptEvidence(client);
       await assertTenantBoundaryAndReadiness(client);
 
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
@@ -211,6 +298,12 @@ test(
         assert.equal(predecessor.billing_schema, false);
         assert.equal(predecessor.public_accounts, true);
         assert.equal(predecessor.public_accounts_kind, "r");
+        const quarantinedReceipt = await client.query(String.raw`
+          select pg_catalog.to_regclass(
+            'backend_system.billing_command_receipts'
+          ) is not null as exists
+        `);
+        assert.deepEqual(quarantinedReceipt.rows, [{ exists: true }]);
 
         await client.query(expand);
         const successor = await topology(client);
@@ -219,6 +312,7 @@ test(
         assert.equal(successor.public_accounts_kind, "v");
         assert.equal(successor.accounts_force_rls, true);
         assert.deepEqual(await canonicalEvidence(client), evidence);
+        assert.deepEqual(await commandReceiptEvidence(client), commandReceipt);
         await assertTenantBoundaryAndReadiness(client);
       }
 

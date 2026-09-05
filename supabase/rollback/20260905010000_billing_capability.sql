@@ -4,12 +4,28 @@ begin;
 do $membership$
 begin
   execute pg_catalog.format(
-    'grant billing_store_owner, billing_executor to %I', current_user
+    'grant billing_store_owner, billing_executor, ledger_store_owner to %I', current_user
   );
 end
 $membership$;
 
-drop table if exists billing.billing_command_receipts;
+select pg_catalog.set_config(
+  'talli.billing_rollback_migration_principal', current_user, true
+);
+set local role ledger_store_owner;
+do $backend_system_authority$
+begin
+  execute pg_catalog.format(
+    'grant create on schema backend_system to %I',
+    pg_catalog.current_setting('talli.billing_rollback_migration_principal')
+  );
+end
+$backend_system_authority$;
+reset role;
+
+revoke all on billing.billing_command_receipts from billing_store_owner;
+alter table billing.billing_command_receipts owner to current_user;
+alter table billing.billing_command_receipts set schema backend_system;
 
 drop view if exists public.billing_payment_events;
 drop view if exists public.billing_accounts;
@@ -65,10 +81,21 @@ begin
 end
 $backend_membership$;
 
+set local role ledger_store_owner;
+do $backend_system_authority_revoke$
+begin
+  execute pg_catalog.format(
+    'revoke create on schema backend_system from %I',
+    pg_catalog.current_setting('talli.billing_rollback_migration_principal')
+  );
+end
+$backend_system_authority_revoke$;
+reset role;
+
 do $cleanup$
 begin
   execute pg_catalog.format(
-    'revoke billing_store_owner, billing_executor from %I', current_user
+    'revoke billing_store_owner, billing_executor, ledger_store_owner from %I', current_user
   );
 end
 $cleanup$;

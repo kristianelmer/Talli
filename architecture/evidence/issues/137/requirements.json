@@ -104,11 +104,11 @@
     "productionPromotion": "not authorized by #137"
   },
   "localValidation": {
-    "billingFocused": {"backendPassed": 16, "nodePassed": 5, "failed": 0},
+    "billingFocused": {"backendPassed": 17, "nodePassed": 6, "failed": 0},
     "webTypecheck": "passed",
     "architecture": "passed",
     "freshSupabase": {
-      "status": "passed",
+      "status": "corrected-billing-lifecycle-passed; uninterrupted-full-suite-rerun-pending",
       "command": "npm run test:supabase:local",
       "databaseContractsPassed": 65,
       "ownerBrowserPassed": 17,
@@ -116,7 +116,8 @@
       "corporateGovernancePassed": 26,
       "billingRuntimePassed": 1,
       "billingLifecyclePassed": 1,
-      "failed": 0
+      "failed": 0,
+      "note": "All pre-billing suites passed on the review-fix code. After fixture corrections, the billing runtime and two-cycle lifecycle passed from a separately initialized fresh stack; rerun the uninterrupted full command before immutable gates."
     },
     "customerReadyGates": "pending"
   },
@@ -128,9 +129,14 @@
       "billing-exempt pilot entitlement skips billing only and still requires filing readiness",
       "payment and refund retries replay before mutable-state preconditions",
       "ambiguous provider results and exceptions persist failed quarantine events",
+      "sensitive owner/admin authorization precedes payment replay lookup and provider invocation",
+      "filing-package finalization rechecks readiness in the same database statement that records the provider outcome",
+      "payment replay preserves the original charged amount across later pricing changes",
       "non-provider commands use durable request-fingerprint receipts",
       "concurrent non-provider retries claim and complete receipts in one database transaction",
+      "expansion rollback quarantines durable command receipts and recutover restores them without data loss",
       "all web pricing renders from the backend snapshot",
+      "the filing page consumes the backend entitlement decision instead of rebuilding pilot policy",
       "the exact production-pilot release gate remains fail closed",
       "contract rollback restores the authenticated predecessor pilot writer"
     ],

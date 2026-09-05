@@ -32,6 +32,7 @@ from talli_backend.modules.billing.public import (
     ProductionPilotEntitlement,
     PurchaseFilingPackageCommand,
     RefundFilingPackageCommand,
+    expected_payment_status,
 )
 
 
@@ -56,32 +57,35 @@ class BillingService:
     async def configure_account(
         self, command: ConfigureBillingAccountCommand
     ) -> BillingAccount:
+        await self._persistence.authorize_owner_command(command.company_id)
         return await self._persistence.configure_account(command, _PRICING[command.pricing_plan])
 
     async def activate_subscription(
         self, command: ActivateSubscriptionCommand
     ) -> BillingPaymentEvent:
+        await self._persistence.authorize_owner_command(command.company_id)
         account = await self._required_account(command.company_id)
         kind = BillingPaymentKind.SUBSCRIPTION
-        amount_nok = account.pricing.monthly_nok
-        replay = await self._payment_replay(command, kind, amount_nok)
-        return replay or await self._payment(command, kind, amount_nok)
+        replay = await self._payment_replay(command, kind)
+        return replay or await self._payment(command, kind, account.pricing.monthly_nok)
 
     async def cancel_subscription(
         self, command: CancelSubscriptionCommand
     ) -> BillingPaymentEvent:
+        await self._persistence.authorize_owner_command(command.company_id)
         await self._required_account(command.company_id)
         kind = BillingPaymentKind.SUBSCRIPTION_CANCELLATION
-        replay = await self._payment_replay(command, kind, 0)
+        replay = await self._payment_replay(command, kind)
         return replay or await self._payment(command, kind, 0)
 
     async def purchase_filing_package(
         self, command: PurchaseFilingPackageCommand
     ) -> BillingPaymentEvent:
+        await self._persistence.authorize_owner_command(command.company_id)
         account = await self._required_account(command.company_id)
         kind = BillingPaymentKind.FILING_PACKAGE
         amount_nok = account.pricing.filing_package_nok
-        replay = await self._payment_replay(command, kind, amount_nok)
+        replay = await self._payment_replay(command, kind)
         if replay is not None:
             return replay
         if account.refund_eligible:
@@ -103,10 +107,11 @@ class BillingService:
     async def refund_filing_package(
         self, command: RefundFilingPackageCommand
     ) -> BillingPaymentEvent:
+        await self._persistence.authorize_owner_command(command.company_id)
         account = await self._required_account(command.company_id)
         kind = BillingPaymentKind.REFUND
         amount_nok = account.pricing.filing_package_nok
-        replay = await self._payment_replay(command, kind, amount_nok)
+        replay = await self._payment_replay(command, kind)
         if replay is not None:
             return replay
         if (
@@ -122,12 +127,14 @@ class BillingService:
     async def mark_unsupported(
         self, command: MarkBillingUnsupportedCommand
     ) -> BillingAccount:
+        await self._persistence.authorize_owner_command(command.company_id)
         await self._required_account(command.company_id)
         return await self._persistence.mark_unsupported(command)
 
     async def manage_pilot_entitlement(
         self, command: ManageProductionPilotEntitlementCommand
     ) -> ProductionPilotEntitlement:
+        await self._persistence.authorize_admin_command()
         return await self._persistence.manage_pilot_entitlement(command)
 
     async def snapshot(self, query: BillingSnapshotQuery) -> BillingSnapshot:
@@ -194,26 +201,18 @@ class BillingService:
         return account
 
     async def _payment_replay(
-        self, command, kind: BillingPaymentKind, amount_nok: int
+        self, command, kind: BillingPaymentKind
     ) -> BillingPaymentEvent | None:
         income_year = getattr(command, "income_year", None)
         replay = await self._persistence.find_payment_event(
             company_id=command.company_id,
             idempotency_key=command.idempotency_key,
             kind=kind,
-            amount_nok=amount_nok,
             income_year=income_year,
         )
-        if replay is not None and replay.status is not self._expected_status(kind):
+        if replay is not None and replay.status is not expected_payment_status(kind):
             raise BillingError.unavailable(BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN)
         return replay
-
-    @staticmethod
-    def _expected_status(kind: BillingPaymentKind) -> BillingPaymentStatus:
-        return {
-            BillingPaymentKind.SUBSCRIPTION_CANCELLATION: BillingPaymentStatus.CANCELED,
-            BillingPaymentKind.REFUND: BillingPaymentStatus.REFUNDED,
-        }.get(kind, BillingPaymentStatus.SUCCEEDED)
 
     async def _payment(
         self, command, kind: BillingPaymentKind, amount_nok: int
@@ -240,7 +239,7 @@ class BillingService:
             )
             raise BillingError.unavailable(BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN)
         event = await self._persistence.complete_provider_event(command, result, amount_nok)
-        if event.status is not self._expected_status(kind):
+        if event.status is not expected_payment_status(kind):
             raise BillingError.unavailable(BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN)
         return event
 

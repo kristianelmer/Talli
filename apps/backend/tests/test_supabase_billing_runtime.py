@@ -16,12 +16,15 @@ from talli_backend.adapters.supabase_ledger import _VerifiedActor
 from talli_backend.modules.billing.public import (
     BillingError,
     BillingErrorCode,
+    BillingPaymentStatus,
     BillingPlan,
     BillingPricing,
+    BillingProviderResult,
     ConfigureBillingAccountCommand,
     ManageProductionPilotEntitlementCommand,
     MarkBillingUnsupportedCommand,
     ProductionPilotStatus,
+    PurchaseFilingPackageCommand,
     SystemUserRequestReference,
 )
 from talli_backend.shared.kernel import (
@@ -104,6 +107,14 @@ def seed() -> None:
               'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB', 'accepted', now(), now())""",
             (REQUEST_ID, COMPANY_ID, OWNER_ID),
         )
+        connection.execute(
+            """insert into public.filing_readiness_snapshots (
+              company_id, income_year, obligation, status, ready, hard_blocks,
+              warnings, accepted_warnings, created_by
+            ) values (%s::uuid, 2025, 'aksjonaerregisteroppgaven', 'ready', true,
+              '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, %s::uuid)""",
+            (COMPANY_ID, OWNER_ID),
+        )
 
 
 def cleanup() -> None:
@@ -162,6 +173,49 @@ def test_non_provider_commands_replay_exactly_and_reject_key_reuse() -> None:
                     )
                 )
             assert reused_configure.value.code == BillingErrorCode.IDEMPOTENCY_KEY_REUSED
+
+            stale_session = SupabaseBillingSession(
+                backend_database_url,
+                _VerifiedActor(
+                    actor_id=actor,
+                    claims_json=json.dumps({
+                        "sub": OWNER_ID,
+                        "role": "authenticated",
+                        "aal": "aal1",
+                    }),
+                ),
+            )
+            with pytest.raises(BillingError) as stale_authorization:
+                asyncio.run(stale_session.authorize_owner_command(CompanyId(COMPANY_ID)))
+            assert stale_authorization.value.code == BillingErrorCode.STEP_UP_REQUIRED
+
+            payment = PurchaseFilingPackageCommand(
+                **metadata("readiness-race"), income_year=IncomeYear(2025)
+            )
+            with psycopg.connect(DATABASE_URL) as connection:
+                connection.execute(
+                    """update public.filing_readiness_snapshots
+                    set ready=false, status='blocked',
+                      hard_blocks='["readiness revoked"]'::jsonb, updated_at=now()
+                    where company_id=%s::uuid and income_year=2025
+                      and obligation='aksjonaerregisteroppgaven'""",
+                    (COMPANY_ID,),
+                )
+            failed_event = asyncio.run(
+                session.complete_provider_event(
+                    payment,
+                    BillingProviderResult(
+                        provider="simulation",
+                        provider_reference="readiness-race-result",
+                        status=BillingPaymentStatus.SUCCEEDED,
+                    ),
+                    founder_pricing.filing_package_nok,
+                )
+            )
+            assert failed_event.status is BillingPaymentStatus.FAILED
+            account_after_race = asyncio.run(session.find_account(CompanyId(COMPANY_ID)))
+            assert account_after_race is not None
+            assert account_after_race.filing_package_paid is False
 
             unsupported = MarkBillingUnsupportedCommand(
                 **metadata("unsupported"), reason="Outside support"

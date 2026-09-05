@@ -106,3 +106,12 @@ test("billing page renders every backend-owned price without TypeScript policy",
     assert.doesNotMatch(page, /(?:Founder|Standard)\s+(?:29|49)\s+kr/u);
   }
 });
+
+test("filing page consumes the backend billing decision without rebuilding pilot policy", () => {
+  const page = readFileSync(
+    new URL("../app/(owner)/filing/[obligation]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(page, /data\.primaryBillingEntitlements\[obligation\]/u);
+  assert.doesNotMatch(page, /data\.productionPilotEntitlements/u);
+});
