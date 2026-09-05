@@ -44,6 +44,9 @@ from talli_backend.shared.kernel import (
 )
 
 
+pytestmark = pytest.mark.billing_database
+
+
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 OWNER_ID = "74000000-0000-4000-8000-000000000001"
 COMPANY_ID = "74000000-0000-4000-8000-000000000002"

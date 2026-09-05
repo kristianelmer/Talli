@@ -344,3 +344,53 @@ test("Vercel deploys the Next output near the owner-designated database", () => 
   assert.equal(config.outputDirectory, "apps/web/.next");
   assert.deepEqual(config.regions, ["dub1"]);
 });
+
+test("backend boundary assigns every billing DB test exclusively to the mandatory database lane", () => {
+  const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  const lifecycle = packageJson.scripts["test:billing-database-lifecycle"];
+  const files = lifecycle.match(/apps\/backend\/tests\/test_\w+\.py/gu);
+  assert.ok(files?.length, "the mandatory database lane must name its test files");
+  const env = { ...process.env };
+  delete env.DATABASE_URL;
+  const collect = (command) => {
+    const result = run("sh", ["-c", `${command} --collect-only -q`], {
+      cwd: fileURLToPath(new URL("../", import.meta.url)),
+      env,
+      maxBuffer: 8 * 1024 * 1024,
+      timeout: 30_000,
+    });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    return new Set(result.stdout.split("\n").filter((line) => /^tests\/.*::/u.test(line)));
+  };
+  const pytest = "uv run --project apps/backend pytest -c apps/backend/pyproject.toml";
+  const database = collect(`${pytest} ${files.join(" ")}`);
+  assert.ok(database.size >= 158, "existing annual and predecessor DB cases must remain collected");
+  const marked = collect(`${pytest} apps/backend/tests -m billing_database`);
+  assert.deepEqual(marked, database, "marked exclusions must exactly match the mandatory lifecycle selection");
+  const boundary = collect(packageJson.scripts["test:boundary-backend"]);
+  const all = collect(`${pytest} apps/backend/tests`);
+  assert.deepEqual(new Set([...boundary, ...database]), all, "no backend test may disappear between lanes");
+  assert.deepEqual([...boundary].filter((id) => database.has(id)), [], "database fixtures must not run in the ordinary boundary lane");
+  assert.match(readFileSync(databaseHarnessPath, "utf8"), /DATABASE_URL="\$DB_URL" npm run test:billing-database-lifecycle/u);
+  assert.match(lifecycle, /&& node --test --test-concurrency=1 tests\/billing_database_runtime\.test\.mjs/u);
+});
+
+test("billing database lifecycle refuses missing DB configuration before running either test runner", () => {
+  const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  const directory = mkdtempSync(join(tmpdir(), "talli-billing-lane-test-"));
+  try {
+    for (const executable of ["uv", "node"]) {
+      const path = join(directory, executable);
+      writeFileSync(path, "#!/bin/sh\necho TEST_RUNNER_STARTED\n");
+      chmodSync(path, 0o755);
+    }
+    const env = { ...process.env, PATH: `${directory}:${process.env.PATH}` };
+    delete env.DATABASE_URL;
+    const result = run("sh", ["-c", packageJson.scripts["test:billing-database-lifecycle"]], { env });
+    assert.notEqual(result.status, 0, "missing DATABASE_URL must fail the required lane");
+    assert.match(result.stderr, /DATABASE_URL.*disposable/u);
+    assert.doesNotMatch(result.stdout, /TEST_RUNNER_STARTED/u);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

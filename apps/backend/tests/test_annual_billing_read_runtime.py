@@ -20,6 +20,9 @@ from talli_backend.modules.billing.public import (
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IdempotencyKey, UserId
 
 
+pytestmark = pytest.mark.billing_database
+
+
 def query(setup, **changes):
     return replace(AnnualBillingSnapshotQuery(setup[2].company_id, setup[2].income_year, setup[1]), **changes)
 

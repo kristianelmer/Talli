@@ -29,6 +29,9 @@ from talli_backend.modules.billing.public import (
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IdempotencyKey, UserId
 
 
+pytestmark = pytest.mark.billing_database
+
+
 @pytest.fixture
 def purchase(setup):
     return asyncio.run(session(setup).claim_checkout(candidate(setup), setup[4])).checkout

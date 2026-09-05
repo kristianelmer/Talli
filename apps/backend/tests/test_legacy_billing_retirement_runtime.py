@@ -21,6 +21,9 @@ from talli_backend.modules.billing.public import (
 from talli_backend.modules.billing.service import BillingService
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, CorrelationId, IdempotencyKey, IncomeYear, UserId
 
+
+pytestmark = pytest.mark.billing_database
+
 MIGRATION = "20260905115700_legacy_billing_acquisition_retirement.sql"
 
 

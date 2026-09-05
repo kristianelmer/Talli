@@ -24,6 +24,9 @@ from talli_backend.modules.billing.public import (
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, UserId
 
 
+pytestmark = pytest.mark.billing_database
+
+
 def cleanup_store(setup, **options):
     return PostgresAnnualCleanupSession(session(setup, **options))
 

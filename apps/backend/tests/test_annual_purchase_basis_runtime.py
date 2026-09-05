@@ -17,6 +17,9 @@ from talli_backend.modules.company_access import public as access
 from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter, SupabaseConfiguration
 
 
+pytestmark = pytest.mark.billing_database
+
+
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 ROOT = Path(__file__).resolve().parents[3]
 

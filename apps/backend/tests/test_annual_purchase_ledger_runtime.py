@@ -14,6 +14,9 @@ from talli_backend.modules.billing.annual_policy import ANNUAL_TERMS, annual_off
 from talli_backend.shared.kernel import CompanyId, IncomeYear
 
 
+pytestmark = pytest.mark.billing_database
+
+
 def purchase_values(seed, accepted_basis, **changes):
     offer = annual_offer(CompanyId(str(seed["company"])), IncomeYear(2026))
     identity = uuid4()

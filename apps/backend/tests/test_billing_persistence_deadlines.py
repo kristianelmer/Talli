@@ -18,6 +18,9 @@ from talli_backend.modules.billing.public import (
 )
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, UserId
 
+
+pytestmark = pytest.mark.billing_database
+
 @pytest.mark.skipif(not DATABASE_URL, reason="DATABASE_URL is required")
 @pytest.mark.parametrize("operation", ["payment", "unsupported"])
 def test_billing_lock_timeout_rolls_back_and_allows_recovery(operation):

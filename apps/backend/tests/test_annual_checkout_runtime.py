@@ -50,6 +50,9 @@ from talli_backend.shared.kernel import (
 )
 
 
+pytestmark = pytest.mark.billing_database
+
+
 @pytest.fixture
 def setup(admitted):
     company = CompanyId(str(admitted["company"]))
