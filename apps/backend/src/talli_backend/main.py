@@ -3527,7 +3527,7 @@ def create_app(
             user_id=UUID(str(value.user_id)),
             income_year=int(value.income_year),
             obligation=value.obligation,
-            case_profile=value.case_profile,
+            case_profile=value.case_profile.value,
             status=value.status,
             billing_exempt=value.billing_exempt,
             system_user_request_id=UUID(str(value.system_user_request_id)),
@@ -9046,24 +9046,6 @@ def create_app(
 
         return await billing_call(execute)
 
-    async def billing_company_event(
-        request: Request,
-        command: BillingCompanyWire,
-        idempotency_key: str,
-        credentials: HTTPAuthorizationCredentials | None,
-        command_type,
-        method: str,
-    ) -> BillingPaymentEventWire:
-        async def execute() -> BillingPaymentEventWire:
-            workflow = await billing_workflow(credentials)
-            domain = billing_input(lambda: command_type(
-                company_id=CompanyId(str(command.company_id)),
-                **billing_metadata(workflow, request, idempotency_key),
-            ))
-            return billing_event_wire(await getattr(workflow, method)(domain))
-
-        return await billing_call(execute)
-
     @application.post(
         "/api/v1/billing/subscriptions/activation",
         operation_id="billingActivateSubscription",
@@ -9078,7 +9060,15 @@ def create_app(
         idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255)],
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> BillingPaymentEventWire:
-        return await billing_company_event(request, command, idempotency_key, credentials, ActivateSubscriptionCommand, "activate_subscription")
+        async def execute() -> BillingPaymentEventWire:
+            workflow = await billing_workflow(credentials)
+            domain = billing_input(lambda: ActivateSubscriptionCommand(
+                company_id=CompanyId(str(command.company_id)),
+                **billing_metadata(workflow, request, idempotency_key),
+            ))
+            return billing_event_wire(await workflow.activate_subscription(domain))
+
+        return await billing_call(execute)
 
     @application.post(
         "/api/v1/billing/subscriptions/cancellation",
@@ -9094,27 +9084,13 @@ def create_app(
         idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255)],
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> BillingPaymentEventWire:
-        return await billing_company_event(request, command, idempotency_key, credentials, CancelSubscriptionCommand, "cancel_subscription")
-
-    async def billing_filing_event(
-        request: Request,
-        command: BillingFilingPackageWire,
-        idempotency_key: str,
-        credentials: HTTPAuthorizationCredentials | None,
-        command_type,
-        method: str,
-    ) -> BillingPaymentEventWire:
         async def execute() -> BillingPaymentEventWire:
             workflow = await billing_workflow(credentials)
-            values = {
-                "company_id": CompanyId(str(command.company_id)),
+            domain = billing_input(lambda: CancelSubscriptionCommand(
+                company_id=CompanyId(str(command.company_id)),
                 **billing_metadata(workflow, request, idempotency_key),
-                "income_year": IncomeYear(command.income_year),
-            }
-            if command_type is PurchaseFilingPackageCommand:
-                values["obligation"] = command.obligation
-            domain = billing_input(lambda: command_type(**values))
-            return billing_event_wire(await getattr(workflow, method)(domain))
+            ))
+            return billing_event_wire(await workflow.cancel_subscription(domain))
 
         return await billing_call(execute)
 
@@ -9132,7 +9108,17 @@ def create_app(
         idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255)],
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> BillingPaymentEventWire:
-        return await billing_filing_event(request, command, idempotency_key, credentials, PurchaseFilingPackageCommand, "purchase_filing_package")
+        async def execute() -> BillingPaymentEventWire:
+            workflow = await billing_workflow(credentials)
+            domain = billing_input(lambda: PurchaseFilingPackageCommand(
+                company_id=CompanyId(str(command.company_id)),
+                **billing_metadata(workflow, request, idempotency_key),
+                income_year=IncomeYear(command.income_year),
+                obligation=command.obligation,
+            ))
+            return billing_event_wire(await workflow.purchase_filing_package(domain))
+
+        return await billing_call(execute)
 
     @application.post(
         "/api/v1/billing/filing-package/refund",
@@ -9148,7 +9134,16 @@ def create_app(
         idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255)],
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> BillingPaymentEventWire:
-        return await billing_filing_event(request, command, idempotency_key, credentials, RefundFilingPackageCommand, "refund_filing_package")
+        async def execute() -> BillingPaymentEventWire:
+            workflow = await billing_workflow(credentials)
+            domain = billing_input(lambda: RefundFilingPackageCommand(
+                company_id=CompanyId(str(command.company_id)),
+                **billing_metadata(workflow, request, idempotency_key),
+                income_year=IncomeYear(command.income_year),
+            ))
+            return billing_event_wire(await workflow.refund_filing_package(domain))
+
+        return await billing_call(execute)
 
     @application.post(
         "/api/v1/billing/unsupported",

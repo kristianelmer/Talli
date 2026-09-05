@@ -182,33 +182,10 @@
           "command": "npm run check:architecture"
         }
       ],
-      "status": "passed-two-linked-immutable-gates-and-architecture-stage-exit-registered"
+      "status": "pending-replacement-exact-candidate-review-and-linked-immutable-gates"
     }
   ],
-  "completeGates": [
-    {
-      "revision": "abd77efd72e789372901d8e2c29c02f8fd372a89",
-      "previousPassingRevision": null,
-      "evidenceCommittedRevision": "281ba127f645c90fda98ca74cd344f8a87f194ba",
-      "executor": "local-script",
-      "evidencePath": "architecture/evidence/customer-ready-gates/abd77efd72e789372901d8e2c29c02f8fd372a89.json",
-      "evidenceDigest": "sha256:cf482b016cb4cf34819e71f2ca0c50ed81ef371a20062b4a2d724c43ed5f0825",
-      "verdict": "pass",
-      "checkCount": 11,
-      "transcriptDigest": "sha256:8fc2318bd8e5f2c0a7788c5127d72fc3ac18eeee5ab31c4f2c6341b69e22f84f"
-    },
-    {
-      "revision": "281ba127f645c90fda98ca74cd344f8a87f194ba",
-      "previousPassingRevision": "abd77efd72e789372901d8e2c29c02f8fd372a89",
-      "evidenceCommittedRevision": "f3752b98ed5c5862682e9d87bb7677b93b2b1643",
-      "executor": "local-script",
-      "evidencePath": "architecture/evidence/customer-ready-gates/281ba127f645c90fda98ca74cd344f8a87f194ba.json",
-      "evidenceDigest": "sha256:fb6301a04e9fee45b91337cde7ebec8727cbfb82a708aed17aca9fd8cf0dde6f",
-      "verdict": "pass",
-      "checkCount": 11,
-      "transcriptDigest": "sha256:9a222b19317fd0f334ba559ce4cb8b3b3c11a28ad777afe4b574549bfff3b0a1"
-    }
-  ],
+  "completeGates": [],
   "preservedGates": {
     "bankProvider": "#189",
     "productionFiling": "#193",
@@ -218,7 +195,11 @@
     "productionPromotion": "not authorized by #137"
   },
   "localValidation": {
-    "billingFocused": { "backendPassed": 60, "nodePassed": 11, "failed": 0 },
+    "billingFocused": {
+      "backendPassed": 66,
+      "nodePassed": 11,
+      "failed": 0
+    },
     "webTypecheck": "passed",
     "architecture": "passed",
     "freshSupabase": {
@@ -243,11 +224,20 @@
       "failed": 0,
       "note": "One uninterrupted invocation initialized a fresh temporary Supabase stack, applied every migration, and passed every configured advisor, database, browser, authority, governance, and billing check before cleaning up the stack."
     },
-    "customerReadyGates": "passed twice on ordered immutable application revisions; evidence committed separately"
+    "customerReadyGates": "replacement linked immutable runs pending",
+    "billingProviderRecovery": {
+      "command": "npm run test:billing-database-lifecycle",
+      "runtimePassed": 4,
+      "lifecyclePassed": 1,
+      "note": "Fresh isolated stack; independent-connection pre-I/O durability, timeout/process/storage failures, concurrent reconciliation, and pending-intent retention across twice-repeated rollback/recutover."
+    }
   },
   "review": {
     "initialCandidate": "3ecebb007f710e0dc7d8a9f22a86d01ac17c609b",
-    "axes": ["repository-standards", "issue-specification"],
+    "axes": [
+      "repository-standards",
+      "issue-specification"
+    ],
     "materialFindingsCorrected": [
       "readiness is rechecked after filing-package payment",
       "billing-exempt pilot entitlement skips billing only and still requires filing readiness",
@@ -269,15 +259,52 @@
       "account reconfiguration preserves the predecessor reset behavior",
       "pilot owner validation uses a separately migrated company-access-owned predicate instead of billing-owned membership policy or direct table access",
       "a frozen baseline oracle and the canonical service run against the same IDs, clock, defaults, prices, errors, gates, provider events, state effects, replay, failure injection, and complete pilot identity/status/time/exemption cases",
-      "customer-visible billing decisions and errors use Norwegian product language"
+      "customer-visible billing decisions and errors use Norwegian product language",
+      "provider intent commits before I/O and unknown results reconcile by original key, amount and obligation without executing twice",
+      "lost response, process loss, failed result persistence and concurrent settlement recover against real restricted-role Postgres",
+      "closed pilot case-profile type preserves open-string entitlement-query HTTP compatibility",
+      "four explicit typed HTTP handlers replace string-based dispatch"
     ],
-    "finalReview": {
+    "previousFinalReview": {
       "revision": "abd77efd72e789372901d8e2c29c02f8fd372a89",
       "repositoryStandards": "PASS",
       "issueSpecification": "PASS",
       "worktree": "clean",
       "reviewedAgainst": "4f807fe4239a208c573054b14cbed478277d1a2e"
+    },
+    "finalReview": {
+      "status": "pending",
+      "reviewedAgainst": "4f807fe4239a208c573054b14cbed478277d1a2e",
+      "axes": [
+        "repository-standards",
+        "issue-specification"
+      ]
     }
   },
-  "closeState": "final review, fresh local Supabase gate, two linked immutable customer-ready gates, and architecture stage-exit registration passed; protected integration pending"
+  "closeState": "provider durability correction implemented; replacement final review, complete gates and protected integration pending",
+  "supersededCompleteGates": [
+    {
+      "revision": "abd77efd72e789372901d8e2c29c02f8fd372a89",
+      "previousPassingRevision": null,
+      "evidenceCommittedRevision": "281ba127f645c90fda98ca74cd344f8a87f194ba",
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/abd77efd72e789372901d8e2c29c02f8fd372a89.json",
+      "evidenceDigest": "sha256:cf482b016cb4cf34819e71f2ca0c50ed81ef371a20062b4a2d724c43ed5f0825",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:8fc2318bd8e5f2c0a7788c5127d72fc3ac18eeee5ab31c4f2c6341b69e22f84f"
+    },
+    {
+      "revision": "281ba127f645c90fda98ca74cd344f8a87f194ba",
+      "previousPassingRevision": "abd77efd72e789372901d8e2c29c02f8fd372a89",
+      "evidenceCommittedRevision": "f3752b98ed5c5862682e9d87bb7677b93b2b1643",
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/281ba127f645c90fda98ca74cd344f8a87f194ba.json",
+      "evidenceDigest": "sha256:fb6301a04e9fee45b91337cde7ebec8727cbfb82a708aed17aca9fd8cf0dde6f",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:9a222b19317fd0f334ba559ce4cb8b3b3c11a28ad777afe4b574549bfff3b0a1"
+    }
+  ],
+  "supersededGateReason": "Provider intent/reconciliation application correction requires replacement linked immutable R1/R2; prior gates remain evidence only for their original tested revisions."
 }

@@ -138,7 +138,7 @@ class MemoryPersistence:
         )
 
     async def find_payment_event(
-        self, *, company_id, idempotency_key, kind, income_year
+        self, *, company_id, idempotency_key, kind, income_year, obligation=None
     ):
         event = self.events.get(str(idempotency_key))
         if event is None:
@@ -147,6 +147,7 @@ class MemoryPersistence:
             event.company_id != company_id
             or event.kind is not kind
             or event.income_year != income_year
+            or event.obligation != obligation
         ):
             raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
         return replace(event, replayed=True)
@@ -158,12 +159,23 @@ class MemoryPersistence:
         )
         return self.account
 
+    async def begin_provider_event(self, command, provider, amount_nok):
+        replay = self.events.get(str(command.idempotency_key))
+        if replay is not None:
+            return replace(replay, replayed=True)
+        return await self.complete_provider_event(command, BillingProviderResult(
+            provider=provider,
+            provider_reference=f"intent_{command.idempotency_key}",
+            status=BillingPaymentStatus.CREATED,
+        ), amount_nok)
+
     async def complete_provider_event(self, command, result, amount_nok):
         key = str(command.idempotency_key)
-        if key in self.events:
-            return replace(self.events[key], replayed=True)
+        previous = self.events.get(key)
+        if previous is not None and previous.status is expected_payment_status(previous.kind):
+            return replace(previous, replayed=True)
         event = BillingPaymentEvent(
-            event_id=BillingPaymentEventId(str(uuid4())),
+            event_id=previous.event_id if previous else BillingPaymentEventId(str(uuid4())),
             company_id=command.company_id,
             provider=result.provider,
             provider_reference=result.provider_reference,
@@ -179,6 +191,7 @@ class MemoryPersistence:
             income_year=getattr(command, "income_year", None),
             created_by=command.actor_id.subject,
             created_at=NOW,
+            obligation=getattr(command, "obligation", None),
         )
         self.events[key] = event
         assert self.account is not None
@@ -465,8 +478,8 @@ def test_provider_exception_is_quarantined_without_retrying_the_provider() -> No
             asyncio.run(service.activate_subscription(command))
         assert error.value.code == BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN
     event = persistence.events[str(command.idempotency_key)]
-    assert event.status is BillingPaymentStatus.FAILED
-    assert event.provider_reference.startswith("quarantine_")
+    assert event.status is BillingPaymentStatus.CREATED
+    assert event.provider_reference.startswith("intent_")
     assert provider.calls == 1
 
 
@@ -528,3 +541,104 @@ def test_public_commands_reject_invalid_founder_and_pilot_ranges() -> None:
             expires_at=Timestamp(datetime(2026, 9, 5, tzinfo=UTC)),
             evidence_reference="evidence",
         )
+
+
+def test_provider_observes_persisted_intent_before_any_io() -> None:
+    class ObservingProvider(SimulationBillingProvider):
+        saw_intent = False
+
+        async def execute(self, intent):
+            event = persistence.events.get(str(intent.idempotency_key))
+            self.saw_intent = event is not None and event.status is BillingPaymentStatus.CREATED
+            return await super().execute(intent)
+
+    persistence = MemoryPersistence(account())
+    provider = ObservingProvider()
+    command = ActivateSubscriptionCommand(**metadata("durable-intent"))
+    asyncio.run(BillingService(persistence, provider).activate_subscription(command))
+    assert provider.saw_intent, "provider I/O ran before the intent was persisted"
+
+
+def test_lost_provider_response_reconciles_same_key_without_second_execution() -> None:
+    class LostResponseProvider(SimulationBillingProvider):
+        executions = 0
+        reconciliations = 0
+        result = None
+        original_intent = None
+
+        async def execute(self, intent):
+            self.executions += 1
+            self.original_intent = intent
+            self.result = await super().execute(intent)
+            raise TimeoutError("response lost after provider success")
+
+        async def reconcile(self, intent):
+            self.reconciliations += 1
+            assert intent == self.original_intent
+            return self.result
+
+    persistence = MemoryPersistence(account())
+    provider = LostResponseProvider()
+    command = ActivateSubscriptionCommand(**metadata("lost-response"))
+    with pytest.raises(BillingError) as failure:
+        asyncio.run(BillingService(persistence, provider).activate_subscription(command))
+    assert failure.value.code == BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN
+    assert not persistence.account.subscription_active
+    # A new request/service must recover even after pricing has changed.
+    persistence.account = replace(persistence.account, pricing=BillingPricing(BillingPlan.FOUNDER, 29, 299))
+    recovered = asyncio.run(BillingService(persistence, provider).activate_subscription(command))
+    assert recovered.status is BillingPaymentStatus.SUCCEEDED
+    assert recovered.amount_nok == 49
+    assert persistence.account.subscription_active
+    assert provider.executions == provider.reconciliations == 1
+
+
+def test_recovery_rejects_changed_filing_obligation_before_provider_lookup() -> None:
+    class UnknownProvider(SimulationBillingProvider):
+        lookups = 0
+
+        async def execute(self, intent):
+            raise TimeoutError("unknown")
+
+        async def reconcile(self, intent):
+            self.lookups += 1
+            return None
+
+    persistence = MemoryPersistence(account(subscription_active=True), ready=True)
+    provider = UnknownProvider()
+    service = BillingService(persistence, provider)
+    command = PurchaseFilingPackageCommand(**metadata("recovery-scope"), income_year=IncomeYear(2025))
+    with pytest.raises(BillingError):
+        asyncio.run(service.purchase_filing_package(command))
+    changed = replace(command, obligation=BillingObligation.COMPANY_TAX)
+    with pytest.raises(BillingError) as mismatch:
+        asyncio.run(service.purchase_filing_package(changed))
+    assert mismatch.value.code == BillingErrorCode.IDEMPOTENCY_KEY_REUSED
+    assert provider.lookups == 0
+    assert not persistence.account.filing_package_paid
+
+
+def test_unknown_reconciliation_keeps_original_intent_without_executing_again() -> None:
+    class UnknownProvider(SimulationBillingProvider):
+        executions = 0
+        lookups = 0
+
+        async def execute(self, intent):
+            self.executions += 1
+            raise TimeoutError("unknown")
+
+        async def reconcile(self, intent):
+            self.lookups += 1
+            return None
+
+    persistence = MemoryPersistence(account())
+    provider = UnknownProvider()
+    command = ActivateSubscriptionCommand(**metadata("unknown-recovery"))
+    for _ in range(3):
+        with pytest.raises(BillingError) as error:
+            asyncio.run(BillingService(persistence, provider).activate_subscription(command))
+        assert error.value.code == BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN
+    assert provider.executions == 1
+    assert provider.lookups == 2
+    assert len(persistence.events) == 1
+    assert not persistence.account.subscription_active

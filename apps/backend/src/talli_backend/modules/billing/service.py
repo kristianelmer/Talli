@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from asyncio import timeout
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime
@@ -21,7 +22,6 @@ from talli_backend.modules.billing.public import (
     BillingPlan,
     BillingPricing,
     BillingProviderIntent,
-    BillingProviderResult,
     BillingSnapshot,
     BillingSnapshotQuery,
     BillingStatus,
@@ -210,39 +210,53 @@ class BillingService:
             idempotency_key=command.idempotency_key,
             kind=kind,
             income_year=income_year,
+            obligation=getattr(command, "obligation", None),
         )
-        if replay is not None and replay.status is not expected_payment_status(kind):
-            raise BillingError.unavailable(BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN)
-        return replay
+        if replay is None or replay.status is expected_payment_status(kind):
+            return replay
+        return await self._resolve_payment(command, replay, reconcile=True)
 
     async def _payment(
         self, command, kind: BillingPaymentKind, amount_nok: int
     ) -> BillingPaymentEvent:
-        income_year = getattr(command, "income_year", None)
+        event = await self._persistence.begin_provider_event(
+            command, self._provider.provider, amount_nok
+        )
+        if event.status is expected_payment_status(kind):
+            return event
+        return await self._resolve_payment(command, event, reconcile=event.replayed)
+
+    async def _resolve_payment(
+        self, command, event: BillingPaymentEvent, *, reconcile: bool
+    ) -> BillingPaymentEvent:
+        if event.provider != self._provider.provider:
+            raise BillingError.unavailable(BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN)
         intent = BillingProviderIntent(
-            company_id=command.company_id,
-            idempotency_key=command.idempotency_key,
-            kind=kind,
-            amount_nok=amount_nok,
-            income_year=income_year,
+            company_id=event.company_id,
+            idempotency_key=event.idempotency_key,
+            kind=event.kind,
+            amount_nok=event.amount_nok,
+            income_year=event.income_year,
+            obligation=event.obligation,
         )
         try:
-            result = await self._provider.execute(intent)
+            async with timeout(10):
+                result = (
+                    await self._provider.reconcile(intent)
+                    if reconcile else await self._provider.execute(intent)
+                )
         except Exception:
-            await self._persistence.complete_provider_event(
-                command,
-                BillingProviderResult(
-                    provider=self._provider.provider,
-                    provider_reference=f"quarantine_{command.idempotency_key}",
-                    status=BillingPaymentStatus.FAILED,
-                ),
-                amount_nok,
-            )
+            # The committed intent survives timeout, cancellation and process loss.
+            # A later request can only reconcile it by the original key.
+            raise BillingError.unavailable(BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN) from None
+        if result is None or result.provider != event.provider:
             raise BillingError.unavailable(BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN)
-        event = await self._persistence.complete_provider_event(command, result, amount_nok)
-        if event.status is not expected_payment_status(kind):
+        completed = await self._persistence.complete_provider_event(
+            command, result, event.amount_nok
+        )
+        if completed.status is not expected_payment_status(event.kind):
             raise BillingError.unavailable(BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN)
-        return event
+        return completed
 
 
 def billing_entitlement_decision(

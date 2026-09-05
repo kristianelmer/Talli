@@ -35,6 +35,7 @@
       "BillingPaymentStatus",
       "BillingPersistence",
       "BillingPlan",
+      "BillingPilotCaseProfile",
       "BillingPricing",
       "BillingProviderIntent",
       "BillingProviderResult",
@@ -78,6 +79,7 @@
   "dependencies": [],
   "allowedImports": [
     "__future__",
+    "asyncio",
     "collections.abc",
     "dataclasses",
     "datetime",

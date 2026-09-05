@@ -32,7 +32,7 @@ The exported commands are `ActivateSubscriptionCommand`,
 results are `BillingEntitlementQuery`, `BillingEntitlementDecision`,
 `BillingSnapshotQuery`, and `BillingSnapshot`. The remaining public vocabulary
 is `BillingAccount`, `BillingCommands`, `BillingQueries`, `BillingObligation`,
-`BillingPlan`, `BillingPricing`, `BillingStatus`, `BillingPaymentEvent`,
+`BillingPlan`, `BillingPilotCaseProfile`, `BillingPricing`, `BillingStatus`, `BillingPaymentEvent`,
 `BillingPaymentEventId`, `BillingPaymentKind`, `BillingPaymentStatus`,
 `BillingProviderIntent`, `BillingProviderResult`, `ProductionPilotEntitlement`,
 `ProductionPilotEntitlementId`, `ProductionPilotStatus`, and
@@ -61,6 +61,17 @@ each payment-event/account transition atomically. Non-provider commands use
 the backend-system technical `billing.billing_command_receipts` for exact durable replay and reject a reused
 key when its canonical request fingerprint differs. `BillingPaymentProvider`
 accepts only a provider-neutral intent and must honor its idempotency key.
+Before provider execution, persistence commits a `created` payment event with
+its original company, kind, year, obligation, amount, provider, and key. Only the
+winning insertion executes. A retry of an unfinished event calls read-only
+`reconcile` with that stored intent, under a bounded deadline, and never issues
+another payment. Unknown results remain pending without granting entitlement.
+Confirmed outcomes and account changes settle atomically; terminal events replay
+without reapplying account effects. Changed filing obligations reject key reuse.
+
+`BillingPilotCaseProfile` types the closed pilot record/administration scope.
+Entitlement queries retain open strings so an unknown profile continues to fall
+back to ordinary billing without narrowing the HTTP contract.
 
 Pilot administration validates the initiating owner through the versioned
 `company_access_is_accepted_owner_subject_v1` database contract. That predicate
@@ -85,3 +96,10 @@ artifacts restore the immediately preceding topology; the lifecycle test
 rehearses expansion and contract rollback/cutover twice. Durable command receipts
 move to a quarantined `backend_system` relation during expansion rollback and
 return to `billing` on recutover, so rollback never erases replay history.
+
+`20260905061339_billing_provider_reconciliation.sql` grants the initiating owner
+with fresh MFA permission to settle pending events through the restricted billing
+role. Apply it after expansion. On expansion rollback, first apply its matching
+rollback to withdraw settlement authority; pending intents and confirmed outcomes
+remain in the event table through rollback and recutover. Reapply the reconciliation
+migration after expansion on recutover. This adds no live provider or paid I/O.

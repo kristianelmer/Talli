@@ -26,5 +26,10 @@ class SimulationBillingProvider:
             status=expected_payment_status(intent.kind),
         )
 
+    async def reconcile(self, intent: BillingProviderIntent) -> BillingProviderResult:
+        # Simulation has no external side effect. Its outcome is fully determined
+        # by the durable intent, including when the process stopped before execute.
+        return await SimulationBillingProvider.execute(self, intent)
+
 
 __all__ = ["SimulationBillingProvider"]

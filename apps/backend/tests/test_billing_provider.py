@@ -38,3 +38,15 @@ def test_simulation_provider_conforms_without_production_activation(kind, status
     assert result.provider == "simulation"
     assert result.status is status
     assert result.provider_reference.startswith(f"sim_{kind.value}_")
+
+
+def test_simulation_reconciles_durable_intent_after_adapter_restart() -> None:
+    intent = BillingProviderIntent(
+        company_id=CompanyId("10000000-0000-4000-8000-000000000001"),
+        idempotency_key=IdempotencyKey("provider-reconcile-test-00000001"),
+        kind=BillingPaymentKind.SUBSCRIPTION,
+        amount_nok=49,
+        income_year=None,
+    )
+    result = asyncio.run(SimulationBillingProvider().execute(intent))
+    assert asyncio.run(SimulationBillingProvider().reconcile(intent)) == result

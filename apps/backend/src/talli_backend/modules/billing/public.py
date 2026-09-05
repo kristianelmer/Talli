@@ -86,6 +86,10 @@ def expected_payment_status(kind: BillingPaymentKind) -> BillingPaymentStatus:
     }.get(kind, BillingPaymentStatus.SUCCEEDED)
 
 
+class BillingPilotCaseProfile(StrEnum):
+    RF1086_NO_ACTIVITY_V1 = "rf1086_no_activity_v1"
+
+
 class ProductionPilotStatus(StrEnum):
     PENDING = "pending"
     ACTIVE = "active"
@@ -192,6 +196,7 @@ class BillingPaymentEvent:
     created_by: UserId
     created_at: Timestamp
     replayed: bool = False
+    obligation: BillingObligation | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,7 +206,7 @@ class ProductionPilotEntitlement:
     user_id: UserId
     income_year: IncomeYear
     obligation: BillingObligation
-    case_profile: str
+    case_profile: BillingPilotCaseProfile
     status: ProductionPilotStatus
     billing_exempt: bool
     system_user_request_id: SystemUserRequestReference
@@ -305,7 +310,7 @@ class ManageProductionPilotEntitlementCommand(_BillingCommand):
     expires_at: Timestamp
     evidence_reference: str
     obligation: BillingObligation = BillingObligation.SHAREHOLDER_REGISTER
-    case_profile: str = "rf1086_no_activity_v1"
+    case_profile: BillingPilotCaseProfile = BillingPilotCaseProfile.RF1086_NO_ACTIVITY_V1
 
     def __post_init__(self) -> None:
         evidence = self.evidence_reference.strip()
@@ -314,7 +319,7 @@ class ManageProductionPilotEntitlementCommand(_BillingCommand):
             or not evidence
             or len(evidence) > 1000
             or self.obligation is not BillingObligation.SHAREHOLDER_REGISTER
-            or self.case_profile != "rf1086_no_activity_v1"
+            or self.case_profile is not BillingPilotCaseProfile.RF1086_NO_ACTIVITY_V1
         ):
             raise BillingError.invalid()
         object.__setattr__(self, "evidence_reference", evidence)
@@ -327,6 +332,7 @@ class BillingEntitlementQuery:
     correlation_id: CorrelationId
     income_year: IncomeYear
     obligation: BillingObligation
+    # Queries accept future/unknown profiles and fall back to ordinary billing.
     case_profile: str | None = None
 
 
@@ -348,6 +354,7 @@ class BillingProviderIntent:
     kind: BillingPaymentKind
     amount_nok: int
     income_year: IncomeYear | None
+    obligation: BillingObligation | None = None
 
     def __post_init__(self) -> None:
         if self.amount_nok < 0:
@@ -371,6 +378,14 @@ class BillingPaymentProvider(Protocol):
     production_enabled: bool
 
     async def execute(self, intent: BillingProviderIntent) -> BillingProviderResult: ...
+
+    async def reconcile(self, intent: BillingProviderIntent) -> BillingProviderResult | None:
+        """Read the outcome for the original key without issuing another payment.
+
+        None means that the provider cannot yet establish an outcome. Implementations
+        must never interpret an absent response as permission to execute again.
+        """
+        ...
 
 
 class BillingPersistence(Protocol):
@@ -406,11 +421,21 @@ class BillingPersistence(Protocol):
         idempotency_key: IdempotencyKey,
         kind: BillingPaymentKind,
         income_year: IncomeYear | None,
+        obligation: BillingObligation | None = None,
     ) -> BillingPaymentEvent | None: ...
 
     async def configure_account(
         self, command: ConfigureBillingAccountCommand, pricing: BillingPricing
     ) -> BillingAccount: ...
+
+    async def begin_provider_event(
+        self,
+        command: ActivateSubscriptionCommand | CancelSubscriptionCommand | PurchaseFilingPackageCommand | RefundFilingPackageCommand,
+        provider: str,
+        amount_nok: int,
+    ) -> BillingPaymentEvent:
+        """Commit the intent before I/O; an existing key returns replayed=True."""
+        ...
 
     async def complete_provider_event(
         self,
@@ -487,6 +512,7 @@ __all__ = [
     "BillingPaymentStatus",
     "BillingPersistence",
     "BillingPlan",
+    "BillingPilotCaseProfile",
     "BillingPricing",
     "BillingProviderIntent",
     "BillingProviderResult",

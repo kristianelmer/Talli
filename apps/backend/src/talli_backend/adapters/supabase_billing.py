@@ -32,6 +32,7 @@ from talli_backend.modules.billing.public import (
     BillingPaymentStatus,
     BillingPersistence,
     BillingPlan,
+    BillingPilotCaseProfile,
     BillingPricing,
     BillingProviderResult,
     BillingSnapshot,
@@ -119,6 +120,11 @@ def _event(row: Mapping[str, object], *, replayed: bool = False) -> BillingPayme
         created_by=UserId(str(row["created_by"])),
         created_at=_timestamp(row["created_at"]),
         replayed=replayed,
+        obligation=(
+            BillingObligation(str(row["payload"].get(
+                "obligation", BillingObligation.SHAREHOLDER_REGISTER.value
+            ))) if row["kind"] == BillingPaymentKind.FILING_PACKAGE.value else None
+        ),
     )
 
 
@@ -132,7 +138,7 @@ def _pilot(row: Mapping[str, object]) -> ProductionPilotEntitlement:
         user_id=UserId(str(row["user_id"])),
         income_year=IncomeYear(int(row["income_year"])),
         obligation=BillingObligation(str(row["obligation"])),
-        case_profile=str(row["case_profile"]),
+        case_profile=BillingPilotCaseProfile(str(row["case_profile"])),
         status=ProductionPilotStatus(str(row["status"])),
         billing_exempt=bool(row["billing_exempt"]),
         system_user_request_id=SystemUserRequestReference(str(request_id)),
@@ -152,7 +158,7 @@ refund_eligible, refund_completed, no_charge_reason, provider_customer_ref,
 subscription_provider_ref, filing_package_payment_ref, refund_provider_ref,
 updated_by, created_at, updated_at"""
 _EVENT_COLUMNS = """id, company_id, provider, provider_reference, idempotency_key,
-kind, status, amount_nok, income_year, created_by, created_at"""
+kind, status, amount_nok, income_year, created_by, created_at, payload"""
 _PILOT_COLUMNS = """id, company_id, user_id, income_year, obligation, case_profile,
 status, billing_exempt, system_user_request_id, system_user_external_reference,
 starts_at, expires_at, evidence_reference, approved_by, created_at, updated_at"""
@@ -455,7 +461,7 @@ class SupabaseBillingSession:
         )
 
     async def find_payment_event(
-        self, *, company_id, idempotency_key, kind, income_year
+        self, *, company_id, idempotency_key, kind, income_year, obligation=None
     ):
         rows = await self._rows(
             "billing_executor",
@@ -469,6 +475,7 @@ class SupabaseBillingSession:
             event.company_id != company_id
             or event.kind is not kind
             or event.income_year != income_year
+            or event.obligation != obligation
         ):
             raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
         return event
@@ -517,6 +524,43 @@ class SupabaseBillingSession:
         )
         return _account(result)
 
+    async def begin_provider_event(self, command, provider, amount_nok):
+        self._assert_actor(command.actor_id)
+        kind = _kind(command)
+        income_year = getattr(command, "income_year", None)
+        rows = await self._rows(
+            "billing_store_owner",
+            f"""insert into billing.billing_payment_events (
+              company_id, provider, provider_reference, idempotency_key,
+              kind, status, amount_nok, income_year, payload, created_by
+            ) select %s::uuid, %s::text, %s::text, %s::text,
+              %s::text, 'created', %s::integer, %s::integer, %s::jsonb, %s::uuid
+            from billing.billing_accounts where company_id = %s::uuid
+            on conflict (idempotency_key) do nothing
+            returning {_EVENT_COLUMNS}""",
+            (
+                str(command.company_id), provider, f"intent_{command.idempotency_key}",
+                str(command.idempotency_key), kind.value, amount_nok,
+                int(income_year) if income_year is not None else None,
+                json.dumps({
+                    "correlationId": str(command.correlation_id),
+                    "obligation": command.obligation.value if isinstance(command, PurchaseFilingPackageCommand) else None,
+                }),
+                str(command.actor_id.subject), str(command.company_id),
+            ),
+        )
+        if rows:
+            return _event(rows[0])
+        # Read in a fresh transaction so a concurrent committed claim is visible.
+        replay = await self.find_payment_event(
+            company_id=command.company_id, idempotency_key=command.idempotency_key,
+            kind=kind, income_year=income_year,
+            obligation=getattr(command, "obligation", None),
+        )
+        if replay is None:
+            raise BillingError.unavailable()
+        return replay
+
     async def complete_provider_event(self, command, result, amount_nok):
         self._assert_actor(command.actor_id)
         kind = _kind(command)
@@ -526,6 +570,7 @@ class SupabaseBillingSession:
                 "companyId": str(command.company_id),
                 "correlationId": str(command.correlation_id),
                 "kind": kind.value,
+                "obligation": command.obligation.value if isinstance(command, PurchaseFilingPackageCommand) else None,
                 "amountNok": amount_nok,
                 "incomeYear": int(income_year) if income_year else None,
                 "provider": result.provider,
@@ -537,12 +582,9 @@ class SupabaseBillingSession:
         rows = await self._rows(
             "billing_store_owner",
             f"""with inserted as (
-                  insert into billing.billing_payment_events (
-                    company_id, provider, provider_reference, idempotency_key,
-                    kind, status, amount_nok, income_year, payload, created_by
-                  ) select
-                    %s::uuid, %s::text, %s::text, %s::text, %s::text,
-                    case
+                  update billing.billing_payment_events set
+                    provider_reference = %s::text,
+                    status = case
                       when %s::text = 'filing_package'
                         and not billing.read_legacy_filing_readiness_v1(
                           %s::uuid, %s::integer, %s::text
@@ -550,10 +592,14 @@ class SupabaseBillingSession:
                       then 'failed'
                       else %s::text
                     end,
-                    %s::integer, %s::integer, %s::jsonb, %s::uuid
-                  from billing.billing_accounts account
-                  where account.company_id = %s::uuid
-                  on conflict (idempotency_key) do nothing
+                    payload = %s::jsonb
+                  where idempotency_key = %s::text
+                    and company_id = %s::uuid and kind = %s::text
+                    and income_year is not distinct from %s::integer
+                    and provider = %s::text and amount_nok = %s::integer
+                    and (kind <> 'filing_package' or
+                      coalesce(payload->>'obligation', 'aksjonaerregisteroppgaven') = %s::text)
+                    and status in ('created', 'failed')
                   returning {_EVENT_COLUMNS}
                 ), selected as (
                   select *, false as replayed from inserted
@@ -596,14 +642,14 @@ class SupabaseBillingSession:
                 )
                 select * from selected""",
             (
-                str(command.company_id), result.provider, result.provider_reference,
-                str(command.idempotency_key), kind.value,
+                result.provider_reference,
                 kind.value, str(command.company_id),
                 int(income_year) if income_year else None,
                 getattr(command, "obligation", BillingObligation.SHAREHOLDER_REGISTER).value,
-                result.status.value,
-                amount_nok, int(income_year) if income_year else None, payload,
-                str(command.actor_id.subject), str(command.company_id),
+                result.status.value, payload, str(command.idempotency_key),
+                str(command.company_id), kind.value,
+                int(income_year) if income_year else None, result.provider, amount_nok,
+                command.obligation.value if isinstance(command, PurchaseFilingPackageCommand) else None,
                 str(command.idempotency_key),
                 kind.value, kind.value, kind.value, kind.value,
                 result.provider_reference, kind.value, kind.value, kind.value,
@@ -614,11 +660,23 @@ class SupabaseBillingSession:
         )
         if len(rows) != 1:
             raise BillingError.unavailable()
-        event = _event(rows[0], replayed=bool(rows[0]["replayed"]))
+        if rows[0]["replayed"]:
+            # A concurrent settlement may have committed after the UPDATE's
+            # statement snapshot. Observe its result in a fresh transaction.
+            replay = await self.find_payment_event(
+                company_id=command.company_id, idempotency_key=command.idempotency_key,
+                kind=kind, income_year=income_year,
+                obligation=getattr(command, "obligation", None),
+            )
+            if replay is None:
+                raise BillingError.unavailable()
+            return replay
+        event = _event(rows[0])
         if (
             event.company_id != command.company_id
             or event.kind is not kind
             or event.income_year != income_year
+            or event.obligation != getattr(command, "obligation", None)
         ):
             raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
         return event
@@ -658,7 +716,7 @@ class SupabaseBillingSession:
             "userId": str(command.user_id),
             "incomeYear": int(command.income_year),
             "obligation": command.obligation.value,
-            "caseProfile": command.case_profile,
+            "caseProfile": command.case_profile.value,
             "status": command.status.value,
             "billingExempt": command.billing_exempt,
             "systemUserRequestId": str(command.system_user_request_id),
@@ -684,7 +742,7 @@ class SupabaseBillingSession:
                 str(command.system_user_request_id), str(command.company_id),
                 str(command.user_id), str(command.company_id), str(command.user_id),
                 int(command.income_year),
-                command.obligation.value, command.case_profile, command.status.value,
+                command.obligation.value, command.case_profile.value, command.status.value,
                 command.billing_exempt, command.starts_at.value,
                 command.expires_at.value, command.evidence_reference,
                 str(command.actor_id.subject),
@@ -714,7 +772,7 @@ class SupabaseBillingSession:
                 command.starts_at.value, command.expires_at.value, command.evidence_reference,
                 str(command.actor_id.subject), str(command.entitlement_id),
                 str(command.company_id), str(command.user_id), int(command.income_year),
-                command.obligation.value, command.case_profile,
+                command.obligation.value, command.case_profile.value,
             )
         result = await self._idempotent_command(
             command=command,

@@ -219,11 +219,13 @@ test(
   "billing expansion, RLS, rollback, contract, and recutover are repeatable twice",
   { skip: !databaseUrl && "DATABASE_URL is required", timeout: 180_000 },
   async () => {
-    const [expand, expandRollback, contract, contractRollback] = await Promise.all([
+    const [expand, expandRollback, contract, contractRollback, reconcile, reconcileRollback] = await Promise.all([
       readFile(new URL("../supabase/migrations/20260905010000_billing_capability.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/rollback/20260905010000_billing_capability.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/contract-migrations/20260905013000_billing_contract.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/rollback/20260905013000_billing_contract.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260905061339_billing_provider_reconciliation.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260905061339_billing_provider_reconciliation.sql", import.meta.url), "utf8"),
     ]);
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
@@ -287,12 +289,23 @@ test(
         ) on conflict (company_id, income_year, obligation) do update set ready=true,
           status='ready', hard_blocks='[]'::jsonb;
       `);
+      await client.query(`
+        insert into billing.billing_payment_events (
+          company_id, provider, provider_reference, idempotency_key, kind,
+          status, amount_nok, income_year, payload, created_by
+        ) values (
+          '${companyId}', 'simulation', 'intent_billing-rollback-pending-00000001',
+          'billing-rollback-pending-00000001', 'filing_package', 'created', 299,
+          2025, '{"obligation":"aksjonaerregisteroppgaven"}'::jsonb, '${ownerId}'
+        )
+      `);
       await seedCommandReceipt(client);
       const evidence = await canonicalEvidence(client);
       const commandReceipt = await commandReceiptEvidence(client);
       await assertTenantBoundaryAndReadiness(client);
 
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
+        await client.query(reconcileRollback);
         await client.query(expandRollback);
         const predecessor = await topology(client);
         assert.equal(predecessor.billing_schema, false);
@@ -306,6 +319,7 @@ test(
         assert.deepEqual(quarantinedReceipt.rows, [{ exists: true }]);
 
         await client.query(expand);
+        await client.query(reconcile);
         const successor = await topology(client);
         assert.equal(successor.billing_schema, true);
         assert.equal(successor.canonical_accounts, true);

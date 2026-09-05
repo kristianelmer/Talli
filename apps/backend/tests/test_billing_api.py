@@ -158,3 +158,17 @@ def test_billing_rejects_missing_bearer_and_weak_operation_key() -> None:
         json={"companyId": COMPANY},
     )
     assert weak.status_code == 422
+
+
+def test_unknown_case_profiles_keep_ordinary_entitlement_fallback() -> None:
+    api = client(BillingSessionStub(account(subscription_active=True), ready=True))
+    for profile in ("rf1086_no_activity_v1", "future_profile_v2", ""):
+        response = api.get(
+            "/api/v1/billing/entitlement",
+            headers={"Authorization": "Bearer verified-session"},
+            params={"companyId": COMPANY, "incomeYear": 2025,
+                    "obligation": "aksjonaerregisteroppgaven", "caseProfile": profile},
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "filing_package_required"
+        assert response.json()["billingExempt"] is False

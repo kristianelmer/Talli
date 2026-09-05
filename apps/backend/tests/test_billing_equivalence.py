@@ -612,7 +612,7 @@ def test_failed_provider_outcomes_fail_closed_and_successor_quarantines_once() -
     assert provider.calls == 1
     assert len(persistence.events) == 1
     quarantine = next(iter(persistence.events.values()))
-    assert quarantine.status is BillingPaymentStatus.FAILED
+    assert quarantine.status is BillingPaymentStatus.CREATED
 
 
 def _pilot(**changes: object) -> ProductionPilotEntitlement:
