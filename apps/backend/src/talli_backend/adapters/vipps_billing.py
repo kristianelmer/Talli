@@ -204,7 +204,7 @@ class VippsTestBillingProvider:
         charge_path = agreement_path + "/charges/" + quote(intent.charge_reference, safe="")
         # Bind every consequential request to the original merchant agreement.
         # Renewals create a new charge, so only the agreement exists beforehand.
-        await self._read_agreement(client, headers, intent, intent.agreement_reference)
+        agreement = await self._read_agreement(client, headers, intent, intent.agreement_reference)
         if intent.operation in {AnnualProviderOperation.CANCEL_CHARGE, AnnualProviderOperation.REFUND}:
             await self._read_charge(client, headers, intent, intent.agreement_reference)
         if intent.operation is AnnualProviderOperation.RENEWAL:
@@ -220,6 +220,19 @@ class VippsTestBillingProvider:
             if result.get("chargeId") != intent.charge_reference:
                 raise _UnknownOutcome()
         elif intent.operation is AnnualProviderOperation.STOP_AGREEMENT:
+            if agreement["status"] == "STOPPED":
+                return self._observation(intent, AnnualProviderStatus.CONFIRMED)
+            if agreement["status"] != "ACTIVE":
+                return self._observation(intent, AnnualProviderStatus.PENDING)
+            charge, captured, _, _ = await self._read_charge(client, headers, intent, intent.agreement_reference)
+            # Merchant STOP cancels pending/due/reserved charges, including the
+            # initial payment. Renewal cleanup must not abandon that payment.
+            terminal = (
+                captured == intent.original_charge_minor
+                and charge["status"] in {"CHARGED", "PARTIALLY_REFUNDED", "REFUNDED"}
+            ) or (captured == 0 and charge["status"] in {"FAILED", "CANCELLED"})
+            if not terminal:
+                return self._observation(intent, AnnualProviderStatus.PENDING)
             await self._request(client, "PATCH", agreement_path, headers=modifying,
                                 body={"status": "STOPPED"}, expected=(204,))
         elif intent.operation is AnnualProviderOperation.CANCEL_CHARGE:

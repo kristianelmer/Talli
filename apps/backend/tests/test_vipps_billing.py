@@ -187,7 +187,7 @@ def test_wrong_agreement_binding_rejects_before_any_consequential_request(operat
     assert not any(r.method != "GET" and "/recurring/" in r.url.path for r in fixture.requests)
 
 
-@pytest.mark.parametrize("operation", [AnnualProviderOperation.REFUND, AnnualProviderOperation.CANCEL_CHARGE])
+@pytest.mark.parametrize("operation", [AnnualProviderOperation.REFUND, AnnualProviderOperation.CANCEL_CHARGE, AnnualProviderOperation.STOP_AGREEMENT])
 def test_wrong_charge_binding_rejects_before_refund_or_cancel(operation):
     fixture = MerchantTestFixture()
     fixture.charge["externalId"] = "other-charge"
@@ -209,6 +209,9 @@ def test_partial_refund_matches_operation_history_and_cumulative_totals_cannot_s
 
 def test_cancel_accepted_is_pending_until_observed_and_stop_is_confirmed_separately():
     fixture = MerchantTestFixture()
+    fixture.charge["status"] = "DUE"
+    fixture.charge["summary"]["captured"] = 0
+    fixture.charge["history"] = []
     cancellation = intent(operation=AnnualProviderOperation.CANCEL_CHARGE, amount_minor=0, agreement_reference="agr_local")
     assert asyncio.run(fixture.provider().execute(cancellation)).status is AnnualProviderStatus.PENDING
     fixture.charge["status"] = "CANCELLED"
@@ -286,3 +289,79 @@ def test_partial_then_full_capture_preserves_first_capture_time():
     assert final.status is AnnualProviderStatus.CONFIRMED
     assert final.captured_minor == 149000
     assert first.captured_at == final.captured_at == Timestamp(first_at)
+
+
+@pytest.mark.parametrize("agreement_status,expected", [
+    ("PENDING", AnnualProviderStatus.PENDING),
+    ("EXPIRED", AnnualProviderStatus.PENDING),
+    ("STOPPED", AnnualProviderStatus.CONFIRMED),
+])
+def test_agreement_stop_does_not_patch_non_active_agreements(agreement_status, expected):
+    fixture = MerchantTestFixture()
+    fixture.agreement["status"] = agreement_status
+    stop = intent(operation=AnnualProviderOperation.STOP_AGREEMENT, amount_minor=0, agreement_reference="agr_local")
+    result = asyncio.run(fixture.provider().execute(stop))
+    assert result.status is expected
+    assert not any(request.method == "PATCH" for request in fixture.requests)
+    assert result.captured_minor == result.refunded_minor == 0
+
+
+@pytest.mark.parametrize("charge_status,captured", [("PENDING", 0), ("DUE", 0), ("RESERVED", 0), ("PROCESSING", 0), ("PARTIALLY_CAPTURED", 1000), ("CHARGED", 1000)])
+def test_agreement_stop_cannot_abandon_unresolved_original_charge(charge_status, captured):
+    fixture = MerchantTestFixture()
+    fixture.charge["status"] = charge_status
+    fixture.charge["summary"]["captured"] = captured
+    fixture.charge["history"] = ([{"event": "CAPTURE", "amount": captured, "success": True, "occurred": NOW.isoformat()}]
+                                 if captured else [])
+    stop = intent(operation=AnnualProviderOperation.STOP_AGREEMENT, amount_minor=0, agreement_reference="agr_local")
+    result = asyncio.run(fixture.provider().execute(stop))
+    assert result.status is AnnualProviderStatus.PENDING
+    assert not any(request.method == "PATCH" for request in fixture.requests)
+
+
+@pytest.mark.parametrize("charge_status,captured,refunded", [
+    ("CHARGED", 149000, 0),
+    ("PARTIALLY_REFUNDED", 149000, 1000),
+    ("REFUNDED", 149000, 149000),
+    ("FAILED", 0, 0),
+    ("CANCELLED", 0, 0),
+])
+def test_agreement_cleanup_after_terminal_original_charge_preserves_separate_money_totals(charge_status, captured, refunded):
+    fixture = MerchantTestFixture()
+    fixture.charge["status"] = charge_status
+    fixture.charge["summary"].update(captured=captured, refunded=refunded)
+    if not captured:
+        fixture.charge["history"] = []
+    stop = intent(operation=AnnualProviderOperation.STOP_AGREEMENT, amount_minor=0, agreement_reference="agr_local")
+    result = asyncio.run(fixture.provider().execute(stop))
+    assert result.status is AnnualProviderStatus.CONFIRMED
+    assert result.captured_minor == result.refunded_minor == 0
+    assert result.agreement_reference == "agr_local"
+    assert len([request for request in fixture.requests if request.method == "PATCH"]) == 1
+
+
+def test_lost_stop_response_recovers_without_repeating_patch():
+    fixture = MerchantTestFixture()
+    def lose_patch_response(request):
+        result = fixture(request)
+        if request.method == "PATCH":
+            raise httpx.ReadTimeout("fixture lost stop response")
+        return result
+    provider = VippsTestBillingProvider(CONFIG, transport=httpx.MockTransport(lose_patch_response), now=lambda: NOW)
+    stop = intent(operation=AnnualProviderOperation.STOP_AGREEMENT, amount_minor=0, agreement_reference="agr_local")
+    assert asyncio.run(provider.execute(stop)).status is AnnualProviderStatus.UNKNOWN
+    assert asyncio.run(provider.reconcile(stop)).status is AnnualProviderStatus.CONFIRMED
+    assert asyncio.run(provider.execute(stop)).status is AnnualProviderStatus.CONFIRMED
+    assert len([request for request in fixture.requests if request.method == "PATCH"]) == 1
+
+
+def test_unavailable_original_charge_defers_agreement_cleanup_without_patch():
+    fixture = MerchantTestFixture()
+    def unavailable_charge(request):
+        if request.method == "GET" and "/charges/" in request.url.path:
+            return httpx.Response(503)
+        return fixture(request)
+    provider = VippsTestBillingProvider(CONFIG, transport=httpx.MockTransport(unavailable_charge), now=lambda: NOW)
+    stop = intent(operation=AnnualProviderOperation.STOP_AGREEMENT, amount_minor=0, agreement_reference="agr_local")
+    assert asyncio.run(provider.execute(stop)).status is AnnualProviderStatus.UNKNOWN
+    assert not any(request.method == "PATCH" for request in fixture.requests)
