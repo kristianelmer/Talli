@@ -1,9 +1,19 @@
-"""Authenticated annual reads and local cancellation, with no provider dependency."""
+"""Verified-owner annual workflows; reads and cancellation remain provider-free."""
 
+from collections.abc import Awaitable, Callable
 from typing import Protocol
+
+from talli_backend.application.annual_checkout_prerequisites import unavailable_annual_checkout_prerequisites
 
 from talli_backend.modules.billing.public import (
     AnnualBillingReadPersistence,
+    AnnualBillingProvider,
+    AnnualCheckout,
+    AnnualCheckoutPersistence,
+    AnnualCheckoutPrerequisites,
+    AnnualCheckoutQuery,
+    StartAnnualCheckoutCommand,
+    annual_checkout_operations,
     AnnualBillingSnapshot,
     AnnualBillingSnapshotQuery,
     AnnualCancellationPersistence,
@@ -12,7 +22,7 @@ from talli_backend.modules.billing.public import (
     CancelAnnualRenewalCommand,
     annual_billing_offer,
 )
-from talli_backend.shared.kernel import ActorId
+from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear
 
 
 class AuthenticatedAnnualBillingSession(Protocol):
@@ -24,6 +34,9 @@ class AuthenticatedAnnualBillingSession(Protocol):
 
     @property
     def cancellation(self) -> AnnualCancellationPersistence: ...
+
+    @property
+    def checkout(self) -> AnnualCheckoutPersistence: ...
 
 
 class AnnualBillingSessionFactory(Protocol):
@@ -65,3 +78,52 @@ class AnnualBillingWorkflow:
         if command.actor_id != self.actor_id:
             raise BillingError.forbidden()
         return await self._session.cancellation.cancel_renewal(command)
+
+
+AnnualCheckoutPrerequisiteResolver = Callable[
+    [CompanyId, IncomeYear, ActorId], Awaitable[AnnualCheckoutPrerequisites]
+]
+
+
+class AnnualCheckoutWorkflow:
+    """Authenticate once; billing owns all checkout and recovery decisions."""
+
+    def __init__(
+        self, session: AuthenticatedAnnualBillingSession,
+        provider: AnnualBillingProvider | None,
+        prerequisites: AnnualCheckoutPrerequisiteResolver | None = None,
+    ):
+        if session.actor_id != session.checkout.actor_id:
+            raise BillingError.forbidden()
+        self._session = session
+        self._provider = provider
+        self._prerequisites = prerequisites
+
+    @property
+    def actor_id(self) -> ActorId:
+        return self._session.actor_id
+
+    def _operations(self, company_id: CompanyId):
+        # Server-owned destinations preserve company selection. Never accept
+        # redirect URLs, merchant identity or authority facts from the browser.
+        destination = f"https://talli.no/billing?companyId={company_id}"
+        return annual_checkout_operations(
+            self._session.checkout, self._provider,
+            return_url=destination, management_url=destination,
+        )
+
+    async def start_checkout(self, command: StartAnnualCheckoutCommand) -> AnnualCheckout:
+        if command.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+
+        async def prerequisites():
+            if self._prerequisites is None:
+                return await unavailable_annual_checkout_prerequisites()
+            return await self._prerequisites(command.company_id, command.income_year, self.actor_id)
+
+        return await self._operations(command.company_id).start_checkout(command, prerequisites)
+
+    async def observe_checkout(self, query: AnnualCheckoutQuery) -> AnnualCheckout:
+        if query.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+        return await self._operations(query.company_id).poll_checkout(query)

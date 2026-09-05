@@ -73,7 +73,7 @@
 -->
 
 <!-- architecture-inventory
-{"adapterBindingModes":["BillingPaymentProvider=>production-disabled deterministic simulation adapter","BillingPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["BillingPaymentProvider=>backend-system","BillingPersistence=>backend-system"],"adapterBindings":["BillingPaymentProvider=>talli_backend.adapters.simulation_billing.SimulationBillingProvider","BillingPersistence=>talli_backend.adapters.supabase_billing.SupabaseBillingSession"],"adapterDependencies":["talli_backend.adapters.simulation_billing","talli_backend.adapters.supabase_billing","talli_backend.application.billing_session","talli_backend.application.billing_workflow","talli_backend.modules.billing.public"],"ports":["BillingPaymentProvider","BillingPersistence"],"publicPackages":["talli_backend.modules.billing.public"],"routes":["/api/v1/billing/accounts/configuration","/api/v1/billing/entitlement","/api/v1/billing/filing-package/purchase","/api/v1/billing/filing-package/refund","/api/v1/billing/pilot-entitlements","/api/v1/billing/snapshot","/api/v1/billing/subscriptions/activation","/api/v1/billing/subscriptions/cancellation","/api/v1/billing/unsupported"],"technicalMigrations":["supabase/contract-migrations/20260905013000_billing_contract.sql","supabase/migrations/20260905010000_billing_capability.sql"],"transportDependencies":["talli_backend.adapters.simulation_billing","talli_backend.adapters.supabase_billing","talli_backend.application.billing_session","talli_backend.application.billing_workflow","talli_backend.modules.billing.public"],"workflowDependencies":["talli_backend.modules.billing.public"],"workflowPurposes":["billing-and-filing-entitlement=>Authenticates one verified actor, owns server-selected legacy pricing and idempotent simulated provider outcomes, and returns the single billing decision used by readiness and production filing gates."],"workflows":["billing-and-filing-entitlement"]}
+{"adapterBindingModes":["BillingPaymentProvider=>production-disabled deterministic simulation adapter","BillingPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["BillingPaymentProvider=>backend-system","BillingPersistence=>backend-system"],"adapterBindings":["BillingPaymentProvider=>talli_backend.adapters.simulation_billing.SimulationBillingProvider","BillingPersistence=>talli_backend.adapters.supabase_billing.SupabaseBillingSession"],"adapterDependencies":["talli_backend.adapters.simulation_billing","talli_backend.adapters.supabase_billing","talli_backend.application.billing_session","talli_backend.application.billing_workflow","talli_backend.modules.billing.public"],"ports":["BillingPaymentProvider","BillingPersistence"],"publicPackages":["talli_backend.modules.billing.public"],"routes":["/api/v1/billing/accounts/configuration","/api/v1/billing/entitlement","/api/v1/billing/filing-package/purchase","/api/v1/billing/filing-package/refund","/api/v1/billing/pilot-entitlements","/api/v1/billing/snapshot","/api/v1/billing/subscriptions/activation","/api/v1/billing/subscriptions/cancellation","/api/v1/billing/unsupported"],"technicalMigrations":["supabase/contract-migrations/20260905013000_billing_contract.sql","supabase/migrations/20260905010000_billing_capability.sql"],"transportDependencies":["talli_backend.adapters.simulation_billing","talli_backend.adapters.supabase_billing","talli_backend.application.billing_session","talli_backend.application.billing_workflow","talli_backend.modules.billing.public"],"workflowDependencies":["talli_backend.modules.billing.public"],"workflowPurposes":["billing-and-filing-entitlement=>Authenticates one verified actor for annual checkout and original-intent recovery, historical billing cleanup, pilot administration and fail-closed filing entitlement; annual provider and source readiness are unavailable by default."],"workflows":["billing-and-filing-entitlement"]}
 -->
 
 ## Purpose
@@ -429,4 +429,27 @@ facts; cancellation POST returns durable local effectiveness and preserved dates
 
 <!-- architecture-inventory
 {"workflowPurposes":["annual-billing-reads-and-cancellation=>Authenticates annual owner reads and immediate local renewal cancellation from one verified actor; no provider, readiness or checkout activation."],"transportDependencies":["talli_backend.adapters.supabase_annual_billing","talli_backend.application.annual_billing"],"adapterDependencies":["talli_backend.adapters.supabase_annual_billing","talli_backend.application.annual_billing"]}
+-->
+
+
+## Annual checkout and recovery HTTP composition
+
+`AnnualCheckoutWorkflow`, registered in `billing-and-filing-entitlement`, uses the billing public `annual_checkout_operations`
+factory and the same independently verified actor's checkout persistence. Start
+POST accepts immutable offer/consent choices and an idempotency key. Observation
+POST reconciles only the original stored intent; it is POST because reconciliation
+may settle durable state. Neither GET nor caller data supplies provider effects,
+readiness, merchant identity, price or return destinations. Destinations are
+server-owned and preserve company selection.
+
+The default composition has no annual provider and raises PROVIDER_DISABLED.
+Even with an explicitly injected test provider, its default readiness resolver
+raises FILING_NOT_READY and the real PostgreSQL verifier remains unavailable.
+These are separate fail-closed boundaries, not #192 checkout acceptance or live
+activation. Terminal history replays without provider or new readiness checks,
+while current owner/fresh-MFA authorization remains mandatory. Local HTTP test
+fixtures do not establish actual MT or authoritative filing readiness.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/billing/annual/checkouts","/api/v1/billing/annual/checkout-observations"],"workflowDependencies":["talli_backend.application.annual_checkout_prerequisites"]}
 -->

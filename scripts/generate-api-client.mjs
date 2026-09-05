@@ -276,6 +276,8 @@ const bankingOperations = {
   ],
 };
 const billingOperations = {
+  annualCheckout: ["/api/v1/billing/annual/checkouts", "post", "billingStartAnnualCheckout"],
+  annualObservation: ["/api/v1/billing/annual/checkout-observations", "post", "billingObserveAnnualCheckout"],
   annualSnapshot: ["/api/v1/billing/annual/snapshot", "get", "billingReadAnnualSnapshot"],
   annualCancellation: ["/api/v1/billing/annual/renewal-cancellations", "post", "billingCancelAnnualRenewal"],
   snapshot: ["/api/v1/billing/snapshot", "get", "billingReadSnapshot"],
@@ -786,6 +788,9 @@ const bankingSchemas = Object.fromEntries([
   "StartBankConnectionWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const billingSchemas = Object.fromEntries([
+  "AnnualCheckoutCommandWire",
+  "AnnualCheckoutObservationCommandWire",
+  "AnnualCheckoutWire",
   "AnnualBillingOfferWire",
   "AnnualPurchaseSummaryWire",
   "AnnualPurchaseStatus",
@@ -2579,6 +2584,20 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async billingStartAnnualCheckout(
+      body: AnnualCheckoutCommandWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualCheckoutWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/checkouts", "POST", request, body, isAnnualCheckoutWire);
+    },
+
+    async billingObserveAnnualCheckout(
+      body: AnnualCheckoutObservationCommandWire,
+      request: TalliRequestOptions,
+    ): Promise<AnnualCheckoutWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/checkout-observations", "POST", request, body, isAnnualCheckoutWire);
     },
 
     async billingReadAnnualSnapshot(

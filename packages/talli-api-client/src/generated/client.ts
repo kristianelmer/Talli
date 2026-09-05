@@ -2564,6 +2564,32 @@ export interface StartBankConnectionWire {
   returnUrl: string;
 }
 
+export interface AnnualCheckoutCommandWire {
+  companyId: string;
+  consentVersion: string;
+  incomeYear: number;
+  offerVersion: string;
+  purchaseAccepted: boolean;
+  recurringConsent: boolean;
+  termsDigest: string;
+}
+
+export interface AnnualCheckoutObservationCommandWire {
+  companyId: string;
+  purchaseId: string;
+}
+
+export interface AnnualCheckoutWire {
+  capturedMinor: number;
+  checkoutUrl: string | null;
+  companyId: string;
+  incomeYear: number;
+  offer: AnnualBillingOfferWire;
+  purchaseId: string;
+  refundedMinor: number;
+  status: AnnualPurchaseStatus;
+}
+
 export interface AnnualBillingOfferWire {
   companyId: string;
   currency: "NOK";
@@ -6207,6 +6233,44 @@ function isStartBankConnectionWire(value: unknown): value is StartBankConnection
   );
 }
 
+function isAnnualCheckoutCommandWire(value: unknown): value is AnnualCheckoutCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","consentVersion","incomeYear","offerVersion","purchaseAccepted","recurringConsent","termsDigest"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.consentVersion === "string" && value.consentVersion.length >= 1 && value.consentVersion.length <= 100) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (typeof value.offerVersion === "string" && value.offerVersion.length >= 1 && value.offerVersion.length <= 100) &&
+    typeof value.purchaseAccepted === "boolean" &&
+    typeof value.recurringConsent === "boolean" &&
+    (typeof value.termsDigest === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.termsDigest))
+  );
+}
+
+function isAnnualCheckoutObservationCommandWire(value: unknown): value is AnnualCheckoutObservationCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","purchaseId"]) &&
+    isUuid(value.companyId) &&
+    isUuid(value.purchaseId)
+  );
+}
+
+function isAnnualCheckoutWire(value: unknown): value is AnnualCheckoutWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["capturedMinor","checkoutUrl","companyId","incomeYear","offer","purchaseId","refundedMinor","status"]) &&
+    (typeof value.capturedMinor === "number" && Number.isInteger(value.capturedMinor) && value.capturedMinor >= 0) &&
+    (typeof value.checkoutUrl === "string" || value.checkoutUrl === null) &&
+    isUuid(value.companyId) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    isAnnualBillingOfferWire(value.offer) &&
+    isUuid(value.purchaseId) &&
+    (typeof value.refundedMinor === "number" && Number.isInteger(value.refundedMinor) && value.refundedMinor >= 0) &&
+    isAnnualPurchaseStatus(value.status)
+  );
+}
+
 function isAnnualBillingOfferWire(value: unknown): value is AnnualBillingOfferWire {
   return (
     isRecord(value) &&
@@ -8179,6 +8243,20 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async billingStartAnnualCheckout(
+      body: AnnualCheckoutCommandWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualCheckoutWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/checkouts", "POST", request, body, isAnnualCheckoutWire);
+    },
+
+    async billingObserveAnnualCheckout(
+      body: AnnualCheckoutObservationCommandWire,
+      request: TalliRequestOptions,
+    ): Promise<AnnualCheckoutWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/checkout-observations", "POST", request, body, isAnnualCheckoutWire);
     },
 
     async billingReadAnnualSnapshot(

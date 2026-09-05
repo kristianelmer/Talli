@@ -14,6 +14,7 @@ from talli_backend.modules.billing.public import (
     AnnualBillingReadPersistence,
     AnnualBillingSnapshotQuery,
     AnnualCancellationPersistence,
+    AnnualCheckoutPersistence,
     AnnualPurchaseId,
     AnnualPurchasePage,
     AnnualPurchaseStatus,
@@ -89,6 +90,7 @@ class PostgresAnnualBillingReadSession:
 class _AnnualBillingSession:
     reads: AnnualBillingReadPersistence
     cancellation: AnnualCancellationPersistence
+    checkout: AnnualCheckoutPersistence
 
     @property
     def actor_id(self):
@@ -117,5 +119,5 @@ class SupabaseAnnualBillingAdapter:
             raise BillingAuthenticationError from None
         checkout = PostgresAnnualCheckoutSession(self._configuration.database_url, ledger._verified)
         return _AnnualBillingSession(
-            PostgresAnnualBillingReadSession(checkout), PostgresAnnualCancellationSession(checkout)
+            PostgresAnnualBillingReadSession(checkout), PostgresAnnualCancellationSession(checkout), checkout
         )

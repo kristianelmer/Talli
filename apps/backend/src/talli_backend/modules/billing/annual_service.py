@@ -32,7 +32,7 @@ def checkout_fingerprint(command: StartAnnualCheckoutCommand) -> str:
 
 class AnnualCheckoutService:
     def __init__(
-        self, persistence: AnnualCheckoutPersistence, provider: AnnualBillingProvider,
+        self, persistence: AnnualCheckoutPersistence, provider: AnnualBillingProvider | None,
         *, return_url: str, management_url: str,
         now: Callable[[], datetime] | None = None,
     ) -> None:
@@ -94,7 +94,7 @@ class AnnualCheckoutService:
         return await self._observe(checkout, newly_claimed=False)
 
     def _provider_enabled(self) -> None:
-        if self._provider.production_enabled or not self._provider.account_reference:
+        if self._provider is None or self._provider.production_enabled or not self._provider.account_reference:
             raise BillingError.unavailable(BillingErrorCode.PROVIDER_DISABLED)
 
     @staticmethod

@@ -86,7 +86,9 @@
       "AnnualPurchaseSummary",
       "AnnualPurchasePage",
       "annual_billing_offer",
-      "AnnualBillingReadPersistence"
+      "AnnualBillingReadPersistence",
+      "AnnualCheckoutOperations",
+      "annual_checkout_operations"
     ]
   },
   "owns": {
@@ -215,7 +217,8 @@
     "annualReadDatabase": "apps/backend/tests/test_annual_billing_read_runtime.py",
     "annualApi": "apps/backend/tests/test_annual_billing_api.py",
     "legacyRetirement": "apps/backend/tests/test_legacy_billing_retirement.py",
-    "legacyRetirementDatabase": "apps/backend/tests/test_legacy_billing_retirement_runtime.py"
+    "legacyRetirementDatabase": "apps/backend/tests/test_legacy_billing_retirement_runtime.py",
+    "annualCheckoutApi": "apps/backend/tests/test_annual_checkout_api.py"
   },
   "compatibilityExceptions": []
 }

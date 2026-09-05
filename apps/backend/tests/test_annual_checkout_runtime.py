@@ -619,3 +619,83 @@ def test_current_source_is_rechecked_after_waiting_for_eligibility_lock(setup):
 
     asyncio.run(run())
     assert counts(setup) == (0, 0)
+
+
+def test_http_checkout_and_recovery_share_the_real_stored_intent(setup):
+    from types import SimpleNamespace
+    from fastapi.testclient import TestClient
+    from talli_backend.main import create_app
+
+    store = session(setup)
+
+    class Factory:
+        async def session(self, token):
+            assert token == "verified-fixture"
+            return SimpleNamespace(actor_id=setup[1], checkout=store)
+
+    class CapturedProvider(Provider):
+        async def reconcile(self, intent):
+            self.reconciliations.append(intent)
+            return AnnualProviderObservation(
+                self.provider, AnnualProviderOperation.CHECKOUT, AnnualProviderStatus.CONFIRMED,
+                "agr-test", intent.charge_reference, 149000, captured_minor=149000,
+                captured_at=intent.created_at,
+            )
+
+    async def source(company, year, actor):
+        assert (company, year, actor) == (setup[2].company_id, IncomeYear(2026), setup[1])
+        return setup[4]
+
+    provider = CapturedProvider(setup)
+    api = TestClient(create_app(annual_billing_session_factory=Factory(), annual_billing_provider=provider,
+                                annual_checkout_prerequisites=source))
+    headers = {"Authorization": "Bearer verified-fixture", "Idempotency-Key": str(setup[5].idempotency_key)}
+    body = {"companyId": str(setup[2].company_id), "incomeYear": 2026,
+            "offerVersion": setup[2].offer_version, "termsDigest": setup[2].terms_digest,
+            "purchaseAccepted": True, "recurringConsent": True, "consentVersion": setup[2].offer_version}
+    started = api.post("/api/v1/billing/annual/checkouts", headers=headers, json=body)
+    assert started.status_code == 200, started.text
+    assert started.json()["status"] == "pending" and counts(setup) == (1, 1)
+    observed = api.post("/api/v1/billing/annual/checkout-observations", headers=headers,
+                        json={"companyId": body["companyId"], "purchaseId": started.json()["purchaseId"]})
+    assert observed.status_code == 200, observed.text
+    assert observed.json()["status"] == "paid" and observed.json()["capturedMinor"] == 149000
+    replay = api.post("/api/v1/billing/annual/checkouts", headers=headers, json=body)
+    assert replay.json() == observed.json()
+    assert len(provider.executions) == len(provider.reconciliations) == 1
+    assert counts(setup) == (1, 1)
+
+
+def test_real_runtime_adapter_rejects_injected_readiness_without_source_verifier(setup):
+    from types import SimpleNamespace
+    from fastapi.testclient import TestClient
+    from talli_backend.adapters.supabase_annual_billing import SupabaseAnnualBillingAdapter
+    from talli_backend.adapters.supabase_ledger import LedgerSupabaseConfiguration
+    from talli_backend.main import create_app
+
+    verified = session(setup)._verified
+
+    class AuthenticationFixture:
+        async def session(self, token):
+            assert token == "verified-fixture"
+            return SimpleNamespace(_verified=verified)
+
+    factory = SupabaseAnnualBillingAdapter(LedgerSupabaseConfiguration(
+        url="http://127.0.0.1:1", anon_key="local-unused", database_url=DATABASE_URL,
+    ))
+    factory._authentication = AuthenticationFixture()
+    provider = Provider(setup)
+
+    async def source(company, year, actor):
+        return setup[4]
+
+    api = TestClient(create_app(annual_billing_session_factory=factory, annual_billing_provider=provider,
+                                annual_checkout_prerequisites=source))
+    response = api.post("/api/v1/billing/annual/checkouts",
+        headers={"Authorization": "Bearer verified-fixture", "Idempotency-Key": str(setup[5].idempotency_key)},
+        json={"companyId": str(setup[2].company_id), "incomeYear": 2026,
+              "offerVersion": setup[2].offer_version, "termsDigest": setup[2].terms_digest,
+              "purchaseAccepted": True, "recurringConsent": False, "consentVersion": setup[2].offer_version})
+    assert response.status_code == 409, response.text
+    assert response.json()["code"] == "BILLING_FILING_NOT_READY"
+    assert counts(setup) == (0, 0) and not provider.executions and not provider.reconciliations

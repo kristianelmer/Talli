@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from enum import StrEnum
@@ -847,6 +847,27 @@ def settle_annual_checkout(
     return settle(checkout, observation, at)
 
 
+class AnnualCheckoutOperations(Protocol):
+    async def start_checkout(
+        self, command: StartAnnualCheckoutCommand,
+        prerequisites: Callable[[], Awaitable[AnnualCheckoutPrerequisites]],
+    ) -> AnnualCheckout: ...
+
+    async def poll_checkout(self, query: AnnualCheckoutQuery) -> AnnualCheckout: ...
+
+
+def annual_checkout_operations(
+    persistence: AnnualCheckoutPersistence, provider: AnnualBillingProvider | None,
+    *, return_url: str, management_url: str,
+) -> AnnualCheckoutOperations:
+    """Compose the single checkout policy path; an absent provider fails closed."""
+    from talli_backend.modules.billing.annual_service import AnnualCheckoutService
+
+    return AnnualCheckoutService(
+        persistence, provider, return_url=return_url, management_url=management_url,
+    )
+
+
 @runtime_checkable
 class AnnualCheckoutPersistence(Protocol):
     @property
@@ -1032,6 +1053,8 @@ __all__ = [
     "AnnualRenewalCancellation",
     "CancelAnnualRenewalCommand",
     "settle_annual_checkout",
+    "AnnualCheckoutOperations",
+    "annual_checkout_operations",
     "AnnualPurchaseStatus",
     "AnnualCheckoutPersistence",
     "AnnualCheckoutClaim",

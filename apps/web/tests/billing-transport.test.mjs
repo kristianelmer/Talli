@@ -210,3 +210,41 @@ test("historical cleanup remains reachable without reactivated legacy flags", ()
   assert.doesNotMatch(workspace, /filing_package_paid &&/u);
   assert.match(workspace, /Inntektsår for tidligere betaling/u);
 });
+
+test("annual checkout and observation use POST with bounded customer data and exact retry identity", async () => {
+  const requests = [];
+  const purchaseId = "10000000-0000-4000-8000-000000000002";
+  const payload = { purchaseId, companyId, incomeYear: 2026, status: "pending", offer: annualOffer(),
+    capturedMinor: 0, refundedMinor: 0, checkoutUrl: "https://checkout.example/verified-test" };
+  const api = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async (url, request) => {
+    requests.push({ url, request });
+    return Response.json(payload);
+  }});
+  const offer = annualOffer();
+  const body = { companyId, incomeYear: 2026, offerVersion: offer.offerVersion, termsDigest: offer.termsDigest,
+    purchaseAccepted: true, recurringConsent: false, consentVersion: offer.offerVersion };
+  const options = { idempotencyKey: "annual-checkout-client-00001", accessToken: "owner-fixture", requestId: "checkout-fixture" };
+  assert.deepEqual(await api.billingStartAnnualCheckout(body, options), payload);
+  assert.deepEqual(await api.billingStartAnnualCheckout(body, options), payload);
+  assert.deepEqual(requests[1], requests[0]);
+  assert.equal(requests[0].url, "https://backend.example/api/v1/billing/annual/checkouts");
+  assert.equal(requests[0].request.headers["Idempotency-Key"], options.idempotencyKey);
+  assert.deepEqual(JSON.parse(requests[0].request.body), body);
+  assert.deepEqual(await api.billingObserveAnnualCheckout({ companyId, purchaseId }, options), payload);
+  assert.equal(requests[2].url, "https://backend.example/api/v1/billing/annual/checkout-observations");
+  assert.deepEqual(JSON.parse(requests[2].request.body), { companyId, purchaseId });
+  for (const { request } of requests) {
+    assert.equal(request.method, "POST");
+    assert.equal(request.cache, "no-store");
+  }
+});
+
+test("annual checkout client rejects leaked provider state and malformed purchase totals", async () => {
+  const payload = { purchaseId: "10000000-0000-4000-8000-000000000002", companyId, incomeYear: 2026,
+    status: "pending", offer: annualOffer(), capturedMinor: 0, refundedMinor: 0, checkoutUrl: null };
+  for (const changes of [{ providerAccount: "private" }, { capturedMinor: -1 }, { refundedMinor: 0.5 }, { status: "complete" }]) {
+    const api = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async () => Response.json({ ...payload, ...changes }) });
+    await assert.rejects(api.billingObserveAnnualCheckout({ companyId, purchaseId: payload.purchaseId }, {}),
+      (error) => error instanceof TalliApiError && error.status === 502);
+  }
+});

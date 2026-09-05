@@ -200,9 +200,11 @@
     },
     {
       "name": "billing-and-filing-entitlement",
-      "purpose": "Authenticates one verified actor, owns server-selected legacy pricing and idempotent simulated provider outcomes, and returns the single billing decision used by readiness and production filing gates.",
+      "purpose": "Authenticates one verified actor for annual checkout and original-intent recovery, historical billing cleanup, pilot administration and fail-closed filing entitlement; annual provider and source readiness are unavailable by default.",
       "publicPackages": ["talli_backend.modules.billing.public"],
       "routes": [
+        "/api/v1/billing/annual/checkouts",
+        "/api/v1/billing/annual/checkout-observations",
         "/api/v1/billing/snapshot",
         "/api/v1/billing/entitlement",
         "/api/v1/billing/accounts/configuration",
@@ -493,6 +495,7 @@
       "talli_backend.shared.kernel"
     ],
     "workflows": [
+      "talli_backend.application.annual_checkout_prerequisites",
       "talli_backend.application.annual_data_compatibility",
       "talli_backend.application.opening_snapshot_compatibility",
       "talli_backend.modules.banking.public",

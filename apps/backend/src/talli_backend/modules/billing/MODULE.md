@@ -219,7 +219,7 @@ and notice dates. No provider I/O occurs inside the persistence transaction.
 The injected readiness verifier must validate the exact source-owned evidence,
 including current identity, company/year and digest. Its default returns unavailable;
 only isolated fixtures supply a verifier in this unit. This is not a production
-readiness binding, and the adapter is not composed into HTTP/runtime yet.
+readiness binding, and the default runtime verifier remains unavailable.
 
 Settlement locks purchase before operation, invokes billing-owned public
 `settle_annual_checkout` against that latest state, and commits both records
@@ -240,8 +240,8 @@ snapshot is not charging authority. Readiness must retain every non-billing hard
 block; production release/provider clearance (#179/#198) is a separate gate.
 This unavailable binding is safe interim behavior and does not satisfy #192's
 end-to-end exit. HTTP/UI cutover, trusted readiness, actual MT evidence and all
-remaining acceptance criteria stay pending. No annual runtime route is exposed
-by this orchestration unit.
+remaining acceptance criteria stay pending. The subsequent HTTP composition exposes start/recovery routes with provider
+disabled and source readiness unavailable by default.
 
 ## Durable local annual renewal cancellation
 
@@ -347,3 +347,23 @@ explicit predecessor recovery operation, not a supported mixed-writer configurat
 Apply its rollback before earlier billing migrations and reapply retirement last.
 The migration borrows SET authority only when needed and restores the invoking
 principal's previous role capability, including admin-only memberships.
+
+
+## Annual checkout HTTP boundary
+
+`AnnualCheckoutOperations` and `annual_checkout_operations` expose the existing
+single checkout service to application composition through the public package.
+An absent provider is disabled; terminal stored results can still replay after
+current owner/MFA authorization. The authenticated start and observation POST
+routes map immutable customer choices to this service and return only purchase,
+offer, status, monetary totals and a pending provider-validated checkout URL.
+Original provider intent, merchant identity, acceptance source material and request
+fingerprints remain backend-only. Snapshot GET and local cancellation keep their
+provider-free behavior.
+
+The default runtime has no configured annual provider. The source resolver and
+PostgreSQL readiness verifier remain unavailable pending their actual owner.
+Injected local HTTP/session fixtures prove only transport and orchestration;
+actual MT, trusted readiness, complete checkout UI, webhook/worker/refund/renewal
+runtime and final #192 gates remain outstanding. No production activation or
+acceptance waiver follows from these endpoints.

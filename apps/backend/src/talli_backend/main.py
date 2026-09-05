@@ -66,7 +66,7 @@ from talli_backend.application.billing_session import (
     BillingSessionFactory,
 )
 from talli_backend.application.billing_workflow import BillingWorkflow
-from talli_backend.application.annual_billing import AnnualBillingSessionFactory, AnnualBillingWorkflow
+from talli_backend.application.annual_billing import AnnualBillingSessionFactory, AnnualBillingWorkflow, AnnualCheckoutWorkflow, AnnualCheckoutPrerequisiteResolver
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceAuthenticationError,
     CorporateGovernanceSessionFactory,
@@ -177,6 +177,7 @@ from talli_backend.modules.company_access.public import (
 )
 from talli_backend.modules.billing.public import (
     AnnualBillingSnapshotQuery, AnnualPurchaseId, AnnualPurchaseStatus, CancelAnnualRenewalCommand,
+    AnnualBillingProvider, AnnualCheckout, AnnualCheckoutQuery, StartAnnualCheckoutCommand,
     ActivateSubscriptionCommand,
     BillingAccount,
     BillingEntitlementDecision,
@@ -516,6 +517,32 @@ class AnnualBillingSnapshotWire(TransportModel):
     offer: AnnualBillingOfferWire
     purchases: list[AnnualPurchaseSummaryWire]
     next_purchase_id: UUID | None
+
+
+class AnnualCheckoutCommandWire(StrictTransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    offer_version: str = Field(min_length=1, max_length=100)
+    terms_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    purchase_accepted: bool = Field(strict=True)
+    recurring_consent: bool = Field(strict=True)
+    consent_version: str = Field(min_length=1, max_length=100)
+
+
+class AnnualCheckoutObservationCommandWire(StrictTransportModel):
+    company_id: UUID
+    purchase_id: UUID
+
+
+class AnnualCheckoutWire(TransportModel):
+    purchase_id: UUID
+    company_id: UUID
+    income_year: int
+    status: AnnualPurchaseStatus
+    offer: AnnualBillingOfferWire
+    captured_minor: int = Field(ge=0)
+    refunded_minor: int = Field(ge=0)
+    checkout_url: str | None
 
 
 class AnnualRenewalCancellationCommandWire(StrictTransportModel):
@@ -3123,6 +3150,8 @@ def create_app(
     billing_session_factory: BillingSessionFactory | None = None,
     billing_payment_provider: BillingPaymentProvider | None = None,
     annual_billing_session_factory: AnnualBillingSessionFactory | None = None,
+    annual_billing_provider: AnnualBillingProvider | None = None,
+    annual_checkout_prerequisites: AnnualCheckoutPrerequisiteResolver | None = None,
     marketing_measurement_gateway: MarketingMeasurementGateway | None = None,
     marketing_measurement_internal_key: str | None = None,
     validation_observer: PassiveValidationObserver | None = None,
@@ -3168,6 +3197,12 @@ def create_app(
 
     async def annual_billing_workflow(credentials: HTTPAuthorizationCredentials | None) -> AnnualBillingWorkflow:
         return AnnualBillingWorkflow(await annual_billing_sessions.session(bearer_token(credentials)))
+
+    async def annual_checkout_workflow(credentials: HTTPAuthorizationCredentials | None) -> AnnualCheckoutWorkflow:
+        return AnnualCheckoutWorkflow(
+            await annual_billing_sessions.session(bearer_token(credentials)),
+            annual_billing_provider, annual_checkout_prerequisites,
+        )
 
     billing_provider = billing_payment_provider or SimulationBillingProvider()
 
@@ -9034,6 +9069,66 @@ def create_app(
             "correlation_id": CorrelationId(request.state.request_id),
             "idempotency_key": IdempotencyKey(key),
         }
+
+    def annual_checkout_wire(value: AnnualCheckout) -> AnnualCheckoutWire:
+        offer = value.offer
+        observation = value.observation
+        return AnnualCheckoutWire(
+            purchase_id=UUID(str(value.purchase_id)), company_id=UUID(str(offer.company_id)),
+            income_year=offer.income_year.value, status=value.status,
+            offer=AnnualBillingOfferWire(
+                company_id=UUID(str(offer.company_id)), income_year=offer.income_year.value,
+                **{name: getattr(offer, name) for name in ("offer_version", "terms_digest", "terms_text", "currency",
+                    "gross_minor", "net_minor", "vat_minor", "vat_basis_points", "paid_through", "export_through",
+                    "renewal_date", "renewal_reminder_by", "price_change_notice_by")},
+            ),
+            captured_minor=observation.captured_minor if observation else 0,
+            refunded_minor=observation.refunded_minor if observation else 0,
+            checkout_url=observation.checkout_url if observation and value.status is AnnualPurchaseStatus.PENDING else None,
+        )
+
+    @application.post(
+        "/api/v1/billing/annual/checkouts",
+        operation_id="billingStartAnnualCheckout", response_model=AnnualCheckoutWire,
+        responses={200: {"description": "Stored annual checkout; only confirmed full capture is paid."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def start_annual_checkout(
+        request: Request, response: Response, command: AnnualCheckoutCommandWire,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=200)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualCheckoutWire:
+        async def execute():
+            workflow = await annual_checkout_workflow(credentials)
+            result = await workflow.start_checkout(billing_input(lambda: StartAnnualCheckoutCommand(
+                company_id=CompanyId(str(command.company_id)), income_year=IncomeYear(command.income_year),
+                offer_version=command.offer_version, terms_digest=command.terms_digest,
+                purchase_accepted=command.purchase_accepted, recurring_consent=command.recurring_consent,
+                consent_version=command.consent_version,
+                **billing_metadata(workflow, request, idempotency_key),
+            )))
+            response.headers["Cache-Control"] = "no-store"
+            return annual_checkout_wire(result)
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/annual/checkout-observations",
+        operation_id="billingObserveAnnualCheckout", response_model=AnnualCheckoutWire,
+        responses={200: {"description": "Reconciles the original stored intent; never creates another agreement or charge."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def observe_annual_checkout(
+        response: Response, command: AnnualCheckoutObservationCommandWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualCheckoutWire:
+        async def execute():
+            workflow = await annual_checkout_workflow(credentials)
+            result = await workflow.observe_checkout(AnnualCheckoutQuery(
+                company_id=CompanyId(str(command.company_id)), purchase_id=AnnualPurchaseId(str(command.purchase_id)), actor_id=workflow.actor_id,
+            ))
+            response.headers["Cache-Control"] = "no-store"
+            return annual_checkout_wire(result)
+        return await billing_call(execute)
 
     @application.get(
         "/api/v1/billing/annual/snapshot",
