@@ -560,9 +560,138 @@ class AnnualProviderObservation:
     captured_at: Timestamp | None = None
 
 
+class AnnualPurchaseStatus(StrEnum):
+    PENDING = "pending"
+    PAID = "paid"
+    FAILED = "failed"
+    REFUNDED = "refunded"
+
+
+class AnnualPurchaseId(_UuidId):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class StartAnnualCheckoutCommand(_BillingCommand):
+    income_year: IncomeYear
+    offer_version: str
+    terms_digest: str
+    purchase_accepted: bool
+    recurring_consent: bool
+    consent_version: str
+
+    def __post_init__(self) -> None:
+        if (
+            self.purchase_accepted is not True
+            or type(self.recurring_consent) is not bool
+            or not self.offer_version or not self.consent_version
+            or len(self.terms_digest) != 64
+            or any(char not in "0123456789abcdef" for char in self.terms_digest)
+            or len(str(self.idempotency_key)) > 200
+        ):
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutQuery:
+    company_id: CompanyId
+    actor_id: ActorId
+    purchase_id: AnnualPurchaseId
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAcceptanceBasisReference:
+    company_id: CompanyId
+    income_year: IncomeYear
+    assessment_id: str
+    legal_acceptance_id: str
+    admission_id: str
+    promise_digest: str
+    manifest_digest: str
+
+    def __post_init__(self) -> None:
+        try:
+            for value in (self.assessment_id, self.legal_acceptance_id, self.admission_id):
+                UUID(value)
+        except (ValueError, TypeError, AttributeError):
+            raise BillingError.invalid() from None
+        if any(len(value) != 64 or any(char not in "0123456789abcdef" for char in value)
+               for value in (self.promise_digest, self.manifest_digest)):
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutPrerequisites:
+    """Server-owned evidence; persistence must verify its current source identity."""
+
+    basis: AnnualAcceptanceBasisReference
+    readiness_reference: str
+    readiness_digest: str
+    evaluated_at: Timestamp
+    ready: bool
+
+    def __post_init__(self) -> None:
+        if (not self.readiness_reference or len(self.readiness_reference) > 200
+                or len(self.readiness_digest) != 64
+                or any(char not in "0123456789abcdef" for char in self.readiness_digest)
+                or type(self.ready) is not bool):
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckout:
+    purchase_id: AnnualPurchaseId
+    offer: AnnualBillingOffer
+    accepted_by: UserId
+    request_fingerprint: str
+    idempotency_key: IdempotencyKey
+    provider: str
+    provider_account: str
+    intent: AnnualProviderIntent
+    status: AnnualPurchaseStatus
+    observation: AnnualProviderObservation | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutClaim:
+    checkout: AnnualCheckout
+    newly_claimed: bool
+
+
+@runtime_checkable
+class AnnualCheckoutPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def authorize_owner_command(self, company_id: CompanyId) -> None: ...
+
+    async def find_checkout(self, company_id: CompanyId, key: IdempotencyKey) -> AnnualCheckout | None: ...
+
+    async def claim_checkout(
+        self, checkout: AnnualCheckout, prerequisites: AnnualCheckoutPrerequisites,
+    ) -> AnnualCheckoutClaim:
+        """Commit purchase and original operation atomically; only one caller wins."""
+        ...
+
+    async def load_checkout(self, company_id: CompanyId, purchase_id: AnnualPurchaseId) -> AnnualCheckout: ...
+
+    async def settle_checkout(
+        self, checkout: AnnualCheckout, observation: AnnualProviderObservation,
+    ) -> AnnualCheckout:
+        """Lock purchase then operation and validate against that latest state.
+
+        Preserve terminal states, bound agreement references and reject stale totals/timestamps. Confirmed
+        full capture refunded in full produces REFUNDED; partial captures stay
+        unresolved even when refunded so far. Only confirmed full capture with an
+        outstanding paid balance produces PAID. Never return stale caller state.
+        """
+        ...
+
+
 @runtime_checkable
 class AnnualBillingProvider(Protocol):
     provider: str
+    account_reference: str
     production_enabled: bool
 
     async def execute(self, intent: AnnualProviderIntent) -> AnnualProviderObservation:
@@ -699,6 +828,15 @@ def billing_provider_adapter(port: type[object]) -> Callable[[Adapter], Adapter]
 
 
 __all__ = [
+    "AnnualPurchaseStatus",
+    "AnnualCheckoutPersistence",
+    "AnnualCheckoutClaim",
+    "AnnualCheckout",
+    "AnnualCheckoutPrerequisites",
+    "AnnualAcceptanceBasisReference",
+    "AnnualCheckoutQuery",
+    "StartAnnualCheckoutCommand",
+    "AnnualPurchaseId",
     "AnnualBillingProvider",
     "AnnualBillingOffer",
     "AnnualRefundDecision",

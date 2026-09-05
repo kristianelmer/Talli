@@ -1,7 +1,7 @@
 # Billing backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
+{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
 -->
 
 ## Purpose and ownership
@@ -177,3 +177,37 @@ Rollback revokes access, removes annual policies and moves the three relations
 to the inaccessible `billing_annual_retired` schema and removes annual triggers
 and functions so the predecessor billing rollback can withdraw its schema. Recutover restores the same records, including
 unknown operations. It does not erase replay history or grant paid entitlement.
+
+
+## Initial annual checkout orchestration
+
+`StartAnnualCheckoutCommand` and `AnnualCheckoutQuery` carry customer choices and
+verified identity. The internal `AnnualCheckoutService` claims an immutable
+purchase/operation before provider execution. Only a newly committed claim may
+create a provider agreement. Lost claim responses, lost provider responses and
+failed settlement writes recover by reading the original stored intent. New
+requests validate the exact current offer and separately accepted recurring
+consent. Existing requests reconcile before refreshing eligibility/readiness.
+
+`AnnualCheckout` identifies the immutable purchase through `AnnualPurchaseId`
+and its lifecycle through `AnnualPurchaseStatus`. `AnnualCheckoutClaim` marks
+whether this caller won the committed claim. `AnnualAcceptanceBasisReference`
+pins Company Access evidence; `AnnualCheckoutPrerequisites` adds the source
+readiness reference, digest and evaluation time.
+
+`AnnualCheckoutPersistence` declares claim/load/settle operations with purchase-
+then-operation locking and monotonic financial settlement. Its PostgreSQL adapter
+is still pending; the orchestration tests use an isolated in-memory adapter and
+do not establish production persistence integration. Provider account identity
+is pinned, and mismatched/malformed capture evidence cannot grant paid access.
+
+The application prerequisite binding currently returns `FILING_NOT_READY`.
+Company Access owns definitive eligibility. The eventual source for authoritative
+aggregate filing readiness is Annual Compliance (#149, after #193/#153), through
+its public source-owned contract. The current owner-writable legacy readiness
+snapshot is not charging authority. Readiness must retain every non-billing hard
+block; production release/provider clearance (#179/#198) is a separate gate.
+This unavailable binding is safe interim behavior and does not satisfy #192's
+end-to-end exit. HTTP/UI cutover, trusted readiness, actual MT evidence and all
+remaining acceptance criteria stay pending. No annual runtime route is exposed
+by this orchestration unit.

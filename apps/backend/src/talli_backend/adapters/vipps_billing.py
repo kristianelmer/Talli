@@ -95,6 +95,10 @@ class VippsTestBillingProvider:
         self._transport = transport
         self._now = now or (lambda: datetime.now(UTC))
 
+    @property
+    def account_reference(self) -> str:
+        return self._configuration.merchant_serial_number
+
     def _observation(self, intent, status, *, agreement=None, captured=0, refunded=0, checkout_url=None, captured_at=None):
         return AnnualProviderObservation(
             provider=self.provider, operation=intent.operation, status=status,

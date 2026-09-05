@@ -23,7 +23,7 @@
     {
       "id": "GH-192-A2",
       "requirement": "Definitive eligibility and readiness before checkout; provisional/blocked never charge.",
-      "status": "pending"
+      "status": "new-checkout-orchestration-fails-closed-trusted-readiness-source-and-runtime-integration-pending"
     },
     {
       "id": "GH-192-A3",
@@ -64,7 +64,8 @@
     "financialDates": "152 Python +14 Node billing tests and architecture pass; bounded independent review PASS. Provider capture time is derived from valid successful history, never a future time; renewal schedules Dec31 Oslo for promised Jan1 collection and does not silently postpone missed dates.",
     "purchaseLedger": "38 Python billing database lifecycle tests plus Node predecessor lifecycle pass on a reset isolated database; final 20 annual-ledger cases pass. Includes case-bound admin negatives, concurrent full-refund replay, repurchase after full refund, immutable evidence, and two mixed predecessor rollback/recutover cycles. Bounded independent Standards PASS. Architecture check passes; advisors 0 blocking and 34 performance warnings. Runtime remains unwired.",
     "firstCapture": "Regression reproduced partial-to-full capture changing the ledger timestamp. Provider now reports first successful capture; partial capture remains pending. 87 provider/webhook/policy tests pass; actual MT evidence pending. Bounded independent review PASS with 8 capture-focused cases.",
-    "architectureRegression": "Full architecture suite: 50 pass, one stale fixture failure after #137 stage exit. Updated only the ambiguity fixture to duplicate the current active stage; focused rerun passes. Architecture checker and dependency evidence pass unchanged."
+    "architectureRegression": "Full architecture suite: 50 pass, one stale fixture failure after #137 stage exit. Updated only the ambiguity fixture to duplicate the current active stage; focused rerun passes. Architecture checker and dependency evidence pass unchanged.",
+    "initialCheckoutService": "28 focused service tests pass, including concurrent claim, lost claim/provider/settlement response, scoped fresh readiness, merchant identity, pre-intent capture rejection, refunded-first observation, and stale pending/capture/reference interleavings. Independent bounded Standards and adversarial reviews PASS. PostgreSQL adapter and HTTP/runtime integration remain pending. Full billing suite 181 Python and 14 Node tests pass; architecture check/dependency evidence pass."
   },
   "externalEvidence": {
     "vippsMerchantTest": "pending designated existing test sales unit, backend-only test credentials, test user/app and callback setup; local fixtures cannot substitute",
@@ -84,5 +85,14 @@
     "Renewal must distinguish scheduling time from due date; no worker may fabricate owner claims. Current approved admission supports 2026 only.",
     "Refund reservations must include pending and unknown operations, and trusted incident/submission evidence must establish entitlement.",
     "Operator annual billing reads and refund/cancellation mutations require an explicitly opened same-company billing support case with current grant and fresh MFA; never a standing global admin scope."
-  ]
+  ],
+  "readinessHandoff": {
+    "eligibilityOwner": "Company Access current immutable before_payment basis",
+    "filingReadinessOwner": "Annual Compliance #149 after #193/#153, through an immutable source-owned public contract",
+    "operationalClearanceOwner": "#179/#198 production release/provider gates, separately required",
+    "legacySnapshotLimitation": "public.filing_readiness_snapshots allows owner/browser INSERT/UPDATE; billing.read_legacy_filing_readiness_v1 trusts its ready/empty blockers. This is not authoritative annual-charge evidence.",
+    "currentBinding": "application.unavailable_annual_checkout_prerequisites always returns FILING_NOT_READY; isolated test prerequisites are not production readiness or MT proof.",
+    "exitConstraint": "Oversight explicitly preserves #192 exit criteria. Unavailable production binding is interim only; if completion requires premature #149/#193 source work, report that dependency conflict rather than declaring the sold path complete.",
+    "alternatePaths": "Annual service has no HTTP/runtime route yet; legacy simulation command retirement and proof of no alternate annual-charge entry point remain part of runtime cutover."
+  }
 }
