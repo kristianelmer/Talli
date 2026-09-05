@@ -173,13 +173,17 @@ def test_http_snapshot_and_cancellation_use_real_verified_owner_stores(setup, pu
     from fastapi.testclient import TestClient
     from talli_backend.main import create_app
     from talli_backend.adapters.supabase_annual_billing import _AnnualBillingSession
+    from talli_backend.adapters.postgres_annual_checkout import PostgresAnnualCancellationSession
     from talli_backend.application.billing_session import BillingAuthenticationError
 
     class Factory:
         async def session(self, token):
             if token != "local-verified-owner":
                 raise BillingAuthenticationError()
-            return _AnnualBillingSession(reads(setup, current=False), cancellation(setup, current=False))
+            checkout = session(setup, current=False)
+            return _AnnualBillingSession(
+                PostgresAnnualBillingReadSession(checkout), PostgresAnnualCancellationSession(checkout), checkout,
+            )
 
     api = TestClient(create_app(annual_billing_session_factory=Factory()))
     headers = {"Authorization": "Bearer local-verified-owner", "Idempotency-Key": str(uuid4())}
