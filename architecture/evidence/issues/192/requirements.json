@@ -198,6 +198,21 @@
         "spec": "PASS on exactbb6a1a5b80544ad627c19a7a864fe2e266d8f542, zero findings"
       },
       "limits": "Not automatic-refund workflow or actual provider proof; architecture amendment, source readiness, MT and remaining192 acceptance still pending."
+    },
+    "annualRefundOrchestration": {
+      "implementationRevision": "41d0d6f2b9a59e67dbab6881d5ff99bb68681e80",
+      "captureRecoveryRevision": "3abdb762197ce1a5c54a7255ceada2efd25f4d05",
+      "finalReviewedRevision": "de23c4e37739bb4d853f2f72b4f63483b5f4c75c",
+      "scope": "Internal annual refund orchestration and mandatory public persistence contract only. No persistence adapter, source resolver, HTTP binding, worker or support-case caller is implemented by this slice.",
+      "behavior": "Record liability and immediate local renewal stop before provider execution; execute only the winner of a durable original-operation claim; reconcile ambiguous retries without blind reissue. Preserve confirmed/failed terminal evidence and actionable unpaid liability. Separate claim-time captured balance from original charge; cap refund by both captured funds and policy entitlement. Later cumulative capture growth never enlarges the original refund amount. Validate identity, exact integer totals, first capture timestamp and monotonic observations.",
+      "reproduction": "Initial focused tests exposed future-source dates and newly claimed operations carrying old observations. Read-only Spec review identified FAILED immutability and partial-capture representation, then legitimate capture growth preventing recovery. Two capture-growth/regression tests failed before the final correction and pass afterwards.",
+      "validation": "Exact final candidate:54 focused synthetic refund cases; full billing379 Python+40 Node pass; ordinary backend1043 pass,2 existing skips,160 DB cases deselected. No database implementation or migration changed; no real provider calls. Exact final CI harness12 pass; focused final architecture rerun passes deterministic evidence and retains only the two pre-existing manifest/frozen-inventory failures (four unapproved scopes and active92vs96).",
+      "independentReviews": {
+        "standards": "PASS exactde23c4e37739bb4d853f2f72b4f63483b5f4c75c, zero findings, read-only",
+        "spec": "PASS exactde23c4e37739bb4d853f2f72b4f63483b5f4c75c, zero remaining findings, read-only"
+      },
+      "architecture": "Full suite before the final documentation correction:49/51, including missing new public documentation inventory and existing four-scope/inventory rejection. Final exact direct checker reports only the original four unapproved future-owned deletions; documentation omissions corrected. No baseline/checker/ADR/order changes; architecture remains NOT PASS.",
+      "limits": "Synthetic stores assert the persistence contract but do not prove it. Digest shape is not source authentication. Trusted incident/first-purchase/production-submission evidence, authorization, real reservations/atomic settlement, worker/support authority, actual MT and full192 gates remain mandatory. Missing operation does not mean settled; failed/unknown/overdue liability remains actionable. Full165 goal ACTIVE,150 unclaimed,main and Production unchanged."
     }
   },
   "externalEvidence": {
