@@ -259,6 +259,7 @@ def test_cleanup_evidence_survives_two_full_predecessor_cycles(setup, purchase):
         store.settle_agreement_cleanup(original, stop_observation(original, AnnualProviderStatus.UNKNOWN))
     )
     migrations = [
+        "20260905141500_annual_refund_requests.sql",
         "20260905115700_legacy_billing_acquisition_retirement.sql",
         "20260905103149_annual_agreement_cleanup.sql",
         "20260905100130_annual_renewal_cancellation.sql",

@@ -36,6 +36,7 @@
     { "name": "billing.annual_operations", "kind": "capability-business", "owner": "backend:billing" },
     { "name": "billing.annual_purchases", "kind": "capability-business", "owner": "backend:billing" },
     { "name": "billing.annual_refund_cases", "kind": "capability-business", "owner": "backend:billing" },
+    { "name": "billing.annual_refund_requests", "kind": "capability-business", "owner": "backend:billing" },
     { "name": "billing.billing_accounts", "kind": "capability-business", "owner": "backend:billing", "compatibilityResources": ["table:billing_accounts"] },
     { "name": "billing.billing_command_receipts", "kind": "technical" },
     { "name": "billing.billing_payment_events", "kind": "capability-business", "owner": "backend:billing", "compatibilityResources": ["table:billing_payment_events"] },

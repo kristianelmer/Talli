@@ -111,14 +111,15 @@
       "billing.annual_purchases",
       "billing.annual_refund_cases",
       "billing.annual_operations",
-      "billing.annual_cancellation_requests"
+      "billing.annual_cancellation_requests",
+      "billing.annual_refund_requests"
     ],
     "storageBuckets": [],
     "projections": [
       "BillingEntitlementDecision",
       "BillingSnapshot"
     ],
-    "migrations": "supabase/migrations/20260905115700_legacy_billing_acquisition_retirement.sql"
+    "migrations": "supabase/migrations/20260905141500_annual_refund_requests.sql"
   },
   "ports": [
     {
@@ -189,7 +190,9 @@
       "direction": "outbound",
       "contract": "talli_backend.modules.billing.public.AnnualRefundPersistence",
       "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
-      "adapters": []
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundSession"
+      ]
     }
   ],
   "dependencies": [],
@@ -234,7 +237,8 @@
     "legacyRetirement": "apps/backend/tests/test_legacy_billing_retirement.py",
     "legacyRetirementDatabase": "apps/backend/tests/test_legacy_billing_retirement_runtime.py",
     "annualCheckoutApi": "apps/backend/tests/test_annual_checkout_api.py",
-    "annualRefund": "apps/backend/tests/test_annual_refund_service.py"
+    "annualRefund": "apps/backend/tests/test_annual_refund_service.py",
+    "annualRefundDatabase": "apps/backend/tests/test_annual_refund_runtime.py"
   },
   "compatibilityExceptions": []
 }

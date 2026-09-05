@@ -453,3 +453,18 @@ fixtures do not establish actual MT or authoritative filing readiness.
 <!-- architecture-inventory
 {"routes":["/api/v1/billing/annual/checkouts","/api/v1/billing/annual/checkout-observations"],"workflowDependencies":["talli_backend.application.annual_checkout_prerequisites"]}
 -->
+
+
+### Durable annual refund persistence
+
+`AnnualRefundPersistence` is registered to
+`talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundSession`.
+It shares annual billing's verified-actor transaction, preserves owner versus
+explicitly opened billing support-case authority, and commits request/case,
+renewal stop, original reservation and cumulative settlement evidence. Its
+source resolver is unavailable by default. No refund HTTP route, support caller
+or worker is composed; synthetic resolver evidence is not production authority.
+
+<!-- architecture-inventory
+{"ports":["AnnualRefundPersistence"],"adapterBindings":["AnnualRefundPersistence=>talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundSession"],"adapterBindingOwners":["AnnualRefundPersistence=>backend-system"],"adapterBindingModes":["AnnualRefundPersistence=>verified owner or explicitly opened billing support case; durable refund requests/reservation/settlement; source resolver unavailable by default, no runtime or worker binding"]}
+-->

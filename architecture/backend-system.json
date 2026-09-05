@@ -436,6 +436,12 @@
       "adapter": "talli_backend.adapters.supabase_annual_billing.PostgresAnnualBillingReadSession",
       "owner": "backend-system",
       "mode": "verified-owner stored annual public purchase projection; no provider or readiness calls"
+    },
+    {
+      "port": "AnnualRefundPersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundSession",
+      "owner": "backend-system",
+      "mode": "verified owner or explicitly opened billing support case; durable refund requests/reservation/settlement; source resolver unavailable by default, no runtime or worker binding"
     }
   ],
   "allowedDependencies": {

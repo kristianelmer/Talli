@@ -950,7 +950,13 @@ class AnnualRefundPersistence(Protocol):
     def actor_id(self) -> ActorId: ...
 
     async def claim_refund(self, command: RequestAnnualRefundCommand) -> AnnualRefundClaim:
-        """Reauthorize current owner/fresh MFA before every replay or new claim.
+        """Reauthorize current owner or explicitly opened billing support case, with fresh MFA.
+
+        Support additionally needs an active admin and current same-company billing
+        grant/opening; a case ID alone grants nothing. Owner-created cases remain
+        limited to change of mind; creating other reasons requires support-case
+        authority. An owner may recover a previously recorded case without
+        re-adjudicating its immutable liability.
 
         Resolve the lookup reference to immutable source-owned incident, purchase,
         first-purchase and production-submission facts; never trust browser facts

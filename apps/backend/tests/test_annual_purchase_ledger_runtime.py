@@ -171,6 +171,7 @@ def test_annual_rollback_and_recutover_preserve_unresolved_intents_and_acceptanc
     migration = "20260905083150_annual_billing_purchase_ledger.sql"
     for _ in range(2):
         with psycopg.connect(DATABASE_URL, autocommit=True) as connection:
+            connection.execute((ROOT / "supabase" / "rollback" / "20260905141500_annual_refund_requests.sql").read_text())
             connection.execute((ROOT / "supabase" / "rollback" / "20260905115700_legacy_billing_acquisition_retirement.sql").read_text())
             connection.execute((ROOT / "supabase" / "rollback" / "20260905103149_annual_agreement_cleanup.sql").read_text())
             connection.execute((ROOT / "supabase" / "rollback" / "20260905100130_annual_renewal_cancellation.sql").read_text())
@@ -191,6 +192,7 @@ def test_annual_rollback_and_recutover_preserve_unresolved_intents_and_acceptanc
             connection.execute((ROOT / "supabase" / "migrations" / "20260905100130_annual_renewal_cancellation.sql").read_text())
             connection.execute((ROOT / "supabase" / "migrations" / "20260905103149_annual_agreement_cleanup.sql").read_text())
             connection.execute((ROOT / "supabase" / "migrations" / "20260905115700_legacy_billing_acquisition_retirement.sql").read_text())
+            connection.execute((ROOT / "supabase" / "migrations" / "20260905141500_annual_refund_requests.sql").read_text())
         # The migration returns borrowed authority, so reacquire the test role.
         with psycopg.connect(DATABASE_URL) as connection:
             principal = connection.execute("select current_user").fetchone()[0]

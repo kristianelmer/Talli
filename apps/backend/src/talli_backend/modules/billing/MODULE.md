@@ -1,7 +1,7 @@
 # Billing backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
+{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests","billing.annual_refund_requests"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
 -->
 
 ## Purpose and ownership
@@ -380,9 +380,10 @@ is the required atomic-persistence settlement helper. `RequestAnnualRefundComman
 caller-selected eligibility, money or incident facts. The mandatory
 `AnnualRefundPersistence` contract requires verified source-owned facts, current
 authority, purchase locks, durable request/case identity, balance reservations,
-local renewal stop and preserved records/export. Its adapter list is deliberately
-empty: this slice implements no source resolver, database adapter, worker,
-support-case caller or HTTP route. Synthetic stores prove orchestration only.
+local renewal stop and preserved records/export. The registered `PostgresAnnualRefundSession` implements these durable operations.
+Its source resolver is unavailable by default; no source resolver, worker,
+support-case caller or HTTP route is bound. Synthetic orchestration tests and
+real isolated persistence tests do not establish production source authority.
 
 Billing uses the existing #177 policy for entitlement and the five-business-day
 initiation deadline. The claimed operation separates actual captured money from
@@ -403,3 +404,47 @@ The future adapter must apply the public settlement helper to locked current
 state and persist operation/purchase evidence atomically. Digest shape checks
 are not source authentication. No automatic-refund or real-provider acceptance
 is claimed until those persistence, source and authority implementations exist.
+
+
+## Durable annual refund requests
+
+`PostgresAnnualRefundSession` uses the verified-actor transaction shared by annual
+billing. Current owners can create change-of-mind cases. Other case reasons retain
+the existing requirement for an active admin, fresh MFA, a current same-company
+billing support grant and an explicitly opened case. Every replay and settlement
+reauthorizes. This introduces no automatic worker identity or owner impersonation.
+
+The default source resolver returns unavailable. A future resolver must read
+immutable source-owned incident and production-submission evidence through its
+declared public contract inside the transaction, without provider I/O. Missing
+submission authority must never become an assertion that no filing was submitted.
+Billing verifies its own purchase/year/gross/capture/acceptance facts and earliest
+retained company capture before storing the canonical facts/digest and policy
+liability. Repurchase retains the first-purchase window. A stored case and bound
+request replay before any live source call.
+
+`billing.annual_refund_requests` preserves request actor, company, purchase, case,
+key, correlation and fingerprint. Its only mutable field is a write-once operation
+assignment: a deferred request can acquire its original effect after competing
+reservations resolve, without changing request identity. Purchase-before-operation
+locks and the existing reservation trigger enforce one unresolved refund and cap
+funds. Same-source concurrent keys share its unresolved operation; only the original
+claim winner executes. New attempts after terminal failure require a new request
+and fresh reservation. The AFTER INSERT trigger stops renewal with the committed
+request, including provider outage, deferral and zero automatic entitlement.
+
+Settlement compares the exact durable request/case/intent, invokes
+`settle_annual_refund` against locked current operation evidence, and atomically
+updates operation and monotonic purchase totals. It preserves capture identity,
+cancellation and access/export dates. A partial capture refunded in full stays
+unresolved; only confirmed refund of the complete original charge marks the
+purchase refunded. Later capture growth cannot enlarge an existing refund intent.
+
+Migration `supabase/migrations/20260905141500_annual_refund_requests.sql` and its
+rollback preserve records across retirement/recutover and restore borrowed SET
+and REFERENCES authority. The receipt table has forced RLS and no browser,
+service-role or billing-executor grants. Real database tests cover durable recovery,
+concurrency, deferral, exact binding, source mismatch, support revocation and
+retained history. Provider agreement cleanup for refund-triggered cancellation,
+actual source implementations, worker/support HTTP composition and final automatic
+refund acceptance remain due.
