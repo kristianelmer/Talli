@@ -23,7 +23,7 @@
     {
       "id": "GH-192-A2",
       "requirement": "Definitive eligibility and readiness before checkout; provisional/blocked never charge.",
-      "status": "new-checkout-orchestration-fails-closed-trusted-readiness-source-and-runtime-integration-pending"
+      "status": "checkout-http-and-recovery-wired-fail-closed-trusted-readiness-source-and-actual-sold-path-pending"
     },
     {
       "id": "GH-192-A3",
@@ -48,7 +48,7 @@
     {
       "id": "GH-192-A7",
       "requirement": "Provider-neutral boundary, no live activation/charge without approval.",
-      "status": "test-origin-only-port-and-adapter-implemented-runtime-cutover-pending"
+      "status": "test-origin-provider-and-http-boundary-implemented-default-provider-disabled-actual-MT-and-final-runtime-pending"
     },
     {
       "id": "GH-192-A8",
@@ -173,6 +173,20 @@
         "spec": "PASS on exact7deae6d8924ee1fff0af4fa00eae13ba5f346504, read-only, zero findings"
       },
       "limits": "Not a complete customer-ready gate. Pending four-scope architecture amendment remains unapproved; architecture49/51 is NOT PASS. Full browser still expects retired acquisition. Actual MT, trusted source-owned readiness, remaining annual workflows and protected-main integration remain pending."
+    },
+    "annualCheckoutHttp": {
+      "revision": "633e207345a2a9ba231c7c1c96a7c9ff4e006346",
+      "implementationRevision": "b79ae745248cf386594d8b69af8350fb49cf7494",
+      "scope": "Authenticated annual checkout start and original-intent reconciliation POST routes, generated client, public operations factory and verified-owner adapter composition only. Runtime provider absent; source resolver and real database readiness verifier unavailable by default. No actual provider configuration or requests.",
+      "behavior": "Strict customer intent excludes price, readiness, actor, merchant and redirects. Original immutable offer/consent/key and provider binding govern retries. Server-owned destinations preserve company selection. Pending recovery reconciles only the original intent; terminal history replays with provider disabled. Current owner/fresh MFA remains mandatory. Reads and local cancellation stay provider-free.",
+      "validation": "Billing313 Python+40 Node pass, including34 local HTTP cases and generated transport. Ordinary backend977 passed,2 existing skips,160 database cases deselected. CI harness12 pass;49 contract cases pass. Backend artifact build, web typecheck and deterministic OpenAPI/client regeneration pass. Fresh isolated Supabase2.109.1 lifecycle160 Python+1 Node(two predecessor cycles)pass, no skips; advisors0 blocking/34 performance warnings. New real-DB cases cover HTTP original-intent recovery and real adapter rejecting injected readiness without a source verifier; their authentication/readiness/provider are explicitly synthetic fixtures.",
+      "fixtureCorrection": "First real DB run159 pass/1 failure: prior annual-read HTTP fixture omitted the newly required checkout port. Test-only633e2073 composes reads/cancellation/checkout from one verified store; final complete160+Node rerun passed. No product policy was changed to satisfy that fixture.",
+      "architecture": "Unchanged checker reports only the four unapproved frozen-scope deletions. Full architecture49/51, NOT PASS: same source-manifest/frozen-scope and active-inventory92vs96 failures. No checker, baseline, ADR or migration-order change.",
+      "independentReviews": {
+        "standards": "PASS on exact633e207345a2a9ba231c7c1c96a7c9ff4e006346 (b79ae745 plus fixture-only delta), zero findings",
+        "spec": "PASS on exact633e207345a2a9ba231c7c1c96a7c9ff4e006346 (b79ae745 plus fixture-only delta), zero findings"
+      },
+      "limits": "No checkout UI, actual MT, trustworthy readiness, worker/callback/refund/renewal completion, full browser/customer-ready gate, protected-main integration or production change. FILING_NOT_READY and PROVIDER_DISABLED are interim gates, not sold-path acceptance."
     }
   },
   "externalEvidence": {
@@ -201,7 +215,7 @@
     "legacySnapshotLimitation": "public.filing_readiness_snapshots allows owner/browser INSERT/UPDATE; billing.read_legacy_filing_readiness_v1 trusts its ready/empty blockers. This is not authoritative annual-charge evidence.",
     "currentBinding": "application.unavailable_annual_checkout_prerequisites always returns FILING_NOT_READY; isolated test prerequisites are not production readiness or MT proof.",
     "exitConstraint": "Oversight explicitly preserves #192 exit criteria. Unavailable production binding is interim only; if completion requires premature #149/#193 source work, report that dependency conflict rather than declaring the sold path complete.",
-    "alternatePaths": "Annual checkout service has no HTTP/runtime route yet; annual read/local cancellation APIs exist. Coordinated legacy acquisition retirement candidate is implemented and bounded-reviewed but awaits exact architecture amendment; current candidate is not an accepted final cutover."
+    "alternatePaths": "Authenticated annual checkout start/reconciliation POST routes now compose the existing service through the public operations factory. Provider is absent by default; the source resolver and independent real-DB verifier remain unavailable. Annual reads/local cancellation APIs and UI exist. Legacy retirement still awaits the exact architecture amendment; none is final sold-path acceptance."
   },
   "runtimeCutover": {
     "acquisition": "Retire default SimulationBillingProvider acquisition, account reset/configuration, subscription activation and filing-package purchase across main.py HTTP, BillingWorkflow/BillingService, persistence and web actions/controls.",
