@@ -369,3 +369,14 @@ this document and `backend-system.json` together, with an ADR review.
 <!-- architecture-inventory
 {"transportDependencies":["talli_backend.application.investments_workflow"]}
 -->
+
+## Annual provider boundary (#192, integration pending)
+
+`AnnualBillingProvider` is registered to
+`talli_backend.adapters.vipps_billing.VippsTestBillingProvider` in test-origin-only adapter; runtime composition pending #192, no production activation.
+The adapter operates only against Vipps MT; registration does not activate
+production payments or complete the annual application workflow.
+
+<!-- architecture-inventory
+{"ports":["AnnualBillingProvider"],"adapterBindings":["AnnualBillingProvider=>talli_backend.adapters.vipps_billing.VippsTestBillingProvider"],"adapterBindingOwners":["AnnualBillingProvider=>backend-system"],"adapterBindingModes":["AnnualBillingProvider=>test-origin-only adapter; runtime composition pending #192, no production activation"]}
+-->

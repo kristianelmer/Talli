@@ -1,7 +1,7 @@
 # Billing backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements"],"ports":["BillingPersistence","BillingPaymentProvider"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
+{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
 -->
 
 ## Purpose and ownership
@@ -100,7 +100,7 @@ before any paid action or production activation.
 
 `20260905010000_billing_capability.sql` moves the physical tables into the
 private schema and temporarily exposes security-invoker views for deployment
-overlap. `20260905013000_billing_contract.sql` rewrites downstream database
+overlap. `supabase/contract-migrations/20260905013000_billing_contract.sql` rewrites downstream database
 readers and removes those views plus the obsolete write RPC. Matching rollback
 artifacts restore the immediately preceding topology; the lifecycle test
 rehearses expansion and contract rollback/cutover twice. Durable command receipts
@@ -119,3 +119,26 @@ with five-second statement and one-second lock limits. Timeout failures leave
 committed intents available for later reconciliation; an uncommitted configuration
 receipt rolls back with its account mutation. Lock-contention runtime tests prove
 both paths recover using the same operation key.
+
+## Annual provider boundary under implementation (#192)
+
+`AnnualBillingProvider` accepts durable `AnnualProviderIntent` values and returns
+`AnnualProviderObservation`, using `AnnualProviderOperation` and
+`AnnualProviderStatus`. The registered `VippsTestBillingProvider` is restricted to
+`https://apitest.vipps.no`; it has no production switch. Its runtime composition
+and annual persistence are still pending. Local HTTP fixtures verify request and
+recovery behavior; they are not evidence of actual Vipps merchant-test execution.
+
+An ambiguous checkout recovers through a bounded, read-only search for its unique
+merchant reference. Missing or ambiguous results remain unknown. A capture must
+match the stored agreement, charge, type, currency and amount. Refund confirmation
+requires its individual successful history entry and operation key. Cumulative
+refunded amounts alone cannot confirm an operation. Observations retain captured
+and refunded totals; a confirmed capture is not itself a current entitlement.
+
+Webhook authentication uses raw request bytes, the registered callback target and
+the configured merchant number. Signed notifications supply reconciliation
+references only. Durable receipt deduplication and a resource GET must precede
+financial state changes. Confirmation origins are empty by default until an
+actual designated MT origin is verified. Credentials and diagnostics stay out of
+returned observations.

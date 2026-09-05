@@ -484,6 +484,92 @@ class AnnualRenewalDecision:
     reason: str
 
 
+class AnnualProviderOperation(StrEnum):
+    CHECKOUT = "checkout"
+    RENEWAL = "renewal"
+    STOP_AGREEMENT = "stop_agreement"
+    CANCEL_CHARGE = "cancel_charge"
+    REFUND = "refund"
+
+
+class AnnualProviderStatus(StrEnum):
+    PENDING = "pending"
+    CONFIRMED = "confirmed"
+    FAILED = "failed"
+    UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualProviderIntent:
+    operation_id: BillingPaymentEventId
+    company_id: CompanyId
+    income_year: IncomeYear
+    operation: AnnualProviderOperation
+    amount_minor: int
+    created_at: Timestamp
+    agreement_external_reference: str
+    charge_reference: str
+    return_url: str
+    management_url: str
+    agreement_reference: str | None = None
+    due_date: date | None = None
+    recurring_consent: bool = False
+    original_charge_minor: int = 149000
+    original_charge_is_renewal: bool = False
+
+    def __post_init__(self) -> None:
+        if (
+            type(self.amount_minor) is not int
+            or self.amount_minor < 0
+            or type(self.original_charge_minor) is not int
+            or self.original_charge_minor <= 0
+            or not isinstance(self.operation, AnnualProviderOperation)
+            or type(self.original_charge_is_renewal) is not bool
+            or type(self.recurring_consent) is not bool
+            or (self.operation is AnnualProviderOperation.CHECKOUT and self.original_charge_is_renewal)
+            or (self.operation is AnnualProviderOperation.RENEWAL and not self.original_charge_is_renewal)
+            or (self.operation in {AnnualProviderOperation.CHECKOUT, AnnualProviderOperation.RENEWAL} and self.amount_minor != self.original_charge_minor)
+            or (self.operation is AnnualProviderOperation.REFUND and self.amount_minor == 0)
+            or (self.operation in {AnnualProviderOperation.STOP_AGREEMENT, AnnualProviderOperation.CANCEL_CHARGE} and self.amount_minor != 0)
+            or (self.operation is AnnualProviderOperation.REFUND and self.amount_minor > self.original_charge_minor)
+            or not self.agreement_external_reference
+            or len(self.agreement_external_reference) > 64
+            or not self.charge_reference
+            or len(self.charge_reference) > 64
+            or any(not (char.isascii() and (char.isalnum() or char == "-")) for char in self.charge_reference)
+            or (self.operation is not AnnualProviderOperation.CHECKOUT and not self.agreement_reference)
+            or (self.operation is AnnualProviderOperation.RENEWAL and self.due_date is None)
+        ):
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualProviderObservation:
+    provider: str
+    operation: AnnualProviderOperation
+    status: AnnualProviderStatus
+    agreement_reference: str | None
+    charge_reference: str
+    amount_minor: int
+    captured_minor: int = 0
+    refunded_minor: int = 0
+    checkout_url: str | None = None
+
+
+@runtime_checkable
+class AnnualBillingProvider(Protocol):
+    provider: str
+    production_enabled: bool
+
+    async def execute(self, intent: AnnualProviderIntent) -> AnnualProviderObservation:
+        """Execute only after durable single-winner intent claim."""
+        ...
+
+    async def reconcile(self, intent: AnnualProviderIntent) -> AnnualProviderObservation:
+        """Observe original references using reads only; absence remains unknown."""
+        ...
+
+
 @runtime_checkable
 class BillingPaymentProvider(Protocol):
     provider: str
@@ -609,12 +695,17 @@ def billing_provider_adapter(port: type[object]) -> Callable[[Adapter], Adapter]
 
 
 __all__ = [
+    "AnnualBillingProvider",
     "AnnualBillingOffer",
     "AnnualRefundDecision",
     "AnnualRefundFacts",
     "AnnualRefundReason",
     "AnnualRenewalDecision",
     "AnnualRenewalFacts",
+    "AnnualProviderIntent",
+    "AnnualProviderObservation",
+    "AnnualProviderOperation",
+    "AnnualProviderStatus",
     "ActivateSubscriptionCommand",
     "BillingAccount",
     "BillingCommands",

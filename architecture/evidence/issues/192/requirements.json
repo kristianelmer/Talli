@@ -33,7 +33,7 @@
     {
       "id": "GH-192-A4",
       "requirement": "Vipps test-mode agreement, charge, webhook replay, retry, receipt, cancellation, full/partial refund, reconciliation and failure recovery.",
-      "status": "pending-local-adapter-and-real-MT-evidence"
+      "status": "local-provider-and-webhook-tested-runtime-and-real-MT-evidence-pending"
     },
     {
       "id": "GH-192-A5",
@@ -48,7 +48,7 @@
     {
       "id": "GH-192-A7",
       "requirement": "Provider-neutral boundary, no live activation/charge without approval.",
-      "status": "design-and-source-research-complete-implementation-pending"
+      "status": "test-origin-only-port-and-adapter-implemented-runtime-cutover-pending"
     },
     {
       "id": "GH-192-A8",
@@ -57,7 +57,9 @@
     }
   ],
   "localValidation": {
-    "annualPolicy": "24 tests pass; bounded independent Standards PASS, runtime not wired"
+    "annualPolicy": "24 tests pass; bounded independent Standards PASS, runtime not wired",
+    "vippsProviderAndWebhook": "52 local HTTP/authentication cases pass; bounded independent review PASS with 76 combined policy/provider/authentication tests; no actual provider requests",
+    "billingSuite": "142 Python and 14 Node tests pass; architecture check passes"
   },
   "externalEvidence": {
     "vippsMerchantTest": "pending designated existing test sales unit, backend-only test credentials, test user/app and callback setup; local fixtures cannot substitute",
@@ -69,5 +71,11 @@
     "#197",
     "#198"
   ],
-  "completeGates": []
+  "completeGates": [],
+  "integrationConstraints": [
+    "Purchase claim must bind the exact current Company Access assessment and immutable accepted/legal projection under the owned eligibility lock.",
+    "Readiness to prepare must remain independent of paid filing entitlement.",
+    "Renewal must distinguish scheduling time from due date; no worker may fabricate owner claims. Current approved admission supports 2026 only.",
+    "Refund reservations must include pending and unknown operations, and trusted incident/submission evidence must establish entitlement."
+  ]
 }

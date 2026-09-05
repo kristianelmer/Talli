@@ -57,7 +57,12 @@
       "AnnualRefundFacts",
       "AnnualRefundReason",
       "AnnualRenewalDecision",
-      "AnnualRenewalFacts"
+      "AnnualRenewalFacts",
+      "AnnualBillingProvider",
+      "AnnualProviderIntent",
+      "AnnualProviderObservation",
+      "AnnualProviderOperation",
+      "AnnualProviderStatus"
     ]
   },
   "owns": {
@@ -94,6 +99,15 @@
       "adapters": [
         "talli_backend.adapters.simulation_billing.SimulationBillingProvider"
       ]
+    },
+    {
+      "name": "AnnualBillingProvider",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualBillingProvider",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_provider_adapter",
+      "adapters": [
+        "talli_backend.adapters.vipps_billing.VippsTestBillingProvider"
+      ]
     }
   ],
   "dependencies": [],
@@ -123,7 +137,9 @@
     "api": "apps/backend/tests/test_billing_api.py",
     "database": "tests/billing_database_runtime.test.mjs",
     "architecture": "tests/architecture_foundation.test.mjs",
-    "annualPolicy": "apps/backend/tests/test_annual_billing_policy.py"
+    "annualPolicy": "apps/backend/tests/test_annual_billing_policy.py",
+    "vippsProvider": "apps/backend/tests/test_vipps_billing.py",
+    "vippsWebhook": "apps/backend/tests/test_vipps_webhook.py"
   },
   "compatibilityExceptions": []
 }
