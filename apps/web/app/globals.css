@@ -2397,6 +2397,20 @@ h2 {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.annualPurchaseList {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.annualPurchaseList .billingStatusHead {
+  flex-wrap: wrap;
+}
+
+.annualPurchaseList details,
+.billingSection details {
+  overflow-wrap: anywhere;
+}
+
 .billingStatusCard {
   background: var(--color-surface);
   border: 1px solid var(--color-border);

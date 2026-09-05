@@ -102,8 +102,8 @@ test("billing page renders every backend-owned price without TypeScript policy",
     new URL("../app/(owner)/billing/page.tsx", import.meta.url),
     new URL("../app/(owner)/workspace/page.tsx", import.meta.url),
   ].map((path) => readFileSync(path, "utf8"));
-  assert.ok(pages.every((page) => /data\.billingPricing/u.test(page)));
-  assert.match(pages[0], /pricing\.map\(\(item\)/u);
+  assert.match(pages[0], /loadAnnualBillingSnapshot/u);
+  assert.doesNotMatch(pages[0], /loadWorkspaceData|billingPricing|primaryBillingAccount/u);
   assert.match(pages[1], /billingPricing\.map\(\(pricing\)/u);
   for (const page of pages) {
     assert.doesNotMatch(page, /billingPricing\(/u);
@@ -190,4 +190,18 @@ test("annual client rejects private provider fields and invalid money in respons
     const api = createTalliApiClient({baseUrl:"https://backend.example",fetch:async()=>Response.json({offer,purchases:[],nextPurchaseId:null})});
     await assert.rejects(api.billingReadAnnualSnapshot({companyId,incomeYear:2026}),error=>error instanceof TalliApiError && error.status===502);
   }
+});
+
+test("annual recovery trusts a valid step-up problem and treats malformed failures as unavailable", async () => {
+  const { annualBillingRecovery } = await import("../features/billing/transport.ts");
+  const problem = { type: "about:blank", title: "Forbidden", status: 403, code: "BILLING_STEP_UP_REQUIRED",
+    detail: "Fresh MFA required", instance: "/api/v1/billing/annual/snapshot", requestId: "recovery-fixture" };
+  for (const [payload, expected] of [[problem, "step-up"], [{ ...problem, privateField: true }, "unavailable"]]) {
+    const api = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async () =>
+      Response.json(payload, { status: 403, headers: { "Content-Type": "application/problem+json" } }) });
+    await assert.rejects(api.billingReadAnnualSnapshot({ companyId, incomeYear: 2026 }),
+      (error) => annualBillingRecovery(error) === expected);
+  }
+  assert.equal(annualBillingRecovery(new TalliApiError(401, undefined)), "sign-in");
+  assert.equal(annualBillingRecovery(new Error("timeout")), "unavailable");
 });

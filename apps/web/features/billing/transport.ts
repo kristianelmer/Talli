@@ -1,6 +1,8 @@
 import {
   createTalliApiClient,
   TalliApiError,
+  type AnnualBillingSnapshotRequest,
+  type AnnualRenewalCancellationCommandWire,
   type BillingAccountWire,
   type BillingCompanyWire,
   type BillingConfigureWire,
@@ -25,6 +27,26 @@ function request(requestId?: string) {
 
 function mutation(idempotencyKey: string, requestId?: string) {
   return { ...request(requestId), idempotencyKey };
+}
+
+export function loadAnnualBillingSnapshot(accessToken: string, input: AnnualBillingSnapshotRequest) {
+  return client(accessToken).billingReadAnnualSnapshot({ ...input, ...request(input.requestId) });
+}
+
+export function cancelAnnualRenewal(
+  accessToken: string,
+  body: AnnualRenewalCancellationCommandWire,
+  operationId: string,
+) {
+  return client(accessToken).billingCancelAnnualRenewal(body, mutation(operationId));
+}
+
+export function annualBillingRecovery(error: unknown): "sign-in" | "step-up" | "unavailable" {
+  if (error instanceof TalliApiError && error.status === 401) return "sign-in";
+  if (error instanceof TalliApiError && error.problem?.code === "BILLING_STEP_UP_REQUIRED") {
+    return "step-up";
+  }
+  return "unavailable";
 }
 
 export function loadBillingSnapshot(

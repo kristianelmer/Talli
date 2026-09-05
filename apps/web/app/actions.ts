@@ -67,6 +67,8 @@ import {
   activateBillingSubscription as activateBillingSubscriptionThroughApi,
   billingActionErrorMessage,
   billingOutcomeMayBeUnknown,
+  annualBillingRecovery,
+  cancelAnnualRenewal as cancelAnnualRenewalThroughApi,
   cancelBillingSubscription as cancelBillingSubscriptionThroughApi,
   configureBillingAccount,
   manageProductionPilotEntitlement,
@@ -4382,6 +4384,30 @@ export async function requestFilingPackagePayment(formData: FormData) {
 
   revalidatePath("/");
   redirect("/workspace");
+}
+
+export async function cancelAnnualRenewal(formData: FormData) {
+  const operationId = requiredFormUuid(formData, "operationId");
+  const companyId = requiredFormUuid(formData, "companyId");
+  const purchaseId = requiredFormUuid(formData, "purchaseId");
+  const beforePurchaseId = formString(formData, "beforePurchaseId")
+    ? requiredFormUuid(formData, "beforePurchaseId") : undefined;
+  const returnTo = ownerPathWithQuery("/billing", {
+    companyId, beforePurchaseId, cancellationOperationId: operationId,
+    cancellationPurchaseId: purchaseId,
+  });
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect(`/login?next=${encodeURIComponent(returnTo)}`);
+  try {
+    await cancelAnnualRenewalThroughApi(accessToken, { companyId, purchaseId }, operationId);
+  } catch (error) {
+    const recovery = annualBillingRecovery(error);
+    if (recovery === "sign-in") redirect(`/login?next=${encodeURIComponent(returnTo)}`);
+    if (recovery === "step-up") redirect(`/mfa?next=${encodeURIComponent(returnTo)}`);
+    redirect(`${returnTo}&cancellationError=unconfirmed`);
+  }
+  revalidatePath("/billing");
+  redirect(ownerPathWithQuery("/billing", { companyId, beforePurchaseId }));
 }
 
 export async function cancelBillingSubscription(formData: FormData) {
