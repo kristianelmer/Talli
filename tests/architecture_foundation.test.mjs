@@ -242,6 +242,12 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
       to: "backend:documents",
     },
     {
+      from: "backend-system:annual-billing-reads-and-cancellation",
+      imports: ["talli_backend.modules.billing.public"],
+      kind: "workflow",
+      to: "backend:billing",
+    },
+    {
       from: "backend-system:banking-reconciliation",
       imports: ["talli_backend.modules.banking.public"],
       kind: "workflow",
