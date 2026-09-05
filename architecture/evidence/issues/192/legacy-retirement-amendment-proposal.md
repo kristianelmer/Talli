@@ -93,11 +93,10 @@ The original candidate and correction have the following focused evidence:
   paid-flag reactivation and event identity mutation. Historical outcome replay,
   pending reconciliation and existing cancellation/refund recovery are retained.
 - The corrected recovery → new refund → exact replay sequence passes in the real
-  database; all 24 retirement DB tests pass. The subsequent duplicate-refund correction is
-`5b0f7cbf12edd7cc3af7bce15fa4b08786a3989b`: an account lock reserves the original
-refund, rejects distinct keys when a refund already exists and preserves the
-original-event binding. Standards and Spec pass this bounded correction; the
-architecture amendment remains pending.
+  database. All 29 retirement DB tests plus six predecessor recovery/deadline
+  tests pass in reverse order after the final fixture-only cleanup correction.
+  The clean full lifecycle ran before that teardown-only correction. Standards
+  and Spec pass the bounded final correction; there is no overall gate PASS.
 - The full architecture suite is 49/51: the current-source manifest check and the
   four-scope active-inventory count fail. There is no overall PASS.
 
