@@ -201,3 +201,12 @@ test("annual recovery trusts a valid step-up problem and treats malformed failur
   assert.equal(annualBillingRecovery(new TalliApiError(401, undefined)), "sign-in");
   assert.equal(annualBillingRecovery(new Error("timeout")), "unavailable");
 });
+
+
+test("historical cleanup remains reachable without reactivated legacy flags", () => {
+  assert.match(workspace, /action=\{cancelBillingSubscription\}/u);
+  assert.match(workspace, /action=\{markBillingRefundEligible\}/u);
+  assert.doesNotMatch(workspace, /subscription_active \?\s*\(/u);
+  assert.doesNotMatch(workspace, /filing_package_paid &&/u);
+  assert.match(workspace, /Inntektsår for tidligere betaling/u);
+});

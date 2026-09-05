@@ -217,3 +217,21 @@ def test_retirement_rollback_recutover_preserves_all_historical_rows_twice(histo
             install(connection, "rollback")
             install(connection)
             assert evidence(historical) == before
+
+
+def test_recovered_historical_payment_can_start_a_new_refund_without_paid_entitlement(historical):
+    provider = ObservedProvider()
+    store = session(historical)
+    service = BillingService(store, provider)
+    recovered = asyncio.run(service.purchase_filing_package(command(historical, "filing_package")))
+    assert recovered.status is BillingPaymentStatus.SUCCEEDED
+    assert not evidence(historical)[0]["filing_package_paid"]
+    fresh = command(historical, "refund", key=str(uuid4()))
+    refunded = asyncio.run(service.refund_filing_package(fresh))
+    assert refunded.status is BillingPaymentStatus.REFUNDED
+    assert refunded.amount_nok == recovered.amount_nok
+    assert [kind for kind, _ in provider.calls] == ["reconcile", "execute"]
+    replay = asyncio.run(service.refund_filing_package(fresh))
+    assert replay.event_id == refunded.event_id and replay.replayed
+    assert len(provider.calls) == 2
+    assert not evidence(historical)[0]["filing_package_paid"]

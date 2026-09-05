@@ -1070,15 +1070,13 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                       <p>{primaryBillingGate?.message ?? "Årsabonnement og innsendingsrett må bekreftes."}</p>
                       <p>Status {primaryFilingReady ? "klar" : "ikke klar"} for {primaryIncomeYear}.</p>
                       <p>Innsendingspakke ref: {primaryBillingAccount?.filing_package_payment_ref ?? "Ikke betalt"}</p>
-                      {primaryBillingAccount?.subscription_active ? (
-                        <form action={cancelBillingSubscription}>
+                      <form action={cancelBillingSubscription}>
                           <input name="operationId" type="hidden" value={params?.billingCancelOperationId ?? randomUUID()} />
                           <input name="companyId" type="hidden" value={primaryCompanyId} />
                           <button className="secondaryButton" type="submit">
                             Stopp tidligere abonnement
                           </button>
-                        </form>
-                      ) : null}
+                      </form>
                     </div>
                     <div className="readinessItem">
                       <span>Refusjon</span>
@@ -1087,19 +1085,19 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                           ? "Refundert"
                           : primaryBillingAccount?.refund_eligible
                             ? "Refusjonsberettiget"
-                            : "Ingen refusjon"}
+                            : "Ingen refusjon registrert"}
                       </strong>
                       <p>{primaryBillingAccount?.refund_provider_ref ?? primaryBillingAccount?.no_charge_reason ?? "Støttet sak kan refunderes etter Talli-feil."}</p>
-                      {primaryBillingAccount?.filing_package_paid && primaryBillingAccount.supported_case ? (
-                        <form action={markBillingRefundEligible}>
+                      <form action={markBillingRefundEligible}>
                           <input name="operationId" type="hidden" value={params?.billingRefundOperationId ?? randomUUID()} />
                           <input name="companyId" type="hidden" value={primaryCompanyId} />
-                          <input name="incomeYear" type="hidden" value={primaryIncomeYear} />
+                          <label>Inntektsår for tidligere betaling
+                            <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
+                          </label>
                           <button className="secondaryButton" type="submit">
                             Refunder tidligere innsendingspakke
                           </button>
-                        </form>
-                      ) : null}
+                      </form>
                     </div>
                     <div className="readinessItem">
                       <span>Betalingshendelser</span>

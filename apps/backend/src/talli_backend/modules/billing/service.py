@@ -91,15 +91,24 @@ class BillingService:
         replay = await self._payment_replay(command, kind)
         if replay is not None:
             return replay
-        if (
-            not account.supported_case
-            or not account.filing_package_paid
-            or account.refund_completed
-        ):
+        if not account.supported_case or account.refund_completed:
             raise BillingError.precondition(BillingErrorCode.REFUND_NOT_ALLOWED)
-        return await self._payment(
-            command, kind, amount_nok
-        )
+        if not account.filing_package_paid:
+            # Post-cutover reconciliation never restores this legacy flag. A
+            # uniquely confirmed original payment still has a cleanup path.
+            history = await self._persistence.snapshot(BillingSnapshotQuery(
+                company_ids=(command.company_id,), actor_id=command.actor_id,
+                correlation_id=command.correlation_id,
+            ))
+            originals = [event for event in history.payment_events
+                if event.company_id == command.company_id
+                and event.income_year == command.income_year
+                and event.kind is BillingPaymentKind.FILING_PACKAGE
+                and event.status is BillingPaymentStatus.SUCCEEDED]
+            if len(originals) != 1 or originals[0].provider != self._provider.provider:
+                raise BillingError.precondition(BillingErrorCode.REFUND_NOT_ALLOWED)
+            amount_nok = originals[0].amount_nok
+        return await self._payment(command, kind, amount_nok)
 
     async def mark_unsupported(
         self, command: MarkBillingUnsupportedCommand

@@ -80,7 +80,11 @@ winning insertion executes. A retry of an unfinished event calls read-only
 another payment. Unknown results remain pending without granting entitlement.
 Confirmed cleanup outcomes and their account changes settle atomically. Historical
 acquisition reconciliation records the outcome without activating paid account
-flags. Terminal events replay without reapplying account effects. Changed filing obligations reject key reuse.
+flags. A new historical refund can use one confirmed original payment in the exact
+company/year/provider scope when those flags are false; its recorded amount is
+used, and missing or ambiguous originals fail closed. Cleanup controls remain
+reachable and the backend validates the request. Terminal events replay without
+reapplying account effects. Changed filing obligations reject key reuse.
 
 `BillingPilotCaseProfile` types the closed pilot record/administration scope.
 Entitlement queries retain open strings so an unknown profile continues to fall

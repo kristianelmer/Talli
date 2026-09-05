@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from test_billing import MemoryPersistence, NOW, account, metadata, query
+from test_billing import MemoryPersistence, NOW, account, metadata, query, seed_historical_event
 from talli_backend.adapters.simulation_billing import SimulationBillingProvider
 from talli_backend.modules.billing.public import (
     ActivateSubscriptionCommand,
@@ -18,6 +18,7 @@ from talli_backend.modules.billing.public import (
     BillingPlan,
     ConfigureBillingAccountCommand,
     PurchaseFilingPackageCommand,
+    RefundFilingPackageCommand,
 )
 from talli_backend.modules.billing.service import BillingService
 from talli_backend.shared.kernel import IncomeYear
@@ -99,3 +100,48 @@ def test_exact_successful_historical_replay_is_read_only_even_after_retirement(n
     result = asyncio.run(getattr(BillingService(persistence, provider), name)(command))
     assert result == replace(event, replayed=True)
     assert persistence.account == original and provider.calls == []
+
+
+def test_new_refund_uses_the_original_payment_amount_after_recovery():
+    persistence = MemoryPersistence(account())
+    command = acquisition("purchase_filing_package", "historical-refund-amount")
+    original = seed_historical_event(persistence, command)
+    persistence.events[str(command.idempotency_key)] = replace(original, amount_nok=299)
+    provider = ObservedProvider()
+    service = BillingService(persistence, provider)
+    asyncio.run(service.purchase_filing_package(command))
+    refund = RefundFilingPackageCommand(**metadata("fresh-historical-refund"), income_year=IncomeYear(2025))
+    result = asyncio.run(service.refund_filing_package(refund))
+    assert result.amount_nok == 299
+    assert provider.calls[-1][1].amount_nok == 299
+    assert not persistence.account.filing_package_paid
+    decision = asyncio.run(service.entitlement(query()))
+    assert not decision.allowed and not decision.charge_allowed
+
+
+@pytest.mark.parametrize("change", ["missing", "pending", "failed", "other_year", "other_company", "multiple", "other_provider"])
+def test_new_refund_fails_closed_without_one_confirmed_original_payment(change):
+    persistence = MemoryPersistence(account())
+    original_command = acquisition("purchase_filing_package", "historical-refund-scope")
+    original = seed_historical_event(persistence, original_command, status=BillingPaymentStatus.SUCCEEDED)
+    if change == "missing":
+        persistence.events.clear()
+    elif change == "multiple":
+        seed_historical_event(persistence, acquisition("purchase_filing_package", "second-payment"), status=BillingPaymentStatus.SUCCEEDED)
+    else:
+        from talli_backend.shared.kernel import CompanyId
+        changes = {
+            "pending": {"status": BillingPaymentStatus.CREATED},
+            "failed": {"status": BillingPaymentStatus.FAILED},
+            "other_year": {"income_year": IncomeYear(2024)},
+            "other_company": {"company_id": CompanyId(str(uuid4()))},
+            "other_provider": {"provider": "different-merchant"},
+        }
+        persistence.events[str(original_command.idempotency_key)] = replace(original, **changes[change])
+    provider = ObservedProvider()
+    with pytest.raises(BillingError) as denied:
+        asyncio.run(BillingService(persistence, provider).refund_filing_package(
+            RefundFilingPackageCommand(**metadata("new-refund-denied"), income_year=IncomeYear(2025))
+        ))
+    assert str(denied.value.code) == "BILLING_REFUND_NOT_ALLOWED"
+    assert provider.calls == []
