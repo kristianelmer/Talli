@@ -78,6 +78,19 @@
         "spec": "PASS on exact 5e60a7e04d5abc06285badb96f52058c20f55518"
       },
       "diagnosticNote": "An earlier combined run returned unavailable basis/denied claims; the smaller reproductions and subsequent full run passed. Fresh reset full lifecycle passed; no production rule was weakened."
+    },
+    "annualRenewalCancellation": {
+      "revision": "90f60b736f590bb06c4a3ed04c2e99564b3ce465",
+      "scope": "Immediate local renewal cancellation and immutable owner receipts only. Provider cleanup, HTTP/runtime/UI, workers and actual MT remain pending.",
+      "database": "20 cancellation cases pass; fresh isolated reset: all 94 Python lifecycle cases and Node two-cycle predecessor rollback/recutover pass. Covers replay, concurrent keys, stale MFA/tenant denial, blocked eligibility, collision and failed-insert rollback, immutable receipts, ignored insert safety and unrelated-user FK deletion.",
+      "billing": "181 Python and 14 Node tests pass.",
+      "architecture": "Architecture checker/dependency evidence and all 51 architecture regression cases pass.",
+      "advisors": "0 blocking security/error findings; 34 performance warnings.",
+      "independentReviews": {
+        "standards": "PASS on exact 90f60b736f590bb06c4a3ed04c2e99564b3ce465",
+        "spec": "PASS on exact 90f60b736f590bb06c4a3ed04c2e99564b3ce465"
+      },
+      "diagnosticNote": "Reproduced and corrected a BEFORE-trigger effect on ignored duplicate inserts and a restricted-owner FK check privilege failure. AFTER-insert mutation now requires a persisted receipt; UPDATE(id) is limited to FK checks with no UPDATE policy and an immutable guard."
     }
   },
   "externalEvidence": {
