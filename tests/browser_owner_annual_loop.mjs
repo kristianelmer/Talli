@@ -257,7 +257,7 @@ test("browser owner annual loop uses persisted state and survives reload", async
     await page.waitForLoadState("networkidle");
     await expectText(
       page,
-      "Filing readiness må være klar før filingpakke kan betales.",
+      "Innsendingskontrollen må være klar før innsendingspakken kan betales.",
     );
 
     await page.getByRole("button", { name: "Oppdater readiness" }).click();
