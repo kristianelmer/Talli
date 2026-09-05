@@ -190,7 +190,7 @@
     "productionPromotion": "not authorized by #137"
   },
   "localValidation": {
-    "billingFocused": { "backendPassed": 50, "nodePassed": 11, "failed": 0 },
+    "billingFocused": { "backendPassed": 60, "nodePassed": 11, "failed": 0 },
     "webTypecheck": "passed",
     "architecture": "passed",
     "freshSupabase": {
@@ -230,7 +230,7 @@
       "annual submission review consumes the backend entitlement decision without a founder-plan rule",
       "account reconfiguration preserves the predecessor reset behavior",
       "pilot owner validation uses a separately migrated company-access-owned predicate instead of billing-owned membership policy or direct table access",
-      "a frozen baseline oracle and the canonical service run against the same IDs, clock, defaults, prices, errors, gates, provider events, state effects, replay, failure injection, and pilot bounds",
+      "a frozen baseline oracle and the canonical service run against the same IDs, clock, defaults, prices, errors, gates, provider events, state effects, replay, failure injection, and complete pilot identity/status/time/exemption cases",
       "customer-visible billing decisions and errors use Norwegian product language"
     ],
     "finalReview": "pending-on-corrected-immutable-candidate"

@@ -13,6 +13,7 @@ from talli_backend.modules.billing.public import (
     BillingAccount,
     BillingError,
     BillingErrorCode,
+    BillingObligation,
     BillingPaymentKind,
     BillingPaymentStatus,
     BillingPlan,
@@ -27,7 +28,7 @@ from talli_backend.modules.billing.public import (
     SystemUserRequestReference,
 )
 from talli_backend.modules.billing.service import BillingService, billing_entitlement_decision
-from talli_backend.shared.kernel import IncomeYear, Timestamp
+from talli_backend.shared.kernel import CompanyId, IncomeYear, Timestamp, UserId
 
 from test_billing import COMPANY_ID, USER_ID, MemoryPersistence, NOW, account, metadata, query
 
@@ -647,9 +648,17 @@ def _pilot(**changes: object) -> ProductionPilotEntitlement:
     [
         None,
         _pilot(),
+        _pilot(billing_exempt=False),
+        _pilot(status=ProductionPilotStatus.PENDING),
         _pilot(status=ProductionPilotStatus.SUSPENDED),
+        _pilot(status=ProductionPilotStatus.COMPLETED),
+        _pilot(status=ProductionPilotStatus.REVOKED),
         _pilot(starts_at=Timestamp(NOW.value + timedelta(seconds=1))),
         _pilot(expires_at=NOW),
+        _pilot(company_id=CompanyId("10000000-0000-4000-8000-000000000002")),
+        _pilot(user_id=UserId("20000000-0000-4000-8000-000000000002")),
+        _pilot(income_year=IncomeYear(2024)),
+        _pilot(obligation=BillingObligation.COMPANY_TAX),
         _pilot(case_profile="other"),
     ],
 )
@@ -683,14 +692,43 @@ def test_predecessor_and_successor_match_fixed_pilot_identity_and_clock(
         ).entitlement(query(case_profile="rf1086_no_activity_v1"))
     )
 
-    assert (decision.status is BillingStatus.PILOT_ENTITLEMENT_ACTIVE) is (
-        predecessor_allowed and bool(entitlement and entitlement.billing_exempt)
-    )
+    assert (decision.pilot_entitlement_id is not None) is predecessor_allowed
     assert decision.allowed is True
     assert decision.charge_allowed is False
-    assert decision.billing_exempt is (
+    expected_exemption = (
         predecessor_allowed and bool(entitlement and entitlement.billing_exempt)
     )
+    assert decision.billing_exempt is expected_exemption
+    assert (decision.status is BillingStatus.PILOT_ENTITLEMENT_ACTIVE) is expected_exemption
+
+
+@pytest.mark.parametrize(
+    ("billing_exempt", "expected_status", "expected_allowed"),
+    [
+        (True, BillingStatus.PILOT_ENTITLEMENT_ACTIVE, True),
+        (False, BillingStatus.SUBSCRIPTION_REQUIRED, False),
+    ],
+)
+def test_exact_pilot_exemption_and_ordinary_account_gate_remain_separate(
+    billing_exempt: bool,
+    expected_status: BillingStatus,
+    expected_allowed: bool,
+) -> None:
+    entitlement = _pilot(billing_exempt=billing_exempt)
+    persistence = MemoryPersistence(account(), ready=True)
+    persistence.pilot = entitlement
+    decision = asyncio.run(
+        BillingService(
+            persistence, SimulationBillingProvider(), now=lambda: NOW.value
+        ).entitlement(query(case_profile="rf1086_no_activity_v1"))
+    )
+
+    assert _legacy_pilot_allowed(entitlement) is True
+    assert decision.pilot_entitlement_id == entitlement.entitlement_id
+    assert decision.billing_exempt is billing_exempt
+    assert decision.status is expected_status
+    assert decision.allowed is expected_allowed
+    assert decision.charge_allowed is False
 
 
 def test_norwegian_copy_covers_every_predecessor_journey() -> None:
