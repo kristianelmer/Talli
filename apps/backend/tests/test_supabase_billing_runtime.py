@@ -189,7 +189,7 @@ def test_non_provider_commands_replay_exactly_and_reject_key_reuse() -> None:
             with psycopg.connect(DATABASE_URL) as connection:
                 connection.execute(
                     """update billing.billing_accounts set
-                      subscription_active=true, filing_package_paid=true,
+                      subscription_active=true, filing_package_paid=false,
                       supported_case=false, refund_eligible=true,
                       refund_completed=true, no_charge_reason='legacy-state',
                       provider_customer_ref='customer-ref',
@@ -220,6 +220,30 @@ def test_non_provider_commands_replay_exactly_and_reject_key_reuse() -> None:
             assert reconfigured.subscription_provider_reference is None
             assert reconfigured.filing_package_payment_reference is None
             assert reconfigured.refund_provider_reference is None
+
+            # A paid filing package and an unsupported case are mutually exclusive
+            # predecessor states. Exercise the paid state separately so configure
+            # still proves that it clears both sides of that constraint.
+            with psycopg.connect(DATABASE_URL) as connection:
+                connection.execute(
+                    """update billing.billing_accounts set
+                      filing_package_paid=true,
+                      filing_package_payment_ref='package-ref'
+                    where company_id=%s::uuid""",
+                    (COMPANY_ID,),
+                )
+            paid_state_reconfigured = asyncio.run(
+                session.configure_account(
+                    ConfigureBillingAccountCommand(
+                        **metadata("reconfigure-paid"),
+                        pricing_plan=BillingPlan.STANDARD,
+                        founder_cohort_number=None,
+                    ),
+                    BillingPricing(BillingPlan.STANDARD, 49, 499),
+                )
+            )
+            assert paid_state_reconfigured.filing_package_paid is False
+            assert paid_state_reconfigured.filing_package_payment_reference is None
 
             outsider_session = SupabaseBillingSession(
                 backend_database_url,
