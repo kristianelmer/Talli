@@ -8,6 +8,7 @@ from asyncio import timeout
 from collections.abc import Awaitable, Callable
 from dataclasses import fields, replace
 from datetime import UTC, date, datetime, timedelta
+from hashlib import sha256
 import json
 
 import psycopg
@@ -16,6 +17,10 @@ from psycopg.rows import dict_row
 from talli_backend.adapters.supabase_ledger import _VerifiedActor
 from talli_backend.modules.billing.public import (
     AnnualBillingOffer,
+    AnnualCancellationId,
+    AnnualCancellationPersistence,
+    AnnualRenewalCancellation,
+    CancelAnnualRenewalCommand,
     AnnualCheckout,
     AnnualCheckoutClaim,
     AnnualCheckoutPersistence,
@@ -50,7 +55,9 @@ def _record(value):
 
 
 def _timestamp(value):
-    return Timestamp(datetime.fromisoformat(value)) if value else None
+    return (
+        Timestamp(value if isinstance(value, datetime) else datetime.fromisoformat(value)) if value else None
+    )
 
 
 def _checkout(purchase, operation):
@@ -121,6 +128,7 @@ def _checkout(purchase, operation):
         ),
         status=AnnualPurchaseStatus(purchase["status"]),
         observation=observation,
+        renewal_canceled_at=_timestamp(purchase["renewal_canceled_at"]),
     )
 
 
@@ -419,3 +427,105 @@ class PostgresAnnualCheckoutSession:
             return result
 
         return await self._transaction(work)
+
+
+def _cancellation(row):
+    return AnnualRenewalCancellation(
+        cancellation_id=AnnualCancellationId(str(row["id"])),
+        purchase_id=AnnualPurchaseId(str(row["purchase_id"])),
+        company_id=CompanyId(str(row["company_id"])),
+        income_year=IncomeYear(row["income_year"]),
+        requested_by=UserId(str(row["requested_by"])),
+        requested_at=Timestamp(row["requested_at"]),
+        effective_at=Timestamp(row["effective_at"]),
+        paid_through=row["paid_through"],
+        export_through=row["export_through"],
+    )
+
+
+@billing_persistence_adapter(AnnualCancellationPersistence)
+class PostgresAnnualCancellationSession:
+    """Local cancellation receipts share the checkout session's verified DB context.
+
+    Provider cleanup is a separate, still pending workflow. In particular this
+    command never abandons an unresolved initial checkout or declares a refund.
+    """
+
+    def __init__(self, checkout_session: PostgresAnnualCheckoutSession) -> None:
+        self._database = checkout_session
+
+    @property
+    def actor_id(self):
+        return self._database.actor_id
+
+    async def cancel_renewal(self, command: CancelAnnualRenewalCommand) -> AnnualRenewalCancellation:
+        if command.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+        fingerprint = sha256(
+            json.dumps(
+                {
+                    "scope": "stop_renewal",
+                    "company": str(command.company_id),
+                    "purchase": str(command.purchase_id),
+                    "actor": str(command.actor_id.subject),
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode()
+        ).hexdigest()
+
+        async def work(connection):
+            await self._database._authorize(connection, command.company_id)
+            # Serializes the command key before checking its immutable receipt.
+            # Cross-company uniqueness failures roll back the entire mutation.
+            await connection.execute(
+                "select pg_advisory_xact_lock(hashtextextended(%s, 192))",
+                (f"annual-cancellation-key|{command.idempotency_key}",),
+            )
+            existing = await (
+                await connection.execute(
+                    """
+                select r.*,p.paid_through,p.export_through from billing.annual_cancellation_requests r
+                join billing.annual_purchases p on p.id=r.purchase_id
+                where r.company_id=%s::uuid and r.idempotency_key=%s
+            """,
+                    (str(command.company_id), str(command.idempotency_key)),
+                )
+            ).fetchone()
+            if existing:
+                if existing["request_fingerprint"] != fingerprint:
+                    raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
+                return _cancellation(existing)
+            purchase = await (
+                await connection.execute(
+                    """
+                select id,income_year,paid_through,export_through from billing.annual_purchases
+                where id=%s::uuid and company_id=%s::uuid for update
+            """,
+                    (str(command.purchase_id), str(command.company_id)),
+                )
+            ).fetchone()
+            if purchase is None:
+                raise BillingError.not_found()
+            row = await (
+                await connection.execute(
+                    """
+                insert into billing.annual_cancellation_requests
+                  (id,purchase_id,company_id,income_year,requested_by,idempotency_key,request_fingerprint)
+                values (gen_random_uuid(),%s::uuid,%s::uuid,%s,%s::uuid,%s,%s) returning *
+            """,
+                    (
+                        str(command.purchase_id),
+                        str(command.company_id),
+                        purchase["income_year"],
+                        str(self.actor_id.subject),
+                        str(command.idempotency_key),
+                        fingerprint,
+                    ),
+                )
+            ).fetchone()
+            return _cancellation(
+                row | {"paid_through": purchase["paid_through"], "export_through": purchase["export_through"]}
+            )
+
+        return await self._database._transaction(work)

@@ -410,6 +410,12 @@
       "adapter": "talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCheckoutSession",
       "owner": "backend-system",
       "mode": "restricted verified-actor PostgreSQL claims and settlement; readiness defaults unavailable; runtime cutover pending #192"
+    },
+    {
+      "port": "AnnualCancellationPersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCancellationSession",
+      "owner": "backend-system",
+      "mode": "verified-owner local renewal cancellation and immutable receipts; provider cleanup and runtime cutover pending #192"
     }
   ],
   "allowedDependencies": {

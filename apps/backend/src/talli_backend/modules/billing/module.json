@@ -16,7 +16,8 @@
       "MarkBillingUnsupportedCommand",
       "PurchaseFilingPackageCommand",
       "RefundFilingPackageCommand",
-      "StartAnnualCheckoutCommand"
+      "StartAnnualCheckoutCommand",
+      "CancelAnnualRenewalCommand"
     ],
     "queries": [
       "BillingEntitlementDecision",
@@ -72,7 +73,10 @@
       "AnnualCheckout",
       "AnnualCheckoutClaim",
       "AnnualCheckoutPersistence",
-      "settle_annual_checkout"
+      "settle_annual_checkout",
+      "AnnualCancellationId",
+      "AnnualCancellationPersistence",
+      "AnnualRenewalCancellation"
     ]
   },
   "owns": {
@@ -86,14 +90,15 @@
       "billing.production_pilot_entitlements",
       "billing.annual_purchases",
       "billing.annual_refund_cases",
-      "billing.annual_operations"
+      "billing.annual_operations",
+      "billing.annual_cancellation_requests"
     ],
     "storageBuckets": [],
     "projections": [
       "BillingEntitlementDecision",
       "BillingSnapshot"
     ],
-    "migrations": "supabase/migrations/20260905083150_annual_billing_purchase_ledger.sql"
+    "migrations": "supabase/migrations/20260905100130_annual_renewal_cancellation.sql"
   },
   "ports": [
     {
@@ -131,6 +136,15 @@
       "adapters": [
         "talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCheckoutSession"
       ]
+    },
+    {
+      "name": "AnnualCancellationPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualCancellationPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCancellationSession"
+      ]
     }
   ],
   "dependencies": [],
@@ -166,7 +180,8 @@
     "vippsWebhook": "apps/backend/tests/test_vipps_webhook.py",
     "annualLedger": "apps/backend/tests/test_annual_purchase_ledger_runtime.py",
     "annualCheckout": "apps/backend/tests/test_annual_checkout_service.py",
-    "annualCheckoutDatabase": "apps/backend/tests/test_annual_checkout_runtime.py"
+    "annualCheckoutDatabase": "apps/backend/tests/test_annual_checkout_runtime.py",
+    "annualCancellationDatabase": "apps/backend/tests/test_annual_cancellation_runtime.py"
   },
   "compatibilityExceptions": []
 }

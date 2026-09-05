@@ -1,7 +1,7 @@
 # Billing backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
+{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
 -->
 
 ## Purpose and ownership
@@ -231,3 +231,33 @@ This unavailable binding is safe interim behavior and does not satisfy #192's
 end-to-end exit. HTTP/UI cutover, trusted readiness, actual MT evidence and all
 remaining acceptance criteria stay pending. No annual runtime route is exposed
 by this orchestration unit.
+
+## Durable local annual renewal cancellation
+
+`CancelAnnualRenewalCommand` identifies an existing company/purchase and a unique
+command key. `AnnualCancellationPersistence` is implemented by
+`PostgresAnnualCancellationSession`, sharing a checkout session's verified actor
+and restricted transaction implementation. `AnnualRenewalCancellation` returns
+an immutable `AnnualCancellationId`, requester/time, original effective time and
+unchanged paid/export dates. `AnnualCheckout.renewal_canceled_at` exposes the local
+renewal stop without changing original consent or financial state.
+
+`billing.annual_cancellation_requests` owns one immutable request receipt per
+command key. A trigger locks the purchase and atomically sets its cancellation
+time once, retaining a receipt for each distinct command. Same-key races replay
+the original receipt; another target or actor conflicts. An insert failure rolls
+back the local stop. Owner authority and fresh MFA remain mandatory; eligibility
+and readiness blocks do not obstruct cancellation of future renewal.
+
+The cancellation migration/rollback is
+`supabase/migrations/20260905100130_annual_renewal_cancellation.sql`. Rollback moves
+requests to `billing_annual_retired` before predecessor billing rollback, so the
+original request and local cancellation survive recutover. No browser/service
+role can read or insert the request table.
+
+This command confirms local renewal cancellation only. It never cancels an initial
+pending checkout, erases paid/export access, fabricates an agreement reference or
+claims a refund. Provider agreement-stop/pending-renewal-charge cleanup, durable
+worker recovery and annual runtime/UI composition are still pending #192 work.
+Future renewal claims must honor this authority through explicit agreement/year
+lineage; current next-year admission remains blocked.

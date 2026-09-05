@@ -654,6 +654,51 @@ class AnnualCheckout:
     intent: AnnualProviderIntent
     status: AnnualPurchaseStatus
     observation: AnnualProviderObservation | None = None
+    renewal_canceled_at: Timestamp | None = None
+
+
+class AnnualCancellationId(_UuidId):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class CancelAnnualRenewalCommand(_BillingCommand):
+    purchase_id: AnnualPurchaseId
+
+    def __post_init__(self) -> None:
+        if len(str(self.idempotency_key)) > 200:
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRenewalCancellation:
+    """Durable local renewal stop; this is not a provider acknowledgement."""
+
+    cancellation_id: AnnualCancellationId
+    purchase_id: AnnualPurchaseId
+    company_id: CompanyId
+    income_year: IncomeYear
+    requested_by: UserId
+    requested_at: Timestamp
+    effective_at: Timestamp
+    paid_through: date
+    export_through: date
+
+
+@runtime_checkable
+class AnnualCancellationPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def cancel_renewal(self, command: CancelAnnualRenewalCommand) -> AnnualRenewalCancellation:
+        """Atomically preserve request evidence and disable renewal, before I/O.
+
+        Require current owner authority and fresh MFA, but no new eligibility or
+        readiness approval. Preserve original consent, purchase state, money and
+        paid/export dates. Each command key has an immutable scoped receipt;
+        different keys for one purchase retain the original cancellation time.
+        """
+        ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -841,6 +886,10 @@ def billing_provider_adapter(port: type[object]) -> Callable[[Adapter], Adapter]
 
 
 __all__ = [
+    "AnnualCancellationId",
+    "AnnualCancellationPersistence",
+    "AnnualRenewalCancellation",
+    "CancelAnnualRenewalCommand",
     "settle_annual_checkout",
     "AnnualPurchaseStatus",
     "AnnualCheckoutPersistence",

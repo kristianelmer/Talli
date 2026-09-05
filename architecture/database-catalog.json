@@ -32,6 +32,7 @@
     { "name": "banking.sync_attempts", "kind": "capability-business", "owner": "backend:banking" },
     { "name": "banking.transaction_sources", "kind": "capability-business", "owner": "backend:banking" },
     { "name": "banking.transactions", "kind": "capability-business", "owner": "backend:banking" },
+    { "name": "billing.annual_cancellation_requests", "kind": "capability-business", "owner": "backend:billing" },
     { "name": "billing.annual_operations", "kind": "capability-business", "owner": "backend:billing" },
     { "name": "billing.annual_purchases", "kind": "capability-business", "owner": "backend:billing" },
     { "name": "billing.annual_refund_cases", "kind": "capability-business", "owner": "backend:billing" },

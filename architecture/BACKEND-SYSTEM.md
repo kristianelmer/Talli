@@ -390,3 +390,12 @@ to unavailable; no annual HTTP/runtime composition is enabled by this adapter.
 <!-- architecture-inventory
 {"ports":["AnnualCheckoutPersistence"],"adapterBindings":["AnnualCheckoutPersistence=>talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCheckoutSession"],"adapterBindingOwners":["AnnualCheckoutPersistence=>backend-system"],"adapterBindingModes":["AnnualCheckoutPersistence=>restricted verified-actor PostgreSQL claims and settlement; readiness defaults unavailable; runtime cutover pending #192"]}
 -->
+
+`AnnualCancellationPersistence` is registered to
+`talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCancellationSession`.
+It records local renewal cancellation before any provider cleanup. HTTP/runtime
+composition, provider cleanup and worker recovery remain pending.
+
+<!-- architecture-inventory
+{"ports":["AnnualCancellationPersistence"],"adapterBindings":["AnnualCancellationPersistence=>talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCancellationSession"],"adapterBindingOwners":["AnnualCancellationPersistence=>backend-system"],"adapterBindingModes":["AnnualCancellationPersistence=>verified-owner local renewal cancellation and immutable receipts; provider cleanup and runtime cutover pending #192"]}
+-->

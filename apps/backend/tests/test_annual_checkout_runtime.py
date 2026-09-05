@@ -530,8 +530,18 @@ def test_adapter_records_survive_two_rollback_recutover_cycles(setup):
     migration = "20260905083150_annual_billing_purchase_ledger.sql"
     for _ in range(2):
         with psycopg.connect(DATABASE_URL, autocommit=True) as connection:
+            connection.execute(
+                (
+                    ROOT / "supabase" / "rollback" / "20260905100130_annual_renewal_cancellation.sql"
+                ).read_text()
+            )
             connection.execute((ROOT / "supabase" / "rollback" / migration).read_text())
             connection.execute((ROOT / "supabase" / "migrations" / migration).read_text())
+            connection.execute(
+                (
+                    ROOT / "supabase" / "migrations" / "20260905100130_annual_renewal_cancellation.sql"
+                ).read_text()
+            )
             principal = connection.execute("select current_user").fetchone()[0]
             connection.execute(
                 psycopg.sql.SQL("grant billing_store_owner to {}").format(psycopg.sql.Identifier(principal))

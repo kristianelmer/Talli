@@ -205,11 +205,13 @@ def test_rollback_and_recutover_preserve_the_exact_accepted_evidence(admitted):
         before = basis(connection, admitted)
     for _ in range(2):
         with psycopg.connect(DATABASE_URL, autocommit=True) as connection:
+            connection.execute((ROOT / "supabase" / "rollback" / "20260905100130_annual_renewal_cancellation.sql").read_text())
             connection.execute((ROOT / "supabase" / "rollback" / ledger).read_text())
             connection.execute((ROOT / "supabase" / "rollback" / migration).read_text())
             assert connection.execute("select to_regprocedure('public.company_access_purchase_basis_v1(uuid,integer,uuid,uuid)')").fetchone()[0] is None
             connection.execute((ROOT / "supabase" / "migrations" / migration).read_text())
             connection.execute((ROOT / "supabase" / "migrations" / ledger).read_text())
+            connection.execute((ROOT / "supabase" / "migrations" / "20260905100130_annual_renewal_cancellation.sql").read_text())
             principal = connection.execute("select current_user").fetchone()[0]
             connection.execute(sql.SQL("grant billing_store_owner to {}").format(sql.Identifier(principal)))
         with psycopg.connect(DATABASE_URL) as connection:
