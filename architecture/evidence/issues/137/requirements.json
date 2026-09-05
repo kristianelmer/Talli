@@ -166,19 +166,47 @@
       "requirement": "The complete billing stage exit criteria from #132 pass before authority connections begin.",
       "evidence": [
         {
-          "path": "architecture/evidence/customer-ready-gates/<R1>.json",
-          "command": "npm run gate:customer-ready"
+          "path": "architecture/evidence/customer-ready-gates/abd77efd72e789372901d8e2c29c02f8fd372a89.json",
+          "command": "npm run gate:customer-ready",
+          "revision": "abd77efd72e789372901d8e2c29c02f8fd372a89",
+          "evidenceDigest": "sha256:cf482b016cb4cf34819e71f2ca0c50ed81ef371a20062b4a2d724c43ed5f0825"
         },
         {
-          "path": "architecture/evidence/customer-ready-gates/<R2>.json",
-          "command": "npm run gate:customer-ready -- --previous <R1>"
+          "path": "architecture/evidence/customer-ready-gates/281ba127f645c90fda98ca74cd344f8a87f194ba.json",
+          "command": "npm run gate:customer-ready -- --previous abd77efd72e789372901d8e2c29c02f8fd372a89",
+          "revision": "281ba127f645c90fda98ca74cd344f8a87f194ba",
+          "evidenceDigest": "sha256:fb6301a04e9fee45b91337cde7ebec8727cbfb82a708aed17aca9fd8cf0dde6f"
         },
         {
           "path": "architecture/compatibility.json",
           "command": "npm run check:architecture"
         }
       ],
-      "status": "pending-two-linked-immutable-gates-and-protected-integration"
+      "status": "passed-two-linked-immutable-gates-and-architecture-stage-exit-registered"
+    }
+  ],
+  "completeGates": [
+    {
+      "revision": "abd77efd72e789372901d8e2c29c02f8fd372a89",
+      "previousPassingRevision": null,
+      "evidenceCommittedRevision": "281ba127f645c90fda98ca74cd344f8a87f194ba",
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/abd77efd72e789372901d8e2c29c02f8fd372a89.json",
+      "evidenceDigest": "sha256:cf482b016cb4cf34819e71f2ca0c50ed81ef371a20062b4a2d724c43ed5f0825",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:8fc2318bd8e5f2c0a7788c5127d72fc3ac18eeee5ab31c4f2c6341b69e22f84f"
+    },
+    {
+      "revision": "281ba127f645c90fda98ca74cd344f8a87f194ba",
+      "previousPassingRevision": "abd77efd72e789372901d8e2c29c02f8fd372a89",
+      "evidenceCommittedRevision": "f3752b98ed5c5862682e9d87bb7677b93b2b1643",
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/281ba127f645c90fda98ca74cd344f8a87f194ba.json",
+      "evidenceDigest": "sha256:fb6301a04e9fee45b91337cde7ebec8727cbfb82a708aed17aca9fd8cf0dde6f",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:9a222b19317fd0f334ba559ce4cb8b3b3c11a28ad777afe4b574549bfff3b0a1"
     }
   ],
   "preservedGates": {
@@ -215,7 +243,7 @@
       "failed": 0,
       "note": "One uninterrupted invocation initialized a fresh temporary Supabase stack, applied every migration, and passed every configured advisor, database, browser, authority, governance, and billing check before cleaning up the stack."
     },
-    "customerReadyGates": "pending"
+    "customerReadyGates": "passed twice on ordered immutable application revisions; evidence committed separately"
   },
   "review": {
     "initialCandidate": "3ecebb007f710e0dc7d8a9f22a86d01ac17c609b",
@@ -244,12 +272,12 @@
       "customer-visible billing decisions and errors use Norwegian product language"
     ],
     "finalReview": {
-      "revision": "3e7f0e1a00c34de909b65f02c9e036c78b7cc772",
+      "revision": "abd77efd72e789372901d8e2c29c02f8fd372a89",
       "repositoryStandards": "PASS",
       "issueSpecification": "PASS",
       "worktree": "clean",
       "reviewedAgainst": "4f807fe4239a208c573054b14cbed478277d1a2e"
     }
   },
-  "closeState": "final review and fresh local Supabase gate passed; two linked immutable customer-ready gates and protected integration pending"
+  "closeState": "final review, fresh local Supabase gate, two linked immutable customer-ready gates, and architecture stage-exit registration passed; protected integration pending"
 }
