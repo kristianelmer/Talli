@@ -1,7 +1,7 @@
 # Billing backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
+{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
 -->
 
 ## Purpose and ownership
@@ -372,7 +372,11 @@ acceptance waiver follows from these endpoints.
 ## Annual refund orchestration contract
 
 `AnnualRefundService` coordinates one recorded refund case and original provider
-operation. `RequestAnnualRefundCommand` accepts a source lookup reference, never
+operation. `AnnualRefundCaseId` identifies the immutable case;
+`AnnualRefundResolution` carries its request, facts, decision and optional
+`AnnualRefundOperation`. `AnnualRefundClaim` identifies the winning executor.
+`annual_refund_decision` exposes the existing policy and `settle_annual_refund`
+is the required atomic-persistence settlement helper. `RequestAnnualRefundCommand` accepts a source lookup reference, never
 caller-selected eligibility, money or incident facts. The mandatory
 `AnnualRefundPersistence` contract requires verified source-owned facts, current
 authority, purchase locks, durable request/case identity, balance reservations,
