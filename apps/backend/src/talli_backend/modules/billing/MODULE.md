@@ -45,10 +45,13 @@ whether readiness may continue, whether a charge may be initiated, whether
 filing is allowed, and whether an exact active pilot entitlement provides the
 billing exemption. Missing data and dependency failures fail closed.
 
-`apps/backend/tests/test_billing_equivalence.py` fixes the predecessor pricing
-and entitlement outcomes as characterization inputs. It compares every legacy
-gate state with the canonical decision, while focused provider and database
-tests preserve coded errors, replay, retry, data effects, and rollback behavior.
+`apps/backend/tests/test_billing_equivalence.py` executes a frozen semantic
+oracle from base revision `4f807fe4239a208c573054b14cbed478277d1a2e`
+against the canonical service with the same IDs, clock, plans, states, and
+failure injection. It compares defaults, prices, coded-error mappings, every
+legacy gate, provider event facts, mutable account effects, duplicate replay,
+retry quarantine, and production-pilot identity and time bounds. Static and
+database tests preserve the matching audit facts, RLS, rollback, and recutover.
 
 ## Ports and adapters
 
@@ -58,6 +61,11 @@ each payment-event/account transition atomically. Non-provider commands use
 the backend-system technical `billing.billing_command_receipts` for exact durable replay and reject a reused
 key when its canonical request fingerprint differs. `BillingPaymentProvider`
 accepts only a provider-neutral intent and must honor its idempotency key.
+
+Pilot administration validates the initiating owner through the versioned
+`company_access_is_accepted_owner_subject_v1` database contract. That predicate
+and its lifecycle remain company-access-owned; billing has `EXECUTE` only and
+never reads membership storage or implements membership policy.
 
 Adapters register through `billing_persistence_adapter` and
 `billing_provider_adapter`.

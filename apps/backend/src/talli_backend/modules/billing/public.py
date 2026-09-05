@@ -258,7 +258,7 @@ class ConfigureBillingAccountCommand(_BillingCommand):
         if self.pricing_plan is BillingPlan.FOUNDER and not valid_founder:
             raise BillingError.invalid()
         if self.pricing_plan is BillingPlan.STANDARD and self.founder_cohort_number is not None:
-            raise BillingError.invalid()
+            object.__setattr__(self, "founder_cohort_number", None)
 
 
 @dataclass(frozen=True, slots=True)

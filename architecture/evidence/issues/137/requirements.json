@@ -115,6 +115,10 @@
         {
           "path": "supabase/migrations/20260905010000_billing_capability.sql",
           "command": "npm run test:supabase:local"
+        },
+        {
+          "path": "supabase/migrations/20260905003000_company_access_billing_owner_subject.sql",
+          "command": "npm run test:supabase:local"
         }
       ],
       "status": "implemented-and-fresh-runtime-tests-passed"
@@ -186,7 +190,7 @@
     "productionPromotion": "not authorized by #137"
   },
   "localValidation": {
-    "billingFocused": { "backendPassed": 27, "nodePassed": 9, "failed": 0 },
+    "billingFocused": { "backendPassed": 50, "nodePassed": 11, "failed": 0 },
     "webTypecheck": "passed",
     "architecture": "passed",
     "freshSupabase": {
@@ -225,8 +229,8 @@
       "ambiguous browser billing outcomes preserve the exact operation key for safe replay",
       "annual submission review consumes the backend entitlement decision without a founder-plan rule",
       "account reconfiguration preserves the predecessor reset behavior",
-      "pilot owner validation uses a versioned company-access predicate instead of direct membership-table access",
-      "fixed-input legacy entitlement and pricing characterization runs in the focused billing suite",
+      "pilot owner validation uses a separately migrated company-access-owned predicate instead of billing-owned membership policy or direct table access",
+      "a frozen baseline oracle and the canonical service run against the same IDs, clock, defaults, prices, errors, gates, provider events, state effects, replay, failure injection, and pilot bounds",
       "customer-visible billing decisions and errors use Norwegian product language"
     ],
     "finalReview": "pending-on-corrected-immutable-candidate"

@@ -44,6 +44,7 @@ OWNER_ID = "74000000-0000-4000-8000-000000000001"
 COMPANY_ID = "74000000-0000-4000-8000-000000000002"
 REQUEST_ID = "74000000-0000-4000-8000-000000000003"
 OUTSIDER_ID = "74000000-0000-4000-8000-000000000004"
+ADMIN_ID = "74000000-0000-4000-8000-000000000005"
 
 
 def enable_backend_login() -> str:
@@ -79,12 +80,15 @@ def metadata(key: str) -> dict[str, object]:
 def seed() -> None:
     with psycopg.connect(DATABASE_URL) as connection:
         connection.execute(
-            "insert into auth.users (id, email) values (%s::uuid, %s::text), (%s::uuid, %s::text)",
+            """insert into auth.users (id, email) values
+              (%s::uuid, %s::text), (%s::uuid, %s::text), (%s::uuid, %s::text)""",
             (
                 OWNER_ID,
                 "billing-runtime@example.test",
                 OUTSIDER_ID,
                 "billing-outsider@example.test",
+                ADMIN_ID,
+                "billing-admin@example.test",
             ),
         )
         connection.execute(
@@ -103,7 +107,7 @@ def seed() -> None:
         )
         connection.execute(
             "insert into public.support_operators (user_id, role, active) values (%s::uuid, 'admin', true)",
-            (OWNER_ID,),
+            (ADMIN_ID,),
         )
         connection.execute(
             """insert into public.system_user_requests (
@@ -126,11 +130,12 @@ def seed() -> None:
 def cleanup() -> None:
     with psycopg.connect(DATABASE_URL) as connection:
         connection.execute(
-            "delete from public.support_operators where user_id=%s::uuid", (OWNER_ID,)
+            "delete from public.support_operators where user_id=%s::uuid", (ADMIN_ID,)
         )
         connection.execute("delete from public.companies where id=%s::uuid", (COMPANY_ID,))
         connection.execute("delete from auth.users where id=%s::uuid", (OWNER_ID,))
         connection.execute("delete from auth.users where id=%s::uuid", (OUTSIDER_ID,))
+        connection.execute("delete from auth.users where id=%s::uuid", (ADMIN_ID,))
 
 
 @pytest.mark.skipif(not DATABASE_URL, reason="DATABASE_URL is required")
@@ -282,9 +287,27 @@ def test_non_provider_commands_replay_exactly_and_reject_key_reuse() -> None:
             first_unsupported = asyncio.run(session.mark_unsupported(unsupported))
             assert asyncio.run(session.mark_unsupported(unsupported)) == first_unsupported
 
+            admin_actor = ActorId(ActorKind.USER, UserId(ADMIN_ID))
+            admin_session = SupabaseBillingSession(
+                backend_database_url,
+                _VerifiedActor(
+                    actor_id=admin_actor,
+                    claims_json=json.dumps({
+                        "sub": ADMIN_ID,
+                        "role": "authenticated",
+                        "aal": "aal2",
+                        "amr": [{
+                            "method": "totp",
+                            "timestamp": datetime.now(UTC).timestamp(),
+                        }],
+                    }),
+                ),
+            )
+            pilot_metadata = metadata("pilot")
+            pilot_metadata["actor_id"] = admin_actor
             now = datetime(2026, 9, 5, tzinfo=UTC)
             pilot = ManageProductionPilotEntitlementCommand(
-                **metadata("pilot"),
+                **pilot_metadata,
                 entitlement_id=None,
                 user_id=UserId(OWNER_ID),
                 income_year=IncomeYear(2025),
@@ -295,9 +318,35 @@ def test_non_provider_commands_replay_exactly_and_reject_key_reuse() -> None:
                 expires_at=Timestamp(now + timedelta(days=30)),
                 evidence_reference="runtime-replay-evidence",
             )
-            first_pilot = asyncio.run(session.manage_pilot_entitlement(pilot))
-            replayed_pilot = asyncio.run(session.manage_pilot_entitlement(pilot))
+            first_pilot = asyncio.run(admin_session.manage_pilot_entitlement(pilot))
+            replayed_pilot = asyncio.run(admin_session.manage_pilot_entitlement(pilot))
             assert replayed_pilot.entitlement_id == first_pilot.entitlement_id
+
+            with psycopg.connect(DATABASE_URL) as connection:
+                connection.execute(
+                    "delete from public.company_memberships where company_id=%s::uuid and user_id=%s::uuid",
+                    (COMPANY_ID, OWNER_ID),
+                )
+            removed_owner_metadata = metadata("pilot-removed-owner")
+            removed_owner_metadata["actor_id"] = admin_actor
+            with pytest.raises(BillingError) as removed_owner:
+                asyncio.run(
+                    admin_session.manage_pilot_entitlement(
+                        ManageProductionPilotEntitlementCommand(
+                            **removed_owner_metadata,
+                            entitlement_id=None,
+                            user_id=UserId(OWNER_ID),
+                            income_year=IncomeYear(2025),
+                            status=ProductionPilotStatus.PENDING,
+                            billing_exempt=False,
+                            system_user_request_id=SystemUserRequestReference(REQUEST_ID),
+                            starts_at=Timestamp(now),
+                            expires_at=Timestamp(now + timedelta(days=30)),
+                            evidence_reference="removed-owner-must-fail",
+                        )
+                    )
+                )
+            assert removed_owner.value.code == BillingErrorCode.INVALID_INPUT
         finally:
             cleanup()
     finally:

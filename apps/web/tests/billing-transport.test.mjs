@@ -132,7 +132,14 @@ test("ambiguous billing outcomes retain the exact operation key for replay", () 
     "billingUnsupportedOperationId",
     "billingRefundOperationId",
   ]) {
-    assert.match(actions, new RegExp(`${retryKey}: outcomeMayBeUnknown \\? operationId`));
+    assert.match(actions, new RegExp(`billingRetryRedirect\\(error, operationId, "${retryKey}"\\)`));
     assert.match(workspace, new RegExp(`params\\?\\.${retryKey} \\?\\? randomUUID\\(\\)`));
   }
+});
+
+test("billing retry redirects and Norwegian plan labels have one shared policy", () => {
+  assert.match(actions, /function billingRetryRedirect\(/u);
+  assert.equal((actions.match(/billingOutcomeMayBeUnknown\(/gu) ?? []).length, 1);
+  assert.match(actions, /account\.pricingPlan === "founder" \? "grunnleggerplan" : "standardplan"/u);
+  assert.doesNotMatch(actions, /\$\{account\.pricingPlan\}-prising/u);
 });

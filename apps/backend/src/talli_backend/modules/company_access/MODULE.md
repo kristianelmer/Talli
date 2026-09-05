@@ -25,7 +25,7 @@ It owns `public.companies`, `public.company_cancellations`,
 `public.support_access_operation_receipts`, `public.support_case_openings`, and
 `public.support_operators`, with
 the latest ownership migration declared as
-`20260902095000_company_access_corporate_governance_identity.sql`. The backend system owns
+`20260905003000_company_access_billing_owner_subject.sql`. The backend system owns
 `public.company_access_command_receipts` as technical idempotency state. It must
 not claim eligibility outside the immutable active manifest, own physical
 business-data deletion, or own unrestricted general operator workflows.
@@ -83,6 +83,13 @@ explicit subject to transaction-local verified actor context, and grants callers
 no direct access to `public.companies` or `public.company_memberships`.
 Its company-access-owned expand and rollback migrations keep the contract's
 lifecycle outside every consuming capability migration.
+
+Pilot administration consumes a second company-access-owned database contract,
+`company_access_is_accepted_owner_subject_v1`. The narrow security-definer
+predicate requires a verified active admin with fresh MFA and returns only
+whether the system-user request's initiating subject is still an accepted
+owner. Billing receives `EXECUTE` only; it receives no membership-table grant,
+row shape, or membership-policy ownership.
 
 Eligibility and admission add `EligibilityAnswer`, `EligibilityDecision`,
 `EligibilityPublicFacts`, `EligibilityQuestion`, `EligibilityPrecheckRequest`,

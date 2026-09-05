@@ -31,6 +31,14 @@ const billingMigration = readFileSync(
   new URL("../supabase/migrations/20260905010000_billing_capability.sql", import.meta.url),
   "utf8",
 );
+const companyAccessBillingContract = readFileSync(
+  new URL("../supabase/migrations/20260905003000_company_access_billing_owner_subject.sql", import.meta.url),
+  "utf8",
+);
+const companyAccessBillingRollback = readFileSync(
+  new URL("../supabase/rollback/20260905003000_company_access_billing_owner_subject.sql", import.meta.url),
+  "utf8",
+);
 
 test("web billing commands and queries cross only the generated backend client", () => {
   assert.match(transport, /createTalliApiClient/);
@@ -68,8 +76,36 @@ test("annual submission review renders the backend entitlement without a second 
 test("billing uses the versioned company-access authorization seam", () => {
   assert.match(billingAdapter, /company_access_is_accepted_owner_subject_v1/);
   assert.doesNotMatch(billingAdapter, /from public\.company_memberships/u);
+  assert.doesNotMatch(billingMigration, /create or replace function public\.company_access_/iu);
+  assert.doesNotMatch(billingMigration, /from public\.company_memberships/iu);
   assert.doesNotMatch(
     billingMigration,
     /grant select on public\.system_user_requests, public\.company_memberships\s+to billing_store_owner/iu,
   );
+  assert.match(companyAccessBillingContract, /company_access_is_active_admin_v1\(\)/iu);
+  assert.match(companyAccessBillingContract, /company_access_has_fresh_mfa_v1\(\)/iu);
+  assert.match(companyAccessBillingContract, /from public\.company_memberships/iu);
+  assert.match(companyAccessBillingRollback, /drop function if exists\s+public\.company_access_/iu);
+});
+
+test("predecessor billing audit facts remain on every successor journey", () => {
+  for (const action of [
+    "billing_account_saved",
+    "billing_subscription_activated",
+    "billing_subscription_canceled",
+    "filing_package_paid",
+    "billing_unsupported_no_charge",
+    "billing_refund_completed",
+  ]) {
+    assert.match(actions, new RegExp(`action: "${action}"`, "u"));
+  }
+  for (const message of [
+    /Faktureringskonto lagret med/,
+    /Abonnement aktivert via/,
+    /Abonnement kansellert via/,
+    /Innsendingspakke betalt for/,
+    /Innsendingspakke refundert via/,
+  ]) {
+    assert.match(actions, message);
+  }
 });

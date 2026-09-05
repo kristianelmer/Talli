@@ -640,6 +640,25 @@ function ownerPathWithQuery(
   return `${path}${separator}${query.toString()}`;
 }
 
+type BillingRetryOperationKey =
+  | "billingConfigureOperationId"
+  | "billingActivateOperationId"
+  | "billingCancelOperationId"
+  | "billingFilingPackageOperationId"
+  | "billingUnsupportedOperationId"
+  | "billingRefundOperationId";
+
+function billingRetryRedirect(
+  error: unknown,
+  operationId: string,
+  operationKey: BillingRetryOperationKey,
+): never {
+  redirect(ownerPathWithQuery("/workspace", {
+    error: billingActionErrorMessage(error),
+    [operationKey]: billingOutcomeMayBeUnknown(error) ? operationId : undefined,
+  }));
+}
+
 const LEDGER_ADMIN_COST_CATEGORIES = {
   bank_fee: "BANK_FEE",
   accounting_fee: "ACCOUNTING_FEE",
@@ -4088,11 +4107,7 @@ export async function saveBillingAccount(formData: FormData) {
       founderCohortNumber: pricingPlan === "founder" ? founderValue : null,
     }, operationId);
   } catch (error) {
-    const outcomeMayBeUnknown = billingOutcomeMayBeUnknown(error);
-    redirect(ownerPathWithQuery("/workspace", {
-      error: billingActionErrorMessage(error),
-      billingConfigureOperationId: outcomeMayBeUnknown ? operationId : undefined,
-    }));
+    billingRetryRedirect(error, operationId, "billingConfigureOperationId");
   }
 
   await supabase.from("audit_events").insert({
@@ -4100,7 +4115,7 @@ export async function saveBillingAccount(formData: FormData) {
     actor_id: user.id,
     category: "billing",
     action: "billing_account_saved",
-    message: `Billingkonto lagret med ${account.pricingPlan}-prising.`,
+    message: `Faktureringskonto lagret med ${account.pricingPlan === "founder" ? "grunnleggerplan" : "standardplan"}.`,
   });
 
   revalidatePath("/");
@@ -4308,11 +4323,7 @@ export async function activateBillingSubscription(formData: FormData) {
   try {
     event = await activateBillingSubscriptionThroughApi(accessToken, { companyId }, operationId);
   } catch (error) {
-    const outcomeMayBeUnknown = billingOutcomeMayBeUnknown(error);
-    redirect(ownerPathWithQuery("/workspace", {
-      error: billingActionErrorMessage(error),
-      billingActivateOperationId: outcomeMayBeUnknown ? operationId : undefined,
-    }));
+    billingRetryRedirect(error, operationId, "billingActivateOperationId");
   }
 
   await supabase.from("audit_events").insert({
@@ -4357,11 +4368,7 @@ export async function requestFilingPackagePayment(formData: FormData) {
       obligation: "aksjonaerregisteroppgaven",
     }, operationId);
   } catch (error) {
-    const outcomeMayBeUnknown = billingOutcomeMayBeUnknown(error);
-    redirect(ownerPathWithQuery("/workspace", {
-      error: billingActionErrorMessage(error),
-      billingFilingPackageOperationId: outcomeMayBeUnknown ? operationId : undefined,
-    }));
+    billingRetryRedirect(error, operationId, "billingFilingPackageOperationId");
   }
 
   await supabase.from("audit_events").insert({
@@ -4369,7 +4376,7 @@ export async function requestFilingPackagePayment(formData: FormData) {
     actor_id: user.id,
     category: "billing",
     action: "filing_package_paid",
-    message: `Filingpakke betalt for ${incomeYear} via ${event.providerReference}.`,
+    message: `Innsendingspakke betalt for ${incomeYear} via ${event.providerReference}.`,
   });
 
   revalidatePath("/");
@@ -4391,11 +4398,7 @@ export async function cancelBillingSubscription(formData: FormData) {
   try {
     event = await cancelBillingSubscriptionThroughApi(accessToken, { companyId }, operationId);
   } catch (error) {
-    const outcomeMayBeUnknown = billingOutcomeMayBeUnknown(error);
-    redirect(ownerPathWithQuery("/workspace", {
-      error: billingActionErrorMessage(error),
-      billingCancelOperationId: outcomeMayBeUnknown ? operationId : undefined,
-    }));
+    billingRetryRedirect(error, operationId, "billingCancelOperationId");
   }
 
   await supabase.from("audit_events").insert({
@@ -4675,11 +4678,7 @@ export async function markBillingUnsupported(formData: FormData) {
   try {
     await markBillingCaseUnsupported(accessToken, { companyId, reason }, operationId);
   } catch (error) {
-    const outcomeMayBeUnknown = billingOutcomeMayBeUnknown(error);
-    redirect(ownerPathWithQuery("/workspace", {
-      error: billingActionErrorMessage(error),
-      billingUnsupportedOperationId: outcomeMayBeUnknown ? operationId : undefined,
-    }));
+    billingRetryRedirect(error, operationId, "billingUnsupportedOperationId");
   }
 
   await supabase.from("audit_events").insert({
@@ -4714,11 +4713,7 @@ export async function markBillingRefundEligible(formData: FormData) {
       obligation: "aksjonaerregisteroppgaven",
     }, operationId);
   } catch (error) {
-    const outcomeMayBeUnknown = billingOutcomeMayBeUnknown(error);
-    redirect(ownerPathWithQuery("/workspace", {
-      error: billingActionErrorMessage(error),
-      billingRefundOperationId: outcomeMayBeUnknown ? operationId : undefined,
-    }));
+    billingRetryRedirect(error, operationId, "billingRefundOperationId");
   }
 
   await supabase.from("audit_events").insert({
@@ -4726,7 +4721,7 @@ export async function markBillingRefundEligible(formData: FormData) {
     actor_id: user.id,
     category: "billing",
     action: "billing_refund_completed",
-    message: `Filingpakke refundert via ${event.providerReference}.`,
+    message: `Innsendingspakke refundert via ${event.providerReference}.`,
   });
 
   revalidatePath("/");
