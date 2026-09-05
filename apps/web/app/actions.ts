@@ -4,14 +4,6 @@ import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import {
-  applyBillingProviderEvent,
-  BillingValidationError,
-  buildBillingAccount,
-  isDuplicateBillingEventError,
-  productionBillingGate,
-  simulateBillingProviderEvent,
-} from "./lib/billing";
 import { getSiteUrl } from "./lib/site-url";
 import {
   clearPendingCancellationOperation,
@@ -71,6 +63,20 @@ import {
   type GrantSupportAccessRequest,
   type RevokeSupportAccessRequest,
 } from "../features/company-access";
+import {
+  activateBillingSubscription as activateBillingSubscriptionThroughApi,
+  billingActionErrorMessage,
+  billingOutcomeMayBeUnknown,
+  cancelBillingSubscription as cancelBillingSubscriptionThroughApi,
+  configureBillingAccount,
+  manageProductionPilotEntitlement,
+  markBillingCaseUnsupported,
+  loadBillingEntitlement,
+  loadAnnualBillingEntitlements,
+  loadBillingSnapshot,
+  purchaseBillingFilingPackage,
+  refundBillingFilingPackage,
+} from "../features/billing";
 import {
   acceptBankSourceFile,
   acceptBankSuggestion,
@@ -633,6 +639,25 @@ function ownerPathWithQuery(
   }
   const separator = path.includes("?") ? "&" : "?";
   return `${path}${separator}${query.toString()}`;
+}
+
+type BillingRetryOperationKey =
+  | "billingConfigureOperationId"
+  | "billingActivateOperationId"
+  | "billingCancelOperationId"
+  | "billingFilingPackageOperationId"
+  | "billingUnsupportedOperationId"
+  | "billingRefundOperationId";
+
+function billingRetryRedirect(
+  error: unknown,
+  operationId: string,
+  operationKey: BillingRetryOperationKey,
+): never {
+  redirect(ownerPathWithQuery("/workspace", {
+    error: billingActionErrorMessage(error),
+    [operationKey]: billingOutcomeMayBeUnknown(error) ? operationId : undefined,
+  }));
 }
 
 const LEDGER_ADMIN_COST_CATEGORIES = {
@@ -4064,43 +4089,26 @@ export async function saveBillingAccount(formData: FormData) {
   if (!hasSupabaseEnv()) {
     redirect("/workspace?error=Supabase%20env%20mangler");
   }
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) {
     redirect("/workspace?error=Innlogging%20kreves");
   }
-
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/workspace?error=Innlogging%20kreves");
+  const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
-  await requireSensitiveActionStepUp(supabase, user.id, companyId, "billing_admin");
+  const pricingPlan = formString(formData, "pricingPlan") as "founder" | "standard";
+  const founderValue = Number(formString(formData, "founderCohortNumber") || "0");
   let account;
   try {
-    account = buildBillingAccount({
+    account = await configureBillingAccount(accessToken, {
       companyId,
-      pricingPlan: formString(formData, "pricingPlan") as "founder" | "standard",
-      founderCohortNumber: Number(formString(formData, "founderCohortNumber") || "0") || null,
-    });
+      pricingPlan,
+      founderCohortNumber: pricingPlan === "founder" ? founderValue : null,
+    }, operationId);
   } catch (error) {
-    const message =
-      error instanceof BillingValidationError
-        ? `${error.code}: ${error.message}`
-        : error instanceof Error
-          ? error.message
-          : "Ugyldig billingkonto";
-    redirect(`/workspace?error=${encodeURIComponent(message)}`);
-  }
-
-  const { error } = await supabase.from("billing_accounts").upsert(
-    {
-      ...account,
-      updated_by: user.id,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "company_id" },
-  );
-  if (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
+    billingRetryRedirect(error, operationId, "billingConfigureOperationId");
   }
 
   await supabase.from("audit_events").insert({
@@ -4108,7 +4116,7 @@ export async function saveBillingAccount(formData: FormData) {
     actor_id: user.id,
     category: "billing",
     action: "billing_account_saved",
-    message: `Billingkonto lagret med ${account.pricing_plan}-prising.`,
+    message: `Faktureringskonto lagret med ${account.pricingPlan === "founder" ? "grunnleggerplan" : "standardplan"}.`,
   });
 
   revalidatePath("/");
@@ -4305,56 +4313,18 @@ export async function activateBillingSubscription(formData: FormData) {
   if (!hasSupabaseEnv()) {
     redirect("/workspace?error=Supabase%20env%20mangler");
   }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/workspace?error=Innlogging%20kreves");
-  }
-
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/workspace?error=Innlogging%20kreves");
+  const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
-  await requireSensitiveActionStepUp(supabase, user.id, companyId, "billing_admin");
-  const { data: account, error: accountError } = await supabase
-    .from("billing_accounts")
-    .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref")
-    .eq("company_id", companyId)
-    .single();
-  if (accountError || !account) {
-    redirect(`/workspace?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
-  }
-  const event = simulateBillingProviderEvent({
-    companyId,
-    kind: "subscription",
-    amountNok: Number(account.monthly_nok),
-  });
-  const updated = applyBillingProviderEvent(account, event);
-  const { error: eventError } = await supabase.from("billing_payment_events").insert({
-    company_id: companyId,
-    provider: event.provider,
-    provider_reference: event.providerReference,
-    idempotency_key: event.idempotencyKey,
-    kind: event.kind,
-    status: event.status,
-    amount_nok: event.amountNok,
-    payload: event,
-    created_by: user.id,
-  });
-  if (eventError && !isDuplicateBillingEventError(eventError)) {
-    redirect(`/workspace?error=${encodeURIComponent(eventError.message)}`);
-  }
-  const { error } = await supabase
-    .from("billing_accounts")
-    .update({
-      subscription_active: updated.subscription_active,
-      provider_customer_ref: updated.provider_customer_ref,
-      subscription_provider_ref: updated.subscription_provider_ref,
-      updated_by: user.id,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("company_id", companyId);
-  if (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
+  let event;
+  try {
+    event = await activateBillingSubscriptionThroughApi(accessToken, { companyId }, operationId);
+  } catch (error) {
+    billingRetryRedirect(error, operationId, "billingActivateOperationId");
   }
 
   await supabase.from("audit_events").insert({
@@ -4373,26 +4343,15 @@ export async function requestFilingPackagePayment(formData: FormData) {
   if (!hasSupabaseEnv()) {
     redirect("/workspace?error=Supabase%20env%20mangler");
   }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/workspace?error=Innlogging%20kreves");
-  }
-
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/workspace?error=Innlogging%20kreves");
+  const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
-  await requireSensitiveActionStepUp(supabase, user.id, companyId, "billing_admin");
-  const { data: account, error: accountError } = await supabase
-    .from("billing_accounts")
-    .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref")
-    .eq("company_id", companyId)
-    .single();
-  if (accountError || !account) {
-    redirect(`/workspace?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
-  }
-  const { data: readinessSnapshot, error: readinessError } = await supabase
+  const { error: readinessError } = await supabase
     .from("filing_readiness_snapshots")
     .select("ready, status, hard_blocks, warnings")
     .eq("company_id", companyId)
@@ -4402,45 +4361,15 @@ export async function requestFilingPackagePayment(formData: FormData) {
   if (readinessError) {
     redirect(`/workspace?error=${encodeURIComponent(readinessError.message)}`);
   }
-  const gate = productionBillingGate(account, Boolean(readinessSnapshot?.ready));
-  if (!gate.chargeAllowed) {
-    redirect(`/workspace?error=${encodeURIComponent(gate.message)}`);
-  }
-  const event = simulateBillingProviderEvent({
-    companyId,
-    kind: "filing_package",
-    amountNok: Number(account.filing_package_nok),
-    incomeYear,
-  });
-  const updated = applyBillingProviderEvent(account, event);
-  const { error: eventError } = await supabase.from("billing_payment_events").insert({
-    company_id: companyId,
-    provider: event.provider,
-    provider_reference: event.providerReference,
-    idempotency_key: event.idempotencyKey,
-    kind: event.kind,
-    status: event.status,
-    amount_nok: event.amountNok,
-    income_year: incomeYear,
-    payload: event,
-    created_by: user.id,
-  });
-  if (eventError && !isDuplicateBillingEventError(eventError)) {
-    redirect(`/workspace?error=${encodeURIComponent(eventError.message)}`);
-  }
-
-  const { error } = await supabase
-    .from("billing_accounts")
-    .update({
-      filing_package_paid: updated.filing_package_paid,
-      filing_package_payment_ref: updated.filing_package_payment_ref,
-      refund_eligible: updated.refund_eligible,
-      updated_by: user.id,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("company_id", companyId);
-  if (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
+  let event;
+  try {
+    event = await purchaseBillingFilingPackage(accessToken, {
+      companyId,
+      incomeYear,
+      obligation: "aksjonaerregisteroppgaven",
+    }, operationId);
+  } catch (error) {
+    billingRetryRedirect(error, operationId, "billingFilingPackageOperationId");
   }
 
   await supabase.from("audit_events").insert({
@@ -4448,7 +4377,7 @@ export async function requestFilingPackagePayment(formData: FormData) {
     actor_id: user.id,
     category: "billing",
     action: "filing_package_paid",
-    message: `Filingpakke betalt for ${incomeYear} via ${event.providerReference}.`,
+    message: `Innsendingspakke betalt for ${incomeYear} via ${event.providerReference}.`,
   });
 
   revalidatePath("/");
@@ -4459,58 +4388,18 @@ export async function cancelBillingSubscription(formData: FormData) {
   if (!hasSupabaseEnv()) {
     redirect("/workspace?error=Supabase%20env%20mangler");
   }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/workspace?error=Innlogging%20kreves");
-  }
-
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/workspace?error=Innlogging%20kreves");
+  const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
-  await requireSensitiveActionStepUp(supabase, user.id, companyId, "billing_admin");
-  const { data: account, error: accountError } = await supabase
-    .from("billing_accounts")
-    .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref")
-    .eq("company_id", companyId)
-    .single();
-  if (accountError || !account) {
-    redirect(`/workspace?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
-  }
-
-  const event = simulateBillingProviderEvent({
-    companyId,
-    kind: "subscription_cancellation",
-    amountNok: 0,
-    status: "canceled",
-  });
-  const updated = applyBillingProviderEvent(account, event);
-  const { error: eventError } = await supabase.from("billing_payment_events").insert({
-    company_id: companyId,
-    provider: event.provider,
-    provider_reference: event.providerReference,
-    idempotency_key: event.idempotencyKey,
-    kind: event.kind,
-    status: event.status,
-    amount_nok: event.amountNok,
-    payload: event,
-    created_by: user.id,
-  });
-  if (eventError && !isDuplicateBillingEventError(eventError)) {
-    redirect(`/workspace?error=${encodeURIComponent(eventError.message)}`);
-  }
-
-  const { error } = await supabase
-    .from("billing_accounts")
-    .update({
-      subscription_active: updated.subscription_active,
-      subscription_provider_ref: updated.subscription_provider_ref,
-      updated_by: user.id,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("company_id", companyId);
-  if (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
+  let event;
+  try {
+    event = await cancelBillingSubscriptionThroughApi(accessToken, { companyId }, operationId);
+  } catch (error) {
+    billingRetryRedirect(error, operationId, "billingCancelOperationId");
   }
 
   await supabase.from("audit_events").insert({
@@ -4619,7 +4508,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     { data: overrides, error: overridesError },
     { data: locks, error: locksError },
     { data: annualData, error: annualDataError },
-    { data: billingAccount, error: billingError },
+    { data: billingEntitlements, error: billingError },
     { data: authorityPermissions, error: authorityError },
     { data: filingPreviews, error: previewsError },
     { data: filingSubmissions, error: submissionsError },
@@ -4655,7 +4544,12 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
       error: error ? { message: error } : null,
     })),
     supabase.from("annual_data").select("id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at").eq("company_id", companyId).eq("income_year", incomeYear).maybeSingle(),
-    supabase.from("billing_accounts").select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref").eq("company_id", companyId).maybeSingle(),
+    loadAnnualBillingEntitlements(accessToken, companyId, incomeYear)
+      .then((data) => ({ data, error: null }))
+      .catch((error: unknown) => ({
+        data: {},
+        error: { message: billingActionErrorMessage(error) },
+      })),
     supabase.from("authority_permissions").select("company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled").eq("company_id", companyId),
     supabase.from("filing_previews").select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
     supabase.from("filing_submissions").select("id, preview_id, authority_test_run_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by").eq("company_id", companyId).eq("income_year", incomeYear),
@@ -4671,7 +4565,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     overridesError ||
     locksError ||
     (annualDataError?.code === "PGRST116" ? null : annualDataError) ||
-    (billingError?.code === "PGRST116" ? null : billingError) ||
+    billingError ||
     authorityError ||
     previewsError ||
     submissionsError;
@@ -4718,7 +4612,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     overrides: overrides ?? [],
     locks: locks ?? [],
     annualData: annualData ?? null,
-    billingAccount: billingAccount ?? null,
+    billingEntitlements,
     authorityPermissions: authorityPermissions ?? [],
     filingPreviews: filingPreviews ?? [],
     filingSubmissions: filingSubmissions ?? [],
@@ -4764,30 +4658,18 @@ export async function markBillingUnsupported(formData: FormData) {
   if (!hasSupabaseEnv()) {
     redirect("/workspace?error=Supabase%20env%20mangler");
   }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/workspace?error=Innlogging%20kreves");
-  }
-
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/workspace?error=Innlogging%20kreves");
+  const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
-  await requireSensitiveActionStepUp(supabase, user.id, companyId, "billing_admin");
   const reason = formString(formData, "reason") || "Saken er utenfor støttet enkel holding-AS.";
-  const { error } = await supabase
-    .from("billing_accounts")
-    .update({
-      supported_case: false,
-      filing_package_paid: false,
-      filing_package_payment_ref: null,
-      no_charge_reason: reason,
-      updated_by: user.id,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("company_id", companyId);
-  if (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
+  try {
+    await markBillingCaseUnsupported(accessToken, { companyId, reason }, operationId);
+  } catch (error) {
+    billingRetryRedirect(error, operationId, "billingUnsupportedOperationId");
   }
 
   await supabase.from("audit_events").insert({
@@ -4806,64 +4688,23 @@ export async function markBillingRefundEligible(formData: FormData) {
   if (!hasSupabaseEnv()) {
     redirect("/workspace?error=Supabase%20env%20mangler");
   }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/workspace?error=Innlogging%20kreves");
-  }
-
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/workspace?error=Innlogging%20kreves");
+  const operationId = requiredFormUuid(formData, "operationId");
   const companyId = formString(formData, "companyId");
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
-  await requireSensitiveActionStepUp(supabase, user.id, companyId, "billing_admin");
-  const { data: account, error: accountError } = await supabase
-    .from("billing_accounts")
-    .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, refund_completed, no_charge_reason, provider_customer_ref, subscription_provider_ref, filing_package_payment_ref, refund_provider_ref")
-    .eq("company_id", companyId)
-    .single();
-  if (accountError || !account) {
-    redirect(`/workspace?error=${encodeURIComponent(accountError?.message ?? "Billingkonto mangler")}`);
-  }
-  if (!account.supported_case || !account.filing_package_paid) {
-    redirect("/workspace?error=Kun%20st%C3%B8ttet%20betalt%20filingpakke%20kan%20markeres%20refusjonsberettiget");
-  }
-  const event = simulateBillingProviderEvent({
-    companyId,
-    kind: "refund",
-    amountNok: Number(account.filing_package_nok),
-    incomeYear,
-    status: "refunded",
-  });
-  const updated = applyBillingProviderEvent({ ...account, refund_eligible: true }, event);
-  const { error: eventError } = await supabase.from("billing_payment_events").insert({
-    company_id: companyId,
-    provider: event.provider,
-    provider_reference: event.providerReference,
-    idempotency_key: event.idempotencyKey,
-    kind: event.kind,
-    status: event.status,
-    amount_nok: event.amountNok,
-    income_year: incomeYear,
-    payload: event,
-    created_by: user.id,
-  });
-  if (eventError && !isDuplicateBillingEventError(eventError)) {
-    redirect(`/workspace?error=${encodeURIComponent(eventError.message)}`);
-  }
-
-  const { error } = await supabase
-    .from("billing_accounts")
-    .update({
-      refund_eligible: updated.refund_eligible,
-      refund_completed: updated.refund_completed,
-      refund_provider_ref: updated.refund_provider_ref,
-      updated_by: user.id,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("company_id", companyId);
-  if (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
+  let event;
+  try {
+    event = await refundBillingFilingPackage(accessToken, {
+      companyId,
+      incomeYear,
+      obligation: "aksjonaerregisteroppgaven",
+    }, operationId);
+  } catch (error) {
+    billingRetryRedirect(error, operationId, "billingRefundOperationId");
   }
 
   await supabase.from("audit_events").insert({
@@ -4871,7 +4712,7 @@ export async function markBillingRefundEligible(formData: FormData) {
     actor_id: user.id,
     category: "billing",
     action: "billing_refund_completed",
-    message: `Filingpakke refundert via ${event.providerReference}.`,
+    message: `Innsendingspakke refundert via ${event.providerReference}.`,
   });
 
   revalidatePath("/");
@@ -5545,9 +5386,9 @@ function reportRf1086ProductionFailure(operation: string, error: unknown) {
 
 export async function upsertProductionPilotEntitlement(formData: FormData) {
   if (!hasSupabaseEnv()) redirect("/operator?error=Supabase%20env%20mangler");
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/login");
+  const operationId = requiredFormUuid(formData, "operationId");
   let companyId: string;
   let ownerUserId: string;
   let systemUserRequestId: string;
@@ -5575,19 +5416,22 @@ export async function upsertProductionPilotEntitlement(formData: FormData) {
   ) {
     redirect("/operator?error=Ugyldig%20produksjonspilot-entitlement");
   }
-  const { error } = await supabase.rpc("manage_production_pilot_entitlement", {
-    p_id: entitlementId,
-    p_company_id: companyId,
-    p_user_id: ownerUserId,
-    p_income_year: incomeYear,
-    p_status: status,
-    p_billing_exempt: formData.get("billingExempt") === "on",
-    p_system_user_request_id: systemUserRequestId,
-    p_starts_at: startsAt.toISOString(),
-    p_expires_at: expiresAt.toISOString(),
-    p_evidence_reference: evidenceReference,
-  });
-  if (error) redirect(`/operator?error=${encodeURIComponent(error.message)}`);
+  try {
+    await manageProductionPilotEntitlement(accessToken, {
+      companyId,
+      entitlementId,
+      userId: ownerUserId,
+      incomeYear,
+      status: status as "pending" | "active" | "suspended" | "completed" | "revoked",
+      billingExempt: formData.get("billingExempt") === "on",
+      systemUserRequestId,
+      startsAt: startsAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      evidenceReference,
+    }, operationId);
+  } catch (error) {
+    redirect(`/operator?error=${encodeURIComponent(billingActionErrorMessage(error))}`);
+  }
   revalidatePath("/operator");
   revalidatePath("/filing/aksjonaerregisteroppgaven");
   redirect("/operator?pilot=updated");
@@ -5912,21 +5756,32 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
     redirect(rf1086ProductionErrorTarget(returnTo, "approval_expired"));
   }
   await requireSensitiveActionStepUp(supabase, user.id, approval.company_id, "production_filing");
-  const [{ data: preview }, { data: entitlement }, company] = await Promise.all([
+  const [{ data: preview }, billingSnapshot, billingDecision, company] = await Promise.all([
     supabase.from("filing_previews").select("*").eq("id", approval.preview_id).single(),
-    supabase.from("production_pilot_entitlements").select("*").eq("id", approval.entitlement_id).single(),
+    loadBillingSnapshot(accessToken, { companyIds: [approval.company_id] }),
+    loadBillingEntitlement(accessToken, {
+      companyId: approval.company_id,
+      incomeYear: approval.income_year,
+      obligation: "aksjonaerregisteroppgaven",
+      caseProfile: "rf1086_no_activity_v1",
+    }),
     loadAcceptedMembershipCompany(approval.company_id),
   ]);
-  if (!preview || !entitlement || !company || entitlement.user_id !== user.id || !preview.hovedskjema_xml) {
+  const entitlement = billingSnapshot.pilotEntitlements.find(
+    (candidate) => candidate.entitlementId === approval.entitlement_id,
+  );
+  if (
+    !preview || !entitlement || !company || entitlement.userId !== user.id
+    || !billingDecision.allowed
+    || billingDecision.pilotEntitlementId !== entitlement.entitlementId
+    || !preview.hovedskjema_xml
+  ) {
     redirect(rf1086ProductionErrorTarget(returnTo, "basis_unavailable"));
-  }
-  if (!entitlement.system_user_request_id) {
-    redirect(rf1086ProductionErrorTarget(returnTo, "connection_unavailable"));
   }
   const { data: systemUserRequest } = await supabase
     .from("system_user_requests")
     .select("id,company_id,initiating_owner_user_id,obligation,external_ref,status,preflight_verified_at")
-    .eq("id", entitlement.system_user_request_id)
+    .eq("id", entitlement.systemUserRequestId)
     .single();
   if (
     !systemUserRequest
@@ -5935,7 +5790,7 @@ export async function sendApprovedRf1086ProductionFiling(formData: FormData) {
     || systemUserRequest.obligation !== approval.obligation
     || systemUserRequest.status !== "accepted"
     || !systemUserRequest.preflight_verified_at
-    || systemUserRequest.external_ref !== entitlement.system_user_external_reference
+    || systemUserRequest.external_ref !== entitlement.systemUserExternalReference
   ) {
     redirect(rf1086ProductionErrorTarget(returnTo, "connection_unavailable"));
   }
@@ -6104,21 +5959,21 @@ export async function reconcileRf1086ProductionAction(
     return buildRf1086OwnerReconciliationActionState(storedState);
   }
 
-  const [company, approvalResult, entitlementResult] = await Promise.all([
+  // Feedback recovery uses the stored filing identity even after current
+  // billing eligibility expires; it never initiates a new submission.
+  const [company, approvalResult, billingSnapshot] = await Promise.all([
     loadAcceptedMembershipCompany(submission.company_id),
     supabase
       .from("filing_approval_snapshots")
       .select("id,entitlement_id,preview_id,company_id,user_id,income_year,obligation,case_profile,invalidated_at")
       .eq("id", submission.approval_id)
       .single(),
-    supabase
-      .from("production_pilot_entitlements")
-      .select("id,company_id,user_id,income_year,obligation,case_profile,system_user_request_id,system_user_external_reference")
-      .eq("id", submission.entitlement_id)
-      .single(),
+    loadBillingSnapshot(accessToken, { companyIds: [submission.company_id] }),
   ]);
   const approval = approvalResult.data;
-  const entitlement = entitlementResult.data;
+  const entitlement = billingSnapshot.pilotEntitlements.find(
+    (candidate) => candidate.entitlementId === submission.entitlement_id,
+  );
   if (
     !company
     || company.role !== "owner"
@@ -6126,18 +5981,16 @@ export async function reconcileRf1086ProductionAction(
     || !approval
     || approval.company_id !== submission.company_id
     || approval.user_id !== user.id
-    || approval.entitlement_id !== entitlement?.id
+    || approval.entitlement_id !== entitlement?.entitlementId
     || approval.income_year !== submission.income_year
     || approval.obligation !== submission.obligation
     || approval.case_profile !== submission.case_profile
-    || entitlementResult.error
     || !entitlement
-    || entitlement.company_id !== submission.company_id
-    || entitlement.user_id !== user.id
-    || entitlement.income_year !== submission.income_year
+    || entitlement.companyId !== submission.company_id
+    || entitlement.userId !== user.id
+    || entitlement.incomeYear !== submission.income_year
     || entitlement.obligation !== submission.obligation
-    || entitlement.case_profile !== submission.case_profile
-    || !entitlement.system_user_request_id
+    || entitlement.caseProfile !== submission.case_profile
   ) {
     return buildRf1086OwnerReconciliationActionState(storedState, {
       errorCode: "basis_unavailable",
@@ -6149,7 +6002,7 @@ export async function reconcileRf1086ProductionAction(
     supabase
       .from("system_user_requests")
       .select("id,company_id,initiating_owner_user_id,obligation,external_ref,status,preflight_verified_at")
-      .eq("id", entitlement.system_user_request_id)
+      .eq("id", entitlement.systemUserRequestId)
       .single(),
     supabase
       .from("filing_previews")
@@ -6165,7 +6018,7 @@ export async function reconcileRf1086ProductionAction(
     || systemUserRequest.obligation !== submission.obligation
     || systemUserRequest.status !== "accepted"
     || !systemUserRequest.preflight_verified_at
-    || systemUserRequest.external_ref !== entitlement.system_user_external_reference
+    || systemUserRequest.external_ref !== entitlement.systemUserExternalReference
     || previewError
     || !preview
     || preview.company_id !== submission.company_id

@@ -4,7 +4,7 @@ import test from "node:test";
 
 const root = new URL("..", import.meta.url);
 
-test("full-launch source configuration is exact off and public contracts expose no pilot authority", async () => {
+test("full-launch source configuration is exact off and public contracts expose no validation-observation authority", async () => {
   const [environment, openapi, main, migration, webServer] = await Promise.all([
     readFile(new URL(".env.example", root), "utf8"),
     readFile(new URL("contracts/openapi/talli-v1.json", root), "utf8"),
@@ -26,7 +26,7 @@ test("full-launch source configuration is exact off and public contracts expose 
   assert.match(environment, /^TALLI_VALIDATION_OBSERVATION_MODE=off$/mu);
   assert.doesNotMatch(
     openapi,
-    /validationObservationMode|validationRunId|pilotEntitlementId|validationCaseCode/u,
+    /validationObservationMode|validationRunId|validationCaseCode/u,
   );
   assert.match(main, /TALLI_VALIDATION_OBSERVATION_MODE/u);
   assert.match(main, /TALLI_PRODUCT_MODE/u);

@@ -37,13 +37,13 @@ const resourcePolicies = new Map([
   ],
   ["public.filing_submissions", "support_case_read_filing_submissions"],
   ["public.filing_readiness_snapshots", "support_case_read_filing_readiness"],
-  ["public.billing_accounts", "support_case_read_billing_accounts"],
-  ["public.billing_payment_events", "support_case_read_billing_events"],
+  ["billing.billing_accounts", "support_case_read_billing_accounts"],
+  ["billing.billing_payment_events", "support_case_read_billing_events"],
   ["public.authority_permissions", "support_case_read_authority_permissions"],
   ["public.authority_test_runs", "support_case_read_authority_runs"],
   ["public.system_user_requests", "support_case_read_system_user_requests"],
   [
-    "public.production_pilot_entitlements",
+    "billing.production_pilot_entitlements",
     "support_case_read_pilot_entitlements",
   ],
   ["public.filing_approval_snapshots", "support_case_read_approval_snapshots"],
@@ -300,7 +300,7 @@ test(
       select schemaname || '.' || tablename as relation, policyname, roles,
         coalesce(qual, '') as using_expression
       from pg_catalog.pg_policies
-      where schemaname in ('public', 'storage')
+      where schemaname in ('public', 'storage', 'billing')
     `);
       for (const [relation, policyName] of resourcePolicies) {
         const policy = policies.find(

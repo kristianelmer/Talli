@@ -278,6 +278,7 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
                   action={upsertProductionPilotEntitlement}
                 >
                   <h3>Eksakt RF-1086-produksjonspilot</h3>
+                  <input name="operationId" type="hidden" value={randomUUID()} />
                   <p>
                     Én navngitt eier, ett selskap, ett inntektsår og kun
                     profilen uten aktivitet.

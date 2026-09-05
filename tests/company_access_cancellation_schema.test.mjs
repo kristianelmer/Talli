@@ -23,6 +23,10 @@ const corporateGovernanceStageExitPath = new URL(
   "../supabase/contract-migrations/20260902110000_corporate_governance_contract.sql",
   import.meta.url,
 );
+const billingCapabilityPath = new URL(
+  "../supabase/migrations/20260905010000_billing_capability.sql",
+  import.meta.url,
+);
 
 function sql(path) {
   return readFileSync(path, "utf8");
@@ -80,6 +84,7 @@ test("archive route and generation triggers share one complete source inventory"
   const route = sql(archiveRoutePath);
   const investmentsStageExit = sql(investmentsStageExitPath);
   const corporateGovernanceStageExit = sql(corporateGovernanceStageExitPath);
+  const billingCapability = sql(billingCapabilityPath);
   const inventory = JSON.parse(sql(archiveInventoryPath));
   const declared = new Map(inventory.sources.map((item) => [item.table, item.scope]));
   const routeTables = new Set([...route.matchAll(/\.from\("([a-z0-9_]+)"\)/gu)].map((match) => match[1]));
@@ -100,6 +105,9 @@ test("archive route and generation triggers share one complete source inventory"
     "investments.share_sales",
     "investments.share_sale_allocations",
     "investments.received_dividends",
+    // Billing is loaded through the backend capability after its private-schema
+    // cutover; the archive generation trigger moved with the canonical table.
+    "billing.billing_accounts",
     // Corporate governance is likewise read through its generated lifecycle
     // query after the stage-exit contract removes the six public projections.
     "corporate_governance.owner_dividend_decisions",
@@ -134,6 +142,13 @@ test("archive route and generation triggers share one complete source inventory"
   ]) {
     legacyTriggerInventory.delete(legacyCorporateTable);
   }
+  assert.match(
+    billingCapability,
+    /alter table public\.billing_accounts set schema billing/iu,
+  );
+  const billingScope = legacyTriggerInventory.get("billing_accounts");
+  legacyTriggerInventory.delete("billing_accounts");
+  legacyTriggerInventory.set("billing.billing_accounts", billingScope);
   const canonicalInvestmentTriggerInventory = new Map(
     [...investmentsStageExit.matchAll(
       /before insert or update or delete on (investments\.[a-z0-9_]+) for each row\s+execute function public\.company_archive_track_source_write_v1\('(year|company)', 'company_id'\)/gu,

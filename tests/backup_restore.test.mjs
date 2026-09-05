@@ -155,12 +155,12 @@ test("backup manifest identifies launch-critical tables and object references", 
   assert.ok(manifest.launchCriticalTables.includes("annual_data"));
   assert.ok(manifest.launchCriticalTables.includes("authority_test_runs"));
   assert.ok(manifest.launchCriticalTables.includes("filing_submissions"));
-  assert.ok(manifest.launchCriticalTables.includes("production_pilot_entitlements"));
+  assert.ok(manifest.launchCriticalTables.includes("billing.production_pilot_entitlements"));
   assert.ok(manifest.launchCriticalTables.includes("filing_approval_snapshots"));
   assert.ok(manifest.launchCriticalTables.includes("production_filing_submissions"));
   assert.ok(manifest.launchCriticalTables.includes("production_filing_events"));
   assert.ok(
-    manifest.launchCriticalTables.indexOf("production_pilot_entitlements")
+    manifest.launchCriticalTables.indexOf("billing.production_pilot_entitlements")
       < manifest.launchCriticalTables.indexOf("filing_approval_snapshots")
       && manifest.launchCriticalTables.indexOf("filing_approval_snapshots")
       < manifest.launchCriticalTables.indexOf("production_filing_submissions")

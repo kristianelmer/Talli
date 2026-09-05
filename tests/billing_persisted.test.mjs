@@ -1,142 +1,111 @@
 import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
-import {
-  BillingValidationError,
-  applyBillingProviderEvent,
-  buildBillingAccount,
-  isDuplicateBillingEventError,
-  productionBillingGate,
-  simulateBillingProviderEvent,
-} from "../apps/web/app/lib/billing.ts";
+const actions = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
+const transport = readFileSync(
+  new URL("../apps/web/features/billing/transport.ts", import.meta.url),
+  "utf8",
+);
+const workspaceData = readFileSync(
+  new URL("../apps/web/app/lib/workspace-data.ts", import.meta.url),
+  "utf8",
+);
+const annualReadiness = readFileSync(
+  new URL("../apps/web/app/lib/annual-readiness.ts", import.meta.url),
+  "utf8",
+);
+const annualWorkspaceServer = readFileSync(
+  new URL("../apps/web/app/lib/annual-workspace-server.ts", import.meta.url),
+  "utf8",
+);
+const submissionReview = readFileSync(
+  new URL("../apps/web/app/components/annual-workspace/SubmissionReview.tsx", import.meta.url),
+  "utf8",
+);
+const billingAdapter = readFileSync(
+  new URL("../apps/backend/src/talli_backend/adapters/supabase_billing.py", import.meta.url),
+  "utf8",
+);
+const billingMigration = readFileSync(
+  new URL("../supabase/migrations/20260905010000_billing_capability.sql", import.meta.url),
+  "utf8",
+);
+const companyAccessBillingContract = readFileSync(
+  new URL("../supabase/migrations/20260905003000_company_access_billing_owner_subject.sql", import.meta.url),
+  "utf8",
+);
+const companyAccessBillingRollback = readFileSync(
+  new URL("../supabase/rollback/20260905003000_company_access_billing_owner_subject.sql", import.meta.url),
+  "utf8",
+);
 
-test("builds founder and standard billing accounts with launch prices", () => {
-  const founder = buildBillingAccount({ companyId: "company-id", pricingPlan: "founder", founderCohortNumber: 100 });
-  const standard = buildBillingAccount({ companyId: "company-id", pricingPlan: "standard" });
+test("web billing commands and queries cross only the generated backend client", () => {
+  assert.match(transport, /createTalliApiClient/);
+  assert.match(transport, /billingReadSnapshot/);
+  assert.match(transport, /billingReadEntitlement/);
+  assert.match(transport, /billingActivateSubscription/);
+  assert.match(transport, /billingRefundFilingPackage/);
+  assert.match(transport, /billingManagePilotEntitlement/);
 
-  assert.equal(founder.monthly_nok, 29);
-  assert.equal(founder.filing_package_nok, 299);
-  assert.equal(founder.founder_cohort_number, 100);
-  assert.equal(standard.monthly_nok, 49);
-  assert.equal(standard.filing_package_nok, 499);
+  assert.doesNotMatch(actions, /\.from\(["']billing_/);
+  assert.doesNotMatch(actions, /\.from\(["']production_pilot_entitlements/);
+  assert.doesNotMatch(workspaceData, /\.from\(["']billing_/);
+  assert.doesNotMatch(workspaceData, /\.from\(["']production_pilot_entitlements/);
 });
 
-test("blocks founder cohorts outside first 100 companies", () => {
-  assert.throws(
-    () => buildBillingAccount({ companyId: "company-id", pricingPlan: "founder", founderCohortNumber: 101 }),
-    (error) => error instanceof BillingValidationError && error.code === "founder_cohort_limit",
+test("the retired TypeScript policy modules stay removed", () => {
+  assert.equal(
+    existsSync(new URL("../apps/web/app/lib/billing.ts", import.meta.url)),
+    false,
   );
+  assert.equal(
+    existsSync(new URL("../apps/web/app/lib/production-pilot.ts", import.meta.url)),
+    false,
+  );
+  assert.doesNotMatch(annualReadiness, /productionBillingGate|evaluateProductionPilot/);
+  assert.match(annualReadiness, /billingDecision\.readinessAllowed/);
 });
 
-test("filing package charge waits for subscription and readiness", () => {
-  const inactive = buildBillingAccount({ companyId: "company-id", pricingPlan: "standard" });
-  const active = buildBillingAccount({ companyId: "company-id", pricingPlan: "standard", subscriptionActive: true });
-  const paid = buildBillingAccount({
-    companyId: "company-id",
-    pricingPlan: "standard",
-    subscriptionActive: true,
-    filingPackagePaid: true,
-  });
-
-  assert.equal(productionBillingGate(inactive, true).status, "subscription_required");
-  assert.equal(productionBillingGate(active, false).chargeAllowed, false);
-  assert.equal(productionBillingGate(active, true).status, "filing_package_required");
-  assert.equal(productionBillingGate(active, true).chargeAllowed, true);
-  assert.equal(productionBillingGate(paid, true).allowed, true);
+test("annual submission review renders the backend entitlement without a second policy", () => {
+  assert.match(annualWorkspaceServer, /loadBillingEntitlement/);
+  assert.match(submissionReview, /billingEntitlement\.allowed/);
+  assert.doesNotMatch(submissionReview, /billingAccounts|filing_package_paid|pricing_plan|founder/u);
 });
 
-test("unsupported cases remain no-charge and supported paid failures are refund eligible", () => {
-  const unsupported = buildBillingAccount({
-    companyId: "company-id",
-    pricingPlan: "standard",
-    subscriptionActive: true,
-    supportedCase: false,
-    noChargeReason: "Utenfor støtte.",
-  });
-  const refund = buildBillingAccount({
-    companyId: "company-id",
-    pricingPlan: "standard",
-    subscriptionActive: true,
-    filingPackagePaid: true,
-    refundEligible: true,
-  });
-
-  assert.equal(productionBillingGate(unsupported, true).status, "unsupported_case");
-  assert.equal(productionBillingGate(unsupported, true).chargeAllowed, false);
-  assert.equal(productionBillingGate(refund, true).status, "refund_eligible");
+test("billing uses the versioned company-access authorization seam", () => {
+  assert.match(billingAdapter, /company_access_is_accepted_owner_subject_v1/);
+  assert.doesNotMatch(billingAdapter, /from public\.company_memberships/u);
+  assert.doesNotMatch(billingMigration, /create or replace function public\.company_access_/iu);
+  assert.doesNotMatch(billingMigration, /from public\.company_memberships/iu);
+  assert.doesNotMatch(
+    billingMigration,
+    /grant select on public\.system_user_requests, public\.company_memberships\s+to billing_store_owner/iu,
+  );
+  assert.match(companyAccessBillingContract, /company_access_is_active_admin_v1\(\)/iu);
+  assert.match(companyAccessBillingContract, /company_access_has_fresh_mfa_v1\(\)/iu);
+  assert.match(companyAccessBillingContract, /from public\.company_memberships/iu);
+  assert.match(companyAccessBillingRollback, /drop function if exists\s+public\.company_access_/iu);
 });
 
-test("simulated provider events persist idempotent payment and refund references", () => {
-  const active = buildBillingAccount({ companyId: "company-id", pricingPlan: "founder", founderCohortNumber: 1 });
-  const subscriptionEvent = simulateBillingProviderEvent({
-    companyId: "company-id",
-    kind: "subscription",
-    amountNok: active.monthly_nok,
-  });
-  const subscribed = applyBillingProviderEvent(active, subscriptionEvent);
-
-  assert.equal(subscriptionEvent.idempotencyKey, "billing-company-id-subscription");
-  assert.equal(subscribed.subscription_active, true);
-  assert.equal(subscribed.subscription_provider_ref, "sim_subscription_company-id");
-
-  const filingEvent = simulateBillingProviderEvent({
-    companyId: "company-id",
-    kind: "filing_package",
-    amountNok: active.filing_package_nok,
-    incomeYear: 2025,
-  });
-  const paid = applyBillingProviderEvent(subscribed, filingEvent);
-
-  assert.equal(filingEvent.idempotencyKey, "billing-company-id-filing_package-2025");
-  assert.equal(paid.filing_package_paid, true);
-  assert.equal(paid.filing_package_payment_ref, "sim_filing_package_company-id_2025");
-
-  const declinedEvent = simulateBillingProviderEvent({
-    companyId: "company-id",
-    kind: "filing_package",
-    amountNok: active.filing_package_nok,
-    incomeYear: 2026,
-    status: "failed",
-  });
-  const declined = applyBillingProviderEvent(subscribed, declinedEvent);
-
-  assert.equal(declined.filing_package_paid, false);
-  assert.equal(declined.filing_package_payment_ref, undefined);
-
-  const refundEvent = simulateBillingProviderEvent({
-    companyId: "company-id",
-    kind: "refund",
-    amountNok: active.filing_package_nok,
-    incomeYear: 2025,
-    status: "refunded",
-  });
-  const refunded = applyBillingProviderEvent({ ...paid, refund_eligible: true }, refundEvent);
-
-  assert.equal(refunded.refund_completed, true);
-  assert.equal(refunded.refund_eligible, false);
-  assert.equal(refunded.refund_provider_ref, "sim_refund_company-id_2025");
-});
-
-test("simulated provider events handle duplicate webhooks and subscription cancellation", () => {
-  const active = buildBillingAccount({
-    companyId: "company-id",
-    pricingPlan: "standard",
-    subscriptionActive: true,
-    filingPackagePaid: true,
-  });
-  const cancellationEvent = simulateBillingProviderEvent({
-    companyId: "company-id",
-    kind: "subscription_cancellation",
-    amountNok: 0,
-    status: "canceled",
-  });
-  const canceled = applyBillingProviderEvent(active, cancellationEvent);
-
-  assert.equal(cancellationEvent.idempotencyKey, "billing-company-id-subscription_cancellation");
-  assert.equal(canceled.subscription_active, false);
-  assert.equal(canceled.filing_package_paid, true);
-  assert.equal(canceled.subscription_provider_ref, "sim_subscription_cancellation_company-id");
-  assert.equal(isDuplicateBillingEventError({ code: "23505" }), true);
-  assert.equal(isDuplicateBillingEventError({ message: "duplicate key value violates unique constraint" }), true);
-  assert.equal(isDuplicateBillingEventError({ code: "PGRST000" }), false);
+test("predecessor billing audit facts remain on every successor journey", () => {
+  for (const action of [
+    "billing_account_saved",
+    "billing_subscription_activated",
+    "billing_subscription_canceled",
+    "filing_package_paid",
+    "billing_unsupported_no_charge",
+    "billing_refund_completed",
+  ]) {
+    assert.match(actions, new RegExp(`action: "${action}"`, "u"));
+  }
+  for (const message of [
+    /Faktureringskonto lagret med/,
+    /Abonnement aktivert via/,
+    /Abonnement kansellert via/,
+    /Innsendingspakke betalt for/,
+    /Innsendingspakke refundert via/,
+  ]) {
+    assert.match(actions, message);
+  }
 });

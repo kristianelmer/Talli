@@ -1,0 +1,106 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-capability",
+  "name": "billing",
+  "path": "apps/backend/src/talli_backend/modules/billing",
+  "owner": "backend:billing",
+  "purpose": "Own billing plans, provider payment intents and outcomes, refunds, subscription cancellation, production-pilot exemptions, and the filing-entitlement decision.",
+  "documentation": "apps/backend/src/talli_backend/modules/billing/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.billing.public",
+  "exports": {
+    "commands": [
+      "ActivateSubscriptionCommand",
+      "CancelSubscriptionCommand",
+      "ConfigureBillingAccountCommand",
+      "ManageProductionPilotEntitlementCommand",
+      "MarkBillingUnsupportedCommand",
+      "PurchaseFilingPackageCommand",
+      "RefundFilingPackageCommand"
+    ],
+    "queries": [
+      "BillingEntitlementDecision",
+      "BillingEntitlementQuery",
+      "BillingSnapshot",
+      "BillingSnapshotQuery"
+    ],
+    "events": ["BillingPaymentEvent"],
+    "errors": ["BillingError", "BillingErrorCode"],
+    "identifiers": [
+      "BillingAccount",
+      "BillingCommands",
+      "BillingObligation",
+      "BillingPaymentEventId",
+      "BillingPaymentKind",
+      "BillingPaymentProvider",
+      "BillingPaymentStatus",
+      "BillingPersistence",
+      "BillingPlan",
+      "BillingPilotCaseProfile",
+      "BillingPricing",
+      "BillingProviderIntent",
+      "BillingProviderResult",
+      "BillingQueries",
+      "BillingStatus",
+      "ProductionPilotEntitlement",
+      "ProductionPilotEntitlementId",
+      "ProductionPilotStatus",
+      "SystemUserRequestReference",
+      "billing_persistence_adapter",
+      "billing_provider_adapter"
+    ]
+  },
+  "owns": {
+    "postgresSchemas": ["billing"],
+    "tables": [
+      "billing.billing_accounts",
+      "billing.billing_payment_events",
+      "billing.production_pilot_entitlements"
+    ],
+    "storageBuckets": [],
+    "projections": ["BillingEntitlementDecision", "BillingSnapshot"],
+    "migrations": "supabase/migrations/20260905010000_billing_capability.sql"
+  },
+  "ports": [
+    {
+      "name": "BillingPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.BillingPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": ["talli_backend.adapters.supabase_billing.SupabaseBillingSession"]
+    },
+    {
+      "name": "BillingPaymentProvider",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.BillingPaymentProvider",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_provider_adapter",
+      "adapters": ["talli_backend.adapters.simulation_billing.SimulationBillingProvider"]
+    }
+  ],
+  "dependencies": [],
+  "allowedImports": [
+    "__future__",
+    "asyncio",
+    "collections.abc",
+    "dataclasses",
+    "datetime",
+    "enum",
+    "talli_backend.shared.kernel",
+    "typing",
+    "uuid"
+  ],
+  "forbiddenResponsibilities": [
+    "Filing-content, authority, readiness, membership, or authentication policy",
+    "Provider SDK, PostgreSQL, FastAPI, Pydantic, Supabase, or web transport types in the public contract",
+    "Browser-side billing persistence or a second filing-entitlement implementation",
+    "Production payment-provider activation without explicit owner approval"
+  ],
+  "tests": {
+    "policy": "apps/backend/tests/test_billing.py",
+    "equivalence": "apps/backend/tests/test_billing_equivalence.py",
+    "provider": "apps/backend/tests/test_billing_provider.py",
+    "api": "apps/backend/tests/test_billing_api.py",
+    "database": "tests/billing_database_runtime.test.mjs",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

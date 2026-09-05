@@ -11,7 +11,6 @@ import { buildPersistedCompanyArchive } from "../apps/web/app/lib/archive.ts";
 import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed } from "../apps/web/app/lib/annual-data.ts";
 import { evaluateAnnualReadinessGates } from "../apps/web/app/lib/annual-readiness.ts";
 import { productionAuthorityGate } from "../apps/web/app/lib/authority-permission.ts";
-import { buildBillingAccount, productionBillingGate } from "../apps/web/app/lib/billing.ts";
 import { buildCompanyTaxReturnEvidencePersistence } from "../apps/web/app/lib/company-tax-return-submission.ts";
 import { assertNoBlockingFilingOverrides, validateFilingOverride } from "../apps/web/app/lib/filing-overrides.ts";
 import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../apps/web/app/lib/rf1086.ts";
@@ -33,6 +32,23 @@ import {
 } from "../apps/web/app/lib/tax-settlement.ts";
 
 const requiredEnv = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
+
+const readyBillingEntitlements = (companyId, incomeYear) => Object.fromEntries([
+  "aksjonaerregisteroppgaven",
+  "skattemelding",
+  "aarsregnskap",
+].map((obligation) => [obligation, {
+  companyId,
+  incomeYear,
+  obligation,
+  status: "ready_for_production_filing",
+  allowed: true,
+  chargeAllowed: false,
+  readinessAllowed: true,
+  billingExempt: false,
+  message: "Billing and filing-package entitlement are ready.",
+  pilotEntitlementId: null,
+}]));
 
 const invitationTokenHash = async (token) => createHash("sha256").update(token).digest("hex");
 const bankSourceHash = (value) => createHash("sha256").update(value).digest("hex");
@@ -1605,13 +1621,17 @@ test(
     assert.ifError(launchSignoffsAfterImportError);
     assert.deepEqual(launchSignoffsAfterImport, launchSignoffsBeforeImport);
 
-    assert.throws(() => buildBillingAccount({ companyId, pricingPlan: "founder", founderCohortNumber: 101 }), /Founder-kull/);
-    const billingAccount = buildBillingAccount({
-      companyId,
-      pricingPlan: "founder",
-      founderCohortNumber: 1,
-      subscriptionActive: true,
-    });
+    const billingAccount = {
+      company_id: companyId,
+      pricing_plan: "founder",
+      monthly_nok: 29,
+      filing_package_nok: 299,
+      founder_cohort_number: 1,
+      subscription_active: true,
+      filing_package_paid: false,
+      supported_case: true,
+      refund_eligible: false,
+    };
     const { error: billingInsertError } = await owner.from("billing_accounts").insert({
       ...billingAccount,
       updated_by: ownerUser.id,
@@ -1625,8 +1645,8 @@ test(
     assert.ifError(reloadedBillingError);
     assert.equal(reloadedBilling.pricing_plan, "founder");
     assert.equal(reloadedBilling.monthly_nok, 29);
-    assert.equal(productionBillingGate(reloadedBilling, false).chargeAllowed, false);
-    assert.equal(productionBillingGate(reloadedBilling, true).chargeAllowed, true);
+    assert.equal(reloadedBilling.subscription_active, true);
+    assert.equal(reloadedBilling.filing_package_paid, false);
 
     const { error: billingUnsupportedError } = await owner
       .from("billing_accounts")
@@ -1644,8 +1664,8 @@ test(
       .eq("company_id", companyId)
       .single();
     assert.ifError(unsupportedBillingError);
-    assert.equal(productionBillingGate(unsupportedBilling, true).status, "unsupported_case");
-    assert.equal(productionBillingGate(unsupportedBilling, true).chargeAllowed, false);
+    assert.equal(unsupportedBilling.supported_case, false);
+    assert.equal(unsupportedBilling.filing_package_paid, false);
 
     const { error: billingPaidError } = await owner
       .from("billing_accounts")
@@ -1664,7 +1684,8 @@ test(
       .eq("company_id", companyId)
       .single();
     assert.ifError(paidBillingError);
-    assert.equal(productionBillingGate(paidBilling, true).allowed, true);
+    assert.equal(paidBilling.subscription_active, true);
+    assert.equal(paidBilling.filing_package_paid, true);
     const { data: annualAuthorityPermissions, error: annualAuthorityPermissionsError } = await owner
       .from("authority_permissions")
       .select("company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled")
@@ -1696,7 +1717,7 @@ test(
       overrides: [],
       locks: [],
       annualData: reloadedAnnualData,
-      billingAccount: paidBilling,
+      billingEntitlements: readyBillingEntitlements(companyId, 2025),
       authorityPermissions: annualAuthorityPermissions,
       filingPreviews: [filingPreview],
       filingSubmissions: [],
@@ -1723,7 +1744,7 @@ test(
     assert.equal(persistedReadinessSnapshots.length, 3);
     assert.equal(persistedReadinessSnapshots.find((snapshot) => snapshot.obligation === "aksjonaerregisteroppgaven").ready, true);
     assert.ok(persistedReadinessSnapshots.find((snapshot) => snapshot.obligation === "aarsregnskap").warnings.length);
-    assert.equal(productionBillingGate(paidBilling, persistedReadinessSnapshots.find((snapshot) => snapshot.obligation === "aksjonaerregisteroppgaven").ready).allowed, true);
+    assert.equal(persistedReadinessSnapshots.find((snapshot) => snapshot.obligation === "aksjonaerregisteroppgaven").ready, true);
     const { data: reloadedReadinessSnapshots, error: reloadedReadinessError } = await owner
       .from("filing_readiness_snapshots")
       .select("id, obligation, status, ready, hard_blocks, warnings, accepted_warnings")
@@ -1760,7 +1781,7 @@ test(
       .eq("company_id", companyId)
       .single();
     assert.ifError(refundBillingError);
-    assert.equal(productionBillingGate(refundBilling, true).status, "refund_eligible");
+    assert.equal(refundBilling.refund_eligible, true);
     const { error: outsiderBillingError } = await outsider.from("billing_accounts").update({ filing_package_paid: false }).eq("company_id", companyId);
     assert.ifError(outsiderBillingError);
     const { data: outsiderBillingRows, error: outsiderBillingRowsError } = await outsider

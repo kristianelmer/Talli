@@ -19,6 +19,21 @@ const company = {
   created_at: "2026-01-01T00:00:00Z",
 };
 
+function readyBillingDecision(obligation) {
+  return {
+    companyId: company.id,
+    incomeYear: 2025,
+    obligation,
+    status: "ready_for_production_filing",
+    allowed: true,
+    chargeAllowed: false,
+    readinessAllowed: true,
+    billingExempt: false,
+    message: "Billing and filing-package entitlement are ready.",
+    pilotEntitlementId: null,
+  };
+}
+
 function baseInput(overrides = {}) {
   return {
     company,
@@ -96,18 +111,11 @@ function baseInput(overrides = {}) {
       updated_by: "owner",
       updated_at: "2026-01-01T00:00:00Z",
     },
-    billingAccount: {
-      company_id: company.id,
-      pricing_plan: "founder",
-      monthly_nok: 29,
-      filing_package_nok: 299,
-      founder_cohort_number: 1,
-      subscription_active: true,
-      filing_package_paid: true,
-      supported_case: true,
-      refund_eligible: false,
-      no_charge_reason: null,
-    },
+    billingEntitlements: Object.fromEntries([
+      "aksjonaerregisteroppgaven",
+      "skattemelding",
+      "aarsregnskap",
+    ].map((obligation) => [obligation, readyBillingDecision(obligation)])),
     authorityPermissions: [
       { obligation: "aksjonaerregisteroppgaven", confirmed_at: "2026-01-01T00:00:00Z", production_enabled: true },
       { obligation: "skattemelding", confirmed_at: "2026-01-01T00:00:00Z", production_enabled: true },
@@ -148,7 +156,7 @@ test("evaluates ready state separately for all annual obligations", () => {
 });
 
 test("returns hard blocks for missing permission and billing", () => {
-  const snapshots = evaluateAnnualReadinessGates(baseInput({ billingAccount: null, authorityPermissions: [] }));
+  const snapshots = evaluateAnnualReadinessGates(baseInput({ billingEntitlements: {}, authorityPermissions: [] }));
   const rf1086 = snapshots.find((snapshot) => snapshot.obligation === "aksjonaerregisteroppgaven");
 
   assert.equal(rf1086.status, "blocked");

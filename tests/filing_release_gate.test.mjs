@@ -13,18 +13,28 @@ const systemregisterEvidence = readFileSync(
   "utf8",
 );
 
-const readyBilling = {
-  company_id: "company-id",
-  pricing_plan: "founder",
-  monthly_nok: 29,
-  filing_package_nok: 299,
-  founder_cohort_number: 1,
-  subscription_active: true,
-  filing_package_paid: true,
-  supported_case: true,
-  refund_eligible: false,
-  refund_completed: false,
-  no_charge_reason: null,
+function billingDecision(obligation, overrides = {}) {
+  return {
+    companyId: "company-id",
+    incomeYear: 2025,
+    obligation,
+    status: "ready_for_production_filing",
+    allowed: true,
+    chargeAllowed: false,
+    readinessAllowed: true,
+    billingExempt: false,
+    message: "Billing and filing-package entitlement are ready.",
+    pilotEntitlementId: null,
+    ...overrides,
+  };
+}
+
+const readyBillingEntitlements = {
+  aksjonaerregisteroppgaven: billingDecision("aksjonaerregisteroppgaven", {
+    pilotEntitlementId: "4da89eb7-cf0f-4baf-91ce-e496ff482d79",
+  }),
+  skattemelding: billingDecision("skattemelding"),
+  aarsregnskap: billingDecision("aarsregnskap"),
 };
 
 const readyPermissions = [
@@ -72,27 +82,6 @@ const readyAdapterCapabilities = {
   aarsregnskap: { productionImplemented: true, productionEnabled: true },
 };
 
-const rfPilotContext = {
-  companyId: "company-id",
-  userId: "owner",
-  incomeYear: 2025,
-  obligation: "aksjonaerregisteroppgaven",
-  caseProfile: "rf1086_no_activity_v1",
-};
-
-const rfPilotEntitlement = {
-  id: "rf-pilot",
-  company_id: "company-id",
-  user_id: "owner",
-  income_year: 2025,
-  obligation: "aksjonaerregisteroppgaven",
-  case_profile: "rf1086_no_activity_v1",
-  status: "active",
-  billing_exempt: false,
-  starts_at: "2026-06-01T00:00:00.000Z",
-  expires_at: "2026-07-01T00:00:00.000Z",
-};
-
 test("release evidence keeps authority and filing switches off after local browser proof", () => {
   for (const document of [liveReleaseGate, systemregisterEvidence]) {
     assert.match(document, /TALLI_AUTHORITY_OPS_ENABLED=false/);
@@ -112,8 +101,7 @@ test("keeps all production filing gates disabled without authority, billing, ste
   const gates = buildFilingReleaseGates({
     authorityPermissions: [],
     authorityTestRuns: [],
-    billingAccount: null,
-    filingReadyByObligation: {},
+    billingEntitlements: {},
     stepUpContext: { actorId: "owner", mfaVerifiedAt: null },
     launchSignoffs: [],
     now: new Date("2026-06-17T10:00:00.000Z"),
@@ -132,12 +120,7 @@ test("blocks production when authority evidence or filing-specific signoff is mi
   const gates = buildFilingReleaseGates({
     authorityPermissions: readyPermissions,
     authorityTestRuns: readyAuthorityEvidence.filter((item) => item.obligation !== "skattemelding"),
-    billingAccount: readyBilling,
-    filingReadyByObligation: {
-      aksjonaerregisteroppgaven: true,
-      skattemelding: true,
-      aarsregnskap: true,
-    },
+    billingEntitlements: readyBillingEntitlements,
     stepUpContext: {
       actorId: "owner",
       mfaVerifiedAt: "2026-06-17T09:55:00.000Z",
@@ -156,27 +139,20 @@ test("blocks production when authority evidence or filing-specific signoff is mi
   assert.equal(tax.status, "production_disabled");
   assert.ok(tax.disabledReasons.includes("test_evidence_missing"));
   assert.equal(annual.status, "production_disabled");
-  assert.ok(annual.disabledReasons.includes("pilot_entitlement_context_missing"));
+  assert.ok(annual.disabledReasons.includes("pilot_entitlement_required"));
 });
 
 test("marks only the exactly entitled RF obligation production ready when every release gate passes", () => {
   const gates = buildFilingReleaseGates({
     authorityPermissions: readyPermissions,
     authorityTestRuns: readyAuthorityEvidence,
-    billingAccount: readyBilling,
-    filingReadyByObligation: {
-      aksjonaerregisteroppgaven: true,
-      skattemelding: true,
-      aarsregnskap: true,
-    },
+    billingEntitlements: readyBillingEntitlements,
     stepUpContext: {
       actorId: "owner",
       mfaVerifiedAt: "2026-06-17T09:55:00.000Z",
     },
     launchSignoffs: readyLaunchSignoffs,
     adapterCapabilities: readyAdapterCapabilities,
-    pilotContext: rfPilotContext,
-    pilotEntitlements: [rfPilotEntitlement],
     now: new Date("2026-06-17T10:00:00.000Z"),
   });
 
@@ -194,12 +170,7 @@ test("cannot report production ready when a live adapter is unimplemented or dis
   const gates = buildFilingReleaseGates({
     authorityPermissions: readyPermissions,
     authorityTestRuns: readyAuthorityEvidence,
-    billingAccount: readyBilling,
-    filingReadyByObligation: {
-      aksjonaerregisteroppgaven: true,
-      skattemelding: true,
-      aarsregnskap: true,
-    },
+    billingEntitlements: readyBillingEntitlements,
     stepUpContext: {
       actorId: "owner",
       mfaVerifiedAt: "2026-06-17T09:55:00.000Z",
@@ -221,12 +192,7 @@ test("fresh AAL2 and enabled adapters cannot replace final founder confirmation"
   const gates = buildFilingReleaseGates({
     authorityPermissions: readyPermissions,
     authorityTestRuns: readyAuthorityEvidence,
-    billingAccount: readyBilling,
-    filingReadyByObligation: {
-      aksjonaerregisteroppgaven: true,
-      skattemelding: true,
-      aarsregnskap: true,
-    },
+    billingEntitlements: readyBillingEntitlements,
     stepUpContext: {
       actorId: "owner",
       mfaVerifiedAt: "2026-06-17T09:55:00.000Z",
@@ -248,12 +214,7 @@ test("a stale restore rehearsal blocks every production filing", () => {
   const gates = buildFilingReleaseGates({
     authorityPermissions: readyPermissions,
     authorityTestRuns: readyAuthorityEvidence,
-    billingAccount: readyBilling,
-    filingReadyByObligation: {
-      aksjonaerregisteroppgaven: true,
-      skattemelding: true,
-      aarsregnskap: true,
-    },
+    billingEntitlements: readyBillingEntitlements,
     stepUpContext: {
       actorId: "owner",
       mfaVerifiedAt: "2026-06-17T09:55:00.000Z",

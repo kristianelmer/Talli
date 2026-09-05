@@ -9,7 +9,6 @@ import {
   listAnnualData,
   listAuthorityPermissions,
   listBankTransactions,
-  listBillingAccounts,
   listDocumentsForCompanies,
   listFilingOverrides,
   listFilingPreviews,
@@ -28,6 +27,7 @@ import {
   listPresentedInvestmentPositions,
 } from "../../features/investments";
 import { getCurrentSessionAccessToken } from "./supabase/auth-session.ts";
+import { loadBillingEntitlement } from "../../features/billing";
 
 export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext) => {
   if (!Number.isInteger(context.incomeYear) || context.incomeYear < 2000 || context.incomeYear > 2100) notFound();
@@ -62,7 +62,7 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     entriesResult,
     snapshotsResult,
     commentsResult,
-    billingResult,
+    billingEntitlement,
     authorityResult,
   ] = await Promise.all([
     listDocumentsForCompanies(companyIds),
@@ -79,7 +79,12 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     listLedgerEntries(companyIds),
     listFilingReadinessSnapshots(companyIds),
     listFilingReviewComments(companyIds),
-    listBillingAccounts(companyIds),
+    loadBillingEntitlement(accessToken, {
+      companyId: context.companyId,
+      incomeYear: context.incomeYear,
+      obligation: "aksjonaerregisteroppgaven",
+      caseProfile: "rf1086_no_activity_v1",
+    }),
     listAuthorityPermissions(companyIds),
   ]);
 
@@ -98,7 +103,6 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     ["entries", entriesResult.error],
     ["snapshots", snapshotsResult.error],
     ["comments", commentsResult.error],
-    ["billing", billingResult.error],
     ["authority", authorityResult.error],
   ].filter((entry) => entry[1]);
   if (failedSources.length) {
@@ -124,7 +128,6 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     entries: entriesResult.entries,
     snapshots: snapshotsResult.readinessSnapshots,
     comments: commentsResult.comments,
-    billingAccounts: billingResult.billingAccounts,
     authorityPermissions: authorityResult.authorityPermissions,
   });
   const deadlines = buildDeadlineDashboard({ incomeYear: context.incomeYear, submissions: records.submissions });
@@ -139,5 +142,5 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     submissions: records.submissions,
   });
 
-  return { model, records, deadlines };
+  return { model, records, deadlines, billingEntitlement };
 });

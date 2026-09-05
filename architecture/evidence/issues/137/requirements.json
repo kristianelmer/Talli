@@ -1,0 +1,338 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#137",
+  "source": "https://github.com/kristianelmer/Talli/issues/137",
+  "sourceCheckedAt": "2026-09-05T02:10:01Z",
+  "entryBlockers": [
+    {
+      "issue": "#191",
+      "requiredState": "CLOSED",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/191#issuecomment-5548132452"
+    },
+    {
+      "issue": "#148",
+      "requiredState": "CLOSED",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/148#issuecomment-5546585275"
+    }
+  ],
+  "decisionBoundary": {
+    "migrationOrderSource": "https://github.com/kristianelmer/Talli/issues/132#issuecomment-5083588592",
+    "routeSource": "https://github.com/kristianelmer/Talli/issues/165",
+    "rule": "#137 moves billing policy and data behind the Python public contract while retaining only the simulated provider. It selects or activates no paid provider and cannot advance production filing or launch authority."
+  },
+  "criteria": [
+    {
+      "id": "GH-137-A1",
+      "requirement": "Billing and filing-entitlement decisions come from the backend public API.",
+      "evidence": [
+        {
+          "path": "apps/backend/src/talli_backend/modules/billing/public.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/backend/src/talli_backend/modules/billing/service.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/backend/tests/test_billing_equivalence.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/web/features/billing/transport.ts",
+          "command": "npm run test:billing"
+        }
+      ],
+      "status": "implemented-and-focused-tests-passed"
+    },
+    {
+      "id": "GH-137-A2",
+      "requirement": "The existing billing page presents equivalent supported, blocked, refund, cancellation, plan and price states.",
+      "evidence": [
+        {
+          "path": "apps/web/app/(owner)/billing/page.tsx",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/web/app/(owner)/workspace/page.tsx",
+          "command": "npm run typecheck"
+        },
+        {
+          "path": "apps/web/app/components/annual-workspace/SubmissionReview.tsx",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/web/tests/billing-transport.test.mjs",
+          "command": "npm run test:billing"
+        }
+      ],
+      "status": "implemented-with-backend-owned-pricing-and-focused-tests-passed"
+    },
+    {
+      "id": "GH-137-A3",
+      "requirement": "Provider events are idempotent and cannot bypass filing gates.",
+      "evidence": [
+        {
+          "path": "apps/backend/tests/test_billing.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/backend/tests/test_billing_provider.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/backend/tests/test_supabase_billing_runtime.py",
+          "command": "npm run test:supabase:local"
+        },
+        {
+          "path": "tests/billing_database_runtime.test.mjs",
+          "command": "npm run test:supabase:local"
+        }
+      ],
+      "status": "implemented-with-replay-and-quarantine-tests-passed"
+    },
+    {
+      "id": "GH-137-A4",
+      "requirement": "Company scope and sensitive-action authorization are enforced.",
+      "evidence": [
+        {
+          "path": "apps/backend/src/talli_backend/application/billing_session.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/backend/src/talli_backend/adapters/supabase_billing.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/backend/src/talli_backend/adapters/supabase_billing.py",
+          "command": "npm run test:supabase:local"
+        },
+        {
+          "path": "supabase/migrations/20260905010000_billing_capability.sql",
+          "command": "npm run test:supabase:local"
+        },
+        {
+          "path": "supabase/migrations/20260905003000_company_access_billing_owner_subject.sql",
+          "command": "npm run test:supabase:local"
+        }
+      ],
+      "status": "implemented-and-fresh-runtime-tests-passed"
+    },
+    {
+      "id": "GH-137-A5",
+      "requirement": "One entitlement path remains and provider-port contract tests pass.",
+      "evidence": [
+        {
+          "path": "apps/backend/src/talli_backend/modules/billing/service.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/backend/tests/test_billing_provider.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "contracts/openapi/talli-v1.json",
+          "command": "npm run generate:openapi && npm run generate:api-client && git diff --exit-code"
+        }
+      ],
+      "status": "implemented-and-focused-tests-passed"
+    },
+    {
+      "id": "GH-137-A6",
+      "requirement": "Duplicate TypeScript billing policy and active-stage compatibility code are removed.",
+      "evidence": [
+        {
+          "path": "tests/billing_persisted.test.mjs",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "supabase/contract-migrations/20260905013000_billing_contract.sql",
+          "command": "npm run test:supabase:local"
+        },
+        {
+          "path": "architecture/compatibility.json",
+          "command": "npm run check:architecture"
+        }
+      ],
+      "status": "implemented-and-static-boundaries-passed"
+    },
+    {
+      "id": "GH-137-A7",
+      "requirement": "The complete billing stage exit criteria from #132 pass before authority connections begin.",
+      "evidence": [
+        {
+          "path": "architecture/evidence/customer-ready-gates/2716429a6699ae1b280524d960f97233736c715a.json",
+          "command": "npm run gate:customer-ready",
+          "revision": "2716429a6699ae1b280524d960f97233736c715a",
+          "evidenceDigest": "sha256:a79cb9f31019d7e18dc9bccf5d4ef83cdc55e8be2769cb692cf49990de2b8ba9"
+        },
+        {
+          "path": "architecture/evidence/customer-ready-gates/b137088c5cb6d6abd66761c05b332e318ab8b05d.json",
+          "command": "npm run gate:customer-ready -- --previous 2716429a6699ae1b280524d960f97233736c715a",
+          "revision": "b137088c5cb6d6abd66761c05b332e318ab8b05d",
+          "evidenceDigest": "sha256:f3beb3a1f39c0d20ec52509f30f66db1b2f7677c026c8f41142d5abe7249ae9f"
+        },
+        {
+          "path": "architecture/compatibility.json",
+          "command": "npm run check:architecture"
+        }
+      ],
+      "status": "passed-two-linked-immutable-gates-and-architecture-stage-exit-registered"
+    }
+  ],
+  "completeGates": [
+    {
+      "revision": "2716429a6699ae1b280524d960f97233736c715a",
+      "previousPassingRevision": null,
+      "evidenceCommittedRevision": "b137088c5cb6d6abd66761c05b332e318ab8b05d",
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/2716429a6699ae1b280524d960f97233736c715a.json",
+      "evidenceDigest": "sha256:a79cb9f31019d7e18dc9bccf5d4ef83cdc55e8be2769cb692cf49990de2b8ba9",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:84d14de242f2c0885f9eb18534469195ea55d2b0639191574bb5d185a1b1fa14"
+    },
+    {
+      "revision": "b137088c5cb6d6abd66761c05b332e318ab8b05d",
+      "previousPassingRevision": "2716429a6699ae1b280524d960f97233736c715a",
+      "evidenceCommittedRevision": "d399e0c4bb68d8589e8845ed06891ad17f0e7f09",
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/b137088c5cb6d6abd66761c05b332e318ab8b05d.json",
+      "evidenceDigest": "sha256:f3beb3a1f39c0d20ec52509f30f66db1b2f7677c026c8f41142d5abe7249ae9f",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:10eabdbf38c55fdf57d1cbfe6a04a684abd41d891b445e06fcb6144c9fb36ae3"
+    }
+  ],
+  "preservedGates": {
+    "bankProvider": "#189",
+    "productionFiling": "#193",
+    "representativeCompanies": "#197",
+    "humanLaunchAuthority": "#198",
+    "paymentProvider": "simulation-only; no paid provider selected or activated",
+    "productionPromotion": "not authorized by #137"
+  },
+  "localValidation": {
+    "billingFocused": {
+      "backendPassed": 66,
+      "nodePassed": 14,
+      "failed": 0
+    },
+    "webTypecheck": "passed",
+    "architecture": "passed",
+    "freshSupabase": {
+      "status": "superseded-by-final-linked-complete-gates",
+      "command": "npm run test:supabase:local",
+      "revision": "3e7f0e1a00c34de909b65f02c9e036c78b7cc772",
+      "blockingAdvisorFindings": 0,
+      "ledgerLifecyclePassed": 70,
+      "bankingLifecyclePassed": 21,
+      "investmentsLifecyclePassed": 33,
+      "documentsLifecyclePassed": 3,
+      "marketingMeasurementPassed": 2,
+      "validationObservationPythonPassed": 17,
+      "validationObservationPythonSkipped": 1,
+      "validationObservationDatabasePassed": 1,
+      "databaseContractsPassed": 65,
+      "ownerBrowserPassed": 17,
+      "hostedAuthorityRehearsalPassed": 1,
+      "corporateGovernancePassed": 26,
+      "billingRuntimePassed": 1,
+      "billingLifecyclePassed": 1,
+      "failed": 0,
+      "note": "Historical earlier fresh-stack run. Final-candidate fresh Supabase/database/browser/rollback/advisor evidence is in completeGates R1 and R2."
+    },
+    "customerReadyGates": "passed twice on ordered immutable revisions with unchanged application code; evidence committed separately",
+    "billingProviderRecovery": {
+      "command": "npm run test:billing-database-lifecycle",
+      "runtimePassed": 6,
+      "lifecyclePassed": 1,
+      "note": "Fresh isolated stack; independent-connection pre-I/O durability, timeout/process/storage failures, concurrent reconciliation, and pending-intent retention across twice-repeated rollback/recutover."
+    }
+  },
+  "review": {
+    "initialCandidate": "3ecebb007f710e0dc7d8a9f22a86d01ac17c609b",
+    "axes": [
+      "repository-standards",
+      "issue-specification"
+    ],
+    "materialFindingsCorrected": [
+      "readiness is rechecked after filing-package payment",
+      "billing-exempt pilot entitlement skips billing only and still requires filing readiness",
+      "payment and refund retries replay before mutable-state preconditions",
+      "ambiguous provider results retain a durable intent for read-only reconciliation without granting entitlement",
+      "sensitive owner/admin authorization precedes payment replay lookup and provider invocation",
+      "filing-package finalization rechecks readiness in the same database statement that records the provider outcome",
+      "payment replay preserves the original charged amount across later pricing changes",
+      "non-provider commands use durable request-fingerprint receipts",
+      "concurrent non-provider retries claim and complete receipts in one database transaction",
+      "expansion rollback quarantines durable command receipts and recutover restores them without data loss",
+      "all web pricing renders from the backend snapshot",
+      "the filing page consumes the backend entitlement decision instead of rebuilding pilot policy",
+      "the exact production-pilot release gate remains fail closed",
+      "contract rollback restores the authenticated predecessor pilot writer",
+      "entitlement queries authorize company scope before any billing-state read",
+      "ambiguous browser billing outcomes preserve the exact operation key for safe replay",
+      "annual submission review consumes the backend entitlement decision without a founder-plan rule",
+      "account reconfiguration preserves the predecessor reset behavior",
+      "pilot owner validation uses a separately migrated company-access-owned predicate instead of billing-owned membership policy or direct table access",
+      "a frozen baseline oracle and the canonical service run against the same IDs, clock, defaults, prices, errors, gates, provider events, state effects, replay, failure injection, and complete pilot identity/status/time/exemption cases",
+      "customer-visible billing decisions and errors use Norwegian product language",
+      "provider intent commits before I/O and unknown results reconcile by original key, amount and obligation without executing twice",
+      "lost response, process loss, failed result persistence and concurrent settlement recover against real restricted-role Postgres",
+      "closed pilot case-profile type preserves open-string entitlement-query HTTP compatibility",
+      "four explicit typed HTTP handlers replace string-based dispatch",
+      "persistence bounds statement, lock and full transaction/commit deadlines and preserves recovery after lock contention",
+      "existing filing feedback recovery uses stored identity after pilot expiry/suspension or changed readiness, while new submission eligibility remains enforced",
+      "shared web billing presentation and annual query transport mappings remove duplicate consumers"
+    ],
+    "previousFinalReview": {
+      "revision": "abd77efd72e789372901d8e2c29c02f8fd372a89",
+      "repositoryStandards": "PASS",
+      "issueSpecification": "PASS",
+      "worktree": "clean",
+      "reviewedAgainst": "4f807fe4239a208c573054b14cbed478277d1a2e"
+    },
+    "finalReview": {
+      "revision": "2716429a6699ae1b280524d960f97233736c715a",
+      "repositoryStandards": "PASS",
+      "issueSpecification": "PASS",
+      "standardsFindings": 0,
+      "specificationFindings": 0,
+      "worktree": "clean",
+      "reviewedAgainst": "4f807fe4239a208c573054b14cbed478277d1a2e",
+      "checkpoint": "https://github.com/kristianelmer/Talli/issues/137#issuecomment-5550009132"
+    }
+  },
+  "closeState": "exact independent Standards/Spec pass, replacement linked complete gates pass, and stage exit registered; protected integration pending",
+  "supersededCompleteGates": [
+    {
+      "revision": "abd77efd72e789372901d8e2c29c02f8fd372a89",
+      "previousPassingRevision": null,
+      "evidenceCommittedRevision": "281ba127f645c90fda98ca74cd344f8a87f194ba",
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/abd77efd72e789372901d8e2c29c02f8fd372a89.json",
+      "evidenceDigest": "sha256:cf482b016cb4cf34819e71f2ca0c50ed81ef371a20062b4a2d724c43ed5f0825",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:8fc2318bd8e5f2c0a7788c5127d72fc3ac18eeee5ab31c4f2c6341b69e22f84f"
+    },
+    {
+      "revision": "281ba127f645c90fda98ca74cd344f8a87f194ba",
+      "previousPassingRevision": "abd77efd72e789372901d8e2c29c02f8fd372a89",
+      "evidenceCommittedRevision": "f3752b98ed5c5862682e9d87bb7677b93b2b1643",
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/281ba127f645c90fda98ca74cd344f8a87f194ba.json",
+      "evidenceDigest": "sha256:fb6301a04e9fee45b91337cde7ebec8727cbfb82a708aed17aca9fd8cf0dde6f",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:9a222b19317fd0f334ba559ce4cb8b3b3c11a28ad777afe4b574549bfff3b0a1"
+    }
+  ],
+  "supersededGateReason": "Provider intent/reconciliation application correction requires replacement linked immutable R1/R2; prior gates remain evidence only for their original tested revisions."
+}

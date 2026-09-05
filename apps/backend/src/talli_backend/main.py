@@ -25,6 +25,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAdapter
 from talli_backend.adapters.supabase_banking import compose_banking_application
+from talli_backend.adapters.simulation_billing import SimulationBillingProvider
+from talli_backend.adapters.supabase_billing import SupabaseBillingAdapter
 from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
 from talli_backend.adapters.supabase_corporate_governance import (
     compose_corporate_governance_application,
@@ -58,6 +60,11 @@ from talli_backend.application.banking_session import (
     BankingAuthenticationError,
     BankingSessionFactory,
 )
+from talli_backend.application.billing_session import (
+    BillingAuthenticationError,
+    BillingSessionFactory,
+)
+from talli_backend.application.billing_workflow import BillingWorkflow
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceAuthenticationError,
     CorporateGovernanceSessionFactory,
@@ -165,6 +172,33 @@ from talli_backend.modules.company_access.public import (
     SupportAccessGrantResponse,
     SupportCaseOpeningResponse,
     SupportCaseSnapshotResponse,
+)
+from talli_backend.modules.billing.public import (
+    ActivateSubscriptionCommand,
+    BillingAccount,
+    BillingEntitlementDecision,
+    BillingEntitlementQuery,
+    BillingError,
+    BillingErrorCode,
+    BillingObligation,
+    BillingPaymentEvent,
+    BillingPaymentKind,
+    BillingPaymentProvider,
+    BillingPaymentStatus,
+    BillingPlan,
+    BillingSnapshot,
+    BillingSnapshotQuery,
+    BillingStatus,
+    CancelSubscriptionCommand,
+    ConfigureBillingAccountCommand,
+    ManageProductionPilotEntitlementCommand,
+    MarkBillingUnsupportedCommand,
+    ProductionPilotEntitlement,
+    ProductionPilotEntitlementId,
+    ProductionPilotStatus,
+    PurchaseFilingPackageCommand,
+    RefundFilingPackageCommand,
+    SystemUserRequestReference,
 )
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference as CorporateAccountingEntryReference,
@@ -363,6 +397,8 @@ from talli_backend.shared.kernel import (
     IncomeYear,
     LocalDate,
     Money,
+    Timestamp,
+    UserId,
 )
 
 API_VERSION = "v1"
@@ -429,6 +465,118 @@ class StrictTransportModel(TransportModel):
         populate_by_name=True,
         extra="forbid",
     )
+
+
+class BillingConfigureWire(StrictTransportModel):
+    company_id: UUID
+    pricing_plan: BillingPlan
+    founder_cohort_number: int | None = Field(default=None, ge=1, le=100)
+
+
+class BillingCompanyWire(StrictTransportModel):
+    company_id: UUID
+
+
+class BillingFilingPackageWire(BillingCompanyWire):
+    income_year: int = Field(ge=2000, le=2100)
+    obligation: BillingObligation = BillingObligation.SHAREHOLDER_REGISTER
+
+
+class BillingUnsupportedWire(BillingCompanyWire):
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class BillingPilotEntitlementCommandWire(BillingCompanyWire):
+    entitlement_id: UUID | None = None
+    user_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    status: ProductionPilotStatus
+    billing_exempt: bool
+    system_user_request_id: UUID
+    starts_at: datetime
+    expires_at: datetime
+    evidence_reference: str = Field(min_length=1, max_length=1000)
+
+
+class BillingAccountWire(TransportModel):
+    company_id: UUID
+    pricing_plan: BillingPlan
+    monthly_nok: int
+    filing_package_nok: int
+    founder_cohort_number: int | None
+    subscription_active: bool
+    filing_package_paid: bool
+    supported_case: bool
+    refund_eligible: bool
+    refund_completed: bool
+    no_charge_reason: str | None
+    provider_customer_reference: str | None
+    subscription_provider_reference: str | None
+    filing_package_payment_reference: str | None
+    refund_provider_reference: str | None
+    updated_by: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class BillingPricingWire(TransportModel):
+    plan: BillingPlan
+    monthly_nok: int
+    filing_package_nok: int
+
+
+class BillingPaymentEventWire(TransportModel):
+    event_id: UUID
+    company_id: UUID
+    provider: str
+    provider_reference: str
+    idempotency_key: str
+    kind: BillingPaymentKind
+    status: BillingPaymentStatus
+    amount_nok: int
+    income_year: int | None
+    created_by: UUID
+    created_at: datetime
+    replayed: bool
+
+
+class BillingPilotEntitlementWire(TransportModel):
+    entitlement_id: UUID
+    company_id: UUID
+    user_id: UUID
+    income_year: int
+    obligation: BillingObligation
+    case_profile: str
+    status: ProductionPilotStatus
+    billing_exempt: bool
+    system_user_request_id: UUID
+    system_user_external_reference: str
+    starts_at: datetime
+    expires_at: datetime
+    evidence_reference: str
+    approved_by: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class BillingEntitlementDecisionWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    obligation: BillingObligation
+    status: BillingStatus
+    allowed: bool
+    charge_allowed: bool
+    readiness_allowed: bool
+    billing_exempt: bool
+    message: str
+    pilot_entitlement_id: UUID | None
+
+
+class BillingSnapshotWire(TransportModel):
+    accounts: list[BillingAccountWire]
+    payment_events: list[BillingPaymentEventWire]
+    pilot_entitlements: list[BillingPilotEntitlementWire]
+    pricing: list[BillingPricingWire]
 
 
 MARKETING_REASONS_BY_EVENT: dict[MarketingEventName, tuple[MarketingReasonCode, ...]] = {
@@ -2903,6 +3051,8 @@ def create_app(
     documents_session_factory: DocumentsSessionFactory | None = None,
     banking_session_factory: BankingSessionFactory | None = None,
     banking_providers: Mapping[str, BankDataProvider] | None = None,
+    billing_session_factory: BillingSessionFactory | None = None,
+    billing_payment_provider: BillingPaymentProvider | None = None,
     marketing_measurement_gateway: MarketingMeasurementGateway | None = None,
     marketing_measurement_internal_key: str | None = None,
     validation_observer: PassiveValidationObserver | None = None,
@@ -2939,6 +3089,18 @@ def create_app(
         documents_application,
     )
     banking_application = compose_banking_application(banking_session_factory)
+    billing_sessions = (
+        billing_session_factory
+        if billing_session_factory is not None
+        else SupabaseBillingAdapter.from_environment()
+    )
+    billing_provider = billing_payment_provider or SimulationBillingProvider()
+
+    async def billing_workflow(
+        credentials: HTTPAuthorizationCredentials | None,
+    ) -> BillingWorkflow:
+        session = await billing_sessions.session(bearer_token(credentials))
+        return BillingWorkflow(session, billing_provider)
 
     async def investments_session_with_bank_validation(
         credentials: HTTPAuthorizationCredentials | None,
@@ -3252,6 +3414,48 @@ def create_app(
                 detail=error.message or "The banking request could not be completed.",
             ) from None
 
+    async def billing_call(call: Callable[[], Awaitable[ResponseT]]) -> ResponseT:
+        try:
+            return await call()
+        except BillingAuthenticationError:
+            raise ApiProblem(
+                status=401,
+                code="AUTHENTICATION_REQUIRED",
+                title="Authentication required",
+                detail="A valid session is required.",
+            ) from None
+        except BillingError as error:
+            statuses = {
+                ErrorCategory.INVALID_INPUT: 422,
+                ErrorCategory.NOT_FOUND: 404,
+                ErrorCategory.CONFLICT: 409,
+                ErrorCategory.FORBIDDEN: 403,
+                ErrorCategory.PRECONDITION_FAILED: 409,
+                ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
+            }
+            details = {
+                BillingErrorCode.INVALID_INPUT: "Ugyldig faktureringsforespørsel.",
+                BillingErrorCode.NOT_FOUND: "Faktureringskonto mangler.",
+                BillingErrorCode.FORBIDDEN: "Du har ikke tilgang til faktureringskontoen.",
+                BillingErrorCode.STEP_UP_REQUIRED: "Ny tofaktorbekreftelse kreves.",
+                BillingErrorCode.IDEMPOTENCY_KEY_REUSED: "Operasjonsnøkkelen er allerede brukt med andre data.",
+                BillingErrorCode.IDEMPOTENCY_IN_PROGRESS: "Faktureringsoperasjonen behandles allerede.",
+                BillingErrorCode.SUBSCRIPTION_REQUIRED: "Aktivt abonnement kreves før produksjonsinnsending.",
+                BillingErrorCode.FILING_NOT_READY: "Innsendingskontrollen må være klar før innsendingspakken kan betales.",
+                BillingErrorCode.FILING_PACKAGE_REQUIRED: "Innsendingspakken må betales før produksjonsinnsending.",
+                BillingErrorCode.UNSUPPORTED_CASE: "Saken er utenfor Talli-støtte. Ikke ta betalt for innsendingspakken.",
+                BillingErrorCode.REFUND_NOT_ALLOWED: "Kun en støttet, betalt innsendingspakke kan refunderes.",
+                BillingErrorCode.PROVIDER_DISABLED: "Betalingsleverandøren er deaktivert.",
+                BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN: "Betalingsutfallet er ukjent og må avstemmes.",
+                BillingErrorCode.DEPENDENCY_UNAVAILABLE: "Fakturering er midlertidig utilgjengelig.",
+            }
+            raise ApiProblem(
+                status=statuses[error.category],
+                code=error.code,
+                title="Faktureringsforespørselen mislyktes",
+                detail=error.message or details[BillingErrorCode(error.code)],
+            ) from None
+
     def ledger_input(factory: Callable[[], ResponseT]) -> ResponseT:
         try:
             return factory()
@@ -3269,6 +3473,107 @@ def create_app(
             return factory()
         except (TypeError, ValueError, BankingError):
             raise BankingError.invalid_input("BANKING_INVALID_INPUT") from None
+
+    def billing_input(factory: Callable[[], ResponseT]) -> ResponseT:
+        try:
+            return factory()
+        except (TypeError, ValueError, BillingError):
+            raise BillingError.invalid() from None
+
+    def billing_account_wire(value: BillingAccount) -> BillingAccountWire:
+        return BillingAccountWire(
+            company_id=UUID(str(value.company_id)),
+            pricing_plan=value.pricing.plan,
+            monthly_nok=value.pricing.monthly_nok,
+            filing_package_nok=value.pricing.filing_package_nok,
+            founder_cohort_number=value.founder_cohort_number,
+            subscription_active=value.subscription_active,
+            filing_package_paid=value.filing_package_paid,
+            supported_case=value.supported_case,
+            refund_eligible=value.refund_eligible,
+            refund_completed=value.refund_completed,
+            no_charge_reason=value.no_charge_reason,
+            provider_customer_reference=value.provider_customer_reference,
+            subscription_provider_reference=value.subscription_provider_reference,
+            filing_package_payment_reference=value.filing_package_payment_reference,
+            refund_provider_reference=value.refund_provider_reference,
+            updated_by=UUID(str(value.updated_by)),
+            created_at=value.created_at.value,
+            updated_at=value.updated_at.value,
+        )
+
+    def billing_event_wire(value: BillingPaymentEvent) -> BillingPaymentEventWire:
+        return BillingPaymentEventWire(
+            event_id=UUID(str(value.event_id)),
+            company_id=UUID(str(value.company_id)),
+            provider=value.provider,
+            provider_reference=value.provider_reference,
+            idempotency_key=str(value.idempotency_key),
+            kind=value.kind.value,
+            status=value.status.value,
+            amount_nok=value.amount_nok,
+            income_year=int(value.income_year) if value.income_year else None,
+            created_by=UUID(str(value.created_by)),
+            created_at=value.created_at.value,
+            replayed=value.replayed,
+        )
+
+    def billing_pilot_wire(
+        value: ProductionPilotEntitlement,
+    ) -> BillingPilotEntitlementWire:
+        return BillingPilotEntitlementWire(
+            entitlement_id=UUID(str(value.entitlement_id)),
+            company_id=UUID(str(value.company_id)),
+            user_id=UUID(str(value.user_id)),
+            income_year=int(value.income_year),
+            obligation=value.obligation,
+            case_profile=value.case_profile.value,
+            status=value.status,
+            billing_exempt=value.billing_exempt,
+            system_user_request_id=UUID(str(value.system_user_request_id)),
+            system_user_external_reference=value.system_user_external_reference,
+            starts_at=value.starts_at.value,
+            expires_at=value.expires_at.value,
+            evidence_reference=value.evidence_reference,
+            approved_by=UUID(str(value.approved_by)),
+            created_at=value.created_at.value,
+            updated_at=value.updated_at.value,
+        )
+
+    def billing_decision_wire(
+        value: BillingEntitlementDecision,
+    ) -> BillingEntitlementDecisionWire:
+        return BillingEntitlementDecisionWire(
+            company_id=UUID(str(value.company_id)),
+            income_year=int(value.income_year),
+            obligation=value.obligation,
+            status=value.status.value,
+            allowed=value.allowed,
+            charge_allowed=value.charge_allowed,
+            readiness_allowed=value.readiness_allowed,
+            billing_exempt=value.billing_exempt,
+            message=value.message,
+            pilot_entitlement_id=(
+                UUID(str(value.pilot_entitlement_id))
+                if value.pilot_entitlement_id
+                else None
+            ),
+        )
+
+    def billing_snapshot_wire(value: BillingSnapshot) -> BillingSnapshotWire:
+        return BillingSnapshotWire(
+            accounts=[billing_account_wire(item) for item in value.accounts],
+            payment_events=[billing_event_wire(item) for item in value.payment_events],
+            pilot_entitlements=[billing_pilot_wire(item) for item in value.pilot_entitlements],
+            pricing=[
+                BillingPricingWire(
+                    plan=item.plan,
+                    monthly_nok=item.monthly_nok,
+                    filing_package_nok=item.filing_package_nok,
+                )
+                for item in value.pricing
+            ],
+        )
 
     @application.exception_handler(ApiProblem)
     async def api_problem_handler(request: Request, error: ApiProblem) -> JSONResponse:
@@ -8632,6 +8937,271 @@ def create_app(
             {"status": "ready"},
             headers={"Cache-Control": "no-store"},
         )
+
+    billing_errors: Any = {
+        status: {
+            "description": "Billing request failed.",
+            "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+            "content": {
+                "application/problem+json": {
+                    "schema": ProblemDetails.model_json_schema(by_alias=True)
+                }
+            },
+        }
+        for status in (400, 401, 403, 404, 409, 422, 503)
+    }
+    billing_success = {"headers": {"X-Request-ID": REQUEST_ID_HEADER}}
+
+    def billing_metadata(workflow: BillingWorkflow, request: Request, key: str):
+        return {
+            "actor_id": workflow.actor_id,
+            "correlation_id": CorrelationId(request.state.request_id),
+            "idempotency_key": IdempotencyKey(key),
+        }
+
+    @application.get(
+        "/api/v1/billing/snapshot",
+        operation_id="billingReadSnapshot",
+        response_model=BillingSnapshotWire,
+        responses={200: {"description": "Canonical billing snapshot."} | billing_success}
+        | billing_errors,
+        tags=["billing"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def read_billing_snapshot(
+        request: Request,
+        company_ids: Annotated[list[UUID], Query(alias="companyIds", min_length=1, max_length=100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BillingSnapshotWire:
+        async def execute() -> BillingSnapshotWire:
+            workflow = await billing_workflow(credentials)
+            query = billing_input(
+                lambda: BillingSnapshotQuery(
+                    company_ids=tuple(CompanyId(str(value)) for value in company_ids),
+                    actor_id=workflow.actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                )
+            )
+            return billing_snapshot_wire(await workflow.snapshot(query))
+
+        return await billing_call(execute)
+
+    @application.get(
+        "/api/v1/billing/entitlement",
+        operation_id="billingReadEntitlement",
+        response_model=BillingEntitlementDecisionWire,
+        responses={200: {"description": "Server-side filing entitlement decision."} | billing_success}
+        | billing_errors,
+        tags=["billing"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def read_billing_entitlement(
+        request: Request,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        obligation: BillingObligation,
+        case_profile: Annotated[str | None, Query(alias="caseProfile", max_length=100)] = None,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BillingEntitlementDecisionWire:
+        async def execute() -> BillingEntitlementDecisionWire:
+            workflow = await billing_workflow(credentials)
+            query = billing_input(
+                lambda: BillingEntitlementQuery(
+                    company_id=CompanyId(str(company_id)),
+                    actor_id=workflow.actor_id,
+                    correlation_id=CorrelationId(request.state.request_id),
+                    income_year=IncomeYear(income_year),
+                    obligation=obligation,
+                    case_profile=case_profile,
+                )
+            )
+            return billing_decision_wire(await workflow.entitlement(query))
+
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/accounts/configuration",
+        operation_id="billingConfigureAccount",
+        response_model=BillingAccountWire,
+        responses={200: {"description": "Billing account configured."} | billing_success}
+        | billing_errors,
+        tags=["billing"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def configure_billing_account(
+        request: Request,
+        command: BillingConfigureWire,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BillingAccountWire:
+        async def execute() -> BillingAccountWire:
+            workflow = await billing_workflow(credentials)
+            domain = billing_input(lambda: ConfigureBillingAccountCommand(
+                company_id=CompanyId(str(command.company_id)),
+                **billing_metadata(workflow, request, idempotency_key),
+                pricing_plan=command.pricing_plan,
+                founder_cohort_number=command.founder_cohort_number,
+            ))
+            return billing_account_wire(await workflow.configure_account(domain))
+
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/subscriptions/activation",
+        operation_id="billingActivateSubscription",
+        response_model=BillingPaymentEventWire,
+        responses={200: {"description": "Simulated subscription activation completed."} | billing_success} | billing_errors,
+        tags=["billing"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def activate_billing_subscription(
+        request: Request,
+        command: BillingCompanyWire,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BillingPaymentEventWire:
+        async def execute() -> BillingPaymentEventWire:
+            workflow = await billing_workflow(credentials)
+            domain = billing_input(lambda: ActivateSubscriptionCommand(
+                company_id=CompanyId(str(command.company_id)),
+                **billing_metadata(workflow, request, idempotency_key),
+            ))
+            return billing_event_wire(await workflow.activate_subscription(domain))
+
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/subscriptions/cancellation",
+        operation_id="billingCancelSubscription",
+        response_model=BillingPaymentEventWire,
+        responses={200: {"description": "Subscription cancellation completed."} | billing_success} | billing_errors,
+        tags=["billing"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def cancel_billing_subscription(
+        request: Request,
+        command: BillingCompanyWire,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BillingPaymentEventWire:
+        async def execute() -> BillingPaymentEventWire:
+            workflow = await billing_workflow(credentials)
+            domain = billing_input(lambda: CancelSubscriptionCommand(
+                company_id=CompanyId(str(command.company_id)),
+                **billing_metadata(workflow, request, idempotency_key),
+            ))
+            return billing_event_wire(await workflow.cancel_subscription(domain))
+
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/filing-package/purchase",
+        operation_id="billingPurchaseFilingPackage",
+        response_model=BillingPaymentEventWire,
+        responses={200: {"description": "Eligible simulated filing-package purchase completed."} | billing_success} | billing_errors,
+        tags=["billing"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def purchase_billing_filing_package(
+        request: Request,
+        command: BillingFilingPackageWire,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BillingPaymentEventWire:
+        async def execute() -> BillingPaymentEventWire:
+            workflow = await billing_workflow(credentials)
+            domain = billing_input(lambda: PurchaseFilingPackageCommand(
+                company_id=CompanyId(str(command.company_id)),
+                **billing_metadata(workflow, request, idempotency_key),
+                income_year=IncomeYear(command.income_year),
+                obligation=command.obligation,
+            ))
+            return billing_event_wire(await workflow.purchase_filing_package(domain))
+
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/filing-package/refund",
+        operation_id="billingRefundFilingPackage",
+        response_model=BillingPaymentEventWire,
+        responses={200: {"description": "Eligible simulated refund completed."} | billing_success} | billing_errors,
+        tags=["billing"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def refund_billing_filing_package(
+        request: Request,
+        command: BillingFilingPackageWire,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BillingPaymentEventWire:
+        async def execute() -> BillingPaymentEventWire:
+            workflow = await billing_workflow(credentials)
+            domain = billing_input(lambda: RefundFilingPackageCommand(
+                company_id=CompanyId(str(command.company_id)),
+                **billing_metadata(workflow, request, idempotency_key),
+                income_year=IncomeYear(command.income_year),
+            ))
+            return billing_event_wire(await workflow.refund_filing_package(domain))
+
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/unsupported",
+        operation_id="billingMarkUnsupported",
+        response_model=BillingAccountWire,
+        responses={200: {"description": "Case marked unsupported and no-charge."} | billing_success} | billing_errors,
+        tags=["billing"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def mark_billing_unsupported(
+        request: Request,
+        command: BillingUnsupportedWire,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BillingAccountWire:
+        async def execute() -> BillingAccountWire:
+            workflow = await billing_workflow(credentials)
+            domain = billing_input(lambda: MarkBillingUnsupportedCommand(
+                company_id=CompanyId(str(command.company_id)),
+                **billing_metadata(workflow, request, idempotency_key),
+                reason=command.reason,
+            ))
+            return billing_account_wire(await workflow.mark_unsupported(domain))
+
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/pilot-entitlements",
+        operation_id="billingManagePilotEntitlement",
+        response_model=BillingPilotEntitlementWire,
+        responses={200: {"description": "Production pilot entitlement managed."} | billing_success} | billing_errors,
+        tags=["billing"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def manage_billing_pilot_entitlement(
+        request: Request,
+        command: BillingPilotEntitlementCommandWire,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> BillingPilotEntitlementWire:
+        async def execute() -> BillingPilotEntitlementWire:
+            workflow = await billing_workflow(credentials)
+            domain = billing_input(lambda: ManageProductionPilotEntitlementCommand(
+                company_id=CompanyId(str(command.company_id)),
+                **billing_metadata(workflow, request, idempotency_key),
+                entitlement_id=(ProductionPilotEntitlementId(str(command.entitlement_id)) if command.entitlement_id else None),
+                user_id=UserId(str(command.user_id)),
+                income_year=IncomeYear(command.income_year),
+                status=command.status,
+                billing_exempt=command.billing_exempt,
+                system_user_request_id=SystemUserRequestReference(str(command.system_user_request_id)),
+                starts_at=Timestamp(command.starts_at),
+                expires_at=Timestamp(command.expires_at),
+                evidence_reference=command.evidence_reference,
+            ))
+            return billing_pilot_wire(await workflow.manage_pilot_entitlement(domain))
+
+        return await billing_call(execute)
 
     generated_openapi = application.openapi
 

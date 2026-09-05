@@ -37,7 +37,7 @@ export function buildReadinessInput(data: WorkspaceData): AnnualReadinessInput |
     overrides: scope(data.overrides),
     locks: scope(data.locks),
     annualData: data.primaryAnnualData ?? null,
-    billingAccount: data.primaryBillingAccount ?? null,
+    billingEntitlements: data.primaryBillingEntitlements,
     authorityPermissions: data.primaryAuthorityPermissions,
     filingPreviews: scope(data.previews),
     filingSubmissions: scope(data.submissions),

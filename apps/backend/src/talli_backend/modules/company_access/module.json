@@ -19,7 +19,7 @@
     "tables": ["public.companies", "public.company_cancellations", "public.company_deletion_reviews", "public.company_eligibility_assessments", "public.company_invitations", "public.company_memberships", "public.company_year_acceptances", "public.company_year_admissions", "public.customer_agreement_acceptances", "public.support_access_grants", "public.support_access_operation_receipts", "public.support_case_openings", "public.support_operators"],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "supabase/migrations/20260902095000_company_access_corporate_governance_identity.sql"
+    "migrations": "supabase/migrations/20260905003000_company_access_billing_owner_subject.sql"
   },
   "ports": [
     {

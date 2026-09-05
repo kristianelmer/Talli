@@ -2,8 +2,7 @@ import type { AuthorityTestRun } from "./authority-test-evidence.ts";
 import { authorityTestEvidenceGate } from "./authority-test-evidence.ts";
 import type { AuthorityObligation, AuthorityPermission } from "./authority-permission.ts";
 import { authorityObligationLabel, authorityObligations, productionAuthorityGate } from "./authority-permission.ts";
-import type { BillingAccount } from "./billing.ts";
-import { productionBillingGate } from "./billing.ts";
+import type { BillingEntitlementDecisionWire } from "../../features/billing";
 import {
   evaluateLaunchSignoff,
   type LaunchSignoff,
@@ -14,12 +13,6 @@ import {
   currentAuthorityAdapterCapabilities,
   type AuthorityAdapterCapabilities,
 } from "./authority-adapters.ts";
-import {
-  evaluateProductionPilotEntitlement,
-  isBillingExemptProductionPilot,
-  type ProductionPilotContext,
-  type ProductionPilotEntitlement,
-} from "./production-pilot.ts";
 
 export type FilingReleaseGateStatus = "production_ready" | "production_disabled";
 
@@ -58,49 +51,33 @@ function launchSignoffDisabledReason(input: {
 export function buildFilingReleaseGates(input: {
   authorityPermissions: Pick<AuthorityPermission, "obligation" | "confirmed_at" | "production_enabled">[];
   authorityTestRuns: Pick<AuthorityTestRun, "obligation" | "status" | "receipt_reference" | "archive_reference" | "recorded_at">[];
-  billingAccount: BillingAccount | null;
-  filingReadyByObligation: Partial<Record<AuthorityObligation, boolean>>;
+  billingEntitlements: Partial<Record<AuthorityObligation, BillingEntitlementDecisionWire>>;
   stepUpContext: StepUpContext;
   launchSignoffs: LaunchSignoff[];
   adapterCapabilities?: AuthorityAdapterCapabilities;
-  pilotContext?: ProductionPilotContext;
-  pilotEntitlements?: ProductionPilotEntitlement[];
   now?: Date;
 }): FilingReleaseGate[] {
   const adapterCapabilities = input.adapterCapabilities ?? currentAuthorityAdapterCapabilities();
   const now = input.now ?? new Date();
   return authorityObligations.map((obligation) => {
     const disabledReasons: string[] = [];
-    const pilotContext = input.pilotContext?.obligation === obligation
-      ? input.pilotContext
-      : null;
-    const pilotEntitlement = pilotContext
-      ? (input.pilotEntitlements ?? []).find((candidate) =>
-        candidate.company_id === pilotContext.companyId
-        && candidate.user_id === pilotContext.userId
-        && candidate.income_year === pilotContext.incomeYear
-        && candidate.obligation === obligation
-        && candidate.case_profile === pilotContext.caseProfile
-      ) ?? null
-      : null;
-    const pilotGate = pilotContext
-      ? evaluateProductionPilotEntitlement(pilotContext, pilotEntitlement, now)
-      : { allowed: false, reason: "pilot_entitlement_context_missing" };
-    if (!pilotGate.allowed) disabledReasons.push(pilotGate.reason);
-    const billingExemptPilot = pilotGate.allowed && isBillingExemptProductionPilot(pilotEntitlement);
+    const billingDecision = input.billingEntitlements[obligation];
+    const hasExactPilotEntitlement = billingDecision?.pilotEntitlementId != null;
+    const billingExemptPilot = billingDecision?.billingExempt === true;
+
+    if (!hasExactPilotEntitlement) {
+      disabledReasons.push("pilot_entitlement_required");
+    }
 
     const authorityGate = productionAuthorityGate(input.authorityPermissions, obligation);
     if (!authorityGate.allowed) {
       disabledReasons.push(authorityGate.status);
     }
 
-    if (!input.billingAccount && !billingExemptPilot) {
+    if (!billingDecision) {
       disabledReasons.push("billing_account_missing");
-    } else if (input.billingAccount) {
-      const billingGate = productionBillingGate(input.billingAccount, Boolean(input.filingReadyByObligation[obligation]));
-      if (!billingGate.allowed) {
-        disabledReasons.push(billingGate.status);
-      }
+    } else if (!billingDecision.allowed) {
+      disabledReasons.push(billingDecision.status);
     }
 
     const evidenceGate = authorityTestEvidenceGate(input.authorityTestRuns, obligation);
