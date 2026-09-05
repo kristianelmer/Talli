@@ -17,7 +17,8 @@
       "PurchaseFilingPackageCommand",
       "RefundFilingPackageCommand",
       "StartAnnualCheckoutCommand",
-      "CancelAnnualRenewalCommand"
+      "CancelAnnualRenewalCommand",
+      "RequestAnnualRefundCommand"
     ],
     "queries": [
       "BillingEntitlementDecision",
@@ -88,7 +89,14 @@
       "annual_billing_offer",
       "AnnualBillingReadPersistence",
       "AnnualCheckoutOperations",
-      "annual_checkout_operations"
+      "annual_checkout_operations",
+      "AnnualRefundCaseId",
+      "AnnualRefundOperation",
+      "AnnualRefundResolution",
+      "AnnualRefundClaim",
+      "AnnualRefundPersistence",
+      "annual_refund_decision",
+      "settle_annual_refund"
     ]
   },
   "owns": {
@@ -175,6 +183,13 @@
       "adapters": [
         "talli_backend.adapters.supabase_annual_billing.PostgresAnnualBillingReadSession"
       ]
+    },
+    {
+      "name": "AnnualRefundPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualRefundPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": []
     }
   ],
   "dependencies": [],
@@ -218,7 +233,8 @@
     "annualApi": "apps/backend/tests/test_annual_billing_api.py",
     "legacyRetirement": "apps/backend/tests/test_legacy_billing_retirement.py",
     "legacyRetirementDatabase": "apps/backend/tests/test_legacy_billing_retirement_runtime.py",
-    "annualCheckoutApi": "apps/backend/tests/test_annual_checkout_api.py"
+    "annualCheckoutApi": "apps/backend/tests/test_annual_checkout_api.py",
+    "annualRefund": "apps/backend/tests/test_annual_refund_service.py"
   },
   "compatibilityExceptions": []
 }

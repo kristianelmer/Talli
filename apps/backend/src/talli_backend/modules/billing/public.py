@@ -899,6 +899,111 @@ class AnnualCheckoutPersistence(Protocol):
         ...
 
 
+class AnnualRefundCaseId(_UuidId):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class RequestAnnualRefundCommand(_BillingCommand):
+    purchase_id: AnnualPurchaseId
+    source_reference: str
+
+    def __post_init__(self) -> None:
+        # A lookup key only, never caller-supplied refund eligibility or money.
+        if (not isinstance(self.source_reference, str) or not self.source_reference.strip()
+                or len(self.source_reference) > 1000 or len(str(self.idempotency_key)) > 200):
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundOperation:
+    purchase_id: AnnualPurchaseId
+    captured_minor: int
+    provider: str
+    provider_account: str
+    intent: AnnualProviderIntent
+    previous_refunded_minor: int
+    captured_at: Timestamp
+    observation: AnnualProviderObservation | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundResolution:
+    case_id: AnnualRefundCaseId
+    request: RequestAnnualRefundCommand
+    source_digest: str
+    facts: AnnualRefundFacts
+    decision: AnnualRefundDecision
+    operation: AnnualRefundOperation | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundClaim:
+    resolution: AnnualRefundResolution
+    newly_claimed: bool
+
+
+class AnnualRefundPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def claim_refund(self, command: RequestAnnualRefundCommand) -> AnnualRefundClaim:
+        """Reauthorize current owner/fresh MFA before every replay or new claim.
+
+        Resolve the lookup reference to immutable source-owned incident, purchase,
+        first-purchase and production-submission facts; never trust browser facts
+        or mutable legacy readiness. Unavailable source authority fails closed.
+        Claim under purchase-before-operation locks. Revalidate source identity,
+        company/year, original capture and current refund balance before commit.
+        Billing's annual_refund_decision owns policy; retain source digest/facts,
+        liability, five-business-day initiation deadline and an immediate local
+        renewal stop even when no provider can execute. Retain export/records.
+
+        Exact command replay preserves the original case and intent, rejecting a
+        reused key with changed actor/company/purchase/source. A unique source case
+        must not create duplicate liability. Reserve against every pending/unknown
+        refund and current cumulative refunds; return no operation when no amount
+        is owed or another operation defers it. No operation is NOT settlement.
+        Cap the reserved amount at actual captured money as well as policy entitlement;
+        a partial capture keeps the original full charge identity. Failed operations
+        retain terminal evidence and outstanding liability; a later authorized
+        attempt requires a distinct operation and a fresh balance/reservation check.
+        Only the caller winning a newly committed operation may execute it.
+        No worker may fabricate an owner session; worker and support-case authority
+        need their own explicit implementations before those callers are wired.
+        """
+        ...
+
+    async def settle_refund(
+        self, resolution: AnnualRefundResolution, observation: AnnualProviderObservation,
+    ) -> AnnualRefundResolution:
+        """Reauthorize, lock purchase then operation, and settle against latest state.
+
+        Use settle_annual_refund. Commit operation evidence and monotonic original
+        purchase totals atomically; do not increment money from the caller's stale
+        snapshot or duplicate operation success. Preserve the first capture,
+        original money, cancellation, liability and export dates. Only confirmed
+        full cumulative refund changes paid purchase status to refunded.
+        Unknown effects and overdue initiation remain actionable, never a waiver.
+        """
+        ...
+
+
+def annual_refund_decision(facts: AnnualRefundFacts) -> AnnualRefundDecision:
+    from talli_backend.modules.billing.annual_policy import annual_refund
+
+    return annual_refund(facts)
+
+
+def settle_annual_refund(
+    resolution: AnnualRefundResolution, observation: AnnualProviderObservation,
+    at: Timestamp,
+) -> AnnualRefundResolution:
+    from talli_backend.modules.billing.annual_refund import settle_refund
+
+    return settle_refund(resolution, observation, at)
+
+
 @runtime_checkable
 class AnnualBillingProvider(Protocol):
     provider: str
@@ -1068,6 +1173,14 @@ __all__ = [
     "AnnualBillingProvider",
     "AnnualBillingOffer",
     "AnnualRefundDecision",
+    "AnnualRefundCaseId",
+    "RequestAnnualRefundCommand",
+    "AnnualRefundOperation",
+    "AnnualRefundResolution",
+    "AnnualRefundClaim",
+    "AnnualRefundPersistence",
+    "annual_refund_decision",
+    "settle_annual_refund",
     "AnnualRefundFacts",
     "AnnualRefundReason",
     "AnnualRenewalDecision",

@@ -367,3 +367,33 @@ Injected local HTTP/session fixtures prove only transport and orchestration;
 actual MT, trusted readiness, complete checkout UI, webhook/worker/refund/renewal
 runtime and final #192 gates remain outstanding. No production activation or
 acceptance waiver follows from these endpoints.
+
+
+## Annual refund orchestration contract
+
+`AnnualRefundService` coordinates one recorded refund case and original provider
+operation. `RequestAnnualRefundCommand` accepts a source lookup reference, never
+caller-selected eligibility, money or incident facts. The mandatory
+`AnnualRefundPersistence` contract requires verified source-owned facts, current
+authority, purchase locks, durable request/case identity, balance reservations,
+local renewal stop and preserved records/export. Its adapter list is deliberately
+empty: this slice implements no source resolver, database adapter, worker,
+support-case caller or HTTP route. Synthetic stores prove orchestration only.
+
+Billing uses the existing #177 policy for entitlement and the five-business-day
+initiation deadline. The claimed operation separates actual captured money from
+the original charge amount and caps execution at the remaining captured balance
+and policy entitlement. A missing provider cannot erase an already recorded
+liability. A missing operation may mean no automatic entitlement or deferred
+execution; it never proves settlement. Confirmed and failed original operations
+remain terminal; a failed attempt leaves the liability actionable and needs a
+separate authorized retry operation before another modification.
+
+Only a newly committed operation may execute. Lost claim/provider/settlement
+responses recover its original identity by reconciliation, preserving unknown
+outcomes and reservations without blind reissue. Settlement validates provider,
+original references, capture timestamp and exact integer monotonic totals.
+The future adapter must apply the public settlement helper to locked current
+state and persist operation/purchase evidence atomically. Digest shape checks
+are not source authentication. No automatic-refund or real-provider acceptance
+is claimed until those persistence, source and authority implementations exist.
