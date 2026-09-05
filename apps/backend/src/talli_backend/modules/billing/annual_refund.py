@@ -64,7 +64,7 @@ def _validate_observation(
             observation.amount_minor, observation.captured_minor, observation.refunded_minor,
         ))
         or observation.amount_minor != intent.amount_minor
-        or observation.captured_minor != operation.captured_minor
+        or not operation.captured_minor <= observation.captured_minor <= intent.original_charge_minor
         or observation.captured_at != operation.captured_at
         or observation.checkout_url is not None
         or not operation.previous_refunded_minor <= observation.refunded_minor <= observation.captured_minor
@@ -93,7 +93,8 @@ def settle_refund(
     if old is not None and old.status in {AnnualProviderStatus.CONFIRMED, AnnualProviderStatus.FAILED}:
         return resolution
     _validate_observation(operation, observation)
-    if old and observation.refunded_minor < old.refunded_minor:
+    if old and (observation.refunded_minor < old.refunded_minor
+                or observation.captured_minor < old.captured_minor):
         return resolution
     return replace(resolution, operation=replace(operation, observation=observation))
 
@@ -147,7 +148,7 @@ class AnnualRefundService:
                 agreement_reference=operation.intent.agreement_reference,
                 charge_reference=operation.intent.charge_reference,
                 amount_minor=operation.intent.amount_minor,
-                captured_minor=operation.captured_minor,
+                captured_minor=old.captured_minor if old else operation.captured_minor,
                 refunded_minor=old.refunded_minor if old else operation.previous_refunded_minor,
                 captured_at=operation.captured_at,
             )

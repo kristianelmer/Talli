@@ -393,6 +393,8 @@ Only a newly committed operation may execute. Lost claim/provider/settlement
 responses recover its original identity by reconciliation, preserving unknown
 outcomes and reservations without blind reissue. Settlement validates provider,
 original references, capture timestamp and exact integer monotonic totals.
+Later captures may grow up to the original charge without enlarging the already
+claimed refund intent or changing its reservation basis.
 The future adapter must apply the public settlement helper to locked current
 state and persist operation/purchase evidence atomically. Digest shape checks
 are not source authentication. No automatic-refund or real-provider acceptance

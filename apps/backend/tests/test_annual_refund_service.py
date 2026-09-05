@@ -361,3 +361,24 @@ def test_malformed_stored_terminal_result_is_not_success(changes):
     with pytest.raises(BillingError):
         settle_annual_refund(store.saved, observation(resolution), NOW)
     assert not provider.executions and not provider.reads
+
+
+def test_original_partial_refund_recovers_after_capture_grows_without_enlarging_refund():
+    service, store, provider = fixture()
+    store.saved = candidate(captured=50000)
+    original = store.saved.operation.intent
+    provider.refunded = True
+    provider.malformed = {'captured_minor': 149000}
+    result = asyncio.run(service.request_refund(COMMAND))
+    assert result.operation.observation.status is AnnualProviderStatus.CONFIRMED
+    assert result.operation.observation.captured_minor == 149000
+    assert result.operation.observation.refunded_minor == 50000
+    assert result.operation.intent == original and original.amount_minor == 50000
+    assert result.operation.captured_minor == 50000
+    assert not provider.executions and provider.reads == [original]
+
+
+def test_capture_regression_cannot_replace_later_observation():
+    resolution = candidate(captured=50000)
+    later = settle_annual_refund(resolution, observation(resolution, AnnualProviderStatus.UNKNOWN, captured_minor=100000), NOW)
+    assert settle_annual_refund(later, observation(resolution, AnnualProviderStatus.UNKNOWN), NOW) == later

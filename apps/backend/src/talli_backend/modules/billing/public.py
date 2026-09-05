@@ -917,6 +917,8 @@ class RequestAnnualRefundCommand(_BillingCommand):
 
 @dataclass(frozen=True, slots=True)
 class AnnualRefundOperation:
+    """Immutable claim-time capture basis; later observation totals may grow."""
+
     purchase_id: AnnualPurchaseId
     captured_minor: int
     provider: str
