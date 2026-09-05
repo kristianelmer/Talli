@@ -38,7 +38,7 @@
     {
       "id": "GH-192-A5",
       "requirement": "Automatic full refund for mistaken acceptance or Talli/provider failure; recorded-fact safe exit.",
-      "status": "policy-tested-automatic-workflow-pending"
+      "status": "refund-policy-orchestration-and-durable-persistence-tested-source-authority-and-runtime-pending"
     },
     {
       "id": "GH-192-A6",
@@ -213,6 +213,21 @@
       },
       "architecture": "Full suite before the final documentation correction:49/51, including missing new public documentation inventory and existing four-scope/inventory rejection. Final exact direct checker reports only the original four unapproved future-owned deletions; documentation omissions corrected. No baseline/checker/ADR/order changes; architecture remains NOT PASS.",
       "limits": "Synthetic stores assert the persistence contract but do not prove it. Digest shape is not source authentication. Trusted incident/first-purchase/production-submission evidence, authorization, real reservations/atomic settlement, worker/support authority, actual MT and full192 gates remain mandatory. Missing operation does not mean settled; failed/unknown/overdue liability remains actionable. Full165 goal ACTIVE,150 unclaimed,main and Production unchanged."
+    },
+    "annualRefundPersistence": {
+      "implementationRevision": "df152768963b6f64019e6628349450af9bf8177d",
+      "scope": "PostgresAnnualRefundSession and migration20260905141500 durable request/case/reservation/settlement, plus predecessor lifecycle integration. Source resolver unavailable by default; no HTTP/support caller/worker or real provider activation.",
+      "behavior": "Immutable facts/digest, recorded policy liability/deadline and renewal stop before provider execution; exact replay before source lookup. Purchase-before-operation locking, one unresolved reservation and single-assignment deferred request binding. Atomic monotonic purchase/operation settlement preserves original refund/capture identity and first-purchase history across repurchase. Case creation preserves owner change-of-mind versus opened same-company billing admin/support grant with fresh MFA; owner recovery of already recorded liability retains predecessor behavior.",
+      "focusedDatabase": "35 real isolated PostgreSQL cases pass: atomic rollback between purchase/operation writes, lost committed response recovery, concurrent same/different keys and cases, deferred continuation, stale cross-operation totals, partial capture growth, global key collision across company/purchase/actor with no side effects, support revocation, first-purchase history and two receipt rollback/recutover cycles.",
+      "completeDatabase": "Fresh task-owned Supabase2.109.1 fixture:195 Python +1 Node pass, zero skips; all predecessor rollback/recutover rehearsals pass. Advisors0 blocking security/error findings and34 performance warnings. Owned fixtures tallig82908 and tallig84329 stopped with no matching containers retained.",
+      "otherValidation": "Exact candidate ordinary backend1043 pass,2 existing skips,195 DB cases deselected; CI12 pass; billing379 Python+40 Node pass; git diff --check clean.",
+      "architecture": "Exact final full suite49/51: only existing four unapproved future-owned deletion scopes and active inventory92vs96. Deterministic evidence and all other architecture tests pass. No checker/baseline/ADR/order changes. NOT architecture PASS.",
+      "corrections": "Initial focused run20pass/1 malformed wrong-capture test fixture; corrected fixture then35 focusedpass. First full lifecycle56pass/11fail/125 cascading errors traced to new refund table/functions remaining in billing during predecessor schema removal. Added latest-first rollback and latest-last recutover to existing5Python andNode rehearsals; fresh full195Python+1Node passes. No predecessor assertion weakened.",
+      "independentReviews": {
+        "standards": "PASS exactdf152768963b6f64019e6628349450af9bf8177d, zero findings, read-only",
+        "spec": "PASS exactdf152768963b6f64019e6628349450af9bf8177d, zero findings, read-only"
+      },
+      "limits": "Test incident/submission resolvers are synthetic. Digest consistency does not establish source authenticity. Real source-owned incident and submission authority, runtime/support/worker composition, refund-triggered agreement cleanup, actual MT, customer actionability and complete192 gates remain due. No production or hosted mutation; mainccf1dcba and release/productiond331ee27 unchanged. Full165 goal ACTIVE;150 unclaimed."
     }
   },
   "externalEvidence": {
