@@ -194,8 +194,18 @@
     "webTypecheck": "passed",
     "architecture": "passed",
     "freshSupabase": {
-      "status": "corrected-billing-lifecycle-passed; uninterrupted-full-suite-rerun-pending",
+      "status": "passed-uninterrupted-on-fresh-stack",
       "command": "npm run test:supabase:local",
+      "revision": "3e7f0e1a00c34de909b65f02c9e036c78b7cc772",
+      "blockingAdvisorFindings": 0,
+      "ledgerLifecyclePassed": 70,
+      "bankingLifecyclePassed": 21,
+      "investmentsLifecyclePassed": 33,
+      "documentsLifecyclePassed": 3,
+      "marketingMeasurementPassed": 2,
+      "validationObservationPythonPassed": 17,
+      "validationObservationPythonSkipped": 1,
+      "validationObservationDatabasePassed": 1,
       "databaseContractsPassed": 65,
       "ownerBrowserPassed": 17,
       "hostedAuthorityRehearsalPassed": 1,
@@ -203,7 +213,7 @@
       "billingRuntimePassed": 1,
       "billingLifecyclePassed": 1,
       "failed": 0,
-      "note": "All pre-billing suites passed on the review-fix code. After fixture corrections, the billing runtime and two-cycle lifecycle passed from a separately initialized fresh stack; rerun the uninterrupted full command before immutable gates."
+      "note": "One uninterrupted invocation initialized a fresh temporary Supabase stack, applied every migration, and passed every configured advisor, database, browser, authority, governance, and billing check before cleaning up the stack."
     },
     "customerReadyGates": "pending"
   },
@@ -233,7 +243,13 @@
       "a frozen baseline oracle and the canonical service run against the same IDs, clock, defaults, prices, errors, gates, provider events, state effects, replay, failure injection, and complete pilot identity/status/time/exemption cases",
       "customer-visible billing decisions and errors use Norwegian product language"
     ],
-    "finalReview": "pending-on-corrected-immutable-candidate"
+    "finalReview": {
+      "revision": "3e7f0e1a00c34de909b65f02c9e036c78b7cc772",
+      "repositoryStandards": "PASS",
+      "issueSpecification": "PASS",
+      "worktree": "clean",
+      "reviewedAgainst": "4f807fe4239a208c573054b14cbed478277d1a2e"
+    }
   },
-  "closeState": "review findings corrected in a new candidate; fresh final review and protected integration pending"
+  "closeState": "final review and fresh local Supabase gate passed; two linked immutable customer-ready gates and protected integration pending"
 }
