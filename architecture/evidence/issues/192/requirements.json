@@ -43,7 +43,7 @@
     {
       "id": "GH-192-A6",
       "requirement": "Actionable customer plan/cancel/refund/export and operator exceptions.",
-      "status": "pending"
+      "status": "owner-annual-history-and-local-cancellation-implemented-refund-and-operator-flows-pending"
     },
     {
       "id": "GH-192-A7",
@@ -134,6 +134,19 @@
         "standards": "PASS on exact 366192d47eccf6e68ae5be8259fe54c9a9b99cfb; separate test-only correction PASS on ca9cfd5f95a5e17129048b72030857be30331b91",
         "spec": "PASS on exact 366192d47eccf6e68ae5be8259fe54c9a9b99cfb"
       }
+    },
+    "annualBillingOwnerUi": {
+      "revision": "4bb81c0d6d10fc32c604cb8eda86fe04df5b8481",
+      "scope": "Annual owner offer, stored purchase history, local renewal cancellation and existing archive link. No checkout, provider cleanup, refund initiation, operator annual flow or legacy retirement claimed.",
+      "behavior": "Prices and terms remain purchase-specific. Confirmation derives from persisted cancellation; retry retains company/purchase/key/cursor. Context authentication failures distinguish sign-in/MFA. Separate account layout leaves cancellation available without accepting new workspace terms; backend ownership/fresh MFA remains mandatory.",
+      "validation": "Production web build and typecheck pass. Billing 249 Python and37 Node pass;146 web-boundary and49 boundary-contract cases pass. Architecture checker/dependency evidence pass on final source. All51 architecture regressions pass on c4fdc11b before the two recovery corrections; no claim of a full final gate.",
+      "browser": "Actual local Next.js with synthetic session/Company Access/billing responses: desktop1440 andphone390, no horizontal overflow,44px cancellation target, failed response exact-key replay, lost response after saved cancellation, pending/refunded/empty/unavailable states, snapshot and context-level MFA, context401 and unaccepted-new-terms cancellation. No provider/MT/real-DB/export-download evidence from this fixture.",
+      "evidenceDirectory": "architecture/evidence/issues/192/annual-billing-ui",
+      "independentReviews": {
+        "standards": "PASS on exact4bb81c0d6d10fc32c604cb8eda86fe04df5b8481",
+        "spec": "PASS on exact4bb81c0d6d10fc32c604cb8eda86fe04df5b8481"
+      },
+      "corrections": "Initial c4fdc11b review found loss of selected company on Company Access recovery, fixed and reviewed d53de213. Root then found surrounding workspace layout hid recovery/cancellation on MFA/new terms; final route isolation reviewed and browser-tested."
     }
   },
   "externalEvidence": {
@@ -162,7 +175,7 @@
     "legacySnapshotLimitation": "public.filing_readiness_snapshots allows owner/browser INSERT/UPDATE; billing.read_legacy_filing_readiness_v1 trusts its ready/empty blockers. This is not authoritative annual-charge evidence.",
     "currentBinding": "application.unavailable_annual_checkout_prerequisites always returns FILING_NOT_READY; isolated test prerequisites are not production readiness or MT proof.",
     "exitConstraint": "Oversight explicitly preserves #192 exit criteria. Unavailable production binding is interim only; if completion requires premature #149/#193 source work, report that dependency conflict rather than declaring the sold path complete.",
-    "alternatePaths": "Annual service has no HTTP/runtime route yet; legacy simulation command retirement and proof of no alternate annual-charge entry point remain part of runtime cutover."
+    "alternatePaths": "Annual checkout service has no HTTP/runtime route yet; annual read/local cancellation APIs exist. Legacy simulation command retirement and proof of no alternate annual-charge entry point remain part of runtime cutover."
   },
   "runtimeCutover": {
     "acquisition": "Retire default SimulationBillingProvider acquisition, account reset/configuration, subscription activation and filing-package purchase across main.py HTTP, BillingWorkflow/BillingService, persistence and web actions/controls.",
