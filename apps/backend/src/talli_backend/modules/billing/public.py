@@ -439,7 +439,8 @@ class AnnualRefundFacts:
 
     def __post_init__(self) -> None:
         if (
-            self.gross_minor <= 0
+            any(type(value) is not int for value in (self.gross_minor, self.refunded_minor))
+            or self.gross_minor <= 0
             or not 0 <= self.refunded_minor <= self.gross_minor
             or self.discovered_at.value < self.purchased_at.value
             or self.first_purchased_at.value > self.purchased_at.value

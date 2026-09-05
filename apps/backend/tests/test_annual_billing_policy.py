@@ -205,3 +205,11 @@ def test_renewal_scheduling_day_is_distinct_from_the_promised_collection_day():
     assert facts.at.value.date() < facts.collection_due_date
     missed = annual_renewal(replace(facts, at=at("2026-12-31T23:00:00+00:00")))
     assert not missed.allowed and missed.reason == "renewal_scheduling_missed"
+
+
+@pytest.mark.parametrize("field", ["gross_minor", "refunded_minor"])
+@pytest.mark.parametrize("value", [True, False, 1.0, 1.5, "1", None])
+def test_refund_facts_reject_non_integer_money_with_domain_error(field, value):
+    with pytest.raises(BillingError) as error:
+        refund_facts(**{field: value})
+    assert error.value.code == "BILLING_INVALID_INPUT"
