@@ -91,6 +91,17 @@
         "spec": "PASS on exact 90f60b736f590bb06c4a3ed04c2e99564b3ce465"
       },
       "diagnosticNote": "Reproduced and corrected a BEFORE-trigger effect on ignored duplicate inserts and a restricted-owner FK check privilege failure. AFTER-insert mutation now requires a persisted receipt; UPDATE(id) is limited to FK checks with no UPDATE policy and an immutable guard."
+    },
+    "vippsStopPreflight": {
+      "revision": "2a6407981e4e969fe8cb957ff9f78323569d65eb",
+      "scope": "Local HTTP adapter preflight only; durable cleanup orchestration, runtime and actual MT evidence remain pending.",
+      "behavior": "STOPPED replay confirms without PATCH. Non-active agreements and unresolved or partial original payments defer cleanup. Active cleanup requires a bound terminal charge; unavailable or mismatched evidence remains unknown. STOP observations preserve separate zero monetary totals.",
+      "validation": "Seven initial failures reproduced the blind-PATCH behavior. Expanded billing suite: 198 Python and 14 Node pass, including terminal charge states, wrong charge binding, unavailable charge and recovery after lost PATCH response. Architecture checker/dependency evidence pass.",
+      "independentReviews": {
+        "standards": "PASS on exact 2a6407981e4e969fe8cb957ff9f78323569d65eb",
+        "spec": "PASS on exact 2a6407981e4e969fe8cb957ff9f78323569d65eb"
+      },
+      "providerSource": "https://developer.vippsmobilepay.com/docs/APIs/recurring-api/recurring-api-guide/#charges-when-an-agreement-is-canceled"
     }
   },
   "externalEvidence": {
