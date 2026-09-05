@@ -15,9 +15,12 @@ test("operator entitlement action is exact and database-authorized", () => {
   assert.match(actions, /export async function upsertProductionPilotEntitlement/u);
   assert.match(actions, /requiredFormUuid\(formData, "companyId"\)/u);
   assert.match(actions, /requiredFormUuid\(formData, "ownerUserId"\)/u);
-  assert.match(actions, /manage_production_pilot_entitlement/u);
+  assert.match(actions, /getCurrentSessionAccessToken\(\)/u);
+  assert.match(actions, /manageProductionPilotEntitlement\(accessToken, \{/u);
   assert.match(actions, /requiredFormUuid\(formData, "systemUserRequestId"\)/u);
-  assert.match(actions, /p_system_user_request_id:\s*systemUserRequestId/u);
+  assert.match(actions, /systemUserRequestId,/u);
+  assert.match(actions, /\}, operationId\);/u);
+  assert.doesNotMatch(actions, /manage_production_pilot_entitlement/u);
   assert.doesNotMatch(actions, /p_system_user_external_reference/u);
   assert.match(operatorPage, /Eksakt RF-1086-produksjonspilot/u);
   assert.match(operatorPage, /name="systemUserRequestId"/u);
@@ -48,14 +51,16 @@ test("send action rechecks approval, uses production-only credentials, and journ
   assert.match(actions, /rf1086ProductionEnvironment\(\)/u);
   assert.match(actions, /requestMaskinportenToken/u);
   assert.match(actions, /begin_production_filing/u);
-  assert.match(actions, /entitlement\.system_user_request_id/u);
+  assert.match(actions, /loadBillingEntitlement\(accessToken/u);
+  assert.match(actions, /billingDecision\.allowed/u);
+  assert.match(actions, /entitlement\.systemUserRequestId/u);
   assert.match(actions, /from\("system_user_requests"\)/u);
   assert.match(actions, /systemUserRequest\.company_id !== approval\.company_id/u);
   assert.match(actions, /systemUserRequest\.initiating_owner_user_id !== user\.id/u);
   assert.match(actions, /systemUserRequest\.obligation !== approval\.obligation/u);
   assert.match(actions, /systemUserRequest\.status !== "accepted"/u);
   assert.match(actions, /!systemUserRequest\.preflight_verified_at/u);
-  assert.match(actions, /systemUserRequest\.external_ref !== entitlement\.system_user_external_reference/u);
+  assert.match(actions, /systemUserRequest\.external_ref !== entitlement\.systemUserExternalReference/u);
   assert.match(actions, /systemUserExternalRef:\s*systemUserRequest\.external_ref/u);
   assert.match(actions, /createSupabaseServiceRoleClient/u);
   assert.ok(
