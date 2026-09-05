@@ -143,6 +143,7 @@ test("a verified user without an owner company reaches onboarding but other cont
           error: "Company access is temporarily unavailable.",
           requiresAal2: true,
         }
+      : status === 401 ? { companies: [], error: "Authentication required.", requiresSignIn: true }
       : { companies: [], error: "Company access is temporarily unavailable." });
   }
 });

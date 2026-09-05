@@ -140,7 +140,7 @@ test("missing session reaches sign-in with replay context before any mutation", 
 
 const pageSource = readFileSync(new URL("../app/(owner)/billing/page.tsx", import.meta.url), "utf8");
 const company = { id: companyId, name: "Holding AS", admittedAccountingYear: 2026 };
-function pageHarness({ companies = [company], token = "session", contextError, requiresAal2, failure, purchases = [purchase] } = {}) {
+function pageHarness({ companies = [company], token = "session", contextError, requiresAal2, requiresSignIn, failure, purchases = [purchase] } = {}) {
   const reads = [];
   const { default: BillingPage } = compile(pageSource, {
     "../../../features/billing": { annualBillingRecovery: () => failure,
@@ -151,7 +151,7 @@ function pageHarness({ companies = [company], token = "session", contextError, r
     "../../components/billing/AnnualBillingView": { AnnualBillingView },
     "../../components/ui": { ...ui, EmptyState: ({ title, children, action }) => React.createElement("section", {}, title, children, action) },
     "../../lib/copy": { ownerCopy: { billing: { hubTitle: "Abonnement" } } },
-    "../../lib/company-access-context": { listCompanyAccessContexts: async () => ({ companies, error: contextError, requiresAal2 }) },
+    "../../lib/company-access-context": { listCompanyAccessContexts: async () => ({ companies, error: contextError, requiresAal2, requiresSignIn }) },
     "../../lib/supabase/auth-session": { getCurrentSessionAccessToken: async () => token },
   });
   return { reads, render: async (params = {}) => renderToStaticMarkup(await BillingPage({ searchParams: Promise.resolve(params) })) };
@@ -197,3 +197,21 @@ test("read after uncertain cancellation reuses the key only on the same purchase
   const another = await pageHarness().render({ cancellationPurchaseId: cursor, cancellationOperationId: operationId });
   assert.doesNotMatch(another, new RegExp(`value="${operationId}"`));
 });
+
+for (const recovery of ["mfa", "login", "retry"]) {
+  test(`Company Access ${recovery} failure retains the selected second company before authorization succeeds`, async () => {
+    const selectedCompanyId = "60000000-0000-4000-8000-000000000001";
+    const params = { companyId: selectedCompanyId, beforePurchaseId: cursor,
+      cancellationPurchaseId: purchaseId, cancellationOperationId: operationId };
+    const harness = pageHarness({ companies: [], contextError: "Unavailable",
+      requiresAal2: recovery === "mfa", requiresSignIn: recovery === "login" });
+    const html = await harness.render(params);
+    const href = html.match(/href="([^"]+)"/)?.[1].replaceAll("&amp;", "&");
+    const link = new URL(href, "https://talli.example");
+    assert.equal(link.pathname, recovery === "retry" ? "/billing" : `/${recovery}`);
+    const target = new URL(link.searchParams.get("next") ?? link.href, link.origin);
+    for (const [key, value] of Object.entries(params)) assert.equal(target.searchParams.get(key), value);
+    assert.equal(harness.reads.length, 0);
+    assert.doesNotMatch(html, /Fornyelsen ble stoppet|Stopp fornyelse/);
+  });
+}

@@ -36,6 +36,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const beforePurchaseId = parameter(params, "beforePurchaseId");
   const query = new URLSearchParams();
   if (company) query.set("companyId", company.id);
+  else if (selectedId && uuid.test(selectedId)) query.set("companyId", selectedId);
   if (beforePurchaseId && uuid.test(beforePurchaseId)) query.set("beforePurchaseId", beforePurchaseId);
   for (const key of ["cancellationOperationId", "cancellationPurchaseId"]) {
     const value = parameter(params, key);
@@ -46,8 +47,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   let content;
   if (context.error) {
     content = <EmptyState title="Abonnementet kan ikke vises nå" action={
-      <LinkButton href={context.requiresAal2 ? mfaHref : returnTo}>
-        {context.requiresAal2 ? "Bekreft identiteten din" : "Prøv igjen"}
+      <LinkButton href={context.requiresAal2 ? mfaHref : context.requiresSignIn
+        ? `/login?next=${encodeURIComponent(returnTo)}` : returnTo}>
+        {context.requiresAal2 ? "Bekreft identiteten din" : context.requiresSignIn ? "Logg inn igjen" : "Prøv igjen"}
       </LinkButton>
     }>Vi må kunne bekrefte tilgangen din til selskapet før vi viser abonnementet.</EmptyState>;
   } else if (!company) {

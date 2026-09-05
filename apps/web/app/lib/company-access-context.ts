@@ -36,12 +36,19 @@ export async function listCompanyAccessContexts(
 ) {
   const accessToken = await dependencies.getAccessToken();
   if (!accessToken) {
-    return { companies: [] as CompanyAccessPresentation[], error: "Authentication required." };
+    return { companies: [] as CompanyAccessPresentation[], error: "Authentication required.", requiresSignIn: true };
   }
   try {
     const context = await dependencies.loadContext(accessToken, undefined, options);
     return { companies: context.companies.map(presentCompanyAccessContext), error: null };
   } catch (error) {
+    if (error instanceof TalliApiError && error.status === 401) {
+      return {
+        companies: [] as CompanyAccessPresentation[],
+        error: "Authentication required.",
+        requiresSignIn: true,
+      };
+    }
     if (
       error instanceof TalliApiError
       && error.status === 404
