@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from enum import StrEnum
 from typing import Protocol, TypeVar, runtime_checkable
 from uuid import UUID
@@ -372,6 +372,118 @@ class BillingProviderResult:
             raise BillingError.unavailable()
 
 
+class AnnualRefundReason(StrEnum):
+    CHANGE_OF_MIND = "change_of_mind"
+    TALLI_ACCEPTANCE_FAILURE = "talli_acceptance_failure"
+    TALLI_DELIVERY_FAILURE = "talli_delivery_failure"
+    NEW_UNSUPPORTED_CONDITION = "new_unsupported_condition"
+    CUSTOMER_UNRESOLVED = "customer_unresolved"
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualBillingOffer:
+    company_id: CompanyId
+    income_year: IncomeYear
+    offer_version: str
+    terms_digest: str
+    currency: str
+    gross_minor: int
+    net_minor: int
+    vat_minor: int
+    vat_basis_points: int
+    paid_through: date
+    export_through: date
+    renewal_date: date
+    renewal_reminder_by: date
+    price_change_notice_by: date
+
+    def __post_init__(self) -> None:
+        if (
+            self.currency != "NOK"
+            or any(type(value) is not int for value in (
+                self.gross_minor, self.net_minor, self.vat_minor, self.vat_basis_points
+            ))
+            or self.gross_minor <= 0
+            or self.net_minor < 0
+            or self.vat_minor < 0
+            or self.gross_minor != self.net_minor + self.vat_minor
+            or self.vat_basis_points != 2500
+            or self.vat_minor != (self.gross_minor + 2) // 5
+            or self.export_through < self.paid_through + timedelta(days=90)
+            or not self.offer_version
+            or len(self.terms_digest) != 64
+        ):
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundFacts:
+    reason: AnnualRefundReason
+    purchased_at: Timestamp
+    first_purchased_at: Timestamp
+    accepted_at: Timestamp
+    discovered_at: Timestamp
+    condition_effective_at: Timestamp
+    blocked_at: Timestamp
+    income_year: IncomeYear
+    gross_minor: int
+    refunded_minor: int
+    production_submission_at: Timestamp | None
+    evidence_reference: str
+
+    def __post_init__(self) -> None:
+        if (
+            self.gross_minor <= 0
+            or not 0 <= self.refunded_minor <= self.gross_minor
+            or self.discovered_at.value < self.purchased_at.value
+            or self.first_purchased_at.value > self.purchased_at.value
+            or self.accepted_at.value > self.purchased_at.value
+            or self.condition_effective_at.value > self.discovered_at.value
+            or not self.purchased_at.value <= self.blocked_at.value <= self.discovered_at.value
+            or not self.evidence_reference.strip()
+            or len(self.evidence_reference) > 1000
+        ):
+            raise BillingError.invalid()
+        if (
+            self.reason is AnnualRefundReason.NEW_UNSUPPORTED_CONDITION
+            and self.condition_effective_at.value <= self.accepted_at.value
+        ):
+            # A pre-existing condition is never labelled as a new customer fact.
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundDecision:
+    reason: AnnualRefundReason
+    total_entitlement_minor: int
+    amount_due_minor: int
+    vat_due_minor: int
+    unused_whole_months: int
+    initiate_by: date
+    cancel_renewal: bool
+    export_available: bool
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRenewalFacts:
+    recurring_consent: bool
+    renewal_canceled: bool
+    reminder_recorded_at: Timestamp | None
+    price_change_recorded_at: Timestamp | None
+    prior_gross_minor: int
+    target_offer: AnnualBillingOffer
+    target_definitively_eligible: bool
+    target_filing_ready: bool
+    at: Timestamp
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRenewalDecision:
+    allowed: bool
+    reason: str
+
+
 @runtime_checkable
 class BillingPaymentProvider(Protocol):
     provider: str
@@ -497,6 +609,12 @@ def billing_provider_adapter(port: type[object]) -> Callable[[Adapter], Adapter]
 
 
 __all__ = [
+    "AnnualBillingOffer",
+    "AnnualRefundDecision",
+    "AnnualRefundFacts",
+    "AnnualRefundReason",
+    "AnnualRenewalDecision",
+    "AnnualRenewalFacts",
     "ActivateSubscriptionCommand",
     "BillingAccount",
     "BillingCommands",

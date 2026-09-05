@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#192",
+  "capability": "billing",
+  "status": "implementation-in-progress",
+  "canonicalRoute": "#137 \u2192 #192 \u2192 #150",
+  "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5550252042",
+  "routeCorrection": "Oversight reconciled source-handoff #137\u2192#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
+  "baseline": {
+    "revision": "ccf1dcba56a4eb05c5252b00286dba6b2b8b480e",
+    "evidenceCommittedRevision": "f0ec97ccfea24268b432f5c91f43dc2c01e170b7",
+    "evidencePath": "architecture/evidence/customer-ready-gates/ccf1dcba56a4eb05c5252b00286dba6b2b8b480e.json",
+    "evidenceDigest": "sha256:a8d6015fa8611cecd800c314ef9c67cfcdb331ffed19c7381cb1547a760914be",
+    "verdict": "pass",
+    "checkCount": 11
+  },
+  "criteria": [
+    {
+      "id": "GH-192-A1",
+      "requirement": "Exact immutable price, VAT, company/year, scope, terms, renewal and separate consent versions.",
+      "status": "policy-tested-persistence-and-cutover-pending"
+    },
+    {
+      "id": "GH-192-A2",
+      "requirement": "Definitive eligibility and readiness before checkout; provisional/blocked never charge.",
+      "status": "pending"
+    },
+    {
+      "id": "GH-192-A3",
+      "requirement": "Free validation remains separate from paid entitlement.",
+      "status": "pending"
+    },
+    {
+      "id": "GH-192-A4",
+      "requirement": "Vipps test-mode agreement, charge, webhook replay, retry, receipt, cancellation, full/partial refund, reconciliation and failure recovery.",
+      "status": "pending-local-adapter-and-real-MT-evidence"
+    },
+    {
+      "id": "GH-192-A5",
+      "requirement": "Automatic full refund for mistaken acceptance or Talli/provider failure; recorded-fact safe exit.",
+      "status": "policy-tested-automatic-workflow-pending"
+    },
+    {
+      "id": "GH-192-A6",
+      "requirement": "Actionable customer plan/cancel/refund/export and operator exceptions.",
+      "status": "pending"
+    },
+    {
+      "id": "GH-192-A7",
+      "requirement": "Provider-neutral boundary, no live activation/charge without approval.",
+      "status": "design-and-source-research-complete-implementation-pending"
+    },
+    {
+      "id": "GH-192-A8",
+      "requirement": "Security/privacy/reconciliation/duplicate/browser-mobile/release gates pass.",
+      "status": "pending-final-implementation"
+    }
+  ],
+  "localValidation": {
+    "annualPolicy": "24 tests pass; bounded independent Standards PASS, runtime not wired"
+  },
+  "externalEvidence": {
+    "vippsMerchantTest": "pending designated existing test sales unit, backend-only test credentials, test user/app and callback setup; local fixtures cannot substitute",
+    "discovery": "No Vipps/MobilePay process variables or workspace/saved-project env names; oversight owns user access coordination. No provider calls, signup or changes."
+  },
+  "preservedGates": [
+    "#189",
+    "#193",
+    "#197",
+    "#198"
+  ],
+  "completeGates": []
+}

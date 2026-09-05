@@ -55,6 +55,16 @@ database tests preserve the matching audit facts, RLS, rollback, and recutover.
 
 ## Ports and adapters
 
+The #192 annual-offer work introduces `AnnualBillingOffer`,
+`AnnualRefundFacts`, `AnnualRefundReason`, `AnnualRefundDecision`,
+`AnnualRenewalFacts`, and `AnnualRenewalDecision`. The internal `annual_policy`
+module pins the NOK 1,490 gross company-year offer and derives renewal notice,
+paid/read-export dates, and automatic refund amounts from recorded facts. Amounts
+are integer minor units; Norwegian calendar dates govern month and notice limits.
+These policy types alone do not initiate payment or replace the existing runtime
+path. The #192 acceptance record tracks the remaining persistence/API/provider/web
+cutover and distinguishes local conformance from actual Vipps merchant-test proof.
+
 `BillingPersistence` owns all reads and writes to `billing.*`. The Supabase
 adapter authenticates the bearer token, scopes reads through RLS, and performs
 each payment-event/account transition atomically. Non-provider commands use
