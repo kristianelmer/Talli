@@ -15,6 +15,22 @@ const annualReadiness = readFileSync(
   new URL("../apps/web/app/lib/annual-readiness.ts", import.meta.url),
   "utf8",
 );
+const annualWorkspaceServer = readFileSync(
+  new URL("../apps/web/app/lib/annual-workspace-server.ts", import.meta.url),
+  "utf8",
+);
+const submissionReview = readFileSync(
+  new URL("../apps/web/app/components/annual-workspace/SubmissionReview.tsx", import.meta.url),
+  "utf8",
+);
+const billingAdapter = readFileSync(
+  new URL("../apps/backend/src/talli_backend/adapters/supabase_billing.py", import.meta.url),
+  "utf8",
+);
+const billingMigration = readFileSync(
+  new URL("../supabase/migrations/20260905010000_billing_capability.sql", import.meta.url),
+  "utf8",
+);
 
 test("web billing commands and queries cross only the generated backend client", () => {
   assert.match(transport, /createTalliApiClient/);
@@ -41,4 +57,19 @@ test("the retired TypeScript policy modules stay removed", () => {
   );
   assert.doesNotMatch(annualReadiness, /productionBillingGate|evaluateProductionPilot/);
   assert.match(annualReadiness, /billingDecision\.readinessAllowed/);
+});
+
+test("annual submission review renders the backend entitlement without a second policy", () => {
+  assert.match(annualWorkspaceServer, /loadBillingEntitlement/);
+  assert.match(submissionReview, /billingEntitlement\.allowed/);
+  assert.doesNotMatch(submissionReview, /billingAccounts|filing_package_paid|pricing_plan|founder/u);
+});
+
+test("billing uses the versioned company-access authorization seam", () => {
+  assert.match(billingAdapter, /company_access_is_accepted_owner_subject_v1/);
+  assert.doesNotMatch(billingAdapter, /from public\.company_memberships/u);
+  assert.doesNotMatch(
+    billingMigration,
+    /grant select on public\.system_user_requests, public\.company_memberships\s+to billing_store_owner/iu,
+  );
 });

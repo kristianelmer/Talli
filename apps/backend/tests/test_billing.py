@@ -94,6 +94,9 @@ class MemoryPersistence:
         self.ready = ready
         self.owner_authorized = True
         self.admin_authorized = True
+        self.entitlement_authorized = True
+        self.entitlement_authorizations = 0
+        self.account_reads = 0
         self.events: dict[str, BillingPaymentEvent] = {}
         self.pilot: ProductionPilotEntitlement | None = None
 
@@ -105,8 +108,14 @@ class MemoryPersistence:
         if not self.admin_authorized:
             raise BillingError.forbidden()
 
+    async def authorize_entitlement_query(self, _company_id: CompanyId) -> None:
+        self.entitlement_authorizations += 1
+        if not self.entitlement_authorized:
+            raise BillingError.forbidden()
+
     async def find_account(self, company_id: CompanyId):
         assert company_id == COMPANY_ID
+        self.account_reads += 1
         return self.account
 
     async def filing_ready(self, company_id, income_year, obligation):
@@ -321,6 +330,19 @@ def test_entitlement_is_one_fail_closed_decision_path() -> None:
     refunded = asyncio.run(service.entitlement(query()))
     assert refunded.status is BillingStatus.REFUND_ELIGIBLE
     assert refunded.allowed is False
+
+
+def test_entitlement_authorizes_company_scope_before_reading_billing_state() -> None:
+    persistence = MemoryPersistence(account(subscription_active=True), ready=True)
+    persistence.entitlement_authorized = False
+    service = BillingService(persistence, SimulationBillingProvider(), now=lambda: NOW.value)
+
+    with pytest.raises(BillingError) as denied:
+        asyncio.run(service.entitlement(query()))
+
+    assert denied.value.code == BillingErrorCode.FORBIDDEN
+    assert persistence.entitlement_authorizations == 1
+    assert persistence.account_reads == 0
 
 
 def test_exact_active_pilot_can_exempt_billing_without_activating_provider() -> None:

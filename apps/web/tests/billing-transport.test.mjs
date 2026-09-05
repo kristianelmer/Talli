@@ -4,6 +4,12 @@ import test from "node:test";
 
 import { createTalliApiClient, TalliApiError } from "@talli/talli-api-client";
 
+const actions = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");
+const workspace = readFileSync(
+  new URL("../app/(owner)/workspace/page.tsx", import.meta.url),
+  "utf8",
+);
+
 const companyId = "10000000-0000-4000-8000-000000000001";
 
 function account() {
@@ -114,4 +120,19 @@ test("filing page consumes the backend billing decision without rebuilding pilot
   );
   assert.match(page, /data\.primaryBillingEntitlements\[obligation\]/u);
   assert.doesNotMatch(page, /data\.productionPilotEntitlements/u);
+});
+
+test("ambiguous billing outcomes retain the exact operation key for replay", () => {
+  assert.match(actions, /billingOutcomeMayBeUnknown/);
+  for (const retryKey of [
+    "billingConfigureOperationId",
+    "billingActivateOperationId",
+    "billingCancelOperationId",
+    "billingFilingPackageOperationId",
+    "billingUnsupportedOperationId",
+    "billingRefundOperationId",
+  ]) {
+    assert.match(actions, new RegExp(`${retryKey}: outcomeMayBeUnknown \\? operationId`));
+    assert.match(workspace, new RegExp(`params\\?\\.${retryKey} \\?\\? randomUUID\\(\\)`));
+  }
 });

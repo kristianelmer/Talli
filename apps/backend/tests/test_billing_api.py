@@ -109,6 +109,24 @@ def test_provider_retry_returns_same_event_without_bypassing_entitlement() -> No
     assert entitlement.json()["allowed"] is True
 
 
+def test_entitlement_rejects_an_actor_without_company_scope() -> None:
+    stub = BillingSessionStub(account(subscription_active=True), ready=True)
+    stub.entitlement_authorized = False
+
+    response = client(stub).get(
+        "/api/v1/billing/entitlement",
+        headers={"Authorization": "Bearer verified-session"},
+        params={
+            "companyId": COMPANY,
+            "incomeYear": 2025,
+            "obligation": "aksjonaerregisteroppgaven",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["code"] == "BILLING_FORBIDDEN"
+
+
 def test_filing_purchase_fails_closed_when_readiness_is_missing() -> None:
     stub = BillingSessionStub(account(subscription_active=True), ready=False)
     response = client(stub).post(
@@ -123,7 +141,7 @@ def test_filing_purchase_fails_closed_when_readiness_is_missing() -> None:
     assert response.status_code == 409
     assert response.json()["code"] == "BILLING_FILING_NOT_READY"
     assert response.json()["detail"] == (
-        "Filing readiness må være klar før filingpakke kan betales."
+        "Innsendingskontrollen må være klar før innsendingspakken kan betales."
     )
     assert stub.events == {}
 

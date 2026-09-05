@@ -173,18 +173,38 @@ with check (
   and public.company_access_has_fresh_mfa_v1()
 );
 
+-- Company access owns the membership policy. Billing receives only this
+-- versioned subject predicate so pilot administration can validate the
+-- initiating owner atomically without reading the membership table.
+create or replace function public.company_access_is_accepted_owner_subject_v1(
+  p_company_id uuid,
+  p_user_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select exists (
+    select 1
+    from public.company_memberships membership
+    where membership.company_id = p_company_id
+      and membership.user_id = p_user_id
+      and membership.role = 'owner'
+      and membership.accepted_at is not null
+  );
+$function$;
+revoke all on function public.company_access_is_accepted_owner_subject_v1(uuid, uuid)
+  from public, anon, authenticated, service_role;
+grant execute on function public.company_access_is_accepted_owner_subject_v1(uuid, uuid)
+  to billing_store_owner;
+
 -- Pilot administration verifies the accepted system-user request and owner
--- membership inside the same backend transaction. These policies expose only
--- that dependency to an active, freshly stepped-up operator.
+-- status inside the same backend transaction. The owner membership fact is
+-- obtained only through the company-access predicate above.
 create policy billing_store_reads_system_user_requests
 on public.system_user_requests for select to billing_store_owner
-using (
-  public.company_access_is_active_admin_v1()
-  and public.company_access_has_fresh_mfa_v1()
-);
-
-create policy billing_store_reads_company_memberships
-on public.company_memberships for select to billing_store_owner
 using (
   public.company_access_is_active_admin_v1()
   and public.company_access_has_fresh_mfa_v1()
@@ -198,8 +218,7 @@ grant select, insert, update on billing.billing_accounts,
   billing.billing_payment_events,
   billing.production_pilot_entitlements
 to billing_store_owner;
-grant select on public.system_user_requests, public.company_memberships
-to billing_store_owner;
+grant select on public.system_user_requests to billing_store_owner;
 
 create policy billing_store_reads_legacy_filing_readiness
 on public.filing_readiness_snapshots for select to billing_store_owner

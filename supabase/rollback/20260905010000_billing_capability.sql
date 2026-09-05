@@ -53,6 +53,9 @@ drop policy if exists billing_store_reads_legacy_filing_readiness
   on public.filing_readiness_snapshots;
 
 revoke select on public.filing_readiness_snapshots from billing_store_owner;
+revoke execute on function public.company_access_is_accepted_owner_subject_v1(uuid, uuid)
+  from billing_store_owner;
+drop function if exists public.company_access_is_accepted_owner_subject_v1(uuid, uuid);
 
 alter table billing.billing_accounts owner to current_user;
 alter table billing.billing_payment_events owner to current_user;

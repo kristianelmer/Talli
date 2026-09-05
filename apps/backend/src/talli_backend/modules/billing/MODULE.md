@@ -45,6 +45,11 @@ whether readiness may continue, whether a charge may be initiated, whether
 filing is allowed, and whether an exact active pilot entitlement provides the
 billing exemption. Missing data and dependency failures fail closed.
 
+`apps/backend/tests/test_billing_equivalence.py` fixes the predecessor pricing
+and entitlement outcomes as characterization inputs. It compares every legacy
+gate state with the canonical decision, while focused provider and database
+tests preserve coded errors, replay, retry, data effects, and rollback behavior.
+
 ## Ports and adapters
 
 `BillingPersistence` owns all reads and writes to `billing.*`. The Supabase

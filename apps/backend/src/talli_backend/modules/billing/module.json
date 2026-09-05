@@ -94,6 +94,7 @@
   ],
   "tests": {
     "policy": "apps/backend/tests/test_billing.py",
+    "equivalence": "apps/backend/tests/test_billing_equivalence.py",
     "provider": "apps/backend/tests/test_billing_provider.py",
     "api": "apps/backend/tests/test_billing_api.py",
     "database": "tests/billing_database_runtime.test.mjs",

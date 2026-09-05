@@ -1,11 +1,11 @@
 import Link from "next/link";
+import type { BillingEntitlementDecisionWire } from "@talli/talli-api-client";
 
 import { confirmSimulatedRf1086Submission } from "../../actions";
 import { annualReviewHref, type AnnualWorkspaceViewModel } from "../../lib/annual-workspace";
 import { preProductionDirectFilingCopy, requiredNonAffiliationCopy } from "../../lib/launch-copy";
 import type {
   AuthorityPermissionRow,
-  BillingAccountRow,
   FilingPreviewRow,
   FilingSubmissionRow,
 } from "../../lib/supabase/server";
@@ -15,23 +15,30 @@ type SubmissionRecords = {
   previews: FilingPreviewRow[];
   submissions: FilingSubmissionRow[];
   authorityPermissions: AuthorityPermissionRow[];
-  billingAccounts: BillingAccountRow[];
 };
 
-export function SubmissionReview({ model, records }: { model: AnnualWorkspaceViewModel; records: SubmissionRecords }) {
+export function SubmissionReview({
+  billingEntitlement,
+  model,
+  records,
+}: {
+  billingEntitlement: BillingEntitlementDecisionWire;
+  model: AnnualWorkspaceViewModel;
+  records: SubmissionRecords;
+}) {
   const selectedPreview = records.previews.find((item) => item.filing === "aksjonærregisteroppgaven" && item.status !== "blocked");
   const pending = records.submissions.some((item) => item.status === "pending" && !item.receipt_id);
   const completed = records.submissions.find((item) => item.receipt_id);
   const hardReviewBlocks = model.comments.filter((item) => item.severity === "hard_block");
   const readinessOpen = model.obligations.some((item) => item.status === "blocked" || item.status === "not_started");
   const permissionReady = records.authorityPermissions.some((item) => item.confirmed_at);
-  const billingReady = records.billingAccounts.some((item) => item.filing_package_paid || item.pricing_plan === "founder");
+  const billingReady = billingEntitlement.allowed;
   const canSimulate = Boolean(selectedPreview) && !readinessOpen && hardReviewBlocks.length === 0;
   const gates = [
     { label: "Grunnlag", ready: !readinessOpen, text: readinessOpen ? "Én eller flere plikter har åpne blokkeringer." : "Lagret readiness er kontrollert." },
     { label: "Gjennomgang", ready: hardReviewBlocks.length === 0, text: hardReviewBlocks.length ? `${hardReviewBlocks.length} harde kontrollpunkter må løses.` : "Ingen harde kontrollpunkter er åpne." },
     { label: "Innsendingsrett", ready: permissionReady, text: permissionReady ? "Eier har bekreftet innsendingsrett." : "Må bekreftes før produksjonsinnsending." },
-    { label: "Betaling", ready: billingReady, text: billingReady ? "Filingpakken er dekket." : "Må fullføres før produksjonsinnsending." },
+    { label: "Betaling", ready: billingReady, text: billingEntitlement.message },
   ];
 
   return (

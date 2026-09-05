@@ -156,6 +156,18 @@ kind, status, amount_nok, income_year, created_by, created_at"""
 _PILOT_COLUMNS = """id, company_id, user_id, income_year, obligation, case_profile,
 status, billing_exempt, system_user_request_id, system_user_external_reference,
 starts_at, expires_at, evidence_reference, approved_by, created_at, updated_at"""
+_VERIFIED_PILOT_REQUEST_CTE = """verified_request as (
+  select request.id, request.external_ref
+  from public.system_user_requests request
+  where request.id = %s::uuid and request.company_id = %s::uuid
+    and request.initiating_owner_user_id = %s::uuid
+    and request.obligation = 'aksjonaerregisteroppgaven'
+    and request.status = 'accepted'
+    and request.preflight_verified_at is not null
+    and public.company_access_is_accepted_owner_subject_v1(
+      request.company_id, request.initiating_owner_user_id
+    )
+)"""
 
 
 def _kind(command) -> BillingPaymentKind:
@@ -364,6 +376,15 @@ class SupabaseBillingSession:
         if not rows[0]["fresh_mfa"]:
             raise BillingError.step_up_required()
 
+    async def authorize_entitlement_query(self, company_id: CompanyId) -> None:
+        rows = await self._rows(
+            "billing_executor",
+            "select public.company_access_is_accepted_member_v1(%s::uuid) as authorized",
+            (str(company_id),),
+        )
+        if len(rows) != 1 or not rows[0]["authorized"]:
+            raise BillingError.forbidden()
+
     async def authorize_admin_command(self) -> None:
         rows = await self._rows(
             "billing_store_owner",
@@ -475,6 +496,16 @@ class SupabaseBillingSession:
               monthly_nok = excluded.monthly_nok,
               filing_package_nok = excluded.filing_package_nok,
               founder_cohort_number = excluded.founder_cohort_number,
+              subscription_active = false,
+              filing_package_paid = false,
+              supported_case = true,
+              refund_eligible = false,
+              refund_completed = false,
+              no_charge_reason = null,
+              provider_customer_ref = null,
+              subscription_provider_ref = null,
+              filing_package_payment_ref = null,
+              refund_provider_ref = null,
               updated_by = excluded.updated_by,
               updated_at = pg_catalog.now()
             returning billing.billing_accounts.*""",
@@ -636,22 +667,7 @@ class SupabaseBillingSession:
             "evidenceReference": command.evidence_reference,
         })
         if command.entitlement_id is None:
-            statement = """with verified_request as (
-              select request.id, request.external_ref
-              from public.system_user_requests request
-              where request.id = %s::uuid and request.company_id = %s::uuid
-                and request.initiating_owner_user_id = %s::uuid
-                and request.obligation = 'aksjonaerregisteroppgaven'
-                and request.status = 'accepted'
-                and request.preflight_verified_at is not null
-                and exists (
-                  select 1 from public.company_memberships membership
-                  where membership.company_id = request.company_id
-                    and membership.user_id = request.initiating_owner_user_id
-                    and membership.role = 'owner'
-                    and membership.accepted_at is not null
-                )
-            ), changed as (
+            statement = f"""with {_VERIFIED_PILOT_REQUEST_CTE}, changed as (
               insert into billing.production_pilot_entitlements (
               company_id, user_id, income_year, obligation, case_profile, status,
               billing_exempt, system_user_request_id, system_user_external_reference,
@@ -674,22 +690,7 @@ class SupabaseBillingSession:
                 str(command.actor_id.subject),
             )
         else:
-            statement = """with verified_request as (
-              select request.id, request.external_ref
-              from public.system_user_requests request
-              where request.id = %s::uuid and request.company_id = %s::uuid
-                and request.initiating_owner_user_id = %s::uuid
-                and request.obligation = 'aksjonaerregisteroppgaven'
-                and request.status = 'accepted'
-                and request.preflight_verified_at is not null
-                and exists (
-                  select 1 from public.company_memberships membership
-                  where membership.company_id = request.company_id
-                    and membership.user_id = request.initiating_owner_user_id
-                    and membership.role = 'owner'
-                    and membership.accepted_at is not null
-                )
-            ), changed as (
+            statement = f"""with {_VERIFIED_PILOT_REQUEST_CTE}, changed as (
               update billing.production_pilot_entitlements entitlement set
               status = %s::text, billing_exempt = %s::boolean,
               system_user_request_id = verified_request.id,

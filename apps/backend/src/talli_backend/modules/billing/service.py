@@ -144,6 +144,7 @@ class BillingService:
     async def entitlement(
         self, query: BillingEntitlementQuery
     ) -> BillingEntitlementDecision:
+        await self._persistence.authorize_entitlement_query(query.company_id)
         if query.case_profile:
             pilot = await self._persistence.find_active_pilot_entitlement(
                 company_id=query.company_id,
@@ -168,7 +169,7 @@ class BillingService:
                             charge_allowed=False,
                             readiness_allowed=True,
                             billing_exempt=True,
-                            message="Filing readiness must pass before production filing.",
+                            message="Innsendingskontrollen må være klar før produksjonsinnsending.",
                             pilot_entitlement_id=pilot.entitlement_id,
                         )
                     return BillingEntitlementDecision(
@@ -180,7 +181,7 @@ class BillingService:
                         charge_allowed=False,
                         readiness_allowed=True,
                         billing_exempt=True,
-                        message="An exact active validation entitlement exempts billing.",
+                        message="En aktiv, nøyaktig valideringsrettighet gir betalingsfritak.",
                         pilot_entitlement_id=pilot.entitlement_id,
                     )
                 account = await self._persistence.find_account(query.company_id)
@@ -263,7 +264,7 @@ def billing_entitlement_decision(
             allowed=False,
             charge_allowed=False,
             readiness_allowed=False,
-            message="Billing account is required before production filing.",
+            message="Faktureringskonto kreves før produksjonsinnsending.",
         )
     if account.refund_eligible:
         return BillingEntitlementDecision(
@@ -272,7 +273,7 @@ def billing_entitlement_decision(
             allowed=False,
             charge_allowed=False,
             readiness_allowed=False,
-            message="The filing package is eligible for refund after a supported failure.",
+            message="Innsendingspakken kan refunderes etter en støttet feil.",
         )
     if not account.supported_case:
         return BillingEntitlementDecision(
@@ -281,7 +282,7 @@ def billing_entitlement_decision(
             allowed=False,
             charge_allowed=False,
             readiness_allowed=False,
-            message=account.no_charge_reason or "The case is outside Talli support.",
+            message=account.no_charge_reason or "Saken er utenfor Talli-støtte.",
         )
     if not account.subscription_active:
         return BillingEntitlementDecision(
@@ -290,7 +291,7 @@ def billing_entitlement_decision(
             allowed=False,
             charge_allowed=False,
             readiness_allowed=False,
-            message="Active subscription is required before production filing.",
+            message="Aktivt abonnement kreves før produksjonsinnsending.",
         )
     if not filing_ready:
         return BillingEntitlementDecision(
@@ -299,7 +300,7 @@ def billing_entitlement_decision(
             allowed=False,
             charge_allowed=False,
             readiness_allowed=True,
-            message="Filing readiness must pass before filing-package payment.",
+            message="Innsendingskontrollen må være klar før innsendingspakken kan betales.",
         )
     if account.filing_package_paid:
         return BillingEntitlementDecision(
@@ -308,7 +309,7 @@ def billing_entitlement_decision(
             allowed=True,
             charge_allowed=False,
             readiness_allowed=True,
-            message="Billing and filing-package entitlement are ready.",
+            message="Fakturering og innsendingsrett er klare.",
         )
     return BillingEntitlementDecision(
         **common,
@@ -316,7 +317,7 @@ def billing_entitlement_decision(
         allowed=False,
         charge_allowed=True,
         readiness_allowed=True,
-        message="Filing package payment is required before production filing.",
+        message="Innsendingspakken må betales før produksjonsinnsending.",
     )
 
 

@@ -27,7 +27,7 @@ import {
   listPresentedInvestmentPositions,
 } from "../../features/investments";
 import { getCurrentSessionAccessToken } from "./supabase/auth-session.ts";
-import { loadBillingSnapshot } from "../../features/billing";
+import { loadBillingEntitlement } from "../../features/billing";
 
 export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext) => {
   if (!Number.isInteger(context.incomeYear) || context.incomeYear < 2000 || context.incomeYear > 2100) notFound();
@@ -62,7 +62,7 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     entriesResult,
     snapshotsResult,
     commentsResult,
-    billingResult,
+    billingEntitlement,
     authorityResult,
   ] = await Promise.all([
     listDocumentsForCompanies(companyIds),
@@ -79,29 +79,12 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     listLedgerEntries(companyIds),
     listFilingReadinessSnapshots(companyIds),
     listFilingReviewComments(companyIds),
-    loadBillingSnapshot(accessToken, { companyIds }).then((snapshot) => ({
-      billingAccounts: snapshot.accounts.map((account) => ({
-        company_id: account.companyId,
-        pricing_plan: account.pricingPlan,
-        monthly_nok: account.monthlyNok,
-        filing_package_nok: account.filingPackageNok,
-        founder_cohort_number: account.founderCohortNumber,
-        subscription_active: account.subscriptionActive,
-        filing_package_paid: account.filingPackagePaid,
-        supported_case: account.supportedCase,
-        refund_eligible: account.refundEligible,
-        refund_completed: account.refundCompleted,
-        no_charge_reason: account.noChargeReason,
-        provider_customer_ref: account.providerCustomerReference,
-        subscription_provider_ref: account.subscriptionProviderReference,
-        filing_package_payment_ref: account.filingPackagePaymentReference,
-        refund_provider_ref: account.refundProviderReference,
-        updated_by: account.updatedBy,
-        created_at: account.createdAt,
-        updated_at: account.updatedAt,
-      })),
-      error: null,
-    })),
+    loadBillingEntitlement(accessToken, {
+      companyId: context.companyId,
+      incomeYear: context.incomeYear,
+      obligation: "aksjonaerregisteroppgaven",
+      caseProfile: "rf1086_no_activity_v1",
+    }),
     listAuthorityPermissions(companyIds),
   ]);
 
@@ -120,7 +103,6 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     ["entries", entriesResult.error],
     ["snapshots", snapshotsResult.error],
     ["comments", commentsResult.error],
-    ["billing", billingResult.error],
     ["authority", authorityResult.error],
   ].filter((entry) => entry[1]);
   if (failedSources.length) {
@@ -146,7 +128,6 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     entries: entriesResult.entries,
     snapshots: snapshotsResult.readinessSnapshots,
     comments: commentsResult.comments,
-    billingAccounts: billingResult.billingAccounts,
     authorityPermissions: authorityResult.authorityPermissions,
   });
   const deadlines = buildDeadlineDashboard({ incomeYear: context.incomeYear, submissions: records.submissions });
@@ -161,5 +142,5 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     submissions: records.submissions,
   });
 
-  return { model, records, deadlines };
+  return { model, records, deadlines, billingEntitlement };
 });

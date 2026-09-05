@@ -8,5 +8,11 @@ export default async function AnnualReviewPage({
 }) {
   const { companyId, incomeYear } = await params;
   const loaded = await loadAnnualWorkspace({ companyId, incomeYear: Number(incomeYear) });
-  return <SubmissionReview model={loaded.model} records={loaded.records} />;
+  return (
+    <SubmissionReview
+      billingEntitlement={loaded.billingEntitlement}
+      model={loaded.model}
+      records={loaded.records}
+    />
+  );
 }

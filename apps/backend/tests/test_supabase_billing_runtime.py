@@ -43,6 +43,7 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "")
 OWNER_ID = "74000000-0000-4000-8000-000000000001"
 COMPANY_ID = "74000000-0000-4000-8000-000000000002"
 REQUEST_ID = "74000000-0000-4000-8000-000000000003"
+OUTSIDER_ID = "74000000-0000-4000-8000-000000000004"
 
 
 def enable_backend_login() -> str:
@@ -78,8 +79,13 @@ def metadata(key: str) -> dict[str, object]:
 def seed() -> None:
     with psycopg.connect(DATABASE_URL) as connection:
         connection.execute(
-            "insert into auth.users (id, email) values (%s::uuid, %s::text)",
-            (OWNER_ID, "billing-runtime@example.test"),
+            "insert into auth.users (id, email) values (%s::uuid, %s::text), (%s::uuid, %s::text)",
+            (
+                OWNER_ID,
+                "billing-runtime@example.test",
+                OUTSIDER_ID,
+                "billing-outsider@example.test",
+            ),
         )
         connection.execute(
             """insert into public.companies (
@@ -124,6 +130,7 @@ def cleanup() -> None:
         )
         connection.execute("delete from public.companies where id=%s::uuid", (COMPANY_ID,))
         connection.execute("delete from auth.users where id=%s::uuid", (OWNER_ID,))
+        connection.execute("delete from auth.users where id=%s::uuid", (OUTSIDER_ID,))
 
 
 @pytest.mark.skipif(not DATABASE_URL, reason="DATABASE_URL is required")
@@ -173,6 +180,58 @@ def test_non_provider_commands_replay_exactly_and_reject_key_reuse() -> None:
                     )
                 )
             assert reused_configure.value.code == BillingErrorCode.IDEMPOTENCY_KEY_REUSED
+
+            with psycopg.connect(DATABASE_URL) as connection:
+                connection.execute(
+                    """update billing.billing_accounts set
+                      subscription_active=true, filing_package_paid=true,
+                      supported_case=false, refund_eligible=true,
+                      refund_completed=true, no_charge_reason='legacy-state',
+                      provider_customer_ref='customer-ref',
+                      subscription_provider_ref='subscription-ref',
+                      filing_package_payment_ref='package-ref',
+                      refund_provider_ref='refund-ref'
+                    where company_id=%s::uuid""",
+                    (COMPANY_ID,),
+                )
+            reconfigured = asyncio.run(
+                session.configure_account(
+                    ConfigureBillingAccountCommand(
+                        **metadata("reconfigure"),
+                        pricing_plan=BillingPlan.STANDARD,
+                        founder_cohort_number=None,
+                    ),
+                    BillingPricing(BillingPlan.STANDARD, 49, 499),
+                )
+            )
+            assert reconfigured.pricing.plan is BillingPlan.STANDARD
+            assert reconfigured.subscription_active is False
+            assert reconfigured.filing_package_paid is False
+            assert reconfigured.supported_case is True
+            assert reconfigured.refund_eligible is False
+            assert reconfigured.refund_completed is False
+            assert reconfigured.no_charge_reason is None
+            assert reconfigured.provider_customer_reference is None
+            assert reconfigured.subscription_provider_reference is None
+            assert reconfigured.filing_package_payment_reference is None
+            assert reconfigured.refund_provider_reference is None
+
+            outsider_session = SupabaseBillingSession(
+                backend_database_url,
+                _VerifiedActor(
+                    actor_id=ActorId(ActorKind.USER, UserId(OUTSIDER_ID)),
+                    claims_json=json.dumps({
+                        "sub": OUTSIDER_ID,
+                        "role": "authenticated",
+                        "aal": "aal2",
+                    }),
+                ),
+            )
+            with pytest.raises(BillingError) as outsider_entitlement:
+                asyncio.run(
+                    outsider_session.authorize_entitlement_query(CompanyId(COMPANY_ID))
+                )
+            assert outsider_entitlement.value.code == BillingErrorCode.FORBIDDEN
 
             stale_session = SupabaseBillingSession(
                 backend_database_url,

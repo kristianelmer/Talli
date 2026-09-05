@@ -3434,25 +3434,25 @@ def create_app(
                 ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
             }
             details = {
-                BillingErrorCode.INVALID_INPUT: "Ugyldig billingforespørsel.",
-                BillingErrorCode.NOT_FOUND: "Billingkonto mangler.",
-                BillingErrorCode.FORBIDDEN: "Du har ikke tilgang til billingkontoen.",
+                BillingErrorCode.INVALID_INPUT: "Ugyldig faktureringsforespørsel.",
+                BillingErrorCode.NOT_FOUND: "Faktureringskonto mangler.",
+                BillingErrorCode.FORBIDDEN: "Du har ikke tilgang til faktureringskontoen.",
                 BillingErrorCode.STEP_UP_REQUIRED: "Ny tofaktorbekreftelse kreves.",
                 BillingErrorCode.IDEMPOTENCY_KEY_REUSED: "Operasjonsnøkkelen er allerede brukt med andre data.",
-                BillingErrorCode.IDEMPOTENCY_IN_PROGRESS: "Billingoperasjonen behandles allerede.",
-                BillingErrorCode.SUBSCRIPTION_REQUIRED: "Aktivt abonnement kreves før produksjonsfiling.",
-                BillingErrorCode.FILING_NOT_READY: "Filing readiness må være klar før filingpakke kan betales.",
-                BillingErrorCode.FILING_PACKAGE_REQUIRED: "Filingpakke må betales før produksjonsinnsending.",
-                BillingErrorCode.UNSUPPORTED_CASE: "Saken er utenfor Talli-støtte. Ikke ta betalt for filingpakke.",
-                BillingErrorCode.REFUND_NOT_ALLOWED: "Kun støttet betalt filingpakke kan refunderes.",
+                BillingErrorCode.IDEMPOTENCY_IN_PROGRESS: "Faktureringsoperasjonen behandles allerede.",
+                BillingErrorCode.SUBSCRIPTION_REQUIRED: "Aktivt abonnement kreves før produksjonsinnsending.",
+                BillingErrorCode.FILING_NOT_READY: "Innsendingskontrollen må være klar før innsendingspakken kan betales.",
+                BillingErrorCode.FILING_PACKAGE_REQUIRED: "Innsendingspakken må betales før produksjonsinnsending.",
+                BillingErrorCode.UNSUPPORTED_CASE: "Saken er utenfor Talli-støtte. Ikke ta betalt for innsendingspakken.",
+                BillingErrorCode.REFUND_NOT_ALLOWED: "Kun en støttet, betalt innsendingspakke kan refunderes.",
                 BillingErrorCode.PROVIDER_DISABLED: "Betalingsleverandøren er deaktivert.",
                 BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN: "Betalingsutfallet er ukjent og må avstemmes.",
-                BillingErrorCode.DEPENDENCY_UNAVAILABLE: "Billing er midlertidig utilgjengelig.",
+                BillingErrorCode.DEPENDENCY_UNAVAILABLE: "Fakturering er midlertidig utilgjengelig.",
             }
             raise ApiProblem(
                 status=statuses[error.category],
                 code=error.code,
-                title="Billing request failed",
+                title="Faktureringsforespørselen mislyktes",
                 detail=error.message or details[BillingErrorCode(error.code)],
             ) from None
 

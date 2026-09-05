@@ -66,6 +66,7 @@ import {
 import {
   activateBillingSubscription as activateBillingSubscriptionThroughApi,
   billingActionErrorMessage,
+  billingOutcomeMayBeUnknown,
   cancelBillingSubscription as cancelBillingSubscriptionThroughApi,
   configureBillingAccount,
   manageProductionPilotEntitlement,
@@ -4087,7 +4088,11 @@ export async function saveBillingAccount(formData: FormData) {
       founderCohortNumber: pricingPlan === "founder" ? founderValue : null,
     }, operationId);
   } catch (error) {
-    redirect(`/workspace?error=${encodeURIComponent(billingActionErrorMessage(error))}`);
+    const outcomeMayBeUnknown = billingOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery("/workspace", {
+      error: billingActionErrorMessage(error),
+      billingConfigureOperationId: outcomeMayBeUnknown ? operationId : undefined,
+    }));
   }
 
   await supabase.from("audit_events").insert({
@@ -4303,7 +4308,11 @@ export async function activateBillingSubscription(formData: FormData) {
   try {
     event = await activateBillingSubscriptionThroughApi(accessToken, { companyId }, operationId);
   } catch (error) {
-    redirect(`/workspace?error=${encodeURIComponent(billingActionErrorMessage(error))}`);
+    const outcomeMayBeUnknown = billingOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery("/workspace", {
+      error: billingActionErrorMessage(error),
+      billingActivateOperationId: outcomeMayBeUnknown ? operationId : undefined,
+    }));
   }
 
   await supabase.from("audit_events").insert({
@@ -4348,7 +4357,11 @@ export async function requestFilingPackagePayment(formData: FormData) {
       obligation: "aksjonaerregisteroppgaven",
     }, operationId);
   } catch (error) {
-    redirect(`/workspace?error=${encodeURIComponent(billingActionErrorMessage(error))}`);
+    const outcomeMayBeUnknown = billingOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery("/workspace", {
+      error: billingActionErrorMessage(error),
+      billingFilingPackageOperationId: outcomeMayBeUnknown ? operationId : undefined,
+    }));
   }
 
   await supabase.from("audit_events").insert({
@@ -4378,7 +4391,11 @@ export async function cancelBillingSubscription(formData: FormData) {
   try {
     event = await cancelBillingSubscriptionThroughApi(accessToken, { companyId }, operationId);
   } catch (error) {
-    redirect(`/workspace?error=${encodeURIComponent(billingActionErrorMessage(error))}`);
+    const outcomeMayBeUnknown = billingOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery("/workspace", {
+      error: billingActionErrorMessage(error),
+      billingCancelOperationId: outcomeMayBeUnknown ? operationId : undefined,
+    }));
   }
 
   await supabase.from("audit_events").insert({
@@ -4658,7 +4675,11 @@ export async function markBillingUnsupported(formData: FormData) {
   try {
     await markBillingCaseUnsupported(accessToken, { companyId, reason }, operationId);
   } catch (error) {
-    redirect(`/workspace?error=${encodeURIComponent(billingActionErrorMessage(error))}`);
+    const outcomeMayBeUnknown = billingOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery("/workspace", {
+      error: billingActionErrorMessage(error),
+      billingUnsupportedOperationId: outcomeMayBeUnknown ? operationId : undefined,
+    }));
   }
 
   await supabase.from("audit_events").insert({
@@ -4693,7 +4714,11 @@ export async function markBillingRefundEligible(formData: FormData) {
       obligation: "aksjonaerregisteroppgaven",
     }, operationId);
   } catch (error) {
-    redirect(`/workspace?error=${encodeURIComponent(billingActionErrorMessage(error))}`);
+    const outcomeMayBeUnknown = billingOutcomeMayBeUnknown(error);
+    redirect(ownerPathWithQuery("/workspace", {
+      error: billingActionErrorMessage(error),
+      billingRefundOperationId: outcomeMayBeUnknown ? operationId : undefined,
+    }));
   }
 
   await supabase.from("audit_events").insert({

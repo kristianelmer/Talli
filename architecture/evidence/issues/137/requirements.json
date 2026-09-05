@@ -27,9 +27,22 @@
       "id": "GH-137-A1",
       "requirement": "Billing and filing-entitlement decisions come from the backend public API.",
       "evidence": [
-        {"path": "apps/backend/src/talli_backend/modules/billing/public.py", "command": "npm run test:billing"},
-        {"path": "apps/backend/src/talli_backend/modules/billing/service.py", "command": "npm run test:billing"},
-        {"path": "apps/web/features/billing/transport.ts", "command": "npm run test:billing"}
+        {
+          "path": "apps/backend/src/talli_backend/modules/billing/public.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/backend/src/talli_backend/modules/billing/service.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/backend/tests/test_billing_equivalence.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/web/features/billing/transport.ts",
+          "command": "npm run test:billing"
+        }
       ],
       "status": "implemented-and-focused-tests-passed"
     },
@@ -37,9 +50,22 @@
       "id": "GH-137-A2",
       "requirement": "The existing billing page presents equivalent supported, blocked, refund, cancellation, plan and price states.",
       "evidence": [
-        {"path": "apps/web/app/(owner)/billing/page.tsx", "command": "npm run test:billing"},
-        {"path": "apps/web/app/(owner)/workspace/page.tsx", "command": "npm run typecheck"},
-        {"path": "apps/web/tests/billing-transport.test.mjs", "command": "npm run test:billing"}
+        {
+          "path": "apps/web/app/(owner)/billing/page.tsx",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/web/app/(owner)/workspace/page.tsx",
+          "command": "npm run typecheck"
+        },
+        {
+          "path": "apps/web/app/components/annual-workspace/SubmissionReview.tsx",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/web/tests/billing-transport.test.mjs",
+          "command": "npm run test:billing"
+        }
       ],
       "status": "implemented-with-backend-owned-pricing-and-focused-tests-passed"
     },
@@ -47,10 +73,26 @@
       "id": "GH-137-A3",
       "requirement": "Provider events are idempotent and cannot bypass filing gates.",
       "evidence": [
-        {"path": "apps/backend/tests/test_billing.py", "command": "npm run test:billing"},
-        {"path": "apps/backend/tests/test_billing_provider.py", "command": "npm run test:billing"},
-        {"path": "apps/backend/tests/test_supabase_billing_runtime.py", "command": "npm run test:supabase:local"},
-        {"path": "tests/billing_database_runtime.test.mjs", "command": "npm run test:supabase:local"}
+        {
+          "path": "apps/backend/tests/test_billing.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/backend/tests/test_billing_provider.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/web/app/actions.ts",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/backend/tests/test_supabase_billing_runtime.py",
+          "command": "npm run test:supabase:local"
+        },
+        {
+          "path": "tests/billing_database_runtime.test.mjs",
+          "command": "npm run test:supabase:local"
+        }
       ],
       "status": "implemented-with-replay-and-quarantine-tests-passed"
     },
@@ -58,9 +100,22 @@
       "id": "GH-137-A4",
       "requirement": "Company scope and sensitive-action authorization are enforced.",
       "evidence": [
-        {"path": "apps/backend/src/talli_backend/systems/billing/session.py", "command": "npm run test:billing"},
-        {"path": "apps/backend/src/talli_backend/adapters/supabase_billing.py", "command": "npm run test:supabase:local"},
-        {"path": "supabase/migrations/20260905010000_billing_capability.sql", "command": "npm run test:supabase:local"}
+        {
+          "path": "apps/backend/src/talli_backend/application/billing_session.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/backend/src/talli_backend/adapters/supabase_billing.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/backend/src/talli_backend/adapters/supabase_billing.py",
+          "command": "npm run test:supabase:local"
+        },
+        {
+          "path": "supabase/migrations/20260905010000_billing_capability.sql",
+          "command": "npm run test:supabase:local"
+        }
       ],
       "status": "implemented-and-fresh-runtime-tests-passed"
     },
@@ -68,9 +123,18 @@
       "id": "GH-137-A5",
       "requirement": "One entitlement path remains and provider-port contract tests pass.",
       "evidence": [
-        {"path": "apps/backend/src/talli_backend/modules/billing/service.py", "command": "npm run test:billing"},
-        {"path": "apps/backend/tests/test_billing_provider.py", "command": "npm run test:billing"},
-        {"path": "contracts/openapi/talli-v1.json", "command": "npm run generate:openapi && npm run generate:api-client && git diff --exit-code"}
+        {
+          "path": "apps/backend/src/talli_backend/modules/billing/service.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "apps/backend/tests/test_billing_provider.py",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "contracts/openapi/talli-v1.json",
+          "command": "npm run generate:openapi && npm run generate:api-client && git diff --exit-code"
+        }
       ],
       "status": "implemented-and-focused-tests-passed"
     },
@@ -78,9 +142,18 @@
       "id": "GH-137-A6",
       "requirement": "Duplicate TypeScript billing policy and active-stage compatibility code are removed.",
       "evidence": [
-        {"path": "tests/billing_persisted.test.mjs", "command": "npm run test:billing"},
-        {"path": "supabase/contract-migrations/20260905013000_billing_contract.sql", "command": "npm run test:supabase:local"},
-        {"path": "architecture/compatibility.json", "command": "npm run check:architecture"}
+        {
+          "path": "tests/billing_persisted.test.mjs",
+          "command": "npm run test:billing"
+        },
+        {
+          "path": "supabase/contract-migrations/20260905013000_billing_contract.sql",
+          "command": "npm run test:supabase:local"
+        },
+        {
+          "path": "architecture/compatibility.json",
+          "command": "npm run check:architecture"
+        }
       ],
       "status": "implemented-and-static-boundaries-passed"
     },
@@ -88,9 +161,18 @@
       "id": "GH-137-A7",
       "requirement": "The complete billing stage exit criteria from #132 pass before authority connections begin.",
       "evidence": [
-        {"path": "architecture/evidence/customer-ready-gates/<R1>.json", "command": "npm run gate:customer-ready"},
-        {"path": "architecture/evidence/customer-ready-gates/<R2>.json", "command": "npm run gate:customer-ready -- --previous <R1>"},
-        {"path": "architecture/compatibility.json", "command": "npm run check:architecture"}
+        {
+          "path": "architecture/evidence/customer-ready-gates/<R1>.json",
+          "command": "npm run gate:customer-ready"
+        },
+        {
+          "path": "architecture/evidence/customer-ready-gates/<R2>.json",
+          "command": "npm run gate:customer-ready -- --previous <R1>"
+        },
+        {
+          "path": "architecture/compatibility.json",
+          "command": "npm run check:architecture"
+        }
       ],
       "status": "pending-two-linked-immutable-gates-and-protected-integration"
     }
@@ -104,7 +186,7 @@
     "productionPromotion": "not authorized by #137"
   },
   "localValidation": {
-    "billingFocused": {"backendPassed": 17, "nodePassed": 6, "failed": 0},
+    "billingFocused": { "backendPassed": 27, "nodePassed": 9, "failed": 0 },
     "webTypecheck": "passed",
     "architecture": "passed",
     "freshSupabase": {
@@ -138,9 +220,16 @@
       "all web pricing renders from the backend snapshot",
       "the filing page consumes the backend entitlement decision instead of rebuilding pilot policy",
       "the exact production-pilot release gate remains fail closed",
-      "contract rollback restores the authenticated predecessor pilot writer"
+      "contract rollback restores the authenticated predecessor pilot writer",
+      "entitlement queries authorize company scope before any billing-state read",
+      "ambiguous browser billing outcomes preserve the exact operation key for safe replay",
+      "annual submission review consumes the backend entitlement decision without a founder-plan rule",
+      "account reconfiguration preserves the predecessor reset behavior",
+      "pilot owner validation uses a versioned company-access predicate instead of direct membership-table access",
+      "fixed-input legacy entitlement and pricing characterization runs in the focused billing suite",
+      "customer-visible billing decisions and errors use Norwegian product language"
     ],
     "finalReview": "pending-on-corrected-immutable-candidate"
   },
-  "closeState": "review candidate in progress; protected integration not yet attempted"
+  "closeState": "review findings corrected in a new candidate; fresh final review and protected integration pending"
 }

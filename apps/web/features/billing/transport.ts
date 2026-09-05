@@ -105,9 +105,9 @@ export function manageProductionPilotEntitlement(
 
 export function billingActionErrorMessage(error: unknown): string {
   if (error instanceof TalliApiError) {
-    return error.problem?.detail ?? error.problem?.code ?? `Billing-feil (${error.status}).`;
+    return error.problem?.detail ?? error.problem?.code ?? `Faktureringsfeil (${error.status}).`;
   }
-  return error instanceof Error ? error.message : "Billing-forespørselen feilet.";
+  return error instanceof Error ? error.message : "Faktureringsforespørselen mislyktes.";
 }
 
 export function billingOutcomeMayBeUnknown(error: unknown): boolean {

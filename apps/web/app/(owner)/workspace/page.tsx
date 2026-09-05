@@ -115,6 +115,12 @@ type WorkspaceProps = {
     taxSettlementOperationId?: string;
     ownerDividendPaymentOperationId?: string;
     ownerDividendPaymentBankTransactionId?: string;
+    billingConfigureOperationId?: string;
+    billingActivateOperationId?: string;
+    billingCancelOperationId?: string;
+    billingFilingPackageOperationId?: string;
+    billingUnsupportedOperationId?: string;
+    billingRefundOperationId?: string;
   }>;
 };
 
@@ -1029,7 +1035,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                 <div className="setupGrid">
                   <form className="dataPanel formPanel" action={saveBillingAccount}>
                     <span className="panelLabel">Prisplan</span>
-                    <input name="operationId" type="hidden" value={randomUUID()} />
+                    <input name="operationId" type="hidden" value={params?.billingConfigureOperationId ?? randomUUID()} />
                     <input name="companyId" type="hidden" value={primaryCompanyId} />
                     <label>
                       Plan
@@ -1057,7 +1063,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
 
                   <form className="dataPanel formPanel" action={requestFilingPackagePayment}>
                     <span className="panelLabel">Filingpakke</span>
-                    <input name="operationId" type="hidden" value={randomUUID()} />
+                    <input name="operationId" type="hidden" value={params?.billingFilingPackageOperationId ?? randomUUID()} />
                     <input name="companyId" type="hidden" value={primaryCompanyId} />
                     <label>
                       Inntektsår
@@ -1071,7 +1077,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
 
                   <form className="dataPanel formPanel" action={markBillingUnsupported}>
                     <span className="panelLabel">No charge</span>
-                    <input name="operationId" type="hidden" value={randomUUID()} />
+                    <input name="operationId" type="hidden" value={params?.billingUnsupportedOperationId ?? randomUUID()} />
                     <input name="companyId" type="hidden" value={primaryCompanyId} />
                     <label>
                       Årsak
@@ -1108,7 +1114,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     <p>Innsendingspakke ref: {primaryBillingAccount?.filing_package_payment_ref ?? "Ikke betalt"}</p>
                     {primaryBillingAccount && !primaryBillingAccount.subscription_active ? (
                       <form action={activateBillingSubscription}>
-                        <input name="operationId" type="hidden" value={randomUUID()} />
+                        <input name="operationId" type="hidden" value={params?.billingActivateOperationId ?? randomUUID()} />
                         <input name="companyId" type="hidden" value={primaryCompanyId} />
                         <button className="secondaryButton" type="submit">
                           Marker abonnement aktivt
@@ -1117,7 +1123,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     ) : null}
                     {primaryBillingAccount?.subscription_active ? (
                       <form action={cancelBillingSubscription}>
-                        <input name="operationId" type="hidden" value={randomUUID()} />
+                        <input name="operationId" type="hidden" value={params?.billingCancelOperationId ?? randomUUID()} />
                         <input name="companyId" type="hidden" value={primaryCompanyId} />
                         <button className="secondaryButton" type="submit">
                           Kanseller abonnement
@@ -1137,7 +1143,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     <p>{primaryBillingAccount?.refund_provider_ref ?? primaryBillingAccount?.no_charge_reason ?? "Støttet sak kan refunderes etter Talli-feil."}</p>
                     {primaryBillingAccount?.filing_package_paid && primaryBillingAccount.supported_case ? (
                       <form action={markBillingRefundEligible}>
-                        <input name="operationId" type="hidden" value={randomUUID()} />
+                        <input name="operationId" type="hidden" value={params?.billingRefundOperationId ?? randomUUID()} />
                         <input name="companyId" type="hidden" value={primaryCompanyId} />
                         <input name="incomeYear" type="hidden" value={primaryIncomeYear} />
                         <button className="secondaryButton" type="submit">
