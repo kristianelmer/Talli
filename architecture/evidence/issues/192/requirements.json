@@ -123,6 +123,17 @@
         "standards": "PASS on exactd5831f2718305c1aab2af0a4947a25cf8d4c7839",
         "spec": "PASS on exactd5831f2718305c1aab2af0a4947a25cf8d4c7839"
       }
+    },
+    "annualBillingReadAndCancellationApi": {
+      "revision": "366192d47eccf6e68ae5be8259fe54c9a9b99cfb",
+      "expectationsRevision": "ca9cfd5f95a5e17129048b72030857be30331b91",
+      "scope": "Authenticated owner annual offer/history GET and local renewal cancellation POST, generated client and durable read persistence only. Annual acquisition, cleanup worker, UI, refunds, source-owned readiness and actual MT remain pending.",
+      "validation": "249 Python and 17 Node billing tests pass; 20 focused API cases and 11 focused real-DB read cases pass. Fresh isolated lifecycle: 128 Python plus Node predecessor cycles pass before the final standalone foreign-cursor case was added. Typecheck and deterministic OpenAPI/client regeneration pass.",
+      "architecture": "Checker and dependency evidence pass. All 51 architecture regressions pass in detached ca9cfd5f validation checkout; 49 boundary-contract cases pass. Updated only the missing workflow edge expectation and a migration expectation already stale on pre-API 59e258fa.",
+      "independentReviews": {
+        "standards": "PASS on exact 366192d47eccf6e68ae5be8259fe54c9a9b99cfb; separate test-only correction PASS on ca9cfd5f95a5e17129048b72030857be30331b91",
+        "spec": "PASS on exact 366192d47eccf6e68ae5be8259fe54c9a9b99cfb"
+      }
     }
   },
   "externalEvidence": {
