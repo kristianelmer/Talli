@@ -33,6 +33,7 @@
     { "name": "banking.transaction_sources", "kind": "capability-business", "owner": "backend:banking" },
     { "name": "banking.transactions", "kind": "capability-business", "owner": "backend:banking" },
     { "name": "billing.billing_accounts", "kind": "capability-business", "owner": "backend:billing", "compatibilityResources": ["table:billing_accounts"] },
+    { "name": "billing.billing_command_receipts", "kind": "technical" },
     { "name": "billing.billing_payment_events", "kind": "capability-business", "owner": "backend:billing", "compatibilityResources": ["table:billing_payment_events"] },
     { "name": "billing.production_pilot_entitlements", "kind": "capability-business", "owner": "backend:billing", "compatibilityResources": ["table:production_pilot_entitlements"] },
     { "name": "corporate_governance.annual_close_artifacts", "kind": "capability-business", "owner": "backend:corporate_governance" },

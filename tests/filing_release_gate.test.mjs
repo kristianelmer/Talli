@@ -29,11 +29,13 @@ function billingDecision(obligation, overrides = {}) {
   };
 }
 
-const readyBillingEntitlements = Object.fromEntries([
-  "aksjonaerregisteroppgaven",
-  "skattemelding",
-  "aarsregnskap",
-].map((obligation) => [obligation, billingDecision(obligation)]));
+const readyBillingEntitlements = {
+  aksjonaerregisteroppgaven: billingDecision("aksjonaerregisteroppgaven", {
+    pilotEntitlementId: "4da89eb7-cf0f-4baf-91ce-e496ff482d79",
+  }),
+  skattemelding: billingDecision("skattemelding"),
+  aarsregnskap: billingDecision("aarsregnskap"),
+};
 
 const readyPermissions = [
   { obligation: "aksjonaerregisteroppgaven", confirmed_at: "2026-01-01T00:00:00.000Z", production_enabled: true },
@@ -136,10 +138,11 @@ test("blocks production when authority evidence or filing-specific signoff is mi
   assert.ok(rf1086.disabledReasons.includes("rf1086_authority_signoff_missing"));
   assert.equal(tax.status, "production_disabled");
   assert.ok(tax.disabledReasons.includes("test_evidence_missing"));
-  assert.equal(annual.status, "production_ready");
+  assert.equal(annual.status, "production_disabled");
+  assert.ok(annual.disabledReasons.includes("pilot_entitlement_required"));
 });
 
-test("marks obligations production ready when the backend grants entitlement and every release gate passes", () => {
+test("marks only the exactly entitled RF obligation production ready when every release gate passes", () => {
   const gates = buildFilingReleaseGates({
     authorityPermissions: readyPermissions,
     authorityTestRuns: readyAuthorityEvidence,
@@ -157,7 +160,10 @@ test("marks obligations production ready when the backend grants entitlement and
   assert.equal(rf1086.status, "production_ready");
   assert.deepEqual(rf1086.disabledReasons, []);
   assert.match(rf1086.publicCopyRestriction, /produksjonsklar/);
-  assert.ok(gates.every((gate) => gate.status === "production_ready"));
+  assert.ok(
+    gates.filter((gate) => gate.obligation !== "aksjonaerregisteroppgaven")
+      .every((gate) => gate.status === "production_disabled"),
+  );
 });
 
 test("cannot report production ready when a live adapter is unimplemented or disabled", () => {

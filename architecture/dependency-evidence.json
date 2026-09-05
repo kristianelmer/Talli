@@ -276,6 +276,10 @@
     },
     {
       "owner": "backend-system",
+      "table": "billing.billing_command_receipts"
+    },
+    {
+      "owner": "backend-system",
       "table": "public.company_access_command_receipts"
     },
     {

@@ -9,6 +9,8 @@ begin
 end
 $membership$;
 
+drop table if exists billing.billing_command_receipts;
+
 drop view if exists public.billing_payment_events;
 drop view if exists public.billing_accounts;
 drop view if exists public.production_pilot_entitlements;

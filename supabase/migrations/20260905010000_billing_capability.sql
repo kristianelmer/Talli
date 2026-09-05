@@ -39,6 +39,49 @@ grant usage on schema billing to billing_executor, billing_store_owner;
 grant usage on schema billing to company_access_executor;
 grant usage on schema billing to authenticated, service_role;
 
+create table billing.billing_command_receipts (
+  idempotency_key text primary key check (idempotency_key <> ''),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  operation text not null check (operation in (
+    'configure_account', 'mark_unsupported', 'manage_pilot_entitlement'
+  )),
+  request_fingerprint text not null check (request_fingerprint ~ '^[0-9a-f]{64}$'),
+  result jsonb not null,
+  created_by uuid not null references auth.users(id) on delete restrict,
+  created_at timestamptz not null default pg_catalog.now()
+);
+alter table billing.billing_command_receipts owner to billing_store_owner;
+alter table billing.billing_command_receipts enable row level security;
+alter table billing.billing_command_receipts force row level security;
+
+create policy billing_command_receipts_backend_owner_write
+on billing.billing_command_receipts for all to billing_store_owner
+using (
+  created_by = public.company_access_auth_uid_v1()
+  and (
+    (operation = 'manage_pilot_entitlement'
+      and public.company_access_is_active_admin_v1()
+      and public.company_access_has_fresh_mfa_v1())
+    or (operation <> 'manage_pilot_entitlement'
+      and public.company_access_is_accepted_owner_v1(company_id)
+      and public.company_access_has_fresh_mfa_v1())
+  )
+)
+with check (
+  created_by = public.company_access_auth_uid_v1()
+  and (
+    (operation = 'manage_pilot_entitlement'
+      and public.company_access_is_active_admin_v1()
+      and public.company_access_has_fresh_mfa_v1())
+    or (operation <> 'manage_pilot_entitlement'
+      and public.company_access_is_accepted_owner_v1(company_id)
+      and public.company_access_has_fresh_mfa_v1())
+  )
+);
+
+grant select, insert, update on billing.billing_command_receipts
+to billing_store_owner;
+
 alter table public.billing_accounts set schema billing;
 alter table public.billing_payment_events set schema billing;
 alter table public.production_pilot_entitlements set schema billing;

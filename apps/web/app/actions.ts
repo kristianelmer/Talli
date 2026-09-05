@@ -4529,6 +4529,9 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
           companyId,
           incomeYear,
           obligation,
+          ...(obligation === "aksjonaerregisteroppgaven"
+            ? { caseProfile: "rf1086_no_activity_v1" }
+            : {}),
         })] as const,
       ),
     ).then((entries) => ({ data: Object.fromEntries(entries), error: null }))

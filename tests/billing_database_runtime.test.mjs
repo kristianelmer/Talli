@@ -8,6 +8,7 @@ const databaseUrl = process.env.DATABASE_URL;
 const ownerId = "73000000-0000-0000-0000-000000000001";
 const outsiderId = "73000000-0000-0000-0000-000000000002";
 const companyId = "73000000-0000-0000-0000-000000000003";
+const systemUserRequestId = "73000000-0000-0000-0000-000000000004";
 
 async function topology(client) {
   const result = await client.query(String.raw`
@@ -91,6 +92,44 @@ async function assertTenantBoundaryAndReadiness(client) {
   `);
 }
 
+async function assertPredecessorPilotWriter(client) {
+  const boundary = await client.query(String.raw`
+    select
+      pg_catalog.to_regprocedure(
+        'public.manage_production_pilot_entitlement(uuid,uuid,uuid,integer,text,boolean,uuid,timestamptz,timestamptz,text)'
+      ) is not null as writer_exists,
+      pg_catalog.has_function_privilege(
+        'authenticated',
+        'public.manage_production_pilot_entitlement(uuid,uuid,uuid,integer,text,boolean,uuid,timestamptz,timestamptz,text)',
+        'execute'
+      ) as authenticated_can_execute
+  `);
+  assert.deepEqual(boundary.rows, [{
+    writer_exists: true,
+    authenticated_can_execute: true,
+  }]);
+  await client.query("begin");
+  try {
+    await client.query("set local role authenticated");
+    await client.query(
+      "select pg_catalog.set_config('request.jwt.claims', $1, true)",
+      [JSON.stringify({ sub: ownerId, role: "authenticated", aal: "aal2" })],
+    );
+    const result = await client.query(
+      String.raw`select (public.manage_production_pilot_entitlement(
+        $1::uuid, $2::uuid, $3::uuid, 2025, 'pending', false, $4::uuid,
+        '2026-09-01T00:00:00Z'::timestamptz,
+        '2026-10-01T00:00:00Z'::timestamptz,
+        'rollback-writer-rehearsal'
+      )).*`,
+      [null, companyId, ownerId, systemUserRequestId],
+    );
+    assert.equal(result.rows.length, 1);
+  } finally {
+    await client.query("rollback");
+  }
+}
+
 test(
   "billing expansion, RLS, rollback, contract, and recutover are repeatable twice",
   { skip: !databaseUrl && "DATABASE_URL is required", timeout: 180_000 },
@@ -133,6 +172,19 @@ test(
         insert into public.company_memberships (company_id, user_id, role, accepted_at)
         values ('${companyId}', '${ownerId}', 'owner', now())
         on conflict (company_id, user_id) do nothing;
+        insert into public.support_operators (user_id, role, active)
+        values ('${ownerId}', 'admin', true)
+        on conflict (user_id) do update set role='admin', active=true;
+        insert into public.system_user_requests (
+          id, company_id, initiating_owner_user_id, obligation, external_ref,
+          status, preflight_verified_at, accepted_at
+        ) values (
+          '${systemUserRequestId}', '${companyId}', '${ownerId}',
+          'aksjonaerregisteroppgaven',
+          'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+          'accepted', now(), now()
+        ) on conflict (id) do update set status='accepted',
+          preflight_verified_at=now(), accepted_at=now();
         insert into billing.billing_accounts (
           company_id, pricing_plan, monthly_nok, filing_package_nok,
           founder_cohort_number, subscription_active, filing_package_paid,
@@ -182,6 +234,7 @@ test(
         const rollback = await topology(client);
         assert.equal(rollback.public_accounts_kind, "v");
         assert.deepEqual(await canonicalEvidence(client), evidence);
+        await assertPredecessorPilotWriter(client);
       }
 
       await client.query(contract);

@@ -163,6 +163,12 @@ class MemoryPersistence:
         )
         self.events[key] = event
         assert self.account is not None
+        expected_status = {
+            BillingPaymentKind.SUBSCRIPTION_CANCELLATION: BillingPaymentStatus.CANCELED,
+            BillingPaymentKind.REFUND: BillingPaymentStatus.REFUNDED,
+        }.get(event.kind, BillingPaymentStatus.SUCCEEDED)
+        if event.status is not expected_status:
+            return event
         if event.kind is BillingPaymentKind.SUBSCRIPTION:
             self.account = replace(
                 self.account,
@@ -299,6 +305,11 @@ def test_entitlement_is_one_fail_closed_decision_path() -> None:
     assert entitled.status is BillingStatus.READY_FOR_PRODUCTION_FILING
     assert entitled.allowed is True
 
+    persistence.ready = False
+    readiness_revoked = asyncio.run(service.entitlement(query()))
+    assert readiness_revoked.status is BillingStatus.ACTIVE
+    assert readiness_revoked.allowed is False
+
     persistence.account = account(refund_eligible=True)
     refunded = asyncio.run(service.entitlement(query()))
     assert refunded.status is BillingStatus.REFUND_ELIGIBLE
@@ -306,7 +317,7 @@ def test_entitlement_is_one_fail_closed_decision_path() -> None:
 
 
 def test_exact_active_pilot_can_exempt_billing_without_activating_provider() -> None:
-    persistence = MemoryPersistence()
+    persistence = MemoryPersistence(ready=True)
     service = BillingService(persistence, SimulationBillingProvider(), now=lambda: NOW.value)
     starts = Timestamp(NOW.value - timedelta(hours=1))
     expires = Timestamp(NOW.value + timedelta(hours=1))
@@ -332,6 +343,14 @@ def test_exact_active_pilot_can_exempt_billing_without_activating_provider() -> 
     assert decision.billing_exempt is True
     assert decision.pilot_entitlement_id == managed.entitlement_id
 
+    persistence.ready = False
+    readiness_revoked = asyncio.run(
+        service.entitlement(query(case_profile="rf1086_no_activity_v1"))
+    )
+    assert readiness_revoked.status is BillingStatus.ACTIVE
+    assert readiness_revoked.allowed is False
+    assert readiness_revoked.billing_exempt is True
+
 
 def test_cancellation_unsupported_and_refund_preserve_safe_states() -> None:
     persistence = MemoryPersistence(
@@ -343,6 +362,11 @@ def test_cancellation_unsupported_and_refund_preserve_safe_states() -> None:
     ))
     assert refund.status is BillingPaymentStatus.REFUNDED
     assert persistence.account is not None and persistence.account.refund_completed
+    replay = asyncio.run(service.refund_filing_package(
+        RefundFilingPackageCommand(**metadata("refund"), income_year=IncomeYear(2025))
+    ))
+    assert replay.event_id == refund.event_id
+    assert replay.replayed is True
 
     canceled = asyncio.run(service.cancel_subscription(
         CancelSubscriptionCommand(**metadata("cancel"))
@@ -355,6 +379,62 @@ def test_cancellation_unsupported_and_refund_preserve_safe_states() -> None:
     ))
     assert unsupported.supported_case is False
     assert unsupported.filing_package_paid is False
+
+
+def test_ambiguous_provider_outcome_is_quarantined_without_granting_entitlement() -> None:
+    class AmbiguousProvider:
+        provider = "ambiguous"
+        production_enabled = False
+
+        async def execute(self, _intent):
+            return BillingProviderResult(
+                provider=self.provider,
+                provider_reference="ambiguous-result",
+                status=BillingPaymentStatus.FAILED,
+            )
+
+    persistence = MemoryPersistence(account(subscription_active=True), ready=True)
+    service = BillingService(persistence, AmbiguousProvider(), now=lambda: NOW.value)
+    command = PurchaseFilingPackageCommand(
+        **metadata("ambiguous"), income_year=IncomeYear(2025)
+    )
+    with pytest.raises(BillingError) as first:
+        asyncio.run(service.purchase_filing_package(command))
+    assert first.value.code == BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN
+    event = persistence.events[str(command.idempotency_key)]
+    assert event.status is BillingPaymentStatus.FAILED
+    assert persistence.account is not None and not persistence.account.filing_package_paid
+    with pytest.raises(BillingError) as replay:
+        asyncio.run(service.purchase_filing_package(command))
+    assert replay.value.code == BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN
+    assert len(persistence.events) == 1
+
+
+def test_provider_exception_is_quarantined_without_retrying_the_provider() -> None:
+    class FailingProvider:
+        provider = "failing"
+        production_enabled = False
+
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def execute(self, _intent):
+            self.calls += 1
+            raise RuntimeError("unknown remote outcome")
+
+    persistence = MemoryPersistence(account())
+    provider = FailingProvider()
+    service = BillingService(persistence, provider, now=lambda: NOW.value)
+    command = ActivateSubscriptionCommand(**metadata("provider-exception"))
+    for _attempt in range(2):
+        with pytest.raises(BillingError) as error:
+            asyncio.run(service.activate_subscription(command))
+        assert error.value.code == BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN
+    event = persistence.events[str(command.idempotency_key)]
+    assert event.status is BillingPaymentStatus.FAILED
+    assert event.provider_reference.startswith("quarantine_")
+    assert provider.calls == 1
+    assert persistence.account is not None and not persistence.account.subscription_active
 
 
 def test_public_commands_reject_invalid_founder_and_pilot_ranges() -> None:

@@ -1034,8 +1034,12 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     <label>
                       Plan
                       <select name="pricingPlan" defaultValue={primaryBillingAccount?.pricing_plan ?? "standard"}>
-                        <option value="standard">Standard 49 kr / 499 kr</option>
-                        <option value="founder">Founder 29 kr / 299 kr</option>
+                        {data.billingPricing.map((pricing) => (
+                          <option key={pricing.plan} value={pricing.plan}>
+                            {pricing.plan === "standard" ? "Standard" : "Founder"}{" "}
+                            {pricing.monthly_nok} kr / {pricing.filing_package_nok} kr
+                          </option>
+                        ))}
                       </select>
                     </label>
                     <label>

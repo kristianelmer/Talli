@@ -219,6 +219,7 @@
     "schemas": ["backend_system", "public"],
     "tables": [
       "backend_system.banking_command_receipts",
+      "billing.billing_command_receipts",
       "backend_system.banking_migration_reconciliations",
       "backend_system.banking_migration_runs",
       "backend_system.banking_migration_source_rows",
@@ -279,7 +280,7 @@
       "supabase/migrations/20260829074916_validation_observation_authority.sql",
       "supabase/migrations/20260829080345_marketing_measurement_consent_proof.sql"
     ],
-    "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing, eligibility, acquisition-spend, product-behavior, or authorization decision."
+    "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },
   "infrastructure": {
     "transactions": "Short Postgres transactions owned by backend application workflows.",

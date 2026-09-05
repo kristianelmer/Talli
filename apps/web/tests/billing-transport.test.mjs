@@ -92,13 +92,17 @@ test("billing entitlement is read from the backend and malformed policy is rejec
 });
 
 test("billing page renders every backend-owned price without TypeScript policy", () => {
-  const page = readFileSync(
+  const pages = [
     new URL("../app/(owner)/billing/page.tsx", import.meta.url),
-    "utf8",
-  );
-  assert.match(page, /data\.billingPricing/u);
-  assert.match(page, /pricing\.map\(\(item\)/u);
-  assert.doesNotMatch(page, /billingPricing\(/u);
-  assert.doesNotMatch(page, /monthly_nok:\s*(?:29|49)/u);
-  assert.doesNotMatch(page, /filing_package_nok:\s*(?:299|499)/u);
+    new URL("../app/(owner)/workspace/page.tsx", import.meta.url),
+  ].map((path) => readFileSync(path, "utf8"));
+  assert.ok(pages.every((page) => /data\.billingPricing/u.test(page)));
+  assert.match(pages[0], /pricing\.map\(\(item\)/u);
+  assert.match(pages[1], /billingPricing\.map\(\(pricing\)/u);
+  for (const page of pages) {
+    assert.doesNotMatch(page, /billingPricing\(/u);
+    assert.doesNotMatch(page, /monthly_nok:\s*(?:29|49)/u);
+    assert.doesNotMatch(page, /filing_package_nok:\s*(?:299|499)/u);
+    assert.doesNotMatch(page, /(?:Founder|Standard)\s+(?:29|49)\s+kr/u);
+  }
 });

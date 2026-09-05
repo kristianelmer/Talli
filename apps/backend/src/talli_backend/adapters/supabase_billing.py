@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 import os
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from hashlib import sha256
 
 import psycopg
 from psycopg.rows import dict_row
@@ -165,6 +166,29 @@ def _kind(command) -> BillingPaymentKind:
     }[type(command)]
 
 
+def _command_fingerprint(operation: str, payload: Mapping[str, object]) -> str:
+    canonical = json.dumps(
+        {"operation": operation, **payload},
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return sha256(canonical.encode()).hexdigest()
+
+
+def _receipt_result(
+    rows: list[Mapping[str, object]], *, operation: str, fingerprint: str
+) -> Mapping[str, object]:
+    if len(rows) != 1:
+        raise BillingError.unavailable()
+    row = rows[0]
+    if row["operation"] != operation or row["request_fingerprint"] != fingerprint:
+        raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
+    result = row["result"]
+    if not isinstance(result, Mapping):
+        raise BillingError.unavailable()
+    return result
+
+
 def _map_error(message: str) -> BillingError:
     if "row-level security" in message or "permission denied" in message:
         return BillingError.forbidden()
@@ -237,6 +261,88 @@ class SupabaseBillingSession:
                 )
                 cursor = await connection.execute(query, parameters)
                 return list(await cursor.fetchall())
+        except BillingError:
+            raise
+        except psycopg.OperationalError:
+            raise BillingError.unavailable() from None
+        except psycopg.DatabaseError as error:
+            raise _map_error(str(error)) from None
+
+    async def _idempotent_command(
+        self,
+        *,
+        command,
+        operation: str,
+        fingerprint: str,
+        mutation: str,
+        parameters: tuple[object, ...],
+        on_empty: Callable[[], BillingError] = BillingError.unavailable,
+    ) -> Mapping[str, object]:
+        if not self._database_url:
+            raise BillingError.unavailable()
+        try:
+            async with await psycopg.AsyncConnection.connect(
+                self._database_url, connect_timeout=5, row_factory=dict_row
+            ) as connection, connection.transaction():
+                await connection.execute("set local role billing_store_owner")
+                await connection.execute(
+                    "select pg_catalog.set_config('talli.verified_actor_id', %s, true)",
+                    (str(self.actor_id.subject),),
+                )
+                await connection.execute(
+                    "select pg_catalog.set_config('talli.verified_actor_claims', %s, true)",
+                    (self._verified.claims_json,),
+                )
+                claim_cursor = await connection.execute(
+                        """insert into billing.billing_command_receipts (
+                          idempotency_key, company_id, operation,
+                          request_fingerprint, result, created_by
+                        ) values (
+                          %s::text, %s::uuid, %s::text, %s::text,
+                          'null'::jsonb, %s::uuid
+                        )
+                        on conflict (idempotency_key) do nothing
+                        returning idempotency_key""",
+                        (
+                            str(command.idempotency_key),
+                            str(command.company_id),
+                            operation,
+                            fingerprint,
+                            str(command.actor_id.subject),
+                        ),
+                    )
+                claimed = list(await claim_cursor.fetchall())
+                if not claimed:
+                    replay_cursor = await connection.execute(
+                        """select operation, request_fingerprint, result
+                        from billing.billing_command_receipts
+                        where idempotency_key = %s::text""",
+                        (str(command.idempotency_key),),
+                    )
+                    replay = list(await replay_cursor.fetchall())
+                    return _receipt_result(
+                        replay, operation=operation, fingerprint=fingerprint
+                    )
+
+                mutation_cursor = await connection.execute(mutation, parameters)
+                changed = list(await mutation_cursor.fetchall())
+                if len(changed) != 1:
+                    raise on_empty()
+                result = changed[0]
+                completion_cursor = await connection.execute(
+                    """update billing.billing_command_receipts
+                    set result = %s::jsonb
+                    where idempotency_key = %s::text
+                    returning idempotency_key""",
+                    (
+                        json.dumps(result, default=str, separators=(",", ":")),
+                        str(command.idempotency_key),
+                    ),
+                )
+                completed = list(await completion_cursor.fetchall())
+                if len(completed) != 1:
+                    raise BillingError.unavailable()
+                return result
         except BillingError:
             raise
         except psycopg.OperationalError:
@@ -324,27 +430,37 @@ class SupabaseBillingSession:
 
     async def configure_account(self, command, pricing):
         self._assert_actor(command.actor_id)
-        rows = await self._rows(
-            "billing_store_owner",
-            f"""insert into billing.billing_accounts (
-                  company_id, pricing_plan, monthly_nok, filing_package_nok,
-                  founder_cohort_number, updated_by
-                ) values (%s::uuid, %s::text, %s::integer, %s::integer, %s::integer, %s::uuid)
-                on conflict (company_id) do update set
-                  pricing_plan = excluded.pricing_plan,
-                  monthly_nok = excluded.monthly_nok,
-                  filing_package_nok = excluded.filing_package_nok,
-                  founder_cohort_number = excluded.founder_cohort_number,
-                  updated_by = excluded.updated_by,
-                  updated_at = pg_catalog.now()
-                returning {_ACCOUNT_COLUMNS}""",
-            (
+        operation = "configure_account"
+        fingerprint = _command_fingerprint(operation, {
+            "companyId": str(command.company_id),
+            "pricingPlan": pricing.plan.value,
+            "monthlyNok": pricing.monthly_nok,
+            "filingPackageNok": pricing.filing_package_nok,
+            "founderCohortNumber": command.founder_cohort_number,
+        })
+        result = await self._idempotent_command(
+            command=command,
+            operation=operation,
+            fingerprint=fingerprint,
+            mutation="""insert into billing.billing_accounts (
+              company_id, pricing_plan, monthly_nok, filing_package_nok,
+              founder_cohort_number, updated_by
+            ) values (%s::uuid, %s::text, %s::integer, %s::integer, %s::integer, %s::uuid)
+            on conflict (company_id) do update set
+              pricing_plan = excluded.pricing_plan,
+              monthly_nok = excluded.monthly_nok,
+              filing_package_nok = excluded.filing_package_nok,
+              founder_cohort_number = excluded.founder_cohort_number,
+              updated_by = excluded.updated_by,
+              updated_at = pg_catalog.now()
+            returning billing.billing_accounts.*""",
+            parameters=(
                 str(command.company_id), pricing.plan.value, pricing.monthly_nok,
                 pricing.filing_package_nok, command.founder_cohort_number,
                 str(command.actor_id.subject),
             ),
         )
-        return _account(rows[0])
+        return _account(result)
 
     async def complete_provider_event(self, command, result, amount_nok):
         self._assert_actor(command.actor_id)
@@ -365,7 +481,7 @@ class SupabaseBillingSession:
         )
         rows = await self._rows(
             "billing_store_owner",
-                f"""with inserted as (
+            f"""with inserted as (
                   insert into billing.billing_payment_events (
                     company_id, provider, provider_reference, idempotency_key,
                     kind, status, amount_nok, income_year, payload, created_by
@@ -409,6 +525,14 @@ class SupabaseBillingSession:
                     updated_at = pg_catalog.now()
                   where account.company_id = %s::uuid
                     and exists (select 1 from inserted)
+                    and exists (
+                      select 1 from inserted event
+                      where event.status = case event.kind
+                        when 'subscription_cancellation' then 'canceled'
+                        when 'refund' then 'refunded'
+                        else 'succeeded'
+                      end
+                    )
                   returning account.company_id
                 )
                 select * from selected""",
@@ -439,23 +563,49 @@ class SupabaseBillingSession:
 
     async def mark_unsupported(self, command: MarkBillingUnsupportedCommand):
         self._assert_actor(command.actor_id)
-        rows = await self._rows(
-            "billing_store_owner",
-            f"""update billing.billing_accounts set
-                  supported_case = false, filing_package_paid = false,
-                  filing_package_payment_ref = null, no_charge_reason = %s::text,
-                  updated_by = %s::uuid, updated_at = pg_catalog.now()
-                where company_id = %s::uuid returning {_ACCOUNT_COLUMNS}""",
-            (command.reason, str(command.actor_id.subject), str(command.company_id)),
+        operation = "mark_unsupported"
+        fingerprint = _command_fingerprint(operation, {
+            "companyId": str(command.company_id),
+            "reason": command.reason,
+        })
+        result = await self._idempotent_command(
+            command=command,
+            operation=operation,
+            fingerprint=fingerprint,
+            mutation="""update billing.billing_accounts set
+              supported_case = false, filing_package_paid = false,
+              filing_package_payment_ref = null, no_charge_reason = %s::text,
+              updated_by = %s::uuid, updated_at = pg_catalog.now()
+              where company_id = %s::uuid
+              returning billing.billing_accounts.*""",
+            parameters=(
+                command.reason, str(command.actor_id.subject), str(command.company_id),
+            ),
+            on_empty=BillingError.not_found,
         )
-        if not rows:
-            raise BillingError.not_found()
-        return _account(rows[0])
+        return _account(result)
 
     async def manage_pilot_entitlement(self, command):
         self._assert_actor(command.actor_id)
+        operation = "manage_pilot_entitlement"
+        fingerprint = _command_fingerprint(operation, {
+            "companyId": str(command.company_id),
+            "entitlementId": (
+                str(command.entitlement_id) if command.entitlement_id is not None else None
+            ),
+            "userId": str(command.user_id),
+            "incomeYear": int(command.income_year),
+            "obligation": command.obligation.value,
+            "caseProfile": command.case_profile,
+            "status": command.status.value,
+            "billingExempt": command.billing_exempt,
+            "systemUserRequestId": str(command.system_user_request_id),
+            "startsAt": command.starts_at.value.isoformat(),
+            "expiresAt": command.expires_at.value.isoformat(),
+            "evidenceReference": command.evidence_reference,
+        })
         if command.entitlement_id is None:
-            statement = f"""with verified_request as (
+            statement = """with verified_request as (
               select request.id, request.external_ref
               from public.system_user_requests request
               where request.id = %s::uuid and request.company_id = %s::uuid
@@ -470,8 +620,8 @@ class SupabaseBillingSession:
                     and membership.role = 'owner'
                     and membership.accepted_at is not null
                 )
-            )
-            insert into billing.production_pilot_entitlements (
+            ), changed as (
+              insert into billing.production_pilot_entitlements (
               company_id, user_id, income_year, obligation, case_profile, status,
               billing_exempt, system_user_request_id, system_user_external_reference,
               starts_at, expires_at, evidence_reference, approved_by
@@ -479,7 +629,10 @@ class SupabaseBillingSession:
               %s::uuid, %s::uuid, %s::integer, %s::text, %s::text, %s::text,
               %s::boolean, verified_request.id, verified_request.external_ref,
               %s::timestamptz, %s::timestamptz, %s::text, %s::uuid
-            from verified_request returning {_PILOT_COLUMNS}"""
+              from verified_request
+              returning billing.production_pilot_entitlements.*
+            )
+            select * from changed"""
             parameters = (
                 str(command.system_user_request_id), str(command.company_id),
                 str(command.user_id), str(command.company_id), str(command.user_id),
@@ -490,7 +643,7 @@ class SupabaseBillingSession:
                 str(command.actor_id.subject),
             )
         else:
-            statement = f"""with verified_request as (
+            statement = """with verified_request as (
               select request.id, request.external_ref
               from public.system_user_requests request
               where request.id = %s::uuid and request.company_id = %s::uuid
@@ -505,8 +658,8 @@ class SupabaseBillingSession:
                     and membership.role = 'owner'
                     and membership.accepted_at is not null
                 )
-            )
-            update billing.production_pilot_entitlements entitlement set
+            ), changed as (
+              update billing.production_pilot_entitlements entitlement set
               status = %s::text, billing_exempt = %s::boolean,
               system_user_request_id = verified_request.id,
               system_user_external_reference = verified_request.external_ref,
@@ -520,7 +673,9 @@ class SupabaseBillingSession:
               and entitlement.income_year = %s::integer
               and entitlement.obligation = %s::text
               and entitlement.case_profile = %s::text
-            returning {_PILOT_COLUMNS}"""
+              returning entitlement.*
+            )
+            select * from changed"""
             parameters = (
                 str(command.system_user_request_id), str(command.company_id),
                 str(command.user_id), command.status.value, command.billing_exempt,
@@ -529,10 +684,15 @@ class SupabaseBillingSession:
                 str(command.company_id), str(command.user_id), int(command.income_year),
                 command.obligation.value, command.case_profile,
             )
-        result = await self._rows("billing_store_owner", statement, parameters)
-        if not result:
-            raise BillingError.precondition(BillingErrorCode.INVALID_INPUT)
-        return _pilot(result[0])
+        result = await self._idempotent_command(
+            command=command,
+            operation=operation,
+            fingerprint=fingerprint,
+            mutation=statement,
+            parameters=parameters,
+            on_empty=lambda: BillingError.precondition(BillingErrorCode.INVALID_INPUT),
+        )
+        return _pilot(result)
 
 
 async def compose_billing_workflow(access_token: str) -> BillingWorkflow:

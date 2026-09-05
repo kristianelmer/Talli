@@ -49,9 +49,10 @@
       "evidence": [
         {"path": "apps/backend/tests/test_billing.py", "command": "npm run test:billing"},
         {"path": "apps/backend/tests/test_billing_provider.py", "command": "npm run test:billing"},
+        {"path": "apps/backend/tests/test_supabase_billing_runtime.py", "command": "npm run test:supabase:local"},
         {"path": "tests/billing_database_runtime.test.mjs", "command": "npm run test:supabase:local"}
       ],
-      "status": "implemented-and-focused-tests-passed"
+      "status": "implemented-with-replay-and-quarantine-tests-passed"
     },
     {
       "id": "GH-137-A4",
@@ -103,7 +104,7 @@
     "productionPromotion": "not authorized by #137"
   },
   "localValidation": {
-    "billingFocused": {"backendPassed": 14, "nodePassed": 5, "failed": 0},
+    "billingFocused": {"backendPassed": 16, "nodePassed": 5, "failed": 0},
     "webTypecheck": "passed",
     "architecture": "passed",
     "freshSupabase": {
@@ -113,10 +114,27 @@
       "ownerBrowserPassed": 17,
       "hostedAuthorityRehearsalPassed": 1,
       "corporateGovernancePassed": 26,
+      "billingRuntimePassed": 1,
       "billingLifecyclePassed": 1,
       "failed": 0
     },
     "customerReadyGates": "pending"
+  },
+  "review": {
+    "initialCandidate": "3ecebb007f710e0dc7d8a9f22a86d01ac17c609b",
+    "axes": ["repository-standards", "issue-specification"],
+    "materialFindingsCorrected": [
+      "readiness is rechecked after filing-package payment",
+      "billing-exempt pilot entitlement skips billing only and still requires filing readiness",
+      "payment and refund retries replay before mutable-state preconditions",
+      "ambiguous provider results and exceptions persist failed quarantine events",
+      "non-provider commands use durable request-fingerprint receipts",
+      "concurrent non-provider retries claim and complete receipts in one database transaction",
+      "all web pricing renders from the backend snapshot",
+      "the exact production-pilot release gate remains fail closed",
+      "contract rollback restores the authenticated predecessor pilot writer"
+    ],
+    "finalReview": "pending-on-corrected-immutable-candidate"
   },
   "closeState": "review candidate in progress; protected integration not yet attempted"
 }

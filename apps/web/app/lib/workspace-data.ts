@@ -269,6 +269,9 @@ export async function loadWorkspaceData() {
             companyId: primaryCompanyId,
             incomeYear: primaryIncomeYear,
             obligation,
+            ...(obligation === "aksjonaerregisteroppgaven"
+              ? { caseProfile: "rf1086_no_activity_v1" }
+              : {}),
           })] as const,
         ),
       ))

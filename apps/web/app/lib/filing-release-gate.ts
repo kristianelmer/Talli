@@ -62,7 +62,12 @@ export function buildFilingReleaseGates(input: {
   return authorityObligations.map((obligation) => {
     const disabledReasons: string[] = [];
     const billingDecision = input.billingEntitlements[obligation];
+    const hasExactPilotEntitlement = billingDecision?.pilotEntitlementId != null;
     const billingExemptPilot = billingDecision?.billingExempt === true;
+
+    if (!hasExactPilotEntitlement) {
+      disabledReasons.push("pilot_entitlement_required");
+    }
 
     const authorityGate = productionAuthorityGate(input.authorityPermissions, obligation);
     if (!authorityGate.allowed) {

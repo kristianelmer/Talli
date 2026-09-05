@@ -48,7 +48,9 @@ billing exemption. Missing data and dependency failures fail closed.
 
 `BillingPersistence` owns all reads and writes to `billing.*`. The Supabase
 adapter authenticates the bearer token, scopes reads through RLS, and performs
-each payment-event/account transition atomically. `BillingPaymentProvider`
+each payment-event/account transition atomically. Non-provider commands use
+the backend-system technical `billing.billing_command_receipts` for exact durable replay and reject a reused
+key when its canonical request fingerprint differs. `BillingPaymentProvider`
 accepts only a provider-neutral intent and must honor its idempotency key.
 
 Adapters register through `billing_persistence_adapter` and

@@ -21,6 +21,7 @@ from talli_backend.modules.billing.public import (
     BillingPlan,
     BillingPricing,
     BillingProviderIntent,
+    BillingProviderResult,
     BillingSnapshot,
     BillingSnapshotQuery,
     BillingStatus,
@@ -61,20 +62,28 @@ class BillingService:
         self, command: ActivateSubscriptionCommand
     ) -> BillingPaymentEvent:
         account = await self._required_account(command.company_id)
-        return await self._payment(
-            command, BillingPaymentKind.SUBSCRIPTION, account.pricing.monthly_nok
-        )
+        kind = BillingPaymentKind.SUBSCRIPTION
+        amount_nok = account.pricing.monthly_nok
+        replay = await self._payment_replay(command, kind, amount_nok)
+        return replay or await self._payment(command, kind, amount_nok)
 
     async def cancel_subscription(
         self, command: CancelSubscriptionCommand
     ) -> BillingPaymentEvent:
         await self._required_account(command.company_id)
-        return await self._payment(command, BillingPaymentKind.SUBSCRIPTION_CANCELLATION, 0)
+        kind = BillingPaymentKind.SUBSCRIPTION_CANCELLATION
+        replay = await self._payment_replay(command, kind, 0)
+        return replay or await self._payment(command, kind, 0)
 
     async def purchase_filing_package(
         self, command: PurchaseFilingPackageCommand
     ) -> BillingPaymentEvent:
         account = await self._required_account(command.company_id)
+        kind = BillingPaymentKind.FILING_PACKAGE
+        amount_nok = account.pricing.filing_package_nok
+        replay = await self._payment_replay(command, kind, amount_nok)
+        if replay is not None:
+            return replay
         if account.refund_eligible:
             raise BillingError.precondition(BillingErrorCode.REFUND_NOT_ALLOWED)
         if not account.supported_case:
@@ -87,14 +96,19 @@ class BillingService:
             raise BillingError.precondition(BillingErrorCode.FILING_NOT_READY)
         return await self._payment(
             command,
-            BillingPaymentKind.FILING_PACKAGE,
-            account.pricing.filing_package_nok,
+            kind,
+            amount_nok,
         )
 
     async def refund_filing_package(
         self, command: RefundFilingPackageCommand
     ) -> BillingPaymentEvent:
         account = await self._required_account(command.company_id)
+        kind = BillingPaymentKind.REFUND
+        amount_nok = account.pricing.filing_package_nok
+        replay = await self._payment_replay(command, kind, amount_nok)
+        if replay is not None:
+            return replay
         if (
             not account.supported_case
             or not account.filing_package_paid
@@ -102,7 +116,7 @@ class BillingService:
         ):
             raise BillingError.precondition(BillingErrorCode.REFUND_NOT_ALLOWED)
         return await self._payment(
-            command, BillingPaymentKind.REFUND, account.pricing.filing_package_nok
+            command, kind, amount_nok
         )
 
     async def mark_unsupported(
@@ -132,17 +146,39 @@ class BillingService:
                 case_profile=query.case_profile,
                 at=self._now(),
             )
-            if pilot is not None and pilot.billing_exempt:
-                return BillingEntitlementDecision(
-                    company_id=query.company_id,
-                    income_year=query.income_year,
-                    obligation=query.obligation,
-                    status=BillingStatus.PILOT_ENTITLEMENT_ACTIVE,
-                    allowed=True,
-                    charge_allowed=False,
-                    readiness_allowed=True,
-                    billing_exempt=True,
-                    message="An exact active validation entitlement exempts billing.",
+            if pilot is not None:
+                ready = await self._persistence.filing_ready(
+                    query.company_id, query.income_year, query.obligation
+                )
+                if pilot.billing_exempt:
+                    if not ready:
+                        return BillingEntitlementDecision(
+                            company_id=query.company_id,
+                            income_year=query.income_year,
+                            obligation=query.obligation,
+                            status=BillingStatus.ACTIVE,
+                            allowed=False,
+                            charge_allowed=False,
+                            readiness_allowed=True,
+                            billing_exempt=True,
+                            message="Filing readiness must pass before production filing.",
+                            pilot_entitlement_id=pilot.entitlement_id,
+                        )
+                    return BillingEntitlementDecision(
+                        company_id=query.company_id,
+                        income_year=query.income_year,
+                        obligation=query.obligation,
+                        status=BillingStatus.PILOT_ENTITLEMENT_ACTIVE,
+                        allowed=True,
+                        charge_allowed=False,
+                        readiness_allowed=True,
+                        billing_exempt=True,
+                        message="An exact active validation entitlement exempts billing.",
+                        pilot_entitlement_id=pilot.entitlement_id,
+                    )
+                account = await self._persistence.find_account(query.company_id)
+                return replace(
+                    billing_entitlement_decision(query, account, filing_ready=ready),
                     pilot_entitlement_id=pilot.entitlement_id,
                 )
         account = await self._persistence.find_account(query.company_id)
@@ -157,7 +193,9 @@ class BillingService:
             raise BillingError.not_found()
         return account
 
-    async def _payment(self, command, kind: BillingPaymentKind, amount_nok: int) -> BillingPaymentEvent:
+    async def _payment_replay(
+        self, command, kind: BillingPaymentKind, amount_nok: int
+    ) -> BillingPaymentEvent | None:
         income_year = getattr(command, "income_year", None)
         replay = await self._persistence.find_payment_event(
             company_id=command.company_id,
@@ -166,24 +204,45 @@ class BillingService:
             amount_nok=amount_nok,
             income_year=income_year,
         )
-        if replay is not None:
-            return replay
-        status = {
+        if replay is not None and replay.status is not self._expected_status(kind):
+            raise BillingError.unavailable(BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN)
+        return replay
+
+    @staticmethod
+    def _expected_status(kind: BillingPaymentKind) -> BillingPaymentStatus:
+        return {
             BillingPaymentKind.SUBSCRIPTION_CANCELLATION: BillingPaymentStatus.CANCELED,
             BillingPaymentKind.REFUND: BillingPaymentStatus.REFUNDED,
         }.get(kind, BillingPaymentStatus.SUCCEEDED)
-        result = await self._provider.execute(
-            BillingProviderIntent(
-                company_id=command.company_id,
-                idempotency_key=command.idempotency_key,
-                kind=kind,
-                amount_nok=amount_nok,
-                income_year=income_year,
-            )
+
+    async def _payment(
+        self, command, kind: BillingPaymentKind, amount_nok: int
+    ) -> BillingPaymentEvent:
+        income_year = getattr(command, "income_year", None)
+        intent = BillingProviderIntent(
+            company_id=command.company_id,
+            idempotency_key=command.idempotency_key,
+            kind=kind,
+            amount_nok=amount_nok,
+            income_year=income_year,
         )
-        if result.status is not status:
+        try:
+            result = await self._provider.execute(intent)
+        except Exception:
+            await self._persistence.complete_provider_event(
+                command,
+                BillingProviderResult(
+                    provider=self._provider.provider,
+                    provider_reference=f"quarantine_{command.idempotency_key}",
+                    status=BillingPaymentStatus.FAILED,
+                ),
+                amount_nok,
+            )
             raise BillingError.unavailable(BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN)
-        return await self._persistence.complete_provider_event(command, result, amount_nok)
+        event = await self._persistence.complete_provider_event(command, result, amount_nok)
+        if event.status is not self._expected_status(kind):
+            raise BillingError.unavailable(BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN)
+        return event
 
 
 def billing_entitlement_decision(
@@ -234,6 +293,15 @@ def billing_entitlement_decision(
             readiness_allowed=False,
             message="Active subscription is required before production filing.",
         )
+    if not filing_ready:
+        return BillingEntitlementDecision(
+            **common,
+            status=BillingStatus.ACTIVE,
+            allowed=False,
+            charge_allowed=False,
+            readiness_allowed=True,
+            message="Filing readiness must pass before filing-package payment.",
+        )
     if account.filing_package_paid:
         return BillingEntitlementDecision(
             **common,
@@ -245,15 +313,11 @@ def billing_entitlement_decision(
         )
     return BillingEntitlementDecision(
         **common,
-        status=(BillingStatus.FILING_PACKAGE_REQUIRED if filing_ready else BillingStatus.ACTIVE),
+        status=BillingStatus.FILING_PACKAGE_REQUIRED,
         allowed=False,
-        charge_allowed=filing_ready,
+        charge_allowed=True,
         readiness_allowed=True,
-        message=(
-            "Filing package payment is required before production filing."
-            if filing_ready
-            else "Filing readiness must pass before filing-package payment."
-        ),
+        message="Filing package payment is required before production filing.",
     )
 
 
