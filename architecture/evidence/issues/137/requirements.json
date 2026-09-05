@@ -182,10 +182,33 @@
           "command": "npm run check:architecture"
         }
       ],
-      "status": "pending-replacement-exact-candidate-review-and-linked-immutable-gates"
+      "status": "passed-two-linked-immutable-gates-and-architecture-stage-exit-registered"
     }
   ],
-  "completeGates": [],
+  "completeGates": [
+    {
+      "revision": "2716429a6699ae1b280524d960f97233736c715a",
+      "previousPassingRevision": null,
+      "evidenceCommittedRevision": "b137088c5cb6d6abd66761c05b332e318ab8b05d",
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/2716429a6699ae1b280524d960f97233736c715a.json",
+      "evidenceDigest": "sha256:a79cb9f31019d7e18dc9bccf5d4ef83cdc55e8be2769cb692cf49990de2b8ba9",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:84d14de242f2c0885f9eb18534469195ea55d2b0639191574bb5d185a1b1fa14"
+    },
+    {
+      "revision": "b137088c5cb6d6abd66761c05b332e318ab8b05d",
+      "previousPassingRevision": "2716429a6699ae1b280524d960f97233736c715a",
+      "evidenceCommittedRevision": "d399e0c4bb68d8589e8845ed06891ad17f0e7f09",
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/b137088c5cb6d6abd66761c05b332e318ab8b05d.json",
+      "evidenceDigest": "sha256:f3beb3a1f39c0d20ec52509f30f66db1b2f7677c026c8f41142d5abe7249ae9f",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:10eabdbf38c55fdf57d1cbfe6a04a684abd41d891b445e06fcb6144c9fb36ae3"
+    }
+  ],
   "preservedGates": {
     "bankProvider": "#189",
     "productionFiling": "#193",
@@ -203,7 +226,7 @@
     "webTypecheck": "passed",
     "architecture": "passed",
     "freshSupabase": {
-      "status": "passed-uninterrupted-on-fresh-stack",
+      "status": "superseded-by-final-linked-complete-gates",
       "command": "npm run test:supabase:local",
       "revision": "3e7f0e1a00c34de909b65f02c9e036c78b7cc772",
       "blockingAdvisorFindings": 0,
@@ -222,9 +245,9 @@
       "billingRuntimePassed": 1,
       "billingLifecyclePassed": 1,
       "failed": 0,
-      "note": "One uninterrupted invocation initialized a fresh temporary Supabase stack, applied every migration, and passed every configured advisor, database, browser, authority, governance, and billing check before cleaning up the stack."
+      "note": "Historical earlier fresh-stack run. Final-candidate fresh Supabase/database/browser/rollback/advisor evidence is in completeGates R1 and R2."
     },
-    "customerReadyGates": "replacement linked immutable runs pending",
+    "customerReadyGates": "passed twice on ordered immutable revisions with unchanged application code; evidence committed separately",
     "billingProviderRecovery": {
       "command": "npm run test:billing-database-lifecycle",
       "runtimePassed": 6,
@@ -276,15 +299,17 @@
       "reviewedAgainst": "4f807fe4239a208c573054b14cbed478277d1a2e"
     },
     "finalReview": {
-      "status": "pending",
+      "revision": "2716429a6699ae1b280524d960f97233736c715a",
+      "repositoryStandards": "PASS",
+      "issueSpecification": "PASS",
+      "standardsFindings": 0,
+      "specificationFindings": 0,
+      "worktree": "clean",
       "reviewedAgainst": "4f807fe4239a208c573054b14cbed478277d1a2e",
-      "axes": [
-        "repository-standards",
-        "issue-specification"
-      ]
+      "checkpoint": "https://github.com/kristianelmer/Talli/issues/137#issuecomment-5550009132"
     }
   },
-  "closeState": "provider durability correction implemented; replacement final review, complete gates and protected integration pending",
+  "closeState": "exact independent Standards/Spec pass, replacement linked complete gates pass, and stage exit registered; protected integration pending",
   "supersededCompleteGates": [
     {
       "revision": "abd77efd72e789372901d8e2c29c02f8fd372a89",
