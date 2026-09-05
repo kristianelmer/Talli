@@ -53,10 +53,42 @@ for each row execute function billing.guard_legacy_account_retirement_v1();
 
 create or replace function billing.guard_legacy_event_retirement_v1()
 returns trigger language plpgsql set search_path = '' as $function$
+declare
+  v_account billing.billing_accounts%rowtype;
+  v_original billing.billing_payment_events%rowtype;
+  v_original_count integer;
 begin
   if tg_op = 'INSERT' then
     if new.kind in ('subscription', 'filing_package') then
       raise exception 'billing_legacy_acquisition_retired';
+    end if;
+    if new.kind = 'refund' then
+      -- Serialize all fresh refund reservations for the historical account. A
+      -- committed pending/failed refund owns recovery until its outcome is known.
+      select * into v_account from billing.billing_accounts
+        where company_id = new.company_id for update;
+      if not found then raise exception 'billing_legacy_refund_not_allowed'; end if;
+      if not exists (select 1 from billing.billing_payment_events
+        where idempotency_key = new.idempotency_key) then
+        if not v_account.supported_case or v_account.refund_completed
+          or exists (select 1 from billing.billing_payment_events
+            where company_id = new.company_id and kind = 'refund')
+        then raise exception 'billing_legacy_refund_not_allowed'; end if;
+        if not v_account.filing_package_paid then
+          select count(*) into v_original_count from billing.billing_payment_events
+            where company_id = new.company_id and income_year = new.income_year
+              and kind = 'filing_package' and status = 'succeeded';
+          if v_original_count <> 1 then raise exception 'billing_legacy_refund_not_allowed'; end if;
+          select * into v_original from billing.billing_payment_events
+            where company_id = new.company_id and income_year = new.income_year
+              and kind = 'filing_package' and status = 'succeeded';
+          if v_original.provider <> new.provider or v_original.amount_nok <> new.amount_nok
+          then raise exception 'billing_legacy_refund_not_allowed'; end if;
+          new.payload := new.payload || pg_catalog.jsonb_build_object(
+            'original_payment_event_id', v_original.id,
+            'original_payment_reference', v_original.provider_reference);
+        end if;
+      end if;
     end if;
   else
     if row(new.id, new.company_id, new.provider, new.idempotency_key, new.kind,
@@ -67,6 +99,10 @@ begin
       or (old.kind = 'filing_package' and
         coalesce(new.payload ->> 'obligation', 'aksjonaerregisteroppgaven') is distinct from
         coalesce(old.payload ->> 'obligation', 'aksjonaerregisteroppgaven'))
+      or (old.kind = 'refund' and row(
+        new.payload ->> 'original_payment_event_id', new.payload ->> 'original_payment_reference')
+        is distinct from row(
+        old.payload ->> 'original_payment_event_id', old.payload ->> 'original_payment_reference'))
       or (old.status in ('succeeded', 'refunded', 'canceled') and new is distinct from old)
     then raise exception 'billing_legacy_event_identity_immutable'; end if;
   end if;

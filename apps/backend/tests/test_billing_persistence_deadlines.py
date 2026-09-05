@@ -6,14 +6,14 @@ import psycopg
 import pytest
 from test_supabase_billing_runtime import (
     DATABASE_URL, COMPANY_ID, OWNER_ID, metadata, seed, cleanup,
-    enable_backend_login, disable_backend_login,
+    enable_backend_login, disable_backend_login, test_role_authority,
 )
 from talli_backend.adapters.supabase_billing import SupabaseBillingSession
 from talli_backend.adapters.supabase_ledger import _VerifiedActor
 from talli_backend.adapters.simulation_billing import SimulationBillingProvider
 from talli_backend.modules.billing.service import BillingService
 from talli_backend.modules.billing.public import (
-    BillingError, BillingPaymentKind, BillingPaymentStatus, BillingPlan,
+    BillingError, BillingPaymentKind, BillingPaymentStatus,
     CancelSubscriptionCommand, MarkBillingUnsupportedCommand,
 )
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, UserId

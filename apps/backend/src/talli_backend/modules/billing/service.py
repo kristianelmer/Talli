@@ -100,6 +100,9 @@ class BillingService:
                 company_ids=(command.company_id,), actor_id=command.actor_id,
                 correlation_id=command.correlation_id,
             ))
+            if any(event.company_id == command.company_id and event.kind is BillingPaymentKind.REFUND
+                   for event in history.payment_events):
+                raise BillingError.precondition(BillingErrorCode.REFUND_NOT_ALLOWED)
             originals = [event for event in history.payment_events
                 if event.company_id == command.company_id
                 and event.income_year == command.income_year

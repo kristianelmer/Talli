@@ -210,6 +210,8 @@ def _receipt_result(
 
 
 def _map_error(message: str) -> BillingError:
+    if "billing_legacy_refund_not_allowed" in message:
+        return BillingError.precondition(BillingErrorCode.REFUND_NOT_ALLOWED)
     if "billing_legacy_acquisition_retired" in message:
         return BillingError.precondition(BillingErrorCode.LEGACY_ACQUISITION_RETIRED)
     if "row-level security" in message or "permission denied" in message:
@@ -561,7 +563,7 @@ class SupabaseBillingSession:
                   update billing.billing_payment_events set
                     provider_reference = %(reference)s::text,
                     status = %(status)s::text,
-                    payload = %(payload)s::jsonb
+                    payload = payload || %(payload)s::jsonb
                   where idempotency_key = %(key)s::text
                     and company_id = %(company)s::uuid and kind = %(kind)s::text
                     and income_year is not distinct from %(year)s::integer

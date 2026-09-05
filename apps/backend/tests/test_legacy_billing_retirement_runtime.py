@@ -60,6 +60,8 @@ def historical(admitted, request):
                     (admitted["company"], admitted["owner"],
                      options.get("subscription_active", False), options.get("filing_package_paid", False)))
                 for kind, event in events.items():
+                    if kind == "refund" and options.get("no_refund"):
+                        continue
                     connection.execute("""insert into billing.billing_payment_events
                         (id,company_id,provider,provider_reference,idempotency_key,kind,status,
                          amount_nok,income_year,payload,created_by)
@@ -219,6 +221,7 @@ def test_retirement_rollback_recutover_preserves_all_historical_rows_twice(histo
             assert evidence(historical) == before
 
 
+@pytest.mark.parametrize("historical", [{"no_refund": True}], indirect=True)
 def test_recovered_historical_payment_can_start_a_new_refund_without_paid_entitlement(historical):
     provider = ObservedProvider()
     store = session(historical)
@@ -235,3 +238,60 @@ def test_recovered_historical_payment_can_start_a_new_refund_without_paid_entitl
     assert replay.event_id == refunded.event_id and replay.replayed
     assert len(provider.calls) == 2
     assert not evidence(historical)[0]["filing_package_paid"]
+
+
+def test_pending_historical_refund_rejects_a_second_key_and_keeps_original_recovery(historical):
+    provider = ObservedProvider()
+    store = session(historical)
+    service = BillingService(store, provider)
+    asyncio.run(service.purchase_filing_package(command(historical, "filing_package")))
+    fresh = command(historical, "refund", key=str(uuid4()))
+    for operation in [lambda: service.refund_filing_package(fresh),
+                      lambda: store.begin_provider_event(fresh, "simulation", 499)]:
+        with pytest.raises(BillingError) as denied:
+            asyncio.run(operation())
+        assert str(denied.value.code) == "BILLING_REFUND_NOT_ALLOWED"
+    assert [kind for kind, _ in provider.calls] == ["reconcile"]
+    recovered = asyncio.run(service.refund_filing_package(command(historical, "refund")))
+    assert recovered.status is BillingPaymentStatus.REFUNDED
+    assert [kind for kind, _ in provider.calls] == ["reconcile", "reconcile"]
+
+
+@pytest.mark.parametrize("historical", [{"no_refund": True}], indirect=True)
+def test_distinct_concurrent_refund_keys_reserve_only_one_original(historical):
+    store = session(historical)
+    service = BillingService(store, ObservedProvider())
+    original = asyncio.run(service.purchase_filing_package(command(historical, "filing_package")))
+    commands = [command(historical, "refund", key=str(uuid4())) for _ in range(2)]
+    async def race():
+        return await asyncio.gather(*(store.begin_provider_event(item, "simulation", 499) for item in commands), return_exceptions=True)
+    results = asyncio.run(race())
+    failures = [result for result in results if isinstance(result, BillingError)]
+    claims = [result for result in results if not isinstance(result, BaseException)]
+    assert len(failures) == len(claims) == 1
+    assert str(failures[0].code) == "BILLING_REFUND_NOT_ALLOWED"
+    winner = next(item for item in commands if item.idempotency_key == claims[0].idempotency_key)
+    replay = asyncio.run(store.begin_provider_event(winner, "simulation", 499))
+    assert replay.replayed and replay.event_id == claims[0].event_id
+    _, rows = evidence(historical)
+    refund = next(row[0] for row in rows if row[0]["kind"] == "refund")
+    assert refund["payload"]["original_payment_event_id"] == str(original.event_id)
+    completed = asyncio.run(service.refund_filing_package(winner))
+    assert completed.status is BillingPaymentStatus.REFUNDED
+    _, rows = evidence(historical)
+    refund_after = next(row[0] for row in rows if row[0]["kind"] == "refund")
+    assert refund_after["payload"]["original_payment_event_id"] == str(original.event_id)
+
+
+@pytest.mark.parametrize("historical", [{"no_refund": True}], indirect=True)
+@pytest.mark.parametrize("mismatch", ["amount", "provider", "year"])
+def test_direct_refund_claim_cannot_change_the_confirmed_original(historical, mismatch):
+    from dataclasses import replace
+    store = session(historical)
+    asyncio.run(BillingService(store, ObservedProvider()).purchase_filing_package(command(historical, "filing_package")))
+    request = command(historical, "refund", key=str(uuid4()))
+    if mismatch == "year":
+        request = replace(request, income_year=IncomeYear(2024))
+    with pytest.raises(BillingError) as denied:
+        asyncio.run(store.begin_provider_event(request, "other" if mismatch == "provider" else "simulation", 498 if mismatch == "amount" else 499))
+    assert str(denied.value.code) == "BILLING_REFUND_NOT_ALLOWED"

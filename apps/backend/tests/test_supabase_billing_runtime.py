@@ -12,6 +12,8 @@ import pytest
 from psycopg import sql
 from psycopg.conninfo import make_conninfo
 
+from test_annual_purchase_basis_runtime import test_role_authority
+
 from talli_backend.adapters.simulation_billing import SimulationBillingProvider
 from talli_backend.modules.billing.service import BillingService
 from talli_backend.adapters.supabase_billing import SupabaseBillingSession
@@ -151,6 +153,13 @@ def seed_legacy_billing(*, event_key=None):
 
 def cleanup() -> None:
     with psycopg.connect(DATABASE_URL) as connection:
+        # Contract recutover removes DELETE from the runtime receipt owner. The
+        # disposable fixture janitor borrows it only for its own company cascade.
+        borrowed = not connection.execute(
+            "select has_table_privilege('billing_store_owner', 'billing.billing_command_receipts', 'DELETE')"
+        ).fetchone()[0]
+        if borrowed:
+            connection.execute("grant delete on billing.billing_command_receipts to billing_store_owner")
         connection.execute(
             "delete from public.support_operators where user_id=%s::uuid", (ADMIN_ID,)
         )
@@ -158,6 +167,8 @@ def cleanup() -> None:
         connection.execute("delete from auth.users where id=%s::uuid", (OWNER_ID,))
         connection.execute("delete from auth.users where id=%s::uuid", (OUTSIDER_ID,))
         connection.execute("delete from auth.users where id=%s::uuid", (ADMIN_ID,))
+        if borrowed:
+            connection.execute("revoke delete on billing.billing_command_receipts from billing_store_owner")
 
 
 @pytest.mark.skipif(not DATABASE_URL, reason="DATABASE_URL is required")
