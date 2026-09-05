@@ -6,11 +6,11 @@
 
 ## Purpose and ownership
 
-`billing` owns the legacy launch prices, subscription state, filing-package
-payments and refunds, provider outcome records, exact production-pilot billing
-exemptions, and the single filing-entitlement decision consumed by readiness and
-production release gates. Its three tables are private capability relations;
-browser and presentation code never query or mutate them directly.
+`billing` owns annual offers, purchases, renewals, refunds and provider evidence,
+plus historical billing records, cleanup and exact production-pilot exemptions.
+Its relations are private capability storage; browser and presentation code never
+query or mutate them directly. The billing entitlement decision is consumed by
+readiness and production release gates.
 
 The capability does not own filing content, filing readiness, authority,
 company membership, authentication, or launch signoffs. Those facts arrive
@@ -20,10 +20,12 @@ rather than exposing its policy for callers to reimplement.
 ## Public interface
 
 Import only `talli_backend.modules.billing.public`. Commands carry a company,
-verified actor, correlation ID, and durable idempotency key. Pricing is selected
-server-side: founder companies 1–100 retain NOK 29/month and NOK 299/filing;
-standard accounts retain NOK 49/month and NOK 499/filing until #192 changes the
-commercial model.
+verified actor, correlation ID, and durable idempotency key. Historical account
+prices remain stored evidence. New account configuration, subscription activation
+and filing-package purchases are retired; their deprecated HTTP endpoints reject
+new acquisition with `BILLING_LEGACY_ACQUISITION_RETIRED`. Exact historical payment
+replay and bounded reconciliation remain available. Current generated web clients
+expose annual history/cancellation and legacy cleanup, without acquisition methods.
 
 The exported commands are `ActivateSubscriptionCommand`,
 `CancelSubscriptionCommand`, `ConfigureBillingAccountCommand`,
@@ -47,11 +49,12 @@ billing exemption. Missing data and dependency failures fail closed.
 
 `apps/backend/tests/test_billing_equivalence.py` executes a frozen semantic
 oracle from base revision `4f807fe4239a208c573054b14cbed478277d1a2e`
-against the canonical service with the same IDs, clock, plans, states, and
-failure injection. It compares defaults, prices, coded-error mappings, every
-legacy gate, provider event facts, mutable account effects, duplicate replay,
-retry quarantine, and production-pilot identity and time bounds. Static and
-database tests preserve the matching audit facts, RLS, rollback, and recutover.
+against the canonical service with the same IDs and clock. Issue #192 deliberately
+supersedes account resets, legacy acquisition and legacy paid entitlement. The
+oracle now verifies that difference while preserving historical payment facts,
+cleanup effects, duplicate replay, recovery quarantine and exact pilot identity
+and time bounds. Database tests retain tenant, fresh-MFA, rollback and recutover
+coverage by seeding genuine predecessor history before the retirement migration.
 
 ## Ports and adapters
 
@@ -61,8 +64,7 @@ The #192 annual-offer work introduces `AnnualBillingOffer`,
 module pins the NOK 1,490 gross company-year offer and derives renewal notice,
 paid/read-export dates, and automatic refund amounts from recorded facts. Amounts
 are integer minor units; Norwegian calendar dates govern month and notice limits.
-These policy types alone do not initiate payment or replace the existing runtime
-path. The #192 acceptance record tracks the remaining persistence/API/provider/web
+These policy types alone do not initiate payment. The #192 acceptance record tracks the remaining persistence/API/provider/web
 cutover and distinguishes local conformance from actual Vipps merchant-test proof.
 
 `BillingPersistence` owns all reads and writes to `billing.*`. The Supabase
@@ -76,8 +78,9 @@ its original company, kind, year, obligation, amount, provider, and key. Only th
 winning insertion executes. A retry of an unfinished event calls read-only
 `reconcile` with that stored intent, under a bounded deadline, and never issues
 another payment. Unknown results remain pending without granting entitlement.
-Confirmed outcomes and account changes settle atomically; terminal events replay
-without reapplying account effects. Changed filing obligations reject key reuse.
+Confirmed cleanup outcomes and their account changes settle atomically. Historical
+acquisition reconciliation records the outcome without activating paid account
+flags. Terminal events replay without reapplying account effects. Changed filing obligations reject key reuse.
 
 `BillingPilotCaseProfile` types the closed pilot record/administration scope.
 Entitlement queries retain open strings so an unknown profile continues to fall
@@ -116,7 +119,7 @@ migration after expansion on recutover. This adds no live provider or paid I/O.
 
 Persistence bounds the entire connection/transaction/commit scope to ten seconds,
 with five-second statement and one-second lock limits. Timeout failures leave
-committed intents available for later reconciliation; an uncommitted configuration
+committed intents available for later reconciliation; an uncommitted unsupported-case
 receipt rolls back with its account mutation. Lock-contention runtime tests prove
 both paths recover using the same operation key.
 
@@ -310,3 +313,29 @@ renewal cancellation from the same verified actor. The annual snapshot and
 renewal-cancellations HTTP routes expose generated contracts with no-store
 responses. Cancellation returns the immutable local receipt and unchanged access
 dates; it does not claim provider acknowledgement or automatic worker cleanup.
+
+## Legacy acquisition retirement (#192)
+
+`20260905115700_legacy_billing_acquisition_retirement.sql` blocks inserts into
+legacy accounts and new subscription/filing-package event claims, including old
+`ON CONFLICT` writers. Existing account prices and identity cannot be reset;
+paid/support flags cannot be reactivated and completed refunds cannot be reversed.
+Payment identity, amount, company, year, obligation, provider and durable key stay
+immutable, so a cleanup event cannot be repurposed into a purchase. Successful
+historical events remain immutable. Pending historical events can settle from
+provider reconciliation without changing paid account flags. Cancellation, refunds
+and unsupported-case cleanup retain their existing authorization and receipts.
+
+Every ordinary entitlement returns `annual_billing_unavailable`, with filing and
+charge denied, regardless of legacy paid flags or owner-editable legacy readiness.
+`readinessAllowed` permits preparation of the independent readiness assessment;
+it asserts neither current eligibility nor readiness nor operational clearance.
+Only the separate exact active billing-exempt pilot retains its existing exemption.
+The trustworthy annual entitlement/runtime binding remains pending; retirement
+alone does not satisfy #192 acceptance or permit production filing.
+
+Rollback withdraws these guards without deleting historical records. It is an
+explicit predecessor recovery operation, not a supported mixed-writer configuration.
+Apply its rollback before earlier billing migrations and reapply retirement last.
+The migration borrows SET authority only when needed and restores the invoking
+principal's previous role capability, including admin-only memberships.

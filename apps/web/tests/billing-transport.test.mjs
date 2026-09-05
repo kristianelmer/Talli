@@ -35,24 +35,22 @@ function account() {
   };
 }
 
-test("billing mutation uses generated path and durable operation key", async () => {
-  const captured = {};
-  const api = createTalliApiClient({
-    baseUrl: "https://backend.example/",
-    fetch: async (url, request) => {
-      captured.url = String(url);
-      captured.request = request;
-      return Response.json(account());
-    },
-  });
-  const result = await api.billingConfigureAccount(
-    { companyId, pricingPlan: "standard", founderCohortNumber: null },
-    { idempotencyKey: "70000000-0000-4000-8000-000000000070", requestId: "billing-configure" },
-  );
-  assert.equal(result.monthlyNok, 49);
-  assert.equal(captured.url, "https://backend.example/api/v1/billing/accounts/configuration");
-  assert.equal(captured.request.headers["Idempotency-Key"], "70000000-0000-4000-8000-000000000070");
-  assert.equal(captured.request.headers["X-Request-ID"], "billing-configure");
+test("current client exposes cleanup but no retired acquisition methods", async () => {
+  let captured;
+  const payload = { eventId: "30000000-0000-4000-8000-000000000001", companyId,
+    provider: "simulation", providerReference: "sim_cancel", idempotencyKey: "cleanup-00000001",
+    kind: "subscription_cancellation", status: "canceled", amountNok: 0, incomeYear: null,
+    createdBy: "20000000-0000-4000-8000-000000000001", createdAt: "2026-09-05T00:00:00Z", replayed: false };
+  const api = createTalliApiClient({ baseUrl: "https://backend.example/", fetch: async (url, request) => {
+    captured = { url, request }; return Response.json(payload);
+  }});
+  for (const name of ["billingConfigureAccount", "billingActivateSubscription", "billingPurchaseFilingPackage"]) {
+    assert.equal(api[name], undefined);
+  }
+  await api.billingCancelSubscription({ companyId }, { idempotencyKey: payload.idempotencyKey, requestId: "cleanup" });
+  assert.equal(captured.url, "https://backend.example/api/v1/billing/subscriptions/cancellation");
+  assert.equal(captured.request.headers["Idempotency-Key"], payload.idempotencyKey);
+  assert.equal(captured.request.headers["X-Request-ID"], "cleanup");
 });
 
 test("billing entitlement is read from the backend and malformed policy is rejected", async () => {
@@ -97,14 +95,15 @@ test("billing entitlement is read from the backend and malformed policy is rejec
   );
 });
 
-test("billing page renders every backend-owned price without TypeScript policy", () => {
+test("annual billing owns current offers and workspace exposes historical cleanup", () => {
   const pages = [
     new URL("../app/(account)/billing/page.tsx", import.meta.url),
     new URL("../app/(owner)/workspace/page.tsx", import.meta.url),
   ].map((path) => readFileSync(path, "utf8"));
   assert.match(pages[0], /loadAnnualBillingSnapshot/u);
   assert.doesNotMatch(pages[0], /loadWorkspaceData|billingPricing|primaryBillingAccount/u);
-  assert.match(pages[1], /billingPricing\.map\(\(pricing\)/u);
+  assert.doesNotMatch(pages[1], /billingPricing|saveBillingAccount|activateBillingSubscription|requestFilingPackagePayment/u);
+  assert.match(pages[1], /href=\{`\/billing\?companyId=/u);
   for (const page of pages) {
     assert.doesNotMatch(page, /billingPricing\(/u);
     assert.doesNotMatch(page, /monthly_nok:\s*(?:29|49)/u);
@@ -125,10 +124,7 @@ test("filing page consumes the backend billing decision without rebuilding pilot
 test("ambiguous billing outcomes retain the exact operation key for replay", () => {
   assert.match(actions, /billingOutcomeMayBeUnknown/);
   for (const retryKey of [
-    "billingConfigureOperationId",
-    "billingActivateOperationId",
     "billingCancelOperationId",
-    "billingFilingPackageOperationId",
     "billingUnsupportedOperationId",
     "billingRefundOperationId",
   ]) {
@@ -140,7 +136,7 @@ test("ambiguous billing outcomes retain the exact operation key for replay", () 
 test("billing retry redirects and Norwegian plan labels have one shared policy", () => {
   assert.match(actions, /function billingRetryRedirect\(/u);
   assert.equal((actions.match(/billingOutcomeMayBeUnknown\(/gu) ?? []).length, 1);
-  assert.match(actions, /account\.pricingPlan === "founder" \? "grunnleggerplan" : "standardplan"/u);
+  assert.doesNotMatch(actions, /saveBillingAccount|activateBillingSubscription|requestFilingPackagePayment/u);
   assert.doesNotMatch(actions, /\$\{account\.pricingPlan\}-prising/u);
 });
 

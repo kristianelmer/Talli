@@ -227,7 +227,9 @@ test(
       readFile(new URL("../supabase/migrations/20260905061339_billing_provider_reconciliation.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/rollback/20260905061339_billing_provider_reconciliation.sql", import.meta.url), "utf8"),
     ]);
-    const [cleanup, cleanupRollback, cancellation, cancellationRollback, annual, annualRollback, basis, basisRollback] = await Promise.all([
+    const [retirement, retirementRollback, cleanup, cleanupRollback, cancellation, cancellationRollback, annual, annualRollback, basis, basisRollback] = await Promise.all([
+      readFile(new URL("../supabase/migrations/20260905115700_legacy_billing_acquisition_retirement.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260905115700_legacy_billing_acquisition_retirement.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/migrations/20260905103149_annual_agreement_cleanup.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/rollback/20260905103149_annual_agreement_cleanup.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/migrations/20260905100130_annual_renewal_cancellation.sql", import.meta.url), "utf8"),
@@ -254,6 +256,8 @@ test(
         accounts_owner: "billing_store_owner",
       });
 
+      // Seed genuine predecessor records before applying the retirement guard.
+      await client.query(retirementRollback);
       await client.query(String.raw`
         insert into auth.users (id, email) values
           ('${ownerId}', 'billing-owner@example.test'),
@@ -309,12 +313,14 @@ test(
           2025, '{"obligation":"aksjonaerregisteroppgaven"}'::jsonb, '${ownerId}'
         )
       `);
+      await client.query(retirement);
       await seedCommandReceipt(client);
       const evidence = await canonicalEvidence(client);
       const commandReceipt = await commandReceiptEvidence(client);
       await assertTenantBoundaryAndReadiness(client);
 
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
+        await client.query(retirementRollback);
         await client.query(cleanupRollback);
         await client.query(cancellationRollback);
         await client.query(annualRollback);
@@ -338,6 +344,7 @@ test(
         await client.query(annual);
         await client.query(cancellation);
         await client.query(cleanup);
+        await client.query(retirement);
         const successor = await topology(client);
         assert.equal(successor.billing_schema, true);
         assert.equal(successor.canonical_accounts, true);

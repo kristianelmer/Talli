@@ -2601,6 +2601,7 @@
       },
       "BillingStatus": {
         "enum": [
+          "annual_billing_unavailable",
           "active",
           "subscription_required",
           "filing_package_required",
@@ -22062,6 +22063,7 @@
     },
     "/api/v1/billing/accounts/configuration": {
       "post": {
+        "deprecated": true,
         "operationId": "billingConfigureAccount",
         "parameters": [
           {
@@ -22104,7 +22106,7 @@
                 }
               }
             },
-            "description": "Billing account configured.",
+            "description": "Retired configuration endpoint; new configuration is rejected.",
             "headers": {
               "X-Request-ID": {
                 "description": "Correlation identifier for the request and response.",
@@ -23992,6 +23994,7 @@
     },
     "/api/v1/billing/filing-package/purchase": {
       "post": {
+        "deprecated": true,
         "operationId": "billingPurchaseFilingPackage",
         "parameters": [
           {
@@ -24034,7 +24037,7 @@
                 }
               }
             },
-            "description": "Eligible simulated filing-package purchase completed.",
+            "description": "Historical filing-package outcome recovered; new acquisition is retired.",
             "headers": {
               "X-Request-ID": {
                 "description": "Correlation identifier for the request and response.",
@@ -25874,6 +25877,7 @@
     },
     "/api/v1/billing/subscriptions/activation": {
       "post": {
+        "deprecated": true,
         "operationId": "billingActivateSubscription",
         "parameters": [
           {
@@ -25916,7 +25920,7 @@
                 }
               }
             },
-            "description": "Simulated subscription activation completed.",
+            "description": "Historical subscription outcome recovered; new acquisition is retired.",
             "headers": {
               "X-Request-ID": {
                 "description": "Correlation identifier for the request and response.",

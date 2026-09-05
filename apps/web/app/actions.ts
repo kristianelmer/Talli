@@ -64,19 +64,16 @@ import {
   type RevokeSupportAccessRequest,
 } from "../features/company-access";
 import {
-  activateBillingSubscription as activateBillingSubscriptionThroughApi,
   billingActionErrorMessage,
   billingOutcomeMayBeUnknown,
   annualBillingRecovery,
   cancelAnnualRenewal as cancelAnnualRenewalThroughApi,
   cancelBillingSubscription as cancelBillingSubscriptionThroughApi,
-  configureBillingAccount,
   manageProductionPilotEntitlement,
   markBillingCaseUnsupported,
   loadBillingEntitlement,
   loadAnnualBillingEntitlements,
   loadBillingSnapshot,
-  purchaseBillingFilingPackage,
   refundBillingFilingPackage,
 } from "../features/billing";
 import {
@@ -644,10 +641,7 @@ function ownerPathWithQuery(
 }
 
 type BillingRetryOperationKey =
-  | "billingConfigureOperationId"
-  | "billingActivateOperationId"
   | "billingCancelOperationId"
-  | "billingFilingPackageOperationId"
   | "billingUnsupportedOperationId"
   | "billingRefundOperationId";
 
@@ -4087,44 +4081,6 @@ export async function recordTaxSettlement(formData: FormData) {
   succeedTo(returnTo);
 }
 
-export async function saveBillingAccount(formData: FormData) {
-  if (!hasSupabaseEnv()) {
-    redirect("/workspace?error=Supabase%20env%20mangler");
-  }
-  const accessToken = await getCurrentSessionAccessToken();
-  if (!accessToken) {
-    redirect("/workspace?error=Innlogging%20kreves");
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/workspace?error=Innlogging%20kreves");
-  const operationId = requiredFormUuid(formData, "operationId");
-  const companyId = formString(formData, "companyId");
-  const pricingPlan = formString(formData, "pricingPlan") as "founder" | "standard";
-  const founderValue = Number(formString(formData, "founderCohortNumber") || "0");
-  let account;
-  try {
-    account = await configureBillingAccount(accessToken, {
-      companyId,
-      pricingPlan,
-      founderCohortNumber: pricingPlan === "founder" ? founderValue : null,
-    }, operationId);
-  } catch (error) {
-    billingRetryRedirect(error, operationId, "billingConfigureOperationId");
-  }
-
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "billing",
-    action: "billing_account_saved",
-    message: `Faktureringskonto lagret med ${account.pricingPlan === "founder" ? "grunnleggerplan" : "standardplan"}.`,
-  });
-
-  revalidatePath("/");
-  redirect("/workspace");
-}
-
 export async function requestCompanyCancellation(formData: FormData) {
   if (!hasSupabaseEnv()) {
     redirect("/workspace?error=Supabase%20env%20mangler");
@@ -4309,81 +4265,6 @@ export async function revokeSupportAccess(formData: FormData) {
     redirect(`/operator?error=${encodeURIComponent(error instanceof Error ? error.message : "support_access_revoke_failed")}`);
   }
   redirect("/operator?grant=revoked");
-}
-
-export async function activateBillingSubscription(formData: FormData) {
-  if (!hasSupabaseEnv()) {
-    redirect("/workspace?error=Supabase%20env%20mangler");
-  }
-  const accessToken = await getCurrentSessionAccessToken();
-  if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/workspace?error=Innlogging%20kreves");
-  const operationId = requiredFormUuid(formData, "operationId");
-  const companyId = formString(formData, "companyId");
-  let event;
-  try {
-    event = await activateBillingSubscriptionThroughApi(accessToken, { companyId }, operationId);
-  } catch (error) {
-    billingRetryRedirect(error, operationId, "billingActivateOperationId");
-  }
-
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "billing",
-    action: "billing_subscription_activated",
-    message: `Abonnement aktivert via ${event.providerReference}.`,
-  });
-
-  revalidatePath("/");
-  redirect("/workspace");
-}
-
-export async function requestFilingPackagePayment(formData: FormData) {
-  if (!hasSupabaseEnv()) {
-    redirect("/workspace?error=Supabase%20env%20mangler");
-  }
-  const accessToken = await getCurrentSessionAccessToken();
-  if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/workspace?error=Innlogging%20kreves");
-  const operationId = requiredFormUuid(formData, "operationId");
-  const companyId = formString(formData, "companyId");
-  const incomeYear = Number(formString(formData, "incomeYear") || "2025");
-  const { error: readinessError } = await supabase
-    .from("filing_readiness_snapshots")
-    .select("ready, status, hard_blocks, warnings")
-    .eq("company_id", companyId)
-    .eq("income_year", incomeYear)
-    .eq("obligation", "aksjonaerregisteroppgaven")
-    .maybeSingle();
-  if (readinessError) {
-    redirect(`/workspace?error=${encodeURIComponent(readinessError.message)}`);
-  }
-  let event;
-  try {
-    event = await purchaseBillingFilingPackage(accessToken, {
-      companyId,
-      incomeYear,
-      obligation: "aksjonaerregisteroppgaven",
-    }, operationId);
-  } catch (error) {
-    billingRetryRedirect(error, operationId, "billingFilingPackageOperationId");
-  }
-
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "billing",
-    action: "filing_package_paid",
-    message: `Innsendingspakke betalt for ${incomeYear} via ${event.providerReference}.`,
-  });
-
-  revalidatePath("/");
-  redirect("/workspace");
 }
 
 export async function cancelAnnualRenewal(formData: FormData) {

@@ -2748,7 +2748,7 @@ export interface BillingSnapshotWire {
   pricing: BillingPricingWire[];
 }
 
-export type BillingStatus = "active" | "subscription_required" | "filing_package_required" | "ready_for_production_filing" | "unsupported_case" | "refund_eligible" | "pilot_entitlement_active";
+export type BillingStatus = "annual_billing_unavailable" | "active" | "subscription_required" | "filing_package_required" | "ready_for_production_filing" | "unsupported_case" | "refund_eligible" | "pilot_entitlement_active";
 
 export interface BillingUnsupportedWire {
   companyId: string;
@@ -6462,7 +6462,7 @@ function isBillingSnapshotWire(value: unknown): value is BillingSnapshotWire {
 }
 
 function isBillingStatus(value: unknown): value is BillingStatus {
-  return value === "active" || value === "subscription_required" || value === "filing_package_required" || value === "ready_for_production_filing" || value === "unsupported_case" || value === "refund_eligible" || value === "pilot_entitlement_active";
+  return value === "annual_billing_unavailable" || value === "active" || value === "subscription_required" || value === "filing_package_required" || value === "ready_for_production_filing" || value === "unsupported_case" || value === "refund_eligible" || value === "pilot_entitlement_active";
 }
 
 function isBillingUnsupportedWire(value: unknown): value is BillingUnsupportedWire {
@@ -8228,19 +8228,7 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
-    async billingConfigureAccount(
-      body: BillingConfigureWire,
-      request: TalliMutationOptions,
-    ): Promise<BillingAccountWire> {
-      return executeJson(baseUrl + "/api/v1/billing/accounts/configuration", "POST", request, body, isBillingAccountWire);
-    },
 
-    async billingActivateSubscription(
-      body: BillingCompanyWire,
-      request: TalliMutationOptions,
-    ): Promise<BillingPaymentEventWire> {
-      return executeJson(baseUrl + "/api/v1/billing/subscriptions/activation", "POST", request, body, isBillingPaymentEventWire);
-    },
 
     async billingCancelSubscription(
       body: BillingCompanyWire,
@@ -8249,12 +8237,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       return executeJson(baseUrl + "/api/v1/billing/subscriptions/cancellation", "POST", request, body, isBillingPaymentEventWire);
     },
 
-    async billingPurchaseFilingPackage(
-      body: BillingFilingPackageWire,
-      request: TalliMutationOptions,
-    ): Promise<BillingPaymentEventWire> {
-      return executeJson(baseUrl + "/api/v1/billing/filing-package/purchase", "POST", request, body, isBillingPaymentEventWire);
-    },
 
     async billingRefundFilingPackage(
       body: BillingFilingPackageWire,

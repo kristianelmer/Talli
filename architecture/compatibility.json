@@ -359,12 +359,6 @@
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "table:filing_readiness_snapshots",
-          "operation": "requestFilingPackagePayment"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "table:annual_data",
           "operation": "saveYearEndInterview"
         },
@@ -710,12 +704,6 @@
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
-          "operation": "activateBillingSubscription"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
           "operation": "addFilingOverride"
         },
         {
@@ -821,22 +809,10 @@
           "operation": "refreshAnnualReadinessSnapshots"
         },
         {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
-          "operation": "requestFilingPackagePayment"
-        },
-        {
           "path": "apps/web/app/lib/invitation-side-effects.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:audit_events",
           "operation": "createInvitationSideEffectStore"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:audit_events",
-          "operation": "saveBillingAccount"
         },
         {
           "path": "apps/web/app/actions.ts",

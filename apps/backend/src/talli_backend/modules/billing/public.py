@@ -56,6 +56,7 @@ class BillingPlan(StrEnum):
 
 
 class BillingStatus(StrEnum):
+    ANNUAL_BILLING_UNAVAILABLE = "annual_billing_unavailable"
     ACTIVE = "active"
     SUBSCRIPTION_REQUIRED = "subscription_required"
     FILING_PACKAGE_REQUIRED = "filing_package_required"
@@ -106,6 +107,7 @@ class BillingObligation(StrEnum):
 
 
 class BillingErrorCode(StrEnum):
+    LEGACY_ACQUISITION_RETIRED = "BILLING_LEGACY_ACQUISITION_RETIRED"
     INVALID_INPUT = "BILLING_INVALID_INPUT"
     NOT_FOUND = "BILLING_NOT_FOUND"
     FORBIDDEN = "BILLING_FORBIDDEN"

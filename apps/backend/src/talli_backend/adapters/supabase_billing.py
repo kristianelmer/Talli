@@ -210,6 +210,8 @@ def _receipt_result(
 
 
 def _map_error(message: str) -> BillingError:
+    if "billing_legacy_acquisition_retired" in message:
+        return BillingError.precondition(BillingErrorCode.LEGACY_ACQUISITION_RETIRED)
     if "row-level security" in message or "permission denied" in message:
         return BillingError.forbidden()
     if "billing_idempotency_key_reused" in message:
@@ -262,7 +264,7 @@ class SupabaseBillingSession:
         self,
         role: str,
         query: str,
-        parameters: tuple[object, ...] = (),
+        parameters: tuple[object, ...] | Mapping[str, object] = (),
     ) -> list[Mapping[str, object]]:
         if not self._database_url:
             raise BillingError.unavailable()
@@ -485,52 +487,23 @@ class SupabaseBillingSession:
 
     async def configure_account(self, command, pricing):
         self._assert_actor(command.actor_id)
-        operation = "configure_account"
-        fingerprint = _command_fingerprint(operation, {
-            "companyId": str(command.company_id),
-            "pricingPlan": pricing.plan.value,
-            "monthlyNok": pricing.monthly_nok,
-            "filingPackageNok": pricing.filing_package_nok,
-            "founderCohortNumber": command.founder_cohort_number,
-        })
-        result = await self._idempotent_command(
-            command=command,
-            operation=operation,
-            fingerprint=fingerprint,
-            mutation="""insert into billing.billing_accounts (
-              company_id, pricing_plan, monthly_nok, filing_package_nok,
-              founder_cohort_number, updated_by
-            ) values (%s::uuid, %s::text, %s::integer, %s::integer, %s::integer, %s::uuid)
-            on conflict (company_id) do update set
-              pricing_plan = excluded.pricing_plan,
-              monthly_nok = excluded.monthly_nok,
-              filing_package_nok = excluded.filing_package_nok,
-              founder_cohort_number = excluded.founder_cohort_number,
-              subscription_active = false,
-              filing_package_paid = false,
-              supported_case = true,
-              refund_eligible = false,
-              refund_completed = false,
-              no_charge_reason = null,
-              provider_customer_ref = null,
-              subscription_provider_ref = null,
-              filing_package_payment_ref = null,
-              refund_provider_ref = null,
-              updated_by = excluded.updated_by,
-              updated_at = pg_catalog.now()
-            returning billing.billing_accounts.*""",
-            parameters=(
-                str(command.company_id), pricing.plan.value, pricing.monthly_nok,
-                pricing.filing_package_nok, command.founder_cohort_number,
-                str(command.actor_id.subject),
-            ),
-        )
-        return _account(result)
+        raise BillingError.precondition(BillingErrorCode.LEGACY_ACQUISITION_RETIRED)
 
     async def begin_provider_event(self, command, provider, amount_nok):
         self._assert_actor(command.actor_id)
         kind = _kind(command)
         income_year = getattr(command, "income_year", None)
+        if kind in (BillingPaymentKind.SUBSCRIPTION, BillingPaymentKind.FILING_PACKAGE):
+            replay = await self.find_payment_event(
+                company_id=command.company_id, idempotency_key=command.idempotency_key,
+                kind=kind, income_year=income_year,
+                obligation=getattr(command, "obligation", None),
+            )
+            if replay is None:
+                raise BillingError.precondition(BillingErrorCode.LEGACY_ACQUISITION_RETIRED)
+            if replay.provider != provider or replay.amount_nok != amount_nok:
+                raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
+            return replay
         rows = await self._rows(
             "billing_store_owner",
             f"""insert into billing.billing_payment_events (
@@ -586,22 +559,15 @@ class SupabaseBillingSession:
             "billing_store_owner",
             f"""with inserted as (
                   update billing.billing_payment_events set
-                    provider_reference = %s::text,
-                    status = case
-                      when %s::text = 'filing_package'
-                        and not billing.read_legacy_filing_readiness_v1(
-                          %s::uuid, %s::integer, %s::text
-                        )
-                      then 'failed'
-                      else %s::text
-                    end,
-                    payload = %s::jsonb
-                  where idempotency_key = %s::text
-                    and company_id = %s::uuid and kind = %s::text
-                    and income_year is not distinct from %s::integer
-                    and provider = %s::text and amount_nok = %s::integer
+                    provider_reference = %(reference)s::text,
+                    status = %(status)s::text,
+                    payload = %(payload)s::jsonb
+                  where idempotency_key = %(key)s::text
+                    and company_id = %(company)s::uuid and kind = %(kind)s::text
+                    and income_year is not distinct from %(year)s::integer
+                    and provider = %(provider)s::text and amount_nok = %(amount)s::integer
                     and (kind <> 'filing_package' or
-                      coalesce(payload->>'obligation', 'aksjonaerregisteroppgaven') = %s::text)
+                      coalesce(payload->>'obligation', 'aksjonaerregisteroppgaven') = %(obligation)s::text)
                     and status in ('created', 'failed')
                   returning {_EVENT_COLUMNS}
                 ), selected as (
@@ -609,57 +575,43 @@ class SupabaseBillingSession:
                   union all
                   select {_EVENT_COLUMNS}, true as replayed
                   from billing.billing_payment_events
-                  where idempotency_key = %s::text and not exists (select 1 from inserted)
+                  where idempotency_key = %(key)s::text and not exists (select 1 from inserted)
                 ), updated as (
                   update billing.billing_accounts account set
-                    subscription_active = case
-                      when %s::text = 'subscription' then true
-                      when %s::text = 'subscription_cancellation' then false
-                      else account.subscription_active end,
-                    provider_customer_ref = case when %s::text = 'subscription'
-                      then coalesce(account.provider_customer_ref, 'sim_customer_' || account.company_id::text)
-                      else account.provider_customer_ref end,
-                    subscription_provider_ref = case when %s::text in ('subscription', 'subscription_cancellation')
-                      then %s::text else account.subscription_provider_ref end,
-                    filing_package_paid = case
-                      when %s::text = 'filing_package' then true
-                      when %s::text = 'unsupported' then false
-                      else account.filing_package_paid end,
-                    filing_package_payment_ref = case when %s::text = 'filing_package'
-                      then %s::text else account.filing_package_payment_ref end,
-                    refund_eligible = case when %s::text in ('filing_package', 'refund')
+                    subscription_active = case when %(kind)s::text = 'subscription_cancellation'
+                      then false else account.subscription_active end,
+                    subscription_provider_ref = case when %(kind)s::text = 'subscription_cancellation'
+                      then %(reference)s::text else account.subscription_provider_ref end,
+                    refund_eligible = case when %(kind)s::text = 'refund'
                       then false else account.refund_eligible end,
-                    refund_completed = case when %s::text = 'refund'
+                    refund_completed = case when %(kind)s::text = 'refund'
                       then true else account.refund_completed end,
-                    refund_provider_ref = case when %s::text = 'refund'
-                      then %s::text else account.refund_provider_ref end,
-                    updated_by = %s::uuid,
+                    refund_provider_ref = case when %(kind)s::text = 'refund'
+                      then %(reference)s::text else account.refund_provider_ref end,
+                    updated_by = %(actor)s::uuid,
                     updated_at = pg_catalog.now()
-                  where account.company_id = %s::uuid
-                    and exists (select 1 from inserted)
+                  where account.company_id = %(company)s::uuid
+                    and %(kind)s::text in ('subscription_cancellation', 'refund')
                     and exists (
-                      select 1 from inserted event
-                      where event.status = %s::text
+                      select 1 from inserted event where event.status = %(expected_status)s::text
                     )
                   returning account.company_id
                 )
                 select * from selected""",
-            (
-                result.provider_reference,
-                kind.value, str(command.company_id),
-                int(income_year) if income_year else None,
-                getattr(command, "obligation", BillingObligation.SHAREHOLDER_REGISTER).value,
-                result.status.value, payload, str(command.idempotency_key),
-                str(command.company_id), kind.value,
-                int(income_year) if income_year else None, result.provider, amount_nok,
-                command.obligation.value if isinstance(command, PurchaseFilingPackageCommand) else None,
-                str(command.idempotency_key),
-                kind.value, kind.value, kind.value, kind.value,
-                result.provider_reference, kind.value, kind.value, kind.value,
-                result.provider_reference, kind.value, kind.value, kind.value,
-                result.provider_reference, str(command.actor_id.subject),
-                str(command.company_id), expected_payment_status(kind).value,
-            ),
+            {
+                "reference": result.provider_reference,
+                "status": result.status.value,
+                "payload": payload,
+                "key": str(command.idempotency_key),
+                "company": str(command.company_id),
+                "kind": kind.value,
+                "year": int(income_year) if income_year else None,
+                "provider": result.provider,
+                "amount": amount_nok,
+                "obligation": command.obligation.value if isinstance(command, PurchaseFilingPackageCommand) else None,
+                "actor": str(command.actor_id.subject),
+                "expected_status": expected_payment_status(kind).value,
+            },
         )
         if len(rows) != 1:
             raise BillingError.unavailable()

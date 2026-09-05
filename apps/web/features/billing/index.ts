@@ -3,7 +3,6 @@ export type {
   AnnualBillingSnapshotWire,
   AnnualPurchaseSummaryWire,
   BillingAccountWire,
-  BillingConfigureWire,
   BillingEntitlementDecisionWire,
   BillingEntitlementRequest,
   BillingFilingPackageWire,

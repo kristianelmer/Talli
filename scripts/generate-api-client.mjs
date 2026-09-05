@@ -280,10 +280,7 @@ const billingOperations = {
   annualCancellation: ["/api/v1/billing/annual/renewal-cancellations", "post", "billingCancelAnnualRenewal"],
   snapshot: ["/api/v1/billing/snapshot", "get", "billingReadSnapshot"],
   entitlement: ["/api/v1/billing/entitlement", "get", "billingReadEntitlement"],
-  configure: ["/api/v1/billing/accounts/configuration", "post", "billingConfigureAccount"],
-  activate: ["/api/v1/billing/subscriptions/activation", "post", "billingActivateSubscription"],
   cancel: ["/api/v1/billing/subscriptions/cancellation", "post", "billingCancelSubscription"],
-  purchase: ["/api/v1/billing/filing-package/purchase", "post", "billingPurchaseFilingPackage"],
   refund: ["/api/v1/billing/filing-package/refund", "post", "billingRefundFilingPackage"],
   unsupported: ["/api/v1/billing/unsupported", "post", "billingMarkUnsupported"],
   pilot: ["/api/v1/billing/pilot-entitlements", "post", "billingManagePilotEntitlement"],
@@ -2631,19 +2628,7 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
-    async billingConfigureAccount(
-      body: BillingConfigureWire,
-      request: TalliMutationOptions,
-    ): Promise<BillingAccountWire> {
-      return executeJson(baseUrl + "/api/v1/billing/accounts/configuration", "POST", request, body, isBillingAccountWire);
-    },
 
-    async billingActivateSubscription(
-      body: BillingCompanyWire,
-      request: TalliMutationOptions,
-    ): Promise<BillingPaymentEventWire> {
-      return executeJson(baseUrl + "/api/v1/billing/subscriptions/activation", "POST", request, body, isBillingPaymentEventWire);
-    },
 
     async billingCancelSubscription(
       body: BillingCompanyWire,
@@ -2652,12 +2637,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       return executeJson(baseUrl + "/api/v1/billing/subscriptions/cancellation", "POST", request, body, isBillingPaymentEventWire);
     },
 
-    async billingPurchaseFilingPackage(
-      body: BillingFilingPackageWire,
-      request: TalliMutationOptions,
-    ): Promise<BillingPaymentEventWire> {
-      return executeJson(baseUrl + "/api/v1/billing/filing-package/purchase", "POST", request, body, isBillingPaymentEventWire);
-    },
 
     async billingRefundFilingPackage(
       body: BillingFilingPackageWire,

@@ -108,7 +108,7 @@
       "BillingEntitlementDecision",
       "BillingSnapshot"
     ],
-    "migrations": "supabase/migrations/20260905103149_annual_agreement_cleanup.sql"
+    "migrations": "supabase/migrations/20260905115700_legacy_billing_acquisition_retirement.sql"
   },
   "ports": [
     {
@@ -213,7 +213,9 @@
     "annualCleanup": "apps/backend/tests/test_annual_cleanup_service.py",
     "annualCleanupDatabase": "apps/backend/tests/test_annual_cleanup_runtime.py",
     "annualReadDatabase": "apps/backend/tests/test_annual_billing_read_runtime.py",
-    "annualApi": "apps/backend/tests/test_annual_billing_api.py"
+    "annualApi": "apps/backend/tests/test_annual_billing_api.py",
+    "legacyRetirement": "apps/backend/tests/test_legacy_billing_retirement.py",
+    "legacyRetirementDatabase": "apps/backend/tests/test_legacy_billing_retirement_runtime.py"
   },
   "compatibilityExceptions": []
 }

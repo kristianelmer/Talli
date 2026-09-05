@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from talli_backend.modules.billing.public import (
+    BillingError,
+    BillingErrorCode,
+    BillingPaymentKind,
     BillingPaymentProvider,
     BillingProviderIntent,
     BillingProviderResult,
@@ -17,6 +20,11 @@ class SimulationBillingProvider:
     production_enabled = False
 
     async def execute(self, intent: BillingProviderIntent) -> BillingProviderResult:
+        if intent.kind in (BillingPaymentKind.SUBSCRIPTION, BillingPaymentKind.FILING_PACKAGE):
+            raise BillingError.precondition(BillingErrorCode.LEGACY_ACQUISITION_RETIRED)
+        return self._result(intent)
+
+    def _result(self, intent: BillingProviderIntent) -> BillingProviderResult:
         suffix = (
             f"_{int(intent.income_year)}" if intent.income_year is not None else ""
         )
@@ -29,7 +37,7 @@ class SimulationBillingProvider:
     async def reconcile(self, intent: BillingProviderIntent) -> BillingProviderResult:
         # Simulation has no external side effect. Its outcome is fully determined
         # by the durable intent, including when the process stopped before execute.
-        return await SimulationBillingProvider.execute(self, intent)
+        return self._result(intent)
 
 
 __all__ = ["SimulationBillingProvider"]

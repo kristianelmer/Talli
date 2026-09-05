@@ -30,13 +30,15 @@ from talli_backend.modules.billing.public import (
 from talli_backend.modules.billing.service import BillingService, billing_entitlement_decision
 from talli_backend.shared.kernel import CompanyId, IncomeYear, Timestamp, UserId
 
-from test_billing import COMPANY_ID, USER_ID, MemoryPersistence, NOW, account, metadata, query
+from test_billing import COMPANY_ID, USER_ID, MemoryPersistence, NOW, account, metadata, query, seed_historical_event
 
 
 # Frozen semantic oracle from the exact migration baseline
 # 4f807fe4239a208c573054b14cbed478277d1a2e:
 # apps/web/app/lib/billing.ts and apps/web/app/lib/production-pilot.ts.
 # It remains test-only so the predecessor cannot become an application path.
+# Issue #192 intentionally retires acquisition and paid entitlement; cleanup,
+# historical event identity and the exact free pilot retain their prior semantics.
 @dataclass(frozen=True)
 class _LegacyAccount:
     company_id: str
@@ -280,7 +282,7 @@ def _legacy_error(action) -> str | None:
         (BillingPlan.STANDARD, 100),
     ],
 )
-def test_predecessor_and_successor_match_plan_prices_and_defaults(
+def test_predecessor_plan_reset_is_retired_without_changing_history(
     plan: BillingPlan, cohort: int | None
 ) -> None:
     predecessor = _legacy_build_account(
@@ -300,19 +302,17 @@ def test_predecessor_and_successor_match_plan_prices_and_defaults(
             refund_provider_reference="stale-refund",
         )
     )
-    successor = asyncio.run(
-        BillingService(
-            persistence, SimulationBillingProvider(), now=lambda: NOW.value
-        ).configure_account(
+    original = persistence.account
+    with pytest.raises(BillingError) as retired:
+        asyncio.run(BillingService(persistence, SimulationBillingProvider()).configure_account(
             ConfigureBillingAccountCommand(
-                **metadata(f"equivalence-{plan.value}-{cohort}"),
-                pricing_plan=plan,
-                founder_cohort_number=cohort,
+                **metadata(f"retirement-{plan.value}-{cohort}"),
+                pricing_plan=plan, founder_cohort_number=cohort,
             )
-        )
-    )
-
-    assert _canonical_account_facts(successor) == _legacy_account_facts(predecessor)
+        ))
+    assert predecessor.monthly_nok in (29, 49)
+    assert retired.value.code is BillingErrorCode.LEGACY_ACQUISITION_RETIRED
+    assert persistence.account == original
 
 
 @pytest.mark.parametrize(
@@ -370,7 +370,7 @@ _NORWEGIAN_SUCCESSOR_MESSAGES = {
         ({"subscription_active": True, "filing_package_paid": True}, True),
     ],
 )
-def test_predecessor_and_successor_match_every_entitlement_result(
+def test_every_predecessor_entitlement_result_is_superseded_by_annual_authority(
     account_changes: dict[str, object], filing_ready: bool
 ) -> None:
     predecessor_account = _legacy_build_account(
@@ -381,20 +381,11 @@ def test_predecessor_and_successor_match_every_entitlement_result(
         query(), account(**account_changes), filing_ready=filing_ready
     )
 
-    assert successor.status.value == predecessor["status"]
-    assert successor.allowed is predecessor["allowed"]
-    assert successor.charge_allowed is predecessor["charge_allowed"]
-    assert successor.readiness_allowed is (
-        successor.status
-        not in (
-            BillingStatus.REFUND_ELIGIBLE,
-            BillingStatus.UNSUPPORTED_CASE,
-            BillingStatus.SUBSCRIPTION_REQUIRED,
-        )
-    )
-    assert successor.billing_exempt is False
-    assert successor.pilot_entitlement_id is None
-    assert successor.message == _NORWEGIAN_SUCCESSOR_MESSAGES[predecessor["message"]]
+    assert predecessor["status"] in {"refund_eligible", "unsupported_case", "subscription_required", "active", "filing_package_required", "ready_for_production_filing"}
+    assert successor.status is BillingStatus.ANNUAL_BILLING_UNAVAILABLE
+    assert not successor.allowed and not successor.charge_allowed
+    assert successor.readiness_allowed
+    assert not successor.billing_exempt and successor.pilot_entitlement_id is None
 
 
 @pytest.mark.parametrize(
@@ -406,7 +397,7 @@ def test_predecessor_and_successor_match_every_entitlement_result(
         ({"subscription_active": True}, False, "active", BillingErrorCode.FILING_NOT_READY),
     ],
 )
-def test_predecessor_blocked_gates_map_to_successor_coded_errors(
+def test_predecessor_blocked_gates_cannot_reopen_retired_acquisition(
     account_changes: dict[str, object],
     filing_ready: bool,
     legacy_status: str,
@@ -429,11 +420,11 @@ def test_predecessor_blocked_gates_map_to_successor_coded_errors(
 
     assert predecessor["status"] == legacy_status
     assert predecessor["allowed"] is False
-    assert blocked.value.code == successor_code
+    assert blocked.value.code == BillingErrorCode.LEGACY_ACQUISITION_RETIRED
     assert persistence.events == {}
 
 
-def test_predecessor_missing_account_failure_maps_to_successor_not_found() -> None:
+def test_missing_account_does_not_reopen_retired_acquisition() -> None:
     predecessor_message = "Billingkonto mangler"
     persistence = MemoryPersistence()
     service = BillingService(
@@ -448,7 +439,7 @@ def test_predecessor_missing_account_failure_maps_to_successor_not_found() -> No
         )
 
     assert predecessor_message == "Billingkonto mangler"
-    assert missing.value.code == BillingErrorCode.NOT_FOUND
+    assert missing.value.code == BillingErrorCode.LEGACY_ACQUISITION_RETIRED
     assert persistence.events == {}
 
 
@@ -466,7 +457,7 @@ def test_predecessor_missing_account_failure_maps_to_successor_not_found() -> No
         (BillingPaymentKind.REFUND, BillingPaymentStatus.REFUNDED, 499, 2025),
     ],
 )
-def test_predecessor_and_successor_match_provider_events_and_database_effects(
+def test_historical_acquisition_preserves_event_facts_and_cleanup_preserves_effects(
     kind: BillingPaymentKind,
     status: BillingPaymentStatus,
     amount: int,
@@ -519,6 +510,9 @@ def test_predecessor_and_successor_match_provider_events_and_database_effects(
         ),
     }
     operation, command = command_by_kind[kind]
+    acquisition = kind in {BillingPaymentKind.SUBSCRIPTION, BillingPaymentKind.FILING_PACKAGE}
+    if acquisition:
+        seed_historical_event(persistence, command)
     successor_event = asyncio.run(operation(command))
     assert persistence.account is not None
 
@@ -532,9 +526,10 @@ def test_predecessor_and_successor_match_provider_events_and_database_effects(
         if successor_event.income_year is not None
         else None
     ) == predecessor_event.income_year
-    assert _canonical_account_facts(persistence.account) == _legacy_account_facts(
-        predecessor_after
-    )
+    if acquisition:
+        assert persistence.account == initial
+    else:
+        assert _canonical_account_facts(persistence.account) == _legacy_account_facts(predecessor_after)
 
 
 def test_predecessor_duplicate_suppression_matches_successor_exact_replay() -> None:
@@ -557,18 +552,16 @@ def test_predecessor_duplicate_suppression_matches_successor_exact_replay() -> N
     provider = _CountingProvider()
     service = BillingService(persistence, provider, now=lambda: NOW.value)
     command = ActivateSubscriptionCommand(**metadata("equivalence-replay"))
+    seed_historical_event(persistence, command, status=BillingPaymentStatus.SUCCEEDED)
     first = asyncio.run(service.activate_subscription(command))
     replay = asyncio.run(service.activate_subscription(command))
 
     assert predecessor_after_duplicate == predecessor_after
     assert replay.event_id == first.event_id
     assert replay.replayed is True
-    assert provider.calls == 1
+    assert provider.calls == 0
     assert len(persistence.events) == 1
-    assert persistence.account is not None
-    assert _canonical_account_facts(persistence.account) == _legacy_account_facts(
-        predecessor_after
-    )
+    assert persistence.account == account()
 
 
 def test_failed_provider_outcomes_fail_closed_and_successor_quarantines_once() -> None:
@@ -589,7 +582,7 @@ def test_failed_provider_outcomes_fail_closed_and_successor_quarantines_once() -
         def __init__(self) -> None:
             self.calls = 0
 
-        async def execute(self, _intent) -> Never:
+        async def reconcile(self, _intent) -> Never:
             self.calls += 1
             raise RuntimeError("fixed injected provider failure")
 
@@ -601,6 +594,7 @@ def test_failed_provider_outcomes_fail_closed_and_successor_quarantines_once() -
     command = PurchaseFilingPackageCommand(
         **metadata("equivalence-provider-failure"), income_year=IncomeYear(2025)
     )
+    seed_historical_event(persistence, command)
     for _attempt in range(2):
         with pytest.raises(BillingError) as error:
             asyncio.run(service.purchase_filing_package(command))
@@ -609,7 +603,7 @@ def test_failed_provider_outcomes_fail_closed_and_successor_quarantines_once() -
     assert predecessor_after.filing_package_paid is False
     assert persistence.account is not None
     assert persistence.account.filing_package_paid is False
-    assert provider.calls == 1
+    assert provider.calls == 2
     assert len(persistence.events) == 1
     quarantine = next(iter(persistence.events.values()))
     assert quarantine.status is BillingPaymentStatus.CREATED
@@ -693,11 +687,11 @@ def test_predecessor_and_successor_match_fixed_pilot_identity_and_clock(
     )
 
     assert (decision.pilot_entitlement_id is not None) is predecessor_allowed
-    assert decision.allowed is True
     assert decision.charge_allowed is False
     expected_exemption = (
         predecessor_allowed and bool(entitlement and entitlement.billing_exempt)
     )
+    assert decision.allowed is expected_exemption
     assert decision.billing_exempt is expected_exemption
     assert (decision.status is BillingStatus.PILOT_ENTITLEMENT_ACTIVE) is expected_exemption
 
@@ -706,7 +700,7 @@ def test_predecessor_and_successor_match_fixed_pilot_identity_and_clock(
     ("billing_exempt", "expected_status", "expected_allowed"),
     [
         (True, BillingStatus.PILOT_ENTITLEMENT_ACTIVE, True),
-        (False, BillingStatus.SUBSCRIPTION_REQUIRED, False),
+        (False, BillingStatus.ANNUAL_BILLING_UNAVAILABLE, False),
     ],
 )
 def test_exact_pilot_exemption_and_ordinary_account_gate_remain_separate(

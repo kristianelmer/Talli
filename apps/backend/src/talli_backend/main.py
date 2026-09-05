@@ -3520,6 +3520,7 @@ def create_app(
                 BillingErrorCode.FILING_PACKAGE_REQUIRED: "Innsendingspakken må betales før produksjonsinnsending.",
                 BillingErrorCode.UNSUPPORTED_CASE: "Saken er utenfor Talli-støtte. Ikke ta betalt for innsendingspakken.",
                 BillingErrorCode.REFUND_NOT_ALLOWED: "Kun en støttet, betalt innsendingspakke kan refunderes.",
+                BillingErrorCode.LEGACY_ACQUISITION_RETIRED: "Den tidligere prismodellen er avsluttet. Se årsabonnementet for foretaket.",
                 BillingErrorCode.PROVIDER_DISABLED: "Betalingsleverandøren er deaktivert.",
                 BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN: "Betalingsutfallet er ukjent og må avstemmes.",
                 BillingErrorCode.DEPENDENCY_UNAVAILABLE: "Fakturering er midlertidig utilgjengelig.",
@@ -9164,8 +9165,9 @@ def create_app(
     @application.post(
         "/api/v1/billing/accounts/configuration",
         operation_id="billingConfigureAccount",
+        deprecated=True,
         response_model=BillingAccountWire,
-        responses={200: {"description": "Billing account configured."} | billing_success}
+        responses={200: {"description": "Retired configuration endpoint; new configuration is rejected."} | billing_success}
         | billing_errors,
         tags=["billing"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
@@ -9191,8 +9193,9 @@ def create_app(
     @application.post(
         "/api/v1/billing/subscriptions/activation",
         operation_id="billingActivateSubscription",
+        deprecated=True,
         response_model=BillingPaymentEventWire,
-        responses={200: {"description": "Simulated subscription activation completed."} | billing_success} | billing_errors,
+        responses={200: {"description": "Historical subscription outcome recovered; new acquisition is retired."} | billing_success} | billing_errors,
         tags=["billing"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
@@ -9239,8 +9242,9 @@ def create_app(
     @application.post(
         "/api/v1/billing/filing-package/purchase",
         operation_id="billingPurchaseFilingPackage",
+        deprecated=True,
         response_model=BillingPaymentEventWire,
-        responses={200: {"description": "Eligible simulated filing-package purchase completed."} | billing_success} | billing_errors,
+        responses={200: {"description": "Historical filing-package outcome recovered; new acquisition is retired."} | billing_success} | billing_errors,
         tags=["billing"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )

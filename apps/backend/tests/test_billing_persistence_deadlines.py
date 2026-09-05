@@ -14,12 +14,12 @@ from talli_backend.adapters.simulation_billing import SimulationBillingProvider
 from talli_backend.modules.billing.service import BillingService
 from talli_backend.modules.billing.public import (
     BillingError, BillingPaymentKind, BillingPaymentStatus, BillingPlan,
-    CancelSubscriptionCommand, ConfigureBillingAccountCommand,
+    CancelSubscriptionCommand, MarkBillingUnsupportedCommand,
 )
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, UserId
 
 @pytest.mark.skipif(not DATABASE_URL, reason="DATABASE_URL is required")
-@pytest.mark.parametrize("operation", ["payment", "configuration"])
+@pytest.mark.parametrize("operation", ["payment", "unsupported"])
 def test_billing_lock_timeout_rolls_back_and_allows_recovery(operation):
     database_url = enable_backend_login()
     try:
@@ -31,13 +31,10 @@ def test_billing_lock_timeout_rolls_back_and_allows_recovery(operation):
                 "amr": [{"method": "totp", "timestamp": datetime.now(UTC).timestamp()}],
             })))
             service = BillingService(session, SimulationBillingProvider())
-            asyncio.run(service.configure_account(ConfigureBillingAccountCommand(
-                **metadata("lock-setup"), pricing_plan=BillingPlan.STANDARD,
-            )))
             command = (CancelSubscriptionCommand(**metadata("lock-payment")) if operation == "payment" else
-                ConfigureBillingAccountCommand(**metadata("lock-configure"), pricing_plan=BillingPlan.FOUNDER, founder_cohort_number=1))
+                MarkBillingUnsupportedCommand(**metadata("lock-unsupported"), reason="Outside historical scope"))
             async def perform():
-                return await (service.cancel_subscription(command) if operation == "payment" else service.configure_account(command))
+                return await (service.cancel_subscription(command) if operation == "payment" else service.mark_unsupported(command))
             with psycopg.connect(DATABASE_URL) as locker:
                 locker.execute("select company_id from billing.billing_accounts where company_id=%s::uuid for update", (COMPANY_ID,))
                 started = time.monotonic()
@@ -51,7 +48,7 @@ def test_billing_lock_timeout_rolls_back_and_allows_recovery(operation):
                 assert recovered.event_id == pending.event_id
                 assert recovered.status is BillingPaymentStatus.CANCELED
             else:
-                assert asyncio.run(perform()).pricing.plan is BillingPlan.FOUNDER
+                assert not asyncio.run(perform()).supported_case
         finally:
             cleanup()
     finally:

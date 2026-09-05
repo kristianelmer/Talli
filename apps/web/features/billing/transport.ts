@@ -5,7 +5,6 @@ import {
   type AnnualRenewalCancellationCommandWire,
   type BillingAccountWire,
   type BillingCompanyWire,
-  type BillingConfigureWire,
   type BillingEntitlementRequest,
   type BillingFilingPackageWire,
   type BillingPilotEntitlementCommandWire,
@@ -106,24 +105,6 @@ export function presentBillingAccount(account: BillingAccountWire) {
   };
 }
 
-export function configureBillingAccount(
-  accessToken: string,
-  body: BillingConfigureWire,
-  operationId: string,
-  requestId?: string,
-) {
-  return client(accessToken).billingConfigureAccount(body, mutation(operationId, requestId));
-}
-
-export function activateBillingSubscription(
-  accessToken: string,
-  body: BillingCompanyWire,
-  operationId: string,
-  requestId?: string,
-) {
-  return client(accessToken).billingActivateSubscription(body, mutation(operationId, requestId));
-}
-
 export function cancelBillingSubscription(
   accessToken: string,
   body: BillingCompanyWire,
@@ -131,15 +112,6 @@ export function cancelBillingSubscription(
   requestId?: string,
 ) {
   return client(accessToken).billingCancelSubscription(body, mutation(operationId, requestId));
-}
-
-export function purchaseBillingFilingPackage(
-  accessToken: string,
-  body: BillingFilingPackageWire,
-  operationId: string,
-  requestId?: string,
-) {
-  return client(accessToken).billingPurchaseFilingPackage(body, mutation(operationId, requestId));
 }
 
 export function refundBillingFilingPackage(

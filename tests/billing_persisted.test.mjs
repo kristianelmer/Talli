@@ -44,7 +44,8 @@ test("web billing commands and queries cross only the generated backend client",
   assert.match(transport, /createTalliApiClient/);
   assert.match(transport, /billingReadSnapshot/);
   assert.match(transport, /billingReadEntitlement/);
-  assert.match(transport, /billingActivateSubscription/);
+  assert.doesNotMatch(transport, /billingConfigureAccount|billingActivateSubscription|billingPurchaseFilingPackage/);
+  assert.match(transport, /billingCancelSubscription/);
   assert.match(transport, /billingRefundFilingPackage/);
   assert.match(transport, /billingManagePilotEntitlement/);
 
@@ -88,22 +89,17 @@ test("billing uses the versioned company-access authorization seam", () => {
   assert.match(companyAccessBillingRollback, /drop function if exists\s+public\.company_access_/iu);
 });
 
-test("predecessor billing audit facts remain on every successor journey", () => {
+test("historical cleanup retains audit facts while retired acquisition actions disappear", () => {
+  assert.doesNotMatch(actions, /action: "(?:billing_account_saved|billing_subscription_activated|filing_package_paid)"/u);
   for (const action of [
-    "billing_account_saved",
-    "billing_subscription_activated",
     "billing_subscription_canceled",
-    "filing_package_paid",
     "billing_unsupported_no_charge",
     "billing_refund_completed",
   ]) {
     assert.match(actions, new RegExp(`action: "${action}"`, "u"));
   }
   for (const message of [
-    /Faktureringskonto lagret med/,
-    /Abonnement aktivert via/,
     /Abonnement kansellert via/,
-    /Innsendingspakke betalt for/,
     /Innsendingspakke refundert via/,
   ]) {
     assert.match(actions, message);

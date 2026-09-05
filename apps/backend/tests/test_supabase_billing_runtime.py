@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from pathlib import Path
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -27,7 +28,6 @@ from talli_backend.modules.billing.public import (
     ManageProductionPilotEntitlementCommand,
     MarkBillingUnsupportedCommand,
     ProductionPilotStatus,
-    PurchaseFilingPackageCommand,
     SystemUserRequestReference,
 )
 from talli_backend.shared.kernel import (
@@ -89,7 +89,7 @@ def seed() -> None:
                 OWNER_ID,
                 "billing-runtime@example.test",
                 OUTSIDER_ID,
-                "billing-outsider@example.test",
+                "billing-runtime-outsider@example.test",
                 ADMIN_ID,
                 "billing-admin@example.test",
             ),
@@ -129,6 +129,25 @@ def seed() -> None:
             (COMPANY_ID, OWNER_ID),
         )
 
+    seed_legacy_billing()
+
+
+def seed_legacy_billing(*, event_key=None):
+    root = Path(__file__).resolve().parents[3]
+    migration = "20260905115700_legacy_billing_acquisition_retirement.sql"
+    with psycopg.connect(DATABASE_URL, autocommit=True) as connection:
+        connection.execute((root / "supabase" / "rollback" / migration).read_text())
+        try:
+            connection.execute("""insert into billing.billing_accounts
+                (company_id,pricing_plan,monthly_nok,filing_package_nok,updated_by)
+                values (%s,'standard',49,499,%s) on conflict(company_id) do nothing""", (COMPANY_ID, OWNER_ID))
+            if event_key:
+                connection.execute("""insert into billing.billing_payment_events
+                    (company_id,provider_reference,idempotency_key,kind,status,amount_nok,created_by)
+                    values (%s,'historical-pending',%s,'subscription','created',49,%s)""", (COMPANY_ID, event_key, OWNER_ID))
+        finally:
+            connection.execute((root / "supabase" / "migrations" / migration).read_text())
+
 
 def cleanup() -> None:
     with psycopg.connect(DATABASE_URL) as connection:
@@ -164,89 +183,10 @@ def test_non_provider_commands_replay_exactly_and_reject_key_reuse() -> None:
                 ),
             )
 
-            configure = ConfigureBillingAccountCommand(
-                **metadata("configure"),
-                pricing_plan=BillingPlan.FOUNDER,
-                founder_cohort_number=1,
-            )
-            founder_pricing = BillingPricing(BillingPlan.FOUNDER, 29, 299)
-
-            async def configure_twice():
-                return await asyncio.gather(
-                    session.configure_account(configure, founder_pricing),
-                    session.configure_account(configure, founder_pricing),
-                )
-
-            first_account, replayed_account = asyncio.run(
-                configure_twice()
-            )
-            assert replayed_account == first_account
-            with pytest.raises(BillingError) as reused_configure:
-                asyncio.run(
-                    session.configure_account(
-                        configure, BillingPricing(BillingPlan.STANDARD, 49, 499)
-                    )
-                )
-            assert reused_configure.value.code == BillingErrorCode.IDEMPOTENCY_KEY_REUSED
-
-            with psycopg.connect(DATABASE_URL) as connection:
-                connection.execute(
-                    """update billing.billing_accounts set
-                      subscription_active=true, filing_package_paid=false,
-                      supported_case=false, refund_eligible=true,
-                      refund_completed=true, no_charge_reason='legacy-state',
-                      provider_customer_ref='customer-ref',
-                      subscription_provider_ref='subscription-ref',
-                      filing_package_payment_ref='package-ref',
-                      refund_provider_ref='refund-ref'
-                    where company_id=%s::uuid""",
-                    (COMPANY_ID,),
-                )
-            reconfigured = asyncio.run(
-                session.configure_account(
-                    ConfigureBillingAccountCommand(
-                        **metadata("reconfigure"),
-                        pricing_plan=BillingPlan.STANDARD,
-                        founder_cohort_number=None,
-                    ),
-                    BillingPricing(BillingPlan.STANDARD, 49, 499),
-                )
-            )
-            assert reconfigured.pricing.plan is BillingPlan.STANDARD
-            assert reconfigured.subscription_active is False
-            assert reconfigured.filing_package_paid is False
-            assert reconfigured.supported_case is True
-            assert reconfigured.refund_eligible is False
-            assert reconfigured.refund_completed is False
-            assert reconfigured.no_charge_reason is None
-            assert reconfigured.provider_customer_reference is None
-            assert reconfigured.subscription_provider_reference is None
-            assert reconfigured.filing_package_payment_reference is None
-            assert reconfigured.refund_provider_reference is None
-
-            # A paid filing package and an unsupported case are mutually exclusive
-            # predecessor states. Exercise the paid state separately so configure
-            # still proves that it clears both sides of that constraint.
-            with psycopg.connect(DATABASE_URL) as connection:
-                connection.execute(
-                    """update billing.billing_accounts set
-                      filing_package_paid=true,
-                      filing_package_payment_ref='package-ref'
-                    where company_id=%s::uuid""",
-                    (COMPANY_ID,),
-                )
-            paid_state_reconfigured = asyncio.run(
-                session.configure_account(
-                    ConfigureBillingAccountCommand(
-                        **metadata("reconfigure-paid"),
-                        pricing_plan=BillingPlan.STANDARD,
-                        founder_cohort_number=None,
-                    ),
-                    BillingPricing(BillingPlan.STANDARD, 49, 499),
-                )
-            )
-            assert paid_state_reconfigured.filing_package_paid is False
-            assert paid_state_reconfigured.filing_package_payment_reference is None
+            configure = ConfigureBillingAccountCommand(**metadata("configure"), pricing_plan=BillingPlan.STANDARD)
+            with pytest.raises(BillingError) as retired:
+                asyncio.run(session.configure_account(configure, BillingPricing(BillingPlan.STANDARD, 49, 499)))
+            assert retired.value.code == BillingErrorCode.LEGACY_ACQUISITION_RETIRED
 
             outsider_session = SupabaseBillingSession(
                 backend_database_url,
@@ -279,37 +219,6 @@ def test_non_provider_commands_replay_exactly_and_reject_key_reuse() -> None:
             with pytest.raises(BillingError) as stale_authorization:
                 asyncio.run(stale_session.authorize_owner_command(CompanyId(COMPANY_ID)))
             assert stale_authorization.value.code == BillingErrorCode.STEP_UP_REQUIRED
-
-            payment = PurchaseFilingPackageCommand(
-                **metadata("readiness-race"), income_year=IncomeYear(2025)
-            )
-            with psycopg.connect(DATABASE_URL) as connection:
-                connection.execute(
-                    """update public.filing_readiness_snapshots
-                    set ready=false, status='blocked',
-                      hard_blocks='["readiness revoked"]'::jsonb, updated_at=now()
-                    where company_id=%s::uuid and income_year=2025
-                      and obligation='aksjonaerregisteroppgaven'""",
-                    (COMPANY_ID,),
-                )
-            asyncio.run(session.begin_provider_event(
-                payment, "simulation", founder_pricing.filing_package_nok
-            ))
-            failed_event = asyncio.run(
-                session.complete_provider_event(
-                    payment,
-                    BillingProviderResult(
-                        provider="simulation",
-                        provider_reference="readiness-race-result",
-                        status=BillingPaymentStatus.SUCCEEDED,
-                    ),
-                    founder_pricing.filing_package_nok,
-                )
-            )
-            assert failed_event.status is BillingPaymentStatus.FAILED
-            account_after_race = asyncio.run(session.find_account(CompanyId(COMPANY_ID)))
-            assert account_after_race is not None
-            assert account_after_race.filing_package_paid is False
 
             unsupported = MarkBillingUnsupportedCommand(
                 **metadata("unsupported"), reason="Outside support"
@@ -398,28 +307,30 @@ def test_committed_provider_intent_survives_lost_response_and_restart(failure_mo
 
         async def execute(self, intent):
             self.executions += 1
-            self.original_intent = intent
-            # An independent connection can see the intent before provider I/O.
-            with psycopg.connect(DATABASE_URL) as connection:
-                row = connection.execute(
-                    "select status, amount_nok from billing.billing_payment_events where idempotency_key=%s",
-                    (str(intent.idempotency_key),),
-                ).fetchone()
-            assert row == ("created", 49)
-            self.result = await super().execute(intent)
-            if failure_mode == "process":
-                raise ProcessLost()
-            if failure_mode == "storage":
-                return self.result
-            raise TimeoutError("response lost after success")
+            raise AssertionError("retired acquisition must never execute")
 
         async def reconcile(self, intent):
             self.reconciliations += 1
+            if self.original_intent is None:
+                self.original_intent = intent
+                # An independent connection sees the predecessor intent before I/O.
+                with psycopg.connect(DATABASE_URL) as connection:
+                    row = connection.execute(
+                        "select status, amount_nok from billing.billing_payment_events where idempotency_key=%s",
+                        (str(intent.idempotency_key),),
+                    ).fetchone()
+                assert row == ("created", 49)
+                self.result = await super().reconcile(intent)
+                if failure_mode == "process":
+                    raise ProcessLost()
+                if failure_mode == "storage":
+                    return self.result
+                raise TimeoutError("response lost after historical lookup")
             assert intent == self.original_intent
             if failure_mode == "timeout":
                 if self.lookup_barrier is None:
                     self.lookup_barrier = asyncio.Event()
-                if self.reconciliations == 2:
+                if self.reconciliations == 3:
                     self.lookup_barrier.set()
                 await asyncio.wait_for(self.lookup_barrier.wait(), timeout=5)
             return self.result
@@ -438,21 +349,19 @@ def test_committed_provider_intent_survives_lost_response_and_restart(failure_mo
                 "amr": [{"method": "totp", "timestamp": datetime.now(UTC).timestamp()}],
             }))
             session = (LostStorageSession if failure_mode == "storage" else SupabaseBillingSession)(backend_database_url, verified)
-            asyncio.run(session.configure_account(
-                ConfigureBillingAccountCommand(**metadata("intent-configure"), pricing_plan=BillingPlan.STANDARD),
-                BillingPricing(BillingPlan.STANDARD, 49, 499),
-            ))
             provider = LostResponseProvider()
             command = ActivateSubscriptionCommand(**metadata("durable-runtime"))
+            seed_legacy_billing(event_key=str(command.idempotency_key))
             with pytest.raises(ProcessLost if failure_mode == "process" else BillingError):
                 asyncio.run(BillingService(session, provider).activate_subscription(command))
             assert not asyncio.run(session.find_account(CompanyId(COMPANY_ID))).subscription_active
-            # Changing current pricing must not change the persisted provider request.
+            # Even an older writer cannot reprice this historical account after retirement.
             with psycopg.connect(DATABASE_URL) as connection:
-                connection.execute(
-                    "update billing.billing_accounts set pricing_plan='founder', monthly_nok=29, filing_package_nok=299, founder_cohort_number=1 where company_id=%s::uuid",
-                    (COMPANY_ID,),
-                )
+                with pytest.raises(psycopg.Error, match="billing_legacy_acquisition_retired"):
+                    connection.execute(
+                        "update billing.billing_accounts set monthly_nok=29 where company_id=%s::uuid",
+                        (COMPANY_ID,),
+                    )
             recovered_session = SupabaseBillingSession(backend_database_url, verified)
             async def recover():
                 workflow = BillingService(recovered_session, provider)
@@ -469,14 +378,14 @@ def test_committed_provider_intent_survives_lost_response_and_restart(failure_mo
             recovered = asyncio.run(recover())
             assert recovered.status is BillingPaymentStatus.SUCCEEDED
             assert recovered.amount_nok == 49
-            assert asyncio.run(recovered_session.find_account(CompanyId(COMPANY_ID))).subscription_active
-            assert provider.executions == 1
-            assert provider.reconciliations == (2 if failure_mode == "timeout" else 1)
+            assert not asyncio.run(recovered_session.find_account(CompanyId(COMPANY_ID))).subscription_active
+            assert provider.executions == 0
+            assert provider.reconciliations == (3 if failure_mode == "timeout" else 2)
             replay = asyncio.run(BillingService(recovered_session, provider).activate_subscription(command))
             assert replay.event_id == recovered.event_id
             assert replay.replayed
-            assert provider.executions == 1
-            assert provider.reconciliations == (2 if failure_mode == "timeout" else 1)
+            assert provider.executions == 0
+            assert provider.reconciliations == (3 if failure_mode == "timeout" else 2)
         finally:
             cleanup()
     finally:
