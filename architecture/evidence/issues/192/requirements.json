@@ -102,6 +102,15 @@
         "spec": "PASS on exact 2a6407981e4e969fe8cb957ff9f78323569d65eb"
       },
       "providerSource": "https://developer.vippsmobilepay.com/docs/APIs/recurring-api/recurring-api-guide/#charges-when-an-agreement-is-canceled"
+    },
+    "annualAgreementCleanupService": {
+      "revision": "9422782cc7cc38010309f43951823bd7c86e7aa1",
+      "scope": "Internal orchestration and persistence contract only. PostgreSQL enforcement/runtime/worker/MT pending.",
+      "validation": "31 focused recovery/authority/malformed-evidence/terminal cases pass; billing229 Python and14 Node pass; architecture checker/dependency evidence pass.",
+      "independentReviews": {
+        "standards": "PASS on exact9422782cc7cc38010309f43951823bd7c86e7aa1",
+        "spec": "PASS on exact9422782cc7cc38010309f43951823bd7c86e7aa1"
+      }
     }
   },
   "externalEvidence": {
@@ -131,5 +140,11 @@
     "currentBinding": "application.unavailable_annual_checkout_prerequisites always returns FILING_NOT_READY; isolated test prerequisites are not production readiness or MT proof.",
     "exitConstraint": "Oversight explicitly preserves #192 exit criteria. Unavailable production binding is interim only; if completion requires premature #149/#193 source work, report that dependency conflict rather than declaring the sold path complete.",
     "alternatePaths": "Annual service has no HTTP/runtime route yet; legacy simulation command retirement and proof of no alternate annual-charge entry point remain part of runtime cutover."
+  },
+  "runtimeCutover": {
+    "acquisition": "Retire default SimulationBillingProvider acquisition, account reset/configuration, subscription activation and filing-package purchase across main.py HTTP, BillingWorkflow/BillingService, persistence and web actions/controls.",
+    "entitlement": "Replace legacy billing_accounts subscription_active/filing_package_paid plus editable readiness authorization; existing simulated flags must not become annual paid authority.",
+    "preservation": "Retain historical payment evidence/reconciliation and cancellation/refund recovery as appropriate. Annual cancellation preserves paid-year access; legacy subscription cancellation cannot stand in. Free validation authority remains distinct.",
+    "authority": "Annual source-owned filing readiness and actual MT still pending. Do not make legacy snapshots authoritative, invent owner worker claims, or move #193/#149 source ownership forward without resolving route conflict."
   }
 }
