@@ -111,6 +111,18 @@
         "standards": "PASS on exact9422782cc7cc38010309f43951823bd7c86e7aa1",
         "spec": "PASS on exact9422782cc7cc38010309f43951823bd7c86e7aa1"
       }
+    },
+    "annualAgreementCleanupPostgres": {
+      "revision": "d5831f2718305c1aab2af0a4947a25cf8d4c7839",
+      "scope": "Verified-owner original-agreement cleanup persistence and local service/provider integration; HTTP/runtime/worker/actual MT remain pending.",
+      "database": "24 new independent-connection cases pass. Fresh isolated reset:118 Python lifecycle cases plus Node predecessor rollback/recutover pass. Covers receipt+terminal original binding, concurrent single claim, lost claim, stale authority, changed identity, separate settlement, two full predecessor cycles and real DB+MockTransport lost PATCH recovery without a second PATCH.",
+      "billing": "229 Python and14 Node tests pass.",
+      "architecture": "Architecture checker/dependency evidence and all51 architecture regression cases pass.",
+      "advisors": "0 blocking security/error findings;34 performance warnings.",
+      "independentReviews": {
+        "standards": "PASS on exactd5831f2718305c1aab2af0a4947a25cf8d4c7839",
+        "spec": "PASS on exactd5831f2718305c1aab2af0a4947a25cf8d4c7839"
+      }
     }
   },
   "externalEvidence": {
