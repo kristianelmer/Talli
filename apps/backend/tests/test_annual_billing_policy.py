@@ -47,7 +47,8 @@ def renewal_facts(**changes):
         target_offer=annual_offer(COMPANY, IncomeYear(2027)),
         target_definitively_eligible=True,
         target_filing_ready=True,
-        at=at("2027-01-01T00:00:00+01:00"),
+        collection_due_date=date(2027, 1, 1),
+        at=at("2026-12-31T00:00:00+01:00"),
     ), **changes)
 
 
@@ -166,8 +167,10 @@ def test_proration_uses_block_date_not_an_earlier_condition_discovery():
     ({"renewal_canceled": True}, "renewal_canceled"),
     ({"target_definitively_eligible": False}, "definitive_eligibility_required"),
     ({"target_filing_ready": False}, "filing_readiness_required"),
-    ({"at": at("2026-12-31T12:00:00+01:00")}, "renewal_not_due"),
-    ({"at": at("2029-01-01T12:00:00+01:00")}, "renewal_year_expired"),
+    ({"at": at("2026-12-30T12:00:00+01:00")}, "renewal_not_due"),
+    ({"at": at("2027-01-01T00:00:00+01:00")}, "renewal_scheduling_missed"),
+    ({"at": at("2029-01-01T12:00:00+01:00")}, "renewal_scheduling_missed"),
+    ({"collection_due_date": date(2027, 1, 2)}, "renewal_date_changed"),
     ({"reminder_recorded_at": None}, "renewal_notice_required"),
     ({"reminder_recorded_at": at("2026-12-03T00:00:00+01:00")}, "renewal_notice_required"),
     ({"prior_gross_minor": 139000}, "price_change_notice_required"),
@@ -194,3 +197,11 @@ def test_renewal_uses_norwegian_date_and_requires_early_price_change_notice():
         prior_gross_minor=139000,
         price_change_recorded_at=at("2026-11-03T00:00:00+01:00"),
     )).allowed
+
+
+def test_renewal_scheduling_day_is_distinct_from_the_promised_collection_day():
+    facts = renewal_facts(at=at("2026-12-31T22:59:59+00:00"))
+    assert annual_renewal(facts).allowed
+    assert facts.at.value.date() < facts.collection_due_date
+    missed = annual_renewal(replace(facts, at=at("2026-12-31T23:00:00+00:00")))
+    assert not missed.allowed and missed.reason == "renewal_scheduling_missed"

@@ -7,8 +7,11 @@ from asyncio import timeout
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from urllib.parse import quote, urlsplit
+from zoneinfo import ZoneInfo
 
 import httpx
+
+from talli_backend.shared.kernel import Timestamp
 
 from talli_backend.adapters.vipps_webhook import _unique_object
 from talli_backend.modules.billing.public import (
@@ -24,6 +27,7 @@ from talli_backend.modules.billing.public import (
 
 _ORIGIN = "https://apitest.vipps.no"
 _AGREEMENTS = "/recurring/v3/agreements"
+_OSLO = ZoneInfo("Europe/Oslo")
 
 
 class _UnknownOutcome(Exception):
@@ -91,12 +95,13 @@ class VippsTestBillingProvider:
         self._transport = transport
         self._now = now or (lambda: datetime.now(UTC))
 
-    def _observation(self, intent, status, *, agreement=None, captured=0, refunded=0, checkout_url=None):
+    def _observation(self, intent, status, *, agreement=None, captured=0, refunded=0, checkout_url=None, captured_at=None):
         return AnnualProviderObservation(
             provider=self.provider, operation=intent.operation, status=status,
             agreement_reference=agreement or intent.agreement_reference,
             charge_reference=intent.charge_reference, amount_minor=intent.amount_minor,
             captured_minor=captured, refunded_minor=refunded, checkout_url=checkout_url,
+            captured_at=captured_at,
         )
 
     async def _request(self, client, method, path, *, headers, body=None, params=None, expected=(200,)):
@@ -143,7 +148,7 @@ class VippsTestBillingProvider:
                 if execute:
                     return await self._execute(client, headers, intent)
                 return await self._reconcile(client, headers, intent)
-        except (httpx.HTTPError, TimeoutError, _UnknownOutcome, ValueError, TypeError, KeyError, UnicodeError):
+        except (httpx.HTTPError, TimeoutError, _UnknownOutcome, ValueError, TypeError, KeyError, UnicodeError, RecursionError):
             # No provider diagnostic, token, response body or secret escapes.
             return self._observation(intent, AnnualProviderStatus.UNKNOWN)
 
@@ -199,7 +204,7 @@ class VippsTestBillingProvider:
         if intent.operation in {AnnualProviderOperation.CANCEL_CHARGE, AnnualProviderOperation.REFUND}:
             await self._read_charge(client, headers, intent, intent.agreement_reference)
         if intent.operation is AnnualProviderOperation.RENEWAL:
-            if intent.due_date < self._now().date() + timedelta(days=1):
+            if intent.due_date < self._now().astimezone(_OSLO).date() + timedelta(days=1):
                 raise _UnknownOutcome()
             result = _object(await self._request(
                 client, "POST", agreement_path + "/charges", headers=modifying, expected=(201,),
@@ -277,7 +282,26 @@ class VippsTestBillingProvider:
         captured, refunded = _minor(summary.get("captured")), _minor(summary.get("refunded"))
         if not refunded <= captured <= intent.original_charge_minor:
             raise _UnknownOutcome()
-        return charge, captured, refunded
+        captured_at = None
+        if captured:
+            history = charge.get("history")
+            if not isinstance(history, list):
+                raise _UnknownOutcome()
+            captures = [row for row in history if isinstance(row, dict)
+                        and row.get("event") == "CAPTURE" and row.get("success") is True]
+            if not captures or sum(_minor(row.get("amount")) for row in captures) != captured:
+                raise _UnknownOutcome()
+            times = []
+            for capture in captures:
+                occurred = capture.get("occurred")
+                if not isinstance(occurred, str):
+                    raise _UnknownOutcome()
+                timestamp = datetime.fromisoformat(occurred.replace("Z", "+00:00"))
+                if timestamp.tzinfo is None or timestamp > self._now():
+                    raise _UnknownOutcome()
+                times.append(timestamp)
+            captured_at = Timestamp(max(times))
+        return charge, captured, refunded, captured_at
 
     async def _reconcile(self, client, headers, intent):
         agreement = intent.agreement_reference or await self._find_agreement(client, headers, intent)
@@ -288,7 +312,7 @@ class VippsTestBillingProvider:
         if intent.operation is AnnualProviderOperation.CHECKOUT and value.get("status") == "PENDING":
             return self._observation(intent, AnnualProviderStatus.PENDING, agreement=agreement,
                 checkout_url=self._checkout_url(value.get("vippsConfirmationUrl")))
-        charge, captured, refunded = await self._read_charge(client, headers, intent, agreement)
+        charge, captured, refunded, captured_at = await self._read_charge(client, headers, intent, agreement)
         status = AnnualProviderStatus.PENDING
         if intent.operation is AnnualProviderOperation.REFUND:
             history = charge.get("history")
@@ -307,4 +331,4 @@ class VippsTestBillingProvider:
             status = AnnualProviderStatus.CONFIRMED
         elif charge.get("status") in {"FAILED", "CANCELLED"}:
             status = AnnualProviderStatus.FAILED
-        return self._observation(intent, status, agreement=agreement, captured=captured, refunded=refunded)
+        return self._observation(intent, status, agreement=agreement, captured=captured, refunded=refunded, captured_at=captured_at)

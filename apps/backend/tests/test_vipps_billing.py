@@ -49,7 +49,9 @@ class MerchantTestFixture:
             "id": "talli-charge-2026", "agreementId": "agr_local", "externalId": "talli-charge-2026",
             "amount": 149000, "currency": "NOK", "transactionType": "DIRECT_CAPTURE",
             "type": "INITIAL", "status": "CHARGED",
-            "summary": {"captured": 149000, "refunded": 0, "cancelled": 0}, "history": [],
+            "summary": {"captured": 149000, "refunded": 0, "cancelled": 0},
+            "history": [{"event": "CAPTURE", "amount": 149000, "success": True,
+                         "occurred": NOW.isoformat(), "idempotencyKey": "fixture-capture"}],
         }
 
     def __call__(self, request):
@@ -87,6 +89,7 @@ class MerchantTestFixture:
             self.charge["type"] = "RECURRING"
             self.charge["status"] = "PENDING"
             self.charge["summary"]["captured"] = 0
+            self.charge["history"] = []
             return httpx.Response(201, json={"chargeId": "talli-charge-2026"})
         if path.endswith("/charges/talli-charge-2026"):
             return httpx.Response(200, json=self.charge)
@@ -212,6 +215,36 @@ def test_cancel_accepted_is_pending_until_observed_and_stop_is_confirmed_separat
     assert asyncio.run(fixture.provider().reconcile(cancellation)).status is AnnualProviderStatus.CONFIRMED
     stop = replace(cancellation, operation=AnnualProviderOperation.STOP_AGREEMENT)
     assert asyncio.run(fixture.provider().execute(stop)).status is AnnualProviderStatus.CONFIRMED
+
+
+def test_capture_timestamp_comes_from_provider_history_even_when_reconciled_later():
+    fixture = MerchantTestFixture()
+    fixture.charge["history"][0]["occurred"] = "2026-09-01T12:00:00Z"
+    original = intent(agreement_reference="agr_local", created_at=Timestamp(datetime(2026, 9, 1, 11, tzinfo=UTC)))
+    result = asyncio.run(fixture.provider().reconcile(original))
+    assert result.status is AnnualProviderStatus.CONFIRMED
+    assert result.captured_at.value == datetime(2026, 9, 1, 12, tzinfo=UTC)
+
+
+@pytest.mark.parametrize("history", [[], [{"event": "CAPTURE", "amount": 149000, "success": True, "occurred": None}],
+    [{"event": "CAPTURE", "amount": 149000, "success": True, "occurred": "2027-01-01T00:00:00Z"}],
+    [{"event": "CAPTURE", "amount": 149000, "success": True, "occurred": "2026-09-05T12:01:00Z"}],
+    [{"event": "CAPTURE", "amount": 148999, "success": True, "occurred": NOW.isoformat()}]])
+def test_capture_without_complete_valid_event_history_remains_unknown(history):
+    fixture = MerchantTestFixture()
+    fixture.charge["history"] = history
+    result = asyncio.run(fixture.provider().reconcile(intent(agreement_reference="agr_local")))
+    assert result.status is AnnualProviderStatus.UNKNOWN
+
+
+def test_renewal_cannot_be_scheduled_on_the_norwegian_collection_date():
+    fixture = MerchantTestFixture()
+    provider = VippsTestBillingProvider(CONFIG, transport=httpx.MockTransport(fixture),
+        now=lambda: datetime(2026, 12, 31, 23, tzinfo=UTC))
+    command = intent(operation=AnnualProviderOperation.RENEWAL, agreement_reference="agr_local",
+        original_charge_is_renewal=True, due_date=date(2027, 1, 1))
+    assert asyncio.run(provider.execute(command)).status is AnnualProviderStatus.UNKNOWN
+    assert not any(r.method != "GET" and "/recurring/" in r.url.path for r in fixture.requests)
 
 
 def test_renewal_scheduling_is_pending_and_uses_the_merchant_charge_reference():

@@ -142,3 +142,15 @@ references only. Durable receipt deduplication and a resource GET must precede
 financial state changes. Confirmation origins are empty by default until an
 actual designated MT origin is verified. Credentials and diagnostics stay out of
 returned observations.
+
+Annual renewal facts distinguish the scheduling instant from the promised
+collection date. Scheduling is allowed on 31 December in Norway for 1 January;
+missing that window fails closed and does not silently postpone the agreed date.
+Notice intervals are measured to the earliest collection instant. Eligibility,
+readiness and separate consent remain mandatory, and a worker authorization
+contract is still required before this can run automatically.
+
+Capture observations include the provider history timestamp, validated against
+the captured total. A delayed reconciliation cannot start a new refund window.
+Missing, malformed or incomplete capture history leaves the result unknown.
+Provider-confirmed refunds do not establish bank settlement.

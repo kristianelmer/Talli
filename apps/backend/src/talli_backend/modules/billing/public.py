@@ -475,6 +475,7 @@ class AnnualRenewalFacts:
     target_offer: AnnualBillingOffer
     target_definitively_eligible: bool
     target_filing_ready: bool
+    collection_due_date: date
     at: Timestamp
 
 
@@ -554,6 +555,7 @@ class AnnualProviderObservation:
     captured_minor: int = 0
     refunded_minor: int = 0
     checkout_url: str | None = None
+    captured_at: Timestamp | None = None
 
 
 @runtime_checkable

@@ -1,6 +1,6 @@
 """Deterministic company-year offer, notice and safe-exit policy for #177."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from hashlib import sha256
 from zoneinfo import ZoneInfo
 
@@ -111,23 +111,28 @@ def annual_refund(facts: AnnualRefundFacts) -> AnnualRefundDecision:
 
 def annual_renewal(facts: AnnualRenewalFacts) -> AnnualRenewalDecision:
     charge_date = date(facts.target_offer.income_year.value, 1, 1)
+    earliest_collection = datetime.combine(charge_date, time.min, _OSLO)
+    scheduling_date = facts.at.value.astimezone(_OSLO).date()
     checks = (
         (facts.recurring_consent, "recurring_consent_required"),
         (not facts.renewal_canceled, "renewal_canceled"),
         (facts.target_definitively_eligible, "definitive_eligibility_required"),
         (facts.target_filing_ready, "filing_readiness_required"),
-        (facts.at.value.astimezone(_OSLO).date() >= charge_date, "renewal_not_due"),
-        (facts.at.value.astimezone(_OSLO).year == charge_date.year, "renewal_year_expired"),
+        (facts.collection_due_date == charge_date, "renewal_date_changed"),
+        (scheduling_date < charge_date, "renewal_scheduling_missed"),
+        (scheduling_date >= charge_date - timedelta(days=1), "renewal_not_due"),
         (
             facts.reminder_recorded_at is not None
-            and facts.reminder_recorded_at.value + timedelta(days=30) <= facts.at.value,
+            and facts.reminder_recorded_at.value <= facts.at.value
+            and facts.reminder_recorded_at.value + timedelta(days=30) <= earliest_collection,
             "renewal_notice_required",
         ),
         (
             facts.prior_gross_minor == facts.target_offer.gross_minor
             or (
                 facts.price_change_recorded_at is not None
-                and facts.price_change_recorded_at.value + timedelta(days=60) <= facts.at.value
+                and facts.price_change_recorded_at.value <= facts.at.value
+                and facts.price_change_recorded_at.value + timedelta(days=60) <= earliest_collection
             ),
             "price_change_notice_required",
         ),
