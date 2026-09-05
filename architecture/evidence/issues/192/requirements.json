@@ -187,6 +187,17 @@
         "spec": "PASS on exact633e207345a2a9ba231c7c1c96a7c9ff4e006346 (b79ae745 plus fixture-only delta), zero findings"
       },
       "limits": "No checkout UI, actual MT, trustworthy readiness, worker/callback/refund/renewal completion, full browser/customer-ready gate, protected-main integration or production change. FILING_NOT_READY and PROVIDER_DISABLED are interim gates, not sold-path acceptance."
+    },
+    "annualRefundMoneyValidation": {
+      "revision": "bb6a1a5b80544ad627c19a7a864fe2e266d8f542",
+      "scope": "Strict integer minor units at the AnnualRefundFacts public constructor only; no entitlement, rounding, deadline or provider workflow changes.",
+      "reproduction": "Direct149000.5 gross input was accepted and annual_refund produced149000.5 amount_due_minor. Twelve malformed bool/float/string/None regressions yielded11 failures/1 pass before the correction.",
+      "validation": "All39 annual policy cases pass. Full billing325 Python+40 Node pass. Valid integer full/partial/zero-remaining/VAT/rounding/date cases are retained.",
+      "independentReviews": {
+        "standards": "PASS on exactbb6a1a5b80544ad627c19a7a864fe2e266d8f542, zero findings",
+        "spec": "PASS on exactbb6a1a5b80544ad627c19a7a864fe2e266d8f542, zero findings"
+      },
+      "limits": "Not automatic-refund workflow or actual provider proof; architecture amendment, source readiness, MT and remaining192 acceptance still pending."
     }
   },
   "externalEvidence": {
