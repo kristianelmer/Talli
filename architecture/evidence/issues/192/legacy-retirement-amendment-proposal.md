@@ -8,7 +8,11 @@ The independent reviews identified a historical recovery → new refund gap.
 Correction `18e3441f90692af7b5076b47d42d49f5b3b6f7af` derives a new refund from
 one confirmed original payment in the exact company/year/provider scope, using its
 recorded amount. Cleanup controls remain reachable without legacy paid flags.
-Independent re-review is pending.
+The subsequent duplicate-refund correction is
+`5b0f7cbf12edd7cc3af7bce15fa4b08786a3989b`: an account lock reserves the original
+refund, rejects distinct keys when a refund already exists and preserves the
+original-event binding. Standards and Spec pass this bounded correction; the
+architecture amendment remains pending.
 
 ## Decision requested
 
@@ -81,7 +85,7 @@ the smaller implementation and matches the approved commercial destination.
 The original candidate and correction have the following focused evidence:
 
 - Billing: 279 Python and 38 Node tests passed after the correction.
-- Fresh disposable database: 152 Python lifecycle tests and the Node expansion,
+- Fresh disposable database: 158 Python lifecycle tests and the Node expansion,
   RLS, rollback/recutover test passed, including two predecessor cycles.
 - Web build/typecheck, 146 web boundary tests and 49 contract boundary tests passed.
 - Database advisors: zero blocking security/error findings; 34 performance warnings.
@@ -89,7 +93,11 @@ The original candidate and correction have the following focused evidence:
   paid-flag reactivation and event identity mutation. Historical outcome replay,
   pending reconciliation and existing cancellation/refund recovery are retained.
 - The corrected recovery → new refund → exact replay sequence passes in the real
-  database; all 24 retirement DB tests pass. Independent re-review is pending.
+  database; all 24 retirement DB tests pass. The subsequent duplicate-refund correction is
+`5b0f7cbf12edd7cc3af7bce15fa4b08786a3989b`: an account lock reserves the original
+refund, rejects distinct keys when a refund already exists and preserves the
+original-event binding. Standards and Spec pass this bounded correction; the
+architecture amendment remains pending.
 - The full architecture suite is 49/51: the current-source manifest check and the
   four-scope active-inventory count fail. There is no overall PASS.
 

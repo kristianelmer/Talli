@@ -147,6 +147,20 @@
         "spec": "PASS on exact4bb81c0d6d10fc32c604cb8eda86fe04df5b8481"
       },
       "corrections": "Initial c4fdc11b review found loss of selected company on Company Access recovery, fixed and reviewed d53de213. Root then found surrounding workspace layout hid recovery/cancellation on MFA/new terms; final route isolation reviewed and browser-tested."
+    },
+    "legacyAcquisitionRetirement": {
+      "revision": "5b0f7cbf12edd7cc3af7bce15fa4b08786a3989b",
+      "scope": "Candidate coordinated service/provider/persistence/DB/HTTP/current-client/web retirement; not an accepted architecture cutover or #192 exit.",
+      "behavior": "New split-model configuration/acquisition is rejected. Historical successful replay stays read-only; pending originals reconcile without reactivating paid flags. Ordinary filing/charge authority is denied independently of legacy flags; exact free pilot remains separate. Historical recovery-based refunds bind one confirmed original and reserve against any prior refund under an account lock; exact-key recovery remains.",
+      "validation": "279 Python and 38 Node billing tests pass. Fresh isolated lifecycle:158 Python plus Node expansion/RLS/two rollback-recutover cycles pass before the final fixture-only teardown authority correction; final reverse-order retirement/runtime/deadline selection35 passes. Build/typecheck and146 web/49 contract boundaries passed on the base retirement candidate; typecheck passed after cleanup UI correction. Final advisors0 blocking/34 performance warnings.",
+      "independentReviews": {
+        "standards": "Bounded correction PASS on exact 5b0f7cbf12edd7cc3af7bce15fa4b08786a3989b; no overall architecture PASS.",
+        "spec": "Bounded correction PASS on exact 5b0f7cbf12edd7cc3af7bce15fa4b08786a3989b; no overall architecture PASS."
+      },
+      "reviewCorrections": "Both reviews found recovered historical payments could not initiate new refunds; fixed18e3441f. Spec then found prior/refund race duplication; fixed with database reservation and preserved original binding in5b0f7cbf. Tests cover lost outcome, existing pending refund, concurrent distinct keys and exact-key recovery.",
+      "architecture": "Unmodified checker rejects four whole-action deletion scopes owned by future audit/annual_compliance. Full architecture suite49/51: source manifest/frozen-scope check and active inventory count fail. Immutable baseline/checker/order unchanged. Explicit owner amendment pending through oversight.",
+      "amendmentProposal": "architecture/evidence/issues/192/legacy-retirement-amendment-proposal.md",
+      "limits": "No actual MT, no trustworthy annual readiness binding, no annual refund/renewal/worker/callback runtime completion, no final complete gates, no protected-main integration or production change."
     }
   },
   "externalEvidence": {
@@ -175,7 +189,7 @@
     "legacySnapshotLimitation": "public.filing_readiness_snapshots allows owner/browser INSERT/UPDATE; billing.read_legacy_filing_readiness_v1 trusts its ready/empty blockers. This is not authoritative annual-charge evidence.",
     "currentBinding": "application.unavailable_annual_checkout_prerequisites always returns FILING_NOT_READY; isolated test prerequisites are not production readiness or MT proof.",
     "exitConstraint": "Oversight explicitly preserves #192 exit criteria. Unavailable production binding is interim only; if completion requires premature #149/#193 source work, report that dependency conflict rather than declaring the sold path complete.",
-    "alternatePaths": "Annual checkout service has no HTTP/runtime route yet; annual read/local cancellation APIs exist. Legacy simulation command retirement and proof of no alternate annual-charge entry point remain part of runtime cutover."
+    "alternatePaths": "Annual checkout service has no HTTP/runtime route yet; annual read/local cancellation APIs exist. Coordinated legacy acquisition retirement candidate is implemented and bounded-reviewed but awaits exact architecture amendment; current candidate is not an accepted final cutover."
   },
   "runtimeCutover": {
     "acquisition": "Retire default SimulationBillingProvider acquisition, account reset/configuration, subscription activation and filing-package purchase across main.py HTTP, BillingWorkflow/BillingService, persistence and web actions/controls.",
