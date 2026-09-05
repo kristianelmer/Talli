@@ -161,6 +161,18 @@
       "architecture": "Unmodified checker rejects four whole-action deletion scopes owned by future audit/annual_compliance. Full architecture suite49/51: source manifest/frozen-scope check and active inventory count fail. Immutable baseline/checker/order unchanged. Explicit owner amendment pending through oversight.",
       "amendmentProposal": "architecture/evidence/issues/192/legacy-retirement-amendment-proposal.md",
       "limits": "No actual MT, no trustworthy annual readiness binding, no annual refund/renewal/worker/callback runtime completion, no final complete gates, no protected-main integration or production change."
+    },
+    "backendBoundaryDatabaseLanes": {
+      "revision": "7deae6d8924ee1fff0af4fa00eae13ba5f346504",
+      "scope": "Test-harness selection and missing-configuration failure only; no product, checker, baseline, ADR, ownership or migration-order changes.",
+      "reproduction": "Actual ordinary boundary without DATABASE_URL reproduced 47 passes then one disposable-DB fixture assertion; minimized annual-read case reproduced in 0.28s. Two new collection/preflight regressions failed before correction.",
+      "behavior": "Explicit billing_database markers separate the same nine DB-only files from the ordinary backend lane. Mandatory lifecycle retains its exact 158-case selection/order plus Node rehearsal, and missing/empty DATABASE_URL fails before either runner. Collection regression proves exact marked/lifecycle equality, disjoint lanes and exhaustive union.",
+      "validation": "Exact clean candidate: ordinary backend943 passed,2 existing skips,158 deselected; CI harness12 passed. Fresh task-owned isolated Supabase2.109.1: mandatory Python lifecycle158 passed with no skips, followed by Node expansion/RLS/two predecessor rollback-recutover cycles1 passed with no skips.",
+      "independentReviews": {
+        "standards": "PASS on exact7deae6d8924ee1fff0af4fa00eae13ba5f346504, read-only, zero findings",
+        "spec": "PASS on exact7deae6d8924ee1fff0af4fa00eae13ba5f346504, read-only, zero findings"
+      },
+      "limits": "Not a complete customer-ready gate. Pending four-scope architecture amendment remains unapproved; architecture49/51 is NOT PASS. Full browser still expects retired acquisition. Actual MT, trusted source-owned readiness, remaining annual workflows and protected-main integration remain pending."
     }
   },
   "externalEvidence": {
