@@ -10,6 +10,7 @@ export type DocumentPresentation = {
   status: string;
   retention_years: number;
   storage_key: string;
+  content_sha256: string | null;
   created_by: string;
   created_at: string;
   removed_at: string | null;
@@ -28,6 +29,7 @@ export function presentDocument(document: DocumentWire): DocumentPresentation {
     status: document.status,
     retention_years: document.retentionYears,
     storage_key: document.storageKey,
+    content_sha256: document.contentSha256,
     created_by: document.createdBy,
     created_at: document.createdAt,
     removed_at: document.removedAt,

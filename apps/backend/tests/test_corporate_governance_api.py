@@ -9,7 +9,9 @@ from fastapi.testclient import TestClient
 from talli_backend.main import create_app
 from talli_backend.modules.documents.public import DocumentStatus
 from talli_backend.modules.ledger.public import (
+    LedgerEntryId,
     PostedLedgerEntry,
+    ReversedLedgerEntry,
 )
 from talli_backend.shared.kernel import IncomeYear, Money
 
@@ -20,6 +22,7 @@ from test_corporate_governance_workflow import (
     GovernanceSessionFactoryStub,
     GovernanceSessionStub,
     GovernanceTransactionStub,
+    ENTRY_ID,
     NOW,
 )
 
@@ -34,6 +37,30 @@ class ApiGovernanceTransaction(GovernanceTransactionStub):
             kwargs["entry_kind"],
             NOW,
             False,
+        )
+
+    async def record_cash_capital_increase_subscription(self, command, **kwargs):
+        self.calls.append(("record_cash_capital_increase_subscription", command))
+        return PostedLedgerEntry(
+            ENTRY_ID,
+            command.company_id,
+            command.income_year,
+            "CAPITAL_INCREASE",
+            NOW,
+            False,
+        )
+
+    async def reverse_supported_entry(self, command):
+        self.calls.append(("reverse_supported_entry", command))
+        return ReversedLedgerEntry(
+            original_entry_id=command.original_entry_id,
+            reversal_entry_id=LedgerEntryId(
+                "98989898-9898-4898-8989-989898989898"
+            ),
+            company_id=command.company_id,
+            income_year=command.income_year,
+            reversed_at=NOW,
+            replayed=False,
         )
 
 
@@ -636,6 +663,102 @@ def test_shareholder_loan_fastapi_is_governance_owned_and_strict() -> None:
     assert rejected.status_code == 422
 
 
+def test_supported_capital_event_round_trips_through_strict_api() -> None:
+    client, transaction = client_and_transaction()
+    payload = {
+        "companyId": str(supported_proposal().company_id),
+        "incomeYear": 2025,
+        "eventId": "14141414-1414-4414-8414-141414141414",
+        "eventReference": "15151515-1515-4515-8515-151515151515",
+        "eventDate": "2025-04-01",
+        "eventKind": "cash_capital_increase",
+        "phase": "binding_subscription",
+        "facts": {
+            "factType": "cash_capital_increase",
+            "nominalIncrease": {"amount": "10000.00", "currency": "NOK"},
+            "sharePremium": {"amount": "5000.00", "currency": "NOK"},
+            "issuedShareCount": 100,
+            "singleOrdinaryClass": True,
+            "cashOnly": True,
+            "bindingSubscription": True,
+            "fullTimelyPayment": True,
+            "independentConfirmation": True,
+            "registerReconciled": True,
+            "norwegianSubscribersOnly": True,
+            "noSpecialTerms": True,
+            "noDirectUseException": True,
+            "issueCostsResolved": True,
+        },
+        "documentFacts": [{
+            "documentId": "66666666-6666-4666-8666-666666666666",
+            "evidenceKind": "signed_decision",
+            "revision": 1,
+            "contentSha256": "a" * 64,
+        }],
+        "bankFact": None,
+        "shareholderRegisterFact": None,
+        "taxCalculationFact": None,
+    }
+
+    response = client.post(
+        "/api/v1/corporate-governance/supported-events",
+        headers=headers("supported-capital-event-0001"),
+        json=payload,
+    )
+
+    assert response.status_code == 201, response.text
+    result = response.json()
+    assert result["eventId"] == payload["eventId"]
+    assert result["eventKind"] == "cash_capital_increase"
+    assert result["phase"] == "binding_subscription"
+    assert result["policyVersion"] == "corporate-governance-supported-events-2026.1"
+    assert result["accountingEntryId"] == str(ENTRY_ID)
+    assert len(result["factsSha256"]) == 64
+    assert result["lifecycleState"] == "finalized"
+    assert result["documentFacts"] == payload["documentFacts"]
+    assert result["signedArtifactHashes"] == {
+        f"signed_decision:{payload['documentFacts'][0]['documentId']}": "a" * 64
+    }
+    assert len(result["finalizationSha256"]) == 64
+
+    listed = client.get(
+        "/api/v1/corporate-governance/supported-events",
+        headers=headers("supported-capital-event-list-0001"),
+        params={"companyId": payload["companyId"]},
+    )
+    assert listed.status_code == 200, listed.text
+    assert [item["eventId"] for item in listed.json()] == [payload["eventId"]]
+    assert listed.json()[0]["finalizationSha256"] == result["finalizationSha256"]
+    call_names = [name for name, _ in transaction.calls]
+    assert call_names.index("prepare_supported_event") < call_names.index(
+        "record_cash_capital_increase_subscription"
+    ) < call_names.index("complete_supported_event")
+    assert call_names[-1] == "list_supported_events"
+
+    reversed_response = client.post(
+        f"/api/v1/corporate-governance/supported-events/{payload['eventId']}/reversal",
+        headers=headers("supported-capital-reversal-0001"),
+        json={
+            "companyId": payload["companyId"],
+            "incomeYear": 2025,
+            "reversalDate": "2025-04-02",
+            "reason": "Signed subscription facts were incorrect",
+            "correctionDocumentFact": {
+                "documentId": "77777777-7777-4777-8777-777777777777",
+                "evidenceKind": "correction_memo",
+                "revision": 1,
+                "contentSha256": "b" * 64,
+            },
+        },
+    )
+    assert reversed_response.status_code == 201, reversed_response.text
+    assert reversed_response.json()["originalEventId"] == payload["eventId"]
+    assert reversed_response.json()["originalAccountingEntryId"] == str(ENTRY_ID)
+    assert reversed_response.json()["reversalAccountingEntryId"] == (
+        "98989898-9898-4898-8989-989898989898"
+    )
+
+
 def test_openapi_exposes_governance_operations() -> None:
     client, _ = client_and_transaction()
     schema = client.get("/api/v1/openapi.json").json()
@@ -653,4 +776,6 @@ def test_openapi_exposes_governance_operations() -> None:
         "corporateGovernanceFinalizeOwnerDividend",
         "corporateGovernanceRecordOwnerDividendPayment",
         "corporateGovernanceRecordShareholderLoan",
+        "corporateGovernanceListSupportedEvents",
+        "corporateGovernanceRecordSupportedEvent",
     } <= operations

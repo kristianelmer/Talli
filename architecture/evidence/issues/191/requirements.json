@@ -1,0 +1,149 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#191",
+  "source": "https://github.com/kristianelmer/Talli/issues/191",
+  "sourceCheckedAt": "2026-09-04T23:53:04Z",
+  "entryBlockers": [
+    {
+      "issue": "#148",
+      "requiredState": "CLOSED",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/148#issuecomment-5546585275"
+    }
+  ],
+  "decisionBoundary": {
+    "acceptedSource": "https://github.com/kristianelmer/Talli/issues/172#issuecomment-5423455104",
+    "validationSource": "https://github.com/kristianelmer/Talli/issues/173#issuecomment-5424089084",
+    "assuranceSource": "https://github.com/kristianelmer/Talli/issues/175#issuecomment-5424119542",
+    "routeSource": "https://github.com/kristianelmer/Talli/issues/180#issuecomment-5424361973",
+    "rule": "#191 implements every accepted capital, financing and group pattern without silently widening or narrowing #172. Production providers, real filings, representative companies and launch authority remain gated by #189/#193/#197/#198."
+  },
+  "officialSourceCut": {
+    "checkedAt": "2026-09-04T21:47:00Z",
+    "version": "corporate-governance-supported-events-2026.1",
+    "sources": [
+      {
+        "url": "https://lovdata.no/nav/lov/1997-06-13-44/kap10",
+        "scope": "Aksjeloven chapter 10 cash-capital decision, subscription, payment and registration rules",
+        "observed": "current"
+      },
+      {
+        "url": "https://www.brreg.no/aksjeselskap/aksjekapital/forhoyelse-av-aksjekapital/",
+        "scope": "Capital-increase procedure and required attachments",
+        "pageUpdated": "2025-10-14"
+      },
+      {
+        "url": "https://www.brreg.no/aksjeselskap/aksjekapital/bekreftelse-av-mottatt-aksjeinnskudd/",
+        "scope": "Independent cash-contribution confirmation",
+        "pageUpdated": "2024-07-29"
+      },
+      {
+        "url": "https://www.brreg.no/aksjeselskap/aksjekapital/nedsettelse-av-aksjekapital/",
+        "scope": "Loss-coverage capital-reduction procedure and three-year dividend restriction",
+        "pageUpdated": "2024-05-29"
+      },
+      {
+        "url": "https://lovdata.no/nav/lov/1997-06-13-44/kap3",
+        "scope": "Current section 3-8 approval/declaration threshold and exceptions for related-party agreements",
+        "observed": "current 2.5-percent balance-sheet threshold plus statutory exceptions"
+      },
+      {
+        "url": "https://lovdata.no/dokument/NL/lov/1997-06-13-44/%2A",
+        "scope": "Sections 3-9 and 8-7 group transactions and shareholder credit",
+        "observed": "current"
+      },
+      {
+        "url": "https://www.skatteetaten.no/bedrift-og-organisasjon/skatt/skattemelding-naringsdrivende/fradrag/utland-store-selskaper-og-konsern/konsernbidrag/",
+        "scope": "Current Norwegian group-contribution reporting and more-than-90-percent ownership/vote conditions",
+        "observed": "current"
+      },
+      {
+        "path": "docs/accounting/supported-ledger-patterns.md",
+        "scope": "Pinned NRS 8, statutory and SAF-T mapping source set",
+        "version": "official-source cut 2026-08-27, live public-law pages rechecked 2026-09-04"
+      }
+    ]
+  },
+  "criteria": [
+    {
+      "id": "GH-191-A1",
+      "requirement": "Approved events produce consistent authority facts, corporate artifacts, signatures/finalization, accounting entries, cash recognition and filing facts.",
+      "status": "implemented: every accepted event freezes verified signed artifacts and exposes a deterministic finalized receipt binding governance facts, documents, accounting, cash and correction lineage"
+    },
+    {
+      "id": "GH-191-A2",
+      "requirement": "Legal and accounting mappings are official-source versioned; material judgment and unsupported financing or reorganization block.",
+      "status": "official-source-cut-pinned; supported mappings and fail-closed judgment boundary implemented"
+    },
+    {
+      "id": "GH-191-A3",
+      "requirement": "Company-to-personal loans, foreign or complex structures, consolidation, non-cash capital, mergers/demergers and specialist cases block before mutation.",
+      "status": "implemented for the supported-event command boundary"
+    },
+    {
+      "id": "GH-191-A4",
+      "requirement": "Facts reconcile across ledger, RF-1086, company tax, annual accounts, SAF-T and archive.",
+      "status": "implemented: the executable 14-case projection contract binds the event identity to Ledger, registered issuer effects to RF-1086, group-tax facts to company tax, Ledger balances/results to annual accounts and SAF-T, and the full finalized record to archive"
+    },
+    {
+      "id": "GH-191-A5",
+      "requirement": "Actor and authority, AAL2, atomicity, idempotency, correction, documents, browser/mobile and release evidence pass.",
+      "status": "passed: actor/owner checks, AAL2 owner action, atomic prepare/complete, idempotency, immutable full reversal, document evidence, responsive owner UI, dedicated coverage, the fresh isolated Supabase aggregate and the complete customer-ready gate all pass"
+    },
+    {
+      "id": "GH-191-A6",
+      "requirement": "No duplicate rule implementation or compatibility expansion remains.",
+      "status": "implemented: the architecture boundary passes and projection ownership remains with the approved downstream route"
+    }
+  ],
+  "preservedGates": {
+    "bankProvider": "#189",
+    "productionFiling": "#193",
+    "representativeCompanies": "#197",
+    "humanLaunchAuthority": "#198",
+    "productionPromotion": "not authorized by #191"
+  },
+  "checkpoint": {
+    "recordedAt": "2026-09-04T23:53:04Z",
+    "scope": [
+      "strict commands for cash capital increase, loss-cover capital reduction, owner-to-company loan, Norwegian intercompany loan, ordinary bank loan and straightforward group contribution",
+      "versioned canonical facts with Documents and Banking evidence verification",
+      "atomic immutable governance persistence with permanent idempotency and archive tracking",
+      "typed Ledger posting and evidence-backed immutable full reversal",
+      "strict API/OpenAPI/generated-client surface and responsive owner action wizard"
+    ],
+    "verification": {
+      "focusedBackend": "76 passed",
+      "crossOutputAndStaticBoundaries": "20 passed",
+      "corporateDatabaseLifecycle": "24 passed, including two rollback/recutover cycles",
+      "corporateContractLifecycle": "2 passed",
+      "webTypecheck": "passed",
+      "webProductionBuild": "passed",
+      "architecture": "passed",
+      "fullLocalSupabase": "passed from a fresh isolated database: Ledger 70, Banking 21, Investments 33, Documents 3, Marketing 2, validation 17+1 database, Supabase 65, browser owner 17, hosted migration authority 1, governance 24+2",
+      "customerReadyGate": "passed all 11 checks at 182ecaf951c23bd10df9bfe3d471de2efe7a62b5"
+    },
+    "remaining": [
+      "protected Release PR integration and post-merge verification"
+    ]
+  },
+  "gateRepair": {
+    "initialRevision": "4b4172cf56f4ffced298f892983578a629c6e61b",
+    "initialResult": "the committed customer-ready gate reached launch rehearsal and exposed a stale CI-contract expectation that omitted the already-required ledger_supported_event_reversals_schema.test.mjs path",
+    "repairRevision": "182ecaf951c23bd10df9bfe3d471de2efe7a62b5",
+    "repair": "updated only the exact expected ledger database lifecycle command; product behavior and the required reversal test were unchanged"
+  },
+  "completeGates": [
+    {
+      "revision": "182ecaf951c23bd10df9bfe3d471de2efe7a62b5",
+      "previousPassingRevision": null,
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/182ecaf951c23bd10df9bfe3d471de2efe7a62b5.json",
+      "verdict": "pass",
+      "checkCount": 11,
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "transcriptDigest": "sha256:88e40c622ca92fe6226b3426ae595debaa3595779da71999d3ca92b873a25cbc"
+    }
+  ],
+  "closeState": "implementation-and-local-release-gate-complete-awaiting-protected-integration"
+}

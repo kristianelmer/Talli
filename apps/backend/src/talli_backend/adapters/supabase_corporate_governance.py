@@ -45,6 +45,7 @@ from talli_backend.modules.corporate_governance.public import (
     AttestOwnerDividendSignedArtifactCommand,
     ApproveOwnerDividendCommand,
     BankTransactionReference,
+    CanonicalSupportedCorporateEvent,
     CanonicalAnnualCloseDecision,
     CanonicalShareholderLoan,
     CanonicalOwnerDividendDecision,
@@ -75,6 +76,7 @@ from talli_backend.modules.corporate_governance.public import (
     PreparedOwnerDividendFinalization,
     PreparedOwnerDividendPayment,
     PreparedShareholderLoan,
+    PreparedSupportedCorporateEvent,
     PersistedCompanyFacts,
     ProposedAnnualClose,
     ProposedOwnerDividend,
@@ -82,11 +84,17 @@ from talli_backend.modules.corporate_governance.public import (
     RecordOwnerDividendEventCommand,
     RecordAnnualCloseEventCommand,
     RecordShareholderLoanCommand,
+    RecordSupportedCorporateEventCommand,
     RecordedShareholderLoan,
+    RecordedSupportedCorporateEvent,
     RegisterOwnerDividendDocumentsCommand,
     RegisterAnnualCloseDocumentsCommand,
     ShareholderLoanDirection,
     ShareholderLoanDocumentStatus,
+    SupportedCorporateEventId,
+    SupportedCorporateEventKind,
+    SupportedCorporateEventPhase,
+    SupportedCorporateEventReference,
     corporate_governance_persistence_adapter,
 )
 from talli_backend.modules.ledger.public import (
@@ -100,6 +108,7 @@ from talli_backend.modules.ledger.public import (
     PostOwnerDividendDeclaredCommand,
     PostOwnerDividendPaymentCommand,
     PostShareholderLoanCommand,
+    RecognizeHoldingActionCommand,
 )
 from talli_backend.modules.documents.public import DocumentsSessionFactory
 from talli_backend.modules.ledger.service import LedgerService
@@ -286,6 +295,108 @@ def _timestamp(value: object) -> datetime:
     if isinstance(value, datetime):
         return value
     return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+
+def _plain_json(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {str(key): _plain_json(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_plain_json(item) for item in value]
+    if isinstance(value, list):
+        return [_plain_json(item) for item in value]
+    return value
+
+
+def _supported_event_request(
+    command: RecordSupportedCorporateEventCommand,
+    event: CanonicalSupportedCorporateEvent,
+    *,
+    accounting_entry_id: AccountingEntryReference | None = None,
+) -> dict[str, object]:
+    return {
+        "eventId": str(event.event_id),
+        "eventReference": str(event.event_reference),
+        "companyId": str(event.company_id),
+        "incomeYear": int(event.income_year),
+        "eventDate": event.event_date.value.isoformat(),
+        "eventKind": event.event_kind.value,
+        "phase": event.phase.value,
+        "policyVersion": event.policy_version,
+        "canonicalFacts": _plain_json(event.canonical_facts),
+        "factsSha256": event.facts_sha256,
+        "documentFacts": [
+            {
+                "documentId": str(item.document_id),
+                "evidenceKind": item.evidence_kind.value,
+                "revision": item.revision,
+                "contentSha256": item.content_sha256,
+            }
+            for item in command.document_facts
+        ],
+        "bankTransactionId": (
+            str(command.bank_fact.transaction_id)
+            if command.bank_fact is not None
+            else None
+        ),
+        "shareholderRegisterSourceId": (
+            str(command.shareholder_register_fact.record_id)
+            if command.shareholder_register_fact is not None
+            else None
+        ),
+        "taxCalculationSourceId": (
+            str(command.tax_calculation_fact.record_id)
+            if command.tax_calculation_fact is not None
+            else None
+        ),
+        "accountingEntryId": (
+            str(accounting_entry_id) if accounting_entry_id is not None else None
+        ),
+        "correctionOfEventId": None,
+        "idempotencyKey": str(command.idempotency_key),
+        "correlationId": str(command.correlation_id),
+    }
+
+
+def _recorded_supported_event(
+    value: Mapping[str, object],
+) -> RecordedSupportedCorporateEvent:
+    bank_transaction_id = value.get("bankTransactionId")
+    correction_id = value.get("correctionOfEventId")
+    canonical_facts = value.get("canonicalFacts")
+    if not isinstance(canonical_facts, Mapping):
+        raise CorporateGovernanceError.unavailable()
+    event = CanonicalSupportedCorporateEvent(
+        event_id=SupportedCorporateEventId(str(value["eventId"])),
+        event_reference=SupportedCorporateEventReference(
+            str(value["eventReference"])
+        ),
+        company_id=CompanyId(str(value["companyId"])),
+        income_year=IncomeYear(int(value["incomeYear"])),
+        event_date=LocalDate(date.fromisoformat(str(value["eventDate"]))),
+        event_kind=SupportedCorporateEventKind(str(value["eventKind"])),
+        phase=SupportedCorporateEventPhase(str(value["phase"])),
+        policy_version="corporate-governance-supported-events-2026.1",
+        canonical_facts=dict(canonical_facts),
+        facts_sha256=str(value["factsSha256"]),
+    )
+    return RecordedSupportedCorporateEvent(
+        event=event,
+        accounting_entry_id=AccountingEntryReference(
+            str(value["accountingEntryId"])
+        ),
+        bank_transaction_id=(
+            BankTransactionReference(str(bank_transaction_id))
+            if bank_transaction_id is not None
+            else None
+        ),
+        correction_of_event_id=(
+            SupportedCorporateEventId(str(correction_id))
+            if correction_id is not None
+            else None
+        ),
+        recorded_at=_timestamp(value["recordedAt"]),
+        replayed=bool(value["replayed"]),
+    )
 
 
 def _numeric(value: object) -> int | float:
@@ -764,6 +875,26 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
             raise CorporateGovernanceError.unavailable()
         return _lifecycle_snapshot(rows[0]["result"])  # type: ignore[arg-type]
 
+    async def list_supported_events(
+        self,
+        company_ids: tuple[CompanyId, ...],
+    ) -> tuple[RecordedSupportedCorporateEvent, ...]:
+        rows = await self._database_rows(
+            "select corporate_governance.list_supported_events_v1("
+            "%s::uuid[], %s::text) as result",
+            (
+                [str(company_id) for company_id in company_ids],
+                str(self.actor_id.subject),
+            ),
+        )
+        results: list[RecordedSupportedCorporateEvent] = []
+        for row in rows:
+            result = row.get("result")
+            if not isinstance(result, Mapping):
+                raise CorporateGovernanceError.unavailable()
+            results.append(_recorded_supported_event(result))
+        return tuple(results)
+
     async def propose_owner_dividend(
         self,
         command: OwnerDividendProposalCommand,
@@ -1195,6 +1326,47 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
         )
         return _recorded_shareholder_loan(result)
 
+    async def prepare_supported_event(
+        self,
+        command: RecordSupportedCorporateEventCommand,
+        event: CanonicalSupportedCorporateEvent,
+    ) -> PreparedSupportedCorporateEvent:
+        if command.actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        result = await self._governance_result(
+            "select corporate_governance.prepare_supported_event_v1("
+            "%s::jsonb, %s::text) as result",
+            _supported_event_request(command, event),
+        )
+        replay = result.get("replay")
+        return PreparedSupportedCorporateEvent(
+            event=event,
+            replay=(
+                _recorded_supported_event(replay)
+                if isinstance(replay, Mapping)
+                else None
+            ),
+        )
+
+    async def complete_supported_event(
+        self,
+        command: RecordSupportedCorporateEventCommand,
+        accounting_entry_id: AccountingEntryReference,
+        prepared: PreparedSupportedCorporateEvent,
+    ) -> RecordedSupportedCorporateEvent:
+        if command.actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        result = await self._governance_result(
+            "select corporate_governance.complete_supported_event_v1("
+            "%s::jsonb, %s::text) as result",
+            _supported_event_request(
+                command,
+                prepared.event,
+                accounting_entry_id=accounting_entry_id,
+            ),
+        )
+        return _recorded_supported_event(result)
+
     async def claim_transaction_for_external_action(
         self,
         command: ClaimBankTransactionForExternalActionCommand,
@@ -1239,6 +1411,18 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
         source_record_id: LedgerSourceRecordId,
         requested_entry_id=None,
     ):
+        if isinstance(command, RecognizeHoldingActionCommand):
+            return await super().post_entry(
+                command,
+                entry_kind=entry_kind,
+                memo=memo,
+                lines=lines,
+                risk_flags=risk_flags,
+                warning_accepted=warning_accepted,
+                source_capability=source_capability,
+                source_record_id=source_record_id,
+                requested_entry_id=requested_entry_id,
+            )
         expected_kind = (
             LedgerEntryKind.OWNER_DIVIDEND_DECLARED
             if isinstance(command, PostOwnerDividendDeclaredCommand)

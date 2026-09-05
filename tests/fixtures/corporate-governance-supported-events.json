@@ -1,0 +1,171 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#191",
+  "policyVersion": "corporate-governance-supported-events-2026.1",
+  "outputOwners": ["ledger", "rf1086", "companyTax", "annualAccounts", "saft", "archive"],
+  "projectionContract": {
+    "ledgerSourceRecordId": "eventId",
+    "rf1086Source": "shareholderRegisterFact for registered issuer-capital events; otherwise no issuer effect",
+    "companyTaxSource": "taxCalculationFact for group contribution; otherwise canonical Ledger entry",
+    "annualAccountsSource": "canonical Ledger entry",
+    "saftSourceRecordId": "Ledger primary source record id (= eventId)",
+    "archiveSourceRecordId": "eventId",
+    "archiveFinalization": "finalizationSha256"
+  },
+  "patterns": [
+    {
+      "id": "cash-capital-binding-subscription",
+      "eventId": "19100000-0000-4000-8000-000000000001",
+      "eventKind": "cash_capital_increase",
+      "phase": "binding_subscription",
+      "signedArtifacts": ["signed_decision"],
+      "ledgerLines": [["1500", "150.00", "0.00"], ["2030", "0.00", "150.00"]],
+      "rf1086": { "effect": "none_until_registration" },
+      "companyTax": { "effect": "ledger_balance_projection" },
+      "annualAccounts": { "effect": "ledger_balance_projection" }
+    },
+    {
+      "id": "cash-capital-restricted-payment",
+      "eventId": "19100000-0000-4000-8000-000000000002",
+      "eventKind": "cash_capital_increase",
+      "phase": "restricted_payment",
+      "signedArtifacts": ["signed_decision", "contribution_confirmation"],
+      "ledgerLines": [["1921", "150.00", "0.00"], ["1500", "0.00", "150.00"]],
+      "rf1086": { "effect": "none_until_registration" },
+      "companyTax": { "effect": "ledger_balance_projection" },
+      "annualAccounts": { "effect": "ledger_balance_projection" }
+    },
+    {
+      "id": "cash-capital-registered",
+      "eventId": "19100000-0000-4000-8000-000000000003",
+      "eventKind": "cash_capital_increase",
+      "phase": "registered",
+      "signedArtifacts": ["signed_decision", "contribution_confirmation", "amended_articles", "registration_receipt"],
+      "ledgerLines": [["2030", "150.00", "0.00"], ["2000", "0.00", "100.00"], ["2020", "0.00", "50.00"], ["1920", "150.00", "0.00"], ["1921", "0.00", "150.00"]],
+      "rf1086": { "effect": "issuer_capital_increase", "shareCapitalDeltaNok": "100.00", "issuedShareCount": 10, "paidInPremiumDeltaNok": "50.00", "sourceFact": "shareholder_register" },
+      "companyTax": { "effect": "ledger_balance_projection" },
+      "annualAccounts": { "effect": "ledger_balance_projection" }
+    },
+    {
+      "id": "loss-coverage-reduction-decided",
+      "eventId": "19100000-0000-4000-8000-000000000004",
+      "eventKind": "loss_coverage_capital_reduction",
+      "phase": "decided_not_registered",
+      "signedArtifacts": ["signed_decision", "amended_articles"],
+      "ledgerLines": [["2033", "100.00", "0.00"], ["2080", "0.00", "100.00"]],
+      "rf1086": { "effect": "none_until_registration" },
+      "companyTax": { "effect": "ledger_balance_projection" },
+      "annualAccounts": { "effect": "ledger_balance_projection" }
+    },
+    {
+      "id": "loss-coverage-reduction-registered",
+      "eventId": "19100000-0000-4000-8000-000000000005",
+      "eventKind": "loss_coverage_capital_reduction",
+      "phase": "registered",
+      "signedArtifacts": ["signed_decision", "amended_articles", "registration_receipt"],
+      "ledgerLines": [["2000", "100.00", "0.00"], ["2033", "0.00", "100.00"]],
+      "rf1086": { "effect": "issuer_loss_coverage_reduction", "shareCapitalDeltaNok": "-100.00", "shareCountDelta": 0, "ownerValueTransferNok": "0.00", "sourceFact": "shareholder_register" },
+      "companyTax": { "effect": "ledger_balance_projection" },
+      "annualAccounts": { "effect": "ledger_balance_projection" }
+    },
+    {
+      "id": "loss-coverage-reduction-first-recognized-after-registration",
+      "eventId": "19100000-0000-4000-8000-000000000006",
+      "eventKind": "loss_coverage_capital_reduction",
+      "phase": "first_recognized_after_registration",
+      "signedArtifacts": ["signed_decision", "amended_articles", "registration_receipt"],
+      "ledgerLines": [["2000", "100.00", "0.00"], ["2080", "0.00", "100.00"]],
+      "rf1086": { "effect": "issuer_loss_coverage_reduction", "shareCapitalDeltaNok": "-100.00", "shareCountDelta": 0, "ownerValueTransferNok": "0.00", "sourceFact": "shareholder_register" },
+      "companyTax": { "effect": "ledger_balance_projection" },
+      "annualAccounts": { "effect": "ledger_balance_projection" }
+    },
+    {
+      "id": "owner-to-company-loan-funding",
+      "eventId": "19100000-0000-4000-8000-000000000007",
+      "eventKind": "owner_loan",
+      "phase": "funding",
+      "signedArtifacts": ["signed_agreement"],
+      "ledgerLines": [["1920", "100.00", "0.00"], ["2255", "0.00", "100.00"]],
+      "rf1086": { "effect": "none" },
+      "companyTax": { "effect": "ledger_balance_projection" },
+      "annualAccounts": { "effect": "ledger_balance_projection" }
+    },
+    {
+      "id": "parent-to-subsidiary-loan-lender",
+      "eventId": "19100000-0000-4000-8000-000000000008",
+      "eventKind": "intercompany_loan",
+      "phase": "funding",
+      "signedArtifacts": ["signed_agreement"],
+      "ledgerLines": [["1320", "100.00", "0.00"], ["1920", "0.00", "100.00"]],
+      "rf1086": { "effect": "none" },
+      "companyTax": { "effect": "ledger_balance_projection" },
+      "annualAccounts": { "effect": "ledger_balance_projection" }
+    },
+    {
+      "id": "intercompany-loan-borrower",
+      "eventId": "19100000-0000-4000-8000-000000000009",
+      "eventKind": "intercompany_loan",
+      "phase": "funding",
+      "signedArtifacts": ["signed_agreement"],
+      "ledgerLines": [["1920", "100.00", "0.00"], ["2260", "0.00", "100.00"]],
+      "rf1086": { "effect": "none" },
+      "companyTax": { "effect": "ledger_balance_projection" },
+      "annualAccounts": { "effect": "ledger_balance_projection" }
+    },
+    {
+      "id": "ordinary-bank-loan-disbursement",
+      "eventId": "19100000-0000-4000-8000-000000000010",
+      "eventKind": "bank_loan",
+      "phase": "disbursement",
+      "signedArtifacts": ["signed_agreement"],
+      "ledgerLines": [["1920", "100.00", "0.00"], ["2220", "0.00", "100.00"]],
+      "rf1086": { "effect": "none" },
+      "companyTax": { "effect": "ledger_balance_projection" },
+      "annualAccounts": { "effect": "ledger_balance_projection" }
+    },
+    {
+      "id": "ordinary-bank-loan-payment",
+      "eventId": "19100000-0000-4000-8000-000000000011",
+      "eventKind": "bank_loan",
+      "phase": "payment",
+      "signedArtifacts": ["lender_statement"],
+      "ledgerLines": [["2220", "100.00", "0.00"], ["8150", "9.00", "0.00"], ["7770", "1.00", "0.00"], ["1920", "0.00", "110.00"]],
+      "rf1086": { "effect": "none" },
+      "companyTax": { "effect": "ledger_result_and_balance_projection" },
+      "annualAccounts": { "effect": "ledger_result_and_balance_projection" }
+    },
+    {
+      "id": "group-contribution-subsidiary-to-parent-recipient",
+      "eventId": "19100000-0000-4000-8000-000000000012",
+      "eventKind": "group_contribution",
+      "phase": "decision",
+      "signedArtifacts": ["signed_decision"],
+      "ledgerLines": [["1560", "78.00", "0.00"], ["8075", "0.00", "78.00"]],
+      "rf1086": { "effect": "none" },
+      "companyTax": { "effect": "tax_calculation_projection", "grossTaxAmountNok": "100.00", "relatedTaxNok": "22.00", "afterTaxAccountingAmountNok": "78.00", "sourceFact": "company_tax_filing" },
+      "annualAccounts": { "effect": "ledger_result_and_balance_projection" }
+    },
+    {
+      "id": "group-contribution-parent-to-subsidiary-giver",
+      "eventId": "19100000-0000-4000-8000-000000000013",
+      "eventKind": "group_contribution",
+      "phase": "decision",
+      "signedArtifacts": ["signed_decision"],
+      "ledgerLines": [["1300", "78.00", "0.00"], ["2960", "0.00", "78.00"]],
+      "rf1086": { "effect": "none" },
+      "companyTax": { "effect": "tax_calculation_projection", "grossTaxAmountNok": "100.00", "relatedTaxNok": "22.00", "afterTaxAccountingAmountNok": "78.00", "sourceFact": "company_tax_filing" },
+      "annualAccounts": { "effect": "ledger_balance_projection" }
+    },
+    {
+      "id": "group-contribution-sister-recipient",
+      "eventId": "19100000-0000-4000-8000-000000000014",
+      "eventKind": "group_contribution",
+      "phase": "decision",
+      "signedArtifacts": ["signed_decision"],
+      "ledgerLines": [["1560", "78.00", "0.00"], ["2035", "0.00", "78.00"]],
+      "rf1086": { "effect": "none" },
+      "companyTax": { "effect": "tax_calculation_projection", "grossTaxAmountNok": "100.00", "relatedTaxNok": "22.00", "afterTaxAccountingAmountNok": "78.00", "sourceFact": "company_tax_filing" },
+      "annualAccounts": { "effect": "ledger_balance_projection" }
+    }
+  ]
+}

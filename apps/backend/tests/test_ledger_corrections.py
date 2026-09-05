@@ -17,6 +17,7 @@ from talli_backend.modules.ledger.public import (
     LedgerFactReference,
     LedgerSourceCapability,
     LedgerSourceRecordId,
+    ReverseSupportedHoldingActionCommand,
 )
 from talli_backend.modules.ledger.service import LedgerService
 from talli_backend.shared.kernel import (
@@ -38,6 +39,10 @@ class CorrectionPersistenceStub:
 
     async def correct_entry(self, command: object, **replacement: object) -> object:
         self.corrections.append({"command": command, **replacement})
+        return object()
+
+    async def reverse_supported_entry(self, command: object) -> object:
+        self.corrections.append({"reverse": command})
         return object()
 
 
@@ -80,6 +85,60 @@ def correction_command() -> CorrectHoldingActionCommand:
             blocks=(),
         ),
     )
+
+
+def reversal_command() -> ReverseSupportedHoldingActionCommand:
+    original = correction_command()
+    return ReverseSupportedHoldingActionCommand(
+        company_id=original.company_id,
+        actor_id=original.actor_id,
+        correlation_id=original.correlation_id,
+        idempotency_key=IdempotencyKey("supported-reversal-test-0001"),
+        income_year=original.income_year,
+        event_date=original.event_date,
+        original_entry_id=original.original_entry_id,
+        reason="Signed facts were wrong",
+        correction_source=source(
+            LedgerSourceCapability.DOCUMENTS, "signed-correction-memo"
+        ),
+    )
+
+
+def test_supported_reversal_accepts_only_documented_current_year_intent() -> None:
+    persistence = CorrectionPersistenceStub()
+    command = reversal_command()
+
+    asyncio.run(LedgerService(persistence).reverse_supported_holding_action(command))
+
+    assert persistence.corrections == [{"reverse": command}]
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        replace(
+            reversal_command(),
+            event_date=LocalDate(date(2025, 12, 31)),
+        ),
+        replace(
+            reversal_command(),
+            correction_source=source(
+                LedgerSourceCapability.CORPORATE_GOVERNANCE, "wrong-source"
+            ),
+        ),
+    ],
+)
+def test_supported_reversal_rejects_wrong_year_or_source(
+    command: ReverseSupportedHoldingActionCommand,
+) -> None:
+    persistence = CorrectionPersistenceStub()
+
+    with pytest.raises(LedgerError):
+        asyncio.run(
+            LedgerService(persistence).reverse_supported_holding_action(command)
+        )
+
+    assert persistence.corrections == []
 
 
 def test_guided_correction_translates_replacement_without_accepting_lines() -> None:

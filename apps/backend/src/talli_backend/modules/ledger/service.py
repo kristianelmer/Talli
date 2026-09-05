@@ -80,6 +80,8 @@ from talli_backend.modules.ledger.public import (
     PostTaxSettlementCommand,
     RebuildCompanyYearOpeningCommand,
     RecognizeHoldingActionCommand,
+    ReverseSupportedHoldingActionCommand,
+    ReversedLedgerEntry,
     ReconstructionAssessment,
     ReconstructionAssessmentId,
     ReconstructionEconomicFactCandidates,
@@ -928,6 +930,15 @@ class LedgerService:
             memo=command.reason,
             lines=lines,
         )
+
+    async def reverse_supported_holding_action(
+        self, command: ReverseSupportedHoldingActionCommand
+    ) -> ReversedLedgerEntry:
+        if command.event_date.value.year != int(command.income_year):
+            raise LedgerError.invalid_input("LEDGER_INVALID_INPUT")
+        if command.correction_source.capability is not LedgerSourceCapability.DOCUMENTS:
+            raise LedgerError.precondition_failed("LEDGER_SOURCE_CAPABILITY_MISMATCH")
+        return await self._persistence.reverse_supported_entry(command)
 
     async def recognize_holding_action(
         self, command: RecognizeHoldingActionCommand

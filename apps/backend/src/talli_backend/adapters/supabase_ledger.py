@@ -78,6 +78,8 @@ from talli_backend.modules.ledger.public import (
     PostedLedgerEntry,
     RebuildCompanyYearOpeningCommand,
     RecognizeHoldingActionCommand,
+    ReverseSupportedHoldingActionCommand,
+    ReversedLedgerEntry,
     ReconstructionAssessment,
     ReconstructionAssessmentId,
     ReconstructionEconomicFactCandidates,
@@ -1370,6 +1372,43 @@ class SupabaseLedgerSession:
             company_id=CompanyId(str(row["company_id"])),
             income_year=IncomeYear(int(row["income_year"])),
             corrected_at=_timestamp(row["corrected_at"]),
+            replayed=bool(row["replayed"]),
+        )
+
+    async def reverse_supported_entry(
+        self,
+        command: ReverseSupportedHoldingActionCommand,
+    ) -> ReversedLedgerEntry:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        row = await self._one_idempotent_row(
+            """
+            select * from ledger.reverse_supported_entry_v1(
+              %s::text, %s::uuid, %s::integer, %s::uuid, %s::text,
+              %s::text, %s::text, %s::date, %s::jsonb
+            )
+            """,
+            (
+                str(command.idempotency_key),
+                str(command.company_id),
+                int(command.income_year),
+                str(command.original_entry_id),
+                command.reason,
+                str(command.correlation_id),
+                str(command.actor_id.subject),
+                command.event_date.value,
+                json.dumps(
+                    _fact_reference_payload(command.correction_source, primary=False),
+                    separators=(",", ":"),
+                ),
+            ),
+        )
+        return ReversedLedgerEntry(
+            original_entry_id=LedgerEntryId(str(row["original_entry_id"])),
+            reversal_entry_id=LedgerEntryId(str(row["reversal_entry_id"])),
+            company_id=CompanyId(str(row["company_id"])),
+            income_year=IncomeYear(int(row["income_year"])),
+            reversed_at=_timestamp(row["reversed_at"]),
             replayed=bool(row["replayed"]),
         )
 

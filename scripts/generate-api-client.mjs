@@ -207,6 +207,21 @@ const corporateGovernanceOperations = {
     "post",
     "corporateGovernanceRecordShareholderLoan",
   ],
+  listSupportedEvents: [
+    "/api/v1/corporate-governance/supported-events",
+    "get",
+    "corporateGovernanceListSupportedEvents",
+  ],
+  recordSupportedEvent: [
+    "/api/v1/corporate-governance/supported-events",
+    "post",
+    "corporateGovernanceRecordSupportedEvent",
+  ],
+  reverseSupportedEvent: [
+    "/api/v1/corporate-governance/supported-events/{event_id}/reversal",
+    "post",
+    "corporateGovernanceReverseSupportedEvent",
+  ],
   proposeOwnerDividend: [
     "/api/v1/corporate-governance/owner-dividends/proposals",
     "post",
@@ -662,6 +677,8 @@ const corporateGovernanceSchemas = Object.fromEntries([
   "AnnualCloseSignedArtifactWire",
   "BoardRole",
   "BoardTreatmentMethod",
+  "BankLoanEventFactsWire",
+  "CashCapitalIncreaseEventFactsWire",
   "CorporateAnnualBasisWire",
   "CorporateArtifactKind",
   "CorporateArtifactRecordWire",
@@ -689,6 +706,9 @@ const corporateGovernanceSchemas = Object.fromEntries([
   "CorporateReviewedShareholderWire",
   "CorporateShareholderBallotWire",
   "CorporateShareholderWire",
+  "GroupContributionEventFactsWire",
+  "IntercompanyLoanEventFactsWire",
+  "LossCoverageCapitalReductionEventFactsWire",
   "MeetingForm",
   "OwnerDividendAllocationWire",
   "OwnerDividendApprovalWire",
@@ -701,15 +721,28 @@ const corporateGovernanceSchemas = Object.fromEntries([
   "OwnerDividendPaymentWire",
   "OwnerDividendProposalWire",
   "OwnerDividendSignedArtifactWire",
+  "OwnerLoanEventFactsWire",
   "OwnerDividendState",
   "ProposedOwnerDividendWire",
   "ProposedAnnualCloseWire",
   "RenderedCorporateArtifactWire",
   "RecordedShareholderLoanWire",
+  "RecordedSupportedCorporateEventWire",
+  "ReverseSupportedCorporateEventWire",
+  "ReversedSupportedCorporateEventWire",
   "ShareholderLoanDirection",
   "ShareholderLoanDocumentStatus",
   "ShareholderLoanWire",
   "ShareholderVote",
+  "SupportedCorporateBankFactWire",
+  "SupportedCorporateDocumentFactWire",
+  "SupportedCorporateEvidenceKind",
+  "SupportedCorporateEventKind",
+  "SupportedCorporateEventPhase",
+  "SupportedCorporateEventWire",
+  "SupportedCorporatePerspective",
+  "SupportedCorporateRelationship",
+  "SupportedCorporateSourceFactWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const bankingSchemas = Object.fromEntries([
   "AcceptBankFileWire",
@@ -1823,6 +1856,48 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         request,
         body,
         isRecordedShareholderLoanWire,
+      );
+    },
+
+    async corporateGovernanceListSupportedEvents(
+      request: CorporateGovernanceListRequest,
+    ): Promise<RecordedSupportedCorporateEventWire[]> {
+      const query = new URLSearchParams();
+      for (const companyId of request.companyIds) query.append("companyId", companyId);
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/supported-events?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        (value): value is RecordedSupportedCorporateEventWire[] =>
+          Array.isArray(value) && value.every(isRecordedSupportedCorporateEventWire),
+      );
+    },
+
+    async corporateGovernanceRecordSupportedEvent(
+      body: SupportedCorporateEventWire,
+      request: TalliMutationOptions,
+    ): Promise<RecordedSupportedCorporateEventWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/supported-events\`,
+        "POST",
+        request,
+        body,
+        isRecordedSupportedCorporateEventWire,
+      );
+    },
+
+    async corporateGovernanceReverseSupportedEvent(
+      eventId: string,
+      body: ReverseSupportedCorporateEventWire,
+      request: TalliMutationOptions,
+    ): Promise<ReversedSupportedCorporateEventWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/corporate-governance/supported-events/\${encodeURIComponent(eventId)}/reversal\`,
+        "POST",
+        request,
+        body,
+        isReversedSupportedCorporateEventWire,
       );
     },
 

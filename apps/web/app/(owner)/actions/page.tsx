@@ -14,6 +14,7 @@ const ACTION_SLUGS = [
   "investment-correction",
   "owner-dividend",
   "shareholder-loan",
+  "corporate-event",
   "tax-settlement",
 ] as const;
 

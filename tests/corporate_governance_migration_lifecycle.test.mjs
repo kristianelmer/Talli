@@ -21,6 +21,8 @@ const hostedShapeParityMigrationName =
   "20260902105000_corporate_governance_hosted_shape_parity.sql";
 const contractMigrationName =
   "20260902110000_corporate_governance_contract.sql";
+const supportedEventsMigrationName =
+  "20260904220000_corporate_governance_supported_events.sql";
 
 function withoutTransactionWrapper(sql) {
   return sql
@@ -942,9 +944,34 @@ async function state(client) {
   return result.rows[0];
 }
 
+async function withGovernanceStoreOwner(client, operation) {
+  await client.query(String.raw`
+    do $grant_test_authority$
+    begin
+      execute pg_catalog.format(
+        'grant corporate_governance_store_owner to %I', current_user
+      );
+    end
+    $grant_test_authority$;
+  `);
+  try {
+    return await operation();
+  } finally {
+    await client.query(String.raw`
+      do $revoke_test_authority$
+      begin
+        execute pg_catalog.format(
+          'revoke corporate_governance_store_owner from %I', current_user
+        );
+      end
+      $revoke_test_authority$;
+    `);
+  }
+}
+
 async function assertSupersededEvidence(client, canonical) {
   const result = canonical
-    ? await client.query(String.raw`
+    ? await withGovernanceStoreOwner(client, () => client.query(String.raw`
         select
           (corporate_governance.owner_dividend_lifecycle_v1(
             '97000000-0000-4000-8000-000000000148'::uuid, false
@@ -984,7 +1011,7 @@ async function assertSupersededEvidence(client, canonical) {
             '97000000-0000-4000-8000-000000000151'::uuid,
             '97000000-0000-4000-8000-000000000152'::uuid
           )
-      `)
+      `))
     : await client.query(String.raw`
         select
           'superseded'::text as state,
@@ -1036,7 +1063,7 @@ async function assertSupersededEvidence(client, canonical) {
 
 async function assertFinalizationEvidence(client, canonical) {
   const result = canonical
-    ? await client.query(String.raw`
+    ? await withGovernanceStoreOwner(client, () => client.query(String.raw`
         select
           finalization.id::text as finalization_id,
           finalization.event_id::text as event_id,
@@ -1051,7 +1078,7 @@ async function assertFinalizationEvidence(client, canonical) {
         from corporate_governance.owner_dividend_finalizations finalization
         where finalization.id =
           '97000000-0000-4000-8000-000000000162'::uuid
-      `)
+      `))
     : await client.query(String.raw`
         select
           finalization.id::text as finalization_id,
@@ -1094,6 +1121,8 @@ test(
       companyIdentityRollback,
       lifecycleForward,
       lifecycleRollback,
+      supportedEventsForward,
+      supportedEventsRollback,
     ] =
       await Promise.all([
       readFile(
@@ -1152,6 +1181,20 @@ test(
       ),
       readFile(
         new URL(`../supabase/rollback/${lifecycleMigrationName}`, import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL(
+          `../supabase/migrations/${supportedEventsMigrationName}`,
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+      readFile(
+        new URL(
+          `../supabase/rollback/${supportedEventsMigrationName}`,
+          import.meta.url,
+        ),
         "utf8",
       ),
     ]);
@@ -1527,6 +1570,7 @@ test(
       await assertSupersededEvidence(client, true);
       await assertFinalizationEvidence(client, true);
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
+        await client.query(supportedEventsRollback);
         await client.query(lifecycleRollback);
         await client.query(annualRollback);
         await client.query(loanRollback);
@@ -1549,6 +1593,7 @@ test(
         await client.query(companyIdentityForward);
         await assertGovernanceRolesCannotInheritCompanyAccessExecutor(client);
         await client.query(lifecycleForward);
+        await client.query(supportedEventsForward);
         assert.deepEqual(await state(client), {
           capability_schema: true,
           decision_table: true,

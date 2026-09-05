@@ -133,7 +133,7 @@
     },
     {
       "name": "corporate-governance",
-      "purpose": "Authenticates one verified owner, derives deterministic annual-close, owner-dividend and shareholder-loan facts and artifacts in Python, serves the immutable lifecycle, verifies Documents evidence, and atomically coordinates Ledger posting and optional Banking claims through narrow contracts.",
+      "purpose": "Authenticates one verified owner, derives deterministic annual-close, owner-dividend, shareholder-loan, supported domestic capital, financing and group-event facts in Python, serves immutable lifecycles, verifies Documents evidence, and atomically coordinates Ledger posting and optional Banking claims through narrow contracts.",
       "publicPackages": [
         "talli_backend.modules.banking.public",
         "talli_backend.modules.company_access.public",
@@ -153,6 +153,8 @@
         "/api/v1/corporate-governance/annual-closes/{decision_id}/signed-artifacts",
         "/api/v1/corporate-governance/annual-closes/{decision_id}/finalizations",
         "/api/v1/corporate-governance/shareholder-loans",
+        "/api/v1/corporate-governance/supported-events",
+        "/api/v1/corporate-governance/supported-events/{event_id}/reversal",
         "/api/v1/corporate-governance/owner-dividends/proposals",
         "/api/v1/corporate-governance/owner-dividends/{decision_id}/documents",
         "/api/v1/corporate-governance/owner-dividends/{decision_id}/approvals",
@@ -251,6 +253,8 @@
       "supabase/migrations/20260902090000_corporate_governance_annual_close.sql",
       "supabase/migrations/20260902100000_corporate_governance_artifact_lifecycle.sql",
       "supabase/migrations/20260902105000_corporate_governance_hosted_shape_parity.sql",
+      "supabase/migrations/20260904220000_corporate_governance_supported_events.sql",
+      "supabase/migrations/20260904223000_ledger_supported_event_reversals.sql",
       "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql",
       "supabase/migrations/20260828103000_marketing_funnel_measurement.sql",
       "supabase/migrations/20260829070411_marketing_measurement_small_cell_threshold.sql",
