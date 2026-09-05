@@ -546,6 +546,8 @@ class AnnualProviderIntent:
 
 @dataclass(frozen=True, slots=True)
 class AnnualProviderObservation:
+    """Verified totals; captured_at identifies the first successful capture."""
+
     provider: str
     operation: AnnualProviderOperation
     status: AnnualProviderStatus

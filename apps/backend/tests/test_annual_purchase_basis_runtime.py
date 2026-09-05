@@ -199,14 +199,19 @@ def test_stale_and_future_assessment_timestamps_cannot_authorize_a_claim(admitte
 
 def test_rollback_and_recutover_preserve_the_exact_accepted_evidence(admitted):
     migration = "20260905080550_annual_billing_purchase_basis.sql"
+    ledger = "20260905083150_annual_billing_purchase_ledger.sql"
     with psycopg.connect(DATABASE_URL) as connection:
         scoped(connection, admitted["owner"])
         before = basis(connection, admitted)
     for _ in range(2):
         with psycopg.connect(DATABASE_URL, autocommit=True) as connection:
+            connection.execute((ROOT / "supabase" / "rollback" / ledger).read_text())
             connection.execute((ROOT / "supabase" / "rollback" / migration).read_text())
             assert connection.execute("select to_regprocedure('public.company_access_purchase_basis_v1(uuid,integer,uuid,uuid)')").fetchone()[0] is None
             connection.execute((ROOT / "supabase" / "migrations" / migration).read_text())
+            connection.execute((ROOT / "supabase" / "migrations" / ledger).read_text())
+            principal = connection.execute("select current_user").fetchone()[0]
+            connection.execute(sql.SQL("grant billing_store_owner to {}").format(sql.Identifier(principal)))
         with psycopg.connect(DATABASE_URL) as connection:
             scoped(connection, admitted["owner"])
             assert basis(connection, admitted) == before

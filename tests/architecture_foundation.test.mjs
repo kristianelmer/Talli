@@ -2479,24 +2479,25 @@ test("generated-client deep imports reject ambiguous same-ticket exceptions", ()
     resource: "module:@talli/talli-api-client/*",
     operation: "module",
   };
-  const billingFacade = {
-    ...compatibility.records[0],
-    id: "compat-billing-persistence",
-    capability: "billing",
-    creationIssue: "#135",
-    removalIssue: "#137",
-    canonicalImplementation: "web:legacy-runtime:billing",
+  const activeFacade = compatibility.records.find((record) => (
+    record.kind === "legacy-facade"
+    && record.capability === compatibility.migration.currentCapability
+  ));
+  assert.ok(activeFacade, "The ambiguity fixture needs the current active legacy stage.");
+  const duplicateFacade = {
+    ...activeFacade,
+    id: "compat-generated-ambiguity-first",
     scopes: [scope],
   };
-  compatibility.records.push(billingFacade, {
-    ...billingFacade,
-    id: "compat-billing-persistence-duplicate",
+  compatibility.records.push(duplicateFacade, {
+    ...duplicateFacade,
+    id: "compat-generated-ambiguity-second",
   });
   writeFileSync(compatibilityPath, JSON.stringify(compatibility));
 
   try {
     const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
-    assert.match(errors, /duplicate compatibility scope.*#137.*#137/u);
+    assert.match(errors, new RegExp(`duplicate compatibility scope.*${activeFacade.removalIssue}.*${activeFacade.removalIssue}`, "u"));
     assert.match(errors, new RegExp(`${fixture}: generated-client deep import has ambiguous compatibility`, "u"));
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });

@@ -300,7 +300,9 @@ class VippsTestBillingProvider:
                 if timestamp.tzinfo is None or timestamp > self._now():
                     raise _UnknownOutcome()
                 times.append(timestamp)
-            captured_at = Timestamp(max(times))
+            # The purchase ledger pins the first actual capture even when a later
+            # capture completes the payment. Partial capture grants no paid access.
+            captured_at = Timestamp(min(times))
         return charge, captured, refunded, captured_at
 
     async def _reconcile(self, client, headers, intent):

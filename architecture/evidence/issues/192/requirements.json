@@ -18,7 +18,7 @@
     {
       "id": "GH-192-A1",
       "requirement": "Exact immutable price, VAT, company/year, scope, terms, renewal and separate consent versions.",
-      "status": "policy-and-source-owned-purchase-basis-tested-billing-persistence-and-cutover-pending"
+      "status": "immutable-policy-basis-and-purchase-ledger-tested-runtime-cutover-pending"
     },
     {
       "id": "GH-192-A2",
@@ -61,7 +61,10 @@
     "vippsProviderAndWebhook": "52 local HTTP/authentication cases pass; bounded independent review PASS with 76 combined policy/provider/authentication tests; no actual provider requests",
     "billingSuite": "142 Python and 14 Node tests pass; architecture check passes",
     "purchaseBasis": "Company Access owned locked evidence projection: 12 real-database tests pass including tenant/MFA/stale/blocked/lock contention and two rollback/recutover cycles; 91 Company Access domain tests pass; bounded independent Standards PASS; architecture passes; advisors 0 blocking and 34 performance warnings.",
-    "financialDates": "152 Python +14 Node billing tests and architecture pass; bounded independent review PASS. Provider capture time is derived from valid successful history, never a future time; renewal schedules Dec31 Oslo for promised Jan1 collection and does not silently postpone missed dates."
+    "financialDates": "152 Python +14 Node billing tests and architecture pass; bounded independent review PASS. Provider capture time is derived from valid successful history, never a future time; renewal schedules Dec31 Oslo for promised Jan1 collection and does not silently postpone missed dates.",
+    "purchaseLedger": "38 Python billing database lifecycle tests plus Node predecessor lifecycle pass on a reset isolated database; final 20 annual-ledger cases pass. Includes case-bound admin negatives, concurrent full-refund replay, repurchase after full refund, immutable evidence, and two mixed predecessor rollback/recutover cycles. Bounded independent Standards PASS. Architecture check passes; advisors 0 blocking and 34 performance warnings. Runtime remains unwired.",
+    "firstCapture": "Regression reproduced partial-to-full capture changing the ledger timestamp. Provider now reports first successful capture; partial capture remains pending. 87 provider/webhook/policy tests pass; actual MT evidence pending. Bounded independent review PASS with 8 capture-focused cases.",
+    "architectureRegression": "Full architecture suite: 50 pass, one stale fixture failure after #137 stage exit. Updated only the ambiguity fixture to duplicate the current active stage; focused rerun passes. Architecture checker and dependency evidence pass unchanged."
   },
   "externalEvidence": {
     "vippsMerchantTest": "pending designated existing test sales unit, backend-only test credentials, test user/app and callback setup; local fixtures cannot substitute",
@@ -71,13 +74,15 @@
     "#189",
     "#193",
     "#197",
-    "#198"
+    "#198",
+    "#200"
   ],
   "completeGates": [],
   "integrationConstraints": [
     "Purchase claim must bind the exact current Company Access assessment and immutable accepted/legal projection under the owned eligibility lock.",
     "Readiness to prepare must remain independent of paid filing entitlement.",
     "Renewal must distinguish scheduling time from due date; no worker may fabricate owner claims. Current approved admission supports 2026 only.",
-    "Refund reservations must include pending and unknown operations, and trusted incident/submission evidence must establish entitlement."
+    "Refund reservations must include pending and unknown operations, and trusted incident/submission evidence must establish entitlement.",
+    "Operator annual billing reads and refund/cancellation mutations require an explicitly opened same-company billing support case with current grant and fresh MFA; never a standing global admin scope."
   ]
 }

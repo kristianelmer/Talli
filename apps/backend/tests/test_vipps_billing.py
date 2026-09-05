@@ -266,3 +266,23 @@ def test_failures_redact_secrets_and_production_confirmation_origins_are_rejecte
     result = asyncio.run(provider.execute(intent()))
     assert result.status is AnnualProviderStatus.UNKNOWN
     assert "fixture-secret" not in repr(result)
+
+
+def test_partial_then_full_capture_preserves_first_capture_time():
+    fixture = MerchantTestFixture()
+    first_at = datetime(2026, 9, 1, 12, tzinfo=UTC)
+    fixture.charge["status"] = "PARTIALLY_CAPTURED"
+    fixture.charge["summary"]["captured"] = 50000
+    fixture.charge["history"] = [{"event": "CAPTURE", "amount": 50000, "success": True,
+        "occurred": first_at.isoformat(), "idempotencyKey": "fixture-first-capture"}]
+    first = asyncio.run(fixture.provider().reconcile(intent()))
+    assert first.status is AnnualProviderStatus.PENDING
+    assert first.captured_minor == 50000
+    fixture.charge["status"] = "CHARGED"
+    fixture.charge["summary"]["captured"] = 149000
+    fixture.charge["history"].append({"event": "CAPTURE", "amount": 99000, "success": True,
+        "occurred": NOW.isoformat(), "idempotencyKey": "fixture-final-capture"})
+    final = asyncio.run(fixture.provider().reconcile(intent()))
+    assert final.status is AnnualProviderStatus.CONFIRMED
+    assert final.captured_minor == 149000
+    assert first.captured_at == final.captured_at == Timestamp(first_at)

@@ -67,19 +67,23 @@
   },
   "owns": {
     "postgresSchemas": [
-      "billing"
+      "billing",
+      "billing_annual_retired"
     ],
     "tables": [
       "billing.billing_accounts",
       "billing.billing_payment_events",
-      "billing.production_pilot_entitlements"
+      "billing.production_pilot_entitlements",
+      "billing.annual_purchases",
+      "billing.annual_refund_cases",
+      "billing.annual_operations"
     ],
     "storageBuckets": [],
     "projections": [
       "BillingEntitlementDecision",
       "BillingSnapshot"
     ],
-    "migrations": "supabase/migrations/20260905010000_billing_capability.sql"
+    "migrations": "supabase/migrations/20260905083150_annual_billing_purchase_ledger.sql"
   },
   "ports": [
     {
@@ -139,7 +143,8 @@
     "architecture": "tests/architecture_foundation.test.mjs",
     "annualPolicy": "apps/backend/tests/test_annual_billing_policy.py",
     "vippsProvider": "apps/backend/tests/test_vipps_billing.py",
-    "vippsWebhook": "apps/backend/tests/test_vipps_webhook.py"
+    "vippsWebhook": "apps/backend/tests/test_vipps_webhook.py",
+    "annualLedger": "apps/backend/tests/test_annual_purchase_ledger_runtime.py"
   },
   "compatibilityExceptions": []
 }

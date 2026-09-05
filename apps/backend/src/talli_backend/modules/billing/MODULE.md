@@ -1,7 +1,7 @@
 # Billing backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
+{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
 -->
 
 ## Purpose and ownership
@@ -154,3 +154,26 @@ Capture observations include the provider history timestamp, validated against
 the captured total. A delayed reconciliation cannot start a new refund window.
 Missing, malformed or incomplete capture history leaves the result unknown.
 Provider-confirmed refunds do not establish bank settlement.
+
+## Annual purchase ledger under implementation (#192)
+
+`supabase/migrations/20260905083150_annual_billing_purchase_ledger.sql` owns
+`billing.annual_purchases`, `billing.annual_operations` and
+`billing.annual_refund_cases`. An inserted purchase must match the exact locked
+Company Access basis through its published function. Offer, scope, consent,
+provider identity and original intent remain immutable. One unresolved or paid
+purchase occupies each company-year. A definitively failed or fully refunded purchase remains
+in the history while permitting a new accepted attempt.
+
+Refund claims lock the purchase and reserve against captured money, confirmed
+refunds and every created, pending or unknown refund. A case pins its source,
+facts and maximum entitlement. Owner requests may record change of mind; other
+attributions require an active admin with fresh MFA and an explicitly opened, unexpired billing
+support case for the same company. Automatic source-owned
+incident ingestion and worker authority remain pending. The private tables have
+forced RLS and no browser or service-role privileges.
+
+Rollback revokes access, removes annual policies and moves the three relations
+to the inaccessible `billing_annual_retired` schema and removes annual triggers
+and functions so the predecessor billing rollback can withdraw its schema. Recutover restores the same records, including
+unknown operations. It does not erase replay history or grant paid entitlement.

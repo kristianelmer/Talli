@@ -227,6 +227,12 @@ test(
       readFile(new URL("../supabase/migrations/20260905061339_billing_provider_reconciliation.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/rollback/20260905061339_billing_provider_reconciliation.sql", import.meta.url), "utf8"),
     ]);
+    const [annual, annualRollback, basis, basisRollback] = await Promise.all([
+      readFile(new URL("../supabase/migrations/20260905083150_annual_billing_purchase_ledger.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260905083150_annual_billing_purchase_ledger.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260905080550_annual_billing_purchase_basis.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260905080550_annual_billing_purchase_basis.sql", import.meta.url), "utf8"),
+    ]);
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
     try {
@@ -305,6 +311,8 @@ test(
       await assertTenantBoundaryAndReadiness(client);
 
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
+        await client.query(annualRollback);
+        await client.query(basisRollback);
         await client.query(reconcileRollback);
         await client.query(expandRollback);
         const predecessor = await topology(client);
@@ -320,6 +328,8 @@ test(
 
         await client.query(expand);
         await client.query(reconcile);
+        await client.query(basis);
+        await client.query(annual);
         const successor = await topology(client);
         assert.equal(successor.billing_schema, true);
         assert.equal(successor.canonical_accounts, true);
