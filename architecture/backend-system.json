@@ -193,6 +193,12 @@
       ]
     },
     {
+      "name": "annual-billing-reads-and-cancellation",
+      "purpose": "Authenticates annual owner reads and immediate local renewal cancellation from one verified actor; no provider, readiness or checkout activation.",
+      "publicPackages": ["talli_backend.modules.billing.public"],
+      "routes": ["/api/v1/billing/annual/snapshot", "/api/v1/billing/annual/renewal-cancellations"]
+    },
+    {
       "name": "billing-and-filing-entitlement",
       "purpose": "Authenticates one verified actor, owns server-selected legacy pricing and idempotent simulated provider outcomes, and returns the single billing decision used by readiness and production filing gates.",
       "publicPackages": ["talli_backend.modules.billing.public"],
@@ -422,6 +428,12 @@
       "adapter": "talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession",
       "owner": "backend-system",
       "mode": "verified-owner receipt-bound original agreement cleanup; runtime and worker authority pending #192"
+    },
+    {
+      "port": "AnnualBillingReadPersistence",
+      "adapter": "talli_backend.adapters.supabase_annual_billing.PostgresAnnualBillingReadSession",
+      "owner": "backend-system",
+      "mode": "verified-owner stored annual public purchase projection; no provider or readiness calls"
     }
   ],
   "allowedDependencies": {
@@ -448,6 +460,7 @@
       "talli_backend.adapters.simulation_billing",
       "talli_backend.adapters.supabase_banking",
       "talli_backend.adapters.supabase_billing",
+      "talli_backend.adapters.supabase_annual_billing",
       "talli_backend.adapters.supabase_company_access",
       "talli_backend.adapters.supabase_corporate_governance",
       "talli_backend.adapters.supabase_documents",
@@ -458,6 +471,7 @@
       "talli_backend.application.banking_session",
       "talli_backend.application.billing_session",
       "talli_backend.application.billing_workflow",
+      "talli_backend.application.annual_billing",
       "talli_backend.application.corporate_governance_session",
       "talli_backend.application.corporate_governance_workflow",
       "talli_backend.application.investments_session",
@@ -511,12 +525,14 @@
       "talli_backend.adapters.bank_provider_http",
       "talli_backend.adapters.simulation_billing",
       "talli_backend.adapters.supabase_billing",
+      "talli_backend.adapters.supabase_annual_billing",
       "talli_backend.adapters.supabase_ledger",
       "talli_backend.application.annual_data_compatibility",
       "talli_backend.application.banking_session",
       "talli_backend.application.banking_workflow",
       "talli_backend.application.billing_session",
       "talli_backend.application.billing_workflow",
+      "talli_backend.application.annual_billing",
       "talli_backend.application.corporate_governance_session",
       "talli_backend.application.corporate_governance_workflow",
       "talli_backend.application.investments_session",

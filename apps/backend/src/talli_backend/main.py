@@ -27,6 +27,7 @@ from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAd
 from talli_backend.adapters.supabase_banking import compose_banking_application
 from talli_backend.adapters.simulation_billing import SimulationBillingProvider
 from talli_backend.adapters.supabase_billing import SupabaseBillingAdapter
+from talli_backend.adapters.supabase_annual_billing import SupabaseAnnualBillingAdapter
 from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
 from talli_backend.adapters.supabase_corporate_governance import (
     compose_corporate_governance_application,
@@ -65,6 +66,7 @@ from talli_backend.application.billing_session import (
     BillingSessionFactory,
 )
 from talli_backend.application.billing_workflow import BillingWorkflow
+from talli_backend.application.annual_billing import AnnualBillingSessionFactory, AnnualBillingWorkflow
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceAuthenticationError,
     CorporateGovernanceSessionFactory,
@@ -174,6 +176,7 @@ from talli_backend.modules.company_access.public import (
     SupportCaseSnapshotResponse,
 )
 from talli_backend.modules.billing.public import (
+    AnnualBillingSnapshotQuery, AnnualPurchaseId, AnnualPurchaseStatus, CancelAnnualRenewalCommand,
     ActivateSubscriptionCommand,
     BillingAccount,
     BillingEntitlementDecision,
@@ -465,6 +468,70 @@ class StrictTransportModel(TransportModel):
         populate_by_name=True,
         extra="forbid",
     )
+
+
+class AnnualBillingOfferWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    offer_version: str
+    terms_digest: str
+    terms_text: str
+    currency: Literal["NOK"]
+    gross_minor: int = Field(gt=0)
+    net_minor: int = Field(gt=0)
+    vat_minor: int = Field(ge=0)
+    vat_basis_points: int
+    paid_through: date
+    export_through: date
+    renewal_date: date
+    renewal_reminder_by: date
+    price_change_notice_by: date
+
+
+class AnnualPurchaseSummaryWire(TransportModel):
+    purchase_id: UUID
+    company_id: UUID
+    income_year: int
+    status: AnnualPurchaseStatus
+    accepted_at: datetime
+    offer_version: str
+    terms_digest: str
+    terms_text: str
+    currency: Literal["NOK"]
+    gross_minor: int = Field(gt=0)
+    net_minor: int = Field(gt=0)
+    vat_minor: int = Field(ge=0)
+    vat_basis_points: int
+    captured_minor: int = Field(ge=0)
+    refunded_minor: int = Field(ge=0)
+    captured_at: datetime | None
+    recurring_consent: bool
+    renewal_canceled_at: datetime | None
+    paid_through: date
+    export_through: date
+    renewal_date: date
+
+
+class AnnualBillingSnapshotWire(TransportModel):
+    offer: AnnualBillingOfferWire
+    purchases: list[AnnualPurchaseSummaryWire]
+    next_purchase_id: UUID | None
+
+
+class AnnualRenewalCancellationCommandWire(StrictTransportModel):
+    company_id: UUID
+    purchase_id: UUID
+
+
+class AnnualRenewalCancellationWire(TransportModel):
+    cancellation_id: UUID
+    purchase_id: UUID
+    company_id: UUID
+    income_year: int
+    requested_at: datetime
+    effective_at: datetime
+    paid_through: date
+    export_through: date
 
 
 class BillingConfigureWire(StrictTransportModel):
@@ -3012,6 +3079,8 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         request.state.request_id = _request_id(request)
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
+        if request.url.path.startswith("/api/v1/billing/annual/"):
+            response.headers["Cache-Control"] = "no-store"
         return response
 
 
@@ -3053,6 +3122,7 @@ def create_app(
     banking_providers: Mapping[str, BankDataProvider] | None = None,
     billing_session_factory: BillingSessionFactory | None = None,
     billing_payment_provider: BillingPaymentProvider | None = None,
+    annual_billing_session_factory: AnnualBillingSessionFactory | None = None,
     marketing_measurement_gateway: MarketingMeasurementGateway | None = None,
     marketing_measurement_internal_key: str | None = None,
     validation_observer: PassiveValidationObserver | None = None,
@@ -3094,6 +3164,11 @@ def create_app(
         if billing_session_factory is not None
         else SupabaseBillingAdapter.from_environment()
     )
+    annual_billing_sessions = annual_billing_session_factory or SupabaseAnnualBillingAdapter.from_environment()
+
+    async def annual_billing_workflow(credentials: HTTPAuthorizationCredentials | None) -> AnnualBillingWorkflow:
+        return AnnualBillingWorkflow(await annual_billing_sessions.session(bearer_token(credentials)))
+
     billing_provider = billing_payment_provider or SimulationBillingProvider()
 
     async def billing_workflow(
@@ -8958,6 +9033,73 @@ def create_app(
             "correlation_id": CorrelationId(request.state.request_id),
             "idempotency_key": IdempotencyKey(key),
         }
+
+    @application.get(
+        "/api/v1/billing/annual/snapshot",
+        operation_id="billingReadAnnualSnapshot", response_model=AnnualBillingSnapshotWire,
+        responses={200: {"description": "Stored annual billing facts and published offer; no charge authority."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def read_annual_billing_snapshot(
+        response: Response,
+        company_id: UUID = Query(alias="companyId"),
+        income_year: int = Query(alias="incomeYear", ge=2000, le=2100),
+        before_purchase_id: UUID | None = Query(default=None, alias="beforePurchaseId"),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualBillingSnapshotWire:
+        async def execute():
+            workflow = await annual_billing_workflow(credentials)
+            result = await workflow.snapshot(AnnualBillingSnapshotQuery(
+                CompanyId(str(company_id)), IncomeYear(income_year), workflow.actor_id,
+                AnnualPurchaseId(str(before_purchase_id)) if before_purchase_id else None,
+            ))
+            offer = result.offer
+            response.headers["Cache-Control"] = "no-store"
+            return AnnualBillingSnapshotWire(
+                offer=AnnualBillingOfferWire(
+                    company_id=UUID(str(offer.company_id)), income_year=offer.income_year.value,
+                    **{name: getattr(offer,name) for name in ("offer_version","terms_digest","terms_text","currency",
+                        "gross_minor","net_minor","vat_minor","vat_basis_points","paid_through","export_through",
+                        "renewal_date","renewal_reminder_by","price_change_notice_by")},
+                ),
+                purchases=[AnnualPurchaseSummaryWire(
+                    purchase_id=UUID(str(value.purchase_id)), company_id=UUID(str(value.company_id)),
+                    income_year=value.income_year.value, accepted_at=value.accepted_at.value,
+                    captured_at=value.captured_at.value if value.captured_at else None,
+                    renewal_canceled_at=value.renewal_canceled_at.value if value.renewal_canceled_at else None,
+                    **{name: getattr(value,name) for name in ("status","offer_version","terms_digest","terms_text",
+                        "currency","gross_minor","net_minor","vat_minor","vat_basis_points","captured_minor",
+                        "refunded_minor","recurring_consent","paid_through","export_through","renewal_date")},
+                ) for value in result.purchases.purchases],
+                next_purchase_id=UUID(str(result.purchases.next_purchase_id)) if result.purchases.next_purchase_id else None,
+            )
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/annual/renewal-cancellations",
+        operation_id="billingCancelAnnualRenewal", response_model=AnnualRenewalCancellationWire,
+        responses={200: {"description": "Durable local renewal cancellation; purchased access is preserved."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def cancel_annual_billing_renewal(
+        request: Request, response: Response, command: AnnualRenewalCancellationCommandWire,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=200)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualRenewalCancellationWire:
+        async def execute():
+            workflow = await annual_billing_workflow(credentials)
+            result = await workflow.cancel_renewal(billing_input(lambda: CancelAnnualRenewalCommand(
+                company_id=CompanyId(str(command.company_id)), purchase_id=AnnualPurchaseId(str(command.purchase_id)),
+                **billing_metadata(workflow, request, idempotency_key),
+            )))
+            response.headers["Cache-Control"] = "no-store"
+            return AnnualRenewalCancellationWire(
+                cancellation_id=UUID(str(result.cancellation_id)), purchase_id=UUID(str(result.purchase_id)),
+                company_id=UUID(str(result.company_id)), income_year=result.income_year.value,
+                requested_at=result.requested_at.value, effective_at=result.effective_at.value,
+                paid_through=result.paid_through, export_through=result.export_through,
+            )
+        return await billing_call(execute)
 
     @application.get(
         "/api/v1/billing/snapshot",

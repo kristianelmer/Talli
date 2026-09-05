@@ -143,3 +143,51 @@ test("billing retry redirects and Norwegian plan labels have one shared policy",
   assert.match(actions, /account\.pricingPlan === "founder" \? "grunnleggerplan" : "standardplan"/u);
   assert.doesNotMatch(actions, /\$\{account\.pricingPlan\}-prising/u);
 });
+
+function annualOffer() {
+  return { companyId, incomeYear: 2026, offerVersion: "annual-fixture", termsDigest: "a".repeat(64),
+    termsText: "Stored fixture terms", currency: "NOK", grossMinor: 149000, netMinor: 119200,
+    vatMinor: 29800, vatBasisPoints: 2500, paidThrough: "2027-07-31", exportThrough: "2027-10-31",
+    renewalDate: "2027-01-01", renewalReminderBy: "2026-12-01", priceChangeNoticeBy: "2026-11-01" };
+}
+
+test("annual snapshot uses a scoped cursor and rejects malformed stored facts", async () => {
+  let captured;
+  const payload = { offer: annualOffer(), purchases: [], nextPurchaseId: null };
+  const api = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async (url, request) => {
+    captured = {url: new URL(url), request};
+    return Response.json(payload);
+  }});
+  const request = { companyId, incomeYear: 2026, beforePurchaseId: "10000000-0000-4000-8000-000000000002" };
+  assert.deepEqual(await api.billingReadAnnualSnapshot(request), payload);
+  assert.equal(captured.url.pathname, "/api/v1/billing/annual/snapshot");
+  assert.equal(captured.url.searchParams.get("beforePurchaseId"), request.beforePurchaseId);
+  assert.equal(captured.request.cache, "no-store");
+  const malformed = createTalliApiClient({baseUrl: "https://backend.example", fetch: async () =>
+    Response.json({...payload,offer:{...payload.offer,grossMinor:"149000"}})});
+  await assert.rejects(malformed.billingReadAnnualSnapshot(request), error => error instanceof TalliApiError && error.status===502);
+});
+
+test("annual cancellation sends only company/purchase intent and preserves its durable key", async () => {
+  let captured;
+  const body = { companyId, purchaseId: "10000000-0000-4000-8000-000000000002" };
+  const receipt = { ...body, cancellationId: "10000000-0000-4000-8000-000000000003", incomeYear: 2026,
+    requestedAt: "2026-09-05T12:00:00Z", effectiveAt: "2026-09-05T12:00:00Z",
+    paidThrough: "2027-07-31", exportThrough: "2027-10-31" };
+  const api = createTalliApiClient({baseUrl: "https://backend.example", fetch: async (url,request) => {
+    captured = {url,request}; return Response.json(receipt);
+  }});
+  const result = await api.billingCancelAnnualRenewal(body,{idempotencyKey:"annual-cancellation-00001",requestId:"annual-cancel"});
+  assert.deepEqual(result,receipt);
+  assert.equal(captured.url,"https://backend.example/api/v1/billing/annual/renewal-cancellations");
+  assert.deepEqual(JSON.parse(captured.request.body),body);
+  assert.equal(captured.request.headers["Idempotency-Key"],"annual-cancellation-00001");
+  assert.equal(captured.request.headers["X-Request-ID"],"annual-cancel");
+});
+
+test("annual client rejects private provider fields and invalid money in responses", async () => {
+  for (const offer of [{...annualOffer(),providerAccount:"private"},{...annualOffer(),grossMinor:-1},{...annualOffer(),grossMinor:149000.5}]) {
+    const api = createTalliApiClient({baseUrl:"https://backend.example",fetch:async()=>Response.json({offer,purchases:[],nextPurchaseId:null})});
+    await assert.rejects(api.billingReadAnnualSnapshot({companyId,incomeYear:2026}),error=>error instanceof TalliApiError && error.status===502);
+  }
+});

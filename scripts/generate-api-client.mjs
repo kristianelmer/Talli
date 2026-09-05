@@ -276,6 +276,8 @@ const bankingOperations = {
   ],
 };
 const billingOperations = {
+  annualSnapshot: ["/api/v1/billing/annual/snapshot", "get", "billingReadAnnualSnapshot"],
+  annualCancellation: ["/api/v1/billing/annual/renewal-cancellations", "post", "billingCancelAnnualRenewal"],
   snapshot: ["/api/v1/billing/snapshot", "get", "billingReadSnapshot"],
   entitlement: ["/api/v1/billing/entitlement", "get", "billingReadEntitlement"],
   configure: ["/api/v1/billing/accounts/configuration", "post", "billingConfigureAccount"],
@@ -787,6 +789,12 @@ const bankingSchemas = Object.fromEntries([
   "StartBankConnectionWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const billingSchemas = Object.fromEntries([
+  "AnnualBillingOfferWire",
+  "AnnualPurchaseSummaryWire",
+  "AnnualPurchaseStatus",
+  "AnnualBillingSnapshotWire",
+  "AnnualRenewalCancellationCommandWire",
+  "AnnualRenewalCancellationWire",
   "BillingAccountWire",
   "BillingCompanyWire",
   "BillingConfigureWire",
@@ -1056,6 +1064,12 @@ export interface BankingConnectionCallbackRequest extends TalliRequestOptions {
 
 export interface BankingConnectionListRequest extends TalliRequestOptions {
   companyId: string;
+}
+
+export interface AnnualBillingSnapshotRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+  beforePurchaseId?: string;
 }
 
 export interface BillingSnapshotRequest extends TalliRequestOptions {
@@ -2568,6 +2582,21 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async billingReadAnnualSnapshot(
+      request: AnnualBillingSnapshotRequest,
+    ): Promise<AnnualBillingSnapshotWire> {
+      const query = new URLSearchParams({companyId: request.companyId, incomeYear: String(request.incomeYear)});
+      if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
+      return executeJson(baseUrl + "/api/v1/billing/annual/snapshot?" + query, "GET", request, undefined, isAnnualBillingSnapshotWire);
+    },
+
+    async billingCancelAnnualRenewal(
+      body: AnnualRenewalCancellationCommandWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualRenewalCancellationWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/renewal-cancellations", "POST", request, body, isAnnualRenewalCancellationWire);
     },
 
     async billingReadSnapshot(

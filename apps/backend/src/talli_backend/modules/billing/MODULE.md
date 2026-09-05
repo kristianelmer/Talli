@@ -1,7 +1,7 @@
 # Billing backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
+{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
 -->
 
 ## Purpose and ownership
@@ -289,3 +289,24 @@ index enforces one agreement stop per purchase. The insert guard in
 terminal checkout and exact original provider intent fields. Cleanup settlement
 never updates purchase money, status or access. Roll back this guard before the
 cancellation and annual-ledger migrations; all operation evidence is retained.
+
+
+## Annual customer reads and cancellation API
+
+`AnnualBillingReadPersistence` returns a bounded `AnnualPurchasePage` of stored
+`AnnualPurchaseSummary` values for `AnnualBillingSnapshotQuery`. The public
+`annual_billing_offer` returns the published offer without declaring eligibility
+or charge authority. `AnnualBillingSnapshot` combines that offer and the page.
+Historical accepted amounts, terms and statuses come from each purchase, never
+from the current offer. Descending accepted-at/ID pagination retains failed and
+refunded history; each page has at most 50 summaries and a scoped purchase cursor.
+
+`PostgresAnnualBillingReadSession` uses the existing verified-owner/fresh-MFA
+boundary even for an empty snapshot. Its explicit projection excludes acceptance
+basis/legal documents, merchant account, provider intent, keys and fingerprints.
+GET is read-only and has no provider/readiness dependency. The provider-free
+`AnnualBillingWorkflow` and `SupabaseAnnualBillingAdapter` compose reads and local
+renewal cancellation from the same verified actor. The annual snapshot and
+renewal-cancellations HTTP routes expose generated contracts with no-store
+responses. Cancellation returns the immutable local receipt and unchanged access
+dates; it does not claim provider acknowledgement or automatic worker cleanup.

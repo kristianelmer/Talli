@@ -379,6 +379,132 @@
         "title": "AdministrativeCostEntryWire",
         "type": "object"
       },
+      "AnnualBillingOfferWire": {
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "currency": {
+            "const": "NOK",
+            "title": "Currency",
+            "type": "string"
+          },
+          "exportThrough": {
+            "format": "date",
+            "title": "Exportthrough",
+            "type": "string"
+          },
+          "grossMinor": {
+            "exclusiveMinimum": 0.0,
+            "title": "Grossminor",
+            "type": "integer"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "netMinor": {
+            "exclusiveMinimum": 0.0,
+            "title": "Netminor",
+            "type": "integer"
+          },
+          "offerVersion": {
+            "title": "Offerversion",
+            "type": "string"
+          },
+          "paidThrough": {
+            "format": "date",
+            "title": "Paidthrough",
+            "type": "string"
+          },
+          "priceChangeNoticeBy": {
+            "format": "date",
+            "title": "Pricechangenoticeby",
+            "type": "string"
+          },
+          "renewalDate": {
+            "format": "date",
+            "title": "Renewaldate",
+            "type": "string"
+          },
+          "renewalReminderBy": {
+            "format": "date",
+            "title": "Renewalreminderby",
+            "type": "string"
+          },
+          "termsDigest": {
+            "title": "Termsdigest",
+            "type": "string"
+          },
+          "termsText": {
+            "title": "Termstext",
+            "type": "string"
+          },
+          "vatBasisPoints": {
+            "title": "Vatbasispoints",
+            "type": "integer"
+          },
+          "vatMinor": {
+            "minimum": 0.0,
+            "title": "Vatminor",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "offerVersion",
+          "termsDigest",
+          "termsText",
+          "currency",
+          "grossMinor",
+          "netMinor",
+          "vatMinor",
+          "vatBasisPoints",
+          "paidThrough",
+          "exportThrough",
+          "renewalDate",
+          "renewalReminderBy",
+          "priceChangeNoticeBy"
+        ],
+        "title": "AnnualBillingOfferWire",
+        "type": "object"
+      },
+      "AnnualBillingSnapshotWire": {
+        "properties": {
+          "nextPurchaseId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextpurchaseid"
+          },
+          "offer": {
+            "$ref": "#/components/schemas/AnnualBillingOfferWire"
+          },
+          "purchases": {
+            "items": {
+              "$ref": "#/components/schemas/AnnualPurchaseSummaryWire"
+            },
+            "title": "Purchases",
+            "type": "array"
+          }
+        },
+        "required": [
+          "offer",
+          "purchases",
+          "nextPurchaseId"
+        ],
+        "title": "AnnualBillingSnapshotWire",
+        "type": "object"
+      },
       "AnnualCloseEventKind": {
         "enum": [
           "signing_requested",
@@ -728,6 +854,232 @@
           "byteLength"
         ],
         "title": "AnnualCloseSignedArtifactWire",
+        "type": "object"
+      },
+      "AnnualPurchaseStatus": {
+        "enum": [
+          "pending",
+          "paid",
+          "failed",
+          "refunded"
+        ],
+        "title": "AnnualPurchaseStatus",
+        "type": "string"
+      },
+      "AnnualPurchaseSummaryWire": {
+        "properties": {
+          "acceptedAt": {
+            "format": "date-time",
+            "title": "Acceptedat",
+            "type": "string"
+          },
+          "capturedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capturedat"
+          },
+          "capturedMinor": {
+            "minimum": 0.0,
+            "title": "Capturedminor",
+            "type": "integer"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "currency": {
+            "const": "NOK",
+            "title": "Currency",
+            "type": "string"
+          },
+          "exportThrough": {
+            "format": "date",
+            "title": "Exportthrough",
+            "type": "string"
+          },
+          "grossMinor": {
+            "exclusiveMinimum": 0.0,
+            "title": "Grossminor",
+            "type": "integer"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "netMinor": {
+            "exclusiveMinimum": 0.0,
+            "title": "Netminor",
+            "type": "integer"
+          },
+          "offerVersion": {
+            "title": "Offerversion",
+            "type": "string"
+          },
+          "paidThrough": {
+            "format": "date",
+            "title": "Paidthrough",
+            "type": "string"
+          },
+          "purchaseId": {
+            "format": "uuid",
+            "title": "Purchaseid",
+            "type": "string"
+          },
+          "recurringConsent": {
+            "title": "Recurringconsent",
+            "type": "boolean"
+          },
+          "refundedMinor": {
+            "minimum": 0.0,
+            "title": "Refundedminor",
+            "type": "integer"
+          },
+          "renewalCanceledAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Renewalcanceledat"
+          },
+          "renewalDate": {
+            "format": "date",
+            "title": "Renewaldate",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AnnualPurchaseStatus"
+          },
+          "termsDigest": {
+            "title": "Termsdigest",
+            "type": "string"
+          },
+          "termsText": {
+            "title": "Termstext",
+            "type": "string"
+          },
+          "vatBasisPoints": {
+            "title": "Vatbasispoints",
+            "type": "integer"
+          },
+          "vatMinor": {
+            "minimum": 0.0,
+            "title": "Vatminor",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "purchaseId",
+          "companyId",
+          "incomeYear",
+          "status",
+          "acceptedAt",
+          "offerVersion",
+          "termsDigest",
+          "termsText",
+          "currency",
+          "grossMinor",
+          "netMinor",
+          "vatMinor",
+          "vatBasisPoints",
+          "capturedMinor",
+          "refundedMinor",
+          "capturedAt",
+          "recurringConsent",
+          "renewalCanceledAt",
+          "paidThrough",
+          "exportThrough",
+          "renewalDate"
+        ],
+        "title": "AnnualPurchaseSummaryWire",
+        "type": "object"
+      },
+      "AnnualRenewalCancellationCommandWire": {
+        "additionalProperties": false,
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "purchaseId": {
+            "format": "uuid",
+            "title": "Purchaseid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "purchaseId"
+        ],
+        "title": "AnnualRenewalCancellationCommandWire",
+        "type": "object"
+      },
+      "AnnualRenewalCancellationWire": {
+        "properties": {
+          "cancellationId": {
+            "format": "uuid",
+            "title": "Cancellationid",
+            "type": "string"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "effectiveAt": {
+            "format": "date-time",
+            "title": "Effectiveat",
+            "type": "string"
+          },
+          "exportThrough": {
+            "format": "date",
+            "title": "Exportthrough",
+            "type": "string"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "paidThrough": {
+            "format": "date",
+            "title": "Paidthrough",
+            "type": "string"
+          },
+          "purchaseId": {
+            "format": "uuid",
+            "title": "Purchaseid",
+            "type": "string"
+          },
+          "requestedAt": {
+            "format": "date-time",
+            "title": "Requestedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cancellationId",
+          "purchaseId",
+          "companyId",
+          "incomeYear",
+          "requestedAt",
+          "effectiveAt",
+          "paidThrough",
+          "exportThrough"
+        ],
+        "title": "AnnualRenewalCancellationWire",
         "type": "object"
       },
       "BankAccountWire": {
@@ -22175,6 +22527,967 @@
           }
         ],
         "summary": "Configure Billing Account",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/v1/billing/annual/renewal-cancellations": {
+      "post": {
+        "operationId": "billingCancelAnnualRenewal",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 16,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnualRenewalCancellationCommandWire"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualRenewalCancellationWire"
+                }
+              }
+            },
+            "description": "Durable local renewal cancellation; purchased access is preserved.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Billing request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Billing request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Billing request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Billing request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Billing request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Billing request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Billing request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Cancel Annual Billing Renewal",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/v1/billing/annual/snapshot": {
+      "get": {
+        "operationId": "billingReadAnnualSnapshot",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "companyId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Companyid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "incomeYear",
+            "required": true,
+            "schema": {
+              "maximum": 2100,
+              "minimum": 2000,
+              "title": "Incomeyear",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "beforePurchaseId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Beforepurchaseid"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualBillingSnapshotWire"
+                }
+              }
+            },
+            "description": "Stored annual billing facts and published offer; no charge authority.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Billing request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Billing request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Billing request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Billing request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Billing request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Billing request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Billing request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Read Annual Billing Snapshot",
         "tags": [
           "billing"
         ]

@@ -412,3 +412,21 @@ original cleanup operation. Runtime/worker composition remains pending #192.
 <!-- architecture-inventory
 {"ports":["AnnualAgreementCleanupPersistence"],"adapterBindings":["AnnualAgreementCleanupPersistence=>talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession"],"adapterBindingOwners":["AnnualAgreementCleanupPersistence=>backend-system"],"adapterBindingModes":["AnnualAgreementCleanupPersistence=>verified-owner receipt-bound original agreement cleanup; runtime and worker authority pending #192"]}
 -->
+
+
+## Annual billing reads and local cancellation
+
+The `annual-billing-reads-and-cancellation` workflow uses
+`SupabaseAnnualBillingAdapter` to verify a bearer and construct read/cancellation
+ports from one verified actor. `AnnualBillingWorkflow` imports billing's public
+contract only and has no provider/readiness dependency. Snapshot GET reads stored
+facts; cancellation POST returns durable local effectiveness and preserved dates.
+
+<!-- architecture-inventory
+{"workflows":["annual-billing-reads-and-cancellation"],"routes":["/api/v1/billing/annual/snapshot","/api/v1/billing/annual/renewal-cancellations"],"ports":["AnnualBillingReadPersistence"],"adapterBindings":["AnnualBillingReadPersistence=>talli_backend.adapters.supabase_annual_billing.PostgresAnnualBillingReadSession"],"adapterBindingOwners":["AnnualBillingReadPersistence=>backend-system"],"adapterBindingModes":["AnnualBillingReadPersistence=>verified-owner stored annual public purchase projection; no provider or readiness calls"]}
+-->
+
+
+<!-- architecture-inventory
+{"workflowPurposes":["annual-billing-reads-and-cancellation=>Authenticates annual owner reads and immediate local renewal cancellation from one verified actor; no provider, readiness or checkout activation."],"transportDependencies":["talli_backend.adapters.supabase_annual_billing","talli_backend.application.annual_billing"],"adapterDependencies":["talli_backend.adapters.supabase_annual_billing","talli_backend.application.annual_billing"]}
+-->

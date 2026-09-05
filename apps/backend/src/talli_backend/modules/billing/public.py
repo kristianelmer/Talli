@@ -657,6 +657,76 @@ class AnnualCheckout:
     renewal_canceled_at: Timestamp | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class AnnualBillingSnapshotQuery:
+    company_id: CompanyId
+    income_year: IncomeYear
+    actor_id: ActorId
+    before_purchase_id: AnnualPurchaseId | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualPurchaseSummary:
+    """Stored customer billing facts; no merchant or acceptance-source material."""
+
+    purchase_id: AnnualPurchaseId
+    company_id: CompanyId
+    income_year: IncomeYear
+    status: AnnualPurchaseStatus
+    accepted_at: Timestamp
+    offer_version: str
+    terms_digest: str
+    terms_text: str
+    currency: str
+    gross_minor: int
+    net_minor: int
+    vat_minor: int
+    vat_basis_points: int
+    captured_minor: int
+    refunded_minor: int
+    captured_at: Timestamp | None
+    recurring_consent: bool
+    renewal_canceled_at: Timestamp | None
+    paid_through: date
+    export_through: date
+    renewal_date: date
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualPurchasePage:
+    purchases: tuple[AnnualPurchaseSummary, ...]
+    next_purchase_id: AnnualPurchaseId | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualBillingSnapshot:
+    offer: AnnualBillingOffer
+    purchases: AnnualPurchasePage
+
+
+def annual_billing_offer(company_id: CompanyId, income_year: IncomeYear) -> AnnualBillingOffer:
+    """Published offer only; availability is not eligibility or charge authority."""
+    from talli_backend.modules.billing.annual_policy import annual_offer
+
+    return annual_offer(company_id, income_year)
+
+
+@runtime_checkable
+class AnnualBillingReadPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def read_purchases(self, query: AnnualBillingSnapshotQuery) -> AnnualPurchasePage:
+        """Authorize owner/fresh MFA even for an empty company-year result.
+
+        Read at most 50 stored summaries in descending accepted-at/ID order;
+        return a next-purchase cursor when more rows exist. Cursor scope is the
+        same company/year. No writes, readiness checks, provider calls or raw
+        intent/merchant/acceptance-basis fields belong in this projection.
+        """
+        ...
+
+
 class AnnualCancellationId(_UuidId):
     pass
 
@@ -945,6 +1015,12 @@ def billing_provider_adapter(port: type[object]) -> Callable[[Adapter], Adapter]
 
 
 __all__ = [
+    "AnnualBillingSnapshotQuery",
+    "AnnualPurchaseSummary",
+    "AnnualPurchasePage",
+    "AnnualBillingSnapshot",
+    "annual_billing_offer",
+    "AnnualBillingReadPersistence",
     "AnnualAgreementCleanup",
     "AnnualAgreementCleanupClaim",
     "AnnualAgreementCleanupPersistence",

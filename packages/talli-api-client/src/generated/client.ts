@@ -2564,6 +2564,72 @@ export interface StartBankConnectionWire {
   returnUrl: string;
 }
 
+export interface AnnualBillingOfferWire {
+  companyId: string;
+  currency: "NOK";
+  exportThrough: string;
+  grossMinor: number;
+  incomeYear: number;
+  netMinor: number;
+  offerVersion: string;
+  paidThrough: string;
+  priceChangeNoticeBy: string;
+  renewalDate: string;
+  renewalReminderBy: string;
+  termsDigest: string;
+  termsText: string;
+  vatBasisPoints: number;
+  vatMinor: number;
+}
+
+export interface AnnualPurchaseSummaryWire {
+  acceptedAt: string;
+  capturedAt: string | null;
+  capturedMinor: number;
+  companyId: string;
+  currency: "NOK";
+  exportThrough: string;
+  grossMinor: number;
+  incomeYear: number;
+  netMinor: number;
+  offerVersion: string;
+  paidThrough: string;
+  purchaseId: string;
+  recurringConsent: boolean;
+  refundedMinor: number;
+  renewalCanceledAt: string | null;
+  renewalDate: string;
+  status: AnnualPurchaseStatus;
+  termsDigest: string;
+  termsText: string;
+  vatBasisPoints: number;
+  vatMinor: number;
+}
+
+export type AnnualPurchaseStatus = "pending" | "paid" | "failed" | "refunded";
+
+export interface AnnualBillingSnapshotWire {
+  nextPurchaseId: string | null;
+  offer: AnnualBillingOfferWire;
+  purchases: AnnualPurchaseSummaryWire[];
+}
+
+export interface AnnualRenewalCancellationCommandWire {
+  companyId: string;
+  purchaseId: string;
+}
+
+export interface AnnualRenewalCancellationWire {
+  cancellationId: string;
+  companyId: string;
+  effectiveAt: string;
+  exportThrough: string;
+  incomeYear: number;
+  paidThrough: string;
+  purchaseId: string;
+  requestedAt: string;
+}
+
 export interface BillingAccountWire {
   companyId: string;
   createdAt: string;
@@ -6141,6 +6207,94 @@ function isStartBankConnectionWire(value: unknown): value is StartBankConnection
   );
 }
 
+function isAnnualBillingOfferWire(value: unknown): value is AnnualBillingOfferWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","currency","exportThrough","grossMinor","incomeYear","netMinor","offerVersion","paidThrough","priceChangeNoticeBy","renewalDate","renewalReminderBy","termsDigest","termsText","vatBasisPoints","vatMinor"]) &&
+    isUuid(value.companyId) &&
+    value.currency === "NOK" &&
+    typeof value.exportThrough === "string" &&
+    (typeof value.grossMinor === "number" && Number.isInteger(value.grossMinor) && value.grossMinor > 0) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    (typeof value.netMinor === "number" && Number.isInteger(value.netMinor) && value.netMinor > 0) &&
+    typeof value.offerVersion === "string" &&
+    typeof value.paidThrough === "string" &&
+    typeof value.priceChangeNoticeBy === "string" &&
+    typeof value.renewalDate === "string" &&
+    typeof value.renewalReminderBy === "string" &&
+    typeof value.termsDigest === "string" &&
+    typeof value.termsText === "string" &&
+    typeof value.vatBasisPoints === "number" && Number.isInteger(value.vatBasisPoints) &&
+    (typeof value.vatMinor === "number" && Number.isInteger(value.vatMinor) && value.vatMinor >= 0)
+  );
+}
+
+function isAnnualPurchaseSummaryWire(value: unknown): value is AnnualPurchaseSummaryWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["acceptedAt","capturedAt","capturedMinor","companyId","currency","exportThrough","grossMinor","incomeYear","netMinor","offerVersion","paidThrough","purchaseId","recurringConsent","refundedMinor","renewalCanceledAt","renewalDate","status","termsDigest","termsText","vatBasisPoints","vatMinor"]) &&
+    isDateTime(value.acceptedAt) &&
+    (isDateTime(value.capturedAt) || value.capturedAt === null) &&
+    (typeof value.capturedMinor === "number" && Number.isInteger(value.capturedMinor) && value.capturedMinor >= 0) &&
+    isUuid(value.companyId) &&
+    value.currency === "NOK" &&
+    typeof value.exportThrough === "string" &&
+    (typeof value.grossMinor === "number" && Number.isInteger(value.grossMinor) && value.grossMinor > 0) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    (typeof value.netMinor === "number" && Number.isInteger(value.netMinor) && value.netMinor > 0) &&
+    typeof value.offerVersion === "string" &&
+    typeof value.paidThrough === "string" &&
+    isUuid(value.purchaseId) &&
+    typeof value.recurringConsent === "boolean" &&
+    (typeof value.refundedMinor === "number" && Number.isInteger(value.refundedMinor) && value.refundedMinor >= 0) &&
+    (isDateTime(value.renewalCanceledAt) || value.renewalCanceledAt === null) &&
+    typeof value.renewalDate === "string" &&
+    isAnnualPurchaseStatus(value.status) &&
+    typeof value.termsDigest === "string" &&
+    typeof value.termsText === "string" &&
+    typeof value.vatBasisPoints === "number" && Number.isInteger(value.vatBasisPoints) &&
+    (typeof value.vatMinor === "number" && Number.isInteger(value.vatMinor) && value.vatMinor >= 0)
+  );
+}
+
+function isAnnualPurchaseStatus(value: unknown): value is AnnualPurchaseStatus {
+  return value === "pending" || value === "paid" || value === "failed" || value === "refunded";
+}
+
+function isAnnualBillingSnapshotWire(value: unknown): value is AnnualBillingSnapshotWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["nextPurchaseId","offer","purchases"]) &&
+    (isUuid(value.nextPurchaseId) || value.nextPurchaseId === null) &&
+    isAnnualBillingOfferWire(value.offer) &&
+    Array.isArray(value.purchases) && value.purchases.every((item) => isAnnualPurchaseSummaryWire(item))
+  );
+}
+
+function isAnnualRenewalCancellationCommandWire(value: unknown): value is AnnualRenewalCancellationCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","purchaseId"]) &&
+    isUuid(value.companyId) &&
+    isUuid(value.purchaseId)
+  );
+}
+
+function isAnnualRenewalCancellationWire(value: unknown): value is AnnualRenewalCancellationWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["cancellationId","companyId","effectiveAt","exportThrough","incomeYear","paidThrough","purchaseId","requestedAt"]) &&
+    isUuid(value.cancellationId) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.effectiveAt) &&
+    typeof value.exportThrough === "string" &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.paidThrough === "string" &&
+    isUuid(value.purchaseId) &&
+    isDateTime(value.requestedAt)
+  );
+}
+
 function isBillingAccountWire(value: unknown): value is BillingAccountWire {
   return (
     isRecord(value) &&
@@ -6507,6 +6661,12 @@ export interface BankingConnectionCallbackRequest extends TalliRequestOptions {
 
 export interface BankingConnectionListRequest extends TalliRequestOptions {
   companyId: string;
+}
+
+export interface AnnualBillingSnapshotRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+  beforePurchaseId?: string;
 }
 
 export interface BillingSnapshotRequest extends TalliRequestOptions {
@@ -8019,6 +8179,21 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async billingReadAnnualSnapshot(
+      request: AnnualBillingSnapshotRequest,
+    ): Promise<AnnualBillingSnapshotWire> {
+      const query = new URLSearchParams({companyId: request.companyId, incomeYear: String(request.incomeYear)});
+      if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
+      return executeJson(baseUrl + "/api/v1/billing/annual/snapshot?" + query, "GET", request, undefined, isAnnualBillingSnapshotWire);
+    },
+
+    async billingCancelAnnualRenewal(
+      body: AnnualRenewalCancellationCommandWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualRenewalCancellationWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/renewal-cancellations", "POST", request, body, isAnnualRenewalCancellationWire);
     },
 
     async billingReadSnapshot(

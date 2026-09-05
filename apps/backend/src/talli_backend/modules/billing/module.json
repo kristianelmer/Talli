@@ -23,7 +23,8 @@
       "BillingEntitlementDecision",
       "BillingEntitlementQuery",
       "BillingSnapshot",
-      "BillingSnapshotQuery"
+      "BillingSnapshotQuery",
+      "AnnualBillingSnapshotQuery"
     ],
     "events": [
       "BillingPaymentEvent"
@@ -80,7 +81,12 @@
       "AnnualAgreementCleanup",
       "AnnualAgreementCleanupClaim",
       "AnnualAgreementCleanupPersistence",
-      "settle_annual_agreement_cleanup"
+      "settle_annual_agreement_cleanup",
+      "AnnualBillingSnapshot",
+      "AnnualPurchaseSummary",
+      "AnnualPurchasePage",
+      "annual_billing_offer",
+      "AnnualBillingReadPersistence"
     ]
   },
   "owns": {
@@ -158,6 +164,15 @@
       "adapters": [
         "talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession"
       ]
+    },
+    {
+      "name": "AnnualBillingReadPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualBillingReadPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.supabase_annual_billing.PostgresAnnualBillingReadSession"
+      ]
     }
   ],
   "dependencies": [],
@@ -196,7 +211,9 @@
     "annualCheckoutDatabase": "apps/backend/tests/test_annual_checkout_runtime.py",
     "annualCancellationDatabase": "apps/backend/tests/test_annual_cancellation_runtime.py",
     "annualCleanup": "apps/backend/tests/test_annual_cleanup_service.py",
-    "annualCleanupDatabase": "apps/backend/tests/test_annual_cleanup_runtime.py"
+    "annualCleanupDatabase": "apps/backend/tests/test_annual_cleanup_runtime.py",
+    "annualReadDatabase": "apps/backend/tests/test_annual_billing_read_runtime.py",
+    "annualApi": "apps/backend/tests/test_annual_billing_api.py"
   },
   "compatibilityExceptions": []
 }
