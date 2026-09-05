@@ -60,6 +60,22 @@ def _timestamp(value):
     )
 
 
+def _provider_intent(value):
+    return AnnualProviderIntent(
+        **(
+            value
+            | {
+                "operation_id": BillingPaymentEventId(value["operation_id"]),
+                "company_id": CompanyId(value["company_id"]),
+                "income_year": IncomeYear(value["income_year"]),
+                "operation": AnnualProviderOperation(value["operation"]),
+                "created_at": _timestamp(value["created_at"]),
+                "due_date": date.fromisoformat(value["due_date"]) if value["due_date"] else None,
+            }
+        )
+    )
+
+
 def _checkout(purchase, operation):
     saved = operation["intent"]
     intent = saved["provider_intent"]
@@ -113,19 +129,7 @@ def _checkout(purchase, operation):
         idempotency_key=IdempotencyKey(operation["idempotency_key"]),
         provider=purchase["provider"],
         provider_account=purchase["provider_account"],
-        intent=AnnualProviderIntent(
-            **(
-                intent
-                | {
-                    "operation_id": BillingPaymentEventId(intent["operation_id"]),
-                    "company_id": CompanyId(intent["company_id"]),
-                    "income_year": IncomeYear(intent["income_year"]),
-                    "operation": AnnualProviderOperation(intent["operation"]),
-                    "created_at": _timestamp(intent["created_at"]),
-                    "due_date": date.fromisoformat(intent["due_date"]) if intent["due_date"] else None,
-                }
-            )
-        ),
+        intent=_provider_intent(intent),
         status=AnnualPurchaseStatus(purchase["status"]),
         observation=observation,
         renewal_canceled_at=_timestamp(purchase["renewal_canceled_at"]),

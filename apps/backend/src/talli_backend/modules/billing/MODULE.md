@@ -270,8 +270,8 @@ one durable `AnnualAgreementCleanup` for a persisted cancellation receipt and a
 terminal original purchase. `AnnualAgreementCleanupClaim` identifies the first
 claim. The store must defer unresolved payments and competing charge intents,
 verify current owner/fresh MFA, and preserve exact provider/account and references.
-Its PostgreSQL adapter and runtime composition are still pending; this is an
-internal orchestration unit, not a completed cancellation workflow.
+Its PostgreSQL adapter is `PostgresAnnualCleanupSession`; runtime composition
+and worker authority remain pending. This is not a completed customer workflow.
 
 A replay first reconciles the original operation. A confirmed stop returns as-is;
 unknown evidence remains unknown. A pending observation permits retrying the same
@@ -280,3 +280,12 @@ rechecks the agreement and original charge before any PATCH.
 `settle_annual_agreement_cleanup` validates linkage and zero cleanup money totals,
 preserves confirmed state, and never settles the observation onto a purchase.
 No worker authority, future agreement/year lineage, or actual MT proof is implied.
+
+
+The cleanup adapter reauthorizes every claim and settlement, locks the original
+purchase before operations, and chooses a persisted receipt. A unique partial
+index enforces one agreement stop per purchase. The insert guard in
+`supabase/migrations/20260905103149_annual_agreement_cleanup.sql` verifies receipt,
+terminal checkout and exact original provider intent fields. Cleanup settlement
+never updates purchase money, status or access. Roll back this guard before the
+cancellation and annual-ledger migrations; all operation evidence is retained.

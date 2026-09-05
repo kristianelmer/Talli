@@ -416,6 +416,12 @@
       "adapter": "talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCancellationSession",
       "owner": "backend-system",
       "mode": "verified-owner local renewal cancellation and immutable receipts; provider cleanup and runtime cutover pending #192"
+    },
+    {
+      "port": "AnnualAgreementCleanupPersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession",
+      "owner": "backend-system",
+      "mode": "verified-owner receipt-bound original agreement cleanup; runtime and worker authority pending #192"
     }
   ],
   "allowedDependencies": {

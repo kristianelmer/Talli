@@ -399,3 +399,16 @@ composition, provider cleanup and worker recovery remain pending.
 <!-- architecture-inventory
 {"ports":["AnnualCancellationPersistence"],"adapterBindings":["AnnualCancellationPersistence=>talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCancellationSession"],"adapterBindingOwners":["AnnualCancellationPersistence=>backend-system"],"adapterBindingModes":["AnnualCancellationPersistence=>verified-owner local renewal cancellation and immutable receipts; provider cleanup and runtime cutover pending #192"]}
 -->
+
+
+## Annual agreement cleanup persistence
+
+`AnnualAgreementCleanupPersistence` binds to
+`talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession`.
+It shares the verified-owner PostgreSQL transaction boundary, locks purchase
+before operations, binds a persisted cancellation receipt, and settles only the
+original cleanup operation. Runtime/worker composition remains pending #192.
+
+<!-- architecture-inventory
+{"ports":["AnnualAgreementCleanupPersistence"],"adapterBindings":["AnnualAgreementCleanupPersistence=>talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession"],"adapterBindingOwners":["AnnualAgreementCleanupPersistence=>backend-system"],"adapterBindingModes":["AnnualAgreementCleanupPersistence=>verified-owner receipt-bound original agreement cleanup; runtime and worker authority pending #192"]}
+-->

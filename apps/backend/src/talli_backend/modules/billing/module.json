@@ -102,7 +102,7 @@
       "BillingEntitlementDecision",
       "BillingSnapshot"
     ],
-    "migrations": "supabase/migrations/20260905100130_annual_renewal_cancellation.sql"
+    "migrations": "supabase/migrations/20260905103149_annual_agreement_cleanup.sql"
   },
   "ports": [
     {
@@ -155,7 +155,9 @@
       "direction": "outbound",
       "contract": "talli_backend.modules.billing.public.AnnualAgreementCleanupPersistence",
       "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
-      "adapters": []
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession"
+      ]
     }
   ],
   "dependencies": [],
@@ -193,7 +195,8 @@
     "annualCheckout": "apps/backend/tests/test_annual_checkout_service.py",
     "annualCheckoutDatabase": "apps/backend/tests/test_annual_checkout_runtime.py",
     "annualCancellationDatabase": "apps/backend/tests/test_annual_cancellation_runtime.py",
-    "annualCleanup": "apps/backend/tests/test_annual_cleanup_service.py"
+    "annualCleanup": "apps/backend/tests/test_annual_cleanup_service.py",
+    "annualCleanupDatabase": "apps/backend/tests/test_annual_cleanup_runtime.py"
   },
   "compatibilityExceptions": []
 }

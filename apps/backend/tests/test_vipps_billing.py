@@ -91,9 +91,9 @@ class MerchantTestFixture:
             self.charge["summary"]["captured"] = 0
             self.charge["history"] = []
             return httpx.Response(201, json={"chargeId": "talli-charge-2026"})
-        if path.endswith("/charges/talli-charge-2026"):
+        if path.endswith("/charges/" + self.charge["id"]):
             return httpx.Response(200, json=self.charge)
-        if path.endswith("/agr_local"):
+        if path.endswith("/" + self.agreement["id"]):
             return httpx.Response(200, json=self.agreement)
         return httpx.Response(404)
 
