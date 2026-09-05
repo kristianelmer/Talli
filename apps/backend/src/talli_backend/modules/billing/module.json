@@ -76,7 +76,11 @@
       "settle_annual_checkout",
       "AnnualCancellationId",
       "AnnualCancellationPersistence",
-      "AnnualRenewalCancellation"
+      "AnnualRenewalCancellation",
+      "AnnualAgreementCleanup",
+      "AnnualAgreementCleanupClaim",
+      "AnnualAgreementCleanupPersistence",
+      "settle_annual_agreement_cleanup"
     ]
   },
   "owns": {
@@ -145,6 +149,13 @@
       "adapters": [
         "talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCancellationSession"
       ]
+    },
+    {
+      "name": "AnnualAgreementCleanupPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualAgreementCleanupPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": []
     }
   ],
   "dependencies": [],
@@ -181,7 +192,8 @@
     "annualLedger": "apps/backend/tests/test_annual_purchase_ledger_runtime.py",
     "annualCheckout": "apps/backend/tests/test_annual_checkout_service.py",
     "annualCheckoutDatabase": "apps/backend/tests/test_annual_checkout_runtime.py",
-    "annualCancellationDatabase": "apps/backend/tests/test_annual_cancellation_runtime.py"
+    "annualCancellationDatabase": "apps/backend/tests/test_annual_cancellation_runtime.py",
+    "annualCleanup": "apps/backend/tests/test_annual_cleanup_service.py"
   },
   "compatibilityExceptions": []
 }

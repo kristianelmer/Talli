@@ -1,7 +1,7 @@
 # Billing backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
+{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
 -->
 
 ## Purpose and ownership
@@ -261,3 +261,22 @@ claims a refund. Provider agreement-stop/pending-renewal-charge cleanup, durable
 worker recovery and annual runtime/UI composition are still pending #192 work.
 Future renewal claims must honor this authority through explicit agreement/year
 lineage; current next-year admission remains blocked.
+
+
+## Annual agreement cleanup orchestration
+
+`AnnualAgreementCleanupService` uses `AnnualAgreementCleanupPersistence` to claim
+one durable `AnnualAgreementCleanup` for a persisted cancellation receipt and a
+terminal original purchase. `AnnualAgreementCleanupClaim` identifies the first
+claim. The store must defer unresolved payments and competing charge intents,
+verify current owner/fresh MFA, and preserve exact provider/account and references.
+Its PostgreSQL adapter and runtime composition are still pending; this is an
+internal orchestration unit, not a completed cancellation workflow.
+
+A replay first reconciles the original operation. A confirmed stop returns as-is;
+unknown evidence remains unknown. A pending observation permits retrying the same
+immutable stop intent, covering a crash between claim and PATCH. The provider
+rechecks the agreement and original charge before any PATCH.
+`settle_annual_agreement_cleanup` validates linkage and zero cleanup money totals,
+preserves confirmed state, and never settles the observation onto a purchase.
+No worker authority, future agreement/year lineage, or actual MT proof is implied.

@@ -702,6 +702,65 @@ class AnnualCancellationPersistence(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
+class AnnualAgreementCleanup:
+    """One durable agreement-stop intent, separate from purchase settlement."""
+
+    purchase_id: AnnualPurchaseId
+    cancellation_id: AnnualCancellationId
+    provider: str
+    provider_account: str
+    intent: AnnualProviderIntent
+    observation: AnnualProviderObservation | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAgreementCleanupClaim:
+    cleanup: AnnualAgreementCleanup
+    newly_claimed: bool
+
+
+@runtime_checkable
+class AnnualAgreementCleanupPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def claim_agreement_cleanup(
+        self, company_id: CompanyId, purchase_id: AnnualPurchaseId,
+    ) -> AnnualAgreementCleanupClaim | None:
+        """Require current owner and fresh MFA; lock purchase before operation.
+
+        Bind a persisted same-purchase cancellation receipt and a verified
+        terminal original checkout with a known agreement. Defer unresolved
+        payments or competing charge intents by returning None. Never infer
+        future agreement/year lineage. Commit one immutable STOP_AGREEMENT
+        operation per purchase before returning; all retries reuse its identity,
+        provider/account and original references. No eligibility/readiness gate
+        may obstruct cancellation. No worker may fabricate an owner session.
+        """
+        ...
+
+    async def settle_agreement_cleanup(
+        self, cleanup: AnnualAgreementCleanup, observation: AnnualProviderObservation,
+    ) -> AnnualAgreementCleanup:
+        """Reauthorize, lock purchase then operation, and validate latest state.
+
+        Use settle_annual_agreement_cleanup; preserve confirmed terminal state.
+        Update only the cleanup operation, never purchase money/status/access.
+        Reject changes to the stored intent, receipt, provider or account.
+        """
+        ...
+
+
+def settle_annual_agreement_cleanup(
+    cleanup: AnnualAgreementCleanup, observation: AnnualProviderObservation,
+) -> AnnualAgreementCleanup:
+    """Validate cleanup evidence without applying it to financial state."""
+    from talli_backend.modules.billing.annual_cleanup import settle_cleanup
+
+    return settle_cleanup(cleanup, observation)
+
+
+@dataclass(frozen=True, slots=True)
 class AnnualCheckoutClaim:
     checkout: AnnualCheckout
     newly_claimed: bool
@@ -886,6 +945,10 @@ def billing_provider_adapter(port: type[object]) -> Callable[[Adapter], Adapter]
 
 
 __all__ = [
+    "AnnualAgreementCleanup",
+    "AnnualAgreementCleanupClaim",
+    "AnnualAgreementCleanupPersistence",
+    "settle_annual_agreement_cleanup",
     "AnnualCancellationId",
     "AnnualCancellationPersistence",
     "AnnualRenewalCancellation",
