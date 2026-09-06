@@ -4,7 +4,7 @@
   "capability": "billing",
   "status": "implementation-in-progress",
   "canonicalRoute": "#137 \u2192 #192 \u2192 #150",
-  "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5550934090",
+  "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5560164848",
   "routeCorrection": "Oversight reconciled source-handoff #137\u2192#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
   "baseline": {
     "revision": "ccf1dcba56a4eb05c5252b00286dba6b2b8b480e",
@@ -243,6 +243,21 @@
       },
       "architecture": "Exact implementation final full suite49/51: only existing four unapproved future-owned deletion scopes and active inventory92vs96. Deterministic evidence and all other architecture tests pass. No checker/baseline/ADR/order changes. NOT architecture PASS.",
       "limits": "Refund-triggered original agreement cleanup persistence is implemented; source-owned incident/submission facts, caller/worker/support composition, actual MT, customer actionability and complete192 gates remain due. No production or hosted mutation. Remote mainccf1dcba and release/productiond331ee27 unchanged. Full165 goal ACTIVE;150 unclaimed."
+    },
+    "annualAgreementCleanupHttp": {
+      "implementationRevision": "0e18b32f7bc6035d71c12aa1535c6d22848a72a5",
+      "finalReviewedRevision": "c80bb6c155c3ed49a0f3e53457d48e5328fc8905",
+      "scope": "Authenticated owner POST original-agreement cleanup recovery, billing public operations factory, same verified session and generated web transport. No new schema, authorization policy, source authority, provider configuration, worker or customer UI.",
+      "behavior": "Only company/purchase intent is accepted. Existing cancellation/refund receipt and original STOP identity control all claims/replay/settlement. Current owner and fresh MFA precede confirmed replay. Missing provider blocks unresolved execution; confirmed stored cleanup replays without it. Deferred/pending/unknown are distinct from confirmed. Public response excludes receipt/provider/operation data. Local cancellation and history remain provider-free; purchase money/access is unchanged.",
+      "validation": "Billing416 Python+41 Node pass; new HTTP33 cases within88 focused cleanup/annual API cases. Complete isolated Supabase2.109.1 lifecycle234 Python+1 Node pass, zero skips, including8 added HTTP/database cases and all predecessor rollback/recutover rehearsals. Final focused9 HTTP/database cases pass after tightening the no-receipt fixture to a terminal paid purchase. These authentication/provider/source fixtures are synthetic, not actual Merchant Test.",
+      "otherValidation": "Ordinary backend1080 pass,2 existing skips,234 DB cases deselected; contract49 pass; CI12 pass; final generated transport14 pass; web typecheck, backend artifact build, deterministic OpenAPI/client regeneration and git diff --check pass. Production dependency audit0 vulnerabilities. Advisors0 blocking security/error findings,34 performance warnings.",
+      "architecture": "Initial full suite48/51 exposed stale generated workflow edge plus the two inherited four-scope/inventory failures. Final candidate adds exactly the checker-generated cleanup-to-billing dependency edge; final focused deterministic evidence passes, while both inherited tests still fail (four unapproved future scopes and active92vs96). Full architecture is NOT PASS. Checker, frozen baseline, ADR and ordered route unchanged.",
+      "independentReviews": {
+        "standards": "PASS0 exactc80bb6c155c3ed49a0f3e53457d48e5328fc8905 (0e18b32f plus generated evidence-only delta), read-only, zero findings",
+        "spec": "PASS0 exactc80bb6c155c3ed49a0f3e53457d48e5328fc8905 (0e18b32f plus generated evidence-only delta), read-only, zero findings"
+      },
+      "fixtureLifecycle": "Task-owned tallig13712 started in dedicated existing talli Colima profile, then stopped with no-backup; zero matching containers verified. No hosted database or provider request. Colima remains available for ongoing authorized local work.",
+      "limits": "Not automatic cancellation/worker or full192 acceptance. Trusted incident/submission/readiness facts, actionable complete customer/support composition, actual designated MT, complete immutable gates and protected-main integration remain required. Four-scope amendment remains unapproved;150 unclaimed. Mainccf1dcba and release/productiond331ee27 verified unchanged. Full165 goal ACTIVE on task01a07722-b4e8-7283-b157-2c605bd1ae8f."
     }
   },
   "externalEvidence": {
