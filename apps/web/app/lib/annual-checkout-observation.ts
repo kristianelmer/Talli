@@ -4,7 +4,7 @@ import type { AnnualCheckoutWire, annualBillingRecovery } from "../../features/b
 export type AnnualCheckoutObservationActionState =
   | { kind: "idle" }
   | { kind: "invalid" }
-  | { kind: "observed"; companyId: string; purchaseId: string; status: AnnualCheckoutWire["status"] }
+  | { kind: "observed"; companyId: string; purchaseId: string; status: AnnualCheckoutWire["status"]; checkoutUrl?: string }
   | {
     kind: "recovery";
     companyId: string;

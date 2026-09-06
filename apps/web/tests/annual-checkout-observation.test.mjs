@@ -37,7 +37,7 @@ function action({ token = "verified-owner", status = "pending", failure, foreign
       calls.push(args);
       if (failure) throw new Error("private provider detail");
       return { companyId, purchaseId, ...(foreign ? { [foreign]: cursor } : {}), status,
-        capturedMinor: 10000, refundedMinor: 0, checkoutUrl: "https://provider.example/private", offer: { termsText: "Do not replace stored terms" } };
+        capturedMinor: 10000, refundedMinor: 0, checkoutUrl: "https://checkout.example/synthetic-approval", offer: { termsText: "Do not replace stored terms" } };
     },
     annualBillingRecovery: () => failure ?? "unavailable",
     revalidatePath: (path) => { refreshes.push(path); if (refreshFailure) throw new Error("failed refresh"); },
@@ -54,10 +54,12 @@ for (const status of ["pending", "paid", "refunded", "failed"]) {
     const harness = action({ status });
     const result = await harness.run({ kind: "observed", companyId, purchaseId, status: "paid" },
       form({ status: "paid", actorId: cursor, operationId: cursor, incomeYear: "2030", purchaseAccepted: "true", checkoutUrl: "https://forged.example" }));
-    assert.deepEqual(JSON.parse(JSON.stringify(result)), { kind: "observed", companyId, purchaseId, status });
+    assert.deepEqual(JSON.parse(JSON.stringify(result)), { kind: "observed", companyId, purchaseId, status,
+      ...(status === "pending" ? { checkoutUrl: "https://checkout.example/synthetic-approval" } : {}) });
     assert.deepEqual(JSON.parse(JSON.stringify(harness.calls)), [["verified-owner", { companyId, purchaseId }]]);
     assert.deepEqual(harness.refreshes, ["/billing"]);
-    assert.doesNotMatch(JSON.stringify(result), /capturedMinor|refundedMinor|checkoutUrl|termsText|provider.example/);
+    assert.doesNotMatch(JSON.stringify(result), /capturedMinor|refundedMinor|termsText|forged.example/);
+    if (status !== "pending") assert.doesNotMatch(JSON.stringify(result), /checkoutUrl|checkout.example/);
   });
 }
 for (const failure of ["step-up", "sign-in", "unavailable"]) {
@@ -115,6 +117,7 @@ test("failed revalidation cannot announce a locally paid purchase", async () => 
 });
 
 const ui = {
+  buttonClass: () => "btn btn--secondary",
   Banner: ({ children }) => React.createElement("div", {}, children),
   Button: ({ children, variant: _variant, ...props }) => React.createElement("button", props, children),
   LinkButton: ({ children, ...props }) => React.createElement("a", props, children),
@@ -178,4 +181,14 @@ test("lost browser response retains retry and read-only history refresh without 
   const result = await wrapper(unknown, form());
   assert.equal(result.status, "paid");
   assert.equal(attempts, 2);
+});
+
+test('only a fresh scoped pending observation exposes its explicit approval link', () => {
+  const state = { kind: 'observed', companyId, purchaseId, status: 'pending', checkoutUrl: 'https://checkout.example/synthetic-approval' };
+  assert.match(render(state), /href="https:\/\/checkout.example\/synthetic-approval"/);
+  assert.match(render(state), /Fortsett til betaling/);
+  for (const status of ['paid', 'refunded', 'failed']) assert.doesNotMatch(render({ ...state, status }), /checkout.example|Fortsett til betaling/);
+  assert.doesNotMatch(render(state, true), /checkout.example|Fortsett til betaling/);
+  assert.doesNotMatch(render({ ...state, purchaseId: cursor }), /checkout.example|Fortsett til betaling/);
+  assert.doesNotMatch(render({ kind: 'recovery', companyId, purchaseId, reason: 'unavailable', href: null }), /checkout.example|Fortsett til betaling/);
 });

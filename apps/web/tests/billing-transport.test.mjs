@@ -177,7 +177,7 @@ function ownerSnapshotLoader(fetch, name = "loadAnnualBillingSnapshot") {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../features/billing/transport.ts", import.meta.url), "utf8"), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
-  }).outputText, { exports, AbortSignal, require: (id) => id === "#backend-configuration"
+  }).outputText, { exports, AbortSignal, URL, require: (id) => id === "#backend-configuration"
     ? { backendBaseUrl: () => "https://backend.example" }
     : { TalliApiError, createTalliApiClient: (options) => createTalliApiClient({ ...options, fetch }) } });
   return exports[name];
@@ -520,5 +520,77 @@ test("predecessor preparation route absence is unavailable and protected failure
     const load = ownerSnapshotLoader(async () => Response.json({ type: "about:blank", title: "Unavailable", status, code,
       detail: "Unavailable", instance: "/fixture", requestId: "fixture" }, { status, headers: { "Content-Type": "application/problem+json" } }), "prepareAnnualCheckout");
     await assert.rejects(load("verified-owner", companyId, 2026), error => error instanceof TalliApiError && error.status === status);
+  }
+});
+
+const checkoutBody = () => ({ companyId, incomeYear: 2026, offerVersion: annualOffer().offerVersion,
+  termsDigest: annualOffer().termsDigest, purchaseAccepted: true, recurringConsent: false, consentVersion: 'separate-consent-v1' });
+const checkoutResult = () => ({ companyId, incomeYear: 2026, purchaseId: '20000000-0000-4000-8000-000000000002',
+  offer: annualOffer(), status: 'pending', capturedMinor: 0, refundedMinor: 0, checkoutUrl: 'https://checkout.example/synthetic-approval' });
+
+test('checkout start keeps exact accepted intent and key through authenticated no-store transport', async () => {
+  const calls = [];
+  const run = ownerSnapshotLoader(async (url, request) => { calls.push({ url, request }); return Response.json(checkoutResult()); }, 'startAnnualCheckout');
+  const body = checkoutBody();
+  await run('verified-owner', body, 'original-checkout-key');
+  await run('verified-owner', body, 'original-checkout-key');
+  assert.deepEqual(calls[0], calls[1]);
+  assert.equal(calls[0].url, 'https://backend.example/api/v1/billing/annual/checkouts');
+  assert.equal(calls[0].request.method, 'POST');
+  assert.equal(calls[0].request.cache, 'no-store');
+  assert.equal(calls[0].request.headers.Authorization, 'Bearer verified-owner');
+  assert.equal(calls[0].request.headers['Idempotency-Key'], 'original-checkout-key');
+  assert.deepEqual(JSON.parse(calls[0].request.body), body);
+});
+
+test('start and observation reject foreign scope and unsafe or terminal approval links', async () => {
+  const base = checkoutResult();
+  const changes = [
+    { companyId: base.purchaseId }, { offer: { ...base.offer, companyId: base.purchaseId } },
+    { incomeYear: 2025 }, { offer: { ...base.offer, incomeYear: 2025 } },
+    ...['javascript:alert(1)', 'http://checkout.example/approval', 'https://user:password@checkout.example/approval',
+      'https://checkout.example/approval#secret', 'broken'].map(checkoutUrl => ({ checkoutUrl })),
+    ...['paid', 'failed', 'refunded'].map(status => ({ status })),
+  ];
+  for (const name of ['startAnnualCheckout', 'observeAnnualCheckout']) {
+    for (const change of changes) {
+      const run = ownerSnapshotLoader(async () => Response.json({ ...base, ...change }), name);
+      await assert.rejects(run('owner', name === 'startAnnualCheckout' ? checkoutBody() : { companyId, purchaseId: base.purchaseId }, 'original-key'),
+        error => error instanceof TalliApiError && error.status === 502);
+    }
+  }
+  for (const field of ['offerVersion', 'termsDigest']) {
+    const run = ownerSnapshotLoader(async () => Response.json({ ...base, offer: { ...base.offer, [field]: field === 'termsDigest' ? 'b'.repeat(64) : 'other' } }), 'startAnnualCheckout');
+    await assert.rejects(run('owner', checkoutBody(), 'key'), error => error instanceof TalliApiError && error.status === 502);
+  }
+  const foreign = ownerSnapshotLoader(async () => Response.json({ ...base, purchaseId: companyId }), 'observeAnnualCheckout');
+  await assert.rejects(foreign('owner', { companyId, purchaseId: base.purchaseId }), error => error instanceof TalliApiError && error.status === 502);
+});
+
+test('withdrawal accepts only a scoped mutually exclusive receipt and never interprets a missing route as release', async () => {
+  const base = { companyId, incomeYear: 2026, state: 'withdrawn', purchaseId: null,
+    withdrawalId: '30000000-0000-4000-8000-000000000003', withdrawnAt: '2026-09-07T00:00:00Z' };
+  const existing = { ...base, state: 'existing', purchaseId: base.withdrawalId, withdrawalId: null, withdrawnAt: null };
+  for (const value of [base, existing]) {
+    let captured;
+    const run = ownerSnapshotLoader(async (url, request) => { captured = { url, request }; return Response.json(value); }, 'withdrawAnnualCheckoutRequest');
+    assert.deepEqual(await run('owner', checkoutBody(), 'original-key'), value);
+    assert.equal(captured.url, 'https://backend.example/api/v1/billing/annual/checkout-withdrawals');
+    assert.equal(captured.request.headers['Idempotency-Key'], 'original-key');
+    assert.equal(captured.request.headers.Authorization, 'Bearer owner');
+    assert.equal(captured.request.method, 'POST');
+    assert.equal(captured.request.cache, 'no-store');
+    assert.deepEqual(JSON.parse(captured.request.body), checkoutBody());
+  }
+  for (const value of [{ ...base, companyId: base.withdrawalId }, { ...base, incomeYear: 2025 },
+    { ...base, purchaseId: base.withdrawalId }, { ...base, withdrawalId: null }, { ...base, withdrawnAt: null },
+    { ...existing, purchaseId: null }, { ...existing, withdrawalId: base.withdrawalId }, { ...existing, withdrawnAt: base.withdrawnAt },
+    { ...base, receiptAuthority: true }]) {
+    const run = ownerSnapshotLoader(async () => Response.json(value), 'withdrawAnnualCheckoutRequest');
+    await assert.rejects(run('owner', checkoutBody(), 'key'), error => error instanceof TalliApiError && error.status === 502);
+  }
+  for (const name of ['startAnnualCheckout', 'withdrawAnnualCheckoutRequest']) {
+    const run = ownerSnapshotLoader(async () => Response.json({ detail: 'Not Found' }, { status: 404 }), name);
+    await assert.rejects(run('owner', checkoutBody(), 'key'), error => error instanceof TalliApiError && error.status === 404);
   }
 });

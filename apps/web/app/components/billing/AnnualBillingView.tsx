@@ -6,6 +6,7 @@ import { AnnualAgreementCleanupControl } from "./AnnualAgreementCleanupControl";
 import type { AnnualAgreementCleanupAction } from "../../lib/annual-billing-cleanup";
 import { AnnualRefundRecoveryControl } from "./AnnualRefundRecoveryControl";
 import type { AnnualRefundRecoveryAction, AnnualRefundTargetsView } from "../../lib/annual-refund-recovery";
+import type { ReactNode } from "react";
 
 const money = new Intl.NumberFormat("nb-NO", { style: "currency", currency: "NOK" });
 const date = new Intl.DateTimeFormat("nb-NO", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Oslo" });
@@ -28,6 +29,9 @@ type Props = {
   recoverRefundAction: AnnualRefundRecoveryAction;
   refundTargets?: AnnualRefundTargetsView;
   refundSelectionUnavailable?: boolean;
+  checkoutControl?: ReactNode;
+  selectedCheckoutPurchaseId?: string;
+  checkoutBeforePurchaseId?: string;
 };
 
 function RefundEvidence({ purchase }: { purchase: AnnualPurchaseSummaryWire | AnnualPurchaseRefundSummaryWire }) {
@@ -163,10 +167,14 @@ function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancel
 
 export function AnnualBillingView({ companyId, companyName, snapshot, offer: currentOffer, offerUnavailable, limitedHistory,
   beforePurchaseId, operationIds, unconfirmedPurchaseId, cancelAction, cleanupAction, observeAction,
-  recoverRefundAction, refundTargets, refundSelectionUnavailable }: Props) {
+  recoverRefundAction, refundTargets, refundSelectionUnavailable, checkoutControl, selectedCheckoutPurchaseId, checkoutBeforePurchaseId }: Props) {
   const { purchases, nextPurchaseId } = snapshot;
   const offer = "offer" in snapshot ? snapshot.offer : currentOffer;
   const base = `/billing?companyId=${encodeURIComponent(companyId)}`;
+  const historyQuery = new URLSearchParams({ companyId });
+  if (selectedCheckoutPurchaseId) historyQuery.set("checkoutPurchaseId", selectedCheckoutPurchaseId);
+  if (checkoutBeforePurchaseId) historyQuery.set("checkoutBeforePurchaseId", checkoutBeforePurchaseId);
+  const historyBase = `/billing?${historyQuery}`;
   return <>
     {offer ? <section className="billingSection" aria-labelledby="annual-offer-title">
       <h2 id="annual-offer-title" className="sectionTitle">{companyName} · selskapsåret {offer.incomeYear}</h2>
@@ -175,7 +183,7 @@ export function AnnualBillingView({ companyId, companyName, snapshot, offer: cur
         <p className="planPrice">{money.format(offer.grossMinor / 100)} inkl. mva.</p>
         <p className="fieldHelp">{money.format(offer.netMinor / 100)} ekskl. mva. + {money.format(offer.vatMinor / 100)} mva. ({offer.vatBasisPoints / 100} %).</p>
         <p>Regnskap, selskapsdokumenter, alle tre innsendinger, kvitteringer og arkiv for et støttet selskapsår.</p>
-        <p>Betaling er ikke åpnet.</p>
+        {!checkoutControl ? <p>Betaling er ikke åpnet.</p> : null}
         <details><summary>Se hele årstilbudet og vilkårene</summary>
           <p style={{ whiteSpace: "pre-wrap" }}>{offer.termsText}</p>
         </details>
@@ -187,8 +195,12 @@ export function AnnualBillingView({ companyId, companyName, snapshot, offer: cur
           Fullfør oppsettet for å se et nytt årstilbud. Du kan fortsatt se og administrere tidligere kjøp nedenfor.
         </EmptyState>}
     </section>}
+    {checkoutControl}
     <section className="billingSection" aria-labelledby="annual-history-title">
       <h2 id="annual-history-title" className="sectionTitle">Kjøpshistorikk og fornyelse</h2>
+      {selectedCheckoutPurchaseId && !purchases.some(purchase => purchase.purchaseId === selectedCheckoutPurchaseId)
+        ? <Banner variant="info">Kjøpet fra forespørselen vises ikke på denne siden. Se eldre kjøp for å finne det.</Banner> : null}
+      {checkoutBeforePurchaseId ? <LinkButton href={`${base}&beforePurchaseId=${encodeURIComponent(checkoutBeforePurchaseId)}`}>Tilbake til historikksiden du kom fra</LinkButton> : null}
       {refundSelectionUnavailable ? <Banner variant="warning">Den valgte refusjonsoversikten er ikke tilgjengelig på denne historikksiden.
         Velg et kjøp nedenfor for å se registrerte forespørsler.</Banner> : null}
       {limitedHistory ? <Banner variant="info">Bare de nyeste kjøpene for selskapsåret {offer?.incomeYear} vises nå.
@@ -202,8 +214,8 @@ export function AnnualBillingView({ companyId, companyName, snapshot, offer: cur
           recoverRefundAction={recoverRefundAction} refundTargets={refundTargets?.purchaseId === purchase.purchaseId ? refundTargets : undefined} />)}
       </div>}
       <nav className="actionRow" aria-label="Kjøpshistorikk">
-        {beforePurchaseId ? <LinkButton href={base}>Nyeste kjøp</LinkButton> : null}
-        {nextPurchaseId && !limitedHistory ? <LinkButton href={`${base}&beforePurchaseId=${encodeURIComponent(nextPurchaseId)}`}>
+        {beforePurchaseId ? <LinkButton href={historyBase}>Nyeste kjøp</LinkButton> : null}
+        {nextPurchaseId && !limitedHistory ? <LinkButton href={`${historyBase}&beforePurchaseId=${encodeURIComponent(nextPurchaseId)}`}>
           Eldre kjøp
         </LinkButton> : null}
       </nav>

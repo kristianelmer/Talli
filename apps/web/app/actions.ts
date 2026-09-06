@@ -4,6 +4,7 @@ import type { AnnualRefundRecoveryActionState } from "./lib/annual-refund-recove
 
 import type { AnnualAgreementCleanupActionState } from "./lib/annual-billing-cleanup";
 import type { AnnualCheckoutObservationActionState } from "./lib/annual-checkout-observation";
+import { parseAnnualCheckoutDraft, type AnnualCheckoutDraft, type AnnualCheckoutRequestActionState } from "./lib/annual-checkout-request";
 import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -74,6 +75,9 @@ import {
   cancelAnnualRenewal as cancelAnnualRenewalThroughApi,
   cleanupAnnualAgreement as cleanupAnnualAgreementThroughApi,
   observeAnnualCheckout as observeAnnualCheckoutThroughApi,
+  startAnnualCheckout as startAnnualCheckoutThroughApi,
+  withdrawAnnualCheckoutRequest as withdrawAnnualCheckoutRequestThroughApi,
+  annualCheckoutNeedsWithdrawal,
   recoverAnnualRefund as recoverAnnualRefundThroughApi,
   annualBillingAccessRejected,
   cancelBillingSubscription as cancelBillingSubscriptionThroughApi,
@@ -4323,6 +4327,54 @@ export async function recoverAnnualRefund(
   }
 }
 
+async function executeAnnualCheckoutRequest(
+  formData: FormData, phase: AnnualCheckoutDraft["phase"],
+): Promise<AnnualCheckoutRequestActionState> {
+  const draft = formData.getAll("draft").length === 1 ? parseAnnualCheckoutDraft(formData.get("draft")) : null;
+  if (!draft || draft.phase !== phase) return { kind: "invalid" };
+  const returnTo = ownerPathWithQuery("/billing", { companyId: draft.body.companyId,
+    beforePurchaseId: draft.beforePurchaseId ?? undefined });
+  const recover = (reason: ReturnType<typeof annualBillingRecovery>, withdrawalRecommended = false): AnnualCheckoutRequestActionState => ({
+    kind: "recovery", draft, reason, withdrawalRecommended,
+    href: reason === "unavailable" ? null : `${reason === "step-up" ? "/mfa?fresh=1&" : "/login?reauth=1&"}next=${encodeURIComponent(returnTo)}`,
+  });
+  try {
+    const accessToken = await getCurrentSessionAccessToken();
+    if (!accessToken) { revalidatePath("/billing"); return recover("sign-in"); }
+    // Verify the initiating user against the exact token sent to billing. The
+    // browser identity is continuity only; it never becomes backend actor data.
+    const supabase = await createSupabaseServerClient();
+    const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+    if (error || !user) { revalidatePath("/billing"); return recover("sign-in"); }
+    if (user.id !== draft.initiatingUserId) { revalidatePath("/billing"); return { kind: "different-user", draft }; }
+    if (phase === "withdrawal-requested") {
+      const resolution = await withdrawAnnualCheckoutRequestThroughApi(accessToken, draft.body, draft.idempotencyKey);
+      if (resolution.companyId !== draft.body.companyId || resolution.incomeYear !== draft.body.incomeYear) return recover("unavailable");
+      revalidatePath("/billing");
+      return { kind: "resolved", draft, resolution };
+    }
+    const checkout = await startAnnualCheckoutThroughApi(accessToken, draft.body, draft.idempotencyKey);
+    if (checkout.companyId !== draft.body.companyId || checkout.incomeYear !== draft.body.incomeYear) return recover("unavailable");
+    revalidatePath("/billing");
+    return { kind: "started", draft, purchaseId: checkout.purchaseId, checkoutUrl: checkout.checkoutUrl };
+  } catch (error) {
+    if (annualBillingAccessRejected(error)) revalidatePath("/billing");
+    return recover(annualBillingRecovery(error), annualCheckoutNeedsWithdrawal(error));
+  }
+}
+
+export async function startAnnualCheckoutRequest(
+  _previous: AnnualCheckoutRequestActionState, formData: FormData,
+): Promise<AnnualCheckoutRequestActionState> {
+  return executeAnnualCheckoutRequest(formData, "checkout-requested");
+}
+
+export async function withdrawAnnualCheckoutRequest(
+  _previous: AnnualCheckoutRequestActionState, formData: FormData,
+): Promise<AnnualCheckoutRequestActionState> {
+  return executeAnnualCheckoutRequest(formData, "withdrawal-requested");
+}
+
 export async function observeAnnualCheckout(
   _previousState: AnnualCheckoutObservationActionState,
   formData: FormData,
@@ -4353,7 +4405,8 @@ export async function observeAnnualCheckout(
     // Refresh the canonical balances even when the observed status is pending.
     // The checkout response is not the full refund-aware history projection.
     revalidatePath("/billing");
-    return { kind: "observed", companyId, purchaseId, status: value.status };
+    return { kind: "observed", companyId, purchaseId, status: value.status,
+      ...(value.status === "pending" && value.checkoutUrl ? { checkoutUrl: value.checkoutUrl } : {}) };
   } catch (error) {
     return recover(annualBillingRecovery(error));
   }

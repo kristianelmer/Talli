@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import type { AnnualCheckoutObservationAction, AnnualCheckoutObservationActionState } from "../../lib/annual-checkout-observation";
-import { Banner, Button, LinkButton } from "../ui";
+import { Banner, Button, LinkButton, buttonClass } from "../ui";
 
 export function AnnualCheckoutObservationControl({ companyId, purchaseId, beforePurchaseId, observeAction }: {
   companyId: string;
@@ -30,6 +30,8 @@ export function AnnualCheckoutObservationControl({ companyId, purchaseId, before
       {pending ? <p>Sjekker betalingsstatus …</p> : observed ? <Banner variant="info">
         {observed.status === "pending" ? "Betalingen er fortsatt ikke bekreftet. Du kan sjekke det samme kjøpet igjen senere."
           : <>Statusen er kontrollert. <LinkButton href={historyHref}>Vis oppdatert kjøpshistorikk</LinkButton></>}
+        {observed.status === "pending" && observed.checkoutUrl ? <a className={buttonClass("primary")}
+          href={observed.checkoutUrl} rel="noreferrer">Fortsett til betaling</a> : null}
       </Banner> : recovery || state.kind === "invalid" ? <Banner variant="warning">
         Vi fikk ikke bekreftet betalingsstatusen.
         {recovery?.href ? <> <LinkButton href={recovery.href}>

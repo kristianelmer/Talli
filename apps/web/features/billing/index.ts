@@ -8,6 +8,8 @@ export type {
   AnnualAgreementCleanupWire,
   AnnualCheckoutWire,
   AnnualCheckoutPreparationWire,
+  AnnualCheckoutCommandWire,
+  AnnualCheckoutRequestResolutionWire,
   AnnualRefundRecoveryWire,
   AnnualRefundRecoveryTargetPageWire,
   AnnualSupportPageWire,

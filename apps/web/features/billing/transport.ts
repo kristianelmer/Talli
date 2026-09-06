@@ -8,6 +8,8 @@ import {
   type AnnualSupportRequest,
   type AnnualAgreementCleanupCommandWire,
   type AnnualCheckoutObservationCommandWire,
+  type AnnualCheckoutCommandWire,
+  type AnnualCheckoutWire,
   type AnnualRenewalCancellationCommandWire,
   type BillingAccountWire,
   type BillingCompanyWire,
@@ -53,6 +55,44 @@ export async function prepareAnnualCheckout(accessToken: string, companyId: stri
     if (error instanceof TalliApiError && error.status === 404 && !error.problem) return null;
     throw error;
   }
+}
+
+function checkedCheckout(value: AnnualCheckoutWire, companyId: string, purchaseId?: string) {
+  if (value.companyId !== companyId || value.offer.companyId !== companyId
+    || value.incomeYear !== value.offer.incomeYear || (purchaseId && value.purchaseId !== purchaseId)) {
+    throw new TalliApiError(502, undefined);
+  }
+  if (value.checkoutUrl !== null) {
+    let url;
+    try { url = new URL(value.checkoutUrl); } catch { throw new TalliApiError(502, undefined); }
+    // Provider origin approval belongs to the backend adapter. This boundary
+    // also rejects browser-executable URLs and inconsistent terminal links.
+    if (value.status !== "pending" || url.protocol !== "https:" || url.username || url.password || url.hash) {
+      throw new TalliApiError(502, undefined);
+    }
+  }
+  return value;
+}
+
+export async function startAnnualCheckout(
+  accessToken: string, body: AnnualCheckoutCommandWire, idempotencyKey: string,
+) {
+  const value = checkedCheckout(await client(accessToken).billingStartAnnualCheckout(body, mutation(idempotencyKey)), body.companyId);
+  if (value.incomeYear !== body.incomeYear || value.offer.offerVersion !== body.offerVersion
+    || value.offer.termsDigest !== body.termsDigest) throw new TalliApiError(502, undefined);
+  return value;
+}
+
+export async function withdrawAnnualCheckoutRequest(
+  accessToken: string, body: AnnualCheckoutCommandWire, idempotencyKey: string,
+) {
+  const value = await client(accessToken).billingWithdrawAnnualCheckoutRequest(body, mutation(idempotencyKey));
+  if (value.companyId !== body.companyId || value.incomeYear !== body.incomeYear
+    || (value.state === "withdrawn" && (value.purchaseId !== null || !value.withdrawalId || !value.withdrawnAt))
+    || (value.state === "existing" && (!value.purchaseId || value.withdrawalId !== null || value.withdrawnAt !== null))) {
+    throw new TalliApiError(502, undefined);
+  }
+  return value;
 }
 
 export async function loadAnnualPurchaseHistory(accessToken: string, input: AnnualPurchaseHistoryRequest) {
@@ -107,12 +147,12 @@ export function cleanupAnnualAgreement(
   return client(accessToken).billingCleanupAnnualAgreement(body, request(requestId));
 }
 
-export function observeAnnualCheckout(
+export async function observeAnnualCheckout(
   accessToken: string,
   body: AnnualCheckoutObservationCommandWire,
   requestId?: string,
 ) {
-  return client(accessToken).billingObserveAnnualCheckout(body, request(requestId));
+  return checkedCheckout(await client(accessToken).billingObserveAnnualCheckout(body, request(requestId)), body.companyId, body.purchaseId);
 }
 
 export function annualBillingRecovery(error: unknown): "sign-in" | "step-up" | "unavailable" {
@@ -125,6 +165,10 @@ export function annualBillingRecovery(error: unknown): "sign-in" | "step-up" | "
 
 export function annualBillingAccessRejected(error: unknown): boolean {
   return error instanceof TalliApiError && (error.status === 401 || error.status === 403);
+}
+
+export function annualCheckoutNeedsWithdrawal(error: unknown): boolean {
+  return error instanceof TalliApiError && ["BILLING_INVALID_INPUT", "BILLING_IDEMPOTENCY_KEY_REUSED", "BILLING_CHECKOUT_REQUEST_WITHDRAWN"].includes(error.problem?.code ?? "");
 }
 
 export function loadBillingSnapshot(

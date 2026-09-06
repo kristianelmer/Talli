@@ -42,6 +42,8 @@ ui.EmptyState = compile(readFileSync(new URL("../app/components/ui/EmptyState.ts
 }).EmptyState;
 const { AnnualAgreementCleanupControl } = compile(readFileSync(new URL("../app/components/billing/AnnualAgreementCleanupControl.tsx", import.meta.url), "utf8"), { "../ui": ui });
 const { AnnualCheckoutObservationControl } = compile(readFileSync(new URL("../app/components/billing/AnnualCheckoutObservationControl.tsx", import.meta.url), "utf8"), { "../ui": ui });
+const checkoutDraft = compile(readFileSync(new URL("../app/lib/annual-checkout-request.ts", import.meta.url), "utf8"), {});
+const { AnnualCheckoutControl } = compile(readFileSync(new URL("../app/components/billing/AnnualCheckoutControl.tsx", import.meta.url), "utf8"), { "../ui": ui, "../../lib/annual-checkout-request": checkoutDraft });
 const { AnnualRefundRecoveryControl } = compile(readFileSync(new URL("../app/components/billing/AnnualRefundRecoveryControl.tsx", import.meta.url), "utf8"), { "../ui": ui });
 const { AnnualBillingView } = compile(readFileSync(new URL("../app/components/billing/AnnualBillingView.tsx", import.meta.url), "utf8"), { "../ui": ui, "./AnnualAgreementCleanupControl": { AnnualAgreementCleanupControl }, "./AnnualCheckoutObservationControl": { AnnualCheckoutObservationControl }, "./AnnualRefundRecoveryControl": { AnnualRefundRecoveryControl } });
 function render(purchases = [purchase], extra = {}) {
@@ -229,27 +231,31 @@ test("missing session reaches sign-in with replay context before any mutation", 
 
 const pageSource = readFileSync(new URL("../app/(account)/billing/page.tsx", import.meta.url), "utf8");
 const company = { id: companyId, name: "Holding AS", admittedAccountingYear: 2026 };
-function pageHarness({ companies = [company], token = "session", contextError, requiresAal2, requiresSignIn, failure, purchases = [purchase], historyMissing = false, nextPurchaseId = null, offerFailure = false, offerAccessRejected = false, refundPage = null, refundFailure, refundAccessRejected = false } = {}) {
+function pageHarness({ companies = [company], token = "session", user = { id: operationId }, contextError, requiresAal2, requiresSignIn, failure, purchases = [purchase], historyMissing = false, nextPurchaseId = null, offerFailure = false, offerAccessRejected = false, refundPage = null, refundFailure, refundAccessRejected = false, preparation = null, preparationFailure, preparationAccessRejected = false } = {}) {
   const reads = [];
   const offerReads = [];
   const refundReads = [];
+  const preparationReads = [];
   const { default: BillingPage } = compile(pageSource, {
     "../../../features/billing": { annualBillingRecovery: () => refundFailure ?? failure,
-      annualBillingAccessRejected: () => offerAccessRejected || refundAccessRejected,
+      annualBillingAccessRejected: () => offerAccessRejected || refundAccessRejected || preparationAccessRejected,
+      prepareAnnualCheckout: async (...args) => { preparationReads.push(args); if (preparationFailure) throw new Error("private preparation detail"); return preparation; },
       loadAnnualRefundRecoveryTargets: async (...args) => { refundReads.push(args); if (refundFailure) throw new Error("private refund detail"); return refundPage; },
       loadAnnualPurchaseHistory: async (...args) => { reads.push(args); if (failure) throw new Error("internal detail");
         return historyMissing ? null : { companyId: args[1].companyId, purchases, nextPurchaseId }; },
       loadAnnualBillingSnapshot: async (...args) => { offerReads.push(args); if (offerFailure) throw new Error("offer unavailable");
         return { offer: { ...offer, companyId: args[1].companyId, incomeYear: args[1].incomeYear }, purchases, nextPurchaseId }; } },
     "next/navigation": { redirect: (path) => { throw new Error(`redirect:${path}`); } },
-    "../../actions": { cancelAnnualRenewal: async () => {}, cleanupAnnualAgreement: async () => ({ kind: "idle" }), observeAnnualCheckout: async () => ({ kind: "idle" }), recoverAnnualRefund: async () => ({ kind: "idle" }) },
+    "../../actions": { cancelAnnualRenewal: async () => {}, cleanupAnnualAgreement: async () => ({ kind: "idle" }), observeAnnualCheckout: async () => ({ kind: "idle" }), recoverAnnualRefund: async () => ({ kind: "idle" }), startAnnualCheckoutRequest: async () => ({ kind: "idle" }), withdrawAnnualCheckoutRequest: async () => ({ kind: "idle" }) },
     "../../components/billing/AnnualBillingView": { AnnualBillingView },
+    "../../components/billing/AnnualCheckoutControl": { AnnualCheckoutControl },
     "../../components/ui": { ...ui, EmptyState: ({ title, children, action }) => React.createElement("section", {}, title, children, action) },
     "../../lib/copy": { ownerCopy: { billing: { hubTitle: "Abonnement" } } },
     "../../lib/company-access-context": { listCompanyAccessContexts: async () => ({ companies, error: contextError, requiresAal2, requiresSignIn }) },
     "../../lib/supabase/auth-session": { getCurrentSessionAccessToken: async () => token },
+    "../../lib/supabase/server": { getCurrentUser: async () => user },
   });
-  return { reads, offerReads, refundReads, render: async (params = {}) => renderToStaticMarkup(await BillingPage({ searchParams: Promise.resolve(params) })) };
+  return { reads, offerReads, refundReads, preparationReads, render: async (params = {}) => renderToStaticMarkup(await BillingPage({ searchParams: Promise.resolve(params) })) };
 }
 
 test("billing page binds the selected company and admitted year without loading legacy workspace state", async () => {
@@ -567,4 +573,48 @@ test("checkout recovery marker survives login and page MFA without triggering ob
   const loggedOut = pageHarness({ token: null });
   await assert.rejects(loggedOut.render(params), (error) => error.message.includes(`checkoutPurchaseId%3D${purchaseId}`));
   assert.equal(loggedOut.reads.length, 0);
+});
+
+test('checkout preparation is read-only and follows the selected admitted company-year', async () => {
+  const harness = pageHarness();
+  await harness.render({ companyId, beforePurchaseId: cursor });
+  assert.deepEqual(JSON.parse(JSON.stringify(harness.preparationReads)), [['session', companyId, 2026]]);
+  const noAdmission = pageHarness({ companies: [{ ...company, admittedAccountingYear: null }] });
+  const html = await noAdmission.render();
+  assert.equal(noAdmission.preparationReads.length, 0);
+  assert.match(html, /Henter eventuell tidligere kjøpsforespørsel/);
+  assert.doesNotMatch(html, /name="purchaseAccepted"/);
+});
+
+test('unverified initiating user or later preparation access rejection hides protected history', async () => {
+  const missing = pageHarness({ user: null });
+  const noUser = await missing.render({ companyId, checkoutPurchaseId: purchaseId, checkoutBeforePurchaseId: cursor });
+  assert.equal(missing.reads.length, 0);
+  assert.match(noUser, /Logg inn igjen/);
+  assert.doesNotMatch(noUser, /Stored purchase terms|annual-checkout-review/);
+  const rejected = pageHarness({ preparationFailure: true, preparationAccessRejected: true, failure: undefined });
+  const denied = await rejected.render();
+  assert.equal(rejected.reads.length, 1);
+  assert.equal(rejected.preparationReads.length, 1);
+  assert.doesNotMatch(denied, /Stored purchase terms|annual-checkout-review/);
+  const unavailable = await pageHarness({ preparationFailure: true }).render();
+  assert.match(unavailable, /Stored purchase terms/);
+  assert.match(unavailable, /annual-checkout-review/);
+});
+
+test('checkout selection starts on newest history and retains its earlier page as a separate backlink', async () => {
+  const html = await pageHarness({ nextPurchaseId: purchaseId }).render({ companyId,
+    checkoutPurchaseId: operationId, checkoutBeforePurchaseId: cursor });
+  assert.match(html, /checkoutPurchaseId=30000000/);
+  assert.match(html, /checkoutBeforePurchaseId=40000000/);
+  assert.match(html, new RegExp(`href="/billing\\?companyId=${companyId}&amp;beforePurchaseId=${cursor}"`));
+  const login = pageHarness({ token: null });
+  await assert.rejects(login.render({ companyId, checkoutPurchaseId: purchaseId, checkoutBeforePurchaseId: cursor }), error => {
+    const url = new URL(error.message.slice('redirect:'.length), 'https://talli.example');
+    const next = new URL(url.searchParams.get('next'), url.origin);
+    assert.equal(next.searchParams.get('checkoutPurchaseId'), purchaseId);
+    assert.equal(next.searchParams.get('checkoutBeforePurchaseId'), cursor);
+    assert.equal(next.searchParams.has('beforePurchaseId'), false);
+    return true;
+  });
 });

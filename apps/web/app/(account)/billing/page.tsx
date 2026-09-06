@@ -1,12 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
-import { annualBillingAccessRejected, annualBillingRecovery, loadAnnualBillingSnapshot, loadAnnualPurchaseHistory, loadAnnualRefundRecoveryTargets } from "../../../features/billing";
-import { cancelAnnualRenewal, cleanupAnnualAgreement, observeAnnualCheckout, recoverAnnualRefund } from "../../actions";
+import { annualBillingAccessRejected, annualBillingRecovery, loadAnnualBillingSnapshot, loadAnnualPurchaseHistory, loadAnnualRefundRecoveryTargets, prepareAnnualCheckout, type AnnualCheckoutPreparationWire } from "../../../features/billing";
+import { cancelAnnualRenewal, cleanupAnnualAgreement, observeAnnualCheckout, recoverAnnualRefund, startAnnualCheckoutRequest, withdrawAnnualCheckoutRequest } from "../../actions";
 import { AnnualBillingView } from "../../components/billing/AnnualBillingView";
+import { AnnualCheckoutControl } from "../../components/billing/AnnualCheckoutControl";
 import { EmptyState, LinkButton } from "../../components/ui";
 import { ownerCopy } from "../../lib/copy";
 import { listCompanyAccessContexts } from "../../lib/company-access-context";
 import { getCurrentSessionAccessToken } from "../../lib/supabase/auth-session";
+import { getCurrentUser } from "../../lib/supabase/server";
 import type { AnnualRefundTargetsView } from "../../lib/annual-refund-recovery";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +25,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) {
     const returnQuery = new URLSearchParams();
-    for (const key of ["companyId", "beforePurchaseId", "cancellationOperationId", "cancellationPurchaseId", "cleanupPurchaseId", "checkoutPurchaseId", "refundPurchaseId", "refundRequestId", "beforeRefundRequestId"]) {
+    for (const key of ["companyId", "beforePurchaseId", "cancellationOperationId", "cancellationPurchaseId", "cleanupPurchaseId", "checkoutPurchaseId", "checkoutBeforePurchaseId", "refundPurchaseId", "refundRequestId", "beforeRefundRequestId"]) {
       const value = parameter(params, key);
       if (value && uuid.test(value)) returnQuery.set(key, value);
     }
@@ -39,7 +41,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   if (company) query.set("companyId", company.id);
   else if (selectedId && uuid.test(selectedId)) query.set("companyId", selectedId);
   if (beforePurchaseId && uuid.test(beforePurchaseId)) query.set("beforePurchaseId", beforePurchaseId);
-  for (const key of ["cancellationOperationId", "cancellationPurchaseId", "cleanupPurchaseId", "checkoutPurchaseId", "refundPurchaseId", "refundRequestId", "beforeRefundRequestId"]) {
+  for (const key of ["cancellationOperationId", "cancellationPurchaseId", "cleanupPurchaseId", "checkoutPurchaseId", "checkoutBeforePurchaseId", "refundPurchaseId", "refundRequestId", "beforeRefundRequestId"]) {
     const value = parameter(params, key);
     if (value && uuid.test(value)) query.set(key, value);
   }
@@ -72,7 +74,13 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     let recovery;
     let refundTargets: AnnualRefundTargetsView | undefined;
     let refundSelectionUnavailable = false;
+    let checkoutPreparation: AnnualCheckoutPreparationWire | null = null;
+    let initiatingUserId: string | undefined;
+    let signInRequired = false;
     try {
+      const user = await getCurrentUser();
+      if (!user) { signInRequired = true; throw new Error("Verified initiating user unavailable"); }
+      initiatingUserId = user.id;
       const history = await loadAnnualPurchaseHistory(accessToken, {
         companyId: company.id, beforePurchaseId,
       });
@@ -85,6 +93,11 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         } catch (error) {
           if (annualBillingAccessRejected(error)) throw error;
           offerUnavailable = true;
+        }
+        try {
+          checkoutPreparation = await prepareAnnualCheckout(accessToken, company.id, company.admittedAccountingYear);
+        } catch (error) {
+          if (annualBillingAccessRejected(error)) throw error;
         }
       }
       const candidate = history ?? published;
@@ -116,12 +129,18 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       // leave previously loaded history or controls visible.
       snapshot = candidate;
     } catch (error) {
-      recovery = annualBillingRecovery(error);
+      recovery = signInRequired ? "sign-in" : annualBillingRecovery(error);
     }
     if (snapshot) {
       const retryId = parameter(params, "cancellationOperationId");
       const retryPurchaseId = parameter(params, "cancellationPurchaseId");
       content = <AnnualBillingView companyId={company.id} companyName={company.name} snapshot={snapshot}
+        checkoutControl={initiatingUserId ? <AnnualCheckoutControl key={`${company.id}:${initiatingUserId}`} companyId={company.id}
+          initiatingUserId={initiatingUserId} beforePurchaseId={beforePurchaseId} preparation={checkoutPreparation}
+          pendingPurchaseIds={snapshot.purchases.filter(purchase => purchase.status === "pending").map(purchase => purchase.purchaseId)}
+          startAction={startAnnualCheckoutRequest} withdrawAction={withdrawAnnualCheckoutRequest} /> : undefined}
+        selectedCheckoutPurchaseId={query.get("checkoutPurchaseId") ?? undefined}
+        checkoutBeforePurchaseId={query.get("checkoutBeforePurchaseId") ?? undefined}
         offer={published?.offer} offerUnavailable={offerUnavailable} limitedHistory={limitedHistory}
         beforePurchaseId={beforePurchaseId} cancelAction={cancelAnnualRenewal} cleanupAction={cleanupAnnualAgreement} observeAction={observeAnnualCheckout}
         recoverRefundAction={recoverAnnualRefund} refundTargets={refundTargets} refundSelectionUnavailable={refundSelectionUnavailable}

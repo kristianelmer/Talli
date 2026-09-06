@@ -1,7 +1,7 @@
 # Billing web feature
 
 <!-- architecture-inventory
-{"apiOperations":["billingPrepareAnnualCheckout","billingReadAnnualRefundRecoveryTargets","billingRecoverAnnualRefund","billingObserveAnnualCheckout","billingReadAnnualPurchaseHistory","billingReadAnnualRefundSnapshot","billingReadAnnualSupportPurchases","billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
+{"apiOperations":["billingStartAnnualCheckout","billingWithdrawAnnualCheckoutRequest","billingPrepareAnnualCheckout","billingReadAnnualRefundRecoveryTargets","billingRecoverAnnualRefund","billingObserveAnnualCheckout","billingReadAnnualPurchaseHistory","billingReadAnnualRefundSnapshot","billingReadAnnualSupportPurchases","billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
 -->
 
 ## Purpose and boundary
@@ -103,3 +103,30 @@ rejects private extra fields through the generated client, and treats only a
 missing predecessor route as unavailable compatibility. It creates no key,
 purchase, source authority or provider effect. Existing purchases expose no new
 offer/consent; unavailable preparation cannot enable a purchase.
+
+
+Owner checkout uses `prepareAnnualCheckout`, `startAnnualCheckout` and
+`withdrawAnnualCheckoutRequest` through generated operations only. Start checks
+returned company/year and accepted offer/digest; withdrawal checks exact scope
+and mutually exclusive purchase/receipt fields. Mutation failures remain errors,
+including predecessor404; they cannot release retained intent. Original keys and
+choices cross unchanged. The web never supplies actor/source/provider authority.
+`annualCheckoutNeedsWithdrawal` classifies recovery feedback only.
+
+The page verifies initiating user identity and loads preparation without opening
+payment when readiness/provider sources are unavailable. A later protected-read
+401/403 suppresses earlier history and controls. `AnnualCheckoutControl` restores
+one company-scoped tab-local draft without POST, synchronously saves it before an
+explicit action, and retains its original user/body/key through refresh/MFA/reauth.
+Withdrawal selection persists its phase before awaiting and cannot revert to
+purchase start. Server actions verify the initiating user against the exact token
+sent to billing. Only scoped committed results and matching current draft permit
+removal; storage failure prevents a replacement request. Fresh review is explicit,
+uses fresh preparation and unchecked purchase/optional recurring choices.
+
+A fresh pending start or explicit original-purchase observation can expose a
+backend-validated HTTPS approval link. It is not stored in drafts, query strings
+or canonical history, and never opens automatically. Terminal/error/pending-retry
+states hide prior links. Canonical purchase history alone owns money and access.
+Selected old purchases remain selected through pagination, with the former cursor
+as a separate backlink. Full browser/provider/source acceptance remains #192 work.
