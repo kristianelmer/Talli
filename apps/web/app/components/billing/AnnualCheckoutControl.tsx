@@ -132,7 +132,7 @@ export function AnnualCheckoutControl({ companyId, initiatingUserId, beforePurch
         {completed.kind === "started" && completed.checkoutUrl && pendingPurchaseIds.includes(completed.purchaseId)
           ? <a className={buttonClass("primary")} href={completed.checkoutUrl} rel="noreferrer">Fortsett til betaling</a> : null}
         {purchaseId ? <LinkButton href={annualCheckoutHistoryHref(companyId, purchaseId, completed.draft.beforePurchaseId)}>Se kjøpshistorikken</LinkButton> : null}
-        {withdrawn ? <a className={buttonClass("secondary")} href={`${base}#annual-checkout-review`}>Se gjeldende årstilbud</a> : null}
+        {withdrawn ? <a className={buttonClass("secondary")} href={base}>Se gjeldende årstilbud</a> : null}
       </Banner> : null}
     </div>
     {saved.kind === "restoring" ? <p>Henter eventuell tidligere kjøpsforespørsel …</p> : null}
