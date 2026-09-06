@@ -122,6 +122,7 @@ function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancel
     </div>
     <p>{money.format(purchase.grossMinor / 100)} inkl. mva. for selskapsåret {purchase.incomeYear}</p>
     <p className="fieldHelp">{money.format(purchase.netMinor / 100)} ekskl. mva. + {money.format(purchase.vatMinor / 100)} mva. ({purchase.vatBasisPoints / 100} %).</p>
+    <p>Registrert belastet beløp: {money.format(purchase.capturedMinor / 100)}.</p>
     {purchase.status === "paid" ? <p>Betalt tilgang til og med {calendarDate(purchase.paidThrough)}.
       Lese- og eksporttilgang til og med {calendarDate(purchase.exportThrough)}.</p> : null}
     <RefundEvidence purchase={purchase} />

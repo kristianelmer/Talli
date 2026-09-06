@@ -15,7 +15,7 @@ const cursor = "40000000-0000-4000-8000-000000000001";
 const offer = { companyId, incomeYear: 2026, currency: "NOK", grossMinor: 149000, netMinor: 119200,
   vatMinor: 29800, vatBasisPoints: 2500, termsText: "Current public terms" };
 const purchase = { ...offer, purchaseId, acceptedAt: "2026-09-05T11:00:00Z", status: "paid",
-  recurringConsent: true, renewalCanceledAt: null, refundedMinor: 0, grossMinor: 125000,
+  recurringConsent: true, renewalCanceledAt: null, capturedMinor: 125000, refundedMinor: 0, grossMinor: 125000,
   netMinor: 100000, vatMinor: 25000, paidThrough: "2027-12-31", exportThrough: "2028-03-30",
   recordedRefundMinor: 0, remainingRefundMinor: 0, refundInitiateBy: null, refundRequestCount: 0,
   latestRefundRequestedAt: null, refundOperations: { created: 0, pending: 0, unknown: 0, confirmed: 0, failed: 0 },
@@ -297,6 +297,27 @@ test("new current offer never replaces older purchase terms or archive year", as
   assert.match(html, new RegExp(`/archive/${companyId}/2025/download`));
   assert.match(html, new RegExp(`/archive/${companyId}/2026/download`));
   assert.match(html, /Eldre kjøp/);
+});
+
+test("partial capture stays visible independently of price, refunds and paid access", async () => {
+  const purchases = [{ ...purchase, status: "pending", capturedMinor: 50000, refundedMinor: 10000,
+    incomeYear: 2025 }];
+  const harness = pageHarness({ purchases });
+  const params = { companyId, beforePurchaseId: cursor, checkoutPurchaseId: purchaseId, checkoutStatus: "paid" };
+  const initial = await harness.render(params);
+  assert.match(initial, /Registrert belastet beløp: 500,00/);
+  assert.match(initial, /1.?250,00\s+kr inkl\. mva\. for selskapsåret 2025/);
+  assert.match(initial, /Registrert refundert beløp: 100,00/);
+  assert.match(initial, /Betalingen er ikke bekreftet/);
+  assert.match(initial, /Sjekk betalingsstatus/);
+  assert.doesNotMatch(initial, /Betalt tilgang/);
+
+  // Only a later canonical read changes the displayed amount; a URL status does not.
+  purchases[0] = { ...purchases[0], capturedMinor: 80000 };
+  const refreshed = await harness.render(params);
+  assert.match(refreshed, /Registrert belastet beløp: 800,00/);
+  assert.doesNotMatch(refreshed, /Registrert belastet beløp: 500,00|Betalt tilgang/);
+  assert.match(refreshed, /Betalingen er ikke bekreftet/);
 });
 
 test("web-first fallback is explicitly limited and never passes a company history cursor to the old snapshot", async () => {
