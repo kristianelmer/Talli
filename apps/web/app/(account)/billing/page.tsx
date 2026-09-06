@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
-import { annualBillingAccessRejected, annualBillingRecovery, loadAnnualBillingSnapshot, loadAnnualPurchaseHistory } from "../../../features/billing";
-import { cancelAnnualRenewal, cleanupAnnualAgreement, observeAnnualCheckout } from "../../actions";
+import { annualBillingAccessRejected, annualBillingRecovery, loadAnnualBillingSnapshot, loadAnnualPurchaseHistory, loadAnnualRefundRecoveryTargets } from "../../../features/billing";
+import { cancelAnnualRenewal, cleanupAnnualAgreement, observeAnnualCheckout, recoverAnnualRefund } from "../../actions";
 import { AnnualBillingView } from "../../components/billing/AnnualBillingView";
 import { EmptyState, LinkButton } from "../../components/ui";
 import { ownerCopy } from "../../lib/copy";
 import { listCompanyAccessContexts } from "../../lib/company-access-context";
 import { getCurrentSessionAccessToken } from "../../lib/supabase/auth-session";
+import type { AnnualRefundTargetsView } from "../../lib/annual-refund-recovery";
 
 export const dynamic = "force-dynamic";
 const t = ownerCopy.billing;
@@ -22,7 +23,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) {
     const returnQuery = new URLSearchParams();
-    for (const key of ["companyId", "beforePurchaseId", "cancellationOperationId", "cancellationPurchaseId", "cleanupPurchaseId", "checkoutPurchaseId"]) {
+    for (const key of ["companyId", "beforePurchaseId", "cancellationOperationId", "cancellationPurchaseId", "cleanupPurchaseId", "checkoutPurchaseId", "refundPurchaseId", "refundRequestId", "beforeRefundRequestId"]) {
       const value = parameter(params, key);
       if (value && uuid.test(value)) returnQuery.set(key, value);
     }
@@ -38,7 +39,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   if (company) query.set("companyId", company.id);
   else if (selectedId && uuid.test(selectedId)) query.set("companyId", selectedId);
   if (beforePurchaseId && uuid.test(beforePurchaseId)) query.set("beforePurchaseId", beforePurchaseId);
-  for (const key of ["cancellationOperationId", "cancellationPurchaseId", "cleanupPurchaseId", "checkoutPurchaseId"]) {
+  for (const key of ["cancellationOperationId", "cancellationPurchaseId", "cleanupPurchaseId", "checkoutPurchaseId", "refundPurchaseId", "refundRequestId", "beforeRefundRequestId"]) {
     const value = parameter(params, key);
     if (value && uuid.test(value)) query.set(key, value);
   }
@@ -69,6 +70,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     let offerUnavailable = false;
     let limitedHistory = false;
     let recovery;
+    let refundTargets: AnnualRefundTargetsView | undefined;
+    let refundSelectionUnavailable = false;
     try {
       const history = await loadAnnualPurchaseHistory(accessToken, {
         companyId: company.id, beforePurchaseId,
@@ -84,8 +87,34 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           offerUnavailable = true;
         }
       }
-      snapshot = history ?? published;
+      const candidate = history ?? published;
       limitedHistory = history === null && published !== undefined;
+      const refundPurchaseId = parameter(params, "refundPurchaseId");
+      const refundRequestId = parameter(params, "refundRequestId");
+      const beforeRefundRequestId = parameter(params, "beforeRefundRequestId");
+      if (refundPurchaseId || refundRequestId || beforeRefundRequestId) {
+        const selected = candidate?.purchases.find(value => value.purchaseId === refundPurchaseId);
+        if (!selected || !refundPurchaseId || !uuid.test(refundPurchaseId)
+          || (refundRequestId && !uuid.test(refundRequestId)) || (beforeRefundRequestId && !uuid.test(beforeRefundRequestId))) {
+          refundSelectionUnavailable = true;
+        } else {
+          let page = null;
+          try {
+            page = await loadAnnualRefundRecoveryTargets(accessToken, { companyId: company.id,
+              purchaseId: refundPurchaseId, beforeRefundRequestId });
+            if (page && (page.companyId !== company.id || page.purchaseId !== selected.purchaseId || page.incomeYear !== selected.incomeYear)) {
+              throw new Error("Refund target scope unavailable");
+            }
+          } catch (error) {
+            if (annualBillingAccessRejected(error)) throw error;
+            page = null;
+          }
+          refundTargets = { purchaseId: refundPurchaseId, beforeRefundRequestId, selectedRefundRequestId: refundRequestId, page };
+        }
+      }
+      // Assign only after all protected reads: a later auth failure must not
+      // leave previously loaded history or controls visible.
+      snapshot = candidate;
     } catch (error) {
       recovery = annualBillingRecovery(error);
     }
@@ -95,6 +124,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       content = <AnnualBillingView companyId={company.id} companyName={company.name} snapshot={snapshot}
         offer={published?.offer} offerUnavailable={offerUnavailable} limitedHistory={limitedHistory}
         beforePurchaseId={beforePurchaseId} cancelAction={cancelAnnualRenewal} cleanupAction={cleanupAnnualAgreement} observeAction={observeAnnualCheckout}
+        recoverRefundAction={recoverAnnualRefund} refundTargets={refundTargets} refundSelectionUnavailable={refundSelectionUnavailable}
         unconfirmedPurchaseId={parameter(params, "cancellationError") === "unconfirmed" ? retryPurchaseId : undefined}
         operationIds={Object.fromEntries(snapshot.purchases.map((purchase) => [
           purchase.purchaseId, retryId && uuid.test(retryId) && purchase.purchaseId === retryPurchaseId

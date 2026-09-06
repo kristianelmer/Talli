@@ -439,3 +439,28 @@ test("refund recovery target discovery is a strict scoped GET without command he
       error => error instanceof TalliApiError && error.status === 502);
   }
 });
+
+test("owner discovery fallback distinguishes absent route from domain cursor and authority errors", async () => {
+  const input = { companyId, purchaseId: "10000000-0000-4000-8000-000000000002" };
+  const missing = ownerSnapshotLoader(async () => Response.json({ detail: "Not Found" }, { status: 404 }), "loadAnnualRefundRecoveryTargets");
+  assert.equal(await missing("owner", input), null);
+  for (const [status, code] of [[404, "BILLING_NOT_FOUND"], [403, "BILLING_STEP_UP_REQUIRED"], [401, "BILLING_UNAUTHENTICATED"], [503, "BILLING_UNAVAILABLE"]]) {
+    const problem = { type: "https://talli.no/problems/billing", title: "Unavailable", status, detail: "Scoped failure",
+      code, instance: "/api/v1/billing/annual/refund-recovery-targets", requestId: "target-read" };
+    const load = ownerSnapshotLoader(async () => Response.json(problem, { status,
+      headers: { "Content-Type": "application/problem+json" } }), "loadAnnualRefundRecoveryTargets");
+    await assert.rejects(load("owner", input), error => error instanceof TalliApiError && error.status === status);
+  }
+});
+
+test("owner refund recovery wrapper sends exact request intent without allocating a mutation key", async () => {
+  const body = { companyId, purchaseId: "10000000-0000-4000-8000-000000000002", refundRequestId: "10000000-0000-4000-8000-000000000003" };
+  let captured;
+  const recover = ownerSnapshotLoader(async (url, request) => { captured = { url, request };
+    return Response.json({ ...body, incomeYear: 2026, status: "unknown" }); }, "recoverAnnualRefund");
+  assert.equal((await recover("owner", body)).status, "unknown");
+  assert.equal(captured.request.headers.Authorization, "Bearer owner");
+  assert.equal(captured.request.headers["Idempotency-Key"], undefined);
+  assert.equal(captured.request.cache, "no-store");
+  assert.deepEqual(JSON.parse(captured.request.body), body);
+});

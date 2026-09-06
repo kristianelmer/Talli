@@ -41,11 +41,12 @@ ui.EmptyState = compile(readFileSync(new URL("../app/components/ui/EmptyState.ts
 }).EmptyState;
 const { AnnualAgreementCleanupControl } = compile(readFileSync(new URL("../app/components/billing/AnnualAgreementCleanupControl.tsx", import.meta.url), "utf8"), { "../ui": ui });
 const { AnnualCheckoutObservationControl } = compile(readFileSync(new URL("../app/components/billing/AnnualCheckoutObservationControl.tsx", import.meta.url), "utf8"), { "../ui": ui });
-const { AnnualBillingView } = compile(readFileSync(new URL("../app/components/billing/AnnualBillingView.tsx", import.meta.url), "utf8"), { "../ui": ui, "./AnnualAgreementCleanupControl": { AnnualAgreementCleanupControl }, "./AnnualCheckoutObservationControl": { AnnualCheckoutObservationControl } });
+const { AnnualRefundRecoveryControl } = compile(readFileSync(new URL("../app/components/billing/AnnualRefundRecoveryControl.tsx", import.meta.url), "utf8"), { "../ui": ui });
+const { AnnualBillingView } = compile(readFileSync(new URL("../app/components/billing/AnnualBillingView.tsx", import.meta.url), "utf8"), { "../ui": ui, "./AnnualAgreementCleanupControl": { AnnualAgreementCleanupControl }, "./AnnualCheckoutObservationControl": { AnnualCheckoutObservationControl }, "./AnnualRefundRecoveryControl": { AnnualRefundRecoveryControl } });
 function render(purchases = [purchase], extra = {}) {
   return renderToStaticMarkup(React.createElement(AnnualBillingView, { companyId, companyName: "Holding AS",
     snapshot: { offer, purchases, nextPurchaseId: null }, operationIds: { [purchaseId]: operationId },
-    cancelAction: async () => {}, cleanupAction: async () => ({ kind: "idle" }), observeAction: async () => ({ kind: "idle" }), ...extra }));
+    cancelAction: async () => {}, cleanupAction: async () => ({ kind: "idle" }), observeAction: async () => ({ kind: "idle" }), recoverRefundAction: async () => ({ kind: "idle" }), ...extra }));
 }
 
 test("annual history keeps stored purchase prices and terms separate from today's offer", () => {
@@ -197,25 +198,27 @@ test("missing session reaches sign-in with replay context before any mutation", 
 
 const pageSource = readFileSync(new URL("../app/(account)/billing/page.tsx", import.meta.url), "utf8");
 const company = { id: companyId, name: "Holding AS", admittedAccountingYear: 2026 };
-function pageHarness({ companies = [company], token = "session", contextError, requiresAal2, requiresSignIn, failure, purchases = [purchase], historyMissing = false, nextPurchaseId = null, offerFailure = false, offerAccessRejected = false } = {}) {
+function pageHarness({ companies = [company], token = "session", contextError, requiresAal2, requiresSignIn, failure, purchases = [purchase], historyMissing = false, nextPurchaseId = null, offerFailure = false, offerAccessRejected = false, refundPage = null, refundFailure, refundAccessRejected = false } = {}) {
   const reads = [];
   const offerReads = [];
+  const refundReads = [];
   const { default: BillingPage } = compile(pageSource, {
-    "../../../features/billing": { annualBillingRecovery: () => failure,
-      annualBillingAccessRejected: () => offerAccessRejected,
+    "../../../features/billing": { annualBillingRecovery: () => refundFailure ?? failure,
+      annualBillingAccessRejected: () => offerAccessRejected || refundAccessRejected,
+      loadAnnualRefundRecoveryTargets: async (...args) => { refundReads.push(args); if (refundFailure) throw new Error("private refund detail"); return refundPage; },
       loadAnnualPurchaseHistory: async (...args) => { reads.push(args); if (failure) throw new Error("internal detail");
         return historyMissing ? null : { companyId: args[1].companyId, purchases, nextPurchaseId }; },
       loadAnnualBillingSnapshot: async (...args) => { offerReads.push(args); if (offerFailure) throw new Error("offer unavailable");
         return { offer: { ...offer, companyId: args[1].companyId, incomeYear: args[1].incomeYear }, purchases, nextPurchaseId }; } },
     "next/navigation": { redirect: (path) => { throw new Error(`redirect:${path}`); } },
-    "../../actions": { cancelAnnualRenewal: async () => {}, cleanupAnnualAgreement: async () => ({ kind: "idle" }), observeAnnualCheckout: async () => ({ kind: "idle" }) },
+    "../../actions": { cancelAnnualRenewal: async () => {}, cleanupAnnualAgreement: async () => ({ kind: "idle" }), observeAnnualCheckout: async () => ({ kind: "idle" }), recoverAnnualRefund: async () => ({ kind: "idle" }) },
     "../../components/billing/AnnualBillingView": { AnnualBillingView },
     "../../components/ui": { ...ui, EmptyState: ({ title, children, action }) => React.createElement("section", {}, title, children, action) },
     "../../lib/copy": { ownerCopy: { billing: { hubTitle: "Abonnement" } } },
     "../../lib/company-access-context": { listCompanyAccessContexts: async () => ({ companies, error: contextError, requiresAal2, requiresSignIn }) },
     "../../lib/supabase/auth-session": { getCurrentSessionAccessToken: async () => token },
   });
-  return { reads, offerReads, render: async (params = {}) => renderToStaticMarkup(await BillingPage({ searchParams: Promise.resolve(params) })) };
+  return { reads, offerReads, refundReads, render: async (params = {}) => renderToStaticMarkup(await BillingPage({ searchParams: Promise.resolve(params) })) };
 }
 
 test("billing page binds the selected company and admitted year without loading legacy workspace state", async () => {
@@ -327,6 +330,89 @@ test("read after uncertain cancellation reuses the key only on the same purchase
   assert.match(html, /Vi fikk ikke bekreftet oppsigelsen/);
   const another = await pageHarness().render({ cancellationPurchaseId: cursor, cancellationOperationId: operationId });
   assert.doesNotMatch(another, new RegExp(`value="${operationId}"`));
+});
+
+const refundRequestId = "50000000-0000-4000-8000-000000000001";
+const refundPage = { companyId, purchaseId, incomeYear: 2026, targets: [
+  { refundRequestId, requestedAt: "2026-09-06T12:00:00Z", status: "confirmed" },
+], nextRefundRequestId: refundRequestId };
+
+test("discovery loads only the selected canonical purchase and keeps money in history", async () => {
+  const amounts = { ...purchase, recordedRefundMinor: 125000, refundedMinor: 50000, remainingRefundMinor: 75000,
+    refundRequestCount: 4, refundOperations: { ...purchase.refundOperations, confirmed: 1 } };
+  const harness = pageHarness({ purchases: [amounts], refundPage });
+  const unselected = await harness.render();
+  assert.equal(harness.refundReads.length, 0);
+  assert.match(unselected, /Vis dine registrerte refusjonsforespørsler/);
+  assert.doesNotMatch(unselected, /Sjekk refusjonsstatus/);
+  const html = await harness.render({ refundPurchaseId: purchaseId, beforePurchaseId: cursor, beforeRefundRequestId: operationId });
+  assert.deepEqual(JSON.parse(JSON.stringify(harness.refundReads)), [["session", { companyId, purchaseId, beforeRefundRequestId: operationId }]]);
+  assert.match(html, /Gjenstående registrert beløp: 750,00/);
+  assert.match(html, /Forsøket er bekreftet/);
+  assert.match(html, /Sjekk refusjonsstatus/);
+  assert.match(html, new RegExp(`name="refundRequestId" value="${refundRequestId}"`));
+  assert.match(html, new RegExp(`beforePurchaseId=${cursor}&amp;beforeRefundRequestId=${refundRequestId}`));
+});
+
+test("absent or unavailable discovery retains authorized history without claiming no refund", async () => {
+  for (const options of [{ refundPage: null }, { refundFailure: "unavailable" }]) {
+    const html = await pageHarness(options).render({ refundPurchaseId: purchaseId });
+    assert.match(html, /Forespørslene kan ikke vises nå/);
+    assert.match(html, /Stored purchase terms|Stopp fornyelse/);
+    assert.doesNotMatch(html, /Ingen registrerte forespørsler|Sjekk refusjonsstatus|private refund detail/);
+  }
+  const empty = await pageHarness({ refundPage: { ...refundPage, targets: [], nextRefundRequestId: null } }).render({ refundPurchaseId: purchaseId });
+  assert.match(empty, /Ingen registrerte forespørsler kan kontrolleres av deg nå/);
+  assert.match(empty, /eventuelt gjenstående refusjonsbeløp/);
+});
+
+test("discovery authentication rejection suppresses all earlier protected reads", async () => {
+  for (const refundFailure of ["step-up", "sign-in", "unavailable"]) {
+    const harness = pageHarness({ refundFailure, refundAccessRejected: true });
+    const html = await harness.render({ companyId, refundPurchaseId: purchaseId, refundRequestId,
+      beforePurchaseId: cursor, beforeRefundRequestId: operationId });
+    assert.match(html, /Abonnementet kan ikke vises nå/);
+    assert.doesNotMatch(html, /Stored purchase terms|Stopp fornyelse|Sjekk refusjonsstatus|Last ned årsarkivet/);
+    assert.match(html, new RegExp(`refundRequestId(?:%3D|=)${refundRequestId}`));
+    assert.match(html, new RegExp(`beforeRefundRequestId(?:%3D|=)${operationId}`));
+  }
+});
+
+test("invalid or off-page selection sends no discovery request and never substitutes another purchase", async () => {
+  for (const params of [{ refundPurchaseId: cursor }, { refundPurchaseId: "invalid" }, { refundRequestId },
+    { refundPurchaseId: purchaseId, beforeRefundRequestId: "invalid" }]) {
+    const harness = pageHarness({ refundPage });
+    const html = await harness.render(params);
+    assert.equal(harness.refundReads.length, 0);
+    assert.match(html, /valgte refusjonsoversikten er ikke tilgjengelig/);
+    assert.doesNotMatch(html, /Sjekk refusjonsstatus/);
+  }
+});
+
+test("foreign discovery scope and replaced representative cannot silently select the earlier request", async () => {
+  for (const changes of [{ companyId: cursor }, { purchaseId: cursor }, { incomeYear: 2025 }]) {
+    const html = await pageHarness({ refundPage: { ...refundPage, ...changes } }).render({ refundPurchaseId: purchaseId });
+    assert.match(html, /Forespørslene kan ikke vises nå/);
+    assert.doesNotMatch(html, /Sjekk refusjonsstatus/);
+  }
+  const html = await pageHarness({ refundPage }).render({ refundPurchaseId: purchaseId, refundRequestId: operationId });
+  assert.match(html, /Den valgte forespørselen vises ikke/);
+  assert.doesNotMatch(html, new RegExp(`name="refundRequestId" value="${operationId}"`));
+});
+
+test("login preserves selected request and both cursors without performing any action", async () => {
+  const harness = pageHarness({ token: null });
+  await assert.rejects(harness.render({ companyId, refundPurchaseId: purchaseId, refundRequestId,
+    beforePurchaseId: cursor, beforeRefundRequestId: operationId }), error => {
+    const login = new URL(error.message.slice("redirect:".length), "https://talli.example");
+    const next = new URL(login.searchParams.get("next"), login.origin);
+    assert.equal(next.searchParams.get("refundRequestId"), refundRequestId);
+    assert.equal(next.searchParams.get("refundPurchaseId"), purchaseId);
+    assert.equal(next.searchParams.get("beforeRefundRequestId"), operationId);
+    assert.equal(next.searchParams.get("beforePurchaseId"), cursor);
+    return true;
+  });
+  assert.equal(harness.refundReads.length, 0);
 });
 
 for (const recovery of ["mfa", "login", "retry"]) {

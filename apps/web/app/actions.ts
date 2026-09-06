@@ -1,5 +1,7 @@
 "use server";
 
+import type { AnnualRefundRecoveryActionState } from "./lib/annual-refund-recovery";
+
 import type { AnnualAgreementCleanupActionState } from "./lib/annual-billing-cleanup";
 import type { AnnualCheckoutObservationActionState } from "./lib/annual-checkout-observation";
 import { createHash, randomUUID } from "node:crypto";
@@ -72,6 +74,8 @@ import {
   cancelAnnualRenewal as cancelAnnualRenewalThroughApi,
   cleanupAnnualAgreement as cleanupAnnualAgreementThroughApi,
   observeAnnualCheckout as observeAnnualCheckoutThroughApi,
+  recoverAnnualRefund as recoverAnnualRefundThroughApi,
+  annualBillingAccessRejected,
   cancelBillingSubscription as cancelBillingSubscriptionThroughApi,
   manageProductionPilotEntitlement,
   markBillingCaseUnsupported,
@@ -4269,6 +4273,48 @@ export async function revokeSupportAccess(formData: FormData) {
     redirect(`/operator?error=${encodeURIComponent(error instanceof Error ? error.message : "support_access_revoke_failed")}`);
   }
   redirect("/operator?grant=revoked");
+}
+
+export async function recoverAnnualRefund(
+  _previousState: AnnualRefundRecoveryActionState,
+  formData: FormData,
+): Promise<AnnualRefundRecoveryActionState> {
+  let companyId: string;
+  let purchaseId: string;
+  let refundRequestId: string;
+  let beforePurchaseId: string | undefined;
+  let beforeRefundRequestId: string | undefined;
+  try {
+    companyId = requiredFormUuid(formData, "companyId");
+    purchaseId = requiredFormUuid(formData, "purchaseId");
+    refundRequestId = requiredFormUuid(formData, "refundRequestId");
+    beforePurchaseId = formString(formData, "beforePurchaseId") ? requiredFormUuid(formData, "beforePurchaseId") : undefined;
+    beforeRefundRequestId = formString(formData, "beforeRefundRequestId") ? requiredFormUuid(formData, "beforeRefundRequestId") : undefined;
+  } catch {
+    return { kind: "invalid" };
+  }
+  const returnTo = ownerPathWithQuery("/billing", { companyId, beforePurchaseId, beforeRefundRequestId,
+    refundPurchaseId: purchaseId, refundRequestId });
+  const recover = (reason: ReturnType<typeof annualBillingRecovery>) => ({
+    kind: "recovery" as const, companyId, purchaseId, refundRequestId, reason,
+    href: reason === "unavailable" ? null : `/${reason === "step-up" ? "mfa" : "login"}?next=${encodeURIComponent(returnTo)}`,
+  });
+  try {
+    const accessToken = await getCurrentSessionAccessToken();
+    if (!accessToken) {
+      revalidatePath("/billing");
+      return recover("sign-in");
+    }
+    const value = await recoverAnnualRefundThroughApi(accessToken, { companyId, purchaseId, refundRequestId });
+    if (value.companyId !== companyId || value.purchaseId !== purchaseId || value.refundRequestId !== refundRequestId) {
+      return recover("unavailable");
+    }
+    revalidatePath("/billing");
+    return { kind: "observed", companyId, purchaseId, refundRequestId, status: value.status };
+  } catch (error) {
+    if (annualBillingAccessRejected(error)) revalidatePath("/billing");
+    return recover(annualBillingRecovery(error));
+  }
 }
 
 export async function observeAnnualCheckout(

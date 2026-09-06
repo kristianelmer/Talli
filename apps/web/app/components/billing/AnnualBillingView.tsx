@@ -4,6 +4,8 @@ import { AnnualCheckoutObservationControl } from "./AnnualCheckoutObservationCon
 import type { AnnualCheckoutObservationAction } from "../../lib/annual-checkout-observation";
 import { AnnualAgreementCleanupControl } from "./AnnualAgreementCleanupControl";
 import type { AnnualAgreementCleanupAction } from "../../lib/annual-billing-cleanup";
+import { AnnualRefundRecoveryControl } from "./AnnualRefundRecoveryControl";
+import type { AnnualRefundRecoveryAction, AnnualRefundTargetsView } from "../../lib/annual-refund-recovery";
 
 const money = new Intl.NumberFormat("nb-NO", { style: "currency", currency: "NOK" });
 const date = new Intl.DateTimeFormat("nb-NO", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Oslo" });
@@ -23,6 +25,9 @@ type Props = {
   cancelAction: (formData: FormData) => Promise<void>;
   cleanupAction: AnnualAgreementCleanupAction;
   observeAction: AnnualCheckoutObservationAction;
+  recoverRefundAction: AnnualRefundRecoveryAction;
+  refundTargets?: AnnualRefundTargetsView;
+  refundSelectionUnavailable?: boolean;
 };
 
 function RefundEvidence({ purchase }: { purchase: AnnualPurchaseSummaryWire | AnnualPurchaseRefundSummaryWire }) {
@@ -53,7 +58,47 @@ function RefundEvidence({ purchase }: { purchase: AnnualPurchaseSummaryWire | An
   </section>;
 }
 
-function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancelAction, cleanupAction, observeAction }: {
+function RefundTargets({ purchase, beforePurchaseId, selected, recoverAction }: {
+  purchase: AnnualPurchaseSummaryWire | AnnualPurchaseRefundSummaryWire;
+  beforePurchaseId?: string;
+  selected?: AnnualRefundTargetsView;
+  recoverAction: AnnualRefundRecoveryAction;
+}) {
+  const query = new URLSearchParams({ companyId: purchase.companyId, refundPurchaseId: purchase.purchaseId });
+  if (beforePurchaseId) query.set("beforePurchaseId", beforePurchaseId);
+  const href = `/billing?${query}#annual-purchase-${purchase.purchaseId}`;
+  if (!selected) return "refundOperations" in purchase && purchase.refundRequestCount > 0
+    ? <LinkButton href={href}>Vis dine registrerte refusjonsforespørsler</LinkButton> : null;
+  const page = selected.page;
+  const labels = { created: "Klargjort", pending: "Venter på bekreftelse", unknown: "Ukjent utfall", confirmed: "Forsøket er bekreftet", failed: "Forsøket ble ikke fullført" };
+  if (page?.nextRefundRequestId) query.set("beforeRefundRequestId", page.nextRefundRequestId);
+  return <section aria-label="Dine registrerte refusjonsforespørsler">
+    <h4>Dine registrerte refusjonsforespørsler</h4>
+    {page === null ? <Banner variant="warning">Forespørslene kan ikke vises nå. <LinkButton href={href}>Last inn på nytt</LinkButton></Banner>
+      : <>
+        {selected.selectedRefundRequestId && !page.targets.some(value => value.refundRequestId === selected.selectedRefundRequestId)
+          ? <Banner variant="info">Den valgte forespørselen vises ikke på denne siden. Velg en registrert forespørsel for å sjekke status.</Banner> : null}
+        {page.targets.length === 0 ? <p>{selected.beforeRefundRequestId ? "Ingen eldre forespørsler på denne siden."
+          : "Ingen registrerte forespørsler kan kontrolleres av deg nå."} Dette endrer ikke et eventuelt gjenstående refusjonsbeløp.</p>
+          : <>
+            <p>Du kan sjekke status for tidligere registrerte refusjonsforsøk. Beløpene for kjøpet vises ovenfor.</p>
+            {page.targets.map(value => <div key={`${purchase.companyId}:${purchase.purchaseId}:${value.refundRequestId}`} className="formPanel">
+              <p>Registrert {date.format(new Date(value.requestedAt))} · {labels[value.status]}</p>
+              <AnnualRefundRecoveryControl companyId={purchase.companyId} purchaseId={purchase.purchaseId}
+                refundRequestId={value.refundRequestId} beforePurchaseId={beforePurchaseId}
+                beforeRefundRequestId={selected.beforeRefundRequestId} recoverAction={recoverAction} />
+            </div>)}
+          </>}
+        <nav className="actionRow" aria-label="Refusjonsforespørsler">
+          {selected.beforeRefundRequestId ? <LinkButton href={href}>Nyeste forespørsler</LinkButton> : null}
+          {page.nextRefundRequestId ? <LinkButton href={`/billing?${query}#annual-purchase-${purchase.purchaseId}`}>Eldre forespørsler</LinkButton> : null}
+        </nav>
+      </>}
+  </section>;
+}
+
+function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancelAction, cleanupAction, observeAction,
+  recoverRefundAction, refundTargets }: {
   purchase: AnnualPurchaseSummaryWire | AnnualPurchaseRefundSummaryWire;
   operationId: string;
   beforePurchaseId?: string;
@@ -61,6 +106,8 @@ function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancel
   cancelAction: Props["cancelAction"];
   cleanupAction: Props["cleanupAction"];
   observeAction: Props["observeAction"];
+  recoverRefundAction: Props["recoverRefundAction"];
+  refundTargets?: AnnualRefundTargetsView;
 }) {
   return <article id={`annual-purchase-${purchase.purchaseId}`} className="billingStatusCard" aria-label={`Kjøp ${date.format(new Date(purchase.acceptedAt))}`}>
     <div className="billingStatusHead">
@@ -73,6 +120,8 @@ function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancel
     {purchase.status === "paid" ? <p>Betalt tilgang til og med {calendarDate(purchase.paidThrough)}.
       Lese- og eksporttilgang til og med {calendarDate(purchase.exportThrough)}.</p> : null}
     <RefundEvidence purchase={purchase} />
+    <RefundTargets purchase={purchase} beforePurchaseId={beforePurchaseId} selected={refundTargets}
+      recoverAction={recoverRefundAction} />
     {purchase.status === "pending" ? <AnnualCheckoutObservationControl key={`${purchase.companyId}:${purchase.purchaseId}`}
       companyId={purchase.companyId} purchaseId={purchase.purchaseId} beforePurchaseId={beforePurchaseId}
       observeAction={observeAction} /> : null}
@@ -106,7 +155,8 @@ function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancel
 }
 
 export function AnnualBillingView({ companyId, companyName, snapshot, offer: currentOffer, offerUnavailable, limitedHistory,
-  beforePurchaseId, operationIds, unconfirmedPurchaseId, cancelAction, cleanupAction, observeAction }: Props) {
+  beforePurchaseId, operationIds, unconfirmedPurchaseId, cancelAction, cleanupAction, observeAction,
+  recoverRefundAction, refundTargets, refundSelectionUnavailable }: Props) {
   const { purchases, nextPurchaseId } = snapshot;
   const offer = "offer" in snapshot ? snapshot.offer : currentOffer;
   const base = `/billing?companyId=${encodeURIComponent(companyId)}`;
@@ -132,6 +182,8 @@ export function AnnualBillingView({ companyId, companyName, snapshot, offer: cur
     </section>}
     <section className="billingSection" aria-labelledby="annual-history-title">
       <h2 id="annual-history-title" className="sectionTitle">Kjøpshistorikk og fornyelse</h2>
+      {refundSelectionUnavailable ? <Banner variant="warning">Den valgte refusjonsoversikten er ikke tilgjengelig på denne historikksiden.
+        Velg et kjøp nedenfor for å se registrerte forespørsler.</Banner> : null}
       {limitedHistory ? <Banner variant="info">Bare de nyeste kjøpene for selskapsåret {offer?.incomeYear} vises nå.
         Hele kjøpshistorikken er midlertidig utilgjengelig.</Banner> : null}
       {purchases.length === 0 ? <EmptyState title={beforePurchaseId ? "Ingen eldre kjøp" : limitedHistory ? "Ingen kjøp i denne delen av historikken" : "Ingen årskjøp registrert"}>
@@ -139,7 +191,8 @@ export function AnnualBillingView({ companyId, companyName, snapshot, offer: cur
       </EmptyState> : <div className="annualPurchaseList">
         {purchases.map((purchase) => <Purchase key={purchase.purchaseId} purchase={purchase}
           operationId={operationIds[purchase.purchaseId]} beforePurchaseId={beforePurchaseId}
-          unconfirmed={purchase.purchaseId === unconfirmedPurchaseId} cancelAction={cancelAction} cleanupAction={cleanupAction} observeAction={observeAction} />)}
+          unconfirmed={purchase.purchaseId === unconfirmedPurchaseId} cancelAction={cancelAction} cleanupAction={cleanupAction} observeAction={observeAction}
+          recoverRefundAction={recoverRefundAction} refundTargets={refundTargets?.purchaseId === purchase.purchaseId ? refundTargets : undefined} />)}
       </div>}
       <nav className="actionRow" aria-label="Kjøpshistorikk">
         {beforePurchaseId ? <LinkButton href={base}>Nyeste kjøp</LinkButton> : null}

@@ -3,6 +3,8 @@ import {
   TalliApiError,
   type AnnualBillingSnapshotRequest,
   type AnnualPurchaseHistoryRequest,
+  type AnnualRefundRecoveryTargetsRequest,
+  type AnnualRefundRecoveryCommandWire,
   type AnnualSupportRequest,
   type AnnualAgreementCleanupCommandWire,
   type AnnualCheckoutObservationCommandWire,
@@ -45,6 +47,19 @@ export async function loadAnnualPurchaseHistory(accessToken: string, input: Annu
     if (error instanceof TalliApiError && error.status === 404 && !error.problem) return null;
     throw error;
   }
+}
+
+export async function loadAnnualRefundRecoveryTargets(accessToken: string, input: AnnualRefundRecoveryTargetsRequest) {
+  try {
+    return await client(accessToken).billingReadAnnualRefundRecoveryTargets({ ...input, ...request(input.requestId) });
+  } catch (error) {
+    if (error instanceof TalliApiError && error.status === 404 && !error.problem) return null;
+    throw error;
+  }
+}
+
+export function recoverAnnualRefund(accessToken: string, body: AnnualRefundRecoveryCommandWire) {
+  return client(accessToken).billingRecoverAnnualRefund(body, request());
 }
 
 export async function loadAnnualBillingSnapshot(accessToken: string, input: AnnualBillingSnapshotRequest) {
