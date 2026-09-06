@@ -494,6 +494,30 @@
         "/private/tmp/talli-01a077d5-stale-mfa-unit-red.log": "sha256:dc93ad39870290598b096524a04dfcec57c7a573e74f3a88c0a1c06e1a5bc327"
       },
       "limits": "Local synthetic transport/auth responses are not real backend authorization, Vipps Merchant Test, source authority, representative customer validation or successful export evidence. Lost browser response after backend settlement, additional stale-selection/pagination checks and the two new auth/prefetch findings remain open. Trusted readiness/incident/submission authority, actual designated Vipps MT, remaining acceptance, two complete immutable 11/11 gates and protected-main Release/nonproduction Preview integration remain mandatory. #192 OPEN; #150 unclaimed; #165 ACTIVE; Only release/production is frozen at d331ee2717d1eeacef0d81db42b9d4fb5848b408. Main is unchanged at ccf1dcba56a4eb05c5252b00286dba6b2b8b480e and remains the continuously integrated product source; #192 must integrate through protected Release/Preview gates when genuinely complete."
+    },
+    "annualBillingExplicitArchiveDownloads": {
+      "implementationRevision": "7f342408a0cc95b13cf8081fc728fd5ca9063e74",
+      "comparisonRevision": "6e2a20bad2626cdc9350ccc421bf389cd9943a6e",
+      "scope": "Both annual billing archive download links are native anchors styled with the existing secondary buttonClass. Stored purchase company/year and offer-without-purchase company/year destinations remain exact. No archive route, authentication, persistence, API, compatibility scope or policy change.",
+      "reproduction": "Exact preceding built app rendered billing with no click and automatically sent archive GET with next-router-prefetch:1 and _rsc. Read-only source audit confirmed the archive GET can attempt audit and export-attempt writes and, if all sources complete, a completion receipt. Synthetic baseline request failed closed, so no successful export evidence was created. Regression using the actual Button primitive and a Next Link boundary spy was red for both download destinations before correction.",
+      "validation": "Exact immutable 7f342408 production Next build and typecheck pass; full billing 516 Python +142 Node pass, including49 annual owner UI tests. Independent read-only Standards PASS 0 and Spec PASS 0 against the exact comparison revision. No database implementation changed or lifecycle rerun.",
+      "hydratedBrowser": "Exact built Next app with synthetic loopback Supabase/backend HTTP. Historical purchase2025 and current offer2026 links are both visible. Rendering, hovering, focusing and reloading produce zero archive requests. Explicit keyboard activation for2025 and mouse click for2026 each produce one normal GET without Next prefetch headers or _rsc. Only after proving no automatic requests, browser interception supplies a synthetic attachment to verify native download events; this bypasses real archive implementation and does not establish export completeness. Phone390x844 has document width375 with scrollbar, no overflow, and both anchors44px high with existing secondary styling; screenshot visually inspected.",
+      "architecture": "No checker, baseline, ADR or route change. Direct checker last ran on preceding fresh-MFA product3fb31516 and retained four inherited future-scope errors. Earlier full49/51 belongs to4b0a4a4d. No new architecture run or PASS attributed to this anchor correction.",
+      "fixtureLifecycle": "Named browser talli-archive-01a077d5 closed. Task-owned loopback HTTP and Next processes stopped; parent/child PID absence verified. Baseline Next process stopped before rebuild. Owned CLI/screenshot artifacts moved outside repository. No hosted/provider/database fixture operations.",
+      "artifacts": {
+        "/private/tmp/talli-01a077d5-archive-billing.log": "sha256:783a6da35076e6c1f0dead49d8cfa95a2db6ed4a4af01b6b263585779ec16346",
+        "/private/tmp/talli-01a077d5-archive-browser-artifacts/images/explicit-archive-phone-7f342408.png": "sha256:2e517bca6270c53cbf0493fb2011eaf724b9897b90ee6d24ca63c9ec3bebed57",
+        "/private/tmp/talli-01a077d5-archive-build.log": "sha256:d6a584fa9de9955b5052a146995dcc80dc4e45c3a23d11f70fbb2eebe014411b",
+        "/private/tmp/talli-01a077d5-archive-download-browser.log": "sha256:d441f72a016def7c00a3868d3473202fca74a9d63a3bc99fcf146dbbc3aa9c32",
+        "/private/tmp/talli-01a077d5-archive-mobile.log": "sha256:663a8d62d4826da49f03943ebfabbe7d8e7b76efa7c0b5f009211db8e431d149",
+        "/private/tmp/talli-01a077d5-archive-prefetch-green.log": "sha256:a1fc7bdc56214304ce05f3ddf41b2ed09df1a7a42604a1b599cd948ada55c4c1",
+        "/private/tmp/talli-01a077d5-archive-prefetch-red.log": "sha256:407aa7469a1ffb5eb1c4b8257469d99a645a4153ce9f4f69c6fda3d5204ab0f9",
+        "/private/tmp/talli-01a077d5-archive-prefetch-unit-green.log": "sha256:2f1486d21fda14b4b7d2a35de710a364c7df7d0eaa873eb220096d1029fdd71d",
+        "/private/tmp/talli-01a077d5-archive-prefetch-unit-red.log": "sha256:e59448e05c749f8e19b63dadd4a8840a91c3dfe0c138eab72425cf3943f30c1a",
+        "/private/tmp/talli-01a077d5-archive-stopped.json": "sha256:333f02215259a0a71088956cf6cc2cf78c4f3da4bbae26778485156e6e155700",
+        "/private/tmp/talli-01a077d5-archive-typecheck.log": "sha256:b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e"
+      },
+      "limits": "This prevents automatic billing archive requests only. It is not a universal export proof or archive implementation redesign. Other product download surfaces and canonical export completeness remain subject to whole-product acceptance. Backend401/login recovery, lost browser response and remaining #192 work continue. Actual designated Vipps MT, trusted source authority, two complete immutable gates and protected-main Release/nonproduction Preview integration remain required. Main is unchanged and remains the integration target; only release/production is frozen. #192 OPEN, #150 unclaimed, #165 ACTIVE."
     }
   },
   "externalEvidence": {
