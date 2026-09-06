@@ -424,7 +424,7 @@ contract only and has no provider/readiness dependency. Snapshot GET reads store
 facts; cancellation POST returns durable local effectiveness and preserved dates.
 
 <!-- architecture-inventory
-{"workflows":["annual-billing-reads-and-cancellation"],"routes":["/api/v1/billing/annual/snapshot","/api/v1/billing/annual/purchases", "/api/v1/billing/annual/refund-snapshot","/api/v1/billing/annual/renewal-cancellations"],"ports":["AnnualBillingReadPersistence"],"adapterBindings":["AnnualBillingReadPersistence=>talli_backend.adapters.supabase_annual_billing.PostgresAnnualBillingReadSession"],"adapterBindingOwners":["AnnualBillingReadPersistence=>backend-system"],"adapterBindingModes":["AnnualBillingReadPersistence=>verified-owner stored annual public purchase projection; no provider or readiness calls"]}
+{"workflows":["annual-billing-reads-and-cancellation"],"routes":["/api/v1/billing/annual/snapshot","/api/v1/billing/annual/purchases", "/api/v1/billing/annual/refund-snapshot","/api/v1/billing/annual/refund-recovery-targets","/api/v1/billing/annual/renewal-cancellations"],"ports":["AnnualBillingReadPersistence"],"adapterBindings":["AnnualBillingReadPersistence=>talli_backend.adapters.supabase_annual_billing.PostgresAnnualBillingReadSession"],"adapterBindingOwners":["AnnualBillingReadPersistence=>backend-system"],"adapterBindingModes":["AnnualBillingReadPersistence=>verified-owner stored annual public purchase projection; no provider or readiness calls"]}
 -->
 
 
@@ -531,3 +531,12 @@ stored original identity. Provider and source-authority gates remain unchanged.
 <!-- architecture-inventory
 {"workflows":["annual-refund-recovery"],"workflowPurposes":["annual-refund-recovery=>Authenticates the current owner to reconcile an already operation-bound request made by that actor; no allocation, source resolution or provider execution."],"publicPackages":["talli_backend.modules.billing.public"],"routes":["/api/v1/billing/annual/refund-recoveries"],"ports":["AnnualRefundRecoveryPersistence"],"adapterBindings":["AnnualRefundRecoveryPersistence=>talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundRecoverySession"],"adapterBindingOwners":["AnnualRefundRecoveryPersistence=>backend-system"],"adapterBindingModes":["AnnualRefundRecoveryPersistence=>verified current owner/fresh MFA at load and settlement; immutable request and original operation reconciliation only; provider absent by default, no source or claim binding"]}
 -->
+
+
+The existing owner read workflow also exposes
+`/api/v1/billing/annual/refund-recovery-targets` through
+`AnnualBillingReadPersistence.read_refund_recovery_targets`. The projection is
+purchase-scoped and same-actor, owner/fresh-MFA authorized, source/provider free,
+and read-only. It groups bound receipts by immutable refund operation order before
+pagination and exposes no private source, provider, actor or monetary evidence.
+Recovery independently authorizes and validates a selected receipt on explicit POST.

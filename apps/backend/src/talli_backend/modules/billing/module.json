@@ -28,7 +28,8 @@
       "AnnualBillingSnapshotQuery",
       "AnnualPurchaseHistoryQuery",
       "AnnualSupportQuery",
-      "AnnualRefundRecoveryQuery"
+      "AnnualRefundRecoveryQuery",
+      "AnnualRefundRecoveryTargetsQuery"
     ],
     "events": [
       "BillingPaymentEvent"
@@ -112,7 +113,9 @@
       "AnnualRefundRecovery",
       "AnnualRefundRecoveryPersistence",
       "AnnualRefundRecoveryOperations",
-      "annual_refund_recovery_operations"
+      "annual_refund_recovery_operations",
+      "AnnualRefundRecoveryTarget",
+      "AnnualRefundRecoveryTargetPage"
     ]
   },
   "owns": {

@@ -2615,6 +2615,20 @@ export interface AnnualRefundRecoveryWire {
   status: "pending" | "unknown" | "confirmed" | "failed";
 }
 
+export interface AnnualRefundRecoveryTargetWire {
+  refundRequestId: string;
+  requestedAt: string;
+  status: AnnualOperationStatus;
+}
+
+export interface AnnualRefundRecoveryTargetPageWire {
+  companyId: string;
+  incomeYear: number;
+  nextRefundRequestId: string | null;
+  purchaseId: string;
+  targets: AnnualRefundRecoveryTargetWire[];
+}
+
 export type AnnualOperationStatus = "created" | "pending" | "unknown" | "confirmed" | "failed";
 
 export interface AnnualOperationCountsWire {
@@ -6421,6 +6435,28 @@ function isAnnualRefundRecoveryWire(value: unknown): value is AnnualRefundRecove
   );
 }
 
+function isAnnualRefundRecoveryTargetWire(value: unknown): value is AnnualRefundRecoveryTargetWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["refundRequestId","requestedAt","status"]) &&
+    isUuid(value.refundRequestId) &&
+    isDateTime(value.requestedAt) &&
+    isAnnualOperationStatus(value.status)
+  );
+}
+
+function isAnnualRefundRecoveryTargetPageWire(value: unknown): value is AnnualRefundRecoveryTargetPageWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","nextRefundRequestId","purchaseId","targets"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (isUuid(value.nextRefundRequestId) || value.nextRefundRequestId === null) &&
+    isUuid(value.purchaseId) &&
+    Array.isArray(value.targets) && value.targets.every((item) => isAnnualRefundRecoveryTargetWire(item))
+  );
+}
+
 function isAnnualOperationStatus(value: unknown): value is AnnualOperationStatus {
   return value === "created" || value === "pending" || value === "unknown" || value === "confirmed" || value === "failed";
 }
@@ -6991,6 +7027,12 @@ export interface AnnualSupportRequest extends TalliRequestOptions {
   companyId: string;
   supportCaseId: string;
   beforePurchaseId?: string;
+}
+
+export interface AnnualRefundRecoveryTargetsRequest extends TalliRequestOptions {
+  companyId: string;
+  purchaseId: string;
+  beforeRefundRequestId?: string;
 }
 
 export interface AnnualPurchaseHistoryRequest extends TalliRequestOptions {
@@ -8558,6 +8600,13 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       const query = new URLSearchParams({companyId: request.companyId, incomeYear: String(request.incomeYear)});
       if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
       return executeJson(baseUrl + "/api/v1/billing/annual/snapshot?" + query, "GET", request, undefined, isAnnualBillingSnapshotWire);
+    },
+    async billingReadAnnualRefundRecoveryTargets(
+      request: AnnualRefundRecoveryTargetsRequest,
+    ): Promise<AnnualRefundRecoveryTargetPageWire> {
+      const query = new URLSearchParams({companyId: request.companyId, purchaseId: request.purchaseId});
+      if (request.beforeRefundRequestId !== undefined) query.set("beforeRefundRequestId", request.beforeRefundRequestId);
+      return executeJson(baseUrl + "/api/v1/billing/annual/refund-recovery-targets?" + query, "GET", request, undefined, isAnnualRefundRecoveryTargetPageWire);
     },
     async billingReadAnnualPurchaseHistory(
       request: AnnualPurchaseHistoryRequest,

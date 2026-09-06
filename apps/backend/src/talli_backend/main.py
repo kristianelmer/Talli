@@ -180,6 +180,7 @@ from talli_backend.modules.billing.public import (
     AnnualBillingSnapshotQuery, AnnualPurchaseHistoryQuery, AnnualPurchaseSummary, AnnualPurchaseId, AnnualPurchaseStatus, CancelAnnualRenewalCommand,
     AnnualBillingProvider, AnnualCheckout, AnnualCheckoutQuery, StartAnnualCheckoutCommand,
     AnnualRefundRecoveryQuery, AnnualRefundRequestId,
+    AnnualRefundRecoveryTargetsQuery,
     ActivateSubscriptionCommand,
     BillingAccount,
     BillingEntitlementDecision,
@@ -620,6 +621,20 @@ class AnnualRefundRecoveryWire(TransportModel):
     refund_request_id: UUID
     income_year: int
     status: Literal["pending", "unknown", "confirmed", "failed"]
+
+
+class AnnualRefundRecoveryTargetWire(TransportModel):
+    refund_request_id: UUID
+    requested_at: datetime
+    status: AnnualOperationStatus
+
+
+class AnnualRefundRecoveryTargetPageWire(TransportModel):
+    company_id: UUID
+    purchase_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    targets: list[AnnualRefundRecoveryTargetWire]
+    next_refund_request_id: UUID | None
 
 
 class AnnualRenewalCancellationCommandWire(StrictTransportModel):
@@ -9350,6 +9365,36 @@ def create_app(
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> AnnualBillingRefundSnapshotWire:
         return await annual_billing_snapshot_response(response, company_id, income_year, before_purchase_id, credentials)
+
+    @application.get(
+        "/api/v1/billing/annual/refund-recovery-targets",
+        operation_id="billingReadAnnualRefundRecoveryTargets", response_model=AnnualRefundRecoveryTargetPageWire,
+        responses={200: {"description": "Same-owner stored bound refund receipts for one purchase; no refund adjudication or provider action."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def read_annual_refund_recovery_targets(
+        response: Response,
+        company_id: UUID = Query(alias="companyId"),
+        purchase_id: UUID = Query(alias="purchaseId"),
+        before_refund_request_id: UUID | None = Query(default=None, alias="beforeRefundRequestId"),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualRefundRecoveryTargetPageWire:
+        async def execute():
+            workflow = await annual_billing_workflow(credentials)
+            page = await workflow.refund_recovery_targets(AnnualRefundRecoveryTargetsQuery(
+                CompanyId(str(company_id)), AnnualPurchaseId(str(purchase_id)), workflow.actor_id,
+                AnnualRefundRequestId(str(before_refund_request_id)) if before_refund_request_id else None,
+            ))
+            response.headers["Cache-Control"] = "no-store"
+            return AnnualRefundRecoveryTargetPageWire(
+                company_id=company_id, purchase_id=purchase_id, income_year=page.income_year.value,
+                targets=[AnnualRefundRecoveryTargetWire(
+                    refund_request_id=UUID(str(value.refund_request_id)),
+                    requested_at=value.requested_at.value, status=value.status,
+                ) for value in page.targets],
+                next_refund_request_id=UUID(str(page.next_refund_request_id)) if page.next_refund_request_id else None,
+            )
+        return await billing_call(execute)
 
     @application.get(
         "/api/v1/billing/annual/purchases",

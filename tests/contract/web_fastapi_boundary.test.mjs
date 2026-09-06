@@ -557,3 +557,18 @@ test("annual refund recovery is an additive authenticated POST with no caller au
   assert.deepEqual(Object.keys(response.properties).sort(), ["companyId", "incomeYear", "purchaseId", "refundRequestId", "status"]);
   assert.deepEqual(response.properties.status.enum, ["pending", "unknown", "confirmed", "failed"]);
 });
+
+test("annual refund target discovery preserves a minimal independent read contract", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const path = contract.paths["/api/v1/billing/annual/refund-recovery-targets"];
+  assert.deepEqual(Object.keys(path), ["get"]);
+  assert.equal(path.get.operationId, "billingReadAnnualRefundRecoveryTargets");
+  assert.deepEqual(path.get.security, [{ bearerAuth: [] }]);
+  assert.deepEqual(path.get.parameters.filter(value => value.in === "query").map(value => value.name).sort(),
+    ["beforeRefundRequestId", "companyId", "purchaseId"]);
+  assert.equal(path.get.parameters.some(value => value.name === "Idempotency-Key"), false);
+  const page = contract.components.schemas.AnnualRefundRecoveryTargetPageWire;
+  assert.deepEqual(Object.keys(page.properties).sort(), ["companyId", "incomeYear", "nextRefundRequestId", "purchaseId", "targets"]);
+  const target = contract.components.schemas.AnnualRefundRecoveryTargetWire;
+  assert.deepEqual(Object.keys(target.properties).sort(), ["refundRequestId", "requestedAt", "status"]);
+});

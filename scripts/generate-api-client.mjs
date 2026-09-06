@@ -280,6 +280,7 @@ const billingOperations = {
   annualObservation: ["/api/v1/billing/annual/checkout-observations", "post", "billingObserveAnnualCheckout"],
   annualSupport: ["/api/v1/billing/annual/support/purchases", "get", "billingReadAnnualSupportPurchases"],
   annualCleanup: ["/api/v1/billing/annual/agreement-cleanups", "post", "billingCleanupAnnualAgreement"],
+  annualRefundRecoveryTargets: ["/api/v1/billing/annual/refund-recovery-targets", "get", "billingReadAnnualRefundRecoveryTargets"],
   annualRefundRecovery: ["/api/v1/billing/annual/refund-recoveries", "post", "billingRecoverAnnualRefund"],
   annualSnapshot: ["/api/v1/billing/annual/snapshot", "get", "billingReadAnnualSnapshot"],
   annualCancellation: ["/api/v1/billing/annual/renewal-cancellations", "post", "billingCancelAnnualRenewal"],
@@ -798,6 +799,8 @@ const billingSchemas = Object.fromEntries([
   "AnnualAgreementCleanupWire",
   "AnnualRefundRecoveryCommandWire",
   "AnnualRefundRecoveryWire",
+  "AnnualRefundRecoveryTargetWire",
+  "AnnualRefundRecoveryTargetPageWire",
   "AnnualOperationStatus",
   "AnnualOperationCountsWire",
   "AnnualSupportPurchaseWire",
@@ -1086,6 +1089,12 @@ export interface AnnualSupportRequest extends TalliRequestOptions {
   companyId: string;
   supportCaseId: string;
   beforePurchaseId?: string;
+}
+
+export interface AnnualRefundRecoveryTargetsRequest extends TalliRequestOptions {
+  companyId: string;
+  purchaseId: string;
+  beforeRefundRequestId?: string;
 }
 
 export interface AnnualPurchaseHistoryRequest extends TalliRequestOptions {
@@ -2653,6 +2662,13 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       const query = new URLSearchParams({companyId: request.companyId, incomeYear: String(request.incomeYear)});
       if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
       return executeJson(baseUrl + "/api/v1/billing/annual/snapshot?" + query, "GET", request, undefined, isAnnualBillingSnapshotWire);
+    },
+    async billingReadAnnualRefundRecoveryTargets(
+      request: AnnualRefundRecoveryTargetsRequest,
+    ): Promise<AnnualRefundRecoveryTargetPageWire> {
+      const query = new URLSearchParams({companyId: request.companyId, purchaseId: request.purchaseId});
+      if (request.beforeRefundRequestId !== undefined) query.set("beforeRefundRequestId", request.beforeRefundRequestId);
+      return executeJson(baseUrl + "/api/v1/billing/annual/refund-recovery-targets?" + query, "GET", request, undefined, isAnnualRefundRecoveryTargetPageWire);
     },
     async billingReadAnnualPurchaseHistory(
       request: AnnualPurchaseHistoryRequest,

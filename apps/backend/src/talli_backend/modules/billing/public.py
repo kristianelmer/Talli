@@ -841,6 +841,20 @@ class AnnualBillingReadPersistence(Protocol):
         """
         ...
 
+    async def read_refund_recovery_targets(
+        self, query: AnnualRefundRecoveryTargetsQuery,
+    ) -> AnnualRefundRecoveryTargetPage:
+        """Read at most 50 distinct stored refund operations for one purchase.
+
+        Require current accepted-owner/fresh-MFA authority and filter bound
+        receipts to this actor before choosing the earliest receipt per operation.
+        Order operation groups by descending immutable created-at/ID. A request
+        cursor resolves to its scoped operation, even if its representative has
+        changed. No provider/source calls, writes, or current admission checks.
+        Targets are selectable receipts, not a statement of refund liability.
+        """
+        ...
+
 
 class AnnualCancellationId(_UuidId):
     pass
@@ -848,6 +862,30 @@ class AnnualCancellationId(_UuidId):
 
 class AnnualRefundRequestId(_UuidId):
     pass
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundRecoveryTargetsQuery:
+    company_id: CompanyId
+    purchase_id: AnnualPurchaseId
+    actor_id: ActorId
+    before_refund_request_id: AnnualRefundRequestId | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundRecoveryTarget:
+    refund_request_id: AnnualRefundRequestId
+    requested_at: Timestamp
+    status: AnnualOperationStatus
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundRecoveryTargetPage:
+    company_id: CompanyId
+    purchase_id: AnnualPurchaseId
+    income_year: IncomeYear
+    targets: tuple[AnnualRefundRecoveryTarget, ...]
+    next_refund_request_id: AnnualRefundRequestId | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1393,6 +1431,9 @@ __all__ = [
     "AnnualRefundOperation",
     "AnnualRefundResolution",
     "AnnualRefundClaim",
+    "AnnualRefundRecoveryTargetsQuery",
+    "AnnualRefundRecoveryTarget",
+    "AnnualRefundRecoveryTargetPage",
     "AnnualRefundRecoveryQuery",
     "AnnualRefundRecovery",
     "AnnualRefundRecoveryPersistence",

@@ -574,3 +574,29 @@ Shared settlement preserves atomic monotonic purchase totals and terminal outcom
 The provider is absent by default. This adds no request discovery UI, trusted
 incident/submission source, worker/support mutation, new refund attempt, actual MT
 or final annual-acquisition acceptance.
+
+### Owner refund recovery target discovery
+
+`AnnualBillingReadPersistence.read_refund_recovery_targets` projects one stored
+purchase through `AnnualRefundRecoveryTargetsQuery` and
+`AnnualRefundRecoveryTargetPage`. The additive GET
+`/api/v1/billing/annual/refund-recovery-targets` preserves predecessor contracts.
+It requires current accepted-owner and fresh-MFA authority, clears support context,
+and includes only operation-bound request receipts belonging to that actor. It
+never calls a provider or source resolver, writes evidence, or checks current
+admission. Historical targets do not authorize new sales or new refunds.
+
+One statement validates the purchase, request cursor and company/purchase/year/case
+joins. It selects the earliest authorized receipt per refund operation before
+limiting to 50 groups plus a sentinel. Operation groups sort by descending immutable
+created-at and ID. A scoped request cursor resolves to its operation even when
+later binding of an older receipt changes the displayed representative. Newly
+visible groups above a cursor require refreshing the newest page; this is not a
+frozen multi-page snapshot. Different attempts for one case remain distinct.
+
+The projection exposes only purchase scope/year, receipt ID, request time and stored
+operation status (`created`, `pending`, `unknown`, `confirmed`, `failed`), plus an
+optional request cursor. Neither target counts nor terminal operation status
+establish total refund liability or bank receipt. Source facts, actor IDs, amounts,
+case and operation IDs, provider identity and payloads stay private. Explicit
+recovery revalidates the selected receipt independently.

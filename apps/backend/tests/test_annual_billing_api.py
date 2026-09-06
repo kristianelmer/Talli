@@ -13,6 +13,8 @@ from talli_backend.main import create_app
 from talli_backend.modules.billing.public import (
     AnnualBillingSnapshotQuery,
     AnnualPurchaseHistoryQuery,
+    AnnualRefundRecoveryTargetsQuery, AnnualRefundRecoveryTarget, AnnualRefundRecoveryTargetPage,
+    AnnualRefundRequestId, AnnualOperationStatus,
     AnnualCancellationId,
     AnnualOperationCounts,
     AnnualPurchaseId,
@@ -99,6 +101,13 @@ class Session:
         self.authorize(query.company_id)
         self.read_calls.append(query)
         return AnnualPurchasePage((self.value,))
+
+    async def read_refund_recovery_targets(self, query):
+        self.authorize(query.company_id)
+        self.read_calls.append(query)
+        if query.purchase_id != PURCHASE:
+            raise BillingError.not_found()
+        return AnnualRefundRecoveryTargetPage(COMPANY, PURCHASE, YEAR, ())
 
     async def cancel_renewal(self, command):
         self.authorize(command.company_id)

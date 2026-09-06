@@ -21,6 +21,7 @@ from talli_backend.modules.billing.public import (
     AnnualBillingSnapshotQuery,
     AnnualPurchaseHistoryQuery,
     AnnualPurchasePage,
+    AnnualRefundRecoveryTargetsQuery, AnnualRefundRecoveryTargetPage,
     AnnualCancellationPersistence,
     AnnualRenewalCancellation,
     BillingError,
@@ -128,6 +129,20 @@ class AnnualBillingWorkflow:
         if command.actor_id != self.actor_id:
             raise BillingError.forbidden()
         return await self._session.cancellation.cancel_renewal(command)
+
+    async def refund_recovery_targets(
+        self, query: AnnualRefundRecoveryTargetsQuery,
+    ) -> AnnualRefundRecoveryTargetPage:
+        if query.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+        page = await self._session.reads.read_refund_recovery_targets(query)
+        if (page.company_id != query.company_id or page.purchase_id != query.purchase_id
+                or len(page.targets) > 50
+                or len({value.refund_request_id for value in page.targets}) != len(page.targets)
+                or (page.next_refund_request_id is not None and
+                    (not page.targets or page.next_refund_request_id != page.targets[-1].refund_request_id))):
+            raise BillingError.unavailable()
+        return page
 
 
 AnnualCheckoutPrerequisiteResolver = Callable[

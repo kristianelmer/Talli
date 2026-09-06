@@ -411,3 +411,31 @@ test("refund recovery client sends one stored request and validates original-ope
     await assert.rejects(api.billingRecoverAnnualRefund(body), error => error instanceof TalliApiError && error.status === 502);
   }
 });
+
+test("refund recovery target discovery is a strict scoped GET without command headers", async () => {
+  const purchaseId = "10000000-0000-4000-8000-000000000002";
+  const refundRequestId = "10000000-0000-4000-8000-000000000003";
+  const payload = { companyId, purchaseId, incomeYear: 2025, targets: [
+    { refundRequestId, requestedAt: "2026-09-06T12:00:00Z", status: "created" },
+  ], nextRefundRequestId: refundRequestId };
+  let captured;
+  const api = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async (url, request) => {
+    captured = { url: new URL(url), request }; return Response.json(payload);
+  }});
+  assert.deepEqual(await api.billingReadAnnualRefundRecoveryTargets({ companyId, purchaseId,
+    beforeRefundRequestId: refundRequestId, headers: { Authorization: "Bearer verified-owner" } }), payload);
+  assert.equal(captured.url.pathname, "/api/v1/billing/annual/refund-recovery-targets");
+  assert.deepEqual(Object.fromEntries(captured.url.searchParams), { companyId, purchaseId, beforeRefundRequestId: refundRequestId });
+  assert.equal(captured.request.method, "GET");
+  assert.equal(captured.request.cache, "no-store");
+  assert.equal(captured.request.headers.Authorization, "Bearer verified-owner");
+  assert.equal(captured.request.headers["Idempotency-Key"], undefined);
+  assert.equal(captured.request.body, undefined);
+  for (const changes of [{ status: "refunded" }, { refundRequestId: null }, { providerAccount: "private" },
+    { operationId: "private" }, { requestedAt: null }]) {
+    const malformed = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async () =>
+      Response.json({ ...payload, targets: [{ ...payload.targets[0], ...changes }] }) });
+    await assert.rejects(malformed.billingReadAnnualRefundRecoveryTargets({ companyId, purchaseId }),
+      error => error instanceof TalliApiError && error.status === 502);
+  }
+});

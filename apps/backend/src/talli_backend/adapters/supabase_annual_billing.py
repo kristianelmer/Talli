@@ -17,11 +17,16 @@ from talli_backend.modules.billing.public import (
     AnnualAgreementCleanupPersistence,
     AnnualSupportReadPersistence,
     AnnualRefundRecoveryPersistence,
+    AnnualRefundRecoveryTargetsQuery,
+    AnnualRefundRecoveryTarget,
+    AnnualRefundRecoveryTargetPage,
+    AnnualRefundRequestId,
     AnnualBillingReadPersistence,
     AnnualBillingSnapshotQuery,
     AnnualCancellationPersistence,
     AnnualCheckoutPersistence,
     AnnualOperationCounts,
+    AnnualOperationStatus,
     AnnualPurchaseId,
     AnnualPurchaseHistoryQuery,
     AnnualPurchasePage,
@@ -47,6 +52,69 @@ class PostgresAnnualBillingReadSession:
 
     async def read_purchase_history(self, query: AnnualPurchaseHistoryQuery) -> AnnualPurchasePage:
         return await self._read_purchases(query.company_id, query.actor_id, query.before_purchase_id, None)
+
+    async def read_refund_recovery_targets(
+        self, query: AnnualRefundRecoveryTargetsQuery,
+    ) -> AnnualRefundRecoveryTargetPage:
+        if query.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+
+        async def work(connection):
+            await connection.execute("select set_config('talli.support_case_id', '', true)")
+            await self._database._authorize(connection, query.company_id)
+            # One statement observes the purchase, authorized receipts and cursor.
+            # Cursor order belongs to immutable operations, not representatives:
+            # binding an older deferred receipt cannot move an existing group.
+            rows = await (await connection.execute(
+                """with purchase as materialized (
+                    select id,company_id,income_year from billing.annual_purchases
+                    where company_id=%s::uuid and id=%s::uuid
+                ), eligible as materialized (
+                    select r.id as refund_request_id,r.requested_at,o.id as operation_id,
+                        o.created_at as operation_created_at,o.status
+                    from purchase p
+                    join billing.annual_refund_requests r on r.company_id=p.company_id
+                        and r.purchase_id=p.id and r.income_year=p.income_year
+                    join billing.annual_refund_cases c on c.id=r.refund_case_id
+                        and c.company_id=p.company_id and c.purchase_id=p.id and c.income_year=p.income_year
+                    join billing.annual_operations o on o.id=r.operation_id and o.refund_case_id=c.id
+                        and o.company_id=p.company_id and o.purchase_id=p.id and o.income_year=p.income_year
+                        and o.operation='refund'
+                    where r.requested_by=%s::uuid
+                ), cursor as (
+                    select operation_created_at,operation_id from eligible where refund_request_id=%s::uuid
+                ), representatives as (
+                    select distinct on (operation_id) * from eligible
+                    order by operation_id,requested_at,refund_request_id
+                ), targets as (
+                    select * from representatives
+                    where %s::uuid is null or (operation_created_at,operation_id)<(
+                        select operation_created_at,operation_id from cursor)
+                    order by operation_created_at desc,operation_id desc limit 51
+                ) select p.id as purchase_id,p.company_id,p.income_year,
+                    (%s::uuid is null or exists(select 1 from cursor)) as cursor_valid,
+                    t.refund_request_id,t.requested_at,t.status
+                from purchase p left join targets t on true
+                order by t.operation_created_at desc,t.operation_id desc""",
+                (str(query.company_id), str(query.purchase_id), str(self.actor_id.subject),
+                 str(query.before_refund_request_id) if query.before_refund_request_id else None,
+                 str(query.before_refund_request_id) if query.before_refund_request_id else None,
+                 str(query.before_refund_request_id) if query.before_refund_request_id else None),
+            )).fetchall()
+            if not rows or not rows[0]['cursor_valid']:
+                raise BillingError.not_found()
+            await self._database._authorize(connection, query.company_id)
+            targets = tuple(AnnualRefundRecoveryTarget(
+                AnnualRefundRequestId(str(row['refund_request_id'])), Timestamp(row['requested_at']),
+                AnnualOperationStatus(row['status']),
+            ) for row in rows[:50] if row['refund_request_id'] is not None)
+            return AnnualRefundRecoveryTargetPage(
+                CompanyId(str(rows[0]['company_id'])), AnnualPurchaseId(str(rows[0]['purchase_id'])),
+                IncomeYear(rows[0]['income_year']), targets,
+                targets[-1].refund_request_id if len(rows) > 50 else None,
+            )
+
+        return await self._database._transaction(work)
 
     async def _read_purchases(self, company_id: CompanyId, actor_id: ActorId,
                               before_purchase_id: AnnualPurchaseId | None, income_year: IncomeYear | None) -> AnnualPurchasePage:
