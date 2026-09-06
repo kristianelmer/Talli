@@ -278,7 +278,7 @@ test("web cancellation lifecycle has no direct Supabase persistence or caller-ow
   assert.match(workspace, /pendingCancellationOperation\.operationId/u);
   assert.match(operator, /pendingCancellationOperation\.operationId/u);
   assert.match(server, /readOperatorSupportCase/u);
-  assert.match(server, /buildOperatorSupportSummaries\(resources\)/u);
+  assert.match(server, /buildOperatorSupportSummaries\(snapshot\.resources\)/u);
   assert.match(operatorSupport, /resources\.companyCancellations/u);
   assert.doesNotMatch(server, /\.from\("company_cancellations"\)/u);
   assert.match(actions, /requiredFormUuid\(formData, "supportCaseId"\)/u);
