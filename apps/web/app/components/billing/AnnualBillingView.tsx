@@ -69,12 +69,17 @@ function RefundTargets({ purchase, beforePurchaseId, selected, recoverAction }: 
   const href = `/billing?${query}#annual-purchase-${purchase.purchaseId}`;
   if (!selected) return "refundOperations" in purchase && purchase.refundRequestCount > 0
     ? <LinkButton href={href}>Vis dine registrerte refusjonsforespørsler</LinkButton> : null;
+  const retryQuery = new URLSearchParams(query);
+  if (selected.beforeRefundRequestId) retryQuery.set("beforeRefundRequestId", selected.beforeRefundRequestId);
+  if (selected.selectedRefundRequestId) retryQuery.set("refundRequestId", selected.selectedRefundRequestId);
+  const retryHref = `/billing?${retryQuery}#annual-purchase-${purchase.purchaseId}`;
   const page = selected.page;
   const labels = { created: "Klargjort", pending: "Venter på bekreftelse", unknown: "Ukjent utfall", confirmed: "Forsøket er bekreftet", failed: "Forsøket ble ikke fullført" };
   if (page?.nextRefundRequestId) query.set("beforeRefundRequestId", page.nextRefundRequestId);
   return <section aria-label="Dine registrerte refusjonsforespørsler">
     <h4>Dine registrerte refusjonsforespørsler</h4>
-    {page === null ? <Banner variant="warning">Forespørslene kan ikke vises nå. <LinkButton href={href}>Last inn på nytt</LinkButton></Banner>
+    {page === null ? <Banner variant="warning">Forespørslene kan ikke vises nå. <LinkButton href={retryHref}>Last inn på nytt</LinkButton>
+      {selected.beforeRefundRequestId ? <LinkButton href={href}>Nyeste forespørsler</LinkButton> : null}</Banner>
       : <>
         {selected.selectedRefundRequestId && !page.targets.some(value => value.refundRequestId === selected.selectedRefundRequestId)
           ? <Banner variant="info">Den valgte forespørselen vises ikke på denne siden. Velg en registrert forespørsel for å sjekke status.</Banner> : null}

@@ -22,7 +22,7 @@ export function AnnualRefundRecoveryControl({ companyId, purchaseId, refundReque
   }, { kind: "idle" });
   const scoped = (state.kind === "observed" || state.kind === "recovery") && state.companyId === companyId
     && state.purchaseId === purchaseId && state.refundRequestId === refundRequestId ? state : null;
-  const query = new URLSearchParams({ companyId, refundPurchaseId: purchaseId });
+  const query = new URLSearchParams({ companyId, refundPurchaseId: purchaseId, refundRequestId });
   if (beforePurchaseId) query.set("beforePurchaseId", beforePurchaseId);
   if (beforeRefundRequestId) query.set("beforeRefundRequestId", beforeRefundRequestId);
   const historyHref = `/billing?${query}#annual-purchase-${purchaseId}`;

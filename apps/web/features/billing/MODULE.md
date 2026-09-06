@@ -1,7 +1,7 @@
 # Billing web feature
 
 <!-- architecture-inventory
-{"apiOperations":["billingObserveAnnualCheckout","billingReadAnnualPurchaseHistory","billingReadAnnualRefundSnapshot","billingReadAnnualSupportPurchases","billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
+{"apiOperations":["billingReadAnnualRefundRecoveryTargets","billingRecoverAnnualRefund","billingObserveAnnualCheckout","billingReadAnnualPurchaseHistory","billingReadAnnualRefundSnapshot","billingReadAnnualSupportPurchases","billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
 -->
 
 ## Purpose and boundary
@@ -76,3 +76,23 @@ that refreshed history; partial checkout DTOs and provider URLs never replace
 the stored purchase view. Sign-in/MFA preserves company, history cursor and a
 navigation-only purchase marker. Lost responses remain unconfirmed and retryable;
 render, navigation and refresh never trigger a POST.
+
+
+Owner refund recovery first uses `billingReadAnnualRefundRecoveryTargets` for one
+selected purchase in authorized canonical history. Only an absent route (404
+without a domain problem) is unavailable compatibility; scoped cursor and access
+errors remain distinct. An access failure on this later read hides earlier
+protected history and controls. Empty results do not erase recorded liability.
+
+Each explicit `billingRecoverAnnualRefund` server action validates and sends the
+original company, purchase and request IDs through the current session, with no
+new operation key or source/provider authority. All scoped success statuses
+revalidate canonical history, including pending/unknown; access rejection also
+revalidates protected content. Operation confirmation is not total refund or bank
+receipt. Client state is scoped to all three IDs, pending disables duplicate
+submission, and a lost response retains an explicit same-request retry. Both
+history cursors and the selected receipt survive login/MFA and reload links.
+Intentional pagination may choose another page; a changed representative displays
+a selection warning. Render, navigation, refresh and auth return never issue a
+recovery POST. No automatic adjudication, new refund initiation or actual Merchant
+Test evidence is supplied by this UI.

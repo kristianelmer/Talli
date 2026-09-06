@@ -144,6 +144,11 @@ test("lost browser response preserves the same receipt and only explicit retry c
   const lost = await wrapper({ kind: "idle" }, form());
   assert.equal(lost.reason, "unavailable");
   assert.match(render(lost), /Last inn refusjonsoversikten/);
+  const reload = [...render(lost).matchAll(/href="([^"]+)"/g)].map(match => new URL(match[1].replaceAll('&amp;', '&'), 'https://talli.example'))
+    .find(url => url.pathname === '/billing');
+  assert.equal(reload.searchParams.get('refundRequestId'), refundRequestId);
+  assert.equal(reload.searchParams.get('beforePurchaseId'), cursor);
+  assert.equal(reload.searchParams.get('beforeRefundRequestId'), refundCursor);
   assert.doesNotMatch(render(lost), /Dette refusjonsforsøket er bekreftet/);
   assert.equal((await wrapper(lost, form())).status, "confirmed");
   assert.equal(attempts, 2);

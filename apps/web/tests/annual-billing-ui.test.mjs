@@ -415,6 +415,21 @@ test("login preserves selected request and both cursors without performing any a
   assert.equal(harness.refundReads.length, 0);
 });
 
+test("unavailable discovery retries the same page and receipt while newest navigation explicitly resets them", async () => {
+  const html = await pageHarness({ refundPage: null }).render({ refundPurchaseId: purchaseId, refundRequestId,
+    beforePurchaseId: cursor, beforeRefundRequestId: operationId });
+  const links = [...html.matchAll(/href="([^"]+)"[^>]*>([^<]+)</g)].map(match => ({ text: match[2],
+    url: new URL(match[1].replaceAll('&amp;', '&'), 'https://talli.example') }));
+  const retry = links.find(value => value.text === 'Last inn på nytt').url;
+  assert.equal(retry.searchParams.get('refundRequestId'), refundRequestId);
+  assert.equal(retry.searchParams.get('beforeRefundRequestId'), operationId);
+  assert.equal(retry.searchParams.get('beforePurchaseId'), cursor);
+  const newest = links.find(value => value.text === 'Nyeste forespørsler').url;
+  assert.equal(newest.searchParams.get('refundRequestId'), null);
+  assert.equal(newest.searchParams.get('beforeRefundRequestId'), null);
+  assert.equal(newest.searchParams.get('beforePurchaseId'), cursor);
+});
+
 for (const recovery of ["mfa", "login", "retry"]) {
   test(`Company Access ${recovery} failure retains the selected second company before authorization succeeds`, async () => {
     const selectedCompanyId = "60000000-0000-4000-8000-000000000001";
