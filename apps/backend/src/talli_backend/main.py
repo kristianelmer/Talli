@@ -183,6 +183,7 @@ from talli_backend.modules.billing.public import (
     AnnualSupportQuery, AnnualSupportCaseId, AnnualOperationStatus,
     AnnualBillingSnapshotQuery, AnnualPurchaseHistoryQuery, AnnualPurchaseSummary, AnnualPurchaseId, AnnualPurchaseStatus, CancelAnnualRenewalCommand,
     AnnualBillingProvider, AnnualCheckout, AnnualCheckoutQuery, StartAnnualCheckoutCommand,
+    AnnualCheckoutPreparationQuery,
     AnnualRefundRecoveryQuery, AnnualRefundRequestId,
     AnnualRefundRecoveryTargetsQuery,
     ActivateSubscriptionCommand,
@@ -611,6 +612,15 @@ class AnnualCheckoutWire(TransportModel):
     captured_minor: int = Field(ge=0)
     refunded_minor: int = Field(ge=0)
     checkout_url: str | None
+
+
+class AnnualCheckoutPreparationWire(TransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    state: Literal["available", "existing"]
+    offer: AnnualBillingOfferWire | None
+    consent_version: str | None
+    purchase_id: UUID | None
 
 
 class AnnualRefundRecoveryCommandWire(StrictTransportModel):
@@ -9188,22 +9198,50 @@ def create_app(
             "idempotency_key": IdempotencyKey(key),
         }
 
+    def annual_offer_wire(offer) -> AnnualBillingOfferWire:
+        return AnnualBillingOfferWire(
+            company_id=UUID(str(offer.company_id)), income_year=offer.income_year.value,
+            **{name: getattr(offer, name) for name in ("offer_version", "terms_digest", "terms_text", "currency",
+                "gross_minor", "net_minor", "vat_minor", "vat_basis_points", "paid_through", "export_through",
+                "renewal_date", "renewal_reminder_by", "price_change_notice_by")},
+        )
+
     def annual_checkout_wire(value: AnnualCheckout) -> AnnualCheckoutWire:
         offer = value.offer
         observation = value.observation
         return AnnualCheckoutWire(
             purchase_id=UUID(str(value.purchase_id)), company_id=UUID(str(offer.company_id)),
             income_year=offer.income_year.value, status=value.status,
-            offer=AnnualBillingOfferWire(
-                company_id=UUID(str(offer.company_id)), income_year=offer.income_year.value,
-                **{name: getattr(offer, name) for name in ("offer_version", "terms_digest", "terms_text", "currency",
-                    "gross_minor", "net_minor", "vat_minor", "vat_basis_points", "paid_through", "export_through",
-                    "renewal_date", "renewal_reminder_by", "price_change_notice_by")},
-            ),
+            offer=annual_offer_wire(offer),
             captured_minor=observation.captured_minor if observation else 0,
             refunded_minor=observation.refunded_minor if observation else 0,
             checkout_url=observation.checkout_url if observation and value.status is AnnualPurchaseStatus.PENDING else None,
         )
+
+    @application.get(
+        "/api/v1/billing/annual/checkout-preparation",
+        operation_id="billingPrepareAnnualCheckout", response_model=AnnualCheckoutPreparationWire,
+        responses={200: {"description": "Read-only transient checkout availability or existing purchase; not a reservation."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def prepare_annual_checkout(
+        response: Response, company_id: UUID, income_year: int = Query(ge=2000, le=2100),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualCheckoutPreparationWire:
+        async def execute():
+            workflow = await annual_checkout_workflow(credentials)
+            result = await workflow.prepare_checkout(AnnualCheckoutPreparationQuery(
+                CompanyId(str(company_id)), IncomeYear(income_year), workflow.actor_id,
+            ))
+            response.headers["Cache-Control"] = "no-store"
+            return AnnualCheckoutPreparationWire(
+                company_id=UUID(str(result.company_id)), income_year=result.income_year.value,
+                state="existing" if result.existing_purchase else "available",
+                offer=annual_offer_wire(result.offer) if result.offer else None,
+                consent_version=result.consent_version,
+                purchase_id=UUID(str(result.existing_purchase.purchase_id)) if result.existing_purchase else None,
+            )
+        return await billing_call(execute)
 
     @application.post(
         "/api/v1/billing/annual/checkouts",

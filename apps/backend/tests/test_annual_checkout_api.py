@@ -249,3 +249,82 @@ def test_unknown_purchase_is_concealed_without_provider_call():
     response = observe(api, uuid4())
     assert response.status_code == 404
     assert not provider.executions and not provider.reconciliations
+
+
+def prepare(api, **changes):
+    return api.get('/api/v1/billing/annual/checkout-preparation', headers=headers(),
+                   params={'company_id': str(COMPANY), 'income_year': 2026, **changes})
+
+
+def test_preparation_get_publishes_exact_offer_and_independent_consent_without_effects():
+    from talli_backend.modules.billing.public import annual_billing_consent_version
+    api, session, provider = fixture()
+    response = prepare(api)
+    assert response.status_code == 200, response.text
+    value = response.json()
+    assert set(value) == {'companyId', 'incomeYear', 'state', 'offer', 'consentVersion', 'purchaseId'}
+    assert value['companyId'] == str(COMPANY) and value['incomeYear'] == 2026
+    assert value['state'] == 'available' and value['purchaseId'] is None
+    assert value['consentVersion'] == annual_billing_consent_version()
+    assert value['offer']['termsDigest'] == command().terms_digest
+    assert value['offer']['grossMinor'] == 149000 and value['offer']['vatMinor'] == 29800
+    assert response.headers['cache-control'] == 'no-store'
+    assert session.checkout is None and not provider.executions and not provider.reconciliations
+
+
+@pytest.mark.parametrize('pending', [False, True])
+def test_preparation_existing_reference_hides_current_terms_and_private_evidence(pending):
+    api, session, provider = fixture()
+    provider.lose_response = pending
+    started = start(api)
+    assert started.status_code == 200
+    stored = session.checkout
+    async def unavailable(*args):
+        pytest.fail('Existing purchase must bypass new-sale prerequisites')
+    disabled = TestClient(create_app(annual_billing_session_factory=session, annual_checkout_prerequisites=unavailable))
+    response = prepare(disabled)
+    assert response.status_code == 200, response.text
+    assert response.json() == {'companyId': str(COMPANY), 'incomeYear': 2026, 'state': 'existing',
+                               'purchaseId': str(stored.purchase_id), 'offer': None, 'consentVersion': None}
+    assert session.checkout == stored
+    assert len(provider.executions) == 1 and not provider.reconciliations
+
+
+@pytest.mark.parametrize('mode', ['authentication', 'owner', 'mfa', 'provider', 'source', 'verifier'])
+def test_preparation_unavailable_denies_without_exposing_offer_or_creating_intent(mode):
+    api, session, provider = fixture(source=None if mode == 'source' else prerequisites,
+                                     provider_enabled=mode != 'provider')
+    request_headers = headers()
+    if mode == 'authentication':
+        request_headers['Authorization'] = 'Bearer invalid'
+    if mode == 'owner':
+        session.authorized = False
+    if mode == 'mfa':
+        session.fresh = False
+    if mode == 'verifier':
+        async def denied(*args):
+            from talli_backend.modules.billing.public import BillingErrorCode
+            raise BillingError.precondition(BillingErrorCode.FILING_NOT_READY)
+        session.verify_checkout_preparation = denied
+    response = api.get('/api/v1/billing/annual/checkout-preparation', headers=request_headers,
+                       params={'company_id': str(COMPANY), 'income_year': 2026})
+    assert response.status_code == {'authentication': 401, 'owner': 403, 'mfa': 403,
+                                   'provider': 503, 'source': 409, 'verifier': 409}[mode]
+    assert 'offer' not in response.json() and 'consentVersion' not in response.json()
+    assert session.checkout is None and not provider.executions and not provider.reconciliations
+
+
+def test_preparation_uses_current_consent_accessor_without_changing_offer_version(monkeypatch):
+    monkeypatch.setattr('talli_backend.modules.billing.annual_policy.ANNUAL_CONSENT_VERSION', 'separate-consent-v2')
+    api, session, provider = fixture()
+    response = prepare(api)
+    assert response.json()['consentVersion'] == 'separate-consent-v2'
+    assert response.json()['offer']['offerVersion'] == command().offer_version
+    assert start(api).status_code == 409
+    accepted = start(api, consentVersion='separate-consent-v2')
+    assert accepted.status_code == 200, accepted.text
+    assert len(provider.executions) == 1
+    # The original accepted request still replays after the current consent changes.
+    monkeypatch.setattr('talli_backend.modules.billing.annual_policy.ANNUAL_CONSENT_VERSION', 'separate-consent-v3')
+    assert start(api, consentVersion='separate-consent-v2').json() == accepted.json()
+    assert len(provider.executions) == 1 and not provider.reconciliations

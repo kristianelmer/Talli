@@ -29,7 +29,8 @@
       "AnnualPurchaseHistoryQuery",
       "AnnualSupportQuery",
       "AnnualRefundRecoveryQuery",
-      "AnnualRefundRecoveryTargetsQuery"
+      "AnnualRefundRecoveryTargetsQuery",
+      "AnnualCheckoutPreparationQuery"
     ],
     "events": [
       "BillingPaymentEvent"
@@ -123,7 +124,10 @@
       "AnnualNotificationReceiptId",
       "AnnualNotificationReceipt",
       "AnnualNotificationAuthentication",
-      "AnnualNotificationPersistence"
+      "AnnualNotificationPersistence",
+      "AnnualCheckoutPreparation",
+      "AnnualCheckoutPurchaseReference",
+      "annual_billing_consent_version"
     ]
   },
   "owns": {

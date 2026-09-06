@@ -36,6 +36,7 @@ Records/export survive unsupported exit. Provider limits never erase refunds owe
 Free validation is separate and creates no recurring or future payment obligation.
 """
 ANNUAL_TERMS_DIGEST = sha256(ANNUAL_TERMS.encode()).hexdigest()
+ANNUAL_CONSENT_VERSION = "annual-company-year-2026-09-05"
 _OSLO = ZoneInfo("Europe/Oslo")
 
 

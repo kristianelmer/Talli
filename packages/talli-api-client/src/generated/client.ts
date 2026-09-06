@@ -2590,6 +2590,15 @@ export interface AnnualCheckoutWire {
   status: AnnualPurchaseStatus;
 }
 
+export interface AnnualCheckoutPreparationWire {
+  companyId: string;
+  consentVersion: string | null;
+  incomeYear: number;
+  offer: AnnualBillingOfferWire | null;
+  purchaseId: string | null;
+  state: "available" | "existing";
+}
+
 export interface AnnualAgreementCleanupCommandWire {
   companyId: string;
   purchaseId: string;
@@ -6394,6 +6403,19 @@ function isAnnualCheckoutWire(value: unknown): value is AnnualCheckoutWire {
   );
 }
 
+function isAnnualCheckoutPreparationWire(value: unknown): value is AnnualCheckoutPreparationWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","consentVersion","incomeYear","offer","purchaseId","state"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.consentVersion === "string" || value.consentVersion === null) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (isAnnualBillingOfferWire(value.offer) || value.offer === null) &&
+    (isUuid(value.purchaseId) || value.purchaseId === null) &&
+    (value.state === "available" || value.state === "existing")
+  );
+}
+
 function isAnnualAgreementCleanupCommandWire(value: unknown): value is AnnualAgreementCleanupCommandWire {
   return (
     isRecord(value) &&
@@ -8556,6 +8578,15 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async billingPrepareAnnualCheckout(
+      companyId: string,
+      incomeYear: number,
+      request: TalliRequestOptions = {},
+    ): Promise<AnnualCheckoutPreparationWire> {
+      const query = new URLSearchParams({ company_id: companyId, income_year: String(incomeYear) });
+      return executeJson(baseUrl + "/api/v1/billing/annual/checkout-preparation?" + query, "GET", request, undefined, isAnnualCheckoutPreparationWire);
     },
 
     async billingStartAnnualCheckout(

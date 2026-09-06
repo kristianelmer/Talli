@@ -452,7 +452,7 @@ while current owner/fresh-MFA authorization remains mandatory. Local HTTP test
 fixtures do not establish actual MT or authoritative filing readiness.
 
 <!-- architecture-inventory
-{"routes":["/api/v1/billing/annual/checkouts","/api/v1/billing/annual/checkout-observations"],"workflowDependencies":["talli_backend.application.annual_checkout_prerequisites"]}
+{"routes":["/api/v1/billing/annual/checkout-preparation","/api/v1/billing/annual/checkouts","/api/v1/billing/annual/checkout-observations"],"workflowDependencies":["talli_backend.application.annual_checkout_prerequisites"]}
 -->
 
 

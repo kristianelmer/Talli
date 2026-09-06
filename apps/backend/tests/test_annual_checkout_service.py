@@ -9,9 +9,10 @@ from talli_backend.modules.billing.annual_policy import annual_offer
 from talli_backend.modules.billing.annual_service import AnnualCheckoutService
 from talli_backend.modules.billing.public import (
     AnnualAcceptanceBasisReference, AnnualCheckoutClaim, AnnualCheckoutPrerequisites,
-    AnnualCheckoutQuery, AnnualProviderObservation, AnnualProviderOperation,
+    AnnualCheckoutQuery, AnnualCheckoutPreparationQuery, AnnualCheckoutPurchaseReference,
+    AnnualProviderObservation, AnnualProviderOperation,
     AnnualProviderStatus, AnnualPurchaseStatus, BillingError, BillingErrorCode,
-    StartAnnualCheckoutCommand,
+    StartAnnualCheckoutCommand, annual_billing_consent_version,
 )
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, CorrelationId, IdempotencyKey, IncomeYear, Timestamp, UserId
 
@@ -54,6 +55,18 @@ class Store:
     async def find_checkout(self, company, key):
         await asyncio.sleep(0)
         return self.checkout if self.checkout and self.checkout.idempotency_key == key else None
+
+    async def find_active_checkout(self, company, year):
+        await self.authorize_owner_command(company)
+        checkout = self.checkout
+        if (checkout and checkout.offer.company_id == company and checkout.offer.income_year == year
+                and checkout.status in {AnnualPurchaseStatus.PENDING, AnnualPurchaseStatus.PAID}):
+            return AnnualCheckoutPurchaseReference(company, year, checkout.purchase_id, checkout.status)
+        return None
+
+    async def verify_checkout_preparation(self, company, year, prerequisites):
+        async with self.lock:
+            return await self.find_active_checkout(company, year)
 
     async def claim_checkout(self, checkout, prerequisites):
         async with self.lock:
@@ -326,4 +339,122 @@ def test_refunded_partial_capture_stays_unresolved_until_remaining_charge_is_fin
             'status': AnnualProviderStatus.PENDING}
         result = await service.start_checkout(command(), eligible)
         assert result.status is AnnualPurchaseStatus.PENDING
+    asyncio.run(scenario())
+
+
+def preparation_query(**changes):
+    return replace(AnnualCheckoutPreparationQuery(COMPANY, YEAR, ACTOR), **changes)
+
+
+def test_preparation_returns_exact_offer_and_consent_without_ids_claims_or_provider_calls(monkeypatch):
+    async def scenario():
+        service, store, provider = fixture()
+        def unexpected_id():
+            pytest.fail('Preparation generated a purchase or operation identity')
+        monkeypatch.setattr('talli_backend.modules.billing.annual_service.uuid4', unexpected_id)
+        result = await service.prepare_checkout(preparation_query(), eligible)
+        assert result.offer == annual_offer(COMPANY, YEAR)
+        assert result.consent_version == annual_billing_consent_version()
+        assert result.existing_purchase is None
+        assert store.checkout is None
+        assert provider.executions == provider.reconciliations == []
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize('status', [AnnualPurchaseStatus.PENDING, AnnualPurchaseStatus.PAID])
+def test_preparation_returns_existing_purchase_before_unavailable_provider_or_source(status):
+    async def scenario():
+        service, store, provider = fixture()
+        await service.start_checkout(command(), eligible)
+        store.checkout = replace(store.checkout, status=status)
+        stored = store.checkout
+        service._provider = None
+        async def unavailable():
+            pytest.fail('Existing purchase preparation resolved new-sale sources')
+        result = await service.prepare_checkout(preparation_query(), unavailable)
+        assert result.offer is None and result.consent_version is None
+        assert result.existing_purchase == AnnualCheckoutPurchaseReference(COMPANY, YEAR, stored.purchase_id, status)
+        assert store.checkout == stored
+        assert len(provider.executions) == 1 and provider.reconciliations == []
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize('status', [AnnualPurchaseStatus.FAILED, AnnualPurchaseStatus.REFUNDED])
+def test_failed_or_refunded_purchase_does_not_enable_new_checkout_without_provider(status):
+    async def scenario():
+        service, store, provider = fixture()
+        await service.start_checkout(command(), eligible)
+        store.checkout = replace(store.checkout, status=status)
+        service._provider = None
+        with pytest.raises(BillingError) as error:
+            await service.prepare_checkout(preparation_query(), eligible)
+        assert error.value.code is BillingErrorCode.PROVIDER_DISABLED
+        assert len(provider.executions) == 1 and provider.reconciliations == []
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize('mode', ['actor', 'owner', 'provider', 'source', 'not_ready', 'stale', 'future', 'company', 'year', 'verifier'])
+def test_unavailable_preparation_never_creates_purchase_or_calls_provider(mode):
+    from datetime import timedelta
+    async def scenario():
+        service, store, provider = fixture()
+        query = preparation_query(actor_id=ActorId(ActorKind.USER, UserId(str(uuid4())))) if mode == 'actor' else preparation_query()
+        if mode == 'owner':
+            store.authorized = False
+        if mode == 'provider':
+            service._provider = None
+        if mode == 'verifier':
+            async def denied(*args):
+                raise BillingError.precondition(BillingErrorCode.FILING_NOT_READY)
+            store.verify_checkout_preparation = denied
+        async def source():
+            if mode == 'source':
+                raise BillingError.precondition(BillingErrorCode.FILING_NOT_READY)
+            facts = await eligible()
+            if mode == 'not_ready':
+                return replace(facts, ready=False)
+            if mode in ('stale', 'future'):
+                return replace(facts, evaluated_at=Timestamp(NOW + timedelta(seconds=-301 if mode == 'stale' else 1)))
+            if mode in ('company', 'year'):
+                return replace(facts, basis=replace(facts.basis, **(
+                    {'company_id': CompanyId(str(uuid4()))} if mode == 'company' else {'income_year': IncomeYear(2027)})))
+            return facts
+        with pytest.raises(BillingError):
+            await service.prepare_checkout(query, source)
+        assert store.checkout is None
+        assert provider.executions == provider.reconciliations == []
+    asyncio.run(scenario())
+
+
+def test_preparation_rechecks_racing_purchase_and_authority_after_source_resolution():
+    async def scenario():
+        service, store, provider = fixture()
+        async def source_with_racing_purchase():
+            await service.start_checkout(command(), eligible)
+            return await eligible()
+        result = await service.prepare_checkout(preparation_query(), source_with_racing_purchase)
+        assert result.existing_purchase.purchase_id == store.checkout.purchase_id
+        assert result.offer is None and result.consent_version is None
+        assert len(provider.executions) == 1 and provider.reconciliations == []
+        store.checkout = None
+        async def source_with_revocation():
+            store.authorized = False
+            return await eligible()
+        with pytest.raises(BillingError):
+            await service.prepare_checkout(preparation_query(), source_with_revocation)
+        assert store.checkout is None
+    asyncio.run(scenario())
+
+
+def test_preparation_does_not_reserve_or_waive_changed_terms_and_readiness_on_post():
+    async def scenario():
+        service, store, provider = fixture()
+        await service.prepare_checkout(preparation_query(), eligible)
+        with pytest.raises(BillingError):
+            await service.start_checkout(command(terms_digest='0'*64), eligible)
+        async def unavailable():
+            raise BillingError.precondition(BillingErrorCode.FILING_NOT_READY)
+        with pytest.raises(BillingError):
+            await service.start_checkout(command(), unavailable)
+        assert store.checkout is None and provider.executions == provider.reconciliations == []
     asyncio.run(scenario())

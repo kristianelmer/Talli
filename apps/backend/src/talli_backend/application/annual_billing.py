@@ -15,6 +15,7 @@ from talli_backend.modules.billing.public import (
     AnnualCheckoutPersistence,
     AnnualCheckoutPrerequisites,
     AnnualCheckoutQuery,
+    AnnualCheckoutPreparation, AnnualCheckoutPreparationQuery,
     StartAnnualCheckoutCommand,
     annual_checkout_operations,
     AnnualBillingSnapshot,
@@ -208,6 +209,17 @@ class AnnualCheckoutWorkflow:
             return await self._prerequisites(command.company_id, command.income_year, self.actor_id)
 
         return await self._operations(command.company_id).start_checkout(command, prerequisites)
+
+    async def prepare_checkout(self, query: AnnualCheckoutPreparationQuery) -> AnnualCheckoutPreparation:
+        if query.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+
+        async def prerequisites():
+            if self._prerequisites is None:
+                return await unavailable_annual_checkout_prerequisites()
+            return await self._prerequisites(query.company_id, query.income_year, self.actor_id)
+
+        return await self._operations(query.company_id).prepare_checkout(query, prerequisites)
 
     async def observe_checkout(self, query: AnnualCheckoutQuery) -> AnnualCheckout:
         if query.actor_id != self.actor_id:

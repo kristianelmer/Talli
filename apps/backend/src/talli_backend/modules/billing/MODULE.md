@@ -58,6 +58,23 @@ coverage by seeding genuine predecessor history before the retirement migration.
 
 ## Ports and adapters
 
+`AnnualCheckoutOperations.prepare_checkout` exposes transient owner checkout
+availability through `AnnualCheckoutPreparationQuery` and
+`AnnualCheckoutPreparation`. `AnnualCheckoutPersistence` first reads a narrow
+pending/paid `AnnualCheckoutPurchaseReference`, including authorization on empty
+results. An existing purchase bypasses new-sale provider/source checks and carries
+no current offer or consent. Otherwise a short transaction locks company/year
+before eligibility, rechecks occupancy, validates the same owned purchase-basis
+projection and independent readiness verifier as claim, and rechecks owner/fresh
+MFA after waits. The exact source projection is reread after verification. It
+creates no IDs, reservations, purchase records, provider effects or entitlement.
+`annual_billing_consent_version` is the separate billing-owned version used for
+preparation, new POST validation and persistence. POST always revalidates new
+sales and preserves original-key recovery before current offer/source checks.
+The additive preparation GET has its own response; existing HTTP responses remain
+unchanged for deployment overlap. The runtime source resolver and independent
+database verifier remain unavailable by default.
+
 The #192 annual-offer work introduces `AnnualBillingOffer`,
 `AnnualRefundFacts`, `AnnualRefundReason`, `AnnualRefundDecision`,
 `AnnualRenewalFacts`, and `AnnualRenewalDecision`. The internal `annual_policy`

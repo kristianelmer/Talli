@@ -670,7 +670,8 @@ def test_http_checkout_and_recovery_share_the_real_stored_intent(setup):
     assert counts(setup) == (1, 1)
 
 
-def test_real_runtime_adapter_rejects_injected_readiness_without_source_verifier(setup):
+@pytest.mark.parametrize("operation", ["start", "prepare"])
+def test_real_runtime_adapter_rejects_injected_readiness_without_source_verifier(setup, operation):
     from types import SimpleNamespace
     from fastapi.testclient import TestClient
     from talli_backend.adapters.supabase_annual_billing import SupabaseAnnualBillingAdapter
@@ -695,11 +696,219 @@ def test_real_runtime_adapter_rejects_injected_readiness_without_source_verifier
 
     api = TestClient(create_app(annual_billing_session_factory=factory, annual_billing_provider=provider,
                                 annual_checkout_prerequisites=source))
-    response = api.post("/api/v1/billing/annual/checkouts",
-        headers={"Authorization": "Bearer verified-fixture", "Idempotency-Key": str(setup[5].idempotency_key)},
-        json={"companyId": str(setup[2].company_id), "incomeYear": 2026,
-              "offerVersion": setup[2].offer_version, "termsDigest": setup[2].terms_digest,
-              "purchaseAccepted": True, "recurringConsent": False, "consentVersion": setup[2].offer_version})
+    if operation == "start":
+        response = api.post("/api/v1/billing/annual/checkouts",
+            headers={"Authorization": "Bearer verified-fixture", "Idempotency-Key": str(setup[5].idempotency_key)},
+            json={"companyId": str(setup[2].company_id), "incomeYear": 2026,
+                  "offerVersion": setup[2].offer_version, "termsDigest": setup[2].terms_digest,
+                  "purchaseAccepted": True, "recurringConsent": False, "consentVersion": setup[2].offer_version})
+    else:
+        response = api.get("/api/v1/billing/annual/checkout-preparation",
+            headers={"Authorization": "Bearer verified-fixture"},
+            params={"company_id": str(setup[2].company_id), "income_year": 2026})
     assert response.status_code == 409, response.text
     assert response.json()["code"] == "BILLING_FILING_NOT_READY"
     assert counts(setup) == (0, 0) and not provider.executions and not provider.reconciliations
+
+
+def preparation_query(setup):
+    from talli_backend.modules.billing.public import AnnualCheckoutPreparationQuery
+    return AnnualCheckoutPreparationQuery(setup[2].company_id, setup[2].income_year, setup[1])
+
+
+def preparation_service(setup, store=None, provider=None):
+    return AnnualCheckoutService(store or session(setup), provider or Provider(setup),
+        return_url='https://example.test/return', management_url='https://example.test/manage')
+
+
+def test_preparation_reads_current_basis_without_purchase_operation_or_provider_effect(setup):
+    async def run():
+        store, provider = session(setup), Provider(setup)
+        async def source():
+            return setup[4]
+        result = await preparation_service(setup, store, provider).prepare_checkout(preparation_query(setup), source)
+        assert result.offer == setup[2] and result.existing_purchase is None
+        assert result.consent_version == setup[5].consent_version
+        assert counts(setup) == (0, 0)
+        assert not provider.executions and not provider.reconciliations
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('mode', ['default', 'false', 'wrong_company', 'wrong_year', 'wrong_assessment', 'wrong_legal', 'wrong_admission', 'wrong_promise', 'wrong_manifest', 'stale', 'future', 'not_ready', 'owner', 'mfa'])
+def test_preparation_database_denies_untrusted_basis_and_empty_unauthorized_results(setup, mode):
+    async def run():
+        store = session(setup, current=mode != 'false', fresh=mode != 'mfa',
+                        actor=ActorId(ActorKind.USER, UserId(str(setup[0]['outsider']))) if mode == 'owner' else None)
+        if mode == 'default':
+            store = PostgresAnnualCheckoutSession(DATABASE_URL, store._verified)
+        evidence = setup[4]
+        if mode.startswith('wrong_'):
+            field = {'wrong_company': 'company_id', 'wrong_year': 'income_year', 'wrong_assessment': 'assessment_id',
+                     'wrong_legal': 'legal_acceptance_id', 'wrong_admission': 'admission_id',
+                     'wrong_promise': 'promise_digest', 'wrong_manifest': 'manifest_digest'}[mode]
+            value = (CompanyId(str(uuid4())) if field == 'company_id' else IncomeYear(2027) if field == 'income_year'
+                     else '0'*64 if field.endswith('digest') else str(uuid4()))
+            evidence = replace(evidence, basis=replace(evidence.basis, **{field: value}))
+        if mode in ('stale', 'future'):
+            evidence = replace(evidence, evaluated_at=Timestamp(datetime.now(UTC) + timedelta(seconds=-301 if mode == 'stale' else 10)))
+        if mode == 'not_ready':
+            evidence = replace(evidence, ready=False)
+        with pytest.raises(BillingError):
+            await store.verify_checkout_preparation(setup[2].company_id, setup[2].income_year, evidence)
+        if mode in ('owner', 'mfa'):
+            with pytest.raises(BillingError):
+                await store.find_active_checkout(setup[2].company_id, setup[2].income_year)
+        assert counts(setup) == (0, 0)
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('status', [AnnualPurchaseStatus.PENDING, AnnualPurchaseStatus.PAID])
+def test_preparation_existing_purchase_is_available_without_provider_or_new_source(setup, status):
+    async def run():
+        store = session(setup)
+        saved = (await store.claim_checkout(candidate(setup), setup[4])).checkout
+        if status is AnnualPurchaseStatus.PAID:
+            saved = await store.settle_checkout(saved, observation(saved, status=AnnualProviderStatus.CONFIRMED,
+                captured=149000, captured_at=saved.intent.created_at))
+        before = await store.load_checkout(saved.offer.company_id, saved.purchase_id)
+        unavailable = PostgresAnnualCheckoutSession(DATABASE_URL, store._verified)
+        service = AnnualCheckoutService(unavailable, None, return_url='https://example.test', management_url='https://example.test')
+        async def source():
+            pytest.fail('Existing purchase resolved new-sale readiness')
+        result = await service.prepare_checkout(preparation_query(setup), source)
+        assert result.existing_purchase.purchase_id == saved.purchase_id
+        assert result.existing_purchase.status is status
+        assert result.offer is None and result.consent_version is None
+        assert await store.load_checkout(saved.offer.company_id, saved.purchase_id) == before
+        assert counts(setup) == (1, 1)
+    asyncio.run(run())
+
+
+def test_preparation_occupancy_race_returns_winner_without_calling_verifier(setup):
+    async def run():
+        async def verifier(evidence):
+            pytest.fail('Occupied preparation invoked new-sale verifier')
+        store = PostgresAnnualCheckoutSession(DATABASE_URL, session(setup)._verified, readiness_is_current=verifier)
+        provider = Provider(setup)
+        winner = None
+        async def source():
+            nonlocal winner
+            winner = (await session(setup).claim_checkout(candidate(setup), setup[4])).checkout
+            return setup[4]
+        result = await preparation_service(setup, store, provider).prepare_checkout(preparation_query(setup), source)
+        assert result.existing_purchase.purchase_id == winner.purchase_id
+        assert counts(setup) == (1, 1)
+        assert not provider.executions and not provider.reconciliations
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('change', ['owner', 'legal'])
+def test_preparation_rechecks_authority_and_exact_legal_basis_after_verifier_await(setup, change):
+    from test_annual_purchase_basis_runtime import legal_fields
+    async def run():
+        entered, release = asyncio.Event(), asyncio.Event()
+        async def verifier(evidence):
+            entered.set()
+            await release.wait()
+            return True
+        store = PostgresAnnualCheckoutSession(DATABASE_URL, session(setup)._verified, readiness_is_current=verifier)
+        task = asyncio.create_task(store.verify_checkout_preparation(setup[2].company_id, setup[2].income_year, setup[4]))
+        await asyncio.wait_for(entered.wait(), 3)
+        try:
+            with psycopg.connect(DATABASE_URL) as connection:
+                if change == 'owner':
+                    connection.execute('update public.company_memberships set accepted_at=null where company_id=%s and user_id=%s',
+                                       (setup[0]['company'], setup[0]['owner']))
+                else:
+                    insert(connection, 'public.customer_agreement_acceptances', setup[0]['acceptance_fields'] | legal_fields() |
+                           {'id': uuid4(), 'accepted_at': datetime.now(UTC)})
+        finally:
+            release.set()
+        with pytest.raises(BillingError) as error:
+            await task
+        assert error.value.code in {BillingErrorCode.FORBIDDEN, BillingErrorCode.UNSUPPORTED_CASE}
+        assert counts(setup) == (0, 0)
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('lock_kind', ['company_year', 'eligibility'])
+def test_preparation_rechecks_owner_after_actual_database_lock_wait(setup, lock_kind):
+    async def run():
+        with psycopg.connect(DATABASE_URL) as holder, psycopg.connect(DATABASE_URL, autocommit=True) as monitor:
+            if lock_kind == 'company_year':
+                holder.execute('select pg_advisory_xact_lock(hashtextextended(%s,192))',
+                               (f'annual-checkout|{setup[2].company_id}|2026',))
+            else:
+                holder.execute("select pg_advisory_xact_lock(hashtextextended('eligibility-recheck|' || %s::text,187))",
+                               (setup[0]['admission'],))
+            task = asyncio.create_task(session(setup).verify_checkout_preparation(setup[2].company_id, setup[2].income_year, setup[4]))
+            waiting = False
+            try:
+                for _ in range(100):
+                    waiting = monitor.execute('select count(*) from pg_stat_activity where %s=any(pg_blocking_pids(pid))',
+                                              (holder.info.backend_pid,)).fetchone()[0]
+                    if waiting:
+                        break
+                    await asyncio.sleep(0.005)
+                assert waiting and not task.done()
+                monitor.execute('update public.company_memberships set accepted_at=null where company_id=%s and user_id=%s',
+                                (setup[0]['company'], setup[0]['owner']))
+            finally:
+                holder.commit()
+            with pytest.raises(BillingError) as error:
+                await task
+            assert error.value.code is BillingErrorCode.FORBIDDEN
+            assert counts(setup) == (0, 0)
+    asyncio.run(run())
+
+
+def test_claim_persists_separate_consent_version(setup, monkeypatch):
+    monkeypatch.setattr('talli_backend.modules.billing.annual_policy.ANNUAL_CONSENT_VERSION', 'independent-consent-v2')
+    async def run():
+        store, provider = session(setup), Provider(setup)
+        async def source():
+            return setup[4]
+        accepted = replace(setup[5], consent_version='independent-consent-v2')
+        saved = await preparation_service(setup, store, provider).start_checkout(accepted, source)
+        with psycopg.connect(DATABASE_URL) as connection:
+            row = connection.execute('select offer_version, consent_version from billing.annual_purchases where id=%s',
+                                     (str(saved.purchase_id),)).fetchone()
+        assert row == (setup[2].offer_version, 'independent-consent-v2')
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('admitted', [timedelta(seconds=-296)], indirect=True)
+def test_preparation_rechecks_assessment_expiry_after_verifier_wait(setup):
+    async def run():
+        entered = False
+        async def verifier(evidence):
+            nonlocal entered
+            entered = True
+            await asyncio.sleep(4.1)
+            return True
+        store = PostgresAnnualCheckoutSession(DATABASE_URL, session(setup)._verified, readiness_is_current=verifier)
+        with pytest.raises(BillingError) as error:
+            await store.verify_checkout_preparation(setup[2].company_id, setup[2].income_year, setup[4])
+        assert entered
+        assert error.value.code is BillingErrorCode.UNSUPPORTED_CASE
+        assert counts(setup) == (0, 0)
+    asyncio.run(run())
+
+
+def test_preparation_rechecks_fresh_mfa_after_verifier_wait(setup):
+    async def run():
+        entered = False
+        async def verifier(evidence):
+            nonlocal entered
+            entered = True
+            await asyncio.sleep(2.2)
+            return True
+        verified = _VerifiedActor(setup[1], json.dumps({'sub': str(setup[1].subject), 'aal': 'aal2',
+            'amr': [{'method': 'totp', 'timestamp': datetime.now(UTC).timestamp() - 898}]}))
+        store = PostgresAnnualCheckoutSession(DATABASE_URL, verified, readiness_is_current=verifier)
+        with pytest.raises(BillingError) as error:
+            await store.verify_checkout_preparation(setup[2].company_id, setup[2].income_year, setup[4])
+        assert entered
+        assert error.value.code is BillingErrorCode.STEP_UP_REQUIRED
+        assert counts(setup) == (0, 0)
+    asyncio.run(run())

@@ -691,6 +691,13 @@ class AnnualCheckoutQuery:
 
 
 @dataclass(frozen=True, slots=True)
+class AnnualCheckoutPreparationQuery:
+    company_id: CompanyId
+    income_year: IncomeYear
+    actor_id: ActorId
+
+
+@dataclass(frozen=True, slots=True)
 class AnnualAcceptanceBasisReference:
     company_id: CompanyId
     income_year: IncomeYear
@@ -742,6 +749,44 @@ class AnnualCheckout:
     status: AnnualPurchaseStatus
     observation: AnnualProviderObservation | None = None
     renewal_canceled_at: Timestamp | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutPurchaseReference:
+    company_id: CompanyId
+    income_year: IncomeYear
+    purchase_id: AnnualPurchaseId
+    status: AnnualPurchaseStatus
+
+    def __post_init__(self) -> None:
+        if self.status not in {AnnualPurchaseStatus.PENDING, AnnualPurchaseStatus.PAID}:
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutPreparation:
+    """Transient availability, never a reservation or authority for a later POST.
+
+    An existing purchase carries its stored facts only; current offer and consent
+    versions must not be presented as that purchase's historical acceptance.
+    """
+
+    company_id: CompanyId
+    income_year: IncomeYear
+    offer: AnnualBillingOffer | None
+    consent_version: str | None
+    existing_purchase: AnnualCheckoutPurchaseReference | None
+
+    def __post_init__(self) -> None:
+        if self.existing_purchase is not None:
+            if (self.offer is not None or self.consent_version is not None
+                    or self.existing_purchase.company_id != self.company_id
+                    or self.existing_purchase.income_year != self.income_year):
+                raise BillingError.invalid()
+        elif (self.offer is None or not self.consent_version
+                or self.offer.company_id != self.company_id
+                or self.offer.income_year != self.income_year):
+            raise BillingError.invalid()
 
 
 @dataclass(frozen=True, slots=True)
@@ -812,6 +857,13 @@ def annual_billing_offer(company_id: CompanyId, income_year: IncomeYear) -> Annu
     from talli_backend.modules.billing.annual_policy import annual_offer
 
     return annual_offer(company_id, income_year)
+
+
+def annual_billing_consent_version() -> str:
+    """Current separate recurring-consent version owned by billing policy."""
+    from talli_backend.modules.billing.annual_policy import ANNUAL_CONSENT_VERSION
+
+    return ANNUAL_CONSENT_VERSION
 
 
 @runtime_checkable
@@ -1026,6 +1078,11 @@ def settle_annual_checkout(
 
 
 class AnnualCheckoutOperations(Protocol):
+    async def prepare_checkout(
+        self, query: AnnualCheckoutPreparationQuery,
+        prerequisites: Callable[[], Awaitable[AnnualCheckoutPrerequisites]],
+    ) -> AnnualCheckoutPreparation: ...
+
     async def start_checkout(
         self, command: StartAnnualCheckoutCommand,
         prerequisites: Callable[[], Awaitable[AnnualCheckoutPrerequisites]],
@@ -1054,6 +1111,26 @@ class AnnualCheckoutPersistence(Protocol):
     async def authorize_owner_command(self, company_id: CompanyId) -> None: ...
 
     async def find_checkout(self, company_id: CompanyId, key: IdempotencyKey) -> AnnualCheckout | None: ...
+
+    async def find_active_checkout(
+        self, company_id: CompanyId, income_year: IncomeYear,
+    ) -> AnnualCheckoutPurchaseReference | None:
+        """Read a current pending/paid purchase with owner/fresh-MFA checks,
+        including empty results. No provider calls, reconciliation or writes.
+        """
+        ...
+
+    async def verify_checkout_preparation(
+        self, company_id: CompanyId, income_year: IncomeYear,
+        prerequisites: AnnualCheckoutPrerequisites,
+    ) -> AnnualCheckoutPurchaseReference | None:
+        """Recheck occupancy, eligibility basis and independent current readiness.
+
+        Lock company/year before eligibility; reauthorize after waits. Return an
+        existing pending/paid purchase before source verification, or None when
+        preparation passes. No purchase, operation or reservation is created.
+        """
+        ...
 
     async def claim_checkout(
         self, checkout: AnnualCheckout, prerequisites: AnnualCheckoutPrerequisites,
@@ -1488,6 +1565,7 @@ __all__ = [
     "AnnualSupportReadPersistence",
     "AnnualBillingSnapshot",
     "annual_billing_offer",
+    "annual_billing_consent_version",
     "AnnualBillingReadPersistence",
     "AnnualAgreementCleanup",
     "AnnualAgreementCleanupClaim",
@@ -1510,6 +1588,9 @@ __all__ = [
     "AnnualCheckoutPrerequisites",
     "AnnualAcceptanceBasisReference",
     "AnnualCheckoutQuery",
+    "AnnualCheckoutPreparationQuery",
+    "AnnualCheckoutPreparation",
+    "AnnualCheckoutPurchaseReference",
     "StartAnnualCheckoutCommand",
     "AnnualPurchaseId",
     "AnnualBillingProvider",

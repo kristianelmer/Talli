@@ -464,3 +464,61 @@ test("owner refund recovery wrapper sends exact request intent without allocatin
   assert.equal(captured.request.cache, "no-store");
   assert.deepEqual(JSON.parse(captured.request.body), body);
 });
+
+function checkoutPreparation(overrides = {}) {
+  return { companyId, incomeYear: 2026, state: "available", offer: annualOffer(),
+    consentVersion: "separate-consent-v1", purchaseId: null, ...overrides };
+}
+
+test("checkout preparation is a no-store authenticated GET with no idempotency key or body", async () => {
+  let captured;
+  const load = ownerSnapshotLoader(async (url, request) => {
+    captured = { url: new URL(url), request };
+    return Response.json(checkoutPreparation());
+  }, "prepareAnnualCheckout");
+  const result = await load("verified-owner", companyId, 2026);
+  assert.deepEqual(result, checkoutPreparation());
+  assert.equal(captured.url.pathname, "/api/v1/billing/annual/checkout-preparation");
+  assert.equal(captured.url.searchParams.get("company_id"), companyId);
+  assert.equal(captured.url.searchParams.get("income_year"), "2026");
+  assert.equal(captured.request.method, "GET");
+  assert.equal(captured.request.headers.Authorization, "Bearer verified-owner");
+  assert.equal(captured.request.headers["Idempotency-Key"], undefined);
+  assert.equal(captured.request.body, undefined);
+  assert.equal(captured.request.cache, "no-store");
+  assert.equal(result.consentVersion, "separate-consent-v1");
+});
+
+test("preparation existing purchase carries no current offer or consent", async () => {
+  const value = checkoutPreparation({ state: "existing", offer: null, consentVersion: null,
+    purchaseId: "20000000-0000-4000-8000-000000000001" });
+  const load = ownerSnapshotLoader(async () => Response.json(value), "prepareAnnualCheckout");
+  assert.deepEqual(await load("verified-owner", companyId, 2026), value);
+});
+
+for (const change of [
+  { companyId: "20000000-0000-4000-8000-000000000001" }, { incomeYear: 2027 },
+  { offer: null }, { consentVersion: null }, { consentVersion: "" },
+  { purchaseId: "20000000-0000-4000-8000-000000000001" },
+  { offer: { ...annualOffer(), incomeYear: 2027 } },
+  { offer: { ...annualOffer(), companyId: "20000000-0000-4000-8000-000000000001" } },
+  { state: "existing" }, { state: "existing", offer: null, consentVersion: null },
+  { state: "ready" }, { providerAccount: "private" }, { readinessReference: "private" },
+  { checkoutUrl: "https://forged.example" },
+]) {
+  test(`preparation rejects malformed or foreign projection ${JSON.stringify(change)}`, async () => {
+    const load = ownerSnapshotLoader(async () => Response.json(checkoutPreparation(change)), "prepareAnnualCheckout");
+    await assert.rejects(load("verified-owner", companyId, 2026), error => error instanceof TalliApiError && error.status === 502);
+  });
+}
+
+test("predecessor preparation route absence is unavailable and protected failures remain errors", async () => {
+  const old = ownerSnapshotLoader(async () => Response.json({ detail: "Not Found" }, { status: 404 }), "prepareAnnualCheckout");
+  assert.equal(await old("verified-owner", companyId, 2026), null);
+  for (const [status, code] of [[401, "BILLING_UNAUTHENTICATED"], [403, "BILLING_STEP_UP_REQUIRED"],
+    [404, "BILLING_NOT_FOUND"], [409, "BILLING_FILING_NOT_READY"], [503, "BILLING_PROVIDER_DISABLED"]]) {
+    const load = ownerSnapshotLoader(async () => Response.json({ type: "about:blank", title: "Unavailable", status, code,
+      detail: "Unavailable", instance: "/fixture", requestId: "fixture" }, { status, headers: { "Content-Type": "application/problem+json" } }), "prepareAnnualCheckout");
+    await assert.rejects(load("verified-owner", companyId, 2026), error => error instanceof TalliApiError && error.status === status);
+  }
+});

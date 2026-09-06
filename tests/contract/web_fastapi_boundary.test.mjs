@@ -572,3 +572,17 @@ test("annual refund target discovery preserves a minimal independent read contra
   const target = contract.components.schemas.AnnualRefundRecoveryTargetWire;
   assert.deepEqual(Object.keys(target.properties).sort(), ["refundRequestId", "requestedAt", "status"]);
 });
+
+test("annual checkout preparation is an independent read without purchase authority", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const route = contract.paths["/api/v1/billing/annual/checkout-preparation"];
+  assert.equal(route.get.operationId, "billingPrepareAnnualCheckout");
+  assert.deepEqual(route.get.security, [{ bearerAuth: [] }]);
+  assert.equal(route.post, undefined);
+  assert.equal(route.get.requestBody, undefined);
+  assert.equal(route.get.parameters.some(value => value.name === "Idempotency-Key"), false);
+  const fields = contract.components.schemas.AnnualCheckoutPreparationWire.properties;
+  assert.deepEqual(Object.keys(fields).sort(), ["companyId", "consentVersion", "incomeYear", "offer", "purchaseId", "state"]);
+  assert.deepEqual(fields.state.enum, ["available", "existing"]);
+  assert.equal(contract.components.schemas.AnnualCheckoutWire.properties.consentVersion, undefined);
+});

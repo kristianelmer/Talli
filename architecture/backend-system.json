@@ -215,6 +215,7 @@
       "purpose": "Authenticates one verified actor for annual checkout and original-intent recovery, historical billing cleanup, pilot administration and fail-closed filing entitlement; annual provider and source readiness are unavailable by default.",
       "publicPackages": ["talli_backend.modules.billing.public"],
       "routes": [
+        "/api/v1/billing/annual/checkout-preparation",
         "/api/v1/billing/annual/checkouts",
         "/api/v1/billing/annual/checkout-observations",
         "/api/v1/billing/snapshot",

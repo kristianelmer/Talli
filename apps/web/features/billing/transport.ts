@@ -38,6 +38,23 @@ export function loadAnnualSupportPurchases(accessToken: string, input: AnnualSup
   return client(accessToken).billingReadAnnualSupportPurchases({ ...input, ...request(input.requestId) });
 }
 
+export async function prepareAnnualCheckout(accessToken: string, companyId: string, incomeYear: number) {
+  try {
+    const result = await client(accessToken).billingPrepareAnnualCheckout(companyId, incomeYear, request());
+    if (result.companyId !== companyId || result.incomeYear !== incomeYear
+      || (result.state === "available" && (!result.offer || !result.consentVersion || result.purchaseId !== null
+        || result.offer.companyId !== companyId || result.offer.incomeYear !== incomeYear))
+      || (result.state === "existing" && (result.offer !== null || result.consentVersion !== null || !result.purchaseId))) {
+      throw new TalliApiError(502, undefined);
+    }
+    return result;
+  } catch (error) {
+    // Web-first overlap: a predecessor has no preparation route.
+    if (error instanceof TalliApiError && error.status === 404 && !error.problem) return null;
+    throw error;
+  }
+}
+
 export async function loadAnnualPurchaseHistory(accessToken: string, input: AnnualPurchaseHistoryRequest) {
   try {
     return await client(accessToken).billingReadAnnualPurchaseHistory({ ...input, ...request(input.requestId) });

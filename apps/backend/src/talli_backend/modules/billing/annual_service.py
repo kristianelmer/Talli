@@ -12,9 +12,11 @@ from talli_backend.modules.billing.annual_policy import annual_offer
 from talli_backend.modules.billing.public import (
     AnnualBillingProvider, AnnualCheckout, AnnualCheckoutPersistence,
     AnnualCheckoutPrerequisites, AnnualCheckoutQuery, AnnualProviderIntent,
+    AnnualCheckoutPreparation, AnnualCheckoutPreparationQuery,
     AnnualProviderObservation, AnnualProviderOperation, AnnualProviderStatus,
     AnnualPurchaseId, AnnualPurchaseStatus, BillingError, BillingErrorCode,
     BillingPaymentEventId, StartAnnualCheckoutCommand, settle_annual_checkout,
+    annual_billing_consent_version,
 )
 from talli_backend.shared.kernel import Timestamp
 
@@ -42,6 +44,32 @@ class AnnualCheckoutService:
         self._management_url = management_url
         self._now = now or (lambda: datetime.now(UTC))
 
+    async def prepare_checkout(
+        self, query: AnnualCheckoutPreparationQuery,
+        prerequisites: Callable[[], Awaitable[AnnualCheckoutPrerequisites]],
+    ) -> AnnualCheckoutPreparation:
+        if query.actor_id != self._store.actor_id:
+            raise BillingError.forbidden()
+        await self._store.authorize_owner_command(query.company_id)
+        existing = await self._store.find_active_checkout(query.company_id, query.income_year)
+        if existing is None:
+            self._provider_enabled()
+            evidence = await prerequisites()
+            self._validate_prerequisites(evidence, query.company_id, query.income_year)
+            existing = await self._store.verify_checkout_preparation(
+                query.company_id, query.income_year, evidence,
+            )
+        if existing is not None:
+            if (existing.company_id != query.company_id
+                    or existing.income_year != query.income_year
+                    or existing.status not in {AnnualPurchaseStatus.PENDING, AnnualPurchaseStatus.PAID}):
+                raise BillingError.unavailable()
+            return AnnualCheckoutPreparation(query.company_id, query.income_year, None, None, existing)
+        return AnnualCheckoutPreparation(
+            query.company_id, query.income_year,
+            annual_offer(query.company_id, query.income_year), annual_billing_consent_version(), None,
+        )
+
     async def start_checkout(
         self, command: StartAnnualCheckoutCommand,
         prerequisites: Callable[[], Awaitable[AnnualCheckoutPrerequisites]],
@@ -56,15 +84,11 @@ class AnnualCheckoutService:
             return await self._observe(existing, newly_claimed=False)
         offer = annual_offer(command.company_id, command.income_year)
         if (command.offer_version != offer.offer_version or command.terms_digest != offer.terms_digest
-                or command.consent_version != offer.offer_version):
+                or command.consent_version != annual_billing_consent_version()):
             raise BillingError.conflict(BillingErrorCode.INVALID_INPUT)
         self._provider_enabled()
         evidence = await prerequisites()
-        if (evidence.basis.company_id != command.company_id
-                or evidence.basis.income_year != command.income_year
-                or evidence.ready is not True
-                or not timedelta(0) <= self._now() - evidence.evaluated_at.value <= timedelta(minutes=5)):
-            raise BillingError.precondition(BillingErrorCode.FILING_NOT_READY)
+        self._validate_prerequisites(evidence, command.company_id, command.income_year)
         purchase_id = AnnualPurchaseId(str(uuid4()))
         intent = AnnualProviderIntent(
             operation_id=BillingPaymentEventId(str(uuid4())), company_id=command.company_id,
@@ -96,6 +120,13 @@ class AnnualCheckoutService:
     def _provider_enabled(self) -> None:
         if self._provider is None or self._provider.production_enabled or not self._provider.account_reference:
             raise BillingError.unavailable(BillingErrorCode.PROVIDER_DISABLED)
+
+    def _validate_prerequisites(self, evidence, company_id, income_year) -> None:
+        if (evidence.basis.company_id != company_id
+                or evidence.basis.income_year != income_year
+                or evidence.ready is not True
+                or not timedelta(0) <= self._now() - evidence.evaluated_at.value <= timedelta(minutes=5)):
+            raise BillingError.precondition(BillingErrorCode.FILING_NOT_READY)
 
     @staticmethod
     def _same_request(checkout, command, fingerprint):

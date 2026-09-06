@@ -25,6 +25,7 @@ from talli_backend.modules.billing.public import (
     AnnualCheckoutClaim,
     AnnualCheckoutPersistence,
     AnnualCheckoutPrerequisites,
+    AnnualCheckoutPurchaseReference,
     AnnualProviderIntent,
     AnnualProviderObservation,
     AnnualProviderOperation,
@@ -36,6 +37,7 @@ from talli_backend.modules.billing.public import (
     BillingPaymentEventId,
     billing_persistence_adapter,
     settle_annual_checkout,
+    annual_billing_consent_version,
 )
 from talli_backend.shared.kernel import CompanyId, IdempotencyKey, IncomeYear, Timestamp, UserId
 
@@ -232,6 +234,87 @@ class PostgresAnnualCheckoutSession:
 
         return await self._transaction(work)
 
+    async def _find_active(self, connection, company_id, income_year):
+        row = await (
+            await connection.execute(
+                """select id, status from billing.annual_purchases
+                where company_id=%s::uuid and income_year=%s and status in ('pending','paid')""",
+                (str(company_id), income_year.value),
+            )
+        ).fetchone()
+        return (AnnualCheckoutPurchaseReference(
+            company_id, income_year, AnnualPurchaseId(str(row["id"])), AnnualPurchaseStatus(row["status"]),
+        ) if row is not None else None)
+
+    async def find_active_checkout(
+        self, company_id: CompanyId, income_year: IncomeYear,
+    ) -> AnnualCheckoutPurchaseReference | None:
+        async def work(connection):
+            await self._authorize(connection, company_id)
+            result = await self._find_active(connection, company_id, income_year)
+            await self._authorize(connection, company_id)
+            return result
+
+        return await self._transaction(work)
+
+    async def _lock_company_year(self, connection, company_id, income_year):
+        await connection.execute(
+            "select pg_advisory_xact_lock(hashtextextended(%s, 192))",
+            (f"annual-checkout|{company_id}|{income_year.value}",),
+        )
+        await self._authorize(connection, company_id)
+
+    async def _read_purchase_basis(self, connection, company_id, income_year, basis):
+        row = await (
+            await connection.execute(
+                "select public.company_access_purchase_basis_v1(%s::uuid, %s, %s::uuid, %s::uuid) as basis",
+                (str(company_id), income_year.value, basis.assessment_id, basis.legal_acceptance_id),
+            )
+        ).fetchone()
+        await self._authorize(connection, company_id)
+        return row["basis"]
+
+    async def _verified_purchase_basis(self, connection, company_id, income_year, prerequisites):
+        # Call only after the company/year lock. The Company Access contract
+        # acquires its own eligibility lock and owns the assessment/legal policy.
+        basis = prerequisites.basis
+        if basis.company_id != company_id or basis.income_year != income_year:
+            raise BillingError.precondition(BillingErrorCode.FILING_NOT_READY)
+        raw = await self._read_purchase_basis(connection, company_id, income_year, basis)
+        if raw is None or (
+            raw["admission_id"], raw["company_year_promise_sha256"], raw["capability_manifest_sha256"],
+        ) != (basis.admission_id, basis.promise_digest, basis.manifest_digest):
+            raise BillingError.precondition(BillingErrorCode.UNSUPPORTED_CASE)
+        if (
+            prerequisites.ready is not True
+            or await self._readiness_is_current(prerequisites) is not True
+            or not timedelta(0)
+            <= datetime.now(UTC) - prerequisites.evaluated_at.value
+            <= timedelta(minutes=5)
+        ):
+            raise BillingError.precondition(BillingErrorCode.FILING_NOT_READY)
+        # Match the claim's INSERT RLS comparison after the verifier await.
+        # Eligibility freshness or the latest legal acceptance may have changed
+        # even while the eligibility lock remains held.
+        current = await self._read_purchase_basis(connection, company_id, income_year, basis)
+        if current != raw:
+            raise BillingError.precondition(BillingErrorCode.UNSUPPORTED_CASE)
+        return raw
+
+    async def verify_checkout_preparation(
+        self, company_id: CompanyId, income_year: IncomeYear, prerequisites: AnnualCheckoutPrerequisites,
+    ) -> AnnualCheckoutPurchaseReference | None:
+        async def work(connection):
+            await self._authorize(connection, company_id)
+            await self._lock_company_year(connection, company_id, income_year)
+            occupied = await self._find_active(connection, company_id, income_year)
+            if occupied is None:
+                await self._verified_purchase_basis(connection, company_id, income_year, prerequisites)
+            await self._authorize(connection, company_id)
+            return occupied
+
+        return await self._transaction(work)
+
     async def _load(self, connection, company_id, purchase_id, *, lock=False):
         suffix = " for update" if lock else ""
         purchase = await (
@@ -279,44 +362,13 @@ class PostgresAnnualCheckoutSession:
                 or intent.agreement_reference is not None
             ):
                 raise BillingError.invalid()
-            await connection.execute(
-                "select pg_advisory_xact_lock(hashtextextended(%s, 192))",
-                (f"annual-checkout|{offer.company_id}|{offer.income_year.value}",),
-            )
+            await self._lock_company_year(connection, offer.company_id, offer.income_year)
             existing = await self._find(connection, offer.company_id, checkout.idempotency_key)
             if existing:
                 if existing.request_fingerprint != checkout.request_fingerprint:
                     raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
                 return AnnualCheckoutClaim(existing, False)
-            basis = prerequisites.basis
-            if basis.company_id != offer.company_id or basis.income_year != offer.income_year:
-                raise BillingError.precondition(BillingErrorCode.FILING_NOT_READY)
-            accepted = await (
-                await connection.execute(
-                    "select public.company_access_purchase_basis_v1(%s::uuid, %s, %s::uuid, %s::uuid) as basis",
-                    (
-                        str(offer.company_id),
-                        offer.income_year.value,
-                        basis.assessment_id,
-                        basis.legal_acceptance_id,
-                    ),
-                )
-            ).fetchone()
-            raw = accepted["basis"]
-            if raw is None or (
-                raw["admission_id"],
-                raw["company_year_promise_sha256"],
-                raw["capability_manifest_sha256"],
-            ) != (basis.admission_id, basis.promise_digest, basis.manifest_digest):
-                raise BillingError.precondition(BillingErrorCode.UNSUPPORTED_CASE)
-            if (
-                prerequisites.ready is not True
-                or await self._readiness_is_current(prerequisites) is not True
-                or not timedelta(0)
-                <= datetime.now(UTC) - prerequisites.evaluated_at.value
-                <= timedelta(minutes=5)
-            ):
-                raise BillingError.precondition(BillingErrorCode.FILING_NOT_READY)
+            raw = await self._verified_purchase_basis(connection, offer.company_id, offer.income_year, prerequisites)
             occupied = await (
                 await connection.execute(
                     "select id from billing.annual_purchases where company_id=%s::uuid and income_year=%s and status in ('pending','paid')",
@@ -350,7 +402,7 @@ class PostgresAnnualCheckoutSession:
                     offer.renewal_date,
                     json.dumps(raw),
                     intent.recurring_consent,
-                    offer.offer_version,
+                    annual_billing_consent_version(),
                     checkout.provider,
                     checkout.provider_account,
                     intent.agreement_external_reference,
