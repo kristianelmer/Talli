@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { annualBillingAccessRejected, annualBillingRecovery, loadAnnualBillingSnapshot, loadAnnualPurchaseHistory } from "../../../features/billing";
-import { cancelAnnualRenewal, cleanupAnnualAgreement } from "../../actions";
+import { cancelAnnualRenewal, cleanupAnnualAgreement, observeAnnualCheckout } from "../../actions";
 import { AnnualBillingView } from "../../components/billing/AnnualBillingView";
 import { EmptyState, LinkButton } from "../../components/ui";
 import { ownerCopy } from "../../lib/copy";
@@ -22,7 +22,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) {
     const returnQuery = new URLSearchParams();
-    for (const key of ["companyId", "beforePurchaseId", "cancellationOperationId", "cancellationPurchaseId", "cleanupPurchaseId"]) {
+    for (const key of ["companyId", "beforePurchaseId", "cancellationOperationId", "cancellationPurchaseId", "cleanupPurchaseId", "checkoutPurchaseId"]) {
       const value = parameter(params, key);
       if (value && uuid.test(value)) returnQuery.set(key, value);
     }
@@ -38,7 +38,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   if (company) query.set("companyId", company.id);
   else if (selectedId && uuid.test(selectedId)) query.set("companyId", selectedId);
   if (beforePurchaseId && uuid.test(beforePurchaseId)) query.set("beforePurchaseId", beforePurchaseId);
-  for (const key of ["cancellationOperationId", "cancellationPurchaseId", "cleanupPurchaseId"]) {
+  for (const key of ["cancellationOperationId", "cancellationPurchaseId", "cleanupPurchaseId", "checkoutPurchaseId"]) {
     const value = parameter(params, key);
     if (value && uuid.test(value)) query.set(key, value);
   }
@@ -94,7 +94,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       const retryPurchaseId = parameter(params, "cancellationPurchaseId");
       content = <AnnualBillingView companyId={company.id} companyName={company.name} snapshot={snapshot}
         offer={published?.offer} offerUnavailable={offerUnavailable} limitedHistory={limitedHistory}
-        beforePurchaseId={beforePurchaseId} cancelAction={cancelAnnualRenewal} cleanupAction={cleanupAnnualAgreement}
+        beforePurchaseId={beforePurchaseId} cancelAction={cancelAnnualRenewal} cleanupAction={cleanupAnnualAgreement} observeAction={observeAnnualCheckout}
         unconfirmedPurchaseId={parameter(params, "cancellationError") === "unconfirmed" ? retryPurchaseId : undefined}
         operationIds={Object.fromEntries(snapshot.purchases.map((purchase) => [
           purchase.purchaseId, retryId && uuid.test(retryId) && purchase.purchaseId === retryPurchaseId

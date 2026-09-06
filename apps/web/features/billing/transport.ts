@@ -5,6 +5,7 @@ import {
   type AnnualPurchaseHistoryRequest,
   type AnnualSupportRequest,
   type AnnualAgreementCleanupCommandWire,
+  type AnnualCheckoutObservationCommandWire,
   type AnnualRenewalCancellationCommandWire,
   type BillingAccountWire,
   type BillingCompanyWire,
@@ -72,6 +73,14 @@ export function cleanupAnnualAgreement(
   requestId?: string,
 ) {
   return client(accessToken).billingCleanupAnnualAgreement(body, request(requestId));
+}
+
+export function observeAnnualCheckout(
+  accessToken: string,
+  body: AnnualCheckoutObservationCommandWire,
+  requestId?: string,
+) {
+  return client(accessToken).billingObserveAnnualCheckout(body, request(requestId));
 }
 
 export function annualBillingRecovery(error: unknown): "sign-in" | "step-up" | "unavailable" {

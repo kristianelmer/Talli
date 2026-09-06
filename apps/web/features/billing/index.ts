@@ -6,6 +6,7 @@ export type {
   AnnualBillingRefundSnapshotWire,
   AnnualPurchaseRefundSummaryWire,
   AnnualAgreementCleanupWire,
+  AnnualCheckoutWire,
   AnnualSupportPageWire,
   AnnualSupportPurchaseWire,
   AnnualPurchaseSummaryWire,

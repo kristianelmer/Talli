@@ -1,7 +1,7 @@
 # Billing web feature
 
 <!-- architecture-inventory
-{"apiOperations":["billingReadAnnualPurchaseHistory","billingReadAnnualRefundSnapshot","billingReadAnnualSupportPurchases","billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
+{"apiOperations":["billingObserveAnnualCheckout","billingReadAnnualPurchaseHistory","billingReadAnnualRefundSnapshot","billingReadAnnualSupportPurchases","billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
 -->
 
 ## Purpose and boundary
@@ -44,8 +44,7 @@ action result, never a URL/form/previous-state confirmation. Render and refresh
 perform no cleanup; disabled/unavailable, deferred, pending and unknown remain
 unconfirmed. A rejected browser-to-server action also returns a scoped unconfirmed
 state so a response lost after commit leaves an explicit same-purchase retry.
-The current owner page still selects its admitted year; this control
-does not establish complete historical exit or worker automation.
+This control does not establish complete historical exit or worker automation.
 
 Owner refund visibility uses the additive `billingReadAnnualRefundSnapshot` GET.
 It carries purchase balances and recorded refund evidence together from one
@@ -67,3 +66,13 @@ A missing history endpoint may temporarily show only the newest current-year
 purchases with an explicit limitation. Company-wide cursors never reach that
 predecessor fallback; application BILLING_NOT_FOUND remains an error. Without
 admission or a safe first-page fallback, absence is unavailable, not empty history.
+
+An explicit pending-purchase control uses `billingObserveAnnualCheckout` to
+reconcile only the original company/purchase intent. It does not start a checkout
+or consume new admission/readiness authority. Every validated response revalidates
+`/billing`, including pending responses, so the canonical history owns status,
+balances and access together. Terminal observations remove the control through
+that refreshed history; partial checkout DTOs and provider URLs never replace
+the stored purchase view. Sign-in/MFA preserves company, history cursor and a
+navigation-only purchase marker. Lost responses remain unconfirmed and retryable;
+render, navigation and refresh never trigger a POST.

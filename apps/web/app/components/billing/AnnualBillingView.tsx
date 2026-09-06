@@ -1,5 +1,7 @@
 import type { AnnualBillingSnapshotWire, AnnualBillingRefundSnapshotWire, AnnualPurchaseSummaryWire, AnnualPurchaseRefundSummaryWire, AnnualBillingOfferWire, AnnualPurchaseHistoryWire } from "../../../features/billing";
 import { Banner, Button, EmptyState, LinkButton, StatusBadge } from "../ui";
+import { AnnualCheckoutObservationControl } from "./AnnualCheckoutObservationControl";
+import type { AnnualCheckoutObservationAction } from "../../lib/annual-checkout-observation";
 import { AnnualAgreementCleanupControl } from "./AnnualAgreementCleanupControl";
 import type { AnnualAgreementCleanupAction } from "../../lib/annual-billing-cleanup";
 
@@ -20,6 +22,7 @@ type Props = {
   unconfirmedPurchaseId?: string;
   cancelAction: (formData: FormData) => Promise<void>;
   cleanupAction: AnnualAgreementCleanupAction;
+  observeAction: AnnualCheckoutObservationAction;
 };
 
 function RefundEvidence({ purchase }: { purchase: AnnualPurchaseSummaryWire | AnnualPurchaseRefundSummaryWire }) {
@@ -50,13 +53,14 @@ function RefundEvidence({ purchase }: { purchase: AnnualPurchaseSummaryWire | An
   </section>;
 }
 
-function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancelAction, cleanupAction }: {
+function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancelAction, cleanupAction, observeAction }: {
   purchase: AnnualPurchaseSummaryWire | AnnualPurchaseRefundSummaryWire;
   operationId: string;
   beforePurchaseId?: string;
   unconfirmed: boolean;
   cancelAction: Props["cancelAction"];
   cleanupAction: Props["cleanupAction"];
+  observeAction: Props["observeAction"];
 }) {
   return <article id={`annual-purchase-${purchase.purchaseId}`} className="billingStatusCard" aria-label={`Kjøp ${date.format(new Date(purchase.acceptedAt))}`}>
     <div className="billingStatusHead">
@@ -69,6 +73,9 @@ function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancel
     {purchase.status === "paid" ? <p>Betalt tilgang til og med {calendarDate(purchase.paidThrough)}.
       Lese- og eksporttilgang til og med {calendarDate(purchase.exportThrough)}.</p> : null}
     <RefundEvidence purchase={purchase} />
+    {purchase.status === "pending" ? <AnnualCheckoutObservationControl key={`${purchase.companyId}:${purchase.purchaseId}`}
+      companyId={purchase.companyId} purchaseId={purchase.purchaseId} beforePurchaseId={beforePurchaseId}
+      observeAction={observeAction} /> : null}
     {purchase.renewalCanceledAt ? <Banner variant="success">
       Fornyelsen ble stoppet {date.format(new Date(purchase.renewalCanceledAt))}.
       Oppsigelsen endrer ikke tilgangen du allerede har betalt for.
@@ -99,7 +106,7 @@ function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancel
 }
 
 export function AnnualBillingView({ companyId, companyName, snapshot, offer: currentOffer, offerUnavailable, limitedHistory,
-  beforePurchaseId, operationIds, unconfirmedPurchaseId, cancelAction, cleanupAction }: Props) {
+  beforePurchaseId, operationIds, unconfirmedPurchaseId, cancelAction, cleanupAction, observeAction }: Props) {
   const { purchases, nextPurchaseId } = snapshot;
   const offer = "offer" in snapshot ? snapshot.offer : currentOffer;
   const base = `/billing?companyId=${encodeURIComponent(companyId)}`;
@@ -132,7 +139,7 @@ export function AnnualBillingView({ companyId, companyName, snapshot, offer: cur
       </EmptyState> : <div className="annualPurchaseList">
         {purchases.map((purchase) => <Purchase key={purchase.purchaseId} purchase={purchase}
           operationId={operationIds[purchase.purchaseId]} beforePurchaseId={beforePurchaseId}
-          unconfirmed={purchase.purchaseId === unconfirmedPurchaseId} cancelAction={cancelAction} cleanupAction={cleanupAction} />)}
+          unconfirmed={purchase.purchaseId === unconfirmedPurchaseId} cancelAction={cancelAction} cleanupAction={cleanupAction} observeAction={observeAction} />)}
       </div>}
       <nav className="actionRow" aria-label="Kjøpshistorikk">
         {beforePurchaseId ? <LinkButton href={base}>Nyeste kjøp</LinkButton> : null}

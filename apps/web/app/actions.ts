@@ -1,6 +1,7 @@
 "use server";
 
 import type { AnnualAgreementCleanupActionState } from "./lib/annual-billing-cleanup";
+import type { AnnualCheckoutObservationActionState } from "./lib/annual-checkout-observation";
 import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -70,6 +71,7 @@ import {
   annualBillingRecovery,
   cancelAnnualRenewal as cancelAnnualRenewalThroughApi,
   cleanupAnnualAgreement as cleanupAnnualAgreementThroughApi,
+  observeAnnualCheckout as observeAnnualCheckoutThroughApi,
   cancelBillingSubscription as cancelBillingSubscriptionThroughApi,
   manageProductionPilotEntitlement,
   markBillingCaseUnsupported,
@@ -4267,6 +4269,42 @@ export async function revokeSupportAccess(formData: FormData) {
     redirect(`/operator?error=${encodeURIComponent(error instanceof Error ? error.message : "support_access_revoke_failed")}`);
   }
   redirect("/operator?grant=revoked");
+}
+
+export async function observeAnnualCheckout(
+  _previousState: AnnualCheckoutObservationActionState,
+  formData: FormData,
+): Promise<AnnualCheckoutObservationActionState> {
+  let companyId: string;
+  let purchaseId: string;
+  let beforePurchaseId: string | undefined;
+  try {
+    companyId = requiredFormUuid(formData, "companyId");
+    purchaseId = requiredFormUuid(formData, "purchaseId");
+    beforePurchaseId = formString(formData, "beforePurchaseId")
+      ? requiredFormUuid(formData, "beforePurchaseId") : undefined;
+  } catch {
+    return { kind: "invalid" };
+  }
+  const returnTo = ownerPathWithQuery("/billing", { companyId, beforePurchaseId, checkoutPurchaseId: purchaseId });
+  const recover = (reason: ReturnType<typeof annualBillingRecovery>) => ({
+    kind: "recovery" as const, companyId, purchaseId, reason,
+    href: reason === "unavailable" ? null : `/${reason === "step-up" ? "mfa" : "login"}?next=${encodeURIComponent(returnTo)}`,
+  });
+  try {
+    const accessToken = await getCurrentSessionAccessToken();
+    if (!accessToken) return recover("sign-in");
+    // Only original purchase intent crosses this boundary. No browser-provided
+    // actor, status, offer, provider URL or operation key can acquire a purchase.
+    const value = await observeAnnualCheckoutThroughApi(accessToken, { companyId, purchaseId });
+    if (value.companyId !== companyId || value.purchaseId !== purchaseId) return recover("unavailable");
+    // Refresh the canonical balances even when the observed status is pending.
+    // The checkout response is not the full refund-aware history projection.
+    revalidatePath("/billing");
+    return { kind: "observed", companyId, purchaseId, status: value.status };
+  } catch (error) {
+    return recover(annualBillingRecovery(error));
+  }
 }
 
 export async function cleanupAnnualAgreement(

@@ -40,11 +40,12 @@ ui.EmptyState = compile(readFileSync(new URL("../app/components/ui/EmptyState.ts
   "./cx": { cx: (...values) => values.filter(Boolean).join(" ") },
 }).EmptyState;
 const { AnnualAgreementCleanupControl } = compile(readFileSync(new URL("../app/components/billing/AnnualAgreementCleanupControl.tsx", import.meta.url), "utf8"), { "../ui": ui });
-const { AnnualBillingView } = compile(readFileSync(new URL("../app/components/billing/AnnualBillingView.tsx", import.meta.url), "utf8"), { "../ui": ui, "./AnnualAgreementCleanupControl": { AnnualAgreementCleanupControl } });
+const { AnnualCheckoutObservationControl } = compile(readFileSync(new URL("../app/components/billing/AnnualCheckoutObservationControl.tsx", import.meta.url), "utf8"), { "../ui": ui });
+const { AnnualBillingView } = compile(readFileSync(new URL("../app/components/billing/AnnualBillingView.tsx", import.meta.url), "utf8"), { "../ui": ui, "./AnnualAgreementCleanupControl": { AnnualAgreementCleanupControl }, "./AnnualCheckoutObservationControl": { AnnualCheckoutObservationControl } });
 function render(purchases = [purchase], extra = {}) {
   return renderToStaticMarkup(React.createElement(AnnualBillingView, { companyId, companyName: "Holding AS",
     snapshot: { offer, purchases, nextPurchaseId: null }, operationIds: { [purchaseId]: operationId },
-    cancelAction: async () => {}, cleanupAction: async () => ({ kind: "idle" }), ...extra }));
+    cancelAction: async () => {}, cleanupAction: async () => ({ kind: "idle" }), observeAction: async () => ({ kind: "idle" }), ...extra }));
 }
 
 test("annual history keeps stored purchase prices and terms separate from today's offer", () => {
@@ -207,7 +208,7 @@ function pageHarness({ companies = [company], token = "session", contextError, r
       loadAnnualBillingSnapshot: async (...args) => { offerReads.push(args); if (offerFailure) throw new Error("offer unavailable");
         return { offer: { ...offer, companyId: args[1].companyId, incomeYear: args[1].incomeYear }, purchases, nextPurchaseId }; } },
     "next/navigation": { redirect: (path) => { throw new Error(`redirect:${path}`); } },
-    "../../actions": { cancelAnnualRenewal: async () => {}, cleanupAnnualAgreement: async () => ({ kind: "idle" }) },
+    "../../actions": { cancelAnnualRenewal: async () => {}, cleanupAnnualAgreement: async () => ({ kind: "idle" }), observeAnnualCheckout: async () => ({ kind: "idle" }) },
     "../../components/billing/AnnualBillingView": { AnnualBillingView },
     "../../components/ui": { ...ui, EmptyState: ({ title, children, action }) => React.createElement("section", {}, title, children, action) },
     "../../lib/copy": { ownerCopy: { billing: { hubTitle: "Abonnement" } } },
@@ -378,4 +379,29 @@ test("owner recovery selection survives login without trusting a forged cleanup 
   await assert.rejects(unauthenticated.render(params), (error) => error.message.includes("cleanupPurchaseId%3D" + purchaseId));
   const html = await pageHarness().render(params);
   assert.doesNotMatch(html, /har bekreftet at betalingsavtalen er afsluttet|har bekreftet at betalingsavtalen er avsluttet/);
+});
+
+for (const status of ["pending", "paid", "refunded", "failed"]) {
+  test(`only stored pending history exposes status recovery: ${status}`, async () => {
+    const html = await pageHarness({ companies: [{ ...company, admittedAccountingYear: null }],
+      purchases: [{ ...purchase, status, incomeYear: 2025, recurringConsent: false, renewalCanceledAt: "2026-09-05T12:00:00Z" }],
+    }).render({ companyId, beforePurchaseId: cursor, checkoutPurchaseId: purchaseId, checkoutStatus: "paid" });
+    assert.equal(html.includes("Sjekk betalingsstatus"), status === "pending");
+    assert.match(html, /selskapsåret 2025/);
+    assert.match(html, /Fullfør avslutning/);
+    if (status === "pending") {
+      assert.match(html, new RegExp(`name="beforePurchaseId" value="${cursor}"`));
+      assert.doesNotMatch(html, /Betalt tilgang/);
+    }
+  });
+}
+
+test("checkout recovery marker survives login and page MFA without triggering observation", async () => {
+  const params = { companyId, beforePurchaseId: cursor, checkoutPurchaseId: purchaseId };
+  const html = await pageHarness({ failure: "step-up" }).render(params);
+  assert.match(html, new RegExp(`checkoutPurchaseId%3D${purchaseId}`));
+  assert.match(html, new RegExp(`beforePurchaseId%3D${cursor}`));
+  const loggedOut = pageHarness({ token: null });
+  await assert.rejects(loggedOut.render(params), (error) => error.message.includes(`checkoutPurchaseId%3D${purchaseId}`));
+  assert.equal(loggedOut.reads.length, 0);
 });

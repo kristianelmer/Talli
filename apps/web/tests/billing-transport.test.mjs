@@ -368,3 +368,20 @@ test("annual agreement cleanup sends only purchase scope and validates unresolve
     await assert.rejects(api.billingCleanupAnnualAgreement(body), error => error instanceof TalliApiError && error.status === 502);
   }
 });
+
+test("owner status recovery observes the original checkout with strict no-store transport", async () => {
+  const body = { companyId, purchaseId: "20000000-0000-4000-8000-000000000002" };
+  const payload = { ...body, incomeYear: 2026, offer: annualOffer(), status: "pending",
+    capturedMinor: 10000, refundedMinor: 0, checkoutUrl: null };
+  let captured;
+  const observe = ownerSnapshotLoader(async (url, request) => { captured = { url, request }; return Response.json(payload); }, "observeAnnualCheckout");
+  assert.deepEqual(await observe("verified-owner", body), payload);
+  assert.equal(captured.url, "https://backend.example/api/v1/billing/annual/checkout-observations");
+  assert.equal(captured.request.method, "POST");
+  assert.equal(captured.request.cache, "no-store");
+  assert.equal(captured.request.headers.Authorization, "Bearer verified-owner");
+  assert.equal(captured.request.headers["Idempotency-Key"], undefined);
+  assert.deepEqual(JSON.parse(captured.request.body), body);
+  const malformed = ownerSnapshotLoader(async () => Response.json({ ...payload, status: "confirmed" }), "observeAnnualCheckout");
+  await assert.rejects(malformed("owner", body), error => error instanceof TalliApiError && error.status === 502);
+});
