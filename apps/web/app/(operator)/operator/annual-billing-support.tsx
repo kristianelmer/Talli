@@ -1,4 +1,5 @@
 import type { AnnualSupportPageWire } from "../../../features/billing";
+import { operatorRecoveryHref, operatorSupportLocation, type OperatorReadRecovery } from "../../lib/operator-support";
 
 const money = (minor: number) => new Intl.NumberFormat("nb-NO", {
   style: "currency", currency: "NOK",
@@ -14,22 +15,35 @@ const operationLabels = {
 };
 const purchaseLabels = { pending: "Venter på betaling", paid: "Betalt", failed: "Betaling mislyktes", refunded: "Refundert" };
 
-export function AnnualBillingSupport({ page, error, supportCaseId }: {
+export function OperatorReadRecoveryView({ recovery, returnTo }: {
+  recovery: OperatorReadRecovery;
+  returnTo: string;
+}) {
+  return <section id="annual-billing" className="formPanel" role="alert">
+    <h2>Operatørvisningen kan ikke leses nå</h2>
+    <p>{recovery === "step-up" ? "Bekreft MFA på nytt for å fortsette."
+      : recovery === "sign-in" ? "Logg inn på nytt for å fortsette."
+      : "Kontroller at saken er åpnet og at du fortsatt har gyldig tilgang. Ingen saksdata vises nå."}</p>
+    <a className="btn btn--secondary" href={operatorRecoveryHref(recovery, returnTo)}>
+      {recovery === "step-up" ? "Bekreft identiteten din" : recovery === "sign-in" ? "Logg inn igjen" : "Prøv samme side igjen"}
+    </a>
+    {returnTo !== "/operator" ? <a className="btn btn--secondary" href="/operator">Til saksvalg</a> : null}
+  </section>;
+}
+
+export function AnnualBillingSupport({ page, error, supportCaseId, beforePurchaseId }: {
   page: AnnualSupportPageWire | null;
   error: "sign-in" | "step-up" | "unavailable" | null;
   supportCaseId: string;
+  beforePurchaseId?: string;
 }) {
   if (!page && !error) return null;
+  const { returnTo } = operatorSupportLocation({ supportCase: supportCaseId, annualBefore: beforePurchaseId });
+  if (error) return <OperatorReadRecoveryView recovery={error} returnTo={returnTo} />;
   const firstPage = `/operator?${new URLSearchParams({ supportCase: supportCaseId })}#annual-billing`;
   return <section id="annual-billing" aria-labelledby="annual-billing-heading" className="formPanel">
     <h2 id="annual-billing-heading">Årskjøp og refusjoner</h2>
-    {error ? <div role="alert">
-      <p>{error === "step-up"
-        ? "Bekreft MFA på nytt for å lese årskjøp i saken."
-        : error === "sign-in" ? "Logg inn på nytt for å lese årskjøp i saken."
-        : "Årskjøp kunne ikke leses. Kontroller at saken er åpnet og at du har gyldig administratortilgang til fakturering."}</p>
-      <a href={firstPage}>Prøv første side på nytt</a>
-    </div> : page ? <>
+    {page ? <>
       <p>Registrerte kjøp for selskap {page.companyId}, på tvers av inntektsår. Beløpene viser registrerte betalinger og refusjoner. Bruk kjøpsreferansen ved oppfølging i saken.</p>
       {page.purchases.length === 0 ? <p>Ingen årskjøp registrert på denne siden.</p> : null}
       <div className="readinessGrid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 22rem), 1fr))" }}>

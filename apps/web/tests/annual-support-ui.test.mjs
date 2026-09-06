@@ -7,6 +7,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import { createTalliApiClient, TalliApiError } from "@talli/talli-api-client";
+import { operatorReadRecovery, operatorRecoveryHref, operatorSupportLocation } from "../app/lib/operator-support.ts";
 
 const require = createRequire(import.meta.url);
 const companyId = "10000000-0000-4000-8000-000000000001";
@@ -25,7 +26,9 @@ function compile(source, dependencies = {}) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: {
     target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX,
-  } }).outputText, { exports, require, URLSearchParams, Intl, Date, Object, Error, ...dependencies });
+  } }).outputText, { exports, require: id => id === "../../lib/operator-support"
+    ? { operatorReadRecovery, operatorRecoveryHref, operatorSupportLocation } : require(id),
+    URLSearchParams, Intl, Date, Object, Error, ...dependencies });
   return exports;
 }
 const { AnnualBillingSupport } = compile(readFileSync(new URL("../app/(operator)/operator/annual-billing-support.tsx", import.meta.url), "utf8"));
@@ -63,19 +66,22 @@ test("empty and denied support states remain distinct and errors hide previous d
 
 const server = readFileSync(new URL("../app/lib/supabase/server.ts", import.meta.url), "utf8");
 const dashboardSource = server.slice(server.indexOf("export async function readOperatorSupportDashboard("));
-function dashboard({ scopes = ["billing"], annualError = false, caseError = false } = {}) {
+function dashboard({ scopes = ["billing"], annualError = false, caseError = false,
+  operatorError = false, token = "verified", returnedCase = caseId, returnedPage = page, companies = [] } = {}) {
   const calls = [];
   const dependencies = {
     hasSupabaseEnv: () => true,
     createSupabaseServerClient: async () => ({}),
-    backendOperatorSession: async () => ({ accessToken: "verified", operator: {} }),
+    backendAccessToken: async () => token,
+    loadOperatorContext: async () => { if (operatorError) throw operatorError; return { active: true, role: "admin" }; },
     readOperatorSupportCase: async () => {
-      if (caseError) throw new Error("private case data");
-      return { caseId, companyId, scopes, resources: { companies: [] } };
+      if (caseError) throw caseError instanceof Error ? caseError : new Error("private case data");
+      return { caseId: returnedCase, companyId, scopes, resources: { companies } };
     },
     buildOperatorSupportSummaries: (resources) => resources.companies,
-    loadAnnualSupportPurchases: async (...args) => { calls.push(args); if (annualError) throw new Error("private provider data"); return page; },
+    loadAnnualSupportPurchases: async (...args) => { calls.push(args); if (annualError) throw annualError instanceof Error ? annualError : new Error("private provider data"); return returnedPage; },
     annualBillingRecovery: () => "unavailable",
+    operatorReadRecovery,
   };
   return { calls, read: compile(dashboardSource, dependencies).readOperatorSupportDashboard };
 }
@@ -98,12 +104,64 @@ test("profile-only or unreadable cases cannot trigger annual billing reads", asy
   }
 });
 
+test("early fresh MFA rejection remains recoverable before the annual support read", async () => {
+  const harness = dashboard({ caseError: new TalliApiError(403, {
+    code: "FRESH_MFA_REQUIRED", title: "Fresh MFA required", status: 403,
+  }) });
+  const result = await harness.read(caseId, "actor", purchaseId);
+  assert.equal(result.recovery, "step-up");
+  assert.equal(result.summaries.length, 0);
+  assert.equal(result.annualBilling, null);
+  assert.equal(harness.calls.length, 0);
+});
+
 test("annual access failure remains an error even when the generic support case is readable", async () => {
   const harness = dashboard({ annualError: true });
   const result = await harness.read(caseId, "actor");
   assert.equal(result.annualBilling, null);
   assert.equal(result.annualBillingError, "unavailable");
-  assert.equal(result.error, null);
+  assert.equal(result.error, "support_case_read_failed");
+  assert.equal(result.summaries.length, 0);
+  assert.equal(result.recovery, "unavailable");
+});
+
+for (const [status, code, recovery] of [[401, "AUTH_REQUIRED", "sign-in"],
+  [403, "FRESH_MFA_REQUIRED", "step-up"], [403, "BILLING_STEP_UP_REQUIRED", "step-up"],
+  [403, "AAL2_REQUIRED", "step-up"], [403, "SUPPORT_ACCESS_DENIED", "forbidden"],
+  [404, "COMPANY_ACCESS_NOT_FOUND", "unavailable"], [503, "FRESH_MFA_REQUIRED", "unavailable"]]) {
+  test(`operator read ${status}/${code} retains recovery and hides all earlier case evidence`, async () => {
+    const failure = new TalliApiError(status, { status, code, title: "Private details" });
+    for (const options of [{ operatorError: failure }, { caseError: failure }, { annualError: failure }]) {
+      const harness = dashboard({ ...options, companies: [{ id: companyId, name: "Private company" }] });
+      const result = await harness.read(caseId, "actor", purchaseId);
+      assert.equal(result.recovery, recovery);
+      assert.equal(result.summaries.length, 0);
+      assert.equal(result.annualBilling, null);
+      assert.ok(result.error);
+    }
+    const html = render({ error: recovery === "forbidden" ? "unavailable" : recovery, beforePurchaseId: purchaseId });
+    const raw = html.match(/href="([^"]+)"/)[1].replaceAll("&amp;", "&");
+    const link = new URL(raw, "https://talli.example");
+    const next = new URL(link.searchParams.get("next") ?? link.href, link.origin);
+    assert.equal(next.pathname, "/operator");
+    assert.equal(next.searchParams.get("supportCase"), caseId);
+    assert.equal(next.searchParams.get("annualBefore"), purchaseId);
+    assert.equal(next.hash, "#annual-billing");
+    if (recovery === "sign-in") assert.equal(link.searchParams.get("reauth"), "1");
+    if (recovery === "step-up") assert.equal(link.searchParams.get("fresh"), "1");
+    assert.doesNotMatch(html, /990,00|Private details|Ingen årskjøp/);
+  });
+}
+
+test("returned case/company bindings and missing session fail before protected evidence is presented", async () => {
+  for (const options of [{ returnedCase: purchaseId }, { returnedPage: { ...page, companyId: purchaseId } },
+    { returnedPage: { ...page, supportCaseId: purchaseId } }, { token: null }]) {
+    const harness = dashboard(options);
+    const result = await harness.read(caseId, "actor", purchaseId);
+    assert.equal(result.recovery, options.token === null ? "sign-in" : "unavailable");
+    assert.equal(result.summaries.length, 0);
+    assert.equal(result.annualBilling, null);
+  }
 });
 
 test("generated annual support transport carries company/case/cursor without caching or mutation", async () => {

@@ -1,4 +1,39 @@
-import type { SupportCaseResources } from "@talli/talli-api-client";
+import { TalliApiError, type SupportCaseResources } from "@talli/talli-api-client";
+
+export type OperatorReadRecovery = "sign-in" | "step-up" | "forbidden" | "unavailable";
+
+export function operatorReadRecovery(error: unknown): OperatorReadRecovery {
+  if (!(error instanceof TalliApiError)) return "unavailable";
+  if (error.status === 401) return "sign-in";
+  if (error.status === 403) {
+    return ["FRESH_MFA_REQUIRED", "AAL2_REQUIRED", "BILLING_STEP_UP_REQUIRED"].includes(error.problem?.code ?? "")
+      ? "step-up" : "forbidden";
+  }
+  return "unavailable";
+}
+
+export function operatorRecoveryHref(recovery: OperatorReadRecovery, returnTo: string) {
+  if (recovery === "sign-in") return `/login?reauth=1&next=${encodeURIComponent(returnTo)}`;
+  if (recovery === "step-up") return `/mfa?fresh=1&next=${encodeURIComponent(returnTo)}`;
+  return returnTo;
+}
+
+export function operatorSupportLocation(params?: { supportCase?: unknown; annualBefore?: unknown }) {
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const supportCaseId = typeof params?.supportCase === "string" && uuid.test(params.supportCase) ? params.supportCase : "";
+  const beforePurchaseId = supportCaseId && typeof params?.annualBefore === "string" && uuid.test(params.annualBefore)
+    ? params.annualBefore : undefined;
+  const query = new URLSearchParams();
+  if (supportCaseId) query.set("supportCase", supportCaseId);
+  if (beforePurchaseId) query.set("annualBefore", beforePurchaseId);
+  return {
+    supportCaseId,
+    beforePurchaseId,
+    returnTo: supportCaseId ? `/operator?${query}#annual-billing` : "/operator",
+    invalid: (params?.supportCase !== undefined && !supportCaseId)
+      || (params?.annualBefore !== undefined && !beforePurchaseId),
+  };
+}
 
 export type OperatorSupportSummary = {
   companyId: string;

@@ -1,19 +1,13 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { signOut } from "../actions";
-import { getOperatorContext } from "../lib/supabase/server";
+import { getCurrentUser } from "../lib/supabase/server";
 
 export default async function OperatorLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const { user, isOperator } = await getOperatorContext();
-  if (!user) {
-    redirect("/login");
-  }
-  if (!isOperator) {
-    redirect("/dashboard");
-  }
+  // Each operator page guards its protected reads and retains its recovery URL.
+  const user = await getCurrentUser();
   return (
     <div className="appShell">
       <header className="appTopbar">
@@ -33,7 +27,7 @@ export default async function OperatorLayout({
           </Link>
         </nav>
         <div className="appNavRight">
-          <span className="cardLabel">{user.email}</span>
+          <span className="cardLabel">{user?.email}</span>
           <form action={signOut}>
             <button className="btn btn--ghost" type="submit">
               Logg ut

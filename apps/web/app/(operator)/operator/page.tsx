@@ -1,5 +1,7 @@
-import { AnnualBillingSupport } from "./annual-billing-support";
+import { AnnualBillingSupport, OperatorReadRecoveryView } from "./annual-billing-support";
 import { randomUUID } from "node:crypto";
+import { redirect } from "next/navigation";
+import { operatorRecoveryHref, operatorSupportLocation } from "../../lib/operator-support";
 
 import {
   grantSupportAccess,
@@ -18,7 +20,7 @@ import {
   launchSignoffLabel,
 } from "../../lib/launch-signoff";
 import {
-  getCurrentUser,
+  getOperatorPageAccess,
   listAuthorityOperations,
   listLaunchSignoffs,
   readOperatorSupportDashboard,
@@ -75,12 +77,23 @@ const authorityResultMessages: Record<string, string> = {
 
 export default async function OperatorPage({ searchParams }: OperatorProps) {
   const params = await searchParams;
-  const pendingCancellationOperation = await loadPendingCancellationOperation();
-  const user = await getCurrentUser();
-  const supportCaseId = params?.supportCase ?? "";
+  const location = operatorSupportLocation(params);
+  const access = await getOperatorPageAccess();
+  if (access.recovery === "forbidden") redirect("/dashboard");
+  if (access.recovery === "sign-in" || access.recovery === "step-up") {
+    redirect(operatorRecoveryHref(access.recovery, location.returnTo));
+  }
+  if (access.recovery) return <OperatorReadRecoveryView recovery={access.recovery} returnTo={location.returnTo} />;
+  if (location.invalid) return <OperatorReadRecoveryView recovery="unavailable" returnTo={location.returnTo} />;
+  const user = access.user;
+  const { supportCaseId, beforePurchaseId } = location;
   const operatorDashboard = supportCaseId
-    ? await readOperatorSupportDashboard(supportCaseId, user?.id, params?.annualBefore)
-    : { summaries: [], isOperator: false, error: null, annualBilling: null, annualBillingError: null };
+    ? await readOperatorSupportDashboard(supportCaseId, user.id, beforePurchaseId)
+    : { summaries: [], isOperator: false, error: null, annualBilling: null, annualBillingError: null, recovery: null };
+  if (operatorDashboard.recovery) {
+    return <OperatorReadRecoveryView recovery={operatorDashboard.recovery} returnTo={location.returnTo} />;
+  }
+  const pendingCancellationOperation = await loadPendingCancellationOperation();
   const launchSignoffState = user
     ? await listLaunchSignoffs(user.id)
     : {
@@ -162,9 +175,6 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
             Åpne sak
           </button>
         </form>
-        {operatorDashboard.error ? (
-          <p className="errorText">{operatorDashboard.error}</p>
-        ) : null}
         {launchSignoffState.error ? (
           <p className="errorText">{launchSignoffState.error}</p>
         ) : null}
@@ -569,6 +579,7 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
           page={operatorDashboard.annualBilling}
           error={operatorDashboard.annualBillingError}
           supportCaseId={supportCaseId}
+          beforePurchaseId={beforePurchaseId}
         />
         <div className="readinessGrid">
           {operatorDashboard.summaries.map((summary) => (

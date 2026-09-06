@@ -13,7 +13,7 @@ import type {
 } from "../annual-readiness";
 import type { CompanyCancellationRow } from "../cancellation";
 import type { LaunchSignoffKey, LaunchSignoffStatus } from "../launch-signoff";
-import { buildOperatorSupportSummaries } from "../operator-support";
+import { buildOperatorSupportSummaries, operatorReadRecovery, type OperatorReadRecovery } from "../operator-support";
 import type {
   Rf1086ReceiptMetadata,
   Rf1086SubmittedPayloadReference,
@@ -665,6 +665,21 @@ export async function getOperatorContext() {
   return { user, isOperator, isAdminOperator: operator?.role === "admin" };
 }
 
+/** Page entry only: retain rejected-session recovery before protected loaders run. */
+export async function getOperatorPageAccess() {
+  try {
+    if (!hasSupabaseEnv()) return { recovery: "unavailable" as const };
+    const user = await getCurrentUser();
+    if (!user) return { recovery: "sign-in" as const };
+    const accessToken = await backendAccessToken(await createSupabaseServerClient());
+    if (!accessToken) return { recovery: "sign-in" as const };
+    const operator = await loadOperatorContext(accessToken);
+    return { recovery: null, user, operator };
+  } catch (error) {
+    return { recovery: operatorReadRecovery(error) };
+  }
+}
+
 export async function listDocumentsForCompanies(companyIds: string[]) {
   if (!hasSupabaseEnv() || companyIds.length === 0) {
     return { documents: [] as DocumentRow[], error: null };
@@ -1190,31 +1205,39 @@ export async function readOperatorSupportDashboard(
     annualBilling: null as AnnualSupportPageWire | null,
     annualBillingError: null as ReturnType<typeof annualBillingRecovery> | null,
   };
-  if (!hasSupabaseEnv() || !actorId) {
-    return { summaries: [], isOperator: false, error: null, ...emptyAnnual };
-  }
-  const supabase = await createSupabaseServerClient();
-  const operatorSession = await backendOperatorSession(supabase);
-  const isOperator = Boolean(operatorSession?.operator);
+  const failed = (recovery: OperatorReadRecovery, isOperator = false) => ({
+    summaries: [], isOperator, error: "support_case_read_failed", ...emptyAnnual, recovery,
+  });
+  if (!hasSupabaseEnv()) return failed("unavailable");
+  if (!actorId) return failed("sign-in");
+  let isOperator = false;
+  let accessToken: string;
   let snapshot: Awaited<ReturnType<typeof readOperatorSupportCase>>;
   try {
-    if (!operatorSession) throw new Error("support_case_read_failed");
-    snapshot = await readOperatorSupportCase(operatorSession.accessToken, caseId);
-  } catch {
-    return { summaries: [], isOperator, error: "support_case_read_failed", ...emptyAnnual };
+    const token = await backendAccessToken(await createSupabaseServerClient());
+    if (!token) return failed("sign-in");
+    accessToken = token;
+    await loadOperatorContext(accessToken);
+    isOperator = true;
+    snapshot = await readOperatorSupportCase(accessToken, caseId);
+    if (snapshot.caseId !== caseId) return failed("unavailable", isOperator);
+  } catch (error) {
+    return failed(operatorReadRecovery(error), isOperator);
   }
 
   let annualBilling: AnnualSupportPageWire | null = null;
-  let annualBillingError: ReturnType<typeof annualBillingRecovery> | null = null;
-  if (snapshot.scopes.includes("billing") && operatorSession) {
+  if (snapshot.scopes.includes("billing")) {
     try {
       // A billing-only grant need not include profile resources. The backend
       // rechecks current admin, opened-case and MFA authority for this read.
-      annualBilling = await loadAnnualSupportPurchases(operatorSession.accessToken, {
+      annualBilling = await loadAnnualSupportPurchases(accessToken, {
         companyId: snapshot.companyId, supportCaseId: snapshot.caseId, beforePurchaseId,
       });
+      if (annualBilling.companyId !== snapshot.companyId || annualBilling.supportCaseId !== snapshot.caseId) {
+        return failed("unavailable", isOperator);
+      }
     } catch (error) {
-      annualBillingError = annualBillingRecovery(error);
+      return { ...failed(operatorReadRecovery(error), isOperator), annualBillingError: annualBillingRecovery(error) };
     }
   }
   return {
@@ -1222,6 +1245,7 @@ export async function readOperatorSupportDashboard(
     isOperator,
     error: null,
     annualBilling,
-    annualBillingError,
+    annualBillingError: null,
+    recovery: null,
   };
 }
