@@ -32,7 +32,7 @@ export function AnnualBillingSupport({ page, error, supportCaseId }: {
     </div> : page ? <>
       <p>Registrerte kjøp for selskap {page.companyId}, på tvers av inntektsår. Beløpene viser registrerte betalinger og refusjoner. Bruk kjøpsreferansen ved oppfølging i saken.</p>
       {page.purchases.length === 0 ? <p>Ingen årskjøp registrert på denne siden.</p> : null}
-      <div className="readinessGrid">
+      <div className="readinessGrid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 22rem), 1fr))" }}>
         {page.purchases.map((purchase) => <article className="readinessItem" key={purchase.purchaseId}>
           <h3>Inntektsår {purchase.incomeYear} · {purchaseLabels[purchase.status]}</h3>
           <p>Kjøpsreferanse: <code style={{ overflowWrap: "anywhere" }}>{purchase.purchaseId}</code></p>
