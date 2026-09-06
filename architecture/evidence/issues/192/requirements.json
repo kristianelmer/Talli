@@ -3,9 +3,9 @@
   "issue": "#192",
   "capability": "billing",
   "status": "implementation-in-progress",
-  "canonicalRoute": "#137 \u2192 #192 \u2192 #150",
+  "canonicalRoute": "#137 → #192 → #150",
   "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5561060339",
-  "routeCorrection": "Oversight reconciled source-handoff #137\u2192#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
+  "routeCorrection": "Oversight reconciled source-handoff #137→#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
   "baseline": {
     "revision": "ccf1dcba56a4eb05c5252b00286dba6b2b8b480e",
     "evidenceCommittedRevision": "f0ec97ccfea24268b432f5c91f43dc2c01e170b7",
@@ -33,7 +33,7 @@
     {
       "id": "GH-192-A4",
       "requirement": "Vipps test-mode agreement, charge, webhook replay, retry, receipt, cancellation, full/partial refund, reconciliation and failure recovery.",
-      "status": "local-provider-and-webhook-tested-runtime-and-real-MT-evidence-pending"
+      "status": "local-provider-and-durable-authenticated-receipts-tested-reconciliation-runtime-and-real-MT-pending"
     },
     {
       "id": "GH-192-A5",
@@ -647,6 +647,44 @@
         "/private/tmp/talli-01a077d5-operator-unit-red.log": "sha256:8aa4c9309f7193c79eeaf6fc70029194e196ddb9a9f417f13308db32287291c8"
       },
       "limits": "Synthetic session/read evidence does not prove actual designated Vipps MT, hosted authorization configuration, representative users, accounting export completeness or trusted readiness/incident/submission authority. Marketing retains its existing late-report unavailable behavior; replacement entry authorization is covered. No operator refund/cancellation initiation or owner-endpoint reuse. #192 OPEN/incomplete, #150 unclaimed, whole #165 ACTIVE; all remaining acceptance, two complete immutable 11/11 gates and protected-main Release/nonproduction Preview integration remain required. Main unchanged and continuous integration target; only release/production frozen."
+    },
+    "annualNotificationInbox": {
+      "implementationRevision": "18005c8d55637dd1bce057ed378cac40aad8499f",
+      "comparisonRevision": "0a057459ad25f181bc0f5f9623eef817e5f12c24",
+      "initialRevision": "38866549e09b95b2f733be6ac998a94e33762599",
+      "privateSchemaRevision": "c991aee182858a07fbf0ee54b7d62448ad5d2fb3",
+      "scope": "Authenticated annual provider delivery receipts only. Stable additive POST is unavailable without explicit injection. Configured MT HMAC authentication precedes actorless persistence; no environment fallback, owner session, source lookup, purchase matching, operation binding, provider request, financial write or entitlement decision. The private annual_notification_inbox.receipts table belongs to backend-system technical delivery infrastructure under ADR0011, with public billing boundary types and declared bindings.",
+      "authenticationAndReplay": "Preserve exact body bytes and reject duplicate header names before mapping. Stop streaming above 64 KiB or after two seconds; exact-limit valid payload accepted. Provider/account come from server configuration; no customer bearer authority. Unique provider/account/raw-body SHA-256 deduplicates identical deliveries. Concurrent conflicts use a separate statement to see the committed winner, compare every normalized immutable hint and return the original receipt. JSON reserialization is a separate delivery. Unknown resources are retained with no inferred business identity. Ack means committed receipt only; no internal identity, amount or secret is returned.",
+      "authorityCorrection": "Initial 38866549 shared backend_system USAGE exposed an existing PUBLIC-executable SECURITY DEFINER shareholder-loan projection. Independent source/live catalog audit found this without a mutation probe. Corrected c991 uses its own private schema and no shared technical/billing schema USAGE; no foreign implementation changed. Fresh-database regression combines effective schema and function privileges, permits only the existing read-only company-year predicate, and proves forged claims still fail at the old function schema boundary. Initial disposable database was discarded; corrected schema was applied to a fresh one.",
+      "persistence": "NOLOGIN NOINHERIT NOBYPASSRLS executor has only SELECT and seven explicit INSERT columns under forced account-scoped RLS. It cannot supply receipt ID/time, change/delete/truncate evidence or access annual financial tables. Separate migration owner has no runtime binding; no login is granted executor membership. Rollback withdraws policies and both table/column grants while retaining relation identity and exact receipt evidence. Recutover restores the same relation. Technical receipts survive two full predecessor billing rollback/recutover cycles independently.",
+      "validation": "Exact c991 runtime: full billing 545 Python + 168 Node; mandatory owned fresh DB lifecycle 328 Python + 1 Node, zero skips, including repeated rollback/recutover. Targeted private-schema database 15 passed before c991 commit on matching source. Twenty committed contract tests pass at c991; earlier full boundary-contract 51 passed on the final unchanged HTTP/OpenAPI source. Full backend at 38866549 passed 1209 with 2 pre-existing external-config skips and 327 database tests deselected; this is not attributed to the final schema revision. Final 18005c8d changes only adapter registration order; OpenAPI/generated-client drift and diff checks pass, runtime source is unchanged from c991.",
+      "databaseScenarios": "Twelve simultaneous independent receipt connections converge; a controlled uncommitted winning INSERT forces the duplicate to wait and then read its committed receipt. Conflicting agreement, charge, event or time under one digest fails without overwrite. Same digest remains isolated across accounts/providers. Lost HTTP acknowledgement replays original committed evidence. Deferred commit-trigger failure returns 503 with no receipt; subsequent valid retry succeeds. Missing/account-mismatched settings, forged browser claims, direct cross-account insertion, mutation grants and indirect business-definer authority are denied. A refund hint cannot change seeded purchase/operation evidence.",
+      "independentReviews": {
+        "standards": "PASS 0 exact final 18005c8d against 0a057459, full 18-file slice. Private-schema c991 also PASS 0. Read-only review; no tests run by reviewer.",
+        "spec": "PASS 0 exact same final candidate/comparison. Initial 38866549 had one P1 indirect function-authority finding, resolved by private schema. Receipt intake only; no #192 exit approval."
+      },
+      "architecture": "Direct final checker retains exactly four inherited errors: three audit_events and one filing_readiness_snapshots. Declared dependency evidence regenerated from checker result while printing every error and preserving exit 1; checker/baseline/ADR/route were not changed. Full suite on the private-schema candidate returned 48/51: two inherited failures (four scope errors and inventory 92 vs 96), plus a new registration-order assumption. Final 18005c8d appends new bindings to preserve the existing SystemBoundaryTransport first entry; the failed registration regression now passes 1/1. The full suite was not rerun after this manifest-order-only correction; no current 49/51 or architecture PASS is claimed.",
+      "fixtureLifecycle": "Two isolated Supabase databases were created from repository migrations and stopped without backup; no matching containers remain. All API/HMAC/provider evidence is synthetic. No hosted migration, webhook registration, merchant credential, runtime login grant, production operation or provider request was performed.",
+      "artifacts": {
+        "/private/tmp/talli-01a077d5-inbox-billing-c991aee1.log": "sha256:f17dc86e917211c17ab3db5d0afb22fbe7708e8789cf22a9be64d8f9a9b93dfe",
+        "/private/tmp/talli-01a077d5-inbox-db-lifecycle-c991aee1.log": "sha256:d72b7ff8d5fcb0735cbd282a15dae5f7f78c08d0aeb9be5112c7ba93ec4cf29f",
+        "/private/tmp/talli-01a077d5-inbox-private-runtime-wip.log": "sha256:f3714fa97f8262f7607855139b41f0e5056377285b439ffdc45e8e7032cb6762",
+        "/private/tmp/talli-01a077d5-inbox-backend-38866549.log": "sha256:71837dbb058f6caac394bc4709a942b55476c940564b02e60d3345d1208d6951",
+        "/private/tmp/talli-01a077d5-inbox-contract-before-review.log": "sha256:f7f8dcf39824fef90f1cf1fbc110dd23de7add3e3f856eaf25c3e9f0e06fc3c6",
+        "/private/tmp/talli-01a077d5-inbox-openapi-c991aee1.log": "sha256:f0abddbf251db9e38dc2f4c6d2359291641dd281e77d4c3b180bc9df99c627b4",
+        "/private/tmp/talli-01a077d5-inbox-architecture-suite-private-wip.log": "sha256:d02620257d3755a661c9d75f2e416863453ddd75a3e0d2fce1d327d74fbaa1d9",
+        "/private/tmp/talli-01a077d5-inbox-binding-order-regression.log": "sha256:343048d6b29e6f20fff22703e6ff593f03631f6c49917c840f48c0ce2264e10e",
+        "/private/tmp/talli-01a077d5-inbox-architecture-18005c8d.log": "sha256:cf4bfc2167107cb1617a90e7867848c0d66e43b4d91bf8cd115b920c8ca63114",
+        "/private/tmp/talli-01a077d5-inbox-reviews.json": "sha256:6f29a76d64b688b10dd1a2b66a9d3ec6cdecb46b705691ee9bc591715ee11363",
+        "/private/tmp/talli-01a077d5-inbox-stopped.json": "sha256:3539dd1811c829fabac18f291f1a5d695dc0443429e41dc2123d5f4dd876db21"
+      },
+      "primarySources": [
+        "https://developer.vippsmobilepay.com/docs/APIs/webhooks-api/request-authentication/",
+        "https://developer.vippsmobilepay.com/docs/APIs/webhooks-api/api-guide/",
+        "https://developer.vippsmobilepay.com/docs/APIs/recurring-api/recurring-api-guide/",
+        "https://www.postgresql.org/docs/current/ddl-rowsecurity.html"
+      ],
+      "limits": "Intake does not resolve resources, select refund attempts, reconcile payments or authorize a worker. Actual designated Vipps MT, trusted readiness/incident/submission sources, automatic runtime, representative users, full accounting exports and remaining #192 acceptance remain outstanding. #192 OPEN/incomplete; #150 unclaimed; whole #165 ACTIVE. Two complete immutable 11/11 gates and protected-main Release/nonproduction Preview integration remain required. Main unchanged and continuous integration target; only release/production frozen."
     }
   },
   "externalEvidence": {
