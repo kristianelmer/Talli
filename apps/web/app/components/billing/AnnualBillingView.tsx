@@ -1,5 +1,5 @@
 import type { AnnualBillingSnapshotWire, AnnualBillingRefundSnapshotWire, AnnualPurchaseSummaryWire, AnnualPurchaseRefundSummaryWire, AnnualBillingOfferWire, AnnualPurchaseHistoryWire } from "../../../features/billing";
-import { Banner, Button, EmptyState, LinkButton, StatusBadge } from "../ui";
+import { Banner, Button, EmptyState, LinkButton, StatusBadge, buttonClass } from "../ui";
 import { AnnualCheckoutObservationControl } from "./AnnualCheckoutObservationControl";
 import type { AnnualCheckoutObservationAction } from "../../lib/annual-checkout-observation";
 import { AnnualAgreementCleanupControl } from "./AnnualAgreementCleanupControl";
@@ -153,9 +153,10 @@ function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancel
     <details><summary>Vilkårene for dette kjøpet</summary>
       <p style={{ whiteSpace: "pre-wrap" }}>{purchase.termsText}</p>
     </details>
-    <LinkButton variant="secondary" href={`/archive/${purchase.companyId}/${purchase.incomeYear}/download`}>
+    {/* Download requests can record an export attempt; never prefetch them. */}
+    <a className={buttonClass("secondary")} href={`/archive/${purchase.companyId}/${purchase.incomeYear}/download`}>
       Last ned årsarkivet for {purchase.incomeYear}
-    </LinkButton>
+    </a>
   </article>;
 }
 
@@ -206,7 +207,7 @@ export function AnnualBillingView({ companyId, companyName, snapshot, offer: cur
         </LinkButton> : null}
       </nav>
       {offer && !purchases.some((purchase) => purchase.incomeYear === offer.incomeYear) ?
-        <LinkButton variant="secondary" href={`/archive/${companyId}/${offer.incomeYear}/download`}>Last ned årsarkivet for {offer.incomeYear}</LinkButton> : null}
+        <a className={buttonClass("secondary")} href={`/archive/${companyId}/${offer.incomeYear}/download`}>Last ned årsarkivet for {offer.incomeYear}</a> : null}
     </section>
   </>;
 }

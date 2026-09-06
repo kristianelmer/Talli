@@ -30,6 +30,7 @@ function compile(source, dependencies) {
   return exports;
 }
 const ui = {
+  buttonClass: () => "btn btn--secondary",
   Banner: ({ children }) => React.createElement("div", { role: "status" }, children),
   Button: ({ children, variant: _variant, ...props }) => React.createElement("button", props, children),
   LinkButton: ({ children, ...props }) => React.createElement("a", props, children),
@@ -59,6 +60,34 @@ test("annual history keeps stored purchase prices and terms separate from today'
   assert.match(html, /value="30000000-0000-4000-8000-000000000001"/);
   assert.match(html, /Stopp fornyelse/);
   assert.match(html, /\/archive\/10000000-0000-4000-8000-000000000001\/2026\/download/);
+});
+
+test("purchase and offer archive downloads bypass Next navigation and its automatic prefetch", () => {
+  const nextLinks = [];
+  const buttons = compile(readFileSync(new URL("../app/components/ui/Button.tsx", import.meta.url), "utf8"), {
+    "next/link": ({ href, children, ...props }) => {
+      nextLinks.push(href);
+      return React.createElement("a", { href, ...props }, children);
+    },
+    "./cx": { cx: (...values) => values.filter(Boolean).join(" ") },
+  });
+  const { AnnualBillingView: View } = compile(readFileSync(new URL("../app/components/billing/AnnualBillingView.tsx", import.meta.url), "utf8"), {
+    "../ui": { ...ui, ...buttons },
+    "./AnnualAgreementCleanupControl": { AnnualAgreementCleanupControl },
+    "./AnnualCheckoutObservationControl": { AnnualCheckoutObservationControl },
+    "./AnnualRefundRecoveryControl": { AnnualRefundRecoveryControl },
+  });
+  const html = renderToStaticMarkup(React.createElement(View, { companyId,
+    companyName: "Holding AS", offer,
+    snapshot: { companyId, purchases: [{ ...purchase, incomeYear: 2025 }], nextPurchaseId: null },
+    operationIds: {}, cancelAction: async () => {}, cleanupAction: async () => ({ kind: "idle" }),
+    observeAction: async () => ({ kind: "idle" }), recoverRefundAction: async () => ({ kind: "idle" }),
+  }));
+  for (const year of [2025, 2026]) {
+    assert.match(html, new RegExp(`href="/archive/${companyId}/${year}/download"`));
+    assert.match(html, new RegExp(`Last ned årsarkivet for ${year}`));
+  }
+  assert.deepEqual(nextLinks.filter(href => href.startsWith("/archive/")), []);
 });
 
 test("only persisted cancellation confirms success even after an ambiguous response", () => {
