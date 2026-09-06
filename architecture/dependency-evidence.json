@@ -9,6 +9,14 @@
       "to": "backend:documents"
     },
     {
+      "from": "backend-system:annual-agreement-cleanup",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
       "from": "backend-system:annual-billing-reads-and-cancellation",
       "imports": [
         "talli_backend.modules.billing.public"
