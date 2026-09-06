@@ -401,6 +401,29 @@
         "/private/tmp/talli-01a077d5-audit.json": "sha256:e5efd64c79ecd39086970deda9f90d86c218059651d122ea4e5d9e72f32c592a"
       },
       "limits": "Same-actor receipt proves current ownership scope, not historical-role provenance. Recorded operation recovery only; owner discovery/UI, trusted readiness/incident/submission authority, automatic adjudication/execution, actual designated Vipps Merchant Test, representative UX and universal export/exit evidence remain due. Four-scope retirement amendment unapproved. Two complete immutable customer-ready gates and protected-main Release/Preview integration still required;192 OPEN,150 unclaimed, whole165 goal ACTIVE."
+    },
+    "annualOwnerRefundRecoveryTargets": {
+      "implementationRevision": "f81f080b7b1a860197a7b2821b49dc92892734a8",
+      "comparisonRevision": "308bad6e2f4b304f8153a6036e49bc487338fa01",
+      "scope": "Additive owner GET /api/v1/billing/annual/refund-recovery-targets via existing AnnualBillingReadPersistence. One stored purchase, current accepted-owner/fresh-MFA authority and same-actor operation-bound receipts. No writes, provider/source calls, admission check, schema or recovery UI.",
+      "behavior": "Single-statement purchase/cursor/results projection validates company/purchase/year/case/refund-kind joins. Filters actor before earliest receipt selection per operation; deduplicates before50+sentinel. Descending immutable operation(created_at,id) order; any authorized bound receipt cursor resolves its operation even after deferred binding changes the representative. Receipt IDs/times/status only; operation outcomes do not establish whole liability or bank receipt. Refresh newest page for newly visible groups above an existing cursor.",
+      "validation": "Final-content billing516 Python +117 Node pass. Full isolated database lifecycle313 Python +1 Node pass, zero skips, including all predecessor rollback/recutover cycles. Dedicated HTTP16 and database17 cases included. Typecheck, boundary-contract51, deterministic OpenAPI/client generation/check, diff check and exact predecessor path/schema comparison pass. New target pagination test uses synthetic billing clocks and real restricted claims; provider/source facts remain local synthetic fixtures.",
+      "architecture": "Direct checker at final contents emits only the four inherited future-scope errors; active inventory remains92vs96. The preceding full suite on4b0a4a4d was49/51, not rerun or attributed to this revision. Registered only the additive route/types and their documentation; checker/baseline/ADR/route order unchanged. No architecture PASS or complete immutable gate claimed.",
+      "independentReviews": {
+        "standards": "PASS0 exactf81f080b7b1a860197a7b2821b49dc92892734a8 against308bad6e2f4b304f8153a6036e49bc487338fa01, read-only zero findings",
+        "spec": "PASS0 exactf81f080b7b1a860197a7b2821b49dc92892734a8 against308bad6e2f4b304f8153a6036e49bc487338fa01, read-only zero findings"
+      },
+      "fixtureLifecycle": "Task-owned tallig79823 in /var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-supabase-local.hrj7gx_u stopped with no-backup and zero matching containers verified. Dedicated Talli Colima preserved; no task browser/server or hosted/provider calls.",
+      "artifacts": {
+        "/private/tmp/talli-01a077d5-targets-billing.log": "sha256:858bb9c7a8f7f09079ab3c0a837ab33ea67e50725f6666ccb5a4f3f113eea17a",
+        "/private/tmp/talli-01a077d5-targets-database.log": "sha256:d3f2b7e9622b51d23d37b78535208e7c67c73e144b7e2975b3bff1860649bf11",
+        "/private/tmp/talli-01a077d5-targets-contract.log": "sha256:de3ba02617369023252850eaa3edf73d20e6f30b3b7cef03f16da12770a2a8ec",
+        "/private/tmp/talli-01a077d5-targets-transport.log": "sha256:714142c4b7be7bae9f1db8a3e26898e66fb05d38f309750bedd99980c42534f5",
+        "/private/tmp/talli-01a077d5-targets-architecture-check.log": "sha256:cf4bfc2167107cb1617a90e7867848c0d66e43b4d91bf8cd115b920c8ca63114",
+        "/private/tmp/talli-01a077d5-targets-contract-overlap.json": "sha256:584821ae796eda2be1703e8cc899f4641ed8822ab9c18a1f5671751704cec008",
+        "/private/tmp/talli-01a077d5-targets-fixture-stopped.json": "sha256:86c4e8842a70a59c7c756c1d2fd69afb49d47ab3a900d53de267c14da5c1dde6"
+      },
+      "limits": "Backend discovery only, with no new sale/refund authority. Owner recovery UI, trusted readiness/incident/submission authority, actual designated Vipps MT and all remaining192 customer/operator/automatic flows still due. Four-scope amendment unapproved; two immutable complete gates and protected-main Release/Preview integration remain required.192OPEN,150unclaimed,whole165ACTIVE. Prior dependency-audit findings unchanged."
     }
   },
   "externalEvidence": {
