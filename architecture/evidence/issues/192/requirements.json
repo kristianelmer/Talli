@@ -43,7 +43,7 @@
     {
       "id": "GH-192-A6",
       "requirement": "Actionable customer plan/cancel/refund/export and operator exceptions.",
-      "status": "owner-history-cancellation-and-recorded-refund-recovery-http-implemented-refund-discovery-ui-and-operator-flows-pending"
+      "status": "owner-history-cancellation-and-recorded-refund-discovery-recovery-ui-implemented-automatic-refund-and-operator-actions-pending"
     },
     {
       "id": "GH-192-A7",
@@ -424,6 +424,38 @@
         "/private/tmp/talli-01a077d5-targets-fixture-stopped.json": "sha256:86c4e8842a70a59c7c756c1d2fd69afb49d47ab3a900d53de267c14da5c1dde6"
       },
       "limits": "Backend discovery only, with no new sale/refund authority. Owner recovery UI, trusted readiness/incident/submission authority, actual designated Vipps MT and all remaining192 customer/operator/automatic flows still due. Four-scope amendment unapproved; two immutable complete gates and protected-main Release/Preview integration remain required.192OPEN,150unclaimed,whole165ACTIVE. Prior dependency-audit findings unchanged."
+    },
+    "annualOwnerRefundRecoveryUi": {
+      "implementationRevision": "1e192873a709968d62b486130ac0033ee96a03cf",
+      "correctionRevision": "d2943028d37818a97ac32b045c38e6469c82bc1a",
+      "reviewedRevision": "3b544d4f17db059e71f46d11ca2dd57e828208e6",
+      "comparisonRevision": "457092949d68f4282d8398db4b4aae376fe13b56",
+      "scope": "Explicit owner recovery controls for already recorded refund requests. One selected canonical purchase triggers a provider-free target GET; only displayed authorized receipts create status-check forms. Server action sends exact company/purchase/request through the current session, without source, amount, provider or operation-key authority. No new refund initiation, automatic adjudication or worker.",
+      "behavior": "Page validates target company/purchase/year and assigns protected history only after all reads, so discovery auth failures hide prior history and controls. Missing predecessor route404 without domain problem is unavailable, never empty; domain cursor failures remain errors. Action validates three returned identities and refreshes canonical history after every status, including pending/unknown, and on access rejection. Client feedback is scoped to all three IDs, pending disables duplicate submission, and lost response leaves explicit same-request retry. MFA/login and reload links preserve the selected receipt and both cursors; intentional pagination stays separate. Changed representatives display a selection warning. Operation confirmation never substitutes for total liability, purchase balances or bank receipt.",
+      "validation": "Clean immutable3b544d4f full billing516 Python +139 Node pass. Final-product typecheck and88 focused Node tests pass after reload corrections. Production Next.js build passes on d2943028 (final3b544d4f changes only an unrelated test assertion). Web boundary146/146 passes after that exact assertion correction. Existing backend discovery database evidence313 Python +1 Node remains attributed to f81f080b, not rerun for UI-only changes. No complete immutable11/11 gate claimed.",
+      "independentReviews": {
+        "standards": "PASS0 exact3b544d4f17db059e71f46d11ca2dd57e828208e6 against457092949d68f4282d8398db4b4aae376fe13b56, retained full d2943028 review and exact final test-only delta review",
+        "spec": "PASS0 exact3b544d4f17db059e71f46d11ca2dd57e828208e6 against457092949d68f4282d8398db4b4aae376fe13b56, retained full d2943028 review and exact final test-only delta review"
+      },
+      "reviewCorrections": "Initial1e192873 Standards found missing web API-operation manifest/inventory registration; Spec found reload links dropped selected receipt or refund cursor. Registered/documented both operations, retained full retry scope and added behavioral URL assertions in d2943028; both independent reviews then PASS0. Initial transport negative test had malformed ProblemDetails without instance; corrected fixture, no product fallback weakening.",
+      "inheritedTestCorrection": "Broader web boundary initially145/146: source-pattern assertion expected buildOperatorSupportSummaries(resources), while inherited6377f0bb uses authenticated snapshot.resources. Exact failing test/source blobs0392f1b389fd34a3a0b8890d3cefe93ac7e392db and2e9932c995ed7440183cfa8448d86ca0b052d3b4 are identical to startup4833049d and comparison45709294. Corrected only the exact assertion in3b544d4f, preserved all case-read/no-direct-persistence guards; full146/146 rerun passes. Other inputs such as actions.ts changed for this UI, so this is not a claim that all composite-test inputs were unchanged.",
+      "architecture": "Direct checker after final product changes still reports only four inherited future-scope errors; no checker/baseline/ADR/route change. Earlier full49/51 belongs to4b0a4a4d and is not attributed to this UI revision. Active92vs96 and unapproved four-scope amendment remain. No architecture PASS.",
+      "browser": "Named Playwright browser with actual server-rendered AnnualBillingView, recovery/cleanup controls and repository UI/CSS, using synthetic partial-refund data at390x844 and1440x1000. No horizontal overflow; refund status button44px high. Unavailable discovery preserves recorded750NOK remainder and hides recovery buttons; fixture records zero POSTs. Screenshots use1e192873 component contents before link-only corrections; corrected reload/auth/lost-response behavior is covered by Node tests. This static SSR fixture does not prove hydrated full Next authentication, backend/provider integration, actual MT or successful archive download.",
+      "fixtureLifecycle": "Named browser talli-refunds-01a077d5 closed; owned fixture server stopped and absent verified. Only its screenshots/snapshots moved to /private/tmp/talli-01a077d5-refund-browser-artifacts. Both prior task DB fixtures already stopped. Dedicated Talli Colima and unrelated retained fixtures preserved. No hosted/provider calls.",
+      "artifacts": {
+        "/private/tmp/talli-01a077d5-refund-ui-billing-exact.log": "sha256:f5d743b52e9e8e6ae0d0a3b2c82b1c28f9cba821ce44538057c8a76c613a8203",
+        "/private/tmp/talli-01a077d5-refund-ui-correction.log": "sha256:dfa8ac54d6990d145fa4bd1a743446f8048a52273672b925331a00d3ef78f52a",
+        "/private/tmp/talli-01a077d5-refund-ui-build-final.log": "sha256:f001c61f830c9f239500afeb4dd23c062eacddb95372be9e8d57c9ed5f394ba7",
+        "/private/tmp/talli-01a077d5-refund-ui-boundary-final.log": "sha256:b0e9f60614d249bc24b6cb93d1df2db10416a6ab9177f0c6878c150ac48c2456",
+        "/private/tmp/talli-01a077d5-refund-ui-boundary.log": "sha256:1e4754f2da8064e06c6db5996b632f99e604b1d928682bca431ab06844d7148b",
+        "/private/tmp/talli-01a077d5-refund-ui-architecture.log": "sha256:cf4bfc2167107cb1617a90e7867848c0d66e43b4d91bf8cd115b920c8ca63114",
+        "/private/tmp/talli-01a077d5-refund-browser-metrics.log": "sha256:3dc393724638282d67eecfb6061451d3471792de6fec6513df2eb14c8ab8cb78",
+        "/private/tmp/talli-01a077d5-refund-browser-stopped.json": "sha256:c910cb333911d9b48cc30764e72104380216383db18c779419301d0f31300105",
+        "/private/tmp/talli-01a077d5-refund-browser-artifacts/refund-recovery-phone.png": "sha256:e4cc7de4e4ff44fa6e3a355563063f17628501430043ca47ea0a2d4431bb3031",
+        "/private/tmp/talli-01a077d5-refund-browser-artifacts/refund-recovery-unavailable.png": "sha256:17e2eda482aa1cd7c0f5f68972a2f729c30dbb7606ee66762fa5d3d49d4869d2",
+        "/private/tmp/talli-01a077d5-refund-browser-artifacts/refund-recovery-desktop.png": "sha256:16372128446315b358975288219ecaeb2bbb3fb15891050e219f3500f3747689"
+      },
+      "limits": "Recorded owner recovery UI only. Trusted readiness/incident/submission source authority, actual designated Vipps MT, automatic full-refund execution, remaining customer/operator actions, representative complete UX/export evidence and all192 acceptance remain due. Two complete immutable gates and protected-main Release/nonproduction Preview integration still required. Frozen Production unchanged;192OPEN,150unclaimed,whole165ACTIVE. Existing dependency audit findings remain unchanged."
     }
   },
   "externalEvidence": {
