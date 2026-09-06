@@ -302,6 +302,28 @@
       "architecture": "Final direct checker retains only the four inherited unapproved future-scope deletions. Most recent full49/51 belongs to preceding support visibility; no new full architecture run or PASS claimed. Checker, frozen baseline, ADR and serialized route unchanged.",
       "fixtureLifecycle": "Named Playwright session closed and task-owned local HTTP server PID20798 stopped. Browser artifacts moved outside repository. Dedicated Talli Colima runtime remains available for ongoing work. No hosted/provider calls.",
       "limits": "Explicit owner recovery only, not automatic cancellation, universal historical exit or full192 acceptance. Actual designated Vipps MT, trusted incident/submission/readiness authority, remaining customer/support actions, two complete immutable gates and protected-main Release/Preview integration remain required. Four-scope amendment unapproved;150 unclaimed; full165 goal ACTIVE."
+    },
+    "annualOwnerRefundVisibility": {
+      "implementationRevision": "e9699820d0fe5d23adc5baec1aa8ae47ab4932d5",
+      "scope": "Provider-free owner read/display of already recorded refund evidence. Additive GET /api/v1/billing/annual/refund-snapshot; existing owner company-year and fresh-MFA boundary. No new schema, refund adjudication, source resolver, provider, worker or consequential command.",
+      "behavior": "One statement snapshot projects purchase money, maximum cumulative case entitlement, nonnegative remaining amount, earliest outstanding initiation target, request receipts and operation counts. Multiple cases never multiply liability. Partial/unknown/failed outcomes remain distinct from settled totals. Initiation target is separate from provider/bank receipt; outstanding balance after the date does not imply late initiation. Existing paid totals/terms/access and local cancellation remain unchanged.",
+      "deploymentCompatibility": "Early Spec review found that adding required fields to the existing strict snapshot would break both deployment orders. The committed implementation preserves the exact predecessor path/schema/response and adds a separate contract. New web falls back only on HTTP404 to original history and marks refund details unavailable, never zero. Auth/MFA/unavailable errors do not fall back. Actual c433cb6a generated client accepts current old-endpoint output; its strict rejection of the expanded payload and unchanged predecessor OpenAPI path/three schemas were also verified. Committed transport/UI/API overlap tests cover the other deployment order.",
+      "validation": "Billing445 Python +81 Node pass. Ordinary backend1109 pass,2 existing skips,258 database cases deselected. Focused real database owner-read17 pass; full isolated Supabase2.109.1 lifecycle258 Python +1 Node pass, zero skips, including all predecessor rollback/recutover rehearsals. Boundary-contract49 and CI12 pass. Typecheck, final production Next.js build, deterministic OpenAPI/client regeneration and git diff --check pass. Advisors0 blocking security/error findings and34 existing performance warnings.",
+      "architecture": "Exact implementation full suite49/51 in323.6s. Deterministic evidence passes; only inherited future-scope/frozen-inventory failures remain (four unapproved deletions, active92vs96). Registered the additive route in the existing owner workflow and documentation; no checker/baseline/ADR/route-order change. Not architecture PASS or a complete customer-ready gate.",
+      "browser": "Actual server-rendered AnnualBillingView, cleanup control, UI primitives and repository CSS with synthetic data at390x844 and1440x1000. Partial balance, pending/unknown/failed history and initiation wording remain visible. Predecessor-response fallback retains history, recorded refunded total, cleanup control and archive link while labeling refund details unavailable. Document widths match viewports; fixture records zero POSTs. Component fixture, not full Next authentication, provider MT or export-download evidence.",
+      "browserArtifacts": {
+        "directory": "/private/tmp/talli-01a07722-owner-refunds-browser-artifacts",
+        "sha256": {
+          "talli-owner-refunds-01a07722-desktop.png": "1b3969366963fbcf4ab705db10f8fa59738681a0e346598fdfdaee585cbb7d47",
+          "talli-owner-refunds-01a07722-mobile.png": "6a3708579f48e5193b6e5c84ba34aa5db5fc93079db1f3e41d7f764e4db7219c"
+        }
+      },
+      "independentReviews": {
+        "standards": "PASS0 exacte9699820d0fe5d23adc5baec1aa8ae47ab4932d5 againstc433cb6a13ac409668f0af698e1c463fde6bb48e, read-only zero findings",
+        "spec": "PASS0 exacte9699820d0fe5d23adc5baec1aa8ae47ab4932d5 againstc433cb6a13ac409668f0af698e1c463fde6bb48e, read-only zero remaining findings"
+      },
+      "fixtureLifecycle": "Task-owned tallig23387 in /private/tmp/talli-supabase-local.jcYmHL stopped with no-backup; zero matching containers verified. Named browser closed, server PID43697 stopped and artifacts moved outside the repository. Dedicated Talli Colima remains running for ongoing work. No hosted/provider calls.",
+      "limits": "Recorded owner refund visibility only; no automatic execution, universal historical exit, provider settlement-time proof or full192 acceptance. Current owner page still depends on admitted year. Actual designated Vipps MT, trusted readiness/incident/submission authority, remaining customer/support actions, two complete immutable gates and protected-main Release/Preview integration remain due. Four-scope amendment unapproved;150 unclaimed; full165 goal ACTIVE."
     }
   },
   "externalEvidence": {
