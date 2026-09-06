@@ -3,9 +3,9 @@
   "issue": "#192",
   "capability": "billing",
   "status": "implementation-in-progress",
-  "canonicalRoute": "#137 \u2192 #192 \u2192 #150",
-  "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5561060339",
-  "routeCorrection": "Oversight reconciled source-handoff #137\u2192#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
+  "canonicalRoute": "#137 → #192 → #150",
+  "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5562322074",
+  "routeCorrection": "Oversight reconciled source-handoff #137→#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
   "baseline": {
     "revision": "ccf1dcba56a4eb05c5252b00286dba6b2b8b480e",
     "evidenceCommittedRevision": "f0ec97ccfea24268b432f5c91f43dc2c01e170b7",
@@ -728,6 +728,56 @@
       },
       "nextWork": "Checkout UI must retain the exact original request and initiating user through uncertainty/refresh/reauthentication. No purchase found or stale terms error cannot safely release an unresolved key because an earlier request may still claim. Billing-owned durable original-request resolution is being designed before allowing a replacement review.",
       "limits": "#192 OPEN/incomplete; #150 unclaimed; whole #165 ACTIVE. Actual designated Vipps Merchant Test, trusted readiness/incident/submission sources, remaining owner/operator acceptance and representative validation, two complete immutable 11/11 gates and protected-main Release/nonproduction Preview integration remain mandatory. Main remains the continuous integration target; only release/production is frozen."
+    },
+    "annualCheckoutRequestWithdrawal": {
+      "implementationRevision": "1a0241336db1e5dc490619ddfce785d05c4d9ec4",
+      "comparisonRevision": "3cb98ea75d87af3eb3808197e18e62ff6b69fafc",
+      "scope": "Explicit additive original-checkout withdrawal POST and generated client. Reuses original accepted company/year/body/key with verified actor and canonical fingerprint. Returns original purchase reference in any status, or immutable billing-owned withdrawal receipt. No current offer versions, source readiness, provider configuration, reconciliation, cancellation, refund, settlement or entitlement is required or performed. Existing HTTP checkout response is unchanged. Shared deferred source resolver removes the prior nonblocking closure duplication without making source resolution eager.",
+      "reason": "An earlier checkout can remain paused before claim after a later retry reports stale terms or no existing purchase. The browser cannot safely discard that original key on absence/error. Confirmed withdrawal durably fences the exact original company request; an existing result instead points to canonical purchase history.",
+      "serialization": "Both current claim and withdrawal acquire original-key then company/year locks and reauthorize after waits. Existing lookup compares the original key across requested years before exact actor/fingerprint comparison. Same-company changed intent conflicts; matching withdrawals replay one receipt. The fence is scoped to the original company request: identical literal keys across companies cannot let a company-B resolution release company A. No new cross-tenant read authority or global cross-table key-namespace claim.",
+      "databaseFence": "Symmetric invoker triggers prevent opposite-table same-company claim/withdrawal coexistence, including older writers/direct INSERTs. Triggers use nonblocking try-locks and raise on contention, because the source MFA predicate uses the INSERT statement clock. Current adapters hold both locks already and check fresh MFA in separate post-wait statements. This removes advisory waits introduced by the guard; it does not claim universal wall-clock freshness for arbitrary long-running direct SQL statements.",
+      "persistence": "billing.annual_checkout_withdrawals is capability business evidence with forced owner/fresh-MFA RLS, no browser/service-role/operator access, database-generated ID/time, narrow INSERT columns and immutable original choices. No UPDATE/DELETE policy or expiry. UPDATE(id) exists solely for RI key-share checks and is revoked on rollback. Migrations preserve pre-existing SET and grantor membership via the established borrowed-role pattern.",
+      "rollback": "New-only rollback atomically retires receipt and the same function OID while preserving the operation trigger binding. Its self-contained denial function rejects every new checkout until final withdrawal recutover and lets non-checkout operations reach their existing guards. Full predecessor rollback can drop billing schema; ledger-only recutover still denies new checkout claims. Receipt bytes and original fence survive two full cycles with unchanged function/trigger identity.",
+      "validation": "Exact 1a024133 full billing 585 Python + 185 Node; mandatory owned fresh database lifecycle 382 Python + 1 Node, zero skips, including repeated full predecessor rollback/recutover. Production web build, typecheck on unchanged candidate TypeScript source, contract 22/22, OpenAPI/generated drift/compatibility and diff check pass. Focused service/HTTP 102 pass; final focused real database 28 pass before commit on matching source. No browser/UI acceptance is claimed.",
+      "adversarialEvidence": "Delayed original start cannot claim after withdrawal and makes zero provider calls. Twelve independent identical withdrawals converge. Changed year/terms/recurring/offer/consent races cannot produce contradictory success. Existing pending/paid/failed/refunded references return unchanged. Old writer cannot bypass fence or leave partial purchase; different key remains independent. Lost acknowledgement replays committed receipt; deferred commit failure yields no receipt. Owner revocation and MFA expiry deny fresh/replayed withdrawal after either lock. Direct guard contention fails promptly, including old year-first versus new key-first collision. Wrong initiating owner, foreign tenant, stale MFA, mutation-policy broadening, private ID/time INSERT and unrelated-user FK deletion are covered.",
+      "independentReviews": {
+        "implementationRevision": "1a0241336db1e5dc490619ddfce785d05c4d9ec4",
+        "comparisonRevision": "3cb98ea75d87af3eb3808197e18e62ff6b69fafc",
+        "kind": "Root summary of independent read-only exact-revision reviews; reviewers inspected tests but did not execute them",
+        "standards": {
+          "result": "PASS",
+          "actionableViolations": 0,
+          "nonblockingSmells": 0,
+          "scope": "Billing-owned immutable receipt, public contracts, thin workflow, additive transport/client, RLS and narrow column privileges, current owner/MFA, key-before-year locking, symmetric nonblocking SQL guards, OID-preserving rollback and migration role preservation."
+        },
+        "spec": {
+          "result": "PASS",
+          "actionableFindings": 0,
+          "scope": "Explicit original-body/key withdrawal without new-sale sources/provider; all-status original purchase resolution; immutable replay acknowledged after commit; same-company request permanently fenced, including older writers; rollback denial retained until final recutover.",
+          "clarification": "Fence is scoped to the original company request. Identical literal keys across companies cannot let one company resolution release another company request. Browser must preserve company/body/initiating-user binding. No approved cross-table global namespace requirement found."
+        },
+        "limits": "Bounded withdrawal foundation only. No UI/browser acceptance, actual designated Vipps MT/trusted source evidence, full #192 acceptance, immutable complete gates or protected integration approval."
+      },
+      "architecture": "Exact 1a024133 full suite 49/51; only the two inherited failures remain: four unapproved future-scope errors (three audit_events, one filing_readiness_snapshots) and frozen inventory active count 92 vs 96. Direct candidate checker also reported exactly those four scope errors. No architecture PASS or checker/baseline/ADR/gate change.",
+      "fixtureLifecycle": "Fresh isolated Supabase project tallig17364 migrated from repository with cached CLI 2.109.1, then stopped without backup and verified to have no containers. First focused run had four test-monitor failures from a cached pg_stat_activity snapshot; observer was corrected to autocommit and exact holder blocking PID, after which all lock tests and full lifecycle passed. No hosted migration, merchant request, provider activation or credential exposure.",
+      "artifacts": {
+        "/private/tmp/talli-01a0789e-1a024133-billing.log": "sha256:1fa59073eec83c329253ae0ad7de5ed6587fe13921073da8eb4288a102bba287",
+        "/private/tmp/talli-01a0789e-1a024133-db-lifecycle.log": "sha256:eac6d7635dcbc9efb9a9b8a50d81c1cfb2986ce042ee1866f9b24eee22a97e6c",
+        "/private/tmp/talli-01a0789e-1a024133-build.log": "sha256:e4b11e082117ddfab5131989f869319aeace60f2ed5217a1407bfd8f50cfa7b2",
+        "/private/tmp/talli-01a0789e-1a024133-architecture-suite.log": "sha256:0ef309d634a662b5314f294ee3d5b823e036d765e791a598352e6f924ef173e6",
+        "/private/tmp/talli-01a0789e-1a024133-review-summary.json": "sha256:bd761ea75a613199c7582e647dfd9cb4e4d63ff73c05ac310ade5fd7decf722d",
+        "/private/tmp/talli-01a0789e-withdrawal-runtime-wip.log": "sha256:1c30cef2fb38efdccf4e5df422f6d3414a1e6f0371dbfb3e71b03f988d85e078",
+        "/private/tmp/talli-01a0789e-withdrawal-runtime-wip2.log": "sha256:3dd5d3673c21002ae7e8f076adb018cb2d2ea8615f52237d7abc25f8b49730e4",
+        "/private/tmp/talli-01a0789e-withdrawal-runtime-wip3.log": "sha256:2e89907c63a993a97b74de241368e3305a8db626157dccca2636999e2c6f7a21",
+        "/private/tmp/talli-01a0789e-withdrawal-db-stopped.json": "sha256:a73240a333cc307bb9daea8c42e6d0befa6b2ee0ad832d5bb88f6254c2d952c0",
+        "/private/tmp/talli-01a0789e-checkout-ui-next.md": "sha256:2c08fc58e8cbf1a240a6b6a4d7df93da11405a0d5c61c79fe4c5493202220e48"
+      },
+      "primarySources": [
+        "https://www.postgresql.org/docs/current/functions-admin.html",
+        "https://www.postgresql.org/docs/current/functions-datetime.html"
+      ],
+      "nextWork": "Implement strict start/withdraw feature wrappers and one owner checkout control. Persist original exact body/key/verified initiating user in company-keyed sessionStorage before awaiting; withdrawal selection must persist its phase so refresh/reauthentication cannot resurrect purchase-start. Only a validated scoped committed resolution and matching current draft permit deletion/restart. New review needs fresh preparation and unchecked separate choices; no automatic POST. Private next-UI plan includes off-page history selection, storage failure and hydrated adversarial scenarios.",
+      "limits": "#192 OPEN/incomplete, #150 unclaimed, full #165 ACTIVE. Actual designated Vipps Merchant Test, trusted readiness/incident/submission authority, remaining owner/operator acceptance, representative validation, two complete immutable 11/11 gates, protected-main Release/nonproduction Preview and exact-main evidence remain mandatory. Main is the integration target; only release/production is frozen."
     }
   },
   "externalEvidence": {
