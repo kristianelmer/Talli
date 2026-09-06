@@ -27,7 +27,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       const value = parameter(params, key);
       if (value && uuid.test(value)) returnQuery.set(key, value);
     }
-    redirect(`/login?next=${encodeURIComponent(`/billing?${returnQuery}`)}`);
+    redirect(`/login?reauth=1&next=${encodeURIComponent(`/billing?${returnQuery}`)}`);
   }
   const context = await listCompanyAccessContexts();
   const selectedId = parameter(params, "companyId");
@@ -49,7 +49,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   if (context.error) {
     content = <EmptyState title="Abonnementet kan ikke vises nå" action={
       <LinkButton href={context.requiresAal2 ? mfaHref : context.requiresSignIn
-        ? `/login?next=${encodeURIComponent(returnTo)}` : returnTo}>
+        ? `/login?reauth=1&next=${encodeURIComponent(returnTo)}` : returnTo}>
         {context.requiresAal2 ? "Bekreft identiteten din" : context.requiresSignIn ? "Logg inn igjen" : "Prøv igjen"}
       </LinkButton>
     }>Vi må kunne bekrefte tilgangen din til selskapet før vi viser abonnementet.</EmptyState>;
@@ -133,7 +133,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     } else {
       content = <EmptyState title="Abonnementet kan ikke vises nå" action={
         <LinkButton href={recovery === "step-up" ? mfaHref : recovery === "sign-in"
-          ? `/login?next=${encodeURIComponent(returnTo)}` : returnTo}>
+          ? `/login?reauth=1&next=${encodeURIComponent(returnTo)}` : returnTo}>
           {recovery === "step-up" ? "Bekreft identiteten din" : recovery === "sign-in" ? "Logg inn igjen" : "Prøv igjen"}
         </LinkButton>
       }>Vi fikk ikke bekreftet betalings- og fornyelsesstatusen. Prøv igjen for å se oppdatert status.

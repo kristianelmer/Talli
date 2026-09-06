@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { Banner, FormField, SubmitButton } from "../../components/ui";
 import { signUp } from "../../actions";
-import { hasSupabaseEnv } from "../../lib/supabase/server";
+import { getCurrentUser, hasSupabaseEnv, needsEmailVerification } from "../../lib/supabase/server";
 import { ownerCopy } from "../../lib/copy";
 import { readEligibilityContinuation } from "../../lib/eligibility-continuation";
 import { sanitizeInternalRedirect } from "../../lib/internal-redirect";
@@ -14,6 +14,13 @@ type SignupProps = {
 };
 
 export default async function SignupPage({ searchParams }: SignupProps) {
+  if (hasSupabaseEnv()) {
+    const user = await getCurrentUser();
+    if (user) {
+      if (needsEmailVerification(user)) redirect("/verify-email");
+      redirect("/dashboard");
+    }
+  }
   const params = await searchParams;
   const next = sanitizeInternalRedirect(params?.next);
   const continuation = await readEligibilityContinuation();

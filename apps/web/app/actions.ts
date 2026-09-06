@@ -793,20 +793,23 @@ async function loadCorporateLifecycleActionContext(input: {
 
 export async function signIn(formData: FormData) {
   const next = sanitizeInternalRedirect(formString(formData, "next"));
+  const reauthenticate = formString(formData, "reauth") === "1";
+  const retryQuery = new URLSearchParams({ next });
+  if (reauthenticate) retryQuery.set("reauth", "1");
   if (!hasSupabaseEnv()) {
-    redirect(`/login?error=Supabase%20env%20mangler&next=${encodeURIComponent(next)}`);
+    redirect(`/login?${retryQuery}&error=Supabase%20env%20mangler`);
   }
   const email = formString(formData, "email");
   const password = formString(formData, "password");
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    // Unconfirmed accounts are parked at the verification gate rather than
-    // shown a dead-end error — they keep going without re-entering anything.
-    if (error.code === "email_not_confirmed" || /not confirmed/i.test(error.message)) {
+    // Ordinary unconfirmed accounts continue at the verification gate. Failed
+    // reauthentication stays here: the previous session may still be valid.
+    if (!reauthenticate && (error.code === "email_not_confirmed" || /not confirmed/i.test(error.message))) {
       redirect(`/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`);
     }
-    redirect(`/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}`);
+    redirect(`/login?${retryQuery}&error=${encodeURIComponent(error.message)}`);
   }
   revalidatePath("/dashboard");
   redirect(next);
@@ -859,17 +862,20 @@ export async function resendConfirmation(formData: FormData) {
 
 export async function signInWithGoogle(formData: FormData) {
   const next = sanitizeInternalRedirect(formString(formData, "next"));
+  const reauthenticate = formString(formData, "reauth") === "1";
+  const retryQuery = new URLSearchParams({ next });
+  if (reauthenticate) retryQuery.set("reauth", "1");
   if (!hasSupabaseEnv()) {
-    redirect("/login?error=Supabase%20env%20mangler");
+    redirect(`/login?${retryQuery}&error=Supabase%20env%20mangler`);
   }
   const supabase = await createSupabaseServerClient();
   const siteUrl = await getSiteUrl();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: `${siteUrl}/auth/confirm?next=${encodeURIComponent(next)}` },
+    options: { redirectTo: `${siteUrl}/auth/confirm?${retryQuery}` },
   });
   if (error || !data.url) {
-    redirect(`/login?error=${encodeURIComponent(error?.message ?? "Google-innlogging feilet")}&next=${encodeURIComponent(next)}`);
+    redirect(`/login?${retryQuery}&error=${encodeURIComponent(error?.message ?? "Google-innlogging feilet")}`);
   }
   redirect(data.url);
 }
@@ -4297,7 +4303,7 @@ export async function recoverAnnualRefund(
     refundPurchaseId: purchaseId, refundRequestId });
   const recover = (reason: ReturnType<typeof annualBillingRecovery>) => ({
     kind: "recovery" as const, companyId, purchaseId, refundRequestId, reason,
-    href: reason === "unavailable" ? null : `${reason === "step-up" ? "/mfa?fresh=1&" : "/login?"}next=${encodeURIComponent(returnTo)}`,
+    href: reason === "unavailable" ? null : `${reason === "step-up" ? "/mfa?fresh=1&" : "/login?reauth=1&"}next=${encodeURIComponent(returnTo)}`,
   });
   try {
     const accessToken = await getCurrentSessionAccessToken();
@@ -4335,7 +4341,7 @@ export async function observeAnnualCheckout(
   const returnTo = ownerPathWithQuery("/billing", { companyId, beforePurchaseId, checkoutPurchaseId: purchaseId });
   const recover = (reason: ReturnType<typeof annualBillingRecovery>) => ({
     kind: "recovery" as const, companyId, purchaseId, reason,
-    href: reason === "unavailable" ? null : `${reason === "step-up" ? "/mfa?fresh=1&" : "/login?"}next=${encodeURIComponent(returnTo)}`,
+    href: reason === "unavailable" ? null : `${reason === "step-up" ? "/mfa?fresh=1&" : "/login?reauth=1&"}next=${encodeURIComponent(returnTo)}`,
   });
   try {
     const accessToken = await getCurrentSessionAccessToken();
@@ -4373,7 +4379,7 @@ export async function cleanupAnnualAgreement(
   const returnTo = ownerPathWithQuery("/billing", { companyId, beforePurchaseId, cleanupPurchaseId: purchaseId });
   const recover = (reason: ReturnType<typeof annualBillingRecovery>) => ({
     kind: "recovery" as const, companyId, purchaseId, reason,
-    href: reason === "unavailable" ? null : `${reason === "step-up" ? "/mfa?fresh=1&" : "/login?"}next=${encodeURIComponent(returnTo)}`,
+    href: reason === "unavailable" ? null : `${reason === "step-up" ? "/mfa?fresh=1&" : "/login?reauth=1&"}next=${encodeURIComponent(returnTo)}`,
   });
   try {
     const accessToken = await getCurrentSessionAccessToken();
@@ -4397,12 +4403,12 @@ export async function cancelAnnualRenewal(formData: FormData) {
     cancellationPurchaseId: purchaseId,
   });
   const accessToken = await getCurrentSessionAccessToken();
-  if (!accessToken) redirect(`/login?next=${encodeURIComponent(returnTo)}`);
+  if (!accessToken) redirect(`/login?reauth=1&next=${encodeURIComponent(returnTo)}`);
   try {
     await cancelAnnualRenewalThroughApi(accessToken, { companyId, purchaseId }, operationId);
   } catch (error) {
     const recovery = annualBillingRecovery(error);
-    if (recovery === "sign-in") redirect(`/login?next=${encodeURIComponent(returnTo)}`);
+    if (recovery === "sign-in") redirect(`/login?reauth=1&next=${encodeURIComponent(returnTo)}`);
     if (recovery === "step-up") redirect(`/mfa?fresh=1&next=${encodeURIComponent(returnTo)}`);
     redirect(`${returnTo}&cancellationError=unconfirmed`);
   }

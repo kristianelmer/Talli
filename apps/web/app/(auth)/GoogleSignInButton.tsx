@@ -27,13 +27,16 @@ function GoogleMark() {
 }
 
 /** OAuth sign-in via Supabase (Google). Renders nothing if auth is unconfigured. */
-export function GoogleSignInButton({ next = "/dashboard" }: { next?: string }) {
+export function GoogleSignInButton({ next = "/dashboard", reauthenticate = false }: {
+  next?: string; reauthenticate?: boolean;
+}) {
   if (!hasSupabaseEnv()) {
     return null;
   }
   return (
     <form action={signInWithGoogle} className="authOauth">
       <input name="next" type="hidden" value={next} />
+      {reauthenticate ? <input name="reauth" type="hidden" value="1" /> : null}
       <SubmitButton variant="secondary" block pendingLabel={ownerCopy.auth.googlePending}>
         <GoogleMark />
         {ownerCopy.auth.googleCta}

@@ -206,6 +206,7 @@ for (const recovery of ["unavailable", "step-up", "sign-in"]) {
     assert.doesNotMatch(harness.redirects[0], /private|provider/);
     assert.equal(location.pathname, recovery === "step-up" ? "/mfa" : recovery === "sign-in" ? "/login" : "/billing");
     if (recovery === "step-up") assert.equal(location.searchParams.get("fresh"), "1");
+    if (recovery === "sign-in") assert.equal(location.searchParams.get("reauth"), "1");
   });
 }
 
@@ -349,7 +350,15 @@ test("read failure offers fresh history and MFA recovery retains cancellation co
   assert.match(html, new RegExp(`cancellationOperationId%3D${operationId}`));
   assert.doesNotMatch(html, /internal detail|Fornyelsen ble stoppet/);
   const unauthenticated = pageHarness({ token: null });
-  await assert.rejects(unauthenticated.render(params), (error) => error.message.includes("/login?next=") && error.message.includes(operationId));
+  await assert.rejects(unauthenticated.render(params), (error) => {
+    assert.match(error.message, /^redirect:/);
+    const login = new URL(error.message.slice("redirect:".length), "https://talli.example");
+    assert.equal(login.pathname, "/login");
+    assert.equal(login.searchParams.get("reauth"), "1");
+    const target = new URL(login.searchParams.get("next"), login.origin);
+    for (const [key, value] of Object.entries(params)) assert.equal(target.searchParams.get(key), value);
+    return true;
+  });
   assert.equal(unauthenticated.reads.length, 0);
 });
 
@@ -472,6 +481,7 @@ for (const recovery of ["mfa", "login", "retry"]) {
     const link = new URL(href, "https://talli.example");
     assert.equal(link.pathname, recovery === "retry" ? "/billing" : `/${recovery}`);
     if (recovery === "mfa") assert.equal(link.searchParams.get("fresh"), "1");
+    if (recovery === "login") assert.equal(link.searchParams.get("reauth"), "1");
     const target = new URL(link.searchParams.get("next") ?? link.href, link.origin);
     for (const [key, value] of Object.entries(params)) assert.equal(target.searchParams.get(key), value);
     assert.equal(harness.reads.length, 0);
