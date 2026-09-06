@@ -20,12 +20,12 @@ async function notificationReceiptEvidence(client) {
     try {
       await client.query("set local role annual_notification_executor");
       await client.query("select set_config('talli.notification_provider', 'vipps-mt', true), set_config('talli.notification_account', '123456', true)");
-      await client.query(`insert into backend_system.annual_notification_receipts
+      await client.query(`insert into annual_notification_inbox.receipts
         (provider, provider_account, receipt_digest, agreement_reference, event_type, occurred_at)
         values ('vipps-mt', '123456', repeat('b', 64), 'synthetic-lifecycle-agreement', 'recurring.agreement-stopped.v1', '2026-09-06T00:00:00Z')
         on conflict (provider, provider_account, receipt_digest) do nothing`);
       const result = await client.query(`select to_jsonb(r) as value, tableoid::oid as relation
-        from backend_system.annual_notification_receipts r
+        from annual_notification_inbox.receipts r
         where provider='vipps-mt' and provider_account='123456' and receipt_digest=repeat('b',64)`);
       await client.query("commit");
       assert.equal(result.rows.length, 1);

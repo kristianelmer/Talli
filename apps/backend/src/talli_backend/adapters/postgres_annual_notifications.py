@@ -42,7 +42,7 @@ class PostgresAnnualNotificationInbox:
                     (self.account.provider, self.account.reference),
                 )
                 row = await (await connection.execute(
-                    """insert into backend_system.annual_notification_receipts
+                    """insert into annual_notification_inbox.receipts
                     (provider, provider_account, receipt_digest, agreement_reference,
                      charge_reference, event_type, occurred_at)
                     values (%s, %s, %s, %s, %s, %s, %s)
@@ -56,7 +56,7 @@ class PostgresAnnualNotificationInbox:
                     # A distinct statement sees the concurrent winner after the
                     # unique-key wait; a same-statement CTE can miss that commit.
                     row = await (await connection.execute(
-                        """select * from backend_system.annual_notification_receipts
+                        """select * from annual_notification_inbox.receipts
                         where provider=%s and provider_account=%s and receipt_digest=%s""",
                         (self.account.provider, self.account.reference, notification.receipt_digest),
                     )).fetchone()

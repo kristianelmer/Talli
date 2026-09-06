@@ -22,7 +22,7 @@ pytestmark = pytest.mark.billing_database
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 ROOT = Path(__file__).resolve().parents[3]
 MIGRATION = '20260906204352_annual_notification_receipts.sql'
-TABLE = 'backend_system.annual_notification_receipts'
+TABLE = 'annual_notification_inbox.receipts'
 
 
 @pytest.fixture(scope='module', autouse=True)
@@ -89,7 +89,7 @@ def test_conflicting_insert_wait_uses_new_snapshot_after_winner_commits():
                 # Prove the second connection is waiting on this uncommitted key.
                 async with await psycopg.AsyncConnection.connect(DATABASE_URL, autocommit=True) as observer:
                     for _ in range(80):
-                        waiting = await (await observer.execute("select count(*) from pg_stat_activity where wait_event_type='Lock' and query like 'insert into backend_system.annual_notification_receipts%'" )).fetchone()
+                        waiting = await (await observer.execute("select count(*) from pg_stat_activity where wait_event_type='Lock' and query like 'insert into annual_notification_inbox.receipts%'" )).fetchone()
                         if waiting[0]:
                             break
                         await asyncio.sleep(.01)
@@ -151,7 +151,7 @@ def test_deferred_commit_failure_has_no_http_ack_or_committed_receipt():
     with psycopg.connect(DATABASE_URL) as connection:
         connection.execute('set local role annual_notification_store_owner')
         connection.execute('create constraint trigger fixture_notification_commit_failure after insert on ' + TABLE +
-                           ' deferrable initially deferred for each row execute function backend_system.guard_annual_notification_receipt_v1()')
+                           ' deferrable initially deferred for each row execute function annual_notification_inbox.guard_receipt_v1()')
     try:
         api, _ = fixture(store())
         response = deliver(api, body)
@@ -211,6 +211,25 @@ def test_direct_cross_account_insert_cannot_escape_scoped_rls():
                 (provider,provider_account,receipt_digest,agreement_reference,event_type,occurred_at)
                 values ('vipps-mt','999999',%s,'other-agreement','recurring.agreement-stopped.v1',now())''',
                 (uuid4().hex * 2,))
+
+
+def test_private_schema_blocks_inherited_public_business_definers_even_with_forged_claims():
+    with psycopg.connect(DATABASE_URL) as connection:
+        assert not connection.execute("select has_schema_privilege('annual_notification_executor','backend_system','USAGE')").fetchone()[0]
+        assert not connection.execute("select has_schema_privilege('annual_notification_executor','billing','USAGE')").fetchone()[0]
+        callable_definers = connection.execute("""select p.oid::regprocedure::text from pg_proc p
+            where p.prosecdef and p.prorettype <> 'trigger'::regtype
+            and has_schema_privilege('annual_notification_executor',p.pronamespace,'USAGE')
+            and has_function_privilege('annual_notification_executor',p.oid,'EXECUTE')
+            order by 1""").fetchall()
+        # This existing PUBLIC function only reads eligibility and returns a bool.
+        assert callable_definers == [('company_access_company_year_allows_consequential_v1(uuid,integer)',)]
+        existing = connection.execute("select to_regprocedure('backend_system.project_shareholder_loan_v1(jsonb,text)')").fetchone()[0]
+        receipt_scope(connection)
+        connection.execute("select set_config('talli.verified_actor_id',%s,true)", (str(uuid4()),))
+        if existing is not None:
+            with pytest.raises(psycopg.errors.InsufficientPrivilege, match='schema backend_system'):
+                connection.execute("select backend_system.project_shareholder_loan_v1('{}'::jsonb,'forged-fixture')")
 
 
 def test_signed_refund_hint_does_not_change_original_financial_rows(admitted):

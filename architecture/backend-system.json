@@ -256,9 +256,9 @@
     "consequentialAdapterRecheck": true
   },
   "technicalOwnership": {
-    "schemas": ["backend_system", "public"],
+    "schemas": ["backend_system", "public", "annual_notification_inbox"],
     "tables": [
-      "backend_system.annual_notification_receipts",
+      "annual_notification_inbox.receipts",
       "backend_system.banking_command_receipts",
       "billing.billing_command_receipts",
       "backend_system.banking_migration_reconciliations",
@@ -328,7 +328,7 @@
   "infrastructure": {
     "transactions": "Short Postgres transactions owned by backend application workflows.",
     "idempotency": "Durable idempotency records are required for consequential commands before provider I/O.",
-    "eventDelivery": "public.notification_outbox persists outbound deliveries. backend_system.annual_notification_receipts retains authenticated annual provider delivery hints and exact-byte replay identity independently of business-table rollback; no business settlement authority.",
+    "eventDelivery": "public.notification_outbox persists outbound deliveries. annual_notification_inbox.receipts retains authenticated annual provider delivery hints and exact-byte replay identity independently of business-table rollback; no business settlement authority.",
     "migrationRunner": "Supabase migrations in supabase/migrations are applied by the deployment migration runner.",
     "durableWorker": "A durable worker consumes persisted delivery state outside the initiating transaction."
   },

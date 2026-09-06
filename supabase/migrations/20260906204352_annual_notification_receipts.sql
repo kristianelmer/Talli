@@ -24,7 +24,7 @@ $roles$;
 do $borrow$
 declare v_role text; v_state jsonb := '{}'::jsonb; v_existing boolean;
 begin
-  foreach v_role in array array['ledger_store_owner', 'annual_notification_store_owner'] loop
+  foreach v_role in array array['annual_notification_store_owner'] loop
     if not pg_catalog.pg_has_role(current_user, v_role, 'SET') then
       select exists (select 1 from pg_catalog.pg_auth_members m
         join pg_catalog.pg_roles r on r.oid=m.roleid
@@ -38,13 +38,12 @@ begin
   perform pg_catalog.set_config('talli.notification_borrowed_roles', v_state::text, true);
 end;
 $borrow$;
-set local role ledger_store_owner;
-grant usage, create on schema backend_system to annual_notification_store_owner;
-grant usage on schema backend_system to annual_notification_executor;
-reset role;
+create schema if not exists annual_notification_inbox authorization annual_notification_store_owner;
 set local role annual_notification_store_owner;
+revoke all on schema annual_notification_inbox from public, anon, authenticated, service_role, billing_executor, billing_store_owner;
+grant usage on schema annual_notification_inbox to annual_notification_executor;
 
-create table if not exists backend_system.annual_notification_receipts (
+create table if not exists annual_notification_inbox.receipts (
   id uuid primary key default pg_catalog.gen_random_uuid(),
   received_at timestamptz not null default pg_catalog.statement_timestamp() check (pg_catalog.isfinite(received_at)),
   provider text not null check (provider ~ '^[A-Za-z0-9._:-]{1,100}$'),
@@ -56,39 +55,39 @@ create table if not exists backend_system.annual_notification_receipts (
   occurred_at timestamptz not null check (pg_catalog.isfinite(occurred_at)),
   unique(provider, provider_account, receipt_digest)
 );
-alter table backend_system.annual_notification_receipts enable row level security;
-alter table backend_system.annual_notification_receipts force row level security;
-revoke all on backend_system.annual_notification_receipts
+alter table annual_notification_inbox.receipts enable row level security;
+alter table annual_notification_inbox.receipts force row level security;
+revoke all on annual_notification_inbox.receipts
   from public, anon, authenticated, service_role, billing_executor, billing_store_owner,
        annual_notification_executor, annual_notification_store_owner;
 revoke insert (provider, provider_account, receipt_digest, agreement_reference,
                charge_reference, event_type, occurred_at)
-  on backend_system.annual_notification_receipts from annual_notification_executor;
-grant trigger on backend_system.annual_notification_receipts to annual_notification_store_owner;
-grant select on backend_system.annual_notification_receipts to annual_notification_executor;
+  on annual_notification_inbox.receipts from annual_notification_executor;
+grant trigger on annual_notification_inbox.receipts to annual_notification_store_owner;
+grant select on annual_notification_inbox.receipts to annual_notification_executor;
 grant insert (provider, provider_account, receipt_digest, agreement_reference,
               charge_reference, event_type, occurred_at)
-  on backend_system.annual_notification_receipts to annual_notification_executor;
+  on annual_notification_inbox.receipts to annual_notification_executor;
 
-create or replace function backend_system.guard_annual_notification_receipt_v1()
+create or replace function annual_notification_inbox.guard_receipt_v1()
 returns trigger language plpgsql set search_path='' as $function$
 begin
   raise exception 'annual_notification_receipt_is_immutable';
 end;
 $function$;
-revoke all on function backend_system.guard_annual_notification_receipt_v1() from public, anon, authenticated, service_role;
-drop trigger if exists annual_notification_receipt_guard on backend_system.annual_notification_receipts;
+revoke all on function annual_notification_inbox.guard_receipt_v1() from public, anon, authenticated, service_role;
+drop trigger if exists annual_notification_receipt_guard on annual_notification_inbox.receipts;
 create trigger annual_notification_receipt_guard before update or delete
-  on backend_system.annual_notification_receipts for each row
-  execute function backend_system.guard_annual_notification_receipt_v1();
-drop policy if exists annual_notification_read on backend_system.annual_notification_receipts;
-create policy annual_notification_read on backend_system.annual_notification_receipts
+  on annual_notification_inbox.receipts for each row
+  execute function annual_notification_inbox.guard_receipt_v1();
+drop policy if exists annual_notification_read on annual_notification_inbox.receipts;
+create policy annual_notification_read on annual_notification_inbox.receipts
   for select to annual_notification_executor using (
     provider = (select pg_catalog.current_setting('talli.notification_provider', true))
     and provider_account = (select pg_catalog.current_setting('talli.notification_account', true))
   );
-drop policy if exists annual_notification_insert on backend_system.annual_notification_receipts;
-create policy annual_notification_insert on backend_system.annual_notification_receipts
+drop policy if exists annual_notification_insert on annual_notification_inbox.receipts;
+create policy annual_notification_insert on annual_notification_inbox.receipts
   for insert to annual_notification_executor with check (
     provider = (select pg_catalog.current_setting('talli.notification_provider', true))
     and provider_account = (select pg_catalog.current_setting('talli.notification_account', true))

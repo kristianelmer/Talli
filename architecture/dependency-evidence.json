@@ -33,6 +33,14 @@
       "to": "backend:billing"
     },
     {
+      "from": "backend-system:annual-provider-notification-intake",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
       "from": "backend-system:annual-refund-recovery",
       "imports": [
         "talli_backend.modules.billing.public"
@@ -226,6 +234,10 @@
   ],
   "schemaVersion": "1.0",
   "technicalOwnership": [
+    {
+      "owner": "backend-system",
+      "table": "annual_notification_inbox.receipts"
+    },
     {
       "owner": "backend-system",
       "table": "backend_system.banking_command_receipts"

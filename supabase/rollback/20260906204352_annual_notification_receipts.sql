@@ -21,12 +21,12 @@ begin
 end;
 $borrow$;
 set local role annual_notification_store_owner;
-revoke all on backend_system.annual_notification_receipts from annual_notification_executor;
+revoke all on annual_notification_inbox.receipts from annual_notification_executor;
 revoke insert (provider, provider_account, receipt_digest, agreement_reference,
                charge_reference, event_type, occurred_at)
-  on backend_system.annual_notification_receipts from annual_notification_executor;
-drop policy if exists annual_notification_read on backend_system.annual_notification_receipts;
-drop policy if exists annual_notification_insert on backend_system.annual_notification_receipts;
+  on annual_notification_inbox.receipts from annual_notification_executor;
+drop policy if exists annual_notification_read on annual_notification_inbox.receipts;
+drop policy if exists annual_notification_insert on annual_notification_inbox.receipts;
 reset role;
 do $return_authority$
 begin
