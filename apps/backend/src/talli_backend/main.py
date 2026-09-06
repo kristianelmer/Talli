@@ -66,7 +66,7 @@ from talli_backend.application.billing_session import (
     BillingSessionFactory,
 )
 from talli_backend.application.billing_workflow import BillingWorkflow
-from talli_backend.application.annual_billing import AnnualBillingSessionFactory, AnnualBillingWorkflow, AnnualCheckoutWorkflow, AnnualCheckoutPrerequisiteResolver, AnnualAgreementCleanupWorkflow
+from talli_backend.application.annual_billing import AnnualBillingSessionFactory, AnnualBillingWorkflow, AnnualCheckoutWorkflow, AnnualCheckoutPrerequisiteResolver, AnnualAgreementCleanupWorkflow, AnnualSupportWorkflow
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceAuthenticationError,
     CorporateGovernanceSessionFactory,
@@ -176,6 +176,7 @@ from talli_backend.modules.company_access.public import (
     SupportCaseSnapshotResponse,
 )
 from talli_backend.modules.billing.public import (
+    AnnualSupportQuery, AnnualSupportCaseId, AnnualOperationStatus,
     AnnualBillingSnapshotQuery, AnnualPurchaseId, AnnualPurchaseStatus, CancelAnnualRenewalCommand,
     AnnualBillingProvider, AnnualCheckout, AnnualCheckoutQuery, StartAnnualCheckoutCommand,
     ActivateSubscriptionCommand,
@@ -516,6 +517,46 @@ class AnnualPurchaseSummaryWire(TransportModel):
 class AnnualBillingSnapshotWire(TransportModel):
     offer: AnnualBillingOfferWire
     purchases: list[AnnualPurchaseSummaryWire]
+    next_purchase_id: UUID | None
+
+
+class AnnualOperationCountsWire(TransportModel):
+    created: int = Field(ge=0)
+    pending: int = Field(ge=0)
+    unknown: int = Field(ge=0)
+    confirmed: int = Field(ge=0)
+    failed: int = Field(ge=0)
+
+
+class AnnualSupportPurchaseWire(TransportModel):
+    purchase_id: UUID
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    status: AnnualPurchaseStatus
+    accepted_at: datetime
+    updated_at: datetime
+    currency: Literal["NOK"]
+    gross_minor: int = Field(gt=0)
+    captured_minor: int = Field(ge=0)
+    refunded_minor: int = Field(ge=0)
+    renewal_canceled_at: datetime | None
+    paid_through: date
+    export_through: date
+    recurring_consent: bool
+    refund_case_count: int = Field(ge=0)
+    recorded_refund_minor: int = Field(ge=0)
+    remaining_refund_minor: int = Field(ge=0)
+    refund_initiate_by: date | None
+    refund_request_count: int = Field(ge=0)
+    latest_refund_requested_at: datetime | None
+    refund_operations: AnnualOperationCountsWire
+    cleanup_status: AnnualOperationStatus | None
+
+
+class AnnualSupportPageWire(TransportModel):
+    company_id: UUID
+    support_case_id: UUID
+    purchases: list[AnnualSupportPurchaseWire]
     next_purchase_id: UUID | None
 
 
@@ -9207,6 +9248,44 @@ def create_app(
                         "refunded_minor","recurring_consent","paid_through","export_through","renewal_date")},
                 ) for value in result.purchases.purchases],
                 next_purchase_id=UUID(str(result.purchases.next_purchase_id)) if result.purchases.next_purchase_id else None,
+            )
+        return await billing_call(execute)
+
+    @application.get(
+        "/api/v1/billing/annual/support/purchases",
+        operation_id="billingReadAnnualSupportPurchases", response_model=AnnualSupportPageWire,
+        responses={200: {"description": "Recorded annual evidence for the current opened admin billing support case."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def read_annual_support_purchases(
+        response: Response,
+        company_id: UUID = Query(alias="companyId"),
+        support_case_id: UUID = Query(alias="supportCaseId"),
+        before_purchase_id: UUID | None = Query(default=None, alias="beforePurchaseId"),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualSupportPageWire:
+        async def execute():
+            workflow = AnnualSupportWorkflow(await annual_billing_sessions.session(bearer_token(credentials)))
+            page = await workflow.purchases(AnnualSupportQuery(
+                CompanyId(str(company_id)), AnnualSupportCaseId(str(support_case_id)), workflow.actor_id,
+                AnnualPurchaseId(str(before_purchase_id)) if before_purchase_id else None,
+            ))
+            response.headers["Cache-Control"] = "no-store"
+            return AnnualSupportPageWire(
+                company_id=company_id, support_case_id=support_case_id,
+                purchases=[AnnualSupportPurchaseWire(
+                    purchase_id=UUID(str(value.purchase_id)), company_id=UUID(str(value.company_id)),
+                    income_year=value.income_year.value, accepted_at=value.accepted_at.value,
+                    updated_at=value.updated_at.value,
+                    renewal_canceled_at=value.renewal_canceled_at.value if value.renewal_canceled_at else None,
+                    latest_refund_requested_at=value.latest_refund_requested_at.value if value.latest_refund_requested_at else None,
+                    refund_operations=AnnualOperationCountsWire(**{name: getattr(value.refund_operations,name)
+                        for name in ("created","pending","unknown","confirmed","failed")}),
+                    **{name: getattr(value,name) for name in ("status","currency","gross_minor","captured_minor",
+                        "refunded_minor","paid_through","export_through","recurring_consent","refund_case_count","recorded_refund_minor",
+                        "remaining_refund_minor","refund_initiate_by","refund_request_count","cleanup_status")},
+                ) for value in page.purchases],
+                next_purchase_id=UUID(str(page.next_purchase_id)) if page.next_purchase_id else None,
             )
         return await billing_call(execute)
 

@@ -25,7 +25,8 @@
       "BillingEntitlementQuery",
       "BillingSnapshot",
       "BillingSnapshotQuery",
-      "AnnualBillingSnapshotQuery"
+      "AnnualBillingSnapshotQuery",
+      "AnnualSupportQuery"
     ],
     "events": [
       "BillingPaymentEvent"
@@ -99,7 +100,13 @@
       "settle_annual_refund",
       "AnnualRefundRequestId",
       "AnnualAgreementCleanupOperations",
-      "annual_agreement_cleanup_operations"
+      "annual_agreement_cleanup_operations",
+      "AnnualSupportCaseId",
+      "AnnualOperationStatus",
+      "AnnualOperationCounts",
+      "AnnualSupportPurchase",
+      "AnnualSupportPage",
+      "AnnualSupportReadPersistence"
     ]
   },
   "owns": {
@@ -120,7 +127,8 @@
     "storageBuckets": [],
     "projections": [
       "BillingEntitlementDecision",
-      "BillingSnapshot"
+      "BillingSnapshot",
+      "AnnualSupportPage"
     ],
     "migrations": "supabase/migrations/20260905145000_annual_refund_agreement_cleanup.sql"
   },
@@ -196,6 +204,15 @@
       "adapters": [
         "talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundSession"
       ]
+    },
+    {
+      "name": "AnnualSupportReadPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualSupportReadPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_support.PostgresAnnualSupportReadSession"
+      ]
     }
   ],
   "dependencies": [],
@@ -243,7 +260,9 @@
     "annualRefund": "apps/backend/tests/test_annual_refund_service.py",
     "annualRefundDatabase": "apps/backend/tests/test_annual_refund_runtime.py",
     "annualRefundCleanupDatabase": "apps/backend/tests/test_annual_refund_cleanup_runtime.py",
-    "annualCleanupApi": "apps/backend/tests/test_annual_cleanup_api.py"
+    "annualCleanupApi": "apps/backend/tests/test_annual_cleanup_api.py",
+    "annualSupportApi": "apps/backend/tests/test_annual_support_api.py",
+    "annualSupportDatabase": "apps/backend/tests/test_annual_support_runtime.py"
   },
   "compatibilityExceptions": []
 }

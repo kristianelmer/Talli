@@ -1,3 +1,4 @@
+import { AnnualBillingSupport } from "./annual-billing-support";
 import { randomUUID } from "node:crypto";
 
 import {
@@ -28,6 +29,7 @@ import { loadPendingCancellationOperation } from "../../lib/cancellation-operati
 type OperatorProps = {
   searchParams?: Promise<{
     supportCase?: string;
+    annualBefore?: string;
     grant?: string;
     error?: string;
     pilot?: string;
@@ -77,8 +79,8 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
   const user = await getCurrentUser();
   const supportCaseId = params?.supportCase ?? "";
   const operatorDashboard = supportCaseId
-    ? await readOperatorSupportDashboard(supportCaseId, user?.id)
-    : { summaries: [], isOperator: false, error: null };
+    ? await readOperatorSupportDashboard(supportCaseId, user?.id, params?.annualBefore)
+    : { summaries: [], isOperator: false, error: null, annualBilling: null, annualBillingError: null };
   const launchSignoffState = user
     ? await listLaunchSignoffs(user.id)
     : {
@@ -563,6 +565,11 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
             </button>
           </form>
         ) : null}
+        <AnnualBillingSupport
+          page={operatorDashboard.annualBilling}
+          error={operatorDashboard.annualBillingError}
+          supportCaseId={supportCaseId}
+        />
         <div className="readinessGrid">
           {operatorDashboard.summaries.map((summary) => (
             <div className="readinessItem" key={summary.companyId}>
@@ -675,7 +682,8 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
           ))}
           {supportCaseId &&
           operatorDashboard.isOperator &&
-          operatorDashboard.summaries.length === 0 ? (
+          operatorDashboard.summaries.length === 0 &&
+          !operatorDashboard.annualBilling && !operatorDashboard.annualBillingError ? (
             <div className="readinessItem">
               <span>Operator</span>
               <strong data-status="draft">Ingen treff</strong>

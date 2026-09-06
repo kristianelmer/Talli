@@ -491,3 +491,16 @@ and history remain provider-free. No worker or support authority is introduced.
 <!-- architecture-inventory
 {"workflows":["annual-agreement-cleanup"],"workflowPurposes":["annual-agreement-cleanup=>Authenticates the current owner to recover one receipt-bound original agreement stop; provider is absent by default, and deferred or unknown outcomes are not confirmation."],"publicPackages":["talli_backend.modules.billing.public"],"routes":["/api/v1/billing/annual/agreement-cleanups"]}
 -->
+
+## Annual support evidence
+
+The `annual-billing-support` workflow reads stored annual purchases across recorded
+years using the verified actor and the explicitly opened same-company billing
+support case. It requires current active-admin status and fresh MFA even for an
+empty page. Authorization, cursor scope, current purchase totals and related
+refund/cleanup summaries share one statement snapshot. No source authority,
+provider call, receipt creation or case opening occurs.
+
+<!-- architecture-inventory
+{"workflows":["annual-billing-support"],"workflowPurposes":["annual-billing-support=>Reads bounded annual purchase, recorded refund liability and agreement-stop evidence under current active-admin, explicitly opened same-company billing support-case and fresh-MFA authority; never adjudicates refunds or performs side effects."],"publicPackages":["talli_backend.modules.billing.public"],"routes":["/api/v1/billing/annual/support/purchases"],"ports":["AnnualSupportReadPersistence"],"adapterBindings":["AnnualSupportReadPersistence=>talli_backend.adapters.postgres_annual_support.PostgresAnnualSupportReadSession"],"adapterBindingOwners":["AnnualSupportReadPersistence=>backend-system"],"adapterBindingModes":["AnnualSupportReadPersistence=>verified active-admin opened billing support case; bounded consistent stored annual evidence across years, no provider or source-authority calls"]}
+-->

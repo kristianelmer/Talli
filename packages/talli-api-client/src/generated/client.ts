@@ -2601,6 +2601,48 @@ export interface AnnualAgreementCleanupWire {
   status: "deferred" | "pending" | "unknown" | "confirmed";
 }
 
+export type AnnualOperationStatus = "created" | "pending" | "unknown" | "confirmed" | "failed";
+
+export interface AnnualOperationCountsWire {
+  confirmed: number;
+  created: number;
+  failed: number;
+  pending: number;
+  unknown: number;
+}
+
+export interface AnnualSupportPurchaseWire {
+  acceptedAt: string;
+  capturedMinor: number;
+  cleanupStatus: AnnualOperationStatus | null;
+  companyId: string;
+  currency: "NOK";
+  exportThrough: string;
+  grossMinor: number;
+  incomeYear: number;
+  latestRefundRequestedAt: string | null;
+  paidThrough: string;
+  purchaseId: string;
+  recordedRefundMinor: number;
+  recurringConsent: boolean;
+  refundCaseCount: number;
+  refundInitiateBy: string | null;
+  refundOperations: AnnualOperationCountsWire;
+  refundRequestCount: number;
+  refundedMinor: number;
+  remainingRefundMinor: number;
+  renewalCanceledAt: string | null;
+  status: AnnualPurchaseStatus;
+  updatedAt: string;
+}
+
+export interface AnnualSupportPageWire {
+  companyId: string;
+  nextPurchaseId: string | null;
+  purchases: AnnualSupportPurchaseWire[];
+  supportCaseId: string;
+}
+
 export interface AnnualBillingOfferWire {
   companyId: string;
   currency: "NOK";
@@ -6301,6 +6343,62 @@ function isAnnualAgreementCleanupWire(value: unknown): value is AnnualAgreementC
   );
 }
 
+function isAnnualOperationStatus(value: unknown): value is AnnualOperationStatus {
+  return value === "created" || value === "pending" || value === "unknown" || value === "confirmed" || value === "failed";
+}
+
+function isAnnualOperationCountsWire(value: unknown): value is AnnualOperationCountsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["confirmed","created","failed","pending","unknown"]) &&
+    (typeof value.confirmed === "number" && Number.isInteger(value.confirmed) && value.confirmed >= 0) &&
+    (typeof value.created === "number" && Number.isInteger(value.created) && value.created >= 0) &&
+    (typeof value.failed === "number" && Number.isInteger(value.failed) && value.failed >= 0) &&
+    (typeof value.pending === "number" && Number.isInteger(value.pending) && value.pending >= 0) &&
+    (typeof value.unknown === "number" && Number.isInteger(value.unknown) && value.unknown >= 0)
+  );
+}
+
+function isAnnualSupportPurchaseWire(value: unknown): value is AnnualSupportPurchaseWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["acceptedAt","capturedMinor","cleanupStatus","companyId","currency","exportThrough","grossMinor","incomeYear","latestRefundRequestedAt","paidThrough","purchaseId","recordedRefundMinor","recurringConsent","refundCaseCount","refundInitiateBy","refundOperations","refundRequestCount","refundedMinor","remainingRefundMinor","renewalCanceledAt","status","updatedAt"]) &&
+    isDateTime(value.acceptedAt) &&
+    (typeof value.capturedMinor === "number" && Number.isInteger(value.capturedMinor) && value.capturedMinor >= 0) &&
+    (isAnnualOperationStatus(value.cleanupStatus) || value.cleanupStatus === null) &&
+    isUuid(value.companyId) &&
+    value.currency === "NOK" &&
+    typeof value.exportThrough === "string" &&
+    (typeof value.grossMinor === "number" && Number.isInteger(value.grossMinor) && value.grossMinor > 0) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (isDateTime(value.latestRefundRequestedAt) || value.latestRefundRequestedAt === null) &&
+    typeof value.paidThrough === "string" &&
+    isUuid(value.purchaseId) &&
+    (typeof value.recordedRefundMinor === "number" && Number.isInteger(value.recordedRefundMinor) && value.recordedRefundMinor >= 0) &&
+    typeof value.recurringConsent === "boolean" &&
+    (typeof value.refundCaseCount === "number" && Number.isInteger(value.refundCaseCount) && value.refundCaseCount >= 0) &&
+    (typeof value.refundInitiateBy === "string" || value.refundInitiateBy === null) &&
+    isAnnualOperationCountsWire(value.refundOperations) &&
+    (typeof value.refundRequestCount === "number" && Number.isInteger(value.refundRequestCount) && value.refundRequestCount >= 0) &&
+    (typeof value.refundedMinor === "number" && Number.isInteger(value.refundedMinor) && value.refundedMinor >= 0) &&
+    (typeof value.remainingRefundMinor === "number" && Number.isInteger(value.remainingRefundMinor) && value.remainingRefundMinor >= 0) &&
+    (isDateTime(value.renewalCanceledAt) || value.renewalCanceledAt === null) &&
+    isAnnualPurchaseStatus(value.status) &&
+    isDateTime(value.updatedAt)
+  );
+}
+
+function isAnnualSupportPageWire(value: unknown): value is AnnualSupportPageWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","nextPurchaseId","purchases","supportCaseId"]) &&
+    isUuid(value.companyId) &&
+    (isUuid(value.nextPurchaseId) || value.nextPurchaseId === null) &&
+    Array.isArray(value.purchases) && value.purchases.every((item) => isAnnualSupportPurchaseWire(item)) &&
+    isUuid(value.supportCaseId)
+  );
+}
+
 function isAnnualBillingOfferWire(value: unknown): value is AnnualBillingOfferWire {
   return (
     isRecord(value) &&
@@ -6755,6 +6853,12 @@ export interface BankingConnectionCallbackRequest extends TalliRequestOptions {
 
 export interface BankingConnectionListRequest extends TalliRequestOptions {
   companyId: string;
+}
+
+export interface AnnualSupportRequest extends TalliRequestOptions {
+  companyId: string;
+  supportCaseId: string;
+  beforePurchaseId?: string;
 }
 
 export interface AnnualBillingSnapshotRequest extends TalliRequestOptions {
@@ -8294,6 +8398,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       request: TalliRequestOptions,
     ): Promise<AnnualCheckoutWire> {
       return executeJson(baseUrl + "/api/v1/billing/annual/checkout-observations", "POST", request, body, isAnnualCheckoutWire);
+    },
+
+    async billingReadAnnualSupportPurchases(
+      request: AnnualSupportRequest,
+    ): Promise<AnnualSupportPageWire> {
+      const query = new URLSearchParams({companyId: request.companyId, supportCaseId: request.supportCaseId});
+      if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
+      return executeJson(baseUrl + "/api/v1/billing/annual/support/purchases?" + query, "GET", request, undefined, isAnnualSupportPageWire);
     },
 
     async billingReadAnnualSnapshot(

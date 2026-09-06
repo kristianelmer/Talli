@@ -353,6 +353,7 @@ def cleanup_http(setup, provider=None, **options):
     from talli_backend.main import create_app
     from talli_backend.adapters.supabase_annual_billing import _AnnualBillingSession, PostgresAnnualBillingReadSession
     from talli_backend.adapters.postgres_annual_checkout import PostgresAnnualCancellationSession
+    from talli_backend.adapters.postgres_annual_support import PostgresAnnualSupportReadSession
     from talli_backend.application.billing_session import BillingAuthenticationError
 
     class Factory:
@@ -362,7 +363,7 @@ def cleanup_http(setup, provider=None, **options):
             checkout = session(setup, current=False, **options)
             return _AnnualBillingSession(
                 PostgresAnnualBillingReadSession(checkout), PostgresAnnualCancellationSession(checkout),
-                checkout, PostgresAnnualCleanupSession(checkout),
+                checkout, PostgresAnnualCleanupSession(checkout), PostgresAnnualSupportReadSession(checkout),
             )
 
     return TestClient(create_app(annual_billing_session_factory=Factory(), annual_billing_provider=provider))

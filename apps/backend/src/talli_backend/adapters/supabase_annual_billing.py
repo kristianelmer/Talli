@@ -8,11 +8,13 @@ from talli_backend.adapters.postgres_annual_checkout import (
     PostgresAnnualCancellationSession,
 )
 from talli_backend.adapters.postgres_annual_cleanup import PostgresAnnualCleanupSession
+from talli_backend.adapters.postgres_annual_support import PostgresAnnualSupportReadSession
 from talli_backend.adapters.supabase_ledger import LedgerSupabaseConfiguration, SupabaseLedgerAdapter
 from talli_backend.application.billing_session import BillingAuthenticationError
 from talli_backend.application.ledger_workflow import LedgerAuthenticationError
 from talli_backend.modules.billing.public import (
     AnnualAgreementCleanupPersistence,
+    AnnualSupportReadPersistence,
     AnnualBillingReadPersistence,
     AnnualBillingSnapshotQuery,
     AnnualCancellationPersistence,
@@ -94,6 +96,7 @@ class _AnnualBillingSession:
     cancellation: AnnualCancellationPersistence
     checkout: AnnualCheckoutPersistence
     cleanup: AnnualAgreementCleanupPersistence
+    support_reads: AnnualSupportReadPersistence
 
     @property
     def actor_id(self):
@@ -124,4 +127,5 @@ class SupabaseAnnualBillingAdapter:
         return _AnnualBillingSession(
             PostgresAnnualBillingReadSession(checkout), PostgresAnnualCancellationSession(checkout), checkout,
             PostgresAnnualCleanupSession(checkout),
+            PostgresAnnualSupportReadSession(checkout),
         )

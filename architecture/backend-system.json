@@ -221,6 +221,16 @@
         "/api/v1/billing/unsupported",
         "/api/v1/billing/pilot-entitlements"
       ]
+    },
+    {
+      "name": "annual-billing-support",
+      "purpose": "Reads bounded annual purchase, recorded refund liability and agreement-stop evidence under current active-admin, explicitly opened same-company billing support-case and fresh-MFA authority; never adjudicates refunds or performs side effects.",
+      "publicPackages": [
+        "talli_backend.modules.billing.public"
+      ],
+      "routes": [
+        "/api/v1/billing/annual/support/purchases"
+      ]
     }
   ],
   "operationalControlState": {
@@ -448,6 +458,12 @@
       "adapter": "talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundSession",
       "owner": "backend-system",
       "mode": "verified owner or explicitly opened billing support case; durable refund requests/reservation/settlement; source resolver unavailable by default, no runtime or worker binding"
+    },
+    {
+      "port": "AnnualSupportReadPersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_support.PostgresAnnualSupportReadSession",
+      "owner": "backend-system",
+      "mode": "verified active-admin opened billing support case; bounded consistent stored annual evidence across years, no provider or source-authority calls"
     }
   ],
   "allowedDependencies": {

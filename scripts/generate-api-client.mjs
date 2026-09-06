@@ -278,6 +278,7 @@ const bankingOperations = {
 const billingOperations = {
   annualCheckout: ["/api/v1/billing/annual/checkouts", "post", "billingStartAnnualCheckout"],
   annualObservation: ["/api/v1/billing/annual/checkout-observations", "post", "billingObserveAnnualCheckout"],
+  annualSupport: ["/api/v1/billing/annual/support/purchases", "get", "billingReadAnnualSupportPurchases"],
   annualCleanup: ["/api/v1/billing/annual/agreement-cleanups", "post", "billingCleanupAnnualAgreement"],
   annualSnapshot: ["/api/v1/billing/annual/snapshot", "get", "billingReadAnnualSnapshot"],
   annualCancellation: ["/api/v1/billing/annual/renewal-cancellations", "post", "billingCancelAnnualRenewal"],
@@ -794,6 +795,10 @@ const billingSchemas = Object.fromEntries([
   "AnnualCheckoutWire",
   "AnnualAgreementCleanupCommandWire",
   "AnnualAgreementCleanupWire",
+  "AnnualOperationStatus",
+  "AnnualOperationCountsWire",
+  "AnnualSupportPurchaseWire",
+  "AnnualSupportPageWire",
   "AnnualBillingOfferWire",
   "AnnualPurchaseSummaryWire",
   "AnnualPurchaseStatus",
@@ -1069,6 +1074,12 @@ export interface BankingConnectionCallbackRequest extends TalliRequestOptions {
 
 export interface BankingConnectionListRequest extends TalliRequestOptions {
   companyId: string;
+}
+
+export interface AnnualSupportRequest extends TalliRequestOptions {
+  companyId: string;
+  supportCaseId: string;
+  beforePurchaseId?: string;
 }
 
 export interface AnnualBillingSnapshotRequest extends TalliRequestOptions {
@@ -2608,6 +2619,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       request: TalliRequestOptions,
     ): Promise<AnnualCheckoutWire> {
       return executeJson(baseUrl + "/api/v1/billing/annual/checkout-observations", "POST", request, body, isAnnualCheckoutWire);
+    },
+
+    async billingReadAnnualSupportPurchases(
+      request: AnnualSupportRequest,
+    ): Promise<AnnualSupportPageWire> {
+      const query = new URLSearchParams({companyId: request.companyId, supportCaseId: request.supportCaseId});
+      if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
+      return executeJson(baseUrl + "/api/v1/billing/annual/support/purchases?" + query, "GET", request, undefined, isAnnualSupportPageWire);
     },
 
     async billingReadAnnualSnapshot(

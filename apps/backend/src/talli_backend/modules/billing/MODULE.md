@@ -1,7 +1,7 @@
 # Billing backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests","billing.annual_refund_requests"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
+{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests","billing.annual_refund_requests"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence","AnnualSupportReadPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
 -->
 
 ## Purpose and ownership
@@ -501,3 +501,21 @@ so unresolved operations fail closed with PROVIDER_DISABLED while confirmed stor
 cleanup can replay without provider I/O. Local renewal cancellation and GET history
 remain provider-free. No new readiness authority, actual Merchant Test, automatic
 worker, complete customer UI or final #192 acceptance is implied.
+
+## Case-bound annual support reads
+
+`AnnualSupportQuery` binds an `AnnualSupportCaseId` and company.
+`AnnualSupportPurchase` includes bounded `AnnualOperationCounts` and nullable
+`AnnualOperationStatus` evidence. `AnnualSupportReadPersistence` projects at most 50 stored purchases across years,
+ordered by accepted time and ID, with a company-scoped cursor. It uses the existing
+active-admin, opened billing support-case and fresh-MFA boundary without owner
+fallback. `AnnualSupportPage` reports current recorded money, the maximum cumulative
+refund entitlement for each purchase (never a sum across cases), the earliest
+still-outstanding initiation deadline, request and operation counts, and original
+agreement-stop status. Missing refund evidence does not adjudicate entitlement;
+missing or unresolved provider operations do not establish completion. Public
+results exclude raw source, legal, merchant, intent and observation payloads.
+
+The existing operator page consumes this generated billing contract independently
+of profile resources, which can be absent on a billing-only support grant. GET
+requests never open cases, create receipts, authorize refunds or contact providers.

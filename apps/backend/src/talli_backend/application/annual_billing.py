@@ -24,6 +24,7 @@ from talli_backend.modules.billing.public import (
     BillingError,
     CancelAnnualRenewalCommand,
     annual_billing_offer,
+    AnnualSupportPage, AnnualSupportQuery, AnnualSupportReadPersistence,
 )
 from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear
 
@@ -44,9 +45,34 @@ class AuthenticatedAnnualBillingSession(Protocol):
     @property
     def cleanup(self) -> AnnualAgreementCleanupPersistence: ...
 
+    @property
+    def support_reads(self) -> AnnualSupportReadPersistence: ...
+
 
 class AnnualBillingSessionFactory(Protocol):
     async def session(self, access_token: str) -> AuthenticatedAnnualBillingSession: ...
+
+
+class AnnualSupportWorkflow:
+    def __init__(self, session: AuthenticatedAnnualBillingSession):
+        if session.actor_id != session.support_reads.actor_id:
+            raise BillingError.forbidden()
+        self._reads = session.support_reads
+
+    @property
+    def actor_id(self) -> ActorId:
+        return self._reads.actor_id
+
+    async def purchases(self, query: AnnualSupportQuery) -> AnnualSupportPage:
+        if query.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+        page = await self._reads.read_support_purchases(query)
+        if (len(page.purchases)>50
+                or any(value.company_id != query.company_id for value in page.purchases)
+                or (page.next_purchase_id is not None and
+                    (not page.purchases or page.next_purchase_id != page.purchases[-1].purchase_id))):
+            raise BillingError.unavailable()
+        return page
 
 
 class AnnualBillingWorkflow:

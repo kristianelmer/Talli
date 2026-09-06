@@ -1,3 +1,4 @@
+import { annualBillingRecovery, loadAnnualSupportPurchases, type AnnualSupportPageWire } from "../../../features/billing";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import {
@@ -1183,27 +1184,44 @@ export async function listAuthorityOperations(actorId?: string | null) {
 export async function readOperatorSupportDashboard(
   caseId: string,
   actorId?: string | null,
+  beforePurchaseId?: string,
 ) {
+  const emptyAnnual = {
+    annualBilling: null as AnnualSupportPageWire | null,
+    annualBillingError: null as ReturnType<typeof annualBillingRecovery> | null,
+  };
   if (!hasSupabaseEnv() || !actorId) {
-    return { summaries: [], isOperator: false, error: null };
+    return { summaries: [], isOperator: false, error: null, ...emptyAnnual };
   }
   const supabase = await createSupabaseServerClient();
   const operatorSession = await backendOperatorSession(supabase);
-  const operator = operatorSession?.operator ?? null;
-  const isOperator = Boolean(operator);
-  let resources: Awaited<ReturnType<typeof readOperatorSupportCase>>["resources"];
+  const isOperator = Boolean(operatorSession?.operator);
+  let snapshot: Awaited<ReturnType<typeof readOperatorSupportCase>>;
   try {
     if (!operatorSession) throw new Error("support_case_read_failed");
-    resources = (
-      await readOperatorSupportCase(operatorSession.accessToken, caseId)
-    ).resources;
+    snapshot = await readOperatorSupportCase(operatorSession.accessToken, caseId);
   } catch {
-    return { summaries: [], isOperator, error: "support_case_read_failed" };
+    return { summaries: [], isOperator, error: "support_case_read_failed", ...emptyAnnual };
   }
 
+  let annualBilling: AnnualSupportPageWire | null = null;
+  let annualBillingError: ReturnType<typeof annualBillingRecovery> | null = null;
+  if (snapshot.scopes.includes("billing") && operatorSession) {
+    try {
+      // A billing-only grant need not include profile resources. The backend
+      // rechecks current admin, opened-case and MFA authority for this read.
+      annualBilling = await loadAnnualSupportPurchases(operatorSession.accessToken, {
+        companyId: snapshot.companyId, supportCaseId: snapshot.caseId, beforePurchaseId,
+      });
+    } catch (error) {
+      annualBillingError = annualBillingRecovery(error);
+    }
+  }
   return {
-    summaries: buildOperatorSupportSummaries(resources),
+    summaries: buildOperatorSupportSummaries(snapshot.resources),
     isOperator,
     error: null,
+    annualBilling,
+    annualBillingError,
   };
 }

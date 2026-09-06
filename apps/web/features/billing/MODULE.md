@@ -1,7 +1,7 @@
 # Billing web feature
 
 <!-- architecture-inventory
-{"apiOperations":["billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
+{"apiOperations":["billingReadAnnualSupportPurchases","billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
 -->
 
 ## Purpose and boundary
@@ -29,3 +29,9 @@ previous-model cleanup only when historical account records exist.
 `billingCleanupAnnualAgreement`. The generated client validates the sanitized
 cleanup status and uses POST with no cache. Provider/receipt/operation identities
 remain backend-owned. This transport does not add customer UI or worker scheduling.
+
+The operator support view uses `billingReadAnnualSupportPurchases` with the company
+and case returned by the explicitly opened support-case read. It lists stored
+purchases across years and preserves the case in pagination. Billing-only grants
+work without profile rows. Backend access/MFA failures remain distinct from an
+authorized empty page; the view performs no provider or refund commands.

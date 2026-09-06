@@ -578,6 +578,90 @@ class AnnualPurchaseId(_UuidId):
     pass
 
 
+class AnnualSupportCaseId(_UuidId):
+    """Reference to an explicitly opened Company Access billing support case."""
+
+
+class AnnualOperationStatus(StrEnum):
+    CREATED = "created"
+    PENDING = "pending"
+    UNKNOWN = "unknown"
+    CONFIRMED = "confirmed"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualSupportQuery:
+    company_id: CompanyId
+    support_case_id: AnnualSupportCaseId
+    actor_id: ActorId
+    before_purchase_id: AnnualPurchaseId | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualOperationCounts:
+    created: int
+    pending: int
+    unknown: int
+    confirmed: int
+    failed: int
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualSupportPurchase:
+    """Recorded purchase evidence, not an adjudication of new refund rights."""
+
+    purchase_id: AnnualPurchaseId
+    company_id: CompanyId
+    income_year: IncomeYear
+    status: AnnualPurchaseStatus
+    accepted_at: Timestamp
+    updated_at: Timestamp
+    currency: str
+    gross_minor: int
+    captured_minor: int
+    refunded_minor: int
+    renewal_canceled_at: Timestamp | None
+    paid_through: date
+    export_through: date
+    recurring_consent: bool
+    refund_case_count: int
+    recorded_refund_minor: int
+    refund_initiate_by: date | None
+    refund_request_count: int
+    latest_refund_requested_at: Timestamp | None
+    refund_operations: AnnualOperationCounts
+    cleanup_status: AnnualOperationStatus | None
+
+    @property
+    def remaining_refund_minor(self) -> int:
+        # Case entitlements are cumulative for the same purchase. Persistence
+        # projects their maximum, never their sum, against current settled money.
+        return max(0, self.recorded_refund_minor - self.refunded_minor)
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualSupportPage:
+    purchases: tuple[AnnualSupportPurchase, ...]
+    next_purchase_id: AnnualPurchaseId | None = None
+
+
+@runtime_checkable
+class AnnualSupportReadPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def read_support_purchases(self, query: AnnualSupportQuery) -> AnnualSupportPage:
+        """Recheck current active-admin, opened billing case and fresh MFA.
+
+        Return at most 50 purchases across recorded years in descending
+        accepted-at/ID order, with a company-scoped cursor. Authorize empty
+        results too. Read totals and related evidence from one database snapshot.
+        No owner fallback, case opening, raw source/merchant facts or side effects.
+        """
+        ...
+
+
 @dataclass(frozen=True, slots=True)
 class StartAnnualCheckoutCommand(_BillingCommand):
     income_year: IncomeYear
@@ -1182,6 +1266,13 @@ __all__ = [
     "AnnualBillingSnapshotQuery",
     "AnnualPurchaseSummary",
     "AnnualPurchasePage",
+    "AnnualSupportCaseId",
+    "AnnualOperationStatus",
+    "AnnualOperationCounts",
+    "AnnualSupportQuery",
+    "AnnualSupportPurchase",
+    "AnnualSupportPage",
+    "AnnualSupportReadPersistence",
     "AnnualBillingSnapshot",
     "annual_billing_offer",
     "AnnualBillingReadPersistence",

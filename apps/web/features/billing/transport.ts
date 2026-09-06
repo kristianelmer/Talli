@@ -2,6 +2,7 @@ import {
   createTalliApiClient,
   TalliApiError,
   type AnnualBillingSnapshotRequest,
+  type AnnualSupportRequest,
   type AnnualAgreementCleanupCommandWire,
   type AnnualRenewalCancellationCommandWire,
   type BillingAccountWire,
@@ -27,6 +28,10 @@ function request(requestId?: string) {
 
 function mutation(idempotencyKey: string, requestId?: string) {
   return { ...request(requestId), idempotencyKey };
+}
+
+export function loadAnnualSupportPurchases(accessToken: string, input: AnnualSupportRequest) {
+  return client(accessToken).billingReadAnnualSupportPurchases({ ...input, ...request(input.requestId) });
 }
 
 export function loadAnnualBillingSnapshot(accessToken: string, input: AnnualBillingSnapshotRequest) {
