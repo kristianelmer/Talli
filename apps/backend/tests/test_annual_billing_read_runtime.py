@@ -183,7 +183,9 @@ def test_http_snapshot_and_cancellation_use_real_verified_owner_stores(setup, pu
     from talli_backend.adapters.postgres_annual_checkout import PostgresAnnualCancellationSession
     from talli_backend.adapters.postgres_annual_cleanup import PostgresAnnualCleanupSession
     from talli_backend.adapters.postgres_annual_support import PostgresAnnualSupportReadSession
-    from talli_backend.adapters.postgres_annual_refund import PostgresAnnualRefundRecoverySession
+    from talli_backend.adapters.postgres_annual_refund import (
+        PostgresAnnualRefundRecoverySession, PostgresAnnualSupportRefundRecoverySession,
+    )
     from talli_backend.application.billing_session import BillingAuthenticationError
 
     class Factory:
@@ -194,7 +196,7 @@ def test_http_snapshot_and_cancellation_use_real_verified_owner_stores(setup, pu
             return _AnnualBillingSession(
                 PostgresAnnualBillingReadSession(checkout), PostgresAnnualCancellationSession(checkout), checkout,
                 PostgresAnnualCleanupSession(checkout), PostgresAnnualSupportReadSession(checkout),
-                PostgresAnnualRefundRecoverySession(checkout),
+                PostgresAnnualRefundRecoverySession(checkout), PostgresAnnualSupportRefundRecoverySession(checkout),
             )
 
     api = TestClient(create_app(annual_billing_session_factory=Factory()))
