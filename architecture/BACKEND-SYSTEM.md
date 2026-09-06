@@ -514,3 +514,20 @@ The additive `/api/v1/billing/annual/purchases` route calls the owner history
 workflow without a current-admission requirement and exposes no offer. Its
 company-scoped cursor spans recorded years under current owner/fresh MFA; the
 shared projection remains billing-owned and provider-free.
+
+
+## Original refund request recovery
+
+The `annual-refund-recovery` workflow authenticates the current owner before
+`/api/v1/billing/annual/refund-recoveries`. Billing's
+`AnnualRefundRecoveryPersistence` is bound to
+`talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundRecoverySession`.
+Load and settlement preserve the selected request and require current ownership
+and fresh MFA after locks; opened support access never substitutes. The response
+contains original-operation status only, without source or provider payloads.
+Recovery cannot claim, bind, allocate or execute; provider reconciliation uses the
+stored original identity. Provider and source-authority gates remain unchanged.
+
+<!-- architecture-inventory
+{"workflows":["annual-refund-recovery"],"workflowPurposes":["annual-refund-recovery=>Authenticates the current owner to reconcile an already operation-bound request made by that actor; no allocation, source resolution or provider execution."],"publicPackages":["talli_backend.modules.billing.public"],"routes":["/api/v1/billing/annual/refund-recoveries"],"ports":["AnnualRefundRecoveryPersistence"],"adapterBindings":["AnnualRefundRecoveryPersistence=>talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundRecoverySession"],"adapterBindingOwners":["AnnualRefundRecoveryPersistence=>backend-system"],"adapterBindingModes":["AnnualRefundRecoveryPersistence=>verified current owner/fresh MFA at load and settlement; immutable request and original operation reconciliation only; provider absent by default, no source or claim binding"]}
+-->

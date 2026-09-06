@@ -27,6 +27,8 @@ from talli_backend.modules.billing.public import (
     CancelAnnualRenewalCommand,
     annual_billing_offer,
     AnnualSupportPage, AnnualSupportQuery, AnnualSupportReadPersistence,
+    AnnualRefundRecovery, AnnualRefundRecoveryPersistence, AnnualRefundRecoveryQuery,
+    annual_refund_recovery_operations,
 )
 from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear
 
@@ -49,6 +51,9 @@ class AuthenticatedAnnualBillingSession(Protocol):
 
     @property
     def support_reads(self) -> AnnualSupportReadPersistence: ...
+
+    @property
+    def refund_recovery(self) -> AnnualRefundRecoveryPersistence: ...
 
 
 class AnnualBillingSessionFactory(Protocol):
@@ -193,3 +198,22 @@ class AnnualCheckoutWorkflow:
         if query.actor_id != self.actor_id:
             raise BillingError.forbidden()
         return await self._operations(query.company_id).poll_checkout(query)
+
+
+class AnnualRefundRecoveryWorkflow:
+    """Reconcile one persisted request under its current owner's session."""
+
+    def __init__(self, session: AuthenticatedAnnualBillingSession, provider: AnnualBillingProvider | None):
+        if session.actor_id != session.refund_recovery.actor_id:
+            raise BillingError.forbidden()
+        self._actor_id = session.actor_id
+        self._operations = annual_refund_recovery_operations(session.refund_recovery, provider)
+
+    @property
+    def actor_id(self) -> ActorId:
+        return self._actor_id
+
+    async def recover_refund(self, query: AnnualRefundRecoveryQuery) -> AnnualRefundRecovery:
+        if query.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+        return await self._operations.recover_refund(query)

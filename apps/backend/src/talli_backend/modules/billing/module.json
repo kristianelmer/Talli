@@ -27,7 +27,8 @@
       "BillingSnapshotQuery",
       "AnnualBillingSnapshotQuery",
       "AnnualPurchaseHistoryQuery",
-      "AnnualSupportQuery"
+      "AnnualSupportQuery",
+      "AnnualRefundRecoveryQuery"
     ],
     "events": [
       "BillingPaymentEvent"
@@ -107,7 +108,11 @@
       "AnnualOperationCounts",
       "AnnualSupportPurchase",
       "AnnualSupportPage",
-      "AnnualSupportReadPersistence"
+      "AnnualSupportReadPersistence",
+      "AnnualRefundRecovery",
+      "AnnualRefundRecoveryPersistence",
+      "AnnualRefundRecoveryOperations",
+      "annual_refund_recovery_operations"
     ]
   },
   "owns": {
@@ -214,6 +219,15 @@
       "adapters": [
         "talli_backend.adapters.postgres_annual_support.PostgresAnnualSupportReadSession"
       ]
+    },
+    {
+      "name": "AnnualRefundRecoveryPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualRefundRecoveryPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundRecoverySession"
+      ]
     }
   ],
   "dependencies": [],
@@ -263,7 +277,10 @@
     "annualRefundCleanupDatabase": "apps/backend/tests/test_annual_refund_cleanup_runtime.py",
     "annualCleanupApi": "apps/backend/tests/test_annual_cleanup_api.py",
     "annualSupportApi": "apps/backend/tests/test_annual_support_api.py",
-    "annualSupportDatabase": "apps/backend/tests/test_annual_support_runtime.py"
+    "annualSupportDatabase": "apps/backend/tests/test_annual_support_runtime.py",
+    "annualRefundRecovery": "apps/backend/tests/test_annual_refund_recovery_service.py",
+    "annualRefundRecoveryApi": "apps/backend/tests/test_annual_refund_recovery_api.py",
+    "annualRefundRecoveryDatabase": "apps/backend/tests/test_annual_refund_recovery_runtime.py"
   },
   "compatibilityExceptions": []
 }

@@ -1084,6 +1084,63 @@ class AnnualRefundClaim:
     newly_claimed: bool
 
 
+@dataclass(frozen=True, slots=True)
+class AnnualRefundRecoveryQuery:
+    company_id: CompanyId
+    purchase_id: AnnualPurchaseId
+    refund_request_id: AnnualRefundRequestId
+    actor_id: ActorId
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundRecovery:
+    refund_request_id: AnnualRefundRequestId
+    resolution: AnnualRefundResolution
+
+
+class AnnualRefundRecoveryPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def load_refund_recovery(self, query: AnnualRefundRecoveryQuery) -> AnnualRefundRecovery:
+        """Load this current accepted owner's already operation-bound request.
+
+        Require fresh MFA and owner authority, including after lock waits; opened
+        support access cannot substitute. Lock purchase before request/operation.
+        Bind request ID, actor, company, purchase, year, case, fingerprint and
+        original provider intent. Validate immutable source digest/facts/decision.
+        Preserve stored source, key and correlation; never resolve current source
+        facts, insert a case/request/operation, or assign an unbound operation.
+        Historical owner-role provenance is not inferred from requested_by.
+        """
+        ...
+
+    async def settle_refund_recovery(
+        self, recovery: AnnualRefundRecovery, observation: AnnualProviderObservation,
+    ) -> AnnualRefundRecovery:
+        """Reauthorize the same owner with fresh MFA, reload and lock exact identity.
+
+        Reject immutable envelope changes; only stored observation may advance.
+        Apply settle_annual_refund against current state and atomically preserve
+        monotonic purchase money and terminal operation evidence. No allocation,
+        source resolution or support fallback is permitted, including on retry.
+        """
+        ...
+
+
+class AnnualRefundRecoveryOperations(Protocol):
+    async def recover_refund(self, query: AnnualRefundRecoveryQuery) -> AnnualRefundRecovery: ...
+
+
+def annual_refund_recovery_operations(
+    persistence: AnnualRefundRecoveryPersistence, provider: AnnualBillingProvider | None,
+) -> AnnualRefundRecoveryOperations:
+    """Reconcile only the original operation of a stored owner request."""
+    from talli_backend.modules.billing.annual_refund import AnnualRefundRecoveryService
+
+    return AnnualRefundRecoveryService(persistence, provider)
+
+
 class AnnualRefundPersistence(Protocol):
     @property
     def actor_id(self) -> ActorId: ...
@@ -1336,6 +1393,11 @@ __all__ = [
     "AnnualRefundOperation",
     "AnnualRefundResolution",
     "AnnualRefundClaim",
+    "AnnualRefundRecoveryQuery",
+    "AnnualRefundRecovery",
+    "AnnualRefundRecoveryPersistence",
+    "AnnualRefundRecoveryOperations",
+    "annual_refund_recovery_operations",
     "AnnualRefundPersistence",
     "annual_refund_decision",
     "settle_annual_refund",

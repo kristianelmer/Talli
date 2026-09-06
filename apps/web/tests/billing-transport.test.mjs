@@ -385,3 +385,29 @@ test("owner status recovery observes the original checkout with strict no-store 
   const malformed = ownerSnapshotLoader(async () => Response.json({ ...payload, status: "confirmed" }), "observeAnnualCheckout");
   await assert.rejects(malformed("owner", body), error => error instanceof TalliApiError && error.status === 502);
 });
+
+
+test("refund recovery client sends one stored request and validates original-operation status", async () => {
+  const body = { companyId, purchaseId: "10000000-0000-4000-8000-000000000002",
+    refundRequestId: "10000000-0000-4000-8000-000000000003" };
+  for (const status of ["pending", "unknown", "confirmed", "failed"]) {
+    let captured;
+    const payload = { ...body, incomeYear: 2026, status };
+    const api = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async (url, request) => {
+      captured = { url, request }; return Response.json(payload);
+    }});
+    assert.deepEqual(await api.billingRecoverAnnualRefund(body, { headers: { Authorization: "Bearer verified-owner" }, requestId: "recovery" }), payload);
+    assert.equal(captured.url, "https://backend.example/api/v1/billing/annual/refund-recoveries");
+    assert.equal(captured.request.method, "POST");
+    assert.equal(captured.request.cache, "no-store");
+    assert.equal(captured.request.headers.Authorization, "Bearer verified-owner");
+    assert.equal(captured.request.headers["Idempotency-Key"], undefined);
+    assert.deepEqual(JSON.parse(captured.request.body), body);
+  }
+  for (const changes of [{ status: "refunded" }, { status: "created" }, { refundRequestId: null },
+    { providerAccount: "private" }, { sourceReference: "private" }, { incomeYear: "2026" }]) {
+    const api = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async () =>
+      Response.json({ ...body, incomeYear: 2026, status: "confirmed", ...changes }) });
+    await assert.rejects(api.billingRecoverAnnualRefund(body), error => error instanceof TalliApiError && error.status === 502);
+  }
+});

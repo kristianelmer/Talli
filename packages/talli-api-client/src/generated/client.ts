@@ -2601,6 +2601,20 @@ export interface AnnualAgreementCleanupWire {
   status: "deferred" | "pending" | "unknown" | "confirmed";
 }
 
+export interface AnnualRefundRecoveryCommandWire {
+  companyId: string;
+  purchaseId: string;
+  refundRequestId: string;
+}
+
+export interface AnnualRefundRecoveryWire {
+  companyId: string;
+  incomeYear: number;
+  purchaseId: string;
+  refundRequestId: string;
+  status: "pending" | "unknown" | "confirmed" | "failed";
+}
+
 export type AnnualOperationStatus = "created" | "pending" | "unknown" | "confirmed" | "failed";
 
 export interface AnnualOperationCountsWire {
@@ -6385,6 +6399,28 @@ function isAnnualAgreementCleanupWire(value: unknown): value is AnnualAgreementC
   );
 }
 
+function isAnnualRefundRecoveryCommandWire(value: unknown): value is AnnualRefundRecoveryCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","purchaseId","refundRequestId"]) &&
+    isUuid(value.companyId) &&
+    isUuid(value.purchaseId) &&
+    isUuid(value.refundRequestId)
+  );
+}
+
+function isAnnualRefundRecoveryWire(value: unknown): value is AnnualRefundRecoveryWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","purchaseId","refundRequestId","status"]) &&
+    isUuid(value.companyId) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    isUuid(value.purchaseId) &&
+    isUuid(value.refundRequestId) &&
+    (value.status === "pending" || value.status === "unknown" || value.status === "confirmed" || value.status === "failed")
+  );
+}
+
 function isAnnualOperationStatus(value: unknown): value is AnnualOperationStatus {
   return value === "created" || value === "pending" || value === "unknown" || value === "confirmed" || value === "failed";
 }
@@ -8492,6 +8528,13 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       request: TalliRequestOptions = {},
     ): Promise<AnnualAgreementCleanupWire> {
       return executeJson(baseUrl + "/api/v1/billing/annual/agreement-cleanups", "POST", request, body, isAnnualAgreementCleanupWire);
+    },
+
+    async billingRecoverAnnualRefund(
+      body: AnnualRefundRecoveryCommandWire,
+      request: TalliRequestOptions = {},
+    ): Promise<AnnualRefundRecoveryWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/refund-recoveries", "POST", request, body, isAnnualRefundRecoveryWire);
     },
 
     async billingObserveAnnualCheckout(

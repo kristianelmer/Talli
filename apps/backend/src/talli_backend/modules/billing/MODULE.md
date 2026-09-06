@@ -1,7 +1,7 @@
 # Billing backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests","billing.annual_refund_requests"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence","AnnualSupportReadPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
+{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests","billing.annual_refund_requests"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence","AnnualSupportReadPersistence","AnnualRefundRecoveryPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
 -->
 
 ## Purpose and ownership
@@ -546,3 +546,31 @@ The additive `/api/v1/billing/annual/purchases` GET retains both previous snapsh
 contracts. Other-year read fixtures cannot establish authority to admit or sell
 those years. Archive links point to the existing independently authorized route;
 this read does not bypass its submission/export prerequisites.
+
+
+## Owner recovery of operation-bound refund requests
+
+`AnnualRefundRecoveryQuery` selects the recorded request.
+`annual_refund_recovery_operations` creates `AnnualRefundRecoveryOperations`,
+which exposes only `recover_refund` through a dedicated
+persistence port and `PostgresAnnualRefundRecoverySession`. Its authenticated POST
+accepts company, purchase and opaque refund-request ID, and derives the actor from
+the verified session. The response reports only original-operation status and
+request/company/purchase/year identity; confirmation never asserts that the whole
+purchase liability is refunded. Existing canonical history owns current balances.
+
+Load and settlement independently require current accepted ownership and fresh
+MFA, including after lock waits. Opened support authority cannot rescue revoked
+ownership. Selection requires the same requested_by actor and a non-null stored
+operation. The table does not prove that actor's historical role; recovery never
+relabels another actor's support request as an owner request. Purchase-before-request
+and operation locks preserve original source, correlation, key, case and intent.
+Fingerprint, digest, row/intent identity and stored money consistency fail closed.
+
+The recovery composition cannot claim or bind a request, create a case or operation,
+consult live source facts, or execute a provider mutation. Created/pending/unknown
+operations reconcile their original intent; valid terminal evidence is provider-free.
+Shared settlement preserves atomic monotonic purchase totals and terminal outcomes.
+The provider is absent by default. This adds no request discovery UI, trusted
+incident/submission source, worker/support mutation, new refund attempt, actual MT
+or final annual-acquisition acceptance.

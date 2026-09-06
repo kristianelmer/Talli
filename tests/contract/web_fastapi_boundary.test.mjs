@@ -541,3 +541,19 @@ test("the web tracer uses the generated package through a thin transport wrapper
   assert.doesNotMatch(transport, /\bfetch\s*\(/);
   assert.doesNotMatch(transport, /AVAILABLE|Forbindelsen virker/);
 });
+
+
+test("annual refund recovery is an additive authenticated POST with no caller authority fields", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const path = contract.paths["/api/v1/billing/annual/refund-recoveries"];
+  assert.deepEqual(Object.keys(path), ["post"]);
+  assert.equal(path.post.operationId, "billingRecoverAnnualRefund");
+  assert.deepEqual(path.post.security, [{ bearerAuth: [] }]);
+  assert.equal(path.post.parameters.some(parameter => parameter.name === "Idempotency-Key"), false);
+  const request = contract.components.schemas.AnnualRefundRecoveryCommandWire;
+  assert.deepEqual(Object.keys(request.properties).sort(), ["companyId", "purchaseId", "refundRequestId"]);
+  assert.equal(request.additionalProperties, false);
+  const response = contract.components.schemas.AnnualRefundRecoveryWire;
+  assert.deepEqual(Object.keys(response.properties).sort(), ["companyId", "incomeYear", "purchaseId", "refundRequestId", "status"]);
+  assert.deepEqual(response.properties.status.enum, ["pending", "unknown", "confirmed", "failed"]);
+});

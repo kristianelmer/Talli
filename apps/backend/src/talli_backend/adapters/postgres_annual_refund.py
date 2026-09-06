@@ -1,7 +1,8 @@
 """Durable refund claims under current owner or explicitly opened support authority.
 
-The source resolver is unavailable by default. No HTTP or worker binds this
-adapter; test resolvers are synthetic and cannot establish production authority.
+New claims have no runtime binding and their source resolver is unavailable.
+Recovery has a separate owner-only port that cannot create or bind requests.
+Test resolvers are synthetic and cannot establish production authority.
 """
 
 from collections.abc import Awaitable, Callable
@@ -18,7 +19,9 @@ from talli_backend.modules.billing.public import (
     AnnualProviderObservation, AnnualProviderOperation, AnnualProviderStatus,
     AnnualPurchaseId, AnnualRefundCaseId, AnnualRefundClaim, AnnualRefundFacts,
     AnnualRefundOperation, AnnualRefundPersistence, AnnualRefundReason,
-    AnnualRefundResolution, BillingError, BillingErrorCode, BillingPaymentEventId,
+    AnnualRefundResolution, AnnualRefundRequestId, AnnualRefundRecovery,
+    AnnualRefundRecoveryPersistence, AnnualRefundRecoveryQuery,
+    BillingError, BillingErrorCode, BillingPaymentEventId,
     RequestAnnualRefundCommand, annual_refund_decision, billing_persistence_adapter,
     settle_annual_refund,
 )
@@ -128,7 +131,7 @@ class PostgresAnnualRefundSession:
             # Legacy/unverified fixture cases cannot become automatic authority.
             raise BillingError.unavailable() from None
 
-    async def _resolution(self, connection, request, case):
+    async def _resolution(self, connection, request, case, *, operation_row=None):
         command = RequestAnnualRefundCommand(
             company_id=CompanyId(str(request['company_id'])),
             actor_id=ActorId(ActorKind.USER, UserId(str(request['requested_by']))),
@@ -139,10 +142,12 @@ class PostgresAnnualRefundSession:
         facts, digest, decision = self._case_facts(case, command)
         operation = None
         if request['operation_id'] is not None:
-            operation = await (await connection.execute(
-                'select * from billing.annual_operations where id=%s::uuid for update',
-                (str(request['operation_id']),),
-            )).fetchone()
+            operation = operation_row
+            if operation is None:
+                operation = await (await connection.execute(
+                    'select * from billing.annual_operations where id=%s::uuid for update',
+                    (str(request['operation_id']),),
+                )).fetchone()
             if operation is None:
                 raise BillingError.unavailable()
         return AnnualRefundResolution(AnnualRefundCaseId(str(case['id'])), command,
@@ -269,33 +274,135 @@ class PostgresAnnualRefundSession:
             if request is None or case is None:
                 raise BillingError.not_found()
             current = await self._resolution(connection, request, case)
-            if current.operation is None or resolution.operation is None or replace(
-                current, operation=replace(current.operation, observation=resolution.operation.observation)
-            ) != resolution:
-                raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
-            result = settle_annual_refund(current, observation, Timestamp(datetime.now(UTC)))
-            if result == current:
-                return current
-            result_observation = result.operation.observation
-            purchase_observation = checkout.observation
-            if purchase_observation is None or purchase_observation.captured_at != result_observation.captured_at:
-                raise BillingError.invalid()
-            captured = max(purchase_observation.captured_minor, result_observation.captured_minor)
-            refunded = max(purchase_observation.refunded_minor, result_observation.refunded_minor)
-            status = checkout.status.value
-            if (result_observation.status is AnnualProviderStatus.CONFIRMED
-                    and captured == checkout.offer.gross_minor and refunded == captured):
-                status = 'refunded'
-            await connection.execute(
-                """update billing.annual_purchases set status=%s,captured_minor=%s,refunded_minor=%s,
-                updated_at=statement_timestamp() where id=%s::uuid""",
-                (status, captured, refunded, str(command.purchase_id)),
+            return await self._settle_locked(connection, checkout, current, resolution, observation)
+
+        return await self._database._transaction(work)
+
+    async def _settle_locked(self, connection, checkout, current, resolution, observation):
+        if current.operation is None or resolution.operation is None or replace(
+            current, operation=replace(current.operation, observation=resolution.operation.observation)
+        ) != resolution:
+            raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
+        result = settle_annual_refund(current, observation, Timestamp(datetime.now(UTC)))
+        if result == current:
+            return current
+        result_observation = result.operation.observation
+        purchase_observation = checkout.observation
+        if purchase_observation is None or purchase_observation.captured_at != result_observation.captured_at:
+            raise BillingError.invalid()
+        captured = max(purchase_observation.captured_minor, result_observation.captured_minor)
+        refunded = max(purchase_observation.refunded_minor, result_observation.refunded_minor)
+        status = checkout.status.value
+        if (result_observation.status is AnnualProviderStatus.CONFIRMED
+                and captured == checkout.offer.gross_minor and refunded == captured):
+            status = 'refunded'
+        await connection.execute(
+            """update billing.annual_purchases set status=%s,captured_minor=%s,refunded_minor=%s,
+            updated_at=statement_timestamp() where id=%s::uuid""",
+            (status, captured, refunded, str(resolution.request.purchase_id)),
+        )
+        await connection.execute(
+            """update billing.annual_operations set status=%s,observation=%s::jsonb,
+            updated_at=statement_timestamp() where id=%s::uuid""",
+            (result_observation.status.value, json.dumps(_record(result_observation)), str(result.operation.intent.operation_id)),
+        )
+        return result
+
+
+@billing_persistence_adapter(AnnualRefundRecoveryPersistence)
+class PostgresAnnualRefundRecoverySession:
+    """Owner-only reconciliation of selected immutable receipts, with no claim port."""
+
+    def __init__(self, checkout_session: PostgresAnnualCheckoutSession):
+        self._database = checkout_session
+        self._refunds = PostgresAnnualRefundSession(checkout_session)
+
+    @property
+    def actor_id(self):
+        return self._database.actor_id
+
+    async def _load_locked(self, connection, query):
+        # Never allow an opened support case to rescue lost owner authority.
+        await connection.execute("select set_config('talli.support_case_id', '', true)")
+        await self._database._authorize(connection, query.company_id)
+        checkout = await self._database._load(connection, query.company_id, query.purchase_id, lock=True)
+        request = await (await connection.execute(
+            """select * from billing.annual_refund_requests
+            where id=%s::uuid and company_id=%s::uuid and purchase_id=%s::uuid
+            and requested_by=%s::uuid and operation_id is not null for update""",
+            (str(query.refund_request_id), str(query.company_id), str(query.purchase_id), str(self.actor_id.subject)),
+        )).fetchone()
+        if request is None:
+            raise BillingError.not_found()
+        case = await (await connection.execute(
+            'select * from billing.annual_refund_cases where id=%s::uuid',
+            (str(request['refund_case_id']),),
+        )).fetchone()
+        operation = await (await connection.execute(
+            'select * from billing.annual_operations where id=%s::uuid for update',
+            (str(request['operation_id']),),
+        )).fetchone()
+        if case is None or operation is None:
+            raise BillingError.unavailable()
+        try:
+            resolution = await self._refunds._resolution(connection, request, case, operation_row=operation)
+            bound = resolution.operation
+            intent = bound.intent
+            observed = checkout.observation
+            if (any(row['company_id'] != request['company_id']
+                    or row['purchase_id'] != request['purchase_id']
+                    or row['income_year'] != checkout.offer.income_year.value for row in (request, case, operation))
+                    or operation['refund_case_id'] != case['id']
+                    or operation['operation'] != 'refund'
+                    or str(operation['id']) != str(intent.operation_id)
+                    or operation['amount_minor'] != intent.amount_minor
+                    or operation['created_at'] != intent.created_at.value
+                    or operation['request_fingerprint'] != _digest(operation['intent'])
+                    or operation['status'] != (bound.observation.status.value if bound.observation else 'created')
+                    or request['request_fingerprint'] != _fingerprint(resolution.request)
+                    or observed is None or observed.captured_at != bound.captured_at
+                    or not bound.captured_minor <= observed.captured_minor <= checkout.offer.gross_minor
+                    or bound.previous_refunded_minor > observed.refunded_minor
+                    or (bound.observation is not None and (
+                        bound.observation.captured_at != observed.captured_at
+                        or bound.observation.captured_minor > observed.captured_minor
+                        or bound.observation.refunded_minor > observed.refunded_minor))
+                    or bound.provider != checkout.provider or bound.provider_account != checkout.provider_account
+                    or resolution.facts.accepted_at != checkout.intent.created_at
+                    or resolution.facts.gross_minor != checkout.offer.gross_minor
+                    or intent != replace(checkout.intent, operation_id=intent.operation_id,
+                        operation=AnnualProviderOperation.REFUND, amount_minor=intent.amount_minor,
+                        created_at=intent.created_at, agreement_reference=observed.agreement_reference)):
+                raise BillingError.unavailable()
+        except (KeyError, TypeError, ValueError, AttributeError):
+            raise BillingError.unavailable() from None
+        # A lock wait must not preserve the authority observed before it.
+        await self._database._authorize(connection, query.company_id)
+        return checkout, AnnualRefundRecovery(AnnualRefundRequestId(str(request['id'])), resolution)
+
+    async def load_refund_recovery(self, query):
+        if query.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+
+        async def work(connection):
+            _, recovery = await self._load_locked(connection, query)
+            return recovery
+
+        return await self._database._transaction(work)
+
+    async def settle_refund_recovery(self, recovery, observation):
+        command = recovery.resolution.request
+        if command.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+        query = AnnualRefundRecoveryQuery(
+            command.company_id, command.purchase_id, recovery.refund_request_id, command.actor_id,
+        )
+
+        async def work(connection):
+            checkout, current = await self._load_locked(connection, query)
+            result = await self._refunds._settle_locked(
+                connection, checkout, current.resolution, recovery.resolution, observation,
             )
-            await connection.execute(
-                """update billing.annual_operations set status=%s,observation=%s::jsonb,
-                updated_at=statement_timestamp() where id=%s::uuid""",
-                (result_observation.status.value, json.dumps(_record(result_observation)), str(result.operation.intent.operation_id)),
-            )
-            return result
+            return replace(current, resolution=result)
 
         return await self._database._transaction(work)

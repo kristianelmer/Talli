@@ -66,7 +66,7 @@ from talli_backend.application.billing_session import (
     BillingSessionFactory,
 )
 from talli_backend.application.billing_workflow import BillingWorkflow
-from talli_backend.application.annual_billing import AnnualBillingSessionFactory, AnnualBillingWorkflow, AnnualCheckoutWorkflow, AnnualCheckoutPrerequisiteResolver, AnnualAgreementCleanupWorkflow, AnnualSupportWorkflow
+from talli_backend.application.annual_billing import AnnualBillingSessionFactory, AnnualBillingWorkflow, AnnualCheckoutWorkflow, AnnualCheckoutPrerequisiteResolver, AnnualAgreementCleanupWorkflow, AnnualSupportWorkflow, AnnualRefundRecoveryWorkflow
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceAuthenticationError,
     CorporateGovernanceSessionFactory,
@@ -179,6 +179,7 @@ from talli_backend.modules.billing.public import (
     AnnualSupportQuery, AnnualSupportCaseId, AnnualOperationStatus,
     AnnualBillingSnapshotQuery, AnnualPurchaseHistoryQuery, AnnualPurchaseSummary, AnnualPurchaseId, AnnualPurchaseStatus, CancelAnnualRenewalCommand,
     AnnualBillingProvider, AnnualCheckout, AnnualCheckoutQuery, StartAnnualCheckoutCommand,
+    AnnualRefundRecoveryQuery, AnnualRefundRequestId,
     ActivateSubscriptionCommand,
     BillingAccount,
     BillingEntitlementDecision,
@@ -605,6 +606,20 @@ class AnnualCheckoutWire(TransportModel):
     captured_minor: int = Field(ge=0)
     refunded_minor: int = Field(ge=0)
     checkout_url: str | None
+
+
+class AnnualRefundRecoveryCommandWire(StrictTransportModel):
+    company_id: UUID
+    purchase_id: UUID
+    refund_request_id: UUID
+
+
+class AnnualRefundRecoveryWire(TransportModel):
+    company_id: UUID
+    purchase_id: UUID
+    refund_request_id: UUID
+    income_year: int
+    status: Literal["pending", "unknown", "confirmed", "failed"]
 
 
 class AnnualRenewalCancellationCommandWire(StrictTransportModel):
@@ -9229,6 +9244,35 @@ def create_app(
                 company_id=command.company_id, purchase_id=command.purchase_id,
                 status="deferred" if result is None else result.observation.status.value if result.observation else "pending",
             )
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/annual/refund-recoveries",
+        operation_id="billingRecoverAnnualRefund", response_model=AnnualRefundRecoveryWire,
+        responses={200: {"description": "Original refund operation status; confirmation does not mean all purchase liability is refunded."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def recover_annual_refund(
+        response: Response, command: AnnualRefundRecoveryCommandWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualRefundRecoveryWire:
+        async def execute():
+            workflow = AnnualRefundRecoveryWorkflow(
+                await annual_billing_sessions.session(bearer_token(credentials)), annual_billing_provider,
+            )
+            result = await workflow.recover_refund(AnnualRefundRecoveryQuery(
+                company_id=CompanyId(str(command.company_id)), purchase_id=AnnualPurchaseId(str(command.purchase_id)),
+                refund_request_id=AnnualRefundRequestId(str(command.refund_request_id)), actor_id=workflow.actor_id,
+            ))
+            resolution = result.resolution
+            return AnnualRefundRecoveryWire(
+                company_id=UUID(str(resolution.request.company_id)),
+                purchase_id=UUID(str(resolution.request.purchase_id)),
+                refund_request_id=UUID(str(result.refund_request_id)), income_year=resolution.facts.income_year.value,
+                status=resolution.operation.observation.status.value,
+            )
+
+        response.headers["Cache-Control"] = "no-store"
         return await billing_call(execute)
 
     def annual_purchase_refund_wire(value: AnnualPurchaseSummary) -> AnnualPurchaseRefundSummaryWire:
