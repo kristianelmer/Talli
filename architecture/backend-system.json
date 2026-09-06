@@ -334,18 +334,6 @@
   },
   "adapterBindings": [
     {
-      "port": "AnnualNotificationAuthentication",
-      "adapter": "talli_backend.adapters.vipps_webhook.VippsWebhookAuthentication",
-      "owner": "backend-system",
-      "mode": "configured MT merchant HMAC authentication; no environment fallback or runtime activation"
-    },
-    {
-      "port": "AnnualNotificationPersistence",
-      "adapter": "talli_backend.adapters.postgres_annual_notifications.PostgresAnnualNotificationInbox",
-      "owner": "backend-system",
-      "mode": "restricted actorless technical receipt insert/read only; no login grant, purchase lookup, financial write or worker"
-    },
-    {
       "port": "SystemBoundaryTransport",
       "adapter": "talli_backend.main.create_app",
       "owner": "backend-system",
@@ -500,6 +488,18 @@
       "adapter": "talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundRecoverySession",
       "owner": "backend-system",
       "mode": "verified current owner/fresh MFA at load and settlement; immutable request and original operation reconciliation only; provider absent by default, no source or claim binding"
+    },
+    {
+      "port": "AnnualNotificationAuthentication",
+      "adapter": "talli_backend.adapters.vipps_webhook.VippsWebhookAuthentication",
+      "owner": "backend-system",
+      "mode": "configured MT merchant HMAC authentication; no environment fallback or runtime activation"
+    },
+    {
+      "port": "AnnualNotificationPersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_notifications.PostgresAnnualNotificationInbox",
+      "owner": "backend-system",
+      "mode": "restricted actorless technical receipt insert/read only; no login grant, purchase lookup, financial write or worker"
     }
   ],
   "allowedDependencies": {
