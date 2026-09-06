@@ -8,6 +8,7 @@ import {
   type AnnualCheckoutRequestAction, type AnnualCheckoutRequestActionState,
 } from "../../lib/annual-checkout-request";
 import { Banner, Button, LinkButton, buttonClass } from "../ui";
+import styles from "./AnnualCheckoutControl.module.css";
 
 const money = new Intl.NumberFormat("nb-NO", { style: "currency", currency: "NOK" });
 const calendarDate = (value: string) => new Intl.DateTimeFormat("nb-NO", {
@@ -151,14 +152,14 @@ export function AnnualCheckoutControl({ companyId, initiatingUserId, beforePurch
       <LinkButton href={returnTo}>Se kjøpshistorikken</LinkButton>
     </div> : null}
     {saved.kind === "empty" && !completed && !storageFailed ? offer && preparation?.consentVersion ? <form
-      key={`${offer.incomeYear}:${offer.offerVersion}:${offer.termsDigest}:${preparation.consentVersion}`} className="formPanel" onSubmit={purchase}>
+      key={`${offer.incomeYear}:${offer.offerVersion}:${offer.termsDigest}:${preparation.consentVersion}`} className={`formPanel ${styles.review}`} onSubmit={purchase}>
       <p><strong>{money.format(offer.grossMinor / 100)} inkl. mva.</strong> for selskapsåret {offer.incomeYear}.</p>
       <p className="fieldHelp">{money.format(offer.netMinor / 100)} ekskl. mva. + {money.format(offer.vatMinor / 100)} mva. ({offer.vatBasisPoints / 100} %).</p>
       <p>Tilgang til og med {calendarDate(offer.paidThrough)}. Lese- og eksporttilgang til og med {calendarDate(offer.exportThrough)}.</p>
       <details><summary>Les vilkårene for dette kjøpet</summary><p style={{ whiteSpace: "pre-wrap" }}>{offer.termsText}</p></details>
-      <label className="checkboxRow"><input type="checkbox" name="purchaseAccepted" required disabled={pending} />
+      <label className={styles.choice}><input type="checkbox" name="purchaseAccepted" required disabled={pending} />
         Jeg har lest vilkårene og vil kjøpe selskapsåret for {money.format(offer.grossMinor / 100)} inkl. mva.</label>
-      <label className="checkboxRow"><input type="checkbox" name="recurringConsent" disabled={pending} />
+      <label className={styles.choice}><input type="checkbox" name="recurringConsent" disabled={pending} />
         Jeg ønsker automatisk fornyelse (valgfritt).</label>
       <p className="fieldHelp">Planlagt fornyelse {calendarDate(offer.renewalDate)}. Neste selskapsår må være godkjent før betaling.
         Du kan stoppe fornyelsen i kjøpshistorikken.</p>

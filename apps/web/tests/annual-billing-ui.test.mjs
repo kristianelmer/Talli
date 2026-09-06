@@ -43,7 +43,7 @@ ui.EmptyState = compile(readFileSync(new URL("../app/components/ui/EmptyState.ts
 const { AnnualAgreementCleanupControl } = compile(readFileSync(new URL("../app/components/billing/AnnualAgreementCleanupControl.tsx", import.meta.url), "utf8"), { "../ui": ui });
 const { AnnualCheckoutObservationControl } = compile(readFileSync(new URL("../app/components/billing/AnnualCheckoutObservationControl.tsx", import.meta.url), "utf8"), { "../ui": ui });
 const checkoutDraft = compile(readFileSync(new URL("../app/lib/annual-checkout-request.ts", import.meta.url), "utf8"), {});
-const { AnnualCheckoutControl } = compile(readFileSync(new URL("../app/components/billing/AnnualCheckoutControl.tsx", import.meta.url), "utf8"), { "../ui": ui, "../../lib/annual-checkout-request": checkoutDraft });
+const { AnnualCheckoutControl } = compile(readFileSync(new URL("../app/components/billing/AnnualCheckoutControl.tsx", import.meta.url), "utf8"), { "../ui": ui, "../../lib/annual-checkout-request": checkoutDraft, "./AnnualCheckoutControl.module.css": { default: { review: "review", choice: "choice" } } });
 const { AnnualRefundRecoveryControl } = compile(readFileSync(new URL("../app/components/billing/AnnualRefundRecoveryControl.tsx", import.meta.url), "utf8"), { "../ui": ui });
 const { AnnualBillingView } = compile(readFileSync(new URL("../app/components/billing/AnnualBillingView.tsx", import.meta.url), "utf8"), { "../ui": ui, "./AnnualAgreementCleanupControl": { AnnualAgreementCleanupControl }, "./AnnualCheckoutObservationControl": { AnnualCheckoutObservationControl }, "./AnnualRefundRecoveryControl": { AnnualRefundRecoveryControl } });
 function render(purchases = [purchase], extra = {}) {
