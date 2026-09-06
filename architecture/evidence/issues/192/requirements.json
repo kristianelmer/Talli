@@ -595,6 +595,58 @@
         "/private/tmp/talli-01a077d5-hydrated-refund-fixture.mjs": "sha256:14bec122fc03a2115b6a0278b15e2dd306c369d23452003371246087c2d05483"
       },
       "limits": "#192 remains OPEN and incomplete, #150 unclaimed, whole #165 ACTIVE. Actual designated Vipps MT, trusted source authority, remaining owner/operator acceptance, representative validation, two complete immutable 11/11 gates and protected-main Release/nonproduction Preview integration remain mandatory. Main remains unchanged and the continuous integration target. Only release/production is frozen."
+    },
+    "annualOperatorReadRecovery": {
+      "implementationRevision": "367219e6002499cc0e42897c400f3232b4d6aa02",
+      "comparisonRevision": "994f3b91e4742ea26865ee6f34ff5e8c3db876df",
+      "initialRecoveryRevision": "24c6ed0c120290016bf1987144530ab40b27d6a6",
+      "scope": "Operator annual support read recovery preserves validated support case and historical purchase cursor through explicit fresh MFA and session reauthentication. Both operator and operator/marketing page entries authorize before protected loaders; layout owns presentation only. Typed operator/case/annual errors distinguish sign-in, explicit step-up, forbidden and unavailable; any failed support read clears earlier summaries/annual data and returns before ancillary reads or mutation controls. Returned case and annual company/case bindings are checked. Existing helper callers, backend admin/opened-case/scope authority, deletion controls and production MFA/authority operations are unchanged. No backend/API/database/provider changes or new mutation authority.",
+      "reproduction": "Actual readOperatorSupportDashboard minimized regression failed before correction: early FRESH_MFA_REQUIRED was swallowed into generic support_case_read_failed with no recovery discriminator. Earlier annual error links only retried first page and lost annualBefore; layout also dropped context on login/dashboard redirects. Initial hydrated 24c6 build exposed 438px overflow at 390px from the operator header and long callback code. Final scoped operatorShell wrapping correction changes only layout/CSS.",
+      "validation": "Exact immutable final 367219e6 production Next build, typecheck, full billing 516 Python + 168 Node, web boundary 163 Node and diff check pass. Focused operator/deletion/authority/cancellation/support tests pass 69 on initial 24c6; final delta is scoped layout/CSS only. Behavioral tests cover both page entry gates before any protected loaders, missing/backend-rejected sessions, explicit versus unrelated 403 codes, early and late read failures, cleared prior company evidence, malformed/duplicate parameters, returned scope mismatch and existing support-role entry. Billing-only/no-profile success remains covered. New entry tests are registered in billing and web boundary suites. No database lifecycle rerun.",
+      "independentReviews": {
+        "standards": "PASS 0 exact final 367219e6002499cc0e42897c400f3232b4d6aa02 against 994f3b91e4742ea26865ee6f34ff5e8c3db876df, ten-file scope. Initial 24c6 also PASS 0.",
+        "spec": "PASS 0 exact same final candidate/comparison; bounded #192 A6/A8 slice. Initial 24c6 also PASS 0."
+      },
+      "hydratedFinalBrowser": "Exact final build with real Next/Supabase SDK/SSR and synthetic loopback HTTP. At 390px, revoked/unopened/denied cases, wrong scope, annual 401/403/503 and operator-context 503 show no annual evidence and send zero business POSTs. Recovery links retain case/cursor/hash and are 44px high. Missing session reaches reauth login with the same scope. Early-case stale MFA performs zero annual reads before challenge; late-annual stale MFA performs one rejected annual read. One explicit challenge/verification in each case returns to the original historical purchase and same case/cursor/hash with zero opening/refund/cancellation/business POSTs. Recovered 390px and 1440px pages have no horizontal overflow; recovery and historical-billing screenshots visually inspected. Fixture case is opened billing-only with no profile rows.",
+      "hydratedReauthentication": "On initial 24c6 build, a Supabase-valid session is rejected only by operator context using its synthetic generation cutoff. Reload reaches actual reauth login. Failed password retains recovery marker and full case/cursor/hash; successful password issues generation 3/AAL1, then explicit fresh MFA restores the historical support page. Zero business POSTs throughout. Auth implementation is unchanged in final layout/CSS correction. Two harness errors were retained: navigating to the identical URL/hash did not request a new document (corrected with reload), and waiting for generic Invalid login credentials did not match fixture Synthetic password rejected (verified actual snapshot, then completed). Neither was a product auth failure.",
+      "architecture": "Direct checker on 24c6 retains exactly four inherited future-scope errors: three audit_events and one filing_readiness_snapshots. Final CSS/layout-only delta adds no dependency. Previous full 49/51 remains attributed to 4b0a4a4d. No architecture PASS; checker, baseline, ADR and route unchanged.",
+      "fixtureLifecycle": "Private synthetic fixture gained generated operator-context/support-case/annual-support read contracts, typed failure controls, optional generation-cutoff rejection and redacted business POST tracking. Operator mode rejects every business POST. No outbound provider/hosted calls. Named browser talli-operator-01a077d5 closed; final Next parent 8633/child 8634 and HTTP 7642 stopped with absence verified; earlier Next 7731/7732 stopped before rebuild. Owned artifacts moved outside repository.",
+      "artifacts": {
+        "/private/tmp/talli-01a077d5-hydrated-refund-fixture-before-support.mjs": "sha256:14bec122fc03a2115b6a0278b15e2dd306c369d23452003371246087c2d05483",
+        "/private/tmp/talli-01a077d5-hydrated-refund-fixture.mjs": "sha256:955268ef21ea8dd25455222eac766866e8273ce8905d106f553bf6571442d709",
+        "/private/tmp/talli-01a077d5-operator-architecture.log": "sha256:cf4bfc2167107cb1617a90e7867848c0d66e43b4d91bf8cd115b920c8ca63114",
+        "/private/tmp/talli-01a077d5-operator-billing.log": "sha256:cbf406dd91e8ef5067c675f0babb2d6ad47da1617d49df808223df0edb42c0c7",
+        "/private/tmp/talli-01a077d5-operator-boundary.log": "sha256:18aaec53981d749d655a624f94a09fac140c47df6d29cafde511ce0d0c484f0b",
+        "/private/tmp/talli-01a077d5-operator-browser-artifacts/images/operator-history-phone-367219e6.png": "sha256:8df09f731b391a5cb12ea0e525659b1403cee3e1bcb5a538b9f7c25de6ea26eb",
+        "/private/tmp/talli-01a077d5-operator-browser-artifacts/images/operator-reauth-phone-367219e6.png": "sha256:c4f8a38acc96e20b80bc098aac688d8fddcb7ff2571c5380871798adab3cb7b1",
+        "/private/tmp/talli-01a077d5-operator-browser-artifacts/images/operator-recovered-phone-24c6ed0c.png": "sha256:c549177c38aa59c0210f7206d217a253cf4e9b42f34e2f20448e97d44dd6aa15",
+        "/private/tmp/talli-01a077d5-operator-browser-close.log": "sha256:9179ce5f1ed4137d0fe63496a2219780ce488977a23f469690c4ee9bbd4e8c35",
+        "/private/tmp/talli-01a077d5-operator-browser-mfa.log": "sha256:ed09ca538321bdf58f1148703d2cdd61cdd59855eb445964a00c36562b24fedc",
+        "/private/tmp/talli-01a077d5-operator-browser-open.log": "sha256:e84b985c086860600aa16ec621808ef54be691d615f150134fd6dd0f11febd3e",
+        "/private/tmp/talli-01a077d5-operator-browser-overflow.log": "sha256:ab37db43636f16d12ccb4faea916a1a01a0c0e0d68456a51913dd6a146797c01",
+        "/private/tmp/talli-01a077d5-operator-browser-password-failure-state.log": "sha256:66d67805cf3f05c1406b25f5360bec5e4724146d0ee09c81881b0af6dd7f431c",
+        "/private/tmp/talli-01a077d5-operator-browser-reauth-fixture-copy.log": "sha256:d76bdd988ae9de5c9b629c94d9cff985ee61ae386eddb70b0633d249cf74824c",
+        "/private/tmp/talli-01a077d5-operator-browser-reauth-reload.log": "sha256:33b7b542d18559e1e88937bec9e9c929070b162fc0e6dc0230f2638ef3c3690c",
+        "/private/tmp/talli-01a077d5-operator-browser-reauth-same-document.log": "sha256:966670f2a0a795c1945e2ebdd75091687ed6d9d60645b917f75bcdde0ba36dde",
+        "/private/tmp/talli-01a077d5-operator-browser-reauth-state.log": "sha256:adda473c2cf3eb6b81f58708e286bd29a1a05fa647424b45e599fbac70767ca2",
+        "/private/tmp/talli-01a077d5-operator-browser-reauth.log": "sha256:32409dbb836bbc4231c2a9611e83690349a72ead18d2aaf302b024fe5ac181fa",
+        "/private/tmp/talli-01a077d5-operator-build.log": "sha256:d1310d356b59e9df62bbf63d23cc3d8d5e957ba800136a0a821217cbabddb993",
+        "/private/tmp/talli-01a077d5-operator-final-billing.log": "sha256:d9acdb29c541178d5dd820d2729d21655899406e653acac03cdeb8dfebfbb388",
+        "/private/tmp/talli-01a077d5-operator-final-boundary.log": "sha256:0c3583dd9e0b1391de7a971c6783625eff03c25dde74a40ded5ba02fd7ae1a53",
+        "/private/tmp/talli-01a077d5-operator-final-browser-failures.log": "sha256:0944772c6a7d2863e2c18d3244257371a886db33b0ce0755bdd558976a8de1bc",
+        "/private/tmp/talli-01a077d5-operator-final-browser-mfa.log": "sha256:ac5d930cd9f89c6f0f04e82170d20cf7f3f9ced4e09da4c46074bb0dda3931c0",
+        "/private/tmp/talli-01a077d5-operator-final-build.log": "sha256:9ac80d99f949a2995625657d71baa313aeb67455787032678a1751946b5efc6d",
+        "/private/tmp/talli-01a077d5-operator-final-next.log": "sha256:d770cdb1854ddb0882f2897c332e9cb7fdaed41a24a7fd6ef5d76c68c25e1c71",
+        "/private/tmp/talli-01a077d5-operator-final-typecheck.log": "sha256:b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+        "/private/tmp/talli-01a077d5-operator-focused.log": "sha256:84e6c04fe49c5b69f249eb6725ecc2ec61229737e227f4b240525d2365bf8de9",
+        "/private/tmp/talli-01a077d5-operator-http.log": "sha256:0a187527e17b40628a154eea062bd4bbee8bd8f43bf40d2ad7c172d10996b5ba",
+        "/private/tmp/talli-01a077d5-operator-next.log": "sha256:6f23d809bd89f4b9b6ef59beac3b5fc0a34d1b4063143a3aedd1eb9c8ded0cdc",
+        "/private/tmp/talli-01a077d5-operator-stopped.json": "sha256:0b2b753be92a03f88bb2b1ca6a00a661d419558abcc21e0ef89f10252390ab9e",
+        "/private/tmp/talli-01a077d5-operator-support-unit.log": "sha256:9d96eb7c108355b748c270f4b3f8e23d539f5d65b36f5bbd90138c2b838e4e10",
+        "/private/tmp/talli-01a077d5-operator-typecheck.log": "sha256:b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+        "/private/tmp/talli-01a077d5-operator-unit-red.log": "sha256:8aa4c9309f7193c79eeaf6fc70029194e196ddb9a9f417f13308db32287291c8"
+      },
+      "limits": "Synthetic session/read evidence does not prove actual designated Vipps MT, hosted authorization configuration, representative users, accounting export completeness or trusted readiness/incident/submission authority. Marketing retains its existing late-report unavailable behavior; replacement entry authorization is covered. No operator refund/cancellation initiation or owner-endpoint reuse. #192 OPEN/incomplete, #150 unclaimed, whole #165 ACTIVE; all remaining acceptance, two complete immutable 11/11 gates and protected-main Release/nonproduction Preview integration remain required. Main unchanged and continuous integration target; only release/production frozen."
     }
   },
   "externalEvidence": {
