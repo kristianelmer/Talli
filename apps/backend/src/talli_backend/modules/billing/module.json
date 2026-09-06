@@ -26,6 +26,7 @@
       "BillingSnapshot",
       "BillingSnapshotQuery",
       "AnnualBillingSnapshotQuery",
+      "AnnualPurchaseHistoryQuery",
       "AnnualSupportQuery"
     ],
     "events": [

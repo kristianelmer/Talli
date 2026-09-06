@@ -2,12 +2,13 @@
 
 import asyncio
 from dataclasses import asdict, replace
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import psycopg
 import pytest
 
-from test_annual_purchase_basis_runtime import DATABASE_URL, admitted, scoped, test_role_authority
+from test_annual_purchase_basis_runtime import DATABASE_URL, admitted, scoped, insert, test_role_authority
 from test_annual_checkout_runtime import setup, session, candidate, observation, counts
 from test_annual_cancellation_runtime import purchase, cancellation, command
 from test_annual_refund_runtime import paid, command as refund_command, source, store, refund_observation
@@ -15,6 +16,7 @@ from test_annual_support_runtime import fingerprint
 from talli_backend.adapters.supabase_annual_billing import PostgresAnnualBillingReadSession
 from talli_backend.modules.billing.public import (
     AnnualBillingSnapshotQuery,
+    AnnualPurchaseHistoryQuery,
     AnnualProviderStatus,
     AnnualPurchaseId,
     BillingError,
@@ -118,7 +120,8 @@ def test_refunded_and_failed_history_remains_distinct_from_new_purchase(setup, p
     assert [value.refunded_minor for value in result.purchases] == [0, 0, 149000]
 
 
-def test_cursor_is_scoped_and_pagination_is_stable_across_tied_timestamps(setup, purchase):
+@pytest.mark.parametrize("company_wide", [False, True])
+def test_cursor_is_scoped_and_pagination_is_stable_across_tied_timestamps(setup, purchase, company_wide):
     # Use real restricted-owner claims and confirmed terminal outcomes to create
     # enough history for two pages; no synthetic source or direct ledger inserts.
     async def create_history():
@@ -138,16 +141,18 @@ def test_cursor_is_scoped_and_pagination_is_stable_across_tied_timestamps(setup,
         return identities
 
     identities = asyncio.run(create_history())
-    first = asyncio.run(reads(setup).read_purchases(query(setup)))
+    reader = reads(setup).read_purchase_history if company_wide else reads(setup).read_purchases
+    scope = AnnualPurchaseHistoryQuery(setup[2].company_id, setup[1]) if company_wide else query(setup)
+    first = asyncio.run(reader(scope))
     assert len(first.purchases) == 50 and first.next_purchase_id == first.purchases[-1].purchase_id
-    second = asyncio.run(reads(setup).read_purchases(query(setup, before_purchase_id=first.next_purchase_id)))
+    second = asyncio.run(reader(replace(scope, before_purchase_id=first.next_purchase_id)))
     assert len(second.purchases) == 2 and second.next_purchase_id is None
     assert [value.purchase_id for value in (*first.purchases, *second.purchases)] == sorted(
         identities, key=str, reverse=True
     )
     with pytest.raises(BillingError):
         asyncio.run(
-            reads(setup).read_purchases(query(setup, before_purchase_id=AnnualPurchaseId(str(uuid4()))))
+            reader(replace(scope, before_purchase_id=AnnualPurchaseId(str(uuid4()))))
         )
 
 
@@ -272,3 +277,62 @@ def test_owner_read_and_refund_settlement_use_one_consistent_money_and_operation
     )
     final = asyncio.run(reads(setup).read_purchases(query(setup))).purchases[0]
     assert final.refunded_minor == 149000 and final.remaining_refund_minor == 0 and final.refund_initiate_by is None
+
+
+def test_company_history_authorizes_an_accepted_owner_without_any_admission(setup):
+    company = uuid4()
+    now = datetime.now(UTC)
+    with psycopg.connect(DATABASE_URL) as connection:
+        insert(connection, "public.companies", {
+            "id": company, "org_number": str(100000000 + company.int % 899999999), "name": "Unadmitted History AS",
+            "entity_type": "AS", "address": "Testveien 1", "postal_code": "0150", "city": "Oslo",
+            "status_text": "aktiv", "source": "test", "created_by": setup[1].subject.value,
+            "identity_confirmed_at": now, "identity_locked_at": now,
+        })
+        insert(connection, "public.company_memberships", {"company_id": company, "user_id": setup[1].subject.value,
+            "role": "owner", "accepted_at": now})
+        assert connection.execute("select count(*) from public.company_year_admissions where company_id=%s", (company,)).fetchone()[0] == 0
+    scope = AnnualPurchaseHistoryQuery(CompanyId(str(company)), setup[1])
+    page = asyncio.run(reads(setup, current=False).read_purchase_history(scope))
+    assert page.purchases == () and page.next_purchase_id is None
+
+
+@pytest.mark.parametrize("mode", ["outsider", "stale_mfa", "actor_mismatch", "wrong_company"])
+def test_company_history_current_authority_is_required_even_for_empty_history(setup, mode):
+    outsider = ActorId(ActorKind.USER, UserId(str(setup[0]["outsider"])))
+    scope = AnnualPurchaseHistoryQuery(setup[2].company_id, setup[1])
+    options = {}
+    if mode == "outsider":
+        options["actor"] = outsider
+        scope = replace(scope, actor_id=outsider)
+    elif mode == "stale_mfa": options["fresh"] = False
+    elif mode == "actor_mismatch": scope = replace(scope, actor_id=outsider)
+    else: scope = replace(scope, company_id=CompanyId(str(uuid4())))
+    with pytest.raises(BillingError):
+        asyncio.run(reads(setup, **options).read_purchase_history(scope))
+    assert counts(setup) == (0, 0)
+
+
+def test_company_history_survives_changed_readiness_but_not_revoked_ownership(setup, paid):
+    scope = AnnualPurchaseHistoryQuery(setup[2].company_id, setup[1])
+    before = fingerprint(setup)
+    page = asyncio.run(reads(setup, current=False).read_purchase_history(scope))
+    assert page.purchases[0].purchase_id == paid.purchase_id and page.purchases[0].terms_text == paid.offer.terms_text
+    assert fingerprint(setup) == before
+    with psycopg.connect(DATABASE_URL) as connection:
+        connection.execute("delete from public.company_memberships where company_id=%s and user_id=%s",
+                           (str(scope.company_id), str(scope.actor_id.subject)))
+    with pytest.raises(BillingError) as error:
+        asyncio.run(reads(setup, current=False).read_purchase_history(scope))
+    assert error.value.code == "BILLING_FORBIDDEN"
+
+
+def test_company_history_rejects_foreign_cursor_and_distinguishes_end_of_owned_history(setup, purchase, request):
+    scope = AnnualPurchaseHistoryQuery(setup[2].company_id, setup[1])
+    page = asyncio.run(reads(setup).read_purchase_history(replace(scope, before_purchase_id=purchase.purchase_id)))
+    assert page.purchases == () and page.next_purchase_id is None
+    other = globals()["setup"].__wrapped__(admitted.__wrapped__(request))
+    foreign = asyncio.run(session(other).claim_checkout(candidate(other), other[4])).checkout
+    with pytest.raises(BillingError) as error:
+        asyncio.run(reads(setup).read_purchase_history(replace(scope, before_purchase_id=foreign.purchase_id)))
+    assert error.value.code == "BILLING_NOT_FOUND"

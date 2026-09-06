@@ -21,13 +21,14 @@ from talli_backend.modules.billing.public import (
     AnnualCheckoutPersistence,
     AnnualOperationCounts,
     AnnualPurchaseId,
+    AnnualPurchaseHistoryQuery,
     AnnualPurchasePage,
     AnnualPurchaseStatus,
     AnnualPurchaseSummary,
     BillingError,
     billing_persistence_adapter,
 )
-from talli_backend.shared.kernel import CompanyId, IncomeYear, Timestamp
+from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear, Timestamp
 
 
 @billing_persistence_adapter(AnnualBillingReadPersistence)
@@ -40,18 +41,26 @@ class PostgresAnnualBillingReadSession:
         return self._database.actor_id
 
     async def read_purchases(self, query: AnnualBillingSnapshotQuery) -> AnnualPurchasePage:
-        if query.actor_id != self.actor_id:
+        return await self._read_purchases(query.company_id, query.actor_id, query.before_purchase_id, query.income_year)
+
+    async def read_purchase_history(self, query: AnnualPurchaseHistoryQuery) -> AnnualPurchasePage:
+        return await self._read_purchases(query.company_id, query.actor_id, query.before_purchase_id, None)
+
+    async def _read_purchases(self, company_id: CompanyId, actor_id: ActorId,
+                              before_purchase_id: AnnualPurchaseId | None, income_year: IncomeYear | None) -> AnnualPurchasePage:
+        if actor_id != self.actor_id:
             raise BillingError.forbidden()
+        year = income_year.value if income_year else None
 
         async def work(connection):
-            await self._database._authorize(connection, query.company_id)
+            await self._database._authorize(connection, company_id)
             cursor = None
-            if query.before_purchase_id:
+            if before_purchase_id:
                 cursor = await (
                     await connection.execute(
                         """select accepted_at,id from billing.annual_purchases
-                    where id=%s::uuid and company_id=%s::uuid and income_year=%s""",
-                        (str(query.before_purchase_id), str(query.company_id), query.income_year.value),
+                    where id=%s::uuid and company_id=%s::uuid and (%s::integer is null or income_year=%s)""",
+                        (str(before_purchase_id), str(company_id), year, year),
                     )
                 ).fetchone()
                 if cursor is None:
@@ -64,7 +73,7 @@ class PostgresAnnualBillingReadSession:
                     select id,company_id,income_year,status,accepted_at,offer_version,terms_digest,terms_text,
                     currency,gross_minor,net_minor,vat_minor,vat_basis_points,captured_minor,refunded_minor,
                     captured_at,recurring_consent,renewal_canceled_at,paid_through,export_through,renewal_date
-                    from billing.annual_purchases where company_id=%s::uuid and income_year=%s
+                    from billing.annual_purchases where company_id=%s::uuid and (%s::integer is null or income_year=%s)
                     and (%s::timestamptz is null or (accepted_at,id)<(%s::timestamptz,%s::uuid))
                     order by accepted_at desc,id desc limit 51
                 ) select p.*,c.recorded_refund_minor,c.refund_initiate_by,
@@ -91,8 +100,9 @@ class PostgresAnnualBillingReadSession:
                     where purchase_id=p.id and company_id=p.company_id and operation='refund'
                 ) o on true order by p.accepted_at desc,p.id desc""",
                     (
-                        str(query.company_id),
-                        query.income_year.value,
+                        str(company_id),
+                        year,
+                        year,
                         cursor["accepted_at"] if cursor else None,
                         cursor["accepted_at"] if cursor else None,
                         str(cursor["id"]) if cursor else None,

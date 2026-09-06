@@ -424,7 +424,7 @@ contract only and has no provider/readiness dependency. Snapshot GET reads store
 facts; cancellation POST returns durable local effectiveness and preserved dates.
 
 <!-- architecture-inventory
-{"workflows":["annual-billing-reads-and-cancellation"],"routes":["/api/v1/billing/annual/snapshot","/api/v1/billing/annual/refund-snapshot","/api/v1/billing/annual/renewal-cancellations"],"ports":["AnnualBillingReadPersistence"],"adapterBindings":["AnnualBillingReadPersistence=>talli_backend.adapters.supabase_annual_billing.PostgresAnnualBillingReadSession"],"adapterBindingOwners":["AnnualBillingReadPersistence=>backend-system"],"adapterBindingModes":["AnnualBillingReadPersistence=>verified-owner stored annual public purchase projection; no provider or readiness calls"]}
+{"workflows":["annual-billing-reads-and-cancellation"],"routes":["/api/v1/billing/annual/snapshot","/api/v1/billing/annual/purchases", "/api/v1/billing/annual/refund-snapshot","/api/v1/billing/annual/renewal-cancellations"],"ports":["AnnualBillingReadPersistence"],"adapterBindings":["AnnualBillingReadPersistence=>talli_backend.adapters.supabase_annual_billing.PostgresAnnualBillingReadSession"],"adapterBindingOwners":["AnnualBillingReadPersistence=>backend-system"],"adapterBindingModes":["AnnualBillingReadPersistence=>verified-owner stored annual public purchase projection; no provider or readiness calls"]}
 -->
 
 
@@ -509,3 +509,8 @@ The provider-free owner route `/api/v1/billing/annual/refund-snapshot` exposes
 purchase balances and recorded refund facts together under the same owner and
 fresh-MFA boundary. The predecessor snapshot retains its exact response shape
 for mixed-version deployment; the added read does not adjudicate refund rights.
+
+The additive `/api/v1/billing/annual/purchases` route calls the owner history
+workflow without a current-admission requirement and exposes no offer. Its
+company-scoped cursor spans recorded years under current owner/fresh MFA; the
+shared projection remains billing-owned and provider-free.

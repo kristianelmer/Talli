@@ -1,7 +1,7 @@
 # Billing web feature
 
 <!-- architecture-inventory
-{"apiOperations":["billingReadAnnualRefundSnapshot","billingReadAnnualSupportPurchases","billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
+{"apiOperations":["billingReadAnnualPurchaseHistory","billingReadAnnualRefundSnapshot","billingReadAnnualSupportPurchases","billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
 -->
 
 ## Purpose and boundary
@@ -57,3 +57,13 @@ No default zero liability is invented. The view distinguishes recorded amounts,
 request receipts, unknown/failed/pending attempts, and the initiation target
 from provider/bank receipt timing; no late-initiation inference or new entitlement
 policy runs in the browser. This is visibility, not automatic refund execution.
+
+Company-wide owner history uses `billingReadAnnualPurchaseHistory`, independently
+of current admission. Only an actual current admitted year selects the separate
+published offer. Every purchase keeps its own terms, company/year, cancellation
+and cleanup identity, and archive link. Offer unavailability cannot erase readable
+history; a subsequent authentication/access failure hides earlier evidence.
+A missing history endpoint may temporarily show only the newest current-year
+purchases with an explicit limitation. Company-wide cursors never reach that
+predecessor fallback; application BILLING_NOT_FOUND remains an error. Without
+admission or a safe first-page fallback, absence is unavailable, not empty history.

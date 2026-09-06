@@ -753,6 +753,13 @@ class AnnualBillingSnapshotQuery:
 
 
 @dataclass(frozen=True, slots=True)
+class AnnualPurchaseHistoryQuery:
+    company_id: CompanyId
+    actor_id: ActorId
+    before_purchase_id: AnnualPurchaseId | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class AnnualPurchaseSummary:
     """Stored customer billing facts; no merchant or acceptance-source material."""
 
@@ -822,6 +829,15 @@ class AnnualBillingReadPersistence(Protocol):
         Project purchase money and recorded refund evidence in one database
         snapshot. Case entitlements are cumulative: take their maximum, never
         their sum. Requests and operation outcomes do not establish settlement.
+        """
+        ...
+
+    async def read_purchase_history(self, query: AnnualPurchaseHistoryQuery) -> AnnualPurchasePage:
+        """Read stored purchases across years under current owner/fresh MFA.
+
+        Apply the same bounded, provider-free stored-fact projection as
+        read_purchases, with a company-scoped cursor and no current-admission
+        requirement. History is not an offer or authority to admit another year.
         """
         ...
 
@@ -1276,6 +1292,7 @@ def billing_provider_adapter(port: type[object]) -> Callable[[Adapter], Adapter]
 
 __all__ = [
     "AnnualBillingSnapshotQuery",
+    "AnnualPurchaseHistoryQuery",
     "AnnualPurchaseSummary",
     "AnnualPurchasePage",
     "AnnualSupportCaseId",

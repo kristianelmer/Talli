@@ -2721,6 +2721,12 @@ export interface AnnualBillingRefundSnapshotWire {
   purchases: AnnualPurchaseRefundSummaryWire[];
 }
 
+export interface AnnualPurchaseHistoryWire {
+  companyId: string;
+  nextPurchaseId: string | null;
+  purchases: AnnualPurchaseRefundSummaryWire[];
+}
+
 export type AnnualPurchaseStatus = "pending" | "paid" | "failed" | "refunded";
 
 export interface AnnualBillingSnapshotWire {
@@ -6529,6 +6535,16 @@ function isAnnualBillingRefundSnapshotWire(value: unknown): value is AnnualBilli
   );
 }
 
+function isAnnualPurchaseHistoryWire(value: unknown): value is AnnualPurchaseHistoryWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","nextPurchaseId","purchases"]) &&
+    isUuid(value.companyId) &&
+    (isUuid(value.nextPurchaseId) || value.nextPurchaseId === null) &&
+    Array.isArray(value.purchases) && value.purchases.every((item) => isAnnualPurchaseRefundSummaryWire(item))
+  );
+}
+
 function isAnnualPurchaseStatus(value: unknown): value is AnnualPurchaseStatus {
   return value === "pending" || value === "paid" || value === "failed" || value === "refunded";
 }
@@ -6938,6 +6954,11 @@ export interface BankingConnectionListRequest extends TalliRequestOptions {
 export interface AnnualSupportRequest extends TalliRequestOptions {
   companyId: string;
   supportCaseId: string;
+  beforePurchaseId?: string;
+}
+
+export interface AnnualPurchaseHistoryRequest extends TalliRequestOptions {
+  companyId: string;
   beforePurchaseId?: string;
 }
 
@@ -8494,6 +8515,13 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       const query = new URLSearchParams({companyId: request.companyId, incomeYear: String(request.incomeYear)});
       if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
       return executeJson(baseUrl + "/api/v1/billing/annual/snapshot?" + query, "GET", request, undefined, isAnnualBillingSnapshotWire);
+    },
+    async billingReadAnnualPurchaseHistory(
+      request: AnnualPurchaseHistoryRequest,
+    ): Promise<AnnualPurchaseHistoryWire> {
+      const query = new URLSearchParams({companyId: request.companyId});
+      if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
+      return executeJson(baseUrl + "/api/v1/billing/annual/purchases?" + query, "GET", request, undefined, isAnnualPurchaseHistoryWire);
     },
     async billingReadAnnualRefundSnapshot(
       request: AnnualBillingSnapshotRequest,

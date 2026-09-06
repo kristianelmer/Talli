@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
-import { annualBillingRecovery, loadAnnualBillingSnapshot } from "../../../features/billing";
+import { annualBillingAccessRejected, annualBillingRecovery, loadAnnualBillingSnapshot, loadAnnualPurchaseHistory } from "../../../features/billing";
 import { cancelAnnualRenewal, cleanupAnnualAgreement } from "../../actions";
 import { AnnualBillingView } from "../../components/billing/AnnualBillingView";
 import { EmptyState, LinkButton } from "../../components/ui";
@@ -59,28 +59,41 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       </LinkButton>}>
       {selectedId ? "Velg et selskap du har tilgang til." : t.needsCompanyBody}
     </EmptyState>;
-  } else if (!company.admittedAccountingYear) {
-    content = <EmptyState title="Selskapsåret er ikke klart" action={
-      <LinkButton href="/onboarding">Fortsett oppsettet</LinkButton>
-    }>Fullfør oppsettet av selskapet og selskapsåret for å se årstilbudet.</EmptyState>;
   } else if (beforePurchaseId && !uuid.test(beforePurchaseId)) {
     content = <EmptyState title="Historikksiden er ikke tilgjengelig" action={
       <LinkButton href={`/billing?companyId=${company.id}`}>Vis nyeste kjøp</LinkButton>
     }>Åpne kjøpshistorikken på nytt.</EmptyState>;
   } else {
     let snapshot;
+    let published;
+    let offerUnavailable = false;
+    let limitedHistory = false;
     let recovery;
     try {
-      snapshot = await loadAnnualBillingSnapshot(accessToken, {
-        companyId: company.id, incomeYear: company.admittedAccountingYear, beforePurchaseId,
+      const history = await loadAnnualPurchaseHistory(accessToken, {
+        companyId: company.id, beforePurchaseId,
       });
+      if (history === null && beforePurchaseId) throw new Error("Annual history unavailable");
+      if (company.admittedAccountingYear) {
+        try {
+          published = await loadAnnualBillingSnapshot(accessToken, {
+            companyId: company.id, incomeYear: company.admittedAccountingYear,
+          });
+        } catch (error) {
+          if (annualBillingAccessRejected(error)) throw error;
+          offerUnavailable = true;
+        }
+      }
+      snapshot = history ?? published;
+      limitedHistory = history === null && published !== undefined;
     } catch (error) {
       recovery = annualBillingRecovery(error);
     }
     if (snapshot) {
       const retryId = parameter(params, "cancellationOperationId");
       const retryPurchaseId = parameter(params, "cancellationPurchaseId");
-      content = <AnnualBillingView companyName={company.name} snapshot={snapshot}
+      content = <AnnualBillingView companyId={company.id} companyName={company.name} snapshot={snapshot}
+        offer={published?.offer} offerUnavailable={offerUnavailable} limitedHistory={limitedHistory}
         beforePurchaseId={beforePurchaseId} cancelAction={cancelAnnualRenewal} cleanupAction={cleanupAnnualAgreement}
         unconfirmedPurchaseId={parameter(params, "cancellationError") === "unconfirmed" ? retryPurchaseId : undefined}
         operationIds={Object.fromEntries(snapshot.purchases.map((purchase) => [
@@ -100,7 +113,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   }
   return <div>
     <div className="pageHead"><h1 className="pageTitle">{t.hubTitle}</h1>
-      <p className="pageLede">Se pris, kjøpshistorikk og fornyelse for selskapsåret.</p></div>
+      <p className="pageLede">Se årstilbud, kjøpshistorikk og fornyelse for selskapet.</p></div>
     {context.companies.length > 1 ? <nav aria-label="Velg selskap" className="actionRow">
       {context.companies.map((item) => <LinkButton key={item.id}
         href={`/billing?companyId=${item.id}`} aria-current={company?.id === item.id ? "page" : undefined}>

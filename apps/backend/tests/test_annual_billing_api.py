@@ -12,6 +12,7 @@ from talli_backend.application.billing_session import BillingAuthenticationError
 from talli_backend.main import create_app
 from talli_backend.modules.billing.public import (
     AnnualBillingSnapshotQuery,
+    AnnualPurchaseHistoryQuery,
     AnnualCancellationId,
     AnnualOperationCounts,
     AnnualPurchaseId,
@@ -94,6 +95,11 @@ class Session:
         self.read_calls.append(query)
         return AnnualPurchasePage((self.value,))
 
+    async def read_purchase_history(self, query):
+        self.authorize(query.company_id)
+        self.read_calls.append(query)
+        return AnnualPurchasePage((self.value,))
+
     async def cancel_renewal(self, command):
         self.authorize(command.company_id)
         if command.purchase_id != PURCHASE:
@@ -142,6 +148,9 @@ def refund_snapshot(api, **changes):
         "/api/v1/billing/annual/refund-snapshot", headers=headers(),
         params={"companyId": str(COMPANY), "incomeYear": 2026, **changes},
     )
+
+def history(api, **changes):
+    return api.get("/api/v1/billing/annual/purchases", headers=headers(), params={"companyId": str(COMPANY), **changes})
 
 
 def cancel(api, **changes):
@@ -224,6 +233,60 @@ def test_predecessor_snapshot_shape_survives_backend_first_deployment_with_recor
     assert old["offer"] == new["offer"] and old["nextPurchaseId"] == new["nextPurchaseId"]
 
 
+def test_company_history_returns_recorded_years_without_reading_a_current_offer(monkeypatch):
+    session = Session()
+    previous = replace(session.value, income_year=IncomeYear(2025), terms_text="Recorded 2025 terms")
+
+    async def read(query):
+        session.authorize(query.company_id)
+        session.read_calls.append(query)
+        return AnnualPurchasePage((session.value, previous))
+
+    session.read_purchase_history = read
+    def no_offer(*args):
+        raise AssertionError("Historical read must not invent a current offer")
+    monkeypatch.setattr("talli_backend.application.annual_billing.annual_billing_offer", no_offer)
+    cursor = str(uuid4())
+    response = history(client(session), beforePurchaseId=cursor)
+    assert response.status_code == 200 and response.headers["cache-control"] == "no-store"
+    value = response.json()
+    assert [row["incomeYear"] for row in value["purchases"]] == [2026, 2025]
+    assert value["purchases"][1]["termsText"] == "Recorded 2025 terms"
+    assert "offer" not in value and value["companyId"] == str(COMPANY)
+    query = session.read_calls[0]
+    assert query.actor_id == ACTOR and query.company_id == COMPANY and str(query.before_purchase_id) == cursor
+    assert not hasattr(query, "income_year") and session.receipts == {}
+
+
+@pytest.mark.parametrize("mode", ["forbidden", "stale_mfa", "foreign_purchase", "oversize", "foreign_cursor"])
+def test_company_history_authorizes_current_owner_and_rejects_invalid_page_scope(mode):
+    session = Session()
+    if mode == "forbidden": session.authorized = False
+    if mode == "stale_mfa": session.fresh = False
+    async def read(query):
+        session.authorize(query.company_id)
+        if mode == "foreign_purchase": return AnnualPurchasePage((replace(session.value, company_id=CompanyId(str(uuid4()))),))
+        if mode == "oversize": return AnnualPurchasePage((session.value,) * 51)
+        if mode == "foreign_cursor": return AnnualPurchasePage((session.value,), AnnualPurchaseId(str(uuid4())))
+        return AnnualPurchasePage(())
+    session.read_purchase_history = read
+    response = history(client(session))
+    assert response.status_code == (403 if mode in ("forbidden", "stale_mfa") else 503)
+    assert "purchases" not in response.json() and session.receipts == {}
+
+
+def test_company_history_empty_and_missing_cursor_are_not_conflated():
+    session = Session()
+    async def read(query):
+        if query.before_purchase_id: raise BillingError.not_found()
+        return AnnualPurchasePage(())
+    session.read_purchase_history = read
+    api = client(session)
+    assert history(api).json()["purchases"] == []
+    response = history(api, beforePurchaseId=str(uuid4()))
+    assert response.status_code == 404 and response.json()["code"] == "BILLING_NOT_FOUND"
+
+
 @pytest.mark.parametrize("mode", ["forbidden", "stale_mfa", "foreign_purchase"])
 def test_refund_snapshot_preserves_current_owner_authorization_and_scope(mode):
     session = Session()
@@ -267,7 +330,7 @@ def test_lost_response_replays_the_stored_cancellation_receipt():
 
 @pytest.mark.parametrize(
     "method,path",
-    [("get", "/api/v1/billing/annual/snapshot"), ("get", "/api/v1/billing/annual/refund-snapshot"),
+    [("get", "/api/v1/billing/annual/purchases"), ("get", "/api/v1/billing/annual/snapshot"), ("get", "/api/v1/billing/annual/refund-snapshot"),
      ("post", "/api/v1/billing/annual/renewal-cancellations")],
 )
 @pytest.mark.parametrize("token", [None, "unverified"])

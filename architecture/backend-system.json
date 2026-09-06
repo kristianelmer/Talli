@@ -196,7 +196,7 @@
       "name": "annual-billing-reads-and-cancellation",
       "purpose": "Authenticates annual owner reads and immediate local renewal cancellation from one verified actor; no provider, readiness or checkout activation.",
       "publicPackages": ["talli_backend.modules.billing.public"],
-      "routes": ["/api/v1/billing/annual/snapshot", "/api/v1/billing/annual/refund-snapshot", "/api/v1/billing/annual/renewal-cancellations"]
+      "routes": ["/api/v1/billing/annual/snapshot", "/api/v1/billing/annual/purchases", "/api/v1/billing/annual/refund-snapshot", "/api/v1/billing/annual/renewal-cancellations"]
     },
     {
       "name": "annual-agreement-cleanup",

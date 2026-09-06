@@ -19,6 +19,8 @@ from talli_backend.modules.billing.public import (
     annual_checkout_operations,
     AnnualBillingSnapshot,
     AnnualBillingSnapshotQuery,
+    AnnualPurchaseHistoryQuery,
+    AnnualPurchasePage,
     AnnualCancellationPersistence,
     AnnualRenewalCancellation,
     BillingError,
@@ -105,6 +107,17 @@ class AnnualBillingWorkflow:
         ):
             raise BillingError.unavailable()
         return AnnualBillingSnapshot(annual_billing_offer(query.company_id, query.income_year), purchases)
+
+    async def purchase_history(self, query: AnnualPurchaseHistoryQuery) -> AnnualPurchasePage:
+        if query.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+        page = await self._session.reads.read_purchase_history(query)
+        if (len(page.purchases) > 50
+                or any(value.company_id != query.company_id for value in page.purchases)
+                or (page.next_purchase_id is not None and
+                    (not page.purchases or page.next_purchase_id != page.purchases[-1].purchase_id))):
+            raise BillingError.unavailable()
+        return page
 
     async def cancel_renewal(self, command: CancelAnnualRenewalCommand) -> AnnualRenewalCancellation:
         if command.actor_id != self.actor_id:

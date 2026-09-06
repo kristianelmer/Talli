@@ -39,7 +39,7 @@ const ui = {
 const { AnnualAgreementCleanupControl } = compile(readFileSync(new URL("../app/components/billing/AnnualAgreementCleanupControl.tsx", import.meta.url), "utf8"), { "../ui": ui });
 const { AnnualBillingView } = compile(readFileSync(new URL("../app/components/billing/AnnualBillingView.tsx", import.meta.url), "utf8"), { "../ui": ui, "./AnnualAgreementCleanupControl": { AnnualAgreementCleanupControl } });
 function render(purchases = [purchase], extra = {}) {
-  return renderToStaticMarkup(React.createElement(AnnualBillingView, { companyName: "Holding AS",
+  return renderToStaticMarkup(React.createElement(AnnualBillingView, { companyId, companyName: "Holding AS",
     snapshot: { offer, purchases, nextPurchaseId: null }, operationIds: { [purchaseId]: operationId },
     cancelAction: async () => {}, cleanupAction: async () => ({ kind: "idle" }), ...extra }));
 }
@@ -82,7 +82,7 @@ test("nonrecurring purchase does not suggest renewal; history retains company an
   assert.doesNotMatch(html, /Stopp fornyelse/);
   assert.match(html, /Nyeste kjøp/);
   assert.match(html, /companyId=10000000-0000-4000-8000-000000000001&amp;beforePurchaseId=20000000/);
-  assert.match(render([]), /Ingen kjøp for dette selskapsåret/);
+  assert.match(render([]), /Ingen årskjøp registrert/);
 });
 
 test("owner refund evidence shows cumulative liability and settled money independently", () => {
@@ -193,12 +193,16 @@ test("missing session reaches sign-in with replay context before any mutation", 
 
 const pageSource = readFileSync(new URL("../app/(account)/billing/page.tsx", import.meta.url), "utf8");
 const company = { id: companyId, name: "Holding AS", admittedAccountingYear: 2026 };
-function pageHarness({ companies = [company], token = "session", contextError, requiresAal2, requiresSignIn, failure, purchases = [purchase] } = {}) {
+function pageHarness({ companies = [company], token = "session", contextError, requiresAal2, requiresSignIn, failure, purchases = [purchase], historyMissing = false, nextPurchaseId = null, offerFailure = false, offerAccessRejected = false } = {}) {
   const reads = [];
+  const offerReads = [];
   const { default: BillingPage } = compile(pageSource, {
     "../../../features/billing": { annualBillingRecovery: () => failure,
-      loadAnnualBillingSnapshot: async (...args) => { reads.push(args); if (failure) throw new Error("internal detail");
-        return { offer, purchases, nextPurchaseId: null }; } },
+      annualBillingAccessRejected: () => offerAccessRejected,
+      loadAnnualPurchaseHistory: async (...args) => { reads.push(args); if (failure) throw new Error("internal detail");
+        return historyMissing ? null : { companyId: args[1].companyId, purchases, nextPurchaseId }; },
+      loadAnnualBillingSnapshot: async (...args) => { offerReads.push(args); if (offerFailure) throw new Error("offer unavailable");
+        return { offer: { ...offer, companyId: args[1].companyId, incomeYear: args[1].incomeYear }, purchases, nextPurchaseId }; } },
     "next/navigation": { redirect: (path) => { throw new Error(`redirect:${path}`); } },
     "../../actions": { cancelAnnualRenewal: async () => {}, cleanupAnnualAgreement: async () => ({ kind: "idle" }) },
     "../../components/billing/AnnualBillingView": { AnnualBillingView },
@@ -207,26 +211,95 @@ function pageHarness({ companies = [company], token = "session", contextError, r
     "../../lib/company-access-context": { listCompanyAccessContexts: async () => ({ companies, error: contextError, requiresAal2, requiresSignIn }) },
     "../../lib/supabase/auth-session": { getCurrentSessionAccessToken: async () => token },
   });
-  return { reads, render: async (params = {}) => renderToStaticMarkup(await BillingPage({ searchParams: Promise.resolve(params) })) };
+  return { reads, offerReads, render: async (params = {}) => renderToStaticMarkup(await BillingPage({ searchParams: Promise.resolve(params) })) };
 }
 
 test("billing page binds the selected company and admitted year without loading legacy workspace state", async () => {
   const another = { id: "60000000-0000-4000-8000-000000000001", name: "Second AS", admittedAccountingYear: 2027 };
   const harness = pageHarness({ companies: [company, another] });
   await harness.render({ companyId: another.id });
-  assert.deepEqual(JSON.parse(JSON.stringify(harness.reads[0])), ["session", { companyId: another.id, incomeYear: 2027 }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(harness.reads[0])), ["session", { companyId: another.id }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(harness.offerReads[0])), ["session", { companyId: another.id, incomeYear: 2027 }]);
   assert.doesNotMatch(pageSource, /loadWorkspaceData|primaryBillingAccount|billingPricing/);
 });
 
-test("unknown company, missing admission and malformed cursor never send an annual request", async () => {
+test("unknown company and malformed cursor never send an annual request", async () => {
   for (const [options, params] of [
-    [{}, { companyId: "unknown" }], [{ companies: [{ ...company, admittedAccountingYear: null }] }, {}],
+    [{}, { companyId: "unknown" }],
     [{}, { beforePurchaseId: "broken" }],
   ]) {
     const harness = pageHarness(options);
     await harness.render(params);
     assert.equal(harness.reads.length, 0);
   }
+});
+
+test("owner history remains available without admission, with each stored year and original action scope", async () => {
+  const previous = { ...purchase, incomeYear: 2025, termsText: "Historical 2025 purchase terms" };
+  const harness = pageHarness({ companies: [{ ...company, admittedAccountingYear: null }], purchases: [previous] });
+  const html = await harness.render({ beforePurchaseId: cursor });
+  assert.equal(harness.reads.length, 1);
+  assert.equal(harness.offerReads.length, 0);
+  assert.deepEqual(JSON.parse(JSON.stringify(harness.reads[0])), ["session", { companyId, beforePurchaseId: cursor }]);
+  assert.match(html, /Nytt selskapsår er ikke klart/);
+  assert.match(html, /selskapsåret 2025/);
+  assert.match(html, /Historical 2025 purchase terms/);
+  assert.match(html, /Stopp fornyelse/);
+  assert.match(html, new RegExp(`/archive/${companyId}/2025/download`));
+  assert.match(html, /Last ned årsarkivet for 2025/);
+  assert.doesNotMatch(html, /Ett abonnement for hele selskapsåret/);
+});
+
+test("new current offer never replaces older purchase terms or archive year", async () => {
+  const harness = pageHarness({ purchases: [{ ...purchase, incomeYear: 2025 }], nextPurchaseId: purchaseId });
+  const html = await harness.render();
+  assert.match(html, /Holding AS · selskapsåret 2026/);
+  assert.match(html, /1.?250,00\s+kr inkl\. mva\. for selskapsåret 2025/);
+  assert.match(html, new RegExp(`/archive/${companyId}/2025/download`));
+  assert.match(html, new RegExp(`/archive/${companyId}/2026/download`));
+  assert.match(html, /Eldre kjøp/);
+});
+
+test("web-first fallback is explicitly limited and never passes a company history cursor to the old snapshot", async () => {
+  const first = pageHarness({ historyMissing: true, nextPurchaseId: purchaseId });
+  const html = await first.render();
+  assert.match(html, /Bare de nyeste kjøpene for selskapsåret 2026/);
+  assert.match(html, /Stopp fornyelse/);
+  assert.doesNotMatch(html, /Eldre kjøp/);
+  assert.equal(first.offerReads[0][1].beforePurchaseId, undefined);
+  const older = pageHarness({ historyMissing: true });
+  const unavailable = await older.render({ beforePurchaseId: cursor });
+  assert.match(unavailable, /Abonnementet kan ikke vises nå/);
+  assert.match(unavailable, /Vis nyeste kjøp/);
+  assert.equal(older.offerReads.length, 0);
+  const noAdmission = pageHarness({ historyMissing: true, companies: [{ ...company, admittedAccountingYear: null }] });
+  assert.match(await noAdmission.render(), /Abonnementet kan ikke vises nå/);
+  assert.equal(noAdmission.offerReads.length, 0);
+});
+
+test("unavailable offer preserves readable history but a later access rejection hides it", async () => {
+  const available = await pageHarness({ offerFailure: true }).render();
+  assert.match(available, /Årstilbudet kan ikke vises nå/);
+  assert.match(available, /Stored purchase terms/);
+  assert.match(available, /Stopp fornyelse/);
+  const rejected = await pageHarness({ offerFailure: true, offerAccessRejected: true }).render();
+  assert.match(rejected, /Abonnementet kan ikke vises nå/);
+  assert.doesNotMatch(rejected, /Stored purchase terms|Stopp fornyelse|Last ned årsarkivet/);
+});
+
+test("an empty company-wide history without admission is an authorized empty result", async () => {
+  const harness = pageHarness({ companies: [{ ...company, admittedAccountingYear: null }], purchases: [] });
+  const html = await harness.render();
+  assert.match(html, /Ingen årskjøp registrert/);
+  assert.doesNotMatch(html, /Stopp fornyelse|Last ned årsarkivet|Betalt tilgang/);
+  assert.equal(harness.reads.length, 1);
+});
+
+test("an empty continuation page never claims the company has no purchase history", async () => {
+  const html = await pageHarness({ purchases: [] }).render({ beforePurchaseId: cursor });
+  assert.match(html, /Ingen eldre kjøp/);
+  assert.match(html, /Nyeste kjøp/);
+  assert.doesNotMatch(html, /Ingen årskjøp registrert|ikke registrert årskjøp for selskapet/);
 });
 
 test("read failure offers fresh history and MFA recovery retains cancellation context", async () => {

@@ -1,4 +1,4 @@
-import type { AnnualBillingSnapshotWire, AnnualBillingRefundSnapshotWire, AnnualPurchaseSummaryWire, AnnualPurchaseRefundSummaryWire } from "../../../features/billing";
+import type { AnnualBillingSnapshotWire, AnnualBillingRefundSnapshotWire, AnnualPurchaseSummaryWire, AnnualPurchaseRefundSummaryWire, AnnualBillingOfferWire, AnnualPurchaseHistoryWire } from "../../../features/billing";
 import { Banner, Button, EmptyState, LinkButton, StatusBadge } from "../ui";
 import { AnnualAgreementCleanupControl } from "./AnnualAgreementCleanupControl";
 import type { AnnualAgreementCleanupAction } from "../../lib/annual-billing-cleanup";
@@ -9,8 +9,12 @@ const calendarDate = (value: string) => date.format(new Date(`${value}T12:00:00Z
 const statusLabels = { pending: "Betalingen er ikke bekreftet", paid: "Betalt", failed: "Betalingen ble ikke fullført", refunded: "Refundert" };
 
 type Props = {
+  companyId: string;
   companyName: string;
-  snapshot: AnnualBillingSnapshotWire | AnnualBillingRefundSnapshotWire;
+  snapshot: AnnualBillingSnapshotWire | AnnualBillingRefundSnapshotWire | AnnualPurchaseHistoryWire;
+  offer?: AnnualBillingOfferWire;
+  offerUnavailable?: boolean;
+  limitedHistory?: boolean;
   beforePurchaseId?: string;
   operationIds: Record<string, string>;
   unconfirmedPurchaseId?: string;
@@ -88,14 +92,19 @@ function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancel
     <details><summary>Vilkårene for dette kjøpet</summary>
       <p style={{ whiteSpace: "pre-wrap" }}>{purchase.termsText}</p>
     </details>
+    <LinkButton variant="secondary" href={`/archive/${purchase.companyId}/${purchase.incomeYear}/download`}>
+      Last ned årsarkivet for {purchase.incomeYear}
+    </LinkButton>
   </article>;
 }
 
-export function AnnualBillingView({ companyName, snapshot, beforePurchaseId, operationIds, unconfirmedPurchaseId, cancelAction, cleanupAction }: Props) {
-  const { offer, purchases, nextPurchaseId } = snapshot;
-  const base = `/billing?companyId=${encodeURIComponent(offer.companyId)}`;
+export function AnnualBillingView({ companyId, companyName, snapshot, offer: currentOffer, offerUnavailable, limitedHistory,
+  beforePurchaseId, operationIds, unconfirmedPurchaseId, cancelAction, cleanupAction }: Props) {
+  const { purchases, nextPurchaseId } = snapshot;
+  const offer = "offer" in snapshot ? snapshot.offer : currentOffer;
+  const base = `/billing?companyId=${encodeURIComponent(companyId)}`;
   return <>
-    <section className="billingSection" aria-labelledby="annual-offer-title">
+    {offer ? <section className="billingSection" aria-labelledby="annual-offer-title">
       <h2 id="annual-offer-title" className="sectionTitle">{companyName} · selskapsåret {offer.incomeYear}</h2>
       <div className="planCard">
         <p className="planName">Ett abonnement for hele selskapsåret</p>
@@ -107,11 +116,20 @@ export function AnnualBillingView({ companyName, snapshot, beforePurchaseId, ope
           <p style={{ whiteSpace: "pre-wrap" }}>{offer.termsText}</p>
         </details>
       </div>
-    </section>
+    </section> : <section className="billingSection">
+      <h2 className="sectionTitle">{companyName}</h2>
+      {offerUnavailable ? <p>Årstilbudet kan ikke vises nå. Kjøpshistorikken er tilgjengelig nedenfor.</p>
+        : <EmptyState title="Nytt selskapsår er ikke klart">
+          <p>Fullfør oppsettet for å se et nytt årstilbud. Du kan fortsatt se og administrere tidligere kjøp nedenfor.</p>
+          <LinkButton href="/onboarding">Fortsett oppsettet</LinkButton>
+        </EmptyState>}
+    </section>}
     <section className="billingSection" aria-labelledby="annual-history-title">
       <h2 id="annual-history-title" className="sectionTitle">Kjøpshistorikk og fornyelse</h2>
-      {purchases.length === 0 ? <EmptyState title="Ingen kjøp for dette selskapsåret">
-        Det er ikke registrert et årskjøp for {offer.incomeYear}.
+      {limitedHistory ? <Banner variant="info">Bare de nyeste kjøpene for selskapsåret {offer?.incomeYear} vises nå.
+        Hele kjøpshistorikken er midlertidig utilgjengelig.</Banner> : null}
+      {purchases.length === 0 ? <EmptyState title={beforePurchaseId ? "Ingen eldre kjøp" : limitedHistory ? "Ingen kjøp i denne delen av historikken" : "Ingen årskjøp registrert"}>
+        {beforePurchaseId ? "Du har kommet til slutten av kjøpshistorikken." : limitedHistory ? "Tidligere selskapsår kan ikke vises nå." : "Det er ikke registrert årskjøp for selskapet."}
       </EmptyState> : <div className="annualPurchaseList">
         {purchases.map((purchase) => <Purchase key={purchase.purchaseId} purchase={purchase}
           operationId={operationIds[purchase.purchaseId]} beforePurchaseId={beforePurchaseId}
@@ -119,11 +137,12 @@ export function AnnualBillingView({ companyName, snapshot, beforePurchaseId, ope
       </div>}
       <nav className="actionRow" aria-label="Kjøpshistorikk">
         {beforePurchaseId ? <LinkButton href={base}>Nyeste kjøp</LinkButton> : null}
-        {nextPurchaseId ? <LinkButton href={`${base}&beforePurchaseId=${encodeURIComponent(nextPurchaseId)}`}>
+        {nextPurchaseId && !limitedHistory ? <LinkButton href={`${base}&beforePurchaseId=${encodeURIComponent(nextPurchaseId)}`}>
           Eldre kjøp
         </LinkButton> : null}
       </nav>
-      <LinkButton variant="secondary" href={`/archive/${offer.companyId}/${offer.incomeYear}/download`}>Last ned årsarkivet</LinkButton>
+      {offer && !purchases.some((purchase) => purchase.incomeYear === offer.incomeYear) ?
+        <LinkButton variant="secondary" href={`/archive/${companyId}/${offer.incomeYear}/download`}>Last ned årsarkivet for {offer.incomeYear}</LinkButton> : null}
     </section>
   </>;
 }

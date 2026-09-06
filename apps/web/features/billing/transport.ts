@@ -2,6 +2,7 @@ import {
   createTalliApiClient,
   TalliApiError,
   type AnnualBillingSnapshotRequest,
+  type AnnualPurchaseHistoryRequest,
   type AnnualSupportRequest,
   type AnnualAgreementCleanupCommandWire,
   type AnnualRenewalCancellationCommandWire,
@@ -32,6 +33,17 @@ function mutation(idempotencyKey: string, requestId?: string) {
 
 export function loadAnnualSupportPurchases(accessToken: string, input: AnnualSupportRequest) {
   return client(accessToken).billingReadAnnualSupportPurchases({ ...input, ...request(input.requestId) });
+}
+
+export async function loadAnnualPurchaseHistory(accessToken: string, input: AnnualPurchaseHistoryRequest) {
+  try {
+    return await client(accessToken).billingReadAnnualPurchaseHistory({ ...input, ...request(input.requestId) });
+  } catch (error) {
+    // A predecessor backend has no such route. A scoped BILLING_NOT_FOUND
+    // problem is an invalid cursor, and must remain an error.
+    if (error instanceof TalliApiError && error.status === 404 && !error.problem) return null;
+    throw error;
+  }
 }
 
 export async function loadAnnualBillingSnapshot(accessToken: string, input: AnnualBillingSnapshotRequest) {
@@ -68,6 +80,10 @@ export function annualBillingRecovery(error: unknown): "sign-in" | "step-up" | "
     return "step-up";
   }
   return "unavailable";
+}
+
+export function annualBillingAccessRejected(error: unknown): boolean {
+  return error instanceof TalliApiError && (error.status === 401 || error.status === 403);
 }
 
 export function loadBillingSnapshot(

@@ -173,14 +173,14 @@ function annualPurchase() {
     refundedMinor: 50000, recurringConsent: true, renewalCanceledAt: null };
 }
 
-function ownerSnapshotLoader(fetch) {
+function ownerSnapshotLoader(fetch, name = "loadAnnualBillingSnapshot") {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../features/billing/transport.ts", import.meta.url), "utf8"), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
   }).outputText, { exports, AbortSignal, require: (id) => id === "#backend-configuration"
     ? { backendBaseUrl: () => "https://backend.example" }
     : { TalliApiError, createTalliApiClient: (options) => createTalliApiClient({ ...options, fetch }) } });
-  return exports.loadAnnualBillingSnapshot;
+  return exports[name];
 }
 
 test("web-first owner loader falls back to predecessor history without inventing refund evidence", async () => {
@@ -215,6 +215,42 @@ test("new owner snapshot uses one strict expanded response for money and refund 
     const invalid = ownerSnapshotLoader(async () => Response.json({ ...payload, purchases: [altered] }));
     await assert.rejects(invalid("owner", { companyId, incomeYear: 2026 }), error => error instanceof TalliApiError && error.status === 502);
   }
+});
+
+test("company-wide owner history sends no income year and keeps its cursor company-scoped", async () => {
+  const row = { ...annualPurchase(), incomeYear: 2025, recordedRefundMinor: 0, remainingRefundMinor: 0,
+    refundInitiateBy: null, refundRequestCount: 0, latestRefundRequestedAt: null,
+    refundOperations: { created: 0, pending: 0, unknown: 0, confirmed: 0, failed: 0 } };
+  const payload = { companyId, purchases: [row], nextPurchaseId: row.purchaseId };
+  let captured;
+  const load = ownerSnapshotLoader(async (url, request) => { captured = { url: new URL(url), request }; return Response.json(payload); }, "loadAnnualPurchaseHistory");
+  assert.deepEqual(await load("owner", { companyId, beforePurchaseId: row.purchaseId }), payload);
+  assert.equal(captured.url.pathname, "/api/v1/billing/annual/purchases");
+  assert.equal(captured.url.searchParams.get("companyId"), companyId);
+  assert.equal(captured.url.searchParams.get("beforePurchaseId"), row.purchaseId);
+  assert.equal(captured.url.searchParams.has("incomeYear"), false);
+  assert.equal(captured.request.method, "GET");
+  assert.equal(captured.request.cache, "no-store");
+  assert.equal(captured.request.body, undefined);
+});
+
+test("missing history endpoint is distinct from an application cursor or authorization error", async () => {
+  const absent = ownerSnapshotLoader(async () => Response.json({ detail: "Not Found" }, { status: 404 }), "loadAnnualPurchaseHistory");
+  assert.equal(await absent("owner", { companyId }), null);
+  for (const status of [401, 403, 404, 503]) {
+    const problem = { type: "about:blank", title: "Unavailable", status, code: status === 404 ? "BILLING_NOT_FOUND" : "BILLING_UNAVAILABLE",
+      detail: "Unavailable", instance: "/api/v1/billing/annual/purchases", requestId: "history-fixture" };
+    const load = ownerSnapshotLoader(async () => Response.json(problem, { status, headers: { "Content-Type": "application/problem+json" } }), "loadAnnualPurchaseHistory");
+    await assert.rejects(load("owner", { companyId }), error => error instanceof TalliApiError && error.status === status);
+  }
+});
+
+test("offer access rejection follows backend authentication status rather than error text", async () => {
+  const { annualBillingAccessRejected } = await import("../features/billing/transport.ts");
+  assert.equal(annualBillingAccessRejected(new TalliApiError(401, undefined)), true);
+  assert.equal(annualBillingAccessRejected(new TalliApiError(403, undefined)), true);
+  assert.equal(annualBillingAccessRejected(new TalliApiError(503, undefined)), false);
+  assert.equal(annualBillingAccessRejected(new Error("Forbidden")), false);
 });
 
 for (const status of [401, 403, 503]) {

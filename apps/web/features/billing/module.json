@@ -9,7 +9,7 @@
   "publicEntryPoint": "@/features/billing",
   "publicImportPaths": ["@/features/billing", "apps/web/features/billing", "apps/web/features/billing/index.ts"],
   "ownedRoutes": ["/billing", "/workspace", "/operator", "/filing/aksjonaerregisteroppgaven"],
-  "apiOperations": ["billingReadAnnualRefundSnapshot", "billingReadAnnualSupportPurchases", "billingCleanupAnnualAgreement", "billingCancelAnnualRenewal", "billingCancelSubscription", "billingManagePilotEntitlement", "billingMarkUnsupported", "billingReadAnnualSnapshot", "billingReadEntitlement", "billingReadSnapshot", "billingRefundFilingPackage"],
+  "apiOperations": ["billingReadAnnualPurchaseHistory", "billingReadAnnualRefundSnapshot", "billingReadAnnualSupportPurchases", "billingCleanupAnnualAgreement", "billingCancelAnnualRenewal", "billingCancelSubscription", "billingManagePilotEntitlement", "billingMarkUnsupported", "billingReadAnnualSnapshot", "billingReadEntitlement", "billingReadSnapshot", "billingRefundFilingPackage"],
   "dependencies": [],
   "allowedImports": ["#backend-configuration", "@talli/talli-api-client"],
   "cachePolicy": { "default": "no-store", "allowed": [] },

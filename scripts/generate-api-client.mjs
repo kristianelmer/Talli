@@ -803,6 +803,7 @@ const billingSchemas = Object.fromEntries([
   "AnnualPurchaseSummaryWire",
   "AnnualPurchaseRefundSummaryWire",
   "AnnualBillingRefundSnapshotWire",
+  "AnnualPurchaseHistoryWire",
   "AnnualPurchaseStatus",
   "AnnualBillingSnapshotWire",
   "AnnualRenewalCancellationCommandWire",
@@ -1081,6 +1082,11 @@ export interface BankingConnectionListRequest extends TalliRequestOptions {
 export interface AnnualSupportRequest extends TalliRequestOptions {
   companyId: string;
   supportCaseId: string;
+  beforePurchaseId?: string;
+}
+
+export interface AnnualPurchaseHistoryRequest extends TalliRequestOptions {
+  companyId: string;
   beforePurchaseId?: string;
 }
 
@@ -2637,6 +2643,13 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       const query = new URLSearchParams({companyId: request.companyId, incomeYear: String(request.incomeYear)});
       if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
       return executeJson(baseUrl + "/api/v1/billing/annual/snapshot?" + query, "GET", request, undefined, isAnnualBillingSnapshotWire);
+    },
+    async billingReadAnnualPurchaseHistory(
+      request: AnnualPurchaseHistoryRequest,
+    ): Promise<AnnualPurchaseHistoryWire> {
+      const query = new URLSearchParams({companyId: request.companyId});
+      if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
+      return executeJson(baseUrl + "/api/v1/billing/annual/purchases?" + query, "GET", request, undefined, isAnnualPurchaseHistoryWire);
     },
     async billingReadAnnualRefundSnapshot(
       request: AnnualBillingSnapshotRequest,

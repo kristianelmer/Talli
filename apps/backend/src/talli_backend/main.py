@@ -177,7 +177,7 @@ from talli_backend.modules.company_access.public import (
 )
 from talli_backend.modules.billing.public import (
     AnnualSupportQuery, AnnualSupportCaseId, AnnualOperationStatus,
-    AnnualBillingSnapshotQuery, AnnualPurchaseId, AnnualPurchaseStatus, CancelAnnualRenewalCommand,
+    AnnualBillingSnapshotQuery, AnnualPurchaseHistoryQuery, AnnualPurchaseSummary, AnnualPurchaseId, AnnualPurchaseStatus, CancelAnnualRenewalCommand,
     AnnualBillingProvider, AnnualCheckout, AnnualCheckoutQuery, StartAnnualCheckoutCommand,
     ActivateSubscriptionCommand,
     BillingAccount,
@@ -539,6 +539,12 @@ class AnnualBillingSnapshotWire(TransportModel):
 
 class AnnualBillingRefundSnapshotWire(TransportModel):
     offer: AnnualBillingOfferWire
+    purchases: list[AnnualPurchaseRefundSummaryWire]
+    next_purchase_id: UUID | None
+
+
+class AnnualPurchaseHistoryWire(TransportModel):
+    company_id: UUID
     purchases: list[AnnualPurchaseRefundSummaryWire]
     next_purchase_id: UUID | None
 
@@ -9225,6 +9231,21 @@ def create_app(
             )
         return await billing_call(execute)
 
+    def annual_purchase_refund_wire(value: AnnualPurchaseSummary) -> AnnualPurchaseRefundSummaryWire:
+        return AnnualPurchaseRefundSummaryWire(
+            purchase_id=UUID(str(value.purchase_id)), company_id=UUID(str(value.company_id)),
+            income_year=value.income_year.value, accepted_at=value.accepted_at.value,
+            captured_at=value.captured_at.value if value.captured_at else None,
+            renewal_canceled_at=value.renewal_canceled_at.value if value.renewal_canceled_at else None,
+            latest_refund_requested_at=value.latest_refund_requested_at.value if value.latest_refund_requested_at else None,
+            refund_operations=AnnualOperationCountsWire(**{
+                name: getattr(value.refund_operations,name) for name in ("created","pending","unknown","confirmed","failed")}),
+            **{name: getattr(value,name) for name in ("status","offer_version","terms_digest","terms_text",
+                "currency","gross_minor","net_minor","vat_minor","vat_basis_points","captured_minor",
+                "refunded_minor","recurring_consent","paid_through","export_through","renewal_date",
+                "recorded_refund_minor","remaining_refund_minor","refund_initiate_by","refund_request_count")},
+        )
+
     async def annual_billing_snapshot_response(
         response: Response, company_id: UUID, income_year: int,
         before_purchase_id: UUID | None, credentials: HTTPAuthorizationCredentials | None,
@@ -9244,19 +9265,7 @@ def create_app(
                         "gross_minor","net_minor","vat_minor","vat_basis_points","paid_through","export_through",
                         "renewal_date","renewal_reminder_by","price_change_notice_by")},
                 ),
-                purchases=[AnnualPurchaseRefundSummaryWire(
-                    purchase_id=UUID(str(value.purchase_id)), company_id=UUID(str(value.company_id)),
-                    income_year=value.income_year.value, accepted_at=value.accepted_at.value,
-                    captured_at=value.captured_at.value if value.captured_at else None,
-                    renewal_canceled_at=value.renewal_canceled_at.value if value.renewal_canceled_at else None,
-                    latest_refund_requested_at=value.latest_refund_requested_at.value if value.latest_refund_requested_at else None,
-                    refund_operations=AnnualOperationCountsWire(**{
-                        name: getattr(value.refund_operations,name) for name in ("created","pending","unknown","confirmed","failed")}),
-                    **{name: getattr(value,name) for name in ("status","offer_version","terms_digest","terms_text",
-                        "currency","gross_minor","net_minor","vat_minor","vat_basis_points","captured_minor",
-                        "refunded_minor","recurring_consent","paid_through","export_through","renewal_date",
-                        "recorded_refund_minor","remaining_refund_minor","refund_initiate_by","refund_request_count")},
-                ) for value in result.purchases.purchases],
+                purchases=[annual_purchase_refund_wire(value) for value in result.purchases.purchases],
                 next_purchase_id=UUID(str(result.purchases.next_purchase_id)) if result.purchases.next_purchase_id else None,
             )
         return await billing_call(execute)
@@ -9297,6 +9306,31 @@ def create_app(
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> AnnualBillingRefundSnapshotWire:
         return await annual_billing_snapshot_response(response, company_id, income_year, before_purchase_id, credentials)
+
+    @application.get(
+        "/api/v1/billing/annual/purchases",
+        operation_id="billingReadAnnualPurchaseHistory", response_model=AnnualPurchaseHistoryWire,
+        responses={200: {"description": "Stored owner purchase history across years, independent of current admission; no offer or charge authority."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def read_annual_purchase_history(
+        response: Response,
+        company_id: UUID = Query(alias="companyId"),
+        before_purchase_id: UUID | None = Query(default=None, alias="beforePurchaseId"),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualPurchaseHistoryWire:
+        async def execute():
+            workflow = await annual_billing_workflow(credentials)
+            page = await workflow.purchase_history(AnnualPurchaseHistoryQuery(
+                CompanyId(str(company_id)), workflow.actor_id,
+                AnnualPurchaseId(str(before_purchase_id)) if before_purchase_id else None,
+            ))
+            response.headers["Cache-Control"] = "no-store"
+            return AnnualPurchaseHistoryWire(
+                company_id=company_id, purchases=[annual_purchase_refund_wire(value) for value in page.purchases],
+                next_purchase_id=UUID(str(page.next_purchase_id)) if page.next_purchase_id else None,
+            )
+        return await billing_call(execute)
 
     @application.get(
         "/api/v1/billing/annual/support/purchases",

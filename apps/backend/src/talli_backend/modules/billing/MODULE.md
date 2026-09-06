@@ -531,3 +531,18 @@ results exclude raw source, legal, merchant, intent and observation payloads.
 The existing operator page consumes this generated billing contract independently
 of profile resources, which can be absent on a billing-only support grant. GET
 requests never open cases, create receipts, authorize refunds or contact providers.
+
+## Annual owner history independent of admission
+
+`AnnualPurchaseHistoryQuery` and `AnnualBillingReadPersistence.read_purchase_history`
+return the same stored `AnnualPurchasePage` across recorded years. Current owner,
+fresh MFA, company scope, the 50-record limit and descending accepted-at/ID cursor
+remain mandatory. History never requests current eligibility/admission or returns
+an offer. The existing year-scoped read still enforces its original cursor scope.
+The private persistence projection is shared; no purchase or refund fact changes.
+`AnnualBillingWorkflow.purchase_history` checks actor/page/company/cursor bindings.
+
+The additive `/api/v1/billing/annual/purchases` GET retains both previous snapshot
+contracts. Other-year read fixtures cannot establish authority to admit or sell
+those years. Archive links point to the existing independently authorized route;
+this read does not bypass its submission/export prerequisites.
