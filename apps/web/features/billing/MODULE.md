@@ -35,3 +35,14 @@ and case returned by the explicitly opened support-case read. It lists stored
 purchases across years and preserves the case in pagination. Billing-only grants
 work without profile rows. Backend access/MFA failures remain distinct from an
 authorized empty page; the view performs no provider or refund commands.
+
+The owner view offers an explicit `billingCleanupAnnualAgreement` server action
+only for a purchase whose stored local renewal cancellation is visible. It
+retains company, purchase and history cursor through identity recovery and uses
+the original purchase-owned STOP identity. The client displays the direct scoped
+action result, never a URL/form/previous-state confirmation. Render and refresh
+perform no cleanup; disabled/unavailable, deferred, pending and unknown remain
+unconfirmed. A rejected browser-to-server action also returns a scoped unconfirmed
+state so a response lost after commit leaves an explicit same-purchase retry.
+The current owner page still selects its admitted year; this control
+does not establish complete historical exit or worker automation.

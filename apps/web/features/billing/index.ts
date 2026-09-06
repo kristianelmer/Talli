@@ -1,6 +1,7 @@
 export * from "./transport.ts";
 export type {
   AnnualBillingSnapshotWire,
+  AnnualAgreementCleanupWire,
   AnnualSupportPageWire,
   AnnualSupportPurchaseWire,
   AnnualPurchaseSummaryWire,

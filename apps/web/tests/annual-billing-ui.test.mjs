@@ -34,11 +34,12 @@ const ui = {
   EmptyState: ({ title, children }) => React.createElement("div", {}, title, children),
   StatusBadge: ({ label }) => React.createElement("span", {}, label),
 };
-const { AnnualBillingView } = compile(readFileSync(new URL("../app/components/billing/AnnualBillingView.tsx", import.meta.url), "utf8"), { "../ui": ui });
+const { AnnualAgreementCleanupControl } = compile(readFileSync(new URL("../app/components/billing/AnnualAgreementCleanupControl.tsx", import.meta.url), "utf8"), { "../ui": ui });
+const { AnnualBillingView } = compile(readFileSync(new URL("../app/components/billing/AnnualBillingView.tsx", import.meta.url), "utf8"), { "../ui": ui, "./AnnualAgreementCleanupControl": { AnnualAgreementCleanupControl } });
 function render(purchases = [purchase], extra = {}) {
   return renderToStaticMarkup(React.createElement(AnnualBillingView, { companyName: "Holding AS",
     snapshot: { offer, purchases, nextPurchaseId: null }, operationIds: { [purchaseId]: operationId },
-    cancelAction: async () => {}, ...extra }));
+    cancelAction: async () => {}, cleanupAction: async () => ({ kind: "idle" }), ...extra }));
 }
 
 test("annual history keeps stored purchase prices and terms separate from today's offer", () => {
@@ -147,7 +148,7 @@ function pageHarness({ companies = [company], token = "session", contextError, r
       loadAnnualBillingSnapshot: async (...args) => { reads.push(args); if (failure) throw new Error("internal detail");
         return { offer, purchases, nextPurchaseId: null }; } },
     "next/navigation": { redirect: (path) => { throw new Error(`redirect:${path}`); } },
-    "../../actions": { cancelAnnualRenewal: async () => {} },
+    "../../actions": { cancelAnnualRenewal: async () => {}, cleanupAnnualAgreement: async () => ({ kind: "idle" }) },
     "../../components/billing/AnnualBillingView": { AnnualBillingView },
     "../../components/ui": { ...ui, EmptyState: ({ title, children, action }) => React.createElement("section", {}, title, children, action) },
     "../../lib/copy": { ownerCopy: { billing: { hubTitle: "Abonnement" } } },
@@ -231,4 +232,21 @@ test("billing account layout leaves legal and company recovery to its authorized
     assert.match(html, /Scoped billing recovery/);
   }
   assert.doesNotMatch(accountLayoutSource, /listCompanyAccessContexts|currentAgreementAccepted|reacceptCompanyAgreement/);
+});
+
+
+for (const status of ["pending", "paid", "failed", "refunded"]) {
+  test(`persisted cancellation exposes explicit agreement recovery for ${status} purchase without recurring consent`, () => {
+    const html = render([{ ...purchase, status, recurringConsent: false, renewalCanceledAt: "2026-09-05T11:01:00Z" }]);
+    assert.match(html, /Fullfør avslutning av betalingsavtalen/);
+    assert.doesNotMatch(html, /har bekreftet at betalingsavtalen er avsluttet/);
+  });
+}
+
+test("owner recovery selection survives login without trusting a forged cleanup confirmation", async () => {
+  const params = { companyId, beforePurchaseId: cursor, cleanupPurchaseId: purchaseId, cleanupStatus: "confirmed" };
+  const unauthenticated = pageHarness({ token: null });
+  await assert.rejects(unauthenticated.render(params), (error) => error.message.includes("cleanupPurchaseId%3D" + purchaseId));
+  const html = await pageHarness().render(params);
+  assert.doesNotMatch(html, /har bekreftet at betalingsavtalen er afsluttet|har bekreftet at betalingsavtalen er avsluttet/);
 });

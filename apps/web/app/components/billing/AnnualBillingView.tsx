@@ -1,5 +1,7 @@
 import type { AnnualBillingSnapshotWire, AnnualPurchaseSummaryWire } from "../../../features/billing";
 import { Banner, Button, EmptyState, LinkButton, StatusBadge } from "../ui";
+import { AnnualAgreementCleanupControl } from "./AnnualAgreementCleanupControl";
+import type { AnnualAgreementCleanupAction } from "../../lib/annual-billing-cleanup";
 
 const money = new Intl.NumberFormat("nb-NO", { style: "currency", currency: "NOK" });
 const date = new Intl.DateTimeFormat("nb-NO", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Oslo" });
@@ -13,16 +15,18 @@ type Props = {
   operationIds: Record<string, string>;
   unconfirmedPurchaseId?: string;
   cancelAction: (formData: FormData) => Promise<void>;
+  cleanupAction: AnnualAgreementCleanupAction;
 };
 
-function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancelAction }: {
+function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancelAction, cleanupAction }: {
   purchase: AnnualPurchaseSummaryWire;
   operationId: string;
   beforePurchaseId?: string;
   unconfirmed: boolean;
   cancelAction: Props["cancelAction"];
+  cleanupAction: Props["cleanupAction"];
 }) {
-  return <article className="billingStatusCard" aria-label={`Kjøp ${date.format(new Date(purchase.acceptedAt))}`}>
+  return <article id={`annual-purchase-${purchase.purchaseId}`} className="billingStatusCard" aria-label={`Kjøp ${date.format(new Date(purchase.acceptedAt))}`}>
     <div className="billingStatusHead">
       <h3 className="billingStatusTitle">{date.format(new Date(purchase.acceptedAt))}</h3>
       <StatusBadge variant={purchase.status === "paid" ? "success" : purchase.status === "failed" ? "warning" : "info"}
@@ -50,13 +54,16 @@ function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancel
         <p className="fieldHelp">Fornyelsen stoppes med en gang. Oppsigelsen endrer ikke tilgangen du allerede har betalt for.</p>
       </form>
     </>}
+    {purchase.renewalCanceledAt ? <AnnualAgreementCleanupControl key={`${purchase.companyId}:${purchase.purchaseId}`}
+      companyId={purchase.companyId} purchaseId={purchase.purchaseId} beforePurchaseId={beforePurchaseId}
+      cleanupAction={cleanupAction} /> : null}
     <details><summary>Vilkårene for dette kjøpet</summary>
       <p style={{ whiteSpace: "pre-wrap" }}>{purchase.termsText}</p>
     </details>
   </article>;
 }
 
-export function AnnualBillingView({ companyName, snapshot, beforePurchaseId, operationIds, unconfirmedPurchaseId, cancelAction }: Props) {
+export function AnnualBillingView({ companyName, snapshot, beforePurchaseId, operationIds, unconfirmedPurchaseId, cancelAction, cleanupAction }: Props) {
   const { offer, purchases, nextPurchaseId } = snapshot;
   const base = `/billing?companyId=${encodeURIComponent(offer.companyId)}`;
   return <>
@@ -80,7 +87,7 @@ export function AnnualBillingView({ companyName, snapshot, beforePurchaseId, ope
       </EmptyState> : <div className="annualPurchaseList">
         {purchases.map((purchase) => <Purchase key={purchase.purchaseId} purchase={purchase}
           operationId={operationIds[purchase.purchaseId]} beforePurchaseId={beforePurchaseId}
-          unconfirmed={purchase.purchaseId === unconfirmedPurchaseId} cancelAction={cancelAction} />)}
+          unconfirmed={purchase.purchaseId === unconfirmedPurchaseId} cancelAction={cancelAction} cleanupAction={cleanupAction} />)}
       </div>}
       <nav className="actionRow" aria-label="Kjøpshistorikk">
         {beforePurchaseId ? <LinkButton href={base}>Nyeste kjøp</LinkButton> : null}

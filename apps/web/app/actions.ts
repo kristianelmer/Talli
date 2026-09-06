@@ -1,5 +1,6 @@
 "use server";
 
+import type { AnnualAgreementCleanupActionState } from "./lib/annual-billing-cleanup";
 import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -68,6 +69,7 @@ import {
   billingOutcomeMayBeUnknown,
   annualBillingRecovery,
   cancelAnnualRenewal as cancelAnnualRenewalThroughApi,
+  cleanupAnnualAgreement as cleanupAnnualAgreementThroughApi,
   cancelBillingSubscription as cancelBillingSubscriptionThroughApi,
   manageProductionPilotEntitlement,
   markBillingCaseUnsupported,
@@ -4265,6 +4267,39 @@ export async function revokeSupportAccess(formData: FormData) {
     redirect(`/operator?error=${encodeURIComponent(error instanceof Error ? error.message : "support_access_revoke_failed")}`);
   }
   redirect("/operator?grant=revoked");
+}
+
+export async function cleanupAnnualAgreement(
+  _previousState: AnnualAgreementCleanupActionState,
+  formData: FormData,
+): Promise<AnnualAgreementCleanupActionState> {
+  // Previous action state and submitted status/receipt fields are untrusted.
+  // The backend owns the original STOP identity for this company/purchase.
+  let companyId: string;
+  let purchaseId: string;
+  let beforePurchaseId: string | undefined;
+  try {
+    companyId = requiredFormUuid(formData, "companyId");
+    purchaseId = requiredFormUuid(formData, "purchaseId");
+    beforePurchaseId = formString(formData, "beforePurchaseId")
+      ? requiredFormUuid(formData, "beforePurchaseId") : undefined;
+  } catch {
+    return { kind: "invalid" };
+  }
+  const returnTo = ownerPathWithQuery("/billing", { companyId, beforePurchaseId, cleanupPurchaseId: purchaseId });
+  const recover = (reason: ReturnType<typeof annualBillingRecovery>) => ({
+    kind: "recovery" as const, companyId, purchaseId, reason,
+    href: reason === "unavailable" ? null : `/${reason === "step-up" ? "mfa" : "login"}?next=${encodeURIComponent(returnTo)}`,
+  });
+  try {
+    const accessToken = await getCurrentSessionAccessToken();
+    if (!accessToken) return recover("sign-in");
+    const value = await cleanupAnnualAgreementThroughApi(accessToken, { companyId, purchaseId });
+    if (value.companyId !== companyId || value.purchaseId !== purchaseId) return recover("unavailable");
+    return { kind: "result", value };
+  } catch (error) {
+    return recover(annualBillingRecovery(error));
+  }
 }
 
 export async function cancelAnnualRenewal(formData: FormData) {
