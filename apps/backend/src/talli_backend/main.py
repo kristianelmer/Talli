@@ -70,7 +70,7 @@ from talli_backend.application.billing_session import (
     BillingSessionFactory,
 )
 from talli_backend.application.billing_workflow import BillingWorkflow
-from talli_backend.application.annual_billing import AnnualBillingSessionFactory, AnnualBillingWorkflow, AnnualCheckoutWorkflow, AnnualCheckoutPrerequisiteResolver, AnnualAgreementCleanupWorkflow, AnnualSupportWorkflow, AnnualRefundRecoveryWorkflow
+from talli_backend.application.annual_billing import AnnualBillingSessionFactory, AnnualBillingWorkflow, AnnualCheckoutWorkflow, AnnualCheckoutPrerequisiteResolver, AnnualAgreementCleanupWorkflow, AnnualSupportWorkflow, AnnualRefundRecoveryWorkflow, AnnualSupportRefundRecoveryWorkflow
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceAuthenticationError,
     CorporateGovernanceSessionFactory,
@@ -185,7 +185,7 @@ from talli_backend.modules.billing.public import (
     AnnualBillingProvider, AnnualCheckout, AnnualCheckoutQuery, StartAnnualCheckoutCommand,
     AnnualCheckoutPreparationQuery,
     AnnualRefundRecoveryQuery, AnnualRefundRequestId,
-    AnnualRefundRecoveryTargetsQuery,
+    AnnualRefundRecoveryTargetsQuery, AnnualSupportRefundRecoveryQuery, AnnualSupportRefundRecoveryTargetsQuery,
     ActivateSubscriptionCommand,
     BillingAccount,
     BillingEntitlementDecision,
@@ -658,6 +658,18 @@ class AnnualRefundRecoveryTargetPageWire(TransportModel):
     income_year: int = Field(ge=2000, le=2100)
     targets: list[AnnualRefundRecoveryTargetWire]
     next_refund_request_id: UUID | None
+
+
+class AnnualSupportRefundRecoveryCommandWire(AnnualRefundRecoveryCommandWire):
+    support_case_id: UUID
+
+
+class AnnualSupportRefundRecoveryWire(AnnualRefundRecoveryWire):
+    support_case_id: UUID
+
+
+class AnnualSupportRefundRecoveryTargetPageWire(AnnualRefundRecoveryTargetPageWire):
+    support_case_id: UUID
 
 
 class AnnualRenewalCancellationCommandWire(StrictTransportModel):
@@ -9429,6 +9441,36 @@ def create_app(
         response.headers["Cache-Control"] = "no-store"
         return await billing_call(execute)
 
+    @application.post(
+        "/api/v1/billing/annual/support/refund-recoveries",
+        operation_id="billingRecoverAnnualSupportRefund", response_model=AnnualSupportRefundRecoveryWire,
+        responses={200: {"description": "Reconcile a recorded refund under an opened billing case; confirmation applies to that operation only."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def recover_annual_support_refund(
+        response: Response, command: AnnualSupportRefundRecoveryCommandWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualSupportRefundRecoveryWire:
+        async def execute():
+            workflow = AnnualSupportRefundRecoveryWorkflow(
+                await annual_billing_sessions.session(bearer_token(credentials)), annual_billing_provider,
+            )
+            result = await workflow.recover_refund(AnnualSupportRefundRecoveryQuery(
+                company_id=CompanyId(str(command.company_id)), purchase_id=AnnualPurchaseId(str(command.purchase_id)),
+                refund_request_id=AnnualRefundRequestId(str(command.refund_request_id)),
+                support_case_id=AnnualSupportCaseId(str(command.support_case_id)), actor_id=workflow.actor_id,
+            ))
+            resolution = result.resolution
+            return AnnualSupportRefundRecoveryWire(
+                company_id=UUID(str(resolution.request.company_id)),
+                purchase_id=UUID(str(resolution.request.purchase_id)),
+                refund_request_id=UUID(str(result.refund_request_id)), income_year=resolution.facts.income_year.value,
+                support_case_id=command.support_case_id, status=resolution.operation.observation.status.value,
+            )
+
+        response.headers["Cache-Control"] = "no-store"
+        return await billing_call(execute)
+
     def annual_purchase_refund_wire(value: AnnualPurchaseSummary) -> AnnualPurchaseRefundSummaryWire:
         return AnnualPurchaseRefundSummaryWire(
             purchase_id=UUID(str(value.purchase_id)), company_id=UUID(str(value.company_id)),
@@ -9558,6 +9600,40 @@ def create_app(
                 company_id=company_id, purchases=[annual_purchase_refund_wire(value) for value in page.purchases],
                 next_purchase_id=UUID(str(page.next_purchase_id)) if page.next_purchase_id else None,
             )
+        return await billing_call(execute)
+
+    @application.get(
+        "/api/v1/billing/annual/support/refund-recovery-targets",
+        operation_id="billingReadAnnualSupportRefundRecoveryTargets", response_model=AnnualSupportRefundRecoveryTargetPageWire,
+        responses={200: {"description": "Stored bound refund receipts under an explicitly opened billing case; no new refund or provider action."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def read_annual_support_refund_recovery_targets(
+        response: Response,
+        company_id: UUID = Query(alias="companyId"),
+        purchase_id: UUID = Query(alias="purchaseId"),
+        support_case_id: UUID = Query(alias="supportCaseId"),
+        before_refund_request_id: UUID | None = Query(default=None, alias="beforeRefundRequestId"),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualSupportRefundRecoveryTargetPageWire:
+        async def execute():
+            workflow = AnnualSupportWorkflow(await annual_billing_sessions.session(bearer_token(credentials)))
+            page = await workflow.refund_recovery_targets(AnnualSupportRefundRecoveryTargetsQuery(
+                company_id=CompanyId(str(company_id)), purchase_id=AnnualPurchaseId(str(purchase_id)),
+                support_case_id=AnnualSupportCaseId(str(support_case_id)), actor_id=workflow.actor_id,
+                before_refund_request_id=AnnualRefundRequestId(str(before_refund_request_id)) if before_refund_request_id else None,
+            ))
+            return AnnualSupportRefundRecoveryTargetPageWire(
+                company_id=company_id, purchase_id=purchase_id, support_case_id=support_case_id,
+                income_year=page.income_year.value,
+                targets=[AnnualRefundRecoveryTargetWire(
+                    refund_request_id=UUID(str(value.refund_request_id)),
+                    requested_at=value.requested_at.value, status=value.status,
+                ) for value in page.targets],
+                next_refund_request_id=UUID(str(page.next_refund_request_id)) if page.next_refund_request_id else None,
+            )
+
+        response.headers["Cache-Control"] = "no-store"
         return await billing_call(execute)
 
     @application.get(

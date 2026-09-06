@@ -32,6 +32,8 @@ from talli_backend.modules.billing.public import (
     AnnualSupportPage, AnnualSupportQuery, AnnualSupportReadPersistence,
     AnnualRefundRecovery, AnnualRefundRecoveryPersistence, AnnualRefundRecoveryQuery,
     annual_refund_recovery_operations,
+    AnnualSupportRefundRecoveryQuery, AnnualSupportRefundRecoveryTargetsQuery,
+    AnnualSupportRefundRecoveryPersistence, annual_support_refund_recovery_operations,
 )
 from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear
 
@@ -58,9 +60,22 @@ class AuthenticatedAnnualBillingSession(Protocol):
     @property
     def refund_recovery(self) -> AnnualRefundRecoveryPersistence: ...
 
+    @property
+    def support_refund_recovery(self) -> AnnualSupportRefundRecoveryPersistence: ...
+
 
 class AnnualBillingSessionFactory(Protocol):
     async def session(self, access_token: str) -> AuthenticatedAnnualBillingSession: ...
+
+
+def _checked_refund_recovery_targets(query, page):
+    if (page.company_id != query.company_id or page.purchase_id != query.purchase_id
+            or len(page.targets) > 50
+            or len({value.refund_request_id for value in page.targets}) != len(page.targets)
+            or (page.next_refund_request_id is not None and
+                (not page.targets or page.next_refund_request_id != page.targets[-1].refund_request_id))):
+        raise BillingError.unavailable()
+    return page
 
 
 class AnnualSupportWorkflow:
@@ -83,6 +98,14 @@ class AnnualSupportWorkflow:
                     (not page.purchases or page.next_purchase_id != page.purchases[-1].purchase_id))):
             raise BillingError.unavailable()
         return page
+
+    async def refund_recovery_targets(
+        self, query: AnnualSupportRefundRecoveryTargetsQuery,
+    ) -> AnnualRefundRecoveryTargetPage:
+        if query.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+        page = await self._reads.read_refund_recovery_targets(query)
+        return _checked_refund_recovery_targets(query, page)
 
 
 class AnnualBillingWorkflow:
@@ -138,13 +161,7 @@ class AnnualBillingWorkflow:
         if query.actor_id != self.actor_id:
             raise BillingError.forbidden()
         page = await self._session.reads.read_refund_recovery_targets(query)
-        if (page.company_id != query.company_id or page.purchase_id != query.purchase_id
-                or len(page.targets) > 50
-                or len({value.refund_request_id for value in page.targets}) != len(page.targets)
-                or (page.next_refund_request_id is not None and
-                    (not page.targets or page.next_refund_request_id != page.targets[-1].refund_request_id))):
-            raise BillingError.unavailable()
-        return page
+        return _checked_refund_recovery_targets(query, page)
 
 
 AnnualCheckoutPrerequisiteResolver = Callable[
@@ -250,6 +267,25 @@ class AnnualRefundRecoveryWorkflow:
         return self._actor_id
 
     async def recover_refund(self, query: AnnualRefundRecoveryQuery) -> AnnualRefundRecovery:
+        if query.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+        return await self._operations.recover_refund(query)
+
+
+class AnnualSupportRefundRecoveryWorkflow:
+    """Reconcile a recorded request under the current operator's explicitly opened case."""
+
+    def __init__(self, session: AuthenticatedAnnualBillingSession, provider: AnnualBillingProvider | None):
+        if session.actor_id != session.support_refund_recovery.actor_id:
+            raise BillingError.forbidden()
+        self._actor_id = session.actor_id
+        self._operations = annual_support_refund_recovery_operations(session.support_refund_recovery, provider)
+
+    @property
+    def actor_id(self) -> ActorId:
+        return self._actor_id
+
+    async def recover_refund(self, query: AnnualSupportRefundRecoveryQuery) -> AnnualRefundRecovery:
         if query.actor_id != self.actor_id:
             raise BillingError.forbidden()
         return await self._operations.recover_refund(query)

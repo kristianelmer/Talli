@@ -9,6 +9,7 @@ from talli_backend.modules.billing.public import (
     AnnualBillingProvider, AnnualProviderIntent, AnnualProviderObservation, AnnualProviderOperation,
     AnnualProviderStatus, AnnualRefundOperation, AnnualRefundPersistence, AnnualRefundResolution,
     AnnualRefundRecovery, AnnualRefundRecoveryPersistence, AnnualRefundRecoveryQuery,
+    AnnualSupportRefundRecoveryPersistence, AnnualSupportRefundRecoveryQuery,
     BillingError, BillingErrorCode, RequestAnnualRefundCommand, annual_refund_decision,
 )
 from talli_backend.shared.kernel import Timestamp
@@ -193,24 +194,65 @@ class AnnualRefundRecoveryService:
                 or resolution.request.purchase_id != query.purchase_id
                 or resolution.operation is None):
             raise BillingError.invalid()
-        _validate_resolution(resolution, Timestamp(self._now()))
-        operation = resolution.operation
-        if operation.observation is not None:
-            _validate_observation(operation, operation.observation)
-            if operation.observation.status in {AnnualProviderStatus.CONFIRMED, AnnualProviderStatus.FAILED}:
-                return recovery
-        provider = _provider_for(operation, self._provider)
-        # This composition has no claim port and never receives execute as a callback.
-        observation = await _observe_refund(resolution, provider.reconcile, self._now)
-        settled = await self._store.settle_refund_recovery(recovery, observation)
-        if (settled.refund_request_id != recovery.refund_request_id
-                or settled.resolution.operation is None
-                or replace(settled.resolution, operation=replace(
-                    settled.resolution.operation, observation=operation.observation,
-                )) != resolution):
+        return await _recover_recorded_refund(
+            recovery, self._provider, self._now, self._store.settle_refund_recovery,
+        )
+
+
+class AnnualSupportRefundRecoveryService:
+    """Reconcile original evidence without replacing its requester with the operator."""
+
+    def __init__(
+        self, persistence: AnnualSupportRefundRecoveryPersistence, provider: AnnualBillingProvider | None,
+        *, now: Callable[[], datetime] | None = None,
+    ):
+        self._store = persistence
+        self._provider = provider
+        self._now = now or (lambda: datetime.now(UTC))
+
+    async def recover_refund(self, query: AnnualSupportRefundRecoveryQuery) -> AnnualRefundRecovery:
+        if query.actor_id != self._store.actor_id:
+            raise BillingError.forbidden()
+        recovery = await self._store.load_refund_recovery(query)
+        resolution = recovery.resolution
+        if (recovery.refund_request_id != query.refund_request_id
+                or resolution.request.company_id != query.company_id
+                or resolution.request.purchase_id != query.purchase_id
+                or resolution.operation is None):
             raise BillingError.invalid()
-        _validate_resolution(settled.resolution, Timestamp(self._now()))
-        if settled.resolution.operation.observation is None:
-            raise BillingError.invalid()
-        _validate_observation(settled.resolution.operation, settled.resolution.operation.observation)
-        return settled
+        return await _recover_recorded_refund(
+            recovery, self._provider, self._now,
+            lambda original, observation: self._store.settle_refund_recovery(query, original, observation),
+        )
+
+
+async def _recover_recorded_refund(
+    recovery: AnnualRefundRecovery, provider: AnnualBillingProvider | None,
+    now: Callable[[], datetime],
+    settle: Callable[[AnnualRefundRecovery, AnnualProviderObservation], Awaitable[AnnualRefundRecovery]],
+) -> AnnualRefundRecovery:
+    """Share evidence/reconciliation rules after each caller's distinct authorization."""
+    resolution = recovery.resolution
+    _validate_resolution(resolution, Timestamp(now()))
+    operation = resolution.operation
+    if operation is None:
+        raise BillingError.invalid()
+    if operation.observation is not None:
+        _validate_observation(operation, operation.observation)
+        if operation.observation.status in {AnnualProviderStatus.CONFIRMED, AnnualProviderStatus.FAILED}:
+            return recovery
+    available = _provider_for(operation, provider)
+    # Both recovery ports lack claim/assignment; execute is never passed here.
+    observation = await _observe_refund(resolution, available.reconcile, now)
+    settled = await settle(recovery, observation)
+    if (settled.refund_request_id != recovery.refund_request_id
+            or settled.resolution.operation is None
+            or replace(settled.resolution, operation=replace(
+                settled.resolution.operation, observation=operation.observation,
+            )) != resolution):
+        raise BillingError.invalid()
+    _validate_resolution(settled.resolution, Timestamp(now()))
+    if settled.resolution.operation.observation is None:
+        raise BillingError.invalid()
+    _validate_observation(settled.resolution.operation, settled.resolution.operation.observation)
+    return settled

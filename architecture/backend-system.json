@@ -237,8 +237,15 @@
         "talli_backend.modules.billing.public"
       ],
       "routes": [
-        "/api/v1/billing/annual/support/purchases"
+        "/api/v1/billing/annual/support/purchases",
+        "/api/v1/billing/annual/support/refund-recovery-targets"
       ]
+    },
+    {
+      "name": "annual-support-refund-recovery",
+      "purpose": "Reconciles an already operation-bound refund under the current active admin's explicitly opened billing case and fresh MFA, preserving the original requester and intent; no new claim, binding or provider execution.",
+      "publicPackages": ["talli_backend.modules.billing.public"],
+      "routes": ["/api/v1/billing/annual/support/refund-recoveries"]
     },
     {
       "name": "annual-refund-recovery",
@@ -490,6 +497,12 @@
       "adapter": "talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundRecoverySession",
       "owner": "backend-system",
       "mode": "verified current owner/fresh MFA at load and settlement; immutable request and original operation reconciliation only; provider absent by default, no source or claim binding"
+    },
+    {
+      "port": "AnnualSupportRefundRecoveryPersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_refund.PostgresAnnualSupportRefundRecoverySession",
+      "owner": "backend-system",
+      "mode": "verified active admin with an explicitly opened same-company billing case and fresh MFA at load, settlement and after writes; original bound request and intent retained, provider absent by default"
     },
     {
       "port": "AnnualNotificationAuthentication",

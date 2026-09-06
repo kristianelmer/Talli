@@ -583,3 +583,28 @@ The default composition remains unavailable. Registration, credentials, runtime
 login authority, purchase resolution, worker leases and original-intent provider
 reconciliation remain separate uncompleted #192 work. No callback payload can
 confirm payment, grant entitlement or select a refund operation.
+
+
+## Operator recovery of recorded annual refunds
+
+The `annual-billing-support` workflow adds GET
+`/api/v1/billing/annual/support/refund-recovery-targets`, a bounded projection of
+operation-bound receipts across requesters in the selected purchase. The separate
+`annual-support-refund-recovery` workflow accepts POST
+`/api/v1/billing/annual/support/refund-recoveries` with only case, company, purchase
+and request IDs. Both derive the operator from the verified session and require
+an active admin, fresh MFA and an explicitly opened same-company billing case.
+
+`AnnualSupportRefundRecoveryPersistence` binds to
+`talli_backend.adapters.postgres_annual_refund.PostgresAnnualSupportRefundRecoverySession`.
+Its load and settlement retain the original requester and operation intent.
+The support query survives provider reconciliation and is reauthorized after
+lock waits and settlement writes. Exact affected-row checks and final case
+validation roll back any partial or denied settlement, including operators who
+also have owner rights. There is no owner fallback, new claim, source resolution,
+request binding or provider execution in this workflow. The provider remains
+absent by default.
+
+<!-- architecture-inventory
+{"workflows":["annual-support-refund-recovery"],"workflowPurposes":["annual-support-refund-recovery=>Reconciles an already operation-bound refund under the current active admin's explicitly opened billing case and fresh MFA, preserving the original requester and intent; no new claim, binding or provider execution."],"publicPackages":["talli_backend.modules.billing.public"],"routes":["/api/v1/billing/annual/support/refund-recoveries","/api/v1/billing/annual/support/refund-recovery-targets"],"ports":["AnnualSupportRefundRecoveryPersistence"],"adapterBindings":["AnnualSupportRefundRecoveryPersistence=>talli_backend.adapters.postgres_annual_refund.PostgresAnnualSupportRefundRecoverySession"],"adapterBindingOwners":["AnnualSupportRefundRecoveryPersistence=>backend-system"],"adapterBindingModes":["AnnualSupportRefundRecoveryPersistence=>verified active admin with an explicitly opened same-company billing case and fresh MFA at load, settlement and after writes; original bound request and intent retained, provider absent by default"]}
+-->

@@ -1,12 +1,34 @@
 """Read bounded annual evidence under an existing, explicitly opened billing case."""
 
+from talli_backend.adapters.postgres_annual_refund_targets import _read_refund_recovery_targets
 from talli_backend.adapters.postgres_annual_checkout import PostgresAnnualCheckoutSession
 from talli_backend.modules.billing.public import (
     AnnualOperationCounts, AnnualOperationStatus, AnnualPurchaseId, AnnualPurchaseStatus,
     AnnualSupportPage, AnnualSupportPurchase, AnnualSupportQuery, AnnualSupportReadPersistence,
+    AnnualSupportRefundRecoveryTargetsQuery, AnnualRefundRecoveryTargetPage,
     BillingError, billing_persistence_adapter,
 )
 from talli_backend.shared.kernel import CompanyId, IncomeYear, Timestamp
+
+
+async def _authorize_support(connection, company_id, support_case_id):
+    """Require an active admin and its explicit current billing case, even for an owner."""
+    await connection.execute(
+        "select set_config('talli.support_case_id', %s, true)", (str(support_case_id),),
+    )
+    authority = await (await connection.execute(
+        """select public.company_access_is_active_admin_v1() as admin,
+        public.company_access_has_fresh_mfa_v1() as fresh,
+        public.company_access_has_open_support_case_v1(
+            public.company_access_current_support_case_id_v1(), %s::uuid, 'billing') as allowed""",
+        (str(company_id),),
+    )).fetchone()
+    if not authority['admin']:
+        raise BillingError.forbidden()
+    if not authority['fresh']:
+        raise BillingError.step_up_required()
+    if not authority['allowed']:
+        raise BillingError.forbidden()
 
 
 @billing_persistence_adapter(AnnualSupportReadPersistence)
@@ -103,5 +125,21 @@ class PostgresAnnualSupportReadSession:
                     cleanup_status=AnnualOperationStatus(row['cleanup_status']) if row['cleanup_status'] else None,
                 ))
             return AnnualSupportPage(tuple(values), values[-1].purchase_id if len(rows)>50 else None)
+
+        return await self._database._transaction(work)
+
+    async def read_refund_recovery_targets(
+        self, query: AnnualSupportRefundRecoveryTargetsQuery,
+    ) -> AnnualRefundRecoveryTargetPage:
+        if query.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+
+        async def work(connection):
+            await _authorize_support(connection, query.company_id, query.support_case_id)
+            try:
+                return await _read_refund_recovery_targets(connection, query, requester_id=None)
+            finally:
+                # A denied or empty projection cannot retain earlier authority.
+                await _authorize_support(connection, query.company_id, query.support_case_id)
 
         return await self._database._transaction(work)

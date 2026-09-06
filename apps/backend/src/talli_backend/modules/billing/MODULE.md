@@ -1,7 +1,7 @@
 # Billing backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests","billing.annual_refund_requests","billing.annual_checkout_withdrawals"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence","AnnualSupportReadPersistence","AnnualRefundRecoveryPersistence","AnnualNotificationAuthentication","AnnualNotificationPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
+{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests","billing.annual_refund_requests","billing.annual_checkout_withdrawals"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence","AnnualSupportReadPersistence","AnnualRefundRecoveryPersistence","AnnualSupportRefundRecoveryPersistence","AnnualNotificationAuthentication","AnnualNotificationPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
 -->
 
 ## Purpose and ownership
@@ -680,3 +680,33 @@ operation types retain their existing guards. Full predecessor rollback can drop
 the billing schema while receipt bytes and the denial trigger survive. Applying
 only the ledger migration still denies new checkouts; final recutover restores
 the original receipt fence. No hosted changes or provider activation are implied.
+
+
+### Recovery under an opened support case
+
+`AnnualSupportRefundRecoveryTargetsQuery` discovers at most 50 stored bound refund
+operations for one purchase across original requesters. The earliest receipt
+represents each operation; request cursors resolve to immutable operation order,
+so a later binding cannot move an existing group. Reads require a verified active
+admin, fresh MFA and its explicitly opened same-company billing case, including
+empty results and a final authorization check after reading.
+
+`AnnualSupportRefundRecoveryQuery` selects an existing company, purchase and
+request under the operator's case. Its separate persistence port carries that
+query through settlement. `annual_support_refund_recovery_operations` creates
+`AnnualSupportRefundRecoveryOperations` through `AnnualSupportRefundRecoveryPersistence`.
+The original requester, key, source evidence and intent
+remain unchanged. It cannot claim, bind, adjudicate or execute a new refund. A
+bound request is immutable and needs only SELECT; purchase, checkout operation
+and refund operation locks serialize recovery. Authorization is checked again
+after lock waits, in the settlement transaction after provider I/O, and after
+settlement writes. Both financial updates must affect exactly one row; any denied
+write or final case revocation rolls back the entire settlement, even when the
+operator also has owner rights. Terminal
+evidence replays without provider access; unresolved evidence reconciles only
+the recorded operation. Owner recovery retains its separate owner/requester rule.
+
+The additive support GET and POST expose scoped case/company/purchase/request IDs,
+income year and operation status. They do not expose requester or provider facts,
+and one confirmed operation does not establish that all purchase liability is
+refunded. Canonical support purchase history remains the balance projection.

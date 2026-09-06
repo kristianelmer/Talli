@@ -1,7 +1,7 @@
 """Durable refund claims under current owner or explicitly opened support authority.
 
 New claims have no runtime binding and their source resolver is unavailable.
-Recovery has a separate owner-only port that cannot create or bind requests.
+Owner and case-bound support recovery have separate ports that cannot create or bind requests.
 Test resolvers are synthetic and cannot establish production authority.
 """
 
@@ -15,12 +15,14 @@ from uuid import UUID, uuid4
 from talli_backend.adapters.postgres_annual_checkout import (
     PostgresAnnualCheckoutSession, _provider_intent, _record, _timestamp,
 )
+from talli_backend.adapters.postgres_annual_support import _authorize_support
 from talli_backend.modules.billing.public import (
     AnnualProviderObservation, AnnualProviderOperation, AnnualProviderStatus,
     AnnualPurchaseId, AnnualRefundCaseId, AnnualRefundClaim, AnnualRefundFacts,
     AnnualRefundOperation, AnnualRefundPersistence, AnnualRefundReason,
     AnnualRefundResolution, AnnualRefundRequestId, AnnualRefundRecovery,
     AnnualRefundRecoveryPersistence, AnnualRefundRecoveryQuery,
+    AnnualSupportRefundRecoveryPersistence,
     BillingError, BillingErrorCode, BillingPaymentEventId,
     RequestAnnualRefundCommand, annual_refund_decision, billing_persistence_adapter,
     settle_annual_refund,
@@ -296,44 +298,23 @@ class PostgresAnnualRefundSession:
         if (result_observation.status is AnnualProviderStatus.CONFIRMED
                 and captured == checkout.offer.gross_minor and refunded == captured):
             status = 'refunded'
-        await connection.execute(
+        purchase_update = await connection.execute(
             """update billing.annual_purchases set status=%s,captured_minor=%s,refunded_minor=%s,
             updated_at=statement_timestamp() where id=%s::uuid""",
             (status, captured, refunded, str(resolution.request.purchase_id)),
         )
-        await connection.execute(
+        if purchase_update.rowcount != 1:
+            raise BillingError.unavailable()
+        operation_update = await connection.execute(
             """update billing.annual_operations set status=%s,observation=%s::jsonb,
             updated_at=statement_timestamp() where id=%s::uuid""",
             (result_observation.status.value, json.dumps(_record(result_observation)), str(result.operation.intent.operation_id)),
         )
+        if operation_update.rowcount != 1:
+            raise BillingError.unavailable()
         return result
 
-
-@billing_persistence_adapter(AnnualRefundRecoveryPersistence)
-class PostgresAnnualRefundRecoverySession:
-    """Owner-only reconciliation of selected immutable receipts, with no claim port."""
-
-    def __init__(self, checkout_session: PostgresAnnualCheckoutSession):
-        self._database = checkout_session
-        self._refunds = PostgresAnnualRefundSession(checkout_session)
-
-    @property
-    def actor_id(self):
-        return self._database.actor_id
-
-    async def _load_locked(self, connection, query):
-        # Never allow an opened support case to rescue lost owner authority.
-        await connection.execute("select set_config('talli.support_case_id', '', true)")
-        await self._database._authorize(connection, query.company_id)
-        checkout = await self._database._load(connection, query.company_id, query.purchase_id, lock=True)
-        request = await (await connection.execute(
-            """select * from billing.annual_refund_requests
-            where id=%s::uuid and company_id=%s::uuid and purchase_id=%s::uuid
-            and requested_by=%s::uuid and operation_id is not null for update""",
-            (str(query.refund_request_id), str(query.company_id), str(query.purchase_id), str(self.actor_id.subject)),
-        )).fetchone()
-        if request is None:
-            raise BillingError.not_found()
+    async def _load_bound_recovery(self, connection, checkout, request):
         case = await (await connection.execute(
             'select * from billing.annual_refund_cases where id=%s::uuid',
             (str(request['refund_case_id']),),
@@ -345,7 +326,7 @@ class PostgresAnnualRefundRecoverySession:
         if case is None or operation is None:
             raise BillingError.unavailable()
         try:
-            resolution = await self._refunds._resolution(connection, request, case, operation_row=operation)
+            resolution = await self._resolution(connection, request, case, operation_row=operation)
             bound = resolution.operation
             intent = bound.intent
             observed = checkout.observation
@@ -376,9 +357,38 @@ class PostgresAnnualRefundRecoverySession:
                 raise BillingError.unavailable()
         except (KeyError, TypeError, ValueError, AttributeError):
             raise BillingError.unavailable() from None
+        return AnnualRefundRecovery(AnnualRefundRequestId(str(request['id'])), resolution)
+
+
+@billing_persistence_adapter(AnnualRefundRecoveryPersistence)
+class PostgresAnnualRefundRecoverySession:
+    """Owner-only reconciliation of selected immutable receipts, with no claim port."""
+
+    def __init__(self, checkout_session: PostgresAnnualCheckoutSession):
+        self._database = checkout_session
+        self._refunds = PostgresAnnualRefundSession(checkout_session)
+
+    @property
+    def actor_id(self):
+        return self._database.actor_id
+
+    async def _load_locked(self, connection, query):
+        # Never allow an opened support case to rescue lost owner authority.
+        await connection.execute("select set_config('talli.support_case_id', '', true)")
+        await self._database._authorize(connection, query.company_id)
+        checkout = await self._database._load(connection, query.company_id, query.purchase_id, lock=True)
+        request = await (await connection.execute(
+            """select * from billing.annual_refund_requests
+            where id=%s::uuid and company_id=%s::uuid and purchase_id=%s::uuid
+            and requested_by=%s::uuid and operation_id is not null for update""",
+            (str(query.refund_request_id), str(query.company_id), str(query.purchase_id), str(self.actor_id.subject)),
+        )).fetchone()
+        if request is None:
+            raise BillingError.not_found()
+        recovery = await self._refunds._load_bound_recovery(connection, checkout, request)
         # A lock wait must not preserve the authority observed before it.
         await self._database._authorize(connection, query.company_id)
-        return checkout, AnnualRefundRecovery(AnnualRefundRequestId(str(request['id'])), resolution)
+        return checkout, recovery
 
     async def load_refund_recovery(self, query):
         if query.actor_id != self.actor_id:
@@ -404,5 +414,68 @@ class PostgresAnnualRefundRecoverySession:
                 connection, checkout, current.resolution, recovery.resolution, observation,
             )
             return replace(current, resolution=result)
+
+        return await self._database._transaction(work)
+
+
+@billing_persistence_adapter(AnnualSupportRefundRecoveryPersistence)
+class PostgresAnnualSupportRefundRecoverySession:
+    """Reconcile bound receipts under current support authority, retaining the requester."""
+
+    def __init__(self, checkout_session: PostgresAnnualCheckoutSession):
+        self._database = checkout_session
+        self._refunds = PostgresAnnualRefundSession(checkout_session)
+
+    @property
+    def actor_id(self):
+        return self._database.actor_id
+
+    async def _load_locked(self, connection, query):
+        await _authorize_support(connection, query.company_id, query.support_case_id)
+        try:
+            checkout = await self._database._load(connection, query.company_id, query.purchase_id, lock=True)
+            # Bound receipts are immutable. Locking this row would require the
+            # original requester's UPDATE policy and exclude a different operator.
+            request = await (await connection.execute(
+                """select * from billing.annual_refund_requests
+                where id=%s::uuid and company_id=%s::uuid and purchase_id=%s::uuid
+                and operation_id is not null""",
+                (str(query.refund_request_id), str(query.company_id), str(query.purchase_id)),
+            )).fetchone()
+            if request is None:
+                raise BillingError.not_found()
+            recovery = await self._refunds._load_bound_recovery(connection, checkout, request)
+            return checkout, recovery
+        finally:
+            # A separate statement rechecks revocation and MFA after every wait.
+            await _authorize_support(connection, query.company_id, query.support_case_id)
+
+    async def load_refund_recovery(self, query):
+        if query.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+
+        async def work(connection):
+            _, recovery = await self._load_locked(connection, query)
+            return recovery
+
+        return await self._database._transaction(work)
+
+    async def settle_refund_recovery(self, query, recovery, observation):
+        if query.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+
+        async def work(connection):
+            checkout, current = await self._load_locked(connection, query)
+            if current.refund_request_id != recovery.refund_request_id:
+                raise BillingError.invalid()
+            try:
+                result = await self._refunds._settle_locked(
+                    connection, checkout, current.resolution, recovery.resolution, observation,
+                )
+                return replace(current, resolution=result)
+            finally:
+                # RLS also permits owners. An operator who retains owner rights
+                # must still hold this case when publishing or committing support work.
+                await _authorize_support(connection, query.company_id, query.support_case_id)
 
         return await self._database._transaction(work)

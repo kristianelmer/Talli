@@ -662,6 +662,19 @@ class AnnualSupportReadPersistence(Protocol):
         """
         ...
 
+    async def read_refund_recovery_targets(
+        self, query: AnnualSupportRefundRecoveryTargetsQuery,
+    ) -> AnnualRefundRecoveryTargetPage:
+        """Discover at most 50 already bound operations in this opened billing case.
+
+        Require current active admin, same-company opened case and fresh MFA,
+        including after reads and for empty results. Group immutable operations
+        across stored requesters; choose the earliest receipt for each operation.
+        Resolve a scoped request cursor to its immutable operation ordering.
+        No case opening, new claims, source/provider calls or owner fallback.
+        """
+        ...
+
 
 @dataclass(frozen=True, slots=True)
 class StartAnnualCheckoutCommand(_BillingCommand):
@@ -947,6 +960,15 @@ class AnnualRefundRequestId(_UuidId):
 class AnnualRefundRecoveryTargetsQuery:
     company_id: CompanyId
     purchase_id: AnnualPurchaseId
+    actor_id: ActorId
+    before_refund_request_id: AnnualRefundRequestId | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualSupportRefundRecoveryTargetsQuery:
+    company_id: CompanyId
+    purchase_id: AnnualPurchaseId
+    support_case_id: AnnualSupportCaseId
     actor_id: ActorId
     before_refund_request_id: AnnualRefundRequestId | None = None
 
@@ -1255,6 +1277,15 @@ class AnnualRefundRecoveryQuery:
 
 
 @dataclass(frozen=True, slots=True)
+class AnnualSupportRefundRecoveryQuery:
+    company_id: CompanyId
+    purchase_id: AnnualPurchaseId
+    refund_request_id: AnnualRefundRequestId
+    support_case_id: AnnualSupportCaseId
+    actor_id: ActorId
+
+
+@dataclass(frozen=True, slots=True)
 class AnnualRefundRecovery:
     refund_request_id: AnnualRefundRequestId
     resolution: AnnualRefundResolution
@@ -1301,6 +1332,55 @@ def annual_refund_recovery_operations(
     from talli_backend.modules.billing.annual_refund import AnnualRefundRecoveryService
 
     return AnnualRefundRecoveryService(persistence, provider)
+
+
+class AnnualSupportRefundRecoveryPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def load_refund_recovery(
+        self, query: AnnualSupportRefundRecoveryQuery,
+    ) -> AnnualRefundRecovery:
+        """Load only an already bound receipt under current opened-case authority.
+
+        Require the verified operator, active admin, same-company explicitly
+        opened billing case and fresh MFA before and after lock waits. Lock the
+        purchase, original checkout and bound refund operation in that order.
+        The immutable bound receipt needs no request-binding UPDATE authority.
+        Validate company/purchase/year/request/case/operation and stored digest,
+        facts, fingerprint and original provider intent. Preserve the original
+        requester, source, key and correlation; never claim, bind or re-adjudicate.
+        An owner session or a case ID alone cannot substitute for support access.
+        """
+        ...
+
+    async def settle_refund_recovery(
+        self, query: AnnualSupportRefundRecoveryQuery,
+        recovery: AnnualRefundRecovery, observation: AnnualProviderObservation,
+    ) -> AnnualRefundRecovery:
+        """Reauthorize the supplied operator/case and reload original locked facts.
+
+        Never derive the current operator from the immutable original requester.
+        Recheck active admin, opened case, company and fresh MFA after waits and
+        settlement writes, even if the operator also has owner rights. Require
+        both financial updates to affect exactly one row; otherwise roll back.
+        Reject immutable envelope changes; settle only monotonic money and
+        original-operation evidence atomically. No source resolution or allocation.
+        """
+        ...
+
+
+class AnnualSupportRefundRecoveryOperations(Protocol):
+    async def recover_refund(self, query: AnnualSupportRefundRecoveryQuery) -> AnnualRefundRecovery: ...
+
+
+def annual_support_refund_recovery_operations(
+    persistence: AnnualSupportRefundRecoveryPersistence, provider: AnnualBillingProvider | None,
+) -> AnnualSupportRefundRecoveryOperations:
+    """Reconcile an existing refund under explicit current operator-case authority."""
+    from talli_backend.modules.billing.annual_refund import AnnualSupportRefundRecoveryService
+
+    return AnnualSupportRefundRecoveryService(persistence, provider)
 
 
 class AnnualRefundPersistence(Protocol):
@@ -1591,6 +1671,11 @@ class AnnualNotificationPersistence(Protocol):
 
 
 __all__ = [
+    "annual_support_refund_recovery_operations",
+    "AnnualSupportRefundRecoveryOperations",
+    "AnnualSupportRefundRecoveryPersistence",
+    "AnnualSupportRefundRecoveryTargetsQuery",
+    "AnnualSupportRefundRecoveryQuery",
     "AnnualNotificationAccount",
     "AnnualProviderNotification",
     "AnnualNotificationReceiptId",

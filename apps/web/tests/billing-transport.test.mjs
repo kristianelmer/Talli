@@ -594,3 +594,48 @@ test('withdrawal accepts only a scoped mutually exclusive receipt and never inte
     await assert.rejects(run('owner', checkoutBody(), 'key'), error => error instanceof TalliApiError && error.status === 404);
   }
 });
+
+test("generated operator refund recovery retains four scoped IDs and never creates an attempt key", async () => {
+  const body = { companyId, purchaseId: "30000000-0000-4000-8000-000000000001",
+    refundRequestId: "40000000-0000-4000-8000-000000000001", supportCaseId: "50000000-0000-4000-8000-000000000001" };
+  for (const status of ["pending", "unknown", "confirmed", "failed"]) {
+    let captured;
+    const payload = { ...body, incomeYear: 2026, status };
+    const api = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async (url, request) => {
+      captured = { url, request }; return Response.json(payload);
+    }});
+    assert.deepEqual(await api.billingRecoverAnnualSupportRefund(body, {
+      headers: { Authorization: "Bearer verified-operator" }, requestId: "support-recovery",
+    }), payload);
+    assert.equal(captured.url, "https://backend.example/api/v1/billing/annual/support/refund-recoveries");
+    assert.equal(captured.request.method, "POST");
+    assert.deepEqual(JSON.parse(captured.request.body), body);
+    assert.equal(captured.request.headers.Authorization, "Bearer verified-operator");
+    assert.equal(captured.request.headers["Idempotency-Key"], undefined);
+  }
+  for (const malformed of [
+    { ...body, incomeYear: 2026, status: "created" },
+    { ...body, incomeYear: 2026, status: "confirmed", supportCaseId: null },
+  ]) {
+    const api = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async () => Response.json(malformed) });
+    await assert.rejects(api.billingRecoverAnnualSupportRefund(body), error => error instanceof TalliApiError && error.status === 502);
+  }
+});
+
+test("generated operator target discovery preserves case and operation cursor with no mutation", async () => {
+  const input = { companyId, purchaseId: "30000000-0000-4000-8000-000000000001",
+    supportCaseId: "50000000-0000-4000-8000-000000000001", beforeRefundRequestId: "40000000-0000-4000-8000-000000000001" };
+  const payload = { companyId, purchaseId: input.purchaseId, supportCaseId: input.supportCaseId,
+    incomeYear: 2025, targets: [], nextRefundRequestId: null };
+  let captured;
+  const api = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async (url, request) => {
+    captured = { url: new URL(url), request }; return Response.json(payload);
+  }});
+  assert.deepEqual(await api.billingReadAnnualSupportRefundRecoveryTargets(input), payload);
+  assert.equal(captured.url.pathname, "/api/v1/billing/annual/support/refund-recovery-targets");
+  assert.deepEqual(Object.fromEntries(captured.url.searchParams), input);
+  assert.equal(captured.request.method, "GET");
+  assert.equal(captured.request.body, undefined);
+  const malformed = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async () => Response.json({ ...payload, supportCaseId: null }) });
+  await assert.rejects(malformed.billingReadAnnualSupportRefundRecoveryTargets(input), error => error instanceof TalliApiError && error.status === 502);
+});

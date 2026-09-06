@@ -30,7 +30,9 @@
       "AnnualSupportQuery",
       "AnnualRefundRecoveryQuery",
       "AnnualRefundRecoveryTargetsQuery",
-      "AnnualCheckoutPreparationQuery"
+      "AnnualCheckoutPreparationQuery",
+      "AnnualSupportRefundRecoveryQuery",
+      "AnnualSupportRefundRecoveryTargetsQuery"
     ],
     "events": [
       "BillingPaymentEvent"
@@ -129,7 +131,10 @@
       "AnnualCheckoutPurchaseReference",
       "annual_billing_consent_version",
       "AnnualCheckoutRequestResolution",
-      "AnnualCheckoutWithdrawalId"
+      "AnnualCheckoutWithdrawalId",
+      "AnnualSupportRefundRecoveryPersistence",
+      "AnnualSupportRefundRecoveryOperations",
+      "annual_support_refund_recovery_operations"
     ]
   },
   "owns": {
@@ -264,6 +269,15 @@
       "adapters": [
         "talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundRecoverySession"
       ]
+    },
+    {
+      "name": "AnnualSupportRefundRecoveryPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualSupportRefundRecoveryPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_refund.PostgresAnnualSupportRefundRecoverySession"
+      ]
     }
   ],
   "dependencies": [],
@@ -319,7 +333,12 @@
     "annualRefundRecovery": "apps/backend/tests/test_annual_refund_recovery_service.py",
     "annualRefundRecoveryApi": "apps/backend/tests/test_annual_refund_recovery_api.py",
     "annualRefundRecoveryDatabase": "apps/backend/tests/test_annual_refund_recovery_runtime.py",
-    "annualCheckoutWithdrawalDatabase": "apps/backend/tests/test_annual_checkout_withdrawal_runtime.py"
+    "annualCheckoutWithdrawalDatabase": "apps/backend/tests/test_annual_checkout_withdrawal_runtime.py",
+    "annualSupportRefundRecovery": "apps/backend/tests/test_annual_support_refund_recovery_service.py",
+    "annualSupportRefundRecoveryApi": "apps/backend/tests/test_annual_support_refund_recovery_api.py",
+    "annualSupportRefundTargetsApi": "apps/backend/tests/test_annual_support_refund_targets_api.py",
+    "annualSupportRefundRecoveryDatabase": "apps/backend/tests/test_annual_support_refund_recovery_runtime.py",
+    "annualSupportRefundTargetsDatabase": "apps/backend/tests/test_annual_support_refund_targets_runtime.py"
   },
   "compatibilityExceptions": []
 }
