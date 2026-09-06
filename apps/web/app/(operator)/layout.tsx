@@ -9,7 +9,7 @@ export default async function OperatorLayout({
   // Each operator page guards its protected reads and retains its recovery URL.
   const user = await getCurrentUser();
   return (
-    <div className="appShell">
+    <div className="appShell operatorShell">
       <header className="appTopbar">
         <div className="appBrand">
           <span className="appBrandMark" aria-hidden="true" />
