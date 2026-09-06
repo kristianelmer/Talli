@@ -41,7 +41,7 @@ def settle_cleanup(cleanup, observation):
 
 
 class AnnualAgreementCleanupService:
-    def __init__(self, persistence: AnnualAgreementCleanupPersistence, provider: AnnualBillingProvider):
+    def __init__(self, persistence: AnnualAgreementCleanupPersistence, provider: AnnualBillingProvider | None):
         self._store = persistence
         self._provider = provider
 
@@ -59,7 +59,7 @@ class AnnualAgreementCleanupService:
             raise BillingError.invalid()
         if cleanup.observation and cleanup.observation.status is AnnualProviderStatus.CONFIRMED:
             return cleanup
-        if (self._provider.production_enabled or not self._provider.account_reference
+        if (self._provider is None or self._provider.production_enabled or not self._provider.account_reference
                 or cleanup.provider != self._provider.provider
                 or cleanup.provider_account != self._provider.account_reference):
             raise BillingError.unavailable(BillingErrorCode.PROVIDER_DISABLED)

@@ -66,7 +66,7 @@ from talli_backend.application.billing_session import (
     BillingSessionFactory,
 )
 from talli_backend.application.billing_workflow import BillingWorkflow
-from talli_backend.application.annual_billing import AnnualBillingSessionFactory, AnnualBillingWorkflow, AnnualCheckoutWorkflow, AnnualCheckoutPrerequisiteResolver
+from talli_backend.application.annual_billing import AnnualBillingSessionFactory, AnnualBillingWorkflow, AnnualCheckoutWorkflow, AnnualCheckoutPrerequisiteResolver, AnnualAgreementCleanupWorkflow
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceAuthenticationError,
     CorporateGovernanceSessionFactory,
@@ -548,6 +548,17 @@ class AnnualCheckoutWire(TransportModel):
 class AnnualRenewalCancellationCommandWire(StrictTransportModel):
     company_id: UUID
     purchase_id: UUID
+
+
+class AnnualAgreementCleanupCommandWire(StrictTransportModel):
+    company_id: UUID
+    purchase_id: UUID
+
+
+class AnnualAgreementCleanupWire(TransportModel):
+    company_id: UUID
+    purchase_id: UUID
+    status: Literal["deferred", "pending", "unknown", "confirmed"]
 
 
 class AnnualRenewalCancellationWire(TransportModel):
@@ -3202,6 +3213,11 @@ def create_app(
         return AnnualCheckoutWorkflow(
             await annual_billing_sessions.session(bearer_token(credentials)),
             annual_billing_provider, annual_checkout_prerequisites,
+        )
+
+    async def annual_cleanup_workflow(credentials: HTTPAuthorizationCredentials | None) -> AnnualAgreementCleanupWorkflow:
+        return AnnualAgreementCleanupWorkflow(
+            await annual_billing_sessions.session(bearer_token(credentials)), annual_billing_provider,
         )
 
     billing_provider = billing_payment_provider or SimulationBillingProvider()
@@ -9128,6 +9144,29 @@ def create_app(
             ))
             response.headers["Cache-Control"] = "no-store"
             return annual_checkout_wire(result)
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/annual/agreement-cleanups",
+        operation_id="billingCleanupAnnualAgreement", response_model=AnnualAgreementCleanupWire,
+        responses={200: {"description": "Recover a recorded renewal stop; deferred or unknown is not confirmation."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def cleanup_annual_agreement(
+        response: Response, command: AnnualAgreementCleanupCommandWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualAgreementCleanupWire:
+        async def execute():
+            workflow = await annual_cleanup_workflow(credentials)
+            result = await workflow.cleanup(AnnualCheckoutQuery(
+                company_id=CompanyId(str(command.company_id)), purchase_id=AnnualPurchaseId(str(command.purchase_id)),
+                actor_id=workflow.actor_id,
+            ))
+            response.headers["Cache-Control"] = "no-store"
+            return AnnualAgreementCleanupWire(
+                company_id=command.company_id, purchase_id=command.purchase_id,
+                status="deferred" if result is None else result.observation.status.value if result.observation else "pending",
+            )
         return await billing_call(execute)
 
     @application.get(

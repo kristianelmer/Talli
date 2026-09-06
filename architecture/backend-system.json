@@ -199,6 +199,12 @@
       "routes": ["/api/v1/billing/annual/snapshot", "/api/v1/billing/annual/renewal-cancellations"]
     },
     {
+      "name": "annual-agreement-cleanup",
+      "purpose": "Authenticates the current owner to recover one receipt-bound original agreement stop; provider is absent by default, and deferred or unknown outcomes are not confirmation.",
+      "publicPackages": ["talli_backend.modules.billing.public"],
+      "routes": ["/api/v1/billing/annual/agreement-cleanups"]
+    },
+    {
       "name": "billing-and-filing-entitlement",
       "purpose": "Authenticates one verified actor for annual checkout and original-intent recovery, historical billing cleanup, pilot administration and fail-closed filing entitlement; annual provider and source readiness are unavailable by default.",
       "publicPackages": ["talli_backend.modules.billing.public"],
@@ -429,7 +435,7 @@
       "port": "AnnualAgreementCleanupPersistence",
       "adapter": "talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession",
       "owner": "backend-system",
-      "mode": "verified-owner receipt-bound original agreement cleanup; runtime and worker authority pending #192"
+      "mode": "verified-owner receipt-bound original agreement cleanup through authenticated POST; provider absent by default, worker/support authority pending #192"
     },
     {
       "port": "AnnualBillingReadPersistence",

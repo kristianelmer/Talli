@@ -97,7 +97,9 @@
       "AnnualRefundPersistence",
       "annual_refund_decision",
       "settle_annual_refund",
-      "AnnualRefundRequestId"
+      "AnnualRefundRequestId",
+      "AnnualAgreementCleanupOperations",
+      "annual_agreement_cleanup_operations"
     ]
   },
   "owns": {
@@ -240,7 +242,8 @@
     "annualCheckoutApi": "apps/backend/tests/test_annual_checkout_api.py",
     "annualRefund": "apps/backend/tests/test_annual_refund_service.py",
     "annualRefundDatabase": "apps/backend/tests/test_annual_refund_runtime.py",
-    "annualRefundCleanupDatabase": "apps/backend/tests/test_annual_refund_cleanup_runtime.py"
+    "annualRefundCleanupDatabase": "apps/backend/tests/test_annual_refund_cleanup_runtime.py",
+    "annualCleanupApi": "apps/backend/tests/test_annual_cleanup_api.py"
   },
   "compatibilityExceptions": []
 }

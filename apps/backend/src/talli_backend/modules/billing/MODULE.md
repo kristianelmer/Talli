@@ -483,3 +483,21 @@ Rollback restores the predecessor manual-receipt guard and removes the new
 resolution function while retaining all provider operations and receipts. The
 predecessor cannot initiate new refund-receipt cleanup; recutover restores its
 forward recovery. No worker or support cleanup caller is activated by this change.
+
+## Authenticated agreement cleanup recovery (#192)
+
+`AnnualAgreementCleanupOperations` and `annual_agreement_cleanup_operations`
+compose the existing receipt-bound cleanup policy through billing's public interface.
+The authenticated POST accepts only company and purchase IDs. The verified session
+uses `PostgresAnnualCleanupSession` with the same owner identity as the annual
+checkout adapter. Every call, including confirmed replay, rechecks current owner
+and fresh MFA; support-case and worker authority are not added.
+
+The original persisted cancellation/refund receipt and STOP intent control recovery;
+caller-provided receipt, provider or operation identity is rejected. The response
+contains only company, purchase and deferred/pending/unknown/confirmed status.
+Deferred or unknown does not establish provider cleanup. Default provider is absent,
+so unresolved operations fail closed with PROVIDER_DISABLED while confirmed stored
+cleanup can replay without provider I/O. Local renewal cancellation and GET history
+remain provider-free. No new readiness authority, actual Merchant Test, automatic
+worker, complete customer UI or final #192 acceptance is implied.

@@ -248,3 +248,25 @@ test("annual checkout client rejects leaked provider state and malformed purchas
       (error) => error instanceof TalliApiError && error.status === 502);
   }
 });
+
+test("annual agreement cleanup sends only purchase scope and validates unresolved outcomes", async () => {
+  const body = { companyId, purchaseId: "10000000-0000-4000-8000-000000000002" };
+  for (const status of ["deferred", "pending", "unknown", "confirmed"]) {
+    let captured;
+    const payload = { ...body, status };
+    const api = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async (url, request) => {
+      captured = { url, request }; return Response.json(payload);
+    }});
+    assert.deepEqual(await api.billingCleanupAnnualAgreement(body, { requestId: "cleanup-fixture" }), payload);
+    assert.equal(captured.url, "https://backend.example/api/v1/billing/annual/agreement-cleanups");
+    assert.equal(captured.request.method, "POST");
+    assert.equal(captured.request.cache, "no-store");
+    assert.equal(captured.request.headers["X-Request-ID"], "cleanup-fixture");
+    assert.deepEqual(JSON.parse(captured.request.body), body);
+  }
+  for (const changes of [{ status: "stopped" }, { status: null }, { providerAccount: "private" }, { receipt: "private" }]) {
+    const api = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async () =>
+      Response.json({ ...body, status: "confirmed", ...changes }) });
+    await assert.rejects(api.billingCleanupAnnualAgreement(body), error => error instanceof TalliApiError && error.status === 502);
+  }
+});

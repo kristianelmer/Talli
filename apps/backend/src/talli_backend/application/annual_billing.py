@@ -6,6 +6,9 @@ from typing import Protocol
 from talli_backend.application.annual_checkout_prerequisites import unavailable_annual_checkout_prerequisites
 
 from talli_backend.modules.billing.public import (
+    AnnualAgreementCleanup,
+    AnnualAgreementCleanupPersistence,
+    annual_agreement_cleanup_operations,
     AnnualBillingReadPersistence,
     AnnualBillingProvider,
     AnnualCheckout,
@@ -37,6 +40,9 @@ class AuthenticatedAnnualBillingSession(Protocol):
 
     @property
     def checkout(self) -> AnnualCheckoutPersistence: ...
+
+    @property
+    def cleanup(self) -> AnnualAgreementCleanupPersistence: ...
 
 
 class AnnualBillingSessionFactory(Protocol):
@@ -83,6 +89,27 @@ class AnnualBillingWorkflow:
 AnnualCheckoutPrerequisiteResolver = Callable[
     [CompanyId, IncomeYear, ActorId], Awaitable[AnnualCheckoutPrerequisites]
 ]
+
+
+class AnnualAgreementCleanupWorkflow:
+    """Use current owner authority to recover a previously recorded renewal stop."""
+
+    def __init__(
+        self, session: AuthenticatedAnnualBillingSession, provider: AnnualBillingProvider | None,
+    ):
+        if session.actor_id != session.cleanup.actor_id:
+            raise BillingError.forbidden()
+        self._session = session
+        self._operations = annual_agreement_cleanup_operations(session.cleanup, provider)
+
+    @property
+    def actor_id(self) -> ActorId:
+        return self._session.actor_id
+
+    async def cleanup(self, query: AnnualCheckoutQuery) -> AnnualAgreementCleanup | None:
+        if query.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+        return await self._operations.cleanup(query)
 
 
 class AnnualCheckoutWorkflow:

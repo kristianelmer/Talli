@@ -407,10 +407,11 @@ composition, provider cleanup and worker recovery remain pending.
 `talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession`.
 It shares the verified-owner PostgreSQL transaction boundary, locks purchase
 before operations, binds a persisted cancellation receipt, and settles only the
-original cleanup operation. Runtime/worker composition remains pending #192.
+original cleanup operation. Owner HTTP recovery is composed below; worker and
+support authority remain pending #192.
 
 <!-- architecture-inventory
-{"ports":["AnnualAgreementCleanupPersistence"],"adapterBindings":["AnnualAgreementCleanupPersistence=>talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession"],"adapterBindingOwners":["AnnualAgreementCleanupPersistence=>backend-system"],"adapterBindingModes":["AnnualAgreementCleanupPersistence=>verified-owner receipt-bound original agreement cleanup; runtime and worker authority pending #192"]}
+{"ports":["AnnualAgreementCleanupPersistence"],"adapterBindings":["AnnualAgreementCleanupPersistence=>talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession"],"adapterBindingOwners":["AnnualAgreementCleanupPersistence=>backend-system"],"adapterBindingModes":["AnnualAgreementCleanupPersistence=>verified-owner receipt-bound original agreement cleanup through authenticated POST; provider absent by default, worker/support authority pending #192"]}
 -->
 
 
@@ -477,3 +478,16 @@ verified full-refund recovery when checkout remains unknown. Current owner/fresh
 MFA and the provider's fresh charge-safety check remain mandatory. Stored original
 identity and terminal evidence are retained; no worker/support cleanup caller or
 new HTTP operation is composed.
+
+## Annual agreement cleanup HTTP recovery
+
+The `annual-agreement-cleanup` workflow composes billing's public
+`AnnualAgreementCleanupOperations` through the verified owner's session. Its POST
+accepts only company and purchase IDs and recovers the existing receipt-bound
+STOP operation. Default provider is absent; confirmed evidence replays without
+provider access, while deferred/unknown remains unresolved. Local cancellation
+and history remain provider-free. No worker or support authority is introduced.
+
+<!-- architecture-inventory
+{"workflows":["annual-agreement-cleanup"],"workflowPurposes":["annual-agreement-cleanup=>Authenticates the current owner to recover one receipt-bound original agreement stop; provider is absent by default, and deferred or unknown outcomes are not confirmation."],"publicPackages":["talli_backend.modules.billing.public"],"routes":["/api/v1/billing/annual/agreement-cleanups"]}
+-->

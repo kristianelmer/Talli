@@ -297,3 +297,19 @@ def test_database_guard_independently_rejects_misbound_refund_stop(setup, paid, 
         with pytest.raises(psycopg.errors.RaiseException, match='annual_cleanup_not_available'):
             insert(connection, 'billing.annual_operations', row)
     assert operation_count(setup) == 1
+
+
+def test_http_cleanup_recovers_refund_receipt_without_creating_manual_cancellation(setup, paid):
+    from test_annual_cleanup_runtime import HttpCleanupProvider, cleanup_http, post_cleanup
+    request, confirmed = refund(setup, paid)
+    before = asyncio.run(session(setup).load_checkout(paid.offer.company_id, paid.purchase_id))
+    provider = HttpCleanupProvider(setup, paid)
+    response = post_cleanup(cleanup_http(setup, provider), paid)
+    assert response.status_code == 200 and response.json()["status"] == "confirmed", response.text
+    result = claim(setup, paid)
+    assert result.cleanup.cancellation_id is None and result.cleanup.refund_request_id is not None
+    assert provider.executions == [result.cleanup.intent]
+    assert asyncio.run(session(setup).load_checkout(paid.offer.company_id, paid.purchase_id)) == before
+    with psycopg.connect(DATABASE_URL) as connection:
+        scoped(connection, setup[1].subject)
+        assert connection.execute('select count(*) from billing.annual_cancellation_requests where purchase_id=%s', (str(paid.purchase_id),)).fetchone()[0] == 0

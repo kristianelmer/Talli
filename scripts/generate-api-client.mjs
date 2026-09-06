@@ -278,6 +278,7 @@ const bankingOperations = {
 const billingOperations = {
   annualCheckout: ["/api/v1/billing/annual/checkouts", "post", "billingStartAnnualCheckout"],
   annualObservation: ["/api/v1/billing/annual/checkout-observations", "post", "billingObserveAnnualCheckout"],
+  annualCleanup: ["/api/v1/billing/annual/agreement-cleanups", "post", "billingCleanupAnnualAgreement"],
   annualSnapshot: ["/api/v1/billing/annual/snapshot", "get", "billingReadAnnualSnapshot"],
   annualCancellation: ["/api/v1/billing/annual/renewal-cancellations", "post", "billingCancelAnnualRenewal"],
   snapshot: ["/api/v1/billing/snapshot", "get", "billingReadSnapshot"],
@@ -791,6 +792,8 @@ const billingSchemas = Object.fromEntries([
   "AnnualCheckoutCommandWire",
   "AnnualCheckoutObservationCommandWire",
   "AnnualCheckoutWire",
+  "AnnualAgreementCleanupCommandWire",
+  "AnnualAgreementCleanupWire",
   "AnnualBillingOfferWire",
   "AnnualPurchaseSummaryWire",
   "AnnualPurchaseStatus",
@@ -2591,6 +2594,13 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       request: TalliMutationOptions,
     ): Promise<AnnualCheckoutWire> {
       return executeJson(baseUrl + "/api/v1/billing/annual/checkouts", "POST", request, body, isAnnualCheckoutWire);
+    },
+
+    async billingCleanupAnnualAgreement(
+      body: AnnualAgreementCleanupCommandWire,
+      request: TalliRequestOptions = {},
+    ): Promise<AnnualAgreementCleanupWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/agreement-cleanups", "POST", request, body, isAnnualAgreementCleanupWire);
     },
 
     async billingObserveAnnualCheckout(

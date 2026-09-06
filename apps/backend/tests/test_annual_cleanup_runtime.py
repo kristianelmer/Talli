@@ -345,3 +345,98 @@ def test_cancellation_before_capture_defers_then_claims_same_purchase_after_capt
     result = asyncio.run(store.claim_agreement_cleanup(purchase.offer.company_id, purchase.purchase_id))
     assert result.cleanup.cancellation_id == receipt.cancellation_id
     assert result.newly_claimed and counts(setup) == (1, 2)
+
+
+def cleanup_http(setup, provider=None, **options):
+    """Synthetic authentication; real restricted database ports and policy."""
+    from fastapi.testclient import TestClient
+    from talli_backend.main import create_app
+    from talli_backend.adapters.supabase_annual_billing import _AnnualBillingSession, PostgresAnnualBillingReadSession
+    from talli_backend.adapters.postgres_annual_checkout import PostgresAnnualCancellationSession
+    from talli_backend.application.billing_session import BillingAuthenticationError
+
+    class Factory:
+        async def session(self, token):
+            if token != "local-verified-owner":
+                raise BillingAuthenticationError()
+            checkout = session(setup, current=False, **options)
+            return _AnnualBillingSession(
+                PostgresAnnualBillingReadSession(checkout), PostgresAnnualCancellationSession(checkout),
+                checkout, PostgresAnnualCleanupSession(checkout),
+            )
+
+    return TestClient(create_app(annual_billing_session_factory=Factory(), annual_billing_provider=provider))
+
+
+def post_cleanup(api, purchase):
+    return api.post(
+        "/api/v1/billing/annual/agreement-cleanups", headers={"Authorization": "Bearer local-verified-owner"},
+        json={"companyId": str(purchase.offer.company_id), "purchaseId": str(purchase.purchase_id)},
+    )
+
+
+class HttpCleanupProvider:
+    production_enabled = False
+
+    def __init__(self, setup, purchase):
+        self.setup = setup
+        self.purchase = purchase
+        self.provider = purchase.provider
+        self.account_reference = purchase.provider_account
+        self.executions = []
+        self.reads = []
+        self.lose_response = False
+        self.stopped = False
+
+    async def execute(self, intent):
+        original = await cleanup_store(self.setup).claim_agreement_cleanup(intent.company_id, self.purchase.purchase_id)
+        assert not original.newly_claimed and original.cleanup.intent == intent
+        self.executions.append(intent)
+        self.stopped = True
+        if self.lose_response:
+            raise TimeoutError("synthetic transport response lost")
+        return stop_observation(original.cleanup)
+
+    async def reconcile(self, intent):
+        self.reads.append(intent)
+        original = await cleanup_store(self.setup).claim_agreement_cleanup(intent.company_id, self.purchase.purchase_id)
+        return stop_observation(original.cleanup, AnnualProviderStatus.CONFIRMED if self.stopped else AnnualProviderStatus.PENDING)
+
+
+@pytest.mark.parametrize("lost_response", [False, True])
+def test_http_cleanup_uses_committed_original_and_never_changes_purchase_money_or_access(setup, purchase, lost_response):
+    prepare(setup, purchase)
+    before = asyncio.run(session(setup).load_checkout(purchase.offer.company_id, purchase.purchase_id))
+    provider = HttpCleanupProvider(setup, purchase)
+    provider.lose_response = lost_response
+    api = cleanup_http(setup, provider)
+    first = post_cleanup(api, purchase)
+    assert first.status_code == 200, first.text
+    assert first.json()["status"] == ("unknown" if lost_response else "confirmed")
+    provider.lose_response = False
+    confirmed = post_cleanup(api, purchase)
+    assert confirmed.status_code == 200 and confirmed.json()["status"] == "confirmed"
+    assert len(provider.executions) == 1 and len(provider.reads) == int(lost_response)
+    assert post_cleanup(cleanup_http(setup), purchase).json() == confirmed.json()
+    assert counts(setup) == (1, 2)
+    assert asyncio.run(session(setup).load_checkout(purchase.offer.company_id, purchase.purchase_id)) == before
+
+
+@pytest.mark.parametrize("mode", ["pending", "no_receipt", "provider_disabled", "stale_mfa", "outsider"])
+def test_http_cleanup_preserves_database_authority_and_deferred_state(setup, purchase, mode):
+    if mode == "no_receipt":
+        asyncio.run(session(setup).settle_checkout(
+            purchase, observation(purchase, captured=149000, status=AnnualProviderStatus.CONFIRMED),
+        ))
+    elif mode != "pending":
+        prepare(setup, purchase)
+    provider = HttpCleanupProvider(setup, purchase)
+    options = {"fresh": False} if mode == "stale_mfa" else {"actor": ActorId(ActorKind.USER, UserId(str(setup[0]["outsider"])))} if mode == "outsider" else {}
+    api = cleanup_http(setup, None if mode == "provider_disabled" else provider, **options)
+    response = post_cleanup(api, purchase)
+    if mode in {"pending", "no_receipt"}:
+        assert response.status_code == 200 and response.json()["status"] == "deferred"
+    else:
+        assert response.status_code == (503 if mode == "provider_disabled" else 403), response.text
+    assert provider.executions == provider.reads == []
+    assert counts(setup) == (1, 2 if mode == "provider_disabled" else 1)

@@ -847,6 +847,19 @@ def settle_annual_agreement_cleanup(
     return settle_cleanup(cleanup, observation)
 
 
+class AnnualAgreementCleanupOperations(Protocol):
+    async def cleanup(self, query: AnnualCheckoutQuery) -> AnnualAgreementCleanup | None: ...
+
+
+def annual_agreement_cleanup_operations(
+    persistence: AnnualAgreementCleanupPersistence, provider: AnnualBillingProvider | None,
+) -> AnnualAgreementCleanupOperations:
+    """Recover the stored agreement stop; absent providers cannot execute it."""
+    from talli_backend.modules.billing.annual_cleanup import AnnualAgreementCleanupService
+
+    return AnnualAgreementCleanupService(persistence, provider)
+
+
 @dataclass(frozen=True, slots=True)
 class AnnualCheckoutClaim:
     checkout: AnnualCheckout
@@ -1175,6 +1188,8 @@ __all__ = [
     "AnnualAgreementCleanup",
     "AnnualAgreementCleanupClaim",
     "AnnualAgreementCleanupPersistence",
+    "AnnualAgreementCleanupOperations",
+    "annual_agreement_cleanup_operations",
     "settle_annual_agreement_cleanup",
     "AnnualCancellationId",
     "AnnualRefundRequestId",

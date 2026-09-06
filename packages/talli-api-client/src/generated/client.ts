@@ -2590,6 +2590,17 @@ export interface AnnualCheckoutWire {
   status: AnnualPurchaseStatus;
 }
 
+export interface AnnualAgreementCleanupCommandWire {
+  companyId: string;
+  purchaseId: string;
+}
+
+export interface AnnualAgreementCleanupWire {
+  companyId: string;
+  purchaseId: string;
+  status: "deferred" | "pending" | "unknown" | "confirmed";
+}
+
 export interface AnnualBillingOfferWire {
   companyId: string;
   currency: "NOK";
@@ -6271,6 +6282,25 @@ function isAnnualCheckoutWire(value: unknown): value is AnnualCheckoutWire {
   );
 }
 
+function isAnnualAgreementCleanupCommandWire(value: unknown): value is AnnualAgreementCleanupCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","purchaseId"]) &&
+    isUuid(value.companyId) &&
+    isUuid(value.purchaseId)
+  );
+}
+
+function isAnnualAgreementCleanupWire(value: unknown): value is AnnualAgreementCleanupWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","purchaseId","status"]) &&
+    isUuid(value.companyId) &&
+    isUuid(value.purchaseId) &&
+    (value.status === "deferred" || value.status === "pending" || value.status === "unknown" || value.status === "confirmed")
+  );
+}
+
 function isAnnualBillingOfferWire(value: unknown): value is AnnualBillingOfferWire {
   return (
     isRecord(value) &&
@@ -8250,6 +8280,13 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       request: TalliMutationOptions,
     ): Promise<AnnualCheckoutWire> {
       return executeJson(baseUrl + "/api/v1/billing/annual/checkouts", "POST", request, body, isAnnualCheckoutWire);
+    },
+
+    async billingCleanupAnnualAgreement(
+      body: AnnualAgreementCleanupCommandWire,
+      request: TalliRequestOptions = {},
+    ): Promise<AnnualAgreementCleanupWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/agreement-cleanups", "POST", request, body, isAnnualAgreementCleanupWire);
     },
 
     async billingObserveAnnualCheckout(

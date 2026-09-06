@@ -1,7 +1,7 @@
 # Billing web feature
 
 <!-- architecture-inventory
-{"apiOperations":["billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
+{"apiOperations":["billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
 -->
 
 ## Purpose and boundary
@@ -24,3 +24,8 @@ Prices, terms, status and cancellation confirmations come from persisted backend
 Legacy account creation, subscription activation and filing-package purchase
 methods and forms are retired. Workspace links to annual billing and exposes
 previous-model cleanup only when historical account records exist.
+
+`cleanupAnnualAgreement` carries authenticated company/purchase intent through
+`billingCleanupAnnualAgreement`. The generated client validates the sanitized
+cleanup status and uses POST with no cache. Provider/receipt/operation identities
+remain backend-owned. This transport does not add customer UI or worker scheduling.

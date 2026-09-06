@@ -2,6 +2,7 @@ import {
   createTalliApiClient,
   TalliApiError,
   type AnnualBillingSnapshotRequest,
+  type AnnualAgreementCleanupCommandWire,
   type AnnualRenewalCancellationCommandWire,
   type BillingAccountWire,
   type BillingCompanyWire,
@@ -38,6 +39,14 @@ export function cancelAnnualRenewal(
   operationId: string,
 ) {
   return client(accessToken).billingCancelAnnualRenewal(body, mutation(operationId));
+}
+
+export function cleanupAnnualAgreement(
+  accessToken: string,
+  body: AnnualAgreementCleanupCommandWire,
+  requestId?: string,
+) {
+  return client(accessToken).billingCleanupAnnualAgreement(body, request(requestId));
 }
 
 export function annualBillingRecovery(error: unknown): "sign-in" | "step-up" | "unavailable" {
