@@ -456,6 +456,44 @@
         "/private/tmp/talli-01a077d5-refund-browser-artifacts/refund-recovery-desktop.png": "sha256:16372128446315b358975288219ecaeb2bbb3fb15891050e219f3500f3747689"
       },
       "limits": "Recorded owner recovery UI only. Trusted readiness/incident/submission source authority, actual designated Vipps MT, automatic full-refund execution, remaining customer/operator actions, representative complete UX/export evidence and all192 acceptance remain due. Two complete immutable gates and protected-main Release/nonproduction Preview integration still required. Frozen Production unchanged;192OPEN,150unclaimed,whole165ACTIVE. Existing dependency audit findings remain unchanged."
+    },
+    "annualBillingFreshMfaRecovery": {
+      "implementationRevision": "3fb31516da2651503ecf67592f74b79b79babfb9",
+      "comparisonRevision": "44c7ac8f62f396f1ee8d95f89fff69fd1354b87d",
+      "scope": "Explicit fresh=1 intent in all annual billing step-up links, forwarded through the actual MFA page/client/inspection. AAL2 alone no longer skips a challenge requested by billing. Default onboarding behavior remains unchanged; the browser never calculates freshness or grants authority. Backend rules, provider bindings, data/API/schema and release gates are unchanged.",
+      "reproduction": "Exact preceding production app build with loopback synthetic Supabase and backend HTTP reproduced stale-but-unexpired AAL2 -> billing rejection -> explicit MFA link -> unchanged billing rejection. Zero challenge/verify/recovery POSTs, zero code fields. The same MFA URL with AAL1 reaches the existing TOTP code form. Minimized real inspector regression failed verified-versus-challenge before correction. Return URL and enrolled factor were intact.",
+      "validation": "Exact immutable 3fb31516: production Next.js build, typecheck, full billing 516 Python + 141 Node, web boundary 147 Node, focused MFA/billing 104 Node, and diff check pass. Regression follows real refund action -> MFA page -> client -> inspection with original receipt and both cursors; default onboarding, factor failure, invalid flags and nested login resume covered. No database changes or database lifecycle rerun for this UI correction.",
+      "independentReviews": {
+        "standards": "PASS 0 exact 3fb31516da2651503ecf67592f74b79b79babfb9 against 44c7ac8f62f396f1ee8d95f89fff69fd1354b87d, independent read-only review of all ten changed files.",
+        "spec": "PASS 0 exact same candidate and comparison, independent read-only bounded review; no whole-stage completion claimed."
+      },
+      "hydratedBrowser": "Runs exact built Next app and real Supabase JS/SSR cookie, login and MFA flow; only loopback auth/backend HTTP services are synthetic. Stale AAL2 now presents the code form. Rejected synthetic code stays on MFA with focused alert. Successful challenge replaces the session and returns to the same company/purchase/request/refund cursor with history and explicit recovery button; no refund POST on return. A separate lost-session -> real login form -> explicit password submit -> fresh MFA -> billing return preserves both cursors and original request, with no refund POST. That historical cursor fixture intentionally has no target after its cursor, so this proves context preservation, not historical refund completion. Mobile 390x844 has no overflow and a 44px button; screenshot visually inspected.",
+      "hydratedRefundChecks": "Actual Next server action/RSC flow tested for pending, unknown, failed and confirmed synthetic responses. Render/reload issued zero recovery POSTs; keyboard submission sent exactly companyId/purchaseId/refundRequestId once, disabled while pending and ignored another Enter. Every response refreshed canonical money; individual confirmed attempt still displayed 750 NOK remainder. Missing route404, domain404 and503 retain history and hide recovery controls; discovery401/403 hide protected history and controls. No new refund POST in those read cases.",
+      "newFindings": "Further hydrated testing independently reproduced a pre-existing backend401 with valid Supabase session -> Logg inn igjen -> dashboard escape instead of login form; unresolved for next bounded fix. Browser archive prefetch produced500 under the fixture. Read-only audit confirmed default Next Link prefetch can reach archive GET audit/attempt/receipt writes; no successful export was established. This also remains for the next bounded fix. No all-console-clean or complete browser/UX/export claim.",
+      "architecture": "Direct checker returns exactly four inherited future-scope errors (three audit_events and one filing_readiness_snapshots). Most recent full suite 49/51 belongs to 4b0a4a4d, not this candidate. Checker, baseline, ADR and route unchanged; no architecture PASS.",
+      "fixtureLifecycle": "Named browser talli-hydrated-01a077d5 closed. Owned fixture PID86960 and Next parent87974/child87977 stopped and absence verified. Earlier baseline Next parent/server also stopped before rebuild. All owned screenshots/CLI outputs moved to /private/tmp/talli-01a077d5-hydrated-browser-artifacts. No database fixture, hosted Supabase or provider call. Synthetic HTTP fixture performs no outbound calls.",
+      "artifacts": {
+        "/private/tmp/talli-01a077d5-fresh-mfa-architecture.log": "sha256:cf4bfc2167107cb1617a90e7867848c0d66e43b4d91bf8cd115b920c8ca63114",
+        "/private/tmp/talli-01a077d5-fresh-mfa-billing.log": "sha256:96c421ed34ec44a1d255b743a3a196b2aeacfe0c3b6df45a7b45a7ad93397493",
+        "/private/tmp/talli-01a077d5-fresh-mfa-boundary.log": "sha256:93ae93a3fde5441922c3fa32edae228c3fcfcdd14aa94b0c13b37df046dc2169",
+        "/private/tmp/talli-01a077d5-fresh-mfa-browser-both-cursors.log": "sha256:1c317efcb7406287244700587e2720d201a80a8bfa6142b20c72cea4b168b85c",
+        "/private/tmp/talli-01a077d5-fresh-mfa-browser-failure.log": "sha256:abcd3fac98ebdec47f480b1495af3d748b163a5f21eaa6e87cde291393ee8901",
+        "/private/tmp/talli-01a077d5-fresh-mfa-browser-login-resume.log": "sha256:e913bc5cebcd84606850c934eaa911e5f2540eb77613c403635a5f4c4e840e9b",
+        "/private/tmp/talli-01a077d5-fresh-mfa-browser-mobile.log": "sha256:52feb8d655711b156c2c1eb7e945cac20b355f243b82835d6032bb33534016ca",
+        "/private/tmp/talli-01a077d5-fresh-mfa-browser-success.log": "sha256:176e98a990491a5a10d19be5aa437f9cd91984c5b859758d4bdc1846890b6d25",
+        "/private/tmp/talli-01a077d5-fresh-mfa-build.log": "sha256:14de88dbfec6db1620514f68360a773e73682bd6d149717e2f9cde3bd7e0846d",
+        "/private/tmp/talli-01a077d5-fresh-mfa-focused.log": "sha256:218143bd2afec49460e5891f85a20403c5f31ad4bdd5fbbf52f5c93e0bac6eb1",
+        "/private/tmp/talli-01a077d5-fresh-mfa-typecheck.log": "sha256:b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+        "/private/tmp/talli-01a077d5-hydrated-browser-artifacts/images/fresh-mfa-phone-3fb31516.png": "sha256:6dcacbd951d0d2834bc1562c9e09bf9c105fa3a7e2d2e7714514335272cbb11d",
+        "/private/tmp/talli-01a077d5-hydrated-refund-discovery.log": "sha256:12d80ec131d87c191261596256de289cf0ffbb065389e6ff75a1ae519bc41d95",
+        "/private/tmp/talli-01a077d5-hydrated-refund-fixture.mjs": "sha256:d2af6c3479e2811c32255457e5a14859f389fe0d042a0d71e14c330f9dece321",
+        "/private/tmp/talli-01a077d5-hydrated-refund-statuses.log": "sha256:dcff52d2aab9054a5ccfcf2ed5b045526edbe42c5a8ae01b9ae9b4f5b839a299",
+        "/private/tmp/talli-01a077d5-hydrated-stopped.json": "sha256:a0c20e764cb984e4792044bf5bcd7754301598f1f67d7fc609e10e19ef9e9280",
+        "/private/tmp/talli-01a077d5-reauth-browser-red.log": "sha256:75379000e61ed1b491c1d5e11d09024562f7af238f2f6863c2f94db2c2027064",
+        "/private/tmp/talli-01a077d5-stale-mfa-red.log": "sha256:53336929ae842a53da20f0af0885d003d06098a5c5dcee12e3f601abc28d6fd1",
+        "/private/tmp/talli-01a077d5-stale-mfa-unit-red.log": "sha256:dc93ad39870290598b096524a04dfcec57c7a573e74f3a88c0a1c06e1a5bc327"
+      },
+      "limits": "Local synthetic transport/auth responses are not real backend authorization, Vipps Merchant Test, source authority, representative customer validation or successful export evidence. Lost browser response after backend settlement, additional stale-selection/pagination checks and the two new auth/prefetch findings remain open. Trusted readiness/incident/submission authority, actual designated Vipps MT, remaining acceptance, two complete immutable 11/11 gates and protected-main Release/nonproduction Preview integration remain mandatory. #192 OPEN; #150 unclaimed; #165 ACTIVE; Production/main frozen."
     }
   },
   "externalEvidence": {
