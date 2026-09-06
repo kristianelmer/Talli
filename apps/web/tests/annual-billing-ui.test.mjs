@@ -36,6 +36,9 @@ const ui = {
   EmptyState: ({ title, children }) => React.createElement("div", {}, title, children),
   StatusBadge: ({ label }) => React.createElement("span", {}, label),
 };
+ui.EmptyState = compile(readFileSync(new URL("../app/components/ui/EmptyState.tsx", import.meta.url), "utf8"), {
+  "./cx": { cx: (...values) => values.filter(Boolean).join(" ") },
+}).EmptyState;
 const { AnnualAgreementCleanupControl } = compile(readFileSync(new URL("../app/components/billing/AnnualAgreementCleanupControl.tsx", import.meta.url), "utf8"), { "../ui": ui });
 const { AnnualBillingView } = compile(readFileSync(new URL("../app/components/billing/AnnualBillingView.tsx", import.meta.url), "utf8"), { "../ui": ui, "./AnnualAgreementCleanupControl": { AnnualAgreementCleanupControl } });
 function render(purchases = [purchase], extra = {}) {
@@ -242,6 +245,7 @@ test("owner history remains available without admission, with each stored year a
   assert.equal(harness.offerReads.length, 0);
   assert.deepEqual(JSON.parse(JSON.stringify(harness.reads[0])), ["session", { companyId, beforePurchaseId: cursor }]);
   assert.match(html, /Nytt selskapsår er ikke klart/);
+  assert.doesNotMatch(html, /<p><p>/, "The real EmptyState must not receive a nested paragraph");
   assert.match(html, /selskapsåret 2025/);
   assert.match(html, /Historical 2025 purchase terms/);
   assert.match(html, /Stopp fornyelse/);

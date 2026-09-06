@@ -119,9 +119,8 @@ export function AnnualBillingView({ companyId, companyName, snapshot, offer: cur
     </section> : <section className="billingSection">
       <h2 className="sectionTitle">{companyName}</h2>
       {offerUnavailable ? <p>Årstilbudet kan ikke vises nå. Kjøpshistorikken er tilgjengelig nedenfor.</p>
-        : <EmptyState title="Nytt selskapsår er ikke klart">
-          <p>Fullfør oppsettet for å se et nytt årstilbud. Du kan fortsatt se og administrere tidligere kjøp nedenfor.</p>
-          <LinkButton href="/onboarding">Fortsett oppsettet</LinkButton>
+        : <EmptyState title="Nytt selskapsår er ikke klart" action={<LinkButton href="/onboarding">Fortsett oppsettet</LinkButton>}>
+          Fullfør oppsettet for å se et nytt årstilbud. Du kan fortsatt se og administrere tidligere kjøp nedenfor.
         </EmptyState>}
     </section>}
     <section className="billingSection" aria-labelledby="annual-history-title">
