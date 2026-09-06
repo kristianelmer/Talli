@@ -3,9 +3,9 @@
   "issue": "#192",
   "capability": "billing",
   "status": "implementation-in-progress",
-  "canonicalRoute": "#137 → #192 → #150",
+  "canonicalRoute": "#137 \u2192 #192 \u2192 #150",
   "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5561060339",
-  "routeCorrection": "Oversight reconciled source-handoff #137→#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
+  "routeCorrection": "Oversight reconciled source-handoff #137\u2192#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
   "baseline": {
     "revision": "ccf1dcba56a4eb05c5252b00286dba6b2b8b480e",
     "evidenceCommittedRevision": "f0ec97ccfea24268b432f5c91f43dc2c01e170b7",
@@ -564,6 +564,37 @@
         "/private/tmp/talli-01a077d5-refund-hydrated-revocation.log": "sha256:4eebf18d8e7ac149daf664fc51e68b2e9fe3c0fc784a9abbd8389245cc79bf3b"
       },
       "limits": "The two auth recovery bugs and billing archive prefetch finding are now corrected in bounded checkpoints. Synthetic auth/provider failures do not prove real Supabase configuration, successful Google authentication, actual designated Vipps MT, accounting export completeness, representative customer validation or trusted readiness/incident/submission authority. Remaining customer/operator acceptance, representative navigation checks, two complete immutable11/11 gates and protected-main Release/nonproduction Preview integration remain mandatory. Main remains unchanged and is the continuous integration target; only release/production is frozen. #192 OPEN, #150 unclaimed, #165 ACTIVE."
+    },
+    "annualBillingCapturedAmount": {
+      "implementationRevision": "099452839cf90196d273e87e4facda7cd07b4df8",
+      "comparisonRevision": "c5780228368deaad2e1aa932e525b8bf64099169",
+      "scope": "Owner purchase history now displays canonical capturedMinor separately from stored purchase price and recorded refunds. Existing pending/paid/refunded/failed status and paid-access rules remain unchanged. One presentation line; no API, backend, database, provider or entitlement changes.",
+      "reproduction": "Actual BillingPage and AnnualBillingView rendered a historical purchase with 500 NOK captured and 100 NOK refunded but omitted the captured amount. The minimized regression failed before the display change. A URL checkoutStatus=paid does not change canonical status or amounts.",
+      "validation": "Exact immutable 09945283 production Next build, typecheck, full billing 516 Python + 152 Node, focused owner billing/checkout 69 Node, and diff check pass. Regression also verifies a later authorized history read increases the displayed capture to 800 NOK while status remains pending. No database or full architecture lifecycle rerun for this presentation-only change.",
+      "independentReviews": {
+        "standards": "PASS 0 exact 099452839cf90196d273e87e4facda7cd07b4df8 against c5780228368deaad2e1aa932e525b8bf64099169.",
+        "spec": "PASS 0 exact same candidate/comparison; bounded #192 A6/A8 slice."
+      },
+      "hydratedBrowser": "Exact built app with real Next server action, Supabase JS/SSR and synthetic loopback HTTP. Historical 2025 purchase shows 500 NOK captured. Initial render sends zero observation/refund POSTs. One explicit keyboard observation sends only original company/purchase IDs and refreshes canonical capture to 800 NOK. Both states remain pending with no paid-access claim; company, historical cursor and checkout purchase context are retained. At 390x844, document and scroll width are 390px and observation button is 44px high. Screenshot visually inspected. This proves browser presentation/transport with synthetic responses, not real payment/provider settlement.",
+      "fixtureLifecycle": "Private fixture gained canonicalAfterObservation and exact checkout-observations contract support; prior fixture bytes preserved. No outbound calls. Named browser talli-capture-01a077d5 closed; Next parent 5318/child 5319 and HTTP 5262 stopped with absence verified; owned artifacts moved outside repository.",
+      "architecture": "No dependency changes. Previous direct checker at c6a653ab retained four inherited future-scope errors (three audit_events, one filing_readiness_snapshots); previous full 49/51 belongs to 4b0a4a4d. No architecture PASS claimed; checker, baseline, ADR and route unchanged.",
+      "artifacts": {
+        "/private/tmp/talli-01a077d5-capture-billing.log": "sha256:50257de11a2ca7eb7e51b2aed63acf84490c3b80f266866c4ce2afa1e9f8b460",
+        "/private/tmp/talli-01a077d5-capture-browser-artifacts/images/capture-phone-09945283.png": "sha256:3daa33b15af7ac856afb27e0ce400492f7747ea57219bac6a485803c2edf6d5e",
+        "/private/tmp/talli-01a077d5-capture-browser-close.log": "sha256:5ab152647a67098e424a3af52d3d29b6663fdb6e129f394ae669a6b3dd80fd9d",
+        "/private/tmp/talli-01a077d5-capture-browser-open.log": "sha256:bd345048d633ee24d817231c0cf396984a2a123f09f9e615999a46815444cdd2",
+        "/private/tmp/talli-01a077d5-capture-browser.log": "sha256:d4f5b204b00823e261caa882f79e9055a625760cc73bbd61a98e3001794ef2ef",
+        "/private/tmp/talli-01a077d5-capture-build.log": "sha256:d4f5c31374852bd380971e8f05dbe5921afc9ac3e0fe1ade24e9b9779d09e2e9",
+        "/private/tmp/talli-01a077d5-capture-focused.log": "sha256:144aa9ce8b44e0b51598499d85fbe3dd0789e970d3a08b224fb6ae3dbf8c5800",
+        "/private/tmp/talli-01a077d5-capture-http.log": "sha256:0a187527e17b40628a154eea062bd4bbee8bd8f43bf40d2ad7c172d10996b5ba",
+        "/private/tmp/talli-01a077d5-capture-next.log": "sha256:3fc1e73f0ea3f92b028db47d1c5735dd9c13107a9bd5fc8eb41c6929e330704f",
+        "/private/tmp/talli-01a077d5-capture-stopped.json": "sha256:994d18849bcb0dccfd2b029e9be2909eb1bca6a8033a3b113d8867416c0feed3",
+        "/private/tmp/talli-01a077d5-capture-typecheck.log": "sha256:b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+        "/private/tmp/talli-01a077d5-capture-unit-red.log": "sha256:69ddb4f6d5ef8236c8f7ec40f48f5e9c10b14bc27179c0e93bae641cac3699f2",
+        "/private/tmp/talli-01a077d5-hydrated-refund-fixture-before-observation.mjs": "sha256:2dd5c6cb994c6a729026d42177edb11321ac73cc706b1e7a59fb52ecda1d8285",
+        "/private/tmp/talli-01a077d5-hydrated-refund-fixture.mjs": "sha256:14bec122fc03a2115b6a0278b15e2dd306c369d23452003371246087c2d05483"
+      },
+      "limits": "#192 remains OPEN and incomplete, #150 unclaimed, whole #165 ACTIVE. Actual designated Vipps MT, trusted source authority, remaining owner/operator acceptance, representative validation, two complete immutable 11/11 gates and protected-main Release/nonproduction Preview integration remain mandatory. Main remains unchanged and the continuous integration target. Only release/production is frozen."
     }
   },
   "externalEvidence": {
