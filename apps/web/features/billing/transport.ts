@@ -34,8 +34,16 @@ export function loadAnnualSupportPurchases(accessToken: string, input: AnnualSup
   return client(accessToken).billingReadAnnualSupportPurchases({ ...input, ...request(input.requestId) });
 }
 
-export function loadAnnualBillingSnapshot(accessToken: string, input: AnnualBillingSnapshotRequest) {
-  return client(accessToken).billingReadAnnualSnapshot({ ...input, ...request(input.requestId) });
+export async function loadAnnualBillingSnapshot(accessToken: string, input: AnnualBillingSnapshotRequest) {
+  const api = client(accessToken);
+  try {
+    return await api.billingReadAnnualRefundSnapshot({ ...input, ...request(input.requestId) });
+  } catch (error) {
+    // During web-first deployment the predecessor backend lacks this read.
+    // Keep history available, with refund details explicitly unavailable.
+    if (!(error instanceof TalliApiError && error.status === 404)) throw error;
+    return api.billingReadAnnualSnapshot({ ...input, ...request(input.requestId) });
+  }
 }
 
 export function cancelAnnualRenewal(

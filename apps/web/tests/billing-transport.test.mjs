@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import vm from "node:vm";
+import ts from "typescript";
 
 import { createTalliApiClient, TalliApiError } from "@talli/talli-api-client";
 
@@ -163,6 +165,66 @@ test("annual snapshot uses a scoped cursor and rejects malformed stored facts", 
     Response.json({...payload,offer:{...payload.offer,grossMinor:"149000"}})});
   await assert.rejects(malformed.billingReadAnnualSnapshot(request), error => error instanceof TalliApiError && error.status===502);
 });
+
+function annualPurchase() {
+  const { renewalReminderBy, priceChangeNoticeBy, ...stored } = annualOffer();
+  return { ...stored, purchaseId: "20000000-0000-4000-8000-000000000002", status: "paid",
+    acceptedAt: "2026-09-05T12:00:00Z", capturedAt: "2026-09-05T12:00:00Z", capturedMinor: 149000,
+    refundedMinor: 50000, recurringConsent: true, renewalCanceledAt: null };
+}
+
+function ownerSnapshotLoader(fetch) {
+  const exports = {};
+  vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../features/billing/transport.ts", import.meta.url), "utf8"), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
+  }).outputText, { exports, AbortSignal, require: (id) => id === "#backend-configuration"
+    ? { backendBaseUrl: () => "https://backend.example" }
+    : { TalliApiError, createTalliApiClient: (options) => createTalliApiClient({ ...options, fetch }) } });
+  return exports.loadAnnualBillingSnapshot;
+}
+
+test("web-first owner loader falls back to predecessor history without inventing refund evidence", async () => {
+  const payload = { offer: annualOffer(), purchases: [annualPurchase()], nextPurchaseId: null };
+  const calls = [];
+  const load = ownerSnapshotLoader(async (url, request) => {
+    calls.push({ url: new URL(url), request });
+    return calls.length === 1 ? Response.json({ detail: "Not Found" }, { status: 404 }) : Response.json(payload);
+  });
+  assert.deepEqual(await load("verified-owner", { companyId, incomeYear: 2026, beforePurchaseId: payload.purchases[0].purchaseId }), payload);
+  assert.deepEqual(calls.map(({ url }) => url.pathname), ["/api/v1/billing/annual/refund-snapshot", "/api/v1/billing/annual/snapshot"]);
+  for (const { url, request } of calls) {
+    assert.equal(url.searchParams.get("companyId"), companyId);
+    assert.equal(url.searchParams.get("beforePurchaseId"), payload.purchases[0].purchaseId);
+    assert.equal(request.method, "GET");
+    assert.equal(request.cache, "no-store");
+    assert.equal(request.headers.Authorization, "Bearer verified-owner");
+    assert.equal(request.body, undefined);
+  }
+});
+
+test("new owner snapshot uses one strict expanded response for money and refund evidence", async () => {
+  const row = { ...annualPurchase(), recordedRefundMinor: 149000, remainingRefundMinor: 99000,
+    refundInitiateBy: "2026-09-12", refundRequestCount: 2, latestRefundRequestedAt: "2026-09-05T12:00:00Z",
+    refundOperations: { created: 0, pending: 0, unknown: 1, confirmed: 1, failed: 0 } };
+  const payload = { offer: annualOffer(), purchases: [row], nextPurchaseId: null };
+  let calls = 0;
+  const load = ownerSnapshotLoader(async () => { calls++; return Response.json(payload); });
+  assert.deepEqual(await load("owner", { companyId, incomeYear: 2026 }), payload);
+  assert.equal(calls, 1);
+  for (const altered of [{ ...row, recordedRefundMinor: "149000" }, { ...row, refundOperations: { ...row.refundOperations, unknown: "1" } }]) {
+    const invalid = ownerSnapshotLoader(async () => Response.json({ ...payload, purchases: [altered] }));
+    await assert.rejects(invalid("owner", { companyId, incomeYear: 2026 }), error => error instanceof TalliApiError && error.status === 502);
+  }
+});
+
+for (const status of [401, 403, 503]) {
+  test(`owner refund read ${status} never falls back to potentially stale purchase evidence`, async () => {
+    let calls = 0;
+    const load = ownerSnapshotLoader(async () => { calls++; return Response.json({}, { status }); });
+    await assert.rejects(load("owner", { companyId, incomeYear: 2026 }), error => error instanceof TalliApiError && error.status === status);
+    assert.equal(calls, 1);
+  });
+}
 
 test("annual cancellation sends only company/purchase intent and preserves its durable key", async () => {
   let captured;

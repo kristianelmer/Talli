@@ -1,4 +1,4 @@
-import type { AnnualBillingSnapshotWire, AnnualPurchaseSummaryWire } from "../../../features/billing";
+import type { AnnualBillingSnapshotWire, AnnualBillingRefundSnapshotWire, AnnualPurchaseSummaryWire, AnnualPurchaseRefundSummaryWire } from "../../../features/billing";
 import { Banner, Button, EmptyState, LinkButton, StatusBadge } from "../ui";
 import { AnnualAgreementCleanupControl } from "./AnnualAgreementCleanupControl";
 import type { AnnualAgreementCleanupAction } from "../../lib/annual-billing-cleanup";
@@ -10,7 +10,7 @@ const statusLabels = { pending: "Betalingen er ikke bekreftet", paid: "Betalt", 
 
 type Props = {
   companyName: string;
-  snapshot: AnnualBillingSnapshotWire;
+  snapshot: AnnualBillingSnapshotWire | AnnualBillingRefundSnapshotWire;
   beforePurchaseId?: string;
   operationIds: Record<string, string>;
   unconfirmedPurchaseId?: string;
@@ -18,8 +18,36 @@ type Props = {
   cleanupAction: AnnualAgreementCleanupAction;
 };
 
+function RefundEvidence({ purchase }: { purchase: AnnualPurchaseSummaryWire | AnnualPurchaseRefundSummaryWire }) {
+  if (!("refundOperations" in purchase)) return <p>Refusjonsdetaljer er ikke tilgjengelige nå.
+    {purchase.refundedMinor > 0 ? <> Registrert refundert beløp: {money.format(purchase.refundedMinor / 100)}.</> : null}
+  </p>;
+  const operations = purchase.refundOperations;
+  const hasEvidence = purchase.recordedRefundMinor > 0 || purchase.refundedMinor > 0 || purchase.refundRequestCount > 0
+    || Object.values(operations).some((count) => count > 0);
+  if (!hasEvidence) return null;
+
+  return <section aria-label="Registrert refusjon">
+    <h4>Refusjon</h4>
+    {purchase.recordedRefundMinor > 0 ? <>
+      <p>Registrert refusjonsbeløp: {money.format(purchase.recordedRefundMinor / 100)}.</p>
+      <p>Gjenstående registrert beløp: {money.format(purchase.remainingRefundMinor / 100)}.</p>
+    </> : null}
+    <p>Registrert refundert beløp: {money.format(purchase.refundedMinor / 100)}.</p>
+    {purchase.refundInitiateBy ? <p>Registrert frist for å starte refusjonen: {calendarDate(purchase.refundInitiateBy)}.</p> : null}
+    {purchase.latestRefundRequestedAt ? <p>Refusjonsforespørsel registrert {date.format(new Date(purchase.latestRefundRequestedAt))}.
+      En registrert forespørsel er ikke en bekreftelse på utbetaling.</p> : null}
+    {operations.created > 0 ? <p>Et refusjonsforsøk er klargjort, men ikke bekreftet.</p> : null}
+    {operations.pending > 0 ? <p>En refusjon venter på bekreftelse fra betalingsleverandøren.</p> : null}
+    {operations.unknown > 0 ? <Banner variant="warning">Utfallet av et refusjonsforsøk er ikke kjent.</Banner> : null}
+    {operations.failed > 0 ? <Banner variant="warning">Et refusjonsforsøk ble ikke fullført.</Banner> : null}
+    {Object.values(operations).every((count) => count === 0) ? <p>Ingen refusjonsforsøk er registrert.</p> : null}
+    <p className="fieldHelp">Fristen gjelder når Talli skal starte refusjonen. Tiden til pengene er på konto avhenger av betalingsleverandøren og banken.</p>
+  </section>;
+}
+
 function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancelAction, cleanupAction }: {
-  purchase: AnnualPurchaseSummaryWire;
+  purchase: AnnualPurchaseSummaryWire | AnnualPurchaseRefundSummaryWire;
   operationId: string;
   beforePurchaseId?: string;
   unconfirmed: boolean;
@@ -36,7 +64,7 @@ function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancel
     <p className="fieldHelp">{money.format(purchase.netMinor / 100)} ekskl. mva. + {money.format(purchase.vatMinor / 100)} mva. ({purchase.vatBasisPoints / 100} %).</p>
     {purchase.status === "paid" ? <p>Betalt tilgang til og med {calendarDate(purchase.paidThrough)}.
       Lese- og eksporttilgang til og med {calendarDate(purchase.exportThrough)}.</p> : null}
-    {purchase.refundedMinor > 0 ? <p>Refundert beløp: {money.format(purchase.refundedMinor / 100)}.</p> : null}
+    <RefundEvidence purchase={purchase} />
     {purchase.renewalCanceledAt ? <Banner variant="success">
       Fornyelsen ble stoppet {date.format(new Date(purchase.renewalCanceledAt))}.
       Oppsigelsen endrer ikke tilgangen du allerede har betalt for.

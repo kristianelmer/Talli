@@ -10,6 +10,8 @@ import pytest
 from test_annual_purchase_basis_runtime import DATABASE_URL, admitted, scoped, test_role_authority
 from test_annual_checkout_runtime import setup, session, candidate, observation, counts
 from test_annual_cancellation_runtime import purchase, cancellation, command
+from test_annual_refund_runtime import paid, command as refund_command, source, store, refund_observation
+from test_annual_support_runtime import fingerprint
 from talli_backend.adapters.supabase_annual_billing import PostgresAnnualBillingReadSession
 from talli_backend.modules.billing.public import (
     AnnualBillingSnapshotQuery,
@@ -214,3 +216,59 @@ def test_existing_foreign_company_cursor_cannot_be_used_for_owned_snapshot(setup
     with pytest.raises(BillingError) as error:
         asyncio.run(reads(setup).read_purchases(query(setup,before_purchase_id=foreign.purchase_id)))
     assert error.value.code == "BILLING_NOT_FOUND"
+
+
+@pytest.mark.parametrize("status", [AnnualProviderStatus.PENDING, AnnualProviderStatus.UNKNOWN, AnnualProviderStatus.FAILED])
+def test_owner_refund_history_keeps_unconfirmed_liability_and_never_mutates_evidence(setup, paid, status):
+    request = refund_command(setup, paid)
+    resolution = asyncio.run(store(setup, source(paid, request)).claim_refund(request)).resolution
+    asyncio.run(store(setup).settle_refund(resolution, refund_observation(resolution, status)))
+    before = fingerprint(setup)
+    value = asyncio.run(reads(setup, current=False).read_purchases(query(setup))).purchases[0]
+    assert value.recorded_refund_minor == value.remaining_refund_minor == 149000
+    assert value.refunded_minor == 0 and getattr(value.refund_operations, status.value) == 1
+    assert value.refund_request_count == 1 and value.latest_refund_requested_at is not None
+    assert value.refund_initiate_by == resolution.decision.initiate_by
+    assert fingerprint(setup) == before
+
+
+def test_owner_refund_history_never_sums_duplicate_cumulative_cases(setup, paid):
+    first = refund_command(setup, paid)
+    initial = asyncio.run(store(setup, source(paid, first)).claim_refund(first)).resolution
+    second = refund_command(setup, paid)
+    deferred = asyncio.run(store(setup, source(paid, second)).claim_refund(second)).resolution
+    assert deferred.operation is None
+    value = asyncio.run(reads(setup).read_purchases(query(setup))).purchases[0]
+    assert value.recorded_refund_minor == value.remaining_refund_minor == 149000
+    assert value.refund_request_count == 2 and value.refund_operations.created == 1
+    assert value.refund_initiate_by == min(initial.decision.initiate_by, deferred.decision.initiate_by)
+
+
+def test_owner_history_keeps_partial_settlement_distinct_from_full_recorded_refund(setup, purchase):
+    partial = asyncio.run(session(setup).settle_checkout(purchase, observation(purchase, captured=50000)))
+    request = refund_command(setup, partial)
+    original = asyncio.run(store(setup, source(partial, request)).claim_refund(request)).resolution
+    asyncio.run(session(setup).settle_checkout(partial, observation(partial, captured=149000,
+        captured_at=partial.observation.captured_at, status=AnnualProviderStatus.CONFIRMED)))
+    asyncio.run(store(setup).settle_refund(original, refund_observation(original, captured_minor=149000)))
+    value = asyncio.run(reads(setup).read_purchases(query(setup))).purchases[0]
+    assert (value.recorded_refund_minor, value.refunded_minor, value.remaining_refund_minor) == (149000, 50000, 99000)
+    assert value.refund_operations.confirmed == 1 and value.refund_initiate_by == original.decision.initiate_by
+    assert value.status.value == "paid"
+
+
+def test_owner_read_and_refund_settlement_use_one_consistent_money_and_operation_snapshot(setup, paid):
+    request = refund_command(setup, paid)
+    resolution = asyncio.run(store(setup, source(paid, request)).claim_refund(request)).resolution
+
+    async def concurrent():
+        return await asyncio.gather(reads(setup).read_purchases(query(setup)),
+            store(setup).settle_refund(resolution, refund_observation(resolution)))
+
+    page, _ = asyncio.run(concurrent())
+    value = page.purchases[0]
+    assert (value.refunded_minor, value.remaining_refund_minor, value.refund_operations.created, value.refund_operations.confirmed) in (
+        (0, 149000, 1, 0), (149000, 0, 0, 1),
+    )
+    final = asyncio.run(reads(setup).read_purchases(query(setup))).purchases[0]
+    assert final.refunded_minor == 149000 and final.remaining_refund_minor == 0 and final.refund_initiate_by is None

@@ -1,7 +1,7 @@
 # Billing web feature
 
 <!-- architecture-inventory
-{"apiOperations":["billingReadAnnualSupportPurchases","billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
+{"apiOperations":["billingReadAnnualRefundSnapshot","billingReadAnnualSupportPurchases","billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
 -->
 
 ## Purpose and boundary
@@ -46,3 +46,14 @@ unconfirmed. A rejected browser-to-server action also returns a scoped unconfirm
 state so a response lost after commit leaves an explicit same-purchase retry.
 The current owner page still selects its admitted year; this control
 does not establish complete historical exit or worker automation.
+
+Owner refund visibility uses the additive `billingReadAnnualRefundSnapshot` GET.
+It carries purchase balances and recorded refund evidence together from one
+backend snapshot. `billingReadAnnualSnapshot` retains its predecessor response
+shape for older web deployments. If the expanded read is absent (HTTP404), the
+new web falls back to that original history and explicitly marks refund details
+unavailable; other errors preserve existing sign-in/MFA/unavailable recovery.
+No default zero liability is invented. The view distinguishes recorded amounts,
+request receipts, unknown/failed/pending attempts, and the initiation target
+from provider/bank receipt timing; no late-initiation inference or new entitlement
+policy runs in the browser. This is visibility, not automatic refund execution.

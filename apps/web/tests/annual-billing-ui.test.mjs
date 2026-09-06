@@ -17,6 +17,8 @@ const offer = { companyId, incomeYear: 2026, currency: "NOK", grossMinor: 149000
 const purchase = { ...offer, purchaseId, acceptedAt: "2026-09-05T11:00:00Z", status: "paid",
   recurringConsent: true, renewalCanceledAt: null, refundedMinor: 0, grossMinor: 125000,
   netMinor: 100000, vatMinor: 25000, paidThrough: "2027-12-31", exportThrough: "2028-03-30",
+  recordedRefundMinor: 0, remainingRefundMinor: 0, refundInitiateBy: null, refundRequestCount: 0,
+  latestRefundRequestedAt: null, refundOperations: { created: 0, pending: 0, unknown: 0, confirmed: 0, failed: 0 },
   renewalDate: "2027-01-01", termsText: "Stored purchase terms <script>never execute</script>" };
 
 function compile(source, dependencies) {
@@ -69,7 +71,7 @@ for (const status of ["pending", "failed", "refunded"]) {
     const html = render([{ ...purchase, status, refundedMinor: status === "refunded" ? 125000 : 0 }]);
     assert.doesNotMatch(html, /Betalt tilgang/);
     assert.match(html, /Stopp fornyelse/);
-    if (status === "refunded") assert.match(html, /Refundert beløp/);
+    if (status === "refunded") assert.match(html, /Registrert refundert beløp/);
   });
 }
 
@@ -81,6 +83,56 @@ test("nonrecurring purchase does not suggest renewal; history retains company an
   assert.match(html, /Nyeste kjøp/);
   assert.match(html, /companyId=10000000-0000-4000-8000-000000000001&amp;beforePurchaseId=20000000/);
   assert.match(render([]), /Ingen kjøp for dette selskapsåret/);
+});
+
+test("owner refund evidence shows cumulative liability and settled money independently", () => {
+  const html = render([{ ...purchase, recordedRefundMinor: 125000, refundedMinor: 50000, remainingRefundMinor: 75000,
+    refundRequestCount: 2, latestRefundRequestedAt: "2026-09-05T12:00:00Z",
+    refundOperations: { ...purchase.refundOperations, confirmed: 1, unknown: 1 } }]);
+  assert.match(html, /Registrert refusjonsbeløp: 1.?250,00/);
+  assert.match(html, /Gjenstående registrert beløp: 750,00/);
+  assert.match(html, /Registrert refundert beløp: 500,00/);
+  assert.match(html, /Utfallet av et refusjonsforsøk er ikke kjent/);
+  assert.match(html, /En registrert forespørsel er ikke en bekreftelse på utbetaling/);
+  assert.match(html, /Betalt tilgang/);
+  assert.doesNotMatch(html, /fullt refundert|refusjonen er fullført|<form[^>]*refund/i);
+});
+
+test("a pending refund past its initiation target never implies late initiation or bank receipt", () => {
+  const html = render([{ ...purchase, recordedRefundMinor: 125000, remainingRefundMinor: 125000,
+    refundInitiateBy: "2020-01-02", refundOperations: { ...purchase.refundOperations, pending: 1 } }]);
+  assert.match(html, /Registrert frist for å starte refusjonen: 2\. januar 2020/);
+  assert.match(html, /venter på bekreftelse fra betalingsleverandøren/);
+  assert.match(html, /Tiden til pengene er på konto avhenger av betalingsleverandøren og banken/);
+  assert.doesNotMatch(html, /forsinket|overskredet|på konto innen|fullført/);
+});
+
+for (const status of ["created", "failed"]) {
+  test(`a ${status} attempt does not erase outstanding owner refund liability`, () => {
+    const html = render([{ ...purchase, recordedRefundMinor: 125000, remainingRefundMinor: 125000,
+      refundOperations: { ...purchase.refundOperations, [status]: 1 } }]);
+    assert.match(html, /Gjenstående registrert beløp: 1.?250,00/);
+    assert.match(html, status === "created" ? /klargjort, men ikke bekreftet/ : /Et refusjonsforsøk ble ikke fullført/);
+    assert.match(html, /Registrert refundert beløp: 0,00/);
+  });
+}
+
+test("a request without recorded liability is visible without inventing refund rights or settlement", () => {
+  const html = render([{ ...purchase, refundRequestCount: 1, latestRefundRequestedAt: "2026-09-05T12:00:00Z" }]);
+  assert.match(html, /Refusjonsforespørsel registrert 5\. september 2026/);
+  assert.match(html, /Ingen refusjonsforsøk er registrert/);
+  assert.doesNotMatch(html, /Registrert refusjonsbeløp:|Gjenstående registrert beløp:|ikke rett til|fullført/);
+  assert.doesNotMatch(render(), /aria-label="Registrert refusjon"/);
+});
+
+test("web-first deployment keeps predecessor history and cancellation while refund details are unavailable", () => {
+  const { recordedRefundMinor, remainingRefundMinor, refundInitiateBy, refundRequestCount,
+    latestRefundRequestedAt, refundOperations, ...previous } = purchase;
+  const html = render([{ ...previous, refundedMinor: 50000 }]);
+  assert.match(html, /Refusjonsdetaljer er ikke tilgjengelige nå/);
+  assert.match(html, /Registrert refundert beløp: 500,00/);
+  assert.match(html, /Stopp fornyelse/);
+  assert.doesNotMatch(html, /Gjenstående registrert beløp|Ingen refusjonsforsøk|ikke rett til/);
 });
 
 const actions = readFileSync(new URL("../app/actions.ts", import.meta.url), "utf8");

@@ -1,7 +1,7 @@
 """Provider-free annual HTTP projections and local cancellation receipts."""
 
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from uuid import uuid4
 
 import pytest
@@ -13,6 +13,7 @@ from talli_backend.main import create_app
 from talli_backend.modules.billing.public import (
     AnnualBillingSnapshotQuery,
     AnnualCancellationId,
+    AnnualOperationCounts,
     AnnualPurchaseId,
     AnnualPurchasePage,
     AnnualPurchaseStatus,
@@ -55,6 +56,11 @@ def summary():
         paid_through=offer.paid_through,
         export_through=offer.export_through,
         renewal_date=offer.renewal_date,
+        recorded_refund_minor=0,
+        refund_initiate_by=None,
+        refund_request_count=0,
+        latest_refund_requested_at=None,
+        refund_operations=AnnualOperationCounts(0, 0, 0, 0, 0),
     )
 
 
@@ -131,6 +137,13 @@ def snapshot(api, **changes):
     )
 
 
+def refund_snapshot(api, **changes):
+    return api.get(
+        "/api/v1/billing/annual/refund-snapshot", headers=headers(),
+        params={"companyId": str(COMPANY), "incomeYear": 2026, **changes},
+    )
+
+
 def cancel(api, **changes):
     return api.post(
         "/api/v1/billing/annual/renewal-cancellations",
@@ -167,6 +180,64 @@ def test_snapshot_exposes_exact_offer_and_stored_public_facts_without_mutation()
     assert not ({"ready", "canPurchase", "chargeAllowed"} & value.keys())
 
 
+@pytest.mark.parametrize("status", ["created", "pending", "unknown", "confirmed", "failed"])
+def test_owner_snapshot_keeps_recorded_liability_separate_from_operation_outcomes(status):
+    session = Session()
+    session.value = replace(session.value, recorded_refund_minor=149000, refunded_minor=50000,
+                            refund_initiate_by=date(2026, 9, 4), refund_request_count=2,
+                            latest_refund_requested_at=NOW,
+                            refund_operations=AnnualOperationCounts(**{
+                                key: int(key == status) for key in ("created", "pending", "unknown", "confirmed", "failed")
+                            }))
+    response = refund_snapshot(client(session))
+    assert response.status_code == 200
+    value = response.json()["purchases"][0]
+    assert (value["recordedRefundMinor"], value["refundedMinor"], value["remainingRefundMinor"]) == (149000, 50000, 99000)
+    assert value["refundInitiateBy"] == "2026-09-04" and value["refundRequestCount"] == 2
+    assert value["latestRefundRequestedAt"] == "2026-09-05T12:00:00Z"
+    assert value["refundOperations"][status] == 1
+    assert session.receipts == {} and len(session.read_calls) == 1
+
+
+def test_owner_snapshot_never_projects_negative_remaining_refund_or_adjudicates_request_only():
+    session = Session()
+    session.value = replace(session.value, recorded_refund_minor=37250, refunded_minor=50000)
+    assert refund_snapshot(client(session)).json()["purchases"][0]["remainingRefundMinor"] == 0
+    session.value = replace(summary(), refund_request_count=1, latest_refund_requested_at=NOW)
+    value = refund_snapshot(client(session)).json()["purchases"][0]
+    assert value["refundRequestCount"] == 1 and value["recordedRefundMinor"] == value["remainingRefundMinor"] == 0
+    assert value["refundInitiateBy"] is None and not any(value["refundOperations"].values())
+
+
+def test_predecessor_snapshot_shape_survives_backend_first_deployment_with_recorded_refund():
+    session = Session()
+    session.value = replace(session.value, recorded_refund_minor=149000, refund_request_count=1,
+                            latest_refund_requested_at=NOW, refund_operations=AnnualOperationCounts(0, 0, 1, 0, 0))
+    api = client(session)
+    old = snapshot(api).json()
+    new = refund_snapshot(api).json()
+    old_keys = {"purchaseId", "companyId", "incomeYear", "status", "acceptedAt", "offerVersion", "termsDigest",
+                "termsText", "currency", "grossMinor", "netMinor", "vatMinor", "vatBasisPoints", "capturedMinor",
+                "refundedMinor", "capturedAt", "recurringConsent", "renewalCanceledAt", "paidThrough", "exportThrough", "renewalDate"}
+    assert set(old["purchases"][0]) == old_keys
+    assert old["purchases"][0] == {key: value for key, value in new["purchases"][0].items() if key in old_keys}
+    assert old["offer"] == new["offer"] and old["nextPurchaseId"] == new["nextPurchaseId"]
+
+
+@pytest.mark.parametrize("mode", ["forbidden", "stale_mfa", "foreign_purchase"])
+def test_refund_snapshot_preserves_current_owner_authorization_and_scope(mode):
+    session = Session()
+    if mode == "forbidden":
+        session.authorized = False
+    elif mode == "stale_mfa":
+        session.fresh = False
+    else:
+        session.value = replace(session.value, company_id=CompanyId(str(uuid4())))
+    response = refund_snapshot(client(session))
+    assert response.status_code == (503 if mode == "foreign_purchase" else 403)
+    assert "purchases" not in response.json() and session.receipts == {}
+
+
 def test_cancel_response_is_local_immutable_receipt_and_preserves_purchase_access():
     session = Session()
     api = client(session)
@@ -196,7 +267,8 @@ def test_lost_response_replays_the_stored_cancellation_receipt():
 
 @pytest.mark.parametrize(
     "method,path",
-    [("get", "/api/v1/billing/annual/snapshot"), ("post", "/api/v1/billing/annual/renewal-cancellations")],
+    [("get", "/api/v1/billing/annual/snapshot"), ("get", "/api/v1/billing/annual/refund-snapshot"),
+     ("post", "/api/v1/billing/annual/renewal-cancellations")],
 )
 @pytest.mark.parametrize("token", [None, "unverified"])
 def test_missing_or_invalid_authentication_never_reads_or_mutates(method, path, token):

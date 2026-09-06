@@ -19,6 +19,7 @@ from talli_backend.modules.billing.public import (
     AnnualBillingSnapshotQuery,
     AnnualCancellationPersistence,
     AnnualCheckoutPersistence,
+    AnnualOperationCounts,
     AnnualPurchaseId,
     AnnualPurchasePage,
     AnnualPurchaseStatus,
@@ -59,12 +60,36 @@ class PostgresAnnualBillingReadSession:
             # acceptance/legal JSON, merchant identity or provider-operation data.
             rows = await (
                 await connection.execute(
-                    """select id,company_id,income_year,status,accepted_at,offer_version,terms_digest,terms_text,
-                currency,gross_minor,net_minor,vat_minor,vat_basis_points,captured_minor,refunded_minor,
-                captured_at,recurring_consent,renewal_canceled_at,paid_through,export_through,renewal_date
-                from billing.annual_purchases where company_id=%s::uuid and income_year=%s
-                and (%s::timestamptz is null or (accepted_at,id)<(%s::timestamptz,%s::uuid))
-                order by accepted_at desc,id desc limit 51""",
+                    """with purchases as materialized (
+                    select id,company_id,income_year,status,accepted_at,offer_version,terms_digest,terms_text,
+                    currency,gross_minor,net_minor,vat_minor,vat_basis_points,captured_minor,refunded_minor,
+                    captured_at,recurring_consent,renewal_canceled_at,paid_through,export_through,renewal_date
+                    from billing.annual_purchases where company_id=%s::uuid and income_year=%s
+                    and (%s::timestamptz is null or (accepted_at,id)<(%s::timestamptz,%s::uuid))
+                    order by accepted_at desc,id desc limit 51
+                ) select p.*,c.recorded_refund_minor,c.refund_initiate_by,
+                    r.refund_request_count,r.latest_refund_requested_at,
+                    o.created,o.pending,o.unknown,o.confirmed,o.failed
+                from purchases p
+                left join lateral (
+                    select coalesce(max(total_entitlement_minor),0) as recorded_refund_minor,
+                    min(initiate_by) filter (where total_entitlement_minor>p.refunded_minor) as refund_initiate_by
+                    from billing.annual_refund_cases where purchase_id=p.id and company_id=p.company_id
+                ) c on true
+                left join lateral (
+                    select count(*) as refund_request_count,max(requested_at) as latest_refund_requested_at
+                    from billing.annual_refund_requests where purchase_id=p.id and company_id=p.company_id
+                ) r on true
+                left join lateral (
+                    select
+                    count(*) filter (where status='created') as created,
+                    count(*) filter (where status='pending') as pending,
+                    count(*) filter (where status='unknown') as unknown,
+                    count(*) filter (where status='confirmed') as confirmed,
+                    count(*) filter (where status='failed') as failed
+                    from billing.annual_operations
+                    where purchase_id=p.id and company_id=p.company_id and operation='refund'
+                ) o on true order by p.accepted_at desc,p.id desc""",
                     (
                         str(query.company_id),
                         query.income_year.value,
@@ -82,8 +107,11 @@ class PostgresAnnualBillingReadSession:
                 value["company_id"] = CompanyId(str(value["company_id"]))
                 value["income_year"] = IncomeYear(value["income_year"])
                 value["status"] = AnnualPurchaseStatus(value["status"])
-                for name in ("accepted_at", "captured_at", "renewal_canceled_at"):
+                for name in ("accepted_at", "captured_at", "renewal_canceled_at", "latest_refund_requested_at"):
                     value[name] = Timestamp(value[name]) if value[name] else None
+                value["refund_operations"] = AnnualOperationCounts(**{
+                    name: value.pop(name) for name in ("created", "pending", "unknown", "confirmed", "failed")
+                })
                 values.append(AnnualPurchaseSummary(**value))
             return AnnualPurchasePage(tuple(values), values[-1].purchase_id if len(rows) > 50 else None)
 

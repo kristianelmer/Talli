@@ -777,6 +777,15 @@ class AnnualPurchaseSummary:
     paid_through: date
     export_through: date
     renewal_date: date
+    recorded_refund_minor: int
+    refund_initiate_by: date | None
+    refund_request_count: int
+    latest_refund_requested_at: Timestamp | None
+    refund_operations: AnnualOperationCounts
+
+    @property
+    def remaining_refund_minor(self) -> int:
+        return max(0, self.recorded_refund_minor - self.refunded_minor)
 
 
 @dataclass(frozen=True, slots=True)
@@ -810,6 +819,9 @@ class AnnualBillingReadPersistence(Protocol):
         return a next-purchase cursor when more rows exist. Cursor scope is the
         same company/year. No writes, readiness checks, provider calls or raw
         intent/merchant/acceptance-basis fields belong in this projection.
+        Project purchase money and recorded refund evidence in one database
+        snapshot. Case entitlements are cumulative: take their maximum, never
+        their sum. Requests and operation outcomes do not establish settlement.
         """
         ...
 

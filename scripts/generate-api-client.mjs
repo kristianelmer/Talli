@@ -801,6 +801,8 @@ const billingSchemas = Object.fromEntries([
   "AnnualSupportPageWire",
   "AnnualBillingOfferWire",
   "AnnualPurchaseSummaryWire",
+  "AnnualPurchaseRefundSummaryWire",
+  "AnnualBillingRefundSnapshotWire",
   "AnnualPurchaseStatus",
   "AnnualBillingSnapshotWire",
   "AnnualRenewalCancellationCommandWire",
@@ -2635,6 +2637,13 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       const query = new URLSearchParams({companyId: request.companyId, incomeYear: String(request.incomeYear)});
       if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
       return executeJson(baseUrl + "/api/v1/billing/annual/snapshot?" + query, "GET", request, undefined, isAnnualBillingSnapshotWire);
+    },
+    async billingReadAnnualRefundSnapshot(
+      request: AnnualBillingSnapshotRequest,
+    ): Promise<AnnualBillingRefundSnapshotWire> {
+      const query = new URLSearchParams({companyId: request.companyId, incomeYear: String(request.incomeYear)});
+      if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
+      return executeJson(baseUrl + "/api/v1/billing/annual/refund-snapshot?" + query, "GET", request, undefined, isAnnualBillingRefundSnapshotWire);
     },
 
     async billingCancelAnnualRenewal(

@@ -314,6 +314,14 @@ or charge authority. `AnnualBillingSnapshot` combines that offer and the page.
 Historical accepted amounts, terms and statuses come from each purchase, never
 from the current offer. Descending accepted-at/ID pagination retains failed and
 refunded history; each page has at most 50 summaries and a scoped purchase cursor.
+Owner summaries include recorded refund liability, remaining recorded balance,
+initiation deadline, request evidence and operation counts. Purchase balances and
+these related facts use one statement snapshot. Cumulative case entitlements use
+their maximum, never their sum; remaining liability subtracts the current
+refunded total and cannot go below zero. The deadline is an initiation target,
+not a bank-receipt date; an outstanding balance does not prove late initiation.
+Recorded requests or confirmed-operation counts never substitute for settled
+money and do not adjudicate new rights. No source facts are exposed or created.
 
 `PostgresAnnualBillingReadSession` uses the existing verified-owner/fresh-MFA
 boundary even for an empty snapshot. Its explicit projection excludes acceptance
@@ -322,7 +330,11 @@ GET is read-only and has no provider/readiness dependency. The provider-free
 `AnnualBillingWorkflow` and `SupabaseAnnualBillingAdapter` compose reads and local
 renewal cancellation from the same verified actor. The annual snapshot and
 renewal-cancellations HTTP routes expose generated contracts with no-store
-responses. Cancellation returns the immutable local receipt and unchanged access
+responses. The additive refund-snapshot GET exposes owner refund evidence
+without adding fields to the predecessor snapshot response. Either web/backend
+deployment order retains the original history contract; the new web may display
+refund details as unavailable until the expanded read is present.
+Cancellation returns the immutable local receipt and unchanged access
 dates; it does not claim provider acknowledgement or automatic worker cleanup.
 
 ## Legacy acquisition retirement (#192)

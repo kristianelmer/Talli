@@ -2685,6 +2685,42 @@ export interface AnnualPurchaseSummaryWire {
   vatMinor: number;
 }
 
+export interface AnnualPurchaseRefundSummaryWire {
+  acceptedAt: string;
+  capturedAt: string | null;
+  capturedMinor: number;
+  companyId: string;
+  currency: "NOK";
+  exportThrough: string;
+  grossMinor: number;
+  incomeYear: number;
+  latestRefundRequestedAt: string | null;
+  netMinor: number;
+  offerVersion: string;
+  paidThrough: string;
+  purchaseId: string;
+  recordedRefundMinor: number;
+  recurringConsent: boolean;
+  refundInitiateBy: string | null;
+  refundOperations: AnnualOperationCountsWire;
+  refundRequestCount: number;
+  refundedMinor: number;
+  remainingRefundMinor: number;
+  renewalCanceledAt: string | null;
+  renewalDate: string;
+  status: AnnualPurchaseStatus;
+  termsDigest: string;
+  termsText: string;
+  vatBasisPoints: number;
+  vatMinor: number;
+}
+
+export interface AnnualBillingRefundSnapshotWire {
+  nextPurchaseId: string | null;
+  offer: AnnualBillingOfferWire;
+  purchases: AnnualPurchaseRefundSummaryWire[];
+}
+
 export type AnnualPurchaseStatus = "pending" | "paid" | "failed" | "refunded";
 
 export interface AnnualBillingSnapshotWire {
@@ -6449,6 +6485,50 @@ function isAnnualPurchaseSummaryWire(value: unknown): value is AnnualPurchaseSum
   );
 }
 
+function isAnnualPurchaseRefundSummaryWire(value: unknown): value is AnnualPurchaseRefundSummaryWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["acceptedAt","capturedAt","capturedMinor","companyId","currency","exportThrough","grossMinor","incomeYear","latestRefundRequestedAt","netMinor","offerVersion","paidThrough","purchaseId","recordedRefundMinor","recurringConsent","refundInitiateBy","refundOperations","refundRequestCount","refundedMinor","remainingRefundMinor","renewalCanceledAt","renewalDate","status","termsDigest","termsText","vatBasisPoints","vatMinor"]) &&
+    isDateTime(value.acceptedAt) &&
+    (isDateTime(value.capturedAt) || value.capturedAt === null) &&
+    (typeof value.capturedMinor === "number" && Number.isInteger(value.capturedMinor) && value.capturedMinor >= 0) &&
+    isUuid(value.companyId) &&
+    value.currency === "NOK" &&
+    typeof value.exportThrough === "string" &&
+    (typeof value.grossMinor === "number" && Number.isInteger(value.grossMinor) && value.grossMinor > 0) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    (isDateTime(value.latestRefundRequestedAt) || value.latestRefundRequestedAt === null) &&
+    (typeof value.netMinor === "number" && Number.isInteger(value.netMinor) && value.netMinor > 0) &&
+    typeof value.offerVersion === "string" &&
+    typeof value.paidThrough === "string" &&
+    isUuid(value.purchaseId) &&
+    (typeof value.recordedRefundMinor === "number" && Number.isInteger(value.recordedRefundMinor) && value.recordedRefundMinor >= 0) &&
+    typeof value.recurringConsent === "boolean" &&
+    (typeof value.refundInitiateBy === "string" || value.refundInitiateBy === null) &&
+    isAnnualOperationCountsWire(value.refundOperations) &&
+    (typeof value.refundRequestCount === "number" && Number.isInteger(value.refundRequestCount) && value.refundRequestCount >= 0) &&
+    (typeof value.refundedMinor === "number" && Number.isInteger(value.refundedMinor) && value.refundedMinor >= 0) &&
+    (typeof value.remainingRefundMinor === "number" && Number.isInteger(value.remainingRefundMinor) && value.remainingRefundMinor >= 0) &&
+    (isDateTime(value.renewalCanceledAt) || value.renewalCanceledAt === null) &&
+    typeof value.renewalDate === "string" &&
+    isAnnualPurchaseStatus(value.status) &&
+    typeof value.termsDigest === "string" &&
+    typeof value.termsText === "string" &&
+    typeof value.vatBasisPoints === "number" && Number.isInteger(value.vatBasisPoints) &&
+    (typeof value.vatMinor === "number" && Number.isInteger(value.vatMinor) && value.vatMinor >= 0)
+  );
+}
+
+function isAnnualBillingRefundSnapshotWire(value: unknown): value is AnnualBillingRefundSnapshotWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["nextPurchaseId","offer","purchases"]) &&
+    (isUuid(value.nextPurchaseId) || value.nextPurchaseId === null) &&
+    isAnnualBillingOfferWire(value.offer) &&
+    Array.isArray(value.purchases) && value.purchases.every((item) => isAnnualPurchaseRefundSummaryWire(item))
+  );
+}
+
 function isAnnualPurchaseStatus(value: unknown): value is AnnualPurchaseStatus {
   return value === "pending" || value === "paid" || value === "failed" || value === "refunded";
 }
@@ -8414,6 +8494,13 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       const query = new URLSearchParams({companyId: request.companyId, incomeYear: String(request.incomeYear)});
       if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
       return executeJson(baseUrl + "/api/v1/billing/annual/snapshot?" + query, "GET", request, undefined, isAnnualBillingSnapshotWire);
+    },
+    async billingReadAnnualRefundSnapshot(
+      request: AnnualBillingSnapshotRequest,
+    ): Promise<AnnualBillingRefundSnapshotWire> {
+      const query = new URLSearchParams({companyId: request.companyId, incomeYear: String(request.incomeYear)});
+      if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
+      return executeJson(baseUrl + "/api/v1/billing/annual/refund-snapshot?" + query, "GET", request, undefined, isAnnualBillingRefundSnapshotWire);
     },
 
     async billingCancelAnnualRenewal(

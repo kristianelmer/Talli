@@ -424,7 +424,7 @@ contract only and has no provider/readiness dependency. Snapshot GET reads store
 facts; cancellation POST returns durable local effectiveness and preserved dates.
 
 <!-- architecture-inventory
-{"workflows":["annual-billing-reads-and-cancellation"],"routes":["/api/v1/billing/annual/snapshot","/api/v1/billing/annual/renewal-cancellations"],"ports":["AnnualBillingReadPersistence"],"adapterBindings":["AnnualBillingReadPersistence=>talli_backend.adapters.supabase_annual_billing.PostgresAnnualBillingReadSession"],"adapterBindingOwners":["AnnualBillingReadPersistence=>backend-system"],"adapterBindingModes":["AnnualBillingReadPersistence=>verified-owner stored annual public purchase projection; no provider or readiness calls"]}
+{"workflows":["annual-billing-reads-and-cancellation"],"routes":["/api/v1/billing/annual/snapshot","/api/v1/billing/annual/refund-snapshot","/api/v1/billing/annual/renewal-cancellations"],"ports":["AnnualBillingReadPersistence"],"adapterBindings":["AnnualBillingReadPersistence=>talli_backend.adapters.supabase_annual_billing.PostgresAnnualBillingReadSession"],"adapterBindingOwners":["AnnualBillingReadPersistence=>backend-system"],"adapterBindingModes":["AnnualBillingReadPersistence=>verified-owner stored annual public purchase projection; no provider or readiness calls"]}
 -->
 
 
@@ -504,3 +504,8 @@ provider call, receipt creation or case opening occurs.
 <!-- architecture-inventory
 {"workflows":["annual-billing-support"],"workflowPurposes":["annual-billing-support=>Reads bounded annual purchase, recorded refund liability and agreement-stop evidence under current active-admin, explicitly opened same-company billing support-case and fresh-MFA authority; never adjudicates refunds or performs side effects."],"publicPackages":["talli_backend.modules.billing.public"],"routes":["/api/v1/billing/annual/support/purchases"],"ports":["AnnualSupportReadPersistence"],"adapterBindings":["AnnualSupportReadPersistence=>talli_backend.adapters.postgres_annual_support.PostgresAnnualSupportReadSession"],"adapterBindingOwners":["AnnualSupportReadPersistence=>backend-system"],"adapterBindingModes":["AnnualSupportReadPersistence=>verified active-admin opened billing support case; bounded consistent stored annual evidence across years, no provider or source-authority calls"]}
 -->
+
+The provider-free owner route `/api/v1/billing/annual/refund-snapshot` exposes
+purchase balances and recorded refund facts together under the same owner and
+fresh-MFA boundary. The predecessor snapshot retains its exact response shape
+for mixed-version deployment; the added read does not adjudicate refund rights.
