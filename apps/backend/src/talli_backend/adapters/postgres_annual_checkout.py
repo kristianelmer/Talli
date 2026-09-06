@@ -26,6 +26,9 @@ from talli_backend.modules.billing.public import (
     AnnualCheckoutPersistence,
     AnnualCheckoutPrerequisites,
     AnnualCheckoutPurchaseReference,
+    AnnualCheckoutRequestResolution,
+    AnnualCheckoutWithdrawalId,
+    StartAnnualCheckoutCommand,
     AnnualProviderIntent,
     AnnualProviderObservation,
     AnnualProviderOperation,
@@ -227,10 +230,92 @@ class PostgresAnnualCheckoutSession:
             purchase["captured_at"] = datetime.fromisoformat(purchase["captured_at"])
         return _checkout(purchase, row["operation"])
 
-    async def find_checkout(self, company_id: CompanyId, key: IdempotencyKey) -> AnnualCheckout | None:
+    async def _withdrawal(self, connection, company_id, key):
+        return await (await connection.execute(
+            """select * from billing.annual_checkout_withdrawals
+            where company_id=%s::uuid and idempotency_key=%s""",
+            (str(company_id), str(key)),
+        )).fetchone()
+
+    async def _reject_withdrawal(self, connection, company_id, key, fingerprint):
+        receipt = await self._withdrawal(connection, company_id, key)
+        await self._authorize(connection, company_id)
+        if receipt is not None:
+            code = (BillingErrorCode.CHECKOUT_REQUEST_WITHDRAWN
+                    if receipt["request_fingerprint"] == fingerprint
+                    else BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
+            raise BillingError.conflict(code)
+
+    async def find_checkout(
+        self, company_id: CompanyId, key: IdempotencyKey, request_fingerprint: str,
+    ) -> AnnualCheckout | None:
         async def work(connection):
             await self._authorize(connection, company_id)
-            return await self._find(connection, company_id, key)
+            existing = await self._find(connection, company_id, key)
+            if existing is None:
+                await self._reject_withdrawal(connection, company_id, key, request_fingerprint)
+            await self._authorize(connection, company_id)
+            return existing
+
+        return await self._transaction(work)
+
+    async def _lock_original_key(self, connection, company_id, key):
+        await connection.execute(
+            "select pg_advisory_xact_lock(hashtextextended(%s, 192))",
+            (f"annual-checkout-key|{key}",),
+        )
+        await self._authorize(connection, company_id)
+
+    async def withdraw_checkout_request(
+        self, command: StartAnnualCheckoutCommand, request_fingerprint: str,
+    ) -> AnnualCheckoutRequestResolution:
+        async def work(connection):
+            company, year, key = command.company_id, command.income_year, command.idempotency_key
+            if command.actor_id != self.actor_id:
+                raise BillingError.forbidden()
+            await self._authorize(connection, company)
+            await self._lock_original_key(connection, company, key)
+            await self._lock_company_year(connection, company, year)
+            existing = await (await connection.execute(
+                """select purchase_id, income_year, created_by, request_fingerprint
+                from billing.annual_operations where company_id=%s::uuid
+                and idempotency_key=%s and operation='checkout'""",
+                (str(company), str(key)),
+            )).fetchone()
+            if existing is not None:
+                if (existing["income_year"] != year.value
+                        or str(existing["created_by"]) != str(self.actor_id.subject)
+                        or existing["request_fingerprint"] != request_fingerprint):
+                    raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
+                await self._authorize(connection, company)
+                return AnnualCheckoutRequestResolution(
+                    company, year, AnnualPurchaseId(str(existing["purchase_id"])), None, None,
+                )
+            receipt = await self._withdrawal(connection, company, key)
+            if receipt is None:
+                receipt = await (await connection.execute(
+                    """insert into billing.annual_checkout_withdrawals
+                    (company_id,income_year,requested_by,idempotency_key,request_fingerprint,
+                     offer_version,terms_digest,purchase_accepted,recurring_consent,consent_version)
+                    values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) returning *""",
+                    (str(company), year.value, str(self.actor_id.subject), str(key), request_fingerprint,
+                     command.offer_version, command.terms_digest, command.purchase_accepted,
+                     command.recurring_consent, command.consent_version),
+                )).fetchone()
+            expected = {
+                "income_year": year.value, "request_fingerprint": request_fingerprint,
+                "offer_version": command.offer_version, "terms_digest": command.terms_digest,
+                "purchase_accepted": command.purchase_accepted, "recurring_consent": command.recurring_consent,
+                "consent_version": command.consent_version,
+            }
+            if (str(receipt["requested_by"]) != str(self.actor_id.subject)
+                    or any(receipt[field] != value for field, value in expected.items())):
+                raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
+            await self._authorize(connection, company)
+            return AnnualCheckoutRequestResolution(
+                company, year, None, AnnualCheckoutWithdrawalId(str(receipt["id"])),
+                Timestamp(receipt["requested_at"]),
+            )
 
         return await self._transaction(work)
 
@@ -362,12 +447,16 @@ class PostgresAnnualCheckoutSession:
                 or intent.agreement_reference is not None
             ):
                 raise BillingError.invalid()
+            await self._lock_original_key(connection, offer.company_id, checkout.idempotency_key)
             await self._lock_company_year(connection, offer.company_id, offer.income_year)
             existing = await self._find(connection, offer.company_id, checkout.idempotency_key)
             if existing:
                 if existing.request_fingerprint != checkout.request_fingerprint:
                     raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
                 return AnnualCheckoutClaim(existing, False)
+            await self._reject_withdrawal(
+                connection, offer.company_id, checkout.idempotency_key, checkout.request_fingerprint,
+            )
             raw = await self._verified_purchase_basis(connection, offer.company_id, offer.income_year, prerequisites)
             occupied = await (
                 await connection.execute(

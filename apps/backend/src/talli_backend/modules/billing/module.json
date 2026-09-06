@@ -127,7 +127,9 @@
       "AnnualNotificationPersistence",
       "AnnualCheckoutPreparation",
       "AnnualCheckoutPurchaseReference",
-      "annual_billing_consent_version"
+      "annual_billing_consent_version",
+      "AnnualCheckoutRequestResolution",
+      "AnnualCheckoutWithdrawalId"
     ]
   },
   "owns": {
@@ -143,7 +145,8 @@
       "billing.annual_refund_cases",
       "billing.annual_operations",
       "billing.annual_cancellation_requests",
-      "billing.annual_refund_requests"
+      "billing.annual_refund_requests",
+      "billing.annual_checkout_withdrawals"
     ],
     "storageBuckets": [],
     "projections": [
@@ -151,7 +154,7 @@
       "BillingSnapshot",
       "AnnualSupportPage"
     ],
-    "migrations": "supabase/migrations/20260905145000_annual_refund_agreement_cleanup.sql"
+    "migrations": "supabase/migrations/20260906221800_annual_checkout_withdrawals.sql"
   },
   "ports": [
     {
@@ -159,14 +162,18 @@
       "direction": "outbound",
       "contract": "talli_backend.modules.billing.public.AnnualNotificationAuthentication",
       "registrationDecorator": "talli_backend.modules.billing.public.billing_provider_adapter",
-      "adapters": ["talli_backend.adapters.vipps_webhook.VippsWebhookAuthentication"]
+      "adapters": [
+        "talli_backend.adapters.vipps_webhook.VippsWebhookAuthentication"
+      ]
     },
     {
       "name": "AnnualNotificationPersistence",
       "direction": "outbound",
       "contract": "talli_backend.modules.billing.public.AnnualNotificationPersistence",
       "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
-      "adapters": ["talli_backend.adapters.postgres_annual_notifications.PostgresAnnualNotificationInbox"]
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_notifications.PostgresAnnualNotificationInbox"
+      ]
     },
     {
       "name": "BillingPersistence",
@@ -311,7 +318,8 @@
     "annualSupportDatabase": "apps/backend/tests/test_annual_support_runtime.py",
     "annualRefundRecovery": "apps/backend/tests/test_annual_refund_recovery_service.py",
     "annualRefundRecoveryApi": "apps/backend/tests/test_annual_refund_recovery_api.py",
-    "annualRefundRecoveryDatabase": "apps/backend/tests/test_annual_refund_recovery_runtime.py"
+    "annualRefundRecoveryDatabase": "apps/backend/tests/test_annual_refund_recovery_runtime.py",
+    "annualCheckoutWithdrawalDatabase": "apps/backend/tests/test_annual_checkout_withdrawal_runtime.py"
   },
   "compatibilityExceptions": []
 }

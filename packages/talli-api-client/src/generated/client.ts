@@ -2599,6 +2599,15 @@ export interface AnnualCheckoutPreparationWire {
   state: "available" | "existing";
 }
 
+export interface AnnualCheckoutRequestResolutionWire {
+  companyId: string;
+  incomeYear: number;
+  purchaseId: string | null;
+  state: "existing" | "withdrawn";
+  withdrawalId: string | null;
+  withdrawnAt: string | null;
+}
+
 export interface AnnualAgreementCleanupCommandWire {
   companyId: string;
   purchaseId: string;
@@ -6416,6 +6425,19 @@ function isAnnualCheckoutPreparationWire(value: unknown): value is AnnualCheckou
   );
 }
 
+function isAnnualCheckoutRequestResolutionWire(value: unknown): value is AnnualCheckoutRequestResolutionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","purchaseId","state","withdrawalId","withdrawnAt"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (isUuid(value.purchaseId) || value.purchaseId === null) &&
+    (value.state === "existing" || value.state === "withdrawn") &&
+    (isUuid(value.withdrawalId) || value.withdrawalId === null) &&
+    (isDateTime(value.withdrawnAt) || value.withdrawnAt === null)
+  );
+}
+
 function isAnnualAgreementCleanupCommandWire(value: unknown): value is AnnualAgreementCleanupCommandWire {
   return (
     isRecord(value) &&
@@ -8587,6 +8609,13 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     ): Promise<AnnualCheckoutPreparationWire> {
       const query = new URLSearchParams({ company_id: companyId, income_year: String(incomeYear) });
       return executeJson(baseUrl + "/api/v1/billing/annual/checkout-preparation?" + query, "GET", request, undefined, isAnnualCheckoutPreparationWire);
+    },
+
+    async billingWithdrawAnnualCheckoutRequest(
+      body: AnnualCheckoutCommandWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualCheckoutRequestResolutionWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/checkout-withdrawals", "POST", request, body, isAnnualCheckoutRequestResolutionWire);
     },
 
     async billingStartAnnualCheckout(

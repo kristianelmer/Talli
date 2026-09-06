@@ -13,6 +13,7 @@ from talli_backend.modules.billing.public import (
     AnnualBillingProvider, AnnualCheckout, AnnualCheckoutPersistence,
     AnnualCheckoutPrerequisites, AnnualCheckoutQuery, AnnualProviderIntent,
     AnnualCheckoutPreparation, AnnualCheckoutPreparationQuery,
+    AnnualCheckoutRequestResolution,
     AnnualProviderObservation, AnnualProviderOperation, AnnualProviderStatus,
     AnnualPurchaseId, AnnualPurchaseStatus, BillingError, BillingErrorCode,
     BillingPaymentEventId, StartAnnualCheckoutCommand, settle_annual_checkout,
@@ -43,6 +44,17 @@ class AnnualCheckoutService:
         self._return_url = return_url
         self._management_url = management_url
         self._now = now or (lambda: datetime.now(UTC))
+
+    async def withdraw_checkout_request(
+        self, command: StartAnnualCheckoutCommand,
+    ) -> AnnualCheckoutRequestResolution:
+        if command.actor_id != self._store.actor_id:
+            raise BillingError.forbidden()
+        await self._store.authorize_owner_command(command.company_id)
+        result = await self._store.withdraw_checkout_request(command, checkout_fingerprint(command))
+        if result.company_id != command.company_id or result.income_year != command.income_year:
+            raise BillingError.unavailable()
+        return result
 
     async def prepare_checkout(
         self, query: AnnualCheckoutPreparationQuery,
@@ -78,7 +90,7 @@ class AnnualCheckoutService:
             raise BillingError.forbidden()
         await self._store.authorize_owner_command(command.company_id)
         fingerprint = checkout_fingerprint(command)
-        existing = await self._store.find_checkout(command.company_id, command.idempotency_key)
+        existing = await self._store.find_checkout(command.company_id, command.idempotency_key, fingerprint)
         if existing is not None:
             self._same_request(existing, command, fingerprint)
             return await self._observe(existing, newly_claimed=False)

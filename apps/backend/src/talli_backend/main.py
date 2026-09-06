@@ -623,6 +623,15 @@ class AnnualCheckoutPreparationWire(TransportModel):
     purchase_id: UUID | None
 
 
+class AnnualCheckoutRequestResolutionWire(TransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    state: Literal["existing", "withdrawn"]
+    purchase_id: UUID | None
+    withdrawal_id: UUID | None
+    withdrawn_at: datetime | None
+
+
 class AnnualRefundRecoveryCommandWire(StrictTransportModel):
     company_id: UUID
     purchase_id: UUID
@@ -3678,6 +3687,7 @@ def create_app(
                 BillingErrorCode.STEP_UP_REQUIRED: "Ny tofaktorbekreftelse kreves.",
                 BillingErrorCode.IDEMPOTENCY_KEY_REUSED: "Operasjonsnøkkelen er allerede brukt med andre data.",
                 BillingErrorCode.IDEMPOTENCY_IN_PROGRESS: "Faktureringsoperasjonen behandles allerede.",
+                BillingErrorCode.CHECKOUT_REQUEST_WITHDRAWN: "Den tidligere kjøpsforespørselen er trukket tilbake. Du kan gjennomgå et nytt kjøp.",
                 BillingErrorCode.SUBSCRIPTION_REQUIRED: "Aktivt abonnement kreves før produksjonsinnsending.",
                 BillingErrorCode.FILING_NOT_READY: "Innsendingskontrollen må være klar før innsendingspakken kan betales.",
                 BillingErrorCode.FILING_PACKAGE_REQUIRED: "Innsendingspakken må betales før produksjonsinnsending.",
@@ -9265,6 +9275,36 @@ def create_app(
             )))
             response.headers["Cache-Control"] = "no-store"
             return annual_checkout_wire(result)
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/annual/checkout-withdrawals",
+        operation_id="billingWithdrawAnnualCheckoutRequest", response_model=AnnualCheckoutRequestResolutionWire,
+        responses={200: {"description": "Original purchase reference or committed withdrawal; no provider effect."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def withdraw_annual_checkout_request(
+        request: Request, response: Response, command: AnnualCheckoutCommandWire,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=200)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualCheckoutRequestResolutionWire:
+        async def execute():
+            workflow = await annual_checkout_workflow(credentials)
+            result = await workflow.withdraw_checkout_request(billing_input(lambda: StartAnnualCheckoutCommand(
+                company_id=CompanyId(str(command.company_id)), income_year=IncomeYear(command.income_year),
+                offer_version=command.offer_version, terms_digest=command.terms_digest,
+                purchase_accepted=command.purchase_accepted, recurring_consent=command.recurring_consent,
+                consent_version=command.consent_version,
+                **billing_metadata(workflow, request, idempotency_key),
+            )))
+            response.headers["Cache-Control"] = "no-store"
+            return AnnualCheckoutRequestResolutionWire(
+                company_id=UUID(str(result.company_id)), income_year=result.income_year.value,
+                state="existing" if result.purchase_id is not None else "withdrawn",
+                purchase_id=UUID(str(result.purchase_id)) if result.purchase_id else None,
+                withdrawal_id=UUID(str(result.withdrawal_id)) if result.withdrawal_id else None,
+                withdrawn_at=result.withdrawn_at.value if result.withdrawn_at else None,
+            )
         return await billing_call(execute)
 
     @application.post(

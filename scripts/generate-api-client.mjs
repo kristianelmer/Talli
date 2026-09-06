@@ -277,6 +277,7 @@ const bankingOperations = {
 };
 const billingOperations = {
   annualPreparation: ["/api/v1/billing/annual/checkout-preparation", "get", "billingPrepareAnnualCheckout"],
+  annualWithdrawal: ["/api/v1/billing/annual/checkout-withdrawals", "post", "billingWithdrawAnnualCheckoutRequest"],
   annualCheckout: ["/api/v1/billing/annual/checkouts", "post", "billingStartAnnualCheckout"],
   annualObservation: ["/api/v1/billing/annual/checkout-observations", "post", "billingObserveAnnualCheckout"],
   annualSupport: ["/api/v1/billing/annual/support/purchases", "get", "billingReadAnnualSupportPurchases"],
@@ -797,6 +798,7 @@ const billingSchemas = Object.fromEntries([
   "AnnualCheckoutObservationCommandWire",
   "AnnualCheckoutWire",
   "AnnualCheckoutPreparationWire",
+  "AnnualCheckoutRequestResolutionWire",
   "AnnualAgreementCleanupCommandWire",
   "AnnualAgreementCleanupWire",
   "AnnualRefundRecoveryCommandWire",
@@ -2629,6 +2631,13 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     ): Promise<AnnualCheckoutPreparationWire> {
       const query = new URLSearchParams({ company_id: companyId, income_year: String(incomeYear) });
       return executeJson(baseUrl + "/api/v1/billing/annual/checkout-preparation?" + query, "GET", request, undefined, isAnnualCheckoutPreparationWire);
+    },
+
+    async billingWithdrawAnnualCheckoutRequest(
+      body: AnnualCheckoutCommandWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualCheckoutRequestResolutionWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/checkout-withdrawals", "POST", request, body, isAnnualCheckoutRequestResolutionWire);
     },
 
     async billingStartAnnualCheckout(

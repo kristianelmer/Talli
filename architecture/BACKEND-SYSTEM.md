@@ -443,6 +443,11 @@ may settle durable state. Neither GET nor caller data supplies provider effects,
 readiness, merchant identity, price or return destinations. Destinations are
 server-owned and preserve company selection.
 
+The explicit checkout-withdrawals POST reuses the original checkout body/key. It
+returns a committed withdrawal or the existing purchase reference without any
+provider observation or new-sale source resolution. Only confirmed persistence
+commit permits an acknowledgement; neither outcome authorizes a replacement sale.
+
 The default composition has no annual provider and raises PROVIDER_DISABLED.
 Even with an explicitly injected test provider, its default readiness resolver
 raises FILING_NOT_READY and the real PostgreSQL verifier remains unavailable.
@@ -452,7 +457,7 @@ while current owner/fresh-MFA authorization remains mandatory. Local HTTP test
 fixtures do not establish actual MT or authoritative filing readiness.
 
 <!-- architecture-inventory
-{"routes":["/api/v1/billing/annual/checkout-preparation","/api/v1/billing/annual/checkouts","/api/v1/billing/annual/checkout-observations"],"workflowDependencies":["talli_backend.application.annual_checkout_prerequisites"]}
+{"routes":["/api/v1/billing/annual/checkout-withdrawals","/api/v1/billing/annual/checkout-preparation","/api/v1/billing/annual/checkouts","/api/v1/billing/annual/checkout-observations"],"workflowDependencies":["talli_backend.application.annual_checkout_prerequisites"]}
 -->
 
 

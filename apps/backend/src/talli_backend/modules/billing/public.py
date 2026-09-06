@@ -114,6 +114,7 @@ class BillingErrorCode(StrEnum):
     STEP_UP_REQUIRED = "BILLING_STEP_UP_REQUIRED"
     IDEMPOTENCY_KEY_REUSED = "BILLING_IDEMPOTENCY_KEY_REUSED"
     IDEMPOTENCY_IN_PROGRESS = "BILLING_IDEMPOTENCY_IN_PROGRESS"
+    CHECKOUT_REQUEST_WITHDRAWN = "BILLING_CHECKOUT_REQUEST_WITHDRAWN"
     SUBSCRIPTION_REQUIRED = "BILLING_SUBSCRIPTION_REQUIRED"
     FILING_NOT_READY = "BILLING_FILING_NOT_READY"
     FILING_PACKAGE_REQUIRED = "BILLING_FILING_PACKAGE_REQUIRED"
@@ -675,7 +676,8 @@ class StartAnnualCheckoutCommand(_BillingCommand):
         if (
             self.purchase_accepted is not True
             or type(self.recurring_consent) is not bool
-            or not self.offer_version or not self.consent_version
+            or not 1 <= len(self.offer_version) <= 100
+            or not 1 <= len(self.consent_version) <= 100
             or len(self.terms_digest) != 64
             or any(char not in "0123456789abcdef" for char in self.terms_digest)
             or len(str(self.idempotency_key)) > 200
@@ -695,6 +697,31 @@ class AnnualCheckoutPreparationQuery:
     company_id: CompanyId
     income_year: IncomeYear
     actor_id: ActorId
+
+
+class AnnualCheckoutWithdrawalId(_UuidId):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutRequestResolution:
+    """Committed original purchase reference or permanent unclaimed-key fence.
+
+    Neither outcome cancels an existing purchase or authorizes a new one.
+    """
+
+    company_id: CompanyId
+    income_year: IncomeYear
+    purchase_id: AnnualPurchaseId | None
+    withdrawal_id: AnnualCheckoutWithdrawalId | None
+    withdrawn_at: Timestamp | None
+
+    def __post_init__(self) -> None:
+        if self.purchase_id is not None:
+            if self.withdrawal_id is not None or self.withdrawn_at is not None:
+                raise BillingError.invalid()
+        elif self.withdrawal_id is None or self.withdrawn_at is None:
+            raise BillingError.invalid()
 
 
 @dataclass(frozen=True, slots=True)
@@ -1078,6 +1105,10 @@ def settle_annual_checkout(
 
 
 class AnnualCheckoutOperations(Protocol):
+    async def withdraw_checkout_request(
+        self, command: StartAnnualCheckoutCommand,
+    ) -> AnnualCheckoutRequestResolution: ...
+
     async def prepare_checkout(
         self, query: AnnualCheckoutPreparationQuery,
         prerequisites: Callable[[], Awaitable[AnnualCheckoutPrerequisites]],
@@ -1110,7 +1141,23 @@ class AnnualCheckoutPersistence(Protocol):
 
     async def authorize_owner_command(self, company_id: CompanyId) -> None: ...
 
-    async def find_checkout(self, company_id: CompanyId, key: IdempotencyKey) -> AnnualCheckout | None: ...
+    async def find_checkout(
+        self, company_id: CompanyId, key: IdempotencyKey, request_fingerprint: str,
+    ) -> AnnualCheckout | None:
+        """Recover an original purchase or reject its permanently withdrawn key."""
+        ...
+
+    async def withdraw_checkout_request(
+        self, command: StartAnnualCheckoutCommand, request_fingerprint: str,
+    ) -> AnnualCheckoutRequestResolution:
+        """Lock original key then company/year and reauthorize after waits.
+
+        Return the matching original purchase in any status, replay an immutable
+        withdrawal, or commit a new fence against later claims of this key.
+        Compare exact request identity before returning. No source/provider work,
+        purchase mutation, expiry or deletion. Acknowledge only confirmed commit.
+        """
+        ...
 
     async def find_active_checkout(
         self, company_id: CompanyId, income_year: IncomeYear,
@@ -1591,6 +1638,8 @@ __all__ = [
     "AnnualCheckoutPreparationQuery",
     "AnnualCheckoutPreparation",
     "AnnualCheckoutPurchaseReference",
+    "AnnualCheckoutRequestResolution",
+    "AnnualCheckoutWithdrawalId",
     "StartAnnualCheckoutCommand",
     "AnnualPurchaseId",
     "AnnualBillingProvider",

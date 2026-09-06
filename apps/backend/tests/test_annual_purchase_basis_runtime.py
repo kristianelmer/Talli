@@ -208,6 +208,7 @@ def test_rollback_and_recutover_preserve_the_exact_accepted_evidence(admitted):
         before = basis(connection, admitted)
     for _ in range(2):
         with psycopg.connect(DATABASE_URL, autocommit=True) as connection:
+            connection.execute((ROOT / "supabase" / "rollback" / "20260906221800_annual_checkout_withdrawals.sql").read_text())
             connection.execute((ROOT / "supabase" / "rollback" / "20260905145000_annual_refund_agreement_cleanup.sql").read_text())
             connection.execute((ROOT / "supabase" / "rollback" / "20260905141500_annual_refund_requests.sql").read_text())
             connection.execute((ROOT / "supabase" / "rollback" / "20260905115700_legacy_billing_acquisition_retirement.sql").read_text())
@@ -223,6 +224,7 @@ def test_rollback_and_recutover_preserve_the_exact_accepted_evidence(admitted):
             connection.execute((ROOT / "supabase" / "migrations" / "20260905115700_legacy_billing_acquisition_retirement.sql").read_text())
             connection.execute((ROOT / "supabase" / "migrations" / "20260905141500_annual_refund_requests.sql").read_text())
             connection.execute((ROOT / "supabase" / "migrations" / "20260905145000_annual_refund_agreement_cleanup.sql").read_text())
+            connection.execute((ROOT / "supabase" / "migrations" / "20260906221800_annual_checkout_withdrawals.sql").read_text())
             principal = connection.execute("select current_user").fetchone()[0]
             connection.execute(sql.SQL("grant billing_store_owner to {}").format(sql.Identifier(principal)))
         with psycopg.connect(DATABASE_URL) as connection:

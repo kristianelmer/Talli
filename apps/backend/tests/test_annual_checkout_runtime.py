@@ -349,7 +349,7 @@ def test_lost_committed_response_reconciles_original_and_never_creates_again(set
         asyncio.run(
             service(session(setup, session_type=LostResponse), provider).start_checkout(setup[5], ready)
         )
-    original = asyncio.run(session(setup).find_checkout(setup[2].company_id, setup[5].idempotency_key))
+    original = asyncio.run(session(setup).find_checkout(setup[2].company_id, setup[5].idempotency_key, checkout_fingerprint(setup[5])))
 
     async def blocked():
         raise AssertionError("Existing effects reconcile without readiness")
@@ -517,7 +517,7 @@ def test_cross_tenant_global_key_collision_is_concealed_and_atomic(setup, reques
     with pytest.raises(BillingError) as denied:
         asyncio.run(session(other).load_checkout(initial.offer.company_id, initial.purchase_id))
     assert denied.value.code == BillingErrorCode.FORBIDDEN
-    assert asyncio.run(session(other).find_checkout(other[2].company_id, initial.idempotency_key)) is None
+    assert asyncio.run(session(other).find_checkout(other[2].company_id, initial.idempotency_key, initial.request_fingerprint)) is None
     with pytest.raises(BillingError) as error:
         asyncio.run(session(other).claim_checkout(candidate(other, key=initial.idempotency_key), other[4]))
     assert error.value.code == BillingErrorCode.IDEMPOTENCY_KEY_REUSED
@@ -533,6 +533,7 @@ def test_adapter_records_survive_two_rollback_recutover_cycles(setup):
     migration = "20260905083150_annual_billing_purchase_ledger.sql"
     for _ in range(2):
         with psycopg.connect(DATABASE_URL, autocommit=True) as connection:
+            connection.execute((ROOT / "supabase" / "rollback" / "20260906221800_annual_checkout_withdrawals.sql").read_text())
             connection.execute((ROOT / "supabase" / "rollback" / "20260905145000_annual_refund_agreement_cleanup.sql").read_text())
             connection.execute((ROOT / "supabase" / "rollback" / "20260905141500_annual_refund_requests.sql").read_text())
             connection.execute((ROOT / "supabase" / "rollback" / "20260905115700_legacy_billing_acquisition_retirement.sql").read_text())
@@ -553,6 +554,7 @@ def test_adapter_records_survive_two_rollback_recutover_cycles(setup):
             connection.execute((ROOT / "supabase" / "migrations" / "20260905115700_legacy_billing_acquisition_retirement.sql").read_text())
             connection.execute((ROOT / "supabase" / "migrations" / "20260905141500_annual_refund_requests.sql").read_text())
             connection.execute((ROOT / "supabase" / "migrations" / "20260905145000_annual_refund_agreement_cleanup.sql").read_text())
+            connection.execute((ROOT / "supabase" / "migrations" / "20260906221800_annual_checkout_withdrawals.sql").read_text())
             principal = connection.execute("select current_user").fetchone()[0]
             connection.execute(
                 psycopg.sql.SQL("grant billing_store_owner to {}").format(psycopg.sql.Identifier(principal))

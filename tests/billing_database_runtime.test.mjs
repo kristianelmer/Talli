@@ -258,7 +258,9 @@ test(
       readFile(new URL("../supabase/migrations/20260905061339_billing_provider_reconciliation.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/rollback/20260905061339_billing_provider_reconciliation.sql", import.meta.url), "utf8"),
     ]);
-    const [refundCleanup, refundCleanupRollback, refundRequests, refundRequestsRollback, retirement, retirementRollback, cleanup, cleanupRollback, cancellation, cancellationRollback, annual, annualRollback, basis, basisRollback] = await Promise.all([
+    const [withdrawals, withdrawalsRollback, refundCleanup, refundCleanupRollback, refundRequests, refundRequestsRollback, retirement, retirementRollback, cleanup, cleanupRollback, cancellation, cancellationRollback, annual, annualRollback, basis, basisRollback] = await Promise.all([
+      readFile(new URL("../supabase/migrations/20260906221800_annual_checkout_withdrawals.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260906221800_annual_checkout_withdrawals.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/migrations/20260905145000_annual_refund_agreement_cleanup.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/rollback/20260905145000_annual_refund_agreement_cleanup.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/migrations/20260905141500_annual_refund_requests.sql", import.meta.url), "utf8"),
@@ -356,6 +358,7 @@ test(
       await assertTenantBoundaryAndReadiness(client);
 
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
+        await client.query(withdrawalsRollback);
         await client.query(refundCleanupRollback);
         await client.query(refundRequestsRollback);
         await client.query(retirementRollback);
@@ -386,6 +389,7 @@ test(
         await client.query(retirement);
         await client.query(refundRequests);
         await client.query(refundCleanup);
+        await client.query(withdrawals);
         const successor = await topology(client);
         assert.equal(successor.billing_schema, true);
         assert.equal(successor.canonical_accounts, true);

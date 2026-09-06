@@ -1,7 +1,7 @@
 # Billing backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests","billing.annual_refund_requests"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence","AnnualSupportReadPersistence","AnnualRefundRecoveryPersistence","AnnualNotificationAuthentication","AnnualNotificationPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
+{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests","billing.annual_refund_requests","billing.annual_checkout_withdrawals"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence","AnnualSupportReadPersistence","AnnualRefundRecoveryPersistence","AnnualNotificationAuthentication","AnnualNotificationPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
 -->
 
 ## Purpose and ownership
@@ -642,3 +642,41 @@ credential is installed. Resource matching and a separately authorized worker
 must still reconcile an original stored intent using provider GET before any
 settlement; a charge-refunded event does not identify a refund attempt. This is
 receipt intake evidence only, not completion of #192 or actual MT validation.
+
+
+## Original checkout request withdrawal
+
+`AnnualCheckoutOperations.withdraw_checkout_request` reuses the exact original
+`StartAnnualCheckoutCommand` and canonical fingerprint. It returns
+`AnnualCheckoutRequestResolution`: either the original `AnnualPurchaseId` in any
+purchase status, or an immutable `AnnualCheckoutWithdrawalId` and recorded time.
+Current accepted owner and fresh MFA remain mandatory. Obsolete offer/consent
+versions are retained; no current offer, source readiness, provider availability,
+provider observation, cancellation, refund or settlement is required or performed.
+The result permits resolving that request only; a new sale must qualify afresh.
+
+`billing.annual_checkout_withdrawals` stores the scoped original choices, actor,
+key and fingerprint with a database-generated identity/time. It is billing-owned
+business evidence, has forced owner/fresh-MFA RLS, and exposes no browser,
+service-role or operator access. No UPDATE/DELETE policy or expiry exists. The
+narrow UPDATE(id) grant is required only for referential-integrity key-share
+checks; immutable triggers prohibit receipt mutation.
+
+Claim and withdrawal acquire the original-key lock before company/year, then
+reauthorize after waits. Matching claimed keys recover before new-sale checks;
+matching withdrawn keys fail with `BILLING_CHECKOUT_REQUEST_WITHDRAWN`. Changed
+payloads conflict, including a different year under the same key. Symmetric
+invoker triggers fence direct/older writers. These triggers use nonblocking
+try-locks because MFA uses a statement-time source predicate: contention requires
+a fresh retry, and cannot wait inside the original INSERT. Current adapters hold
+both locks already and reauthorize in separate statements. This makes no broader
+wall-clock-freshness claim about arbitrary long-running direct SQL statements.
+
+Migration `supabase/migrations/20260906221800_annual_checkout_withdrawals.sql`
+and its rollback preserve pre-existing migration-role grants. Rollback keeps the
+operation trigger bound to the same function OID, retires the receipt/function,
+and denies every new checkout operation until final withdrawal recutover. Other
+operation types retain their existing guards. Full predecessor rollback can drop
+the billing schema while receipt bytes and the denial trigger survive. Applying
+only the ledger migration still denies new checkouts; final recutover restores
+the original receipt fence. No hosted changes or provider activation are implied.

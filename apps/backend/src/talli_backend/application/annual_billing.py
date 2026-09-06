@@ -16,6 +16,7 @@ from talli_backend.modules.billing.public import (
     AnnualCheckoutPrerequisites,
     AnnualCheckoutQuery,
     AnnualCheckoutPreparation, AnnualCheckoutPreparationQuery,
+    AnnualCheckoutRequestResolution,
     StartAnnualCheckoutCommand,
     annual_checkout_operations,
     AnnualBillingSnapshot,
@@ -203,23 +204,31 @@ class AnnualCheckoutWorkflow:
         if command.actor_id != self.actor_id:
             raise BillingError.forbidden()
 
+        return await self._operations(command.company_id).start_checkout(
+            command, self._deferred_prerequisites(command.company_id, command.income_year),
+        )
+
+    def _deferred_prerequisites(self, company_id: CompanyId, income_year: IncomeYear):
         async def prerequisites():
             if self._prerequisites is None:
                 return await unavailable_annual_checkout_prerequisites()
-            return await self._prerequisites(command.company_id, command.income_year, self.actor_id)
-
-        return await self._operations(command.company_id).start_checkout(command, prerequisites)
+            return await self._prerequisites(company_id, income_year, self.actor_id)
+        return prerequisites
 
     async def prepare_checkout(self, query: AnnualCheckoutPreparationQuery) -> AnnualCheckoutPreparation:
         if query.actor_id != self.actor_id:
             raise BillingError.forbidden()
 
-        async def prerequisites():
-            if self._prerequisites is None:
-                return await unavailable_annual_checkout_prerequisites()
-            return await self._prerequisites(query.company_id, query.income_year, self.actor_id)
+        return await self._operations(query.company_id).prepare_checkout(
+            query, self._deferred_prerequisites(query.company_id, query.income_year),
+        )
 
-        return await self._operations(query.company_id).prepare_checkout(query, prerequisites)
+    async def withdraw_checkout_request(
+        self, command: StartAnnualCheckoutCommand,
+    ) -> AnnualCheckoutRequestResolution:
+        if command.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+        return await self._operations(command.company_id).withdraw_checkout_request(command)
 
     async def observe_checkout(self, query: AnnualCheckoutQuery) -> AnnualCheckout:
         if query.actor_id != self.actor_id:

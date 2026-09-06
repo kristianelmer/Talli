@@ -87,6 +87,52 @@ def observe(api, purchase, **changes):
                     json={'companyId': str(COMPANY), 'purchaseId': str(purchase), **changes})
 
 
+def withdraw(api, **changes):
+    return api.post('/api/v1/billing/annual/checkout-withdrawals', headers=headers(), json=body(**changes))
+
+
+def test_withdrawal_is_explicit_scoped_private_and_works_without_new_sale_sources():
+    api, session, provider = fixture(source=None, provider_enabled=False)
+    first = withdraw(api, offerVersion='obsolete', consentVersion='obsolete')
+    assert first.status_code == 200, first.text
+    value = first.json()
+    assert set(value) == {'companyId','incomeYear','state','purchaseId','withdrawalId','withdrawnAt'}
+    assert value['companyId'] == str(COMPANY) and value['incomeYear'] == 2026
+    assert value['state'] == 'withdrawn' and value['purchaseId'] is None
+    assert value['withdrawalId'] and value['withdrawnAt']
+    assert first.headers['cache-control'] == 'no-store'
+    assert withdraw(api, offerVersion='obsolete', consentVersion='obsolete').json() == value
+    assert start(api, offerVersion='obsolete', consentVersion='obsolete').json()['code'] == 'BILLING_CHECKOUT_REQUEST_WITHDRAWN'
+    assert session.checkout is None and provider.executions == provider.reconciliations == []
+
+
+def test_withdrawal_of_claimed_request_returns_purchase_without_cancellation_or_provider_observation():
+    api, session, provider = fixture()
+    original = start(api).json()
+    before = session.checkout
+    result = withdraw(api)
+    assert result.status_code == 200 and result.json()['purchaseId'] == original['purchaseId']
+    assert result.json()['state'] == 'existing' and result.json()['withdrawalId'] is None
+    assert session.checkout == before
+    assert len(provider.executions) == 1 and provider.reconciliations == []
+
+
+@pytest.mark.parametrize('mode,expected', [('missing_session',401),('revoked',403),('stale',403),('actor_field',422),('false_acceptance',422)])
+def test_withdrawal_requires_verified_owner_fresh_mfa_and_exact_original_input(mode,expected):
+    api, session, provider = fixture()
+    auth = headers()
+    payload = body()
+    if mode == 'missing_session': auth.pop('Authorization')
+    if mode == 'revoked': session.authorized = False
+    if mode == 'stale': session.fresh = False
+    if mode == 'actor_field': payload['actorId'] = str(ACTOR.subject)
+    if mode == 'false_acceptance': payload['purchaseAccepted'] = False
+    response = api.post('/api/v1/billing/annual/checkout-withdrawals', headers=auth, json=payload)
+    assert response.status_code == expected, response.text
+    assert session.checkout is None and session.withdrawals == {}
+    assert provider.executions == provider.reconciliations == []
+
+
 def test_start_stores_exact_terms_and_separate_consent_and_projects_only_customer_facts():
     api, session, provider = fixture()
     response = start(api)

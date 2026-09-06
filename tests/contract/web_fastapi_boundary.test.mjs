@@ -586,3 +586,17 @@ test("annual checkout preparation is an independent read without purchase author
   assert.deepEqual(fields.state.enum, ["available", "existing"]);
   assert.equal(contract.components.schemas.AnnualCheckoutWire.properties.consentVersion, undefined);
 });
+
+test("annual checkout withdrawal uses the original accepted body and key with a separate minimal result", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const route = contract.paths["/api/v1/billing/annual/checkout-withdrawals"];
+  assert.deepEqual(Object.keys(route), ["post"]);
+  assert.equal(route.post.operationId, "billingWithdrawAnnualCheckoutRequest");
+  assert.deepEqual(route.post.security, [{ bearerAuth: [] }]);
+  assert.equal(route.post.parameters.find(value => value.name === "Idempotency-Key").required, true);
+  assert.equal(route.post.requestBody.content["application/json"].schema.$ref, "#/components/schemas/AnnualCheckoutCommandWire");
+  const fields = contract.components.schemas.AnnualCheckoutRequestResolutionWire.properties;
+  assert.deepEqual(Object.keys(fields).sort(), ["companyId", "incomeYear", "purchaseId", "state", "withdrawalId", "withdrawnAt"]);
+  assert.deepEqual(fields.state.enum, ["existing", "withdrawn"]);
+  assert.equal(contract.components.schemas.AnnualCheckoutCommandWire.additionalProperties, false);
+});

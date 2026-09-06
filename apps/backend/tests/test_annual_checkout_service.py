@@ -10,6 +10,7 @@ from talli_backend.modules.billing.annual_service import AnnualCheckoutService
 from talli_backend.modules.billing.public import (
     AnnualAcceptanceBasisReference, AnnualCheckoutClaim, AnnualCheckoutPrerequisites,
     AnnualCheckoutQuery, AnnualCheckoutPreparationQuery, AnnualCheckoutPurchaseReference,
+    AnnualCheckoutRequestResolution, AnnualCheckoutWithdrawalId,
     AnnualProviderObservation, AnnualProviderOperation,
     AnnualProviderStatus, AnnualPurchaseStatus, BillingError, BillingErrorCode,
     StartAnnualCheckoutCommand, annual_billing_consent_version,
@@ -47,14 +48,42 @@ class Store:
         self.lose_claim_response = False
         self.lose_settlement = False
         self.authorized = True
+        self.withdrawals = {}
 
     async def authorize_owner_command(self, company):
         if not self.authorized or company != COMPANY:
             raise BillingError.forbidden()
 
-    async def find_checkout(self, company, key):
+    async def find_checkout(self, company, key, fingerprint):
         await asyncio.sleep(0)
+        self.reject_withdrawal(key, fingerprint)
         return self.checkout if self.checkout and self.checkout.idempotency_key == key else None
+
+    def reject_withdrawal(self, key, fingerprint):
+        if key in self.withdrawals:
+            code = (BillingErrorCode.CHECKOUT_REQUEST_WITHDRAWN
+                    if self.withdrawals[key][0] == fingerprint else BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
+            raise BillingError.conflict(code)
+
+    async def withdraw_checkout_request(self, command, fingerprint):
+        async with self.lock:
+            await self.authorize_owner_command(command.company_id)
+            if self.checkout and self.checkout.idempotency_key == command.idempotency_key:
+                if self.checkout.request_fingerprint != fingerprint:
+                    raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
+                return AnnualCheckoutRequestResolution(
+                    command.company_id, command.income_year, self.checkout.purchase_id, None, None,
+                )
+            saved = self.withdrawals.get(command.idempotency_key)
+            if saved is not None and saved[0] != fingerprint:
+                raise BillingError.conflict(BillingErrorCode.IDEMPOTENCY_KEY_REUSED)
+            if saved is None:
+                saved = (fingerprint, AnnualCheckoutRequestResolution(
+                    command.company_id, command.income_year, None,
+                    AnnualCheckoutWithdrawalId(str(uuid4())), Timestamp(NOW),
+                ))
+                self.withdrawals[command.idempotency_key] = saved
+            return saved[1]
 
     async def find_active_checkout(self, company, year):
         await self.authorize_owner_command(company)
@@ -70,6 +99,7 @@ class Store:
 
     async def claim_checkout(self, checkout, prerequisites):
         async with self.lock:
+            self.reject_withdrawal(checkout.idempotency_key, checkout.request_fingerprint)
             if self.checkout:
                 return AnnualCheckoutClaim(self.checkout, False)
             self.checkout = checkout
@@ -145,6 +175,54 @@ def fixture():
     service = AnnualCheckoutService(store, provider, return_url='https://talli.example/return',
         management_url='https://talli.example/billing', now=lambda: NOW)
     return service, store, provider
+
+
+def test_original_request_paused_before_claim_is_permanently_withdrawn_without_provider_effects():
+    service, store, provider = fixture()
+    async def run():
+        entered, release = asyncio.Event(), asyncio.Event()
+        async def paused():
+            entered.set()
+            await release.wait()
+            return await eligible()
+        original = asyncio.create_task(service.start_checkout(command(), paused))
+        await entered.wait()
+        withdrawal = await service.withdraw_checkout_request(command())
+        release.set()
+        with pytest.raises(BillingError) as denied:
+            await original
+        assert denied.value.code == BillingErrorCode.CHECKOUT_REQUEST_WITHDRAWN
+        assert await service.withdraw_checkout_request(command()) == withdrawal
+    asyncio.run(run())
+    assert store.checkout is None and provider.executions == provider.reconciliations == []
+
+
+def test_withdrawal_accepts_obsolete_versions_with_no_provider_or_source_and_rejects_changed_retry():
+    service, store, provider = fixture()
+    service._provider = None
+    original = command(offer_version='old-offer', consent_version='old-consent', terms_digest='a'*64)
+    receipt = asyncio.run(service.withdraw_checkout_request(original))
+    assert receipt.purchase_id is None and receipt.withdrawal_id is not None
+    with pytest.raises(BillingError) as denied:
+        asyncio.run(service.start_checkout(original, eligible))
+    assert denied.value.code == BillingErrorCode.CHECKOUT_REQUEST_WITHDRAWN
+    with pytest.raises(BillingError) as conflict:
+        asyncio.run(service.withdraw_checkout_request(replace(original, recurring_consent=True)))
+    assert conflict.value.code == BillingErrorCode.IDEMPOTENCY_KEY_REUSED
+    assert provider.executions == provider.reconciliations == []
+
+
+@pytest.mark.parametrize('status', list(AnnualPurchaseStatus))
+def test_withdrawal_returns_original_purchase_in_every_status_without_observing(status):
+    service, store, provider = fixture()
+    checkout = asyncio.run(service.start_checkout(command(), eligible))
+    store.checkout = replace(checkout, status=status)
+    provider.executions.clear()
+    service._provider = None
+    result = asyncio.run(service.withdraw_checkout_request(command()))
+    assert result.purchase_id == checkout.purchase_id and result.withdrawal_id is None
+    assert store.checkout.status == status and store.withdrawals == {}
+    assert provider.executions == provider.reconciliations == []
 
 
 def test_concurrent_identical_checkout_executes_provider_once_after_commit():
