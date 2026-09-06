@@ -42,13 +42,16 @@ export type OwnerMfaInspection =
 
 export async function inspectOwnerMfa(
   mfa: OwnerMfaApi,
+  { requireFreshChallenge = false }: { requireFreshChallenge?: boolean } = {},
 ): Promise<OwnerMfaInspection> {
   try {
     const assurance = await mfa.getAuthenticatorAssuranceLevel();
     if (assurance.error || !assurance.data) {
       return { kind: "error", message: ownerMfaCopy.statusError };
     }
-    if (assurance.data.currentLevel === "aal2") {
+    // AAL2 does not prove that a backend-required challenge is still fresh.
+    // This intent asks for more verification; the backend retains its age rule.
+    if (assurance.data.currentLevel === "aal2" && !requireFreshChallenge) {
       return { kind: "verified" };
     }
 

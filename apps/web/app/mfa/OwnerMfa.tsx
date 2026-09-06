@@ -20,6 +20,7 @@ import {
 
 type OwnerMfaProps = {
   returnTo: string;
+  requireFreshChallenge?: boolean;
   supabaseUrl: string;
   supabaseAnonKey: string;
 };
@@ -33,6 +34,7 @@ type OwnerMfaMode =
 
 export function OwnerMfa({
   returnTo,
+  requireFreshChallenge = false,
   supabaseUrl,
   supabaseAnonKey,
 }: OwnerMfaProps) {
@@ -52,7 +54,7 @@ export function OwnerMfa({
 
   useEffect(() => {
     let active = true;
-    void inspectOwnerMfa(supabase.auth.mfa).then((inspection) => {
+    void inspectOwnerMfa(supabase.auth.mfa, { requireFreshChallenge }).then((inspection) => {
       if (!active) return;
       if (inspection.kind === "error") {
         setError(inspection.message);
@@ -75,7 +77,7 @@ export function OwnerMfa({
     return () => {
       active = false;
     };
-  }, [returnTo, supabase]);
+  }, [requireFreshChallenge, returnTo, supabase]);
 
   useEffect(() => {
     if (error) {
@@ -130,7 +132,9 @@ export function OwnerMfa({
         <span>Talli</span>
       </div>
       <h1 className="authTitle">{ownerMfaCopy.heading}</h1>
-      <p className="authIntro">{ownerMfaCopy.intro}</p>
+      <p className="authIntro">{requireFreshChallenge
+        ? "Bekreft innloggingen på nytt med autentiseringsappen før du fortsetter."
+        : ownerMfaCopy.intro}</p>
 
       {error ? (
         <p
@@ -213,7 +217,7 @@ export function OwnerMfa({
       ) : null}
 
       {mode === "verified" ? (
-        <p aria-live="polite">Bekreftet. Åpner onboarding …</p>
+        <p aria-live="polite">Bekreftet. Åpner siden …</p>
       ) : null}
     </div>
   );

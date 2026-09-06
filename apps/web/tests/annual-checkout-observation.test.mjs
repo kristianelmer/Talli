@@ -72,6 +72,7 @@ for (const failure of ["step-up", "sign-in", "unavailable"]) {
     else {
       const target = new URL(result.href, "https://talli.example");
       assert.equal(target.pathname, failure === "step-up" ? "/mfa" : "/login");
+      if (failure === "step-up") assert.equal(target.searchParams.get("fresh"), "1");
       const next = new URL(target.searchParams.get("next"), target.origin);
       assert.equal(next.searchParams.get("companyId"), companyId);
       assert.equal(next.searchParams.get("checkoutPurchaseId"), purchaseId);

@@ -4297,7 +4297,7 @@ export async function recoverAnnualRefund(
     refundPurchaseId: purchaseId, refundRequestId });
   const recover = (reason: ReturnType<typeof annualBillingRecovery>) => ({
     kind: "recovery" as const, companyId, purchaseId, refundRequestId, reason,
-    href: reason === "unavailable" ? null : `/${reason === "step-up" ? "mfa" : "login"}?next=${encodeURIComponent(returnTo)}`,
+    href: reason === "unavailable" ? null : `${reason === "step-up" ? "/mfa?fresh=1&" : "/login?"}next=${encodeURIComponent(returnTo)}`,
   });
   try {
     const accessToken = await getCurrentSessionAccessToken();
@@ -4335,7 +4335,7 @@ export async function observeAnnualCheckout(
   const returnTo = ownerPathWithQuery("/billing", { companyId, beforePurchaseId, checkoutPurchaseId: purchaseId });
   const recover = (reason: ReturnType<typeof annualBillingRecovery>) => ({
     kind: "recovery" as const, companyId, purchaseId, reason,
-    href: reason === "unavailable" ? null : `/${reason === "step-up" ? "mfa" : "login"}?next=${encodeURIComponent(returnTo)}`,
+    href: reason === "unavailable" ? null : `${reason === "step-up" ? "/mfa?fresh=1&" : "/login?"}next=${encodeURIComponent(returnTo)}`,
   });
   try {
     const accessToken = await getCurrentSessionAccessToken();
@@ -4373,7 +4373,7 @@ export async function cleanupAnnualAgreement(
   const returnTo = ownerPathWithQuery("/billing", { companyId, beforePurchaseId, cleanupPurchaseId: purchaseId });
   const recover = (reason: ReturnType<typeof annualBillingRecovery>) => ({
     kind: "recovery" as const, companyId, purchaseId, reason,
-    href: reason === "unavailable" ? null : `/${reason === "step-up" ? "mfa" : "login"}?next=${encodeURIComponent(returnTo)}`,
+    href: reason === "unavailable" ? null : `${reason === "step-up" ? "/mfa?fresh=1&" : "/login?"}next=${encodeURIComponent(returnTo)}`,
   });
   try {
     const accessToken = await getCurrentSessionAccessToken();
@@ -4403,7 +4403,7 @@ export async function cancelAnnualRenewal(formData: FormData) {
   } catch (error) {
     const recovery = annualBillingRecovery(error);
     if (recovery === "sign-in") redirect(`/login?next=${encodeURIComponent(returnTo)}`);
-    if (recovery === "step-up") redirect(`/mfa?next=${encodeURIComponent(returnTo)}`);
+    if (recovery === "step-up") redirect(`/mfa?fresh=1&next=${encodeURIComponent(returnTo)}`);
     redirect(`${returnTo}&cancellationError=unconfirmed`);
   }
   revalidatePath("/billing");

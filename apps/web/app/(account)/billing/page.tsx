@@ -44,7 +44,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     if (value && uuid.test(value)) query.set(key, value);
   }
   const returnTo = `/billing?${query}`;
-  const mfaHref = `/mfa?next=${encodeURIComponent(returnTo)}`;
+  const mfaHref = `/mfa?fresh=1&next=${encodeURIComponent(returnTo)}`;
   let content;
   if (context.error) {
     content = <EmptyState title="Abonnementet kan ikke vises nå" action={

@@ -176,6 +176,7 @@ for (const recovery of ["unavailable", "step-up", "sign-in"]) {
     assert.equal(target.searchParams.get("cancellationPurchaseId"), purchaseId);
     assert.doesNotMatch(harness.redirects[0], /private|provider/);
     assert.equal(location.pathname, recovery === "step-up" ? "/mfa" : recovery === "sign-in" ? "/login" : "/billing");
+    if (recovery === "step-up") assert.equal(location.searchParams.get("fresh"), "1");
   });
 }
 
@@ -441,6 +442,7 @@ for (const recovery of ["mfa", "login", "retry"]) {
     const href = html.match(/href="([^"]+)"/)?.[1].replaceAll("&amp;", "&");
     const link = new URL(href, "https://talli.example");
     assert.equal(link.pathname, recovery === "retry" ? "/billing" : `/${recovery}`);
+    if (recovery === "mfa") assert.equal(link.searchParams.get("fresh"), "1");
     const target = new URL(link.searchParams.get("next") ?? link.href, link.origin);
     for (const [key, value] of Object.entries(params)) assert.equal(target.searchParams.get(key), value);
     assert.equal(harness.reads.length, 0);
