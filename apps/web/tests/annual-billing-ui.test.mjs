@@ -618,3 +618,22 @@ test('checkout selection starts on newest history and retains its earlier page a
     return true;
   });
 });
+
+test('pending checkout and canceled-agreement recovery coexist with distinct sibling identities', () => {
+  const root = AnnualBillingView({ companyId, companyName: 'Holding AS',
+    snapshot: { offer, purchases: [{ ...purchase, status: 'pending', renewalCanceledAt: '2026-09-05T11:01:00Z' }], nextPurchaseId: null },
+    operationIds: {}, cancelAction: async () => {}, cleanupAction: async () => ({ kind: 'idle' }),
+    observeAction: async () => ({ kind: 'idle' }), recoverRefundAction: async () => ({ kind: 'idle' }) });
+  function find(value, predicate) {
+    if (Array.isArray(value)) return value.flatMap(child => find(child, predicate));
+    if (!React.isValidElement(value)) return [];
+    return [...(predicate(value) ? [value] : []), ...find(value.props.children, predicate)];
+  }
+  const cards = find(root, value => typeof value.type === 'function' && value.props.purchase?.purchaseId === purchaseId);
+  assert.equal(cards.length, 1);
+  const article = cards[0].type(cards[0].props);
+  const controls = find(article.props.children, value => [AnnualCheckoutObservationControl, AnnualAgreementCleanupControl].includes(value.type));
+  assert.equal(controls.length, 2, 'The regression requires both live recovery controls on the same purchase');
+  assert.equal(new Set(controls.map(value => value.key)).size, controls.length,
+    'Sibling controls must retain distinct React identities across canonical history revalidation');
+});

@@ -132,7 +132,7 @@ function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancel
     <RefundEvidence purchase={purchase} />
     <RefundTargets purchase={purchase} beforePurchaseId={beforePurchaseId} selected={refundTargets}
       recoverAction={recoverRefundAction} />
-    {purchase.status === "pending" ? <AnnualCheckoutObservationControl key={`${purchase.companyId}:${purchase.purchaseId}`}
+    {purchase.status === "pending" ? <AnnualCheckoutObservationControl key={`checkout-observation:${purchase.companyId}:${purchase.purchaseId}`}
       companyId={purchase.companyId} purchaseId={purchase.purchaseId} beforePurchaseId={beforePurchaseId}
       observeAction={observeAction} /> : null}
     {purchase.renewalCanceledAt ? <Banner variant="success">
@@ -152,7 +152,7 @@ function Purchase({ purchase, operationId, beforePurchaseId, unconfirmed, cancel
         <p className="fieldHelp">Fornyelsen stoppes med en gang. Oppsigelsen endrer ikke tilgangen du allerede har betalt for.</p>
       </form>
     </>}
-    {purchase.renewalCanceledAt ? <AnnualAgreementCleanupControl key={`${purchase.companyId}:${purchase.purchaseId}`}
+    {purchase.renewalCanceledAt ? <AnnualAgreementCleanupControl key={`agreement-cleanup:${purchase.companyId}:${purchase.purchaseId}`}
       companyId={purchase.companyId} purchaseId={purchase.purchaseId} beforePurchaseId={beforePurchaseId}
       cleanupAction={cleanupAction} /> : null}
     <details><summary>Vilkårene for dette kjøpet</summary>
