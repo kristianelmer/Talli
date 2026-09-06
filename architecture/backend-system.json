@@ -5,6 +5,12 @@
   "compositionRoot": "apps/backend/src/talli_backend/main.py",
   "workflows": [
     {
+      "name": "annual-provider-notification-intake",
+      "purpose": "Authenticates exact provider delivery bytes and commits immutable technical receipts; no actor, purchase resolution, provider call or financial mutation; injection absent by default.",
+      "publicPackages": ["talli_backend.modules.billing.public"],
+      "routes": ["/api/v1/billing/annual/provider-notifications"]
+    },
+    {
       "name": "system-boundary-tracer",
       "purpose": "Returns a deterministic availability response from the independently deployable FastAPI boundary.",
       "publicPackages": ["talli_backend.modules.system_boundary.public"],
@@ -252,6 +258,7 @@
   "technicalOwnership": {
     "schemas": ["backend_system", "public"],
     "tables": [
+      "backend_system.annual_notification_receipts",
       "backend_system.banking_command_receipts",
       "billing.billing_command_receipts",
       "backend_system.banking_migration_reconciliations",
@@ -278,6 +285,7 @@
       "public.notification_outbox"
     ],
     "migrations": [
+      "supabase/migrations/20260906204352_annual_notification_receipts.sql",
       "supabase/migrations/0001_authenticated_workspace.sql",
       "supabase/migrations/20260801090000_company_access_invitations.sql",
       "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql",
@@ -320,11 +328,23 @@
   "infrastructure": {
     "transactions": "Short Postgres transactions owned by backend application workflows.",
     "idempotency": "Durable idempotency records are required for consequential commands before provider I/O.",
-    "eventDelivery": "public.notification_outbox is the persisted event-delivery boundary.",
+    "eventDelivery": "public.notification_outbox persists outbound deliveries. backend_system.annual_notification_receipts retains authenticated annual provider delivery hints and exact-byte replay identity independently of business-table rollback; no business settlement authority.",
     "migrationRunner": "Supabase migrations in supabase/migrations are applied by the deployment migration runner.",
     "durableWorker": "A durable worker consumes persisted delivery state outside the initiating transaction."
   },
   "adapterBindings": [
+    {
+      "port": "AnnualNotificationAuthentication",
+      "adapter": "talli_backend.adapters.vipps_webhook.VippsWebhookAuthentication",
+      "owner": "backend-system",
+      "mode": "configured MT merchant HMAC authentication; no environment fallback or runtime activation"
+    },
+    {
+      "port": "AnnualNotificationPersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_notifications.PostgresAnnualNotificationInbox",
+      "owner": "backend-system",
+      "mode": "restricted actorless technical receipt insert/read only; no login grant, purchase lookup, financial write or worker"
+    },
     {
       "port": "SystemBoundaryTransport",
       "adapter": "talli_backend.main.create_app",
@@ -518,6 +538,7 @@
       "talli_backend.application.billing_session",
       "talli_backend.application.billing_workflow",
       "talli_backend.application.annual_billing",
+      "talli_backend.application.annual_notifications",
       "talli_backend.application.corporate_governance_session",
       "talli_backend.application.corporate_governance_workflow",
       "talli_backend.application.investments_session",

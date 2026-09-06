@@ -1,7 +1,7 @@
 # Billing backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests","billing.annual_refund_requests"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence","AnnualSupportReadPersistence","AnnualRefundRecoveryPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
+{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests","billing.annual_refund_requests"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence","AnnualSupportReadPersistence","AnnualRefundRecoveryPersistence","AnnualNotificationAuthentication","AnnualNotificationPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
 -->
 
 ## Purpose and ownership
@@ -600,3 +600,28 @@ optional request cursor. Neither target counts nor terminal operation status
 establish total refund liability or bank receipt. Source facts, actor IDs, amounts,
 case and operation IDs, provider identity and payloads stay private. Explicit
 recovery revalidates the selected receipt independently.
+
+## Authenticated annual delivery receipts
+
+`AnnualNotificationAccount` identifies the configured provider environment and
+merchant. `AnnualProviderNotification` contains only its authenticated exact-byte
+digest, event time/type and agreement/charge hints. `AnnualNotificationReceiptId`
+and `AnnualNotificationReceipt` identify committed technical delivery evidence.
+`AnnualNotificationAuthentication` authenticates raw bytes before
+`AnnualNotificationPersistence` records them. `AnnualNotificationRejected` means
+authentication failed; `AnnualNotificationUnavailable` means a receipt cannot be
+confirmed. Neither is a financial outcome.
+
+These contracts describe the billing provider boundary, while the backend system
+owns the inbox, transaction and adapter bindings under ADR0011. Intake never reads
+a purchase, creates an actor, binds an operation, invokes a provider or changes
+financial state. Exact delivery deduplication is scoped by provider, account and
+raw-body digest; JSON reserialization is a separate delivery. Conflicting
+authenticated fields under an existing digest fail closed without overwriting it.
+
+The HTTP route is present but unavailable without explicit injected composition.
+No environment configuration, runtime database login, webhook registration or MT
+credential is installed. Resource matching and a separately authorized worker
+must still reconcile an original stored intent using provider GET before any
+settlement; a charge-refunded event does not identify a refund attempt. This is
+receipt intake evidence only, not completion of #192 or actual MT validation.

@@ -10,6 +10,37 @@ const outsiderId = "73000000-0000-0000-0000-000000000002";
 const companyId = "73000000-0000-0000-0000-000000000003";
 const systemUserRequestId = "73000000-0000-0000-0000-000000000004";
 
+async function notificationReceiptEvidence(client) {
+  const authority = await client.query("select pg_has_role(current_user, 'annual_notification_executor', 'SET') as available");
+  if (!authority.rows[0].available) {
+    await client.query("do $borrow$ begin execute format('grant annual_notification_executor to %I with set true, inherit false', current_user); end $borrow$");
+  }
+  try {
+    await client.query("begin");
+    try {
+      await client.query("set local role annual_notification_executor");
+      await client.query("select set_config('talli.notification_provider', 'vipps-mt', true), set_config('talli.notification_account', '123456', true)");
+      await client.query(`insert into backend_system.annual_notification_receipts
+        (provider, provider_account, receipt_digest, agreement_reference, event_type, occurred_at)
+        values ('vipps-mt', '123456', repeat('b', 64), 'synthetic-lifecycle-agreement', 'recurring.agreement-stopped.v1', '2026-09-06T00:00:00Z')
+        on conflict (provider, provider_account, receipt_digest) do nothing`);
+      const result = await client.query(`select to_jsonb(r) as value, tableoid::oid as relation
+        from backend_system.annual_notification_receipts r
+        where provider='vipps-mt' and provider_account='123456' and receipt_digest=repeat('b',64)`);
+      await client.query("commit");
+      assert.equal(result.rows.length, 1);
+      return result.rows[0];
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    }
+  } finally {
+    if (!authority.rows[0].available) {
+      await client.query("do $return$ begin execute format('revoke annual_notification_executor from %I', current_user); end $return$");
+    }
+  }
+}
+
 async function topology(client) {
   const result = await client.query(String.raw`
     select
@@ -321,6 +352,7 @@ test(
       await seedCommandReceipt(client);
       const evidence = await canonicalEvidence(client);
       const commandReceipt = await commandReceiptEvidence(client);
+      const notificationReceipt = await notificationReceiptEvidence(client);
       await assertTenantBoundaryAndReadiness(client);
 
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
@@ -337,6 +369,7 @@ test(
         assert.equal(predecessor.billing_schema, false);
         assert.equal(predecessor.public_accounts, true);
         assert.equal(predecessor.public_accounts_kind, "r");
+        assert.deepEqual(await notificationReceiptEvidence(client), notificationReceipt);
         const quarantinedReceipt = await client.query(String.raw`
           select pg_catalog.to_regclass(
             'backend_system.billing_command_receipts'
@@ -360,6 +393,7 @@ test(
         assert.equal(successor.accounts_force_rls, true);
         assert.deepEqual(await canonicalEvidence(client), evidence);
         assert.deepEqual(await commandReceiptEvidence(client), commandReceipt);
+        assert.deepEqual(await notificationReceiptEvidence(client), notificationReceipt);
         await assertTenantBoundaryAndReadiness(client);
       }
 

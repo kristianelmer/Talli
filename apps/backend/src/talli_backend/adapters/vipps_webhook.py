@@ -16,6 +16,12 @@ from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from urllib.parse import urlsplit
 
+from talli_backend.modules.billing.public import (
+    AnnualNotificationAccount, AnnualNotificationAuthentication,
+    AnnualNotificationRejected, AnnualProviderNotification, billing_provider_adapter,
+)
+from talli_backend.shared.kernel import Timestamp
+
 
 class VippsWebhookRejected(ValueError):
     def __init__(self) -> None:
@@ -58,11 +64,29 @@ def _reference(value: object) -> str:
     return value
 
 
+@billing_provider_adapter(AnnualNotificationAuthentication)
 @dataclass(frozen=True, slots=True)
 class VippsWebhookAuthentication:
     merchant_serial_number: str
     callback_url: str
     secret: str = field(repr=False)
+
+    @property
+    def account(self) -> AnnualNotificationAccount:
+        return AnnualNotificationAccount("vipps-mt", self.merchant_serial_number)
+
+    def authenticate(
+        self, body: bytes, headers: Mapping[str, str], *, at: datetime,
+    ) -> AnnualProviderNotification:
+        try:
+            value = self.verify(body, headers, at=at)
+            return AnnualProviderNotification(
+                account=self.account, receipt_digest=value.receipt_digest,
+                agreement_reference=value.agreement_reference, charge_reference=value.charge_reference,
+                event_type=value.event_type, occurred_at=Timestamp(value.occurred_at),
+            )
+        except ValueError:
+            raise AnnualNotificationRejected() from None
 
     def __post_init__(self) -> None:
         target = urlsplit(self.callback_url)

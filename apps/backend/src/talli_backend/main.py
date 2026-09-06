@@ -9,7 +9,7 @@ import re
 import secrets
 import time
 from collections.abc import Awaitable, Callable, Mapping
-from datetime import date, datetime, time as local_time
+from datetime import UTC, date, datetime, time as local_time
 from decimal import Decimal
 from typing import Annotated, Any, Literal, TypeVar, cast
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
@@ -22,6 +22,10 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.json_schema import SkipJsonSchema
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import ClientDisconnect
+
+from talli_backend.application.annual_notifications import AnnualNotificationIntake
+from talli_backend.modules.billing.public import AnnualNotificationRejected, AnnualNotificationUnavailable
 
 from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAdapter
 from talli_backend.adapters.supabase_banking import compose_banking_application
@@ -3187,6 +3191,11 @@ def _document_backup_wire(value: DocumentBackupObject) -> DocumentBackupObjectWi
     )
 
 
+class AnnualNotificationAcknowledgementWire(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["received"]
+
+
 class ApiProblem(Exception):
     def __init__(self, *, status: int, code: str, title: str, detail: str) -> None:
         self.status = status
@@ -3255,6 +3264,7 @@ def create_app(
     annual_billing_session_factory: AnnualBillingSessionFactory | None = None,
     annual_billing_provider: AnnualBillingProvider | None = None,
     annual_checkout_prerequisites: AnnualCheckoutPrerequisiteResolver | None = None,
+    annual_notification_intake: AnnualNotificationIntake | None = None,
     marketing_measurement_gateway: MarketingMeasurementGateway | None = None,
     marketing_measurement_internal_key: str | None = None,
     validation_observer: PassiveValidationObserver | None = None,
@@ -9218,6 +9228,57 @@ def create_app(
             response.headers["Cache-Control"] = "no-store"
             return annual_checkout_wire(result)
         return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/annual/provider-notifications",
+        operation_id="billingReceiveAnnualProviderNotification",
+        response_model=AnnualNotificationAcknowledgementWire,
+        responses={200: {"description": "Authenticated delivery receipt committed; no payment or refund confirmation."} | billing_success,
+                   **{status: {"description": description, "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+                               "content": {"application/problem+json": {"schema": ProblemDetails.model_json_schema(by_alias=True)}}}
+                      for status, description in ((400, "Invalid delivery"), (401, "Authentication rejected"),
+                                                  (408, "Delivery timed out"), (413, "Delivery too large"),
+                                                  (503, "Receipt unavailable; retry delivery"))}},
+        tags=["billing"],
+        openapi_extra={
+            "parameters": [REQUEST_ID_PARAMETER],
+            "requestBody": {"required": True, "description": "Exact signed JSON bytes, at most 64 KiB; reserialization invalidates authentication.",
+                            "content": {"application/json": {"schema": {"type": "object", "additionalProperties": True}}}},
+        },
+    )
+    async def receive_annual_provider_notification(
+        request: Request,
+        _signature: str | None = Depends(APIKeyHeader(
+            name="Authorization", scheme_name="annualNotificationHmac", auto_error=False,
+            description="Provider HMAC over the exact body, signed date and configured callback target; customer bearer tokens are not accepted.",
+        )),
+    ) -> AnnualNotificationAcknowledgementWire:
+        # No environment fallback or owner session can activate this boundary.
+        if annual_notification_intake is None:
+            raise ApiProblem(status=503, code="ANNUAL_NOTIFICATION_UNAVAILABLE", title="Delivery unavailable", detail="The receipt service is unavailable.")
+        try:
+            headers: dict[str, str] = {}
+            for key, value in request.scope["headers"]:
+                name = key.decode("latin-1").lower()
+                if name in headers:
+                    raise AnnualNotificationRejected()
+                headers[name] = value.decode("latin-1")
+            body = bytearray()
+            async with asyncio.timeout(2):
+                async for chunk in request.stream():
+                    if len(body) + len(chunk) > 65536:
+                        raise ApiProblem(status=413, code="ANNUAL_NOTIFICATION_TOO_LARGE", title="Delivery too large", detail="The delivery exceeds the receipt limit.")
+                    body.extend(chunk)
+            await annual_notification_intake.receive(bytes(body), headers, at=datetime.now(UTC))
+        except AnnualNotificationRejected:
+            raise ApiProblem(status=401, code="ANNUAL_NOTIFICATION_REJECTED", title="Delivery rejected", detail="The delivery could not be authenticated.") from None
+        except AnnualNotificationUnavailable:
+            raise ApiProblem(status=503, code="ANNUAL_NOTIFICATION_UNAVAILABLE", title="Delivery unavailable", detail="The receipt could not be confirmed. Retry the delivery.") from None
+        except TimeoutError:
+            raise ApiProblem(status=408, code="ANNUAL_NOTIFICATION_TIMEOUT", title="Delivery timed out", detail="Retry the complete delivery.") from None
+        except ClientDisconnect:
+            raise ApiProblem(status=400, code="ANNUAL_NOTIFICATION_INCOMPLETE", title="Incomplete delivery", detail="Retry the complete delivery.") from None
+        return AnnualNotificationAcknowledgementWire(status="received")
 
     @application.post(
         "/api/v1/billing/annual/checkout-observations",

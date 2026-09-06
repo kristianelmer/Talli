@@ -36,7 +36,9 @@
     ],
     "errors": [
       "BillingError",
-      "BillingErrorCode"
+      "BillingErrorCode",
+      "AnnualNotificationRejected",
+      "AnnualNotificationUnavailable"
     ],
     "identifiers": [
       "BillingAccount",
@@ -115,7 +117,13 @@
       "AnnualRefundRecoveryOperations",
       "annual_refund_recovery_operations",
       "AnnualRefundRecoveryTarget",
-      "AnnualRefundRecoveryTargetPage"
+      "AnnualRefundRecoveryTargetPage",
+      "AnnualNotificationAccount",
+      "AnnualProviderNotification",
+      "AnnualNotificationReceiptId",
+      "AnnualNotificationReceipt",
+      "AnnualNotificationAuthentication",
+      "AnnualNotificationPersistence"
     ]
   },
   "owns": {
@@ -142,6 +150,20 @@
     "migrations": "supabase/migrations/20260905145000_annual_refund_agreement_cleanup.sql"
   },
   "ports": [
+    {
+      "name": "AnnualNotificationAuthentication",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualNotificationAuthentication",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_provider_adapter",
+      "adapters": ["talli_backend.adapters.vipps_webhook.VippsWebhookAuthentication"]
+    },
+    {
+      "name": "AnnualNotificationPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualNotificationPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": ["talli_backend.adapters.postgres_annual_notifications.PostgresAnnualNotificationInbox"]
+    },
     {
       "name": "BillingPersistence",
       "direction": "outbound",
@@ -255,6 +277,8 @@
     "Production payment-provider activation without explicit owner approval"
   ],
   "tests": {
+    "annualNotificationIntake": "apps/backend/tests/test_annual_notification_intake.py",
+    "annualNotificationDatabase": "apps/backend/tests/test_annual_notification_runtime.py",
     "policy": "apps/backend/tests/test_billing.py",
     "equivalence": "apps/backend/tests/test_billing_equivalence.py",
     "provider": "apps/backend/tests/test_billing_provider.py",

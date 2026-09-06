@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from enum import StrEnum
@@ -1385,7 +1385,96 @@ def billing_provider_adapter(port: type[object]) -> Callable[[Adapter], Adapter]
     return register
 
 
+@dataclass(frozen=True, slots=True)
+class AnnualNotificationAccount:
+    """Configured provider environment and merchant; never supplied by an owner."""
+
+    provider: str
+    reference: str
+
+    def __post_init__(self) -> None:
+        for value in (self.provider, self.reference):
+            _notification_text(value, punctuation="._:-")
+
+
+def _notification_text(value: str, *, punctuation: str = "_-") -> None:
+    if (not isinstance(value, str) or not 1 <= len(value) <= 100
+            or not all(character.isascii() and (character.isalnum() or character in punctuation)
+                       for character in value)):
+        raise ValueError("invalid notification reference")
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualProviderNotification:
+    """Authenticated delivery hints only; no purchase, money or settlement authority."""
+
+    account: AnnualNotificationAccount
+    receipt_digest: str
+    agreement_reference: str
+    charge_reference: str | None
+    event_type: str
+    occurred_at: Timestamp
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.account, AnnualNotificationAccount) or not isinstance(self.occurred_at, Timestamp):
+            raise ValueError("invalid notification evidence")
+        if (not isinstance(self.receipt_digest, str) or len(self.receipt_digest) != 64
+                or any(character not in "0123456789abcdef" for character in self.receipt_digest)):
+            raise ValueError("invalid notification digest")
+        _notification_text(self.agreement_reference)
+        if self.charge_reference is not None:
+            _notification_text(self.charge_reference)
+        _notification_text(self.event_type, punctuation="._-")
+
+
+class AnnualNotificationReceiptId(_UuidId):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualNotificationReceipt:
+    receipt_id: AnnualNotificationReceiptId
+    received_at: Timestamp
+    notification: AnnualProviderNotification
+
+
+class AnnualNotificationRejected(ValueError):
+    def __init__(self) -> None:
+        super().__init__("ANNUAL_NOTIFICATION_REJECTED")
+
+
+class AnnualNotificationUnavailable(RuntimeError):
+    def __init__(self) -> None:
+        super().__init__("ANNUAL_NOTIFICATION_UNAVAILABLE")
+
+
+class AnnualNotificationAuthentication(Protocol):
+    @property
+    def account(self) -> AnnualNotificationAccount: ...
+
+    def authenticate(
+        self, body: bytes, headers: Mapping[str, str], *, at: datetime,
+    ) -> AnnualProviderNotification: ...
+
+
+class AnnualNotificationPersistence(Protocol):
+    """Atomically deduplicate exact deliveries; return only after confirmed commit."""
+
+    @property
+    def account(self) -> AnnualNotificationAccount: ...
+
+    async def record_notification(self, notification: AnnualProviderNotification) -> AnnualNotificationReceipt: ...
+
+
 __all__ = [
+    "AnnualNotificationAccount",
+    "AnnualProviderNotification",
+    "AnnualNotificationReceiptId",
+    "AnnualNotificationReceipt",
+    "AnnualNotificationRejected",
+    "AnnualNotificationUnavailable",
+    "AnnualNotificationAuthentication",
+    "AnnualNotificationPersistence",
     "AnnualBillingSnapshotQuery",
     "AnnualPurchaseHistoryQuery",
     "AnnualPurchaseSummary",
