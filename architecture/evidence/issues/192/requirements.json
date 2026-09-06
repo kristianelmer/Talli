@@ -3,9 +3,9 @@
   "issue": "#192",
   "capability": "billing",
   "status": "implementation-in-progress",
-  "canonicalRoute": "#137 → #192 → #150",
+  "canonicalRoute": "#137 \u2192 #192 \u2192 #150",
   "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5561060339",
-  "routeCorrection": "Oversight reconciled source-handoff #137→#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
+  "routeCorrection": "Oversight reconciled source-handoff #137\u2192#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
   "baseline": {
     "revision": "ccf1dcba56a4eb05c5252b00286dba6b2b8b480e",
     "evidenceCommittedRevision": "f0ec97ccfea24268b432f5c91f43dc2c01e170b7",
@@ -685,6 +685,49 @@
         "https://www.postgresql.org/docs/current/ddl-rowsecurity.html"
       ],
       "limits": "Intake does not resolve resources, select refund attempts, reconcile payments or authorize a worker. Actual designated Vipps MT, trusted readiness/incident/submission sources, automatic runtime, representative users, full accounting exports and remaining #192 acceptance remain outstanding. #192 OPEN/incomplete; #150 unclaimed; whole #165 ACTIVE. Two complete immutable 11/11 gates and protected-main Release/nonproduction Preview integration remain required. Main unchanged and continuous integration target; only release/production frozen."
+    },
+    "annualCheckoutPreparation": {
+      "implementationRevision": "b0a1725de380dfb93f427584058237045de480e0",
+      "comparisonRevision": "b0bd4fe127e9a4b4ef3a10ebd5339a26f02b34fa",
+      "scope": "Additive authenticated owner checkout-preparation GET, public billing boundary, generated client and strict thin web transport. Existing pending/paid purchase returns only its scoped reference before new-sale provider/source checks. Available preparation returns exact offer and separately owned consent version; creates no identities, claims, reservations, provider effects or entitlement. Existing checkout response and original-key recovery ordering are preserved.",
+      "authority": "Both empty and populated reads require current accepted owner and fresh MFA. Preparation reauthorizes after company/year and source waits; shares exact Company Access basis and independent fresh readiness validation with claim; rereads source basis after verifier await. Default source resolver and real database verifier remain unavailable. No caller-supplied readiness, actor authority, terms substitution or provider enablement was added.",
+      "validation": "At exact b0a1725d: full billing 572 Python + 185 Node, mandatory fresh database lifecycle 354 Python + 1 Node, all zero skips; typecheck and production Next build pass. Committed contract suite 21/21, OpenAPI compatibility/generated-client drift and diff check pass. Earlier focused preparation runtime 27 passed on the candidate source before private helper extraction; full final lifecycle includes it. No checkout UI or browser acceptance is claimed.",
+      "databaseScenarios": "Preparation has zero purchase/operation writes, sees committed occupancy after controlled lock waits, rechecks owner/fresh MFA after waits and independent readiness verification, rejects changed exact source basis and expiring evidence, and fails closed with the default unavailable verifier. Existing claim/recovery, idempotency and financial invariants remain covered by the complete suite and two predecessor rollback/recutover cycles.",
+      "independentReviews": {
+        "implementationRevision": "b0a1725de380dfb93f427584058237045de480e0",
+        "comparisonRevision": "b0bd4fe127e9a4b4ef3a10ebd5339a26f02b34fa",
+        "kind": "Root summary of independent read-only exact-revision reports; reviewers did not execute tests",
+        "standards": {
+          "result": "PASS",
+          "violations": 0,
+          "nonblockingHeuristics": [
+            {
+              "category": "Duplicated Code",
+              "location": "apps/backend/src/talli_backend/application/annual_billing.py:217",
+              "finding": "The deferred prerequisite closure repeats the start closure at line 206. A private shared resolver could reduce repetition while preserving laziness."
+            }
+          ]
+        },
+        "spec": {
+          "result": "PASS",
+          "actionableFindings": 0,
+          "scope": "Backend owner checkout preparation and generated web transport foundation only; checkout UI and all remaining #192 gates are incomplete."
+        }
+      },
+      "architecture": "Exact b0a1725d full architecture suite 49/51, two failures: four inherited future-scope errors (three audit_events, one filing_readiness_snapshots) and frozen inventory active count 92 vs 96. Direct checker reports exactly those four scope errors. Previous registration-order regression now passes in the complete run. No architecture PASS; checker, baseline, ADR, gates and route unchanged.",
+      "fixtureLifecycle": "Owned fresh local Supabase project tallig52884 migrated from repository and stopped without backup; no matching containers remain. Cached CLI 2.109.1 used after installed 2.62.5 rejected config. An initial image-pull attempt used outdated exclusions and was stopped before the successful fresh start. Synthetic local credentials remain private and are excluded from evidence artifacts. No hosted migration or provider request.",
+      "artifacts": {
+        "/private/tmp/talli-01a0789e-b0a1725d-billing.log": "sha256:c23d4baa40fac325e4c3220a44bbfca287c69208aee0cc9a9058f8fa262fb891",
+        "/private/tmp/talli-01a0789e-b0a1725d-db-lifecycle.log": "sha256:398d11c400df625dd6efaf8204a4c42020e97555062bd9154e00a8c4fa9e59cc",
+        "/private/tmp/talli-01a0789e-b0a1725d-typecheck.log": "sha256:b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+        "/private/tmp/talli-01a0789e-b0a1725d-build.log": "sha256:9384559869b0b997f583ee29c744c94eabf14c2d1acb8a95fabe86c6ade78e57",
+        "/private/tmp/talli-01a0789e-b0a1725d-architecture-suite.log": "sha256:a2ae0c9c9a30a37c44217bfe83496a6adef2af836893dfafa4ee022839ef3921",
+        "/private/tmp/talli-01a0789e-preparation-architecture.log": "sha256:cf4bfc2167107cb1617a90e7867848c0d66e43b4d91bf8cd115b920c8ca63114",
+        "/private/tmp/talli-01a0789e-preparation-db-stopped.json": "sha256:1a9b3f7124db04f3309391dccb1e0746db2469d73f79b6095c1cb18ecc2d2be0",
+        "/private/tmp/talli-01a0789e-b0a1725d-review-summary.json": "sha256:484671aa2ff9f54365b3797a9110bd14b8763b47cc0759552b256850b2c360b9"
+      },
+      "nextWork": "Checkout UI must retain the exact original request and initiating user through uncertainty/refresh/reauthentication. No purchase found or stale terms error cannot safely release an unresolved key because an earlier request may still claim. Billing-owned durable original-request resolution is being designed before allowing a replacement review.",
+      "limits": "#192 OPEN/incomplete; #150 unclaimed; whole #165 ACTIVE. Actual designated Vipps Merchant Test, trusted readiness/incident/submission sources, remaining owner/operator acceptance and representative validation, two complete immutable 11/11 gates and protected-main Release/nonproduction Preview integration remain mandatory. Main remains the continuous integration target; only release/production is frozen."
     }
   },
   "externalEvidence": {
