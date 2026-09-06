@@ -43,7 +43,7 @@
     {
       "id": "GH-192-A6",
       "requirement": "Actionable customer plan/cancel/refund/export and operator exceptions.",
-      "status": "owner-history-cancellation-and-recorded-refund-discovery-recovery-ui-implemented-automatic-refund-and-operator-actions-pending"
+      "status": "owner-checkout-review-history-cancellation-and-recorded-refund-recovery-ui-verified-automatic-refund-and-operator-actions-pending"
     },
     {
       "id": "GH-192-A7",
@@ -776,8 +776,59 @@
         "https://www.postgresql.org/docs/current/functions-admin.html",
         "https://www.postgresql.org/docs/current/functions-datetime.html"
       ],
-      "nextWork": "Implement strict start/withdraw feature wrappers and one owner checkout control. Persist original exact body/key/verified initiating user in company-keyed sessionStorage before awaiting; withdrawal selection must persist its phase so refresh/reauthentication cannot resurrect purchase-start. Only a validated scoped committed resolution and matching current draft permit deletion/restart. New review needs fresh preparation and unchecked separate choices; no automatic POST. Private next-UI plan includes off-page history selection, storage failure and hydrated adversarial scenarios.",
+      "nextWork": "Owner checkout UI completed locally at 245ca637; see annualCheckoutOwnerReviewAndRecovery for exact browser/review evidence and preserved limitations. Continue remaining #192 operator recovery and source/provider/runtime acceptance.",
       "limits": "#192 OPEN/incomplete, #150 unclaimed, full #165 ACTIVE. Actual designated Vipps Merchant Test, trusted readiness/incident/submission authority, remaining owner/operator acceptance, representative validation, two complete immutable 11/11 gates, protected-main Release/nonproduction Preview and exact-main evidence remain mandatory. Main is the integration target; only release/production is frozen."
+    },
+    "annualCheckoutOwnerReviewAndRecovery": {
+      "implementationRevision": "245ca637a14092bbdd25215e2fd0c1d0d5ff4f2a",
+      "comparisonRevision": "d5623cfb1ece79873933414ccaedf7e6739bb77e",
+      "scope": "Owner checkout review and strict generated start/withdraw transport. Company/year-scoped preparation stays read-only. Explicit required purchase acceptance and optional recurring choice start unchecked. Exact original body/key/verified initiating user and navigation cursor are retained in company-keyed tab-local sessionStorage before awaiting.",
+      "recovery": "No POST during render, refresh, navigation or authentication return. Same initiating user and exact original intent are required for retry. Withdrawal phase persists before dispatch and never reverts to start. Errors, predecessor404, malformed/foreign results and storage failures cannot release intent. Only validated scoped committed result plus matching current draft permits deletion; late results cannot erase replacement drafts. Explicit fresh review reloads preparation and unchecked choices; replacement uses a new key.",
+      "authority": "Server actions verify initiating user through getUser against the exact token forwarded to billing. Backend owns actor authorization, source/provider readiness, immutable prices/terms, settlement and entitlement. Web validates response scope and only transient pending HTTPS approval links; canonical pending history must corroborate the initial start link. Approval never auto-opens or persists in draft/query/history. Default provider/source resolvers and real DB verifier remain unavailable.",
+      "history": "New or recovered purchase selects newest company history. Former cursor is a separate checkoutBeforePurchaseId backlink, not the active current-purchase page cursor. Terminal observation hides all initial approval links. Distinct sibling control keys preserve pending observation alongside canceled-renewal cleanup.",
+      "validation": "At exact 245ca637: full billing 585 Python + 236 Node passed, zero skips; separate typecheck and production build passed. Final actual hydrated start, lost-response, withdrawal, sign-in, MFA, changed-user, storage and late-result scenarios and 1440/390px visual/history navigation passed. No backend, schema or contract change in this UI candidate; the prior mandatory fresh withdrawal DB lifecycle of 382 Python + 1 Node at 1a024133 remains attributed to that revision, not rerun or relabeled.",
+      "independentReviews": {
+        "implementationRevision": "245ca637a14092bbdd25215e2fd0c1d0d5ff4f2a",
+        "comparisonRevision": "d5623cfb1ece79873933414ccaedf7e6739bb77e",
+        "kind": "Root summary of independent read-only exact-revision reviews; reviewers inspected tests but did not execute them",
+        "standards": {
+          "result": "PASS",
+          "actionableViolations": 0,
+          "nonblockingSmells": 0,
+          "reviewer": "withdrawal_standards_review"
+        },
+        "spec": {
+          "result": "PASS",
+          "actionableFindings": 0,
+          "reviewer": "prepare_spec_review"
+        },
+        "reviewHistory": "Full initial diff at 1a1a8185 plus exact subsequent deltas: distinct sibling recovery keys at 3d440166, explicit full-page fresh-review navigation at b2025c1b, and local native-checkbox layout at 245ca637.",
+        "limits": "Bounded checkout UI only; not complete #192, actual Vipps MT, trusted source authority, complete gates or integration approval."
+      },
+      "architecture": "At exact 245ca637, the direct checker reports only the four inherited unapproved future-scope errors: three audit_events and one filing_readiness_snapshots. During UI iteration the full architecture suite again reported 49/51 (scope and frozen inventory 92 vs 96); this was not an immutable final-candidate run and is not claimed as final acceptance. No checker, baseline, ADR, gate or route weakening; no architecture PASS.",
+      "fixtureLifecycle": "Owned production Next/auth/HTTP fixture processes and named browser stopped; process absence verified. No hosted changes, provider activation, real merchant requests, new charges or source authority. Private synthetic credentials excluded from committed evidence. Browser artifacts retained privately with hashes.",
+      "artifacts": {
+        "/private/tmp/talli-01a0789e-245ca637-review-summary.json": "sha256:fa69b58a5bcee6a7291ae93fd94739f34cf4ccfccdfe87bac1f62951bc720ae4",
+        "/private/tmp/talli-01a0789e-245ca637-browser-summary.json": "sha256:8874fd5d001dad15354e9c4f6bd41f7425d734e667000faf2dd8db36edbe0d66",
+        "/private/tmp/talli-01a0789e-245ca637-billing.log": "sha256:857cb0989cb7d2b4db60a19e6a9d5b5c7c3a096d10c7d172167f8d89b5252ce8",
+        "/private/tmp/talli-01a0789e-245ca637-build.log": "sha256:f3caf3300a314a8eb7aa2ee0293a0571aa7968cc1c2f64f53f8cbace962b5612",
+        "/private/tmp/talli-01a0789e-245ca637-typecheck.log": "sha256:b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+        "/private/tmp/talli-01a0789e-245ca637-architecture.log": "sha256:cf4bfc2167107cb1617a90e7867848c0d66e43b4d91bf8cd115b920c8ca63114",
+        "/private/tmp/talli-01a0789e-245ca637-browser-all.log": "sha256:78cf48e5720a1c90c4a1d9eaef9827963a5847c3584c095dead3fb0a5a5b9917",
+        "/private/tmp/talli-01a0789e-245ca637-browser-history-visual.log": "sha256:6b1a5e466077500a5471127485a1993bb196020e51226b927eaadb8da3587ae5",
+        "/private/tmp/talli-01a0789e-checkout-ui-stopped.json": "sha256:25850fffcb4e009ddbe90f455b045d606c16c72cdefbfda01f3880fbcba41bca",
+        "/private/tmp/talli-01a0789e-sibling-identity-red.log": "sha256:1c37b0f8b76af905c668b9bdd12c1ad4bba655ad6332c047ec90860f5f91ac60",
+        "/private/tmp/talli-01a0789e-sibling-identity-green.log": "sha256:f050bce881a4de851b886f344a130c4cda12c859ce7bb61985c2f4b6a11db470",
+        "/private/tmp/talli-01a0789e-browser-observation-minimal.log": "sha256:6ee310639f1ae03948c1ec3c25ba45d8899df8cb3a30503ec158f1b64a1171d3",
+        "/private/tmp/talli-01a0789e-browser-observation-minimal-green.log": "sha256:e08daf2cdcbae4ad1f2a8a3b185117f493f1545841462b126976319b8d9689f4",
+        "/private/tmp/talli-01a0789e-3d440166-browser-withdrawal-isolated.log": "sha256:ad7509c28673b3e68b6b0af97ffab49bd07e1264e13ea3f3c585d1ccb921bac6",
+        "/private/tmp/talli-01a0789e-b2025c1b-browser-withdrawal.log": "sha256:ab53ed3ac94bdd2d833cfc77b4b72304bbc8fce1f74407389dcbdf6a14a88a6a",
+        "/private/tmp/talli-01a0789e-checkout-ui-artifacts/checkout-review-390-245ca637.png": "sha256:c011d3d232fea8521c3faf32de502083ba28d1a3ddec10246af75ef1a990387e",
+        "/private/tmp/talli-01a0789e-checkout-ui-artifacts/checkout-review-1440-245ca637.png": "sha256:c91ede607abeffc9ae0d266ceb9e13fab5333f645923375579af4cfee7e2bcec",
+        "/private/tmp/talli-01a0789e-checkout-ui-artifacts/checkout-history-phone-245ca637.png": "sha256:842df11b6fb230b8673c01f0fdc7f789e0ea1bbc143b144a546add0933815236"
+      },
+      "nextWork": "Case-bound operator discovery and explicit recovery of already operation-bound refund receipts, preserving original actor/key/amount/provider identity. Verify current admin/opened billing support case/company/MFA before and after waits and settlement, including concurrent owner/operator recovery. No new refund claim, assignment, source resolution or automatic POST.",
+      "limits": "#192 OPEN/incomplete, #150 unclaimed, full #165 ACTIVE. Actual designated Vipps Merchant Test, trusted readiness/incident/submission sources, remaining operator/automatic-runtime acceptance and representative validation, two complete immutable 11/11 gates, protected-main Release/nonproduction Preview and exact-main evidence remain mandatory. Main is continuous integration target; only release/production is frozen."
     }
   },
   "externalEvidence": {
