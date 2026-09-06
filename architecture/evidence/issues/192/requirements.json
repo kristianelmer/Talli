@@ -280,6 +280,28 @@
       },
       "fixtureLifecycle": "Task-owned tallig82946 in /private/tmp/talli-supabase-local.xg5xNW stopped with no-backup and zero matching containers verified. Both local browser server processes stopped; named Playwright session closed. Dedicated Talli Colima runtime remains running for ongoing work. No hosted/provider calls.",
       "limits": "Current admission source supports2026 only; cross-year history is proved at API projection-fixture level, not as authority to admit or buy other years. No automatic-refund or full192 acceptance claim. Real Vipps MT, trusted incident/submission/readiness authority, complete customer/support actions, two immutable complete gates and protected-main Release/Preview integration remain required. Four-scope amendment unapproved;150 unclaimed; full165 goal ACTIVE."
+    },
+    "annualAgreementCleanupOwnerUi": {
+      "implementationRevision": "76cee06d40a5271f337430e0652a1e26261b57e6",
+      "scope": "Explicit owner control and server action for the existing original-agreement cleanup POST. No backend/schema/API/authorization/source/provider/worker change. Current owner page remains limited to the admitted accounting year.",
+      "behavior": "Only validated company/purchase intent reaches the API; page cursor and selection survive sign-in/MFA. Persisted local cancellation exposes the explicit control independently of purchase payment status. No render/navigation/polling POST. Confirmed response must match current company/purchase; deferred, pending, unknown, unavailable and rejected browser-to-server action remain unconfirmed and retryable. Pending submission disables the button, and switching purchase resets local state so old responses cannot appear in the new purchase.",
+      "validation": "Full billing433 Python+70 Node pass, including17 new cleanup-control/action and24 owner-UI Node cases. Contract49 and CI12 pass. Final production Next.js build passes including TypeScript. Earlier explicit typecheck passes; git diff --check passes. No database implementation changed; most recent full isolated database lane252 Python+1 Node belongs to the preceding support-visibility revision, not this UI candidate.",
+      "browser": "Real React19 action-state component and repository CSS with synthetic client/server fixture. Final automated Playwright script exits0 after11 explicit POSTs covering unknown-to-confirmed replay, pending/deferred/unavailable, MFA/sign-in, rejected action twice, foreign scope, disabled in-flight button and purchase switch during a request. Render/reset/navigation cause zero POSTs. Final mobile width390/document390 and no console errors. One subsequent manual response-loss screenshot uses a twelfth explicit POST. Isolated component fixture, not full Next authentication, actual Merchant Test or release evidence.",
+      "corrections": "Independent Spec review identified rejected browser-to-Next action bypassing the server catch; a real React fixture reproduced the blank error-boundary result. A client action wrapper now catches that rejection, keeps the same intent unconfirmed/retryable and passes the regression/browser replay. An earlier browser-check counter assertion used a React-batched fixture counter; the checker now reads actual fixture-server POST counts. That fixture assertion was not a product duplicate-request defect.",
+      "browserArtifacts": {
+        "directory": "/private/tmp/talli-01a07722-owner-cleanup-browser-artifacts",
+        "sha256": {
+          "talli-owner-cleanup-01a07722-mobile.png": "3da950c8707658f2c341a670c822701cb9d43ef6f2ddab52f0a5d3822e4f1092",
+          "talli-owner-cleanup-01a07722-response-loss.png": "93ed119209c0cec4193d29f44ec4611e98b7352bb80fdbb6500f9b5b46d3b418"
+        }
+      },
+      "independentReviews": {
+        "standards": "PASS0 exact76cee06d40a5271f337430e0652a1e26261b57e6 againstaa117f09504396025cbd3c0c51ea811ab18f66bd, read-only zero findings",
+        "spec": "PASS0 exact76cee06d40a5271f337430e0652a1e26261b57e6 againstaa117f09504396025cbd3c0c51ea811ab18f66bd, read-only zero remaining findings"
+      },
+      "architecture": "Final direct checker retains only the four inherited unapproved future-scope deletions. Most recent full49/51 belongs to preceding support visibility; no new full architecture run or PASS claimed. Checker, frozen baseline, ADR and serialized route unchanged.",
+      "fixtureLifecycle": "Named Playwright session closed and task-owned local HTTP server PID20798 stopped. Browser artifacts moved outside repository. Dedicated Talli Colima runtime remains available for ongoing work. No hosted/provider calls.",
+      "limits": "Explicit owner recovery only, not automatic cancellation, universal historical exit or full192 acceptance. Actual designated Vipps MT, trusted incident/submission/readiness authority, remaining customer/support actions, two complete immutable gates and protected-main Release/Preview integration remain required. Four-scope amendment unapproved;150 unclaimed; full165 goal ACTIVE."
     }
   },
   "externalEvidence": {
