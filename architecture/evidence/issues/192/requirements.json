@@ -3,9 +3,9 @@
   "issue": "#192",
   "capability": "billing",
   "status": "implementation-in-progress",
-  "canonicalRoute": "#137 \u2192 #192 \u2192 #150",
-  "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5560164848",
-  "routeCorrection": "Oversight reconciled source-handoff #137\u2192#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
+  "canonicalRoute": "#137 → #192 → #150",
+  "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5561060339",
+  "routeCorrection": "Oversight reconciled source-handoff #137→#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
   "baseline": {
     "revision": "ccf1dcba56a4eb05c5252b00286dba6b2b8b480e",
     "evidenceCommittedRevision": "f0ec97ccfea24268b432f5c91f43dc2c01e170b7",
@@ -38,12 +38,12 @@
     {
       "id": "GH-192-A5",
       "requirement": "Automatic full refund for mistaken acceptance or Talli/provider failure; recorded-fact safe exit.",
-      "status": "refund-policy-orchestration-and-durable-persistence-tested-source-authority-and-runtime-pending"
+      "status": "refund-policy-persistence-and-original-bound-owner-recovery-tested-trusted-source-and-automatic-runtime-pending"
     },
     {
       "id": "GH-192-A6",
       "requirement": "Actionable customer plan/cancel/refund/export and operator exceptions.",
-      "status": "owner-annual-history-and-local-cancellation-implemented-refund-and-operator-flows-pending"
+      "status": "owner-history-cancellation-and-recorded-refund-recovery-http-implemented-refund-discovery-ui-and-operator-flows-pending"
     },
     {
       "id": "GH-192-A7",
@@ -370,6 +370,37 @@
       "architecture": "Direct checker retains only the four inherited unapproved future-scope retirements. Most recent full suite 49/51 belongs to historical-discovery ec640be3. No new full architecture run, architecture PASS or complete gate claimed. Checker/baseline/ADR/serialized route unchanged.",
       "fixtureLifecycle": "Named Playwright browser closed, task-owned Next fixture parent 52488 and server 52491 stopped, browser artifacts moved outside the repository. No database fixture started for this UI-only unit; dedicated Talli Colima remains running. No hosted/provider calls.",
       "limits": "Explicit recovery only for original recorded pending purchases, including historical records without current admission. No checkout acquisition UI, source readiness, provider activation or automatic observation. Actual designated Vipps MT, trusted readiness/incident/submission authority, remaining customer/support actions, two complete immutable gates and protected-main Release/Preview integration remain required. Four-scope amendment unapproved; #150 unclaimed; full #165 goal ACTIVE."
+    },
+    "annualOwnerRefundRecovery": {
+      "implementationRevision": "4658a8cd2bda9c83750ec87b0703b9e7bc7d0abe",
+      "reviewedRevision": "4b0a4a4d7b53c08009573b58f0b1f2fa7d7c4d4a",
+      "comparisonRevision": "4833049d24ca8b4035647ae92a212788b4923e5e",
+      "scope": "Dedicated authenticated POST /api/v1/billing/annual/refund-recoveries and generated client to reconcile an already operation-bound receipt of the same current accepted owner with fresh MFA. No schema, new refund claim/assignment/allocation, source authority, provider execute, automatic worker or discovery/UI added.",
+      "behavior": "Locks and revalidates purchase, exact same-actor request, case and original operation, including immutable original charge/provider/account/intent and stored decision bindings. Rechecks ownership/MFA after lock waits. Created/pending/unknown operations reconcile the original intent; terminal confirmed/failed operations replay without provider calls. Lost responses retain the original reservation. Shared settlement atomically and monotonically advances operation and purchase totals. Minimal response status belongs to that operation, not total refund liability.",
+      "validation": "Final product contents: full billing500 Python +116 Node pass; full isolated database lifecycle296 Python +1 Node pass, zero skips, including two rollback/recutover cycles. Ordinary backend1164 pass,2 existing skips,296 DB cases deselected. Boundary-contract50 and CI12 pass. Web typecheck, production Next.js build, backend wheel/sdist build, deterministic OpenAPI/client generation/check and diff check pass. Dedicated service25, HTTP21 and real-database recovery30 cases included. Most checks preceded the implementation or dependency-evidence commits; no complete immutable11/11 gate claimed.",
+      "deploymentCompatibility": "Exact comparison against predecessor4833049d confirms every existing OpenAPI path and schema unchanged. Adds one route and two schemas. Existing session test factories updated for required recovery binding; no predecessor behavior weakened.",
+      "architecture": "Full suite on clean immutable4b0a4a4d:49 pass,2 fail. Deterministic dependency evidence updated for new workflow edge. Four inherited future-scope errors remain (three audit_events scopes and one filing_readiness_snapshots scope), active inventory92vs96. Checker, baseline, ADR and route order unchanged. Not architecture PASS.",
+      "independentReviews": {
+        "standards": "PASS0 exact4b0a4a4d7b53c08009573b58f0b1f2fa7d7c4d4a against4833049d24ca8b4035647ae92a212788b4923e5e, independent read-only zero findings",
+        "spec": "PASS0 exact4b0a4a4d7b53c08009573b58f0b1f2fa7d7c4d4a against4833049d24ca8b4035647ae92a212788b4923e5e, independent read-only zero findings"
+      },
+      "corrections": "Initial transport test used an unsupported accessToken option; corrected test to supported Authorization header. Initial lifecycle run exposed two older private session test factories missing the new required recovery field; corrected factories and full recheck passed. Initial architecture48/51 had the missing deterministic workflow edge in addition to inherited failures; only evidence was updated and final49/51 observed.",
+      "fixtureLifecycle": "Only task-owned tallig56648 in /var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-supabase-local.s8z0hbwd was stopped with no-backup; zero matching containers verified. Dedicated Talli Colima remains running. No task browser/server or hosted/provider calls.",
+      "dependencyAudit": "Unchanged predecessor package-lock.json contains ajv8.17.1 moderate and fast-uri3.1.4 high npm audit findings. Fixes available; no checker-dependency upgrade in this bounded recovery change. No green security/release claim.",
+      "artifacts": {
+        "/private/tmp/talli-01a077d5-billing-final.log": "sha256:56291948590cb4ca98744c60f522ca7bd66cf8aafea5e04042c30065ada6bfc4",
+        "/private/tmp/talli-01a077d5-billing-database-recheck.log": "sha256:f49868700458df22d3d0a65114754a3da1cf4c10a005c8df43c632f4e21714bd",
+        "/private/tmp/talli-01a077d5-backend.log": "sha256:5ad2dde4f23e8f05ebc53b4304391e4ed1f6040e369d5d6dbb9abc6d2b2f6da0",
+        "/private/tmp/talli-01a077d5-contract.log": "sha256:11b5341349239ae0a6774c269a1456fa3a87982e58f35153d440e54dc293186e",
+        "/private/tmp/talli-01a077d5-ci.log": "sha256:0eca946c04e0264524dbd51c8a17456eac4f6c2fd1d280a22e6d5a191fab8bda",
+        "/private/tmp/talli-01a077d5-web-build.log": "sha256:7d45c50b206e98d469e3af681f2e1910e3f99369e5fba55164767978315339f1",
+        "/private/tmp/talli-01a077d5-backend-build.log": "sha256:8e7729037d302084f8e6333f0202b811eb25c8a6398a034c1799a553c7822e06",
+        "/private/tmp/talli-01a077d5-architecture-final.log": "sha256:40aa9c6be6d34622a3223e6aa4b8407f110def767cd98e772c2b2848c7db5ca2",
+        "/private/tmp/talli-01a077d5-refund-contract-overlap.json": "sha256:bce747636f2107e0009eb506dc4056332be9a1a7d596f87e63730c1777d1f0c2",
+        "/private/tmp/talli-01a077d5-refund-fixture-stopped.json": "sha256:524a939256e9199a306de75ab111749fc686fad91846f3692c692de9897604d7",
+        "/private/tmp/talli-01a077d5-audit.json": "sha256:e5efd64c79ecd39086970deda9f90d86c218059651d122ea4e5d9e72f32c592a"
+      },
+      "limits": "Same-actor receipt proves current ownership scope, not historical-role provenance. Recorded operation recovery only; owner discovery/UI, trusted readiness/incident/submission authority, automatic adjudication/execution, actual designated Vipps Merchant Test, representative UX and universal export/exit evidence remain due. Four-scope retirement amendment unapproved. Two complete immutable customer-ready gates and protected-main Release/Preview integration still required;192 OPEN,150 unclaimed, whole165 goal ACTIVE."
     }
   },
   "externalEvidence": {
