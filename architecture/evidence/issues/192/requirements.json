@@ -1208,6 +1208,101 @@
         "Two distinct immutable complete 11/11 gates, protected-main Release/nonproduction Preview integration and exact-main Release/Preview evidence remain required. Only release/production stays frozen.",
         "DB548+1 belongs only to cfb4151c. DB515+1 remains specific to d3855c98, DB498+1 to815091c4 and DB449+1 to f513da7d; prior UI25e2af05 evidence and historical corrections remain unchanged."
       ]
+    },
+    "annualCheckoutRecoveryAuthority": {
+      "implementationRevision": "e8758108e2f47d797da14d0826353c3853a40fd8",
+      "comparisonRevision": "18c6a4c3c285d2e740353acf1f611afd2577aeed",
+      "scope": "Existing owner checkout load and settlement finalization only. No claim, money policy, identity, source/provider, worker/operator, generic transaction or schema expansion.",
+      "reproduction": "Two real database owner/MFA losses after the final operation UPDATE failed twice before correction: actual rowcount1, confirmation returned and persisted settlement changed. Six observed independent operation-lock cases also failed twice: terminal load, pending settlement and terminal settlement each returned after owner revocation or actual MFA expiry.",
+      "behavior": [
+        "A private owner transaction wrapper clears ambient support, authorizes entry and successful return, and reauthorizes domain failures caused by RLS-hidden rows or missed writes. SQL errors go directly to existing rollback without querying an aborted transaction.",
+        "Settlement rechecks current owner/fresh MFA after purchase-then-operation locks and requires exactly one affected row for each UPDATE. Late authority loss and actual missed writes roll back both purchase and original operation.",
+        "Terminal replay preserves current owner/MFA requirements while remaining independent of current readiness/provider lookup. Another currently accepted owner may recover original stored evidence without altering its accepting actor or provider identity."
+      ],
+      "validation": {
+        "focusedDatabase": "99 checkout database tests passed on the identical precommit product tree; 35 new cases.",
+        "newCases": "16 actual purchase/operation lock waits across pending/terminal load/settlement and owner/MFA losses; 12 write interleavings before/between/after writes with/without ambient support; 2 actual missed UPDATEs; 3 actual aborted-SQL failures with no subsequent query; 2 original/other-current-owner terminal recovery positives with unavailable current readiness.",
+        "exactBilling": "655 Python + 281 Node billing tests passed at e8758108e2f47d797da14d0826353c3853a40fd8; zero skips.",
+        "exactFreshDatabase": "583 Python + 1 Node mandatory billing database lifecycle tests passed at e8758108e2f47d797da14d0826353c3853a40fd8; zero skips, fresh fully migrated isolated database, both rollback/contract/recutover cycles.",
+        "limits": "Synthetic local source/provider facts; no provider origin, actual MT, hosted or Production operation, and no new frontend/build/browser claim."
+      },
+      "independentReviews": {
+        "candidate": "e8758108e2f47d797da14d0826353c3853a40fd8",
+        "base": "18c6a4c3c285d2e740353acf1f611afd2577aeed",
+        "standards": {
+          "verdict": "PASS",
+          "documentedViolations": 0,
+          "judgementSmells": 1,
+          "reviewer": "cleanup_standards_review",
+          "finding": "Nonblocking possible Duplicated Code: near-expiry MFA claims setup is repeated in the write-interleaving and observed-lock scenarios.",
+          "disposition": "Retained explicit setup within the independent timing scenarios; no documented violation or behavior defect."
+        },
+        "spec": {
+          "verdict": "PASS",
+          "findings": 0,
+          "reviewer": "cleanup_spec_review"
+        },
+        "scope": "Independent read-only exact-commit review of existing owner checkout load/settlement finalization. No claim change, source/provider/runtime authority or whole #192 acceptance; reviewers did not run tests."
+      },
+      "architecture": "Direct exact checker still reports the same four inherited unapproved errors: three audit_events scopes and one filing_readiness_snapshots scope. No checker/baseline/ADR or ownership amendment; no complete gate PASS.",
+      "fixtureLifecycle": "Checkout reproduction and exact-validation databases stopped without backup; container absence verified. A separate owned claim reproduction database is prepared for the next lane.",
+      "artifacts": [
+        {
+          "path": "/private/tmp/talli-01a07955-checkout-red.log",
+          "sha256": "da2115017890359071521e1f15a199f93ed83bd4611c39a5e830baab96da8483"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-checkout-red-confirmed.log",
+          "sha256": "423e98760c2efabe2ccea4870ec7fd8147409a87d0936cc4df21c1b9cf0b99c0"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-checkout-lock-red.log",
+          "sha256": "46a4ef14c7d93fba3b71f4a9fac7b10daaf2ee674723199ebcad6062b87cf6b1"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-checkout-lock-red-confirmed.log",
+          "sha256": "045cd88ffb429269240d966cb6f7790a0bc733f30ccbe663a956ac9780e95d9a"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-checkout-first-green.log",
+          "sha256": "903c8efd228582a2d99658b69b6a5d3712ff667f7ebc968d7fbd59060c4bbc68"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-checkout-expanded.log",
+          "sha256": "3771e041537abd908d0ba5815f957b27e589854dd0144ba803f1a038344524db"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-e8758108-billing.log",
+          "sha256": "cbc21d1f9087814de62ceeb6e14978864bd5fe8ef651c3cb9341ed1cdc41d6c8"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-e8758108-database.log",
+          "sha256": "1a53f794bf71c5b7f34915c0649b53ac2d23d4dd795f241cdf67138194e2cd27"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-e8758108-architecture.log",
+          "sha256": "cf4bfc2167107cb1617a90e7867848c0d66e43b4d91bf8cd115b920c8ca63114"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-e8758108-reviews.json",
+          "sha256": "47b1881fa4002547382658b2e76cb2ee6bfc50563477b8bc7b8a5b453256409d"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-checkout-reproduction-db-stopped.json",
+          "sha256": "093bd555806480de90da13015d63f51072d1d397d7ecb5dcd1f4e5e7b0aaae69"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-e8758108-database-stopped.json",
+          "sha256": "ad1d81104ba1168f184cb8b755199bb7880c786c0f8892b5f6847e922ba5dc48"
+        }
+      ],
+      "nextWork": "Reproduce the separate existing claim replay/new-claim final-return authority concern before any correction. Keep claim actor/request identity and existing readiness verification; no generic transaction, source, provider, worker or support authority expansion.",
+      "limits": [
+        "#192 remains OPEN/incomplete, #150 unclaimed, full #165 goal active through genuine #198. GH-192-A3 remains partial and final annual paid entitlement/trusted source integration unavailable.",
+        "Actual designated Vipps MT, trusted readiness/incident/submission sources, automatic runtime/worker authority, all remaining accounting/security/privacy/legal/UX/representative/serialization acceptance, two distinct immutable complete 11/11 gates and protected-main Release/nonproduction Preview integration/exact-main evidence remain mandatory.",
+        "Main remains the continuous integration target; only release/production stays frozen. No spending, terms, provider activation or launch authority.",
+        "DB583+1 belongs only to e8758108. DB548+1 remains specific to cfb4151c, DB515+1 to d3855c98, DB498+1 to815091c4 and DB449+1 to f513da7d; prior UI25e2af05 and all historical corrections remain unchanged."
+      ]
     }
   },
   "externalEvidence": {
