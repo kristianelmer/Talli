@@ -3,9 +3,9 @@
   "issue": "#192",
   "capability": "billing",
   "status": "implementation-in-progress",
-  "canonicalRoute": "#137 → #192 → #150",
+  "canonicalRoute": "#137 \u2192 #192 \u2192 #150",
   "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5562322074",
-  "routeCorrection": "Oversight reconciled source-handoff #137→#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
+  "routeCorrection": "Oversight reconciled source-handoff #137\u2192#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
   "baseline": {
     "revision": "ccf1dcba56a4eb05c5252b00286dba6b2b8b480e",
     "evidenceCommittedRevision": "f0ec97ccfea24268b432f5c91f43dc2c01e170b7",
@@ -43,7 +43,7 @@
     {
       "id": "GH-192-A6",
       "requirement": "Actionable customer plan/cancel/refund/export and operator exceptions.",
-      "status": "owner-checkout-review-history-cancellation-and-recorded-refund-recovery-ui-verified-automatic-refund-and-operator-actions-pending"
+      "status": "owner-checkout-and-recovery-ui-verified-support-bound-refund-backend-verified-operator-ui-and-automatic-refund-pending"
     },
     {
       "id": "GH-192-A7",
@@ -827,8 +827,53 @@
         "/private/tmp/talli-01a0789e-checkout-ui-artifacts/checkout-review-1440-245ca637.png": "sha256:c91ede607abeffc9ae0d266ceb9e13fab5333f645923375579af4cfee7e2bcec",
         "/private/tmp/talli-01a0789e-checkout-ui-artifacts/checkout-history-phone-245ca637.png": "sha256:842df11b6fb230b8673c01f0fdc7f789e0ea1bbc143b144a546add0933815236"
       },
-      "nextWork": "Case-bound operator discovery and explicit recovery of already operation-bound refund receipts, preserving original actor/key/amount/provider identity. Verify current admin/opened billing support case/company/MFA before and after waits and settlement, including concurrent owner/operator recovery. No new refund claim, assignment, source resolution or automatic POST.",
+      "nextWork": "Backend operator discovery/recovery completed in annualSupportRecordedRefundRecovery. Continue the separate operator UI, exact initiating-operator continuity, protected-read clearing and explicit authentication-return recovery; remaining automatic/source/MT/exit requirements stay open.",
       "limits": "#192 OPEN/incomplete, #150 unclaimed, full #165 ACTIVE. Actual designated Vipps Merchant Test, trusted readiness/incident/submission sources, remaining operator/automatic-runtime acceptance and representative validation, two complete immutable 11/11 gates, protected-main Release/nonproduction Preview and exact-main evidence remain mandatory. Main is continuous integration target; only release/production is frozen."
+    },
+    "annualSupportRecordedRefundRecovery": {
+      "implementationRevision": "f513da7dee1fd33057f4884ff0d8013358c4b467",
+      "comparisonRevision": "2f5123a3307637873ee45cab8a3904b0f79a0ecb",
+      "scope": "Separate active-admin/opened same-company billing support-case/fresh-MFA GET discovery and explicit POST recovery of already operation-bound refund receipts across original requesters. The operator query is supplied at load and settlement while the immutable original requester, source, key, correlation, case and operation intent remain unchanged.",
+      "authority": "Dedicated public Company Access guards have no owner fallback. Reauthorize after actual purchase/refund-operation lock waits, after provider I/O, and after financial writes. Both UPDATEs must affect exactly one row; denial rolls back purchase and operation together, including operators who also retain owner rights. Bound requests are immutable and use plain SELECT; no migration, grant or request-binding policy change.",
+      "recovery": "Only original-intent reconcile for created/pending/unknown evidence; terminal confirmed/failed replay needs no provider. No source resolver, claim, bind, new case/request/operation, provider execution or owner impersonation. Default provider remains absent. One operation confirmation does not establish full purchase refund.",
+      "discovery": "At most 50 distinct bound operations for one company/purchase/year, earliest receipt per operation across requesters, immutable operation order and request-to-operation cursors stable after representative replacement. Existing owner filtering remains before grouping. Empty, missing and denied results stay distinct; all reads reauthorize before returning.",
+      "transport": "Additive support refund-recovery-targets GET and refund-recoveries POST. Exact four-ID POST body; verified actor only from session. Narrow case/company/purchase/request/year/status projections. Every predecessor OpenAPI route and schema unchanged; generated client and runtime validators updated and tested.",
+      "validation": "Exact clean immutable f513da7d: full billing 655 Python + 238 Node passed, zero skips; typecheck passed. Mandatory fresh fully migrated local billing database lifecycle 449 Python + 1 Node passed, zero skips. New database coverage includes owner-created receipt recovered by different operator without owner membership, original owner-port denial, empty support denial matrix, actual purchase/refund-operation lock waits with revocation/admin loss/MFA expiry at load and settlement, authority loss during provider read, inter-write revocation with and without owner rights, concurrent owner/operator late-unknown convergence, terminal/lost-response replay, no allocation, cross-requester dedup and 52-operation stable pagination, late-read authority loss, and real verified-operator HTTP composition.",
+      "regressionHistory": "Six deterministic real-database inter-write revocation cases first failed, then passed after affected-row and final support-auth checks. First immutable full DB at 1901b3d2 had 9 TypeError failures / 440 passes because two preexisting test factories omitted the new composed port; no Node stage ran. Production factory already supplied it. Corrected only those factories at f513da7d; affected 10 HTTP checks and the complete fresh 449 + 1 run passed. An earlier new composition test assertion confused RFC problem status 403 with refund operation status; assertion corrected without changing behavior.",
+      "independentReviews": {
+        "implementationRevision": "f513da7dee1fd33057f4884ff0d8013358c4b467",
+        "comparisonRevision": "2f5123a3307637873ee45cab8a3904b0f79a0ecb",
+        "standards": {
+          "result": "PASS",
+          "violations": 0,
+          "smells": 0,
+          "reviewer": "support_refund_standards_review"
+        },
+        "spec": {
+          "result": "PASS",
+          "findings": 0,
+          "reviewer": "prepare_spec_review"
+        },
+        "scope": "Full1901b3d2 implementation diff plus f513da7d two-fixture composition delta. Read-only exact Git object reviews, no test execution by reviewers.",
+        "limits": "Bounded backend operator refund recovery and discovery only; no UI, source authority, MT, full gate or #192 completion."
+      },
+      "architecture": "Exact direct checker still fails only on four inherited unapproved future-scope errors: three audit_events and one filing_readiness_snapshots. No checker/baseline/ADR/gate weakening, no architecture PASS, no complete 11/11 gate claim.",
+      "fixtureLifecycle": "All three owned local database projects stopped without backup; container absence verified. Private synthetic DB credentials excluded. No hosted change, provider activation, real merchant request, charge, source authority or browser acceptance in this backend slice.",
+      "artifacts": {
+        "/private/tmp/talli-01a0789e-f513da7d-review-summary.json": "sha256:02924a271c645baa30462b0c89187cc4852fcde1a375b6e1a53233e36d8b2839",
+        "/private/tmp/talli-01a0789e-f513da7d-billing.log": "sha256:7c16c94a6d5b75840507cffac12609c576433ebdef1462215740c4bc7dca078e",
+        "/private/tmp/talli-01a0789e-f513da7d-typecheck.log": "sha256:b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+        "/private/tmp/talli-01a0789e-f513da7d-architecture.log": "sha256:cf4bfc2167107cb1617a90e7867848c0d66e43b4d91bf8cd115b920c8ca63114",
+        "/private/tmp/talli-01a0789e-f513da7d-database.log": "sha256:d6ec7e9064f60383f83a1954548d5ef88bc3806d09d4c576e9dc6f911458ed37",
+        "/private/tmp/talli-01a0789e-f513da7d-database-summary.json": "sha256:3d8a9cefbea76dc9261250fa17043b21899d0e56a1c4a5298cb33b8e66ef4677",
+        "/private/tmp/talli-01a0789e-1901b3d2-database.log": "sha256:fe7ecca4b2a768e63ef6fbf5240dec59a345b6dfad16efc22a5da5d267aa1fa9",
+        "/private/tmp/talli-01a0789e-1901b3d2-database-summary.json": "sha256:77f38b95f70f49884a3b72d294da93ce290b735dfc23c74ca2b17199bab49842",
+        "/private/tmp/talli-01a0789e-support-refund-factory-fix.log": "sha256:3a7a295d7acdf8eaddf4d66bb99b4cb7d0ca3b044a584269da32d3553303cd5e",
+        "/private/tmp/talli-01a0789e-support-refund-write-race-red.log": "sha256:56dd493b49e2073e517df0923b215a84e47ff78e3a9abadee643072997804f2e",
+        "/private/tmp/talli-01a0789e-support-refund-dbs-stopped.json": "sha256:27f4ea3391400edecd7bf3007acdfee7c18163a5b9379d7c2a86c448ec92e4d0"
+      },
+      "nextWork": "Operator UI discovery and explicit same-request recovery controls with exact initiating-operator/token continuity, case/company/purchase/request/cursor navigation, protected evidence clearing on later read/action denial, and manual login/MFA return without automatic POST. Actual hydrated browser and mobile verification required.",
+      "limits": "#192 OPEN/incomplete, #150 unclaimed, full #165 ACTIVE. Trusted readiness/incident/submission sources, automatic runtime, actual designated Vipps Merchant Test, remaining representative acceptance, two complete immutable11/11 gates, protected-main Release/nonproduction Preview integration and exact-main evidence remain mandatory. Main remains continuous integration target; only release/production frozen at d331ee2717d1eeacef0d81db42b9d4fb5848b408."
     }
   },
   "externalEvidence": {
