@@ -1208,7 +1208,14 @@ class AnnualCheckoutPersistence(Protocol):
     async def claim_checkout(
         self, checkout: AnnualCheckout, prerequisites: AnnualCheckoutPrerequisites,
     ) -> AnnualCheckoutClaim:
-        """Commit purchase and original operation atomically; only one caller wins."""
+        """Commit purchase and original operation atomically; only one caller wins.
+
+        Require current owner/fresh MFA before every claim or replay return;
+        ambient support cannot authorize it. Late authority loss rolls back new
+        rows, and SQL errors roll back without querying an aborted transaction.
+        Preserve initiating actor/request identity. Only new claims require
+        current acceptance/readiness verification; exact original replay does not.
+        """
         ...
 
     async def load_checkout(self, company_id: CompanyId, purchase_id: AnnualPurchaseId) -> AnnualCheckout:

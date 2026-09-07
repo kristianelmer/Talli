@@ -450,7 +450,6 @@ class PostgresAnnualCheckoutSession:
     ) -> AnnualCheckoutClaim:
         async def work(connection):
             offer, intent = checkout.offer, checkout.intent
-            await self._authorize(connection, offer.company_id)
             if (
                 checkout.accepted_by != self.actor_id.subject
                 or checkout.status is not AnnualPurchaseStatus.PENDING
@@ -545,7 +544,7 @@ class PostgresAnnualCheckoutSession:
                 await self._load(connection, offer.company_id, checkout.purchase_id), True
             )
 
-        return await self._transaction(work)
+        return await self._owner_transaction(checkout.offer.company_id, work)
 
     async def settle_checkout(
         self, checkout: AnnualCheckout, observation: AnnualProviderObservation

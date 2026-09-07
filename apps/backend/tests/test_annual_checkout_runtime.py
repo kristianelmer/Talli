@@ -430,6 +430,17 @@ def checkout_records(checkout):
     return purchase, operation
 
 
+def checkout_company_records(setup):
+    """Read complete fixture rows even when its owner has just been revoked."""
+    with psycopg.connect(DATABASE_URL) as connection:
+        return connection.execute("""select
+          (select coalesce(jsonb_agg(to_jsonb(p) order by p.id), '[]'::jsonb)
+           from billing.annual_purchases p where company_id=%s),
+          (select coalesce(jsonb_agg(to_jsonb(o) order by o.id), '[]'::jsonb)
+           from billing.annual_operations o where company_id=%s)""",
+          (str(setup[2].company_id),) * 2).fetchone()
+
+
 def interleave_checkout_sql(store, execute, support_case=None):
     """Observe real SQL under this store's existing transaction and RLS."""
     transaction = store._transaction
@@ -452,6 +463,126 @@ def interleave_checkout_sql(store, execute, support_case=None):
         return await transaction(wrapped)
 
     store._transaction = interleaved
+
+
+@pytest.mark.parametrize("phase", ["new", "replay"])
+@pytest.mark.parametrize("mode", ["owner", "mfa"])
+@pytest.mark.parametrize("opened_support", [False, True])
+def test_checkout_claim_final_result_requires_current_authority(setup, phase, mode, opened_support):
+    if phase == "replay":
+        asyncio.run(session(setup).claim_checkout(candidate(setup), setup[4]))
+    store = session(setup, current=phase == "new")
+    proposed = candidate(setup)
+    before = checkout_company_records(setup)
+    support_case = None
+    if opened_support:
+        from test_annual_support_runtime import support
+        owner_as_operator = (setup[0] | {"outsider": setup[0]["owner"]},) + setup[1:]
+        support_case = support(owner_as_operator).support_case_id
+    if mode == "mfa":
+        claims = json.loads(store._verified.claims_json)
+        claims["amr"][0]["timestamp"] = datetime.now(UTC).timestamp() - 899.5
+        store._verified = _VerifiedActor(setup[1], json.dumps(claims))
+    inserted, revoked = [], []
+
+    async def execute(connection, query, *args, **kwargs):
+        result = await connection.execute(query, *args, **kwargs)
+        statement = str(query).strip().lower()
+        if statement.startswith("insert into billing.annual_purchases") or statement.startswith("insert into billing.annual_operations"):
+            inserted.append(result.rowcount)
+        final_read = (statement.startswith("select to_jsonb(p) as purchase") if phase == "replay"
+                      else statement.startswith("select * from billing.annual_operations where purchase_id="))
+        if final_read:
+            assert not revoked
+            assert (await (await connection.execute("select current_setting('talli.support_case_id', true) as support_case")).fetchone())["support_case"] == ""
+            if mode == "mfa":
+                await asyncio.sleep(.65)
+            else:
+                with psycopg.connect(DATABASE_URL) as revoker:
+                    revoker.execute("update public.company_memberships set accepted_at=null where company_id=%s and user_id=%s",
+                                    (str(proposed.offer.company_id), str(setup[1].subject)))
+            revoked.append(True)
+        return result
+
+    interleave_checkout_sql(store, execute, support_case)
+    try:
+        outcome = asyncio.run(store.claim_checkout(proposed, setup[4]))
+    except BillingError as error:
+        outcome = error
+    assert revoked == [True]
+    assert inserted == ([1, 1] if phase == "new" else [])
+    assert isinstance(outcome, BillingError), (
+        f"Unauthorized {phase} claim returned; actual inserted rows={inserted}; "
+        f"persisted state changed={checkout_company_records(setup) != before}"
+    )
+    assert outcome.code is (BillingErrorCode.FORBIDDEN if mode == "owner" else BillingErrorCode.STEP_UP_REQUIRED)
+    assert checkout_company_records(setup) == before
+
+
+@pytest.mark.parametrize("mode", ["owner", "mfa"])
+def test_checkout_claim_authority_loss_after_insert_maps_hidden_rows_and_rolls_back(setup, mode):
+    store = session(setup)
+    proposed = candidate(setup)
+    before = checkout_company_records(setup)
+    if mode == "mfa":
+        claims = json.loads(store._verified.claims_json)
+        claims["amr"][0]["timestamp"] = datetime.now(UTC).timestamp() - 899.5
+        store._verified = _VerifiedActor(setup[1], json.dumps(claims))
+    inserted = []
+
+    async def execute(connection, query, *args, **kwargs):
+        result = await connection.execute(query, *args, **kwargs)
+        if str(query).strip().lower().startswith("insert into billing.annual_operations"):
+            inserted.append(result.rowcount)
+            if mode == "mfa":
+                await asyncio.sleep(.65)
+            else:
+                with psycopg.connect(DATABASE_URL) as revoker:
+                    revoker.execute("update public.company_memberships set accepted_at=null where company_id=%s and user_id=%s",
+                                    (str(proposed.offer.company_id), str(setup[1].subject)))
+        return result
+
+    interleave_checkout_sql(store, execute)
+    with pytest.raises(BillingError) as denied:
+        asyncio.run(store.claim_checkout(proposed, setup[4]))
+    assert denied.value.code is (BillingErrorCode.FORBIDDEN if mode == "owner" else BillingErrorCode.STEP_UP_REQUIRED)
+    assert inserted == [1] and checkout_company_records(setup) == before
+
+
+@pytest.mark.parametrize("point", ["after_purchase", "after_operation"])
+def test_checkout_claim_sql_abort_never_rechecks_authority_or_commits_partial_claim(setup, point):
+    store = session(setup)
+    proposed = candidate(setup)
+    before = checkout_company_records(setup)
+    inserted, aborted, after_abort = [], [], []
+
+    async def execute(connection, query, *args, **kwargs):
+        if aborted:
+            after_abort.append(str(query))
+        result = await connection.execute(query, *args, **kwargs)
+        statement = str(query).strip().lower()
+        purchase_insert = statement.startswith("insert into billing.annual_purchases")
+        operation_insert = statement.startswith("insert into billing.annual_operations")
+        if purchase_insert or operation_insert:
+            inserted.append(result.rowcount)
+        if (purchase_insert and point == "after_purchase") or (operation_insert and point == "after_operation"):
+            try:
+                await connection.execute("select 1 / 0")
+            except psycopg.DatabaseError:
+                assert connection.info.transaction_status is psycopg.pq.TransactionStatus.INERROR
+                aborted.append(True)
+                raise
+        return result
+
+    interleave_checkout_sql(store, execute)
+    with pytest.raises(BillingError) as denied:
+        asyncio.run(store.claim_checkout(proposed, setup[4]))
+    assert denied.value.code is BillingErrorCode.DEPENDENCY_UNAVAILABLE
+    assert inserted == ([1] if point == "after_purchase" else [1, 1])
+    assert aborted == [True] and not after_abort
+    assert checkout_company_records(setup) == before
+    claimed = asyncio.run(session(setup).claim_checkout(proposed, setup[4]))
+    assert claimed.newly_claimed and claimed.checkout.intent == proposed.intent
 
 
 @pytest.mark.parametrize("mode", ["owner", "mfa"])
