@@ -3,6 +3,7 @@
 import asyncio
 from dataclasses import replace
 from datetime import UTC, datetime
+import json
 from uuid import uuid4
 
 import psycopg
@@ -16,8 +17,12 @@ from test_annual_purchase_basis_runtime import (
     scoped,
     test_role_authority,
 )
-from test_annual_checkout_runtime import setup, session, candidate, observation, counts
+from test_annual_checkout_runtime import (
+    setup, session, candidate, observation, counts,
+    checkout_company_records, interleave_checkout_sql,
+)
 from talli_backend.adapters.postgres_annual_checkout import PostgresAnnualCancellationSession
+from talli_backend.adapters.supabase_ledger import _VerifiedActor
 from talli_backend.modules.billing.public import (
     AnnualPurchaseStatus,
     AnnualProviderStatus,
@@ -62,6 +67,245 @@ def receipts(setup):
             "select count(*) from billing.annual_cancellation_requests where company_id=%s",
             (str(setup[2].company_id),),
         ).fetchone()[0]
+
+
+def cancellation_records(setup):
+    """Read full fixture evidence even after the requesting owner is revoked."""
+    with psycopg.connect(DATABASE_URL) as connection:
+        requests = connection.execute(
+            """select coalesce(jsonb_agg(to_jsonb(r) order by r.id), '[]'::jsonb)
+               from billing.annual_cancellation_requests r where company_id=%s""",
+            (str(setup[2].company_id),),
+        ).fetchone()[0]
+    return checkout_company_records(setup), requests
+
+
+@pytest.mark.parametrize("phase", ["new", "replay", "later_key"])
+@pytest.mark.parametrize("mode", ["owner", "mfa"])
+@pytest.mark.parametrize("opened_support", [False, True])
+def test_cancellation_final_result_requires_current_authority(setup, purchase, phase, mode, opened_support):
+    request = command(setup, purchase)
+    if phase != "new":
+        asyncio.run(cancellation(setup).cancel_renewal(request))
+    if phase == "later_key":
+        request = command(setup, purchase)
+    before = cancellation_records(setup)
+    store = session(setup, current=False)
+    support_case = None
+    if opened_support:
+        from test_annual_support_runtime import support
+        owner_as_operator = (setup[0] | {"outsider": setup[0]["owner"]},) + setup[1:]
+        support_case = support(owner_as_operator).support_case_id
+    if mode == "mfa":
+        claims = json.loads(store._verified.claims_json)
+        claims["amr"][0]["timestamp"] = datetime.now(UTC).timestamp() - 899.5
+        store._verified = _VerifiedActor(setup[1], json.dumps(claims))
+    revoked, inserted = [], []
+
+    async def execute(connection, query, *args, **kwargs):
+        result = await connection.execute(query, *args, **kwargs)
+        statement = str(query).strip().lower()
+        insert_request = statement.startswith("insert into billing.annual_cancellation_requests")
+        if insert_request:
+            inserted.append(result.rowcount)
+        final_result = (statement.startswith("select r.*,p.paid_through")
+                        if phase == "replay" else insert_request)
+        if final_result:
+            assert not revoked
+            if opened_support:
+                assert (await (await connection.execute(
+                    "select current_setting('talli.support_case_id', true) as support_case"
+                )).fetchone())["support_case"] == ""
+            if mode == "mfa":
+                await asyncio.sleep(.65)
+            else:
+                with psycopg.connect(DATABASE_URL) as revoker:
+                    revoker.execute(
+                        "update public.company_memberships set accepted_at=null where company_id=%s and user_id=%s",
+                        (str(request.company_id), str(setup[1].subject)),
+                    )
+            revoked.append(True)
+        return result
+
+    interleave_checkout_sql(store, execute, support_case)
+    try:
+        outcome = asyncio.run(PostgresAnnualCancellationSession(store).cancel_renewal(request))
+    except BillingError as error:
+        outcome = error
+    assert revoked == [True]
+    assert inserted == ([] if phase == "replay" else [1])
+    assert isinstance(outcome, BillingError), (
+        f"Unauthorized {phase} cancellation returned; inserted rows={inserted}; "
+        f"receipt or renewal state changed={cancellation_records(setup) != before}"
+    )
+    assert outcome.code is (BillingErrorCode.FORBIDDEN if mode == "owner" else BillingErrorCode.STEP_UP_REQUIRED)
+    assert cancellation_records(setup) == before
+
+
+@pytest.mark.parametrize("phase,locked", [
+    ("new", "key"), ("replay", "key"), ("new", "purchase"), ("later_key", "purchase"),
+])
+@pytest.mark.parametrize("mode", ["owner", "mfa"])
+def test_cancellation_lock_wait_rechecks_current_authority(setup, purchase, phase, locked, mode):
+    request = command(setup, purchase)
+    if phase != "new":
+        asyncio.run(cancellation(setup).cancel_renewal(request))
+    if phase == "later_key":
+        request = command(setup, purchase)
+    before = cancellation_records(setup)
+    store = session(setup, current=False)
+
+    async def run():
+        if mode == "mfa":
+            claims = json.loads(store._verified.claims_json)
+            claims["amr"][0]["timestamp"] = datetime.now(UTC).timestamp() - 899.5
+            store._verified = _VerifiedActor(setup[1], json.dumps(claims))
+        with psycopg.connect(DATABASE_URL) as holder, psycopg.connect(DATABASE_URL, autocommit=True) as monitor:
+            if locked == "key":
+                holder.execute("select pg_advisory_xact_lock(hashtextextended(%s, 192))",
+                               (f"annual-cancellation-key|{request.idempotency_key}",))
+            else:
+                holder.execute("select id from billing.annual_purchases where id=%s for update",
+                               (str(purchase.purchase_id),))
+            pending = asyncio.create_task(PostgresAnnualCancellationSession(store).cancel_renewal(request))
+            try:
+                waiting = 0
+                for _ in range(200):
+                    waiting = monitor.execute(
+                        "select count(*) from pg_stat_activity where %s=any(pg_blocking_pids(pid))",
+                        (holder.info.backend_pid,),
+                    ).fetchone()[0]
+                    if waiting:
+                        break
+                    await asyncio.sleep(.005)
+                assert waiting and not pending.done(), "Must observe an actual independent SQL lock wait"
+                if mode == "mfa":
+                    await asyncio.sleep(.65)
+                else:
+                    monitor.execute(
+                        "update public.company_memberships set accepted_at=null where company_id=%s and user_id=%s",
+                        (str(request.company_id), str(setup[1].subject)),
+                    )
+            finally:
+                holder.rollback()
+            with pytest.raises(BillingError) as denied:
+                await asyncio.wait_for(pending, 4)
+            assert denied.value.code is (BillingErrorCode.FORBIDDEN if mode == "owner" else BillingErrorCode.STEP_UP_REQUIRED)
+
+    asyncio.run(run())
+    assert cancellation_records(setup) == before
+
+
+@pytest.mark.parametrize("fault", ["no_insert", "sql_before_insert", "sql_after_insert"])
+def test_cancellation_missing_insert_and_sql_abort_roll_back_both_records(setup, purchase, fault):
+    store = session(setup)
+    request = command(setup, purchase)
+    before = cancellation_records(setup)
+    inserted, aborted, after_abort = [], [], []
+
+    async def fail_sql(connection):
+        try:
+            await connection.execute("select 1 / 0")
+        except psycopg.DatabaseError:
+            assert connection.info.transaction_status is psycopg.pq.TransactionStatus.INERROR
+            aborted.append(True)
+            raise
+
+    async def execute(connection, query, *args, **kwargs):
+        if aborted:
+            after_abort.append(str(query))
+        insert_request = str(query).strip().lower().startswith("insert into billing.annual_cancellation_requests")
+        if insert_request and fault == "sql_before_insert":
+            await fail_sql(connection)
+        if insert_request and fault == "no_insert":
+            # A real zero-row INSERT under the unchanged request role and RLS.
+            query = query.replace("values (gen_random_uuid(),", "select gen_random_uuid(),").replace(
+                "%s,%s) returning *", "%s,%s where false returning *"
+            )
+        result = await connection.execute(query, *args, **kwargs)
+        if insert_request:
+            inserted.append(result.rowcount)
+            if fault == "sql_after_insert":
+                await fail_sql(connection)
+        return result
+
+    interleave_checkout_sql(store, execute)
+    with pytest.raises(BillingError) as denied:
+        asyncio.run(PostgresAnnualCancellationSession(store).cancel_renewal(request))
+    assert denied.value.code is BillingErrorCode.DEPENDENCY_UNAVAILABLE
+    assert inserted == {"no_insert": [0], "sql_before_insert": [], "sql_after_insert": [1]}[fault]
+    assert aborted == ([] if fault == "no_insert" else [True])
+    assert not after_abort
+    assert cancellation_records(setup) == before
+    result = asyncio.run(cancellation(setup).cancel_renewal(request))
+    assert result.effective_at == asyncio.run(session(setup).load_checkout(
+        purchase.offer.company_id, purchase.purchase_id
+    )).renewal_canceled_at
+
+
+@pytest.mark.parametrize("mode", ["owner", "mfa"])
+def test_cancellation_loss_after_purchase_read_denies_before_insert(setup, purchase, mode):
+    store = session(setup)
+    request = command(setup, purchase)
+    before = cancellation_records(setup)
+    if mode == "mfa":
+        claims = json.loads(store._verified.claims_json)
+        claims["amr"][0]["timestamp"] = datetime.now(UTC).timestamp() - 899.5
+        store._verified = _VerifiedActor(setup[1], json.dumps(claims))
+    revoked, inserted = [], []
+
+    async def execute(connection, query, *args, **kwargs):
+        result = await connection.execute(query, *args, **kwargs)
+        statement = str(query).strip().lower()
+        if statement.startswith("insert into billing.annual_cancellation_requests"):
+            inserted.append(result.rowcount)
+        if statement.startswith("select id,income_year,paid_through,export_through"):
+            assert not revoked
+            if mode == "mfa":
+                await asyncio.sleep(.65)
+            else:
+                with psycopg.connect(DATABASE_URL) as revoker:
+                    revoker.execute(
+                        "update public.company_memberships set accepted_at=null where company_id=%s and user_id=%s",
+                        (str(request.company_id), str(setup[1].subject)),
+                    )
+            revoked.append(True)
+        return result
+
+    interleave_checkout_sql(store, execute)
+    with pytest.raises(BillingError) as denied:
+        asyncio.run(PostgresAnnualCancellationSession(store).cancel_renewal(request))
+    assert denied.value.code is (BillingErrorCode.FORBIDDEN if mode == "owner" else BillingErrorCode.STEP_UP_REQUIRED)
+    assert revoked == [True] and not inserted
+    assert cancellation_records(setup) == before
+
+
+def test_current_owners_preserve_receipt_identity_and_original_stop_without_readiness(setup, purchase):
+    first = command(setup, purchase)
+    original = asyncio.run(cancellation(setup, current=False).cancel_renewal(first))
+    before = cancellation_records(setup)
+    assert asyncio.run(cancellation(setup, current=False).cancel_renewal(first)) == original
+    assert cancellation_records(setup) == before
+    other = ActorId(ActorKind.USER, UserId(str(setup[0]["outsider"])))
+    with psycopg.connect(DATABASE_URL) as connection:
+        insert(connection, "public.company_memberships", {
+            "company_id": str(first.company_id), "user_id": str(other.subject),
+            "role": "owner", "accepted_at": datetime.now(UTC),
+        })
+    store = cancellation(setup, actor=other, current=False)
+    with pytest.raises(BillingError) as conflict:
+        asyncio.run(store.cancel_renewal(replace(first, actor_id=other)))
+    assert conflict.value.code is BillingErrorCode.IDEMPOTENCY_KEY_REUSED
+    assert cancellation_records(setup) == before
+    later = asyncio.run(store.cancel_renewal(command(setup, purchase, actor_id=other)))
+    after = cancellation_records(setup)
+    assert later.cancellation_id != original.cancellation_id
+    assert later.requested_by == other.subject and original.requested_by == setup[1].subject
+    assert later.requested_at.value > original.requested_at.value
+    assert later.effective_at == original.effective_at
+    assert (later.paid_through, later.export_through) == (original.paid_through, original.export_through)
+    assert after[0] == before[0], "Later requests must not rewrite the original stop or purchase/operation evidence"
+    assert len(after[1]) == 2 and all(receipt in after[1] for receipt in before[1])
 
 
 @pytest.mark.parametrize("state", ["pending", "paid", "refunded", "failed"])

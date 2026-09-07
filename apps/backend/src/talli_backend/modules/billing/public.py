@@ -1025,6 +1025,9 @@ class AnnualCancellationPersistence(Protocol):
         readiness approval. Preserve original consent, purchase state, money and
         paid/export dates. Each command key has an immutable scoped receipt;
         different keys for one purchase retain the original cancellation time.
+        Recheck owner authority and fresh MFA after waits and before returning
+        either a new receipt or a replay. Late authority loss rolls back both
+        the receipt and local renewal stop; support context is not owner authority.
         """
         ...
 

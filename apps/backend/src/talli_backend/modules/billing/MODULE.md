@@ -290,6 +290,12 @@ the original receipt; another target or actor conflicts. An insert failure rolls
 back the local stop. Owner authority and fresh MFA remain mandatory; eligibility
 and readiness blocks do not obstruct cancellation of future renewal.
 
+The owner transaction clears ambient support context and rechecks current owner
+authority and fresh MFA after command-key and purchase lock waits and before any
+successful return, including receipt replay. Late authority loss rolls back the
+receipt and renewal stop together. A missing insert result fails closed; SQL
+errors roll back without querying an already-aborted transaction.
+
 The cancellation migration/rollback is
 `supabase/migrations/20260905100130_annual_renewal_cancellation.sql`. Rollback moves
 requests to `billing_annual_retired` before predecessor billing rollback, so the

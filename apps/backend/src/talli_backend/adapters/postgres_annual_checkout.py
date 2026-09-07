@@ -638,13 +638,13 @@ class PostgresAnnualCancellationSession:
         ).hexdigest()
 
         async def work(connection):
-            await self._database._authorize(connection, command.company_id)
             # Serializes the command key before checking its immutable receipt.
             # Cross-company uniqueness failures roll back the entire mutation.
             await connection.execute(
                 "select pg_advisory_xact_lock(hashtextextended(%s, 192))",
                 (f"annual-cancellation-key|{command.idempotency_key}",),
             )
+            await self._database._authorize(connection, command.company_id)
             existing = await (
                 await connection.execute(
                     """
@@ -668,6 +668,7 @@ class PostgresAnnualCancellationSession:
                     (str(command.purchase_id), str(command.company_id)),
                 )
             ).fetchone()
+            await self._database._authorize(connection, command.company_id)
             if purchase is None:
                 raise BillingError.not_found()
             row = await (
@@ -687,8 +688,10 @@ class PostgresAnnualCancellationSession:
                     ),
                 )
             ).fetchone()
+            if row is None:
+                raise BillingError.unavailable()
             return _cancellation(
                 row | {"paid_through": purchase["paid_through"], "export_through": purchase["export_through"]}
             )
 
-        return await self._database._transaction(work)
+        return await self._database._owner_transaction(command.company_id, work)
