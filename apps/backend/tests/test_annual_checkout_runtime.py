@@ -419,6 +419,215 @@ def test_second_statement_failure_rolls_back_purchase_and_retry_settles(setup, m
     assert asyncio.run(store.settle_checkout(initial, confirmed)).status == AnnualPurchaseStatus.PAID
 
 
+def checkout_records(checkout):
+    with psycopg.connect(DATABASE_URL) as connection:
+        purchase = connection.execute(
+            "select to_jsonb(p) from billing.annual_purchases p where id=%s", (str(checkout.purchase_id),)
+        ).fetchone()[0]
+        operation = connection.execute(
+            "select to_jsonb(o) from billing.annual_operations o where id=%s", (str(checkout.intent.operation_id),)
+        ).fetchone()[0]
+    return purchase, operation
+
+
+def interleave_checkout_sql(store, execute, support_case=None):
+    """Observe real SQL under this store's existing transaction and RLS."""
+    transaction = store._transaction
+
+    class Connection:
+        def __init__(self, wrapped):
+            self.wrapped = wrapped
+
+        def __getattr__(self, name):
+            return getattr(self.wrapped, name)
+
+        async def execute(self, query, *args, **kwargs):
+            return await execute(self.wrapped, query, *args, **kwargs)
+
+    async def interleaved(work):
+        async def wrapped(connection):
+            if support_case is not None:
+                await connection.execute("select set_config('talli.support_case_id', %s, true)", (str(support_case),))
+            return await work(Connection(connection))
+        return await transaction(wrapped)
+
+    store._transaction = interleaved
+
+
+@pytest.mark.parametrize("mode", ["owner", "mfa"])
+@pytest.mark.parametrize("point", ["before_purchase", "between_updates", "after_operation"])
+@pytest.mark.parametrize("opened_support", [False, True])
+def test_checkout_late_authority_loss_cannot_commit_settlement(setup, mode, point, opened_support):
+    store = session(setup)
+    original = asyncio.run(store.claim_checkout(candidate(setup), setup[4])).checkout
+    confirmed = observation(original, captured=149000, status=AnnualProviderStatus.CONFIRMED)
+    before = checkout_records(original)
+    support_case = None
+    if opened_support:
+        from test_annual_support_runtime import support
+        owner_as_operator = (setup[0] | {"outsider": setup[0]["owner"]},) + setup[1:]
+        support_case = support(owner_as_operator).support_case_id
+    if mode == "mfa":
+        claims = json.loads(store._verified.claims_json)
+        claims["amr"][0]["timestamp"] = datetime.now(UTC).timestamp() - 899.5
+        store._verified = _VerifiedActor(setup[1], json.dumps(claims))
+    rows = []
+    revoked = []
+
+    async def revoke():
+        assert not revoked
+        if mode == "mfa":
+            await asyncio.sleep(.65)
+        else:
+            with psycopg.connect(DATABASE_URL) as revoker:
+                revoker.execute("update public.company_memberships set accepted_at=null where company_id=%s and user_id=%s",
+                                (str(original.offer.company_id), str(setup[1].subject)))
+        revoked.append(True)
+
+    async def execute(connection, query, *args, **kwargs):
+        purchase_write = str(query).strip().lower().startswith("update billing.annual_purchases")
+        operation_write = str(query).strip().lower().startswith("update billing.annual_operations")
+        if purchase_write:
+            assert (await (await connection.execute("select current_setting('talli.support_case_id', true) as support_case")).fetchone())["support_case"] == ""
+        if purchase_write and point == "before_purchase":
+            await revoke()
+        result = await connection.execute(query, *args, **kwargs)
+        if purchase_write or operation_write:
+            rows.append(result.rowcount)
+        if (purchase_write and point == "between_updates") or (operation_write and point == "after_operation"):
+            await revoke()
+        return result
+
+    interleave_checkout_sql(store, execute, support_case)
+    try:
+        outcome = asyncio.run(store.settle_checkout(original, confirmed))
+    except BillingError as error:
+        outcome = error
+    assert rows == {"before_purchase": [0], "between_updates": [1, 0], "after_operation": [1, 1]}[point]
+    assert isinstance(outcome, BillingError), (
+        f"Unauthorized checkout confirmation returned; real operation write rows={rows}; "
+        f"persisted state changed={checkout_records(original) != before}"
+    )
+    assert outcome.code is (BillingErrorCode.FORBIDDEN if mode == "owner" else BillingErrorCode.STEP_UP_REQUIRED)
+    assert revoked == [True]
+    assert checkout_records(original) == before
+
+
+@pytest.mark.parametrize("phase", ["load_pending", "load_terminal", "settle_pending", "settle_terminal"])
+@pytest.mark.parametrize("mode", ["owner", "mfa"])
+@pytest.mark.parametrize("locked", ["purchase", "operation"])
+def test_checkout_operation_lock_wait_rechecks_current_authority(setup, phase, mode, locked):
+    store = session(setup)
+    original = asyncio.run(store.claim_checkout(candidate(setup), setup[4])).checkout
+    confirmed = observation(original, captured=149000, status=AnnualProviderStatus.CONFIRMED)
+    if phase.endswith("terminal"):
+        asyncio.run(store.settle_checkout(original, confirmed))
+    before = checkout_records(original)
+
+    async def run():
+        if mode == "mfa":
+            claims = json.loads(store._verified.claims_json)
+            claims["amr"][0]["timestamp"] = datetime.now(UTC).timestamp() - 899.5
+            store._verified = _VerifiedActor(setup[1], json.dumps(claims))
+        with psycopg.connect(DATABASE_URL) as holder, psycopg.connect(DATABASE_URL, autocommit=True) as monitor:
+            if locked == "purchase":
+                holder.execute("select id from billing.annual_purchases where id=%s for update", (str(original.purchase_id),))
+            else:
+                holder.execute("select id from billing.annual_operations where id=%s for update", (str(original.intent.operation_id),))
+            work = (store.load_checkout(original.offer.company_id, original.purchase_id)
+                    if phase.startswith("load") else store.settle_checkout(original, confirmed))
+            pending = asyncio.create_task(work)
+            try:
+                waiting = 0
+                for _ in range(200):
+                    waiting = monitor.execute(
+                        "select count(*) from pg_stat_activity where %s=any(pg_blocking_pids(pid))",
+                        (holder.info.backend_pid,),
+                    ).fetchone()[0]
+                    if waiting:
+                        break
+                    await asyncio.sleep(.005)
+                assert waiting and not pending.done(), "Must observe an actual independent SQL lock wait"
+                if mode == "mfa":
+                    await asyncio.sleep(.65)
+                else:
+                    monitor.execute("update public.company_memberships set accepted_at=null where company_id=%s and user_id=%s",
+                                    (str(original.offer.company_id), str(setup[1].subject)))
+            finally:
+                holder.rollback()
+            with pytest.raises(BillingError) as denied:
+                await asyncio.wait_for(pending, 4)
+            assert denied.value.code is (BillingErrorCode.FORBIDDEN if mode == "owner" else BillingErrorCode.STEP_UP_REQUIRED)
+
+    asyncio.run(run())
+    assert checkout_records(original) == before
+
+
+@pytest.mark.parametrize("fault", ["miss_purchase", "miss_operation", "sql_before_purchase", "sql_after_purchase", "sql_after_operation"])
+def test_checkout_missed_writes_and_aborted_sql_roll_back_complete_settlement(setup, fault):
+    store = session(setup)
+    original = asyncio.run(store.claim_checkout(candidate(setup), setup[4])).checkout
+    confirmed = observation(original, captured=149000, status=AnnualProviderStatus.CONFIRMED)
+    before = checkout_records(original)
+    rows, aborted, after_abort = [], [], []
+
+    async def fail_sql(connection):
+        try:
+            await connection.execute("select 1 / 0")
+        except psycopg.DatabaseError:
+            assert connection.info.transaction_status is psycopg.pq.TransactionStatus.INERROR
+            aborted.append(True)
+            raise
+
+    async def execute(connection, query, *args, **kwargs):
+        if aborted:
+            after_abort.append(str(query))
+        purchase_write = str(query).strip().lower().startswith("update billing.annual_purchases")
+        operation_write = str(query).strip().lower().startswith("update billing.annual_operations")
+        if purchase_write and fault == "sql_before_purchase":
+            await fail_sql(connection)
+        miss = (purchase_write and fault == "miss_purchase") or (operation_write and fault == "miss_operation")
+        # Execute an actual missed UPDATE with intact authority and inspect its cursor.
+        result = await connection.execute(query + " and false" if miss else query, *args, **kwargs)
+        if purchase_write or operation_write:
+            rows.append(result.rowcount)
+        if (purchase_write and fault == "sql_after_purchase") or (operation_write and fault == "sql_after_operation"):
+            await fail_sql(connection)
+        return result
+
+    interleave_checkout_sql(store, execute)
+    with pytest.raises(BillingError) as denied:
+        asyncio.run(store.settle_checkout(original, confirmed))
+    assert denied.value.code is BillingErrorCode.DEPENDENCY_UNAVAILABLE
+    assert rows == {"miss_purchase": [0], "miss_operation": [1, 0], "sql_before_purchase": [],
+                    "sql_after_purchase": [1], "sql_after_operation": [1, 1]}[fault]
+    assert aborted == ([True] if fault.startswith("sql_") else [])
+    assert not after_abort
+    assert checkout_records(original) == before
+    assert asyncio.run(session(setup).settle_checkout(original, confirmed)).status is AnnualPurchaseStatus.PAID
+
+
+@pytest.mark.parametrize("actor", ["original_owner", "another_owner"])
+def test_current_owner_can_load_and_replay_confirmed_checkout_without_current_readiness(setup, actor):
+    store = session(setup)
+    original = asyncio.run(store.claim_checkout(candidate(setup), setup[4])).checkout
+    confirmed = observation(original, captured=149000, status=AnnualProviderStatus.CONFIRMED)
+    terminal = asyncio.run(store.settle_checkout(original, confirmed))
+    who = setup[1]
+    if actor == "another_owner":
+        who = ActorId(ActorKind.USER, UserId(str(setup[0]["outsider"])))
+        with psycopg.connect(DATABASE_URL) as connection:
+            insert(connection, "public.company_memberships", {
+                "company_id": str(original.offer.company_id), "user_id": str(who.subject),
+                "role": "owner", "accepted_at": datetime.now(UTC),
+            })
+    recovered = session(setup, actor=who, current=False)
+    before = checkout_records(original)
+    assert asyncio.run(recovered.load_checkout(original.offer.company_id, original.purchase_id)) == terminal
+    assert asyncio.run(recovered.settle_checkout(original, confirmed)) == terminal
+    assert checkout_records(original) == before
+
+
 @pytest.mark.parametrize("change", ["capture", "refund", "agreement", "timestamp"])
 def test_latest_locked_state_rejects_obsolete_poll(setup, change):
     store = session(setup)

@@ -249,6 +249,15 @@ connection tests cover claim races, visibility before provider execution, respon
 loss after commit, rollback between writes, lock ordering, current-source negatives,
 tenant/MFA boundaries and two evidence-preserving rollback/recutover cycles.
 
+Owner checkout loads and settlements clear ambient support authority, recheck
+current accepted ownership and fresh MFA after lock waits and before successful
+returns, including terminal replay. Each settlement UPDATE must affect exactly
+one row. Late authority loss or missed writes roll back the complete settlement;
+SQL errors go directly to rollback without another query on the aborted
+transaction. Stored terminal recovery still needs no current readiness lookup
+and retains the existing ability of another currently accepted owner to recover
+the original purchase without changing its acceptance or provider identity.
+
 The application prerequisite binding currently returns `FILING_NOT_READY`.
 Company Access owns definitive eligibility. The eventual source for authoritative
 aggregate filing readiness is Annual Compliance (#149, after #193/#153), through

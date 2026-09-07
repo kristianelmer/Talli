@@ -1211,7 +1211,13 @@ class AnnualCheckoutPersistence(Protocol):
         """Commit purchase and original operation atomically; only one caller wins."""
         ...
 
-    async def load_checkout(self, company_id: CompanyId, purchase_id: AnnualPurchaseId) -> AnnualCheckout: ...
+    async def load_checkout(self, company_id: CompanyId, purchase_id: AnnualPurchaseId) -> AnnualCheckout:
+        """Lock purchase then operation; require current owner/fresh MFA on return.
+
+        Ambient support cannot authorize owner reads, including terminal replay.
+        No current readiness or provider lookup is required for stored evidence.
+        """
+        ...
 
     async def settle_checkout(
         self, checkout: AnnualCheckout, observation: AnnualProviderObservation,
@@ -1222,6 +1228,11 @@ class AnnualCheckoutPersistence(Protocol):
         full capture refunded in full produces REFUNDED; partial captures stay
         unresolved even when refunded so far. Only confirmed full capture with an
         outstanding paid balance produces PAID. Never return stale caller state.
+        Reauthorize after lock waits and before every successful return, including
+        terminal replay. Require exactly one affected row per settlement write;
+        late owner/MFA loss or a missed write rolls back both records. SQL errors
+        roll back without querying the aborted transaction. Ambient support
+        cannot authorize this owner operation.
         """
         ...
 

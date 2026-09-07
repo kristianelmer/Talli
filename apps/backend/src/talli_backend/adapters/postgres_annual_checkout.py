@@ -211,6 +211,22 @@ class PostgresAnnualCheckoutSession:
     async def authorize_owner_command(self, company_id: CompanyId) -> None:
         await self._transaction(lambda connection: self._authorize(connection, company_id))
 
+    async def _owner_transaction(self, company_id, work):
+        async def authorized(connection):
+            await connection.execute("select set_config('talli.support_case_id', '', true)")
+            await self._authorize(connection, company_id)
+            try:
+                result = await work(connection)
+            except BillingError:
+                # RLS can hide a row after authority changes. SQL errors instead
+                # go directly to rollback; an aborted transaction cannot recheck.
+                await self._authorize(connection, company_id)
+                raise
+            await self._authorize(connection, company_id)
+            return result
+
+        return await self._transaction(authorized)
+
     async def _find(self, connection, company_id, key):
         row = await (
             await connection.execute(
@@ -423,12 +439,11 @@ class PostgresAnnualCheckoutSession:
 
     async def load_checkout(self, company_id: CompanyId, purchase_id: AnnualPurchaseId) -> AnnualCheckout:
         async def work(connection):
-            await self._authorize(connection, company_id)
             # Also serialize reads, so purchase totals and operation observation
             # cannot come from different committed settlements.
             return await self._load(connection, company_id, purchase_id, lock=True)
 
-        return await self._transaction(work)
+        return await self._owner_transaction(company_id, work)
 
     async def claim_checkout(
         self, checkout: AnnualCheckout, prerequisites: AnnualCheckoutPrerequisites
@@ -536,8 +551,8 @@ class PostgresAnnualCheckoutSession:
         self, checkout: AnnualCheckout, observation: AnnualProviderObservation
     ) -> AnnualCheckout:
         async def work(connection):
-            await self._authorize(connection, checkout.offer.company_id)
             current = await self._load(connection, checkout.offer.company_id, checkout.purchase_id, lock=True)
+            await self._authorize(connection, checkout.offer.company_id)
             if (
                 current.intent != checkout.intent
                 or current.request_fingerprint != checkout.request_fingerprint
@@ -548,7 +563,7 @@ class PostgresAnnualCheckoutSession:
             result = settle_annual_checkout(current, observation, Timestamp(datetime.now(UTC)))
             if result == current:
                 return current
-            await connection.execute(
+            purchase_update = await connection.execute(
                 """update billing.annual_purchases set status=%s,agreement_reference=%s,captured_minor=%s,
                 refunded_minor=%s,captured_at=%s,updated_at=statement_timestamp() where id=%s::uuid""",
                 (
@@ -560,7 +575,9 @@ class PostgresAnnualCheckoutSession:
                     str(current.purchase_id),
                 ),
             )
-            await connection.execute(
+            if purchase_update.rowcount != 1:
+                raise BillingError.unavailable()
+            operation_update = await connection.execute(
                 """update billing.annual_operations set status=%s,observation=%s::jsonb,
                 updated_at=statement_timestamp() where id=%s::uuid""",
                 (
@@ -569,9 +586,11 @@ class PostgresAnnualCheckoutSession:
                     str(current.intent.operation_id),
                 ),
             )
+            if operation_update.rowcount != 1:
+                raise BillingError.unavailable()
             return result
 
-        return await self._transaction(work)
+        return await self._owner_transaction(checkout.offer.company_id, work)
 
 
 def _cancellation(row):
