@@ -101,7 +101,7 @@ function SupportRefundTargets({ selected, supportCaseId, companyId, initiatingUs
   const location = (requestId?: string, cursor?: string) => operatorSupportLocation({ supportCase: supportCaseId,
     companyId, refundPurchaseId: purchaseId, refundRequestId: requestId, annualBefore: beforePurchaseId,
     beforeRefundRequestId: cursor }).returnTo;
-  if (!page) return <p role="alert">Forespørslene kan ikke vises nå. <a href={location().split("#")[0]}>Last inn kjøpet på nytt</a></p>;
+  if (!page) return <p role="alert">Forespørslene kan ikke vises nå. <a href={location(selectedRefundRequestId, beforeRefundRequestId).split("#")[0]}>Last inn kjøpet på nytt</a></p>;
   return <section aria-label="Registrerte refusjonsforsøk">
     <h4>Registrerte refusjonsforsøk</h4>
     {selectedRefundRequestId && !page.targets.some(value => value.refundRequestId === selectedRefundRequestId)

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { AnnualSupportRefundIdentity, AnnualSupportRefundRecoveryAction, AnnualSupportRefundRecoveryActionState } from "../../lib/annual-support-refund-recovery";
 import { operatorSupportLocation } from "../../lib/operator-support";
-import { Banner, Button, LinkButton } from "../ui";
+import { Banner, Button } from "../ui";
 
 export function AnnualSupportRefundRecoveryControl({ initiatingUserId, supportCaseId, companyId, purchaseId,
   refundRequestId, beforePurchaseId, beforeRefundRequestId, recoverAction }: AnnualSupportRefundIdentity & {
@@ -51,15 +51,15 @@ export function AnnualSupportRefundRecoveryControl({ initiatingUserId, supportCa
           : scoped.status === "unknown" ? "Utfallet av refusjonsforsøket er fortsatt ukjent. Du kan sjekke igjen senere."
           : scoped.status === "failed" ? "Dette refusjonsforsøket ble ikke fullført."
           : "Dette refusjonsforsøket er bekreftet. Det kan fortsatt gjenstå et beløp for kjøpet."}
-        {" "}<LinkButton href={reloadHref}>Vis oppdatert kjøpshistorikk</LinkButton>
+        {" "}<a className="btn btn--secondary" href={reloadHref}>Vis oppdatert kjøpshistorikk</a>
       </Banner> : scoped?.kind === "different-user" ? <Banner variant="warning">
         Brukeren er endret. Last inn saken og velg forespørselen på nytt.
-        {" "}<LinkButton href={reloadHref}>Last inn saken</LinkButton>
+        {" "}<a className="btn btn--secondary" href={reloadHref}>Last inn saken</a>
       </Banner> : scoped?.kind === "recovery" || state.kind === "invalid" ? <Banner variant="warning">
         Vi fikk ikke bekreftet refusjonsstatusen. Kontroller tilgangen til saken før du prøver igjen.
-        {scoped?.kind === "recovery" ? <> <LinkButton href={scoped.reason === "unavailable" || scoped.reason === "forbidden" ? reloadHref : scoped.href}>
+        {scoped?.kind === "recovery" ? <> <a className="btn btn--secondary" href={scoped.reason === "unavailable" || scoped.reason === "forbidden" ? reloadHref : scoped.href}>
           {scoped.reason === "sign-in" ? "Logg inn igjen" : scoped.reason === "step-up" ? "Bekreft identiteten din" : "Last inn saken på nytt"}
-        </LinkButton></> : null}
+        </a></> : null}
       </Banner> : null}
     </div>
     <form onSubmit={submit}>

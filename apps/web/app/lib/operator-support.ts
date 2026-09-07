@@ -15,7 +15,7 @@ export function operatorReadRecovery(error: unknown): OperatorReadRecovery {
 export function operatorRecoveryHref(recovery: OperatorReadRecovery, returnTo: string) {
   if (recovery === "sign-in") return `/login?reauth=1&next=${encodeURIComponent(returnTo)}`;
   if (recovery === "step-up") return `/mfa?fresh=1&next=${encodeURIComponent(returnTo)}`;
-  return returnTo;
+  return returnTo.split("#")[0];
 }
 
 export type OperatorAnnualRefundSelection = {

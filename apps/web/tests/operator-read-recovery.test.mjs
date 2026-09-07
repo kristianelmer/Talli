@@ -160,6 +160,7 @@ test("complete operator selection survives login and MFA without losing either c
       const url = new URL(error.message.slice(9), "https://talli.example");
       const next = new URL(url.searchParams.get("next"), url.origin);
       assert.deepEqual(Object.fromEntries(next.searchParams), fullSelection);
+      assert.equal(url.hash, "");
       assert.equal(next.hash, "#annual-billing");
       return true;
     });
@@ -189,5 +190,7 @@ test("late selected-target failure keeps full recovery destination and suppresse
     const link = new URL(href, "https://talli.example");
     const next = new URL(link.searchParams.get("next") ?? href, link.origin);
     assert.deepEqual(Object.fromEntries(next.searchParams), fullSelection);
+    assert.equal(link.hash, "");
+    assert.equal(next.hash, recovery === "sign-in" || recovery === "step-up" ? "#annual-billing" : "");
   }
 });

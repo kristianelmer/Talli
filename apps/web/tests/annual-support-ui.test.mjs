@@ -154,7 +154,8 @@ for (const [status, code, recovery] of [[401, "AUTH_REQUIRED", "sign-in"],
     assert.equal(next.pathname, "/operator");
     assert.equal(next.searchParams.get("supportCase"), caseId);
     assert.equal(next.searchParams.get("annualBefore"), purchaseId);
-    assert.equal(next.hash, "#annual-billing");
+    assert.equal(link.hash, "");
+    assert.equal(next.hash, recovery === "sign-in" || recovery === "step-up" ? "#annual-billing" : "");
     if (recovery === "sign-in") assert.equal(link.searchParams.get("reauth"), "1");
     if (recovery === "step-up") assert.equal(link.searchParams.get("fresh"), "1");
     assert.doesNotMatch(html, /990,00|Private details|Ingen årskjøp/);
@@ -278,4 +279,14 @@ test("missing selected receipt is announced without silently using a replacement
   assert.match(html, /Den valgte forespørselen vises ikke/);
   assert.doesNotMatch(html, new RegExp(`name="refundRequestId" value="${refundCursor}"`));
   assert.match(html, new RegExp(`name="refundRequestId" value="${requestId}"`));
+});
+
+test("unreadable target-page reload preserves the complete selected request and both cursors", () => {
+  const html = render({ beforePurchaseId: purchaseId, refundTargets: { purchaseId,
+    selectedRefundRequestId: requestId, beforeRefundRequestId: refundCursor, page: null } });
+  const raw = html.match(/href="([^"]+)"[^>]*>Last inn kjøpet på nytt/)[1].replaceAll("&amp;", "&");
+  const link = new URL(raw, "https://talli.example");
+  assert.equal(link.hash, "");
+  assert.deepEqual(Object.fromEntries(link.searchParams), { supportCase: caseId, annualBefore: purchaseId,
+    companyId, refundPurchaseId: purchaseId, refundRequestId: requestId, beforeRefundRequestId: refundCursor });
 });

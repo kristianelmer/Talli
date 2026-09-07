@@ -58,7 +58,8 @@ function expectedDestination(href) {
   const auth = new URL(href, "https://talli.example");
   const destination = new URL(auth.searchParams.get("next") ?? href, auth.origin);
   assert.equal(destination.pathname, "/operator");
-  assert.equal(destination.hash, "#annual-billing");
+  assert.equal(auth.hash, "");
+  assert.equal(destination.hash, auth.searchParams.has("next") ? "#annual-billing" : "");
   assert.deepEqual(Object.fromEntries(destination.searchParams), {
     supportCase: identity.supportCaseId, annualBefore: cursors.beforePurchaseId,
     companyId: identity.companyId, refundPurchaseId: identity.purchaseId, refundRequestId: identity.refundRequestId,
@@ -136,7 +137,7 @@ test("explicit repeated operator checks retain the same four IDs and no attempt 
 const ui = {
   Banner: ({ children }) => React.createElement("div", {}, children),
   Button: ({ variant, ...props }) => React.createElement("button", props),
-  LinkButton: props => React.createElement("a", props),
+  LinkButton: () => { throw new Error("Reload requires a native document navigation"); },
 };
 const controlSource = readFileSync(new URL("../app/components/billing/AnnualSupportRefundRecoveryControl.tsx", import.meta.url), "utf8");
 function control(recoverAction) {
@@ -191,7 +192,9 @@ test("lost action response leaves original scope for explicit retry and never po
   for (const [name, value] of Object.entries(identity)) assert.match(html, new RegExp(`name="${name}" value="${value}"`));
   assert.doesNotMatch(html, /lost browser response/);
   const link = html.match(/href="([^"]+)"/)[1].replaceAll("&amp;", "&");
-  assert.equal(new URL(link, "https://talli.example").searchParams.get("refundRequestId"), identity.refundRequestId);
+  const destination = new URL(link, "https://talli.example");
+  assert.equal(destination.searchParams.get("refundRequestId"), identity.refundRequestId);
+  assert.equal(destination.hash, "");
   const remounted = control(async () => { calls++; }); remounted.render();
   assert.equal(calls, 1);
 });
