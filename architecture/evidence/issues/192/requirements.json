@@ -1036,6 +1036,93 @@
         "Prior real DB 449 Python + 1 Node remains specific to f513da7d; the later UI 25e2af05 evidence and its corrections remain unchanged. The new 498 + 1 pass belongs only to 815091c4.",
         "Main remains the continuous integration target; only release/production is frozen. No provider activation, launch, spend or binding terms authorized."
       ]
+    },
+    "annualOwnerRefundSettlementAuthority": {
+      "implementationRevision": "d3855c98c0471173fed6e1ee78ef2b34737d6f71",
+      "comparisonRevision": "7420d00a6e071d842c9aa950ca8e0f428e9e87ed",
+      "scope": "Final authorization for the existing owner recorded-refund settlement port. No new interface, requester adoption, allocation, source resolution, provider mutation, worker or support authority.",
+      "reproduction": "Two actual database cases failed twice on the unchanged source plus new regression tests: ownership revocation or elapsed MFA after the final annual_operations UPDATE returned recovery success and committed changed settlement fingerprints. Both original reproductions passed after correction.",
+      "behavior": [
+        "After shared locked settlement, recheck current owner/fresh MFA before returning, including terminal replay. Late revocation rolls back both purchase and operation rows.",
+        "Recheck authority on domain write failures; PostgreSQL errors go directly to existing transaction rollback without a query against the aborted connection.",
+        "Preserve original same-requester, already-bound receipt, exact immutable refund intent/source and both settlement row-count checks. Ambient support remains cleared; recovery only reconciles and cannot claim/bind/execute."
+      ],
+      "validation": {
+        "focusedDatabase": "90 owner/operator refund recovery Python tests passed on the same product tree before commit.",
+        "exactBilling": "655 Python + 281 Node billing tests passed at d3855c98c0471173fed6e1ee78ef2b34737d6f71; zero skips.",
+        "exactFreshDatabase": "515 Python + 1 Node mandatory billing database lifecycle tests passed at d3855c98c0471173fed6e1ee78ef2b34737d6f71; zero skips, fresh fully migrated isolated local database, both predecessor rollback/contract/recutover cycles.",
+        "newCases": "17 actual database cases: 12 owner/MFA loss interleavings before, between and after purchase/operation writes with and without ambient opened support; 2 controlled real zero-row writes and 3 real aborted-SQL failures. Exact row counts, rollback fingerprints, no post-abort query and original-intent recovery are asserted.",
+        "limits": "Source/provider fixtures are synthetic and local; no provider origin, actual MT, hosted or Production calls. No frontend change or new browser/build evidence."
+      },
+      "independentReviews": {
+        "candidate": "d3855c98c0471173fed6e1ee78ef2b34737d6f71",
+        "base": "7420d00a6e071d842c9aa950ca8e0f428e9e87ed",
+        "standards": {
+          "verdict": "PASS",
+          "documentedViolations": 0,
+          "judgementSmells": 1,
+          "reviewer": "cleanup_standards_review",
+          "finding": "Nonblocking possible Duplicated Code: the two-line purchase/operation SQL classifier appears in both authority and controlled-write fault injectors.",
+          "disposition": "Retained explicit classifiers within the two independent fault scenarios; no documented-standard violation or behavioral defect."
+        },
+        "spec": {
+          "verdict": "PASS",
+          "findings": 0,
+          "reviewer": "cleanup_spec_review"
+        },
+        "scope": "Exact independent read-only reviews of existing owner recorded-refund settlement authorization; not full #192 acceptance."
+      },
+      "architecture": "Direct checker at exact d3855c98 still reports only four inherited, unapproved errors: three audit_events scopes and one filing_readiness_snapshots scope. No architecture/complete-gate PASS or checker/baseline/ADR/gate change.",
+      "fixtureLifecycle": "Owned reproduction and exact-validation disposable databases stopped without backup; absence verified in hashed artifacts.",
+      "artifacts": [
+        {
+          "path": "/private/tmp/talli-01a07955-owner-refund-red.log",
+          "sha256": "c76eab71c0e6e6c777ce3874a6d7c2c8fe29ca7e9e174dc1afff92523efb125b"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-owner-refund-red-confirmed.log",
+          "sha256": "deac71c9e0d360fdcc53a5db93df8e1598679547aaf50abccb519d0164071fab"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-owner-refund-first-green.log",
+          "sha256": "82b32dca39fc55e94b38e393c1624b2e93ededb2935728a659f795641199adae"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-owner-refund-focused.log",
+          "sha256": "dbc5e63fbe9d2acf03e210855fe47ffd4b80392a5067fa6d4bdbaeddcdaeaa91"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-d3855c98-billing.log",
+          "sha256": "b32f1d315e395d4c84a96faae37a519cc28d186df361019069549de0b6a0a4b5"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-d3855c98-database.log",
+          "sha256": "2d6fb6d6141d98763eb7a37d6394bd2666cf281c72cac73c9dd7e79c5119739d"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-d3855c98-architecture.log",
+          "sha256": "cf4bfc2167107cb1617a90e7867848c0d66e43b4d91bf8cd115b920c8ca63114"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-d3855c98-reviews.json",
+          "sha256": "86388de0264d92434b9fb051d8cc228d9006b8c4041ca5019369613225113d20"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-owner-refund-reproduction-db-stopped.json",
+          "sha256": "ad83dc3c05787b2ff3802c853ffa980a9f9f9d2e3973e50273198d90edeb5f46"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-d3855c98-database-stopped.json",
+          "sha256": "c284309861a91a61dfd1f34c402e06c89a57beb0d6980afebf36ae7a73de8155"
+        }
+      ],
+      "nextWork": "Provider-neutral real-database evidence for GH-192-A3 free-validation separation; ordinary annual entitlement/source binding remains unavailable and cannot be inferred from pilot or purchase fixtures.",
+      "limits": [
+        "#192 OPEN/incomplete; #150 unclaimed; full #165 goal ACTIVE through genuine #198. Preserve every original source/provider/architecture/accounting/security/privacy/legal/UX/representative/serialization acceptance gate.",
+        "Actual designated Vipps MT, trusted readiness/incident/submission sources, automatic-runtime/worker authority, remaining acceptance, two distinct immutable complete 11/11 gates, protected-main Release/nonproduction Preview and exact-main evidence remain mandatory.",
+        "DB515+1 belongs only to d3855c98. Earlier DB498+1 stays specific to 815091c4; DB449+1 stays specific to f513da7d; prior UI25e2af05 evidence and all historical corrections are unchanged.",
+        "Main is the continuous integration target; only release/production is frozen. No spending, terms, provider activation or launch authority added."
+      ]
     }
   },
   "externalEvidence": {
