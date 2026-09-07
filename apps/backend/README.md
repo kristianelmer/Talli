@@ -13,3 +13,23 @@ The committed OpenAPI artifact is generated from this application:
 ```bash
 uv run --project apps/backend python apps/backend/scripts/generate_openapi.py
 ```
+
+Annual billing provider recovery and webhook intake are disabled by default.
+To configure the designated Vipps test merchant **535717**, set
+`TALLI_ANNUAL_BILLING_MODE=vipps-mt` and every `TALLI_VIPPS_MT_*` setting plus
+`TALLI_ANNUAL_NOTIFICATION_DATABASE_URL` documented in `.env.example`.
+Use the merchant's test credentials and registered webhook secret. The callback
+must be an HTTPS URL ending exactly in
+`/api/v1/billing/annual/provider-notifications`, without a query or fragment.
+Confirmation origins must be verified from that merchant's test response and
+listed as exact HTTPS origins without trailing slashes. Incomplete or malformed
+enabled settings stop startup with the setting name; values are never reported.
+
+The notification connection needs its own backend login that can set only
+`annual_notification_executor`. Configuration constructs adapters without network
+calls. Requests use the existing `https://apitest.vipps.no` adapter; production
+Vipps has no configuration mode. Enabling merchant-test transport leaves trusted
+checkout readiness and its current-source verifier unavailable, so new purchases
+remain blocked until those source-owned dependencies are implemented. Existing
+recorded operations can use their recovery routes, and authenticated notifications
+are stored as delivery receipts. Restart with mode `off` to disable both transports.

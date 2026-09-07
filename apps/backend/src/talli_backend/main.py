@@ -28,6 +28,7 @@ from talli_backend.application.annual_notifications import AnnualNotificationInt
 from talli_backend.modules.billing.public import AnnualNotificationRejected, AnnualNotificationUnavailable
 
 from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAdapter
+from talli_backend.adapters.annual_billing_runtime import compose_annual_billing_runtime
 from talli_backend.adapters.supabase_banking import compose_banking_application
 from talli_backend.adapters.simulation_billing import SimulationBillingProvider
 from talli_backend.adapters.supabase_billing import SupabaseBillingAdapter
@@ -3300,6 +3301,12 @@ def create_app(
     marketing_measurement_internal_key: str | None = None,
     validation_observer: PassiveValidationObserver | None = None,
 ) -> FastAPI:
+    # Explicit test/application dependencies form their own composition. Avoid
+    # mixing an injected provider or intake with an ambient merchant account.
+    if annual_billing_provider is None and annual_notification_intake is None:
+        annual_runtime = compose_annual_billing_runtime()
+        annual_billing_provider = annual_runtime.provider
+        annual_notification_intake = annual_runtime.notification_intake
     application = FastAPI(
         title="Talli API",
         summary="Talli web-to-backend production boundary",
@@ -9343,7 +9350,7 @@ def create_app(
             description="Provider HMAC over the exact body, signed date and configured callback target; customer bearer tokens are not accepted.",
         )),
     ) -> AnnualNotificationAcknowledgementWire:
-        # No environment fallback or owner session can activate this boundary.
+        # Only the explicitly composed intake accepts authenticated provider deliveries.
         if annual_notification_intake is None:
             raise ApiProblem(status=503, code="ANNUAL_NOTIFICATION_UNAVAILABLE", title="Delivery unavailable", detail="The receipt service is unavailable.")
         try:

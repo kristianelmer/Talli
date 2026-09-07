@@ -6,7 +6,7 @@
   "workflows": [
     {
       "name": "annual-provider-notification-intake",
-      "purpose": "Authenticates exact provider delivery bytes and commits immutable technical receipts; no actor, purchase resolution, provider call or financial mutation; injection absent by default.",
+      "purpose": "Authenticates exact provider delivery bytes and commits immutable technical receipts; no actor, purchase resolution, provider call or financial mutation; disabled by default with explicit designated-MT composition.",
       "publicPackages": ["talli_backend.modules.billing.public"],
       "routes": ["/api/v1/billing/annual/provider-notifications"]
     },
@@ -454,7 +454,7 @@
       "port": "AnnualBillingProvider",
       "adapter": "talli_backend.adapters.vipps_billing.VippsTestBillingProvider",
       "owner": "backend-system",
-      "mode": "test-origin-only adapter; runtime composition pending #192, no production activation"
+      "mode": "test-origin-only adapter; explicit designated-MT environment composition, disabled by default; no production activation"
     },
     {
       "port": "AnnualCheckoutPersistence",
@@ -508,7 +508,7 @@
       "port": "AnnualNotificationAuthentication",
       "adapter": "talli_backend.adapters.vipps_webhook.VippsWebhookAuthentication",
       "owner": "backend-system",
-      "mode": "configured MT merchant HMAC authentication; no environment fallback or runtime activation"
+      "mode": "designated MT merchant HMAC authentication from explicit complete runtime configuration; disabled by default"
     },
     {
       "port": "AnnualNotificationPersistence",
@@ -519,6 +519,7 @@
   ],
   "allowedDependencies": {
     "transport": [
+      "talli_backend.adapters.annual_billing_runtime",
       "__future__",
       "asyncio",
       "base64",
@@ -591,6 +592,11 @@
       "talli_backend.modules.validation_observation.public"
     ],
     "adapters": [
+      "psycopg.conninfo",
+      "talli_backend.adapters.postgres_annual_notifications",
+      "talli_backend.adapters.vipps_billing",
+      "talli_backend.adapters.vipps_webhook",
+      "talli_backend.application.annual_notifications",
       "__future__",
       "asyncio",
       "base64",

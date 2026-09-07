@@ -373,12 +373,12 @@ this document and `backend-system.json` together, with an ADR review.
 ## Annual provider boundary (#192, integration pending)
 
 `AnnualBillingProvider` is registered to
-`talli_backend.adapters.vipps_billing.VippsTestBillingProvider` in test-origin-only adapter; runtime composition pending #192, no production activation.
+`talli_backend.adapters.vipps_billing.VippsTestBillingProvider` in test-origin-only adapter; explicit designated-MT environment composition, disabled by default; no production activation.
 The adapter operates only against Vipps MT; registration does not activate
 production payments or complete the annual application workflow.
 
 <!-- architecture-inventory
-{"ports":["AnnualBillingProvider"],"adapterBindings":["AnnualBillingProvider=>talli_backend.adapters.vipps_billing.VippsTestBillingProvider"],"adapterBindingOwners":["AnnualBillingProvider=>backend-system"],"adapterBindingModes":["AnnualBillingProvider=>test-origin-only adapter; runtime composition pending #192, no production activation"]}
+{"ports":["AnnualBillingProvider"],"adapterBindings":["AnnualBillingProvider=>talli_backend.adapters.vipps_billing.VippsTestBillingProvider"],"adapterBindingOwners":["AnnualBillingProvider=>backend-system"],"adapterBindingModes":["AnnualBillingProvider=>test-origin-only adapter; explicit designated-MT environment composition, disabled by default; no production activation"]}
 -->
 
 `AnnualCheckoutPersistence` is registered to
@@ -547,7 +547,7 @@ pagination and exposes no private source, provider, actor or monetary evidence.
 Recovery independently authorizes and validates a selected receipt on explicit POST.
 
 <!-- architecture-inventory
-{"workflows":["annual-provider-notification-intake"],"workflowPurposes":["annual-provider-notification-intake=>Authenticates exact provider delivery bytes and commits immutable technical receipts; no actor, purchase resolution, provider call or financial mutation; injection absent by default."],"routes":["/api/v1/billing/annual/provider-notifications"],"technicalSchemas":["annual_notification_inbox"],"technicalTables":["annual_notification_inbox.receipts"],"technicalMigrations":["supabase/migrations/20260906204352_annual_notification_receipts.sql"],"ports":["AnnualNotificationAuthentication","AnnualNotificationPersistence"],"adapterBindings":["AnnualNotificationAuthentication=>talli_backend.adapters.vipps_webhook.VippsWebhookAuthentication","AnnualNotificationPersistence=>talli_backend.adapters.postgres_annual_notifications.PostgresAnnualNotificationInbox"],"adapterBindingOwners":["AnnualNotificationAuthentication=>backend-system","AnnualNotificationPersistence=>backend-system"],"adapterBindingModes":["AnnualNotificationAuthentication=>configured MT merchant HMAC authentication; no environment fallback or runtime activation","AnnualNotificationPersistence=>restricted actorless technical receipt insert/read only; no login grant, purchase lookup, financial write or worker"],"transportDependencies":["talli_backend.application.annual_notifications"]}
+{"workflows":["annual-provider-notification-intake"],"workflowPurposes":["annual-provider-notification-intake=>Authenticates exact provider delivery bytes and commits immutable technical receipts; no actor, purchase resolution, provider call or financial mutation; disabled by default with explicit designated-MT composition."],"routes":["/api/v1/billing/annual/provider-notifications"],"technicalSchemas":["annual_notification_inbox"],"technicalTables":["annual_notification_inbox.receipts"],"technicalMigrations":["supabase/migrations/20260906204352_annual_notification_receipts.sql"],"ports":["AnnualNotificationAuthentication","AnnualNotificationPersistence"],"adapterBindings":["AnnualNotificationAuthentication=>talli_backend.adapters.vipps_webhook.VippsWebhookAuthentication","AnnualNotificationPersistence=>talli_backend.adapters.postgres_annual_notifications.PostgresAnnualNotificationInbox"],"adapterBindingOwners":["AnnualNotificationAuthentication=>backend-system","AnnualNotificationPersistence=>backend-system"],"adapterBindingModes":["AnnualNotificationAuthentication=>designated MT merchant HMAC authentication from explicit complete runtime configuration; disabled by default","AnnualNotificationPersistence=>restricted actorless technical receipt insert/read only; no login grant, purchase lookup, financial write or worker"],"transportDependencies":["talli_backend.application.annual_notifications"]}
 -->
 
 ## Annual provider notification intake
@@ -607,4 +607,23 @@ absent by default.
 
 <!-- architecture-inventory
 {"workflows":["annual-support-refund-recovery"],"workflowPurposes":["annual-support-refund-recovery=>Reconciles an already operation-bound refund under the current active admin's explicitly opened billing case and fresh MFA, preserving the original requester and intent; no new claim, binding or provider execution."],"publicPackages":["talli_backend.modules.billing.public"],"routes":["/api/v1/billing/annual/support/refund-recoveries","/api/v1/billing/annual/support/refund-recovery-targets"],"ports":["AnnualSupportRefundRecoveryPersistence"],"adapterBindings":["AnnualSupportRefundRecoveryPersistence=>talli_backend.adapters.postgres_annual_refund.PostgresAnnualSupportRefundRecoverySession"],"adapterBindingOwners":["AnnualSupportRefundRecoveryPersistence=>backend-system"],"adapterBindingModes":["AnnualSupportRefundRecoveryPersistence=>verified active admin with an explicitly opened same-company billing case and fresh MFA at load, settlement and after writes; original bound request and intent retained, provider absent by default"]}
+-->
+
+
+## Opt-in annual merchant-test runtime
+
+The composition root uses `talli_backend.adapters.annual_billing_runtime` to
+construct the existing Vipps test provider and authenticated technical inbox only
+when `TALLI_ANNUAL_BILLING_MODE=vipps-mt` and the complete designated account,
+callback and database configuration are valid. Missing or malformed enabled
+settings fail startup without revealing secrets. The default remains off.
+Explicit provider/intake injection is kept separate from environment composition.
+
+The current designated test sales unit is 535717. Configuration makes no provider
+request, creates no credentials or role memberships, and confers no checkout
+readiness, filing entitlement, worker or financial-table authority. The existing
+source resolver and independent database readiness verifier still fail closed.
+
+<!-- architecture-inventory
+{"transportDependencies":["talli_backend.adapters.annual_billing_runtime"],"adapterDependencies":["psycopg.conninfo","talli_backend.adapters.postgres_annual_notifications","talli_backend.adapters.vipps_billing","talli_backend.adapters.vipps_webhook","talli_backend.application.annual_notifications"]}
 -->
