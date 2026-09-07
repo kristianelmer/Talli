@@ -65,6 +65,30 @@ class PostgresAnnualCleanupSession:
     def actor_id(self):
         return self._database.actor_id
 
+    async def _owner_transaction(self, company_id, work):
+        async def authorized(connection):
+            # An opened support case cannot rescue lost owner authority.
+            await connection.execute("select set_config('talli.support_case_id', '', true)")
+            await self._database._authorize(connection, company_id)
+            try:
+                result = await work(connection)
+            except BillingError:
+                # RLS can hide a row after a wait. Recheck only domain errors:
+                # a PostgreSQL error must leave the aborted transaction alone.
+                await self._database._authorize(connection, company_id)
+                raise
+            # Includes confirmed replays, deferred None, and completed writes.
+            await self._database._authorize(connection, company_id)
+            return result
+
+        return await self._database._transaction(authorized)
+
+    async def _load_locked(self, connection, company_id, purchase_id):
+        checkout = await self._database._load(connection, company_id, purchase_id, lock=True)
+        operation = await self._find(connection, purchase_id)
+        await self._database._authorize(connection, company_id)
+        return checkout, operation
+
     async def _find(self, connection, purchase_id):
         return await (
             await connection.execute(
@@ -75,9 +99,7 @@ class PostgresAnnualCleanupSession:
 
     async def claim_agreement_cleanup(self, company_id, purchase_id):
         async def work(connection):
-            await self._database._authorize(connection, company_id)
-            checkout = await self._database._load(connection, company_id, purchase_id, lock=True)
-            existing = await self._find(connection, purchase_id)
+            checkout, existing = await self._load_locked(connection, company_id, purchase_id)
             if existing and existing['status'] == 'confirmed':
                 return AnnualAgreementCleanupClaim(_cleanup(existing), False)
             previous = checkout.observation
@@ -142,15 +164,16 @@ class PostgresAnnualCleanupSession:
                     json.dumps(saved),
                 ),
             )
-            return AnnualAgreementCleanupClaim(_cleanup(await self._find(connection, purchase_id)), True)
+            created = await self._find(connection, purchase_id)
+            if created is None:
+                raise BillingError.unavailable()
+            return AnnualAgreementCleanupClaim(_cleanup(created), True)
 
-        return await self._database._transaction(work)
+        return await self._owner_transaction(company_id, work)
 
     async def settle_agreement_cleanup(self, cleanup, observation):
         async def work(connection):
-            await self._database._authorize(connection, cleanup.intent.company_id)
-            await self._database._load(connection, cleanup.intent.company_id, cleanup.purchase_id, lock=True)
-            row = await self._find(connection, cleanup.purchase_id)
+            _, row = await self._load_locked(connection, cleanup.intent.company_id, cleanup.purchase_id)
             if row is None:
                 raise BillingError.not_found()
             current = _cleanup(row)
@@ -165,7 +188,7 @@ class PostgresAnnualCleanupSession:
             result = settle_annual_agreement_cleanup(current, observation)
             if result == current:
                 return current
-            await connection.execute(
+            updated = await connection.execute(
                 """update billing.annual_operations set status=%s,observation=%s::jsonb,
                 updated_at=statement_timestamp() where id=%s::uuid""",
                 (
@@ -174,6 +197,8 @@ class PostgresAnnualCleanupSession:
                     str(current.intent.operation_id),
                 ),
             )
+            if updated.rowcount != 1:
+                raise BillingError.unavailable()
             return result
 
-        return await self._database._transaction(work)
+        return await self._owner_transaction(cleanup.intent.company_id, work)

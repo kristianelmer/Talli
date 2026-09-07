@@ -1074,6 +1074,8 @@ class AnnualAgreementCleanupPersistence(Protocol):
         operation per purchase before returning; all retries reuse its identity,
         provider/account and original references. No eligibility/readiness gate
         may obstruct cancellation. No worker may fabricate an owner session.
+        Clear ambient support context; recheck owner/fresh MFA after lock waits
+        and before every returned outcome, including confirmed replay or None.
         """
         ...
 
@@ -1085,6 +1087,8 @@ class AnnualAgreementCleanupPersistence(Protocol):
         Use settle_annual_agreement_cleanup; preserve confirmed terminal state.
         Update only the cleanup operation, never purchase money/status/access.
         Reject changes to the stored intent, receipt, provider or account.
+        Require exactly one affected settlement row and current owner/fresh MFA
+        before returning; lost authority must roll back the transaction.
         """
         ...
 

@@ -2,24 +2,28 @@
 
 import asyncio
 from dataclasses import replace
+from datetime import UTC, datetime
 import json
 from uuid import uuid4
 
 import psycopg
 import pytest
 
-from test_annual_purchase_basis_runtime import DATABASE_URL, ROOT, admitted, scoped, test_role_authority
+from test_annual_purchase_basis_runtime import DATABASE_URL, ROOT, admitted, insert, scoped, test_role_authority
 from test_annual_checkout_runtime import setup, session, observation, counts
 from test_annual_cancellation_runtime import purchase, command, cancellation
 from talli_backend.adapters.postgres_annual_cleanup import PostgresAnnualCleanupSession
+from talli_backend.adapters.supabase_ledger import _VerifiedActor
 from talli_backend.modules.billing.public import (
     AnnualCancellationId,
+    AnnualCheckoutQuery,
     AnnualProviderObservation,
     AnnualProviderOperation,
     AnnualProviderStatus,
     AnnualPurchaseId,
     BillingError,
     BillingPaymentEventId,
+    annual_agreement_cleanup_operations,
 )
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, UserId
 
@@ -157,6 +161,321 @@ def test_cleanup_settlement_never_changes_purchase_money_status_or_access(setup,
     assert (
         asyncio.run(session(setup).load_checkout(purchase.offer.company_id, purchase.purchase_id)) == before
     )
+
+
+def cleanup_snapshot(purchase):
+    with psycopg.connect(DATABASE_URL) as connection:
+        return connection.execute(
+            """select row_to_json(p), (select jsonb_agg(to_jsonb(o) order by o.id)
+            from billing.annual_operations o where o.purchase_id=p.id)
+            from billing.annual_purchases p where p.id=%s""",
+            (str(purchase.purchase_id),),
+        ).fetchone()
+
+
+def revoke_cleanup_owner(connection, setup):
+    connection.execute(
+        'update public.company_memberships set accepted_at=null where company_id=%s and user_id=%s',
+        (setup[0]['company'], setup[0]['owner']),
+    )
+
+
+def interleave_cleanup_sql(store, execute, support_case=None):
+    """Inject a fault around real SQL while retaining the actual transaction/RLS."""
+    transaction = store._database._transaction
+
+    class Connection:
+        def __init__(self, wrapped):
+            self.wrapped = wrapped
+
+        def __getattr__(self, name):
+            return getattr(self.wrapped, name)
+
+        async def execute(self, sql, *args, **kwargs):
+            return await execute(self.wrapped, sql, *args, **kwargs)
+
+    async def interleaved(work):
+        async def wrapped(connection):
+            if support_case is not None:
+                await connection.execute("select set_config('talli.support_case_id', %s, true)",
+                                         (str(support_case),))
+            return await work(Connection(connection))
+        return await transaction(wrapped)
+
+    store._database._transaction = interleaved
+
+
+@pytest.mark.parametrize('phase,locked', [
+    (phase, locked)
+    for phase in ('claim_new', 'claim_deferred', 'claim_pending', 'claim_confirmed',
+                  'settle_pending', 'settle_confirmed')
+    for locked in ('purchase', 'checkout', 'stop')
+    if locked != 'stop' or phase not in ('claim_new', 'claim_deferred')
+])
+@pytest.mark.parametrize('mode', ['owner', 'mfa'])
+def test_cleanup_rechecks_authority_after_real_lock(setup, purchase, phase, locked, mode):
+    if phase == 'claim_deferred':
+        asyncio.run(cancellation(setup).cancel_renewal(command(setup, purchase)))
+    else:
+        prepare(setup, purchase)
+    store = cleanup_store(setup)
+    original = None
+    if phase not in ('claim_new', 'claim_deferred'):
+        original = asyncio.run(store.claim_agreement_cleanup(purchase.offer.company_id, purchase.purchase_id)).cleanup
+        if phase.endswith('confirmed'):
+            original = asyncio.run(store.settle_agreement_cleanup(original, stop_observation(original)))
+    before = cleanup_snapshot(purchase)
+    class RecordingProvider(HttpCleanupProvider):
+        def __init__(self):
+            super().__init__(setup, purchase)
+            self.calls = []
+
+        async def execute(self, intent):
+            self.calls.append('execute')
+            return await super().execute(intent)
+
+        async def reconcile(self, intent):
+            self.calls.append('reconcile')
+            return await super().reconcile(intent)
+
+    provider = RecordingProvider()
+    service = annual_agreement_cleanup_operations(store, provider)
+    query = AnnualCheckoutQuery(company_id=purchase.offer.company_id, actor_id=setup[1],
+                                purchase_id=purchase.purchase_id)
+
+    async def run():
+        if mode == 'mfa':
+            claims = json.loads(store._database._verified.claims_json)
+            claims['amr'][0]['timestamp'] = datetime.now(UTC).timestamp() - 899.5
+            store._database._verified = _VerifiedActor(setup[1], json.dumps(claims))
+        with psycopg.connect(DATABASE_URL) as holder, psycopg.connect(DATABASE_URL, autocommit=True) as monitor:
+            if locked == 'purchase':
+                holder.execute('select id from billing.annual_purchases where id=%s for update',
+                               (str(purchase.purchase_id),))
+            else:
+                operation_id = purchase.intent.operation_id if locked == 'checkout' else original.intent.operation_id
+                holder.execute('select id from billing.annual_operations where id=%s for update',
+                               (str(operation_id),))
+            work = (service.cleanup(query) if phase.startswith('claim') else
+                    store.settle_agreement_cleanup(original, stop_observation(original)))
+            pending = asyncio.create_task(work)
+            try:
+                waiting = 0
+                for _ in range(200):
+                    waiting = monitor.execute(
+                        'select count(*) from pg_stat_activity where %s=any(pg_blocking_pids(pid))',
+                        (holder.info.backend_pid,),
+                    ).fetchone()[0]
+                    if waiting:
+                        break
+                    await asyncio.sleep(.005)
+                assert waiting and not pending.done(), 'Must observe an actual independent SQL lock wait'
+                if mode == 'mfa':
+                    await asyncio.sleep(.65)
+                else:
+                    revoke_cleanup_owner(monitor, setup)
+            finally:
+                holder.rollback()
+            with pytest.raises(BillingError) as denied:
+                await asyncio.wait_for(pending, 4)
+            assert denied.value.code == ('BILLING_FORBIDDEN' if mode == 'owner' else 'BILLING_STEP_UP_REQUIRED')
+
+    asyncio.run(run())
+    assert cleanup_snapshot(purchase) == before
+    assert provider.calls == []
+    assert provider.executions == provider.reads == []
+
+
+@pytest.mark.parametrize('point', ['before_update', 'after_update'])
+@pytest.mark.parametrize('opened_support', [False, True])
+@pytest.mark.parametrize('mode', ['owner', 'mfa'])
+def test_cleanup_settlement_authority_loss_rolls_back_instead_of_reporting_confirmation(
+    setup, purchase, point, opened_support, mode,
+):
+    prepare(setup, purchase)
+    store = cleanup_store(setup)
+    original = asyncio.run(store.claim_agreement_cleanup(purchase.offer.company_id, purchase.purchase_id)).cleanup
+    revoked = []
+    write_rows = []
+    support_case = None
+    if opened_support:
+        from test_annual_support_runtime import support
+        owner_as_operator = (setup[0] | {'outsider': setup[0]['owner']},) + setup[1:]
+        support_case = support(owner_as_operator).support_case_id
+    if mode == 'mfa':
+        claims = json.loads(store._database._verified.claims_json)
+        claims['amr'][0]['timestamp'] = datetime.now(UTC).timestamp() - 899.5
+        store._database._verified = _VerifiedActor(setup[1], json.dumps(claims))
+
+    async def revoke_once():
+        assert not revoked
+        if mode == 'mfa':
+            await asyncio.sleep(.65)
+        else:
+            with psycopg.connect(DATABASE_URL) as connection:
+                revoke_cleanup_owner(connection, setup)
+        revoked.append(True)
+
+    async def execute(connection, sql, *args, **kwargs):
+        operation_write = str(sql).strip().lower().startswith('update billing.annual_operations')
+        if operation_write and point == 'before_update':
+            await revoke_once()
+        result = await connection.execute(sql, *args, **kwargs)
+        if operation_write:
+            write_rows.append(result.rowcount)
+        if operation_write and point == 'after_update':
+            await revoke_once()
+        return result
+
+    interleave_cleanup_sql(store, execute, support_case)
+    before = cleanup_snapshot(purchase)
+    try:
+        outcome = asyncio.run(store.settle_agreement_cleanup(original, stop_observation(original)))
+    except BillingError as error:
+        outcome = error
+    assert write_rows == ([0] if point == 'before_update' else [1])
+    assert isinstance(outcome, BillingError), (
+        f'Unauthorized confirmation returned; actual update rows={write_rows}; '
+        f'persisted state changed={cleanup_snapshot(purchase) != before}'
+    )
+    assert outcome.code == ('BILLING_FORBIDDEN' if mode == 'owner' else 'BILLING_STEP_UP_REQUIRED')
+    assert revoked == [True]
+    assert cleanup_snapshot(purchase) == before
+
+
+def test_cleanup_zero_row_write_cannot_confirm_even_when_owner_remains_authorized(setup, purchase):
+    prepare(setup, purchase)
+    store = cleanup_store(setup)
+    original = asyncio.run(store.claim_agreement_cleanup(purchase.offer.company_id, purchase.purchase_id)).cleanup
+    rows = []
+
+    async def execute(connection, sql, *args, **kwargs):
+        operation_write = str(sql).strip().lower().startswith('update billing.annual_operations')
+        # Controlled missed-write injection: use an actual cursor and unchanged
+        # owner/RLS authority, not a fabricated rowcount or a disappearing locked row.
+        result = await connection.execute(sql + ' and false' if operation_write else sql, *args, **kwargs)
+        if operation_write:
+            rows.append(result.rowcount)
+        return result
+
+    interleave_cleanup_sql(store, execute)
+    before = cleanup_snapshot(purchase)
+    with pytest.raises(BillingError) as denied:
+        asyncio.run(store.settle_agreement_cleanup(original, stop_observation(original)))
+    assert denied.value.code == 'BILLING_DEPENDENCY_UNAVAILABLE' and rows == [0]
+    assert cleanup_snapshot(purchase) == before
+    asyncio.run(session(setup).authorize_owner_command(purchase.offer.company_id))
+
+
+@pytest.mark.parametrize('point', ['after_insert', 'deferred_resolution'])
+def test_cleanup_claim_late_owner_loss_never_publishes_success_or_deferral(setup, purchase, point):
+    if point == 'after_insert':
+        prepare(setup, purchase)
+    else:
+        asyncio.run(cancellation(setup).cancel_renewal(command(setup, purchase)))
+    store = cleanup_store(setup)
+    revoked = []
+
+    async def execute(connection, sql, *args, **kwargs):
+        result = await connection.execute(sql, *args, **kwargs)
+        statement = str(sql).strip().lower()
+        at_point = (statement.startswith('insert into billing.annual_operations') if point == 'after_insert'
+                    else 'annual_original_charge_resolved_v1' in statement)
+        if at_point:
+            assert not revoked
+            with psycopg.connect(DATABASE_URL) as other:
+                revoke_cleanup_owner(other, setup)
+            revoked.append(True)
+        return result
+
+    interleave_cleanup_sql(store, execute)
+    before = cleanup_snapshot(purchase)
+    with pytest.raises(BillingError) as denied:
+        asyncio.run(store.claim_agreement_cleanup(purchase.offer.company_id, purchase.purchase_id))
+    assert denied.value.code == 'BILLING_FORBIDDEN' and revoked == [True]
+    assert cleanup_snapshot(purchase) == before
+
+
+@pytest.mark.parametrize('point', ['before_update', 'after_update'])
+def test_cleanup_sql_failure_rolls_back_without_querying_aborted_transaction(setup, purchase, point):
+    prepare(setup, purchase)
+    store = cleanup_store(setup)
+    original = asyncio.run(store.claim_agreement_cleanup(purchase.offer.company_id, purchase.purchase_id)).cleanup
+    failures = []
+    after_failure = []
+
+    async def fail(connection):
+        try:
+            await connection.execute('select 1 / 0')
+        except psycopg.errors.DivisionByZero:
+            failures.append(connection.info.transaction_status)
+            raise
+
+    async def execute(connection, sql, *args, **kwargs):
+        if failures:
+            after_failure.append(sql)
+        operation_write = str(sql).strip().lower().startswith('update billing.annual_operations')
+        if operation_write and point == 'before_update':
+            await fail(connection)
+        result = await connection.execute(sql, *args, **kwargs)
+        if operation_write and point == 'after_update':
+            await fail(connection)
+        return result
+
+    interleave_cleanup_sql(store, execute)
+    before = cleanup_snapshot(purchase)
+    with pytest.raises(BillingError) as denied:
+        asyncio.run(store.settle_agreement_cleanup(original, stop_observation(original)))
+    assert denied.value.code == 'BILLING_DEPENDENCY_UNAVAILABLE'
+    assert failures == [psycopg.pq.TransactionStatus.INERROR] and after_failure == []
+    assert cleanup_snapshot(purchase) == before
+    recovered = asyncio.run(cleanup_store(setup).settle_agreement_cleanup(original, stop_observation(original)))
+    assert recovered.observation.status is AnnualProviderStatus.CONFIRMED
+
+
+@pytest.mark.parametrize('receipt_kind', ['cancellation', 'unbound_refund'])
+@pytest.mark.parametrize('already_claimed', [False, True])
+def test_different_accepted_owner_recovers_original_cleanup_receipt(setup, purchase, receipt_kind, already_claimed):
+    if receipt_kind == 'cancellation':
+        prepare(setup, purchase)
+        receipt_table = 'billing.annual_cancellation_requests'
+    else:
+        from test_annual_refund_runtime import command as refund_command, source, store as refund_store
+        current = asyncio.run(session(setup).settle_checkout(
+            purchase, observation(purchase, captured=149000, refunded=149000, status=AnnualProviderStatus.CONFIRMED),
+        ))
+        request = refund_command(setup, current)
+        resolution = asyncio.run(refund_store(setup, source(current, request)).claim_refund(request)).resolution
+        assert resolution.operation is None
+        receipt_table = 'billing.annual_refund_requests'
+    with psycopg.connect(DATABASE_URL) as connection:
+        receipts = connection.execute(
+            f'select to_jsonb(r) from {receipt_table} r where purchase_id=%s', (str(purchase.purchase_id),),
+        ).fetchall()
+        assert len(receipts) == 1 and receipts[0][0]['requested_by'] == str(setup[1].subject)
+        if receipt_kind == 'unbound_refund':
+            assert receipts[0][0]['operation_id'] is None
+            assert connection.execute('select count(*) from billing.annual_cancellation_requests where purchase_id=%s',
+                                      (str(purchase.purchase_id),)).fetchone()[0] == 0
+        insert(connection, 'public.company_memberships', {'company_id': setup[0]['company'],
+            'user_id': setup[0]['outsider'], 'role': 'owner', 'accepted_at': datetime.now(UTC)})
+    original = (asyncio.run(cleanup_store(setup).claim_agreement_cleanup(
+        purchase.offer.company_id, purchase.purchase_id)).cleanup if already_claimed else None)
+    before = cleanup_snapshot(purchase)[0]
+    other = ActorId(ActorKind.USER, UserId(str(setup[0]['outsider'])))
+    store = cleanup_store(setup, actor=other, current=False)
+    first = asyncio.run(store.claim_agreement_cleanup(purchase.offer.company_id, purchase.purchase_id))
+    assert first.newly_claimed is not already_claimed
+    if original is not None:
+        assert first.cleanup == original
+    receipt_id = first.cleanup.cancellation_id or first.cleanup.refund_request_id
+    assert str(receipt_id) == receipts[0][0]['id']
+    confirmed = asyncio.run(store.settle_agreement_cleanup(first.cleanup, stop_observation(first.cleanup)))
+    assert asyncio.run(store.claim_agreement_cleanup(purchase.offer.company_id, purchase.purchase_id)).cleanup == confirmed
+    assert cleanup_snapshot(purchase)[0] == before
+    with psycopg.connect(DATABASE_URL) as connection:
+        assert connection.execute(f'select to_jsonb(r) from {receipt_table} r where purchase_id=%s',
+                                  (str(purchase.purchase_id),)).fetchall() == receipts
 
 
 @pytest.mark.parametrize("mode", ["outsider", "stale_mfa", "wrong_company", "wrong_purchase"])

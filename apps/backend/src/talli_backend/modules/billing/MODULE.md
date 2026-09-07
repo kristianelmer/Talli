@@ -318,7 +318,16 @@ index enforces one agreement stop per purchase. The insert guard in
 terminal checkout and exact original provider intent fields. The later refund
 cleanup migration extends those receipt and terminal-proof alternatives as
 described below. Cleanup settlement
-never updates purchase money, status or access. Roll back this guard before the
+never updates purchase money, status or access. Owner cleanup clears ambient
+support context, rechecks owner/fresh MFA after locked reads and before every
+successful transaction return, and requires exactly one affected settlement row.
+Revocation or elapsed MFA rolls back pending writes, including after an UPDATE.
+Domain errors from rows hidden after a wait recheck authority; PostgreSQL errors
+propagate to transaction rollback without another query on the aborted connection.
+Cancellation and refund receipt reads remain plain SELECT. A different accepted
+owner may recover the original receipt, including an unbound refund request;
+receipt requester and STOP intent remain unchanged.
+Roll back this guard before the
 cancellation and annual-ledger migrations; all operation evidence is retained.
 
 
