@@ -1343,11 +1343,24 @@
         "Actual designated Vipps Merchant Test, trusted readiness/incident/submission sources, automatic runtime/worker authority and the remaining whole-issue acceptance/release evidence remain pending.",
         "Tests use disposable local databases and synthetic fixtures only. No actual payments, provider activation, external-target tests, hosted database changes or charges."
       ]
+    },
+    "designatedVippsMerchantTestRuntime": {
+      "revision": "65fdf69b29ccb553355d397c4845bd50c6d1691d",
+      "evidencePath": "architecture/evidence/issues/192/vipps-mt-runtime.json",
+      "scope": "Opt-in designated Vipps Merchant Test runtime and resumable standalone provider conformance runner; no real provider execution or full issue acceptance.",
+      "billing": "728 Python + 281 Node passed on exact clean commit, zero skips.",
+      "focused": "43 runtime configuration/HTTP cases and 30 conformance-runner cases, all local MockTransport; independent component reviews passed.",
+      "externalEvidence": "No actual MT calls. Owner electronic-ID sign-in, existing unit keys, verified confirmation origins, MT app user and registered callback remain pending.",
+      "limits": [
+        "#192 remains open and incomplete. These changes are a local checkpoint only; no push, PR, merge, deployment or release acceptance.",
+        "Authoritative filing readiness and incident/submission sources, versioned next-year admission, automatic billing runtime, actual designated MT evidence, remaining customer/operator acceptance and complete immutable release gates remain required.",
+        "Source/order proposal is unapproved. The four-deletion architecture decision is separate and also unapproved."
+      ]
     }
   },
   "externalEvidence": {
-    "vippsMerchantTest": "pending designated existing test sales unit, backend-only test credentials, test user/app and callback setup; local fixtures cannot substitute",
-    "discovery": "No Vipps/MobilePay process variables or workspace/saved-project env names; oversight owns user access coordination. No provider calls, signup or changes."
+    "vippsMerchantTest": "Existing designated Talli Recurring MT TEST unit MSN535717 verified by oversight; free test-only setup/use confirmed. Backend credentials, MT app user and callback setup remain pending. Runtime/runner implemented locally, actual MT not run.",
+    "discovery": "Official Vipps Business Portal opened in Opera; owner electronic-ID sign-in required. No credentials retrieved or new unit created; zero provider requests."
   },
   "preservedGates": [
     "#189",

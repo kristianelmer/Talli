@@ -1,0 +1,119 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#192",
+  "revision": "65fdf69b29ccb553355d397c4845bd50c6d1691d",
+  "baseRevision": "27a2eecbe885095861db91a7bb94afde0ab8b390",
+  "scope": "Opt-in designated Vipps Merchant Test runtime and resumable standalone provider conformance runner; no real provider execution or full issue acceptance.",
+  "runtime": {
+    "default": "off",
+    "enabledMode": "vipps-mt",
+    "merchantSerialNumber": "535717",
+    "providerOrigin": "https://apitest.vipps.no",
+    "behavior": "Validate complete backend-only test settings before constructing provider and authenticated immutable receipt intake. Incomplete or invalid enabled settings fail startup without credential values. Explicit dependency injection remains separate from ambient configuration.",
+    "authority": "No readiness, production filing, worker, role-membership or live-payment authority is supplied."
+  },
+  "runner": {
+    "path": "apps/backend/scripts/run_vipps_mt_conformance.py",
+    "runbook": "docs/billing/vipps-mt-conformance.md",
+    "default": "Offline preflight, zero provider requests.",
+    "behavior": "Explicit MT opt-in, pinned sales unit, private durable immutable intents, serialized dispatch, fsynced pre-network marker, ordinary retry by reconciliation, narrowly explicit idempotent replay, sanitized observations and no stored confirmation URLs.",
+    "scenarios": [
+      "checkout",
+      "renewal",
+      "partial-refund",
+      "remaining-refund",
+      "full-refund",
+      "cancel-renewal",
+      "cancel-charge",
+      "stop"
+    ],
+    "reviewCorrection": "Terminal failed zero-capture charge observations permit agreement cleanup; pending, unknown or captured failures do not. Failure evidence is preserved.",
+    "evidenceScope": "Provider observations only; no billing database, webhooks, source authority, workers, browser or whole-issue proof."
+  },
+  "validation": {
+    "billing": {
+      "command": "npm run test:billing",
+      "revision": "65fdf69b29ccb553355d397c4845bd50c6d1691d",
+      "pythonPassed": 728,
+      "nodePassed": 281,
+      "skipped": 0
+    },
+    "runtimeFocused": {
+      "passed": 43,
+      "transport": "httpx.MockTransport"
+    },
+    "runnerFocused": {
+      "passed": 30,
+      "transport": "httpx.MockTransport",
+      "independentExactCommitRerun": true
+    },
+    "broaderBackend": {
+      "command": "npm run test:boundary-backend",
+      "passed": 1388,
+      "skipped": 2,
+      "deselected": 621,
+      "scope": "Precommit product tree; before four final runner test-only cases were added.",
+      "skipReason": "Separate real PostgreSQL rehearsals for marketing measurement and validation observation require their designated test configuration."
+    },
+    "credentialScan": {
+      "command": "npm run test:credential-scan",
+      "revision": "65fdf69b29ccb553355d397c4845bd50c6d1691d",
+      "passed": true,
+      "scannerTests": 2
+    },
+    "offlinePreflight": {
+      "revision": "65fdf69b29ccb553355d397c4845bd50c6d1691d",
+      "providerCalls": 0,
+      "configurationValid": false,
+      "detail": "Designated test credentials and verified confirmation origins are not present."
+    },
+    "diffCheck": "pass"
+  },
+  "reviews": {
+    "runtimeComposition": {
+      "reviewer": "spec_review",
+      "result": "No actionable product/security findings; stale callback comment corrected."
+    },
+    "conformance": {
+      "reviewer": "cancellation_audit",
+      "revision": "65fdf69b29ccb553355d397c4845bd50c6d1691d",
+      "result": "PASS after terminal-failure cleanup correction; 30 focused tests independently passed, no remaining actionable findings."
+    }
+  },
+  "architecture": {
+    "result": "BLOCKED",
+    "inheritedErrors": 4,
+    "detail": "Three retired audit_events scope references and one retired filing_readiness_snapshots reference. Exact four-deletion proposal still awaits approval; no checker, ADR, baseline or gate relaxation."
+  },
+  "externalEvidence": {
+    "vippsMerchantTest": "NOT RUN",
+    "portal": "Existing test unit access requires owner electronic-ID sign-in. No keys retrieved, no new unit, no provider requests or charges."
+  },
+  "limits": [
+    "#192 remains open and incomplete. These changes are a local checkpoint only; no push, PR, merge, deployment or release acceptance.",
+    "Authoritative filing readiness and incident/submission sources, versioned next-year admission, automatic billing runtime, actual designated MT evidence, remaining customer/operator acceptance and complete immutable release gates remain required.",
+    "Source/order proposal is unapproved. The four-deletion architecture decision is separate and also unapproved."
+  ],
+  "artifacts": [
+    {
+      "path": "/private/tmp/talli-01a07a7f-runtime-65fdf69b-billing.log",
+      "sha256": "f8e9f2a77849c7d7616721ba0e70479be80367dd579c20419d94c6398aeaf3db"
+    },
+    {
+      "path": "/private/tmp/talli-01a07a7f-mt-65fdf69b-offline-preflight.json",
+      "sha256": "6e7b8cbedc08765ceb0b73af6206c36b813d4c117c4247cb09bb76344020b022"
+    },
+    {
+      "path": "/private/tmp/talli-01a07a7f-runtime-65fdf69b-credentials.log",
+      "sha256": "ea4c0563f4f8b169834b5fe010028ed7dc2b80499afa5c9b5f0aa9e94cf45e85"
+    },
+    {
+      "path": "/private/tmp/talli-01a07a7f-runtime-backend-boundary.log",
+      "sha256": "ede8300fcd0c2cead77d0e261110b66d66b8b3a96c047a9dabee305a3aca4a51"
+    },
+    {
+      "path": "/private/tmp/talli-01a07a7f-runtime-architecture.log",
+      "sha256": "cf4bfc2167107cb1617a90e7867848c0d66e43b4d91bf8cd115b920c8ca63114"
+    }
+  ]
+}
