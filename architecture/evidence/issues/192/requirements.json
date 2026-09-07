@@ -43,7 +43,7 @@
     {
       "id": "GH-192-A6",
       "requirement": "Actionable customer plan/cancel/refund/export and operator exceptions.",
-      "status": "owner-checkout-and-recovery-ui-verified-support-bound-refund-backend-verified-operator-ui-and-automatic-refund-pending"
+      "status": "owner-checkout-and-recovery-ui-and-operator-bound-refund-backend-ui-verified-remaining-operator-cleanup-and-automatic-refund-pending"
     },
     {
       "id": "GH-192-A7",
@@ -872,8 +872,64 @@
         "/private/tmp/talli-01a0789e-support-refund-write-race-red.log": "sha256:56dd493b49e2073e517df0923b215a84e47ff78e3a9abadee643072997804f2e",
         "/private/tmp/talli-01a0789e-support-refund-dbs-stopped.json": "sha256:27f4ea3391400edecd7bf3007acdfee7c18163a5b9379d7c2a86c448ec92e4d0"
       },
-      "nextWork": "Operator UI discovery and explicit same-request recovery controls with exact initiating-operator/token continuity, case/company/purchase/request/cursor navigation, protected evidence clearing on later read/action denial, and manual login/MFA return without automatic POST. Actual hydrated browser and mobile verification required.",
+      "nextWork": "Operator UI completed and separately verified in annualSupportRecordedRefundRecoveryUi. Continue current-owner cleanup authorization hardening and remaining operator/automatic/source/MT/exit acceptance.",
       "limits": "#192 OPEN/incomplete, #150 unclaimed, full #165 ACTIVE. Trusted readiness/incident/submission sources, automatic runtime, actual designated Vipps Merchant Test, remaining representative acceptance, two complete immutable11/11 gates, protected-main Release/nonproduction Preview integration and exact-main evidence remain mandatory. Main remains continuous integration target; only release/production frozen at d331ee2717d1eeacef0d81db42b9d4fb5848b408."
+    },
+    "annualSupportRecordedRefundRecoveryUi": {
+      "implementationRevision": "25e2af057a0451e5b091a10c5e6e8b1c75c68237",
+      "comparisonRevision": "6ed32af5a289f3fa64491b6e3573af4e3d0fe660",
+      "scope": "Operator discovery and explicit recovery of already bound refund requests from an opened case, including historical purchase/request pagination and terminal receipt replacement.",
+      "authority": "Page access and action verify the exact forwarded session token against the initiating operator. Strict UUID/duplicate/orphan query and form validation retain case/company/purchase/request and both cursors. Selected company must match the opened case and selected purchase must be on its authorized history page. No owner fallback or substitution for missing selections. Only the four recorded IDs cross the POST boundary; current backend actor comes from its verified session.",
+      "recovery": "Synchronous duplicate-event guard; no POST on render, remount, reload, pagination, authentication return or receipt replacement. Lost backend response and lost successful browser action response require an explicit retry of the same four IDs. Native fragment-free document links reread current case authority. Authentication next retains all six query values and the anchor. Operation confirmation never establishes full purchase refund; canonical purchase history remains monetary authority.",
+      "privacy": "Any failed or foreign late target read clears earlier case summaries, balances, history and mutation controls before ancillary reads. Changed initiating operator dispatches no recovery. Case revocation and admin demotion during delayed recovery deny before settlement and remove protected UI.",
+      "validation": "Exact clean immutable 25e2af05: full billing 655 Python + 281 Node passed, zero skips; typecheck and production build passed. Actual hydrated production Next browser exercised pending double events and explicit repeated requests; backend response loss after commit and browser response loss after HTTP 200; complete login and fresh-MFA flows with new verified generations and no automatic retry; changed operator; delayed case revocation/admin demotion; late target 401/403/503/missing-route/domain-404; malformed/duplicate/orphan/foreign-company selection; missing-purchase warning; both pagination cursors, selected permalink, newest navigation, representative replacement and original alias cursor stability. Every metrics read audited business routes: only explicit support refund-recoveries POSTs, no unknown fixture routes. Outbound guard recorded zero non-loopback attempts.",
+      "visual": "Actual Chrome at 1440 and 390 pixels: complete document/body widths equal viewport, recovery button height 44px, normal/pending/unavailable states inspected. Standalone annual-section screenshots confirm readable long request IDs and balances. Existing wider operator forms were not redesigned.",
+      "databaseAttribution": "This UI slice changes no backend or database. Prior exact backend mandatory fresh full DB 449 Python + 1 Node remains attributed solely to f513da7dee1fd33057f4884ff0d8013358c4b467; no later-revision database pass is inferred.",
+      "regressionHistory": "Review found same-document reload risk. On initial a2e123db browser, restored failed-target read retry remained at 5 reads and no target; first lost-response NextLink navigation also retained a stale target. Corrected native links and non-auth helper destinations to omit fragments, while retaining all query bindings. Exact final browser restored retry increased reads 5 to 14 and displayed the control; fresh history reload after denial removed protected data. Test assertions were updated for the intentional fragment behavior; an initial assertion edit referenced an unavailable local variable and was corrected. Browser harness also narrowed its mutation-form assertion to exclude the ordinary logout form and used about:blank before each reset to guarantee a fresh document.",
+      "independentReviews": {
+        "implementationRevision": "25e2af057a0451e5b091a10c5e6e8b1c75c68237",
+        "comparisonRevision": "6ed32af5a289f3fa64491b6e3573af4e3d0fe660",
+        "standards": {
+          "result": "PASS",
+          "violations": 0,
+          "smells": 0,
+          "reviewer": "support_refund_standards_review"
+        },
+        "spec": {
+          "result": "PASS",
+          "findings": 0,
+          "reviewer": "prepare_spec_review"
+        },
+        "scope": "Complete initial 16-file operator recovery UI diff plus exact native-reload correction. Read-only exact Git object reviews; hydrated browser proof recorded separately.",
+        "limits": "Bounded operator recorded-refund UI only; no full #192, source, real MT, architecture, or release-gate clearance."
+      },
+      "architecture": "Direct checker still fails only on the four inherited unapproved future-scope errors: three audit_events and one filing_readiness_snapshots. No checker, baseline, ADR or gate weakening; no architecture PASS or complete 11/11 gate claim.",
+      "fixtureLifecycle": "Owned named browser, production Next and synthetic loopback fixture stopped; process absence verified. No database, source, provider or hosted operation during browser proof. No charge, provider activation or actual Merchant Test request.",
+      "artifacts": {
+        "/private/tmp/talli-01a0789e-25e2af05-billing.log": "sha256:67740559e258ff2b80c30e2fd7b1cbe7509cb48aa2bb60ec9fb3dab1c6548913",
+        "/private/tmp/talli-01a0789e-25e2af05-typecheck.log": "sha256:b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+        "/private/tmp/talli-01a0789e-25e2af05-architecture.log": "sha256:cf4bfc2167107cb1617a90e7867848c0d66e43b4d91bf8cd115b920c8ca63114",
+        "/private/tmp/talli-01a0789e-25e2af05-build.log": "sha256:cb3bf9d564d3c84d3ce3944914ec30365ac06519e8561f390c16b6f92469105b",
+        "/private/tmp/talli-01a0789e-25e2af05-review-summary.json": "sha256:405d27a5fb3eafd976fcffd5289581a28a666d1a2026715c60daf0d01055b86e",
+        "/private/tmp/talli-01a0789e-25e2af05-browser-summary.json": "sha256:5db07b5c985d2884cd5d28a6f8cd975b022f31e0f1c4bfc32c9a314fdbaf5e24",
+        "/private/tmp/talli-01a0789e-25e2af05-browser-core.log": "sha256:6da861ea460c5a4a7f6543b657cc96365370b779f701cbe11cf25cb85fb497d9",
+        "/private/tmp/talli-01a0789e-25e2af05-browser-privacy.log": "sha256:58e19b3d98b54793d6df16a3c0ef195b0bdff61d87d29a192f8b4b7683d093fc",
+        "/private/tmp/talli-01a0789e-25e2af05-browser-auth.log": "sha256:a2b16be4d4ac20094ecb58b534f957127d1a1ed387545efdcbd2d9905236ab14",
+        "/private/tmp/talli-01a0789e-25e2af05-browser-errors.log": "sha256:bcec233bc294c87bd45a908bf2c49a28201cef5556ae7ea55b5ddc9e5d54eeba",
+        "/private/tmp/talli-01a0789e-25e2af05-browser-navigation.log": "sha256:29ee32729ac69ba488cf388877cc50c7d393074ed4f8af710d4f26991a3fc445",
+        "/private/tmp/talli-01a0789e-25e2af05-browser-visual.log": "sha256:2acf85216cf1161f5c427b47a38eb6bee50ebd15dd6c2a83c1a4f54e1cf07d13",
+        "/private/tmp/talli-01a0789e-operator-ui-processes-stopped.json": "sha256:a335b2838c5f8c226a8c7e74224ba15e1d08cb708fec45bc0c9343e58c6bd5e2",
+        "/private/tmp/talli-01a0789e-operator-read-retry-red.log": "sha256:9bb7bc4a0a48e245d2e9526bb3c15b8f7da261214a2efa95374fc27bead672af",
+        "/private/tmp/talli-01a0789e-operator-reload-red.log": "sha256:4aba733b5cdc7a969c3a922da383cd702812389e295d2af93f8c4491cfba05f8",
+        "/private/tmp/talli-01a0789e-operator-browser-artifacts/operator-1440.png": "sha256:de438ba9d55e14e8e56eb7cd05b9befb283c530c5db5ccd083647f14c2ab8663",
+        "/private/tmp/talli-01a0789e-operator-browser-artifacts/operator-390-error.png": "sha256:4b953d7d304a70417ea4023c93f722e7c154348cf2b2d7513ea7668b7cd7bfff",
+        "/private/tmp/talli-01a0789e-operator-browser-artifacts/operator-390-pending.png": "sha256:37f75255d685617eef551ec68d7ec61b75203f39b3a655451ea459246db1c727",
+        "/private/tmp/talli-01a0789e-operator-browser-artifacts/operator-390.png": "sha256:5611b8bca792c2a1fdb314643347a5ac2e103eb2912bb82b48710e4e481748cd",
+        "/private/tmp/talli-01a0789e-operator-browser-artifacts/operator-annual-1440.png": "sha256:27f4805b22e4dbc28e288b0a6af41aa7f7e8b780eb304a5ed5d747f770eb2443",
+        "/private/tmp/talli-01a0789e-operator-browser-artifacts/operator-annual-390.png": "sha256:0b40260a314333fe8187ac00cc6497e91c3e7f84bae66c8b684eecd7a25f8d0c"
+      },
+      "nextWork": "Reproduce and harden current-owner/MFA reauthorization after agreement-cleanup lock waits and settlement writes, including affected-row enforcement. Continue remaining #192 operator/automatic/source/MT/representative acceptance in order.",
+      "limits": "#192 OPEN/incomplete; #150 unclaimed; full #165 ACTIVE. Missing trusted readiness/incident/submission sources, worker authority, actual designated Vipps Merchant Test, remaining acceptance, two complete immutable 11/11 gates, protected-main Release/nonproduction Preview integration and exact-main evidence remain mandatory. Main is the integration target; only release/production frozen at d331ee2717d1eeacef0d81db42b9d4fb5848b408."
     }
   },
   "externalEvidence": {
