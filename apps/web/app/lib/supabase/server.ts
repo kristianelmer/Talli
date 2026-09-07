@@ -1,4 +1,5 @@
-import { annualBillingRecovery, loadAnnualSupportPurchases, type AnnualSupportPageWire } from "../../../features/billing";
+import type { AnnualSupportRefundTargetsView } from "../annual-support-refund-recovery";
+import { annualBillingRecovery, loadAnnualSupportPurchases, loadAnnualSupportRefundRecoveryTargets, type AnnualSupportPageWire } from "../../../features/billing";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import {
@@ -13,7 +14,7 @@ import type {
 } from "../annual-readiness";
 import type { CompanyCancellationRow } from "../cancellation";
 import type { LaunchSignoffKey, LaunchSignoffStatus } from "../launch-signoff";
-import { buildOperatorSupportSummaries, operatorReadRecovery, type OperatorReadRecovery } from "../operator-support";
+import { buildOperatorSupportSummaries, operatorReadRecovery, type OperatorReadRecovery, type OperatorAnnualRefundSelection } from "../operator-support";
 import type {
   Rf1086ReceiptMetadata,
   Rf1086SubmittedPayloadReference,
@@ -669,10 +670,11 @@ export async function getOperatorContext() {
 export async function getOperatorPageAccess() {
   try {
     if (!hasSupabaseEnv()) return { recovery: "unavailable" as const };
-    const user = await getCurrentUser();
-    if (!user) return { recovery: "sign-in" as const };
-    const accessToken = await backendAccessToken(await createSupabaseServerClient());
+    const supabase = await createSupabaseServerClient();
+    const accessToken = await backendAccessToken(supabase);
     if (!accessToken) return { recovery: "sign-in" as const };
+    const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+    if (error || !user) return { recovery: "sign-in" as const };
     const operator = await loadOperatorContext(accessToken);
     return { recovery: null, user, operator };
   } catch (error) {
@@ -1200,9 +1202,11 @@ export async function readOperatorSupportDashboard(
   caseId: string,
   actorId?: string | null,
   beforePurchaseId?: string,
+  selection: OperatorAnnualRefundSelection = {},
 ) {
   const emptyAnnual = {
     annualBilling: null as AnnualSupportPageWire | null,
+    annualRefundTargets: null as AnnualSupportRefundTargetsView | null,
     annualBillingError: null as ReturnType<typeof annualBillingRecovery> | null,
   };
   const failed = (recovery: OperatorReadRecovery, isOperator = false) => ({
@@ -1214,18 +1218,27 @@ export async function readOperatorSupportDashboard(
   let accessToken: string;
   let snapshot: Awaited<ReturnType<typeof readOperatorSupportCase>>;
   try {
-    const token = await backendAccessToken(await createSupabaseServerClient());
+    const supabase = await createSupabaseServerClient();
+    const token = await backendAccessToken(supabase);
     if (!token) return failed("sign-in");
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return failed("sign-in");
+    if (user.id !== actorId) return failed("forbidden");
     accessToken = token;
     await loadOperatorContext(accessToken);
     isOperator = true;
     snapshot = await readOperatorSupportCase(accessToken, caseId);
-    if (snapshot.caseId !== caseId) return failed("unavailable", isOperator);
+    if (snapshot.caseId !== caseId || (selection.companyId && selection.companyId !== snapshot.companyId)) return failed("unavailable", isOperator);
   } catch (error) {
     return failed(operatorReadRecovery(error), isOperator);
   }
 
   let annualBilling: AnnualSupportPageWire | null = null;
+  let annualRefundTargets: AnnualSupportRefundTargetsView | null = selection.purchaseId ? {
+    purchaseId: selection.purchaseId, selectedRefundRequestId: selection.refundRequestId,
+    beforeRefundRequestId: selection.beforeRefundRequestId, page: null,
+  } : null;
+  if (selection.purchaseId && !snapshot.scopes.includes("billing")) return failed("forbidden", isOperator);
   if (snapshot.scopes.includes("billing")) {
     try {
       // A billing-only grant need not include profile resources. The backend
@@ -1236,6 +1249,18 @@ export async function readOperatorSupportDashboard(
       if (annualBilling.companyId !== snapshot.companyId || annualBilling.supportCaseId !== snapshot.caseId) {
         return failed("unavailable", isOperator);
       }
+      const selected = annualBilling.purchases.find(value => value.purchaseId === selection.purchaseId);
+      if (annualRefundTargets && selected) {
+        const targets = await loadAnnualSupportRefundRecoveryTargets(accessToken, {
+          companyId: snapshot.companyId, supportCaseId: snapshot.caseId, purchaseId: selected.purchaseId,
+          beforeRefundRequestId: selection.beforeRefundRequestId,
+        });
+        if (targets.supportCaseId !== snapshot.caseId || targets.companyId !== snapshot.companyId
+            || targets.purchaseId !== selected.purchaseId || targets.incomeYear !== selected.incomeYear) {
+          return failed("unavailable", isOperator);
+        }
+        annualRefundTargets = { ...annualRefundTargets, page: targets };
+      }
     } catch (error) {
       return { ...failed(operatorReadRecovery(error), isOperator), annualBillingError: annualBillingRecovery(error) };
     }
@@ -1245,6 +1270,7 @@ export async function readOperatorSupportDashboard(
     isOperator,
     error: null,
     annualBilling,
+    annualRefundTargets,
     annualBillingError: null,
     recovery: null,
   };

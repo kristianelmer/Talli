@@ -5,6 +5,7 @@ import { operatorRecoveryHref, operatorSupportLocation } from "../../lib/operato
 
 import {
   grantSupportAccess,
+  recoverAnnualSupportRefund,
   openSupportCase,
   recordLaunchSignoff,
   reviewCompanyDeletion,
@@ -30,8 +31,12 @@ import { loadPendingCancellationOperation } from "../../lib/cancellation-operati
 
 type OperatorProps = {
   searchParams?: Promise<{
-    supportCase?: string;
-    annualBefore?: string;
+    supportCase?: string | string[];
+    annualBefore?: string | string[];
+    companyId?: string | string[];
+    refundPurchaseId?: string | string[];
+    refundRequestId?: string | string[];
+    beforeRefundRequestId?: string | string[];
     grant?: string;
     error?: string;
     pilot?: string;
@@ -88,8 +93,8 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
   const user = access.user;
   const { supportCaseId, beforePurchaseId } = location;
   const operatorDashboard = supportCaseId
-    ? await readOperatorSupportDashboard(supportCaseId, user.id, beforePurchaseId)
-    : { summaries: [], isOperator: false, error: null, annualBilling: null, annualBillingError: null, recovery: null };
+    ? await readOperatorSupportDashboard(supportCaseId, user.id, beforePurchaseId, location)
+    : { summaries: [], isOperator: false, error: null, annualBilling: null, annualBillingError: null, annualRefundTargets: null, recovery: null };
   if (operatorDashboard.recovery) {
     return <OperatorReadRecoveryView recovery={operatorDashboard.recovery} returnTo={location.returnTo} />;
   }
@@ -580,6 +585,9 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
           error={operatorDashboard.annualBillingError}
           supportCaseId={supportCaseId}
           beforePurchaseId={beforePurchaseId}
+          initiatingUserId={user.id}
+          refundTargets={operatorDashboard.annualRefundTargets}
+          recoverAction={recoverAnnualSupportRefund}
         />
         <div className="readinessGrid">
           {operatorDashboard.summaries.map((summary) => (

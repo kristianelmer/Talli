@@ -18,20 +18,44 @@ export function operatorRecoveryHref(recovery: OperatorReadRecovery, returnTo: s
   return returnTo;
 }
 
-export function operatorSupportLocation(params?: { supportCase?: unknown; annualBefore?: unknown }) {
+export type OperatorAnnualRefundSelection = {
+  companyId?: string;
+  purchaseId?: string;
+  refundRequestId?: string;
+  beforeRefundRequestId?: string;
+};
+
+export function operatorSupportLocation(params?: {
+  supportCase?: unknown; annualBefore?: unknown; companyId?: unknown;
+  refundPurchaseId?: unknown; refundRequestId?: unknown; beforeRefundRequestId?: unknown;
+}) {
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  const supportCaseId = typeof params?.supportCase === "string" && uuid.test(params.supportCase) ? params.supportCase : "";
-  const beforePurchaseId = supportCaseId && typeof params?.annualBefore === "string" && uuid.test(params.annualBefore)
-    ? params.annualBefore : undefined;
+  let invalid = false;
+  function identity(value: unknown) {
+    if (value === undefined) return undefined;
+    if (typeof value === "string" && uuid.test(value)) return value;
+    invalid = true;
+    return undefined;
+  }
+  const supportCaseId = identity(params?.supportCase) ?? "";
+  const beforePurchaseId = identity(params?.annualBefore);
+  const companyId = identity(params?.companyId);
+  const purchaseId = identity(params?.refundPurchaseId);
+  const refundRequestId = identity(params?.refundRequestId);
+  const beforeRefundRequestId = identity(params?.beforeRefundRequestId);
+  if ((!supportCaseId && (beforePurchaseId || companyId || purchaseId || refundRequestId || beforeRefundRequestId))
+      || (purchaseId && !companyId) || ((refundRequestId || beforeRefundRequestId) && !purchaseId)) invalid = true;
   const query = new URLSearchParams();
   if (supportCaseId) query.set("supportCase", supportCaseId);
   if (beforePurchaseId) query.set("annualBefore", beforePurchaseId);
+  if (companyId) query.set("companyId", companyId);
+  if (purchaseId) query.set("refundPurchaseId", purchaseId);
+  if (refundRequestId) query.set("refundRequestId", refundRequestId);
+  if (beforeRefundRequestId) query.set("beforeRefundRequestId", beforeRefundRequestId);
   return {
-    supportCaseId,
-    beforePurchaseId,
+    supportCaseId, beforePurchaseId, companyId, purchaseId, refundRequestId, beforeRefundRequestId,
     returnTo: supportCaseId ? `/operator?${query}#annual-billing` : "/operator",
-    invalid: (params?.supportCase !== undefined && !supportCaseId)
-      || (params?.annualBefore !== undefined && !beforePurchaseId),
+    invalid,
   };
 }
 

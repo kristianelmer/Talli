@@ -1,5 +1,7 @@
 "use server";
 
+import type { AnnualSupportRefundRecoveryActionState, AnnualSupportRefundIdentity } from "./lib/annual-support-refund-recovery";
+import { operatorReadRecovery, operatorRecoveryHref, operatorSupportLocation } from "./lib/operator-support";
 import type { AnnualRefundRecoveryActionState } from "./lib/annual-refund-recovery";
 
 import type { AnnualAgreementCleanupActionState } from "./lib/annual-billing-cleanup";
@@ -79,6 +81,7 @@ import {
   withdrawAnnualCheckoutRequest as withdrawAnnualCheckoutRequestThroughApi,
   annualCheckoutNeedsWithdrawal,
   recoverAnnualRefund as recoverAnnualRefundThroughApi,
+  recoverAnnualSupportRefund as recoverAnnualSupportRefundThroughApi,
   annualBillingAccessRejected,
   cancelBillingSubscription as cancelBillingSubscriptionThroughApi,
   manageProductionPilotEntitlement,
@@ -4283,6 +4286,64 @@ export async function revokeSupportAccess(formData: FormData) {
     redirect(`/operator?error=${encodeURIComponent(error instanceof Error ? error.message : "support_access_revoke_failed")}`);
   }
   redirect("/operator?grant=revoked");
+}
+
+export async function recoverAnnualSupportRefund(
+  _previousState: AnnualSupportRefundRecoveryActionState,
+  formData: FormData,
+): Promise<AnnualSupportRefundRecoveryActionState> {
+  let identity: AnnualSupportRefundIdentity;
+  let beforePurchaseId: string | undefined;
+  let beforeRefundRequestId: string | undefined;
+  try {
+    const required = ["initiatingUserId", "supportCaseId", "companyId", "purchaseId", "refundRequestId"] as const;
+    if (required.some(name => formData.getAll(name).length !== 1)
+        || ["beforePurchaseId", "beforeRefundRequestId"].some(name => formData.getAll(name).length > 1)) {
+      return { kind: "invalid" };
+    }
+    identity = {
+      initiatingUserId: requiredFormUuid(formData, "initiatingUserId"),
+      supportCaseId: requiredFormUuid(formData, "supportCaseId"), companyId: requiredFormUuid(formData, "companyId"),
+      purchaseId: requiredFormUuid(formData, "purchaseId"), refundRequestId: requiredFormUuid(formData, "refundRequestId"),
+    };
+    beforePurchaseId = formData.has("beforePurchaseId") ? requiredFormUuid(formData, "beforePurchaseId") : undefined;
+    beforeRefundRequestId = formData.has("beforeRefundRequestId") ? requiredFormUuid(formData, "beforeRefundRequestId") : undefined;
+  } catch {
+    return { kind: "invalid" };
+  }
+  const location = operatorSupportLocation({ supportCase: identity.supportCaseId, companyId: identity.companyId,
+    refundPurchaseId: identity.purchaseId, refundRequestId: identity.refundRequestId,
+    annualBefore: beforePurchaseId, beforeRefundRequestId });
+  if (location.invalid) return { kind: "invalid" };
+  const recover = (reason: ReturnType<typeof operatorReadRecovery>): AnnualSupportRefundRecoveryActionState => ({
+    kind: "recovery", ...identity, reason, href: operatorRecoveryHref(reason, location.returnTo),
+  });
+  try {
+    const accessToken = await getCurrentSessionAccessToken();
+    if (!accessToken) { revalidatePath("/operator"); return recover("sign-in"); }
+    const supabase = await createSupabaseServerClient();
+    const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+    if (error || !user) { revalidatePath("/operator"); return recover("sign-in"); }
+    if (user.id !== identity.initiatingUserId) {
+      revalidatePath("/operator");
+      return { kind: "different-user", ...identity };
+    }
+    // Browser identity is continuity only; backend authority comes from this token.
+    const { companyId, purchaseId, refundRequestId, supportCaseId } = identity;
+    const value = await recoverAnnualSupportRefundThroughApi(accessToken, { companyId, purchaseId, refundRequestId, supportCaseId });
+    if (value.companyId !== companyId || value.purchaseId !== purchaseId
+        || value.refundRequestId !== refundRequestId || value.supportCaseId !== supportCaseId) {
+      revalidatePath("/operator");
+      return recover("unavailable");
+    }
+    revalidatePath("/operator");
+    return { kind: "observed", ...identity, status: value.status };
+  } catch (error) {
+    // Missing cases and failed reads can revoke protected evidence too. Refresh
+    // every unsuccessful recovery before offering another explicit same-request check.
+    try { revalidatePath("/operator"); } catch { return recover("unavailable"); }
+    return recover(operatorReadRecovery(error));
+  }
 }
 
 export async function recoverAnnualRefund(

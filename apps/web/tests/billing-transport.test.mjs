@@ -639,3 +639,28 @@ test("generated operator target discovery preserves case and operation cursor wi
   const malformed = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async () => Response.json({ ...payload, supportCaseId: null }) });
   await assert.rejects(malformed.billingReadAnnualSupportRefundRecoveryTargets(input), error => error instanceof TalliApiError && error.status === 502);
 });
+
+test("operator wrappers reject any foreign case, company, purchase or request projection", async () => {
+  const body = { companyId, purchaseId: "30000000-0000-4000-8000-000000000001",
+    refundRequestId: "40000000-0000-4000-8000-000000000001", supportCaseId: "50000000-0000-4000-8000-000000000001" };
+  for (const field of Object.keys(body)) {
+    const recover = ownerSnapshotLoader(async () => Response.json({ ...body, incomeYear: 2026, status: "confirmed",
+      [field]: "60000000-0000-4000-8000-000000000001" }), "recoverAnnualSupportRefund");
+    await assert.rejects(recover("verified-operator", body), error => error instanceof TalliApiError && error.status === 502);
+    if (field === "refundRequestId") continue;
+    const read = ownerSnapshotLoader(async () => Response.json({ companyId, purchaseId: body.purchaseId,
+      supportCaseId: body.supportCaseId, incomeYear: 2026, targets: [], nextRefundRequestId: null,
+      [field]: "60000000-0000-4000-8000-000000000001" }), "loadAnnualSupportRefundRecoveryTargets");
+    await assert.rejects(read("verified-operator", body), error => error instanceof TalliApiError && error.status === 502);
+  }
+});
+test("operator missing-route and domain errors remain failures for both discovery and recovery", async () => {
+  const body = { companyId, purchaseId: "30000000-0000-4000-8000-000000000001",
+    refundRequestId: "40000000-0000-4000-8000-000000000001", supportCaseId: "50000000-0000-4000-8000-000000000001" };
+  for (const name of ["loadAnnualSupportRefundRecoveryTargets", "recoverAnnualSupportRefund"]) {
+    for (const status of [401, 403, 404, 503]) {
+      const operation = ownerSnapshotLoader(async () => Response.json({ detail: "Unavailable" }, { status }), name);
+      await assert.rejects(operation("verified-operator", body), error => error instanceof TalliApiError && error.status === status);
+    }
+  }
+});

@@ -13,6 +13,8 @@ export type {
   AnnualRefundRecoveryWire,
   AnnualRefundRecoveryTargetPageWire,
   AnnualSupportPageWire,
+  AnnualSupportRefundRecoveryWire,
+  AnnualSupportRefundRecoveryTargetPageWire,
   AnnualSupportPurchaseWire,
   AnnualPurchaseSummaryWire,
   BillingAccountWire,

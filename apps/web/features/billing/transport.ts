@@ -6,6 +6,8 @@ import {
   type AnnualRefundRecoveryTargetsRequest,
   type AnnualRefundRecoveryCommandWire,
   type AnnualSupportRequest,
+  type AnnualSupportRefundRecoveryTargetsRequest,
+  type AnnualSupportRefundRecoveryCommandWire,
   type AnnualAgreementCleanupCommandWire,
   type AnnualCheckoutObservationCommandWire,
   type AnnualCheckoutCommandWire,
@@ -38,6 +40,25 @@ function mutation(idempotencyKey: string, requestId?: string) {
 
 export function loadAnnualSupportPurchases(accessToken: string, input: AnnualSupportRequest) {
   return client(accessToken).billingReadAnnualSupportPurchases({ ...input, ...request(input.requestId) });
+}
+
+export async function loadAnnualSupportRefundRecoveryTargets(
+  accessToken: string, input: AnnualSupportRefundRecoveryTargetsRequest,
+) {
+  const value = await client(accessToken).billingReadAnnualSupportRefundRecoveryTargets({ ...input, ...request(input.requestId) });
+  if (value.supportCaseId !== input.supportCaseId || value.companyId !== input.companyId || value.purchaseId !== input.purchaseId) {
+    throw new TalliApiError(502, undefined);
+  }
+  return value;
+}
+
+export async function recoverAnnualSupportRefund(accessToken: string, body: AnnualSupportRefundRecoveryCommandWire) {
+  const value = await client(accessToken).billingRecoverAnnualSupportRefund(body, request());
+  if (value.supportCaseId !== body.supportCaseId || value.companyId !== body.companyId
+      || value.purchaseId !== body.purchaseId || value.refundRequestId !== body.refundRequestId) {
+    throw new TalliApiError(502, undefined);
+  }
+  return value;
 }
 
 export async function prepareAnnualCheckout(accessToken: string, companyId: string, incomeYear: number) {

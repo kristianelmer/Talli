@@ -1,7 +1,7 @@
 # Billing web feature
 
 <!-- architecture-inventory
-{"apiOperations":["billingStartAnnualCheckout","billingWithdrawAnnualCheckoutRequest","billingPrepareAnnualCheckout","billingReadAnnualRefundRecoveryTargets","billingRecoverAnnualRefund","billingObserveAnnualCheckout","billingReadAnnualPurchaseHistory","billingReadAnnualRefundSnapshot","billingReadAnnualSupportPurchases","billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
+{"apiOperations":["billingReadAnnualSupportRefundRecoveryTargets","billingRecoverAnnualSupportRefund","billingStartAnnualCheckout","billingWithdrawAnnualCheckoutRequest","billingPrepareAnnualCheckout","billingReadAnnualRefundRecoveryTargets","billingRecoverAnnualRefund","billingObserveAnnualCheckout","billingReadAnnualPurchaseHistory","billingReadAnnualRefundSnapshot","billingReadAnnualSupportPurchases","billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
 -->
 
 ## Purpose and boundary
@@ -130,3 +130,32 @@ or canonical history, and never opens automatically. Terminal/error/pending-retr
 states hide prior links. Canonical purchase history alone owns money and access.
 Selected old purchases remain selected through pagination, with the former cursor
 as a separate backlink. Full browser/provider/source acceptance remains #192 work.
+
+
+## Explicit operator recovery of recorded refunds
+
+`loadAnnualSupportRefundRecoveryTargets` and `recoverAnnualSupportRefund` use only
+`billingReadAnnualSupportRefundRecoveryTargets` and `billingRecoverAnnualSupportRefund`.
+Every response must match its case/company/purchase and, for recovery, request.
+Errors, missing routes and missing records remain failures rather than empty
+success. No operation key, original requester, source, amount or provider fact is
+created or inferred in the web layer.
+
+Operator page access verifies the user against the exact backend token. The
+selected case dashboard repeats that check against its expected operator, then
+reads context, opened case, annual history and selected targets through one token.
+The URL's company is an assertion against the opened case; only a purchase on the
+current authorized page can load targets. Later failures or foreign target
+case/company/purchase/year clear all earlier summaries, history and controls before
+ancillary reads. Missing selected purchases/requests are explicit and never
+silently replaced. Both pagination cursors and all selected IDs survive login/MFA.
+
+Recovery requires an explicit click and the exact initiating operator. Strict
+unique form fields carry continuity and navigation locally; POST sends only the
+four recorded case/company/purchase/request IDs. The backend authorizes the
+operator independently. Every failed action refreshes the operator page so loss
+of case access can clear protected evidence; failed refresh cannot report
+confirmation. The keyed client control blocks duplicate pending events and late
+results after unmount, retains the same request after a lost response, and never
+posts on render, navigation, reload or authentication return. Confirmation applies
+to one operation; canonical history remains the authority for outstanding money.

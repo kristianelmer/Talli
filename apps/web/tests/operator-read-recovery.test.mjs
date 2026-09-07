@@ -25,6 +25,7 @@ function compile(text, dependencies = {}, globals = {}) {
 }
 const views = compile(source("(operator)/operator/annual-billing-support.tsx"), {
   "../../lib/operator-support": support,
+  "../../components/billing/AnnualSupportRefundRecoveryControl": { AnnualSupportRefundRecoveryControl: () => null },
 });
 const ready = { recovery: null, user: { id: "operator", email: "synthetic@example.invalid" }, operator: { active: true, role: "support" } };
 function entry(route, { access = ready, dashboardRecovery = null } = {}) {
@@ -88,7 +89,7 @@ test("failed case or annual read suppresses ancillary reads, mutation controls a
   for (const recovery of ["sign-in", "step-up", "forbidden", "unavailable"]) {
     const harness = entry("support", { dashboardRecovery: recovery });
     const html = await harness.run();
-    assert.deepEqual(JSON.parse(JSON.stringify(harness.calls)), ["access", ["case", caseId, "operator", cursor]]);
+    assert.deepEqual(JSON.parse(JSON.stringify(harness.calls)), ["access", ["case", caseId, "operator", cursor, JSON.parse(JSON.stringify(operatorSupportLocation({ supportCase: caseId, annualBefore: cursor })))]]);
     assert.match(html, /Til saksvalg/);
     assert.doesNotMatch(html, /<form|Åpne sak|Launch signoff|support_case_read_failed/);
   }
@@ -135,7 +136,7 @@ test("page access preserves missing/rejected sessions, provider errors and both 
     const token = options.token === null ? null : "verified";
     const read = compile(code, {}, {
       hasSupabaseEnv: () => true, getCurrentUser: async () => user,
-      createSupabaseServerClient: async () => ({}), backendAccessToken: async () => token,
+      createSupabaseServerClient: async () => ({ auth: { getUser: async exactToken => { assert.equal(exactToken, token); return { data: { user }, error: null }; } } }), backendAccessToken: async () => token,
       loadOperatorContext: async value => { calls.push(value); if (options.error) throw options.error; return { active: true, role: options.role }; },
       operatorReadRecovery,
     }).getOperatorPageAccess;
@@ -143,5 +144,50 @@ test("page access preserves missing/rejected sessions, provider errors and both 
     assert.equal(result.recovery, !user || !token ? "sign-in" : options.error ? operatorReadRecovery(options.error) : null);
     if (!user || !token) assert.deepEqual(calls, []);
     else if (!options.error) assert.equal(result.operator.role, options.role);
+  }
+});
+
+const fullSelection = { supportCase: caseId, annualBefore: cursor,
+  companyId: "10000000-0000-4000-8000-000000000002", refundPurchaseId: "10000000-0000-4000-8000-000000000004",
+  refundRequestId: "10000000-0000-4000-8000-000000000203", beforeRefundRequestId: "10000000-0000-4000-8000-000000000202" };
+
+test("complete operator selection survives login and MFA without losing either cursor", async () => {
+  const location = operatorSupportLocation(fullSelection);
+  assert.equal(location.invalid, false);
+  for (const recovery of ["sign-in", "step-up"]) {
+    const harness = entry("support", { access: { recovery } });
+    await assert.rejects(harness.run(fullSelection), error => {
+      const url = new URL(error.message.slice(9), "https://talli.example");
+      const next = new URL(url.searchParams.get("next"), url.origin);
+      assert.deepEqual(Object.fromEntries(next.searchParams), fullSelection);
+      assert.equal(next.hash, "#annual-billing");
+      return true;
+    });
+    assert.deepEqual(harness.calls, ["access"]);
+  }
+});
+test("malformed, duplicate and orphan operator selection cannot invoke protected loaders", async () => {
+  const invalid = Object.keys(fullSelection).flatMap(key => [{ ...fullSelection, [key]: [fullSelection[key], fullSelection[key]] },
+    { ...fullSelection, [key]: "malformed" }]);
+  invalid.push({ ...fullSelection, supportCase: undefined }, { ...fullSelection, companyId: undefined },
+    { ...fullSelection, refundPurchaseId: undefined });
+  for (const params of invalid) {
+    const harness = entry("support");
+    assert.equal(operatorSupportLocation(params).invalid, true);
+    assert.match(await harness.run(params), /Operatørvisningen kan ikke leses/);
+    assert.deepEqual(harness.calls, ["access"]);
+  }
+});
+test("late selected-target failure keeps full recovery destination and suppresses ancillary controls", async () => {
+  for (const recovery of ["sign-in", "step-up", "forbidden", "unavailable"]) {
+    const harness = entry("support", { dashboardRecovery: recovery });
+    const html = await harness.run(fullSelection);
+    assert.equal(harness.calls.length, 2);
+    assert.deepEqual(JSON.parse(JSON.stringify(harness.calls[1][4])), JSON.parse(JSON.stringify(operatorSupportLocation(fullSelection))));
+    assert.doesNotMatch(html, /<form|Launch signoff|Åpne sak|name="refundRequestId"/);
+    const href = html.match(/href="([^"]+)"/)[1].replaceAll("&amp;", "&");
+    const link = new URL(href, "https://talli.example");
+    const next = new URL(link.searchParams.get("next") ?? href, link.origin);
+    assert.deepEqual(Object.fromEntries(next.searchParams), fullSelection);
   }
 });
