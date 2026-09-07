@@ -1303,6 +1303,46 @@
         "Main remains the continuous integration target; only release/production stays frozen. No spending, terms, provider activation or launch authority.",
         "DB583+1 belongs only to e8758108. DB548+1 remains specific to cfb4151c, DB515+1 to d3855c98, DB498+1 to815091c4 and DB449+1 to f513da7d; prior UI25e2af05 and all historical corrections remain unchanged."
       ]
+    },
+    "annualCancellationFinalAuthority": {
+      "revision": "7c0c58211d338e60c0542029992407f25175c9a1",
+      "baseRevision": "f4d151fe1a5876573ebfb8929de79c0377a45b1d",
+      "evidencePath": "architecture/evidence/issues/192/annual-cancellation-authorization.json",
+      "scope": "Existing local annual renewal cancellation: final owner/MFA authority, receipt/renewal atomicity and immutable replay. No provider or schema change.",
+      "database": "621 Python + 1 Node passed, zero skips, on a fresh fully migrated disposable database; both rollback/contract/recutover cycles passed. Includes 46 focused cancellation cases, 26 new.",
+      "billing": "655 Python + 281 Node passed, zero skips.",
+      "independentReviews": {
+        "standards": {
+          "verdict": "PASS",
+          "documentedViolations": 0,
+          "actionableSmells": 0,
+          "reviewer": "standards_review"
+        },
+        "spec": {
+          "verdict": "PASS",
+          "findings": 0,
+          "reviewer": "spec_review"
+        },
+        "method": "Independent read-only exact-commit reviews; primary executed tests."
+      },
+      "architecture": {
+        "verdict": "BLOCKED",
+        "command": "node scripts/check-architecture.mjs",
+        "inheritedErrors": 4,
+        "detail": "Three audit_events scope ownership errors and one filing_readiness_snapshots scope ownership error. Output is byte-identical to saved f4d151fe baseline. No checker, baseline, ADR or gate weakening."
+      },
+      "fixtureLifecycle": {
+        "reproductionProject": "tallig77984",
+        "validationProject": "tallig79537",
+        "stoppedWithoutBackup": true,
+        "remainingContainers": [],
+        "scope": "Only this task's two owned disposable databases were stopped."
+      },
+      "limits": [
+        "Scoped permission-loss correction only; #192 remains incomplete. No issue closure or integration/Release/Preview/Production claim.",
+        "Actual designated Vipps Merchant Test, trusted readiness/incident/submission sources, automatic runtime/worker authority and the remaining whole-issue acceptance/release evidence remain pending.",
+        "Tests use disposable local databases and synthetic fixtures only. No actual payments, provider activation, external-target tests, hosted database changes or charges."
+      ]
     }
   },
   "externalEvidence": {

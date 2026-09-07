@@ -1,0 +1,111 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#192",
+  "revision": "7c0c58211d338e60c0542029992407f25175c9a1",
+  "baseRevision": "f4d151fe1a5876573ebfb8929de79c0377a45b1d",
+  "branch": "codex/issue-192-cancellation-01a07a7f",
+  "scope": "Existing local annual renewal cancellation: final owner/MFA authority, receipt/renewal atomicity and immutable replay. No provider or schema change.",
+  "behavior": [
+    "Reuse the established owner transaction to clear ambient support context and authorize at entry and before returning a new receipt or replay.",
+    "Reauthorize after command-key and purchase-row lock waits; fail closed when no insert result is returned.",
+    "Roll back late authority loss across both immutable receipt insertion and trigger-managed renewal stop. SQL-aborted transactions roll back without another authorization query.",
+    "Preserve original requester/key identity, recurring consent, purchase and operation evidence, money, paid/export access, and original renewal-stop time."
+  ],
+  "regressions": {
+    "newDatabaseCases": 26,
+    "beforeFix": "Six final-result owner/MFA cases failed twice: unauthorized success after new receipt insertion, receipt replay, and later-key insertion. New/later-key requests committed changed evidence. Eight actual independent key/purchase lock cases failed with incorrect authorization outcomes. A real zero-row INSERT exposed a TypeError. Both real SQL-abort cases already passed.",
+    "afterFix": "46 focused cancellation database cases pass, including all 26 new cases.",
+    "invocation": "DATABASE_URL=<verified disposable loopback database> uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_annual_cancellation_runtime.py -q",
+    "scopeCoverage": [
+      "Current-owner loss and elapsed fresh-MFA window after final receipt SELECT or actual INSERT, including ambient opened support context.",
+      "Observed independent advisory-key and purchase-row lock waits with owner/MFA loss for new, replay and later-key requests.",
+      "Owner/MFA loss after purchase read denies before insertion.",
+      "Actual zero-row INSERT and SQL-aborted transactions before/after insertion; complete rollback and successful authorized retry.",
+      "Same-owner replay and another current owner's distinct key work without fresh readiness; another actor cannot reuse the original key, and later receipts preserve original stop time."
+    ]
+  },
+  "billing": {
+    "command": "npm run test:billing",
+    "pythonPassed": 655,
+    "nodePassed": 281,
+    "skipped": 0
+  },
+  "reviews": {
+    "standards": {
+      "verdict": "PASS",
+      "documentedViolations": 0,
+      "actionableSmells": 0,
+      "reviewer": "standards_review"
+    },
+    "spec": {
+      "verdict": "PASS",
+      "findings": 0,
+      "reviewer": "spec_review"
+    },
+    "method": "Independent read-only exact-commit reviews; primary executed tests."
+  },
+  "architecture": {
+    "verdict": "BLOCKED",
+    "command": "node scripts/check-architecture.mjs",
+    "inheritedErrors": 4,
+    "detail": "Three audit_events scope ownership errors and one filing_readiness_snapshots scope ownership error. Output is byte-identical to saved f4d151fe baseline. No checker, baseline, ADR or gate weakening."
+  },
+  "limits": [
+    "Scoped permission-loss correction only; #192 remains incomplete. No issue closure or integration/Release/Preview/Production claim.",
+    "Actual designated Vipps Merchant Test, trusted readiness/incident/submission sources, automatic runtime/worker authority and the remaining whole-issue acceptance/release evidence remain pending.",
+    "Tests use disposable local databases and synthetic fixtures only. No actual payments, provider activation, external-target tests, hosted database changes or charges."
+  ],
+  "database": {
+    "command": "DATABASE_URL=<verified disposable loopback database> npm run test:billing-database-lifecycle",
+    "pythonPassed": 621,
+    "nodePassed": 1,
+    "skipped": 0,
+    "pythonDurationSeconds": 234.14,
+    "migrationLifecycle": "Expansion, RLS, rollback, contract and recutover pass twice on a fresh fully migrated local database."
+  },
+  "fixtureLifecycle": {
+    "reproductionProject": "tallig77984",
+    "validationProject": "tallig79537",
+    "stoppedWithoutBackup": true,
+    "remainingContainers": [],
+    "scope": "Only this task's two owned disposable databases were stopped."
+  },
+  "artifacts": [
+    {
+      "path": "/private/tmp/talli-01a07a7f-cancellation-red.log",
+      "sha256": "da78c37ab9b70240135a8e61b8502d0df255a688f03451548a9905c702406b1f"
+    },
+    {
+      "path": "/private/tmp/talli-01a07a7f-cancellation-red-repeat.log",
+      "sha256": "7bba76d5475b8abd9b47b6da027af922d2242efa0bf3f80ffc8f248bb0686c78"
+    },
+    {
+      "path": "/private/tmp/talli-01a07a7f-cancellation-boundaries-red.log",
+      "sha256": "fda1c4596898233d8a0bbcb45d07868def0c7a3aabbf1bd5715c109f50e39a1e"
+    },
+    {
+      "path": "/private/tmp/talli-01a07a7f-cancellation-focused.log",
+      "sha256": "a8ed50f328aed9888dfe3e98392f80faff135a0cd5f76f03e62fca60e03c5732"
+    },
+    {
+      "path": "/private/tmp/talli-01a07a7f-7c0c5821-billing.log",
+      "sha256": "b8d34fbee1d6690b764b82d8d2ce9dab2f46185f876d1867b78d430cd1bcac49"
+    },
+    {
+      "path": "/private/tmp/talli-01a07a7f-7c0c5821-database.log",
+      "sha256": "41199040fb8d491316173f78d075b7bc42711f998935aa83df6d2e34c4ef4d2b"
+    },
+    {
+      "path": "/private/tmp/talli-01a07a7f-7c0c5821-architecture.log",
+      "sha256": "cf4bfc2167107cb1617a90e7867848c0d66e43b4d91bf8cd115b920c8ca63114"
+    },
+    {
+      "path": "/private/tmp/talli-01a07a7f-cancel-db-stopped.json",
+      "sha256": "a10026d82cd57553fcbb506d36f6301f7a233977ece228899017191d11abcc18"
+    },
+    {
+      "path": "/private/tmp/talli-01a07a7f-final-db-stopped.json",
+      "sha256": "74fdf5cb3c238b5874957572b13fcc184d6199ed0e163010541778dcccd7b6ab"
+    }
+  ]
+}
