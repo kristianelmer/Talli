@@ -3,9 +3,9 @@
   "issue": "#192",
   "capability": "billing",
   "status": "implementation-in-progress",
-  "canonicalRoute": "#137 \u2192 #192 \u2192 #150",
-  "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5562322074",
-  "routeCorrection": "Oversight reconciled source-handoff #137\u2192#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
+  "canonicalRoute": "#137 → #192 → #150",
+  "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5563509657",
+  "routeCorrection": "Oversight reconciled source-handoff #137→#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
   "baseline": {
     "revision": "ccf1dcba56a4eb05c5252b00286dba6b2b8b480e",
     "evidenceCommittedRevision": "f0ec97ccfea24268b432f5c91f43dc2c01e170b7",
@@ -930,6 +930,112 @@
       },
       "nextWork": "Reproduce and harden current-owner/MFA reauthorization after agreement-cleanup lock waits and settlement writes, including affected-row enforcement. Continue remaining #192 operator/automatic/source/MT/representative acceptance in order.",
       "limits": "#192 OPEN/incomplete; #150 unclaimed; full #165 ACTIVE. Missing trusted readiness/incident/submission sources, worker authority, actual designated Vipps Merchant Test, remaining acceptance, two complete immutable 11/11 gates, protected-main Release/nonproduction Preview integration and exact-main evidence remain mandatory. Main is the integration target; only release/production frozen at d331ee2717d1eeacef0d81db42b9d4fb5848b408."
+    },
+    "annualAgreementCleanupAuthorityFinalization": {
+      "implementationRevision": "815091c453cdfaef956e5b2da21a86e1093e37da",
+      "comparisonRevision": "a5058bc6892cfa1c7f4216576cd4fea8e1671918",
+      "scope": "Existing owner-only original agreement cleanup: authorization after actual waits and before every successful transaction outcome, exact settlement write count, rollback on late revocation/MFA expiry. No new worker, support-cleanup interface, schema or provider authority.",
+      "reproduction": {
+        "originalSource": "a5058bc6892cfa1c7f4216576cd4fea8e1671918 with newly added regression tests only",
+        "initialAndRepeated": "Six real database cases failed twice: confirmed claim/settlement returned after owner revocation or elapsed MFA while waiting on the original STOP row; pre-update revocation returned confirmation with actual rowcount 0 and unchanged state; post-update revocation returned confirmation with actual rowcount 1 and persisted state changed.",
+        "additionalFinding": "Late owner revocation after a new STOP INSERT hid the inserted row and raised TypeError. Missing created row now produces a domain error, followed by owner authorization and transaction rollback."
+      },
+      "behavior": [
+        "Clear ambient support_case_id on entry to the owner transaction; an open support case never substitutes for ownership.",
+        "Reauthorize after purchase/original-checkout/STOP locks and before every successful return, including new claim, pending recovery, confirmed replay and deferred None.",
+        "Require exactly one affected settlement row. Final owner/fresh-MFA authorization rolls back a successful UPDATE when authority is lost before the transaction result.",
+        "Recheck domain errors caused by rows hidden after waits; propagate PostgreSQL errors into the existing transaction rollback/error mapping without another query on an aborted connection.",
+        "Preserve purchase money/status/access, original receipt requester, STOP identity, provider/account and references. Receipt reads stay plain SELECT; another accepted owner can claim/recover the original cancellation or unbound refund receipt."
+      ],
+      "validation": {
+        "focusedDatabase": "112 Python cases passed on the same product tree before commit, including existing refund-triggered cleanup cases.",
+        "exactBilling": "655 Python + 281 Node tests passed at 815091c453cdfaef956e5b2da21a86e1093e37da; zero skips.",
+        "exactFreshDatabase": "498 Python + 1 Node mandatory billing database lifecycle tests passed at 815091c453cdfaef956e5b2da21a86e1093e37da; zero skips. Fresh fully migrated isolated local database, including repeatable predecessor rollback/contract/recutover.",
+        "newCases": "49 additional real-database cases: 32 observed independent SQL lock waits, 8 before/after update owner/MFA losses with and without ambient support context, 1 controlled zero-row write, 2 late claim/deferral authority losses, 2 real aborted-SQL transaction failures, and 4 different-owner original receipt recovery cases.",
+        "providerBoundary": "Synthetic local provider fixture only. Denied claim cases assert zero execute/reconcile calls. No actual Merchant Test, provider origin, hosted or Production calls.",
+        "unchangedFrontend": "No frontend implementation change. Earlier UI typecheck/build/hydrated-browser evidence remains attributed to 25e2af05; no new browser/build validation claimed."
+      },
+      "testHarnessCorrections": [
+        "The first expanded matrix had 20 claim-case failures before SQL because AnnualCheckoutQuery positional arguments were swapped; keyword construction corrected the harness, then all 36 matrix/inter-write cases passed.",
+        "Three added fault cases initially expected the nonexistent BILLING_UNAVAILABLE code; corrected expectations to existing BILLING_DEPENDENCY_UNAVAILABLE. The same run separately exposed the genuine late-insert TypeError, which was corrected in product code.",
+        "All initial failing logs are retained and hashed; final counts do not erase those failures."
+      ],
+      "independentReviews": {
+        "candidate": "815091c453cdfaef956e5b2da21a86e1093e37da",
+        "base": "a5058bc6892cfa1c7f4216576cd4fea8e1671918",
+        "standards": {
+          "verdict": "PASS",
+          "documentedViolations": 0,
+          "judgementSmells": 1,
+          "reviewer": "cleanup_standards_review",
+          "finding": "Nonblocking possible Duplicated Code: two short near-expiry MFA setups in separate lock-wait and settlement interleaving scenarios.",
+          "disposition": "Retained explicit scenario setup; no documented-standard breach or behavioral defect."
+        },
+        "spec": {
+          "verdict": "PASS",
+          "findings": 0,
+          "reviewer": "cleanup_spec_review"
+        },
+        "scope": "Exact independent read-only reviews of the bounded owner agreement-cleanup authorization correction, not full #192 acceptance."
+      },
+      "architecture": "Direct checker at the exact product revision still reports four inherited, unapproved errors: three table:audit_events and one table:filing_readiness_snapshots. No checker, baseline, ADR or gate changed; no architecture/full-gate PASS.",
+      "fixtureLifecycle": "Both owned disposable reproduction and final validation databases were stopped without backup, with container absence verified in hashed artifacts. No owned cleanup runtime remains active.",
+      "artifacts": [
+        {
+          "path": "/private/tmp/talli-01a07955-cleanup-red.log",
+          "sha256": "0e1d51669ce7b8cdf861051e8368fbbee5632c4f4ba556fb88bb3cecb1bc4228"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-cleanup-red-confirmed.log",
+          "sha256": "c4eb87e91f91761c9622d82c9e9d29955f3eb5a74c5a73cfddaa7e86b662766f"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-cleanup-expanded.log",
+          "sha256": "25df4c2344aec854834f7d49badfe1ebb514c88b4a7d3f95fd1d1e73957d9ac4"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-cleanup-expanded-corrected.log",
+          "sha256": "3d0185643b5504195e5371e18f8a3345e88463256f6e6be4ece625c686613f15"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-cleanup-final-paths.log",
+          "sha256": "7cbec41a76efeab5c9e64fb4e61593f0e3df3a4c155be8aa89a0cece25581630"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-cleanup-focused.log",
+          "sha256": "21e2ae76fb0012746c00b377ad143abce15d7eda2857f3635a37990da01422fe"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-815091c4-billing.log",
+          "sha256": "82257ea88cd83b60a6b76662ace032ddb7503da65efa9e66bd0864d6650af6cc"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-815091c4-database.log",
+          "sha256": "c261bd41486177171643bc34a22c7a2c85548285930e5608398c97bdbbe846f3"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-815091c4-architecture.log",
+          "sha256": "cf4bfc2167107cb1617a90e7867848c0d66e43b4d91bf8cd115b920c8ca63114"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-815091c4-reviews.json",
+          "sha256": "dd2858ec09a948e53aa016f01fb685fb11c8727b0ee2c003513782c75595e2e7"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-reproduction-db-stopped.json",
+          "sha256": "998ceb3e7ceebf2c5accf1596bd27422f33cabb2ccedd50a1d46e8b2c7fd9062"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-815091c4-database-stopped.json",
+          "sha256": "d5d70123f7fc9bbf598d8a4aa011160e0de1978cd65ceced5776c3d0aa73eddb"
+        }
+      ],
+      "limits": [
+        "#192 remains OPEN/incomplete; #150 is unclaimed; the entire #165 goal remains ACTIVE through genuine #198.",
+        "Actual designated Vipps MT, trusted readiness/incident/submission authority, automatic-runtime/worker authority, remaining acceptance and representative evidence, two distinct immutable complete 11/11 gates, protected-main Release/nonproduction Preview integration and exact-main evidence remain mandatory.",
+        "Prior real DB 449 Python + 1 Node remains specific to f513da7d; the later UI 25e2af05 evidence and its corrections remain unchanged. The new 498 + 1 pass belongs only to 815091c4.",
+        "Main remains the continuous integration target; only release/production is frozen. No provider activation, launch, spend or binding terms authorized."
+      ]
     }
   },
   "externalEvidence": {
