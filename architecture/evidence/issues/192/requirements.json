@@ -3,9 +3,9 @@
   "issue": "#192",
   "capability": "billing",
   "status": "implementation-in-progress",
-  "canonicalRoute": "#137 → #192 → #150",
+  "canonicalRoute": "#137 \u2192 #192 \u2192 #150",
   "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5563509657",
-  "routeCorrection": "Oversight reconciled source-handoff #137→#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
+  "routeCorrection": "Oversight reconciled source-handoff #137\u2192#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
   "baseline": {
     "revision": "ccf1dcba56a4eb05c5252b00286dba6b2b8b480e",
     "evidenceCommittedRevision": "f0ec97ccfea24268b432f5c91f43dc2c01e170b7",
@@ -28,7 +28,7 @@
     {
       "id": "GH-192-A3",
       "requirement": "Free validation remains separate from paid entitlement.",
-      "status": "pending"
+      "status": "local-database-pilot-separation-proven-final-annual-paid-path-and-trusted-source-integration-pending"
     },
     {
       "id": "GH-192-A4",
@@ -1122,6 +1122,91 @@
         "Actual designated Vipps MT, trusted readiness/incident/submission sources, automatic-runtime/worker authority, remaining acceptance, two distinct immutable complete 11/11 gates, protected-main Release/nonproduction Preview and exact-main evidence remain mandatory.",
         "DB515+1 belongs only to d3855c98. Earlier DB498+1 stays specific to 815091c4; DB449+1 stays specific to f513da7d; prior UI25e2af05 evidence and all historical corrections are unchanged.",
         "Main is the continuous integration target; only release/production is frozen. No spending, terms, provider activation or launch authority added."
+      ]
+    },
+    "annualFreeValidationSeparation": {
+      "implementationRevision": "cfb4151c504787f7756fd6ad9b51b1a26c2b9e63",
+      "comparisonRevision": "8810678451d906b0298e1cd6cc2226c9e4231e68",
+      "scope": "33 additional real local database tests of the preserved exact free-pilot exemption. Test-only change; no production behavior, schema, provider, source or authority expansion.",
+      "behavior": [
+        "Canonical admin management and actual restricted PostgreSQL reader preserve exact company, user, year, obligation, profile, active status, inclusive start/exclusive expiry and explicit exemption.",
+        "Missing or false legacy pilot-readiness denies filing while retaining the exact exemption. Nonexempt pilots and ordinary queries remain ANNUAL_BILLING_UNAVAILABLE; a pilot ID is not paid authority.",
+        "Creation replay after revocation returns the immutable historical receipt but cannot reactivate the persisted exemption. Altered same-key payloads, misbound or unverified requests, unaccepted initiating owners, unauthorized readers and stale/inactive admin replay are rejected.",
+        "Complete nonempty synthetic paid purchase and recurring-consent financial records remain identical across successful management, replay, revocation and rejected operations. A provider stub fails immediately on execute/reconcile."
+      ],
+      "validation": {
+        "fixtureFailureHistory": "First run: 23 setup errors because the disposable principal could not SET billing_executor. Corrected by a fixture-scoped conditional grant/revoke of the existing role. Second run: 1 pass and 22 setup errors because a fixed external request reference collided across cases. Corrected with unique synthetic references. These are harness failures, not product regressions; original logs retained.",
+        "focusedDatabase": "23 initial separation cases passed after fixture corrections; expanded final 33 cases passed on the identical precommit product tree.",
+        "exactBilling": "655 Python + 281 Node billing tests passed at cfb4151c504787f7756fd6ad9b51b1a26c2b9e63; zero skips.",
+        "exactFreshDatabase": "548 Python + 1 Node mandatory billing database lifecycle tests passed at cfb4151c504787f7756fd6ad9b51b1a26c2b9e63; zero skips, fresh fully migrated isolated database, both rollback/contract/recutover cycles.",
+        "limits": "Synthetic local pilot, request, readiness and paid settlement fixtures only. No actual validation admission, trusted annual source, provider origin/MT, hosted or Production operation; no new frontend/build/browser proof."
+      },
+      "independentReviews": {
+        "candidate": "cfb4151c504787f7756fd6ad9b51b1a26c2b9e63",
+        "base": "8810678451d906b0298e1cd6cc2226c9e4231e68",
+        "standards": {
+          "verdict": "PASS",
+          "documentedViolations": 0,
+          "judgementSmells": 0,
+          "reviewer": "cleanup_standards_review"
+        },
+        "spec": {
+          "verdict": "PASS",
+          "findings": 0,
+          "reviewer": "cleanup_spec_review"
+        },
+        "scope": "Independent read-only exact-commit review of 33 local database separation cases. No full A3 or #192 acceptance, runtime change, source/provider/filing authority or test rerun by reviewers."
+      },
+      "architecture": "Exact direct checker still reports the same four inherited unapproved errors: three audit_events scopes and one filing_readiness_snapshots scope. No complete-gate PASS, checker/baseline/ADR or ownership amendment.",
+      "fixtureLifecycle": "Separation reproduction and exact-validation databases stopped without backup and container absence verified. A separate owned checkout reproduction database is prepared for next work.",
+      "artifacts": [
+        {
+          "path": "/private/tmp/talli-01a07955-pilot-focused-first.log",
+          "sha256": "8d38a05096032b4aaccc2da133ec5b7ea2ee06111872360afac57185354c6b01"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-pilot-focused-corrected.log",
+          "sha256": "43dd89ab72acc3d4c69b9a493ffd6ada8065017f07426409782b790784ec60e9"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-pilot-focused-isolated.log",
+          "sha256": "b76766d979813d18b695f84066c2a088bdffa017798d43f7b52fdf979b459508"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-pilot-focused.log",
+          "sha256": "257824632876d55f4da5b8bf0de8dc575776bea2fccc846773868d0ed88e3770"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-cfb4151c-billing.log",
+          "sha256": "49f2d31c20b73ca245a9a76e7130a5f41e69c00f68bb606a2cefa9baebf840ff"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-cfb4151c-database.log",
+          "sha256": "ea0a48196b7153e97006ba7cee2a8cac975a503a7a9ddcb2e4bfdcd36c06a03f"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-cfb4151c-architecture.log",
+          "sha256": "cf4bfc2167107cb1617a90e7867848c0d66e43b4d91bf8cd115b920c8ca63114"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-cfb4151c-reviews.json",
+          "sha256": "3ac67eec2a1d940d8a7dcc2ca67e6750e99ae260fda39e562b19d305523f77e5"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-pilot-reproduction-db-stopped.json",
+          "sha256": "e052fdd506151817d6deda1b74648880235ad406df4fe67870c339bd7c3f7a06"
+        },
+        {
+          "path": "/private/tmp/talli-01a07955-cfb4151c-database-stopped.json",
+          "sha256": "0b5c33e1c8056135f6ba644128f9c43781d380696e1b0d09c6b24095c25d5774"
+        }
+      ],
+      "nextWork": "Reproduce and, if confirmed, repair existing owner checkout load/settlement final-authorization and atomic-write races. No new source, provider, worker or operator authority.",
+      "limits": [
+        "GH-192-A3 remains partial: the final annual paid entitlement path and trusted source integration remain unavailable. A preserved pilot exemption or synthetic paid row is not proof of annual paid entitlement or filing authority.",
+        "#192 OPEN/incomplete, #150 unclaimed, entire #165 goal active through genuine #198. Preserve all original acceptance, actual designated Vipps MT, source/runtime, architecture, legal/privacy/security/accounting/representative/UX and launch gates.",
+        "Two distinct immutable complete 11/11 gates, protected-main Release/nonproduction Preview integration and exact-main Release/Preview evidence remain required. Only release/production stays frozen.",
+        "DB548+1 belongs only to cfb4151c. DB515+1 remains specific to d3855c98, DB498+1 to815091c4 and DB449+1 to f513da7d; prior UI25e2af05 evidence and historical corrections remain unchanged."
       ]
     }
   },
