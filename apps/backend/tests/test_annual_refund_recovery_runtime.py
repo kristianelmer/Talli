@@ -15,6 +15,7 @@ from test_annual_refund_runtime import (
 )
 from test_annual_checkout_runtime import observation
 from talli_backend.adapters.postgres_annual_refund import PostgresAnnualRefundRecoverySession
+from talli_backend.adapters.supabase_ledger import _VerifiedActor
 from talli_backend.modules.billing.annual_refund import AnnualRefundRecoveryService
 from talli_backend.modules.billing.public import (
     AnnualProviderStatus, AnnualPurchaseId, AnnualRefundRequestId, AnnualRefundRecoveryQuery, BillingError,
@@ -179,6 +180,144 @@ def test_owner_or_mfa_loss_during_provider_read_blocks_settlement_even_with_supp
     current = asyncio.run(session(setup).load_checkout(query.company_id, query.purchase_id))
     assert current.observation.refunded_minor == 0 and current.status.value == 'paid'
     assert state(setup) == (1, 1, 1)
+    restored, _, _, _ = recovery(setup, recorded)
+    assert asyncio.run(restored.recover_refund(query)).resolution.operation.intent == recorded[0].operation.intent
+
+
+def interleave_owner_recovery_sql(persistence, execute, support_case=None):
+    """Inject a fault around real SQL under the existing transaction and RLS."""
+    transaction = persistence._database._transaction
+
+    class Connection:
+        def __init__(self, wrapped):
+            self.wrapped = wrapped
+
+        def __getattr__(self, name):
+            return getattr(self.wrapped, name)
+
+        async def execute(self, sql, *args, **kwargs):
+            return await execute(self.wrapped, sql, *args, **kwargs)
+
+    async def interleaved(work):
+        async def wrapped(connection):
+            if support_case is not None:
+                await connection.execute("select set_config('talli.support_case_id', %s, true)",
+                                         (str(support_case),))
+            return await work(Connection(connection))
+        return await transaction(wrapped)
+
+    persistence._database._transaction = interleaved
+
+
+@pytest.mark.parametrize('mode', ['owner', 'mfa'])
+@pytest.mark.parametrize('point', ['before_purchase', 'between_updates', 'after_operation'])
+@pytest.mark.parametrize('opened_support', [False, True])
+def test_owner_recovery_late_authority_loss_rolls_back_final_settlement_write(
+    setup, recorded, mode, point, opened_support,
+):
+    from test_annual_support_runtime import fingerprint
+    service, persistence, provider, query = recovery(setup, recorded)
+    support_case = grant_open_support(setup, setup[1]) if opened_support else None
+    before = fingerprint(setup)
+    interrupted = []
+    write_rows = []
+    if mode == 'mfa':
+        claims = json.loads(persistence._database._verified.claims_json)
+        claims['amr'][0]['timestamp'] = datetime.now(UTC).timestamp() - 899.5
+        persistence._database._verified = _VerifiedActor(query.actor_id, json.dumps(claims))
+
+    async def lose_authority():
+        assert not interrupted
+        if mode == 'mfa':
+            await asyncio.sleep(.65)
+        else:
+            with psycopg.connect(DATABASE_URL) as other:
+                other.execute('update public.company_memberships set accepted_at=null where company_id=%s and user_id=%s',
+                              (str(query.company_id), str(query.actor_id.subject)))
+        interrupted.append(True)
+
+    async def execute(connection, sql, *args, **kwargs):
+        statement = str(sql).strip().lower()
+        purchase_write = statement.startswith('update billing.annual_purchases')
+        operation_write = statement.startswith('update billing.annual_operations')
+        if purchase_write and point == 'before_purchase':
+            await lose_authority()
+        result = await connection.execute(sql, *args, **kwargs)
+        if purchase_write or operation_write:
+            write_rows.append(result.rowcount)
+        if ((purchase_write and point == 'between_updates') or
+                (operation_write and point == 'after_operation')):
+            await lose_authority()
+        return result
+
+    interleave_owner_recovery_sql(persistence, execute, support_case)
+    try:
+        outcome = asyncio.run(service.recover_refund(query))
+    except BillingError as error:
+        outcome = error
+    finally:
+        if mode == 'owner':
+            with psycopg.connect(DATABASE_URL) as connection:
+                connection.execute('update public.company_memberships set accepted_at=now() where company_id=%s and user_id=%s',
+                                   (str(query.company_id), str(query.actor_id.subject)))
+    assert interrupted == [True]
+    assert write_rows == {'before_purchase': [0], 'between_updates': [1, 0], 'after_operation': [1, 1]}[point]
+    assert provider.reads == [recorded[0].operation.intent]
+    assert isinstance(outcome, BillingError), (
+        f'Owner recovery returned after authority loss; persisted settlement changed={fingerprint(setup) != before}'
+    )
+    assert outcome.code == ('BILLING_FORBIDDEN' if mode == 'owner' else 'BILLING_STEP_UP_REQUIRED')
+    assert fingerprint(setup) == before
+
+
+@pytest.mark.parametrize('fault', [
+    'miss_purchase', 'miss_operation', 'sql_before_purchase', 'sql_after_purchase', 'sql_after_operation',
+])
+def test_owner_recovery_failed_writes_roll_back_without_masking_sql_failure(setup, recorded, fault):
+    from test_annual_support_runtime import fingerprint
+    service, persistence, provider, query = recovery(setup, recorded)
+    before = fingerprint(setup)
+    failed_transactions = []
+    after_failure = []
+    write_rows = []
+
+    async def fail(connection):
+        try:
+            await connection.execute('select 1 / 0')
+        except psycopg.errors.DivisionByZero:
+            failed_transactions.append(connection.info.transaction_status)
+            raise
+
+    async def execute(connection, sql, *args, **kwargs):
+        if failed_transactions:
+            after_failure.append(sql)
+        statement = str(sql).strip().lower()
+        purchase_write = statement.startswith('update billing.annual_purchases')
+        operation_write = statement.startswith('update billing.annual_operations')
+        if purchase_write and fault == 'sql_before_purchase':
+            await fail(connection)
+        missed = (purchase_write and fault == 'miss_purchase') or (operation_write and fault == 'miss_operation')
+        # Controlled write-failure injection uses real SQL/cursors and unchanged
+        # authorization; it does not pretend a held row can disappear naturally.
+        result = await connection.execute(sql + ' and false' if missed else sql, *args, **kwargs)
+        if purchase_write or operation_write:
+            write_rows.append(result.rowcount)
+        if ((purchase_write and fault == 'sql_after_purchase') or
+                (operation_write and fault == 'sql_after_operation')):
+            await fail(connection)
+        return result
+
+    interleave_owner_recovery_sql(persistence, execute)
+    with pytest.raises(BillingError) as denied:
+        asyncio.run(service.recover_refund(query))
+    assert denied.value.code == 'BILLING_DEPENDENCY_UNAVAILABLE'
+    assert provider.reads == [recorded[0].operation.intent]
+    assert after_failure == []
+    if fault.startswith('sql'):
+        assert failed_transactions == [psycopg.pq.TransactionStatus.INERROR]
+    else:
+        assert write_rows == ([0] if fault == 'miss_purchase' else [1, 0])
+    assert fingerprint(setup) == before
     restored, _, _, _ = recovery(setup, recorded)
     assert asyncio.run(restored.recover_refund(query)).resolution.operation.intent == recorded[0].operation.intent
 

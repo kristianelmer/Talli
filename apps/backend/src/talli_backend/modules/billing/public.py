@@ -1321,6 +1321,8 @@ class AnnualRefundRecoveryPersistence(Protocol):
         Apply settle_annual_refund against current state and atomically preserve
         monotonic purchase money and terminal operation evidence. No allocation,
         source resolution or support fallback is permitted, including on retry.
+        Recheck owner/fresh MFA before returning a settlement or terminal replay;
+        late authority loss must roll back both purchase and operation writes.
         """
         ...
 

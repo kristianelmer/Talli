@@ -410,9 +410,17 @@ class PostgresAnnualRefundRecoverySession:
 
         async def work(connection):
             checkout, current = await self._load_locked(connection, query)
-            result = await self._refunds._settle_locked(
-                connection, checkout, current.resolution, recovery.resolution, observation,
-            )
+            try:
+                result = await self._refunds._settle_locked(
+                    connection, checkout, current.resolution, recovery.resolution, observation,
+                )
+            except BillingError:
+                # A zero-row write may reflect lost owner/MFA authority. Only
+                # domain errors permit another query; SQL errors go to rollback.
+                await self._database._authorize(connection, query.company_id)
+                raise
+            # Include terminal replay and both completed settlement writes.
+            await self._database._authorize(connection, query.company_id)
             return replace(current, resolution=result)
 
         return await self._database._transaction(work)

@@ -597,6 +597,10 @@ The recovery composition cannot claim or bind a request, create a case or operat
 consult live source facts, or execute a provider mutation. Created/pending/unknown
 operations reconcile their original intent; valid terminal evidence is provider-free.
 Shared settlement preserves atomic monotonic purchase totals and terminal outcomes.
+Owner recovery rechecks owner/fresh MFA before returning the settlement, including
+terminal replay. Authority loss before, between, or after its two writes rolls
+back both rows. A domain write failure rechecks current authority; SQL errors
+proceed to rollback without querying an aborted transaction.
 The provider is absent by default. This adds no request discovery UI, trusted
 incident/submission source, worker/support mutation, new refund attempt, actual MT
 or final annual-acquisition acceptance.
