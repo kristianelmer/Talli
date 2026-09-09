@@ -84,23 +84,29 @@ persistence, capability migrations, generated contracts, or shared integration
 files while the serialized owner is changing them. One integration owner merges
 and gates all bounded contributions.
 
-Live blocker audit on 9 September 2026: #137 has exited. The registry identifies
-`authority_connections/#150` because it has no idle post-migration state; this is
-registry readiness, not a permitted implementation claim. #192 is the sole active
-billing implementation lane until its interim receipt is complete. #150 remains
-unclaimed. #189 remains the independent external gate above. Labels do not override
-these entry conditions.
+Live blocker audit on 9 September 2026: #137 has exited. The #192 interim
+checkpoint integrated through [PR207](https://github.com/kristianelmer/Talli/pull/207)
+at `a69534581ebb9c2b96e08be6b7845563b570ab1c` and passed protected and exact-main Release/Preview;
+its [integration receipt](../../architecture/evidence/issues/192/requirements.json)
+records the exact checks. #192 remains open for final acceptance after #149/#208;
+its implementation pauses during serial #150 through #149. The unchanged registry
+identifies `authority_connections/#150`. #150 remains unclaimed; its next owner
+must first use the integrated ledger and inspect the live ticket before recording
+a separate claim. #189 remains the independent external gate above. Labels do not
+override these entry conditions.
 
 ### Approved billing source-order split
 
 The [owner decision](https://github.com/kristianelmer/Talli/issues/192#issuecomment-5599100453)
 approved source-order option B and the separate exact four-scope retirement.
-The #192 interim checkpoint remains **pending**. It must complete currently
-implementable billing work, retain truthful unavailable acquisition/renewal
-states, preserve historical recovery/cancellation/refunds/read/export, and pass
-independent review and two linked immutable complete 11/11 gates. Protected
-Release/Preview merge and exact-main Release/Preview evidence are required before
-#150 may be claimed. Approval or a green local check is not the checkpoint receipt.
+The #192 interim checkpoint is **integrated; final #192 remains pending**.
+[The receipt](../../architecture/evidence/issues/192/requirements.json) binds the
+independent review, the two linked immutable complete 11/11 gates, protected
+Release/Preview merge, and exact-main Release/Preview to `a69534581ebb9c2b96e08be6b7845563b570ab1c`.
+The checkpoint retains unavailable acquisition/renewal and historical
+recovery/cancellation/refunds/read/export.
+Approval or a green local check is not the checkpoint receipt.
+This ledger update records that receipt; it does not claim #150 or complete annual billing.
 
 Issue #192 stays open. Its implementation pauses during serial #150 through #149;
 only read-only #192 analysis may overlap those source owners. Filing owners
@@ -298,8 +304,8 @@ deployment, outreach, claims, ads and unrestricted opening.
 | #148 | #145 closed; same active zone `G`, stage exit | Decisions, reviewed facts, deterministic artifacts, signed immutable lifecycle and readiness; `U C D W S X G G2` | Block finalization/upload, preserve artifact hashes, rehearse rollback/recutover; remove subprocess bridge, legacy writers and governance facade. Then #191. `local` |
 | #191 | #148 exited; zone `G` | Supported cash capital, loss coverage, owner/intercompany loans, bank debt and group contribution facts/documents/postings; `U C D W S X G` | Hard-block personal-company loans, foreign/non-cash/complex/consolidation/reorganization/judgment cases; owned correction/reversal only. Then #137. `local` |
 | #137 | #191 closed; active `billing`, zone `BL` | Canonical plan/subscription/entitlement/refund policy and simulated provider port; `U C D W S X G G2` | Deny entitlement/consequential actions, quarantine ambiguous provider events, preserve disabled simulation; delete billing facade/TS policy. Then #192. `local`; no paid provider |
-| #192 | Interim after #137; final after #149 and the Company Access year prerequisite; zone `BL` | Interim: implemented recovery and truthful unavailable acquisition/renewal, independent review and `U C D W S X O G G2`. Final: real-source NOK 1,490 annual entitlement, consent/renewal/cancel/automatic refund/receipt/reconciliation, actual MT and every A1–A8 criterion | Preserve customer recovery/cancel/export. Interim requires protected merge and exact-main Release/Preview before #150; issue stays open and implementation pauses through #149. Final acceptance before #194 and #197 billing. Test adapter `local`; live adapter/charge/refund is `credential cost production` |
-| #150 | #192 interim receipt including two linked 11/11 gates, protected merge and exact-main Release/Preview; active `authority_connections`, zone `AU` | System User/Maskinporten lifecycle, callback/token/scope checks, MFA operator controls, retries and observability; `U C D W S X O G G2` | Disable affected authority/filing operations, revoke/reconcile unknown outcomes, never expose credentials; delete authority facade/TS control policy. Then #151. Local fakes `local`; hosted credentials/provider calls `credential production` |
+| #192 | Interim after #137; final after #149 and the Company Access year prerequisite; zone `BL` | Interim: implemented recovery and truthful unavailable acquisition/renewal, independent review and `U C D W S X O G G2`. Final: real-source NOK 1,490 annual entitlement, consent/renewal/cancel/automatic refund/receipt/reconciliation, actual MT and every A1–A8 criterion | Preserve customer recovery/cancel/export. Interim integrated via PR207 at `a69534581ebb9c2b96e08be6b7845563b570ab1c`; linked receipt records protected merge and exact-main Release/Preview. Issue stays open; implementation pauses through #149 and #150 remains unclaimed. Final acceptance before #194 and #197 billing. Test adapter `local`; live adapter/charge/refund is `credential cost production` |
+| #150 | #192 interim receipt including two linked 11/11 gates, protected merge and exact-main Release/Preview; receipt recorded for `a69534581ebb9c2b96e08be6b7845563b570ab1c`; registry stage `authority_connections`, zone `AU`; unclaimed pending integrated ledger and live-ticket preflight | System User/Maskinporten lifecycle, callback/token/scope checks, MFA operator controls, retries and observability; `U C D W S X O G G2` | Disable affected authority/filing operations, revoke/reconcile unknown outcomes, never expose credentials; delete authority facade/TS control policy. Then #151. Local fakes `local`; hosted credentials/provider calls `credential production` |
 | #151 | #150 exited; active `shareholder_register_filing`, zone `RF` | RF-1086 readiness/payload/approval/journal/submit/feedback/receipt/archive with current golden/TT02 equivalence; `U C D W S X O G G2` | Kill submission, preserve journal/read/export, reconcile unknown outcome before retry; remove both CLI bridges/generic rows/facade. Then #146. Local/TT02 as authorized; real filing `credential data production` |
 | #146 | #151 exited; active tax slice 1, zone `TX` | Tax-settlement validation/posting/bank match/presentation; `U C D W X G` | Block settlement atomically; reconcile bank/ledger receipt; remove duplicate rule. Then #152. `local` |
 | #152 | #146 closed; same active zone `TX`, stage exit | Company-tax supported-scope calculation, XML/attachment gates, approval/journal/submission/feedback/receipt/archive; `U C D W S X O G G2` | Kill submission and reconcile unknown journal/cash/ledger effects; remove generic rows/TS calculations/facade. Then #153. Real filing `credential data production` |
@@ -463,8 +469,10 @@ Current immutable pointers:
   evidence is [#139 comment 5436264918](https://github.com/kristianelmer/Talli/issues/139#issuecomment-5436264918).
 - partial #196 public lane: `df9b93a9` is an ancestor and its truthful
   free-recruitment homepage evidence is [#196 comment 5432587019](https://github.com/kristianelmer/Talli/issues/196#issuecomment-5432587019). It is not #196 closure or public-launch clearance.
-- current control-plane revision before this document: `3ec163ef`; worktree branch
-  `codex/issue-139-ledger-cutover-successor` is published.
+- #192 interim integration: PR207 at `a69534581ebb9c2b96e08be6b7845563b570ab1c`; the exact protected
+  and post-merge checks are recorded in
+  [its receipt](../../architecture/evidence/issues/192/requirements.json).
+  This is interim evidence only; full #192 remains open and #150 unclaimed.
 
 ## Loop breakers and escalation rules
 
