@@ -2,10 +2,10 @@
   "schemaVersion": "1.0",
   "issue": "#192",
   "capability": "billing",
-  "status": "implementation-in-progress",
+  "status": "interim-integrated-final-source-integration-pending",
   "canonicalRoute": "#137 \u2192 #192 interim checkpoint \u2192 #150 \u2192 #151 \u2192 #146 \u2192 #152 \u2192 #153 \u2192 #193 [RF \u2192 tax \u2192 accounts] \u2192 #149 \u2192 Company Access year prerequisite (#208) \u2192 #192 final acceptance \u2192 #194",
   "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5563509657",
-  "routeCorrection": "Owner approved source-order option B on 2026-09-09. #192 stays open; only its reviewed, twice-gated, protected-main interim receipt may allow #150. Registry authority_connections/#150 is not a claim. Full #192 follows #149 and the Company Access year prerequisite, before #194.",
+  "routeCorrection": "Owner approved source-order option B on 2026-09-09. PR207 interim integration is recorded in routeAmendment.interim.integrationReceipt. #192 remains open for full source-backed acceptance after #149/#208 and before #194. #150 remains unclaimed and requires the integrated ledger plus a separate live-ticket claim; registry readiness is not a claim.",
   "baseline": {
     "revision": "ccf1dcba56a4eb05c5252b00286dba6b2b8b480e",
     "evidenceCommittedRevision": "f0ec97ccfea24268b432f5c91f43dc2c01e170b7",
@@ -1397,7 +1397,7 @@
     "legacySnapshotLimitation": "public.filing_readiness_snapshots allows owner/browser INSERT/UPDATE; billing.read_legacy_filing_readiness_v1 trusts its ready/empty blockers. This is not authoritative annual-charge evidence.",
     "currentBinding": "application.unavailable_annual_checkout_prerequisites always returns FILING_NOT_READY; isolated test prerequisites are not production readiness or MT proof.",
     "exitConstraint": "Approved option B permits only a gated interim checkpoint before #150; full source-backed #192 acceptance remains after #149/year prerequisite and before #194. Missing sources cannot establish sold-path completion.",
-    "alternatePaths": "Authenticated annual checkout and original-intent recovery, owner/operator history/cancellation/refund/STOP recovery exist. Provider and trusted readiness bindings remain unavailable by default. The four-scope retirement amendment is approved; no interim or final completion receipt yet."
+    "alternatePaths": "Authenticated annual checkout and original-intent recovery, owner/operator history/cancellation/refund/STOP recovery exist. Provider and trusted readiness bindings remain unavailable by default. The four-scope retirement amendment is approved; the interim integration receipt is recorded below; final source-backed acceptance remains pending."
   },
   "runtimeCutover": {
     "acquisition": "Retire default SimulationBillingProvider acquisition, account reset/configuration, subscription activation and filing-package purchase across main.py HTTP, BillingWorkflow/BillingService, persistence and web actions/controls.",
@@ -1412,7 +1412,7 @@
     "option": "B",
     "proposalRevision": "576be5ac874fded9eff1ac54eda8fd23ace8583c",
     "interim": {
-      "status": "gates-passed-protected-integration-pending",
+      "status": "integrated",
       "issueRemainsOpen": true,
       "requires": [
         "currently-implementable-billing-complete",
@@ -1447,7 +1447,77 @@
           "transcriptDigest": "sha256:b85ef0f2cb4aa38ab58834b90c766dbfbb9bb66ed6fd361d752889bf7325457f"
         }
       ],
-      "integrationReceipt": null,
+      "integrationReceipt": {
+        "scope": "approved-192-interim-only",
+        "pullRequest": "https://github.com/kristianelmer/Talli/pull/207",
+        "candidateRevision": "6779b39c63934cd0591dab0fae26d3a0c657c683",
+        "verifiedAt": "2026-09-09T10:37:50.543865+00:00",
+        "issueReceiptUrl": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5600490534",
+        "preMerge": {
+          "workflowRun": "https://github.com/kristianelmer/Talli/actions/runs/34338169188",
+          "workflowHeadSha": "6779b39c63934cd0591dab0fae26d3a0c657c683",
+          "releaseGateJob": "https://github.com/kristianelmer/Talli/actions/runs/34338169188/job/102427003762",
+          "releaseConclusion": "success",
+          "githubDeploymentId": 6347252311,
+          "githubDeploymentStatusId": 18046804812,
+          "providerDeploymentId": "dpl_ELkt66X4NzBjp442CTMhSL9QRcub",
+          "providerCommitSha": "6779b39c63934cd0591dab0fae26d3a0c657c683",
+          "previewReceiptUrl": "https://vercel.com/kristianelmers-projects/talli-web/ELkt66X4NzBjp442CTMhSL9QRcub",
+          "previewUrl": "https://talli-7swbmn01h-kristianelmers-projects.vercel.app",
+          "environment": "Preview",
+          "productionEnvironment": false,
+          "previewState": "READY"
+        },
+        "protection": {
+          "strict": true,
+          "enforceAdmins": true,
+          "requiredContexts": [
+            "Release gate"
+          ],
+          "forcePushAllowed": false
+        },
+        "mergedAt": "2026-09-09T10:20:32Z",
+        "mainCommit": "a69534581ebb9c2b96e08be6b7845563b570ab1c",
+        "postMerge": {
+          "workflowRun": "https://github.com/kristianelmer/Talli/actions/runs/34339700824",
+          "workflowHeadSha": "a69534581ebb9c2b96e08be6b7845563b570ab1c",
+          "releaseGateJob": "https://github.com/kristianelmer/Talli/actions/runs/34339700824/job/102431927414",
+          "releaseConclusion": "success",
+          "githubDeploymentId": 6347534842,
+          "githubDeploymentStatusId": 18047550067,
+          "providerDeploymentId": "dpl_6TdXwxPcPdTx4Xe1vnUvx1edf9f9",
+          "providerCommitSha": "a69534581ebb9c2b96e08be6b7845563b570ab1c",
+          "previewReceiptUrl": "https://vercel.com/kristianelmers-projects/talli-web/6TdXwxPcPdTx4Xe1vnUvx1edf9f9",
+          "previewUrl": "https://talli-6wni5u00g-kristianelmers-projects.vercel.app",
+          "environment": "Preview",
+          "productionEnvironment": false,
+          "previewState": "READY"
+        },
+        "productionBoundary": {
+          "branch": "release/production",
+          "beforeCommit": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+          "afterCommit": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+          "changed": false,
+          "deploymentId": "dpl_HuHzBsgpcgBVTGsFiFLEEy3PqN5f",
+          "productionAliasCommit": "d331ee2717d1eeacef0d81db42b9d4fb5848b408"
+        },
+        "issue192State": "OPEN",
+        "finalAcceptance": "pending",
+        "nextIssue": "#150",
+        "nextIssueClaimed": false,
+        "verdict": "pass",
+        "trackerStateCorrection": {
+          "automaticClosingCommit": "7deae6d8924ee1fff0af4fa00eae13ba5f346504",
+          "closedAt": "2026-09-09T10:20:35Z",
+          "reopenedAt": "2026-09-09T10:21:09Z",
+          "reason": "An inherited commit message had a closing keyword; #192 was reopened to preserve the approved interim/final route."
+        },
+        "limits": [
+          "This is interim integration only; all original A1-A8 final acceptance remains required.",
+          "Preview READY proves deployment identity/status; the hosted backend remains unavailable.",
+          "Original recurring MT capture/refund/STOP due 10 September remains pending; no new production or automation authority."
+        ]
+      },
       "authorizesNextIssue": "#150",
       "gateVerificationPath": "architecture/evidence/issues/192/interim-gate-pair-2026-09-09.json",
       "reviewPath": "architecture/evidence/issues/192/approved-interim-2026-09-09/independent-review.md"
@@ -1477,6 +1547,6 @@
       ]
     },
     "overlap": "#192 implementation pauses while source owners execute; read-only analysis only",
-    "registryState": "authority_connections/#150 unchanged; does not permit claim without interim receipt"
+    "registryState": "authority_connections/#150 unchanged; PR207 interim receipt recorded; #150 remains unclaimed pending integrated ledger and live-ticket preflight"
   }
 }
