@@ -1,0 +1,21 @@
+{
+  "/healthz": {
+    "status": 200,
+    "response": "{\"ready\": true}"
+  },
+  "/api/v1/billing/annual/provider-notifications": {
+    "status": 401,
+    "response": "{\"type\":\"https://talli.no/problems/annual-notification-rejected\",\"title\":\"Delivery rejected\",\"status\":401,\"detail\":\"The delivery could not be authenticated.\",\"instance\":\"/api/v1/billing/annual/provider-notifications\",\"code\":\"ANNUAL_NOTIFICATION_REJECTED\",\"requestId\":\"d9af1f9e-9998-4268-8ce2-382e6e4e2f59\"}"
+  },
+  "/api/v1/billing/annual/checkout-observations": {
+    "status": 404,
+    "response": "{\"detail\": \"not found\"}"
+  },
+  "source_sha256": {
+    "apps/backend/src/talli_backend/main.py": "2574c51cb654675a2905839d60ed9f7cd70c552d67d5ad8931524b0bd5fe62b2",
+    "apps/backend/src/talli_backend/adapters/annual_billing_runtime.py": "0a980943b57b74ffaec54a95085b38eab56cdc2450da4183db079fdb30716584",
+    "apps/backend/src/talli_backend/adapters/vipps_webhook.py": "a8a24118aea6a1851efd915b609226dd01c5e9e58463625993deb5aca4000ad2",
+    "apps/backend/src/talli_backend/adapters/postgres_annual_notifications.py": "f84643a5ea1ab5069b9083014dc9cc38b8a732a5457e5c724f73b03eee81ca05",
+    "supabase/migrations/20260906204352_annual_notification_receipts.sql": "94c54887d0670263f52eb5058006f996f8ade144e1e56087d4bf656a61a28883"
+  }
+}

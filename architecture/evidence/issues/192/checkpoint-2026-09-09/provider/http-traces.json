@@ -1,0 +1,886 @@
+[
+  {
+    "observed_at": "2026-09-09T08:14:49.062199+00:00",
+    "result": {
+      "action": "reconcile",
+      "stage": "checkout",
+      "run_id": "5b0df0ed-50e5-482e-87ab-a5886ffd335c",
+      "merchant_serial_number": "535717",
+      "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+      "intent_sha256": "c25a9c48ce38a6cfa4df04a086a24afedcde6918d1e91ef1dadb58c8d450bb77",
+      "operation_key": "b90584dc30f2baa84db986a8c4709891eb6992df",
+      "attempt_count": 6,
+      "observation": {
+        "status": "unknown",
+        "agreement_reference": null,
+        "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+        "amount_minor": 149000,
+        "captured_minor": 0,
+        "refunded_minor": 0,
+        "captured_at": null,
+        "confirmation_available": false
+      },
+      "confirmation_opened": false,
+      "limits": {
+        "evidence_scope": "provider-observations-only",
+        "webhooks": "not-exercised",
+        "billing_database": "not-exercised",
+        "trusted_sources": "not-exercised",
+        "automatic_workers": "not-exercised",
+        "whole_issue_acceptance": "not-established"
+      }
+    },
+    "trace": [
+      {
+        "method": "POST",
+        "path": "/accesstoken/get",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "observed_at": "2026-09-09T08:22:24.027065+00:00",
+    "result": {
+      "action": "reconcile",
+      "stage": "checkout",
+      "run_id": "5b0df0ed-50e5-482e-87ab-a5886ffd335c",
+      "merchant_serial_number": "535717",
+      "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+      "intent_sha256": "c25a9c48ce38a6cfa4df04a086a24afedcde6918d1e91ef1dadb58c8d450bb77",
+      "operation_key": "b90584dc30f2baa84db986a8c4709891eb6992df",
+      "attempt_count": 7,
+      "observation": {
+        "status": "confirmed",
+        "agreement_reference": "agr_Un4JzLG",
+        "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+        "amount_minor": 149000,
+        "captured_minor": 149000,
+        "refunded_minor": 0,
+        "captured_at": "2026-09-09T08:07:07+00:00",
+        "confirmation_available": false
+      },
+      "confirmation_opened": false,
+      "limits": {
+        "evidence_scope": "provider-observations-only",
+        "webhooks": "not-exercised",
+        "billing_database": "not-exercised",
+        "trusted_sources": "not-exercised",
+        "automatic_workers": "not-exercised",
+        "whole_issue_acceptance": "not-established"
+      }
+    },
+    "trace": [
+      {
+        "method": "POST",
+        "path": "/accesstoken/get",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges/talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "observed_at": "2026-09-09T08:22:25.002889+00:00",
+    "result": {
+      "action": "execute",
+      "stage": "renewal",
+      "run_id": "5b0df0ed-50e5-482e-87ab-a5886ffd335c",
+      "merchant_serial_number": "535717",
+      "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+      "intent_sha256": "a8863a199a18960a8f143db8136dd72e5d38825e80661674fbbdc2be1c1fbdad",
+      "operation_key": "28d58fb29faf1e790cd5a6f0f7d5ec65de2df7bd",
+      "attempt_count": 1,
+      "observation": {
+        "status": "pending",
+        "agreement_reference": "agr_Un4JzLG",
+        "charge_reference": "talli-mt-531963e5-32d4-5b06-aae7-458d3a22986c",
+        "amount_minor": 149000,
+        "captured_minor": 0,
+        "refunded_minor": 0,
+        "captured_at": null,
+        "confirmation_available": false
+      },
+      "confirmation_opened": false,
+      "limits": {
+        "evidence_scope": "provider-observations-only",
+        "webhooks": "not-exercised",
+        "billing_database": "not-exercised",
+        "trusted_sources": "not-exercised",
+        "automatic_workers": "not-exercised",
+        "whole_issue_acceptance": "not-established"
+      }
+    },
+    "trace": [
+      {
+        "method": "POST",
+        "path": "/accesstoken/get",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges",
+        "status": 201
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges/talli-mt-531963e5-32d4-5b06-aae7-458d3a22986c",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "observed_at": "2026-09-09T08:22:33.725337+00:00",
+    "result": {
+      "action": "execute",
+      "stage": "partial-refund",
+      "run_id": "5b0df0ed-50e5-482e-87ab-a5886ffd335c",
+      "merchant_serial_number": "535717",
+      "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+      "intent_sha256": "0a2e64a5229df65c97f30e6ab7b1093c85c3ca109f8181f54c80b7ed67190ae5",
+      "operation_key": "d2fd7fc47f9deb3de5c424ee2400cde9bdca0cdb",
+      "attempt_count": 1,
+      "observation": {
+        "status": "confirmed",
+        "agreement_reference": "agr_Un4JzLG",
+        "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+        "amount_minor": 37250,
+        "captured_minor": 149000,
+        "refunded_minor": 37250,
+        "captured_at": "2026-09-09T08:07:07+00:00",
+        "confirmation_available": false
+      },
+      "confirmation_opened": false,
+      "limits": {
+        "evidence_scope": "provider-observations-only",
+        "webhooks": "not-exercised",
+        "billing_database": "not-exercised",
+        "trusted_sources": "not-exercised",
+        "automatic_workers": "not-exercised",
+        "whole_issue_acceptance": "not-established"
+      }
+    },
+    "trace": [
+      {
+        "method": "POST",
+        "path": "/accesstoken/get",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges/talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges/talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa/refund",
+        "status": 204
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges/talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "observed_at": "2026-09-09T08:23:27.709071+00:00",
+    "result": {
+      "action": "repeat-execute",
+      "stage": "partial-refund",
+      "run_id": "5b0df0ed-50e5-482e-87ab-a5886ffd335c",
+      "merchant_serial_number": "535717",
+      "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+      "intent_sha256": "0a2e64a5229df65c97f30e6ab7b1093c85c3ca109f8181f54c80b7ed67190ae5",
+      "operation_key": "d2fd7fc47f9deb3de5c424ee2400cde9bdca0cdb",
+      "attempt_count": 2,
+      "observation": {
+        "status": "confirmed",
+        "agreement_reference": "agr_Un4JzLG",
+        "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+        "amount_minor": 37250,
+        "captured_minor": 149000,
+        "refunded_minor": 37250,
+        "captured_at": "2026-09-09T08:07:07+00:00",
+        "confirmation_available": false
+      },
+      "confirmation_opened": false,
+      "limits": {
+        "evidence_scope": "provider-observations-only",
+        "webhooks": "not-exercised",
+        "billing_database": "not-exercised",
+        "trusted_sources": "not-exercised",
+        "automatic_workers": "not-exercised",
+        "whole_issue_acceptance": "not-established"
+      }
+    },
+    "trace": [
+      {
+        "method": "POST",
+        "path": "/accesstoken/get",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges/talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges/talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa/refund",
+        "status": 204
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges/talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "observed_at": "2026-09-09T08:23:36.427580+00:00",
+    "result": {
+      "action": "execute",
+      "stage": "remaining-refund",
+      "run_id": "5b0df0ed-50e5-482e-87ab-a5886ffd335c",
+      "merchant_serial_number": "535717",
+      "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+      "intent_sha256": "d18dd22af0fe2dc4262b0d7062dbf6d2ea97fbea325f710839058cf0b1c274c4",
+      "operation_key": "9da38a55e69d4bbdf55bc69549837acc7966a3d1",
+      "attempt_count": 1,
+      "observation": {
+        "status": "confirmed",
+        "agreement_reference": "agr_Un4JzLG",
+        "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+        "amount_minor": 111750,
+        "captured_minor": 149000,
+        "refunded_minor": 149000,
+        "captured_at": "2026-09-09T08:07:07+00:00",
+        "confirmation_available": false
+      },
+      "confirmation_opened": false,
+      "limits": {
+        "evidence_scope": "provider-observations-only",
+        "webhooks": "not-exercised",
+        "billing_database": "not-exercised",
+        "trusted_sources": "not-exercised",
+        "automatic_workers": "not-exercised",
+        "whole_issue_acceptance": "not-established"
+      }
+    },
+    "trace": [
+      {
+        "method": "POST",
+        "path": "/accesstoken/get",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges/talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges/talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa/refund",
+        "status": 204
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges/talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "observed_at": "2026-09-09T08:23:37.389963+00:00",
+    "result": {
+      "action": "execute",
+      "stage": "cancel-renewal",
+      "run_id": "5b0df0ed-50e5-482e-87ab-a5886ffd335c",
+      "merchant_serial_number": "535717",
+      "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+      "intent_sha256": "c8c95d336d66ff0f6f7d789b386e0127445ae9d592797eda20cf3a88c6fdd294",
+      "operation_key": "4696a2bdb44f3a3e2b0f6e9696627abf3585e2a4",
+      "attempt_count": 1,
+      "observation": {
+        "status": "pending",
+        "agreement_reference": "agr_Un4JzLG",
+        "charge_reference": "talli-mt-2847cd86-e3ac-5ede-ac80-73dd09a76858",
+        "amount_minor": 149000,
+        "captured_minor": 0,
+        "refunded_minor": 0,
+        "captured_at": null,
+        "confirmation_available": false
+      },
+      "confirmation_opened": false,
+      "limits": {
+        "evidence_scope": "provider-observations-only",
+        "webhooks": "not-exercised",
+        "billing_database": "not-exercised",
+        "trusted_sources": "not-exercised",
+        "automatic_workers": "not-exercised",
+        "whole_issue_acceptance": "not-established"
+      }
+    },
+    "trace": [
+      {
+        "method": "POST",
+        "path": "/accesstoken/get",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges",
+        "status": 201
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges/talli-mt-2847cd86-e3ac-5ede-ac80-73dd09a76858",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "observed_at": "2026-09-09T08:23:45.060686+00:00",
+    "result": {
+      "action": "execute",
+      "stage": "cancel-charge",
+      "run_id": "5b0df0ed-50e5-482e-87ab-a5886ffd335c",
+      "merchant_serial_number": "535717",
+      "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+      "intent_sha256": "9a28cb507f333f62a23b80b61dc02d2f274a141734f921520ffced5cac0772df",
+      "operation_key": "6d8616c2d4bff254fec2e83fc0b9418474aacfe4",
+      "attempt_count": 1,
+      "observation": {
+        "status": "confirmed",
+        "agreement_reference": "agr_Un4JzLG",
+        "charge_reference": "talli-mt-2847cd86-e3ac-5ede-ac80-73dd09a76858",
+        "amount_minor": 0,
+        "captured_minor": 0,
+        "refunded_minor": 0,
+        "captured_at": null,
+        "confirmation_available": false
+      },
+      "confirmation_opened": false,
+      "limits": {
+        "evidence_scope": "provider-observations-only",
+        "webhooks": "not-exercised",
+        "billing_database": "not-exercised",
+        "trusted_sources": "not-exercised",
+        "automatic_workers": "not-exercised",
+        "whole_issue_acceptance": "not-established"
+      }
+    },
+    "trace": [
+      {
+        "method": "POST",
+        "path": "/accesstoken/get",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges/talli-mt-2847cd86-e3ac-5ede-ac80-73dd09a76858",
+        "status": 200
+      },
+      {
+        "method": "DELETE",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges/talli-mt-2847cd86-e3ac-5ede-ac80-73dd09a76858",
+        "status": 204
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges/talli-mt-2847cd86-e3ac-5ede-ac80-73dd09a76858",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "observed_at": "2026-09-09T08:24:03.892396+00:00",
+    "result": {
+      "action": "repeat-execute",
+      "stage": "renewal",
+      "run_id": "5b0df0ed-50e5-482e-87ab-a5886ffd335c",
+      "merchant_serial_number": "535717",
+      "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+      "intent_sha256": "a8863a199a18960a8f143db8136dd72e5d38825e80661674fbbdc2be1c1fbdad",
+      "operation_key": "28d58fb29faf1e790cd5a6f0f7d5ec65de2df7bd",
+      "attempt_count": 2,
+      "observation": {
+        "status": "pending",
+        "agreement_reference": "agr_Un4JzLG",
+        "charge_reference": "talli-mt-531963e5-32d4-5b06-aae7-458d3a22986c",
+        "amount_minor": 149000,
+        "captured_minor": 0,
+        "refunded_minor": 0,
+        "captured_at": null,
+        "confirmation_available": false
+      },
+      "confirmation_opened": false,
+      "limits": {
+        "evidence_scope": "provider-observations-only",
+        "webhooks": "not-exercised",
+        "billing_database": "not-exercised",
+        "trusted_sources": "not-exercised",
+        "automatic_workers": "not-exercised",
+        "whole_issue_acceptance": "not-established"
+      }
+    },
+    "trace": [
+      {
+        "method": "POST",
+        "path": "/accesstoken/get",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges",
+        "status": 201
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Un4JzLG/charges/talli-mt-531963e5-32d4-5b06-aae7-458d3a22986c",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "observed_at": "2026-09-09T08:24:04.735328+00:00",
+    "result": {
+      "action": "execute",
+      "stage": "checkout",
+      "run_id": "0eb462a0-2aae-453c-b011-79c64e0c7ee4",
+      "merchant_serial_number": "535717",
+      "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+      "intent_sha256": "420826343ff0f8e9a7175fbcfea5274ef7874640c822ff2c43273592dccac60c",
+      "operation_key": "b9072b623b454b3ca7a7d7ebac1a1340a17db88f",
+      "attempt_count": 1,
+      "observation": {
+        "status": "pending",
+        "agreement_reference": "agr_Xwpy7fP",
+        "charge_reference": "talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7",
+        "amount_minor": 149000,
+        "captured_minor": 0,
+        "refunded_minor": 0,
+        "captured_at": null,
+        "confirmation_available": true
+      },
+      "confirmation_opened": false,
+      "limits": {
+        "evidence_scope": "provider-observations-only",
+        "webhooks": "not-exercised",
+        "billing_database": "not-exercised",
+        "trusted_sources": "not-exercised",
+        "automatic_workers": "not-exercised",
+        "whole_issue_acceptance": "not-established"
+      }
+    },
+    "trace": [
+      {
+        "method": "POST",
+        "path": "/accesstoken/get",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/recurring/v3/agreements",
+        "status": 201
+      }
+    ]
+  },
+  {
+    "observed_at": "2026-09-09T08:24:31.381603+00:00",
+    "result": {
+      "action": "reconcile",
+      "stage": "checkout",
+      "run_id": "0eb462a0-2aae-453c-b011-79c64e0c7ee4",
+      "merchant_serial_number": "535717",
+      "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+      "intent_sha256": "420826343ff0f8e9a7175fbcfea5274ef7874640c822ff2c43273592dccac60c",
+      "operation_key": "b9072b623b454b3ca7a7d7ebac1a1340a17db88f",
+      "attempt_count": 2,
+      "observation": {
+        "status": "confirmed",
+        "agreement_reference": "agr_Xwpy7fP",
+        "charge_reference": "talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7",
+        "amount_minor": 149000,
+        "captured_minor": 149000,
+        "refunded_minor": 0,
+        "captured_at": "2026-09-09T08:24:30+00:00",
+        "confirmation_available": false
+      },
+      "confirmation_opened": false,
+      "limits": {
+        "evidence_scope": "provider-observations-only",
+        "webhooks": "not-exercised",
+        "billing_database": "not-exercised",
+        "trusted_sources": "not-exercised",
+        "automatic_workers": "not-exercised",
+        "whole_issue_acceptance": "not-established"
+      }
+    },
+    "trace": [
+      {
+        "method": "POST",
+        "path": "/accesstoken/get",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Xwpy7fP",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Xwpy7fP/charges/talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "observed_at": "2026-09-09T08:24:41.680454+00:00",
+    "result": {
+      "action": "execute",
+      "stage": "initial-full-refund",
+      "run_id": "0eb462a0-2aae-453c-b011-79c64e0c7ee4",
+      "merchant_serial_number": "535717",
+      "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+      "intent_sha256": "dbb601aab566c6e226d7ea5ed59fa5a813e0421eefddfc866230425c17f658ce",
+      "operation_key": "868bc1b23dd5fb22a71ca17c163719a7188673bc",
+      "attempt_count": 1,
+      "observation": {
+        "status": "confirmed",
+        "agreement_reference": "agr_Xwpy7fP",
+        "charge_reference": "talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7",
+        "amount_minor": 149000,
+        "captured_minor": 149000,
+        "refunded_minor": 149000,
+        "captured_at": "2026-09-09T08:24:30+00:00",
+        "confirmation_available": false
+      },
+      "confirmation_opened": false,
+      "limits": {
+        "evidence_scope": "provider-observations-only",
+        "webhooks": "not-exercised",
+        "billing_database": "not-exercised",
+        "trusted_sources": "not-exercised",
+        "automatic_workers": "not-exercised",
+        "whole_issue_acceptance": "not-established"
+      }
+    },
+    "trace": [
+      {
+        "method": "POST",
+        "path": "/accesstoken/get",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Xwpy7fP",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Xwpy7fP/charges/talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/recurring/v3/agreements/agr_Xwpy7fP/charges/talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7/refund",
+        "status": 204
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Xwpy7fP",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Xwpy7fP/charges/talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "observed_at": "2026-09-09T08:24:43.150248+00:00",
+    "result": {
+      "action": "execute",
+      "stage": "stop",
+      "run_id": "0eb462a0-2aae-453c-b011-79c64e0c7ee4",
+      "merchant_serial_number": "535717",
+      "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+      "intent_sha256": "8edb3d54d85c369dd342e50726aaa47c28b19b60ee827ea681b9e7fe1192722a",
+      "operation_key": "3c8068a7586471eb6a1d503fec94877aab96729c",
+      "attempt_count": 1,
+      "observation": {
+        "status": "confirmed",
+        "agreement_reference": "agr_Xwpy7fP",
+        "charge_reference": "talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7",
+        "amount_minor": 0,
+        "captured_minor": 0,
+        "refunded_minor": 0,
+        "captured_at": null,
+        "confirmation_available": false
+      },
+      "confirmation_opened": false,
+      "limits": {
+        "evidence_scope": "provider-observations-only",
+        "webhooks": "not-exercised",
+        "billing_database": "not-exercised",
+        "trusted_sources": "not-exercised",
+        "automatic_workers": "not-exercised",
+        "whole_issue_acceptance": "not-established"
+      }
+    },
+    "trace": [
+      {
+        "method": "POST",
+        "path": "/accesstoken/get",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Xwpy7fP",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Xwpy7fP/charges/talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7",
+        "status": 200
+      },
+      {
+        "method": "PATCH",
+        "path": "/recurring/v3/agreements/agr_Xwpy7fP",
+        "status": 204
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Xwpy7fP",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "observed_at": "2026-09-09T08:25:09.024213+00:00",
+    "result": {
+      "action": "repeat-execute",
+      "stage": "initial-full-refund",
+      "run_id": "0eb462a0-2aae-453c-b011-79c64e0c7ee4",
+      "merchant_serial_number": "535717",
+      "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+      "intent_sha256": "dbb601aab566c6e226d7ea5ed59fa5a813e0421eefddfc866230425c17f658ce",
+      "operation_key": "868bc1b23dd5fb22a71ca17c163719a7188673bc",
+      "attempt_count": 2,
+      "observation": {
+        "status": "confirmed",
+        "agreement_reference": "agr_Xwpy7fP",
+        "charge_reference": "talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7",
+        "amount_minor": 149000,
+        "captured_minor": 149000,
+        "refunded_minor": 149000,
+        "captured_at": "2026-09-09T08:24:30+00:00",
+        "confirmation_available": false
+      },
+      "confirmation_opened": false,
+      "limits": {
+        "evidence_scope": "provider-observations-only",
+        "webhooks": "not-exercised",
+        "billing_database": "not-exercised",
+        "trusted_sources": "not-exercised",
+        "automatic_workers": "not-exercised",
+        "whole_issue_acceptance": "not-established"
+      }
+    },
+    "trace": [
+      {
+        "method": "POST",
+        "path": "/accesstoken/get",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Xwpy7fP",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Xwpy7fP/charges/talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/recurring/v3/agreements/agr_Xwpy7fP/charges/talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7/refund",
+        "status": 204
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Xwpy7fP",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Xwpy7fP/charges/talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "observed_at": "2026-09-09T08:25:10.473736+00:00",
+    "result": {
+      "action": "reconcile",
+      "stage": "stop",
+      "run_id": "0eb462a0-2aae-453c-b011-79c64e0c7ee4",
+      "merchant_serial_number": "535717",
+      "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+      "intent_sha256": "8edb3d54d85c369dd342e50726aaa47c28b19b60ee827ea681b9e7fe1192722a",
+      "operation_key": "3c8068a7586471eb6a1d503fec94877aab96729c",
+      "attempt_count": 2,
+      "observation": {
+        "status": "confirmed",
+        "agreement_reference": "agr_Xwpy7fP",
+        "charge_reference": "talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7",
+        "amount_minor": 0,
+        "captured_minor": 0,
+        "refunded_minor": 0,
+        "captured_at": null,
+        "confirmation_available": false
+      },
+      "confirmation_opened": false,
+      "limits": {
+        "evidence_scope": "provider-observations-only",
+        "webhooks": "not-exercised",
+        "billing_database": "not-exercised",
+        "trusted_sources": "not-exercised",
+        "automatic_workers": "not-exercised",
+        "whole_issue_acceptance": "not-established"
+      }
+    },
+    "trace": [
+      {
+        "method": "POST",
+        "path": "/accesstoken/get",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/recurring/v3/agreements/agr_Xwpy7fP",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "observed_at": "2026-09-09T08:29:21.903988+00:00",
+    "result": {
+      "action": "offline-preflight",
+      "provider_calls": 0,
+      "expected_msn": "535717",
+      "configuration_valid": true,
+      "missing_names": [],
+      "limits": {
+        "evidence_scope": "provider-observations-only",
+        "webhooks": "not-exercised",
+        "billing_database": "not-exercised",
+        "trusted_sources": "not-exercised",
+        "automatic_workers": "not-exercised",
+        "whole_issue_acceptance": "not-established"
+      }
+    },
+    "trace": []
+  }
+]

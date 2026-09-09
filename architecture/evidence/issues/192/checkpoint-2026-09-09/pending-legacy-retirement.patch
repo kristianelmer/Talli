@@ -1,0 +1,406 @@
+diff --git a/docs/adr/0013-enforce-the-architecture-and-migrate-serially.md b/docs/adr/0013-enforce-the-architecture-and-migrate-serially.md
+index 693716ae..b4e64d9b 100644
+--- a/docs/adr/0013-enforce-the-architecture-and-migrate-serially.md
++++ b/docs/adr/0013-enforce-the-architecture-and-migrate-serially.md
+@@ -211,6 +211,54 @@ and upgrade migration, negative RLS, POST idempotency/audit, read-only GET,
+ deletion-review parity, generated contract/browser, rollback/recutover, and two
+ immutable complete-gate passes are required before hosted application.
+
++## 2026-09-09 proposed amendment: exact legacy acquisition retirement
++
++**Pending Kristian's explicit approval.** This subsection and its checker patch
++are prepared for review only. Before applying the patch, replace this paragraph
++with the exact recorded owner decision. The existing freeze remains authoritative
++until then. The proposal and acceptance context are recorded in
++[`legacy-retirement-amendment-proposal.md`](../../architecture/evidence/issues/192/legacy-retirement-amendment-proposal.md).
++
++Issue #192 may retire the obsolete acquisition Server Actions
++`saveBillingAccount`, `activateBillingSubscription`, and
++`requestFilingPackagePayment`, together with their current clients and forms.
++The amendment applies at billing or a later serialized stage and authorizes
++deletion of exactly these frozen tuples, all at `apps/web/app/actions.ts` under
++`direct-web-business-persistence`:
++
++| Frozen record | Resource | Operation | Unchanged removal issue |
++| --- | --- | --- | --- |
++| compat-audit-persistence | table:audit_events | saveBillingAccount | #155 |
++| compat-audit-persistence | table:audit_events | activateBillingSubscription | #155 |
++| compat-audit-persistence | table:audit_events | requestFilingPackagePayment | #155 |
++| compat-annual-compliance-persistence | table:filing_readiness_snapshots | requestFilingPackagePayment | #149 |
++
++The four deletions must be atomic and all three entire actions must disappear.
++Unreachable writers after unconditional failure, relocated or renamed writers,
++replacement acquisition entry points, different paths or tuples, dynamic writers,
++partial deletion and additions are forbidden. Current-source proof and the global
++web persistence/provider boundary continue to apply. The immutable compatibility
++baseline, its digest, every other frozen future scope and occurrence count, and
++resource ownership remain unchanged. Only the active inventory decreases by four.
++
++This amendment authorizes no annual-readiness implementation, migration of audit
++or annual compliance, change to their remaining operations, second writer,
++provider effect, business rule, financial or statutory result, or expansion of
++authorization, privacy, contract or release authority. The serialized migration
++order is unchanged; #150 remains unclaimed until #192 meets its exit criteria.
++The exact owner decision alone does not constitute stage-exit evidence.
++
++Historical payment/cancellation/refund recovery, deterministic reconciliation,
++rollback/recutover, generated contracts, negative RLS, critical browser journeys,
++independent immutable reviews, two complete 11/11 gates and the required
++protected-main Release/Preview proof remain required by #192. Actual Vipps MT,
++trustworthy source-owned readiness and the remaining annual
++runtime/refund/worker/callback acceptance remain required. Apply retirement
++rollback before predecessor billing rollbacks and reapply retirement last;
++preserve account, event and receipt evidence and coordinate runtime rollback so
++old acquisition code cannot regain a writer surface accidentally. Production
++filing, promotion and paid activation receive no authority from this amendment.
++
+ ## Canonical decision inputs
+
+ - Repository prototype and manifest format: issue #130 and commit `1c38dc6d`.
+diff --git a/scripts/check-architecture.mjs b/scripts/check-architecture.mjs
+index 0ae2d360..230a0a87 100644
+--- a/scripts/check-architecture.mjs
++++ b/scripts/check-architecture.mjs
+@@ -110,6 +110,23 @@ const SUPPORT_CASE_SECURITY_AMENDMENT = Object.freeze({
+     "compat-audit-persistence\0table:audit_events\0searchOperatorSupportDashboard",
+   ]),
+ });
++const LEGACY_ACQUISITION_RETIREMENT_AMENDMENT = Object.freeze({
++  issue: "#192",
++  minimumCapability: "billing",
++  path: "apps/web/app/actions.ts",
++  rule: "direct-web-business-persistence",
++  operations: new Set([
++    "saveBillingAccount",
++    "activateBillingSubscription",
++    "requestFilingPackagePayment",
++  ]),
++  scopes: new Set([
++    "compat-audit-persistence\0audit\0#155\0table:audit_events\0saveBillingAccount",
++    "compat-audit-persistence\0audit\0#155\0table:audit_events\0activateBillingSubscription",
++    "compat-audit-persistence\0audit\0#155\0table:audit_events\0requestFilingPackagePayment",
++    "compat-annual-compliance-persistence\0annual_compliance\0#149\0table:filing_readiness_snapshots\0requestFilingPackagePayment",
++  ]),
++});
+ function isBackendModule(manifest) {
+   return ["backend-capability", "backend-technical-module"].includes(manifest.kind);
+ }
+@@ -1918,6 +1935,40 @@ export function validateCompatibilityRegistry(path, {
+     currentOperationAnalyses.set(operationKey, analysis);
+     return analysis;
+   };
++  const acquisitionRetirementScopes = removedFrozenScopes.filter(({ record, scope }) => (
++    LEGACY_ACQUISITION_RETIREMENT_AMENDMENT.scopes.has(
++      acquisitionRetirementScopeKey(record, scope),
++    )
++  ));
++  let acquisitionRetirementAtomic = false;
++  if (acquisitionRetirementScopes.length) {
++    const retirement = LEGACY_ACQUISITION_RETIREMENT_AMENDMENT;
++    const minimumStageIndex = stageIndexes.get(retirement.minimumCapability);
++    const frozenApprovedScopes = (baseline.records ?? []).flatMap((record) => (
++      (record.scopes ?? []).map((scope) => acquisitionRetirementScopeKey(record, scope))
++        .filter((key) => retirement.scopes.has(key))
++    ));
++    if (currentStageIndex === undefined || minimumStageIndex === undefined
++      || currentStageIndex < minimumStageIndex) {
++      errors.push("legacy acquisition retirement is authorized only by #192 at billing or later");
++    } else if (frozenApprovedScopes.length !== retirement.scopes.size
++      || !sameSet(new Set(frozenApprovedScopes), retirement.scopes)) {
++      errors.push("legacy acquisition retirement requires the exact four frozen #192 scope tuples");
++    } else if (acquisitionRetirementScopes.length !== retirement.scopes.size) {
++      errors.push("legacy acquisition retirement must remove all four #192 scopes together");
++    } else {
++      let actionsRemoved = true;
++      for (const operation of retirement.operations) {
++        const scope = { path: retirement.path, operation };
++        const analysis = currentOperationAnalysis(scope);
++        if (analysis?.state !== "missing") {
++          errors.push(`legacy acquisition retirement must remove the entire #192 action: ${operation}`);
++          actionsRemoved = false;
++        }
++      }
++      acquisitionRetirementAtomic = actionsRemoved;
++    }
++  }
+   const completedStagesByCapability = new Map(
+     completedStages.map((stage) => [stage.capability, stage]),
+   );
+@@ -1997,7 +2048,11 @@ export function validateCompatibilityRegistry(path, {
+           && SUPPORT_CASE_SECURITY_AMENDMENT.scopes.has(
+             supportSecurityScopeKey(record.id, scope),
+           );
+-        if (!atomicLedgerRelocation && !supportSecurityRemoval
++        const acquisitionRetirementRemoval = acquisitionRetirementAtomic
++          && LEGACY_ACQUISITION_RETIREMENT_AMENDMENT.scopes.has(
++            acquisitionRetirementScopeKey(record, scope),
++          );
++        if (!atomicLedgerRelocation && !supportSecurityRemoval && !acquisitionRetirementRemoval
+           && !authorizedResourceOwners.has(scopeResourceOwner)) {
+           errors.push(
+             `${prefix} future frozen scope resource ${scope.resource} is not owned by active or exited capability`,
+@@ -2300,6 +2355,44 @@ function supportSecurityScopeKey(recordId, scope) {
+   return [recordId, scope.resource, scope.operation].join("\u0000");
+ }
+
++function acquisitionRetirementScopeKey(record, scope) {
++  if (scope.path !== LEGACY_ACQUISITION_RETIREMENT_AMENDMENT.path
++    || scope.rule !== LEGACY_ACQUISITION_RETIREMENT_AMENDMENT.rule) {
++    return undefined;
++  }
++  return [record.id, record.capability, record.removalIssue, scope.resource, scope.operation].join("\u0000");
++}
++
++function acquisitionRetirementAttempted(registry, baseline) {
++  const active = new Set((registry.records ?? [])
++    .filter((record) => record.kind === "legacy-facade")
++    .flatMap((record) => (record.scopes ?? []).map((scope) => (
++      acquisitionRetirementScopeKey(record, scope)
++    ))));
++  return (baseline.records ?? []).some((record) => (record.scopes ?? []).some((scope) => {
++    const key = acquisitionRetirementScopeKey(record, scope);
++    return LEGACY_ACQUISITION_RETIREMENT_AMENDMENT.scopes.has(key) && !active.has(key);
++  }));
++}
++
++function checkRetiredAcquisitionReferences(sourceFile, path, errors) {
++  // Test fixtures may name the retired actions; runtime imports, forms, aliases,
++  // object keys and string dispatch must not preserve an acquisition entry point.
++  if (path.startsWith("apps/web/tests/")) return;
++  const references = new Set();
++  function inspect(node) {
++    if ((ts.isIdentifier(node) || ts.isStringLiteralLike(node))
++      && LEGACY_ACQUISITION_RETIREMENT_AMENDMENT.operations.has(node.text)) {
++      references.add(node.text);
++    }
++    ts.forEachChild(node, inspect);
++  }
++  inspect(sourceFile);
++  for (const operation of references) {
++    errors.push(`${path}: #192 retired acquisition action or client/form reference remains: ${operation}`);
++  }
++}
++
+ function operationLabel(operationKey) {
+   const [path, operation] = operationKey.split("\u0000");
+   return `${path} operation:${operation}`;
+@@ -2340,11 +2433,15 @@ function activeCompatibilityMatches(registry, releaseState, path, rule, resource
+   });
+ }
+
+-function checkGlobalWebBoundary(root, registry, releaseState, errors, now, webAnalysis) {
++function checkGlobalWebBoundary(root, registry, releaseState, errors, now, webAnalysis, baseline) {
+   const actualScopes = new Set();
++  const retiredAcquisition = acquisitionRetirementAttempted(registry, baseline);
+   for (const path of walk(join(root, "apps/web"), (candidate) => /\.[cm]?[jt]sx?$/u.test(candidate))) {
+     const scopedPath = relative(root, path);
+     const source = readFileSync(path, "utf8");
++    if (retiredAcquisition) {
++      checkRetiredAcquisitionReferences(webAnalysis.program.getSourceFile(resolve(path)), scopedPath, errors);
++    }
+     const boundary = webBoundaryViolations(source, path, webAnalysis);
+     for (const { resource, operation } of boundary.fetch.values()) {
+       const rule = "direct-business-fetch";
+@@ -2629,7 +2726,9 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
+       sourceAtGateRevision,
+     },
+   ));
+-  checkGlobalWebBoundary(resolvedRoot, compatibility, verifiedReleaseState, errors, now, webAnalysis);
++  checkGlobalWebBoundary(
++    resolvedRoot, compatibility, verifiedReleaseState, errors, now, webAnalysis, compatibilityBaseline,
++  );
+   const sharedKernel = readJson(join(resolvedRoot, "architecture/shared-kernel.json"), errors);
+   validateAgainstSchema(schemas.sharedKernel, sharedKernel, "architecture/shared-kernel.json", errors);
+   if (!Array.isArray(sharedKernel.allowedPublicPackages) || !Array.isArray(sharedKernel.forbidden)) {
+diff --git a/tests/architecture_foundation.test.mjs b/tests/architecture_foundation.test.mjs
+index bc62be88..e0c88e01 100644
+--- a/tests/architecture_foundation.test.mjs
++++ b/tests/architecture_foundation.test.mjs
+@@ -878,6 +878,124 @@ test("ledger #139 may relocate only the owner-approved atomic coordinator scopes
+   }
+ });
+
++test("#192 retirement permits only all four exact frozen deletions and all three whole actions", () => {
++  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-acquisition-retirement-"));
++  const actionPath = "apps/web/app/actions.ts";
++  const operations = ["saveBillingAccount", "activateBillingSubscription", "requestFilingPackagePayment"];
++  const scope = (resource, operation) => ({
++    path: actionPath, rule: "direct-web-business-persistence", resource, operation,
++  });
++  const retainedSource = [
++    'export function keepAudit() { client.from("audit_events"); }',
++    'export function keepReadiness() { client.from("filing_readiness_snapshots"); }',
++  ].join("\n");
++  const frozenSource = [
++    ...operations.map((operation) => `export function ${operation}() { client.from("audit_events"); ${
++      operation === "requestFilingPackagePayment" ? 'client.from("filing_readiness_snapshots");' : ""
++    } }`),
++    retainedSource,
++  ].join("\n");
++  const proofScope = (resource, operation) => {
++    const value = scope(resource, operation);
++    return { ...value, ...legacyOperationProof(frozenSource, actionPath, value) };
++  };
++  const facades = [
++    legacyFacade({
++      id: "compat-audit-persistence", capability: "audit", removalIssue: "#155",
++      scopes: [...operations, "keepAudit"].map((operation) => proofScope("table:audit_events", operation)),
++    }),
++    legacyFacade({
++      id: "compat-annual-compliance-persistence", capability: "annual_compliance", removalIssue: "#149",
++      scopes: ["requestFilingPackagePayment", "keepReadiness"]
++        .map((operation) => proofScope("table:filing_readiness_snapshots", operation)),
++    }),
++  ];
++  const baseline = compatibilityBaseline(facades);
++  const registry = compatibilityFixture({ records: facades.map((facade) => ({
++    ...facade, scopes: facade.scopes.filter((value) => value.operation.startsWith("keep")),
++  })) });
++  registry.migration.order = [
++    { capability: "billing", removalIssues: ["#137"] },
++    { capability: "authority_connections", removalIssues: ["#150"] },
++    { capability: "annual_compliance", removalIssues: ["#149"] },
++    { capability: "audit", removalIssues: ["#155"] },
++  ];
++  registry.migration.currentCapability = "billing";
++  registry.migration.currentIssue = "#137";
++  registry.migration.exitedCapabilities = [];
++  registry.migration.completedStages = [];
++  const check = ({ workingRegistry = registry, workingBaseline = baseline, source = retainedSource } = {}) => {
++    const { registryPath, baselinePath } = writeCompatibilityFixture(temporaryRoot, workingRegistry, workingBaseline);
++    return validateCompatibilityRegistry(registryPath, {
++      baselinePath,
++      expectedBaselineDigest: "TEST_BASELINE_DIGEST",
++      currentSource: () => source,
++      resourceOwner: (resource) => resource === "table:audit_events" ? "backend:audit" : "backend:annual_compliance",
++    });
++  };
++  try {
++    assert.deepEqual(check(), []);
++
++    for (const facade of facades) {
++      for (const removed of facade.scopes.filter((value) => operations.includes(value.operation))) {
++        const partial = structuredClone(registry);
++        partial.records.find((record) => record.id === facade.id).scopes.push(removed);
++        assert.match(check({ workingRegistry: partial }).join("\n"),
++          /must remove all four #192 scopes together/u, `${facade.id}:${removed.operation}`);
++      }
++    }
++
++    for (const [field, replacement] of [
++      ["path", "apps/web/app/retired-actions.ts"],
++      ["rule", "direct-business-fetch"],
++      ["resource", "table:other_audit_events"],
++      ["operation", "saveAnotherBillingAccount"],
++    ]) {
++      const nearMiss = structuredClone(baseline);
++      nearMiss.records[0].scopes[0][field] = replacement;
++      assert.match(check({ workingBaseline: nearMiss }).join("\n"),
++        /requires the exact four frozen #192 scope tuples/u, field);
++    }
++    for (const [field, replacement] of [
++      ["id", "compat-other-audit-persistence"],
++      ["capability", "annual_compliance"],
++      ["removalIssue", "#149"],
++    ]) {
++      const nearMiss = structuredClone(baseline);
++      nearMiss.records[0][field] = replacement;
++      assert.match(check({ workingBaseline: nearMiss }).join("\n"),
++        /requires the exact four frozen #192 scope tuples/u, field);
++    }
++
++    for (const operation of operations) {
++      for (const body of ["", 'throw new Error("retired");', "client.from(resourceName);", 'client.rpc("replacement_writer");']) {
++        assert.match(check({ source: `${retainedSource}\nexport function ${operation}() { ${body} }` }).join("\n"),
++          new RegExp(`must remove the entire #192 action: ${operation}`, "u"));
++      }
++    }
++    assert.match(check({ source: null }).join("\n"), /must remove the entire #192 action/u,
++      "unreadable current source is not deletion evidence");
++
++    const added = structuredClone(registry);
++    added.records[0].scopes.push(scope("table:audit_events", "replacementAcquisition"));
++    assert.match(check({ workingRegistry: added }).join("\n"), /scope is outside the frozen baseline/u);
++    const extraDeletion = structuredClone(registry);
++    extraDeletion.records = extraDeletion.records.filter((record) => record.capability !== "audit");
++    assert.match(check({ workingRegistry: extraDeletion, source: retainedSource.split("\n")[1] }).join("\n"),
++      /future frozen scope resource table:audit_events is not owned by active or exited capability/u);
++    assert.match(check({ source: retainedSource.replace('client.from("audit_events");', 'client.from("audit_events"); client.from("audit_events");') }).join("\n"),
++      /scope has an added writer/u, "the unrelated future operation stays frozen");
++
++    const earlier = structuredClone(registry);
++    earlier.migration.order.unshift({ capability: "company_access", removalIssues: ["#138"] });
++    earlier.migration.currentCapability = "company_access";
++    earlier.migration.currentIssue = "#138";
++    assert.match(check({ workingRegistry: earlier }).join("\n"), /only by #192 at billing or later/u);
++  } finally {
++    rmSync(temporaryRoot, { recursive: true, force: true });
++  }
++});
++
+ test("pending foundation recovery blocks facade and migration changes", () => {
+   const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-foundation-recovery-"));
+   const current = legacyFacade();
+@@ -1955,7 +2073,7 @@ test("the immutable frozen inventory remains exact while the active registry is
+   assert.equal(expected.size, baseline.records.length);
+
+   assert.equal(registry.records.length, 8);
+-  assert.equal(registry.records.flatMap((record) => record.scopes).length, 96);
++  assert.equal(registry.records.flatMap((record) => record.scopes).length, 92);
+   const baselineById = new Map(baseline.records.map((record) => [record.id, record]));
+   const scopeKey = (scope) => [scope.path, scope.rule, scope.resource, scope.operation].join("\0");
+   for (const record of registry.records) {
+@@ -1991,6 +2109,53 @@ test("the immutable frozen inventory remains exact while the active registry is
+   );
+ });
+
++test("#192 keeps the immutable four-scope inventory and rejects stale clients, moved writers and dynamic additions", () => {
++  const registry = JSON.parse(readFileSync(new URL("../architecture/compatibility.json", import.meta.url), "utf8"));
++  const baseline = JSON.parse(readFileSync(new URL("../architecture/compatibility-baseline.json", import.meta.url), "utf8"));
++  const key = (record, scope) => [record.id, scope.path, scope.rule, scope.resource, scope.operation].join("\0");
++  const expected = new Set([
++    ["compat-audit-persistence", "table:audit_events", "saveBillingAccount"],
++    ["compat-audit-persistence", "table:audit_events", "activateBillingSubscription"],
++    ["compat-audit-persistence", "table:audit_events", "requestFilingPackagePayment"],
++    ["compat-annual-compliance-persistence", "table:filing_readiness_snapshots", "requestFilingPackagePayment"],
++  ].map(([id, resource, operation]) => [id, "apps/web/app/actions.ts", "direct-web-business-persistence", resource, operation].join("\0")));
++  const frozen = baseline.records.flatMap((record) => record.scopes.map((scope) => key(record, scope)))
++    .filter((value) => expected.has(value));
++  const active = registry.records.flatMap((record) => record.scopes.map((scope) => key(record, scope)))
++    .filter((value) => expected.has(value));
++  assert.equal(frozen.length, 4);
++  assert.deepEqual(new Set(frozen), expected);
++  assert.deepEqual(active, []);
++
++  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-acquisition-retirement-"));
++  for (const directory of ["architecture", "apps", "supabase"]) {
++    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
++  }
++  try {
++    writeFileSync(join(temporaryRoot, "apps/web/app/retired-acquisition.tsx"), [
++      'import { createClient } from "@supabase/supabase-js";',
++      'import { saveBillingAccount as legacySave } from "./actions";',
++      'const client = createClient("https://example.invalid", "public-anon-key");',
++      'export const activateBillingSubscription = legacySave;',
++      'export function LegacyForm() { return <form action={legacySave} data-operation="requestFilingPackagePayment" />; }',
++      'export function relocatedAudit() { return client.from("audit_events").insert({}); }',
++      'export function relocatedReadiness() { return client.from("filing_readiness_snapshots").select(); }',
++      'export function dynamicAcquisition(resource: string) { return client.from(resource).insert({}); }',
++      'export function addedProviderEffect() { return fetch("https://api.vipps.no/new-acquisition", { method: "POST" }); }',
++    ].join("\n"));
++    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
++    for (const operation of ["saveBillingAccount", "activateBillingSubscription", "requestFilingPackagePayment"]) {
++      assert.match(errors, new RegExp(`retired acquisition action or client/form reference remains: ${operation}`, "u"));
++    }
++    for (const operation of ["relocatedAudit", "relocatedReadiness", "dynamicAcquisition"]) {
++      assert.match(errors, new RegExp(`direct web business persistence is forbidden.*operation:${operation}`, "u"));
++    }
++    assert.match(errors, /direct business fetch is forbidden.*operation:addedProviderEffect/u);
++  } finally {
++    rmSync(temporaryRoot, { recursive: true, force: true });
++  }
++});
++
+ test("#200 removes the exact six support-search scopes atomically without changing the frozen baseline", () => {
+   const registry = JSON.parse(readFileSync(
+     new URL("../architecture/compatibility.json", import.meta.url),

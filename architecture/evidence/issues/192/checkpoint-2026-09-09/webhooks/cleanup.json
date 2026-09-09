@@ -1,0 +1,15 @@
+{
+  "at": "2026-09-09T08:27:34.326382+00:00",
+  "registration_deleted": "58e21a30-68d3-455d-886c-a9427d2cecea",
+  "existing_registrations_preserved": true,
+  "existing_registration_count": 0,
+  "remaining_registration_count": 0,
+  "processes_stopped": {
+    "tunnel_pid": true,
+    "server_pid": true
+  },
+  "isolated_database_removed": "talli_192_webhook_ea3801ae",
+  "isolated_login_removed": "talli_192_webhook_358bfa5a",
+  "exported_receipt_count": 8,
+  "shared_database_untouched": true
+}
