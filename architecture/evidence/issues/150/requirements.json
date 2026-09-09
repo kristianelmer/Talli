@@ -1,0 +1,390 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#150",
+  "source": "https://github.com/kristianelmer/Talli/issues/150",
+  "sourceCheckedAt": "2026-09-09T11:38:11.288649+00:00",
+  "status": "local-stage-exit-passed-protected-integration-pending",
+  "entryBlockers": [
+    {
+      "issue": "#137",
+      "requiredState": "CLOSED with protected integration",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/137#issuecomment-5550228449"
+    },
+    {
+      "issue": "#192 interim",
+      "requiredState": "interim protected-integrated and verified; final issue stays open",
+      "observedState": "satisfied",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5600490534"
+    },
+    {
+      "name": "immutable entry baseline",
+      "revision": "b30312de11ad942479421def243e4a2252fbf166",
+      "command": "npm run gate:customer-ready",
+      "status": "pass",
+      "evidencePath": "architecture/evidence/customer-ready-gates/b30312de11ad942479421def243e4a2252fbf166.json",
+      "transcriptDigest": "sha256:d7b4572f0ff839cebb868253d26679729b76734302528b4eaf928ac5ada47556",
+      "checkCount": 11
+    }
+  ],
+  "decisionBoundary": {
+    "migrationOrderSource": "https://github.com/kristianelmer/Talli/issues/132#issuecomment-5083588592",
+    "routeSource": "https://github.com/kristianelmer/Talli/issues/165",
+    "scope": "Authority Connections only; #192 billing implementation remains paused. Owner-approved exact RF coordinators and four standalone authority CLI credential workflows relocate backend-only with RF/tax/accounts ownership and filing behavior preserved.",
+    "authority": "No production provider activation, live filing, spending or production promotion.",
+    "relocationApproval": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5601323119",
+    "relocationScope": "architecture/evidence/issues/150/rf-credential-relocation-2026-09-09.md",
+    "testToolRelocationApproval": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5602427247",
+    "testToolRelocationScope": "architecture/evidence/issues/150/test-tool-credential-relocation-2026-09-09.md"
+  },
+  "criteria": [
+    {
+      "id": "GH-150-A1",
+      "requirement": "Owners can initiate and reconcile the supported System User connection flow through the web and backend.",
+      "status": "implemented-linked-complete-gates-passed-protected-integration-pending",
+      "plannedEvidencePaths": [
+        "apps/backend/src/talli_backend/modules/authority_connections/public.py",
+        "apps/backend/src/talli_backend/modules/authority_connections/service.py",
+        "apps/backend/tests/test_authority_connections_api.py",
+        "apps/web/features/authority-connections/transport.ts"
+      ],
+      "plannedCommands": [
+        "npm run test:authority-connections",
+        "npm run test:browser-authority-connections"
+      ],
+      "expectedResult": "Owner start/reconcile uses generated API, original connection identity and same supported/blocked Norwegian journey."
+    },
+    {
+      "id": "GH-150-A2",
+      "requirement": "Callback, token, company, scope, and relationship validation fail closed.",
+      "status": "implemented-linked-complete-gates-passed-protected-integration-pending",
+      "plannedEvidencePaths": [
+        "apps/backend/tests/test_altinn_system_user.py",
+        "apps/backend/tests/test_authority_connections_api.py"
+      ],
+      "plannedCommands": [
+        "npm run test:authority-connections"
+      ],
+      "expectedResult": "Callback/token/company/scope/external reference mismatch rejected; no credential leaves backend; provider facts pinned before pass."
+    },
+    {
+      "id": "GH-150-A3",
+      "requirement": "Founder and operator authority operations retain MFA and redacted audit requirements.",
+      "status": "implemented-linked-complete-gates-passed-protected-integration-pending",
+      "plannedEvidencePaths": [
+        "apps/backend/tests/test_authority_operations_api.py",
+        "apps/backend/tests/test_authority_connections_database_runtime.py"
+      ],
+      "plannedCommands": [
+        "npm run test:authority-connections",
+        "npm run test:supabase:local"
+      ],
+      "expectedResult": "Current owner/operator/founder permission and fresh MFA rechecked; no cross-company data or credential leakage."
+    },
+    {
+      "id": "GH-150-A4",
+      "requirement": "Retry and ambiguous-outcome handling remain idempotent and observable.",
+      "status": "implemented-linked-complete-gates-passed-protected-integration-pending",
+      "plannedEvidencePaths": [
+        "apps/backend/tests/test_authority_connections_service.py",
+        "apps/backend/tests/test_authority_connections_database_runtime.py"
+      ],
+      "plannedCommands": [
+        "npm run test:authority-connections",
+        "npm run test:supabase:local"
+      ],
+      "expectedResult": "Persist original intent before external effect; duplicate/lost-response/unknown outcomes reconcile safely and remain observable."
+    },
+    {
+      "id": "GH-150-A5",
+      "requirement": "All authority connections use owned ports/adapters.",
+      "status": "implemented-linked-complete-gates-passed-protected-integration-pending",
+      "plannedEvidencePaths": [
+        "apps/backend/src/talli_backend/modules/authority_connections/module.json",
+        "architecture/backend-system.json",
+        "architecture/dependency-evidence.json"
+      ],
+      "plannedCommands": [
+        "npm run check:architecture",
+        "npm run test:authority-connections"
+      ],
+      "expectedResult": "Only public Authority Connections contracts and declared ports/adapters; foreign ownership preserved."
+    },
+    {
+      "id": "GH-150-A6",
+      "requirement": "Legacy TypeScript control-plane policy, credential paths, and active-stage compatibility code are removed.",
+      "status": "implemented-linked-complete-gates-passed-protected-integration-pending",
+      "plannedEvidencePaths": [
+        "architecture/compatibility.json",
+        "tests/authority_connections_retirement.test.mjs",
+        "architecture/evidence/issues/150/cutover-and-validation.md"
+      ],
+      "plannedCommands": [
+        "npm run check:architecture",
+        "npm run test:architecture",
+        "npm run test:supabase:local"
+      ],
+      "expectedResult": "Exact active legacy policy/credential/writer/facade paths removed after equivalent cutover; the two RF credential consumers relocate only within the approved exact scope."
+    },
+    {
+      "id": "GH-150-A7",
+      "requirement": "The complete `authority_connections` stage exit criteria from issue #132 pass before filing migration begins.",
+      "status": "local-stage-exit-passed-protected-integration-pending",
+      "plannedEvidencePaths": [
+        "architecture/evidence/issues/150/requirements.json",
+        "architecture/evidence/customer-ready-gates",
+        "architecture/compatibility.json"
+      ],
+      "plannedCommands": [
+        "npm run gate:customer-ready",
+        "npm run gate:customer-ready -- --previous <first-passing-revision>"
+      ],
+      "expectedResult": "All #132 stage8 criteria, two immutable consecutive complete gates, rollback/recutover, protected and exact-main integration verified before #151."
+    }
+  ],
+  "completeGates": [
+    {
+      "revision": "ed7c3c4000f910e10a5d90dd91be5885bccc9a94",
+      "previousPassingRevision": null,
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/ed7c3c4000f910e10a5d90dd91be5885bccc9a94.json",
+      "evidenceDigest": "sha256:f10f5ce3c5258cfb0db67ae25da90f98896b2e6f90facfd3fa5ca309ccaa6da2",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:9d827819b7c594428c2bf0c7b766118f0fcc8cf0153577a6b56327c339bf7922",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "executedAt": "2026-09-09T17:36:29.132Z",
+      "independentValidation": "Schema, exact 11 checks/zero exits, commands/order/markers, canonical JSON/raw transcript/tested producer digests and linked ordered ancestry independently verified; committed bytes and final registry are checked again at the candidate.",
+      "validationLimits": {
+        "backendBoundary": "2486 passed, 2 optional database adapter skips, 764 database cases deselected; dedicated PostgreSQL lanes passed",
+        "standaloneValidation": "17 passed, 1 optional database adapter skip; dedicated PostgreSQL rehearsal passed",
+        "finalBillingDatabase": "699 Python and 1 Node passed, 0 skipped",
+        "finalAuthorityDatabase": "65 passed, 0 skipped",
+        "finalAuthorityBrowser": "11 passed, 0 skipped",
+        "advisors": "0 blocking findings, 41 existing performance warnings",
+        "productionDependencies": "root and web audits each reported 0 vulnerabilities"
+      },
+      "evidenceCommittedRevision": "538a99b387a504a3b99e9e8e77e3d57d8376e3c6"
+    },
+    {
+      "revision": "538a99b387a504a3b99e9e8e77e3d57d8376e3c6",
+      "previousPassingRevision": "ed7c3c4000f910e10a5d90dd91be5885bccc9a94",
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/538a99b387a504a3b99e9e8e77e3d57d8376e3c6.json",
+      "evidenceDigest": "sha256:ec555252389867487a8e7685f14eb2643428f05b19226ad795ab740421a3521b",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:a5f465ba9b817c58913751e71729fe5abf250cb1393b70a7bbd8e6832ada260d",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "startedAt": "2026-09-09T17:39:40.053Z",
+      "executedAt": "2026-09-09T17:57:29.262Z",
+      "independentValidation": "Schema, exact 11 checks/zero exits, commands/order/markers, canonical JSON/raw transcript/tested producer digests and linked ordered ancestry independently verified; committed bytes and final registry are checked again at the candidate.",
+      "validationLimits": {
+        "backendBoundary": "2486 passed, 2 optional database adapter skips, 764 database cases deselected; dedicated PostgreSQL lanes passed",
+        "standaloneValidation": "17 passed, 1 optional database adapter skip; dedicated PostgreSQL rehearsal passed",
+        "finalBillingDatabase": "699 Python and 1 Node passed, 0 skipped",
+        "finalAuthorityDatabase": "65 passed, 0 skipped",
+        "finalAuthorityBrowser": "11 passed, 0 skipped",
+        "advisors": "0 blocking findings, 41 existing performance warnings",
+        "productionDependencies": "root and web audits each reported 0 vulnerabilities"
+      },
+      "evidenceCommittedRevision": "339a51c3dd65458268840cc141eaea211b8b841d"
+    }
+  ],
+  "localValidation": [
+    {
+      "scope": "predecessor System User flow and presentation characterization",
+      "command": "node --test tests/system_user_flow.test.mjs tests/system_user_connections_page.test.mjs",
+      "result": "20 passed, 0 failed, 0 skipped"
+    },
+    {
+      "scope": "historical schema/server characterization, not current contracted RLS proof",
+      "command": "node --test tests/system_user_requests_schema.test.mjs",
+      "result": "11 passed, 0 failed, 0 skipped"
+    },
+    {
+      "scope": "owner/operator/callback generated API integration using actual workflows and local ports",
+      "command": "uv run --project apps/backend pytest apps/backend/tests/test_launch_signoffs_api.py apps/backend/tests/test_authority_operations_api.py apps/backend/tests/test_authority_connections_api.py -q",
+      "result": "41 passed, 0 failed, 0 skipped; local only"
+    },
+    {
+      "scope": "hydrated owner web and callback with real database and shipped provider adapters against loopback fixtures",
+      "command": "npm run test:browser-authority-connections",
+      "result": "4 passed, 0 failed, 0 skipped; isolated fixture rows/principals/servers cleaned; provider conformance not claimed",
+      "localTranscript": "/tmp/talli-150-browser-authority-run2.log"
+    },
+    {
+      "scope": "technical launch-signoff current authorization, rollback and recutover",
+      "command": "pytest apps/backend/tests/test_launch_signoffs_database_runtime.py",
+      "result": "8 passed, 0 failed, 0 skipped on owned disposable database",
+      "localTranscript": "/tmp/talli-150-launch-db-run1.log"
+    },
+    {
+      "scope": "RF API invokes frozen send/recovery coordinator and preserves trust/order/historical recovery boundaries",
+      "command": "uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_legacy_rf1086_api.py -q",
+      "result": "20 passed, 0 failed, 0 skipped; local fake provider ports only"
+    },
+    {
+      "scope": "web boundary including 201-company connection batching, generated transport and callback authorization delegation",
+      "command": "npm run test:boundary-web",
+      "result": "174 passed, 0 failed, 0 skipped",
+      "localTranscript": "/tmp/talli-150-web-boundary-run2.log"
+    },
+    {
+      "scope": "backend boundary before final CLI additions and RF manifest correction",
+      "command": "npm run test:boundary-backend",
+      "result": "2194 passed; 2 existing DB-only marketing/validation tests skipped in this lane and covered by mandatory isolated DB lane; 760 DB cases deselected",
+      "localTranscript": "/tmp/talli-150-backend-boundary.log"
+    },
+    {
+      "scope": "existing and new generated API contracts",
+      "command": "npm run test:boundary-contract",
+      "result": "53 passed, 0 failed, 0 skipped",
+      "localTranscript": "/tmp/talli-150-contract-boundary.log"
+    },
+    {
+      "scope": "fresh RF, Authority Connections, operator and launch-signoff contracted database",
+      "command": "pytest test_rf1086_database_runtime.py test_authority_connections_database_runtime.py test_authority_operations_database_runtime.py test_launch_signoffs_database_runtime.py",
+      "result": "61 passed, 0 failed, 0 skipped, including rollback and recutover",
+      "localTranscript": "/tmp/talli-150-rf-au-db-combined.log"
+    },
+    {
+      "scope": "frozen RF approval manifest and JSON/order parity against the retained pure source builder",
+      "command": "pytest test_rf1086_compatibility.py test_postgres_legacy_rf1086_authority.py test_legacy_rf1086_api.py",
+      "result": "184 passed, 0 failed, 0 skipped; malformed production keys denied before token, journal or provider"
+    },
+    {
+      "scope": "standalone tax/accounts command and transport corrections from independent review",
+      "command": "pytest test_authority_filing_tools.py test_authority_filing_transports.py",
+      "result": "116 passed, 0 failed, 0 skipped; 15 new regressions failed before corrections",
+      "localTranscript": "/tmp/talli-150-filing-parity-green.log"
+    },
+    {
+      "scope": "standalone token/RF command corrections from independent review",
+      "command": "pytest test_authority_tool_grant.py test_authority_tool_rf1086.py",
+      "result": "63 passed, 0 failed, 0 skipped; local subprocess and fake HTTP only"
+    },
+    {
+      "scope": "successor hydrated Authority Connections and historical RF recovery with actual backend and owned Documents",
+      "command": "npm run test:browser-authority-connections",
+      "result": "fixture safety 4 and full journey 1 passed; no live authority calls; accepted after two reloads; original receipt SHA-256; both-owner denial and console/error guards; zero fixture users/companies",
+      "localTranscript": "/tmp/talli-150-browser-rf-health-final.log"
+    },
+    {
+      "scope": "retargeted predecessor browser egress/download/focus/teardown contracts plus backend fixture safety",
+      "command": "node --test tests/browser_authority_connections_contract.test.mjs tests/authority_browser_fixture_safety.test.mjs",
+      "result": "10 passed, 0 failed, 0 skipped",
+      "localTranscript": "/tmp/talli-150-browser-contract-retarget.log"
+    },
+    {
+      "scope": "complete architecture checker regression suite with exact AU facade and approved RF tuple retirement",
+      "command": "npm run test:architecture",
+      "result": "54 passed, 0 failed, 0 skipped",
+      "localTranscript": "/tmp/talli-150-architecture-tests-run2.log"
+    },
+    {
+      "scope": "provider decoder, strict JSON and RF TextEncoder correction",
+      "command": "pytest test_maskinporten.py test_altinn_system_user.py test_altinn_authority_operations.py test_rf1086_authority.py test_rf1086_compatibility.py and affected API suites",
+      "result": "590 passed, 0 failed, 0 skipped; local ports only"
+    },
+    {
+      "scope": "private grant/RF strict JSON and unchanged synthetic credential markers",
+      "command": "pytest test_authority_tool_grant.py test_authority_tool_rf1086.py test_postgres_legacy_rf1086_authority.py",
+      "result": "102 passed, 0 failed, 0 skipped; credential scan passed with unchanged scanner and allowlist"
+    },
+    {
+      "scope": "tax/accounts strict JSON preserves original input, HTTP fallback and valid numeric syntax",
+      "command": "pytest test_authority_filing_tools.py test_authority_filing_transports.py",
+      "result": "138 passed, 0 failed, 0 skipped; 21 regression cases failed before correction",
+      "localTranscript": "/tmp/talli-150-filing-strict-json-green.log"
+    },
+    {
+      "scope": "Billing runtime after matching the fixture to the real verified authenticated-role claim",
+      "command": "pytest test_supabase_billing_runtime.py",
+      "result": "37 passed, 0 failed, 0 skipped on the shipped predecessor rollback topology; no SQL or business assertion changes",
+      "localTranscript": "/tmp/talli-150-billing-role-fixed-runtime.log"
+    },
+    {
+      "scope": "corrected packaged backend import and deployment-order isolation",
+      "command": "npm run build:backend && npm run test:boundary-smoke",
+      "result": "1 passed, 0 failed, 0 skipped; actual rebuilt wheel and production web artifacts, both deployment orders and backend failure isolation",
+      "localTranscript": "/tmp/talli-150-wheel-package-smoke.log"
+    },
+    {
+      "scope": "fresh complete launch rehearsal on ddb921be",
+      "command": "npm run test:launch-rehearsal",
+      "result": "passed within failed complete gate ddb921be; fake/local providers only",
+      "localTranscript": "/tmp/talli-150-gate-ddb921be-raw-private.log"
+    },
+    {
+      "scope": "full Billing database lifecycle on ddb921be after predecessor rollback and governance",
+      "command": "npm run test:billing-database-lifecycle",
+      "result": "699 passed, 0 failed; successor fixture teardown then failed, so this is not complete database-isolation acceptance",
+      "localTranscript": "/tmp/talli-150-gate-ddb921be-raw-private.log"
+    },
+    {
+      "scope": "fixture company cascade after Billing receipt rollback/recutover",
+      "command": "pytest test_authority_connections_database_runtime.py -k fixture_company_cleanup -q",
+      "result": "4 passed, 0 failed, 0 skipped; missing-DELETE cases failed before correction; absent/present DELETE, exact ACL preservation, late failure rollback and independent observer checked"
+    },
+    {
+      "scope": "actual Billing rollback/recutover followed by corrected successor database suite",
+      "command": "node --test tests/billing_database_runtime.test.mjs; authority topology recutover; npm run test:authority-connections-database",
+      "result": "Billing lifecycle 1 passed; successor database 65 passed, 0 failed, 0 skipped; exact receipt ACL restored and DELETE absent afterward",
+      "localTranscript": "/tmp/talli-150-cleanup-lifecycle-sequence.log"
+    },
+    {
+      "scope": "successor browser after the actual Billing lifecycle and authority recutover",
+      "command": "npm run test:browser-authority-connections",
+      "result": "11 passed, 0 failed, 0 skipped; fixture rows/principals and generated files restored",
+      "localTranscript": "/tmp/talli-150-cleanup-browser-proof.log"
+    }
+  ],
+  "closeState": "OPEN; local stage exit and both linked complete gates passed. The registry is ready for #151, whose claim and implementation remain pending #150 protected integration and exact-main Release/Preview verification.",
+  "taskId": "01a08515-2cd8-7093-8a34-3b9b3d458840",
+  "branch": "codex/issue-150-authority-01a08515",
+  "implementationClaim": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5601486395",
+  "progressCheckedAt": "2026-09-09T17:59:16.328087+00:00",
+  "remainingWork": [
+    "Protected integration and exact-main Release/Preview verification"
+  ],
+  "independentReview": {
+    "status": "closed-no-outstanding-source-findings",
+    "revision": "ed7c3c4000f910e10a5d90dd91be5885bccc9a94",
+    "evidencePath": "architecture/evidence/issues/150/independent-review.md",
+    "standardsFindingsResolved": 1,
+    "specFindingsResolved": 2
+  },
+  "failedCompleteGateAttempts": [
+    {
+      "revision": "67901fd0f2534772110e68f99290136a88280319",
+      "verdict": "fail",
+      "failedCheck": "boundary-smoke",
+      "transcriptPath": "architecture/evidence/issues/150/failed-gates/67901fd0f2534772110e68f99290136a88280319.log",
+      "reason": "Built wheel could not import talli_backend.compatibility; its source directory lacked a package initializer. The editable-source tests did not expose this packaging error.",
+      "correction": "Add the compatibility package initializer; rebuild and rerun the actual built-artifact smoke. No behavior or permission changes.",
+      "exitGateCredit": false
+    },
+    {
+      "revision": "ddb921be9049644898e22e27aea831f49ec59144",
+      "verdict": "fail",
+      "failedCheck": "database-isolation",
+      "transcriptPath": "architecture/evidence/issues/150/failed-gates/ddb921be9049644898e22e27aea831f49ec59144.redacted.log",
+      "transcriptKind": "redacted diagnostic only; not immutable passing-gate evidence",
+      "reason": "Billing completed 699 tests; all 61 successor AU/operator/launch/RF tests passed assertions but each failed fixture company-deletion teardown. Billing expansion rollback revokes all receipt-owner privileges; recutover restores SELECT/INSERT/UPDATE but not DELETE, which the fixture FK cascade requires.",
+      "additionalCandidateCorrection": "Restore two generated next-env imports to the exact b303 production baseline; the accidentally committed development paths would fail the final clean-tree check. Independently reviewed; no product behavior change.",
+      "exitGateCredit": false,
+      "correction": "The AU/RF disposable janitors share the established Billing cleanup pattern: borrow missing receipt-owner DELETE only within the cleanup transaction, delete the exact fixture company, and restore the original ACL. Runtime/production SQL and executor privileges are unchanged."
+    }
+  ],
+  "stageExit": {
+    "capability": "authority_connections",
+    "issue": "#150",
+    "localVerdict": "pass",
+    "nextRegistryCapability": "shareholder_register_filing",
+    "nextRegistryIssue": "#151",
+    "nextStageClaimed": false,
+    "scope": "Registry advances after the two complete gates; no #151 implementation or claim begins before #150 protected integration and exact-main verification.",
+    "evidenceReview": "Independent exact-delta review passed with no findings: ed7 through the final registry candidate changes only gate receipts, this ledger and compatibility stage-exit metadata; application code, baseline and future scopes are unchanged."
+  }
+}

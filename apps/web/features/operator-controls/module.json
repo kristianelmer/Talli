@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "web-feature",
+  "name": "operator-controls",
+  "path": "apps/web/features/operator-controls",
+  "owner": "web:operator-controls",
+  "purpose": "Carry existing technical launch-signoff read and record commands through the generated backend-system boundary.",
+  "documentation": "apps/web/features/operator-controls/MODULE.md",
+  "publicEntryPoint": "@/features/operator-controls",
+  "publicImportPaths": [
+    "@/features/operator-controls",
+    "apps/web/features/operator-controls",
+    "apps/web/features/operator-controls/index.ts"
+  ],
+  "ownedRoutes": [],
+  "apiOperations": [
+    "operatorControlsListLaunchSignoffs",
+    "operatorControlsRecordLaunchSignoff"
+  ],
+  "dependencies": [],
+  "allowedImports": [
+    "#backend-configuration",
+    "@talli/talli-api-client"
+  ],
+  "cachePolicy": {
+    "default": "no-store",
+    "allowed": []
+  },
+  "directBrowserFlows": [],
+  "forbiddenResponsibilities": [
+    "Direct technical or business persistence",
+    "Filing or authority release policy",
+    "Caller-supplied recording actor or trusted timestamp"
+  ],
+  "tests": {
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

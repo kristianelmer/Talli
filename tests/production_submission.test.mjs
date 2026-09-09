@@ -44,7 +44,7 @@ const actions = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.u
 const ownerPage = readFileSync(new URL("../apps/web/app/(owner)/filing/[obligation]/page.tsx", import.meta.url), "utf8");
 const documents = readFileSync(new URL("../apps/web/app/lib/documents.ts", import.meta.url), "utf8");
 const feedbackPersistence = readFileSync(
-  new URL("../apps/web/app/lib/rf1086-feedback-persistence.ts", import.meta.url),
+  new URL("../apps/backend/src/talli_backend/adapters/postgres_legacy_rf1086_authority.py", import.meta.url),
   "utf8",
 );
 let reconciliationControl = "";
@@ -57,52 +57,23 @@ try {
   // RED until Task 6 creates the bounded client reconciliation control.
 }
 
-test("reconciliation action rechecks the exact owner, submission, and verified request without POST", () => {
+test("recovery presentation carries the recorded identity through the generated backend contract", () => {
   const start = actions.indexOf("export async function reconcileRf1086ProductionAction");
-  const end = actions.indexOf("export async function postManualJournal", start);
-  assert.ok(start >= 0 && end > start);
-  const action = actions.slice(start, end);
-  assert.match(action, /requiredFormUuid/u);
-  assert.match(action, /loadAcceptedMembershipCompany\(submission\.company_id\)/u);
-  assert.doesNotMatch(action, /\.from\("company_memberships"\)/u);
-  assert.match(action, /role.*owner/su);
-  assert.match(action, /system_user_requests/u);
-  assert.match(action, /preflight_verified_at/u);
-  assert.match(action, /claim_production_feedback_reconciliation/u);
-  const claimIndex = action.indexOf("claim_production_feedback_reconciliation");
-  assert.doesNotMatch(action.slice(0, claimIndex), /!submission\.feedback_forsendelse_id/u);
-  assert.match(action.slice(claimIndex), /readClaimedRf1086ForsendelseId/u);
-  assert.match(action.slice(claimIndex), /authoritativeForsendelseId/u);
-  assert.match(action, /release_production_feedback_reconciliation/u);
-  assert.match(action, /reconcileJournaledRf1086Production/u);
-  assert.doesNotMatch(action, /executeJournaledRf1086Production|postHovedskjema|postUnderskjema|\.confirm\(/u);
+  const action = actions.slice(start, actions.indexOf("export async function postManualJournal", start));
+  assert.match(action, /requiredFormUuid\(formData, "submissionId"\)/u);
+  assert.match(action, /reconcileRf1086ThroughApi\(accessToken, submissionId\)/u);
+  assert.match(action, /buildRf1086OwnerReconciliationActionState\(result.state/u);
+  assert.doesNotMatch(action, /\.from\(|\.rpc\(|requestMaskinportenToken|postHovedskjema/u);
 });
 
-test("initial send performs bounded feedback polling only after the journaled confirmation path", () => {
-  const start = actions.indexOf("export async function sendApprovedRf1086ProductionFiling");
-  const end = actions.indexOf("export async function reconcileRf1086ProductionAction", start);
-  const send = actions.slice(start, end);
-  assert.ok(send.indexOf("executeJournaledRf1086Production") >= 0);
-  assert.ok(send.indexOf("reconcileJournaledRf1086Production") > send.indexOf("executeJournaledRf1086Production"));
-  assert.ok(send.indexOf("claimRf1086FeedbackLease") > send.indexOf("executeJournaledRf1086Production"));
-  assert.ok(send.indexOf("readClaimedRf1086ForsendelseId") > send.indexOf("claimRf1086FeedbackLease"));
-  assert.match(send, /authoritativeForsendelseId !== submitted\.forsendelseId/u);
-  assert.match(send, /initialPoll:\s*true/u);
-});
-
-test("private artifact persistence verifies receipts and cleans up only after authoritative absence", () => {
+test("RF producer preserves the public Documents lifecycle and original filing linkage", () => {
   assert.match(documents, /rf1086FeedbackFileName/u);
-  assert.match(actions, /createRf1086FeedbackArtifactRecorder\(service, input, \{/u);
-  assert.match(actions, /documentType:\s*"authority_feedback"/u);
-  assert.match(actions, /linkedTo:\s*`production_filing_submission:/u);
+  assert.match(feedbackPersistence, /BeginDocumentUploadCommand/u);
+  assert.match(feedbackPersistence, /"authority_feedback"/u);
+  assert.match(feedbackPersistence, /production_filing_submission:/u);
   assert.match(feedbackPersistence, /record_production_feedback_artifact/u);
-  assert.match(feedbackPersistence, /documents\.store/u);
-  assert.match(feedbackPersistence, /documents\.remove/u);
-  assert.doesNotMatch(feedbackPersistence, /from\("documents"\)|storage\.from/u);
-  assert.match(feedbackPersistence, /Rf1086FeedbackArtifactPersistenceError/u);
-  assert.match(actions, /createRf1086FeedbackArtifactPersistenceError/u);
-  assert.doesNotMatch(actions, /databaseTerminalFailure/u);
-  assert.doesNotMatch(feedbackPersistence, /getPublicUrl/u);
+  assert.match(feedbackPersistence, /producer_rollback/u);
+  assert.doesNotMatch(feedbackPersistence, /insert into documents\.|update documents\.|getPublicUrl/u);
 });
 
 test("filing page auto-resumes pending reconciliation and always exposes manual retry", () => {

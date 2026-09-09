@@ -1,4 +1,6 @@
+import { loadLaunchSignoffs } from "../../../features/operator-controls";
 import type { AnnualSupportRefundTargetsView } from "../annual-support-refund-recovery";
+import { loadAuthorityOperations, loadSystemUserRequests } from "../../../features/authority-connections";
 import { annualBillingRecovery, loadAnnualSupportPurchases, loadAnnualSupportRefundRecoveryTargets, type AnnualSupportPageWire } from "../../../features/billing";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
@@ -20,7 +22,7 @@ import type {
   Rf1086SubmittedPayloadReference,
   Rf1086SubmittedPayloadSnapshot,
 } from "../rf1086-submission";
-import type { SystemUserRequestStatus } from "../system-user-requests";
+import type { SystemUserRequestStatus } from "@talli/talli-api-client";
 import {
   loadBankSuggestionAcceptances,
   loadBankTransactions,
@@ -916,14 +918,22 @@ export async function listSystemUserRequests(
 ): Promise<SystemUserRequestRow[]> {
   if (companyIds.length === 0) return [];
 
-  const { data, error } = await supabase
-    .from("system_user_requests")
-    .select("id,company_id,initiating_owner_user_id,obligation,external_ref,altinn_request_id,status,confirm_url,preflight_verified_at,failure_code,operator_evidence_id,requested_at,last_status_checked_at,accepted_at,created_at,updated_at,resolved_at")
-    .in("company_id", companyIds)
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-  return (data ?? []) as SystemUserRequestRow[];
+  const accessToken = await backendAccessToken(supabase);
+  if (!accessToken) throw new Error("session_required");
+  const rows = await loadSystemUserRequests(accessToken, companyIds);
+  return rows.map((row): SystemUserRequestRow => {
+    if (!row.createdAt || !row.updatedAt) throw new Error("system_user_response_invalid");
+    return {
+      id: row.requestId, company_id: row.companyId,
+      initiating_owner_user_id: row.initiatingOwnerUserId, obligation: row.obligation,
+      external_ref: row.externalReference, altinn_request_id: row.providerRequestId,
+      status: row.status, confirm_url: row.confirmationUrl,
+      preflight_verified_at: row.preflightVerifiedAt, failure_code: row.failureCode,
+      operator_evidence_id: row.operatorEvidenceId, requested_at: row.requestedAt,
+      last_status_checked_at: row.lastStatusCheckedAt, accepted_at: row.acceptedAt,
+      created_at: row.createdAt, updated_at: row.updatedAt, resolved_at: row.resolvedAt,
+    };
+  });
 }
 
 export async function listProductionFilingState(companyIds: string[]) {
@@ -1154,19 +1164,17 @@ export async function listLaunchSignoffs(actorId?: string | null) {
       error: null,
     };
   }
-  const { data, error } = await supabase
-    .from("launch_signoffs")
-    .select(
-      "key, status, reviewer, reviewed_at, evidence_link, decision, recorded_by, updated_at",
-    )
-    .order("updated_at", { ascending: false });
-
-  return {
-    launchSignoffs: (data ?? []) as LaunchSignoffRow[],
-    isOperator,
-    isAdminOperator,
-    error: error?.message ?? null,
-  };
+  try {
+    const token = await backendAccessToken(supabase);
+    if (!token) throw new Error("session_required");
+    const launchSignoffs = (await loadLaunchSignoffs(token)).map((row): LaunchSignoffRow => ({
+      key: row.key, status: row.status, reviewer: row.reviewer, reviewed_at: row.reviewedAt,
+      evidence_link: row.evidenceLink, decision: row.decision, recorded_by: row.recordedBy, updated_at: row.updatedAt,
+    }));
+    return { launchSignoffs, isOperator, isAdminOperator, error: null };
+  } catch {
+    return { launchSignoffs: [] as LaunchSignoffRow[], isOperator, isAdminOperator, error: "launch_signoffs_query_failed" };
+  }
 }
 
 export async function listAuthorityOperations(actorId?: string | null) {
@@ -1186,16 +1194,19 @@ export async function listAuthorityOperations(actorId?: string | null) {
       error: null,
     };
   }
-  const { data, error } = await supabase
-    .from("authority_operations")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(10);
-  return {
-    operations: (data ?? []) as AuthorityOperationRow[],
-    isAdminOperator: true,
-    error: error ? "authority_operations_query_failed" : null,
-  };
+  try {
+    const token = await backendAccessToken(supabase);
+    if (!token) throw new Error("session_required");
+    const operations = (await loadAuthorityOperations(token)).map((row): AuthorityOperationRow => ({
+      id: row.operationId, operation: row.operation, actor_id: row.actorId,
+      status: row.status, request_hash: row.requestHash, result_code: row.resultCode,
+      authority_http_status: row.authorityHttpStatus, metadata: row.metadata,
+      created_at: row.createdAt, completed_at: row.completedAt,
+    }));
+    return { operations, isAdminOperator: true, error: null };
+  } catch {
+    return { operations: [] as AuthorityOperationRow[], isAdminOperator: true, error: "authority_operations_query_failed" };
+  }
 }
 
 export async function readOperatorSupportDashboard(

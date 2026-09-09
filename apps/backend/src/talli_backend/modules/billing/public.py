@@ -50,6 +50,23 @@ class SystemUserRequestReference(_UuidId):
     pass
 
 
+@dataclass(frozen=True, slots=True)
+class SuspendProductionPilotForAuthorityFailureCommand:
+    """Invalidate only existing linked authorization in the atomic owner workflow."""
+
+    company_id: CompanyId
+    owner_id: UserId
+    system_user_request_id: SystemUserRequestReference
+
+
+class AuthorityFailurePilotSuspension(Protocol):
+    """Transaction-bound Billing effect; never grants or reactivates a pilot."""
+
+    async def suspend_for_authority_failure(
+        self, command: SuspendProductionPilotForAuthorityFailureCommand,
+    ) -> None: ...
+
+
 class BillingPlan(StrEnum):
     FOUNDER = "founder"
     STANDARD = "standard"
@@ -1831,6 +1848,8 @@ class AnnualNotificationPersistence(Protocol):
 
 
 __all__ = [
+    "SuspendProductionPilotForAuthorityFailureCommand",
+    "AuthorityFailurePilotSuspension",
     "AnnualSupportCleanupRecoveryQuery",
     "AnnualSupportCleanupRecoveryPersistence",
     "AnnualSupportCleanupRecoveryOperations",

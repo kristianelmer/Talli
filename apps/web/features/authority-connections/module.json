@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "web-feature",
+  "name": "authority-connections",
+  "path": "apps/web/features/authority-connections",
+  "owner": "web:authority-connections",
+  "purpose": "Carry the existing owner System User lifecycle and cookie-only callback through the generated authenticated backend contract.",
+  "documentation": "apps/web/features/authority-connections/MODULE.md",
+  "publicEntryPoint": "@/features/authority-connections",
+  "publicImportPaths": [
+    "@/features/authority-connections",
+    "apps/web/features/authority-connections",
+    "apps/web/features/authority-connections/index.ts"
+  ],
+  "ownedRoutes": [
+    "/connections",
+    "/auth/systembruker/confirm"
+  ],
+  "apiOperations": [
+    "authorityConnectionsListSystemUserRequests",
+    "authorityConnectionsStartSystemUserRequest",
+    "authorityConnectionsRetrySystemUserRequest",
+    "authorityConnectionsReconcileSystemUserRequest",
+    "authorityConnectionsReconcileSystemUserCallback",
+    "authorityConnectionsListOperations",
+    "authorityConnectionsRunOperation"
+  ],
+  "dependencies": [],
+  "allowedImports": [
+    "#backend-configuration",
+    "@talli/talli-api-client"
+  ],
+  "cachePolicy": {
+    "default": "no-store",
+    "allowed": []
+  },
+  "directBrowserFlows": [],
+  "forbiddenResponsibilities": [
+    "Authority credentials, token delegation, provider HTTP or System User policy",
+    "Direct business persistence, filing rules or MFA authorization policy",
+    "Caller-supplied company/owner/provider verification facts"
+  ],
+  "tests": {
+    "callback": "tests/system_user_callback_route.test.mjs",
+    "transport": "apps/web/tests/authority-connections-transport.test.mjs",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

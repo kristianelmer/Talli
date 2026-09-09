@@ -165,15 +165,9 @@ status, billing_exempt, system_user_request_id, system_user_external_reference,
 starts_at, expires_at, evidence_reference, approved_by, created_at, updated_at"""
 _VERIFIED_PILOT_REQUEST_CTE = """verified_request as (
   select request.id, request.external_ref
-  from public.system_user_requests request
-  where request.id = %s::uuid and request.company_id = %s::uuid
-    and request.initiating_owner_user_id = %s::uuid
-    and request.obligation = 'aksjonaerregisteroppgaven'
-    and request.status = 'accepted'
-    and request.preflight_verified_at is not null
-    and public.company_access_is_accepted_owner_subject_v1(
-      request.company_id, request.initiating_owner_user_id
-    )
+  from authority_connections.lock_verified_pilot_request_v1(
+    %s::uuid, %s::uuid, %s::uuid
+  ) request
 )"""
 
 

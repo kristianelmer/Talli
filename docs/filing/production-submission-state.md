@@ -84,9 +84,10 @@ Adapter and release anchors:
 - `app/lib/authority-adapters.ts` defines the transport plans, reports RF-1086
   as implemented/disabled, and keeps the other transports
   unimplemented/disabled.
-- `app/lib/maskinporten.ts` and `app/lib/rf1086-authority-client.ts` implement
+- `apps/backend/src/talli_backend/adapters/maskinporten.py` and
+`apps/backend/src/talli_backend/adapters/rf1086_authority.py` implement
   the opaque-token and Skatteetaten XML transport without enabling production.
-- `app/lib/company-tax-return-authority-client.ts` implements test-only current
+- `apps/backend/src/talli_backend/authority_tools/company_tax_transport.py` implements test-only current
   document, validation, Altinn instance/upload, scan, and asynchronous result
   calls. The supported current-draft-bound flow completed TT02 instance upload,
   clean scan, preflight and asynchronous `validertOK`, personal owner signing,

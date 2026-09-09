@@ -31,7 +31,8 @@ Before production filing can be enabled:
 
 ## Submission Flow
 
-`app/lib/maskinporten.ts` and `app/lib/rf1086-authority-client.ts`
+`apps/backend/src/talli_backend/adapters/maskinporten.py` and
+`apps/backend/src/talli_backend/adapters/rf1086_authority.py`
 implement the real token/transport path; `holding_core.rf1086_submission`
 models its persisted state. Production invocation is still disabled.
 

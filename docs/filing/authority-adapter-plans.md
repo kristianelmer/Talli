@@ -31,7 +31,8 @@ Ordered outcomes:
 5. Archive official feedback, receipt, request hashes, and authority references.
 
 The real Maskinporten and Skatteetaten transport is implemented in
-`app/lib/maskinporten.ts` and `app/lib/rf1086-authority-client.ts`. The supported
+`apps/backend/src/talli_backend/adapters/maskinporten.py` and
+`apps/backend/src/talli_backend/adapters/rf1086_authority.py`. The supported
 no-activity flow was accepted in TT02 on 2026-07-14, including archive retrieval;
 see `evidence/rf1086-tt02-2026-07-14.md`.
 

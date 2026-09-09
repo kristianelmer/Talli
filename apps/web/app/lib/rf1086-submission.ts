@@ -89,65 +89,6 @@ export class Rf1086ProductionAdapterDisabledError extends Error {
   }
 }
 
-export type Rf1086ProductionEnvironment = {
-  environment: "production";
-  clientId: string;
-  keyId: string;
-  privateKeyPem: string;
-  scope: "skatteetaten:innrapporteringaksjonaerregisteroppgave";
-};
-
-type Rf1086ProductionEnvironmentInput = Record<string, string | undefined>;
-
-const RF1086_PRODUCTION_SCOPE = "skatteetaten:innrapporteringaksjonaerregisteroppgave" as const;
-
-function productionIdentifier(value: string | undefined, label: string) {
-  const normalized = value?.trim() ?? "";
-  if (!normalized || normalized !== value || /\s/u.test(normalized)) {
-    throw new Error(`${label} is required for RF-1086 production.`);
-  }
-  if (/test|tt02/iu.test(normalized)) {
-    throw new Error(`${label} must not reference a test credential.`);
-  }
-  return normalized;
-}
-
-export function rf1086ProductionEnvironment(
-  environment: Rf1086ProductionEnvironmentInput = process.env,
-): Rf1086ProductionEnvironment | null {
-  const flag = environment.TALLI_RF1086_PRODUCTION_ENABLED;
-  if (flag === undefined || flag === "" || flag === "false") return null;
-  if (flag !== "true") {
-    throw new Error("TALLI_RF1086_PRODUCTION_ENABLED must be the exact string true or false.");
-  }
-
-  const privateKeyPem = environment.TALLI_PROD_MASKINPORTEN_PRIVATE_KEY_PEM ?? "";
-  if (
-    !/^-----BEGIN (?:RSA )?PRIVATE KEY-----[\s\S]+-----END (?:RSA )?PRIVATE KEY-----\s*$/u
-      .test(privateKeyPem)
-  ) {
-    throw new Error("RF-1086 production private key must be inline PEM, never a file path or test key reference.");
-  }
-  const scope = environment.TALLI_PROD_RF1086_SCOPE;
-  if (scope !== RF1086_PRODUCTION_SCOPE) {
-    throw new Error(`RF-1086 production scope must be exactly ${RF1086_PRODUCTION_SCOPE}.`);
-  }
-
-  return {
-    environment: "production",
-    clientId: productionIdentifier(
-      environment.TALLI_PROD_MASKINPORTEN_CLIENT_ID,
-      "Production Maskinporten client id",
-    ),
-    keyId: productionIdentifier(
-      environment.TALLI_PROD_MASKINPORTEN_KEY_ID,
-      "Production Maskinporten key id",
-    ),
-    privateKeyPem,
-    scope,
-  };
-}
-
 export function assertRf1086SimulationConfirmations(confirmations: Rf1086SubmissionConfirmations) {
   if (!confirmations.authorityConfirmed) {
     throw new Error("Bekreft at du har rett til å sende inn på vegne av selskapet.");
@@ -236,16 +177,6 @@ export function rf1086SubmittedPayloadSnapshot(preview: FilingPreviewRow): Rf108
     hovedskjemaXml: preview.hovedskjema_xml,
     underskjemaXml: preview.underskjema_xml,
   };
-}
-
-export function productionRf1086AdapterEnabled(
-  environment: Rf1086ProductionEnvironmentInput = process.env,
-) {
-  try {
-    return rf1086ProductionEnvironment(environment) !== null;
-  } catch {
-    return false;
-  }
 }
 
 export function runRf1086SubmissionAdapter(request: Rf1086SubmissionAdapterRequest): Rf1086SubmissionResult {

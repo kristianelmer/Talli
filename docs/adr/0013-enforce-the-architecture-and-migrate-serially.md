@@ -345,3 +345,53 @@ completion; missing receipts remain pending.
 - Future changes to the frozen baseline require an issue that identifies affected
   ADRs/manifests, compatibility and migration impact, acceptance evidence, and
   explicit approval before implementation.
+
+## 2026-09-09 amendment: exact RF authority credential relocation
+
+During the Authority Connections stage, #150 requires all authority credentials
+and policy to leave TypeScript, while the two frozen RF-1086 submit/recovery
+coordinators still require delegated Maskinporten credentials. The existing
+authorization-helper/RLS exception does not cover their provider execution.
+Kristian approved the exact relocation in
+[#150 comment 5601323119](https://github.com/kristianelmer/Talli/issues/150#issuecomment-5601323119),
+against the complete
+[scope proposal](https://github.com/kristianelmer/Talli/issues/150#issuecomment-5601305923).
+
+Only while `authority_connections/#150` is current, the existing
+`sendApprovedRf1086ProductionFiling` and `reconcileRf1086ProductionAction`
+coordinators and their enumerated journal/feedback helpers may move into one
+registered frozen RF compatibility implementation behind named backend-system
+workflows. Authority Connections supplies its owned connection and credential
+ports; it acquires no RF statutory, approval, journal or feedback policy.
+`architecture/evidence/issues/150/rf-credential-relocation-2026-09-09.md` binds the
+eight exact future #151 facade tuples, two current #150 reads, transitive source
+functions, six SQL routines, five HTTP methods and existing cross-owner effects.
+The immutable compatibility baseline is unchanged. The two old web effects are
+removed together at cutover; no second writer or generic provider proxy remains.
+No other future tuple, occurrence count, resource, provider effect or rule changes.
+
+The generated web contracts accept only the original approval/submission identity
+and intent. Verified backend context supplies the company, owner, durable payload,
+provider endpoint and operation identity. Send preserves fresh filing MFA, exact
+current entitlement and approval/payload/release gates, with delegation before
+`begin_production_filing`; token failure starts no filing. Recovery preserves its
+original historical authority after entitlement expiry, terminal early returns,
+lease-before-delegation order and `finally` cleanup. It cannot add new-filing
+eligibility requirements, invoke the three filing POST methods or blindly retry an
+unknown mutation. Credentials, grants and bearer tokens never return to the web.
+
+The existing RF journal, statutory bytes, intent keys, response/error mappings,
+feedback classification, per-document GETs, five initial/one retry polling
+iterations, Documents stage/finalize/conditional compensation, contracted billing
+reader/lock seam and existing audit placement are preserved. The original RF
+compatibility implementation remains its single frozen owner until #151 absorbs
+and removes it. No RF migration or production-completion exit is implied.
+
+Characterization must compare these exact effects and operation ordering, including
+cross-company denial, stale authorization, token failure, ambiguous provider
+responses, lease loss, duplicates and recovery after entitlement expiry. RLS,
+count/hash reconciliation, rollback/recutover, generated contracts, browser
+journeys, independent reviews and two immutable complete gates remain required.
+This amendment changes no source-stage order and grants no provider activation,
+real filing, spending, named-company processing, production promotion or launch
+authority.

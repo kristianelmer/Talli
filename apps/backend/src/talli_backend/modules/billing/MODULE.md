@@ -15,7 +15,7 @@ entitlement, automatic renewal/refunds and every A1–A8 criterion before #194 o
 readiness row, and no future public dependency is declared before it exists.
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests","billing.annual_refund_requests","billing.annual_checkout_withdrawals","billing.annual_checkout_observation_principals","billing.annual_checkout_observation_authorities"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence","AnnualSupportReadPersistence","AnnualRefundRecoveryPersistence","AnnualSupportRefundRecoveryPersistence","AnnualNotificationAuthentication","AnnualNotificationPersistence","AnnualCheckoutObservationPersistence","AnnualSupportCleanupRecoveryPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
+{"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests","billing.annual_refund_requests","billing.annual_checkout_withdrawals","billing.annual_checkout_observation_principals","billing.annual_checkout_observation_authorities"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence","AnnualSupportReadPersistence","AnnualRefundRecoveryPersistence","AnnualSupportRefundRecoveryPersistence","AnnualNotificationAuthentication","AnnualNotificationPersistence","AnnualCheckoutObservationPersistence","AnnualSupportCleanupRecoveryPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
 -->
 
 ## Purpose and ownership
@@ -798,3 +798,9 @@ Recovery updates only the existing STOP observation and status. It requires one
 settlement row and rechecks current case authority before returning; late denial
 rolls back the change. Missing STOP returns not-found. The route cannot claim new
 cleanup, execute a provider operation, initiate a refund or change paid access.
+
+Authority verification failure uses `SuspendProductionPilotForAuthorityFailureCommand` through the `AuthorityFailurePilotSuspension` port. The backend system binds this fixed Billing mutation to the same transaction as the Authority Connections state change: lock the request, suspend its linked active pilots, apply the failed verification, and recheck the current owner before commit. This does not alter the paid entitlement policy.
+
+<!-- architecture-inventory
+{"ports":["AuthorityFailurePilotSuspension"]}
+-->

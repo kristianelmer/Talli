@@ -17,19 +17,29 @@
     {
       "name": "annual-provider-notification-intake",
       "purpose": "Authenticates exact provider delivery bytes and commits immutable technical receipts; no actor, purchase resolution, provider call or financial mutation; disabled by default with explicit designated-MT composition.",
-      "publicPackages": ["talli_backend.modules.billing.public"],
-      "routes": ["/api/v1/billing/annual/provider-notifications"]
+      "publicPackages": [
+        "talli_backend.modules.billing.public"
+      ],
+      "routes": [
+        "/api/v1/billing/annual/provider-notifications"
+      ]
     },
     {
       "name": "system-boundary-tracer",
       "purpose": "Returns a deterministic availability response from the independently deployable FastAPI boundary.",
-      "publicPackages": ["talli_backend.modules.system_boundary.public"],
-      "routes": ["/api/v1/system-boundary/tracer"]
+      "publicPackages": [
+        "talli_backend.modules.system_boundary.public"
+      ],
+      "routes": [
+        "/api/v1/system-boundary/tracer"
+      ]
     },
     {
       "name": "marketing-funnel-measurement",
       "purpose": "Accepts only consented bounded anonymous funnel codes through a private server transport, deletes withdrawn raw sessions, and returns aggregate-only reports to independently verified active operators.",
-      "publicPackages": ["talli_backend.modules.marketing_measurement.public"],
+      "publicPackages": [
+        "talli_backend.modules.marketing_measurement.public"
+      ],
       "routes": [
         "/api/v1/marketing-measurement/events",
         "/api/v1/marketing-measurement/withdrawals",
@@ -39,19 +49,29 @@
     {
       "name": "passive-validation-observation",
       "purpose": "After an admitted company-year outcome is settled, optionally writes one bounded invited-validation record through database-authoritative run and entitlement controls without changing the product response, business state or external calls.",
-      "publicPackages": ["talli_backend.modules.validation_observation.public"],
-      "routes": ["/api/v1/company-access/company-year-admissions"]
+      "publicPackages": [
+        "talli_backend.modules.validation_observation.public"
+      ],
+      "routes": [
+        "/api/v1/company-access/company-year-admissions"
+      ]
     },
     {
       "name": "company-access-context",
       "purpose": "Returns the authenticated, policy-authorized selected company context through FastAPI.",
-      "publicPackages": ["talli_backend.modules.company_access.public"],
-      "routes": ["/api/v1/company-access/context"]
+      "publicPackages": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "routes": [
+        "/api/v1/company-access/context"
+      ]
     },
     {
       "name": "company-year-eligibility-and-admission",
       "purpose": "Runs the public provisional company check, definitive manifest-owned interview, authenticated atomic company-year admission, and append-only post-admission safety rechecks through the company_access public package.",
-      "publicPackages": ["talli_backend.modules.company_access.public"],
+      "publicPackages": [
+        "talli_backend.modules.company_access.public"
+      ],
       "routes": [
         "/api/v1/company-access/eligibility/precheck",
         "/api/v1/company-access/eligibility/definitive",
@@ -62,7 +82,9 @@
     {
       "name": "company-access-onboarding-and-support",
       "purpose": "Retains the fail-closed legacy onboarding response, runs agreement reacceptance and accepted-member lookup, provides backend-only generated case-bound support grant, revoke, explicit open, and read workflows, and temporarily retains an authenticated always-empty deprecated operator-company search response for mixed-revision overlap.",
-      "publicPackages": ["talli_backend.modules.company_access.public"],
+      "publicPackages": [
+        "talli_backend.modules.company_access.public"
+      ],
       "routes": [
         "/api/v1/company-access/onboarding",
         "/api/v1/company-access/agreements/reaccept",
@@ -78,7 +100,9 @@
     {
       "name": "company-access-administration",
       "purpose": "Runs invitation, reviewer/read-only membership, cancellation, and deletion-review workflows atomically through the company_access public package.",
-      "publicPackages": ["talli_backend.modules.company_access.public"],
+      "publicPackages": [
+        "talli_backend.modules.company_access.public"
+      ],
       "routes": [
         "/api/v1/company-access/invitations",
         "/api/v1/company-access/invitations/lookup",
@@ -102,12 +126,16 @@
         "talli_backend.modules.ledger.public",
         "talli_backend.modules.shareholder_register_filing.public"
       ],
-      "routes": ["/api/v1/new-year-starts"]
+      "routes": [
+        "/api/v1/new-year-starts"
+      ]
     },
     {
       "name": "banking-reconciliation",
       "purpose": "Authenticates one verified actor and runs read-only consent, revocation, durable account sync and recovery, preview-first CSV/CAMT.053 fallback, canonical transaction and acceptance reads, and atomic suggestion acceptance with ledger posting through banking-owned public contracts.",
-      "publicPackages": ["talli_backend.modules.banking.public"],
+      "publicPackages": [
+        "talli_backend.modules.banking.public"
+      ],
       "routes": [
         "/api/v1/banking/connections",
         "/api/v1/banking/connections/{connection_id}/callback",
@@ -183,7 +211,9 @@
     {
       "name": "accounting-document-lifecycle",
       "purpose": "Authenticates one verified actor and owns validated document staging, exact private-object transfers, integrity finalization, tenant-scoped listing, AAL2 download, safe removal restoration, retention metadata, and document-only backup projections.",
-      "publicPackages": ["talli_backend.modules.documents.public"],
+      "publicPackages": [
+        "talli_backend.modules.documents.public"
+      ],
       "routes": [
         "/api/v1/documents/uploads",
         "/api/v1/documents/{document_id}/finalize",
@@ -196,7 +226,9 @@
     {
       "name": "ledger-posting-and-period-control",
       "purpose": "Authenticates one verified actor and runs intent-specific narrow-ledger posting, immutable source-owned full-year reconstruction and company-year close assessment, cross-capability writer coordination, deterministic cursor queries, the frozen opening-snapshot compatibility read, and compatibility locking without changing a future capability contract.",
-      "publicPackages": ["talli_backend.modules.ledger.public"],
+      "publicPackages": [
+        "talli_backend.modules.ledger.public"
+      ],
       "routes": [
         "/api/v1/ledger/entries",
         "/api/v1/ledger/opening-snapshots",
@@ -211,19 +243,33 @@
     {
       "name": "annual-billing-reads-and-cancellation",
       "purpose": "Authenticates annual owner reads and immediate local renewal cancellation from one verified actor; no provider, readiness or checkout activation.",
-      "publicPackages": ["talli_backend.modules.billing.public"],
-      "routes": ["/api/v1/billing/annual/snapshot", "/api/v1/billing/annual/purchases", "/api/v1/billing/annual/refund-snapshot", "/api/v1/billing/annual/refund-recovery-targets", "/api/v1/billing/annual/renewal-cancellations"]
+      "publicPackages": [
+        "talli_backend.modules.billing.public"
+      ],
+      "routes": [
+        "/api/v1/billing/annual/snapshot",
+        "/api/v1/billing/annual/purchases",
+        "/api/v1/billing/annual/refund-snapshot",
+        "/api/v1/billing/annual/refund-recovery-targets",
+        "/api/v1/billing/annual/renewal-cancellations"
+      ]
     },
     {
       "name": "annual-agreement-cleanup",
       "purpose": "Authenticates the current owner to recover one receipt-bound original agreement stop; provider is absent by default, and deferred or unknown outcomes are not confirmation.",
-      "publicPackages": ["talli_backend.modules.billing.public"],
-      "routes": ["/api/v1/billing/annual/agreement-cleanups"]
+      "publicPackages": [
+        "talli_backend.modules.billing.public"
+      ],
+      "routes": [
+        "/api/v1/billing/annual/agreement-cleanups"
+      ]
     },
     {
       "name": "billing-and-filing-entitlement",
       "purpose": "Authenticates one verified actor for annual checkout and original-intent recovery, historical billing cleanup, pilot administration and fail-closed filing entitlement; annual provider and source readiness are unavailable by default.",
-      "publicPackages": ["talli_backend.modules.billing.public"],
+      "publicPackages": [
+        "talli_backend.modules.billing.public"
+      ],
       "routes": [
         "/api/v1/billing/annual/checkout-withdrawals",
         "/api/v1/billing/annual/checkout-preparation",
@@ -254,8 +300,12 @@
     {
       "name": "annual-support-refund-recovery",
       "purpose": "Reconciles an already operation-bound refund under the current active admin's explicitly opened billing case and fresh MFA, preserving the original requester and intent; no new claim, binding or provider execution.",
-      "publicPackages": ["talli_backend.modules.billing.public"],
-      "routes": ["/api/v1/billing/annual/support/refund-recoveries"]
+      "publicPackages": [
+        "talli_backend.modules.billing.public"
+      ],
+      "routes": [
+        "/api/v1/billing/annual/support/refund-recoveries"
+      ]
     },
     {
       "name": "annual-refund-recovery",
@@ -266,16 +316,82 @@
       "routes": [
         "/api/v1/billing/annual/refund-recoveries"
       ]
+    },
+    {
+      "name": "authority-connections-owner-lifecycle",
+      "purpose": "Preserves the existing owner System User durable start, retry, read and reconcile, plus cookie-only server-authenticated callback recovery without a new fresh-MFA requirement. No provider credential leaves the backend.",
+      "publicPackages": [
+        "talli_backend.modules.authority_connections.public",
+        "talli_backend.modules.company_access.public"
+      ],
+      "routes": [
+        "/api/v1/authority-connections/system-user-requests",
+        "/api/v1/authority-connections/system-user-requests/retries",
+        "/api/v1/authority-connections/system-user-requests/reconciliations",
+        "/api/v1/authority-connections/system-user-callbacks"
+      ]
+    },
+    {
+      "name": "authority-connections-state",
+      "purpose": "Preserves the accepted-request failure effect atomically: lock the owned request, suspend its linked active Billing pilots through the Billing public port, apply the failed state, and recheck the current owner before commit.",
+      "publicPackages": [
+        "talli_backend.modules.authority_connections.public",
+        "talli_backend.modules.billing.public"
+      ],
+      "routes": [
+        "/api/v1/authority-connections/system-user-requests/retries",
+        "/api/v1/authority-connections/system-user-requests/reconciliations",
+        "/api/v1/authority-connections/system-user-callbacks"
+      ]
+    },
+    {
+      "name": "authority-operations",
+      "purpose": "Runs the two existing admin authority operations with fresh MFA at start, fixed production-off-by-default provider configuration, insert-once redacted audit and current-admin completion.",
+      "publicPackages": [
+        "talli_backend.modules.authority_connections.public"
+      ],
+      "routes": [
+        "/api/v1/authority-connections/operations"
+      ]
+    },
+    {
+      "name": "launch-signoff-records",
+      "purpose": "Reads existing technical launch signoffs for current operators and records them for current admins, preserving original fields and validation. Consequential filing adapters independently retain release checks.",
+      "publicPackages": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "routes": [
+        "/api/v1/operator-controls/launch-signoffs"
+      ]
+    },
+    {
+      "name": "legacy-rf1086-authority-relocation",
+      "purpose": "Runs only the two owner-approved frozen RF send and historical feedback coordinators through verified backend sessions, original RF journals and published Billing, Company Access and Documents contracts; RF ownership remains frozen until #151.",
+      "publicPackages": [
+        "talli_backend.modules.billing.public",
+        "talli_backend.modules.company_access.public",
+        "talli_backend.modules.documents.public"
+      ],
+      "routes": [
+        "/api/v1/legacy-rf1086/production-filings",
+        "/api/v1/legacy-rf1086/feedback-reconciliations"
+      ]
     }
   ],
   "operationalControlState": {
     "owner": "backend-system",
-    "tables": ["public.launch_signoffs"],
+    "tables": [
+      "public.launch_signoffs"
+    ],
     "releaseDecision": "deny-by-default",
     "consequentialAdapterRecheck": true
   },
   "technicalOwnership": {
-    "schemas": ["backend_system", "public", "annual_notification_inbox"],
+    "schemas": [
+      "backend_system",
+      "public",
+      "annual_notification_inbox"
+    ],
     "tables": [
       "annual_notification_inbox.receipts",
       "backend_system.annual_checkout_observation_work",
@@ -302,7 +418,8 @@
       "backend_system.validation_runs",
       "public.company_access_command_receipts",
       "public.launch_signoffs",
-      "public.notification_outbox"
+      "public.notification_outbox",
+      "backend_system.authority_connections_overlap_grants"
     ],
     "migrations": [
       "supabase/migrations/20260906204352_annual_notification_receipts.sql",
@@ -342,7 +459,9 @@
       "supabase/migrations/20260828103000_marketing_funnel_measurement.sql",
       "supabase/migrations/20260829070411_marketing_measurement_small_cell_threshold.sql",
       "supabase/migrations/20260829074916_validation_observation_authority.sql",
-      "supabase/migrations/20260829080345_marketing_measurement_consent_proof.sql"
+      "supabase/migrations/20260829080345_marketing_measurement_consent_proof.sql",
+      "supabase/migrations/20260909120610_authority_connections_capability.sql",
+      "supabase/migrations/20260909124946_backend_system_launch_signoffs.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },
@@ -539,52 +658,96 @@
       "adapter": "talli_backend.adapters.postgres_annual_notifications.PostgresAnnualNotificationInbox",
       "owner": "backend-system",
       "mode": "restricted actorless technical receipt insert/read only; no login grant, purchase lookup, financial write or worker"
+    },
+    {
+      "port": "SystemUserPersistence",
+      "adapter": "talli_backend.adapters.postgres_authority_connections.PostgresAuthorityConnectionsSession",
+      "owner": "backend-system",
+      "mode": "verified actor, restricted role, current owner RLS and short committed persistence operations"
+    },
+    {
+      "port": "SystemUserAuthorityProvider",
+      "adapter": "talli_backend.adapters.altinn_system_user.AltinnSystemUserAdapter",
+      "owner": "backend-system",
+      "mode": "fixed provider endpoints and scoped backend-only delegation, disabled if credentials unavailable"
+    },
+    {
+      "port": "SystemUserStateTransaction",
+      "adapter": "talli_backend.adapters.postgres_authority_connections._AuthorityStateTransaction",
+      "owner": "backend-system",
+      "mode": "same open transaction, request lock then state update and current-owner recheck"
+    },
+    {
+      "port": "AuthorityFailurePilotSuspension",
+      "adapter": "talli_backend.adapters.postgres_authority_connections._PilotSuspension",
+      "owner": "backend-system",
+      "mode": "Billing-owned fixed pilot suspension in the authority state transaction"
+    },
+    {
+      "port": "AuthorityOperationsPersistence",
+      "adapter": "talli_backend.adapters.postgres_authority_connections.PostgresAuthorityConnectionsSession",
+      "owner": "backend-system",
+      "mode": "verified active admin, fresh MFA at audit start and immutable insert-once operation"
+    },
+    {
+      "port": "AuthorityOperationsProvider",
+      "adapter": "talli_backend.adapters.altinn_authority_operations.AltinnAuthorityOperationsAdapter",
+      "owner": "backend-system",
+      "mode": "two fixed production-off-by-default operations, read before write and bounded readback"
     }
   ],
   "allowedDependencies": {
     "transport": [
-      "talli_backend.adapters.annual_billing_runtime",
       "__future__",
       "asyncio",
       "base64",
       "binascii",
-      "re",
       "collections",
       "datetime",
       "decimal",
-      "hashlib",
-      "os",
-      "secrets",
-      "time",
-      "typing",
-      "uuid",
       "fastapi",
       "fastapi.security",
+      "hashlib",
+      "os",
       "pydantic",
+      "re",
+      "secrets",
       "starlette",
+      "talli_backend.adapters.altinn_authority_operations",
+      "talli_backend.adapters.altinn_system_user",
+      "talli_backend.adapters.annual_billing_runtime",
+      "talli_backend.adapters.authority_callback_transport",
       "talli_backend.adapters.brreg_company_registry",
+      "talli_backend.adapters.postgres_authority_connections",
+      "talli_backend.adapters.postgres_launch_signoffs",
+      "talli_backend.adapters.postgres_legacy_rf1086_authority",
       "talli_backend.adapters.simulation_billing",
+      "talli_backend.adapters.supabase_annual_billing",
       "talli_backend.adapters.supabase_banking",
       "talli_backend.adapters.supabase_billing",
-      "talli_backend.adapters.supabase_annual_billing",
       "talli_backend.adapters.supabase_company_access",
       "talli_backend.adapters.supabase_corporate_governance",
       "talli_backend.adapters.supabase_documents",
-      "talli_backend.adapters.supabase_ledger",
       "talli_backend.adapters.supabase_investments",
+      "talli_backend.adapters.supabase_ledger",
       "talli_backend.adapters.supabase_marketing_measurement",
       "talli_backend.adapters.supabase_validation_observation",
+      "talli_backend.application.annual_billing",
+      "talli_backend.application.annual_notifications",
+      "talli_backend.application.authority_connections_session",
+      "talli_backend.application.authority_connections_workflow",
       "talli_backend.application.banking_session",
       "talli_backend.application.billing_session",
       "talli_backend.application.billing_workflow",
-      "talli_backend.application.annual_billing",
-      "talli_backend.application.annual_notifications",
       "talli_backend.application.corporate_governance_session",
       "talli_backend.application.corporate_governance_workflow",
       "talli_backend.application.investments_session",
       "talli_backend.application.investments_workflow",
+      "talli_backend.application.launch_signoffs",
       "talli_backend.application.ledger_workflow",
       "talli_backend.application.opening_snapshot_compatibility",
+      "talli_backend.compatibility.rf1086_authority_workflow",
+      "talli_backend.modules.authority_connections.public",
       "talli_backend.modules.banking.public",
       "talli_backend.modules.billing.public",
       "talli_backend.modules.company_access.public",
@@ -597,12 +760,20 @@
       "talli_backend.modules.system_boundary.public",
       "talli_backend.modules.validation_observation.public",
       "talli_backend.openapi",
-      "talli_backend.shared.kernel"
+      "talli_backend.shared.kernel",
+      "time",
+      "typing",
+      "uuid"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",
       "talli_backend.application.annual_data_compatibility",
+      "talli_backend.application.authority_connections_session",
       "talli_backend.application.opening_snapshot_compatibility",
+      "talli_backend.compatibility.rf1086_authority_workflow",
+      "talli_backend.modules.authority_connections.operations",
+      "talli_backend.modules.authority_connections.public",
+      "talli_backend.modules.authority_connections.service",
       "talli_backend.modules.banking.public",
       "talli_backend.modules.billing.public",
       "talli_backend.modules.company_access.public",
@@ -616,44 +787,56 @@
       "talli_backend.modules.validation_observation.public"
     ],
     "adapters": [
-      "psycopg.conninfo",
-      "talli_backend.adapters.postgres_annual_notifications",
-      "talli_backend.adapters.postgres_annual_observation",
-      "talli_backend.adapters.vipps_billing",
-      "talli_backend.adapters.vipps_webhook",
-      "talli_backend.application.annual_notifications",
       "__future__",
       "asyncio",
       "base64",
       "collections.abc",
+      "cryptography.hazmat.primitives",
+      "cryptography.hazmat.primitives.asymmetric",
+      "cryptography.hazmat.primitives.serialization",
       "dataclasses",
       "datetime",
       "decimal",
       "hashlib",
+      "hmac",
+      "httpx",
       "ipaddress",
       "json",
       "os",
       "psycopg",
+      "psycopg.conninfo",
       "psycopg.rows",
       "re",
       "talli_backend.adapters.bank_provider_http",
+      "talli_backend.adapters.maskinporten",
+      "talli_backend.adapters.postgres_annual_notifications",
+      "talli_backend.adapters.postgres_annual_observation",
+      "talli_backend.adapters.rf1086_authority",
       "talli_backend.adapters.simulation_billing",
-      "talli_backend.adapters.supabase_billing",
       "talli_backend.adapters.supabase_annual_billing",
+      "talli_backend.adapters.supabase_billing",
       "talli_backend.adapters.supabase_ledger",
+      "talli_backend.adapters.vipps_billing",
+      "talli_backend.adapters.vipps_webhook",
+      "talli_backend.application.annual_billing",
       "talli_backend.application.annual_data_compatibility",
+      "talli_backend.application.annual_notifications",
+      "talli_backend.application.authority_connections_session",
+      "talli_backend.application.authority_connections_state_workflow",
       "talli_backend.application.banking_session",
       "talli_backend.application.banking_workflow",
       "talli_backend.application.billing_session",
       "talli_backend.application.billing_workflow",
-      "talli_backend.application.annual_billing",
       "talli_backend.application.corporate_governance_session",
       "talli_backend.application.corporate_governance_workflow",
       "talli_backend.application.investments_session",
       "talli_backend.application.investments_workflow",
+      "talli_backend.application.launch_signoffs",
       "talli_backend.application.ledger_session",
       "talli_backend.application.ledger_workflow",
       "talli_backend.application.opening_snapshot_compatibility",
+      "talli_backend.compatibility.rf1086_authority_workflow",
+      "talli_backend.modules.authority_connections.public",
       "talli_backend.modules.banking.public",
       "talli_backend.modules.billing.public",
       "talli_backend.modules.company_access.public",
@@ -666,6 +849,7 @@
       "talli_backend.modules.shareholder_register_filing.public",
       "talli_backend.modules.validation_observation.public",
       "talli_backend.shared.kernel",
+      "time",
       "typing",
       "urllib.error",
       "urllib.parse",

@@ -275,6 +275,19 @@ const bankingOperations = {
     "bankingListSuggestionAcceptances",
   ],
 };
+const authorityConnectionsOperations = {
+  rfSend: ["/api/v1/legacy-rf1086/production-filings", "post", "legacyRf1086SendApprovedFiling"],
+  rfReconcile: ["/api/v1/legacy-rf1086/feedback-reconciliations", "post", "legacyRf1086ReconcileFeedback"],
+  listSignoffs: ["/api/v1/operator-controls/launch-signoffs", "get", "operatorControlsListLaunchSignoffs"],
+  recordSignoff: ["/api/v1/operator-controls/launch-signoffs", "post", "operatorControlsRecordLaunchSignoff"],
+  listOperations: ["/api/v1/authority-connections/operations", "get", "authorityConnectionsListOperations"],
+  runOperation: ["/api/v1/authority-connections/operations", "post", "authorityConnectionsRunOperation"],
+  list: ["/api/v1/authority-connections/system-user-requests", "get", "authorityConnectionsListSystemUserRequests"],
+  start: ["/api/v1/authority-connections/system-user-requests", "post", "authorityConnectionsStartSystemUserRequest"],
+  retry: ["/api/v1/authority-connections/system-user-requests/retries", "post", "authorityConnectionsRetrySystemUserRequest"],
+  reconcile: ["/api/v1/authority-connections/system-user-requests/reconciliations", "post", "authorityConnectionsReconcileSystemUserRequest"],
+  callback: ["/api/v1/authority-connections/system-user-callbacks", "post", "authorityConnectionsReconcileSystemUserCallback"],
+};
 const billingOperations = {
   annualSupportRefundRecovery: ["/api/v1/billing/annual/support/refund-recoveries", "post", "billingRecoverAnnualSupportRefund"],
   annualSupportCleanupRecovery: ["/api/v1/billing/annual/support/agreement-cleanup-recoveries", "post", "billingRecoverAnnualSupportCleanup"],
@@ -351,6 +364,11 @@ for (const [name, [operationPath, method, operationId]] of Object.entries(bankin
   }
 }
 for (const [name, [operationPath, method, operationId]] of Object.entries(billingOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(authorityConnectionsOperations)) {
   if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
     throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
   }
@@ -796,6 +814,14 @@ const bankingSchemas = Object.fromEntries([
   "SupportedBankDataFormat",
   "StartBankConnectionWire",
 ].map((name) => [name, contract.components.schemas[name]]));
+const authorityConnectionsSchemas = Object.fromEntries([
+  "LegacyRf1086SendCommandWire", "LegacyRf1086ReconcileCommandWire", "LegacyRf1086SendResultWire", "LegacyRf1086ReconcileResultWire",
+  "LaunchSignoffKey", "LaunchSignoffStatus", "LaunchSignoffCommandWire", "LaunchSignoffRecordWire", "LaunchSignoffListWire",
+  "AuthorityOperationKind", "AuthorityOperationStatus", "AuthorityOperationCode",
+  "AuthorityOperationCommandWire", "AuthorityOperationRecordWire", "AuthorityOperationListWire",
+  "AuthorityFailureCode", "SystemUserRequestStatus", "SystemUserCommandWire",
+  "SystemUserCallbackWire", "SystemUserResultWire", "SystemUserRecordWire", "SystemUserListWire",
+].map((name) => [name, contract.components.schemas[name]]));
 const billingSchemas = Object.fromEntries([
   "AnnualCheckoutCommandWire",
   "AnnualCheckoutObservationCommandWire",
@@ -878,6 +904,8 @@ ${Object.entries(corporateGovernanceSchemas).map(([name, schema]) => renderSchem
 ${Object.entries(bankingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(billingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
+${Object.entries(authorityConnectionsSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(marketingMeasurementSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
@@ -990,6 +1018,8 @@ ${Object.entries(corporateGovernanceSchemas).map(([name, schema]) => renderGuard
 ${Object.entries(bankingSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
 ${Object.entries(billingSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
+
+${Object.entries(authorityConnectionsSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
 ${Object.entries(marketingMeasurementSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
@@ -2634,6 +2664,80 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async legacyRf1086SendApprovedFiling(
+      body: LegacyRf1086SendCommandWire, request: TalliRequestOptions = {},
+    ): Promise<LegacyRf1086SendResultWire> {
+      return executeJson(baseUrl + "/api/v1/legacy-rf1086/production-filings", "POST", request, body, isLegacyRf1086SendResultWire);
+    },
+
+    async legacyRf1086ReconcileFeedback(
+      body: LegacyRf1086ReconcileCommandWire, request: TalliRequestOptions = {},
+    ): Promise<LegacyRf1086ReconcileResultWire> {
+      return executeJson(baseUrl + "/api/v1/legacy-rf1086/feedback-reconciliations", "POST", request, body, isLegacyRf1086ReconcileResultWire);
+    },
+
+    async operatorControlsListLaunchSignoffs(
+      request: TalliRequestOptions = {},
+    ): Promise<LaunchSignoffListWire> {
+      return executeJson(baseUrl + "/api/v1/operator-controls/launch-signoffs", "GET", request, undefined, isLaunchSignoffListWire);
+    },
+
+    async operatorControlsRecordLaunchSignoff(
+      body: LaunchSignoffCommandWire, request: TalliRequestOptions = {},
+    ): Promise<LaunchSignoffRecordWire> {
+      return executeJson(baseUrl + "/api/v1/operator-controls/launch-signoffs", "POST", request, body, isLaunchSignoffRecordWire);
+    },
+
+    async authorityConnectionsListOperations(
+      request: TalliRequestOptions = {},
+    ): Promise<AuthorityOperationListWire> {
+      return executeJson(baseUrl + "/api/v1/authority-connections/operations", "GET", request, undefined, isAuthorityOperationListWire);
+    },
+
+    async authorityConnectionsRunOperation(
+      body: AuthorityOperationCommandWire, request: TalliRequestOptions = {},
+    ): Promise<AuthorityOperationRecordWire> {
+      return executeJson(baseUrl + "/api/v1/authority-connections/operations", "POST", request, body, isAuthorityOperationRecordWire);
+    },
+
+    async authorityConnectionsListSystemUserRequests(
+      companyIds: string[], request: TalliRequestOptions = {},
+    ): Promise<SystemUserListWire> {
+      const query = new URLSearchParams();
+      for (const companyId of companyIds) query.append("companyIds", companyId);
+      return executeJson(baseUrl + "/api/v1/authority-connections/system-user-requests?" + query,
+        "GET", request, undefined, isSystemUserListWire);
+    },
+
+    async authorityConnectionsStartSystemUserRequest(
+      body: SystemUserCommandWire, request: TalliRequestOptions = {},
+    ): Promise<SystemUserResultWire> {
+      return executeJson(baseUrl + "/api/v1/authority-connections/system-user-requests",
+        "POST", request, body, isSystemUserResultWire);
+    },
+
+    async authorityConnectionsRetrySystemUserRequest(
+      body: SystemUserCommandWire, request: TalliRequestOptions = {},
+    ): Promise<SystemUserResultWire> {
+      return executeJson(baseUrl + "/api/v1/authority-connections/system-user-requests/retries",
+        "POST", request, body, isSystemUserResultWire);
+    },
+
+    async authorityConnectionsReconcileSystemUserRequest(
+      body: SystemUserCommandWire, request: TalliRequestOptions = {},
+    ): Promise<SystemUserResultWire> {
+      return executeJson(baseUrl + "/api/v1/authority-connections/system-user-requests/reconciliations",
+        "POST", request, body, isSystemUserResultWire);
+    },
+
+    async authorityConnectionsReconcileSystemUserCallback(
+      body: SystemUserCallbackWire, proof: string, request: TalliRequestOptions = {},
+    ): Promise<SystemUserResultWire> {
+      return executeJson(baseUrl + "/api/v1/authority-connections/system-user-callbacks", "POST",
+        { ...request, headers: { ...request.headers, "X-Talli-Authority-Callback-Proof": proof } },
+        body, isSystemUserResultWire);
     },
 
     async billingPrepareAnnualCheckout(

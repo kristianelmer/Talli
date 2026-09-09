@@ -99,6 +99,7 @@ def session(setup, *, actor=None, fresh=True, current=True, session_type=Postgre
         json.dumps(
             {
                 "sub": str(who.subject),
+                "role": "authenticated",  # SupabaseLedgerAdapter._verified_actor guarantees this claim.
                 "aal": "aal2",
                 "amr": [
                     {"method": "totp", "timestamp": database_now().timestamp() - (1 if fresh else 7200)}

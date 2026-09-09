@@ -1,5 +1,4 @@
 import type { AuthorityObligation } from "./authority-permission.ts";
-import { productionRf1086AdapterEnabled } from "./rf1086-submission.ts";
 
 export type AuthorityAdapterCapability = {
   productionImplemented: boolean;
@@ -47,12 +46,14 @@ export class AuthorityProductionAdapterDisabledError extends Error {
 }
 
 export function currentAuthorityAdapterCapabilities(
-  environment: Record<string, string | undefined> = process.env,
+  _environment?: Record<string, string | undefined>,
 ): AuthorityAdapterCapabilities {
   return {
     aksjonaerregisteroppgaven: {
       productionImplemented: true,
-      productionEnabled: productionRf1086AdapterEnabled(environment),
+      // Credential readiness is backend-only. This unused legacy default cannot
+      // infer a production release from the web environment. #151 removes it.
+      productionEnabled: false,
     },
     skattemelding: {
       productionImplemented: false,

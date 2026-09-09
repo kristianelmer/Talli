@@ -1,29 +1,18 @@
 import { NextResponse } from "next/server.js";
+import type { SystemUserResultWire } from "@talli/talli-api-client";
+import { SYSTEM_USER_COOKIE, callbackStateForResult } from "../../../lib/system-user-presentation.ts";
+import { systemUserCallbackProof } from "../../../lib/authority-callback-transport.ts";
 
-import {
-  SYSTEM_USER_COOKIE,
-  callbackStateForResult,
-  createProductionSystemUserFlowDependencies,
-  reconcileSystemUserRequest,
-  systemUserRequestRecordFromRow,
-  type SystemUserFlowResult,
-} from "../../../lib/system-user-flow.ts";
-type CallbackSupabaseClient = any;
 type CallbackCookieStore = {
   get(name: string): { value: string } | undefined;
   delete(options: { name: string; path: string }): void;
 };
-
 type SystemUserCallbackDependencies = {
   siteOrigin: string;
-  createSupabaseClient(): Promise<CallbackSupabaseClient>;
+  getAccessToken(): Promise<string | null>;
   getCookieStore(): Promise<CallbackCookieStore>;
-  loadCompany(companyId: string): Promise<{ id: string; org_number: string; role: "owner" | "reviewer" | "read_only" } | null>;
-  reconcileRequest(input: {
-    supabase: CallbackSupabaseClient;
-    request: Record<string, unknown>;
-    orgNumber: string;
-  }): Promise<SystemUserFlowResult>;
+  createProof(requestId: string, accessToken: string): string;
+  reconcileRequest(accessToken: string, requestId: string, proof: string): Promise<SystemUserResultWire>;
 };
 
 export function systemUserSiteOrigin(
@@ -52,29 +41,12 @@ export function systemUserSiteOrigin(
   return parsed.origin;
 }
 
+
 function manualRedirect(siteOrigin: string): NextResponse {
   return NextResponse.redirect(new URL("/connections?systembruker=manual", siteOrigin));
 }
 
-async function defaultReconcileRequest(input: {
-  supabase: CallbackSupabaseClient;
-  request: Record<string, unknown>;
-  orgNumber: string;
-}): Promise<SystemUserFlowResult> {
-  const { createSupabaseServiceRoleClient } = await import("../../../lib/supabase/server.ts");
-  const service = createSupabaseServiceRoleClient();
-  const request = systemUserRequestRecordFromRow(input.request, input.orgNumber);
-  const dependencies = createProductionSystemUserFlowDependencies({
-    ownerClient: input.supabase as any,
-    serviceClient: service as any,
-    orgNumber: input.orgNumber,
-  });
-  return reconcileSystemUserRequest(dependencies, request);
-}
-
-export function createSystemUserCallbackHandler(
-  dependencies: SystemUserCallbackDependencies,
-) {
+export function createSystemUserCallbackHandler(dependencies: SystemUserCallbackDependencies) {
   return async function systemUserCallback(_request: Request): Promise<NextResponse> {
     let cookieStore: CallbackCookieStore | null = null;
     try {
@@ -83,37 +55,12 @@ export function createSystemUserCallbackHandler(
       if (!cookie || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(cookie.value)) {
         return manualRedirect(dependencies.siteOrigin);
       }
-
-      const supabase = await dependencies.createSupabaseClient();
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) return manualRedirect(dependencies.siteOrigin);
-
-      const { data: request, error: requestError } = await supabase
-        .from("system_user_requests")
-        .select("id,company_id,initiating_owner_user_id,obligation,external_ref,altinn_request_id,status,confirm_url,preflight_verified_at,failure_code")
-        .eq("id", cookie.value)
-        .eq("initiating_owner_user_id", user.id)
-        .maybeSingle();
-      if (
-        requestError
-        || !request
-        || request.id !== cookie.value
-        || request.initiating_owner_user_id !== user.id
-      ) {
-        return manualRedirect(dependencies.siteOrigin);
-      }
-
-      const company = await dependencies.loadCompany(request.company_id);
-      if (!company || company.id !== request.company_id || company.role !== "owner") {
-        return manualRedirect(dependencies.siteOrigin);
-      }
-
-      const result = await dependencies.reconcileRequest({
-        supabase,
-        request,
-        orgNumber: company.org_number,
-      });
-      if (result.companyId !== request.company_id || result.requestId !== request.id) {
+      const accessToken = await dependencies.getAccessToken();
+      if (!accessToken) return manualRedirect(dependencies.siteOrigin);
+      const requestId = cookie.value.toLowerCase();
+      const proof = dependencies.createProof(requestId, accessToken);
+      const result = await dependencies.reconcileRequest(accessToken, requestId, proof);
+      if (result.requestId !== requestId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(result.companyId)) {
         return manualRedirect(dependencies.siteOrigin);
       }
       const destination = new URL("/connections", dependencies.siteOrigin);
@@ -123,30 +70,31 @@ export function createSystemUserCallbackHandler(
     } catch {
       return manualRedirect(dependencies.siteOrigin);
     } finally {
-      cookieStore?.delete({
-        name: SYSTEM_USER_COOKIE.name,
-        path: SYSTEM_USER_COOKIE.options.path,
-      });
+      cookieStore?.delete({ name: SYSTEM_USER_COOKIE.name, path: SYSTEM_USER_COOKIE.options.path });
     }
   };
 }
 
 export async function GET(request: Request) {
-  const callbackHandler = createSystemUserCallbackHandler({
+  const handler = createSystemUserCallbackHandler({
     siteOrigin: systemUserSiteOrigin(),
-    async createSupabaseClient() {
+    async getAccessToken() {
       const { createSupabaseServerClient } = await import("../../../lib/supabase/server.ts");
-      return createSupabaseServerClient();
+      const supabase = await createSupabaseServerClient();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) return null;
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.access_token ?? null;
     },
     async getCookieStore() {
       const { cookies } = await import("next/headers.js");
       return cookies();
     },
-    async loadCompany(companyId) {
-      const { loadAcceptedMembershipCompany } = await import("../../../lib/company-access-context.ts");
-      return loadAcceptedMembershipCompany(companyId);
+    createProof: systemUserCallbackProof,
+    async reconcileRequest(accessToken, requestId, proof) {
+      const { reconcileOwnerSystemUserCallback } = await import("../../../../features/authority-connections/index.ts");
+      return reconcileOwnerSystemUserCallback(accessToken, requestId, proof);
     },
-    reconcileRequest: defaultReconcileRequest,
   });
-  return callbackHandler(request);
+  return handler(request);
 }

@@ -45,11 +45,11 @@ test("web document paths retain only the one backend-issued signed upload", asyn
 test("other producers retain a DocumentId relationship and never create document metadata", async () => {
   const [actions, feedback, signedArtifacts] = await Promise.all([
     read("../apps/web/app/actions.ts"),
-    read("../apps/web/app/lib/rf1086-feedback-persistence.ts"),
+    read("../apps/backend/src/talli_backend/adapters/postgres_legacy_rf1086_authority.py"),
     read("../apps/web/app/lib/corporate-signed-artifacts.ts"),
   ]);
   assert.match(actions, /linkedTo: `corporate_decision:\$\{(?:input\.decision\.request_id|setup\.decisionId)\}`/u);
-  assert.match(actions, /linkedTo: `production_filing_submission:\$\{input\.submissionId\}`/u);
+  assert.match(feedback, /production_filing_submission:/u);
   assert.doesNotMatch(feedback, /\.from\(["']documents["']\)|storage\.from/u);
   assert.doesNotMatch(signedArtifacts, /\.from\(["']documents["']\)|storage\.from/u);
 });

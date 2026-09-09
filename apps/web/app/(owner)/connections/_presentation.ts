@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { SystemUserRequestRow } from "../../lib/supabase/server";
-import type { SystemUserRequestStatus } from "../../lib/system-user-requests";
+import type { SystemUserRequestStatus } from "@talli/talli-api-client";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const PRODUCTION_CONFIRMATION_PREFIX =
