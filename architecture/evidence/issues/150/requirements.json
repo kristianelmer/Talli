@@ -129,7 +129,7 @@
     {
       "id": "GH-150-A7",
       "requirement": "The complete `authority_connections` stage exit criteria from issue #132 pass before filing migration begins.",
-      "status": "linked-complete-gates-passed-stage-registration-and-protected-integration-pending",
+      "status": "local-stage-exit-passed-protected-integration-pending",
       "plannedEvidencePaths": [
         "architecture/evidence/issues/150/requirements.json",
         "architecture/evidence/customer-ready-gates",
@@ -154,7 +154,7 @@
       "transcriptDigest": "sha256:9d827819b7c594428c2bf0c7b766118f0fcc8cf0153577a6b56327c339bf7922",
       "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
       "executedAt": "2026-09-09T17:36:29.132Z",
-      "independentValidation": "schema, exact 11 checks/zero exits, commands/order/markers, canonical JSON digest, raw transcript and tested producer verified before receipt commit",
+      "independentValidation": "Schema, exact 11 checks/zero exits, commands/order/markers, canonical JSON/raw transcript/tested producer digests and linked ordered ancestry independently verified; committed bytes and final registry are checked again at the candidate.",
       "validationLimits": {
         "backendBoundary": "2486 passed, 2 optional database adapter skips, 764 database cases deselected; dedicated PostgreSQL lanes passed",
         "standaloneValidation": "17 passed, 1 optional database adapter skip; dedicated PostgreSQL rehearsal passed",
@@ -178,7 +178,7 @@
       "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
       "startedAt": "2026-09-09T17:39:40.053Z",
       "executedAt": "2026-09-09T17:57:29.262Z",
-      "independentValidation": "Linked pair independently verified before R2 receipt commit: exact schema/checks/commands/markers/hashes and ordered ancestry; final committed-pair and registry review pending.",
+      "independentValidation": "Schema, exact 11 checks/zero exits, commands/order/markers, canonical JSON/raw transcript/tested producer digests and linked ordered ancestry independently verified; committed bytes and final registry are checked again at the candidate.",
       "validationLimits": {
         "backendBoundary": "2486 passed, 2 optional database adapter skips, 764 database cases deselected; dedicated PostgreSQL lanes passed",
         "standaloneValidation": "17 passed, 1 optional database adapter skip; dedicated PostgreSQL rehearsal passed",
@@ -187,7 +187,8 @@
         "finalAuthorityBrowser": "11 passed, 0 skipped",
         "advisors": "0 blocking findings, 41 existing performance warnings",
         "productionDependencies": "root and web audits each reported 0 vulnerabilities"
-      }
+      },
+      "evidenceCommittedRevision": "339a51c3dd65458268840cc141eaea211b8b841d"
     }
   ],
   "localValidation": [
@@ -339,13 +340,12 @@
       "localTranscript": "/tmp/talli-150-cleanup-browser-proof.log"
     }
   ],
-  "closeState": "OPEN; independent source review and both linked immutable-revision complete gates passed. Stage-exit registration, final committed-evidence review and protected/exact-main integration remain pending.",
+  "closeState": "OPEN; local stage exit and both linked complete gates passed. The registry is ready for #151, whose claim and implementation remain pending #150 protected integration and exact-main Release/Preview verification.",
   "taskId": "01a08515-2cd8-7093-8a34-3b9b3d458840",
   "branch": "codex/issue-150-authority-01a08515",
   "implementationClaim": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5601486395",
   "progressCheckedAt": "2026-09-09T17:59:16.328087+00:00",
   "remainingWork": [
-    "Stage-exit registration and independent final committed-pair/evidence-only delta review",
     "Protected integration and exact-main Release/Preview verification"
   ],
   "independentReview": {
@@ -376,5 +376,15 @@
       "exitGateCredit": false,
       "correction": "The AU/RF disposable janitors share the established Billing cleanup pattern: borrow missing receipt-owner DELETE only within the cleanup transaction, delete the exact fixture company, and restore the original ACL. Runtime/production SQL and executor privileges are unchanged."
     }
-  ]
+  ],
+  "stageExit": {
+    "capability": "authority_connections",
+    "issue": "#150",
+    "localVerdict": "pass",
+    "nextRegistryCapability": "shareholder_register_filing",
+    "nextRegistryIssue": "#151",
+    "nextStageClaimed": false,
+    "scope": "Registry advances after the two complete gates; no #151 implementation or claim begins before #150 protected integration and exact-main verification.",
+    "evidenceReview": "Independent exact-delta review passed with no findings: ed7 through the final registry candidate changes only gate receipts, this ledger and compatibility stage-exit metadata; application code, baseline and future scopes are unchanged."
+  }
 }

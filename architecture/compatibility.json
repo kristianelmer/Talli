@@ -118,8 +118,8 @@
         ]
       }
     ],
-    "currentCapability": "authority_connections",
-    "currentIssue": "#150",
+    "currentCapability": "shareholder_register_filing",
+    "currentIssue": "#151",
     "status": "active",
     "exitedCapabilities": [
       "company_access",
@@ -128,7 +128,8 @@
       "investments",
       "documents",
       "corporate_governance",
-      "billing"
+      "billing",
+      "authority_connections"
     ],
     "completedStages": [
       {
@@ -258,6 +259,24 @@
             "revision": "b137088c5cb6d6abd66761c05b332e318ab8b05d",
             "evidencePath": "architecture/evidence/customer-ready-gates/b137088c5cb6d6abd66761c05b332e318ab8b05d.json",
             "evidenceDigest": "sha256:f3beb3a1f39c0d20ec52509f30f66db1b2f7677c026c8f41142d5abe7249ae9f"
+          }
+        ]
+      },
+      {
+        "capability": "authority_connections",
+        "removalIssues": [
+          "#150"
+        ],
+        "gates": [
+          {
+            "revision": "ed7c3c4000f910e10a5d90dd91be5885bccc9a94",
+            "evidencePath": "architecture/evidence/customer-ready-gates/ed7c3c4000f910e10a5d90dd91be5885bccc9a94.json",
+            "evidenceDigest": "sha256:f10f5ce3c5258cfb0db67ae25da90f98896b2e6f90facfd3fa5ca309ccaa6da2"
+          },
+          {
+            "revision": "538a99b387a504a3b99e9e8e77e3d57d8376e3c6",
+            "evidencePath": "architecture/evidence/customer-ready-gates/538a99b387a504a3b99e9e8e77e3d57d8376e3c6.json",
+            "evidenceDigest": "sha256:ec555252389867487a8e7685f14eb2643428f05b19226ad795ab740421a3521b"
           }
         ]
       }

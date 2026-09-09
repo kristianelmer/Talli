@@ -113,3 +113,23 @@ company deletion/restoration, and the independent observer's baseline after a
 late failure and rollback. The missing-DELETE cases failed before the correction.
 The failed attempt is retained as a redacted diagnostic transcript, with no
 immutable-gate credit.
+
+## Linked gates and final stage-exit metadata
+
+Both complete gates passed at `ed7c3c4000f910e10a5d90dd91be5885bccc9a94`
+and `538a99b387a504a3b99e9e8e77e3d57d8376e3c6`; R2 names R1 as its
+previous passing revision. Independent verification checked the exact eleven
+checks, commands and transcript markers, schema, canonical receipt digests, raw
+transcript digests, tested producer hashes and ordered ancestry. R1 evidence is
+stored in `538a99b387a504a3b99e9e8e77e3d57d8376e3c6`; R2 evidence is stored
+in `339a51c3dd65458268840cc141eaea211b8b841d`. Recorded optional adapter
+skips and 41 existing performance advisor warnings are preserved in the ledger.
+
+Independent source review of the final delta found only evidence/ledger and
+registry stage-exit changes since the tested implementation. Application code,
+SQL, tests, gate producer, frozen baseline, future facade scopes, migration order
+and previous stage attestations are unchanged. The registry appends the two
+Authority Connections receipts and advances its pointer to #151. This does not
+claim or implement #151; protected integration and exact-main verification must
+finish first. Final committed-pair validation and hosted integration results are
+bound to the eventual exact candidate/main in the canonical issue receipt.
