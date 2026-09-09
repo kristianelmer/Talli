@@ -230,6 +230,7 @@ test("browser owner cleanup removes tracked sources before company and user", as
     "production_filing_submissions",
     "filing_approval_snapshots",
     "production_pilot_entitlements",
+    "system_user_requests",
     "company_deletion_reviews",
     "bank_suggestion_acceptances",
     "bank_transactions",

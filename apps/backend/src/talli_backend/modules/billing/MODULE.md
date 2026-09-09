@@ -1,16 +1,30 @@
 # Billing backend capability
 
+## Approved interim and final billing scope
+
+The [9 September 2026 owner decision](https://github.com/kristianelmer/Talli/issues/192#issuecomment-5599100453)
+approves the exact legacy retirement and source-order option B. #192 stays open.
+Implemented historical/annual recorded recovery and the unavailable acquisition
+and renewal defaults form the interim checkpoint. It requires independent review,
+two linked immutable complete gates and protected-main plus exact-main
+Release/Preview before #150 may start. Billing implementation then pauses while
+source owners execute serially. After #149 and Company Access year prerequisite
+#208, #192 must bind actual source contracts and complete ordinary paid
+entitlement, automatic renewal/refunds and every A1–A8 criterion before #194 or
+#197's billing tranche. No absent source is replaced with a fixture or legacy
+readiness row, and no future public dependency is declared before it exists.
+
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements"],"ports":["BillingPersistence","BillingPaymentProvider"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
+{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests","billing.annual_refund_requests","billing.annual_checkout_withdrawals","billing.annual_checkout_observation_principals","billing.annual_checkout_observation_authorities"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence","AnnualSupportReadPersistence","AnnualRefundRecoveryPersistence","AnnualSupportRefundRecoveryPersistence","AnnualNotificationAuthentication","AnnualNotificationPersistence","AnnualCheckoutObservationPersistence","AnnualSupportCleanupRecoveryPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
 -->
 
 ## Purpose and ownership
 
-`billing` owns the legacy launch prices, subscription state, filing-package
-payments and refunds, provider outcome records, exact production-pilot billing
-exemptions, and the single filing-entitlement decision consumed by readiness and
-production release gates. Its three tables are private capability relations;
-browser and presentation code never query or mutate them directly.
+`billing` owns annual offers, purchases, renewals, refunds and provider evidence,
+plus historical billing records, cleanup and exact production-pilot exemptions.
+Its relations are private capability storage; browser and presentation code never
+query or mutate them directly. The billing entitlement decision is consumed by
+readiness and production release gates.
 
 The capability does not own filing content, filing readiness, authority,
 company membership, authentication, or launch signoffs. Those facts arrive
@@ -20,10 +34,12 @@ rather than exposing its policy for callers to reimplement.
 ## Public interface
 
 Import only `talli_backend.modules.billing.public`. Commands carry a company,
-verified actor, correlation ID, and durable idempotency key. Pricing is selected
-server-side: founder companies 1–100 retain NOK 29/month and NOK 299/filing;
-standard accounts retain NOK 49/month and NOK 499/filing until #192 changes the
-commercial model.
+verified actor, correlation ID, and durable idempotency key. Historical account
+prices remain stored evidence. New account configuration, subscription activation
+and filing-package purchases are retired; their deprecated HTTP endpoints reject
+new acquisition with `BILLING_LEGACY_ACQUISITION_RETIRED`. Exact historical payment
+replay and bounded reconciliation remain available. Current generated web clients
+expose annual history/cancellation and legacy cleanup, without acquisition methods.
 
 The exported commands are `ActivateSubscriptionCommand`,
 `CancelSubscriptionCommand`, `ConfigureBillingAccountCommand`,
@@ -47,13 +63,40 @@ billing exemption. Missing data and dependency failures fail closed.
 
 `apps/backend/tests/test_billing_equivalence.py` executes a frozen semantic
 oracle from base revision `4f807fe4239a208c573054b14cbed478277d1a2e`
-against the canonical service with the same IDs, clock, plans, states, and
-failure injection. It compares defaults, prices, coded-error mappings, every
-legacy gate, provider event facts, mutable account effects, duplicate replay,
-retry quarantine, and production-pilot identity and time bounds. Static and
-database tests preserve the matching audit facts, RLS, rollback, and recutover.
+against the canonical service with the same IDs and clock. Issue #192 deliberately
+supersedes account resets, legacy acquisition and legacy paid entitlement. The
+oracle now verifies that difference while preserving historical payment facts,
+cleanup effects, duplicate replay, recovery quarantine and exact pilot identity
+and time bounds. Database tests retain tenant, fresh-MFA, rollback and recutover
+coverage by seeding genuine predecessor history before the retirement migration.
 
 ## Ports and adapters
+
+`AnnualCheckoutOperations.prepare_checkout` exposes transient owner checkout
+availability through `AnnualCheckoutPreparationQuery` and
+`AnnualCheckoutPreparation`. `AnnualCheckoutPersistence` first reads a narrow
+pending/paid `AnnualCheckoutPurchaseReference`, including authorization on empty
+results. An existing purchase bypasses new-sale provider/source checks and carries
+no current offer or consent. Otherwise a short transaction locks company/year
+before eligibility, rechecks occupancy, validates the same owned purchase-basis
+projection and independent readiness verifier as claim, and rechecks owner/fresh
+MFA after waits. The exact source projection is reread after verification. It
+creates no IDs, reservations, purchase records, provider effects or entitlement.
+`annual_billing_consent_version` is the separate billing-owned version used for
+preparation, new POST validation and persistence. POST always revalidates new
+sales and preserves original-key recovery before current offer/source checks.
+The additive preparation GET has its own response; existing HTTP responses remain
+unchanged for deployment overlap. The runtime source resolver and independent
+database verifier remain unavailable by default.
+
+The #192 annual-offer work introduces `AnnualBillingOffer`,
+`AnnualRefundFacts`, `AnnualRefundReason`, `AnnualRefundDecision`,
+`AnnualRenewalFacts`, and `AnnualRenewalDecision`. The internal `annual_policy`
+module pins the NOK 1,490 gross company-year offer and derives renewal notice,
+paid/read-export dates, and automatic refund amounts from recorded facts. Amounts
+are integer minor units; Norwegian calendar dates govern month and notice limits.
+These policy types alone do not initiate payment. The #192 acceptance record tracks the remaining persistence/API/provider/web
+cutover and distinguishes local conformance from actual Vipps merchant-test proof.
 
 `BillingPersistence` owns all reads and writes to `billing.*`. The Supabase
 adapter authenticates the bearer token, scopes reads through RLS, and performs
@@ -66,8 +109,17 @@ its original company, kind, year, obligation, amount, provider, and key. Only th
 winning insertion executes. A retry of an unfinished event calls read-only
 `reconcile` with that stored intent, under a bounded deadline, and never issues
 another payment. Unknown results remain pending without granting entitlement.
-Confirmed outcomes and account changes settle atomically; terminal events replay
-without reapplying account effects. Changed filing obligations reject key reuse.
+Confirmed cleanup outcomes and their account changes settle atomically. Historical
+acquisition reconciliation records the outcome without activating paid account
+flags. A new historical refund can use one confirmed original payment in the exact
+company/year/provider scope when those flags are false; its recorded amount is
+used, and missing or ambiguous originals fail closed. A database account lock
+reserves one new historical refund atomically. Any prior refund intent blocks a
+different key; the original key still reconciles. New recovery-based claims bind
+the immutable original event/reference and reject amount/provider/year changes.
+Settlement preserves that binding. Cleanup controls remain
+reachable and the backend validates the request. Terminal events replay without
+reapplying account effects. Changed filing obligations reject key reuse.
 
 `BillingPilotCaseProfile` types the closed pilot record/administration scope.
 Entitlement queries retain open strings so an unknown profile continues to fall
@@ -90,7 +142,7 @@ before any paid action or production activation.
 
 `20260905010000_billing_capability.sql` moves the physical tables into the
 private schema and temporarily exposes security-invoker views for deployment
-overlap. `20260905013000_billing_contract.sql` rewrites downstream database
+overlap. `supabase/contract-migrations/20260905013000_billing_contract.sql` rewrites downstream database
 readers and removes those views plus the obsolete write RPC. Matching rollback
 artifacts restore the immediately preceding topology; the lifecycle test
 rehearses expansion and contract rollback/cutover twice. Durable command receipts
@@ -106,6 +158,643 @@ migration after expansion on recutover. This adds no live provider or paid I/O.
 
 Persistence bounds the entire connection/transaction/commit scope to ten seconds,
 with five-second statement and one-second lock limits. Timeout failures leave
-committed intents available for later reconciliation; an uncommitted configuration
+committed intents available for later reconciliation; an uncommitted unsupported-case
 receipt rolls back with its account mutation. Lock-contention runtime tests prove
 both paths recover using the same operation key.
+
+## Annual provider boundary under implementation (#192)
+
+`AnnualBillingProvider` accepts durable `AnnualProviderIntent` values and returns
+`AnnualProviderObservation`, using `AnnualProviderOperation` and
+`AnnualProviderStatus`. The registered `VippsTestBillingProvider` is restricted to
+`https://apitest.vipps.no`; it has no production switch. Its runtime composition
+remains pending. The annual PostgreSQL adapter below is internal only. Local HTTP fixtures verify request and
+recovery behavior; they are not evidence of actual Vipps merchant-test execution.
+
+An ambiguous checkout recovers through a bounded, read-only search for its unique
+merchant reference. Missing or ambiguous results remain unknown. A capture must
+match the stored agreement, charge, type, currency and amount. Refund confirmation
+requires its individual successful history entry and operation key. Cumulative
+refunded amounts alone cannot confirm an operation. Observations retain captured
+and refunded totals; a confirmed capture is not itself a current entitlement.
+
+Webhook authentication uses raw request bytes, the registered callback target and
+the configured merchant number. Signed notifications supply reconciliation
+references only. Durable receipt deduplication and a resource GET must precede
+financial state changes. Confirmation origins are empty by default until an
+actual designated MT origin is verified. Credentials and diagnostics stay out of
+returned observations.
+
+Annual renewal facts distinguish the scheduling instant from the promised
+collection date. Scheduling is allowed on 31 December in Norway for 1 January;
+missing that window fails closed and does not silently postpone the agreed date.
+Notice intervals are measured to the earliest collection instant. Eligibility,
+readiness and separate consent remain mandatory, and a worker authorization
+contract is still required before this can run automatically.
+
+Capture observations include the provider history timestamp, validated against
+the captured total. A delayed reconciliation cannot start a new refund window.
+Missing, malformed or incomplete capture history leaves the result unknown.
+Provider-confirmed refunds do not establish bank settlement.
+
+## Annual purchase ledger under implementation (#192)
+
+`supabase/migrations/20260905083150_annual_billing_purchase_ledger.sql` owns
+`billing.annual_purchases`, `billing.annual_operations` and
+`billing.annual_refund_cases`. An inserted purchase must match the exact locked
+Company Access basis through its published function. Offer, scope, consent,
+provider identity and original intent remain immutable. One unresolved or paid
+purchase occupies each company-year. A definitively failed or fully refunded purchase remains
+in the history while permitting a new accepted attempt.
+
+Refund claims lock the purchase and reserve against captured money, confirmed
+refunds and every created, pending or unknown refund. A case pins its source,
+facts and maximum entitlement. Owner requests may record change of mind; other
+attributions require an active admin with fresh MFA and an explicitly opened, unexpired billing
+support case for the same company. Automatic source-owned
+incident ingestion and worker authority remain pending. The private tables have
+forced RLS and no browser or service-role privileges.
+
+Rollback revokes access, removes annual policies and moves the three relations
+to the inaccessible `billing_annual_retired` schema and removes annual triggers
+and functions so the predecessor billing rollback can withdraw its schema. Recutover restores the same records, including
+unknown operations. It does not erase replay history or grant paid entitlement.
+
+
+## Initial annual checkout orchestration
+
+`StartAnnualCheckoutCommand` and `AnnualCheckoutQuery` carry customer choices and
+verified identity. The internal `AnnualCheckoutService` claims an immutable
+purchase/operation before provider execution. Only a newly committed claim may
+create a provider agreement. Lost claim responses, lost provider responses and
+failed settlement writes recover by reading the original stored intent. New
+requests validate the exact current offer and separately accepted recurring
+consent. Existing requests reconcile before refreshing eligibility/readiness.
+
+`AnnualCheckout` identifies the immutable purchase through `AnnualPurchaseId`
+and its lifecycle through `AnnualPurchaseStatus`. `AnnualCheckoutClaim` marks
+whether this caller won the committed claim. `AnnualAcceptanceBasisReference`
+pins Company Access evidence; `AnnualCheckoutPrerequisites` adds the source
+readiness reference, digest and evaluation time.
+
+`AnnualCheckoutPersistence` declares claim/load/settle operations with purchase-
+then-operation locking and monotonic financial settlement.
+`PostgresAnnualCheckoutSession` implements the port using restricted verified-actor
+transactions. Claims serialize by company/year and recheck idempotency after
+waiting. The source-owned purchase-basis function holds the eligibility lock; the
+adapter compares its references and stores the exact returned JSONB. Full billing
+terms are exposed on `AnnualBillingOffer` and saved alongside their digest. The
+original operation stores provider intent plus readiness reference/digest/evaluation
+and notice dates. No provider I/O occurs inside the persistence transaction.
+
+The injected readiness verifier must validate the exact source-owned evidence,
+including current identity, company/year and digest. Its default returns unavailable;
+only isolated fixtures supply a verifier in this unit. This is not a production
+readiness binding, and the default runtime verifier remains unavailable.
+
+Settlement locks purchase before operation, invokes billing-owned public
+`settle_annual_checkout` against that latest state, and commits both records
+atomically. Terminal purchases and obsolete observations return the latest result
+without updating terminal operation evidence. Only confirmed full capture grants
+paid access; full capture already refunded in full becomes refunded, while a
+refunded partial capture stays unresolved. The first capture timestamp, merchant
+identity, bound agreement and monotonic totals remain immutable. Real independent-
+connection tests cover claim races, visibility before provider execution, response
+loss after commit, rollback between writes, lock ordering, current-source negatives,
+tenant/MFA boundaries and two evidence-preserving rollback/recutover cycles.
+
+Owner checkout claims, loads and settlements clear ambient support authority, recheck
+current accepted ownership and fresh MFA after lock waits and before successful
+returns, including terminal replay. Each settlement UPDATE must affect exactly
+one row. Late authority loss or missed writes roll back the complete settlement;
+SQL errors go directly to rollback without another query on the aborted
+transaction. Stored terminal recovery still needs no current readiness lookup
+and retains the existing ability of another currently accepted owner to recover
+the original purchase without changing its acceptance or provider identity.
+Claim replay retains its initiating actor and original request identity and
+returns the original stored intent even when current readiness is unavailable.
+New claims still verify their current acceptance/readiness basis, and late
+authority loss rolls back both inserted rows before acknowledging the claim.
+
+The application prerequisite binding currently returns `FILING_NOT_READY`.
+Company Access owns definitive eligibility. The eventual source for authoritative
+aggregate filing readiness is Annual Compliance (#149, after #193/#153), through
+its public source-owned contract. The current owner-writable legacy readiness
+snapshot is not charging authority. Readiness must retain every non-billing hard
+block; production release/provider clearance (#179/#198) is a separate gate.
+This unavailable binding is safe interim behavior and does not satisfy #192's
+end-to-end exit. HTTP/UI cutover, trusted readiness, actual MT evidence and all
+remaining acceptance criteria stay pending. The subsequent HTTP composition exposes start/recovery routes with provider
+disabled and source readiness unavailable by default.
+
+## Durable local annual renewal cancellation
+
+`CancelAnnualRenewalCommand` identifies an existing company/purchase and a unique
+command key. `AnnualCancellationPersistence` is implemented by
+`PostgresAnnualCancellationSession`, sharing a checkout session's verified actor
+and restricted transaction implementation. `AnnualRenewalCancellation` returns
+an immutable `AnnualCancellationId`, requester/time, original effective time and
+unchanged paid/export dates. `AnnualCheckout.renewal_canceled_at` exposes the local
+renewal stop without changing original consent or financial state.
+
+`billing.annual_cancellation_requests` owns one immutable request receipt per
+command key. A trigger locks the purchase and atomically sets its cancellation
+time once, retaining a receipt for each distinct command. Same-key races replay
+the original receipt; another target or actor conflicts. An insert failure rolls
+back the local stop. Owner authority and fresh MFA remain mandatory; eligibility
+and readiness blocks do not obstruct cancellation of future renewal.
+
+The owner transaction clears ambient support context and rechecks current owner
+authority and fresh MFA after command-key and purchase lock waits and before any
+successful return, including receipt replay. Late authority loss rolls back the
+receipt and renewal stop together. A missing insert result fails closed; SQL
+errors roll back without querying an already-aborted transaction.
+
+The cancellation migration/rollback is
+`supabase/migrations/20260905100130_annual_renewal_cancellation.sql`. Rollback moves
+requests to `billing_annual_retired` before predecessor billing rollback, so the
+original request and local cancellation survive recutover. No browser/service
+role can read or insert the request table.
+
+This command confirms local renewal cancellation only. It never cancels an initial
+pending checkout, erases paid/export access, fabricates an agreement reference or
+claims a refund. Provider agreement-stop/pending-renewal-charge cleanup, durable
+worker recovery and annual runtime/UI composition are still pending #192 work.
+Future renewal claims must honor this authority through explicit agreement/year
+lineage; current next-year admission remains blocked.
+
+
+## Annual agreement cleanup orchestration
+
+`AnnualAgreementCleanupService` uses `AnnualAgreementCleanupPersistence` to claim
+one durable `AnnualAgreementCleanup` for a persisted cancellation or refund
+request and resolved original charge evidence. `AnnualRefundRequestId` is the
+explicit alternative to `AnnualCancellationId`; exactly one must be present. `AnnualAgreementCleanupClaim` identifies the first
+claim. The store must defer unresolved payments and competing charge intents,
+verify current owner/fresh MFA, and preserve exact provider/account and references.
+Its PostgreSQL adapter is `PostgresAnnualCleanupSession`; runtime composition
+and worker authority remain pending. This is not a completed customer workflow.
+
+A replay first reconciles the original operation. A confirmed stop returns as-is;
+unknown evidence remains unknown. A pending observation permits retrying the same
+immutable stop intent, covering a crash between claim and PATCH. The provider
+rechecks the agreement and original charge before any PATCH.
+`settle_annual_agreement_cleanup` validates linkage and zero cleanup money totals,
+preserves confirmed state, and never settles the observation onto a purchase.
+No worker authority, future agreement/year lineage, or actual MT proof is implied.
+
+
+The cleanup adapter reauthorizes every claim and settlement, locks the original
+purchase before operations, and chooses a persisted receipt. A unique partial
+index enforces one agreement stop per purchase. The insert guard in
+`supabase/migrations/20260905103149_annual_agreement_cleanup.sql` verifies receipt,
+terminal checkout and exact original provider intent fields. The later refund
+cleanup migration extends those receipt and terminal-proof alternatives as
+described below. Cleanup settlement
+never updates purchase money, status or access. Owner cleanup clears ambient
+support context, rechecks owner/fresh MFA after locked reads and before every
+successful transaction return, and requires exactly one affected settlement row.
+Revocation or elapsed MFA rolls back pending writes, including after an UPDATE.
+Domain errors from rows hidden after a wait recheck authority; PostgreSQL errors
+propagate to transaction rollback without another query on the aborted connection.
+Cancellation and refund receipt reads remain plain SELECT. A different accepted
+owner may recover the original receipt, including an unbound refund request;
+receipt requester and STOP intent remain unchanged.
+Roll back this guard before the
+cancellation and annual-ledger migrations; all operation evidence is retained.
+
+
+## Annual customer reads and cancellation API
+
+`AnnualBillingReadPersistence` returns a bounded `AnnualPurchasePage` of stored
+`AnnualPurchaseSummary` values for `AnnualBillingSnapshotQuery`. The public
+`annual_billing_offer` returns the published offer without declaring eligibility
+or charge authority. `AnnualBillingSnapshot` combines that offer and the page.
+Historical accepted amounts, terms and statuses come from each purchase, never
+from the current offer. Descending accepted-at/ID pagination retains failed and
+refunded history; each page has at most 50 summaries and a scoped purchase cursor.
+Owner summaries include recorded refund liability, remaining recorded balance,
+initiation deadline, request evidence and operation counts. Purchase balances and
+these related facts use one statement snapshot. Cumulative case entitlements use
+their maximum, never their sum; remaining liability subtracts the current
+refunded total and cannot go below zero. The deadline is an initiation target,
+not a bank-receipt date; an outstanding balance does not prove late initiation.
+Recorded requests or confirmed-operation counts never substitute for settled
+money and do not adjudicate new rights. No source facts are exposed or created.
+
+`PostgresAnnualBillingReadSession` uses the existing verified-owner/fresh-MFA
+boundary even for an empty snapshot. Its explicit projection excludes acceptance
+basis/legal documents, merchant account, provider intent, keys and fingerprints.
+GET is read-only and has no provider/readiness dependency. The provider-free
+`AnnualBillingWorkflow` and `SupabaseAnnualBillingAdapter` compose reads and local
+renewal cancellation from the same verified actor. The annual snapshot and
+renewal-cancellations HTTP routes expose generated contracts with no-store
+responses. The additive refund-snapshot GET exposes owner refund evidence
+without adding fields to the predecessor snapshot response. Either web/backend
+deployment order retains the original history contract; the new web may display
+refund details as unavailable until the expanded read is present.
+Cancellation returns the immutable local receipt and unchanged access
+dates; it does not claim provider acknowledgement or automatic worker cleanup.
+
+## Legacy acquisition retirement (#192)
+
+`20260905115700_legacy_billing_acquisition_retirement.sql` blocks inserts into
+legacy accounts and new subscription/filing-package event claims, including old
+`ON CONFLICT` writers. Existing account prices and identity cannot be reset;
+paid/support flags cannot be reactivated and completed refunds cannot be reversed.
+Payment identity, amount, company, year, obligation, provider and durable key stay
+immutable, so a cleanup event cannot be repurposed into a purchase. Successful
+historical events remain immutable. Pending historical events can settle from
+provider reconciliation without changing paid account flags. Cancellation, refunds
+and unsupported-case cleanup retain their existing authorization and receipts.
+
+Every ordinary entitlement returns `annual_billing_unavailable`, with filing and
+charge denied, regardless of legacy paid flags or owner-editable legacy readiness.
+`readinessAllowed` permits preparation of the independent readiness assessment;
+it asserts neither current eligibility nor readiness nor operational clearance.
+Only the separate exact active billing-exempt pilot retains its existing exemption.
+The trustworthy annual entitlement/runtime binding remains pending; retirement
+alone does not satisfy #192 acceptance or permit production filing.
+
+Rollback withdraws these guards without deleting historical records. It is an
+explicit predecessor recovery operation, not a supported mixed-writer configuration.
+Apply its rollback before earlier billing migrations and reapply retirement last.
+The migration borrows SET authority only when needed and restores the invoking
+principal's previous role capability, including admin-only memberships.
+
+
+## Annual checkout HTTP boundary
+
+`AnnualCheckoutOperations` and `annual_checkout_operations` expose the existing
+single checkout service to application composition through the public package.
+An absent provider is disabled; terminal stored results can still replay after
+current owner/MFA authorization. The authenticated start and observation POST
+routes map immutable customer choices to this service and return only purchase,
+offer, status, monetary totals and a pending provider-validated checkout URL.
+Original provider intent, merchant identity, acceptance source material and request
+fingerprints remain backend-only. Snapshot GET and local cancellation keep their
+provider-free behavior.
+
+The default runtime has no configured annual provider. The source resolver and
+PostgreSQL readiness verifier remain unavailable pending their actual owner.
+Injected local HTTP/session fixtures prove only transport and orchestration;
+actual MT, trusted readiness, complete checkout UI, webhook/worker/refund/renewal
+runtime and final #192 gates remain outstanding. No production activation or
+acceptance waiver follows from these endpoints.
+
+
+## Annual refund orchestration contract
+
+`AnnualRefundService` coordinates one recorded refund case and original provider
+operation. `AnnualRefundCaseId` identifies the immutable case;
+`AnnualRefundResolution` carries its request, facts, decision and optional
+`AnnualRefundOperation`. `AnnualRefundClaim` identifies the winning executor.
+`annual_refund_decision` exposes the existing policy and `settle_annual_refund`
+is the required atomic-persistence settlement helper. `RequestAnnualRefundCommand` accepts a source lookup reference, never
+caller-selected eligibility, money or incident facts. The mandatory
+`AnnualRefundPersistence` contract requires verified source-owned facts, current
+authority, purchase locks, durable request/case identity, balance reservations,
+local renewal stop and preserved records/export. The registered `PostgresAnnualRefundSession` implements these durable operations.
+Its source resolver is unavailable by default; no source resolver, worker,
+support-case caller or HTTP route is bound. Synthetic orchestration tests and
+real isolated persistence tests do not establish production source authority.
+
+Billing uses the existing #177 policy for entitlement and the five-business-day
+initiation deadline. The claimed operation separates actual captured money from
+the original charge amount and caps execution at the remaining captured balance
+and policy entitlement. A missing provider cannot erase an already recorded
+liability. A missing operation may mean no automatic entitlement or deferred
+execution; it never proves settlement. Confirmed and failed original operations
+remain terminal; a failed attempt leaves the liability actionable and needs a
+separate authorized retry operation before another modification.
+
+Only a newly committed operation may execute. Lost claim/provider/settlement
+responses recover its original identity by reconciliation, preserving unknown
+outcomes and reservations without blind reissue. Settlement validates provider,
+original references, capture timestamp and exact integer monotonic totals.
+Later captures may grow up to the original charge without enlarging the already
+claimed refund intent or changing its reservation basis.
+The future adapter must apply the public settlement helper to locked current
+state and persist operation/purchase evidence atomically. Digest shape checks
+are not source authentication. No automatic-refund or real-provider acceptance
+is claimed until those persistence, source and authority implementations exist.
+
+
+## Durable annual refund requests
+
+`PostgresAnnualRefundSession` uses the verified-actor transaction shared by annual
+billing. Current owners can create change-of-mind cases. Other case reasons retain
+the existing requirement for an active admin, fresh MFA, a current same-company
+billing support grant and an explicitly opened case. Every replay and settlement
+reauthorizes. This introduces no automatic worker identity or owner impersonation.
+
+The default source resolver returns unavailable. A future resolver must read
+immutable source-owned incident and production-submission evidence through its
+declared public contract inside the transaction, without provider I/O. Missing
+submission authority must never become an assertion that no filing was submitted.
+Billing verifies its own purchase/year/gross/capture/acceptance facts and earliest
+retained company capture before storing the canonical facts/digest and policy
+liability. Repurchase retains the first-purchase window. A stored case and bound
+request replay before any live source call.
+
+`billing.annual_refund_requests` preserves request actor, company, purchase, case,
+key, correlation and fingerprint. Its only mutable field is a write-once operation
+assignment: a deferred request can acquire its original effect after competing
+reservations resolve, without changing request identity. Purchase-before-operation
+locks and the existing reservation trigger enforce one unresolved refund and cap
+funds. Same-source concurrent keys share its unresolved operation; only the original
+claim winner executes. New attempts after terminal failure require a new request
+and fresh reservation. The AFTER INSERT trigger stops renewal with the committed
+request, including provider outage, deferral and zero automatic entitlement.
+
+Settlement compares the exact durable request/case/intent, invokes
+`settle_annual_refund` against locked current operation evidence, and atomically
+updates operation and monotonic purchase totals. It preserves capture identity,
+cancellation and access/export dates. A partial capture refunded in full stays
+unresolved; only confirmed refund of the complete original charge marks the
+purchase refunded. Later capture growth cannot enlarge an existing refund intent.
+
+Migration `supabase/migrations/20260905141500_annual_refund_requests.sql` and its
+rollback preserve records across retirement/recutover and restore borrowed SET
+and REFERENCES authority. The receipt table has forced RLS and no browser,
+service-role or billing-executor grants. Real database tests cover durable recovery,
+concurrency, deferral, exact binding, source mismatch, support revocation and
+retained history. Actual source implementations, worker/support HTTP composition and final automatic
+refund acceptance remain due. Owner-authorized original-agreement cleanup can
+consume the refund request that caused the local renewal stop.
+
+
+## Refund-triggered original agreement cleanup
+
+`supabase/migrations/20260905145000_annual_refund_agreement_cleanup.sql` extends
+the existing cleanup guard. The adapter and database share the private
+`billing.annual_original_charge_resolved_v1` predicate under the purchase lock.
+Ordinary terminal checkout evidence remains valid. An exact confirmed refund
+operation can alternatively establish full cumulative capture and refund of the
+original charge, even when its checkout operation remains unknown. This does not
+rewrite checkout evidence or grant paid access. The final refund operation may
+cover only the remaining balance; original provider/account/agreement/charge,
+company/year, amount and first-capture identity must still match. Malformed
+observations cannot provide that proof.
+
+Financial resolution and stop intent are separate requirements. The chosen
+manual cancellation or refund request must belong to the same purchase and match
+its actual renewal-stop time. Later refund requests cannot replace the original
+stop receipt. SQL rejects absent, conflicting, foreign or mismatched receipt
+choices. Cleanup replay and settlement preserve the chosen typed receipt and
+original operation, without changing purchase money, status or access/export.
+
+Unresolved refunds, incomplete original charges, shared agreements and unsupported
+renewal lineage defer new or unconfirmed cleanup. A confirmed cleanup remains
+replayable after current owner/fresh-MFA authorization. The provider still checks
+fresh original-charge safety immediately before STOP. The local MockTransport
+rehearsal proves this adapter path and lost-response recovery, not actual MT.
+
+Rollback restores the predecessor manual-receipt guard and removes the new
+resolution function while retaining all provider operations and receipts. The
+predecessor cannot initiate new refund-receipt cleanup; recutover restores its
+forward recovery. No worker or support cleanup caller is activated by this change.
+
+## Authenticated agreement cleanup recovery (#192)
+
+`AnnualAgreementCleanupOperations` and `annual_agreement_cleanup_operations`
+compose the existing receipt-bound cleanup policy through billing's public interface.
+The authenticated POST accepts only company and purchase IDs. The verified session
+uses `PostgresAnnualCleanupSession` with the same owner identity as the annual
+checkout adapter. Every call, including confirmed replay, rechecks current owner
+and fresh MFA; support-case and worker authority are not added.
+
+The original persisted cancellation/refund receipt and STOP intent control recovery;
+caller-provided receipt, provider or operation identity is rejected. The response
+contains only company, purchase and deferred/pending/unknown/confirmed status.
+Deferred or unknown does not establish provider cleanup. Default provider is absent,
+so unresolved operations fail closed with PROVIDER_DISABLED while confirmed stored
+cleanup can replay without provider I/O. Local renewal cancellation and GET history
+remain provider-free. No new readiness authority, actual Merchant Test, automatic
+worker, complete customer UI or final #192 acceptance is implied.
+
+## Case-bound annual support reads
+
+`AnnualSupportQuery` binds an `AnnualSupportCaseId` and company.
+`AnnualSupportPurchase` includes bounded `AnnualOperationCounts` and nullable
+`AnnualOperationStatus` evidence. `AnnualSupportReadPersistence` projects at most 50 stored purchases across years,
+ordered by accepted time and ID, with a company-scoped cursor. It uses the existing
+active-admin, opened billing support-case and fresh-MFA boundary without owner
+fallback. `AnnualSupportPage` reports current recorded money, the maximum cumulative
+refund entitlement for each purchase (never a sum across cases), the earliest
+still-outstanding initiation deadline, request and operation counts, and original
+agreement-stop status. Missing refund evidence does not adjudicate entitlement;
+missing or unresolved provider operations do not establish completion. Public
+results exclude raw source, legal, merchant, intent and observation payloads.
+
+The existing operator page consumes this generated billing contract independently
+of profile resources, which can be absent on a billing-only support grant. GET
+requests never open cases, create receipts, authorize refunds or contact providers.
+
+## Annual owner history independent of admission
+
+`AnnualPurchaseHistoryQuery` and `AnnualBillingReadPersistence.read_purchase_history`
+return the same stored `AnnualPurchasePage` across recorded years. Current owner,
+fresh MFA, company scope, the 50-record limit and descending accepted-at/ID cursor
+remain mandatory. History never requests current eligibility/admission or returns
+an offer. The existing year-scoped read still enforces its original cursor scope.
+The private persistence projection is shared; no purchase or refund fact changes.
+`AnnualBillingWorkflow.purchase_history` checks actor/page/company/cursor bindings.
+
+The additive `/api/v1/billing/annual/purchases` GET retains both previous snapshot
+contracts. Other-year read fixtures cannot establish authority to admit or sell
+those years. Archive links point to the existing independently authorized route;
+this read does not bypass its submission/export prerequisites.
+
+
+## Owner recovery of operation-bound refund requests
+
+`AnnualRefundRecoveryQuery` selects the recorded request.
+`annual_refund_recovery_operations` creates `AnnualRefundRecoveryOperations`,
+which exposes only `recover_refund` through a dedicated
+persistence port and `PostgresAnnualRefundRecoverySession`. Its authenticated POST
+accepts company, purchase and opaque refund-request ID, and derives the actor from
+the verified session. The response reports only original-operation status and
+request/company/purchase/year identity; confirmation never asserts that the whole
+purchase liability is refunded. Existing canonical history owns current balances.
+
+Load and settlement independently require current accepted ownership and fresh
+MFA, including after lock waits. Opened support authority cannot rescue revoked
+ownership. Selection requires the same requested_by actor and a non-null stored
+operation. The table does not prove that actor's historical role; recovery never
+relabels another actor's support request as an owner request. Purchase-before-request
+and operation locks preserve original source, correlation, key, case and intent.
+Fingerprint, digest, row/intent identity and stored money consistency fail closed.
+
+The recovery composition cannot claim or bind a request, create a case or operation,
+consult live source facts, or execute a provider mutation. Created/pending/unknown
+operations reconcile their original intent; valid terminal evidence is provider-free.
+Shared settlement preserves atomic monotonic purchase totals and terminal outcomes.
+Owner recovery rechecks owner/fresh MFA before returning the settlement, including
+terminal replay. Authority loss before, between, or after its two writes rolls
+back both rows. A domain write failure rechecks current authority; SQL errors
+proceed to rollback without querying an aborted transaction.
+The provider is absent by default. This adds no request discovery UI, trusted
+incident/submission source, worker/support mutation, new refund attempt, actual MT
+or final annual-acquisition acceptance.
+
+### Owner refund recovery target discovery
+
+`AnnualBillingReadPersistence.read_refund_recovery_targets` projects one stored
+purchase through `AnnualRefundRecoveryTargetsQuery` and
+`AnnualRefundRecoveryTargetPage`. The additive GET
+`/api/v1/billing/annual/refund-recovery-targets` preserves predecessor contracts.
+It requires current accepted-owner and fresh-MFA authority, clears support context,
+and includes only operation-bound request receipts belonging to that actor. It
+never calls a provider or source resolver, writes evidence, or checks current
+admission. Historical targets do not authorize new sales or new refunds.
+
+One statement validates the purchase, request cursor and company/purchase/year/case
+joins. It selects the earliest authorized receipt per refund operation before
+limiting to 50 groups plus a sentinel. Operation groups sort by descending immutable
+created-at and ID. A scoped request cursor resolves to its operation even when
+later binding of an older receipt changes the displayed representative. Newly
+visible groups above a cursor require refreshing the newest page; this is not a
+frozen multi-page snapshot. Different attempts for one case remain distinct.
+
+The projection exposes only purchase scope/year, receipt ID, request time and stored
+operation status (`created`, `pending`, `unknown`, `confirmed`, `failed`), plus an
+optional request cursor. Neither target counts nor terminal operation status
+establish total refund liability or bank receipt. Source facts, actor IDs, amounts,
+case and operation IDs, provider identity and payloads stay private. Explicit
+recovery revalidates the selected receipt independently.
+
+## Authenticated annual delivery receipts
+
+`AnnualNotificationAccount` identifies the configured provider environment and
+merchant. `AnnualProviderNotification` contains only its authenticated exact-byte
+digest, event time/type and agreement/charge hints. `AnnualNotificationReceiptId`
+and `AnnualNotificationReceipt` identify committed technical delivery evidence.
+`AnnualNotificationAuthentication` authenticates raw bytes before
+`AnnualNotificationPersistence` records them. `AnnualNotificationRejected` means
+authentication failed; `AnnualNotificationUnavailable` means a receipt cannot be
+confirmed. Neither is a financial outcome.
+
+These contracts describe the billing provider boundary, while the backend system
+owns the inbox, transaction and adapter bindings under ADR0011. Intake never reads
+a purchase, creates an actor, binds an operation, invokes a provider or changes
+financial state. Exact delivery deduplication is scoped by provider, account and
+raw-body digest; JSON reserialization is a separate delivery. Conflicting
+authenticated fields under an existing digest fail closed without overwriting it.
+
+The HTTP route is present but unavailable without explicit injected composition.
+No environment configuration, runtime database login, webhook registration or MT
+credential is installed. Resource matching and a separately authorized worker
+must still reconcile an original stored intent using provider GET before any
+settlement; a charge-refunded event does not identify a refund attempt. This is
+receipt intake evidence only, not completion of #192 or actual MT validation.
+
+
+## Original checkout request withdrawal
+
+`AnnualCheckoutOperations.withdraw_checkout_request` reuses the exact original
+`StartAnnualCheckoutCommand` and canonical fingerprint. It returns
+`AnnualCheckoutRequestResolution`: either the original `AnnualPurchaseId` in any
+purchase status, or an immutable `AnnualCheckoutWithdrawalId` and recorded time.
+Current accepted owner and fresh MFA remain mandatory. Obsolete offer/consent
+versions are retained; no current offer, source readiness, provider availability,
+provider observation, cancellation, refund or settlement is required or performed.
+The result permits resolving that request only; a new sale must qualify afresh.
+
+`billing.annual_checkout_withdrawals` stores the scoped original choices, actor,
+key and fingerprint with a database-generated identity/time. It is billing-owned
+business evidence, has forced owner/fresh-MFA RLS, and exposes no browser,
+service-role or operator access. No UPDATE/DELETE policy or expiry exists. The
+narrow UPDATE(id) grant is required only for referential-integrity key-share
+checks; immutable triggers prohibit receipt mutation.
+
+Claim and withdrawal acquire the original-key lock before company/year, then
+reauthorize after waits. Matching claimed keys recover before new-sale checks;
+matching withdrawn keys fail with `BILLING_CHECKOUT_REQUEST_WITHDRAWN`. Changed
+payloads conflict, including a different year under the same key. Symmetric
+invoker triggers fence direct/older writers. These triggers use nonblocking
+try-locks because MFA uses a statement-time source predicate: contention requires
+a fresh retry, and cannot wait inside the original INSERT. Current adapters hold
+both locks already and reauthorize in separate statements. This makes no broader
+wall-clock-freshness claim about arbitrary long-running direct SQL statements.
+
+Migration `supabase/migrations/20260906221800_annual_checkout_withdrawals.sql`
+and its rollback preserve pre-existing migration-role grants. Rollback keeps the
+operation trigger bound to the same function OID, retires the receipt/function,
+and denies every new checkout operation until final withdrawal recutover. Other
+operation types retain their existing guards. Full predecessor rollback can drop
+the billing schema while receipt bytes and the denial trigger survive. Applying
+only the ledger migration still denies new checkouts; final recutover restores
+the original receipt fence. No hosted changes or provider activation are implied.
+
+
+### Recovery under an opened support case
+
+`AnnualSupportRefundRecoveryTargetsQuery` discovers at most 50 stored bound refund
+operations for one purchase across original requesters. The earliest receipt
+represents each operation; request cursors resolve to immutable operation order,
+so a later binding cannot move an existing group. Reads require a verified active
+admin, fresh MFA and its explicitly opened same-company billing case, including
+empty results and a final authorization check after reading.
+
+`AnnualSupportRefundRecoveryQuery` selects an existing company, purchase and
+request under the operator's case. Its separate persistence port carries that
+query through settlement. `annual_support_refund_recovery_operations` creates
+`AnnualSupportRefundRecoveryOperations` through `AnnualSupportRefundRecoveryPersistence`.
+The original requester, key, source evidence and intent
+remain unchanged. It cannot claim, bind, adjudicate or execute a new refund. A
+bound request is immutable and needs only SELECT; purchase, checkout operation
+and refund operation locks serialize recovery. Authorization is checked again
+after lock waits, in the settlement transaction after provider I/O, and after
+settlement writes. Both financial updates must affect exactly one row; any denied
+write or final case revocation rolls back the entire settlement, even when the
+operator also has owner rights. Terminal
+evidence replays without provider access; unresolved evidence reconciles only
+the recorded operation. Owner recovery retains its separate owner/requester rule.
+
+The additive support GET and POST expose scoped case/company/purchase/request IDs,
+income year and operation status. They do not expose requester or provider facts,
+and one confirmed operation does not establish that all purchase liability is
+refunded. Canonical support purchase history remains the balance projection.
+
+## Durable checkout observation
+
+`annual_checkout_observation_operations` reconciles one already committed checkout
+through `AnnualCheckoutObservationOperations` and returns an
+`AnnualCheckoutObservationOutcome`. `AnnualCheckoutObservationPersistence`
+supplies an `AnnualCheckoutObservationLease`; its
+`AnnualCheckoutObservationBinding` is checked by
+`validate_annual_checkout_observation` against the immutable original intent.
+Billing owns the immutable
+accepted-intent projection in `annual_checkout_observation_authorities` and the
+provider/account-bound principal registration in
+`annual_checkout_observation_principals`. It reuses annual checkout settlement
+policy and preserves the original accepting actor and consent. These records
+confer no new-sale readiness, owner membership, renewal or refund-initiation authority.
+
+Backend-system infrastructure owns the fenced lease and retry record. Its
+dedicated database login must match the registered role OID and exact account;
+owner claims and ambient support context confer no worker access. Current
+principal epoch and lease authority are rechecked before provider observation and
+locked settlement. The provider is called only through read-only reconciliation.
+
+The one-pass CLI is off by default and requires explicit `vipps-mt` runtime
+configuration plus a separately provisioned restricted database login. The
+migration creates no login or enabled principal. Rollback withdraws execution
+grants and preserves acceptance, principal, lease and retry evidence for recutover.
+See `docs/billing/annual-checkout-reconciliation.md` for invocation and outcomes.
+
+## Operator recovery of a recorded agreement stop
+
+`AnnualSupportCleanupRecoveryQuery` selects the one immutable STOP already stored
+for a purchase. `AnnualSupportCleanupRecoveryOperations`, composed by
+`annual_support_cleanup_recovery_operations`, loads and reconciles it through
+`AnnualSupportCleanupRecoveryPersistence`. It requires the current active admin,
+an explicitly opened same-company billing case, and fresh MFA, even when that
+operator is also an owner. Purchase, original checkout and STOP locks retain the
+original intent, cancellation/refund receipt and requesting actor.
+
+Recovery updates only the existing STOP observation and status. It requires one
+settlement row and rechecks current case authority before returning; late denial
+rolls back the change. Missing STOP returns not-found. The route cannot claim new
+cleanup, execute a provider operation, initiate a refund or change paid access.

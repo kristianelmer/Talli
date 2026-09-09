@@ -1,5 +1,13 @@
 "use server";
 
+import type { AnnualSupportRefundRecoveryActionState, AnnualSupportRefundIdentity } from "./lib/annual-support-refund-recovery";
+import type { AnnualSupportCleanupRecoveryActionState, AnnualSupportCleanupIdentity } from "./lib/annual-support-cleanup-recovery";
+import { operatorReadRecovery, operatorRecoveryHref, operatorSupportLocation } from "./lib/operator-support";
+import type { AnnualRefundRecoveryActionState } from "./lib/annual-refund-recovery";
+
+import type { AnnualAgreementCleanupActionState } from "./lib/annual-billing-cleanup";
+import type { AnnualCheckoutObservationActionState } from "./lib/annual-checkout-observation";
+import { parseAnnualCheckoutDraft, type AnnualCheckoutDraft, type AnnualCheckoutRequestActionState } from "./lib/annual-checkout-request";
 import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -64,17 +72,25 @@ import {
   type RevokeSupportAccessRequest,
 } from "../features/company-access";
 import {
-  activateBillingSubscription as activateBillingSubscriptionThroughApi,
   billingActionErrorMessage,
   billingOutcomeMayBeUnknown,
+  annualBillingRecovery,
+  cancelAnnualRenewal as cancelAnnualRenewalThroughApi,
+  cleanupAnnualAgreement as cleanupAnnualAgreementThroughApi,
+  observeAnnualCheckout as observeAnnualCheckoutThroughApi,
+  startAnnualCheckout as startAnnualCheckoutThroughApi,
+  withdrawAnnualCheckoutRequest as withdrawAnnualCheckoutRequestThroughApi,
+  annualCheckoutNeedsWithdrawal,
+  recoverAnnualRefund as recoverAnnualRefundThroughApi,
+  recoverAnnualSupportRefund as recoverAnnualSupportRefundThroughApi,
+  recoverAnnualSupportCleanup as recoverAnnualSupportCleanupThroughApi,
+  annualBillingAccessRejected,
   cancelBillingSubscription as cancelBillingSubscriptionThroughApi,
-  configureBillingAccount,
   manageProductionPilotEntitlement,
   markBillingCaseUnsupported,
   loadBillingEntitlement,
   loadAnnualBillingEntitlements,
   loadBillingSnapshot,
-  purchaseBillingFilingPackage,
   refundBillingFilingPackage,
 } from "../features/billing";
 import {
@@ -642,10 +658,7 @@ function ownerPathWithQuery(
 }
 
 type BillingRetryOperationKey =
-  | "billingConfigureOperationId"
-  | "billingActivateOperationId"
   | "billingCancelOperationId"
-  | "billingFilingPackageOperationId"
   | "billingUnsupportedOperationId"
   | "billingRefundOperationId";
 
@@ -789,20 +802,23 @@ async function loadCorporateLifecycleActionContext(input: {
 
 export async function signIn(formData: FormData) {
   const next = sanitizeInternalRedirect(formString(formData, "next"));
+  const reauthenticate = formString(formData, "reauth") === "1";
+  const retryQuery = new URLSearchParams({ next });
+  if (reauthenticate) retryQuery.set("reauth", "1");
   if (!hasSupabaseEnv()) {
-    redirect(`/login?error=Supabase%20env%20mangler&next=${encodeURIComponent(next)}`);
+    redirect(`/login?${retryQuery}&error=Supabase%20env%20mangler`);
   }
   const email = formString(formData, "email");
   const password = formString(formData, "password");
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    // Unconfirmed accounts are parked at the verification gate rather than
-    // shown a dead-end error — they keep going without re-entering anything.
-    if (error.code === "email_not_confirmed" || /not confirmed/i.test(error.message)) {
+    // Ordinary unconfirmed accounts continue at the verification gate. Failed
+    // reauthentication stays here: the previous session may still be valid.
+    if (!reauthenticate && (error.code === "email_not_confirmed" || /not confirmed/i.test(error.message))) {
       redirect(`/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`);
     }
-    redirect(`/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}`);
+    redirect(`/login?${retryQuery}&error=${encodeURIComponent(error.message)}`);
   }
   revalidatePath("/dashboard");
   redirect(next);
@@ -855,17 +871,20 @@ export async function resendConfirmation(formData: FormData) {
 
 export async function signInWithGoogle(formData: FormData) {
   const next = sanitizeInternalRedirect(formString(formData, "next"));
+  const reauthenticate = formString(formData, "reauth") === "1";
+  const retryQuery = new URLSearchParams({ next });
+  if (reauthenticate) retryQuery.set("reauth", "1");
   if (!hasSupabaseEnv()) {
-    redirect("/login?error=Supabase%20env%20mangler");
+    redirect(`/login?${retryQuery}&error=Supabase%20env%20mangler`);
   }
   const supabase = await createSupabaseServerClient();
   const siteUrl = await getSiteUrl();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: `${siteUrl}/auth/confirm?next=${encodeURIComponent(next)}` },
+    options: { redirectTo: `${siteUrl}/auth/confirm?${retryQuery}` },
   });
   if (error || !data.url) {
-    redirect(`/login?error=${encodeURIComponent(error?.message ?? "Google-innlogging feilet")}&next=${encodeURIComponent(next)}`);
+    redirect(`/login?${retryQuery}&error=${encodeURIComponent(error?.message ?? "Google-innlogging feilet")}`);
   }
   redirect(data.url);
 }
@@ -4085,44 +4104,6 @@ export async function recordTaxSettlement(formData: FormData) {
   succeedTo(returnTo);
 }
 
-export async function saveBillingAccount(formData: FormData) {
-  if (!hasSupabaseEnv()) {
-    redirect("/workspace?error=Supabase%20env%20mangler");
-  }
-  const accessToken = await getCurrentSessionAccessToken();
-  if (!accessToken) {
-    redirect("/workspace?error=Innlogging%20kreves");
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/workspace?error=Innlogging%20kreves");
-  const operationId = requiredFormUuid(formData, "operationId");
-  const companyId = formString(formData, "companyId");
-  const pricingPlan = formString(formData, "pricingPlan") as "founder" | "standard";
-  const founderValue = Number(formString(formData, "founderCohortNumber") || "0");
-  let account;
-  try {
-    account = await configureBillingAccount(accessToken, {
-      companyId,
-      pricingPlan,
-      founderCohortNumber: pricingPlan === "founder" ? founderValue : null,
-    }, operationId);
-  } catch (error) {
-    billingRetryRedirect(error, operationId, "billingConfigureOperationId");
-  }
-
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "billing",
-    action: "billing_account_saved",
-    message: `Faktureringskonto lagret med ${account.pricingPlan === "founder" ? "grunnleggerplan" : "standardplan"}.`,
-  });
-
-  revalidatePath("/");
-  redirect("/workspace");
-}
-
 export async function requestCompanyCancellation(formData: FormData) {
   if (!hasSupabaseEnv()) {
     redirect("/workspace?error=Supabase%20env%20mangler");
@@ -4309,79 +4290,294 @@ export async function revokeSupportAccess(formData: FormData) {
   redirect("/operator?grant=revoked");
 }
 
-export async function activateBillingSubscription(formData: FormData) {
-  if (!hasSupabaseEnv()) {
-    redirect("/workspace?error=Supabase%20env%20mangler");
-  }
-  const accessToken = await getCurrentSessionAccessToken();
-  if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/workspace?error=Innlogging%20kreves");
-  const operationId = requiredFormUuid(formData, "operationId");
-  const companyId = formString(formData, "companyId");
-  let event;
+export async function recoverAnnualSupportCleanup(
+  _previousState: AnnualSupportCleanupRecoveryActionState,
+  formData: FormData,
+): Promise<AnnualSupportCleanupRecoveryActionState> {
+  let identity: AnnualSupportCleanupIdentity;
+  let beforePurchaseId: string | undefined;
   try {
-    event = await activateBillingSubscriptionThroughApi(accessToken, { companyId }, operationId);
-  } catch (error) {
-    billingRetryRedirect(error, operationId, "billingActivateOperationId");
-  }
-
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "billing",
-    action: "billing_subscription_activated",
-    message: `Abonnement aktivert via ${event.providerReference}.`,
+    const required = ["initiatingUserId", "supportCaseId", "companyId", "purchaseId"] as const;
+    if (required.some(name => formData.getAll(name).length !== 1) || formData.getAll("beforePurchaseId").length > 1) {
+      return { kind: "invalid" };
+    }
+    identity = {
+      initiatingUserId: requiredFormUuid(formData, "initiatingUserId"),
+      supportCaseId: requiredFormUuid(formData, "supportCaseId"), companyId: requiredFormUuid(formData, "companyId"),
+      purchaseId: requiredFormUuid(formData, "purchaseId"),
+    };
+    beforePurchaseId = formData.has("beforePurchaseId") ? requiredFormUuid(formData, "beforePurchaseId") : undefined;
+  } catch { return { kind: "invalid" }; }
+  const location = operatorSupportLocation({ supportCase: identity.supportCaseId, companyId: identity.companyId,
+    annualBefore: beforePurchaseId });
+  if (location.invalid) return { kind: "invalid" };
+  const recover = (reason: ReturnType<typeof operatorReadRecovery>): AnnualSupportCleanupRecoveryActionState => ({
+    kind: "recovery", ...identity, reason, href: operatorRecoveryHref(reason, location.returnTo),
   });
-
-  revalidatePath("/");
-  redirect("/workspace");
+  try {
+    const accessToken = await getCurrentSessionAccessToken();
+    if (!accessToken) { revalidatePath("/operator"); return recover("sign-in"); }
+    const supabase = await createSupabaseServerClient();
+    const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+    if (error || !user) { revalidatePath("/operator"); return recover("sign-in"); }
+    if (user.id !== identity.initiatingUserId) {
+      revalidatePath("/operator");
+      return { kind: "different-user", ...identity };
+    }
+    const { companyId, purchaseId, supportCaseId } = identity;
+    const value = await recoverAnnualSupportCleanupThroughApi(accessToken, { companyId, purchaseId, supportCaseId });
+    if (value.companyId !== companyId || value.purchaseId !== purchaseId || value.supportCaseId !== supportCaseId) {
+      revalidatePath("/operator");
+      return recover("unavailable");
+    }
+    revalidatePath("/operator");
+    return { kind: "observed", ...identity, status: value.status };
+  } catch (error) {
+    try { revalidatePath("/operator"); } catch { return recover("unavailable"); }
+    return recover(operatorReadRecovery(error));
+  }
 }
 
-export async function requestFilingPackagePayment(formData: FormData) {
-  if (!hasSupabaseEnv()) {
-    redirect("/workspace?error=Supabase%20env%20mangler");
-  }
-  const accessToken = await getCurrentSessionAccessToken();
-  if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/workspace?error=Innlogging%20kreves");
-  const operationId = requiredFormUuid(formData, "operationId");
-  const companyId = formString(formData, "companyId");
-  const incomeYear = Number(formString(formData, "incomeYear") || "2025");
-  const { error: readinessError } = await supabase
-    .from("filing_readiness_snapshots")
-    .select("ready, status, hard_blocks, warnings")
-    .eq("company_id", companyId)
-    .eq("income_year", incomeYear)
-    .eq("obligation", "aksjonaerregisteroppgaven")
-    .maybeSingle();
-  if (readinessError) {
-    redirect(`/workspace?error=${encodeURIComponent(readinessError.message)}`);
-  }
-  let event;
+export async function recoverAnnualSupportRefund(
+  _previousState: AnnualSupportRefundRecoveryActionState,
+  formData: FormData,
+): Promise<AnnualSupportRefundRecoveryActionState> {
+  let identity: AnnualSupportRefundIdentity;
+  let beforePurchaseId: string | undefined;
+  let beforeRefundRequestId: string | undefined;
   try {
-    event = await purchaseBillingFilingPackage(accessToken, {
-      companyId,
-      incomeYear,
-      obligation: "aksjonaerregisteroppgaven",
-    }, operationId);
-  } catch (error) {
-    billingRetryRedirect(error, operationId, "billingFilingPackageOperationId");
+    const required = ["initiatingUserId", "supportCaseId", "companyId", "purchaseId", "refundRequestId"] as const;
+    if (required.some(name => formData.getAll(name).length !== 1)
+        || ["beforePurchaseId", "beforeRefundRequestId"].some(name => formData.getAll(name).length > 1)) {
+      return { kind: "invalid" };
+    }
+    identity = {
+      initiatingUserId: requiredFormUuid(formData, "initiatingUserId"),
+      supportCaseId: requiredFormUuid(formData, "supportCaseId"), companyId: requiredFormUuid(formData, "companyId"),
+      purchaseId: requiredFormUuid(formData, "purchaseId"), refundRequestId: requiredFormUuid(formData, "refundRequestId"),
+    };
+    beforePurchaseId = formData.has("beforePurchaseId") ? requiredFormUuid(formData, "beforePurchaseId") : undefined;
+    beforeRefundRequestId = formData.has("beforeRefundRequestId") ? requiredFormUuid(formData, "beforeRefundRequestId") : undefined;
+  } catch {
+    return { kind: "invalid" };
   }
-
-  await supabase.from("audit_events").insert({
-    company_id: companyId,
-    actor_id: user.id,
-    category: "billing",
-    action: "filing_package_paid",
-    message: `Innsendingspakke betalt for ${incomeYear} via ${event.providerReference}.`,
+  const location = operatorSupportLocation({ supportCase: identity.supportCaseId, companyId: identity.companyId,
+    refundPurchaseId: identity.purchaseId, refundRequestId: identity.refundRequestId,
+    annualBefore: beforePurchaseId, beforeRefundRequestId });
+  if (location.invalid) return { kind: "invalid" };
+  const recover = (reason: ReturnType<typeof operatorReadRecovery>): AnnualSupportRefundRecoveryActionState => ({
+    kind: "recovery", ...identity, reason, href: operatorRecoveryHref(reason, location.returnTo),
   });
+  try {
+    const accessToken = await getCurrentSessionAccessToken();
+    if (!accessToken) { revalidatePath("/operator"); return recover("sign-in"); }
+    const supabase = await createSupabaseServerClient();
+    const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+    if (error || !user) { revalidatePath("/operator"); return recover("sign-in"); }
+    if (user.id !== identity.initiatingUserId) {
+      revalidatePath("/operator");
+      return { kind: "different-user", ...identity };
+    }
+    // Browser identity is continuity only; backend authority comes from this token.
+    const { companyId, purchaseId, refundRequestId, supportCaseId } = identity;
+    const value = await recoverAnnualSupportRefundThroughApi(accessToken, { companyId, purchaseId, refundRequestId, supportCaseId });
+    if (value.companyId !== companyId || value.purchaseId !== purchaseId
+        || value.refundRequestId !== refundRequestId || value.supportCaseId !== supportCaseId) {
+      revalidatePath("/operator");
+      return recover("unavailable");
+    }
+    revalidatePath("/operator");
+    return { kind: "observed", ...identity, status: value.status };
+  } catch (error) {
+    // Missing cases and failed reads can revoke protected evidence too. Refresh
+    // every unsuccessful recovery before offering another explicit same-request check.
+    try { revalidatePath("/operator"); } catch { return recover("unavailable"); }
+    return recover(operatorReadRecovery(error));
+  }
+}
 
-  revalidatePath("/");
-  redirect("/workspace");
+export async function recoverAnnualRefund(
+  _previousState: AnnualRefundRecoveryActionState,
+  formData: FormData,
+): Promise<AnnualRefundRecoveryActionState> {
+  let companyId: string;
+  let purchaseId: string;
+  let refundRequestId: string;
+  let beforePurchaseId: string | undefined;
+  let beforeRefundRequestId: string | undefined;
+  try {
+    companyId = requiredFormUuid(formData, "companyId");
+    purchaseId = requiredFormUuid(formData, "purchaseId");
+    refundRequestId = requiredFormUuid(formData, "refundRequestId");
+    beforePurchaseId = formString(formData, "beforePurchaseId") ? requiredFormUuid(formData, "beforePurchaseId") : undefined;
+    beforeRefundRequestId = formString(formData, "beforeRefundRequestId") ? requiredFormUuid(formData, "beforeRefundRequestId") : undefined;
+  } catch {
+    return { kind: "invalid" };
+  }
+  const returnTo = ownerPathWithQuery("/billing", { companyId, beforePurchaseId, beforeRefundRequestId,
+    refundPurchaseId: purchaseId, refundRequestId });
+  const recover = (reason: ReturnType<typeof annualBillingRecovery>) => ({
+    kind: "recovery" as const, companyId, purchaseId, refundRequestId, reason,
+    href: reason === "unavailable" ? null : `${reason === "step-up" ? "/mfa?fresh=1&" : "/login?reauth=1&"}next=${encodeURIComponent(returnTo)}`,
+  });
+  try {
+    const accessToken = await getCurrentSessionAccessToken();
+    if (!accessToken) {
+      revalidatePath("/billing");
+      return recover("sign-in");
+    }
+    const value = await recoverAnnualRefundThroughApi(accessToken, { companyId, purchaseId, refundRequestId });
+    if (value.companyId !== companyId || value.purchaseId !== purchaseId || value.refundRequestId !== refundRequestId) {
+      return recover("unavailable");
+    }
+    revalidatePath("/billing");
+    return { kind: "observed", companyId, purchaseId, refundRequestId, status: value.status };
+  } catch (error) {
+    if (annualBillingAccessRejected(error)) revalidatePath("/billing");
+    return recover(annualBillingRecovery(error));
+  }
+}
+
+async function executeAnnualCheckoutRequest(
+  formData: FormData, phase: AnnualCheckoutDraft["phase"],
+): Promise<AnnualCheckoutRequestActionState> {
+  const draft = formData.getAll("draft").length === 1 ? parseAnnualCheckoutDraft(formData.get("draft")) : null;
+  if (!draft || draft.phase !== phase) return { kind: "invalid" };
+  const returnTo = ownerPathWithQuery("/billing", { companyId: draft.body.companyId,
+    beforePurchaseId: draft.beforePurchaseId ?? undefined });
+  const recover = (reason: ReturnType<typeof annualBillingRecovery>, withdrawalRecommended = false): AnnualCheckoutRequestActionState => ({
+    kind: "recovery", draft, reason, withdrawalRecommended,
+    href: reason === "unavailable" ? null : `${reason === "step-up" ? "/mfa?fresh=1&" : "/login?reauth=1&"}next=${encodeURIComponent(returnTo)}`,
+  });
+  try {
+    const accessToken = await getCurrentSessionAccessToken();
+    if (!accessToken) { revalidatePath("/billing"); return recover("sign-in"); }
+    // Verify the initiating user against the exact token sent to billing. The
+    // browser identity is continuity only; it never becomes backend actor data.
+    const supabase = await createSupabaseServerClient();
+    const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+    if (error || !user) { revalidatePath("/billing"); return recover("sign-in"); }
+    if (user.id !== draft.initiatingUserId) { revalidatePath("/billing"); return { kind: "different-user", draft }; }
+    if (phase === "withdrawal-requested") {
+      const resolution = await withdrawAnnualCheckoutRequestThroughApi(accessToken, draft.body, draft.idempotencyKey);
+      if (resolution.companyId !== draft.body.companyId || resolution.incomeYear !== draft.body.incomeYear) return recover("unavailable");
+      revalidatePath("/billing");
+      return { kind: "resolved", draft, resolution };
+    }
+    const checkout = await startAnnualCheckoutThroughApi(accessToken, draft.body, draft.idempotencyKey);
+    if (checkout.companyId !== draft.body.companyId || checkout.incomeYear !== draft.body.incomeYear) return recover("unavailable");
+    revalidatePath("/billing");
+    return { kind: "started", draft, purchaseId: checkout.purchaseId, checkoutUrl: checkout.checkoutUrl };
+  } catch (error) {
+    if (annualBillingAccessRejected(error)) revalidatePath("/billing");
+    return recover(annualBillingRecovery(error), annualCheckoutNeedsWithdrawal(error));
+  }
+}
+
+export async function startAnnualCheckoutRequest(
+  _previous: AnnualCheckoutRequestActionState, formData: FormData,
+): Promise<AnnualCheckoutRequestActionState> {
+  return executeAnnualCheckoutRequest(formData, "checkout-requested");
+}
+
+export async function withdrawAnnualCheckoutRequest(
+  _previous: AnnualCheckoutRequestActionState, formData: FormData,
+): Promise<AnnualCheckoutRequestActionState> {
+  return executeAnnualCheckoutRequest(formData, "withdrawal-requested");
+}
+
+export async function observeAnnualCheckout(
+  _previousState: AnnualCheckoutObservationActionState,
+  formData: FormData,
+): Promise<AnnualCheckoutObservationActionState> {
+  let companyId: string;
+  let purchaseId: string;
+  let beforePurchaseId: string | undefined;
+  try {
+    companyId = requiredFormUuid(formData, "companyId");
+    purchaseId = requiredFormUuid(formData, "purchaseId");
+    beforePurchaseId = formString(formData, "beforePurchaseId")
+      ? requiredFormUuid(formData, "beforePurchaseId") : undefined;
+  } catch {
+    return { kind: "invalid" };
+  }
+  const returnTo = ownerPathWithQuery("/billing", { companyId, beforePurchaseId, checkoutPurchaseId: purchaseId });
+  const recover = (reason: ReturnType<typeof annualBillingRecovery>) => ({
+    kind: "recovery" as const, companyId, purchaseId, reason,
+    href: reason === "unavailable" ? null : `${reason === "step-up" ? "/mfa?fresh=1&" : "/login?reauth=1&"}next=${encodeURIComponent(returnTo)}`,
+  });
+  try {
+    const accessToken = await getCurrentSessionAccessToken();
+    if (!accessToken) return recover("sign-in");
+    // Only original purchase intent crosses this boundary. No browser-provided
+    // actor, status, offer, provider URL or operation key can acquire a purchase.
+    const value = await observeAnnualCheckoutThroughApi(accessToken, { companyId, purchaseId });
+    if (value.companyId !== companyId || value.purchaseId !== purchaseId) return recover("unavailable");
+    // Refresh the canonical balances even when the observed status is pending.
+    // The checkout response is not the full refund-aware history projection.
+    revalidatePath("/billing");
+    return { kind: "observed", companyId, purchaseId, status: value.status,
+      ...(value.status === "pending" && value.checkoutUrl ? { checkoutUrl: value.checkoutUrl } : {}) };
+  } catch (error) {
+    return recover(annualBillingRecovery(error));
+  }
+}
+
+export async function cleanupAnnualAgreement(
+  _previousState: AnnualAgreementCleanupActionState,
+  formData: FormData,
+): Promise<AnnualAgreementCleanupActionState> {
+  // Previous action state and submitted status/receipt fields are untrusted.
+  // The backend owns the original STOP identity for this company/purchase.
+  let companyId: string;
+  let purchaseId: string;
+  let beforePurchaseId: string | undefined;
+  try {
+    companyId = requiredFormUuid(formData, "companyId");
+    purchaseId = requiredFormUuid(formData, "purchaseId");
+    beforePurchaseId = formString(formData, "beforePurchaseId")
+      ? requiredFormUuid(formData, "beforePurchaseId") : undefined;
+  } catch {
+    return { kind: "invalid" };
+  }
+  const returnTo = ownerPathWithQuery("/billing", { companyId, beforePurchaseId, cleanupPurchaseId: purchaseId });
+  const recover = (reason: ReturnType<typeof annualBillingRecovery>) => ({
+    kind: "recovery" as const, companyId, purchaseId, reason,
+    href: reason === "unavailable" ? null : `${reason === "step-up" ? "/mfa?fresh=1&" : "/login?reauth=1&"}next=${encodeURIComponent(returnTo)}`,
+  });
+  try {
+    const accessToken = await getCurrentSessionAccessToken();
+    if (!accessToken) return recover("sign-in");
+    const value = await cleanupAnnualAgreementThroughApi(accessToken, { companyId, purchaseId });
+    if (value.companyId !== companyId || value.purchaseId !== purchaseId) return recover("unavailable");
+    return { kind: "result", value };
+  } catch (error) {
+    return recover(annualBillingRecovery(error));
+  }
+}
+
+export async function cancelAnnualRenewal(formData: FormData) {
+  const operationId = requiredFormUuid(formData, "operationId");
+  const companyId = requiredFormUuid(formData, "companyId");
+  const purchaseId = requiredFormUuid(formData, "purchaseId");
+  const beforePurchaseId = formString(formData, "beforePurchaseId")
+    ? requiredFormUuid(formData, "beforePurchaseId") : undefined;
+  const returnTo = ownerPathWithQuery("/billing", {
+    companyId, beforePurchaseId, cancellationOperationId: operationId,
+    cancellationPurchaseId: purchaseId,
+  });
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect(`/login?reauth=1&next=${encodeURIComponent(returnTo)}`);
+  try {
+    await cancelAnnualRenewalThroughApi(accessToken, { companyId, purchaseId }, operationId);
+  } catch (error) {
+    const recovery = annualBillingRecovery(error);
+    if (recovery === "sign-in") redirect(`/login?reauth=1&next=${encodeURIComponent(returnTo)}`);
+    if (recovery === "step-up") redirect(`/mfa?fresh=1&next=${encodeURIComponent(returnTo)}`);
+    redirect(`${returnTo}&cancellationError=unconfirmed`);
+  }
+  revalidatePath("/billing");
+  redirect(ownerPathWithQuery("/billing", { companyId, beforePurchaseId }));
 }
 
 export async function cancelBillingSubscription(formData: FormData) {

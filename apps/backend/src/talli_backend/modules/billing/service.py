@@ -19,8 +19,6 @@ from talli_backend.modules.billing.public import (
     BillingPaymentProvider,
     BillingPaymentStatus,
     BillingPersistence,
-    BillingPlan,
-    BillingPricing,
     BillingProviderIntent,
     BillingSnapshot,
     BillingSnapshotQuery,
@@ -34,12 +32,6 @@ from talli_backend.modules.billing.public import (
     RefundFilingPackageCommand,
     expected_payment_status,
 )
-
-
-_PRICING = {
-    BillingPlan.FOUNDER: BillingPricing(BillingPlan.FOUNDER, 29, 299),
-    BillingPlan.STANDARD: BillingPricing(BillingPlan.STANDARD, 49, 499),
-}
 
 
 class BillingService:
@@ -58,16 +50,17 @@ class BillingService:
         self, command: ConfigureBillingAccountCommand
     ) -> BillingAccount:
         await self._persistence.authorize_owner_command(command.company_id)
-        return await self._persistence.configure_account(command, _PRICING[command.pricing_plan])
+        raise BillingError.precondition(BillingErrorCode.LEGACY_ACQUISITION_RETIRED)
 
     async def activate_subscription(
         self, command: ActivateSubscriptionCommand
     ) -> BillingPaymentEvent:
         await self._persistence.authorize_owner_command(command.company_id)
-        account = await self._required_account(command.company_id)
         kind = BillingPaymentKind.SUBSCRIPTION
         replay = await self._payment_replay(command, kind)
-        return replay or await self._payment(command, kind, account.pricing.monthly_nok)
+        if replay is None:
+            raise BillingError.precondition(BillingErrorCode.LEGACY_ACQUISITION_RETIRED)
+        return replay
 
     async def cancel_subscription(
         self, command: CancelSubscriptionCommand
@@ -82,27 +75,11 @@ class BillingService:
         self, command: PurchaseFilingPackageCommand
     ) -> BillingPaymentEvent:
         await self._persistence.authorize_owner_command(command.company_id)
-        account = await self._required_account(command.company_id)
         kind = BillingPaymentKind.FILING_PACKAGE
-        amount_nok = account.pricing.filing_package_nok
         replay = await self._payment_replay(command, kind)
-        if replay is not None:
-            return replay
-        if account.refund_eligible:
-            raise BillingError.precondition(BillingErrorCode.REFUND_NOT_ALLOWED)
-        if not account.supported_case:
-            raise BillingError.precondition(BillingErrorCode.UNSUPPORTED_CASE)
-        if not account.subscription_active:
-            raise BillingError.precondition(BillingErrorCode.SUBSCRIPTION_REQUIRED)
-        if not await self._persistence.filing_ready(
-            command.company_id, command.income_year, command.obligation
-        ):
-            raise BillingError.precondition(BillingErrorCode.FILING_NOT_READY)
-        return await self._payment(
-            command,
-            kind,
-            amount_nok,
-        )
+        if replay is None:
+            raise BillingError.precondition(BillingErrorCode.LEGACY_ACQUISITION_RETIRED)
+        return replay
 
     async def refund_filing_package(
         self, command: RefundFilingPackageCommand
@@ -114,15 +91,27 @@ class BillingService:
         replay = await self._payment_replay(command, kind)
         if replay is not None:
             return replay
-        if (
-            not account.supported_case
-            or not account.filing_package_paid
-            or account.refund_completed
-        ):
+        if not account.supported_case or account.refund_completed:
             raise BillingError.precondition(BillingErrorCode.REFUND_NOT_ALLOWED)
-        return await self._payment(
-            command, kind, amount_nok
-        )
+        if not account.filing_package_paid:
+            # Post-cutover reconciliation never restores this legacy flag. A
+            # uniquely confirmed original payment still has a cleanup path.
+            history = await self._persistence.snapshot(BillingSnapshotQuery(
+                company_ids=(command.company_id,), actor_id=command.actor_id,
+                correlation_id=command.correlation_id,
+            ))
+            if any(event.company_id == command.company_id and event.kind is BillingPaymentKind.REFUND
+                   for event in history.payment_events):
+                raise BillingError.precondition(BillingErrorCode.REFUND_NOT_ALLOWED)
+            originals = [event for event in history.payment_events
+                if event.company_id == command.company_id
+                and event.income_year == command.income_year
+                and event.kind is BillingPaymentKind.FILING_PACKAGE
+                and event.status is BillingPaymentStatus.SUCCEEDED]
+            if len(originals) != 1 or originals[0].provider != self._provider.provider:
+                raise BillingError.precondition(BillingErrorCode.REFUND_NOT_ALLOWED)
+            amount_nok = originals[0].amount_nok
+        return await self._payment(command, kind, amount_nok)
 
     async def mark_unsupported(
         self, command: MarkBillingUnsupportedCommand
@@ -138,8 +127,7 @@ class BillingService:
         return await self._persistence.manage_pilot_entitlement(command)
 
     async def snapshot(self, query: BillingSnapshotQuery) -> BillingSnapshot:
-        snapshot = await self._persistence.snapshot(query)
-        return replace(snapshot, pricing=tuple(_PRICING.values()))
+        return await self._persistence.snapshot(query)
 
     async def entitlement(
         self, query: BillingEntitlementQuery
@@ -155,10 +143,10 @@ class BillingService:
                 at=self._now(),
             )
             if pilot is not None:
-                ready = await self._persistence.filing_ready(
-                    query.company_id, query.income_year, query.obligation
-                )
                 if pilot.billing_exempt:
+                    ready = await self._persistence.filing_ready(
+                        query.company_id, query.income_year, query.obligation
+                    )
                     if not ready:
                         return BillingEntitlementDecision(
                             company_id=query.company_id,
@@ -184,16 +172,11 @@ class BillingService:
                         message="En aktiv, nøyaktig valideringsrettighet gir betalingsfritak.",
                         pilot_entitlement_id=pilot.entitlement_id,
                     )
-                account = await self._persistence.find_account(query.company_id)
                 return replace(
-                    billing_entitlement_decision(query, account, filing_ready=ready),
+                    billing_entitlement_decision(query, None, filing_ready=False),
                     pilot_entitlement_id=pilot.entitlement_id,
                 )
-        account = await self._persistence.find_account(query.company_id)
-        ready = await self._persistence.filing_ready(
-            query.company_id, query.income_year, query.obligation
-        )
-        return billing_entitlement_decision(query, account, filing_ready=ready)
+        return billing_entitlement_decision(query, None, filing_ready=False)
 
     async def _required_account(self, company_id) -> BillingAccount:
         account = await self._persistence.find_account(company_id)
@@ -265,73 +248,19 @@ def billing_entitlement_decision(
     *,
     filing_ready: bool,
 ) -> BillingEntitlementDecision:
-    common = {
-        "company_id": query.company_id,
-        "income_year": query.income_year,
-        "obligation": query.obligation,
-        "billing_exempt": False,
-    }
-    if account is None:
-        return BillingEntitlementDecision(
-            **common,
-            status=BillingStatus.SUBSCRIPTION_REQUIRED,
-            allowed=False,
-            charge_allowed=False,
-            readiness_allowed=False,
-            message="Faktureringskonto kreves før produksjonsinnsending.",
-        )
-    if account.refund_eligible:
-        return BillingEntitlementDecision(
-            **common,
-            status=BillingStatus.REFUND_ELIGIBLE,
-            allowed=False,
-            charge_allowed=False,
-            readiness_allowed=False,
-            message="Innsendingspakken kan refunderes etter en støttet feil.",
-        )
-    if not account.supported_case:
-        return BillingEntitlementDecision(
-            **common,
-            status=BillingStatus.UNSUPPORTED_CASE,
-            allowed=False,
-            charge_allowed=False,
-            readiness_allowed=False,
-            message=account.no_charge_reason or "Saken er utenfor Talli-støtte.",
-        )
-    if not account.subscription_active:
-        return BillingEntitlementDecision(
-            **common,
-            status=BillingStatus.SUBSCRIPTION_REQUIRED,
-            allowed=False,
-            charge_allowed=False,
-            readiness_allowed=False,
-            message="Aktivt abonnement kreves før produksjonsinnsending.",
-        )
-    if not filing_ready:
-        return BillingEntitlementDecision(
-            **common,
-            status=BillingStatus.ACTIVE,
-            allowed=False,
-            charge_allowed=False,
-            readiness_allowed=True,
-            message="Innsendingskontrollen må være klar før innsendingspakken kan betales.",
-        )
-    if account.filing_package_paid:
-        return BillingEntitlementDecision(
-            **common,
-            status=BillingStatus.READY_FOR_PRODUCTION_FILING,
-            allowed=True,
-            charge_allowed=False,
-            readiness_allowed=True,
-            message="Fakturering og innsendingsrett er klare.",
-        )
+    # Legacy flags and editable readiness snapshots confer no annual authority.
+    # Preparing a readiness check remains independent of payment. This does not
+    # assert that readiness, eligibility or operational clearance has passed.
     return BillingEntitlementDecision(
-        **common,
-        status=BillingStatus.FILING_PACKAGE_REQUIRED,
+        company_id=query.company_id,
+        income_year=query.income_year,
+        obligation=query.obligation,
+        status=BillingStatus.ANNUAL_BILLING_UNAVAILABLE,
         allowed=False,
-        charge_allowed=True,
+        charge_allowed=False,
         readiness_allowed=True,
-        message="Innsendingspakken må betales før produksjonsinnsending.",
+        billing_exempt=False,
+        message="Årsabonnement og innsendingsrett må bekreftes før produksjonsinnsending.",
     )
 
 

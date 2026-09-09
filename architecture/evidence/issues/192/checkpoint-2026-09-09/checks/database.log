@@ -1,0 +1,65 @@
+
+> talli-repository@0.1.0 test:billing-database-lifecycle
+> : "${DATABASE_URL:?DATABASE_URL must identify the disposable test database}" && uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_supabase_billing_runtime.py apps/backend/tests/test_billing_persistence_deadlines.py apps/backend/tests/test_legacy_billing_retirement_runtime.py apps/backend/tests/test_annual_purchase_basis_runtime.py apps/backend/tests/test_annual_purchase_ledger_runtime.py apps/backend/tests/test_annual_checkout_runtime.py apps/backend/tests/test_annual_checkout_withdrawal_runtime.py apps/backend/tests/test_annual_cancellation_runtime.py apps/backend/tests/test_annual_cleanup_runtime.py apps/backend/tests/test_annual_billing_read_runtime.py apps/backend/tests/test_annual_refund_runtime.py apps/backend/tests/test_annual_refund_recovery_runtime.py apps/backend/tests/test_annual_refund_targets_runtime.py apps/backend/tests/test_annual_support_refund_recovery_runtime.py apps/backend/tests/test_annual_support_cleanup_runtime.py apps/backend/tests/test_annual_support_refund_targets_runtime.py apps/backend/tests/test_annual_refund_cleanup_runtime.py apps/backend/tests/test_annual_support_runtime.py apps/backend/tests/test_annual_notification_runtime.py apps/backend/tests/test_annual_observation_runtime.py -q && node --test --test-concurrency=1 tests/billing_database_runtime.test.mjs
+
+........................................................................ [ 10%]
+........................................................................ [ 20%]
+........................................................................ [ 30%]
+........................................................................ [ 41%]
+........................................................................ [ 51%]
+........................................................................ [ 61%]
+........................................................................ [ 72%]
+........................................................................ [ 82%]
+........................................................................ [ 92%]
+...................................................                      [100%]
+699 passed in 422.80s (0:07:02)
+✖ billing expansion, RLS, rollback, contract, and recutover are repeatable twice (39.812875ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 173.005875
+
+✖ failing tests:
+
+test at tests/billing_database_runtime.test.mjs:249:1
+✖ billing expansion, RLS, rollback, contract, and recutover are repeatable twice (39.812875ms)
+  error: duplicate key value violates unique constraint "billing_payment_events_idempotency_key_key"
+      at /Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/node_modules/pg/lib/client.js:646:17
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding%20accounting/tests/billing_database_runtime.test.mjs:345:7)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    length: 307,
+    severity: 'ERROR',
+    code: '23505',
+    detail: 'Key (idempotency_key)=(billing-rollback-pending-00000001) already exists.',
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: 'billing',
+    table: 'billing_payment_events',
+    column: undefined,
+    dataType: undefined,
+    constraint: 'billing_payment_events_idempotency_key_key',
+    file: 'nbtinsert.c',
+    line: '666',
+    routine: '_bt_check_unique'
+  }
+
+NODE PHASE CORRECTION: The fixed predecessor event key collided with evidence retained from an earlier run. The test now creates a fresh event UUID and derives its key from that UUID. Production code and the green 699-case Python phase are unchanged. Node-only rerun follows; original failure is preserved in /tmp/talli-192-final-database-node-failure.log.
+
+✔ billing expansion, RLS, rollback, contract, and recutover are repeatable twice (630.108959ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 757.253208

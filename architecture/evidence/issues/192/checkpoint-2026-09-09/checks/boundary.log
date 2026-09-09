@@ -1,0 +1,368 @@
+
+> talli-repository@0.1.0 test:boundary
+> npm run test:boundary-backend && npm run test:boundary-web && npm run test:boundary-contract
+
+
+> talli-repository@0.1.0 test:boundary-backend
+> uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests -m "not billing_database"
+
+============================= test session starts ==============================
+platform darwin -- Python 3.12.11, pytest-8.4.1, pluggy-1.6.0
+rootdir: /Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/apps/backend
+configfile: pyproject.toml
+plugins: anyio-4.14.2
+collected 2199 items / 699 deselected / 1500 selected
+
+apps/backend/tests/test_annual_billing_api.py .......................... [  1%]
+...............                                                          [  2%]
+apps/backend/tests/test_annual_billing_policy.py ....................... [  4%]
+................                                                         [  5%]
+apps/backend/tests/test_annual_billing_runtime_configuration.py ........ [  5%]
+...................................                                      [  8%]
+apps/backend/tests/test_annual_checkout_api.py ......................... [  9%]
+..........................                                               [ 11%]
+apps/backend/tests/test_annual_checkout_reconciliation_cli.py .......... [ 12%]
+.................                                                        [ 13%]
+apps/backend/tests/test_annual_checkout_service.py ..................... [ 14%]
+..............................                                           [ 16%]
+apps/backend/tests/test_annual_cleanup_api.py .......................... [ 18%]
+.......                                                                  [ 19%]
+apps/backend/tests/test_annual_cleanup_service.py ...................... [ 20%]
+.............                                                            [ 21%]
+apps/backend/tests/test_annual_notification_intake.py .................. [ 22%]
+...........                                                              [ 23%]
+apps/backend/tests/test_annual_observation_service.py .................. [ 24%]
+........                                                                 [ 25%]
+apps/backend/tests/test_annual_refund_recovery_api.py .................. [ 26%]
+...                                                                      [ 26%]
+apps/backend/tests/test_annual_refund_recovery_service.py .............. [ 27%]
+...........                                                              [ 28%]
+apps/backend/tests/test_annual_refund_service.py ....................... [ 29%]
+...............................                                          [ 31%]
+apps/backend/tests/test_annual_refund_targets_api.py ................    [ 32%]
+apps/backend/tests/test_annual_support_api.py .................          [ 33%]
+apps/backend/tests/test_annual_support_cleanup_api.py .................. [ 35%]
+.......                                                                  [ 35%]
+apps/backend/tests/test_annual_support_cleanup_service.py .............. [ 36%]
+..............                                                           [ 37%]
+apps/backend/tests/test_annual_support_refund_recovery_api.py .......... [ 38%]
+..................                                                       [ 39%]
+apps/backend/tests/test_annual_support_refund_recovery_service.py ...... [ 39%]
+...................                                                      [ 40%]
+apps/backend/tests/test_annual_support_refund_targets_api.py ........... [ 41%]
+......                                                                   [ 42%]
+apps/backend/tests/test_banking.py ..........                            [ 42%]
+apps/backend/tests/test_banking_api.py ....                              [ 43%]
+apps/backend/tests/test_banking_connections_api.py ..                    [ 43%]
+apps/backend/tests/test_banking_consent.py ....                          [ 43%]
+apps/backend/tests/test_banking_file_fallback.py .....                   [ 43%]
+apps/backend/tests/test_banking_file_workflow.py .                       [ 43%]
+apps/backend/tests/test_banking_provider_adapters.py ....                [ 44%]
+apps/backend/tests/test_banking_provider_contract.py ...                 [ 44%]
+apps/backend/tests/test_banking_public_contract.py ..                    [ 44%]
+apps/backend/tests/test_banking_sync.py ....                             [ 44%]
+apps/backend/tests/test_banking_workflow.py .                            [ 44%]
+apps/backend/tests/test_billing.py ............                          [ 45%]
+apps/backend/tests/test_billing_api.py ......                            [ 45%]
+apps/backend/tests/test_billing_equivalence.py ......................... [ 47%]
+................                                                         [ 48%]
+apps/backend/tests/test_billing_provider.py .....                        [ 49%]
+apps/backend/tests/test_company_access.py .............................. [ 51%]
+....                                                                     [ 51%]
+apps/backend/tests/test_company_cancellation_lifecycle.py .............. [ 52%]
+...........                                                              [ 52%]
+apps/backend/tests/test_company_eligibility.py ......................... [ 54%]
+................................                                         [ 56%]
+apps/backend/tests/test_company_onboarding.py ....................       [ 58%]
+apps/backend/tests/test_company_onboarding_migration.py ...              [ 58%]
+apps/backend/tests/test_company_support_access.py .....                  [ 58%]
+apps/backend/tests/test_corporate_governance.py ....................     [ 59%]
+apps/backend/tests/test_corporate_governance_api.py .........            [ 60%]
+apps/backend/tests/test_corporate_governance_public_contract.py ...      [ 60%]
+apps/backend/tests/test_corporate_governance_supported_events.py ....... [ 61%]
+..........                                                               [ 61%]
+apps/backend/tests/test_corporate_governance_workflow.py ............... [ 62%]
+.                                                                        [ 62%]
+apps/backend/tests/test_documents.py ............                        [ 63%]
+apps/backend/tests/test_documents_api.py ...                             [ 63%]
+apps/backend/tests/test_investments.py .......................           [ 65%]
+apps/backend/tests/test_investments_api.py .............                 [ 66%]
+apps/backend/tests/test_investments_public_contract.py ...               [ 66%]
+apps/backend/tests/test_investments_supported_patterns.py .............. [ 67%]
+.........                                                                [ 68%]
+apps/backend/tests/test_investments_workflow.py ..........               [ 68%]
+apps/backend/tests/test_ledger.py ..........................             [ 70%]
+apps/backend/tests/test_ledger_api.py ....................               [ 71%]
+apps/backend/tests/test_ledger_company_year_close.py ................... [ 73%]
+                                                                         [ 73%]
+apps/backend/tests/test_ledger_corrections.py ...........                [ 73%]
+apps/backend/tests/test_ledger_full_year_reconstruction.py ............  [ 74%]
+apps/backend/tests/test_ledger_public_contract.py ........               [ 75%]
+apps/backend/tests/test_ledger_supported_patterns.py ................... [ 76%]
+.............................................                            [ 79%]
+apps/backend/tests/test_ledger_workflow.py ......                        [ 79%]
+apps/backend/tests/test_legacy_billing_retirement.py ................... [ 81%]
+.............                                                            [ 81%]
+apps/backend/tests/test_marketing_measurement_api.py ........            [ 82%]
+apps/backend/tests/test_opening_snapshot_compatibility.py ........       [ 83%]
+apps/backend/tests/test_shareholder_register_filing_contract.py ...      [ 83%]
+apps/backend/tests/test_supabase_banking.py ............                 [ 84%]
+apps/backend/tests/test_supabase_corporate_governance.py ...........     [ 84%]
+apps/backend/tests/test_supabase_documents.py .....                      [ 85%]
+apps/backend/tests/test_supabase_investments.py ...............          [ 86%]
+apps/backend/tests/test_supabase_ledger.py ............................. [ 88%]
+................................................                         [ 91%]
+apps/backend/tests/test_supabase_marketing_measurement.py s              [ 91%]
+apps/backend/tests/test_supabase_validation_observation.py s             [ 91%]
+apps/backend/tests/test_system_boundary.py ......                        [ 91%]
+apps/backend/tests/test_validation_observation.py .................      [ 92%]
+apps/backend/tests/test_vipps_billing.py ............................... [ 94%]
+.......................                                                  [ 96%]
+apps/backend/tests/test_vipps_mt_conformance_runner.py ................. [ 97%]
+.............                                                            [ 98%]
+apps/backend/tests/test_vipps_webhook.py .......................         [100%]
+
+========= 1498 passed, 2 skipped, 699 deselected in 125.27s (0:02:05) ==========
+
+> talli-repository@0.1.0 test:boundary-web
+> node --experimental-strip-types --test apps/web/tests/system-boundary-presentation.test.mjs apps/web/tests/banking-presentation.test.mjs apps/web/tests/banking-connection-presentation.test.mjs apps/web/tests/company-access-presentation.test.mjs apps/web/tests/company-access-administration.test.mjs apps/web/tests/company-access-cancellation.test.mjs apps/web/tests/company-access-onboarding.test.mjs apps/web/tests/company-access-stage-exit.test.mjs apps/web/tests/company-access-action-recovery.test.mjs apps/web/tests/company-eligibility.test.mjs apps/web/tests/company-year-eligibility-gate.test.mjs apps/web/tests/corporate-governance-draft-lifecycle.test.mjs apps/web/tests/corporate-governance-presentation.test.mjs apps/web/tests/corporate-governance-transport.test.mjs apps/web/tests/documents-presentation.test.mjs apps/web/tests/investments-presentation.test.mjs apps/web/tests/invitation-side-effects.test.mjs apps/web/tests/internal-redirect.test.mjs apps/web/tests/ledger-audit-side-effects.test.mjs apps/web/tests/ledger-presentation.test.mjs apps/web/tests/ledger-writer-transport.test.mjs apps/web/tests/marketing-measurement.test.mjs apps/web/tests/owner-mfa-transition.test.mjs apps/web/tests/reauthentication.test.mjs apps/web/tests/public-acquisition.test.mjs tests/customer_agreement_actions.test.mjs tests/customer_agreement_reacceptance_ui.test.mjs apps/web/tests/operator-read-recovery.test.mjs
+
+✔ connection presentation exposes only masked account, coverage and freshness (2.256042ms)
+✔ recovery states give one calm next action and make missing coverage visible (0.20175ms)
+✔ banking transport follows opaque pages through the generated client (430.421291ms)
+✔ bank file transport persists a backend preview before explicit acceptance (0.8825ms)
+✔ banking presentation preserves the frozen consumer shape without recreating policy (5.981875ms)
+✔ banking error presentation preserves retry identity only for unknown outcomes (2.109958ms)
+✔ create_invitation:outbox remains reachable and recovery finishes without another command (1.624333ms)
+✔ create_invitation:audit remains reachable and recovery finishes without another command (0.165583ms)
+✔ accept_invitation:audit remains reachable and recovery finishes without another command (0.149084ms)
+✔ revoke_invitation:audit remains reachable and recovery finishes without another command (1.204333ms)
+✔ resend_invitation:outbox remains reachable and recovery finishes without another command (0.178583ms)
+✔ resend_invitation:audit remains reachable and recovery finishes without another command (0.112916ms)
+✔ recovery actor comes from the server context and cannot claim another actor's continuation (0.147ms)
+✔ delivery persistence is owned by atomic completion, never by a browser outbox insert (0.118791ms)
+✔ company-access administration transport uses only generated client operations (264.752875ms)
+✔ generated decoders fail closed on every unknown or token-shaped invitation field (0.93825ms)
+✔ cancellation lifecycle transport uses generated operations with bearer and deadline (195.322166ms)
+✔ generated cancellation decoders reject malformed optional fields, UUIDs, and timestamps (5.4945ms)
+✔ generated review decoder enforces evidence-reference length bounds (0.516833ms)
+✔ truncated successful command JSON becomes a typed 502 and preserves the operation (0.381084ms)
+✔ every concurrent archive source failure trips the completion barrier (1.148792ms)
+✔ actions preserve exact cancellation inputs for network and decoder failures (0.125833ms)
+✔ web cancellation lifecycle has no direct Supabase persistence or caller-owned proof (8.323042ms)
+✔ an unknown organization keeps the specific Enhetsregisteret guidance (2.479583ms)
+✔ agreement reacceptance uses an authenticated generated-client request (150.459083ms)
+✔ actions and agreement gates have no direct business-persistence facade (34.733167ms)
+✔ company-access and system-boundary transports share typed fail-closed backend configuration (232.153125ms)
+✔ both transports reject remote HTTP in every Node environment (0.786333ms)
+✔ company-access and system-boundary accept the same HTTPS and loopback origins (101.484291ms)
+✔ company-access transport sends the established session only through the generated client (0.688292ms)
+✔ the company-access app boundary owns its presentation model instead of a Supabase row DTO (6.773041ms)
+✔ owner context preserves the admitted company-year and current safety gate (1.0595ms)
+✔ company record presentation maps the generated camel-case contract to existing web registry facts (0.111292ms)
+✔ company-access transport fails closed on a partial context response (0.335ms)
+✔ generated company-context decoder rejects lower assurance, lower scope, and non-owner roles (0.491208ms)
+✔ company records and case-bound operator access use authenticated generated-client operations (53.008209ms)
+✔ a verified user without an owner company reaches onboarding but other context failures stay closed (5.990292ms)
+✔ system-user callback resolves company authorization through its injected company-access query (8.030625ms)
+✔ every Stage 1 web consumer authorizes through company-access contracts (249.268916ms)
+✔ stale admission evidence gets a truthful restart route (1.912208ms)
+✔ precheck and definitive eligibility use public generated-client calls (272.712333ms)
+✔ company-year admission is authenticated and carries the exact immutable boundary (4.809166ms)
+✔ company-year recheck is authenticated, trigger-bound, and fail-closed decoded (0.670417ms)
+✔ the functional public journey owns no policy, direct fetch, or business persistence (25.852125ms)
+✔ the recheck helper carries future serialized triggers through the API (2.252458ms)
+✔ a blocked recheck stops the consequential operation and preserves its next step (0.509042ms)
+✔ missing admission and provider failure both fail closed (0.380667ms)
+✔ registration failure removes every newly persisted governance document (6.426167ms)
+✔ registration failure preserves cleanup failures for reconciliation (0.917375ms)
+✔ governance errors expose stable Norwegian owner guidance (51.464125ms)
+✔ shareholder-loan form presentation explains treatment without exposing posting policy (1.876708ms)
+✔ shareholder-loan errors never fall through to dividend guidance (0.123084ms)
+✔ only transport and server failures preserve an unknown-outcome retry (2.974875ms)
+✔ decision-facts transport sends only identity and accepts the generated response (138.544958ms)
+✔ owner-dividend lifecycle transport preserves path and idempotency evidence (1.964291ms)
+✔ owner-dividend transport rejects malformed lifecycle responses (0.581791ms)
+✔ shareholder-loan transport preserves identity and rejects malformed responses (0.349708ms)
+✔ document presentation is a transport-only shape conversion (7.002042ms)
+✔ signed upload uses exactly the backend-issued object and finalizes once (336.225625ms)
+✔ an ambiguous signed-transfer error is not blindly finalized (1.181125ms)
+✔ invitation login continuation accepts only same-origin absolute paths (1.005709ms)
+✔ investments transport uses generated routes, auth, idempotency, and opaque paging (354.957166ms)
+✔ investment unit reads reject lossy wire values (1.227083ms)
+✔ investment position reads preserve contract-declared lifecycle movement facts (0.320416ms)
+✔ investment unit presentation stays decimal-string exact (0.185458ms)
+✔ investments presentation maps canonical wire facts without owning policy (14.260584ms)
+✔ investments errors preserve retry identity only for unknown outcomes (0.575875ms)
+✔ investment actions require explicit owner and dividend attestations (28.262583ms)
+✔ investment wizard controls can shrink inside the mobile grid (5.400042ms)
+✔ side-effect identity is deterministic, actor-scoped, and purpose-scoped (1.954084ms)
+✔ two actors can reuse one operation id without losing audit evidence (17.914667ms)
+✔ same-actor retry reconciles exact rows and recovers an audit failure (3.574875ms)
+✔ foreign rows are not an oracle because actor-derived ids never trigger their lookup (0.188459ms)
+✔ ledger audit identity is deterministic and actor scoped (1.367542ms)
+✔ ledger audit replay reconciles the exact immutable row (1.948709ms)
+✔ ledger audit failure cannot be reported as success (0.93375ms)
+✔ an in-progress idempotent command preserves its operation id for retry (50.216583ms)
+✔ ledger errors keep the frozen plain-Norwegian guidance (0.240291ms)
+✔ opening-snapshot transport chunks companies and follows opaque pages (180.449ms)
+✔ opening-snapshot compatibility projection preserves the frozen shape (1.045417ms)
+✔ opening-snapshot decoders reject malformed collections and invariants (2.87075ms)
+✔ ledger query transport follows opaque pages through the generated client (1.540292ms)
+✔ reconstruction readiness comes from the generated backend contract (0.702958ms)
+✔ current company-year close comes from the generated read-only backend contract (0.501209ms)
+✔ company-year close presentation distinguishes stale and blocked assessments (0.127125ms)
+✔ generated reconstruction decoder rejects unknown gap codes (0.285583ms)
+✔ generated reconstruction decoder preserves historical null and rejects partial bindings (0.40525ms)
+✔ generated company-year close decoder rejects unknown gap codes (1.386917ms)
+✔ generated ledger query rejects a partial expanded source pair (0.493083ms)
+✔ source-aware ledger query fails closed against a source-unaware backend (1.282958ms)
+✔ source-aware ledger queries opt into the expanded response (2.763083ms)
+✔ ledger mutation transport injects decimal money and idempotency headers (0.704917ms)
+✔ administrative-cost transport requires exact purpose-bound success evidence (0.645375ms)
+✔ new-year start uses the generated atomic workflow without exposing ledger lines (0.271083ms)
+✔ new-year start rejects malformed or non-opening success evidence (0.420042ms)
+✔ opening setup action has no direct business persistence or duplicate posting policy (14.511584ms)
+✔ manual journals and period locks reconcile their frozen audit continuation (0.772292ms)
+✔ ledger presentation maps generated facts without recreating posting policy (0.447875ms)
+✔ opening entries recover their setup identity from canonical ledger source facts (0.288292ms)
+✔ archive presentation preserves the complete frozen ledger row projection (0.146417ms)
+✔ ledger period-lock transport returns an empty result without a backend call (0.073417ms)
+✔ every approved ledger-coordinator form submits one operation ID (1.370833ms)
+✔ client action wizards keep one stable operation ID for their mounted form (0.442916ms)
+✔ ledger retry IDs are plumbed only to the matching page form (0.462459ms)
+✔ all relocated transactional writers use the stable operation ID at the generated boundary (4.012541ms)
+✔ share purchases and sales use the investments generated interface (0.2695ms)
+✔ share-sale wizard submits intent without duplicating authoritative FIFO policy (0.112375ms)
+✔ committed retries reach the coordinator before mutable legacy state can reject them (0.416625ms)
+✔ unknown coordinator outcomes preserve only the scoped retry operation (1.081416ms)
+✔ apps/web/tests/ledger-writer-transport.test.mjs (741.6385ms)
+✔ consented anonymous funnel events accept only the bounded public vocabulary (2.23525ms)
+✔ the first-party endpoint records one consented event without caching it (110.913125ms)
+✔ the generated backend client receives only an irreversible session hash (8.861458ms)
+✔ consent withdrawal deletes the bounded anonymous session through the same origin (0.566875ms)
+✔ the beacon-compatible POST endpoint accepts only the bounded withdrawal command (0.41225ms)
+✔ the first-party endpoint rejects an oversized chunked body while streaming (2.316625ms)
+✔ the browser creates no optional storage before explicit consent and expires it after thirty minutes (1.052833ms)
+✔ funnel producers emit only a bounded event from an active consent session (0.793ms)
+✔ the operator view consumes aggregate report fields without exposing raw identifiers (11.205375ms)
+✔ consent presentation uses accurate session wording and equal choices (2.359125ms)
+✔ support entry authorizes before protected reads and preserves its recovery destination (138.374042ms)
+✔ marketing entry authorizes before protected reads and preserves its recovery destination (85.925916ms)
+✔ failed case or annual read suppresses ancillary reads, mutation controls and protected evidence (161.461958ms)
+✔ malformed or duplicate case/cursor selection never triggers protected page loaders (69.996833ms)
+✔ authorized support-role entry retains ordinary support and marketing behavior (26.887459ms)
+✔ presentation shell leaves scoped auth recovery to each page without mutating the session (4.530416ms)
+✔ page access preserves missing/rejected sessions, provider errors and both authorized operator roles (35.347416ms)
+✔ complete operator selection survives login and MFA without losing either cursor (36.428334ms)
+✔ malformed, duplicate and orphan operator selection cannot invoke protected loaders (233.894209ms)
+✔ late selected-target failure keeps full recovery destination and suppresses ancillary controls (59.423291ms)
+✔ owner AAL2 is distinguished from other context failures without weakening the gate (3.451916ms)
+✔ owner MFA inspection chooses enrollment, challenge, or verified state and fails closed (0.517209ms)
+✔ enrollment and verification expose no provider errors and only resume after confirmed AAL2 (0.458459ms)
+✔ explicit fresh MFA intent challenges an existing AAL2 session without a browser age decision (0.166125ms)
+✔ owner transition is reachable after company-year admission and exposes an accessible, Norwegian MFA gate (8.086709ms)
+✔ the public offer stays in free recruitment mode with one eligibility action (16.531958ms)
+✔ the three-step eligibility explanation keeps its visual order for assistive technology (0.105792ms)
+✔ the static homepage renders every required offer field in the approved order (0.234167ms)
+✔ the recruitment homepage presents the approved annual offer exactly (0.077333ms)
+✔ the public offer carries the approved proof links, minimum FAQ, and final eligibility invitation (7.813459ms)
+✔ the complete public company-year promise is pinned to the canonical manifest (0.371042ms)
+✔ live claims and checkout deny by default and every ad stop rule is binding (0.31325ms)
+✔ the indexable public route set carries canonical metadata and no live overclaim (8.431208ms)
+✔ explicit reauthentication displays the login form despite a backend-rejected but valid Supabase session (36.037667ms)
+✔ ordinary signed-in login and signup redirects and unconfirmed-user gate remain intact (152.749666ms)
+✔ signIn preserves explicit reauthentication and next through failures (48.461833ms)
+✔ signInWithGoogle preserves explicit reauthentication and next through failures (52.092542ms)
+✔ successful password login consumes recovery intent; ordinary unconfirmed credentials keep verification recovery (18.795167ms)
+✔ Google startup carries recovery through its callback URL (9.02325ms)
+✔ the Google form carries the same explicit recovery intent as password sign-in (57.095541ms)
+✔ denied, missing, failed and unavailable OAuth callbacks return to an actionable recovery login (107.392583ms)
+✔ successful callback returns to the scoped page while ordinary email confirmation failure is unchanged (5.708125ms)
+✔ presents the generated tracer response as a safe Norwegian success (3.362625ms)
+✔ presents transport failures without leaking exception details (0.28375ms)
+✔ generated client accepts the declared success shape (50.584333ms)
+✔ generated client maps the typed correlation option to the declared header (0.680709ms)
+✔ generated client fails closed on an undeclared success shape (0.482875ms)
+✔ generated client rejects an availability value outside the closed contract (0.246875ms)
+✔ missing backend configuration fails closed with a typed error (0.172292ms)
+✔ web liveness stays process-only while readiness fails invalid configuration (0.32275ms)
+✔ web readiness validates local configuration without depending on backend reachability (0.322792ms)
+✔ company-year admission validates explicit authority and every immutable document before the generated command (49.725542ms)
+✔ the customer sees and explicitly accepts the complete pinned promise (48.545708ms)
+✔ legacy AS-only creation controls are absent (63.04325ms)
+✔ owner layout replaces children with an accessible reacceptance gate (1.474375ms)
+✔ Server Action reaccepts through the authenticated generated-client boundary (0.5375ms)
+ℹ tests 166
+ℹ suites 0
+ℹ pass 166
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3844.185625
+
+> talli-repository@0.1.0 test:boundary-contract
+> node --test tests/contract/web_fastapi_boundary.test.mjs tests/company_access_review_fixes.test.mjs tests/company_access_review_round_2.test.mjs tests/company_access_onboarding_cutover.test.mjs tests/corporate_governance_review_fixes.test.mjs
+
+✔ eligibility, admission, and agreement operations are generated-client boundaries (30.148167ms)
+✔ the web onboarding slice has no legacy business-policy or persistence path (1.637458ms)
+✔ the complete Stage 1 web boundary is Supabase-auth-only (37.14ms)
+✔ company access owns agreement evidence and the #138 facade has exited (0.599834ms)
+✔ the onboarding overlap and destructive contract are separate release artifacts (2.003666ms)
+✔ capability owns immutable business request contracts (13.542375ms)
+✔ every invitation decoder rejects unknown and token-shaped response fields (2.213041ms)
+✔ all company-access success responses declare X-Request-ID (14.991166ms)
+✔ login preserves a sanitized invitation continuation for password and OAuth (3.037542ms)
+✔ invitation side effects reconcile in the trusted actor and command namespace (5.003833ms)
+✔ shipped server actions expose receipt-owned recovery without browser command inputs (3.703584ms)
+✔ membership role selector has a target-specific accessible name (5.0455ms)
+✔ capability manifest attributes the latest company-access ownership migration (1.400625ms)
+✔ authorization and hashing use versioned least-privilege helper boundaries (18.938041ms)
+✔ destructive contract is a later release artifact outside the automatic runner (3.06375ms)
+✔ cutover removes every authenticated self-membership update surface (3.84875ms)
+✔ command receipts are backend-system technical idempotency state (4.101625ms)
+✔ owner receipt visibility is atomic while acceptance keeps actor replay semantics (2.314375ms)
+✔ evidence distinguishes forced receipt RLS from genuine non-owner RLS (5.8905ms)
+✔ OpenAPI validates command UUIDs and RFC3339 revisions (17.95825ms)
+✔ the committed contract exposes one stable capability-prefixed tracer operation (15.046375ms)
+✔ the committed contract exposes the authenticated company-context operation (10.38125ms)
+✔ the committed contract exposes company-access invitation and membership administration (9.694875ms)
+✔ the committed contract exposes only ledger-owned browser commands (13.746542ms)
+✔ the committed contract assigns shareholder loans to corporate governance (8.407708ms)
+✔ the committed contract gives investments its complete activity interface (7.390208ms)
+✔ opening snapshots use the ledger compatibility authenticated read contract (7.2615ms)
+✔ the committed contract exposes the account-free banking workflow (8.96175ms)
+✔ the tracer contract declares optional request and response correlation headers (7.362958ms)
+✔ OpenAPI and generated TypeScript artifacts are byte-clean (2333.881541ms)
+✔ the OpenAPI document validates and operation IDs are globally unique (50.673542ms)
+✔ the current response contract remains compatible with the explicit v1 baseline (102.366292ms)
+✔ compatibility rejects newly required parameters and request bodies (48.979042ms)
+✔ compatibility rejects narrower authentication requirements (11.235ms)
+✔ compatibility rejects removed or changed response headers (24.875ms)
+✔ the generated package version matches the OpenAPI contract version (20.374334ms)
+✔ the generated client is committed and carries its provenance marker (3.202375ms)
+✔ the web tracer uses the generated package through a thin transport wrapper (0.581042ms)
+✔ annual refund recovery is an additive authenticated POST with no caller authority fields (9.382583ms)
+✔ annual refund target discovery preserves a minimal independent read contract (9.570083ms)
+✔ annual checkout preparation is an independent read without purchase authority (6.502209ms)
+✔ annual checkout withdrawal uses the original accepted body and key with a separate minimal result (8.271125ms)
+✔ corporate-governance manifests declare the implemented public surface (8.022666ms)
+✔ backend workflow documentation has one canonical governance workflow (3.722542ms)
+✔ lifecycle reader exposes migrated source-hash compatibility explicitly (1.483625ms)
+✔ local gate rehearses predecessor ledger cutover before governance retires it (1.115208ms)
+✔ complete gate uses the backend-managed Python runtime (1.095666ms)
+✔ governance review regressions run in the complete acceptance boundary (2.559292ms)
+✔ document evidence ownership is acyclic and declared (5.432083ms)
+✔ document evidence registration cannot forge trusted actor or owner context (5.014167ms)
+✔ historical document evidence uses a migration-only backfill contract (1.799666ms)
+✔ future annual-data compatibility scopes remain frozen without a checker bypass (6.338333ms)
+✔ canonical decision payloads share one serializer (1.502709ms)
+ℹ tests 53
+ℹ suites 0
+ℹ pass 53
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2894.931416

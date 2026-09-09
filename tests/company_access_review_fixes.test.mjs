@@ -101,6 +101,6 @@ test("capability manifest attributes the latest company-access ownership migrati
   const manifest = JSON.parse(await source("apps/backend/src/talli_backend/modules/company_access/module.json"));
   assert.equal(
     manifest.owns.migrations,
-    "supabase/migrations/20260905003000_company_access_billing_owner_subject.sql",
+    "supabase/migrations/20260905080550_annual_billing_purchase_basis.sql",
   );
 });

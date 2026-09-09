@@ -1,5 +1,19 @@
 # Backend system boundary
 
+## Approved interim and final billing scope
+
+The [9 September 2026 owner decision](https://github.com/kristianelmer/Talli/issues/192#issuecomment-5599100453)
+approves the exact legacy retirement and source-order option B. #192 stays open.
+Implemented historical/annual recorded recovery and the unavailable acquisition
+and renewal defaults form the interim checkpoint. It requires independent review,
+two linked immutable complete gates and protected-main plus exact-main
+Release/Preview before #150 may start. Billing implementation then pauses while
+source owners execute serially. After #149 and Company Access year prerequisite
+#208, #192 must bind actual source contracts and complete ordinary paid
+entitlement, automatic renewal/refunds and every A1–A8 criterion before #194 or
+#197's billing tranche. No absent source is replaced with a fixture or legacy
+readiness row, and no future public dependency is declared before it exists.
+
 <!-- architecture-inventory
 {"adapterBindingModes":["MarketingMeasurementGateway=>private generated-client transport and SET-only restricted PostgreSQL functions"],"adapterBindingOwners":["MarketingMeasurementGateway=>backend-system"],"adapterBindings":["MarketingMeasurementGateway=>talli_backend.adapters.supabase_marketing_measurement.SupabaseMarketingMeasurementAdapter"],"adapterDependencies":["talli_backend.modules.marketing_measurement.public"],"ports":["MarketingMeasurementGateway"],"publicPackages":["talli_backend.modules.marketing_measurement.public"],"routes":["/api/v1/marketing-measurement/events","/api/v1/marketing-measurement/report","/api/v1/marketing-measurement/withdrawals"],"technicalMigrations":["supabase/migrations/20260828103000_marketing_funnel_measurement.sql"],"technicalTables":["backend_system.marketing_funnel_events","backend_system.marketing_funnel_withdrawals"],"transportDependencies":["asyncio","os","secrets","talli_backend.adapters.supabase_marketing_measurement","talli_backend.modules.marketing_measurement.public"],"workflowDependencies":["talli_backend.modules.marketing_measurement.public"],"workflowPurposes":["marketing-funnel-measurement=>Accepts only consented bounded anonymous funnel codes through a private server transport, deletes withdrawn raw sessions, and returns aggregate-only reports to independently verified active operators."],"workflows":["marketing-funnel-measurement"]}
 -->
@@ -37,7 +51,7 @@
 -->
 
 <!-- architecture-inventory
-{"adapterBindingModes":["SystemBoundaryTransport=>in-process FastAPI composition"],"adapterBindingOwners":["SystemBoundaryTransport=>backend-system"],"adapterBindings":["SystemBoundaryTransport=>talli_backend.main.create_app"],"adapterDependencies":[],"compositionRoots":["apps/backend/src/talli_backend/main.py"],"infrastructure":["durableWorker=>A durable worker consumes persisted delivery state outside the initiating transaction.","eventDelivery=>public.notification_outbox is the persisted event-delivery boundary.","idempotency=>Durable idempotency records are required for consequential commands before provider I/O.","migrationRunner=>Supabase migrations in supabase/migrations are applied by the deployment migration runner.","transactions=>Short Postgres transactions owned by backend application workflows."],"operationalAdapterRechecks":["true"],"operationalOwners":["backend-system"],"operationalReleaseDecisions":["deny-by-default"],"operationalTables":["public.launch_signoffs"],"ports":["SystemBoundaryTransport"],"publicPackages":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"routes":["/api/v1/company-access/cancellations","/api/v1/company-access/cancellations/{cancellation_id}/finalize","/api/v1/company-access/cancellations/{cancellation_id}/resume","/api/v1/company-access/cancellations/{cancellation_id}/reviews","/api/v1/company-access/context","/api/v1/company-access/invitation-side-effects/pending","/api/v1/company-access/invitation-side-effects/{operation_id}/complete","/api/v1/company-access/invitations","/api/v1/company-access/invitations/accept","/api/v1/company-access/invitations/lookup","/api/v1/company-access/invitations/{invitation_id}/resend","/api/v1/company-access/invitations/{invitation_id}/revoke","/api/v1/company-access/memberships","/api/v1/company-access/memberships/{user_id}","/api/v1/system-boundary/tracer"],"technicalMigrations":["supabase/migrations/0001_authenticated_workspace.sql","supabase/migrations/20260801090000_company_access_invitations.sql","supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql","supabase/migrations/20260905010000_billing_capability.sql"],"technicalSchemas":["backend_system","public"],"technicalStatements":["These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."],"technicalTables":["backend_system.ledger_command_receipts","backend_system.ledger_cursor_signing_keys","backend_system.ledger_migration_quarantine","backend_system.ledger_migration_reconciliations","backend_system.ledger_migration_runs","backend_system.ledger_migration_source_rows","backend_system.ledger_workflow_receipts","billing.billing_command_receipts","public.company_access_command_receipts","public.launch_signoffs","public.notification_outbox"],"transportDependencies":["__future__","collections","fastapi","fastapi.security","pydantic","re","starlette","talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public","talli_backend.openapi","typing","uuid"],"workflowDependencies":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"workflowPurposes":["company-access-administration=>Runs invitation, reviewer/read-only membership, cancellation, and deletion-review workflows atomically through the company_access public package.","company-access-context=>Returns the authenticated, policy-authorized selected company context through FastAPI.","system-boundary-tracer=>Returns a deterministic availability response from the independently deployable FastAPI boundary."],"workflows":["company-access-administration","company-access-context","system-boundary-tracer"]}
+{"adapterBindingModes":["SystemBoundaryTransport=>in-process FastAPI composition"],"adapterBindingOwners":["SystemBoundaryTransport=>backend-system"],"adapterBindings":["SystemBoundaryTransport=>talli_backend.main.create_app"],"adapterDependencies":[],"compositionRoots":["apps/backend/src/talli_backend/main.py"],"infrastructure":["durableWorker=>The opt-in annual checkout CLI invokes billing public operations once. backend_system.annual_checkout_observation_work owns fenced leases, retries and completion only; billing owns accepted-intent and provider/account authority. No scheduler, provider execution, fabricated owner claims or new business decisions.","eventDelivery=>public.notification_outbox persists outbound deliveries. annual_notification_inbox.receipts retains authenticated annual provider delivery hints and exact-byte replay identity independently of business-table rollback; no business settlement authority.","idempotency=>Durable idempotency records are required for consequential commands before provider I/O.","migrationRunner=>Supabase migrations in supabase/migrations are applied by the deployment migration runner.","transactions=>Short Postgres transactions owned by backend application workflows."],"operationalAdapterRechecks":["true"],"operationalOwners":["backend-system"],"operationalReleaseDecisions":["deny-by-default"],"operationalTables":["public.launch_signoffs"],"ports":["SystemBoundaryTransport"],"publicPackages":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"routes":["/api/v1/company-access/cancellations","/api/v1/company-access/cancellations/{cancellation_id}/finalize","/api/v1/company-access/cancellations/{cancellation_id}/resume","/api/v1/company-access/cancellations/{cancellation_id}/reviews","/api/v1/company-access/context","/api/v1/company-access/invitation-side-effects/pending","/api/v1/company-access/invitation-side-effects/{operation_id}/complete","/api/v1/company-access/invitations","/api/v1/company-access/invitations/accept","/api/v1/company-access/invitations/lookup","/api/v1/company-access/invitations/{invitation_id}/resend","/api/v1/company-access/invitations/{invitation_id}/revoke","/api/v1/company-access/memberships","/api/v1/company-access/memberships/{user_id}","/api/v1/system-boundary/tracer"],"technicalMigrations":["supabase/migrations/0001_authenticated_workspace.sql","supabase/migrations/20260801090000_company_access_invitations.sql","supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql","supabase/migrations/20260905010000_billing_capability.sql"],"technicalSchemas":["backend_system","public"],"technicalStatements":["These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."],"technicalTables":["backend_system.ledger_command_receipts","backend_system.ledger_cursor_signing_keys","backend_system.ledger_migration_quarantine","backend_system.ledger_migration_reconciliations","backend_system.ledger_migration_runs","backend_system.ledger_migration_source_rows","backend_system.ledger_workflow_receipts","billing.billing_command_receipts","public.company_access_command_receipts","public.launch_signoffs","public.notification_outbox"],"transportDependencies":["__future__","collections","fastapi","fastapi.security","pydantic","re","starlette","talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public","talli_backend.openapi","typing","uuid"],"workflowDependencies":["talli_backend.modules.company_access.public","talli_backend.modules.system_boundary.public"],"workflowPurposes":["company-access-administration=>Runs invitation, reviewer/read-only membership, cancellation, and deletion-review workflows atomically through the company_access public package.","company-access-context=>Returns the authenticated, policy-authorized selected company context through FastAPI.","system-boundary-tracer=>Returns a deterministic availability response from the independently deployable FastAPI boundary."],"workflows":["company-access-administration","company-access-context","system-boundary-tracer"]}
 -->
 
 <!-- architecture-inventory
@@ -73,7 +87,7 @@
 -->
 
 <!-- architecture-inventory
-{"adapterBindingModes":["BillingPaymentProvider=>production-disabled deterministic simulation adapter","BillingPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["BillingPaymentProvider=>backend-system","BillingPersistence=>backend-system"],"adapterBindings":["BillingPaymentProvider=>talli_backend.adapters.simulation_billing.SimulationBillingProvider","BillingPersistence=>talli_backend.adapters.supabase_billing.SupabaseBillingSession"],"adapterDependencies":["talli_backend.adapters.simulation_billing","talli_backend.adapters.supabase_billing","talli_backend.application.billing_session","talli_backend.application.billing_workflow","talli_backend.modules.billing.public"],"ports":["BillingPaymentProvider","BillingPersistence"],"publicPackages":["talli_backend.modules.billing.public"],"routes":["/api/v1/billing/accounts/configuration","/api/v1/billing/entitlement","/api/v1/billing/filing-package/purchase","/api/v1/billing/filing-package/refund","/api/v1/billing/pilot-entitlements","/api/v1/billing/snapshot","/api/v1/billing/subscriptions/activation","/api/v1/billing/subscriptions/cancellation","/api/v1/billing/unsupported"],"technicalMigrations":["supabase/contract-migrations/20260905013000_billing_contract.sql","supabase/migrations/20260905010000_billing_capability.sql"],"transportDependencies":["talli_backend.adapters.simulation_billing","talli_backend.adapters.supabase_billing","talli_backend.application.billing_session","talli_backend.application.billing_workflow","talli_backend.modules.billing.public"],"workflowDependencies":["talli_backend.modules.billing.public"],"workflowPurposes":["billing-and-filing-entitlement=>Authenticates one verified actor, owns server-selected legacy pricing and idempotent simulated provider outcomes, and returns the single billing decision used by readiness and production filing gates."],"workflows":["billing-and-filing-entitlement"]}
+{"adapterBindingModes":["BillingPaymentProvider=>production-disabled deterministic simulation adapter","BillingPersistence=>request-scoped verified-actor restricted PostgreSQL adapter"],"adapterBindingOwners":["BillingPaymentProvider=>backend-system","BillingPersistence=>backend-system"],"adapterBindings":["BillingPaymentProvider=>talli_backend.adapters.simulation_billing.SimulationBillingProvider","BillingPersistence=>talli_backend.adapters.supabase_billing.SupabaseBillingSession"],"adapterDependencies":["talli_backend.adapters.simulation_billing","talli_backend.adapters.supabase_billing","talli_backend.application.billing_session","talli_backend.application.billing_workflow","talli_backend.modules.billing.public"],"ports":["BillingPaymentProvider","BillingPersistence"],"publicPackages":["talli_backend.modules.billing.public"],"routes":["/api/v1/billing/accounts/configuration","/api/v1/billing/entitlement","/api/v1/billing/filing-package/purchase","/api/v1/billing/filing-package/refund","/api/v1/billing/pilot-entitlements","/api/v1/billing/snapshot","/api/v1/billing/subscriptions/activation","/api/v1/billing/subscriptions/cancellation","/api/v1/billing/unsupported"],"technicalMigrations":["supabase/contract-migrations/20260905013000_billing_contract.sql","supabase/migrations/20260905010000_billing_capability.sql"],"transportDependencies":["talli_backend.adapters.simulation_billing","talli_backend.adapters.supabase_billing","talli_backend.application.billing_session","talli_backend.application.billing_workflow","talli_backend.modules.billing.public"],"workflowDependencies":["talli_backend.modules.billing.public"],"workflowPurposes":["billing-and-filing-entitlement=>Authenticates one verified actor for annual checkout and original-intent recovery, historical billing cleanup, pilot administration and fail-closed filing entitlement; annual provider and source readiness are unavailable by default."],"workflows":["billing-and-filing-entitlement"]}
 -->
 
 ## Purpose
@@ -369,3 +383,287 @@ this document and `backend-system.json` together, with an ADR review.
 <!-- architecture-inventory
 {"transportDependencies":["talli_backend.application.investments_workflow"]}
 -->
+
+## Annual provider boundary (#192, integration pending)
+
+`AnnualBillingProvider` is registered to
+`talli_backend.adapters.vipps_billing.VippsTestBillingProvider` in test-origin-only adapter; explicit designated-MT environment composition, disabled by default; no production activation.
+The adapter operates only against Vipps MT; registration does not activate
+production payments or complete the annual application workflow.
+
+<!-- architecture-inventory
+{"ports":["AnnualBillingProvider"],"adapterBindings":["AnnualBillingProvider=>talli_backend.adapters.vipps_billing.VippsTestBillingProvider"],"adapterBindingOwners":["AnnualBillingProvider=>backend-system"],"adapterBindingModes":["AnnualBillingProvider=>test-origin-only adapter; explicit designated-MT environment composition, disabled by default; no production activation"]}
+-->
+
+`AnnualCheckoutPersistence` is registered to
+`talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCheckoutSession`.
+It commits annual purchase/operation claims before external I/O and serializes
+settlement against the latest locked purchase and operation. Authenticated annual
+HTTP checkout and original-intent recovery are composed through the application;
+trusted readiness and the provider remain unavailable by default. Final
+source-backed acquisition follows #149/#208 under the approved #192 split.
+
+<!-- architecture-inventory
+{"ports":["AnnualCheckoutPersistence"],"adapterBindings":["AnnualCheckoutPersistence=>talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCheckoutSession"],"adapterBindingOwners":["AnnualCheckoutPersistence=>backend-system"],"adapterBindingModes":["AnnualCheckoutPersistence=>restricted verified-actor PostgreSQL original-intent claims and settlement; trusted readiness unavailable until #149/#208 and final #192"]}
+-->
+
+`AnnualCancellationPersistence` is registered to
+`talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCancellationSession`.
+It records local renewal cancellation before any provider cleanup. Authenticated
+HTTP/runtime composition and receipt-bound cleanup/recovery are implemented.
+Automatic source-backed renewal/cleanup processing remains deferred to final #192.
+
+<!-- architecture-inventory
+{"ports":["AnnualCancellationPersistence"],"adapterBindings":["AnnualCancellationPersistence=>talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCancellationSession"],"adapterBindingOwners":["AnnualCancellationPersistence=>backend-system"],"adapterBindingModes":["AnnualCancellationPersistence=>verified-owner local renewal cancellation and immutable receipts; source-backed renewal and ordinary entitlement deferred to final #192"]}
+-->
+
+
+## Annual agreement cleanup persistence
+
+`AnnualAgreementCleanupPersistence` binds to
+`talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession`.
+It shares the verified-owner PostgreSQL transaction boundary, locks purchase
+before operations, binds a persisted cancellation receipt, and settles only the
+original cleanup operation. Owner HTTP recovery is composed below; case-bound
+operator recovery uses its separately declared restricted support port. Automatic
+source-backed cleanup authority remains deferred to final #192.
+
+<!-- architecture-inventory
+{"ports":["AnnualAgreementCleanupPersistence"],"adapterBindings":["AnnualAgreementCleanupPersistence=>talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession"],"adapterBindingOwners":["AnnualAgreementCleanupPersistence=>backend-system"],"adapterBindingModes":["AnnualAgreementCleanupPersistence=>verified-owner receipt-bound original agreement cleanup through authenticated POST; provider absent by default; automatic processing deferred to final #192"]}
+-->
+
+
+## Annual billing reads and local cancellation
+
+The `annual-billing-reads-and-cancellation` workflow uses
+`SupabaseAnnualBillingAdapter` to verify a bearer and construct read/cancellation
+ports from one verified actor. `AnnualBillingWorkflow` imports billing's public
+contract only and has no provider/readiness dependency. Snapshot GET reads stored
+facts; cancellation POST returns durable local effectiveness and preserved dates.
+
+<!-- architecture-inventory
+{"workflows":["annual-billing-reads-and-cancellation"],"routes":["/api/v1/billing/annual/snapshot","/api/v1/billing/annual/purchases", "/api/v1/billing/annual/refund-snapshot","/api/v1/billing/annual/refund-recovery-targets","/api/v1/billing/annual/renewal-cancellations"],"ports":["AnnualBillingReadPersistence"],"adapterBindings":["AnnualBillingReadPersistence=>talli_backend.adapters.supabase_annual_billing.PostgresAnnualBillingReadSession"],"adapterBindingOwners":["AnnualBillingReadPersistence=>backend-system"],"adapterBindingModes":["AnnualBillingReadPersistence=>verified-owner stored annual public purchase projection; no provider or readiness calls"]}
+-->
+
+
+<!-- architecture-inventory
+{"workflowPurposes":["annual-billing-reads-and-cancellation=>Authenticates annual owner reads and immediate local renewal cancellation from one verified actor; no provider, readiness or checkout activation."],"transportDependencies":["talli_backend.adapters.supabase_annual_billing","talli_backend.application.annual_billing"],"adapterDependencies":["talli_backend.adapters.supabase_annual_billing","talli_backend.application.annual_billing"]}
+-->
+
+
+## Annual checkout and recovery HTTP composition
+
+`AnnualCheckoutWorkflow`, registered in `billing-and-filing-entitlement`, uses the billing public `annual_checkout_operations`
+factory and the same independently verified actor's checkout persistence. Start
+POST accepts immutable offer/consent choices and an idempotency key. Observation
+POST reconciles only the original stored intent; it is POST because reconciliation
+may settle durable state. Neither GET nor caller data supplies provider effects,
+readiness, merchant identity, price or return destinations. Destinations are
+server-owned and preserve company selection.
+
+The explicit checkout-withdrawals POST reuses the original checkout body/key. It
+returns a committed withdrawal or the existing purchase reference without any
+provider observation or new-sale source resolution. Only confirmed persistence
+commit permits an acknowledgement; neither outcome authorizes a replacement sale.
+
+The default composition has no annual provider and raises PROVIDER_DISABLED.
+Even with an explicitly injected test provider, its default readiness resolver
+raises FILING_NOT_READY and the real PostgreSQL verifier remains unavailable.
+These are separate fail-closed boundaries, not #192 checkout acceptance or live
+activation. Terminal history replays without provider or new readiness checks,
+while current owner/fresh-MFA authorization remains mandatory. Local HTTP test
+fixtures do not establish actual MT or authoritative filing readiness.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/billing/annual/checkout-withdrawals","/api/v1/billing/annual/checkout-preparation","/api/v1/billing/annual/checkouts","/api/v1/billing/annual/checkout-observations"],"workflowDependencies":["talli_backend.application.annual_checkout_prerequisites"]}
+-->
+
+
+### Durable annual refund persistence
+
+`AnnualRefundPersistence` is registered to
+`talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundSession`.
+It shares annual billing's verified-actor transaction, preserves owner versus
+explicitly opened billing support-case authority, and commits request/case,
+renewal stop, original reservation and cumulative settlement evidence. Its
+source resolver is unavailable by default. No refund HTTP route, support caller
+or worker is composed; synthetic resolver evidence is not production authority.
+
+<!-- architecture-inventory
+{"ports":["AnnualRefundPersistence"],"adapterBindings":["AnnualRefundPersistence=>talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundSession"],"adapterBindingOwners":["AnnualRefundPersistence=>backend-system"],"adapterBindingModes":["AnnualRefundPersistence=>verified owner or explicitly opened billing support case; durable refund requests/reservation/settlement; source resolver unavailable by default, no runtime or worker binding"]}
+-->
+
+
+The existing `PostgresAnnualCleanupSession` now accepts the exact refund request
+that caused renewal to stop as an alternative to a manual cancellation receipt.
+It shares the database's private original-charge resolution predicate, including
+verified full-refund recovery when checkout remains unknown. Current owner/fresh
+MFA and the provider's fresh charge-safety check remain mandatory. Stored original
+identity and terminal evidence are retained; no worker/support cleanup caller or
+new HTTP operation is composed.
+
+## Annual agreement cleanup HTTP recovery
+
+The `annual-agreement-cleanup` workflow composes billing's public
+`AnnualAgreementCleanupOperations` through the verified owner's session. Its POST
+accepts only company and purchase IDs and recovers the existing receipt-bound
+STOP operation. Default provider is absent; confirmed evidence replays without
+provider access, while deferred/unknown remains unresolved. Local cancellation
+and history remain provider-free. No worker or support authority is introduced.
+
+<!-- architecture-inventory
+{"workflows":["annual-agreement-cleanup"],"workflowPurposes":["annual-agreement-cleanup=>Authenticates the current owner to recover one receipt-bound original agreement stop; provider is absent by default, and deferred or unknown outcomes are not confirmation."],"publicPackages":["talli_backend.modules.billing.public"],"routes":["/api/v1/billing/annual/agreement-cleanups"]}
+-->
+
+## Annual support evidence
+
+The `annual-billing-support` workflow reads stored annual purchases across recorded
+years using the verified actor and the explicitly opened same-company billing
+support case. It requires current active-admin status and fresh MFA even for an
+empty page. Authorization, cursor scope, current purchase totals and related
+refund/cleanup summaries share one statement snapshot. No source authority,
+provider call, receipt creation or case opening occurs.
+
+<!-- architecture-inventory
+{"workflows":["annual-billing-support"],"workflowPurposes":["annual-billing-support=>Reads bounded annual purchase, recorded refund liability and agreement-stop evidence under current active-admin, explicitly opened same-company billing support-case and fresh-MFA authority; never adjudicates refunds or performs side effects."],"publicPackages":["talli_backend.modules.billing.public"],"routes":["/api/v1/billing/annual/support/purchases"],"ports":["AnnualSupportReadPersistence"],"adapterBindings":["AnnualSupportReadPersistence=>talli_backend.adapters.postgres_annual_support.PostgresAnnualSupportReadSession"],"adapterBindingOwners":["AnnualSupportReadPersistence=>backend-system"],"adapterBindingModes":["AnnualSupportReadPersistence=>verified active-admin opened billing support case; bounded consistent stored annual evidence across years, no provider or source-authority calls"]}
+-->
+
+The provider-free owner route `/api/v1/billing/annual/refund-snapshot` exposes
+purchase balances and recorded refund facts together under the same owner and
+fresh-MFA boundary. The predecessor snapshot retains its exact response shape
+for mixed-version deployment; the added read does not adjudicate refund rights.
+
+The additive `/api/v1/billing/annual/purchases` route calls the owner history
+workflow without a current-admission requirement and exposes no offer. Its
+company-scoped cursor spans recorded years under current owner/fresh MFA; the
+shared projection remains billing-owned and provider-free.
+
+
+## Original refund request recovery
+
+The `annual-refund-recovery` workflow authenticates the current owner before
+`/api/v1/billing/annual/refund-recoveries`. Billing's
+`AnnualRefundRecoveryPersistence` is bound to
+`talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundRecoverySession`.
+Load and settlement preserve the selected request and require current ownership
+and fresh MFA after locks; opened support access never substitutes. The response
+contains original-operation status only, without source or provider payloads.
+Recovery cannot claim, bind, allocate or execute; provider reconciliation uses the
+stored original identity. Provider and source-authority gates remain unchanged.
+
+<!-- architecture-inventory
+{"workflows":["annual-refund-recovery"],"workflowPurposes":["annual-refund-recovery=>Authenticates the current owner to reconcile an already operation-bound request made by that actor; no allocation, source resolution or provider execution."],"publicPackages":["talli_backend.modules.billing.public"],"routes":["/api/v1/billing/annual/refund-recoveries"],"ports":["AnnualRefundRecoveryPersistence"],"adapterBindings":["AnnualRefundRecoveryPersistence=>talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundRecoverySession"],"adapterBindingOwners":["AnnualRefundRecoveryPersistence=>backend-system"],"adapterBindingModes":["AnnualRefundRecoveryPersistence=>verified current owner/fresh MFA at load and settlement; immutable request and original operation reconciliation only; provider absent by default, no source or claim binding"]}
+-->
+
+
+The existing owner read workflow also exposes
+`/api/v1/billing/annual/refund-recovery-targets` through
+`AnnualBillingReadPersistence.read_refund_recovery_targets`. The projection is
+purchase-scoped and same-actor, owner/fresh-MFA authorized, source/provider free,
+and read-only. It groups bound receipts by immutable refund operation order before
+pagination and exposes no private source, provider, actor or monetary evidence.
+Recovery independently authorizes and validates a selected receipt on explicit POST.
+
+<!-- architecture-inventory
+{"workflows":["annual-provider-notification-intake"],"workflowPurposes":["annual-provider-notification-intake=>Authenticates exact provider delivery bytes and commits immutable technical receipts; no actor, purchase resolution, provider call or financial mutation; disabled by default with explicit designated-MT composition."],"routes":["/api/v1/billing/annual/provider-notifications"],"technicalSchemas":["annual_notification_inbox"],"technicalTables":["annual_notification_inbox.receipts"],"technicalMigrations":["supabase/migrations/20260906204352_annual_notification_receipts.sql"],"ports":["AnnualNotificationAuthentication","AnnualNotificationPersistence"],"adapterBindings":["AnnualNotificationAuthentication=>talli_backend.adapters.vipps_webhook.VippsWebhookAuthentication","AnnualNotificationPersistence=>talli_backend.adapters.postgres_annual_notifications.PostgresAnnualNotificationInbox"],"adapterBindingOwners":["AnnualNotificationAuthentication=>backend-system","AnnualNotificationPersistence=>backend-system"],"adapterBindingModes":["AnnualNotificationAuthentication=>designated MT merchant HMAC authentication from explicit complete runtime configuration; disabled by default","AnnualNotificationPersistence=>restricted actorless technical receipt insert/read only; no login grant, purchase lookup, financial write or worker"],"transportDependencies":["talli_backend.application.annual_notifications"]}
+-->
+
+## Annual provider notification intake
+
+The `annual-provider-notification-intake` workflow exposes
+`/api/v1/billing/annual/provider-notifications`. It uses
+`AnnualNotificationAuthentication` through
+`talli_backend.adapters.vipps_webhook.VippsWebhookAuthentication`, followed by
+`AnnualNotificationPersistence` through
+`talli_backend.adapters.postgres_annual_notifications.PostgresAnnualNotificationInbox`.
+Authentication uses the configured MT merchant, secret and callback target;
+proxy headers and owner sessions supply no authority. Streaming stops at 64 KiB.
+Duplicate header names are rejected before a mapping can collapse them.
+
+`annual_notification_inbox.receipts` is technical event-delivery state,
+owned here under ADR0011. It retains only authenticated resource hints and
+immutable receipt evidence, including unknown resources. No financial table or
+source lookup is performed. `annual_notification_executor` is NOLOGIN, NOINHERIT
+and NOBYPASSRLS, receives only bounded receipt-column INSERT and scoped SELECT,
+and has no runtime login membership grant. Transaction-local provider/account
+settings narrow this already restricted authority; they cannot authorize an owner.
+The private `annual_notification_inbox` schema prevents the executor from inheriting access to unrelated PUBLIC-executable functions in the shared technical schema. The separate store owner is for migrations, with no runtime binding.
+
+Receipt insertion and exact duplicate comparison use a short transaction. A
+conflict reads the winner in a subsequent statement under READ COMMITTED, then
+compares every immutable hint. Acknowledgement follows completed commit; failures
+and uncertain commits remain retryable. Success means only durable receipt
+acceptance, with no company, purchase or provider details returned. Rollback
+withdraws policies and column grants without dropping this independent technical
+relation, so delivery identity survives billing rollback and recutover.
+
+The default composition remains unavailable. Registration, credentials, runtime
+login authority, purchase resolution, worker leases and original-intent provider
+reconciliation remain separate uncompleted #192 work. No callback payload can
+confirm payment, grant entitlement or select a refund operation.
+
+
+## Operator recovery of recorded annual refunds
+
+The `annual-billing-support` workflow adds GET
+`/api/v1/billing/annual/support/refund-recovery-targets`, a bounded projection of
+operation-bound receipts across requesters in the selected purchase. The separate
+`annual-support-refund-recovery` workflow accepts POST
+`/api/v1/billing/annual/support/refund-recoveries` with only case, company, purchase
+and request IDs. Both derive the operator from the verified session and require
+an active admin, fresh MFA and an explicitly opened same-company billing case.
+
+`AnnualSupportRefundRecoveryPersistence` binds to
+`talli_backend.adapters.postgres_annual_refund.PostgresAnnualSupportRefundRecoverySession`.
+Its load and settlement retain the original requester and operation intent.
+The support query survives provider reconciliation and is reauthorized after
+lock waits and settlement writes. Exact affected-row checks and final case
+validation roll back any partial or denied settlement, including operators who
+also have owner rights. There is no owner fallback, new claim, source resolution,
+request binding or provider execution in this workflow. The provider remains
+absent by default.
+
+<!-- architecture-inventory
+{"workflows":["annual-support-refund-recovery"],"workflowPurposes":["annual-support-refund-recovery=>Reconciles an already operation-bound refund under the current active admin's explicitly opened billing case and fresh MFA, preserving the original requester and intent; no new claim, binding or provider execution."],"publicPackages":["talli_backend.modules.billing.public"],"routes":["/api/v1/billing/annual/support/refund-recoveries","/api/v1/billing/annual/support/refund-recovery-targets"],"ports":["AnnualSupportRefundRecoveryPersistence"],"adapterBindings":["AnnualSupportRefundRecoveryPersistence=>talli_backend.adapters.postgres_annual_refund.PostgresAnnualSupportRefundRecoverySession"],"adapterBindingOwners":["AnnualSupportRefundRecoveryPersistence=>backend-system"],"adapterBindingModes":["AnnualSupportRefundRecoveryPersistence=>verified active admin with an explicitly opened same-company billing case and fresh MFA at load, settlement and after writes; original bound request and intent retained, provider absent by default"]}
+-->
+
+
+## Opt-in annual merchant-test runtime
+
+The composition root uses `talli_backend.adapters.annual_billing_runtime` to
+construct the existing Vipps test provider and authenticated technical inbox only
+when `TALLI_ANNUAL_BILLING_MODE=vipps-mt` and the complete designated account,
+callback and database configuration are valid. Missing or malformed enabled
+settings fail startup without revealing secrets. The default remains off.
+Explicit provider/intake injection is kept separate from environment composition.
+
+The current designated test sales unit is 535717. Configuration makes no provider
+request, creates no credentials or role memberships, and confers no checkout
+readiness, filing entitlement, worker or financial-table authority. The existing
+source resolver and independent database readiness verifier still fail closed.
+
+<!-- architecture-inventory
+{"transportDependencies":["talli_backend.adapters.annual_billing_runtime"],"adapterDependencies":["psycopg.conninfo","talli_backend.adapters.postgres_annual_notifications","talli_backend.adapters.vipps_billing","talli_backend.adapters.vipps_webhook","talli_backend.application.annual_notifications"]}
+-->
+
+<!-- architecture-inventory
+{"adapterBindingModes":["AnnualCheckoutObservationPersistence=>dedicated account-bound database principal and fenced one-pass reconciliation of committed checkout intent; no provider execution or new claims"],"adapterBindingOwners":["AnnualCheckoutObservationPersistence=>backend-system"],"adapterBindings":["AnnualCheckoutObservationPersistence=>talli_backend.adapters.postgres_annual_observation.PostgresAnnualCheckoutObservationStore"],"adapterDependencies":["talli_backend.adapters.postgres_annual_observation"],"ports":["AnnualCheckoutObservationPersistence"],"technicalTables":["backend_system.annual_checkout_observation_work"],"technicalMigrations":["supabase/migrations/20260907153938_annual_checkout_observation.sql"]}
+-->
+
+The opt-in `apps/backend/scripts/run_annual_checkout_reconciliation.py` entry point
+binds the billing observation port to a dedicated restricted database principal.
+It runs one public billing operation and exits; no hosted schedule is provisioned.
+The technical work table stores only account-scoped leases, fencing, retries and
+completion. Billing-owned principal and immutable acceptance records decide which
+existing checkout may be observed. New payments, renewals, refund claims, filing
+readiness and owner membership are outside this worker.
+
+<!-- architecture-inventory
+{"adapterBindingModes":["AnnualSupportCleanupRecoveryPersistence=>opened same-company billing support case with fresh MFA at load, locks and final settlement; one stored STOP only, provider absent by default"],"adapterBindingOwners":["AnnualSupportCleanupRecoveryPersistence=>backend-system"],"adapterBindings":["AnnualSupportCleanupRecoveryPersistence=>talli_backend.adapters.postgres_annual_support_cleanup.PostgresAnnualSupportCleanupRecoverySession"],"ports":["AnnualSupportCleanupRecoveryPersistence"],"workflows":["annual-support-agreement-cleanup-recovery"],"workflowPurposes":["annual-support-agreement-cleanup-recovery=>Reconciles the one already-recorded agreement STOP under current active-admin, explicitly opened same-company billing case and fresh MFA; preserves original receipt and intent and never claims or executes a provider mutation."],"routes":["/api/v1/billing/annual/support/agreement-cleanup-recoveries"],"publicPackages":["talli_backend.modules.billing.public"]}
+-->
+
+The annual support agreement-cleanup recovery route binds the recorded STOP
+recovery contract to the same explicit billing-case authorization seam as operator
+refund recovery. It observes the existing provider intent and cannot create or
+execute a cancellation. Purchase money, access, consent and original actor are
+preserved.

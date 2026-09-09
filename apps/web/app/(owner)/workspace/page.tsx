@@ -8,7 +8,6 @@ import {
 
 import {
   acknowledgeFilingReviewComment,
-  activateBillingSubscription,
   addFilingOverride,
   addFilingReviewComment,
   acceptWorkspaceInvitation,
@@ -41,10 +40,8 @@ import {
   administerWorkspaceMembership,
   requestCompanyCancellation,
   resumeCompanyCancellation,
-  requestFilingPackagePayment,
   revokeWorkspaceInvitation,
   saveYearEndInterview,
-  saveBillingAccount,
   signIn,
   signOut,
   signUp,
@@ -115,10 +112,7 @@ type WorkspaceProps = {
     taxSettlementOperationId?: string;
     ownerDividendPaymentOperationId?: string;
     ownerDividendPaymentBankTransactionId?: string;
-    billingConfigureOperationId?: string;
-    billingActivateOperationId?: string;
     billingCancelOperationId?: string;
-    billingFilingPackageOperationId?: string;
     billingUnsupportedOperationId?: string;
     billingRefundOperationId?: string;
   }>;
@@ -1029,141 +1023,95 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
               <section className="band">
                 <div className="sectionHeader">
                   <p className="eyebrow">Fakturering</p>
-                  <h2>Abonnement og innsendingspakke.</h2>
-                  <p>Endring av fakturering krever ny identitetsbekreftelse.</p>
+                  <h2>Årsabonnement</h2>
+                  <p>Se pris, kjøpshistorikk og fornyelse for selskapsåret.</p>
+                  <Link className="btn btn--primary" href={`/billing?companyId=${primaryCompanyId}`}>
+                    Administrer årsabonnement
+                  </Link>
                 </div>
-                <div className="setupGrid">
-                  <form className="dataPanel formPanel" action={saveBillingAccount}>
-                    <span className="panelLabel">Prisplan</span>
-                    <input name="operationId" type="hidden" value={params?.billingConfigureOperationId ?? randomUUID()} />
-                    <input name="companyId" type="hidden" value={primaryCompanyId} />
-                    <label>
-                      Plan
-                      <select name="pricingPlan" defaultValue={primaryBillingAccount?.pricing_plan ?? "standard"}>
-                        {data.billingPricing.map((pricing) => (
-                          <option key={pricing.plan} value={pricing.plan}>
-                            {pricing.plan === "standard" ? "Standard" : "Founder"}{" "}
-                            {pricing.monthly_nok} kr / {pricing.filing_package_nok} kr
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      Founder-kull
-                      <input
-                        name="founderCohortNumber"
-                        inputMode="numeric"
-                        defaultValue={primaryBillingAccount?.founder_cohort_number ?? 1}
-                      />
-                    </label>
-                    <button className="secondaryButton" type="submit">
-                      Lagre billingkonto
-                    </button>
-                  </form>
-
-                  <form className="dataPanel formPanel" action={requestFilingPackagePayment}>
-                    <span className="panelLabel">Filingpakke</span>
-                    <input name="operationId" type="hidden" value={params?.billingFilingPackageOperationId ?? randomUUID()} />
-                    <input name="companyId" type="hidden" value={primaryCompanyId} />
-                    <label>
-                      Inntektsår
-                      <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
-                    </label>
-                    <button className="primaryButton" type="submit">
-                      Marker filingpakke betalt
-                    </button>
-                    <p>Kan bare lagres når readiness er klar og abonnementet er aktivt.</p>
-                  </form>
-
-                  <form className="dataPanel formPanel" action={markBillingUnsupported}>
-                    <span className="panelLabel">No charge</span>
-                    <input name="operationId" type="hidden" value={params?.billingUnsupportedOperationId ?? randomUUID()} />
-                    <input name="companyId" type="hidden" value={primaryCompanyId} />
-                    <label>
-                      Årsak
-                      <input name="reason" placeholder="Hvorfor saken er utenfor støttet løype" required />
-                    </label>
-                    <button className="secondaryButton" type="submit">
-                      Marker utenfor støtte
-                    </button>
-                  </form>
-                </div>
-                <div className="readinessGrid">
-                  <div className="readinessItem">
-                    <span>Pris</span>
-                    <strong data-status={primaryBillingAccount ? "ready" : "draft"}>
-                      {primaryBillingAccount
-                        ? `${primaryBillingAccount.monthly_nok} kr/mnd + ${primaryBillingAccount.filing_package_nok} kr`
-                        : "Ikke satt"}
-                    </strong>
-                    <p>
-                      {primaryBillingAccount?.pricing_plan === "founder"
-                        ? `Founder-kull ${primaryBillingAccount.founder_cohort_number}`
-                        : "Standard eller ikke opprettet."}
-                    </p>
-                    <p>Kunde: {primaryBillingAccount?.provider_customer_ref ?? "Ikke opprettet"}</p>
-                    <p>Abonnement: {primaryBillingAccount?.subscription_provider_ref ?? "Ikke betalt"}</p>
+                {primaryBillingAccount ? <details>
+                  <summary>Historikk fra tidligere betalingsmodell</summary>
+                  <p>Den tidligere betalingsmodellen gir ikke innsendingsrett for årsabonnementet.</p>
+                  <div className="setupGrid">
+                    <form className="dataPanel formPanel" action={markBillingUnsupported}>
+                      <span className="panelLabel">No charge</span>
+                      <input name="operationId" type="hidden" value={params?.billingUnsupportedOperationId ?? randomUUID()} />
+                      <input name="companyId" type="hidden" value={primaryCompanyId} />
+                      <label>
+                        Årsak
+                        <input name="reason" placeholder="Hvorfor saken er utenfor støttet løype" required />
+                      </label>
+                      <button className="secondaryButton" type="submit">
+                        Marker utenfor støtte
+                      </button>
+                    </form>
                   </div>
-                  <div className="readinessItem">
-                    <span>Innsendingspakke</span>
-                    <strong data-status={primaryBillingGate?.allowed ? "ready" : primaryBillingGate?.chargeAllowed ? "warning" : "draft"}>
-                      {primaryBillingGate?.status ?? "Faktureringskonto mangler"}
-                    </strong>
-                    <p>{primaryBillingGate?.message ?? "Opprett faktureringskonto før innsendingspakke."}</p>
-                    <p>Status {primaryFilingReady ? "klar" : "ikke klar"} for {primaryIncomeYear}.</p>
-                    <p>Innsendingspakke ref: {primaryBillingAccount?.filing_package_payment_ref ?? "Ikke betalt"}</p>
-                    {primaryBillingAccount && !primaryBillingAccount.subscription_active ? (
-                      <form action={activateBillingSubscription}>
-                        <input name="operationId" type="hidden" value={params?.billingActivateOperationId ?? randomUUID()} />
-                        <input name="companyId" type="hidden" value={primaryCompanyId} />
-                        <button className="secondaryButton" type="submit">
-                          Marker abonnement aktivt
-                        </button>
-                      </form>
-                    ) : null}
-                    {primaryBillingAccount?.subscription_active ? (
+                  <div className="readinessGrid">
+                    <div className="readinessItem">
+                      <span>Pris</span>
+                      <strong data-status={primaryBillingAccount ? "ready" : "draft"}>
+                        {primaryBillingAccount
+                          ? `${primaryBillingAccount.monthly_nok} kr/mnd + ${primaryBillingAccount.filing_package_nok} kr`
+                          : "Ikke satt"}
+                      </strong>
+                      <p>
+                        {primaryBillingAccount?.pricing_plan === "founder"
+                          ? `Founder-kull ${primaryBillingAccount.founder_cohort_number}`
+                          : "Standard eller ikke opprettet."}
+                      </p>
+                      <p>Kunde: {primaryBillingAccount?.provider_customer_ref ?? "Ikke opprettet"}</p>
+                      <p>Abonnement: {primaryBillingAccount?.subscription_provider_ref ?? "Ikke betalt"}</p>
+                    </div>
+                    <div className="readinessItem">
+                      <span>Innsendingspakke</span>
+                      <strong data-status={primaryBillingGate?.allowed ? "ready" : primaryBillingGate?.chargeAllowed ? "warning" : "draft"}>
+                        {primaryBillingGate?.status ?? "Faktureringskonto mangler"}
+                      </strong>
+                      <p>{primaryBillingGate?.message ?? "Årsabonnement og innsendingsrett må bekreftes."}</p>
+                      <p>Status {primaryFilingReady ? "klar" : "ikke klar"} for {primaryIncomeYear}.</p>
+                      <p>Innsendingspakke ref: {primaryBillingAccount?.filing_package_payment_ref ?? "Ikke betalt"}</p>
                       <form action={cancelBillingSubscription}>
-                        <input name="operationId" type="hidden" value={params?.billingCancelOperationId ?? randomUUID()} />
-                        <input name="companyId" type="hidden" value={primaryCompanyId} />
-                        <button className="secondaryButton" type="submit">
-                          Kanseller abonnement
-                        </button>
+                          <input name="operationId" type="hidden" value={params?.billingCancelOperationId ?? randomUUID()} />
+                          <input name="companyId" type="hidden" value={primaryCompanyId} />
+                          <button className="secondaryButton" type="submit">
+                            Stopp tidligere abonnement
+                          </button>
                       </form>
-                    ) : null}
-                  </div>
-                  <div className="readinessItem">
-                    <span>Refusjon</span>
-                    <strong data-status={primaryBillingAccount?.refund_completed ? "ready" : primaryBillingAccount?.refund_eligible ? "warning" : "draft"}>
-                      {primaryBillingAccount?.refund_completed
-                        ? "Refundert"
-                        : primaryBillingAccount?.refund_eligible
-                          ? "Refusjonsberettiget"
-                          : "Ingen refusjon"}
-                    </strong>
-                    <p>{primaryBillingAccount?.refund_provider_ref ?? primaryBillingAccount?.no_charge_reason ?? "Støttet sak kan refunderes etter Talli-feil."}</p>
-                    {primaryBillingAccount?.filing_package_paid && primaryBillingAccount.supported_case ? (
+                    </div>
+                    <div className="readinessItem">
+                      <span>Refusjon</span>
+                      <strong data-status={primaryBillingAccount?.refund_completed ? "ready" : primaryBillingAccount?.refund_eligible ? "warning" : "draft"}>
+                        {primaryBillingAccount?.refund_completed
+                          ? "Refundert"
+                          : primaryBillingAccount?.refund_eligible
+                            ? "Refusjonsberettiget"
+                            : "Ingen refusjon registrert"}
+                      </strong>
+                      <p>{primaryBillingAccount?.refund_provider_ref ?? primaryBillingAccount?.no_charge_reason ?? "Støttet sak kan refunderes etter Talli-feil."}</p>
                       <form action={markBillingRefundEligible}>
-                        <input name="operationId" type="hidden" value={params?.billingRefundOperationId ?? randomUUID()} />
-                        <input name="companyId" type="hidden" value={primaryCompanyId} />
-                        <input name="incomeYear" type="hidden" value={primaryIncomeYear} />
-                        <button className="secondaryButton" type="submit">
-                          Refunder filingpakke
-                        </button>
+                          <input name="operationId" type="hidden" value={params?.billingRefundOperationId ?? randomUUID()} />
+                          <input name="companyId" type="hidden" value={primaryCompanyId} />
+                          <label>Inntektsår for tidligere betaling
+                            <input name="incomeYear" inputMode="numeric" defaultValue={primaryIncomeYear} required />
+                          </label>
+                          <button className="secondaryButton" type="submit">
+                            Refunder tidligere innsendingspakke
+                          </button>
                       </form>
-                    ) : null}
+                    </div>
+                    <div className="readinessItem">
+                      <span>Betalingshendelser</span>
+                      <strong data-status={primaryBillingEvents.length ? "ready" : "draft"}>
+                        {primaryBillingEvents.length} eventer
+                      </strong>
+                      <p>
+                        {primaryBillingEvents[0]
+                          ? `${primaryBillingEvents[0].kind}: ${primaryBillingEvents[0].status} (${primaryBillingEvents[0].provider_reference})`
+                          : "Ingen providerhendelser lagret."}
+                      </p>
+                    </div>
                   </div>
-                  <div className="readinessItem">
-                    <span>Betalingshendelser</span>
-                    <strong data-status={primaryBillingEvents.length ? "ready" : "draft"}>
-                      {primaryBillingEvents.length} eventer
-                    </strong>
-                    <p>
-                      {primaryBillingEvents[0]
-                        ? `${primaryBillingEvents[0].kind}: ${primaryBillingEvents[0].status} (${primaryBillingEvents[0].provider_reference})`
-                        : "Ingen providerhendelser lagret."}
-                    </p>
-                  </div>
-                </div>
+                </details> : null}
               </section>
 
               <section className="band mutedBand">

@@ -1,9 +1,21 @@
 import {
   createTalliApiClient,
   TalliApiError,
+  type AnnualBillingSnapshotRequest,
+  type AnnualPurchaseHistoryRequest,
+  type AnnualRefundRecoveryTargetsRequest,
+  type AnnualRefundRecoveryCommandWire,
+  type AnnualSupportRequest,
+  type AnnualSupportRefundRecoveryTargetsRequest,
+  type AnnualSupportRefundRecoveryCommandWire,
+  type AnnualSupportCleanupRecoveryCommandWire,
+  type AnnualAgreementCleanupCommandWire,
+  type AnnualCheckoutObservationCommandWire,
+  type AnnualCheckoutCommandWire,
+  type AnnualCheckoutWire,
+  type AnnualRenewalCancellationCommandWire,
   type BillingAccountWire,
   type BillingCompanyWire,
-  type BillingConfigureWire,
   type BillingEntitlementRequest,
   type BillingFilingPackageWire,
   type BillingPilotEntitlementCommandWire,
@@ -25,6 +37,167 @@ function request(requestId?: string) {
 
 function mutation(idempotencyKey: string, requestId?: string) {
   return { ...request(requestId), idempotencyKey };
+}
+
+export function loadAnnualSupportPurchases(accessToken: string, input: AnnualSupportRequest) {
+  return client(accessToken).billingReadAnnualSupportPurchases({ ...input, ...request(input.requestId) });
+}
+
+export async function loadAnnualSupportRefundRecoveryTargets(
+  accessToken: string, input: AnnualSupportRefundRecoveryTargetsRequest,
+) {
+  const value = await client(accessToken).billingReadAnnualSupportRefundRecoveryTargets({ ...input, ...request(input.requestId) });
+  if (value.supportCaseId !== input.supportCaseId || value.companyId !== input.companyId || value.purchaseId !== input.purchaseId) {
+    throw new TalliApiError(502, undefined);
+  }
+  return value;
+}
+
+export async function recoverAnnualSupportRefund(accessToken: string, body: AnnualSupportRefundRecoveryCommandWire) {
+  const value = await client(accessToken).billingRecoverAnnualSupportRefund(body, request());
+  if (value.supportCaseId !== body.supportCaseId || value.companyId !== body.companyId
+      || value.purchaseId !== body.purchaseId || value.refundRequestId !== body.refundRequestId) {
+    throw new TalliApiError(502, undefined);
+  }
+  return value;
+}
+
+export async function recoverAnnualSupportCleanup(accessToken: string, body: AnnualSupportCleanupRecoveryCommandWire) {
+  const value = await client(accessToken).billingRecoverAnnualSupportCleanup(body, request());
+  if (value.supportCaseId !== body.supportCaseId || value.companyId !== body.companyId
+      || value.purchaseId !== body.purchaseId) throw new TalliApiError(502, undefined);
+  return value;
+}
+
+export async function prepareAnnualCheckout(accessToken: string, companyId: string, incomeYear: number) {
+  try {
+    const result = await client(accessToken).billingPrepareAnnualCheckout(companyId, incomeYear, request());
+    if (result.companyId !== companyId || result.incomeYear !== incomeYear
+      || (result.state === "available" && (!result.offer || !result.consentVersion || result.purchaseId !== null
+        || result.offer.companyId !== companyId || result.offer.incomeYear !== incomeYear))
+      || (result.state === "existing" && (result.offer !== null || result.consentVersion !== null || !result.purchaseId))) {
+      throw new TalliApiError(502, undefined);
+    }
+    return result;
+  } catch (error) {
+    // Web-first overlap: a predecessor has no preparation route.
+    if (error instanceof TalliApiError && error.status === 404 && !error.problem) return null;
+    throw error;
+  }
+}
+
+function checkedCheckout(value: AnnualCheckoutWire, companyId: string, purchaseId?: string) {
+  if (value.companyId !== companyId || value.offer.companyId !== companyId
+    || value.incomeYear !== value.offer.incomeYear || (purchaseId && value.purchaseId !== purchaseId)) {
+    throw new TalliApiError(502, undefined);
+  }
+  if (value.checkoutUrl !== null) {
+    let url;
+    try { url = new URL(value.checkoutUrl); } catch { throw new TalliApiError(502, undefined); }
+    // Provider origin approval belongs to the backend adapter. This boundary
+    // also rejects browser-executable URLs and inconsistent terminal links.
+    if (value.status !== "pending" || url.protocol !== "https:" || url.username || url.password || url.hash) {
+      throw new TalliApiError(502, undefined);
+    }
+  }
+  return value;
+}
+
+export async function startAnnualCheckout(
+  accessToken: string, body: AnnualCheckoutCommandWire, idempotencyKey: string,
+) {
+  const value = checkedCheckout(await client(accessToken).billingStartAnnualCheckout(body, mutation(idempotencyKey)), body.companyId);
+  if (value.incomeYear !== body.incomeYear || value.offer.offerVersion !== body.offerVersion
+    || value.offer.termsDigest !== body.termsDigest) throw new TalliApiError(502, undefined);
+  return value;
+}
+
+export async function withdrawAnnualCheckoutRequest(
+  accessToken: string, body: AnnualCheckoutCommandWire, idempotencyKey: string,
+) {
+  const value = await client(accessToken).billingWithdrawAnnualCheckoutRequest(body, mutation(idempotencyKey));
+  if (value.companyId !== body.companyId || value.incomeYear !== body.incomeYear
+    || (value.state === "withdrawn" && (value.purchaseId !== null || !value.withdrawalId || !value.withdrawnAt))
+    || (value.state === "existing" && (!value.purchaseId || value.withdrawalId !== null || value.withdrawnAt !== null))) {
+    throw new TalliApiError(502, undefined);
+  }
+  return value;
+}
+
+export async function loadAnnualPurchaseHistory(accessToken: string, input: AnnualPurchaseHistoryRequest) {
+  try {
+    return await client(accessToken).billingReadAnnualPurchaseHistory({ ...input, ...request(input.requestId) });
+  } catch (error) {
+    // A predecessor backend has no such route. A scoped BILLING_NOT_FOUND
+    // problem is an invalid cursor, and must remain an error.
+    if (error instanceof TalliApiError && error.status === 404 && !error.problem) return null;
+    throw error;
+  }
+}
+
+export async function loadAnnualRefundRecoveryTargets(accessToken: string, input: AnnualRefundRecoveryTargetsRequest) {
+  try {
+    return await client(accessToken).billingReadAnnualRefundRecoveryTargets({ ...input, ...request(input.requestId) });
+  } catch (error) {
+    if (error instanceof TalliApiError && error.status === 404 && !error.problem) return null;
+    throw error;
+  }
+}
+
+export function recoverAnnualRefund(accessToken: string, body: AnnualRefundRecoveryCommandWire) {
+  return client(accessToken).billingRecoverAnnualRefund(body, request());
+}
+
+export async function loadAnnualBillingSnapshot(accessToken: string, input: AnnualBillingSnapshotRequest) {
+  const api = client(accessToken);
+  try {
+    return await api.billingReadAnnualRefundSnapshot({ ...input, ...request(input.requestId) });
+  } catch (error) {
+    // During web-first deployment the predecessor backend lacks this read.
+    // Keep history available, with refund details explicitly unavailable.
+    if (!(error instanceof TalliApiError && error.status === 404)) throw error;
+    return api.billingReadAnnualSnapshot({ ...input, ...request(input.requestId) });
+  }
+}
+
+export function cancelAnnualRenewal(
+  accessToken: string,
+  body: AnnualRenewalCancellationCommandWire,
+  operationId: string,
+) {
+  return client(accessToken).billingCancelAnnualRenewal(body, mutation(operationId));
+}
+
+export function cleanupAnnualAgreement(
+  accessToken: string,
+  body: AnnualAgreementCleanupCommandWire,
+  requestId?: string,
+) {
+  return client(accessToken).billingCleanupAnnualAgreement(body, request(requestId));
+}
+
+export async function observeAnnualCheckout(
+  accessToken: string,
+  body: AnnualCheckoutObservationCommandWire,
+  requestId?: string,
+) {
+  return checkedCheckout(await client(accessToken).billingObserveAnnualCheckout(body, request(requestId)), body.companyId, body.purchaseId);
+}
+
+export function annualBillingRecovery(error: unknown): "sign-in" | "step-up" | "unavailable" {
+  if (error instanceof TalliApiError && error.status === 401) return "sign-in";
+  if (error instanceof TalliApiError && error.problem?.code === "BILLING_STEP_UP_REQUIRED") {
+    return "step-up";
+  }
+  return "unavailable";
+}
+
+export function annualBillingAccessRejected(error: unknown): boolean {
+  return error instanceof TalliApiError && (error.status === 401 || error.status === 403);
+}
+
+export function annualCheckoutNeedsWithdrawal(error: unknown): boolean {
+  return error instanceof TalliApiError && ["BILLING_INVALID_INPUT", "BILLING_IDEMPOTENCY_KEY_REUSED", "BILLING_CHECKOUT_REQUEST_WITHDRAWN"].includes(error.problem?.code ?? "");
 }
 
 export function loadBillingSnapshot(
@@ -84,24 +257,6 @@ export function presentBillingAccount(account: BillingAccountWire) {
   };
 }
 
-export function configureBillingAccount(
-  accessToken: string,
-  body: BillingConfigureWire,
-  operationId: string,
-  requestId?: string,
-) {
-  return client(accessToken).billingConfigureAccount(body, mutation(operationId, requestId));
-}
-
-export function activateBillingSubscription(
-  accessToken: string,
-  body: BillingCompanyWire,
-  operationId: string,
-  requestId?: string,
-) {
-  return client(accessToken).billingActivateSubscription(body, mutation(operationId, requestId));
-}
-
 export function cancelBillingSubscription(
   accessToken: string,
   body: BillingCompanyWire,
@@ -109,15 +264,6 @@ export function cancelBillingSubscription(
   requestId?: string,
 ) {
   return client(accessToken).billingCancelSubscription(body, mutation(operationId, requestId));
-}
-
-export function purchaseBillingFilingPackage(
-  accessToken: string,
-  body: BillingFilingPackageWire,
-  operationId: string,
-  requestId?: string,
-) {
-  return client(accessToken).billingPurchaseFilingPackage(body, mutation(operationId, requestId));
 }
 
 export function refundBillingFilingPackage(

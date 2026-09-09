@@ -1,19 +1,30 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { Banner, FormField, SubmitButton } from "../../components/ui";
 import { signIn } from "../../actions";
-import { hasSupabaseEnv } from "../../lib/supabase/server";
+import { getCurrentUser, hasSupabaseEnv, needsEmailVerification } from "../../lib/supabase/server";
 import { ownerCopy } from "../../lib/copy";
 import { sanitizeInternalRedirect } from "../../lib/internal-redirect";
 import { GoogleSignInButton } from "../GoogleSignInButton";
 
 type LoginProps = {
-  searchParams?: Promise<{ error?: string; next?: string }>;
+  searchParams?: Promise<{ error?: string; next?: string; reauth?: string }>;
 };
 
 export default async function LoginPage({ searchParams }: LoginProps) {
   const params = await searchParams;
   const next = sanitizeInternalRedirect(params?.next);
+  const reauthenticate = params?.reauth === "1";
+  if (hasSupabaseEnv()) {
+    const user = await getCurrentUser();
+    if (user) {
+      if (needsEmailVerification(user)) redirect("/verify-email");
+      // The backend can reject a session Supabase still recognizes. An
+      // explicit recovery visit must allow the owner to replace that session.
+      if (!reauthenticate) redirect("/dashboard");
+    }
+  }
   return (
     <div className="authCard">
       <div className="appBrand">
@@ -30,6 +41,7 @@ export default async function LoginPage({ searchParams }: LoginProps) {
       ) : null}
       <form className="authForm" action={signIn}>
         <input name="next" type="hidden" value={next} />
+        {reauthenticate ? <input name="reauth" type="hidden" value="1" /> : null}
         <FormField
           label={ownerCopy.auth.emailLabel}
           name="email"
@@ -50,7 +62,7 @@ export default async function LoginPage({ searchParams }: LoginProps) {
         </SubmitButton>
       </form>
       <p className="authDivider">{ownerCopy.auth.orDivider}</p>
-      <GoogleSignInButton next={next} />
+      <GoogleSignInButton next={next} reauthenticate={reauthenticate} />
       <p className="authAlt">
         {ownerCopy.auth.noAccount}{" "}
         <Link href={`/signup?next=${encodeURIComponent(next)}`}>{ownerCopy.auth.toSignUp}</Link>

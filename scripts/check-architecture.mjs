@@ -110,6 +110,23 @@ const SUPPORT_CASE_SECURITY_AMENDMENT = Object.freeze({
     "compat-audit-persistence\0table:audit_events\0searchOperatorSupportDashboard",
   ]),
 });
+const LEGACY_ACQUISITION_RETIREMENT_AMENDMENT = Object.freeze({
+  issue: "#192",
+  minimumCapability: "billing",
+  path: "apps/web/app/actions.ts",
+  rule: "direct-web-business-persistence",
+  operations: new Set([
+    "saveBillingAccount",
+    "activateBillingSubscription",
+    "requestFilingPackagePayment",
+  ]),
+  scopes: new Set([
+    "compat-audit-persistence\0audit\0#155\0table:audit_events\0saveBillingAccount",
+    "compat-audit-persistence\0audit\0#155\0table:audit_events\0activateBillingSubscription",
+    "compat-audit-persistence\0audit\0#155\0table:audit_events\0requestFilingPackagePayment",
+    "compat-annual-compliance-persistence\0annual_compliance\0#149\0table:filing_readiness_snapshots\0requestFilingPackagePayment",
+  ]),
+});
 function isBackendModule(manifest) {
   return ["backend-capability", "backend-technical-module"].includes(manifest.kind);
 }
@@ -1918,6 +1935,40 @@ export function validateCompatibilityRegistry(path, {
     currentOperationAnalyses.set(operationKey, analysis);
     return analysis;
   };
+  const acquisitionRetirementScopes = removedFrozenScopes.filter(({ record, scope }) => (
+    LEGACY_ACQUISITION_RETIREMENT_AMENDMENT.scopes.has(
+      acquisitionRetirementScopeKey(record, scope),
+    )
+  ));
+  let acquisitionRetirementAtomic = false;
+  if (acquisitionRetirementScopes.length) {
+    const retirement = LEGACY_ACQUISITION_RETIREMENT_AMENDMENT;
+    const minimumStageIndex = stageIndexes.get(retirement.minimumCapability);
+    const frozenApprovedScopes = (baseline.records ?? []).flatMap((record) => (
+      (record.scopes ?? []).map((scope) => acquisitionRetirementScopeKey(record, scope))
+        .filter((key) => retirement.scopes.has(key))
+    ));
+    if (currentStageIndex === undefined || minimumStageIndex === undefined
+      || currentStageIndex < minimumStageIndex) {
+      errors.push("legacy acquisition retirement is authorized only by #192 at billing or later");
+    } else if (frozenApprovedScopes.length !== retirement.scopes.size
+      || !sameSet(new Set(frozenApprovedScopes), retirement.scopes)) {
+      errors.push("legacy acquisition retirement requires the exact four frozen #192 scope tuples");
+    } else if (acquisitionRetirementScopes.length !== retirement.scopes.size) {
+      errors.push("legacy acquisition retirement must remove all four #192 scopes together");
+    } else {
+      let actionsRemoved = true;
+      for (const operation of retirement.operations) {
+        const scope = { path: retirement.path, operation };
+        const analysis = currentOperationAnalysis(scope);
+        if (analysis?.state !== "missing") {
+          errors.push(`legacy acquisition retirement must remove the entire #192 action: ${operation}`);
+          actionsRemoved = false;
+        }
+      }
+      acquisitionRetirementAtomic = actionsRemoved;
+    }
+  }
   const completedStagesByCapability = new Map(
     completedStages.map((stage) => [stage.capability, stage]),
   );
@@ -1997,7 +2048,11 @@ export function validateCompatibilityRegistry(path, {
           && SUPPORT_CASE_SECURITY_AMENDMENT.scopes.has(
             supportSecurityScopeKey(record.id, scope),
           );
-        if (!atomicLedgerRelocation && !supportSecurityRemoval
+        const acquisitionRetirementRemoval = acquisitionRetirementAtomic
+          && LEGACY_ACQUISITION_RETIREMENT_AMENDMENT.scopes.has(
+            acquisitionRetirementScopeKey(record, scope),
+          );
+        if (!atomicLedgerRelocation && !supportSecurityRemoval && !acquisitionRetirementRemoval
           && !authorizedResourceOwners.has(scopeResourceOwner)) {
           errors.push(
             `${prefix} future frozen scope resource ${scope.resource} is not owned by active or exited capability`,
@@ -2300,6 +2355,44 @@ function supportSecurityScopeKey(recordId, scope) {
   return [recordId, scope.resource, scope.operation].join("\u0000");
 }
 
+function acquisitionRetirementScopeKey(record, scope) {
+  if (scope.path !== LEGACY_ACQUISITION_RETIREMENT_AMENDMENT.path
+    || scope.rule !== LEGACY_ACQUISITION_RETIREMENT_AMENDMENT.rule) {
+    return undefined;
+  }
+  return [record.id, record.capability, record.removalIssue, scope.resource, scope.operation].join("\u0000");
+}
+
+function acquisitionRetirementAttempted(registry, baseline) {
+  const active = new Set((registry.records ?? [])
+    .filter((record) => record.kind === "legacy-facade")
+    .flatMap((record) => (record.scopes ?? []).map((scope) => (
+      acquisitionRetirementScopeKey(record, scope)
+    ))));
+  return (baseline.records ?? []).some((record) => (record.scopes ?? []).some((scope) => {
+    const key = acquisitionRetirementScopeKey(record, scope);
+    return LEGACY_ACQUISITION_RETIREMENT_AMENDMENT.scopes.has(key) && !active.has(key);
+  }));
+}
+
+function checkRetiredAcquisitionReferences(sourceFile, path, errors) {
+  // Test fixtures may name the retired actions; runtime imports, forms, aliases,
+  // object keys and string dispatch must not preserve an acquisition entry point.
+  if (path.startsWith("apps/web/tests/")) return;
+  const references = new Set();
+  function inspect(node) {
+    if ((ts.isIdentifier(node) || ts.isStringLiteralLike(node))
+      && LEGACY_ACQUISITION_RETIREMENT_AMENDMENT.operations.has(node.text)) {
+      references.add(node.text);
+    }
+    ts.forEachChild(node, inspect);
+  }
+  inspect(sourceFile);
+  for (const operation of references) {
+    errors.push(`${path}: #192 retired acquisition action or client/form reference remains: ${operation}`);
+  }
+}
+
 function operationLabel(operationKey) {
   const [path, operation] = operationKey.split("\u0000");
   return `${path} operation:${operation}`;
@@ -2340,11 +2433,15 @@ function activeCompatibilityMatches(registry, releaseState, path, rule, resource
   });
 }
 
-function checkGlobalWebBoundary(root, registry, releaseState, errors, now, webAnalysis) {
+function checkGlobalWebBoundary(root, registry, releaseState, errors, now, webAnalysis, baseline) {
   const actualScopes = new Set();
+  const retiredAcquisition = acquisitionRetirementAttempted(registry, baseline);
   for (const path of walk(join(root, "apps/web"), (candidate) => /\.[cm]?[jt]sx?$/u.test(candidate))) {
     const scopedPath = relative(root, path);
     const source = readFileSync(path, "utf8");
+    if (retiredAcquisition) {
+      checkRetiredAcquisitionReferences(webAnalysis.program.getSourceFile(resolve(path)), scopedPath, errors);
+    }
     const boundary = webBoundaryViolations(source, path, webAnalysis);
     for (const { resource, operation } of boundary.fetch.values()) {
       const rule = "direct-business-fetch";
@@ -2629,7 +2726,9 @@ export function checkArchitecture({ root, writeEvidence = false, now = new Date(
       sourceAtGateRevision,
     },
   ));
-  checkGlobalWebBoundary(resolvedRoot, compatibility, verifiedReleaseState, errors, now, webAnalysis);
+  checkGlobalWebBoundary(
+    resolvedRoot, compatibility, verifiedReleaseState, errors, now, webAnalysis, compatibilityBaseline,
+  );
   const sharedKernel = readJson(join(resolvedRoot, "architecture/shared-kernel.json"), errors);
   validateAgainstSchema(schemas.sharedKernel, sharedKernel, "architecture/shared-kernel.json", errors);
   if (!Array.isArray(sharedKernel.allowedPublicPackages) || !Array.isArray(sharedKernel.forbidden)) {

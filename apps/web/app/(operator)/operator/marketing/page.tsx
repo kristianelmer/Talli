@@ -1,7 +1,10 @@
 import type { MarketingFunnelReportResponse } from "@talli/talli-api-client";
+import { redirect } from "next/navigation";
 
 import { marketingMeasurementTransportFromEnvironment } from "../../../../features/public-acquisition/server.ts";
-import { createSupabaseServerClient } from "../../../lib/supabase/server";
+import { createSupabaseServerClient, getOperatorPageAccess } from "../../../lib/supabase/server";
+import { operatorRecoveryHref } from "../../../lib/operator-support";
+import { OperatorReadRecoveryView } from "../annual-billing-support";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +48,12 @@ async function loadReport(): Promise<MarketingFunnelReportResponse | null> {
 }
 
 export default async function OperatorMarketingPage() {
+  const access = await getOperatorPageAccess();
+  if (access.recovery === "forbidden") redirect("/dashboard");
+  if (access.recovery === "sign-in" || access.recovery === "step-up") {
+    redirect(operatorRecoveryHref(access.recovery, "/operator/marketing"));
+  }
+  if (access.recovery) return <OperatorReadRecoveryView recovery={access.recovery} returnTo="/operator/marketing" />;
   const report = await loadReport();
 
   return (

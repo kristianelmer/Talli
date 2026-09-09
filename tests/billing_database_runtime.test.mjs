@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import pg from "pg";
@@ -9,6 +10,37 @@ const ownerId = "73000000-0000-0000-0000-000000000001";
 const outsiderId = "73000000-0000-0000-0000-000000000002";
 const companyId = "73000000-0000-0000-0000-000000000003";
 const systemUserRequestId = "73000000-0000-0000-0000-000000000004";
+
+async function notificationReceiptEvidence(client) {
+  const authority = await client.query("select pg_has_role(current_user, 'annual_notification_executor', 'SET') as available");
+  if (!authority.rows[0].available) {
+    await client.query("do $borrow$ begin execute format('grant annual_notification_executor to %I with set true, inherit false', current_user); end $borrow$");
+  }
+  try {
+    await client.query("begin");
+    try {
+      await client.query("set local role annual_notification_executor");
+      await client.query("select set_config('talli.notification_provider', 'vipps-mt', true), set_config('talli.notification_account', '123456', true)");
+      await client.query(`insert into annual_notification_inbox.receipts
+        (provider, provider_account, receipt_digest, agreement_reference, event_type, occurred_at)
+        values ('vipps-mt', '123456', repeat('b', 64), 'synthetic-lifecycle-agreement', 'recurring.agreement-stopped.v1', '2026-09-06T00:00:00Z')
+        on conflict (provider, provider_account, receipt_digest) do nothing`);
+      const result = await client.query(`select to_jsonb(r) as value, tableoid::oid as relation
+        from annual_notification_inbox.receipts r
+        where provider='vipps-mt' and provider_account='123456' and receipt_digest=repeat('b',64)`);
+      await client.query("commit");
+      assert.equal(result.rows.length, 1);
+      return result.rows[0];
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    }
+  } finally {
+    if (!authority.rows[0].available) {
+      await client.query("do $return$ begin execute format('revoke annual_notification_executor from %I', current_user); end $return$");
+    }
+  }
+}
 
 async function topology(client) {
   const result = await client.query(String.raw`
@@ -227,6 +259,26 @@ test(
       readFile(new URL("../supabase/migrations/20260905061339_billing_provider_reconciliation.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/rollback/20260905061339_billing_provider_reconciliation.sql", import.meta.url), "utf8"),
     ]);
+    const [observation, observationRollback, withdrawals, withdrawalsRollback, refundCleanup, refundCleanupRollback, refundRequests, refundRequestsRollback, retirement, retirementRollback, cleanup, cleanupRollback, cancellation, cancellationRollback, annual, annualRollback, basis, basisRollback] = await Promise.all([
+      readFile(new URL("../supabase/migrations/20260907153938_annual_checkout_observation.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260907153938_annual_checkout_observation.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260906221800_annual_checkout_withdrawals.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260906221800_annual_checkout_withdrawals.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260905145000_annual_refund_agreement_cleanup.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260905145000_annual_refund_agreement_cleanup.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260905141500_annual_refund_requests.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260905141500_annual_refund_requests.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260905115700_legacy_billing_acquisition_retirement.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260905115700_legacy_billing_acquisition_retirement.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260905103149_annual_agreement_cleanup.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260905103149_annual_agreement_cleanup.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260905100130_annual_renewal_cancellation.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260905100130_annual_renewal_cancellation.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260905083150_annual_billing_purchase_ledger.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260905083150_annual_billing_purchase_ledger.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260905080550_annual_billing_purchase_basis.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260905080550_annual_billing_purchase_basis.sql", import.meta.url), "utf8"),
+    ]);
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
     try {
@@ -244,6 +296,8 @@ test(
         accounts_owner: "billing_store_owner",
       });
 
+      // Seed genuine predecessor records before applying the retirement guard.
+      await client.query(retirementRollback);
       await client.query(String.raw`
         insert into auth.users (id, email) values
           ('${ownerId}', 'billing-owner@example.test'),
@@ -289,28 +343,43 @@ test(
         ) on conflict (company_id, income_year, obligation) do update set ready=true,
           status='ready', hard_blocks='[]'::jsonb;
       `);
+      // Each invocation creates its own event; earlier rehearsal evidence stays
+      // intact and remains part of the exact before/after lifecycle comparison.
+      const pendingEventId = randomUUID();
+      const pendingEventKey = `billing-rollback-pending-${pendingEventId}`;
       await client.query(`
         insert into billing.billing_payment_events (
-          company_id, provider, provider_reference, idempotency_key, kind,
+          id, company_id, provider, provider_reference, idempotency_key, kind,
           status, amount_nok, income_year, payload, created_by
         ) values (
-          '${companyId}', 'simulation', 'intent_billing-rollback-pending-00000001',
-          'billing-rollback-pending-00000001', 'filing_package', 'created', 299,
-          2025, '{"obligation":"aksjonaerregisteroppgaven"}'::jsonb, '${ownerId}'
+          $1::uuid, $2::uuid, 'simulation', $3, $4, 'filing_package', 'created', 299,
+          2025, '{"obligation":"aksjonaerregisteroppgaven"}'::jsonb, $5::uuid
         )
-      `);
+      `, [pendingEventId, companyId, `intent_${pendingEventKey}`, pendingEventKey, ownerId]);
+      await client.query(retirement);
       await seedCommandReceipt(client);
       const evidence = await canonicalEvidence(client);
       const commandReceipt = await commandReceiptEvidence(client);
+      const notificationReceipt = await notificationReceiptEvidence(client);
       await assertTenantBoundaryAndReadiness(client);
 
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
+        await client.query(observationRollback);
+        await client.query(withdrawalsRollback);
+        await client.query(refundCleanupRollback);
+        await client.query(refundRequestsRollback);
+        await client.query(retirementRollback);
+        await client.query(cleanupRollback);
+        await client.query(cancellationRollback);
+        await client.query(annualRollback);
+        await client.query(basisRollback);
         await client.query(reconcileRollback);
         await client.query(expandRollback);
         const predecessor = await topology(client);
         assert.equal(predecessor.billing_schema, false);
         assert.equal(predecessor.public_accounts, true);
         assert.equal(predecessor.public_accounts_kind, "r");
+        assert.deepEqual(await notificationReceiptEvidence(client), notificationReceipt);
         const quarantinedReceipt = await client.query(String.raw`
           select pg_catalog.to_regclass(
             'backend_system.billing_command_receipts'
@@ -320,6 +389,15 @@ test(
 
         await client.query(expand);
         await client.query(reconcile);
+        await client.query(basis);
+        await client.query(annual);
+        await client.query(cancellation);
+        await client.query(cleanup);
+        await client.query(retirement);
+        await client.query(refundRequests);
+        await client.query(refundCleanup);
+        await client.query(withdrawals);
+        await client.query(observation);
         const successor = await topology(client);
         assert.equal(successor.billing_schema, true);
         assert.equal(successor.canonical_accounts, true);
@@ -327,6 +405,7 @@ test(
         assert.equal(successor.accounts_force_rls, true);
         assert.deepEqual(await canonicalEvidence(client), evidence);
         assert.deepEqual(await commandReceiptEvidence(client), commandReceipt);
+        assert.deepEqual(await notificationReceiptEvidence(client), notificationReceipt);
         await assertTenantBoundaryAndReadiness(client);
       }
 

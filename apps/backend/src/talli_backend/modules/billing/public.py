@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from enum import StrEnum
+from hashlib import sha256
 from typing import Protocol, TypeVar, runtime_checkable
 from uuid import UUID
 
@@ -55,6 +56,7 @@ class BillingPlan(StrEnum):
 
 
 class BillingStatus(StrEnum):
+    ANNUAL_BILLING_UNAVAILABLE = "annual_billing_unavailable"
     ACTIVE = "active"
     SUBSCRIPTION_REQUIRED = "subscription_required"
     FILING_PACKAGE_REQUIRED = "filing_package_required"
@@ -105,12 +107,14 @@ class BillingObligation(StrEnum):
 
 
 class BillingErrorCode(StrEnum):
+    LEGACY_ACQUISITION_RETIRED = "BILLING_LEGACY_ACQUISITION_RETIRED"
     INVALID_INPUT = "BILLING_INVALID_INPUT"
     NOT_FOUND = "BILLING_NOT_FOUND"
     FORBIDDEN = "BILLING_FORBIDDEN"
     STEP_UP_REQUIRED = "BILLING_STEP_UP_REQUIRED"
     IDEMPOTENCY_KEY_REUSED = "BILLING_IDEMPOTENCY_KEY_REUSED"
     IDEMPOTENCY_IN_PROGRESS = "BILLING_IDEMPOTENCY_IN_PROGRESS"
+    CHECKOUT_REQUEST_WITHDRAWN = "BILLING_CHECKOUT_REQUEST_WITHDRAWN"
     SUBSCRIPTION_REQUIRED = "BILLING_SUBSCRIPTION_REQUIRED"
     FILING_NOT_READY = "BILLING_FILING_NOT_READY"
     FILING_PACKAGE_REQUIRED = "BILLING_FILING_PACKAGE_REQUIRED"
@@ -372,6 +376,1255 @@ class BillingProviderResult:
             raise BillingError.unavailable()
 
 
+class AnnualRefundReason(StrEnum):
+    CHANGE_OF_MIND = "change_of_mind"
+    TALLI_ACCEPTANCE_FAILURE = "talli_acceptance_failure"
+    TALLI_DELIVERY_FAILURE = "talli_delivery_failure"
+    NEW_UNSUPPORTED_CONDITION = "new_unsupported_condition"
+    CUSTOMER_UNRESOLVED = "customer_unresolved"
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualBillingOffer:
+    company_id: CompanyId
+    income_year: IncomeYear
+    offer_version: str
+    terms_digest: str
+    terms_text: str
+    currency: str
+    gross_minor: int
+    net_minor: int
+    vat_minor: int
+    vat_basis_points: int
+    paid_through: date
+    export_through: date
+    renewal_date: date
+    renewal_reminder_by: date
+    price_change_notice_by: date
+
+    def __post_init__(self) -> None:
+        if (
+            self.currency != "NOK"
+            or any(type(value) is not int for value in (
+                self.gross_minor, self.net_minor, self.vat_minor, self.vat_basis_points
+            ))
+            or self.gross_minor <= 0
+            or self.net_minor < 0
+            or self.vat_minor < 0
+            or self.gross_minor != self.net_minor + self.vat_minor
+            or self.vat_basis_points != 2500
+            or self.vat_minor != (self.gross_minor + 2) // 5
+            or self.export_through < self.paid_through + timedelta(days=90)
+            or not self.offer_version
+            or len(self.terms_digest) != 64
+            or not 1 <= len(self.terms_text) <= 20000
+            or sha256(self.terms_text.encode()).hexdigest() != self.terms_digest
+        ):
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundFacts:
+    reason: AnnualRefundReason
+    purchased_at: Timestamp
+    first_purchased_at: Timestamp
+    accepted_at: Timestamp
+    discovered_at: Timestamp
+    condition_effective_at: Timestamp
+    blocked_at: Timestamp
+    income_year: IncomeYear
+    gross_minor: int
+    refunded_minor: int
+    production_submission_at: Timestamp | None
+    evidence_reference: str
+
+    def __post_init__(self) -> None:
+        if (
+            any(type(value) is not int for value in (self.gross_minor, self.refunded_minor))
+            or self.gross_minor <= 0
+            or not 0 <= self.refunded_minor <= self.gross_minor
+            or self.discovered_at.value < self.purchased_at.value
+            or self.first_purchased_at.value > self.purchased_at.value
+            or self.accepted_at.value > self.purchased_at.value
+            or self.condition_effective_at.value > self.discovered_at.value
+            or not self.purchased_at.value <= self.blocked_at.value <= self.discovered_at.value
+            or not self.evidence_reference.strip()
+            or len(self.evidence_reference) > 1000
+        ):
+            raise BillingError.invalid()
+        if (
+            self.reason is AnnualRefundReason.NEW_UNSUPPORTED_CONDITION
+            and self.condition_effective_at.value <= self.accepted_at.value
+        ):
+            # A pre-existing condition is never labelled as a new customer fact.
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundDecision:
+    reason: AnnualRefundReason
+    total_entitlement_minor: int
+    amount_due_minor: int
+    vat_due_minor: int
+    unused_whole_months: int
+    initiate_by: date
+    cancel_renewal: bool
+    export_available: bool
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRenewalFacts:
+    recurring_consent: bool
+    renewal_canceled: bool
+    reminder_recorded_at: Timestamp | None
+    price_change_recorded_at: Timestamp | None
+    prior_gross_minor: int
+    target_offer: AnnualBillingOffer
+    target_definitively_eligible: bool
+    target_filing_ready: bool
+    collection_due_date: date
+    at: Timestamp
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRenewalDecision:
+    allowed: bool
+    reason: str
+
+
+class AnnualProviderOperation(StrEnum):
+    CHECKOUT = "checkout"
+    RENEWAL = "renewal"
+    STOP_AGREEMENT = "stop_agreement"
+    CANCEL_CHARGE = "cancel_charge"
+    REFUND = "refund"
+
+
+class AnnualProviderStatus(StrEnum):
+    PENDING = "pending"
+    CONFIRMED = "confirmed"
+    FAILED = "failed"
+    UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualProviderIntent:
+    operation_id: BillingPaymentEventId
+    company_id: CompanyId
+    income_year: IncomeYear
+    operation: AnnualProviderOperation
+    amount_minor: int
+    created_at: Timestamp
+    agreement_external_reference: str
+    charge_reference: str
+    return_url: str
+    management_url: str
+    agreement_reference: str | None = None
+    due_date: date | None = None
+    recurring_consent: bool = False
+    original_charge_minor: int = 149000
+    original_charge_is_renewal: bool = False
+
+    def __post_init__(self) -> None:
+        if (
+            type(self.amount_minor) is not int
+            or self.amount_minor < 0
+            or type(self.original_charge_minor) is not int
+            or self.original_charge_minor <= 0
+            or not isinstance(self.operation, AnnualProviderOperation)
+            or type(self.original_charge_is_renewal) is not bool
+            or type(self.recurring_consent) is not bool
+            or (self.operation is AnnualProviderOperation.CHECKOUT and self.original_charge_is_renewal)
+            or (self.operation is AnnualProviderOperation.RENEWAL and not self.original_charge_is_renewal)
+            or (self.operation in {AnnualProviderOperation.CHECKOUT, AnnualProviderOperation.RENEWAL} and self.amount_minor != self.original_charge_minor)
+            or (self.operation is AnnualProviderOperation.REFUND and self.amount_minor == 0)
+            or (self.operation in {AnnualProviderOperation.STOP_AGREEMENT, AnnualProviderOperation.CANCEL_CHARGE} and self.amount_minor != 0)
+            or (self.operation is AnnualProviderOperation.REFUND and self.amount_minor > self.original_charge_minor)
+            or not self.agreement_external_reference
+            or len(self.agreement_external_reference) > 64
+            or not self.charge_reference
+            or len(self.charge_reference) > 64
+            or any(not (char.isascii() and (char.isalnum() or char == "-")) for char in self.charge_reference)
+            or (self.operation is not AnnualProviderOperation.CHECKOUT and not self.agreement_reference)
+            or (self.operation is AnnualProviderOperation.RENEWAL and self.due_date is None)
+        ):
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualProviderObservation:
+    """Verified totals; captured_at identifies the first successful capture."""
+
+    provider: str
+    operation: AnnualProviderOperation
+    status: AnnualProviderStatus
+    agreement_reference: str | None
+    charge_reference: str
+    amount_minor: int
+    captured_minor: int = 0
+    refunded_minor: int = 0
+    checkout_url: str | None = None
+    captured_at: Timestamp | None = None
+
+
+class AnnualPurchaseStatus(StrEnum):
+    PENDING = "pending"
+    PAID = "paid"
+    FAILED = "failed"
+    REFUNDED = "refunded"
+
+
+class AnnualPurchaseId(_UuidId):
+    pass
+
+
+class AnnualSupportCaseId(_UuidId):
+    """Reference to an explicitly opened Company Access billing support case."""
+
+
+class AnnualOperationStatus(StrEnum):
+    CREATED = "created"
+    PENDING = "pending"
+    UNKNOWN = "unknown"
+    CONFIRMED = "confirmed"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualSupportQuery:
+    company_id: CompanyId
+    support_case_id: AnnualSupportCaseId
+    actor_id: ActorId
+    before_purchase_id: AnnualPurchaseId | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualOperationCounts:
+    created: int
+    pending: int
+    unknown: int
+    confirmed: int
+    failed: int
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualSupportPurchase:
+    """Recorded purchase evidence, not an adjudication of new refund rights."""
+
+    purchase_id: AnnualPurchaseId
+    company_id: CompanyId
+    income_year: IncomeYear
+    status: AnnualPurchaseStatus
+    accepted_at: Timestamp
+    updated_at: Timestamp
+    currency: str
+    gross_minor: int
+    captured_minor: int
+    refunded_minor: int
+    renewal_canceled_at: Timestamp | None
+    paid_through: date
+    export_through: date
+    recurring_consent: bool
+    refund_case_count: int
+    recorded_refund_minor: int
+    refund_initiate_by: date | None
+    refund_request_count: int
+    latest_refund_requested_at: Timestamp | None
+    refund_operations: AnnualOperationCounts
+    cleanup_status: AnnualOperationStatus | None
+
+    @property
+    def remaining_refund_minor(self) -> int:
+        # Case entitlements are cumulative for the same purchase. Persistence
+        # projects their maximum, never their sum, against current settled money.
+        return max(0, self.recorded_refund_minor - self.refunded_minor)
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualSupportPage:
+    purchases: tuple[AnnualSupportPurchase, ...]
+    next_purchase_id: AnnualPurchaseId | None = None
+
+
+@runtime_checkable
+class AnnualSupportReadPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def read_support_purchases(self, query: AnnualSupportQuery) -> AnnualSupportPage:
+        """Recheck current active-admin, opened billing case and fresh MFA.
+
+        Return at most 50 purchases across recorded years in descending
+        accepted-at/ID order, with a company-scoped cursor. Authorize empty
+        results too. Read totals and related evidence from one database snapshot.
+        No owner fallback, case opening, raw source/merchant facts or side effects.
+        """
+        ...
+
+    async def read_refund_recovery_targets(
+        self, query: AnnualSupportRefundRecoveryTargetsQuery,
+    ) -> AnnualRefundRecoveryTargetPage:
+        """Discover at most 50 already bound operations in this opened billing case.
+
+        Require current active admin, same-company opened case and fresh MFA,
+        including after reads and for empty results. Group immutable operations
+        across stored requesters; choose the earliest receipt for each operation.
+        Resolve a scoped request cursor to its immutable operation ordering.
+        No case opening, new claims, source/provider calls or owner fallback.
+        """
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class StartAnnualCheckoutCommand(_BillingCommand):
+    income_year: IncomeYear
+    offer_version: str
+    terms_digest: str
+    purchase_accepted: bool
+    recurring_consent: bool
+    consent_version: str
+
+    def __post_init__(self) -> None:
+        if (
+            self.purchase_accepted is not True
+            or type(self.recurring_consent) is not bool
+            or not 1 <= len(self.offer_version) <= 100
+            or not 1 <= len(self.consent_version) <= 100
+            or len(self.terms_digest) != 64
+            or any(char not in "0123456789abcdef" for char in self.terms_digest)
+            or len(str(self.idempotency_key)) > 200
+        ):
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutQuery:
+    company_id: CompanyId
+    actor_id: ActorId
+    purchase_id: AnnualPurchaseId
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutPreparationQuery:
+    company_id: CompanyId
+    income_year: IncomeYear
+    actor_id: ActorId
+
+
+class AnnualCheckoutWithdrawalId(_UuidId):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutRequestResolution:
+    """Committed original purchase reference or permanent unclaimed-key fence.
+
+    Neither outcome cancels an existing purchase or authorizes a new one.
+    """
+
+    company_id: CompanyId
+    income_year: IncomeYear
+    purchase_id: AnnualPurchaseId | None
+    withdrawal_id: AnnualCheckoutWithdrawalId | None
+    withdrawn_at: Timestamp | None
+
+    def __post_init__(self) -> None:
+        if self.purchase_id is not None:
+            if self.withdrawal_id is not None or self.withdrawn_at is not None:
+                raise BillingError.invalid()
+        elif self.withdrawal_id is None or self.withdrawn_at is None:
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAcceptanceBasisReference:
+    company_id: CompanyId
+    income_year: IncomeYear
+    assessment_id: str
+    legal_acceptance_id: str
+    admission_id: str
+    promise_digest: str
+    manifest_digest: str
+
+    def __post_init__(self) -> None:
+        try:
+            for value in (self.assessment_id, self.legal_acceptance_id, self.admission_id):
+                UUID(value)
+        except (ValueError, TypeError, AttributeError):
+            raise BillingError.invalid() from None
+        if any(len(value) != 64 or any(char not in "0123456789abcdef" for char in value)
+               for value in (self.promise_digest, self.manifest_digest)):
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutPrerequisites:
+    """Server-owned evidence; persistence must verify its current source identity."""
+
+    basis: AnnualAcceptanceBasisReference
+    readiness_reference: str
+    readiness_digest: str
+    evaluated_at: Timestamp
+    ready: bool
+
+    def __post_init__(self) -> None:
+        if (not self.readiness_reference or len(self.readiness_reference) > 200
+                or len(self.readiness_digest) != 64
+                or any(char not in "0123456789abcdef" for char in self.readiness_digest)
+                or type(self.ready) is not bool):
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckout:
+    purchase_id: AnnualPurchaseId
+    offer: AnnualBillingOffer
+    accepted_by: UserId
+    request_fingerprint: str
+    idempotency_key: IdempotencyKey
+    provider: str
+    provider_account: str
+    intent: AnnualProviderIntent
+    status: AnnualPurchaseStatus
+    observation: AnnualProviderObservation | None = None
+    renewal_canceled_at: Timestamp | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutPurchaseReference:
+    company_id: CompanyId
+    income_year: IncomeYear
+    purchase_id: AnnualPurchaseId
+    status: AnnualPurchaseStatus
+
+    def __post_init__(self) -> None:
+        if self.status not in {AnnualPurchaseStatus.PENDING, AnnualPurchaseStatus.PAID}:
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutPreparation:
+    """Transient availability, never a reservation or authority for a later POST.
+
+    An existing purchase carries its stored facts only; current offer and consent
+    versions must not be presented as that purchase's historical acceptance.
+    """
+
+    company_id: CompanyId
+    income_year: IncomeYear
+    offer: AnnualBillingOffer | None
+    consent_version: str | None
+    existing_purchase: AnnualCheckoutPurchaseReference | None
+
+    def __post_init__(self) -> None:
+        if self.existing_purchase is not None:
+            if (self.offer is not None or self.consent_version is not None
+                    or self.existing_purchase.company_id != self.company_id
+                    or self.existing_purchase.income_year != self.income_year):
+                raise BillingError.invalid()
+        elif (self.offer is None or not self.consent_version
+                or self.offer.company_id != self.company_id
+                or self.offer.income_year != self.income_year):
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualBillingSnapshotQuery:
+    company_id: CompanyId
+    income_year: IncomeYear
+    actor_id: ActorId
+    before_purchase_id: AnnualPurchaseId | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualPurchaseHistoryQuery:
+    company_id: CompanyId
+    actor_id: ActorId
+    before_purchase_id: AnnualPurchaseId | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualPurchaseSummary:
+    """Stored customer billing facts; no merchant or acceptance-source material."""
+
+    purchase_id: AnnualPurchaseId
+    company_id: CompanyId
+    income_year: IncomeYear
+    status: AnnualPurchaseStatus
+    accepted_at: Timestamp
+    offer_version: str
+    terms_digest: str
+    terms_text: str
+    currency: str
+    gross_minor: int
+    net_minor: int
+    vat_minor: int
+    vat_basis_points: int
+    captured_minor: int
+    refunded_minor: int
+    captured_at: Timestamp | None
+    recurring_consent: bool
+    renewal_canceled_at: Timestamp | None
+    paid_through: date
+    export_through: date
+    renewal_date: date
+    recorded_refund_minor: int
+    refund_initiate_by: date | None
+    refund_request_count: int
+    latest_refund_requested_at: Timestamp | None
+    refund_operations: AnnualOperationCounts
+
+    @property
+    def remaining_refund_minor(self) -> int:
+        return max(0, self.recorded_refund_minor - self.refunded_minor)
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualPurchasePage:
+    purchases: tuple[AnnualPurchaseSummary, ...]
+    next_purchase_id: AnnualPurchaseId | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualBillingSnapshot:
+    offer: AnnualBillingOffer
+    purchases: AnnualPurchasePage
+
+
+def annual_billing_offer(company_id: CompanyId, income_year: IncomeYear) -> AnnualBillingOffer:
+    """Published offer only; availability is not eligibility or charge authority."""
+    from talli_backend.modules.billing.annual_policy import annual_offer
+
+    return annual_offer(company_id, income_year)
+
+
+def annual_billing_consent_version() -> str:
+    """Current separate recurring-consent version owned by billing policy."""
+    from talli_backend.modules.billing.annual_policy import ANNUAL_CONSENT_VERSION
+
+    return ANNUAL_CONSENT_VERSION
+
+
+@runtime_checkable
+class AnnualBillingReadPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def read_purchases(self, query: AnnualBillingSnapshotQuery) -> AnnualPurchasePage:
+        """Authorize owner/fresh MFA even for an empty company-year result.
+
+        Read at most 50 stored summaries in descending accepted-at/ID order;
+        return a next-purchase cursor when more rows exist. Cursor scope is the
+        same company/year. No writes, readiness checks, provider calls or raw
+        intent/merchant/acceptance-basis fields belong in this projection.
+        Project purchase money and recorded refund evidence in one database
+        snapshot. Case entitlements are cumulative: take their maximum, never
+        their sum. Requests and operation outcomes do not establish settlement.
+        """
+        ...
+
+    async def read_purchase_history(self, query: AnnualPurchaseHistoryQuery) -> AnnualPurchasePage:
+        """Read stored purchases across years under current owner/fresh MFA.
+
+        Apply the same bounded, provider-free stored-fact projection as
+        read_purchases, with a company-scoped cursor and no current-admission
+        requirement. History is not an offer or authority to admit another year.
+        """
+        ...
+
+    async def read_refund_recovery_targets(
+        self, query: AnnualRefundRecoveryTargetsQuery,
+    ) -> AnnualRefundRecoveryTargetPage:
+        """Read at most 50 distinct stored refund operations for one purchase.
+
+        Require current accepted-owner/fresh-MFA authority and filter bound
+        receipts to this actor before choosing the earliest receipt per operation.
+        Order operation groups by descending immutable created-at/ID. A request
+        cursor resolves to its scoped operation, even if its representative has
+        changed. No provider/source calls, writes, or current admission checks.
+        Targets are selectable receipts, not a statement of refund liability.
+        """
+        ...
+
+
+class AnnualCancellationId(_UuidId):
+    pass
+
+
+class AnnualRefundRequestId(_UuidId):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundRecoveryTargetsQuery:
+    company_id: CompanyId
+    purchase_id: AnnualPurchaseId
+    actor_id: ActorId
+    before_refund_request_id: AnnualRefundRequestId | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualSupportRefundRecoveryTargetsQuery:
+    company_id: CompanyId
+    purchase_id: AnnualPurchaseId
+    support_case_id: AnnualSupportCaseId
+    actor_id: ActorId
+    before_refund_request_id: AnnualRefundRequestId | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundRecoveryTarget:
+    refund_request_id: AnnualRefundRequestId
+    requested_at: Timestamp
+    status: AnnualOperationStatus
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundRecoveryTargetPage:
+    company_id: CompanyId
+    purchase_id: AnnualPurchaseId
+    income_year: IncomeYear
+    targets: tuple[AnnualRefundRecoveryTarget, ...]
+    next_refund_request_id: AnnualRefundRequestId | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CancelAnnualRenewalCommand(_BillingCommand):
+    purchase_id: AnnualPurchaseId
+
+    def __post_init__(self) -> None:
+        if len(str(self.idempotency_key)) > 200:
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRenewalCancellation:
+    """Durable local renewal stop; this is not a provider acknowledgement."""
+
+    cancellation_id: AnnualCancellationId
+    purchase_id: AnnualPurchaseId
+    company_id: CompanyId
+    income_year: IncomeYear
+    requested_by: UserId
+    requested_at: Timestamp
+    effective_at: Timestamp
+    paid_through: date
+    export_through: date
+
+
+@runtime_checkable
+class AnnualCancellationPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def cancel_renewal(self, command: CancelAnnualRenewalCommand) -> AnnualRenewalCancellation:
+        """Atomically preserve request evidence and disable renewal, before I/O.
+
+        Require current owner authority and fresh MFA, but no new eligibility or
+        readiness approval. Preserve original consent, purchase state, money and
+        paid/export dates. Each command key has an immutable scoped receipt;
+        different keys for one purchase retain the original cancellation time.
+        Recheck owner authority and fresh MFA after waits and before returning
+        either a new receipt or a replay. Late authority loss rolls back both
+        the receipt and local renewal stop; support context is not owner authority.
+        """
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAgreementCleanup:
+    """One durable agreement-stop intent, separate from purchase settlement."""
+
+    purchase_id: AnnualPurchaseId
+    cancellation_id: AnnualCancellationId | None
+    provider: str
+    provider_account: str
+    intent: AnnualProviderIntent
+    observation: AnnualProviderObservation | None = None
+    refund_request_id: AnnualRefundRequestId | None = None
+
+    def __post_init__(self) -> None:
+        if ((self.cancellation_id is None) == (self.refund_request_id is None)
+                or (self.cancellation_id is not None and not isinstance(self.cancellation_id, AnnualCancellationId))
+                or (self.refund_request_id is not None and not isinstance(self.refund_request_id, AnnualRefundRequestId))):
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAgreementCleanupClaim:
+    cleanup: AnnualAgreementCleanup
+    newly_claimed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualSupportCleanupRecoveryQuery:
+    company_id: CompanyId
+    purchase_id: AnnualPurchaseId
+    support_case_id: AnnualSupportCaseId
+    actor_id: ActorId
+
+
+class AnnualSupportCleanupRecoveryPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def load_cleanup_recovery(self, query: AnnualSupportCleanupRecoveryQuery) -> AnnualAgreementCleanup:
+        """Load the one immutable STOP already recorded for this purchase.
+
+        Require current active admin, explicitly opened same-company billing case
+        and fresh MFA before/after locks and successful return. Lock purchase,
+        original checkout, then STOP. Bind its original cancellation/refund receipt
+        and accepting intent; never claim, allocate, resolve sources or use owner
+        authority as a substitute. Missing STOP is not found, never created.
+        """
+        ...
+
+    async def settle_cleanup_recovery(
+        self, query: AnnualSupportCleanupRecoveryQuery, cleanup: AnnualAgreementCleanup,
+        observation: AnnualProviderObservation,
+    ) -> AnnualAgreementCleanup:
+        """Reload under the same current case and preserve the original envelope.
+
+        Apply settle_annual_agreement_cleanup to locked current evidence. Update
+        only that STOP's status/observation, require exactly one affected row, and
+        recheck case/admin/MFA before return. Late denial rolls back. No purchase,
+        receipt, new operation or original requester mutation is permitted.
+        """
+        ...
+
+
+class AnnualSupportCleanupRecoveryOperations(Protocol):
+    async def recover_cleanup(self, query: AnnualSupportCleanupRecoveryQuery) -> AnnualAgreementCleanup: ...
+
+
+def annual_support_cleanup_recovery_operations(
+    persistence: AnnualSupportCleanupRecoveryPersistence, provider: AnnualBillingProvider | None,
+) -> AnnualSupportCleanupRecoveryOperations:
+    from talli_backend.modules.billing.annual_support_cleanup import AnnualSupportCleanupRecoveryService
+
+    return AnnualSupportCleanupRecoveryService(persistence, provider)
+
+
+@runtime_checkable
+class AnnualAgreementCleanupPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def claim_agreement_cleanup(
+        self, company_id: CompanyId, purchase_id: AnnualPurchaseId,
+    ) -> AnnualAgreementCleanupClaim | None:
+        """Require current owner and fresh MFA; lock purchase before operation.
+
+        Bind exactly one persisted cancellation or refund request to the actual
+        same-purchase renewal stop. Require a terminal original checkout or exact
+        confirmed full cumulative refund evidence for that original charge.
+        Neither receipt alone nor an unresolved payment/refund authorizes STOP.
+        Defer unsafe unconfirmed cleanup, competing charges or shared agreements
+        by returning None; preserve already confirmed cleanup evidence. Never infer
+        future agreement/year lineage. Commit one immutable STOP_AGREEMENT
+        operation per purchase before returning; all retries reuse its identity,
+        provider/account and original references. No eligibility/readiness gate
+        may obstruct cancellation. No worker may fabricate an owner session.
+        Clear ambient support context; recheck owner/fresh MFA after lock waits
+        and before every returned outcome, including confirmed replay or None.
+        """
+        ...
+
+    async def settle_agreement_cleanup(
+        self, cleanup: AnnualAgreementCleanup, observation: AnnualProviderObservation,
+    ) -> AnnualAgreementCleanup:
+        """Reauthorize, lock purchase then operation, and validate latest state.
+
+        Use settle_annual_agreement_cleanup; preserve confirmed terminal state.
+        Update only the cleanup operation, never purchase money/status/access.
+        Reject changes to the stored intent, receipt, provider or account.
+        Require exactly one affected settlement row and current owner/fresh MFA
+        before returning; lost authority must roll back the transaction.
+        """
+        ...
+
+
+def settle_annual_agreement_cleanup(
+    cleanup: AnnualAgreementCleanup, observation: AnnualProviderObservation,
+) -> AnnualAgreementCleanup:
+    """Validate cleanup evidence without applying it to financial state."""
+    from talli_backend.modules.billing.annual_cleanup import settle_cleanup
+
+    return settle_cleanup(cleanup, observation)
+
+
+class AnnualAgreementCleanupOperations(Protocol):
+    async def cleanup(self, query: AnnualCheckoutQuery) -> AnnualAgreementCleanup | None: ...
+
+
+def annual_agreement_cleanup_operations(
+    persistence: AnnualAgreementCleanupPersistence, provider: AnnualBillingProvider | None,
+) -> AnnualAgreementCleanupOperations:
+    """Recover the stored agreement stop; absent providers cannot execute it."""
+    from talli_backend.modules.billing.annual_cleanup import AnnualAgreementCleanupService
+
+    return AnnualAgreementCleanupService(persistence, provider)
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutClaim:
+    checkout: AnnualCheckout
+    newly_claimed: bool
+
+
+class AnnualCheckoutObservationOutcome(StrEnum):
+    IDLE = "idle"
+    RECONCILED = "reconciled"
+    RETRY = "retry"
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutObservationBinding:
+    """Original purchase/operation links checked before worker authority exists."""
+
+    purchase_id: AnnualPurchaseId
+    operation_id: BillingPaymentEventId
+    company_id: CompanyId
+    income_year: IncomeYear
+    created_by: UserId
+    accepted_at: Timestamp
+    created_at: Timestamp
+    amount_minor: int
+    agreement_external_reference: str
+    charge_reference: str
+    recurring_consent: bool
+    consent_version: str
+
+
+def validate_annual_checkout_observation(checkout: AnnualCheckout, binding: AnnualCheckoutObservationBinding) -> None:
+    from talli_backend.modules.billing.annual_observation import validate_observation_binding
+
+    validate_observation_binding(checkout, binding)
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutObservationLease:
+    """A fenced observation of one committed intent, never permission to execute."""
+
+    checkout: AnnualCheckout
+    token: str
+    fence: int
+
+
+class AnnualCheckoutObservationPersistence(Protocol):
+    @property
+    def provider(self) -> str: ...
+
+    @property
+    def provider_account(self) -> str: ...
+
+    async def claim_checkout_observation(self) -> AnnualCheckoutObservationLease | None:
+        """Claim only an existing pending checkout under account-bound worker authority.
+
+        Persist immutable operation authority and a short fenced lease. No owner
+        identity, readiness lookup, new purchase/operation or provider call.
+        """
+        ...
+
+    async def authorize_checkout_observation(self, lease: AnnualCheckoutObservationLease) -> None:
+        """Recheck the current principal epoch and lease immediately before provider GET."""
+        ...
+
+    async def settle_checkout_observation(
+        self, lease: AnnualCheckoutObservationLease, observation: AnnualProviderObservation | None,
+    ) -> AnnualCheckout:
+        """Lock purchase, operation, then lease; recheck authority/fence after waits.
+
+        Apply settle_annual_checkout to current state and commit financial rows
+        with technical completion/retry. None changes technical retry only.
+        Recheck authority before return; missed writes or authority loss roll back.
+        Preserve original actors and every immutable intent/acceptance field.
+        """
+        ...
+
+
+class AnnualCheckoutObservationOperations(Protocol):
+    async def run_once(self) -> AnnualCheckoutObservationOutcome: ...
+
+
+def annual_checkout_observation_operations(
+    persistence: AnnualCheckoutObservationPersistence, provider: AnnualBillingProvider | None,
+) -> AnnualCheckoutObservationOperations:
+    """Observe one original checkout without granting new provider execution."""
+    from talli_backend.modules.billing.annual_observation import AnnualCheckoutObservationService
+
+    return AnnualCheckoutObservationService(persistence, provider)
+
+
+def settle_annual_checkout(
+    checkout: AnnualCheckout, observation: AnnualProviderObservation, at: Timestamp,
+) -> AnnualCheckout:
+    """Apply billing settlement policy to the latest locked purchase snapshot."""
+    from talli_backend.modules.billing.annual_settlement import settle
+
+    return settle(checkout, observation, at)
+
+
+class AnnualCheckoutOperations(Protocol):
+    async def withdraw_checkout_request(
+        self, command: StartAnnualCheckoutCommand,
+    ) -> AnnualCheckoutRequestResolution: ...
+
+    async def prepare_checkout(
+        self, query: AnnualCheckoutPreparationQuery,
+        prerequisites: Callable[[], Awaitable[AnnualCheckoutPrerequisites]],
+    ) -> AnnualCheckoutPreparation: ...
+
+    async def start_checkout(
+        self, command: StartAnnualCheckoutCommand,
+        prerequisites: Callable[[], Awaitable[AnnualCheckoutPrerequisites]],
+    ) -> AnnualCheckout: ...
+
+    async def poll_checkout(self, query: AnnualCheckoutQuery) -> AnnualCheckout: ...
+
+
+def annual_checkout_operations(
+    persistence: AnnualCheckoutPersistence, provider: AnnualBillingProvider | None,
+    *, return_url: str, management_url: str,
+) -> AnnualCheckoutOperations:
+    """Compose the single checkout policy path; an absent provider fails closed."""
+    from talli_backend.modules.billing.annual_service import AnnualCheckoutService
+
+    return AnnualCheckoutService(
+        persistence, provider, return_url=return_url, management_url=management_url,
+    )
+
+
+@runtime_checkable
+class AnnualCheckoutPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def authorize_owner_command(self, company_id: CompanyId) -> None: ...
+
+    async def find_checkout(
+        self, company_id: CompanyId, key: IdempotencyKey, request_fingerprint: str,
+    ) -> AnnualCheckout | None:
+        """Recover an original purchase or reject its permanently withdrawn key."""
+        ...
+
+    async def withdraw_checkout_request(
+        self, command: StartAnnualCheckoutCommand, request_fingerprint: str,
+    ) -> AnnualCheckoutRequestResolution:
+        """Lock original key then company/year and reauthorize after waits.
+
+        Return the matching original purchase in any status, replay an immutable
+        withdrawal, or commit a new fence against later claims of this key.
+        Compare exact request identity before returning. No source/provider work,
+        purchase mutation, expiry or deletion. Acknowledge only confirmed commit.
+        """
+        ...
+
+    async def find_active_checkout(
+        self, company_id: CompanyId, income_year: IncomeYear,
+    ) -> AnnualCheckoutPurchaseReference | None:
+        """Read a current pending/paid purchase with owner/fresh-MFA checks,
+        including empty results. No provider calls, reconciliation or writes.
+        """
+        ...
+
+    async def verify_checkout_preparation(
+        self, company_id: CompanyId, income_year: IncomeYear,
+        prerequisites: AnnualCheckoutPrerequisites,
+    ) -> AnnualCheckoutPurchaseReference | None:
+        """Recheck occupancy, eligibility basis and independent current readiness.
+
+        Lock company/year before eligibility; reauthorize after waits. Return an
+        existing pending/paid purchase before source verification, or None when
+        preparation passes. No purchase, operation or reservation is created.
+        """
+        ...
+
+    async def claim_checkout(
+        self, checkout: AnnualCheckout, prerequisites: AnnualCheckoutPrerequisites,
+    ) -> AnnualCheckoutClaim:
+        """Commit purchase and original operation atomically; only one caller wins.
+
+        Require current owner/fresh MFA before every claim or replay return;
+        ambient support cannot authorize it. Late authority loss rolls back new
+        rows, and SQL errors roll back without querying an aborted transaction.
+        Preserve initiating actor/request identity. Only new claims require
+        current acceptance/readiness verification; exact original replay does not.
+        """
+        ...
+
+    async def load_checkout(self, company_id: CompanyId, purchase_id: AnnualPurchaseId) -> AnnualCheckout:
+        """Lock purchase then operation; require current owner/fresh MFA on return.
+
+        Ambient support cannot authorize owner reads, including terminal replay.
+        No current readiness or provider lookup is required for stored evidence.
+        """
+        ...
+
+    async def settle_checkout(
+        self, checkout: AnnualCheckout, observation: AnnualProviderObservation,
+    ) -> AnnualCheckout:
+        """Lock purchase then operation and validate against that latest state.
+
+        Preserve terminal states, bound agreement references and reject stale totals/timestamps. Confirmed
+        full capture refunded in full produces REFUNDED; partial captures stay
+        unresolved even when refunded so far. Only confirmed full capture with an
+        outstanding paid balance produces PAID. Never return stale caller state.
+        Reauthorize after lock waits and before every successful return, including
+        terminal replay. Require exactly one affected row per settlement write;
+        late owner/MFA loss or a missed write rolls back both records. SQL errors
+        roll back without querying the aborted transaction. Ambient support
+        cannot authorize this owner operation.
+        """
+        ...
+
+
+class AnnualRefundCaseId(_UuidId):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class RequestAnnualRefundCommand(_BillingCommand):
+    purchase_id: AnnualPurchaseId
+    source_reference: str
+
+    def __post_init__(self) -> None:
+        # A lookup key only, never caller-supplied refund eligibility or money.
+        if (not isinstance(self.source_reference, str) or not self.source_reference.strip()
+                or len(self.source_reference) > 1000 or len(str(self.idempotency_key)) > 200):
+            raise BillingError.invalid()
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundOperation:
+    """Immutable claim-time capture basis; later observation totals may grow."""
+
+    purchase_id: AnnualPurchaseId
+    captured_minor: int
+    provider: str
+    provider_account: str
+    intent: AnnualProviderIntent
+    previous_refunded_minor: int
+    captured_at: Timestamp
+    observation: AnnualProviderObservation | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundResolution:
+    case_id: AnnualRefundCaseId
+    request: RequestAnnualRefundCommand
+    source_digest: str
+    facts: AnnualRefundFacts
+    decision: AnnualRefundDecision
+    operation: AnnualRefundOperation | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundClaim:
+    resolution: AnnualRefundResolution
+    newly_claimed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundRecoveryQuery:
+    company_id: CompanyId
+    purchase_id: AnnualPurchaseId
+    refund_request_id: AnnualRefundRequestId
+    actor_id: ActorId
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualSupportRefundRecoveryQuery:
+    company_id: CompanyId
+    purchase_id: AnnualPurchaseId
+    refund_request_id: AnnualRefundRequestId
+    support_case_id: AnnualSupportCaseId
+    actor_id: ActorId
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualRefundRecovery:
+    refund_request_id: AnnualRefundRequestId
+    resolution: AnnualRefundResolution
+
+
+class AnnualRefundRecoveryPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def load_refund_recovery(self, query: AnnualRefundRecoveryQuery) -> AnnualRefundRecovery:
+        """Load this current accepted owner's already operation-bound request.
+
+        Require fresh MFA and owner authority, including after lock waits; opened
+        support access cannot substitute. Lock purchase before request/operation.
+        Bind request ID, actor, company, purchase, year, case, fingerprint and
+        original provider intent. Validate immutable source digest/facts/decision.
+        Preserve stored source, key and correlation; never resolve current source
+        facts, insert a case/request/operation, or assign an unbound operation.
+        Historical owner-role provenance is not inferred from requested_by.
+        """
+        ...
+
+    async def settle_refund_recovery(
+        self, recovery: AnnualRefundRecovery, observation: AnnualProviderObservation,
+    ) -> AnnualRefundRecovery:
+        """Reauthorize the same owner with fresh MFA, reload and lock exact identity.
+
+        Reject immutable envelope changes; only stored observation may advance.
+        Apply settle_annual_refund against current state and atomically preserve
+        monotonic purchase money and terminal operation evidence. No allocation,
+        source resolution or support fallback is permitted, including on retry.
+        Recheck owner/fresh MFA before returning a settlement or terminal replay;
+        late authority loss must roll back both purchase and operation writes.
+        """
+        ...
+
+
+class AnnualRefundRecoveryOperations(Protocol):
+    async def recover_refund(self, query: AnnualRefundRecoveryQuery) -> AnnualRefundRecovery: ...
+
+
+def annual_refund_recovery_operations(
+    persistence: AnnualRefundRecoveryPersistence, provider: AnnualBillingProvider | None,
+) -> AnnualRefundRecoveryOperations:
+    """Reconcile only the original operation of a stored owner request."""
+    from talli_backend.modules.billing.annual_refund import AnnualRefundRecoveryService
+
+    return AnnualRefundRecoveryService(persistence, provider)
+
+
+class AnnualSupportRefundRecoveryPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def load_refund_recovery(
+        self, query: AnnualSupportRefundRecoveryQuery,
+    ) -> AnnualRefundRecovery:
+        """Load only an already bound receipt under current opened-case authority.
+
+        Require the verified operator, active admin, same-company explicitly
+        opened billing case and fresh MFA before and after lock waits. Lock the
+        purchase, original checkout and bound refund operation in that order.
+        The immutable bound receipt needs no request-binding UPDATE authority.
+        Validate company/purchase/year/request/case/operation and stored digest,
+        facts, fingerprint and original provider intent. Preserve the original
+        requester, source, key and correlation; never claim, bind or re-adjudicate.
+        An owner session or a case ID alone cannot substitute for support access.
+        """
+        ...
+
+    async def settle_refund_recovery(
+        self, query: AnnualSupportRefundRecoveryQuery,
+        recovery: AnnualRefundRecovery, observation: AnnualProviderObservation,
+    ) -> AnnualRefundRecovery:
+        """Reauthorize the supplied operator/case and reload original locked facts.
+
+        Never derive the current operator from the immutable original requester.
+        Recheck active admin, opened case, company and fresh MFA after waits and
+        settlement writes, even if the operator also has owner rights. Require
+        both financial updates to affect exactly one row; otherwise roll back.
+        Reject immutable envelope changes; settle only monotonic money and
+        original-operation evidence atomically. No source resolution or allocation.
+        """
+        ...
+
+
+class AnnualSupportRefundRecoveryOperations(Protocol):
+    async def recover_refund(self, query: AnnualSupportRefundRecoveryQuery) -> AnnualRefundRecovery: ...
+
+
+def annual_support_refund_recovery_operations(
+    persistence: AnnualSupportRefundRecoveryPersistence, provider: AnnualBillingProvider | None,
+) -> AnnualSupportRefundRecoveryOperations:
+    """Reconcile an existing refund under explicit current operator-case authority."""
+    from talli_backend.modules.billing.annual_refund import AnnualSupportRefundRecoveryService
+
+    return AnnualSupportRefundRecoveryService(persistence, provider)
+
+
+class AnnualRefundPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def claim_refund(self, command: RequestAnnualRefundCommand) -> AnnualRefundClaim:
+        """Reauthorize current owner or explicitly opened billing support case, with fresh MFA.
+
+        Support additionally needs an active admin and current same-company billing
+        grant/opening; a case ID alone grants nothing. Owner-created cases remain
+        limited to change of mind; creating other reasons requires support-case
+        authority. An owner may recover a previously recorded case without
+        re-adjudicating its immutable liability.
+
+        Resolve the lookup reference to immutable source-owned incident, purchase,
+        first-purchase and production-submission facts; never trust browser facts
+        or mutable legacy readiness. Unavailable source authority fails closed.
+        Claim under purchase-before-operation locks. Revalidate source identity,
+        company/year, original capture and current refund balance before commit.
+        Billing's annual_refund_decision owns policy; retain source digest/facts,
+        liability, five-business-day initiation deadline and an immediate local
+        renewal stop even when no provider can execute. Retain export/records.
+
+        Exact command replay preserves the original case and intent, rejecting a
+        reused key with changed actor/company/purchase/source. A unique source case
+        must not create duplicate liability. Reserve against every pending/unknown
+        refund and current cumulative refunds; return no operation when no amount
+        is owed or another operation defers it. No operation is NOT settlement.
+        Cap the reserved amount at actual captured money as well as policy entitlement;
+        a partial capture keeps the original full charge identity. Failed operations
+        retain terminal evidence and outstanding liability; a later authorized
+        attempt requires a distinct operation and a fresh balance/reservation check.
+        Only the caller winning a newly committed operation may execute it.
+        No worker may fabricate an owner session; worker and support-case authority
+        need their own explicit implementations before those callers are wired.
+        """
+        ...
+
+    async def settle_refund(
+        self, resolution: AnnualRefundResolution, observation: AnnualProviderObservation,
+    ) -> AnnualRefundResolution:
+        """Reauthorize, lock purchase then operation, and settle against latest state.
+
+        Use settle_annual_refund. Commit operation evidence and monotonic original
+        purchase totals atomically; do not increment money from the caller's stale
+        snapshot or duplicate operation success. Preserve the first capture,
+        original money, cancellation, liability and export dates. Only confirmed
+        full cumulative refund changes paid purchase status to refunded.
+        Unknown effects and overdue initiation remain actionable, never a waiver.
+        """
+        ...
+
+
+def annual_refund_decision(facts: AnnualRefundFacts) -> AnnualRefundDecision:
+    from talli_backend.modules.billing.annual_policy import annual_refund
+
+    return annual_refund(facts)
+
+
+def settle_annual_refund(
+    resolution: AnnualRefundResolution, observation: AnnualProviderObservation,
+    at: Timestamp,
+) -> AnnualRefundResolution:
+    from talli_backend.modules.billing.annual_refund import settle_refund
+
+    return settle_refund(resolution, observation, at)
+
+
+@runtime_checkable
+class AnnualBillingProvider(Protocol):
+    provider: str
+    account_reference: str
+    production_enabled: bool
+
+    async def execute(self, intent: AnnualProviderIntent) -> AnnualProviderObservation:
+        """Execute only after durable single-winner intent claim."""
+        ...
+
+    async def reconcile(self, intent: AnnualProviderIntent) -> AnnualProviderObservation:
+        """Observe original references using reads only; absence remains unknown."""
+        ...
+
+
 @runtime_checkable
 class BillingPaymentProvider(Protocol):
     provider: str
@@ -496,7 +1749,182 @@ def billing_provider_adapter(port: type[object]) -> Callable[[Adapter], Adapter]
     return register
 
 
+@dataclass(frozen=True, slots=True)
+class AnnualNotificationAccount:
+    """Configured provider environment and merchant; never supplied by an owner."""
+
+    provider: str
+    reference: str
+
+    def __post_init__(self) -> None:
+        for value in (self.provider, self.reference):
+            _notification_text(value, punctuation="._:-")
+
+
+def _notification_text(value: str, *, punctuation: str = "_-") -> None:
+    if (not isinstance(value, str) or not 1 <= len(value) <= 100
+            or not all(character.isascii() and (character.isalnum() or character in punctuation)
+                       for character in value)):
+        raise ValueError("invalid notification reference")
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualProviderNotification:
+    """Authenticated delivery hints only; no purchase, money or settlement authority."""
+
+    account: AnnualNotificationAccount
+    receipt_digest: str
+    agreement_reference: str
+    charge_reference: str | None
+    event_type: str
+    occurred_at: Timestamp
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.account, AnnualNotificationAccount) or not isinstance(self.occurred_at, Timestamp):
+            raise ValueError("invalid notification evidence")
+        if (not isinstance(self.receipt_digest, str) or len(self.receipt_digest) != 64
+                or any(character not in "0123456789abcdef" for character in self.receipt_digest)):
+            raise ValueError("invalid notification digest")
+        _notification_text(self.agreement_reference)
+        if self.charge_reference is not None:
+            _notification_text(self.charge_reference)
+        _notification_text(self.event_type, punctuation="._-")
+
+
+class AnnualNotificationReceiptId(_UuidId):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualNotificationReceipt:
+    receipt_id: AnnualNotificationReceiptId
+    received_at: Timestamp
+    notification: AnnualProviderNotification
+
+
+class AnnualNotificationRejected(ValueError):
+    def __init__(self) -> None:
+        super().__init__("ANNUAL_NOTIFICATION_REJECTED")
+
+
+class AnnualNotificationUnavailable(RuntimeError):
+    def __init__(self) -> None:
+        super().__init__("ANNUAL_NOTIFICATION_UNAVAILABLE")
+
+
+class AnnualNotificationAuthentication(Protocol):
+    @property
+    def account(self) -> AnnualNotificationAccount: ...
+
+    def authenticate(
+        self, body: bytes, headers: Mapping[str, str], *, at: datetime,
+    ) -> AnnualProviderNotification: ...
+
+
+class AnnualNotificationPersistence(Protocol):
+    """Atomically deduplicate exact deliveries; return only after confirmed commit."""
+
+    @property
+    def account(self) -> AnnualNotificationAccount: ...
+
+    async def record_notification(self, notification: AnnualProviderNotification) -> AnnualNotificationReceipt: ...
+
+
 __all__ = [
+    "AnnualSupportCleanupRecoveryQuery",
+    "AnnualSupportCleanupRecoveryPersistence",
+    "AnnualSupportCleanupRecoveryOperations",
+    "annual_support_cleanup_recovery_operations",
+    "AnnualCheckoutObservationOutcome",
+    "AnnualCheckoutObservationBinding",
+    "validate_annual_checkout_observation",
+    "AnnualCheckoutObservationLease",
+    "AnnualCheckoutObservationPersistence",
+    "AnnualCheckoutObservationOperations",
+    "annual_checkout_observation_operations",
+    "annual_support_refund_recovery_operations",
+    "AnnualSupportRefundRecoveryOperations",
+    "AnnualSupportRefundRecoveryPersistence",
+    "AnnualSupportRefundRecoveryTargetsQuery",
+    "AnnualSupportRefundRecoveryQuery",
+    "AnnualNotificationAccount",
+    "AnnualProviderNotification",
+    "AnnualNotificationReceiptId",
+    "AnnualNotificationReceipt",
+    "AnnualNotificationRejected",
+    "AnnualNotificationUnavailable",
+    "AnnualNotificationAuthentication",
+    "AnnualNotificationPersistence",
+    "AnnualBillingSnapshotQuery",
+    "AnnualPurchaseHistoryQuery",
+    "AnnualPurchaseSummary",
+    "AnnualPurchasePage",
+    "AnnualSupportCaseId",
+    "AnnualOperationStatus",
+    "AnnualOperationCounts",
+    "AnnualSupportQuery",
+    "AnnualSupportPurchase",
+    "AnnualSupportPage",
+    "AnnualSupportReadPersistence",
+    "AnnualBillingSnapshot",
+    "annual_billing_offer",
+    "annual_billing_consent_version",
+    "AnnualBillingReadPersistence",
+    "AnnualAgreementCleanup",
+    "AnnualAgreementCleanupClaim",
+    "AnnualAgreementCleanupPersistence",
+    "AnnualAgreementCleanupOperations",
+    "annual_agreement_cleanup_operations",
+    "settle_annual_agreement_cleanup",
+    "AnnualCancellationId",
+    "AnnualRefundRequestId",
+    "AnnualCancellationPersistence",
+    "AnnualRenewalCancellation",
+    "CancelAnnualRenewalCommand",
+    "settle_annual_checkout",
+    "AnnualCheckoutOperations",
+    "annual_checkout_operations",
+    "AnnualPurchaseStatus",
+    "AnnualCheckoutPersistence",
+    "AnnualCheckoutClaim",
+    "AnnualCheckout",
+    "AnnualCheckoutPrerequisites",
+    "AnnualAcceptanceBasisReference",
+    "AnnualCheckoutQuery",
+    "AnnualCheckoutPreparationQuery",
+    "AnnualCheckoutPreparation",
+    "AnnualCheckoutPurchaseReference",
+    "AnnualCheckoutRequestResolution",
+    "AnnualCheckoutWithdrawalId",
+    "StartAnnualCheckoutCommand",
+    "AnnualPurchaseId",
+    "AnnualBillingProvider",
+    "AnnualBillingOffer",
+    "AnnualRefundDecision",
+    "AnnualRefundCaseId",
+    "RequestAnnualRefundCommand",
+    "AnnualRefundOperation",
+    "AnnualRefundResolution",
+    "AnnualRefundClaim",
+    "AnnualRefundRecoveryTargetsQuery",
+    "AnnualRefundRecoveryTarget",
+    "AnnualRefundRecoveryTargetPage",
+    "AnnualRefundRecoveryQuery",
+    "AnnualRefundRecovery",
+    "AnnualRefundRecoveryPersistence",
+    "AnnualRefundRecoveryOperations",
+    "annual_refund_recovery_operations",
+    "AnnualRefundPersistence",
+    "annual_refund_decision",
+    "settle_annual_refund",
+    "AnnualRefundFacts",
+    "AnnualRefundReason",
+    "AnnualRenewalDecision",
+    "AnnualRenewalFacts",
+    "AnnualProviderIntent",
+    "AnnualProviderObservation",
+    "AnnualProviderOperation",
+    "AnnualProviderStatus",
     "ActivateSubscriptionCommand",
     "BillingAccount",
     "BillingCommands",

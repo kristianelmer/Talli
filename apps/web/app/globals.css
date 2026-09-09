@@ -603,6 +603,29 @@ h2 {
   padding: clamp(var(--space-5), 5vw, var(--space-7)) clamp(var(--space-4), 4vw, var(--space-7));
 }
 
+.operatorShell .formPanel {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.operatorShell code {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 960px) {
+  .operatorShell .appTopbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding-block: var(--space-3);
+    position: static;
+  }
+
+  .operatorShell .appNavRight {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
 /* Desktop: nav + account controls share one row; hamburger hidden. */
 .appMenu {
   align-items: center;
@@ -2395,6 +2418,20 @@ h2 {
   display: grid;
   gap: var(--space-3);
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.annualPurchaseList {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.annualPurchaseList .billingStatusHead {
+  flex-wrap: wrap;
+}
+
+.annualPurchaseList details,
+.billingSection details {
+  overflow-wrap: anywhere;
 }
 
 .billingStatusCard {

@@ -9,7 +9,7 @@ import {
 import { OwnerMfa } from "./OwnerMfa";
 
 type OwnerMfaPageProps = {
-  searchParams?: Promise<{ next?: string }>;
+  searchParams?: Promise<{ next?: string; fresh?: string }>;
 };
 
 export default async function OwnerMfaPage({
@@ -17,7 +17,8 @@ export default async function OwnerMfaPage({
 }: OwnerMfaPageProps) {
   const params = await searchParams;
   const returnTo = sanitizeInternalRedirect(params?.next, "/onboarding");
-  const resumePath = `/mfa?next=${encodeURIComponent(returnTo)}`;
+  const requireFreshChallenge = params?.fresh === "1";
+  const resumePath = `/mfa?${requireFreshChallenge ? "fresh=1&" : ""}next=${encodeURIComponent(returnTo)}`;
 
   if (!hasSupabaseEnv()) {
     redirect(
@@ -36,6 +37,7 @@ export default async function OwnerMfaPage({
     <main className="authShell">
       <OwnerMfa
         returnTo={returnTo}
+        requireFreshChallenge={requireFreshChallenge}
         supabaseUrl={process.env.SUPABASE_URL!}
         supabaseAnonKey={process.env.SUPABASE_ANON_KEY!}
       />

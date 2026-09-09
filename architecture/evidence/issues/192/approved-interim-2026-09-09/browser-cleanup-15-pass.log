@@ -1,0 +1,23 @@
+✔ Supabase browser fixtures only accept loopback URLs (7.269458ms)
+✔ browser database fixtures only accept loopback PostgreSQL URLs (0.4565ms)
+✔ owner browser harness stops before remote fixture creation (1809.100916ms)
+✔ owner browser harness rejects a remote database mixed with local Supabase (314.258542ms)
+✔ readiness rejects when its owned process exits before an unrelated listener responds (41.50025ms)
+✔ an unrelated ready listener cannot satisfy a live child without its bind proof (42.960166ms)
+✔ readiness failure tears down a live owned process (42.546083ms)
+✔ a listener that never responds cannot outlive the readiness deadline (115.46925ms)
+✔ a ready owned process is terminated and cleanup is idempotent (155.623625ms)
+✔ forced process cleanup has a final timeout and tolerates an undefined handle (12.166458ms)
+✔ partial setup cleanup closes the database and removes only known resources (0.460875ms)
+✔ browser owner cleanup removes tracked sources before company and user (0.87325ms)
+✔ browser owner cleanup removes every tracked company before the shared owner (0.736167ms)
+✔ browser owner cleanup preserves source failure and continues independent cleanup (0.653917ms)
+✔ browser owner cleanup removes immutable corporate and production filing graphs (788.025834ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3745.888583

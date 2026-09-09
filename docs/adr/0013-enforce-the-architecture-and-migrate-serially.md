@@ -211,8 +211,117 @@ and upgrade migration, negative RLS, POST idempotency/audit, read-only GET,
 deletion-review parity, generated contract/browser, rollback/recutover, and two
 immutable complete-gate passes are required before hosted application.
 
+## 2026-09-09 amendment: exact legacy acquisition retirement
+
+On 9 September 2026, Kristian's recorded decision was **"approved"** in response
+to both the
+[`legacy-retirement-amendment-proposal.md`](../../architecture/evidence/issues/192/legacy-retirement-amendment-proposal.md)
+and option B of the
+[`source-order-amendment-proposal.md`](../../architecture/evidence/issues/192/source-order-amendment-proposal.md).
+This subsection records only the exact four-retirement approval.
+
+Issue #192 may retire the obsolete acquisition Server Actions
+`saveBillingAccount`, `activateBillingSubscription`, and
+`requestFilingPackagePayment`, together with their current clients and forms.
+The amendment applies at billing or a later serialized stage and authorizes
+deletion of exactly these frozen tuples, all at `apps/web/app/actions.ts` under
+`direct-web-business-persistence`:
+
+| Frozen record | Resource | Operation | Unchanged removal issue |
+| --- | --- | --- | --- |
+| compat-audit-persistence | table:audit_events | saveBillingAccount | #155 |
+| compat-audit-persistence | table:audit_events | activateBillingSubscription | #155 |
+| compat-audit-persistence | table:audit_events | requestFilingPackagePayment | #155 |
+| compat-annual-compliance-persistence | table:filing_readiness_snapshots | requestFilingPackagePayment | #149 |
+
+The four deletions must be atomic and all three entire actions must disappear.
+Unreachable writers after unconditional failure, relocated or renamed writers,
+replacement acquisition entry points, different paths or tuples, dynamic writers,
+partial deletion and additions are forbidden. Current-source proof and the global
+web persistence/provider boundary continue to apply. The immutable compatibility
+baseline, its digest, every other frozen future scope and occurrence count, and
+resource ownership remain unchanged. Only the active inventory decreases by four.
+
+This amendment authorizes no annual-readiness implementation, migration of audit
+or annual compliance, change to their remaining operations, second writer,
+provider effect, business rule, financial or statutory result, or expansion of
+authorization, privacy, contract or release authority. Retirement alone preserves
+the serialized migration order. The separately approved source-order option B
+permits a gated interim billing checkpoint before #150 under its own conditions;
+this retirement amendment does not supply that gate or claim the next stage.
+The exact owner decision alone does not constitute stage-exit evidence.
+
+Historical payment/cancellation/refund recovery, deterministic reconciliation,
+rollback/recutover, generated contracts, negative RLS, critical browser journeys,
+independent immutable reviews, two complete 11/11 gates and the required
+protected-main Release/Preview proof remain required by #192. Actual Vipps MT,
+trustworthy source-owned readiness and the remaining annual
+runtime/refund/worker/callback acceptance remain required. Apply retirement
+rollback before predecessor billing rollbacks and reapply retirement last;
+preserve account, event and receipt evidence and coordinate runtime rollback so
+old acquisition code cannot regain a writer surface accidentally. Production
+filing, promotion and paid activation receive no authority from this amendment.
+
+## 2026-09-09 amendment: billing checkpoint before source-backed completion
+
+Kristian replied **"approved"** to the exact four-retirement and source-order
+option B proposals. The [recorded decision](https://github.com/kristianelmer/Talli/issues/192#issuecomment-5599100453)
+approves the following exception to the normal post-migration completion rule:
+
+`#137 → #192 interim checkpoint → #150 → #151 → #146 → #152 → #153 → #193 [RF → tax → accounts] → #149 → Company Access year prerequisite (#208) → #192 final acceptance → #194 → existing tail`
+
+Issue #192 remains open. Its interim checkpoint must complete currently
+implementable billing work, keep acquisition/renewal unavailable when trusted
+sources are absent, and preserve historical recovery, cancellation, refund and
+read/export rights. Before #150 may be claimed, require independent review,
+two linked immutable complete 11/11 gates, protected Release/Preview merge and
+exact-main Release/Preview evidence. Approval alone supplies none of these
+receipts. The registry's existing `authority_connections/#150` position follows
+#137's capability exit; it does not authorize starting #150 before this checkpoint.
+Do not rewrite capability migration order or manufacture a #192 capability exit.
+
+Only one capability owner may edit business state. After the interim checkpoint,
+#192 implementation pauses while #150 through #149 execute in their existing
+relative order; #192 may receive read-only analysis during that interval.
+#193 remains internally serialized RF-1086, company tax, then annual accounts.
+
+Filing owners publish immutable company/year/obligation readiness, complete
+submission history, terminal/unknown outcomes, corrections and coverage through
+public contracts. Absence of a source is unavailable, never evidence that no
+production filing occurred. Annual Compliance #149 aggregates the three contracts
+with versioned identity and a current-evidence verifier; readiness before charging
+must be independent of paid entitlement. Each incident producer attests only its
+own facts and attribution, event time and company/year. Billing alone applies
+#177's commercial classification and refund amounts. A missing incident owner
+must be identified and scheduled explicitly; no omniscient incident service or
+legacy readiness row becomes authority.
+
+After #149, a bounded change to canonical Company Access selects immutable
+accounting-year admission manifests and rechecks renewal eligibility. Preserve
+accepted 2026 references and fail closed for unvalidated years. A mechanism test
+or copied 2026 promise cannot establish 2027 support. Boundary changes still
+require the relevant decision to be reopened.
+
+Then #192 binds the real sources and proves ordinary paid entitlement, durable
+automatic renewal/refund processing without fabricated owner claims, and every
+original A1–A8 criterion over the real runtime. Final customer/operator,
+provider, security/privacy/accounting, representative, independent review,
+two complete immutable gates and protected-main evidence remain mandatory.
+Full #192 is required before #194 and #197's billing tranche. #189, #193's genuine
+filing proofs, #197/#199 and #198 remain mandatory. This amendment changes neither
+the frozen compatibility baseline nor source ownership and grants no spending,
+production filing, provider activation, named-data, outreach or launch authority.
+`release/production` remains independent and frozen.
+
+The [approved proposal](../../architecture/evidence/issues/192/source-order-amendment-proposal.md)
+retains the exact reviewed scope and producer obligations. The control-plane
+ledger and #192 requirements record the pending checkpoint separately from final
+completion; missing receipts remain pending.
+
 ## Canonical decision inputs
 
+- Billing retirement and source-order option B: issue #192 comment
+  `5599100453`, owner decision dated 9 September 2026.
 - Repository prototype and manifest format: issue #130 and commit `1c38dc6d`.
 - Enforcement and acceptance suite: issue #131.
 - Serialized roadmap and exit criteria: issue #132.

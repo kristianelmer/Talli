@@ -541,3 +541,62 @@ test("the web tracer uses the generated package through a thin transport wrapper
   assert.doesNotMatch(transport, /\bfetch\s*\(/);
   assert.doesNotMatch(transport, /AVAILABLE|Forbindelsen virker/);
 });
+
+
+test("annual refund recovery is an additive authenticated POST with no caller authority fields", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const path = contract.paths["/api/v1/billing/annual/refund-recoveries"];
+  assert.deepEqual(Object.keys(path), ["post"]);
+  assert.equal(path.post.operationId, "billingRecoverAnnualRefund");
+  assert.deepEqual(path.post.security, [{ bearerAuth: [] }]);
+  assert.equal(path.post.parameters.some(parameter => parameter.name === "Idempotency-Key"), false);
+  const request = contract.components.schemas.AnnualRefundRecoveryCommandWire;
+  assert.deepEqual(Object.keys(request.properties).sort(), ["companyId", "purchaseId", "refundRequestId"]);
+  assert.equal(request.additionalProperties, false);
+  const response = contract.components.schemas.AnnualRefundRecoveryWire;
+  assert.deepEqual(Object.keys(response.properties).sort(), ["companyId", "incomeYear", "purchaseId", "refundRequestId", "status"]);
+  assert.deepEqual(response.properties.status.enum, ["pending", "unknown", "confirmed", "failed"]);
+});
+
+test("annual refund target discovery preserves a minimal independent read contract", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const path = contract.paths["/api/v1/billing/annual/refund-recovery-targets"];
+  assert.deepEqual(Object.keys(path), ["get"]);
+  assert.equal(path.get.operationId, "billingReadAnnualRefundRecoveryTargets");
+  assert.deepEqual(path.get.security, [{ bearerAuth: [] }]);
+  assert.deepEqual(path.get.parameters.filter(value => value.in === "query").map(value => value.name).sort(),
+    ["beforeRefundRequestId", "companyId", "purchaseId"]);
+  assert.equal(path.get.parameters.some(value => value.name === "Idempotency-Key"), false);
+  const page = contract.components.schemas.AnnualRefundRecoveryTargetPageWire;
+  assert.deepEqual(Object.keys(page.properties).sort(), ["companyId", "incomeYear", "nextRefundRequestId", "purchaseId", "targets"]);
+  const target = contract.components.schemas.AnnualRefundRecoveryTargetWire;
+  assert.deepEqual(Object.keys(target.properties).sort(), ["refundRequestId", "requestedAt", "status"]);
+});
+
+test("annual checkout preparation is an independent read without purchase authority", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const route = contract.paths["/api/v1/billing/annual/checkout-preparation"];
+  assert.equal(route.get.operationId, "billingPrepareAnnualCheckout");
+  assert.deepEqual(route.get.security, [{ bearerAuth: [] }]);
+  assert.equal(route.post, undefined);
+  assert.equal(route.get.requestBody, undefined);
+  assert.equal(route.get.parameters.some(value => value.name === "Idempotency-Key"), false);
+  const fields = contract.components.schemas.AnnualCheckoutPreparationWire.properties;
+  assert.deepEqual(Object.keys(fields).sort(), ["companyId", "consentVersion", "incomeYear", "offer", "purchaseId", "state"]);
+  assert.deepEqual(fields.state.enum, ["available", "existing"]);
+  assert.equal(contract.components.schemas.AnnualCheckoutWire.properties.consentVersion, undefined);
+});
+
+test("annual checkout withdrawal uses the original accepted body and key with a separate minimal result", () => {
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  const route = contract.paths["/api/v1/billing/annual/checkout-withdrawals"];
+  assert.deepEqual(Object.keys(route), ["post"]);
+  assert.equal(route.post.operationId, "billingWithdrawAnnualCheckoutRequest");
+  assert.deepEqual(route.post.security, [{ bearerAuth: [] }]);
+  assert.equal(route.post.parameters.find(value => value.name === "Idempotency-Key").required, true);
+  assert.equal(route.post.requestBody.content["application/json"].schema.$ref, "#/components/schemas/AnnualCheckoutCommandWire");
+  const fields = contract.components.schemas.AnnualCheckoutRequestResolutionWire.properties;
+  assert.deepEqual(Object.keys(fields).sort(), ["companyId", "incomeYear", "purchaseId", "state", "withdrawalId", "withdrawnAt"]);
+  assert.deepEqual(fields.state.enum, ["existing", "withdrawn"]);
+  assert.equal(contract.components.schemas.AnnualCheckoutCommandWire.additionalProperties, false);
+});

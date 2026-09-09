@@ -242,6 +242,48 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
       to: "backend:documents",
     },
     {
+      from: "backend-system:annual-agreement-cleanup",
+      imports: ["talli_backend.modules.billing.public"],
+      kind: "workflow",
+      to: "backend:billing",
+    },
+    {
+      from: "backend-system:annual-billing-reads-and-cancellation",
+      imports: ["talli_backend.modules.billing.public"],
+      kind: "workflow",
+      to: "backend:billing",
+    },
+    {
+      from: "backend-system:annual-billing-support",
+      imports: ["talli_backend.modules.billing.public"],
+      kind: "workflow",
+      to: "backend:billing",
+    },
+    {
+      from: "backend-system:annual-provider-notification-intake",
+      imports: ["talli_backend.modules.billing.public"],
+      kind: "workflow",
+      to: "backend:billing",
+    },
+    {
+      from: "backend-system:annual-refund-recovery",
+      imports: ["talli_backend.modules.billing.public"],
+      kind: "workflow",
+      to: "backend:billing",
+    },
+    {
+      from: "backend-system:annual-support-agreement-cleanup-recovery",
+      imports: ["talli_backend.modules.billing.public"],
+      kind: "workflow",
+      to: "backend:billing",
+    },
+    {
+      from: "backend-system:annual-support-refund-recovery",
+      imports: ["talli_backend.modules.billing.public"],
+      kind: "workflow",
+      to: "backend:billing",
+    },
+    {
       from: "backend-system:banking-reconciliation",
       imports: ["talli_backend.modules.banking.public"],
       kind: "workflow",
@@ -867,6 +909,124 @@ test("ledger #139 may relocate only the owner-approved atomic coordinator scopes
       validateCompatibilityRegistry(registryPath, options).join("\n"),
       /future frozen scope resource table:bank_transactions is not owned by active or exited capability/u,
     );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("#192 retirement permits only all four exact frozen deletions and all three whole actions", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-acquisition-retirement-"));
+  const actionPath = "apps/web/app/actions.ts";
+  const operations = ["saveBillingAccount", "activateBillingSubscription", "requestFilingPackagePayment"];
+  const scope = (resource, operation) => ({
+    path: actionPath, rule: "direct-web-business-persistence", resource, operation,
+  });
+  const retainedSource = [
+    'export function keepAudit() { client.from("audit_events"); }',
+    'export function keepReadiness() { client.from("filing_readiness_snapshots"); }',
+  ].join("\n");
+  const frozenSource = [
+    ...operations.map((operation) => `export function ${operation}() { client.from("audit_events"); ${
+      operation === "requestFilingPackagePayment" ? 'client.from("filing_readiness_snapshots");' : ""
+    } }`),
+    retainedSource,
+  ].join("\n");
+  const proofScope = (resource, operation) => {
+    const value = scope(resource, operation);
+    return { ...value, ...legacyOperationProof(frozenSource, actionPath, value) };
+  };
+  const facades = [
+    legacyFacade({
+      id: "compat-audit-persistence", capability: "audit", removalIssue: "#155",
+      scopes: [...operations, "keepAudit"].map((operation) => proofScope("table:audit_events", operation)),
+    }),
+    legacyFacade({
+      id: "compat-annual-compliance-persistence", capability: "annual_compliance", removalIssue: "#149",
+      scopes: ["requestFilingPackagePayment", "keepReadiness"]
+        .map((operation) => proofScope("table:filing_readiness_snapshots", operation)),
+    }),
+  ];
+  const baseline = compatibilityBaseline(facades);
+  const registry = compatibilityFixture({ records: facades.map((facade) => ({
+    ...facade, scopes: facade.scopes.filter((value) => value.operation.startsWith("keep")),
+  })) });
+  registry.migration.order = [
+    { capability: "billing", removalIssues: ["#137"] },
+    { capability: "authority_connections", removalIssues: ["#150"] },
+    { capability: "annual_compliance", removalIssues: ["#149"] },
+    { capability: "audit", removalIssues: ["#155"] },
+  ];
+  registry.migration.currentCapability = "billing";
+  registry.migration.currentIssue = "#137";
+  registry.migration.exitedCapabilities = [];
+  registry.migration.completedStages = [];
+  const check = ({ workingRegistry = registry, workingBaseline = baseline, source = retainedSource } = {}) => {
+    const { registryPath, baselinePath } = writeCompatibilityFixture(temporaryRoot, workingRegistry, workingBaseline);
+    return validateCompatibilityRegistry(registryPath, {
+      baselinePath,
+      expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+      currentSource: () => source,
+      resourceOwner: (resource) => resource === "table:audit_events" ? "backend:audit" : "backend:annual_compliance",
+    });
+  };
+  try {
+    assert.deepEqual(check(), []);
+
+    for (const facade of facades) {
+      for (const removed of facade.scopes.filter((value) => operations.includes(value.operation))) {
+        const partial = structuredClone(registry);
+        partial.records.find((record) => record.id === facade.id).scopes.push(removed);
+        assert.match(check({ workingRegistry: partial }).join("\n"),
+          /must remove all four #192 scopes together/u, `${facade.id}:${removed.operation}`);
+      }
+    }
+
+    for (const [field, replacement] of [
+      ["path", "apps/web/app/retired-actions.ts"],
+      ["rule", "direct-business-fetch"],
+      ["resource", "table:other_audit_events"],
+      ["operation", "saveAnotherBillingAccount"],
+    ]) {
+      const nearMiss = structuredClone(baseline);
+      nearMiss.records[0].scopes[0][field] = replacement;
+      assert.match(check({ workingBaseline: nearMiss }).join("\n"),
+        /requires the exact four frozen #192 scope tuples/u, field);
+    }
+    for (const [field, replacement] of [
+      ["id", "compat-other-audit-persistence"],
+      ["capability", "annual_compliance"],
+      ["removalIssue", "#149"],
+    ]) {
+      const nearMiss = structuredClone(baseline);
+      nearMiss.records[0][field] = replacement;
+      assert.match(check({ workingBaseline: nearMiss }).join("\n"),
+        /requires the exact four frozen #192 scope tuples/u, field);
+    }
+
+    for (const operation of operations) {
+      for (const body of ["", 'throw new Error("retired");', "client.from(resourceName);", 'client.rpc("replacement_writer");']) {
+        assert.match(check({ source: `${retainedSource}\nexport function ${operation}() { ${body} }` }).join("\n"),
+          new RegExp(`must remove the entire #192 action: ${operation}`, "u"));
+      }
+    }
+    assert.match(check({ source: null }).join("\n"), /must remove the entire #192 action/u,
+      "unreadable current source is not deletion evidence");
+
+    const added = structuredClone(registry);
+    added.records[0].scopes.push(scope("table:audit_events", "replacementAcquisition"));
+    assert.match(check({ workingRegistry: added }).join("\n"), /scope is outside the frozen baseline/u);
+    const extraDeletion = structuredClone(registry);
+    extraDeletion.records = extraDeletion.records.filter((record) => record.capability !== "audit");
+    assert.match(check({ workingRegistry: extraDeletion, source: retainedSource.split("\n")[1] }).join("\n"),
+      /future frozen scope resource table:audit_events is not owned by active or exited capability/u);
+    assert.match(check({ source: retainedSource.replace('client.from("audit_events");', 'client.from("audit_events"); client.from("audit_events");') }).join("\n"),
+      /scope has an added writer/u, "the unrelated future operation stays frozen");
+
+    const earlier = structuredClone(registry);
+    earlier.migration.order.unshift({ capability: "company_access", removalIssues: ["#138"] });
+    earlier.migration.currentCapability = "company_access";
+    earlier.migration.currentIssue = "#138";
+    assert.match(check({ workingRegistry: earlier }).join("\n"), /only by #192 at billing or later/u);
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }
@@ -1949,7 +2109,7 @@ test("the immutable frozen inventory remains exact while the active registry is 
   assert.equal(expected.size, baseline.records.length);
 
   assert.equal(registry.records.length, 8);
-  assert.equal(registry.records.flatMap((record) => record.scopes).length, 96);
+  assert.equal(registry.records.flatMap((record) => record.scopes).length, 92);
   const baselineById = new Map(baseline.records.map((record) => [record.id, record]));
   const scopeKey = (scope) => [scope.path, scope.rule, scope.resource, scope.operation].join("\0");
   for (const record of registry.records) {
@@ -1983,6 +2143,53 @@ test("the immutable frozen inventory remains exact while the active registry is 
       "compat-billing-persistence",
     ]),
   );
+});
+
+test("#192 keeps the immutable four-scope inventory and rejects stale clients, moved writers and dynamic additions", () => {
+  const registry = JSON.parse(readFileSync(new URL("../architecture/compatibility.json", import.meta.url), "utf8"));
+  const baseline = JSON.parse(readFileSync(new URL("../architecture/compatibility-baseline.json", import.meta.url), "utf8"));
+  const key = (record, scope) => [record.id, scope.path, scope.rule, scope.resource, scope.operation].join("\0");
+  const expected = new Set([
+    ["compat-audit-persistence", "table:audit_events", "saveBillingAccount"],
+    ["compat-audit-persistence", "table:audit_events", "activateBillingSubscription"],
+    ["compat-audit-persistence", "table:audit_events", "requestFilingPackagePayment"],
+    ["compat-annual-compliance-persistence", "table:filing_readiness_snapshots", "requestFilingPackagePayment"],
+  ].map(([id, resource, operation]) => [id, "apps/web/app/actions.ts", "direct-web-business-persistence", resource, operation].join("\0")));
+  const frozen = baseline.records.flatMap((record) => record.scopes.map((scope) => key(record, scope)))
+    .filter((value) => expected.has(value));
+  const active = registry.records.flatMap((record) => record.scopes.map((scope) => key(record, scope)))
+    .filter((value) => expected.has(value));
+  assert.equal(frozen.length, 4);
+  assert.deepEqual(new Set(frozen), expected);
+  assert.deepEqual(active, []);
+
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-architecture-acquisition-retirement-"));
+  for (const directory of ["architecture", "apps", "supabase"]) {
+    cpSync(new URL(`../${directory}`, import.meta.url), join(temporaryRoot, directory), { recursive: true });
+  }
+  try {
+    writeFileSync(join(temporaryRoot, "apps/web/app/retired-acquisition.tsx"), [
+      'import { createClient } from "@supabase/supabase-js";',
+      'import { saveBillingAccount as legacySave } from "./actions";',
+      'const client = createClient("https://example.invalid", "public-anon-key");',
+      'export const activateBillingSubscription = legacySave;',
+      'export function LegacyForm() { return <form action={legacySave} data-operation="requestFilingPackagePayment" />; }',
+      'export function relocatedAudit() { return client.from("audit_events").insert({}); }',
+      'export function relocatedReadiness() { return client.from("filing_readiness_snapshots").select(); }',
+      'export function dynamicAcquisition(resource: string) { return client.from(resource).insert({}); }',
+      'export function addedProviderEffect() { return fetch("https://api.vipps.no/new-acquisition", { method: "POST" }); }',
+    ].join("\n"));
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    for (const operation of ["saveBillingAccount", "activateBillingSubscription", "requestFilingPackagePayment"]) {
+      assert.match(errors, new RegExp(`retired acquisition action or client/form reference remains: ${operation}`, "u"));
+    }
+    for (const operation of ["relocatedAudit", "relocatedReadiness", "dynamicAcquisition"]) {
+      assert.match(errors, new RegExp(`direct web business persistence is forbidden.*operation:${operation}`, "u"));
+    }
+    assert.match(errors, /direct business fetch is forbidden.*operation:addedProviderEffect/u);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
 });
 
 test("#200 removes the exact six support-search scopes atomically without changing the frozen baseline", () => {
@@ -2479,24 +2686,25 @@ test("generated-client deep imports reject ambiguous same-ticket exceptions", ()
     resource: "module:@talli/talli-api-client/*",
     operation: "module",
   };
-  const billingFacade = {
-    ...compatibility.records[0],
-    id: "compat-billing-persistence",
-    capability: "billing",
-    creationIssue: "#135",
-    removalIssue: "#137",
-    canonicalImplementation: "web:legacy-runtime:billing",
+  const activeFacade = compatibility.records.find((record) => (
+    record.kind === "legacy-facade"
+    && record.capability === compatibility.migration.currentCapability
+  ));
+  assert.ok(activeFacade, "The ambiguity fixture needs the current active legacy stage.");
+  const duplicateFacade = {
+    ...activeFacade,
+    id: "compat-generated-ambiguity-first",
     scopes: [scope],
   };
-  compatibility.records.push(billingFacade, {
-    ...billingFacade,
-    id: "compat-billing-persistence-duplicate",
+  compatibility.records.push(duplicateFacade, {
+    ...duplicateFacade,
+    id: "compat-generated-ambiguity-second",
   });
   writeFileSync(compatibilityPath, JSON.stringify(compatibility));
 
   try {
     const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
-    assert.match(errors, /duplicate compatibility scope.*#137.*#137/u);
+    assert.match(errors, new RegExp(`duplicate compatibility scope.*${activeFacade.removalIssue}.*${activeFacade.removalIssue}`, "u"));
     assert.match(errors, new RegExp(`${fixture}: generated-client deep import has ambiguous compatibility`, "u"));
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
@@ -2513,11 +2721,11 @@ test("adapter bindings require source registration against the declared port", (
     "apps/backend/src/talli_backend/modules/system_boundary/module.json",
   );
   const module = JSON.parse(readFileSync(modulePath, "utf8"));
-  module.ports[0].adapters = ["talli_backend.main._request_id"];
+  module.ports.find((port) => port.name === "SystemBoundaryTransport").adapters = ["talli_backend.main._request_id"];
   writeFileSync(modulePath, JSON.stringify(module));
   const systemPath = join(temporaryRoot, "architecture/backend-system.json");
   const system = JSON.parse(readFileSync(systemPath, "utf8"));
-  system.adapterBindings[0].adapter = "talli_backend.main._request_id";
+  system.adapterBindings.find((binding) => binding.port === "SystemBoundaryTransport").adapter = "talli_backend.main._request_id";
   writeFileSync(systemPath, JSON.stringify(system));
 
   try {

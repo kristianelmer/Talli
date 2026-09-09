@@ -1,0 +1,245 @@
+{
+  "attribution": "Actual Vipps MT provider deliveries, received through registered public HTTPS callback and exact shipped FastAPI/HMAC/PostgreSQL intake; local duplicate and tamper probes explicitly distinguished. Technical receipts do not settle payments or grant entitlements.",
+  "generated_at": "2026-09-09T08:27:33.626156+00:00",
+  "provider": "vipps-mt",
+  "merchant_serial_number": "535717",
+  "registration_id": "58e21a30-68d3-455d-886c-a9427d2cecea",
+  "runtime_authority": {
+    "login": "talli_192_webhook_358bfa5a",
+    "attributes": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "memberships": [
+      [
+        "annual_notification_executor",
+        false,
+        true,
+        false
+      ]
+    ],
+    "receipt_count_before": 0,
+    "billing_schema_present": false,
+    "database": "talli_192_webhook_ea3801ae",
+    "at": "2026-09-09T08:16:35.995079+00:00"
+  },
+  "source_sha256": {
+    "apps/backend/src/talli_backend/main.py": "2574c51cb654675a2905839d60ed9f7cd70c552d67d5ad8931524b0bd5fe62b2",
+    "apps/backend/src/talli_backend/adapters/annual_billing_runtime.py": "0a980943b57b74ffaec54a95085b38eab56cdc2450da4183db079fdb30716584",
+    "apps/backend/src/talli_backend/adapters/vipps_webhook.py": "a8a24118aea6a1851efd915b609226dd01c5e9e58463625993deb5aca4000ad2",
+    "apps/backend/src/talli_backend/adapters/postgres_annual_notifications.py": "f84643a5ea1ab5069b9083014dc9cc38b8a732a5457e5c724f73b03eee81ca05",
+    "supabase/migrations/20260906204352_annual_notification_receipts.sql": "94c54887d0670263f52eb5058006f996f8ade144e1e56087d4bf656a61a28883"
+  },
+  "unique_actual_provider_event_count": 8,
+  "events": [
+    {
+      "actual_delivery_capture_id": "44462da6-4291-4140-8afb-e19f69cdba84",
+      "delivery_received_at": "2026-09-09T08:22:33.927228+00:00",
+      "http_status": 200,
+      "body_bytes": 402,
+      "hmac_verified": true,
+      "technical_receipt": {
+        "id": "24e62020-0bf9-4eaa-a921-efe5855c7b60",
+        "provider": "vipps-mt",
+        "event_type": "recurring.charge-refunded.v1",
+        "occurred_at": "2026-09-09T08:22:33.596+00:00",
+        "received_at": "2026-09-09T08:22:34.020095+00:00",
+        "receipt_digest": "9fe1f22645ac4ce12baa98562b5c1dbe4effbda753737c2e28377f7e54ff10b7",
+        "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+        "provider_account": "535717",
+        "agreement_reference": "agr_Un4JzLG"
+      }
+    },
+    {
+      "actual_delivery_capture_id": "f60b9e3a-29c6-4e0e-a8df-4599e9091d92",
+      "delivery_received_at": "2026-09-09T08:22:57.051642+00:00",
+      "http_status": 200,
+      "body_bytes": 252,
+      "hmac_verified": true,
+      "technical_receipt": {
+        "id": "47b166c8-bb5e-41d6-ae21-5e53b91c2412",
+        "provider": "vipps-mt",
+        "event_type": "recurring.agreement-expired.v1",
+        "occurred_at": "2026-09-09T08:22:55.631+00:00",
+        "received_at": "2026-09-09T08:22:57.193979+00:00",
+        "receipt_digest": "8865f02f0b731e85e4fdc48aeb903f83714e872540046ee7e5b68236ff2fbcc1",
+        "charge_reference": null,
+        "provider_account": "535717",
+        "agreement_reference": "agr_5YSKYz2"
+      }
+    },
+    {
+      "actual_delivery_capture_id": "cac1dcf2-0bff-498c-a5db-6a341e02abe7",
+      "delivery_received_at": "2026-09-09T08:23:36.564921+00:00",
+      "http_status": 200,
+      "body_bytes": 403,
+      "hmac_verified": true,
+      "technical_receipt": {
+        "id": "ae38af96-1c2a-4527-946c-2a5905a89dee",
+        "provider": "vipps-mt",
+        "event_type": "recurring.charge-refunded.v1",
+        "occurred_at": "2026-09-09T08:23:36.347+00:00",
+        "received_at": "2026-09-09T08:23:36.594792+00:00",
+        "receipt_digest": "9b575e90b64f673d6ca2b151cf4726862cf8ca79fba75a8b902362bb9d6509a6",
+        "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+        "provider_account": "535717",
+        "agreement_reference": "agr_Un4JzLG"
+      }
+    },
+    {
+      "actual_delivery_capture_id": "7e6a25d9-9b43-4b59-91b1-be99723425d9",
+      "delivery_received_at": "2026-09-09T08:23:45.301665+00:00",
+      "http_status": 200,
+      "body_bytes": 371,
+      "hmac_verified": true,
+      "technical_receipt": {
+        "id": "9efd12a9-972b-437f-b728-feba2ca9d402",
+        "provider": "vipps-mt",
+        "event_type": "recurring.charge-canceled.v1",
+        "occurred_at": "2026-09-09T08:23:44.973+00:00",
+        "received_at": "2026-09-09T08:23:45.409063+00:00",
+        "receipt_digest": "2bf543fd1856047f60e1819c2541a7aa5f88a6e02d991b4daf1e99956833d792",
+        "charge_reference": "talli-mt-2847cd86-e3ac-5ede-ac80-73dd09a76858",
+        "provider_account": "535717",
+        "agreement_reference": "agr_Un4JzLG"
+      }
+    },
+    {
+      "actual_delivery_capture_id": "7c02b6e1-d69e-42e3-8c17-4a6e2fee8f1a",
+      "delivery_received_at": "2026-09-09T08:24:31.091198+00:00",
+      "http_status": 200,
+      "body_bytes": 399,
+      "hmac_verified": true,
+      "technical_receipt": {
+        "id": "f6132dd8-354c-4db2-8749-a19220a5c86c",
+        "provider": "vipps-mt",
+        "event_type": "recurring.charge-captured.v1",
+        "occurred_at": "2026-09-09T08:24:30.571+00:00",
+        "received_at": "2026-09-09T08:24:31.204448+00:00",
+        "receipt_digest": "27001ab1569489704c2acbce636a24078131f5d9043b6ee8f1aad5d3a1e07245",
+        "charge_reference": "talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7",
+        "provider_account": "535717",
+        "agreement_reference": "agr_Xwpy7fP"
+      }
+    },
+    {
+      "actual_delivery_capture_id": "fddad4ca-615d-494b-b41a-058a0d2758ae",
+      "delivery_received_at": "2026-09-09T08:24:31.927377+00:00",
+      "http_status": 200,
+      "body_bytes": 254,
+      "hmac_verified": true,
+      "technical_receipt": {
+        "id": "6ee08697-bb50-413f-b060-4d95f601c31d",
+        "provider": "vipps-mt",
+        "event_type": "recurring.agreement-activated.v1",
+        "occurred_at": "2026-09-09T08:24:30.625+00:00",
+        "received_at": "2026-09-09T08:24:32.02517+00:00",
+        "receipt_digest": "c2a229f1760bcf0e2d3841a35677bcb52879118bd75667feb80e898a86a0cc4f",
+        "charge_reference": null,
+        "provider_account": "535717",
+        "agreement_reference": "agr_Xwpy7fP"
+      }
+    },
+    {
+      "actual_delivery_capture_id": "3baf4f10-fb8c-4359-b3ea-9a138146d632",
+      "delivery_received_at": "2026-09-09T08:24:41.769651+00:00",
+      "http_status": 200,
+      "body_bytes": 403,
+      "hmac_verified": true,
+      "technical_receipt": {
+        "id": "380bc0f3-de7c-43a7-a067-1c4f876ce802",
+        "provider": "vipps-mt",
+        "event_type": "recurring.charge-refunded.v1",
+        "occurred_at": "2026-09-09T08:24:41.49+00:00",
+        "received_at": "2026-09-09T08:24:42.120664+00:00",
+        "receipt_digest": "14d6b30cd21bff5498d3b3ae13c7b44b61293948ef374ac601d4b5df82bf93ad",
+        "charge_reference": "talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7",
+        "provider_account": "535717",
+        "agreement_reference": "agr_Xwpy7fP"
+      }
+    },
+    {
+      "actual_delivery_capture_id": "a11c32d7-1fa3-48db-b69f-ce5d9efa95c3",
+      "delivery_received_at": "2026-09-09T08:24:44.392557+00:00",
+      "http_status": 200,
+      "body_bytes": 271,
+      "hmac_verified": true,
+      "technical_receipt": {
+        "id": "2bf9f4fb-de24-43b1-aab4-054c21a36686",
+        "provider": "vipps-mt",
+        "event_type": "recurring.agreement-stopped.v1",
+        "occurred_at": "2026-09-09T08:24:43.045+00:00",
+        "received_at": "2026-09-09T08:24:44.508266+00:00",
+        "receipt_digest": "f6b261ed1044dae22118f10125e0250eb103f3ecd145f5e4e573f69d4b19dc12",
+        "charge_reference": null,
+        "provider_account": "535717",
+        "agreement_reference": "agr_Xwpy7fP"
+      }
+    }
+  ],
+  "local_exact_replay_count": 9,
+  "local_tampered_body_probe_count": 3,
+  "unsigned_readiness_probe_status": 401,
+  "replay_checks": [
+    {
+      "original_capture_id": "3baf4f10-fb8c-4359-b3ea-9a138146d632",
+      "agreement_reference": "agr_Xwpy7fP",
+      "event_type": "recurring.charge-refunded.v1",
+      "body_sha256": "14d6b30cd21bff5498d3b3ae13c7b44b61293948ef374ac601d4b5df82bf93ad",
+      "statuses": [
+        200,
+        200,
+        200
+      ],
+      "receipt_identical": true,
+      "tampered_body_status": 401
+    },
+    {
+      "original_capture_id": "a11c32d7-1fa3-48db-b69f-ce5d9efa95c3",
+      "agreement_reference": "agr_Xwpy7fP",
+      "event_type": "recurring.agreement-stopped.v1",
+      "body_sha256": "f6b261ed1044dae22118f10125e0250eb103f3ecd145f5e4e573f69d4b19dc12",
+      "statuses": [
+        200,
+        200,
+        200
+      ],
+      "receipt_identical": true,
+      "tampered_body_status": 401
+    },
+    {
+      "original_capture_id": "44462da6-4291-4140-8afb-e19f69cdba84",
+      "agreement_reference": "agr_Un4JzLG",
+      "event_type": "recurring.charge-refunded.v1",
+      "body_sha256": "9fe1f22645ac4ce12baa98562b5c1dbe4effbda753737c2e28377f7e54ff10b7",
+      "statuses": [
+        200,
+        200,
+        200
+      ],
+      "receipt_identical": true,
+      "tampered_body_status": 401
+    }
+  ],
+  "temporary_provider_cleanup": "complete",
+  "cleanup": {
+    "at": "2026-09-09T08:27:34.326382+00:00",
+    "registration_deleted": "58e21a30-68d3-455d-886c-a9427d2cecea",
+    "existing_registrations_preserved": true,
+    "existing_registration_count": 0,
+    "remaining_registration_count": 0,
+    "processes_stopped": {
+      "tunnel_pid": true,
+      "server_pid": true
+    },
+    "isolated_database_removed": "talli_192_webhook_ea3801ae",
+    "isolated_login_removed": "talli_192_webhook_358bfa5a",
+    "exported_receipt_count": 8,
+    "shared_database_untouched": true
+  }
+}

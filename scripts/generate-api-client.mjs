@@ -276,12 +276,22 @@ const bankingOperations = {
   ],
 };
 const billingOperations = {
+  annualSupportRefundRecovery: ["/api/v1/billing/annual/support/refund-recoveries", "post", "billingRecoverAnnualSupportRefund"],
+  annualSupportCleanupRecovery: ["/api/v1/billing/annual/support/agreement-cleanup-recoveries", "post", "billingRecoverAnnualSupportCleanup"],
+  annualSupportRefundRecoveryTargets: ["/api/v1/billing/annual/support/refund-recovery-targets", "get", "billingReadAnnualSupportRefundRecoveryTargets"],
+  annualPreparation: ["/api/v1/billing/annual/checkout-preparation", "get", "billingPrepareAnnualCheckout"],
+  annualWithdrawal: ["/api/v1/billing/annual/checkout-withdrawals", "post", "billingWithdrawAnnualCheckoutRequest"],
+  annualCheckout: ["/api/v1/billing/annual/checkouts", "post", "billingStartAnnualCheckout"],
+  annualObservation: ["/api/v1/billing/annual/checkout-observations", "post", "billingObserveAnnualCheckout"],
+  annualSupport: ["/api/v1/billing/annual/support/purchases", "get", "billingReadAnnualSupportPurchases"],
+  annualCleanup: ["/api/v1/billing/annual/agreement-cleanups", "post", "billingCleanupAnnualAgreement"],
+  annualRefundRecoveryTargets: ["/api/v1/billing/annual/refund-recovery-targets", "get", "billingReadAnnualRefundRecoveryTargets"],
+  annualRefundRecovery: ["/api/v1/billing/annual/refund-recoveries", "post", "billingRecoverAnnualRefund"],
+  annualSnapshot: ["/api/v1/billing/annual/snapshot", "get", "billingReadAnnualSnapshot"],
+  annualCancellation: ["/api/v1/billing/annual/renewal-cancellations", "post", "billingCancelAnnualRenewal"],
   snapshot: ["/api/v1/billing/snapshot", "get", "billingReadSnapshot"],
   entitlement: ["/api/v1/billing/entitlement", "get", "billingReadEntitlement"],
-  configure: ["/api/v1/billing/accounts/configuration", "post", "billingConfigureAccount"],
-  activate: ["/api/v1/billing/subscriptions/activation", "post", "billingActivateSubscription"],
   cancel: ["/api/v1/billing/subscriptions/cancellation", "post", "billingCancelSubscription"],
-  purchase: ["/api/v1/billing/filing-package/purchase", "post", "billingPurchaseFilingPackage"],
   refund: ["/api/v1/billing/filing-package/refund", "post", "billingRefundFilingPackage"],
   unsupported: ["/api/v1/billing/unsupported", "post", "billingMarkUnsupported"],
   pilot: ["/api/v1/billing/pilot-entitlements", "post", "billingManagePilotEntitlement"],
@@ -787,6 +797,35 @@ const bankingSchemas = Object.fromEntries([
   "StartBankConnectionWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const billingSchemas = Object.fromEntries([
+  "AnnualCheckoutCommandWire",
+  "AnnualCheckoutObservationCommandWire",
+  "AnnualCheckoutWire",
+  "AnnualCheckoutPreparationWire",
+  "AnnualCheckoutRequestResolutionWire",
+  "AnnualAgreementCleanupCommandWire",
+  "AnnualAgreementCleanupWire",
+  "AnnualSupportRefundRecoveryCommandWire",
+  "AnnualSupportRefundRecoveryWire",
+  "AnnualSupportCleanupRecoveryCommandWire",
+  "AnnualSupportCleanupRecoveryWire",
+  "AnnualSupportRefundRecoveryTargetPageWire",
+  "AnnualRefundRecoveryCommandWire",
+  "AnnualRefundRecoveryWire",
+  "AnnualRefundRecoveryTargetWire",
+  "AnnualRefundRecoveryTargetPageWire",
+  "AnnualOperationStatus",
+  "AnnualOperationCountsWire",
+  "AnnualSupportPurchaseWire",
+  "AnnualSupportPageWire",
+  "AnnualBillingOfferWire",
+  "AnnualPurchaseSummaryWire",
+  "AnnualPurchaseRefundSummaryWire",
+  "AnnualBillingRefundSnapshotWire",
+  "AnnualPurchaseHistoryWire",
+  "AnnualPurchaseStatus",
+  "AnnualBillingSnapshotWire",
+  "AnnualRenewalCancellationCommandWire",
+  "AnnualRenewalCancellationWire",
   "BillingAccountWire",
   "BillingCompanyWire",
   "BillingConfigureWire",
@@ -1056,6 +1095,33 @@ export interface BankingConnectionCallbackRequest extends TalliRequestOptions {
 
 export interface BankingConnectionListRequest extends TalliRequestOptions {
   companyId: string;
+}
+
+export interface AnnualSupportRequest extends TalliRequestOptions {
+  companyId: string;
+  supportCaseId: string;
+  beforePurchaseId?: string;
+}
+
+export interface AnnualRefundRecoveryTargetsRequest extends TalliRequestOptions {
+  companyId: string;
+  purchaseId: string;
+  beforeRefundRequestId?: string;
+}
+
+export interface AnnualSupportRefundRecoveryTargetsRequest extends AnnualRefundRecoveryTargetsRequest {
+  supportCaseId: string;
+}
+
+export interface AnnualPurchaseHistoryRequest extends TalliRequestOptions {
+  companyId: string;
+  beforePurchaseId?: string;
+}
+
+export interface AnnualBillingSnapshotRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+  beforePurchaseId?: string;
 }
 
 export interface BillingSnapshotRequest extends TalliRequestOptions {
@@ -2570,6 +2636,116 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
+    async billingPrepareAnnualCheckout(
+      companyId: string,
+      incomeYear: number,
+      request: TalliRequestOptions = {},
+    ): Promise<AnnualCheckoutPreparationWire> {
+      const query = new URLSearchParams({ company_id: companyId, income_year: String(incomeYear) });
+      return executeJson(baseUrl + "/api/v1/billing/annual/checkout-preparation?" + query, "GET", request, undefined, isAnnualCheckoutPreparationWire);
+    },
+
+    async billingWithdrawAnnualCheckoutRequest(
+      body: AnnualCheckoutCommandWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualCheckoutRequestResolutionWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/checkout-withdrawals", "POST", request, body, isAnnualCheckoutRequestResolutionWire);
+    },
+
+    async billingStartAnnualCheckout(
+      body: AnnualCheckoutCommandWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualCheckoutWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/checkouts", "POST", request, body, isAnnualCheckoutWire);
+    },
+
+    async billingCleanupAnnualAgreement(
+      body: AnnualAgreementCleanupCommandWire,
+      request: TalliRequestOptions = {},
+    ): Promise<AnnualAgreementCleanupWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/agreement-cleanups", "POST", request, body, isAnnualAgreementCleanupWire);
+    },
+
+    async billingRecoverAnnualRefund(
+      body: AnnualRefundRecoveryCommandWire,
+      request: TalliRequestOptions = {},
+    ): Promise<AnnualRefundRecoveryWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/refund-recoveries", "POST", request, body, isAnnualRefundRecoveryWire);
+    },
+
+    async billingRecoverAnnualSupportRefund(
+      body: AnnualSupportRefundRecoveryCommandWire,
+      request: TalliRequestOptions = {},
+    ): Promise<AnnualSupportRefundRecoveryWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/support/refund-recoveries", "POST", request, body, isAnnualSupportRefundRecoveryWire);
+    },
+
+    async billingRecoverAnnualSupportCleanup(
+      body: AnnualSupportCleanupRecoveryCommandWire,
+      request: TalliRequestOptions = {},
+    ): Promise<AnnualSupportCleanupRecoveryWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/support/agreement-cleanup-recoveries", "POST", request, body, isAnnualSupportCleanupRecoveryWire);
+    },
+
+    async billingReadAnnualSupportRefundRecoveryTargets(
+      request: AnnualSupportRefundRecoveryTargetsRequest,
+    ): Promise<AnnualSupportRefundRecoveryTargetPageWire> {
+      const query = new URLSearchParams({companyId: request.companyId, purchaseId: request.purchaseId, supportCaseId: request.supportCaseId});
+      if (request.beforeRefundRequestId !== undefined) query.set("beforeRefundRequestId", request.beforeRefundRequestId);
+      return executeJson(baseUrl + "/api/v1/billing/annual/support/refund-recovery-targets?" + query, "GET", request, undefined, isAnnualSupportRefundRecoveryTargetPageWire);
+    },
+
+    async billingObserveAnnualCheckout(
+      body: AnnualCheckoutObservationCommandWire,
+      request: TalliRequestOptions,
+    ): Promise<AnnualCheckoutWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/checkout-observations", "POST", request, body, isAnnualCheckoutWire);
+    },
+
+    async billingReadAnnualSupportPurchases(
+      request: AnnualSupportRequest,
+    ): Promise<AnnualSupportPageWire> {
+      const query = new URLSearchParams({companyId: request.companyId, supportCaseId: request.supportCaseId});
+      if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
+      return executeJson(baseUrl + "/api/v1/billing/annual/support/purchases?" + query, "GET", request, undefined, isAnnualSupportPageWire);
+    },
+
+    async billingReadAnnualSnapshot(
+      request: AnnualBillingSnapshotRequest,
+    ): Promise<AnnualBillingSnapshotWire> {
+      const query = new URLSearchParams({companyId: request.companyId, incomeYear: String(request.incomeYear)});
+      if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
+      return executeJson(baseUrl + "/api/v1/billing/annual/snapshot?" + query, "GET", request, undefined, isAnnualBillingSnapshotWire);
+    },
+    async billingReadAnnualRefundRecoveryTargets(
+      request: AnnualRefundRecoveryTargetsRequest,
+    ): Promise<AnnualRefundRecoveryTargetPageWire> {
+      const query = new URLSearchParams({companyId: request.companyId, purchaseId: request.purchaseId});
+      if (request.beforeRefundRequestId !== undefined) query.set("beforeRefundRequestId", request.beforeRefundRequestId);
+      return executeJson(baseUrl + "/api/v1/billing/annual/refund-recovery-targets?" + query, "GET", request, undefined, isAnnualRefundRecoveryTargetPageWire);
+    },
+    async billingReadAnnualPurchaseHistory(
+      request: AnnualPurchaseHistoryRequest,
+    ): Promise<AnnualPurchaseHistoryWire> {
+      const query = new URLSearchParams({companyId: request.companyId});
+      if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
+      return executeJson(baseUrl + "/api/v1/billing/annual/purchases?" + query, "GET", request, undefined, isAnnualPurchaseHistoryWire);
+    },
+    async billingReadAnnualRefundSnapshot(
+      request: AnnualBillingSnapshotRequest,
+    ): Promise<AnnualBillingRefundSnapshotWire> {
+      const query = new URLSearchParams({companyId: request.companyId, incomeYear: String(request.incomeYear)});
+      if (request.beforePurchaseId !== undefined) query.set("beforePurchaseId", request.beforePurchaseId);
+      return executeJson(baseUrl + "/api/v1/billing/annual/refund-snapshot?" + query, "GET", request, undefined, isAnnualBillingRefundSnapshotWire);
+    },
+
+    async billingCancelAnnualRenewal(
+      body: AnnualRenewalCancellationCommandWire,
+      request: TalliMutationOptions,
+    ): Promise<AnnualRenewalCancellationWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/renewal-cancellations", "POST", request, body, isAnnualRenewalCancellationWire);
+    },
+
     async billingReadSnapshot(
       request: BillingSnapshotRequest,
     ): Promise<BillingSnapshotWire> {
@@ -2602,19 +2778,7 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
-    async billingConfigureAccount(
-      body: BillingConfigureWire,
-      request: TalliMutationOptions,
-    ): Promise<BillingAccountWire> {
-      return executeJson(baseUrl + "/api/v1/billing/accounts/configuration", "POST", request, body, isBillingAccountWire);
-    },
 
-    async billingActivateSubscription(
-      body: BillingCompanyWire,
-      request: TalliMutationOptions,
-    ): Promise<BillingPaymentEventWire> {
-      return executeJson(baseUrl + "/api/v1/billing/subscriptions/activation", "POST", request, body, isBillingPaymentEventWire);
-    },
 
     async billingCancelSubscription(
       body: BillingCompanyWire,
@@ -2623,12 +2787,6 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       return executeJson(baseUrl + "/api/v1/billing/subscriptions/cancellation", "POST", request, body, isBillingPaymentEventWire);
     },
 
-    async billingPurchaseFilingPackage(
-      body: BillingFilingPackageWire,
-      request: TalliMutationOptions,
-    ): Promise<BillingPaymentEventWire> {
-      return executeJson(baseUrl + "/api/v1/billing/filing-package/purchase", "POST", request, body, isBillingPaymentEventWire);
-    },
 
     async billingRefundFilingPackage(
       body: BillingFilingPackageWire,

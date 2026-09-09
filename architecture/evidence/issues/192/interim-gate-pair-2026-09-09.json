@@ -1,0 +1,61 @@
+{
+  "status": "pass",
+  "head": "4bfa5a8a0fc23e92f073b4822500dff75bf8b647",
+  "schemaPath": "architecture/customer-ready-gate-evidence.schema.json",
+  "schemaDigest": "sha256:b86a1ae4a8d522b252e79a01b1798eb160d18e87222f9c7a92d79b56ee773ced",
+  "revisions": {
+    "first": "12ae20a3d615981b7543ee441e91a6ca9384a59c",
+    "second": "f4576b589447f6848688be3513c36aea6d6b33ba"
+  },
+  "records": [
+    {
+      "revision": "12ae20a3d615981b7543ee441e91a6ca9384a59c",
+      "status": "pass",
+      "wrapper": {
+        "revision": "12ae20a3d615981b7543ee441e91a6ca9384a59c",
+        "previousPassingRevision": null,
+        "evidenceCommittedRevision": "f4576b589447f6848688be3513c36aea6d6b33ba",
+        "executor": "local-script",
+        "evidencePath": "architecture/evidence/customer-ready-gates/12ae20a3d615981b7543ee441e91a6ca9384a59c.json",
+        "evidenceDigest": "sha256:fe9445678f746d5946c02205b1904a216143688207fb1bfc98d2b9edd08e49ba",
+        "verdict": "pass",
+        "checkCount": 11,
+        "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+        "transcriptDigest": "sha256:f411144efe6f2a34f13f959372656b076b01d7089d38fdf0380ffbfbf251c01c"
+      }
+    },
+    {
+      "revision": "f4576b589447f6848688be3513c36aea6d6b33ba",
+      "status": "pass",
+      "wrapper": {
+        "revision": "f4576b589447f6848688be3513c36aea6d6b33ba",
+        "previousPassingRevision": "12ae20a3d615981b7543ee441e91a6ca9384a59c",
+        "evidenceCommittedRevision": "4bfa5a8a0fc23e92f073b4822500dff75bf8b647",
+        "executor": "local-script",
+        "evidencePath": "architecture/evidence/customer-ready-gates/f4576b589447f6848688be3513c36aea6d6b33ba.json",
+        "evidenceDigest": "sha256:11476f7bce3b4cc99a06c9cd446a97fb4b75bf0a457b845048720f6e7c3c7c64",
+        "verdict": "pass",
+        "checkCount": 11,
+        "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+        "transcriptDigest": "sha256:b85ef0f2cb4aa38ab58834b90c766dbfbb9bb66ed6fd361d752889bf7325457f"
+      }
+    }
+  ],
+  "pending": [],
+  "errors": [],
+  "scope": "Canonical interim gate evidence only; no Release/Preview, merge, final #192, or production attestation.",
+  "verifiedAtUtc": "2026-09-09T10:03:12.969197+00:00",
+  "method": "Independent read-only validator using the committed canonical schema and the same ancestry, exact eleven checks and hash rules as validateGateAttestations; this creates no capability exit.",
+  "disposableDatabaseCleanup": [
+    {
+      "revision": "12ae20a3d615981b7543ee441e91a6ca9384a59c",
+      "project": "tallig44409",
+      "remainingContainers": []
+    },
+    {
+      "revision": "f4576b589447f6848688be3513c36aea6d6b33ba",
+      "project": "tallig25300",
+      "remainingContainers": []
+    }
+  ]
+}

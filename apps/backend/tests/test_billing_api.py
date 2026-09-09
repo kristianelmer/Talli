@@ -5,7 +5,9 @@ from fastapi.testclient import TestClient
 from talli_backend.main import create_app
 from talli_backend.shared.kernel import ActorId, ActorKind, UserId
 
-from test_billing import MemoryPersistence, account
+from test_billing import MemoryPersistence, account, metadata, seed_historical_event
+from talli_backend.modules.billing.public import PurchaseFilingPackageCommand
+from talli_backend.shared.kernel import IdempotencyKey, IncomeYear
 
 
 ACTOR = ActorId(
@@ -41,7 +43,8 @@ def headers(operation: str) -> dict[str, str]:
 
 
 def test_configure_and_snapshot_use_authenticated_backend_contract() -> None:
-    stub = BillingSessionStub()
+    original = account()
+    stub = BillingSessionStub(original)
     response = client(stub).post(
         "/api/v1/billing/accounts/configuration",
         headers=headers("configure"),
@@ -51,9 +54,9 @@ def test_configure_and_snapshot_use_authenticated_backend_contract() -> None:
             "founderCohortNumber": 100,
         },
     )
-    assert response.status_code == 200
-    assert response.json()["monthlyNok"] == 29
-    assert response.json()["filingPackageNok"] == 299
+    assert response.status_code == 409
+    assert response.json()["code"] == "BILLING_LEGACY_ACQUISITION_RETIRED"
+    assert stub.account == original
     assert stub.tokens == ["verified-session"]
 
     snapshot = client(stub).get(
@@ -63,14 +66,14 @@ def test_configure_and_snapshot_use_authenticated_backend_contract() -> None:
     )
     assert snapshot.status_code == 200
     assert snapshot.json()["accounts"][0]["companyId"] == COMPANY
-    assert snapshot.json()["pricing"] == [
-        {"plan": "founder", "monthlyNok": 29, "filingPackageNok": 299},
-        {"plan": "standard", "monthlyNok": 49, "filingPackageNok": 499},
-    ]
+    assert snapshot.json()["pricing"] == []
 
 
 def test_provider_retry_returns_same_event_without_bypassing_entitlement() -> None:
     stub = BillingSessionStub(account(subscription_active=True), ready=True)
+    command_metadata = metadata("api-history")
+    command_metadata["idempotency_key"] = IdempotencyKey(headers("filing")["Idempotency-Key"])
+    seed_historical_event(stub, PurchaseFilingPackageCommand(**command_metadata, income_year=IncomeYear(2025)))
     api = client(stub)
     first = api.post(
         "/api/v1/billing/filing-package/purchase",
@@ -105,8 +108,10 @@ def test_provider_retry_returns_same_event_without_bypassing_entitlement() -> No
         },
     )
     assert entitlement.status_code == 200
-    assert entitlement.json()["status"] == "ready_for_production_filing"
-    assert entitlement.json()["allowed"] is True
+    assert entitlement.json()["status"] == "annual_billing_unavailable"
+    assert entitlement.json()["allowed"] is False
+    assert entitlement.json()["chargeAllowed"] is False
+    assert not stub.account.filing_package_paid
 
 
 def test_entitlement_rejects_an_actor_without_company_scope() -> None:
@@ -139,10 +144,7 @@ def test_filing_purchase_fails_closed_when_readiness_is_missing() -> None:
         },
     )
     assert response.status_code == 409
-    assert response.json()["code"] == "BILLING_FILING_NOT_READY"
-    assert response.json()["detail"] == (
-        "Innsendingskontrollen må være klar før innsendingspakken kan betales."
-    )
+    assert response.json()["code"] == "BILLING_LEGACY_ACQUISITION_RETIRED"
     assert stub.events == {}
 
 
@@ -170,5 +172,5 @@ def test_unknown_case_profiles_keep_ordinary_entitlement_fallback() -> None:
                     "obligation": "aksjonaerregisteroppgaven", "caseProfile": profile},
         )
         assert response.status_code == 200
-        assert response.json()["status"] == "filing_package_required"
+        assert response.json()["status"] == "annual_billing_unavailable"
         assert response.json()["billingExempt"] is False

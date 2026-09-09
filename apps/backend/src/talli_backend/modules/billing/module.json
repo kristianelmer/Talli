@@ -15,16 +15,35 @@
       "ManageProductionPilotEntitlementCommand",
       "MarkBillingUnsupportedCommand",
       "PurchaseFilingPackageCommand",
-      "RefundFilingPackageCommand"
+      "RefundFilingPackageCommand",
+      "StartAnnualCheckoutCommand",
+      "CancelAnnualRenewalCommand",
+      "RequestAnnualRefundCommand"
     ],
     "queries": [
       "BillingEntitlementDecision",
       "BillingEntitlementQuery",
       "BillingSnapshot",
-      "BillingSnapshotQuery"
+      "BillingSnapshotQuery",
+      "AnnualBillingSnapshotQuery",
+      "AnnualPurchaseHistoryQuery",
+      "AnnualSupportQuery",
+      "AnnualRefundRecoveryQuery",
+      "AnnualRefundRecoveryTargetsQuery",
+      "AnnualCheckoutPreparationQuery",
+      "AnnualSupportRefundRecoveryQuery",
+      "AnnualSupportRefundRecoveryTargetsQuery",
+      "AnnualSupportCleanupRecoveryQuery"
     ],
-    "events": ["BillingPaymentEvent"],
-    "errors": ["BillingError", "BillingErrorCode"],
+    "events": [
+      "BillingPaymentEvent"
+    ],
+    "errors": [
+      "BillingError",
+      "BillingErrorCode",
+      "AnnualNotificationRejected",
+      "AnnualNotificationUnavailable"
+    ],
     "identifiers": [
       "BillingAccount",
       "BillingCommands",
@@ -46,34 +65,250 @@
       "ProductionPilotStatus",
       "SystemUserRequestReference",
       "billing_persistence_adapter",
-      "billing_provider_adapter"
+      "billing_provider_adapter",
+      "AnnualBillingOffer",
+      "AnnualRefundDecision",
+      "AnnualRefundFacts",
+      "AnnualRefundReason",
+      "AnnualRenewalDecision",
+      "AnnualRenewalFacts",
+      "AnnualBillingProvider",
+      "AnnualProviderIntent",
+      "AnnualProviderObservation",
+      "AnnualProviderOperation",
+      "AnnualProviderStatus",
+      "AnnualPurchaseId",
+      "AnnualPurchaseStatus",
+      "AnnualCheckoutQuery",
+      "AnnualAcceptanceBasisReference",
+      "AnnualCheckoutPrerequisites",
+      "AnnualCheckout",
+      "AnnualCheckoutClaim",
+      "AnnualCheckoutPersistence",
+      "settle_annual_checkout",
+      "AnnualCancellationId",
+      "AnnualCancellationPersistence",
+      "AnnualRenewalCancellation",
+      "AnnualAgreementCleanup",
+      "AnnualAgreementCleanupClaim",
+      "AnnualAgreementCleanupPersistence",
+      "settle_annual_agreement_cleanup",
+      "AnnualBillingSnapshot",
+      "AnnualPurchaseSummary",
+      "AnnualPurchasePage",
+      "annual_billing_offer",
+      "AnnualBillingReadPersistence",
+      "AnnualCheckoutOperations",
+      "annual_checkout_operations",
+      "AnnualRefundCaseId",
+      "AnnualRefundOperation",
+      "AnnualRefundResolution",
+      "AnnualRefundClaim",
+      "AnnualRefundPersistence",
+      "annual_refund_decision",
+      "settle_annual_refund",
+      "AnnualRefundRequestId",
+      "AnnualAgreementCleanupOperations",
+      "annual_agreement_cleanup_operations",
+      "AnnualSupportCaseId",
+      "AnnualOperationStatus",
+      "AnnualOperationCounts",
+      "AnnualSupportPurchase",
+      "AnnualSupportPage",
+      "AnnualSupportReadPersistence",
+      "AnnualRefundRecovery",
+      "AnnualRefundRecoveryPersistence",
+      "AnnualRefundRecoveryOperations",
+      "annual_refund_recovery_operations",
+      "AnnualRefundRecoveryTarget",
+      "AnnualRefundRecoveryTargetPage",
+      "AnnualNotificationAccount",
+      "AnnualProviderNotification",
+      "AnnualNotificationReceiptId",
+      "AnnualNotificationReceipt",
+      "AnnualNotificationAuthentication",
+      "AnnualNotificationPersistence",
+      "AnnualCheckoutPreparation",
+      "AnnualCheckoutPurchaseReference",
+      "annual_billing_consent_version",
+      "AnnualCheckoutRequestResolution",
+      "AnnualCheckoutWithdrawalId",
+      "AnnualSupportRefundRecoveryPersistence",
+      "AnnualSupportRefundRecoveryOperations",
+      "annual_support_refund_recovery_operations",
+      "AnnualCheckoutObservationOutcome",
+      "AnnualCheckoutObservationBinding",
+      "validate_annual_checkout_observation",
+      "AnnualCheckoutObservationLease",
+      "AnnualCheckoutObservationPersistence",
+      "AnnualCheckoutObservationOperations",
+      "annual_checkout_observation_operations",
+      "AnnualSupportCleanupRecoveryPersistence",
+      "AnnualSupportCleanupRecoveryOperations",
+      "annual_support_cleanup_recovery_operations"
     ]
   },
   "owns": {
-    "postgresSchemas": ["billing"],
+    "postgresSchemas": [
+      "billing",
+      "billing_annual_retired"
+    ],
     "tables": [
       "billing.billing_accounts",
       "billing.billing_payment_events",
-      "billing.production_pilot_entitlements"
+      "billing.production_pilot_entitlements",
+      "billing.annual_purchases",
+      "billing.annual_refund_cases",
+      "billing.annual_operations",
+      "billing.annual_cancellation_requests",
+      "billing.annual_refund_requests",
+      "billing.annual_checkout_withdrawals",
+      "billing.annual_checkout_observation_principals",
+      "billing.annual_checkout_observation_authorities"
     ],
     "storageBuckets": [],
-    "projections": ["BillingEntitlementDecision", "BillingSnapshot"],
-    "migrations": "supabase/migrations/20260905010000_billing_capability.sql"
+    "projections": [
+      "BillingEntitlementDecision",
+      "BillingSnapshot",
+      "AnnualSupportPage"
+    ],
+    "migrations": "supabase/migrations/20260907153938_annual_checkout_observation.sql"
   },
   "ports": [
+    {
+      "name": "AnnualNotificationAuthentication",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualNotificationAuthentication",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_provider_adapter",
+      "adapters": [
+        "talli_backend.adapters.vipps_webhook.VippsWebhookAuthentication"
+      ]
+    },
+    {
+      "name": "AnnualNotificationPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualNotificationPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_notifications.PostgresAnnualNotificationInbox"
+      ]
+    },
     {
       "name": "BillingPersistence",
       "direction": "outbound",
       "contract": "talli_backend.modules.billing.public.BillingPersistence",
       "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
-      "adapters": ["talli_backend.adapters.supabase_billing.SupabaseBillingSession"]
+      "adapters": [
+        "talli_backend.adapters.supabase_billing.SupabaseBillingSession"
+      ]
     },
     {
       "name": "BillingPaymentProvider",
       "direction": "outbound",
       "contract": "talli_backend.modules.billing.public.BillingPaymentProvider",
       "registrationDecorator": "talli_backend.modules.billing.public.billing_provider_adapter",
-      "adapters": ["talli_backend.adapters.simulation_billing.SimulationBillingProvider"]
+      "adapters": [
+        "talli_backend.adapters.simulation_billing.SimulationBillingProvider"
+      ]
+    },
+    {
+      "name": "AnnualBillingProvider",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualBillingProvider",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_provider_adapter",
+      "adapters": [
+        "talli_backend.adapters.vipps_billing.VippsTestBillingProvider"
+      ]
+    },
+    {
+      "name": "AnnualCheckoutPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualCheckoutPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCheckoutSession"
+      ]
+    },
+    {
+      "name": "AnnualCancellationPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualCancellationPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCancellationSession"
+      ]
+    },
+    {
+      "name": "AnnualAgreementCleanupPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualAgreementCleanupPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession"
+      ]
+    },
+    {
+      "name": "AnnualBillingReadPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualBillingReadPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.supabase_annual_billing.PostgresAnnualBillingReadSession"
+      ]
+    },
+    {
+      "name": "AnnualRefundPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualRefundPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundSession"
+      ]
+    },
+    {
+      "name": "AnnualSupportReadPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualSupportReadPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_support.PostgresAnnualSupportReadSession"
+      ]
+    },
+    {
+      "name": "AnnualRefundRecoveryPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualRefundRecoveryPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_refund.PostgresAnnualRefundRecoverySession"
+      ]
+    },
+    {
+      "name": "AnnualSupportRefundRecoveryPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualSupportRefundRecoveryPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_refund.PostgresAnnualSupportRefundRecoverySession"
+      ]
+    },
+    {
+      "name": "AnnualCheckoutObservationPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualCheckoutObservationPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_observation.PostgresAnnualCheckoutObservationStore"
+      ]
+    },
+    {
+      "name": "AnnualSupportCleanupRecoveryPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualSupportCleanupRecoveryPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_support_cleanup.PostgresAnnualSupportCleanupRecoverySession"
+      ]
     }
   ],
   "dependencies": [],
@@ -86,7 +321,10 @@
     "enum",
     "talli_backend.shared.kernel",
     "typing",
-    "uuid"
+    "uuid",
+    "hashlib",
+    "zoneinfo",
+    "json"
   ],
   "forbiddenResponsibilities": [
     "Filing-content, authority, readiness, membership, or authentication policy",
@@ -95,12 +333,50 @@
     "Production payment-provider activation without explicit owner approval"
   ],
   "tests": {
+    "annualNotificationIntake": "apps/backend/tests/test_annual_notification_intake.py",
+    "annualNotificationDatabase": "apps/backend/tests/test_annual_notification_runtime.py",
     "policy": "apps/backend/tests/test_billing.py",
     "equivalence": "apps/backend/tests/test_billing_equivalence.py",
     "provider": "apps/backend/tests/test_billing_provider.py",
     "api": "apps/backend/tests/test_billing_api.py",
     "database": "tests/billing_database_runtime.test.mjs",
-    "architecture": "tests/architecture_foundation.test.mjs"
+    "architecture": "tests/architecture_foundation.test.mjs",
+    "annualPolicy": "apps/backend/tests/test_annual_billing_policy.py",
+    "vippsProvider": "apps/backend/tests/test_vipps_billing.py",
+    "vippsWebhook": "apps/backend/tests/test_vipps_webhook.py",
+    "annualLedger": "apps/backend/tests/test_annual_purchase_ledger_runtime.py",
+    "annualCheckout": "apps/backend/tests/test_annual_checkout_service.py",
+    "annualCheckoutDatabase": "apps/backend/tests/test_annual_checkout_runtime.py",
+    "annualCancellationDatabase": "apps/backend/tests/test_annual_cancellation_runtime.py",
+    "annualCleanup": "apps/backend/tests/test_annual_cleanup_service.py",
+    "annualCleanupDatabase": "apps/backend/tests/test_annual_cleanup_runtime.py",
+    "annualReadDatabase": "apps/backend/tests/test_annual_billing_read_runtime.py",
+    "annualApi": "apps/backend/tests/test_annual_billing_api.py",
+    "legacyRetirement": "apps/backend/tests/test_legacy_billing_retirement.py",
+    "legacyRetirementDatabase": "apps/backend/tests/test_legacy_billing_retirement_runtime.py",
+    "annualCheckoutApi": "apps/backend/tests/test_annual_checkout_api.py",
+    "annualRefund": "apps/backend/tests/test_annual_refund_service.py",
+    "annualRefundDatabase": "apps/backend/tests/test_annual_refund_runtime.py",
+    "annualRefundCleanupDatabase": "apps/backend/tests/test_annual_refund_cleanup_runtime.py",
+    "annualCleanupApi": "apps/backend/tests/test_annual_cleanup_api.py",
+    "annualSupportApi": "apps/backend/tests/test_annual_support_api.py",
+    "annualSupportDatabase": "apps/backend/tests/test_annual_support_runtime.py",
+    "annualRefundRecovery": "apps/backend/tests/test_annual_refund_recovery_service.py",
+    "annualRefundRecoveryApi": "apps/backend/tests/test_annual_refund_recovery_api.py",
+    "annualRefundRecoveryDatabase": "apps/backend/tests/test_annual_refund_recovery_runtime.py",
+    "annualCheckoutWithdrawalDatabase": "apps/backend/tests/test_annual_checkout_withdrawal_runtime.py",
+    "annualSupportRefundRecovery": "apps/backend/tests/test_annual_support_refund_recovery_service.py",
+    "annualSupportRefundRecoveryApi": "apps/backend/tests/test_annual_support_refund_recovery_api.py",
+    "annualSupportRefundTargetsApi": "apps/backend/tests/test_annual_support_refund_targets_api.py",
+    "annualSupportRefundRecoveryDatabase": "apps/backend/tests/test_annual_support_refund_recovery_runtime.py",
+    "annualSupportRefundTargetsDatabase": "apps/backend/tests/test_annual_support_refund_targets_runtime.py",
+    "annualCheckoutObservation": "apps/backend/tests/test_annual_observation_service.py",
+    "annualCheckoutObservationDatabase": "apps/backend/tests/test_annual_observation_runtime.py",
+    "annualCheckoutObservationCli": "apps/backend/tests/test_annual_checkout_reconciliation_cli.py",
+    "annualRuntimeConfiguration": "apps/backend/tests/test_annual_billing_runtime_configuration.py",
+    "annualSupportCleanupRecovery": "apps/backend/tests/test_annual_support_cleanup_service.py",
+    "annualSupportCleanupRecoveryApi": "apps/backend/tests/test_annual_support_cleanup_api.py",
+    "annualSupportCleanupRecoveryDatabase": "apps/backend/tests/test_annual_support_cleanup_runtime.py"
   },
   "compatibilityExceptions": []
 }

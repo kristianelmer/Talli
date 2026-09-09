@@ -176,6 +176,29 @@ test("enrollment and verification expose no provider errors and only resume afte
   );
 });
 
+test("explicit fresh MFA intent challenges an existing AAL2 session without a browser age decision", async () => {
+  let factorReads = 0;
+  const api = mfaApi({
+    async getAuthenticatorAssuranceLevel() {
+      return { data: { currentLevel: "aal2", nextLevel: "aal2",
+        currentAuthenticationMethods: [{ method: "totp", timestamp: 1 }] }, error: null };
+    },
+    async listFactors() {
+      factorReads += 1;
+      return { data: { all: [], phone: [], webauthn: [],
+        totp: [{ id: "existing-factor", status: "verified", factor_type: "totp" }] }, error: null };
+    },
+  });
+  assert.deepEqual(await inspectOwnerMfa(api), { kind: "verified" });
+  assert.equal(factorReads, 0);
+  assert.deepEqual(await inspectOwnerMfa(api, { requireFreshChallenge: true }),
+    { kind: "challenge", factorId: "existing-factor" });
+  assert.equal(factorReads, 1);
+  assert.deepEqual(await inspectOwnerMfa(mfaApi({
+    ...api, async listFactors() { throw new Error("private provider detail"); },
+  }), { requireFreshChallenge: true }), { kind: "error", message: ownerMfaCopy.statusError });
+});
+
 test("owner transition is reachable after company-year admission and exposes an accessible, Norwegian MFA gate", async () => {
   const [admissionActions, ownerLayout, page, component] = await Promise.all([
     readFile(new URL("../app/(owner)/onboarding/actions.ts", import.meta.url), "utf8"),

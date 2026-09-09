@@ -289,3 +289,24 @@ cancellation persistence exceptions. The manifest truthfully declares the
 bounded #155 audit and #157 archive-projection dependencies described above.
 Change this document and `module.json` together when its interface, ownership,
 policy, or dependencies change.
+
+## Locked annual purchase evidence (#192)
+
+`CompanyYearPurchaseBasis` and its `CompanyYearLegalEvidence` preserve the accepted
+company-year promise, original and current assessment references, answers hashes,
+manifest, acceptance identity/time, and current legal document evidence.
+`CompanyAccessService.purchase_basis` consumes a supported `before_payment` recheck
+and rejects mismatched scope, stale legal documents or a changed promise.
+
+`supabase/migrations/20260905080550_annual_billing_purchase_basis.sql` adds
+`company_access_purchase_basis_v1(uuid, integer, uuid, uuid)`, owned by the restricted
+Company Access executor. Its caller must be an accepted owner with fresh MFA; it
+holds the existing eligibility-recheck lock and matches the exact latest assessment
+from the preceding five minutes. Billing has EXECUTE only and must re-read and
+compare this basis inside the payment-claim transaction, including the expected
+legal acceptance ID. It gains no direct access to Company Access tables. This
+contract does not authorize a background worker to impersonate an owner. The
+matching rollback removes the function and preserves all immutable evidence.
+The locking projection uses an asynchronous connection, a ten-second total
+deadline, five-second statements and a one-second lock timeout. A lock failure
+returns the typed unavailable response and a later request reuses the same basis.

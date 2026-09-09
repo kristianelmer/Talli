@@ -1,0 +1,4 @@
+architecture: compat-audit-persistence: future frozen scope resource table:audit_events is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:filing_readiness_snapshots is not owned by active or exited capability
+architecture: compat-audit-persistence: future frozen scope resource table:audit_events is not owned by active or exited capability
+architecture: compat-audit-persistence: future frozen scope resource table:audit_events is not owned by active or exited capability

@@ -9,6 +9,62 @@
       "to": "backend:documents"
     },
     {
+      "from": "backend-system:annual-agreement-cleanup",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-billing-reads-and-cancellation",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-billing-support",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-provider-notification-intake",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-refund-recovery",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-support-agreement-cleanup-recovery",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-support-refund-recovery",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
       "from": "backend-system:banking-reconciliation",
       "imports": [
         "talli_backend.modules.banking.public"
@@ -194,6 +250,14 @@
   ],
   "schemaVersion": "1.0",
   "technicalOwnership": [
+    {
+      "owner": "backend-system",
+      "table": "annual_notification_inbox.receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.annual_checkout_observation_work"
+    },
     {
       "owner": "backend-system",
       "table": "backend_system.banking_command_receipts"

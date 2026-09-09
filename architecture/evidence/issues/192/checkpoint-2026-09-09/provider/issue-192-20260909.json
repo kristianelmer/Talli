@@ -1,0 +1,376 @@
+{
+  "context": {
+    "company_id": "278b30f3-c42d-5ebd-8e93-64a3ed79647d",
+    "income_year": 2026,
+    "management_url": "https://talli-9ce4ij90h-kristianelmers-projects.vercel.app/billing",
+    "merchant_serial_number": "535717",
+    "return_url": "https://talli-9ce4ij90h-kristianelmers-projects.vercel.app/billing",
+    "run_id": "5b0df0ed-50e5-482e-87ab-a5886ffd335c"
+  },
+  "context_sha256": "393b83dca7fddf7bb14f94662cfbcdaea541b5f77bf51d7821fcdbd45eae2683",
+  "schema_version": 1,
+  "stages": {
+    "cancel-charge": {
+      "attempts": [
+        {
+          "action": "execute",
+          "finished_at": "2026-09-09T08:23:45.059507+00:00",
+          "observation": {
+            "agreement_reference": "agr_Un4JzLG",
+            "amount_minor": 0,
+            "captured_at": null,
+            "captured_minor": 0,
+            "charge_reference": "talli-mt-2847cd86-e3ac-5ede-ac80-73dd09a76858",
+            "confirmation_available": false,
+            "refunded_minor": 0,
+            "status": "confirmed"
+          },
+          "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+          "started_at": "2026-09-09T08:23:44.327761+00:00"
+        }
+      ],
+      "intent": {
+        "agreement_external_reference": "talli-mt-5b0df0ed-50e5-482e-87ab-a5886ffd335c",
+        "agreement_reference": "agr_Un4JzLG",
+        "amount_minor": 0,
+        "charge_reference": "talli-mt-2847cd86-e3ac-5ede-ac80-73dd09a76858",
+        "company_id": "278b30f3-c42d-5ebd-8e93-64a3ed79647d",
+        "created_at": "2026-09-09T08:23:44.326748+00:00",
+        "due_date": null,
+        "income_year": 2026,
+        "management_url": "https://talli-9ce4ij90h-kristianelmers-projects.vercel.app/billing",
+        "operation": "cancel_charge",
+        "operation_id": "ea131b6f-2538-58b6-884b-04ebbc626010",
+        "original_charge_is_renewal": true,
+        "original_charge_minor": 149000,
+        "recurring_consent": true,
+        "return_url": "https://talli-9ce4ij90h-kristianelmers-projects.vercel.app/billing"
+      },
+      "intent_sha256": "9a28cb507f333f62a23b80b61dc02d2f274a141734f921520ffced5cac0772df",
+      "operation_key": "6d8616c2d4bff254fec2e83fc0b9418474aacfe4"
+    },
+    "cancel-renewal": {
+      "attempts": [
+        {
+          "action": "execute",
+          "finished_at": "2026-09-09T08:23:37.388933+00:00",
+          "observation": {
+            "agreement_reference": "agr_Un4JzLG",
+            "amount_minor": 149000,
+            "captured_at": null,
+            "captured_minor": 0,
+            "charge_reference": "talli-mt-2847cd86-e3ac-5ede-ac80-73dd09a76858",
+            "confirmation_available": false,
+            "refunded_minor": 0,
+            "status": "pending"
+          },
+          "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+          "started_at": "2026-09-09T08:23:36.800087+00:00"
+        }
+      ],
+      "intent": {
+        "agreement_external_reference": "talli-mt-5b0df0ed-50e5-482e-87ab-a5886ffd335c",
+        "agreement_reference": "agr_Un4JzLG",
+        "amount_minor": 149000,
+        "charge_reference": "talli-mt-2847cd86-e3ac-5ede-ac80-73dd09a76858",
+        "company_id": "278b30f3-c42d-5ebd-8e93-64a3ed79647d",
+        "created_at": "2026-09-09T08:23:36.799757+00:00",
+        "due_date": "2026-09-10",
+        "income_year": 2026,
+        "management_url": "https://talli-9ce4ij90h-kristianelmers-projects.vercel.app/billing",
+        "operation": "renewal",
+        "operation_id": "2847cd86-e3ac-5ede-ac80-73dd09a76858",
+        "original_charge_is_renewal": true,
+        "original_charge_minor": 149000,
+        "recurring_consent": true,
+        "return_url": "https://talli-9ce4ij90h-kristianelmers-projects.vercel.app/billing"
+      },
+      "intent_sha256": "c8c95d336d66ff0f6f7d789b386e0127445ae9d592797eda20cf3a88c6fdd294",
+      "operation_key": "4696a2bdb44f3a3e2b0f6e9696627abf3585e2a4"
+    },
+    "checkout": {
+      "attempts": [
+        {
+          "action": "execute",
+          "finished_at": "2026-09-09T08:06:37.096282+00:00",
+          "observation": {
+            "agreement_reference": "agr_Un4JzLG",
+            "amount_minor": 149000,
+            "captured_at": null,
+            "captured_minor": 0,
+            "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+            "confirmation_available": true,
+            "refunded_minor": 0,
+            "status": "pending"
+          },
+          "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+          "started_at": "2026-09-09T08:06:36.451820+00:00"
+        },
+        {
+          "action": "reconcile",
+          "finished_at": "2026-09-09T08:07:23.017461+00:00",
+          "observation": {
+            "agreement_reference": "agr_Un4JzLG",
+            "amount_minor": 149000,
+            "captured_at": "2026-09-09T08:07:07+00:00",
+            "captured_minor": 149000,
+            "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+            "confirmation_available": false,
+            "refunded_minor": 0,
+            "status": "confirmed"
+          },
+          "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+          "started_at": "2026-09-09T08:07:21.090963+00:00"
+        },
+        {
+          "action": "repeat-execute",
+          "finished_at": "2026-09-09T08:12:44.049589+00:00",
+          "observation": {
+            "agreement_reference": null,
+            "amount_minor": 149000,
+            "captured_at": null,
+            "captured_minor": 0,
+            "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+            "confirmation_available": false,
+            "refunded_minor": 0,
+            "status": "unknown"
+          },
+          "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+          "started_at": "2026-09-09T08:12:43.384561+00:00"
+        },
+        {
+          "action": "reconcile",
+          "finished_at": "2026-09-09T08:12:45.095928+00:00",
+          "observation": {
+            "agreement_reference": null,
+            "amount_minor": 149000,
+            "captured_at": null,
+            "captured_minor": 0,
+            "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+            "confirmation_available": false,
+            "refunded_minor": 0,
+            "status": "unknown"
+          },
+          "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+          "started_at": "2026-09-09T08:12:44.371225+00:00"
+        },
+        {
+          "action": "reconcile",
+          "finished_at": "2026-09-09T08:13:21.182239+00:00",
+          "observation": {
+            "agreement_reference": null,
+            "amount_minor": 149000,
+            "captured_at": null,
+            "captured_minor": 0,
+            "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+            "confirmation_available": false,
+            "refunded_minor": 0,
+            "status": "unknown"
+          },
+          "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+          "started_at": "2026-09-09T08:13:20.415416+00:00"
+        },
+        {
+          "action": "reconcile",
+          "finished_at": "2026-09-09T08:14:49.061206+00:00",
+          "observation": {
+            "agreement_reference": null,
+            "amount_minor": 149000,
+            "captured_at": null,
+            "captured_minor": 0,
+            "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+            "confirmation_available": false,
+            "refunded_minor": 0,
+            "status": "unknown"
+          },
+          "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+          "started_at": "2026-09-09T08:14:48.482256+00:00"
+        },
+        {
+          "action": "reconcile",
+          "finished_at": "2026-09-09T08:22:24.025870+00:00",
+          "observation": {
+            "agreement_reference": "agr_Un4JzLG",
+            "amount_minor": 149000,
+            "captured_at": "2026-09-09T08:07:07+00:00",
+            "captured_minor": 149000,
+            "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+            "confirmation_available": false,
+            "refunded_minor": 0,
+            "status": "confirmed"
+          },
+          "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+          "started_at": "2026-09-09T08:22:23.633396+00:00"
+        }
+      ],
+      "intent": {
+        "agreement_external_reference": "talli-mt-5b0df0ed-50e5-482e-87ab-a5886ffd335c",
+        "agreement_reference": null,
+        "amount_minor": 149000,
+        "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+        "company_id": "278b30f3-c42d-5ebd-8e93-64a3ed79647d",
+        "created_at": "2026-09-09T08:06:36.451708+00:00",
+        "due_date": null,
+        "income_year": 2026,
+        "management_url": "https://talli-9ce4ij90h-kristianelmers-projects.vercel.app/billing",
+        "operation": "checkout",
+        "operation_id": "9c98eaff-c260-51f2-98a6-542816c898aa",
+        "original_charge_is_renewal": false,
+        "original_charge_minor": 149000,
+        "recurring_consent": true,
+        "return_url": "https://talli-9ce4ij90h-kristianelmers-projects.vercel.app/billing"
+      },
+      "intent_sha256": "c25a9c48ce38a6cfa4df04a086a24afedcde6918d1e91ef1dadb58c8d450bb77",
+      "operation_key": "b90584dc30f2baa84db986a8c4709891eb6992df"
+    },
+    "partial-refund": {
+      "attempts": [
+        {
+          "action": "execute",
+          "finished_at": "2026-09-09T08:22:33.724063+00:00",
+          "observation": {
+            "agreement_reference": "agr_Un4JzLG",
+            "amount_minor": 37250,
+            "captured_at": "2026-09-09T08:07:07+00:00",
+            "captured_minor": 149000,
+            "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+            "confirmation_available": false,
+            "refunded_minor": 37250,
+            "status": "confirmed"
+          },
+          "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+          "started_at": "2026-09-09T08:22:32.932059+00:00"
+        },
+        {
+          "action": "repeat-execute",
+          "finished_at": "2026-09-09T08:23:27.707980+00:00",
+          "observation": {
+            "agreement_reference": "agr_Un4JzLG",
+            "amount_minor": 37250,
+            "captured_at": "2026-09-09T08:07:07+00:00",
+            "captured_minor": 149000,
+            "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+            "confirmation_available": false,
+            "refunded_minor": 37250,
+            "status": "confirmed"
+          },
+          "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+          "started_at": "2026-09-09T08:23:26.982116+00:00"
+        }
+      ],
+      "intent": {
+        "agreement_external_reference": "talli-mt-5b0df0ed-50e5-482e-87ab-a5886ffd335c",
+        "agreement_reference": "agr_Un4JzLG",
+        "amount_minor": 37250,
+        "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+        "company_id": "278b30f3-c42d-5ebd-8e93-64a3ed79647d",
+        "created_at": "2026-09-09T08:22:32.931699+00:00",
+        "due_date": null,
+        "income_year": 2026,
+        "management_url": "https://talli-9ce4ij90h-kristianelmers-projects.vercel.app/billing",
+        "operation": "refund",
+        "operation_id": "7557dbd8-d55d-536a-9bae-aec5002a2d2c",
+        "original_charge_is_renewal": false,
+        "original_charge_minor": 149000,
+        "recurring_consent": true,
+        "return_url": "https://talli-9ce4ij90h-kristianelmers-projects.vercel.app/billing"
+      },
+      "intent_sha256": "0a2e64a5229df65c97f30e6ab7b1093c85c3ca109f8181f54c80b7ed67190ae5",
+      "operation_key": "d2fd7fc47f9deb3de5c424ee2400cde9bdca0cdb"
+    },
+    "remaining-refund": {
+      "attempts": [
+        {
+          "action": "execute",
+          "finished_at": "2026-09-09T08:23:36.426598+00:00",
+          "observation": {
+            "agreement_reference": "agr_Un4JzLG",
+            "amount_minor": 111750,
+            "captured_at": "2026-09-09T08:07:07+00:00",
+            "captured_minor": 149000,
+            "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+            "confirmation_available": false,
+            "refunded_minor": 149000,
+            "status": "confirmed"
+          },
+          "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+          "started_at": "2026-09-09T08:23:35.750854+00:00"
+        }
+      ],
+      "intent": {
+        "agreement_external_reference": "talli-mt-5b0df0ed-50e5-482e-87ab-a5886ffd335c",
+        "agreement_reference": "agr_Un4JzLG",
+        "amount_minor": 111750,
+        "charge_reference": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+        "company_id": "278b30f3-c42d-5ebd-8e93-64a3ed79647d",
+        "created_at": "2026-09-09T08:23:35.750596+00:00",
+        "due_date": null,
+        "income_year": 2026,
+        "management_url": "https://talli-9ce4ij90h-kristianelmers-projects.vercel.app/billing",
+        "operation": "refund",
+        "operation_id": "1b5d3b83-6085-557f-9ce9-063d4fbcf271",
+        "original_charge_is_renewal": false,
+        "original_charge_minor": 149000,
+        "recurring_consent": true,
+        "return_url": "https://talli-9ce4ij90h-kristianelmers-projects.vercel.app/billing"
+      },
+      "intent_sha256": "d18dd22af0fe2dc4262b0d7062dbf6d2ea97fbea325f710839058cf0b1c274c4",
+      "operation_key": "9da38a55e69d4bbdf55bc69549837acc7966a3d1"
+    },
+    "renewal": {
+      "attempts": [
+        {
+          "action": "execute",
+          "finished_at": "2026-09-09T08:22:25.001562+00:00",
+          "observation": {
+            "agreement_reference": "agr_Un4JzLG",
+            "amount_minor": 149000,
+            "captured_at": null,
+            "captured_minor": 0,
+            "charge_reference": "talli-mt-531963e5-32d4-5b06-aae7-458d3a22986c",
+            "confirmation_available": false,
+            "refunded_minor": 0,
+            "status": "pending"
+          },
+          "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+          "started_at": "2026-09-09T08:22:24.399615+00:00"
+        },
+        {
+          "action": "repeat-execute",
+          "finished_at": "2026-09-09T08:24:03.891358+00:00",
+          "observation": {
+            "agreement_reference": "agr_Un4JzLG",
+            "amount_minor": 149000,
+            "captured_at": null,
+            "captured_minor": 0,
+            "charge_reference": "talli-mt-531963e5-32d4-5b06-aae7-458d3a22986c",
+            "confirmation_available": false,
+            "refunded_minor": 0,
+            "status": "pending"
+          },
+          "source_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502-dirty",
+          "started_at": "2026-09-09T08:24:03.333944+00:00"
+        }
+      ],
+      "intent": {
+        "agreement_external_reference": "talli-mt-5b0df0ed-50e5-482e-87ab-a5886ffd335c",
+        "agreement_reference": "agr_Un4JzLG",
+        "amount_minor": 149000,
+        "charge_reference": "talli-mt-531963e5-32d4-5b06-aae7-458d3a22986c",
+        "company_id": "278b30f3-c42d-5ebd-8e93-64a3ed79647d",
+        "created_at": "2026-09-09T08:22:24.399205+00:00",
+        "due_date": "2026-09-10",
+        "income_year": 2026,
+        "management_url": "https://talli-9ce4ij90h-kristianelmers-projects.vercel.app/billing",
+        "operation": "renewal",
+        "operation_id": "531963e5-32d4-5b06-aae7-458d3a22986c",
+        "original_charge_is_renewal": true,
+        "original_charge_minor": 149000,
+        "recurring_consent": true,
+        "return_url": "https://talli-9ce4ij90h-kristianelmers-projects.vercel.app/billing"
+      },
+      "intent_sha256": "a8863a199a18960a8f143db8136dd72e5d38825e80661674fbbdc2be1c1fbdad",
+      "operation_key": "28d58fb29faf1e790cd5a6f0f7d5ec65de2df7bd"
+    }
+  }
+}

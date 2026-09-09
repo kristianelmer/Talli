@@ -1,0 +1,1 @@
+{"environment": "MT", "msn": "535717", "agreement": "agr_5YSKYz2", "status_before": "PENDING", "captured_minor": 0, "refunded_minor": 0, "charge_count": 0, "operation_key": "ecd555ebf99d53d4065aab9e401d89179417d973", "started_at": "2026-09-09T08:18:57.715467+00:00", "cleanup_http_status": 400, "status_after": "PENDING", "finished_at": "2026-09-09T08:18:57.900266+00:00"}

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -54,10 +55,16 @@ function initializeTemporaryRepository() {
   return directory;
 }
 
-function createHarnessWorkspace(mode) {
+function createHarnessWorkspace(mode, guideState) {
   const directory = mkdtempSync(join(tmpdir(), "talli-database-harness-test-"));
   const nextEnvPath = join(directory, "apps/web/next-env.d.ts");
   const tsconfigPath = join(directory, "apps/web/tsconfig.json");
+  const guidePaths = ["AGENTS.md", "CLAUDE.md"].map((name) => join(directory, "apps/web", name));
+  const originalGuides = guidePaths.map((_, index) => (
+    guideState === "existing" || (guideState === "mixed" && index === 0)
+      ? Buffer.from(`Original guide ${index}: beholdt\r\n`, "utf8")
+      : null
+  ));
   const binDirectory = join(directory, "bin");
   const snapshotDirectory = join(directory, "snapshots");
   mkdirSync(dirname(nextEnvPath), { recursive: true });
@@ -66,6 +73,9 @@ function createHarnessWorkspace(mode) {
   mkdirSync(snapshotDirectory);
   writeFileSync(nextEnvPath, "original declaration\n");
   writeFileSync(tsconfigPath, "original config\n");
+  guidePaths.forEach((path, index) => {
+    if (originalGuides[index]) writeFileSync(path, originalGuides[index]);
+  });
   writeFileSync(
     join(directory, "scripts/prepare-isolated-supabase-workdir.mjs"),
     "// Test fixture: the npm shim owns the isolated Supabase lifecycle.\n",
@@ -82,11 +92,13 @@ fi
 if [[ "$*" == "run test:browser-owner" ]]; then
   printf 'generated declaration\\n' > apps/web/next-env.d.ts
   printf 'generated config\\n' > apps/web/tsconfig.json
-  if [[ "${mode}" == "command-failure" ]]; then
-    exit 7
-  fi
-  if [[ "${mode}" == "restore-failure" ]]; then
+  printf 'generated agent guide\\n' > apps/web/AGENTS.md
+  printf 'generated Claude guide\\n' > apps/web/CLAUDE.md
+  if [[ "${mode}" == "restore-failure" || "${mode}" == "command-and-restore-failure" ]]; then
     mv apps/web apps/web-displaced
+  fi
+  if [[ "${mode}" == "command-failure" || "${mode}" == "command-and-restore-failure" ]]; then
+    exit 7
   fi
 fi
 `,
@@ -96,6 +108,8 @@ fi
     directory,
     nextEnvPath,
     tsconfigPath,
+    guidePaths,
+    originalGuides,
     snapshotDirectory,
     binDirectory,
   };
@@ -275,8 +289,10 @@ test("local immutable gate normalizes terminal output before recording it", () =
 });
 
 test("database harness restores generated drift and preserves failure semantics", () => {
-  for (const mode of ["success", "command-failure", "restore-failure"]) {
-    const workspace = createHarnessWorkspace(mode);
+  for (const [mode, guideState] of [
+    "success", "command-failure", "restore-failure", "command-and-restore-failure",
+  ].flatMap((mode) => ["absent", "existing", "mixed"].map((guideState) => [mode, guideState]))) {
+    const workspace = createHarnessWorkspace(mode, guideState);
     try {
       const result = run("bash", [fileURLToPath(databaseHarnessPath)], {
         cwd: workspace.directory,
@@ -287,19 +303,27 @@ test("database harness restores generated drift and preserves failure semantics"
         },
       });
 
-      if (mode === "success") {
-        assert.equal(result.status, 0, result.stderr);
+      if (mode === "success" || mode === "command-failure") {
+        assert.equal(result.status, mode === "success" ? 0 : 7, result.stderr);
         assert.equal(readFileSync(workspace.nextEnvPath, "utf8"), "original declaration\n");
         assert.equal(readFileSync(workspace.tsconfigPath, "utf8"), "original config\n");
-        assert.deepEqual(readdirSync(workspace.snapshotDirectory), []);
-      } else if (mode === "command-failure") {
-        assert.equal(result.status, 7, result.stderr);
-        assert.equal(readFileSync(workspace.nextEnvPath, "utf8"), "original declaration\n");
-        assert.equal(readFileSync(workspace.tsconfigPath, "utf8"), "original config\n");
+        workspace.guidePaths.forEach((path, index) => {
+          if (workspace.originalGuides[index]) {
+            assert.deepEqual(readFileSync(path), workspace.originalGuides[index], `${mode}/${guideState}`);
+          } else {
+            assert.equal(existsSync(path), false, `${mode}/${guideState}: remove only newly generated guides`);
+          }
+        });
         assert.deepEqual(readdirSync(workspace.snapshotDirectory), []);
       } else {
-        assert.notEqual(result.status, 0);
-        assert.equal(readdirSync(workspace.snapshotDirectory).length, 2);
+        assert.equal(result.status, mode === "command-and-restore-failure" ? 7 : 1, result.stderr);
+        const snapshots = readdirSync(workspace.snapshotDirectory)
+          .map((name) => readFileSync(join(workspace.snapshotDirectory, name), "utf8"))
+          .sort();
+        assert.deepEqual(snapshots, [
+          "original declaration\n", "original config\n",
+          ...workspace.originalGuides.filter(Boolean).map((bytes) => bytes.toString("utf8")),
+        ].sort(), "failed restoration must retain the original bytes for recovery");
       }
     } finally {
       rmSync(workspace.directory, { recursive: true, force: true });
@@ -343,4 +367,54 @@ test("Vercel deploys the Next output near the owner-designated database", () => 
 
   assert.equal(config.outputDirectory, "apps/web/.next");
   assert.deepEqual(config.regions, ["dub1"]);
+});
+
+test("backend boundary assigns every billing DB test exclusively to the mandatory database lane", () => {
+  const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  const lifecycle = packageJson.scripts["test:billing-database-lifecycle"];
+  const files = lifecycle.match(/apps\/backend\/tests\/test_\w+\.py/gu);
+  assert.ok(files?.length, "the mandatory database lane must name its test files");
+  const env = { ...process.env };
+  delete env.DATABASE_URL;
+  const collect = (command) => {
+    const result = run("sh", ["-c", `${command} --collect-only -q`], {
+      cwd: fileURLToPath(new URL("../", import.meta.url)),
+      env,
+      maxBuffer: 8 * 1024 * 1024,
+      timeout: 30_000,
+    });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    return new Set(result.stdout.split("\n").filter((line) => /^tests\/.*::/u.test(line)));
+  };
+  const pytest = "uv run --project apps/backend pytest -c apps/backend/pyproject.toml";
+  const database = collect(`${pytest} ${files.join(" ")}`);
+  assert.ok(database.size >= 158, "existing annual and predecessor DB cases must remain collected");
+  const marked = collect(`${pytest} apps/backend/tests -m billing_database`);
+  assert.deepEqual(marked, database, "marked exclusions must exactly match the mandatory lifecycle selection");
+  const boundary = collect(packageJson.scripts["test:boundary-backend"]);
+  const all = collect(`${pytest} apps/backend/tests`);
+  assert.deepEqual(new Set([...boundary, ...database]), all, "no backend test may disappear between lanes");
+  assert.deepEqual([...boundary].filter((id) => database.has(id)), [], "database fixtures must not run in the ordinary boundary lane");
+  assert.match(readFileSync(databaseHarnessPath, "utf8"), /DATABASE_URL="\$DB_URL" npm run test:billing-database-lifecycle/u);
+  assert.match(lifecycle, /&& node --test --test-concurrency=1 tests\/billing_database_runtime\.test\.mjs/u);
+});
+
+test("billing database lifecycle refuses missing DB configuration before running either test runner", () => {
+  const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  const directory = mkdtempSync(join(tmpdir(), "talli-billing-lane-test-"));
+  try {
+    for (const executable of ["uv", "node"]) {
+      const path = join(directory, executable);
+      writeFileSync(path, "#!/bin/sh\necho TEST_RUNNER_STARTED\n");
+      chmodSync(path, 0o755);
+    }
+    const env = { ...process.env, PATH: `${directory}:${process.env.PATH}` };
+    delete env.DATABASE_URL;
+    const result = run("sh", ["-c", packageJson.scripts["test:billing-database-lifecycle"]], { env });
+    assert.notEqual(result.status, 0, "missing DATABASE_URL must fail the required lane");
+    assert.match(result.stderr, /DATABASE_URL.*disposable/u);
+    assert.doesNotMatch(result.stdout, /TEST_RUNNER_STARTED/u);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

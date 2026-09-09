@@ -1,0 +1,82 @@
+{
+  "observed_at": "2026-09-09T08:25:37.480242+00:00",
+  "environment": "MT",
+  "merchant_serial_number": "535717",
+  "agreements": [
+    {
+      "id": "agr_Un4JzLG",
+      "externalId": "talli-mt-5b0df0ed-50e5-482e-87ab-a5886ffd335c",
+      "status": "ACTIVE",
+      "created": "2026-09-09T08:06:37Z",
+      "charges": [
+        {
+          "id": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+          "externalId": "talli-mt-9c98eaff-c260-51f2-98a6-542816c898aa",
+          "status": "REFUNDED",
+          "type": "INITIAL",
+          "amount": 149000,
+          "due": "2026-09-09T08:06:37Z",
+          "summary": {
+            "captured": 149000,
+            "refunded": 149000,
+            "cancelled": 0
+          }
+        },
+        {
+          "id": "talli-mt-531963e5-32d4-5b06-aae7-458d3a22986c",
+          "externalId": "talli-mt-531963e5-32d4-5b06-aae7-458d3a22986c",
+          "status": "DUE",
+          "type": "RECURRING",
+          "amount": 149000,
+          "due": "2026-09-10T00:00:00Z",
+          "summary": {
+            "captured": 0,
+            "refunded": 0,
+            "cancelled": 0
+          }
+        },
+        {
+          "id": "talli-mt-2847cd86-e3ac-5ede-ac80-73dd09a76858",
+          "externalId": "talli-mt-2847cd86-e3ac-5ede-ac80-73dd09a76858",
+          "status": "CANCELLED",
+          "type": "RECURRING",
+          "amount": 149000,
+          "due": "2026-09-10T00:00:00Z",
+          "summary": {
+            "captured": 0,
+            "refunded": 0,
+            "cancelled": 149000
+          }
+        }
+      ]
+    },
+    {
+      "id": "agr_5YSKYz2",
+      "externalId": "talli-mt-5b0df0ed-50e5-482e-87ab-a5886ffd335c",
+      "status": "EXPIRED",
+      "created": "2026-09-09T08:12:44Z",
+      "charges": []
+    },
+    {
+      "id": "agr_Xwpy7fP",
+      "externalId": "talli-mt-0eb462a0-2aae-453c-b011-79c64e0c7ee4",
+      "status": "STOPPED",
+      "created": "2026-09-09T08:24:04Z",
+      "charges": [
+        {
+          "id": "talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7",
+          "externalId": "talli-mt-65ec76c9-40ae-5c59-8cfc-8a1dce4e85f7",
+          "status": "REFUNDED",
+          "type": "INITIAL",
+          "amount": 149000,
+          "due": "2026-09-09T08:24:04Z",
+          "summary": {
+            "captured": 149000,
+            "refunded": 149000,
+            "cancelled": 0
+          }
+        }
+      ]
+    }
+  ]
+}

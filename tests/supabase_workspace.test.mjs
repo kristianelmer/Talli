@@ -7,6 +7,8 @@ import test from "node:test";
 import { createClient } from "@supabase/supabase-js";
 import pg from "pg";
 
+import { isLoopbackSupabaseUrl } from "./support/supabase_fixture_safety.mjs";
+
 import { buildPersistedCompanyArchive } from "../apps/web/app/lib/archive.ts";
 import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed } from "../apps/web/app/lib/annual-data.ts";
 import { evaluateAnnualReadinessGates } from "../apps/web/app/lib/annual-readiness.ts";
@@ -146,6 +148,34 @@ async function applyMigration() {
     );
   } finally {
     await client.end();
+  }
+}
+
+async function withLegacyBillingPredecessor(seedHistory) {
+  const config = getDatabaseConfig();
+  assert.ok(
+    ["127.0.0.1", "localhost", "::1"].includes(config?.host)
+      && isLoopbackSupabaseUrl(process.env.SUPABASE_URL),
+    "Historical billing fixtures require an isolated local database and Supabase",
+  );
+  const migration = "20260905115700_legacy_billing_acquisition_retirement.sql";
+  const [rollback, recutover] = await Promise.all([
+    readFile(`supabase/rollback/${migration}`, "utf8"),
+    readFile(`supabase/migrations/${migration}`, "utf8"),
+  ]);
+  const database = new pg.Client(config);
+  await database.connect();
+  try {
+    await database.query(rollback);
+    try {
+      return await seedHistory();
+    } finally {
+      // The live workspace assertions always run with the shipped retirement
+      // migration reapplied, including when historical fixture creation fails.
+      await database.query(recutover);
+    }
+  } finally {
+    await database.end();
   }
 }
 
@@ -1621,71 +1651,91 @@ test(
     assert.ifError(launchSignoffsAfterImportError);
     assert.deepEqual(launchSignoffsAfterImport, launchSignoffsBeforeImport);
 
-    const billingAccount = {
-      company_id: companyId,
-      pricing_plan: "founder",
-      monthly_nok: 29,
-      filing_package_nok: 299,
-      founder_cohort_number: 1,
-      subscription_active: true,
-      filing_package_paid: false,
-      supported_case: true,
-      refund_eligible: false,
-    };
-    const { error: billingInsertError } = await owner.from("billing_accounts").insert({
-      ...billingAccount,
-      updated_by: ownerUser.id,
-    });
-    assert.ifError(billingInsertError);
-    const { data: reloadedBilling, error: reloadedBillingError } = await owner
-      .from("billing_accounts")
-      .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason")
-      .eq("company_id", companyId)
-      .single();
-    assert.ifError(reloadedBillingError);
-    assert.equal(reloadedBilling.pricing_plan, "founder");
-    assert.equal(reloadedBilling.monthly_nok, 29);
-    assert.equal(reloadedBilling.subscription_active, true);
-    assert.equal(reloadedBilling.filing_package_paid, false);
-
-    const { error: billingUnsupportedError } = await owner
-      .from("billing_accounts")
-      .update({
-        supported_case: false,
+    // Exercise the old writer only while its actual predecessor migration is
+    // active. These records are historical read/export fixtures, not new paid
+    // authority for the annual product or its unavailable filing sources.
+    const historicalBilling = await withLegacyBillingPredecessor(async () => {
+      const billingAccount = {
+        company_id: companyId,
+        pricing_plan: "founder",
+        monthly_nok: 29,
+        filing_package_nok: 299,
+        founder_cohort_number: 1,
+        subscription_active: true,
         filing_package_paid: false,
-        no_charge_reason: "Utenfor enkel holding-AS-løype",
-        updated_by: ownerUser.id,
-      })
-      .eq("company_id", companyId);
-    assert.ifError(billingUnsupportedError);
-    const { data: unsupportedBilling, error: unsupportedBillingError } = await owner
-      .from("billing_accounts")
-      .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason")
-      .eq("company_id", companyId)
-      .single();
-    assert.ifError(unsupportedBillingError);
-    assert.equal(unsupportedBilling.supported_case, false);
-    assert.equal(unsupportedBilling.filing_package_paid, false);
-
-    const { error: billingPaidError } = await owner
-      .from("billing_accounts")
-      .update({
         supported_case: true,
-        no_charge_reason: null,
-        filing_package_paid: true,
         refund_eligible: false,
+      };
+      const { error: billingInsertError } = await owner.from("billing_accounts").insert({
+        ...billingAccount,
         updated_by: ownerUser.id,
-      })
-      .eq("company_id", companyId);
-    assert.ifError(billingPaidError);
-    const { data: paidBilling, error: paidBillingError } = await owner
+      });
+      assert.ifError(billingInsertError);
+      const { data: reloadedBilling, error: reloadedBillingError } = await owner
+        .from("billing_accounts")
+        .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason")
+        .eq("company_id", companyId)
+        .single();
+      assert.ifError(reloadedBillingError);
+      assert.equal(reloadedBilling.pricing_plan, "founder");
+      assert.equal(reloadedBilling.monthly_nok, 29);
+      assert.equal(reloadedBilling.subscription_active, true);
+      assert.equal(reloadedBilling.filing_package_paid, false);
+
+      const { error: billingUnsupportedError } = await owner
+        .from("billing_accounts")
+        .update({
+          supported_case: false,
+          filing_package_paid: false,
+          no_charge_reason: "Utenfor enkel holding-AS-løype",
+          updated_by: ownerUser.id,
+        })
+        .eq("company_id", companyId);
+      assert.ifError(billingUnsupportedError);
+      const { data: unsupportedBilling, error: unsupportedBillingError } = await owner
+        .from("billing_accounts")
+        .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason")
+        .eq("company_id", companyId)
+        .single();
+      assert.ifError(unsupportedBillingError);
+      assert.equal(unsupportedBilling.supported_case, false);
+      assert.equal(unsupportedBilling.filing_package_paid, false);
+
+      const { error: billingPaidError } = await owner
+        .from("billing_accounts")
+        .update({
+          supported_case: true,
+          no_charge_reason: null,
+          filing_package_paid: true,
+          refund_eligible: false,
+          updated_by: ownerUser.id,
+        })
+        .eq("company_id", companyId);
+      assert.ifError(billingPaidError);
+      const { data: paidBilling, error: paidBillingError } = await owner
+        .from("billing_accounts")
+        .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason")
+        .eq("company_id", companyId)
+        .single();
+      assert.ifError(paidBillingError);
+      assert.equal(paidBilling.subscription_active, true);
+      assert.equal(paidBilling.filing_package_paid, true);
+      return paidBilling;
+    });
+    const { data: retainedBilling, error: retainedBillingError } = await owner
       .from("billing_accounts")
       .select("company_id, pricing_plan, monthly_nok, filing_package_nok, founder_cohort_number, subscription_active, filing_package_paid, supported_case, refund_eligible, no_charge_reason")
       .eq("company_id", companyId)
       .single();
-    assert.ifError(paidBillingError);
-    assert.equal(paidBilling.subscription_active, true);
-    assert.equal(paidBilling.filing_package_paid, true);
+    assert.ifError(retainedBillingError);
+    assert.deepEqual(retainedBilling, historicalBilling);
+    const { error: retiredAcquisitionError } = await owner.from("billing_accounts")
+      .upsert({ ...historicalBilling, updated_by: ownerUser.id }, { onConflict: "company_id" });
+    assert.match(retiredAcquisitionError?.message ?? "", /billing_legacy_acquisition_retired/u);
+    const { error: retiredPricingError } = await owner.from("billing_accounts")
+      .update({ monthly_nok: 49, updated_by: ownerUser.id })
+      .eq("company_id", companyId);
+    assert.match(retiredPricingError?.message ?? "", /billing_legacy_acquisition_retired/u);
     const { data: annualAuthorityPermissions, error: annualAuthorityPermissionsError } = await owner
       .from("authority_permissions")
       .select("company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled")

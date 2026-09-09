@@ -1,0 +1,20 @@
+✔ release gate covers pull requests and main with least privilege (2.067625ms)
+✔ release gate runs every customer-readiness check before promotion (0.746042ms)
+✔ manual release gates can retain linked immutable evidence (0.218833ms)
+✔ database isolation uses the locked Python renderer environment (0.153042ms)
+✔ database isolation runs the complete ledger contract lifecycle (11.155083ms)
+✔ local immutable gate rejects tracked, staged, and untracked drift (836.9315ms)
+✔ local immutable gate normalizes terminal output before recording it (0.35225ms)
+✔ database harness restores generated drift and preserves failure semantics (6025.73375ms)
+✔ browser owner rehearsal includes executable owned-process lifecycle coverage (1.5175ms)
+✔ Vercel deploys the Next output near the owner-designated database (0.475125ms)
+✔ backend boundary assigns every billing DB test exclusively to the mandatory database lane (7772.257209ms)
+✔ billing database lifecycle refuses missing DB configuration before running either test runner (10.337791ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14738.882625

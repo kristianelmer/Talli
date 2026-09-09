@@ -1,0 +1,76 @@
+{
+  "recorded_at": "2026-09-09T08:33:41.959977+00:00",
+  "product_revision": "8383672d10b465e7adafb4c45939bc1b630f4aa3",
+  "base_revision": "3e67dd64206fa4bfa0f1a33247bce914ceadd502",
+  "status": "PARTIAL ISSUE192; OPEN; NOT RELEASE-READY",
+  "source_attribution": "Local checks and real MT ran on the working tree. MT state retains the honest historical -dirty source attribution. Browser and webhook source hashes match product_revision exactly. The customer-ready gate ran on clean immutable product_revision and failed architecture. No full gate pass is claimed.",
+  "checks": {
+    "billing": {
+      "python_passed": 864,
+      "node_passed": 302,
+      "skipped": 0
+    },
+    "billing_database": {
+      "python_passed": 699,
+      "node_passed": 1,
+      "skipped": 0,
+      "note": "Python699 passed in full lane. Node initially collided with old fixture keys; per-run UUID keys fixed, then Node-only lifecycle rerun passed. The complete log preserves both outcomes; production source unchanged."
+    },
+    "boundary": {
+      "python_passed": 1498,
+      "python_skipped": 2,
+      "billing_database_deselected": 699,
+      "node_web_passed": 166,
+      "node_contract_passed": 53,
+      "note": "Run before standalone runner extension. The later full billing rerun includes its final60 tests; skipped tests are separate marketing/validation DB lanes."
+    },
+    "browser": {
+      "assertions": 43,
+      "desktop": "1440x1100",
+      "mobile": "375x812",
+      "scope": "shipped UI/action/generated transport/actual FastAPI route with synthetic authentication, persistence and provider"
+    },
+    "merchant_test": {
+      "real_events": 8,
+      "exact_webhook_replays": 9,
+      "tampered_payloads_rejected": 3,
+      "money": "test only; both initial captures fully refunded",
+      "pending": "recurring149000 capture due2026-09-10, then recurring full refund and original agreement STOP"
+    },
+    "production_dependency_audits": {
+      "root_vulnerabilities": 0,
+      "web_vulnerabilities": 0
+    },
+    "build_web": "passed",
+    "build_backend": "passed",
+    "typecheck": "passed",
+    "credential_scan": "passed",
+    "complete_customer_ready_gate": {
+      "revision": "8383672d10b465e7adafb4c45939bc1b630f4aa3",
+      "status": "FAILED",
+      "passed": [
+        "schema-setup",
+        "credential-scan",
+        "typecheck"
+      ],
+      "failed": "architecture",
+      "errors": 4,
+      "transcript": "../../../customer-ready-gates/8383672d10b465e7adafb4c45939bc1b630f4aa3.log",
+      "full_11_of_11": false
+    }
+  },
+  "independent_reviews": {
+    "operator_web_spec": "no actionable findings; independent reviewer traced action, transport and protected-read invalidation",
+    "operator_backend": "no actionable findings; independent reviewer traced immutable STOP/receipt, live case authorization, lock waits and rollback",
+    "observer": "bounded independent Standards and Spec reviews passed; SQL identity regression fixed and covered",
+    "limits": "These are scoped reviews, not whole-issue final release approval."
+  },
+  "remaining": [
+    "Explicit exact four-scope legacy retirement amendment; pending patch included but not applied.",
+    "Explicit source-order amendment; current route blocks authoritative filing readiness, incident/submission sources and versioned next-year admission.",
+    "Source-backed ordinary paid entitlement and automatic refund/renewal runtime.",
+    "Scheduled recurring capture, full recurring refund and original agreement cleanup after actual due-date processing.",
+    "Complete representative customer/operator acceptance, two linked immutable11/11 gates, protected-main Release/nonproduction Preview and post-merge proof."
+  ],
+  "production": "No production provider calls, paid activation, filing, main merge or release/production advance."
+}

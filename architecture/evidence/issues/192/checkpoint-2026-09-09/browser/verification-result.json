@@ -1,0 +1,42 @@
+{
+  "outcome": "passed",
+  "assertions": 43,
+  "distinct_checks": 16,
+  "desktop": {
+    "width": 1440,
+    "height": 1100
+  },
+  "mobile": {
+    "width": 375,
+    "height": 812
+  },
+  "attribution": "Synthetic local browser integration: actual product view/control/server action/generated transport/FastAPI route/public recovery service; synthetic authentication, opened-case persistence and provider. No database, hosted services, MT or external provider calls. The production operator dashboard loader/session/database seams are not covered.",
+  "scenarios": [
+    "unknown remains unconfirmed",
+    "pending remains unconfirmed",
+    "confirmed observation",
+    "confirmed replay without another provider read",
+    "native same-case company/cursor history link",
+    "mobile no horizontal overflow",
+    "case revocation returns 403 before provider read",
+    "server action invalidates protected purchase evidence",
+    "missing session stops before backend call",
+    "scoped sign-in recovery link"
+  ],
+  "source_sha256": {
+    "apps/web/app/actions.ts": "4604a13d9c46c4e4fd6aaec4aa4b3b99d989609a0f7c4730a104fe200570d78a",
+    "apps/web/app/(operator)/operator/annual-billing-support.tsx": "94fe199508f7dcda1a8ffae2df21c5e2cf1c77c2873edc7905d08d8dba755dd9",
+    "apps/web/app/components/billing/AnnualSupportCleanupRecoveryControl.tsx": "d99ef3d15c70b5ef200ee9c01acfac3b38d68b3924daf551b599041df1cc96d7",
+    "apps/web/features/billing/transport.ts": "e2a52c799b5fe5881f2baaafe872a497c21c60d593b14476645c41b785ec4e81",
+    "apps/backend/src/talli_backend/modules/billing/annual_support_cleanup.py": "ae275e6aa0025ab833bf40b0f3c8f05cbdaf8b2373f0c219f4f3ab584fa82c2c",
+    "apps/backend/tests/test_annual_support_cleanup_service.py": "66f456b72ac5103f71ab7ef7d19049424314a5808707549edf4b6a01e705f9c4"
+  },
+  "artifacts": [
+    "desktop-unknown.png",
+    "desktop-confirmed.png",
+    "mobile-unknown.png",
+    "mobile-case-denied.png",
+    "mobile-sign-in.png"
+  ],
+  "console": "Only fixture /favicon.ico 404; no application runtime errors observed."
+}

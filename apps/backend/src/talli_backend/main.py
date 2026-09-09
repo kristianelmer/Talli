@@ -9,7 +9,7 @@ import re
 import secrets
 import time
 from collections.abc import Awaitable, Callable, Mapping
-from datetime import date, datetime, time as local_time
+from datetime import UTC, date, datetime, time as local_time
 from decimal import Decimal
 from typing import Annotated, Any, Literal, TypeVar, cast
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
@@ -22,11 +22,17 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.json_schema import SkipJsonSchema
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import ClientDisconnect
+
+from talli_backend.application.annual_notifications import AnnualNotificationIntake
+from talli_backend.modules.billing.public import AnnualNotificationRejected, AnnualNotificationUnavailable
 
 from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAdapter
+from talli_backend.adapters.annual_billing_runtime import compose_annual_billing_runtime
 from talli_backend.adapters.supabase_banking import compose_banking_application
 from talli_backend.adapters.simulation_billing import SimulationBillingProvider
 from talli_backend.adapters.supabase_billing import SupabaseBillingAdapter
+from talli_backend.adapters.supabase_annual_billing import SupabaseAnnualBillingAdapter
 from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
 from talli_backend.adapters.supabase_corporate_governance import (
     compose_corporate_governance_application,
@@ -65,6 +71,7 @@ from talli_backend.application.billing_session import (
     BillingSessionFactory,
 )
 from talli_backend.application.billing_workflow import BillingWorkflow
+from talli_backend.application.annual_billing import AnnualBillingSessionFactory, AnnualBillingWorkflow, AnnualCheckoutWorkflow, AnnualCheckoutPrerequisiteResolver, AnnualAgreementCleanupWorkflow, AnnualSupportWorkflow, AnnualRefundRecoveryWorkflow, AnnualSupportRefundRecoveryWorkflow, AnnualSupportCleanupRecoveryWorkflow
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceAuthenticationError,
     CorporateGovernanceSessionFactory,
@@ -174,6 +181,13 @@ from talli_backend.modules.company_access.public import (
     SupportCaseSnapshotResponse,
 )
 from talli_backend.modules.billing.public import (
+    AnnualSupportQuery, AnnualSupportCaseId, AnnualOperationStatus,
+    AnnualBillingSnapshotQuery, AnnualPurchaseHistoryQuery, AnnualPurchaseSummary, AnnualPurchaseId, AnnualPurchaseStatus, CancelAnnualRenewalCommand,
+    AnnualBillingProvider, AnnualCheckout, AnnualCheckoutQuery, StartAnnualCheckoutCommand,
+    AnnualCheckoutPreparationQuery,
+    AnnualRefundRecoveryQuery, AnnualRefundRequestId,
+    AnnualRefundRecoveryTargetsQuery, AnnualSupportRefundRecoveryQuery, AnnualSupportRefundRecoveryTargetsQuery,
+    AnnualSupportCleanupRecoveryQuery,
     ActivateSubscriptionCommand,
     BillingAccount,
     BillingEntitlementDecision,
@@ -465,6 +479,241 @@ class StrictTransportModel(TransportModel):
         populate_by_name=True,
         extra="forbid",
     )
+
+
+class AnnualBillingOfferWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    offer_version: str
+    terms_digest: str
+    terms_text: str
+    currency: Literal["NOK"]
+    gross_minor: int = Field(gt=0)
+    net_minor: int = Field(gt=0)
+    vat_minor: int = Field(ge=0)
+    vat_basis_points: int
+    paid_through: date
+    export_through: date
+    renewal_date: date
+    renewal_reminder_by: date
+    price_change_notice_by: date
+
+
+class AnnualOperationCountsWire(TransportModel):
+    created: int = Field(ge=0)
+    pending: int = Field(ge=0)
+    unknown: int = Field(ge=0)
+    confirmed: int = Field(ge=0)
+    failed: int = Field(ge=0)
+
+
+class AnnualPurchaseSummaryWire(TransportModel):
+    purchase_id: UUID
+    company_id: UUID
+    income_year: int
+    status: AnnualPurchaseStatus
+    accepted_at: datetime
+    offer_version: str
+    terms_digest: str
+    terms_text: str
+    currency: Literal["NOK"]
+    gross_minor: int = Field(gt=0)
+    net_minor: int = Field(gt=0)
+    vat_minor: int = Field(ge=0)
+    vat_basis_points: int
+    captured_minor: int = Field(ge=0)
+    refunded_minor: int = Field(ge=0)
+    captured_at: datetime | None
+    recurring_consent: bool
+    renewal_canceled_at: datetime | None
+    paid_through: date
+    export_through: date
+    renewal_date: date
+
+
+class AnnualPurchaseRefundSummaryWire(AnnualPurchaseSummaryWire):
+    recorded_refund_minor: int = Field(ge=0)
+    remaining_refund_minor: int = Field(ge=0)
+    refund_initiate_by: date | None
+    refund_request_count: int = Field(ge=0)
+    latest_refund_requested_at: datetime | None
+    refund_operations: AnnualOperationCountsWire
+
+
+class AnnualBillingSnapshotWire(TransportModel):
+    offer: AnnualBillingOfferWire
+    purchases: list[AnnualPurchaseSummaryWire]
+    next_purchase_id: UUID | None
+
+
+class AnnualBillingRefundSnapshotWire(TransportModel):
+    offer: AnnualBillingOfferWire
+    purchases: list[AnnualPurchaseRefundSummaryWire]
+    next_purchase_id: UUID | None
+
+
+class AnnualPurchaseHistoryWire(TransportModel):
+    company_id: UUID
+    purchases: list[AnnualPurchaseRefundSummaryWire]
+    next_purchase_id: UUID | None
+
+
+class AnnualSupportPurchaseWire(TransportModel):
+    purchase_id: UUID
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    status: AnnualPurchaseStatus
+    accepted_at: datetime
+    updated_at: datetime
+    currency: Literal["NOK"]
+    gross_minor: int = Field(gt=0)
+    captured_minor: int = Field(ge=0)
+    refunded_minor: int = Field(ge=0)
+    renewal_canceled_at: datetime | None
+    paid_through: date
+    export_through: date
+    recurring_consent: bool
+    refund_case_count: int = Field(ge=0)
+    recorded_refund_minor: int = Field(ge=0)
+    remaining_refund_minor: int = Field(ge=0)
+    refund_initiate_by: date | None
+    refund_request_count: int = Field(ge=0)
+    latest_refund_requested_at: datetime | None
+    refund_operations: AnnualOperationCountsWire
+    cleanup_status: AnnualOperationStatus | None
+
+
+class AnnualSupportPageWire(TransportModel):
+    company_id: UUID
+    support_case_id: UUID
+    purchases: list[AnnualSupportPurchaseWire]
+    next_purchase_id: UUID | None
+
+
+class AnnualCheckoutCommandWire(StrictTransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    offer_version: str = Field(min_length=1, max_length=100)
+    terms_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    purchase_accepted: bool = Field(strict=True)
+    recurring_consent: bool = Field(strict=True)
+    consent_version: str = Field(min_length=1, max_length=100)
+
+
+class AnnualCheckoutObservationCommandWire(StrictTransportModel):
+    company_id: UUID
+    purchase_id: UUID
+
+
+class AnnualCheckoutWire(TransportModel):
+    purchase_id: UUID
+    company_id: UUID
+    income_year: int
+    status: AnnualPurchaseStatus
+    offer: AnnualBillingOfferWire
+    captured_minor: int = Field(ge=0)
+    refunded_minor: int = Field(ge=0)
+    checkout_url: str | None
+
+
+class AnnualCheckoutPreparationWire(TransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    state: Literal["available", "existing"]
+    offer: AnnualBillingOfferWire | None
+    consent_version: str | None
+    purchase_id: UUID | None
+
+
+class AnnualCheckoutRequestResolutionWire(TransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    state: Literal["existing", "withdrawn"]
+    purchase_id: UUID | None
+    withdrawal_id: UUID | None
+    withdrawn_at: datetime | None
+
+
+class AnnualRefundRecoveryCommandWire(StrictTransportModel):
+    company_id: UUID
+    purchase_id: UUID
+    refund_request_id: UUID
+
+
+class AnnualRefundRecoveryWire(TransportModel):
+    company_id: UUID
+    purchase_id: UUID
+    refund_request_id: UUID
+    income_year: int
+    status: Literal["pending", "unknown", "confirmed", "failed"]
+
+
+class AnnualRefundRecoveryTargetWire(TransportModel):
+    refund_request_id: UUID
+    requested_at: datetime
+    status: AnnualOperationStatus
+
+
+class AnnualRefundRecoveryTargetPageWire(TransportModel):
+    company_id: UUID
+    purchase_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    targets: list[AnnualRefundRecoveryTargetWire]
+    next_refund_request_id: UUID | None
+
+
+class AnnualSupportRefundRecoveryCommandWire(AnnualRefundRecoveryCommandWire):
+    support_case_id: UUID
+
+
+class AnnualSupportRefundRecoveryWire(AnnualRefundRecoveryWire):
+    support_case_id: UUID
+
+
+class AnnualSupportRefundRecoveryTargetPageWire(AnnualRefundRecoveryTargetPageWire):
+    support_case_id: UUID
+
+
+class AnnualSupportCleanupRecoveryCommandWire(StrictTransportModel):
+    company_id: UUID
+    purchase_id: UUID
+    support_case_id: UUID
+
+
+class AnnualSupportCleanupRecoveryWire(TransportModel):
+    company_id: UUID
+    purchase_id: UUID
+    support_case_id: UUID
+    operation_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    status: Literal["pending", "unknown", "confirmed"]
+
+
+class AnnualRenewalCancellationCommandWire(StrictTransportModel):
+    company_id: UUID
+    purchase_id: UUID
+
+
+class AnnualAgreementCleanupCommandWire(StrictTransportModel):
+    company_id: UUID
+    purchase_id: UUID
+
+
+class AnnualAgreementCleanupWire(TransportModel):
+    company_id: UUID
+    purchase_id: UUID
+    status: Literal["deferred", "pending", "unknown", "confirmed"]
+
+
+class AnnualRenewalCancellationWire(TransportModel):
+    cancellation_id: UUID
+    purchase_id: UUID
+    company_id: UUID
+    income_year: int
+    requested_at: datetime
+    effective_at: datetime
+    paid_through: date
+    export_through: date
 
 
 class BillingConfigureWire(StrictTransportModel):
@@ -2990,6 +3239,11 @@ def _document_backup_wire(value: DocumentBackupObject) -> DocumentBackupObjectWi
     )
 
 
+class AnnualNotificationAcknowledgementWire(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["received"]
+
+
 class ApiProblem(Exception):
     def __init__(self, *, status: int, code: str, title: str, detail: str) -> None:
         self.status = status
@@ -3012,6 +3266,8 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         request.state.request_id = _request_id(request)
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
+        if request.url.path.startswith("/api/v1/billing/annual/"):
+            response.headers["Cache-Control"] = "no-store"
         return response
 
 
@@ -3053,10 +3309,20 @@ def create_app(
     banking_providers: Mapping[str, BankDataProvider] | None = None,
     billing_session_factory: BillingSessionFactory | None = None,
     billing_payment_provider: BillingPaymentProvider | None = None,
+    annual_billing_session_factory: AnnualBillingSessionFactory | None = None,
+    annual_billing_provider: AnnualBillingProvider | None = None,
+    annual_checkout_prerequisites: AnnualCheckoutPrerequisiteResolver | None = None,
+    annual_notification_intake: AnnualNotificationIntake | None = None,
     marketing_measurement_gateway: MarketingMeasurementGateway | None = None,
     marketing_measurement_internal_key: str | None = None,
     validation_observer: PassiveValidationObserver | None = None,
 ) -> FastAPI:
+    # Explicit test/application dependencies form their own composition. Avoid
+    # mixing an injected provider or intake with an ambient merchant account.
+    if annual_billing_provider is None and annual_notification_intake is None:
+        annual_runtime = compose_annual_billing_runtime()
+        annual_billing_provider = annual_runtime.provider
+        annual_notification_intake = annual_runtime.notification_intake
     application = FastAPI(
         title="Talli API",
         summary="Talli web-to-backend production boundary",
@@ -3094,6 +3360,22 @@ def create_app(
         if billing_session_factory is not None
         else SupabaseBillingAdapter.from_environment()
     )
+    annual_billing_sessions = annual_billing_session_factory or SupabaseAnnualBillingAdapter.from_environment()
+
+    async def annual_billing_workflow(credentials: HTTPAuthorizationCredentials | None) -> AnnualBillingWorkflow:
+        return AnnualBillingWorkflow(await annual_billing_sessions.session(bearer_token(credentials)))
+
+    async def annual_checkout_workflow(credentials: HTTPAuthorizationCredentials | None) -> AnnualCheckoutWorkflow:
+        return AnnualCheckoutWorkflow(
+            await annual_billing_sessions.session(bearer_token(credentials)),
+            annual_billing_provider, annual_checkout_prerequisites,
+        )
+
+    async def annual_cleanup_workflow(credentials: HTTPAuthorizationCredentials | None) -> AnnualAgreementCleanupWorkflow:
+        return AnnualAgreementCleanupWorkflow(
+            await annual_billing_sessions.session(bearer_token(credentials)), annual_billing_provider,
+        )
+
     billing_provider = billing_payment_provider or SimulationBillingProvider()
 
     async def billing_workflow(
@@ -3440,11 +3722,13 @@ def create_app(
                 BillingErrorCode.STEP_UP_REQUIRED: "Ny tofaktorbekreftelse kreves.",
                 BillingErrorCode.IDEMPOTENCY_KEY_REUSED: "Operasjonsnøkkelen er allerede brukt med andre data.",
                 BillingErrorCode.IDEMPOTENCY_IN_PROGRESS: "Faktureringsoperasjonen behandles allerede.",
+                BillingErrorCode.CHECKOUT_REQUEST_WITHDRAWN: "Den tidligere kjøpsforespørselen er trukket tilbake. Du kan gjennomgå et nytt kjøp.",
                 BillingErrorCode.SUBSCRIPTION_REQUIRED: "Aktivt abonnement kreves før produksjonsinnsending.",
                 BillingErrorCode.FILING_NOT_READY: "Innsendingskontrollen må være klar før innsendingspakken kan betales.",
                 BillingErrorCode.FILING_PACKAGE_REQUIRED: "Innsendingspakken må betales før produksjonsinnsending.",
                 BillingErrorCode.UNSUPPORTED_CASE: "Saken er utenfor Talli-støtte. Ikke ta betalt for innsendingspakken.",
                 BillingErrorCode.REFUND_NOT_ALLOWED: "Kun en støttet, betalt innsendingspakke kan refunderes.",
+                BillingErrorCode.LEGACY_ACQUISITION_RETIRED: "Den tidligere prismodellen er avsluttet. Se årsabonnementet for foretaket.",
                 BillingErrorCode.PROVIDER_DISABLED: "Betalingsleverandøren er deaktivert.",
                 BillingErrorCode.PROVIDER_OUTCOME_UNKNOWN: "Betalingsutfallet er ukjent og må avstemmes.",
                 BillingErrorCode.DEPENDENCY_UNAVAILABLE: "Fakturering er midlertidig utilgjengelig.",
@@ -8959,6 +9243,513 @@ def create_app(
             "idempotency_key": IdempotencyKey(key),
         }
 
+    def annual_offer_wire(offer) -> AnnualBillingOfferWire:
+        return AnnualBillingOfferWire(
+            company_id=UUID(str(offer.company_id)), income_year=offer.income_year.value,
+            **{name: getattr(offer, name) for name in ("offer_version", "terms_digest", "terms_text", "currency",
+                "gross_minor", "net_minor", "vat_minor", "vat_basis_points", "paid_through", "export_through",
+                "renewal_date", "renewal_reminder_by", "price_change_notice_by")},
+        )
+
+    def annual_checkout_wire(value: AnnualCheckout) -> AnnualCheckoutWire:
+        offer = value.offer
+        observation = value.observation
+        return AnnualCheckoutWire(
+            purchase_id=UUID(str(value.purchase_id)), company_id=UUID(str(offer.company_id)),
+            income_year=offer.income_year.value, status=value.status,
+            offer=annual_offer_wire(offer),
+            captured_minor=observation.captured_minor if observation else 0,
+            refunded_minor=observation.refunded_minor if observation else 0,
+            checkout_url=observation.checkout_url if observation and value.status is AnnualPurchaseStatus.PENDING else None,
+        )
+
+    @application.get(
+        "/api/v1/billing/annual/checkout-preparation",
+        operation_id="billingPrepareAnnualCheckout", response_model=AnnualCheckoutPreparationWire,
+        responses={200: {"description": "Read-only transient checkout availability or existing purchase; not a reservation."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def prepare_annual_checkout(
+        response: Response, company_id: UUID, income_year: int = Query(ge=2000, le=2100),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualCheckoutPreparationWire:
+        async def execute():
+            workflow = await annual_checkout_workflow(credentials)
+            result = await workflow.prepare_checkout(AnnualCheckoutPreparationQuery(
+                CompanyId(str(company_id)), IncomeYear(income_year), workflow.actor_id,
+            ))
+            response.headers["Cache-Control"] = "no-store"
+            return AnnualCheckoutPreparationWire(
+                company_id=UUID(str(result.company_id)), income_year=result.income_year.value,
+                state="existing" if result.existing_purchase else "available",
+                offer=annual_offer_wire(result.offer) if result.offer else None,
+                consent_version=result.consent_version,
+                purchase_id=UUID(str(result.existing_purchase.purchase_id)) if result.existing_purchase else None,
+            )
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/annual/checkouts",
+        operation_id="billingStartAnnualCheckout", response_model=AnnualCheckoutWire,
+        responses={200: {"description": "Stored annual checkout; only confirmed full capture is paid."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def start_annual_checkout(
+        request: Request, response: Response, command: AnnualCheckoutCommandWire,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=200)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualCheckoutWire:
+        async def execute():
+            workflow = await annual_checkout_workflow(credentials)
+            result = await workflow.start_checkout(billing_input(lambda: StartAnnualCheckoutCommand(
+                company_id=CompanyId(str(command.company_id)), income_year=IncomeYear(command.income_year),
+                offer_version=command.offer_version, terms_digest=command.terms_digest,
+                purchase_accepted=command.purchase_accepted, recurring_consent=command.recurring_consent,
+                consent_version=command.consent_version,
+                **billing_metadata(workflow, request, idempotency_key),
+            )))
+            response.headers["Cache-Control"] = "no-store"
+            return annual_checkout_wire(result)
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/annual/checkout-withdrawals",
+        operation_id="billingWithdrawAnnualCheckoutRequest", response_model=AnnualCheckoutRequestResolutionWire,
+        responses={200: {"description": "Original purchase reference or committed withdrawal; no provider effect."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def withdraw_annual_checkout_request(
+        request: Request, response: Response, command: AnnualCheckoutCommandWire,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=200)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualCheckoutRequestResolutionWire:
+        async def execute():
+            workflow = await annual_checkout_workflow(credentials)
+            result = await workflow.withdraw_checkout_request(billing_input(lambda: StartAnnualCheckoutCommand(
+                company_id=CompanyId(str(command.company_id)), income_year=IncomeYear(command.income_year),
+                offer_version=command.offer_version, terms_digest=command.terms_digest,
+                purchase_accepted=command.purchase_accepted, recurring_consent=command.recurring_consent,
+                consent_version=command.consent_version,
+                **billing_metadata(workflow, request, idempotency_key),
+            )))
+            response.headers["Cache-Control"] = "no-store"
+            return AnnualCheckoutRequestResolutionWire(
+                company_id=UUID(str(result.company_id)), income_year=result.income_year.value,
+                state="existing" if result.purchase_id is not None else "withdrawn",
+                purchase_id=UUID(str(result.purchase_id)) if result.purchase_id else None,
+                withdrawal_id=UUID(str(result.withdrawal_id)) if result.withdrawal_id else None,
+                withdrawn_at=result.withdrawn_at.value if result.withdrawn_at else None,
+            )
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/annual/provider-notifications",
+        operation_id="billingReceiveAnnualProviderNotification",
+        response_model=AnnualNotificationAcknowledgementWire,
+        responses={200: {"description": "Authenticated delivery receipt committed; no payment or refund confirmation."} | billing_success,
+                   **{status: {"description": description, "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+                               "content": {"application/problem+json": {"schema": ProblemDetails.model_json_schema(by_alias=True)}}}
+                      for status, description in ((400, "Invalid delivery"), (401, "Authentication rejected"),
+                                                  (408, "Delivery timed out"), (413, "Delivery too large"),
+                                                  (503, "Receipt unavailable; retry delivery"))}},
+        tags=["billing"],
+        openapi_extra={
+            "parameters": [REQUEST_ID_PARAMETER],
+            "requestBody": {"required": True, "description": "Exact signed JSON bytes, at most 64 KiB; reserialization invalidates authentication.",
+                            "content": {"application/json": {"schema": {"type": "object", "additionalProperties": True}}}},
+        },
+    )
+    async def receive_annual_provider_notification(
+        request: Request,
+        _signature: str | None = Depends(APIKeyHeader(
+            name="Authorization", scheme_name="annualNotificationHmac", auto_error=False,
+            description="Provider HMAC over the exact body, signed date and configured callback target; customer bearer tokens are not accepted.",
+        )),
+    ) -> AnnualNotificationAcknowledgementWire:
+        # Only the explicitly composed intake accepts authenticated provider deliveries.
+        if annual_notification_intake is None:
+            raise ApiProblem(status=503, code="ANNUAL_NOTIFICATION_UNAVAILABLE", title="Delivery unavailable", detail="The receipt service is unavailable.")
+        try:
+            headers: dict[str, str] = {}
+            for key, value in request.scope["headers"]:
+                name = key.decode("latin-1").lower()
+                if name in headers:
+                    raise AnnualNotificationRejected()
+                headers[name] = value.decode("latin-1")
+            body = bytearray()
+            async with asyncio.timeout(2):
+                async for chunk in request.stream():
+                    if len(body) + len(chunk) > 65536:
+                        raise ApiProblem(status=413, code="ANNUAL_NOTIFICATION_TOO_LARGE", title="Delivery too large", detail="The delivery exceeds the receipt limit.")
+                    body.extend(chunk)
+            await annual_notification_intake.receive(bytes(body), headers, at=datetime.now(UTC))
+        except AnnualNotificationRejected:
+            raise ApiProblem(status=401, code="ANNUAL_NOTIFICATION_REJECTED", title="Delivery rejected", detail="The delivery could not be authenticated.") from None
+        except AnnualNotificationUnavailable:
+            raise ApiProblem(status=503, code="ANNUAL_NOTIFICATION_UNAVAILABLE", title="Delivery unavailable", detail="The receipt could not be confirmed. Retry the delivery.") from None
+        except TimeoutError:
+            raise ApiProblem(status=408, code="ANNUAL_NOTIFICATION_TIMEOUT", title="Delivery timed out", detail="Retry the complete delivery.") from None
+        except ClientDisconnect:
+            raise ApiProblem(status=400, code="ANNUAL_NOTIFICATION_INCOMPLETE", title="Incomplete delivery", detail="Retry the complete delivery.") from None
+        return AnnualNotificationAcknowledgementWire(status="received")
+
+    @application.post(
+        "/api/v1/billing/annual/checkout-observations",
+        operation_id="billingObserveAnnualCheckout", response_model=AnnualCheckoutWire,
+        responses={200: {"description": "Reconciles the original stored intent; never creates another agreement or charge."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def observe_annual_checkout(
+        response: Response, command: AnnualCheckoutObservationCommandWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualCheckoutWire:
+        async def execute():
+            workflow = await annual_checkout_workflow(credentials)
+            result = await workflow.observe_checkout(AnnualCheckoutQuery(
+                company_id=CompanyId(str(command.company_id)), purchase_id=AnnualPurchaseId(str(command.purchase_id)), actor_id=workflow.actor_id,
+            ))
+            response.headers["Cache-Control"] = "no-store"
+            return annual_checkout_wire(result)
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/annual/agreement-cleanups",
+        operation_id="billingCleanupAnnualAgreement", response_model=AnnualAgreementCleanupWire,
+        responses={200: {"description": "Recover a recorded renewal stop; deferred or unknown is not confirmation."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def cleanup_annual_agreement(
+        response: Response, command: AnnualAgreementCleanupCommandWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualAgreementCleanupWire:
+        async def execute():
+            workflow = await annual_cleanup_workflow(credentials)
+            result = await workflow.cleanup(AnnualCheckoutQuery(
+                company_id=CompanyId(str(command.company_id)), purchase_id=AnnualPurchaseId(str(command.purchase_id)),
+                actor_id=workflow.actor_id,
+            ))
+            response.headers["Cache-Control"] = "no-store"
+            return AnnualAgreementCleanupWire(
+                company_id=command.company_id, purchase_id=command.purchase_id,
+                status="deferred" if result is None else result.observation.status.value if result.observation else "pending",
+            )
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/annual/refund-recoveries",
+        operation_id="billingRecoverAnnualRefund", response_model=AnnualRefundRecoveryWire,
+        responses={200: {"description": "Original refund operation status; confirmation does not mean all purchase liability is refunded."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def recover_annual_refund(
+        response: Response, command: AnnualRefundRecoveryCommandWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualRefundRecoveryWire:
+        async def execute():
+            workflow = AnnualRefundRecoveryWorkflow(
+                await annual_billing_sessions.session(bearer_token(credentials)), annual_billing_provider,
+            )
+            result = await workflow.recover_refund(AnnualRefundRecoveryQuery(
+                company_id=CompanyId(str(command.company_id)), purchase_id=AnnualPurchaseId(str(command.purchase_id)),
+                refund_request_id=AnnualRefundRequestId(str(command.refund_request_id)), actor_id=workflow.actor_id,
+            ))
+            resolution = result.resolution
+            return AnnualRefundRecoveryWire(
+                company_id=UUID(str(resolution.request.company_id)),
+                purchase_id=UUID(str(resolution.request.purchase_id)),
+                refund_request_id=UUID(str(result.refund_request_id)), income_year=resolution.facts.income_year.value,
+                status=resolution.operation.observation.status.value,
+            )
+
+        response.headers["Cache-Control"] = "no-store"
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/annual/support/refund-recoveries",
+        operation_id="billingRecoverAnnualSupportRefund", response_model=AnnualSupportRefundRecoveryWire,
+        responses={200: {"description": "Reconcile a recorded refund under an opened billing case; confirmation applies to that operation only."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def recover_annual_support_refund(
+        response: Response, command: AnnualSupportRefundRecoveryCommandWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualSupportRefundRecoveryWire:
+        async def execute():
+            workflow = AnnualSupportRefundRecoveryWorkflow(
+                await annual_billing_sessions.session(bearer_token(credentials)), annual_billing_provider,
+            )
+            result = await workflow.recover_refund(AnnualSupportRefundRecoveryQuery(
+                company_id=CompanyId(str(command.company_id)), purchase_id=AnnualPurchaseId(str(command.purchase_id)),
+                refund_request_id=AnnualRefundRequestId(str(command.refund_request_id)),
+                support_case_id=AnnualSupportCaseId(str(command.support_case_id)), actor_id=workflow.actor_id,
+            ))
+            resolution = result.resolution
+            return AnnualSupportRefundRecoveryWire(
+                company_id=UUID(str(resolution.request.company_id)),
+                purchase_id=UUID(str(resolution.request.purchase_id)),
+                refund_request_id=UUID(str(result.refund_request_id)), income_year=resolution.facts.income_year.value,
+                support_case_id=command.support_case_id, status=resolution.operation.observation.status.value,
+            )
+
+        response.headers["Cache-Control"] = "no-store"
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/annual/support/agreement-cleanup-recoveries",
+        operation_id="billingRecoverAnnualSupportCleanup", response_model=AnnualSupportCleanupRecoveryWire,
+        responses={200: {"description": "Observe the one recorded agreement stop under an opened billing case; no new cleanup or provider execution."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def recover_annual_support_cleanup(
+        response: Response, command: AnnualSupportCleanupRecoveryCommandWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualSupportCleanupRecoveryWire:
+        async def execute():
+            workflow = AnnualSupportCleanupRecoveryWorkflow(
+                await annual_billing_sessions.session(bearer_token(credentials)), annual_billing_provider,
+            )
+            result = await workflow.recover_cleanup(AnnualSupportCleanupRecoveryQuery(
+                company_id=CompanyId(str(command.company_id)), purchase_id=AnnualPurchaseId(str(command.purchase_id)),
+                support_case_id=AnnualSupportCaseId(str(command.support_case_id)), actor_id=workflow.actor_id,
+            ))
+            return AnnualSupportCleanupRecoveryWire(
+                company_id=UUID(str(result.intent.company_id)), purchase_id=UUID(str(result.purchase_id)),
+                support_case_id=command.support_case_id, operation_id=UUID(str(result.intent.operation_id)),
+                income_year=result.intent.income_year.value, status=result.observation.status.value,
+            )
+
+        response.headers["Cache-Control"] = "no-store"
+        return await billing_call(execute)
+
+    def annual_purchase_refund_wire(value: AnnualPurchaseSummary) -> AnnualPurchaseRefundSummaryWire:
+        return AnnualPurchaseRefundSummaryWire(
+            purchase_id=UUID(str(value.purchase_id)), company_id=UUID(str(value.company_id)),
+            income_year=value.income_year.value, accepted_at=value.accepted_at.value,
+            captured_at=value.captured_at.value if value.captured_at else None,
+            renewal_canceled_at=value.renewal_canceled_at.value if value.renewal_canceled_at else None,
+            latest_refund_requested_at=value.latest_refund_requested_at.value if value.latest_refund_requested_at else None,
+            refund_operations=AnnualOperationCountsWire(**{
+                name: getattr(value.refund_operations,name) for name in ("created","pending","unknown","confirmed","failed")}),
+            **{name: getattr(value,name) for name in ("status","offer_version","terms_digest","terms_text",
+                "currency","gross_minor","net_minor","vat_minor","vat_basis_points","captured_minor",
+                "refunded_minor","recurring_consent","paid_through","export_through","renewal_date",
+                "recorded_refund_minor","remaining_refund_minor","refund_initiate_by","refund_request_count")},
+        )
+
+    async def annual_billing_snapshot_response(
+        response: Response, company_id: UUID, income_year: int,
+        before_purchase_id: UUID | None, credentials: HTTPAuthorizationCredentials | None,
+    ) -> AnnualBillingRefundSnapshotWire:
+        async def execute():
+            workflow = await annual_billing_workflow(credentials)
+            result = await workflow.snapshot(AnnualBillingSnapshotQuery(
+                CompanyId(str(company_id)), IncomeYear(income_year), workflow.actor_id,
+                AnnualPurchaseId(str(before_purchase_id)) if before_purchase_id else None,
+            ))
+            offer = result.offer
+            response.headers["Cache-Control"] = "no-store"
+            return AnnualBillingRefundSnapshotWire(
+                offer=AnnualBillingOfferWire(
+                    company_id=UUID(str(offer.company_id)), income_year=offer.income_year.value,
+                    **{name: getattr(offer,name) for name in ("offer_version","terms_digest","terms_text","currency",
+                        "gross_minor","net_minor","vat_minor","vat_basis_points","paid_through","export_through",
+                        "renewal_date","renewal_reminder_by","price_change_notice_by")},
+                ),
+                purchases=[annual_purchase_refund_wire(value) for value in result.purchases.purchases],
+                next_purchase_id=UUID(str(result.purchases.next_purchase_id)) if result.purchases.next_purchase_id else None,
+            )
+        return await billing_call(execute)
+
+    @application.get(
+        "/api/v1/billing/annual/snapshot",
+        operation_id="billingReadAnnualSnapshot", response_model=AnnualBillingSnapshotWire,
+        responses={200: {"description": "Stored annual billing facts and published offer; no charge authority."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def read_annual_billing_snapshot(
+        response: Response,
+        company_id: UUID = Query(alias="companyId"),
+        income_year: int = Query(alias="incomeYear", ge=2000, le=2100),
+        before_purchase_id: UUID | None = Query(default=None, alias="beforePurchaseId"),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualBillingSnapshotWire:
+        result = await annual_billing_snapshot_response(response, company_id, income_year, before_purchase_id, credentials)
+        # Preserve the predecessor response exactly: its generated clients reject
+        # extra fields. The expanded projection has a separate read contract.
+        return AnnualBillingSnapshotWire(
+            offer=result.offer, next_purchase_id=result.next_purchase_id,
+            purchases=[AnnualPurchaseSummaryWire(**value.model_dump(include=set(AnnualPurchaseSummaryWire.model_fields)))
+                       for value in result.purchases],
+        )
+
+    @application.get(
+        "/api/v1/billing/annual/refund-snapshot",
+        operation_id="billingReadAnnualRefundSnapshot", response_model=AnnualBillingRefundSnapshotWire,
+        responses={200: {"description": "Stored owner billing facts with recorded refund evidence, not new refund eligibility."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def read_annual_billing_refund_snapshot(
+        response: Response,
+        company_id: UUID = Query(alias="companyId"),
+        income_year: int = Query(alias="incomeYear", ge=2000, le=2100),
+        before_purchase_id: UUID | None = Query(default=None, alias="beforePurchaseId"),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualBillingRefundSnapshotWire:
+        return await annual_billing_snapshot_response(response, company_id, income_year, before_purchase_id, credentials)
+
+    @application.get(
+        "/api/v1/billing/annual/refund-recovery-targets",
+        operation_id="billingReadAnnualRefundRecoveryTargets", response_model=AnnualRefundRecoveryTargetPageWire,
+        responses={200: {"description": "Same-owner stored bound refund receipts for one purchase; no refund adjudication or provider action."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def read_annual_refund_recovery_targets(
+        response: Response,
+        company_id: UUID = Query(alias="companyId"),
+        purchase_id: UUID = Query(alias="purchaseId"),
+        before_refund_request_id: UUID | None = Query(default=None, alias="beforeRefundRequestId"),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualRefundRecoveryTargetPageWire:
+        async def execute():
+            workflow = await annual_billing_workflow(credentials)
+            page = await workflow.refund_recovery_targets(AnnualRefundRecoveryTargetsQuery(
+                CompanyId(str(company_id)), AnnualPurchaseId(str(purchase_id)), workflow.actor_id,
+                AnnualRefundRequestId(str(before_refund_request_id)) if before_refund_request_id else None,
+            ))
+            response.headers["Cache-Control"] = "no-store"
+            return AnnualRefundRecoveryTargetPageWire(
+                company_id=company_id, purchase_id=purchase_id, income_year=page.income_year.value,
+                targets=[AnnualRefundRecoveryTargetWire(
+                    refund_request_id=UUID(str(value.refund_request_id)),
+                    requested_at=value.requested_at.value, status=value.status,
+                ) for value in page.targets],
+                next_refund_request_id=UUID(str(page.next_refund_request_id)) if page.next_refund_request_id else None,
+            )
+        return await billing_call(execute)
+
+    @application.get(
+        "/api/v1/billing/annual/purchases",
+        operation_id="billingReadAnnualPurchaseHistory", response_model=AnnualPurchaseHistoryWire,
+        responses={200: {"description": "Stored owner purchase history across years, independent of current admission; no offer or charge authority."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def read_annual_purchase_history(
+        response: Response,
+        company_id: UUID = Query(alias="companyId"),
+        before_purchase_id: UUID | None = Query(default=None, alias="beforePurchaseId"),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualPurchaseHistoryWire:
+        async def execute():
+            workflow = await annual_billing_workflow(credentials)
+            page = await workflow.purchase_history(AnnualPurchaseHistoryQuery(
+                CompanyId(str(company_id)), workflow.actor_id,
+                AnnualPurchaseId(str(before_purchase_id)) if before_purchase_id else None,
+            ))
+            response.headers["Cache-Control"] = "no-store"
+            return AnnualPurchaseHistoryWire(
+                company_id=company_id, purchases=[annual_purchase_refund_wire(value) for value in page.purchases],
+                next_purchase_id=UUID(str(page.next_purchase_id)) if page.next_purchase_id else None,
+            )
+        return await billing_call(execute)
+
+    @application.get(
+        "/api/v1/billing/annual/support/refund-recovery-targets",
+        operation_id="billingReadAnnualSupportRefundRecoveryTargets", response_model=AnnualSupportRefundRecoveryTargetPageWire,
+        responses={200: {"description": "Stored bound refund receipts under an explicitly opened billing case; no new refund or provider action."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def read_annual_support_refund_recovery_targets(
+        response: Response,
+        company_id: UUID = Query(alias="companyId"),
+        purchase_id: UUID = Query(alias="purchaseId"),
+        support_case_id: UUID = Query(alias="supportCaseId"),
+        before_refund_request_id: UUID | None = Query(default=None, alias="beforeRefundRequestId"),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualSupportRefundRecoveryTargetPageWire:
+        async def execute():
+            workflow = AnnualSupportWorkflow(await annual_billing_sessions.session(bearer_token(credentials)))
+            page = await workflow.refund_recovery_targets(AnnualSupportRefundRecoveryTargetsQuery(
+                company_id=CompanyId(str(company_id)), purchase_id=AnnualPurchaseId(str(purchase_id)),
+                support_case_id=AnnualSupportCaseId(str(support_case_id)), actor_id=workflow.actor_id,
+                before_refund_request_id=AnnualRefundRequestId(str(before_refund_request_id)) if before_refund_request_id else None,
+            ))
+            return AnnualSupportRefundRecoveryTargetPageWire(
+                company_id=company_id, purchase_id=purchase_id, support_case_id=support_case_id,
+                income_year=page.income_year.value,
+                targets=[AnnualRefundRecoveryTargetWire(
+                    refund_request_id=UUID(str(value.refund_request_id)),
+                    requested_at=value.requested_at.value, status=value.status,
+                ) for value in page.targets],
+                next_refund_request_id=UUID(str(page.next_refund_request_id)) if page.next_refund_request_id else None,
+            )
+
+        response.headers["Cache-Control"] = "no-store"
+        return await billing_call(execute)
+
+    @application.get(
+        "/api/v1/billing/annual/support/purchases",
+        operation_id="billingReadAnnualSupportPurchases", response_model=AnnualSupportPageWire,
+        responses={200: {"description": "Recorded annual evidence for the current opened admin billing support case."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def read_annual_support_purchases(
+        response: Response,
+        company_id: UUID = Query(alias="companyId"),
+        support_case_id: UUID = Query(alias="supportCaseId"),
+        before_purchase_id: UUID | None = Query(default=None, alias="beforePurchaseId"),
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualSupportPageWire:
+        async def execute():
+            workflow = AnnualSupportWorkflow(await annual_billing_sessions.session(bearer_token(credentials)))
+            page = await workflow.purchases(AnnualSupportQuery(
+                CompanyId(str(company_id)), AnnualSupportCaseId(str(support_case_id)), workflow.actor_id,
+                AnnualPurchaseId(str(before_purchase_id)) if before_purchase_id else None,
+            ))
+            response.headers["Cache-Control"] = "no-store"
+            return AnnualSupportPageWire(
+                company_id=company_id, support_case_id=support_case_id,
+                purchases=[AnnualSupportPurchaseWire(
+                    purchase_id=UUID(str(value.purchase_id)), company_id=UUID(str(value.company_id)),
+                    income_year=value.income_year.value, accepted_at=value.accepted_at.value,
+                    updated_at=value.updated_at.value,
+                    renewal_canceled_at=value.renewal_canceled_at.value if value.renewal_canceled_at else None,
+                    latest_refund_requested_at=value.latest_refund_requested_at.value if value.latest_refund_requested_at else None,
+                    refund_operations=AnnualOperationCountsWire(**{name: getattr(value.refund_operations,name)
+                        for name in ("created","pending","unknown","confirmed","failed")}),
+                    **{name: getattr(value,name) for name in ("status","currency","gross_minor","captured_minor",
+                        "refunded_minor","paid_through","export_through","recurring_consent","refund_case_count","recorded_refund_minor",
+                        "remaining_refund_minor","refund_initiate_by","refund_request_count","cleanup_status")},
+                ) for value in page.purchases],
+                next_purchase_id=UUID(str(page.next_purchase_id)) if page.next_purchase_id else None,
+            )
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/annual/renewal-cancellations",
+        operation_id="billingCancelAnnualRenewal", response_model=AnnualRenewalCancellationWire,
+        responses={200: {"description": "Durable local renewal cancellation; purchased access is preserved."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def cancel_annual_billing_renewal(
+        request: Request, response: Response, command: AnnualRenewalCancellationCommandWire,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=200)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualRenewalCancellationWire:
+        async def execute():
+            workflow = await annual_billing_workflow(credentials)
+            result = await workflow.cancel_renewal(billing_input(lambda: CancelAnnualRenewalCommand(
+                company_id=CompanyId(str(command.company_id)), purchase_id=AnnualPurchaseId(str(command.purchase_id)),
+                **billing_metadata(workflow, request, idempotency_key),
+            )))
+            response.headers["Cache-Control"] = "no-store"
+            return AnnualRenewalCancellationWire(
+                cancellation_id=UUID(str(result.cancellation_id)), purchase_id=UUID(str(result.purchase_id)),
+                company_id=UUID(str(result.company_id)), income_year=result.income_year.value,
+                requested_at=result.requested_at.value, effective_at=result.effective_at.value,
+                paid_through=result.paid_through, export_through=result.export_through,
+            )
+        return await billing_call(execute)
+
     @application.get(
         "/api/v1/billing/snapshot",
         operation_id="billingReadSnapshot",
@@ -9022,8 +9813,9 @@ def create_app(
     @application.post(
         "/api/v1/billing/accounts/configuration",
         operation_id="billingConfigureAccount",
+        deprecated=True,
         response_model=BillingAccountWire,
-        responses={200: {"description": "Billing account configured."} | billing_success}
+        responses={200: {"description": "Retired configuration endpoint; new configuration is rejected."} | billing_success}
         | billing_errors,
         tags=["billing"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
@@ -9049,8 +9841,9 @@ def create_app(
     @application.post(
         "/api/v1/billing/subscriptions/activation",
         operation_id="billingActivateSubscription",
+        deprecated=True,
         response_model=BillingPaymentEventWire,
-        responses={200: {"description": "Simulated subscription activation completed."} | billing_success} | billing_errors,
+        responses={200: {"description": "Historical subscription outcome recovered; new acquisition is retired."} | billing_success} | billing_errors,
         tags=["billing"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
@@ -9097,8 +9890,9 @@ def create_app(
     @application.post(
         "/api/v1/billing/filing-package/purchase",
         operation_id="billingPurchaseFilingPackage",
+        deprecated=True,
         response_model=BillingPaymentEventWire,
-        responses={200: {"description": "Eligible simulated filing-package purchase completed."} | billing_success} | billing_errors,
+        responses={200: {"description": "Historical filing-package outcome recovered; new acquisition is retired."} | billing_success} | billing_errors,
         tags=["billing"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )

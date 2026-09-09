@@ -272,6 +272,7 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
       "production_filing_submissions",
       "filing_approval_snapshots",
       "production_pilot_entitlements",
+      "system_user_requests",
       "company_deletion_reviews",
       "bank_suggestion_acceptances",
       "bank_transactions",

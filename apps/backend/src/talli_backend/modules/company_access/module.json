@@ -9,7 +9,7 @@
   "publicEntryPoint": "talli_backend.modules.company_access.public",
   "exports": {
     "commands": ["AcceptCompanyInvitationRequest", "AdministerCompanyMembershipRequest", "CompanyAgreementAcceptanceRequest", "CompanyInvitationCommandRequest", "CompanyOnboardingRequest", "CompanyYearAdmissionRequest", "CompanyYearEligibilityRecheckRequest", "CreateCompanyInvitationRequest", "EligibilityDefinitiveRequest", "EligibilityPrecheckRequest", "FinalizeCompanyDeletionRequest", "GrantSupportAccessRequest", "InvitationTokenRequest", "OpenSupportCaseRequest", "RequestCompanyCancellationRequest", "ResumeCompanyCancellationRequest", "RevokeSupportAccessRequest", "ReviewCompanyDeletionRequest"],
-    "queries": ["CompanyAccessRecordResponse", "CompanyAccessService", "CompanyAgreementAcceptanceResponse", "CompanyCancellationListResponse", "CompanyContextResponse", "CompanyInvitationListResponse", "CompanyMembershipListResponse", "CompanyOnboardingResponse", "CompanyYearAdmissionResponse", "CompanyYearEligibilityStateResponse", "EligibilityDecisionResponse", "InvitationLookup", "InvitationSideEffectContinuationList", "InvitationSideEffectCompletion", "OperatorContextResponse", "SupportAccessGrantResponse", "SupportCaseOpeningResponse", "SupportCaseSnapshotResponse"],
+    "queries": ["CompanyAccessRecordResponse", "CompanyAccessService", "CompanyAgreementAcceptanceResponse", "CompanyCancellationListResponse", "CompanyContextResponse", "CompanyInvitationListResponse", "CompanyMembershipListResponse", "CompanyOnboardingResponse", "CompanyYearAdmissionResponse", "CompanyYearEligibilityStateResponse", "CompanyYearLegalEvidence", "CompanyYearPurchaseBasis", "EligibilityDecisionResponse", "InvitationLookup", "InvitationSideEffectContinuationList", "InvitationSideEffectCompletion", "OperatorContextResponse", "SupportAccessGrantResponse", "SupportCaseOpeningResponse", "SupportCaseSnapshotResponse"],
     "events": [],
     "errors": ["CompanyAccessError"],
     "identifiers": ["CompanyAccessGateway", "CompanyAccessRecord", "CompanyCancellation", "CompanyContext", "CompanyDeletionReview", "CompanyInvitation", "CompanyMembership", "CompanyRegistryGateway", "CompanyYearAdmissionGatewayCommand", "CompanyYearEligibilityRecheckGatewayCommand", "EligibilityAnswer", "EligibilityDecision", "EligibilityRecheckTrigger", "InvitationRole", "InvitationSideEffectContinuation", "MembershipState", "SupportAccessGrant", "SupportCaseOpening", "company_access_adapter", "company_registry_adapter"]
@@ -18,8 +18,8 @@
     "postgresSchemas": ["public"],
     "tables": ["public.companies", "public.company_cancellations", "public.company_deletion_reviews", "public.company_eligibility_assessments", "public.company_invitations", "public.company_memberships", "public.company_year_acceptances", "public.company_year_admissions", "public.customer_agreement_acceptances", "public.support_access_grants", "public.support_access_operation_receipts", "public.support_case_openings", "public.support_operators"],
     "storageBuckets": [],
-    "projections": [],
-    "migrations": "supabase/migrations/20260905003000_company_access_billing_owner_subject.sql"
+    "projections": ["CompanyYearPurchaseBasis"],
+    "migrations": "supabase/migrations/20260905080550_annual_billing_purchase_basis.sql"
   },
   "ports": [
     {
@@ -47,6 +47,7 @@
   ],
   "tests": {
     "contract": "apps/backend/tests/test_company_access.py",
+    "purchaseBasis": "apps/backend/tests/test_annual_purchase_basis_runtime.py",
     "eligibility": "apps/backend/tests/test_company_eligibility.py",
     "database": "tests/company_access_onboarding_database_runtime.test.mjs",
     "architecture": "tests/architecture_foundation.test.mjs"
