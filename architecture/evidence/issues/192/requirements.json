@@ -1356,6 +1356,18 @@
         "Authoritative filing readiness and incident/submission sources, versioned next-year admission, automatic billing runtime, actual designated MT evidence, remaining customer/operator acceptance and complete immutable release gates remain required.",
         "Source/order proposal is unapproved. The four-deletion architecture decision is separate and also unapproved."
       ]
+    },
+    "approvedInterimCheckpoint": {
+      "productCandidate": "12ae20a3d615981b7543ee441e91a6ca9384a59c",
+      "scope": "Owner-approved four-tuple retirement and interim/final source order, currently implementable billing/recovery, preserved unavailable acquisition/renewal and historical read/export.",
+      "reviews": "Independent Standards, Spec and whole-interim scoped pass; evidence-only R1 delta independently reviewed. Authorship overlaps and complementary review are disclosed in the report.",
+      "completeGates": "Two distinct linked immutable canonical 11/11 passes; committed JSON/transcripts verified against schema, exact producer and transcript hashes, canonical receipt digests and ordered ancestry.",
+      "gateEvidence": "architecture/evidence/issues/192/interim-gate-pair-2026-09-09.json",
+      "separateRegressionEvidence": "53 architecture tests passed; 12 harness tests passed; corrected owner browser and 15 cleanup cases passed. Canonical runs independently repeated the registered mandatory chains.",
+      "providerEvidence": "Existing 9 September actual MT checkpoint unchanged; original recurring capture/refund/STOP due10 September pending.",
+      "integration": "Pending protected PR207 merge and exact-main Release/nonproduction Preview. Pre-integration Preview build ready, hosted backend unavailable; no functional hosted acceptance claim.",
+      "sourceHandoff": "architecture/evidence/issues/192/final-source-handoff-map-2026-09-09.md",
+      "limits": "Interim gates only. #192 remains open, final A1-A8 criteria remain pending, #150 remains unclaimed until the integrated interim receipt, #194/#197 billing still require full192; release/production remains frozen."
     }
   },
   "externalEvidence": {
@@ -1400,7 +1412,7 @@
     "option": "B",
     "proposalRevision": "576be5ac874fded9eff1ac54eda8fd23ace8583c",
     "interim": {
-      "status": "pending",
+      "status": "gates-passed-protected-integration-pending",
       "issueRemainsOpen": true,
       "requires": [
         "currently-implementable-billing-complete",
@@ -1409,9 +1421,36 @@
         "protected-main-release-preview-merge",
         "exact-main-release-preview"
       ],
-      "completeGateReceipts": [],
+      "completeGateReceipts": [
+        {
+          "revision": "12ae20a3d615981b7543ee441e91a6ca9384a59c",
+          "previousPassingRevision": null,
+          "evidenceCommittedRevision": "f4576b589447f6848688be3513c36aea6d6b33ba",
+          "executor": "local-script",
+          "evidencePath": "architecture/evidence/customer-ready-gates/12ae20a3d615981b7543ee441e91a6ca9384a59c.json",
+          "evidenceDigest": "sha256:fe9445678f746d5946c02205b1904a216143688207fb1bfc98d2b9edd08e49ba",
+          "verdict": "pass",
+          "checkCount": 11,
+          "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+          "transcriptDigest": "sha256:f411144efe6f2a34f13f959372656b076b01d7089d38fdf0380ffbfbf251c01c"
+        },
+        {
+          "revision": "f4576b589447f6848688be3513c36aea6d6b33ba",
+          "previousPassingRevision": "12ae20a3d615981b7543ee441e91a6ca9384a59c",
+          "evidenceCommittedRevision": "4bfa5a8a0fc23e92f073b4822500dff75bf8b647",
+          "executor": "local-script",
+          "evidencePath": "architecture/evidence/customer-ready-gates/f4576b589447f6848688be3513c36aea6d6b33ba.json",
+          "evidenceDigest": "sha256:11476f7bce3b4cc99a06c9cd446a97fb4b75bf0a457b845048720f6e7c3c7c64",
+          "verdict": "pass",
+          "checkCount": 11,
+          "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+          "transcriptDigest": "sha256:b85ef0f2cb4aa38ab58834b90c766dbfbb9bb66ed6fd361d752889bf7325457f"
+        }
+      ],
       "integrationReceipt": null,
-      "authorizesNextIssue": "#150"
+      "authorizesNextIssue": "#150",
+      "gateVerificationPath": "architecture/evidence/issues/192/interim-gate-pair-2026-09-09.json",
+      "reviewPath": "architecture/evidence/issues/192/approved-interim-2026-09-09/independent-review.md"
     },
     "sourceOrder": [
       "#150",
