@@ -1,0 +1,161 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#150",
+  "source": "https://github.com/kristianelmer/Talli/issues/150",
+  "sourceCheckedAt": "2026-09-09T11:38:11.288649+00:00",
+  "status": "entry-baseline-verified-claim-ready",
+  "entryBlockers": [
+    {
+      "issue": "#137",
+      "requiredState": "CLOSED with protected integration",
+      "observedState": "CLOSED",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/137#issuecomment-5550228449"
+    },
+    {
+      "issue": "#192 interim",
+      "requiredState": "interim protected-integrated and verified; final issue stays open",
+      "observedState": "satisfied",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5600490534"
+    },
+    {
+      "name": "immutable entry baseline",
+      "revision": "b30312de11ad942479421def243e4a2252fbf166",
+      "command": "npm run gate:customer-ready",
+      "status": "pass",
+      "evidencePath": "architecture/evidence/customer-ready-gates/b30312de11ad942479421def243e4a2252fbf166.json",
+      "transcriptDigest": "sha256:d7b4572f0ff839cebb868253d26679729b76734302528b4eaf928ac5ada47556",
+      "checkCount": 11
+    }
+  ],
+  "decisionBoundary": {
+    "migrationOrderSource": "https://github.com/kristianelmer/Talli/issues/132#issuecomment-5083588592",
+    "routeSource": "https://github.com/kristianelmer/Talli/issues/165",
+    "scope": "Authority Connections only; #192 billing implementation remains paused. The exact two-coordinator RF compatibility relocation is approved, with RF ownership and filing/recovery behavior preserved.",
+    "authority": "No production provider activation, live filing, spending or production promotion.",
+    "relocationApproval": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5601323119",
+    "relocationScope": "architecture/evidence/issues/150/rf-credential-relocation-2026-09-09.md"
+  },
+  "criteria": [
+    {
+      "id": "GH-150-A1",
+      "requirement": "Owners can initiate and reconcile the supported System User connection flow through the web and backend.",
+      "status": "planned-not-implemented",
+      "plannedEvidencePaths": [
+        "apps/backend/src/talli_backend/modules/authority_connections/public.py",
+        "apps/backend/src/talli_backend/modules/authority_connections/service.py",
+        "apps/backend/tests/test_authority_connections_api.py",
+        "apps/web/features/authority-connections/transport.ts"
+      ],
+      "plannedCommands": [
+        "npm run test:authority-connections",
+        "npm run test:browser-system-user"
+      ],
+      "expectedResult": "Owner start/reconcile uses generated API, original connection identity and same supported/blocked Norwegian journey."
+    },
+    {
+      "id": "GH-150-A2",
+      "requirement": "Callback, token, company, scope, and relationship validation fail closed.",
+      "status": "planned-not-implemented",
+      "plannedEvidencePaths": [
+        "apps/backend/tests/test_authority_connections_provider.py",
+        "apps/backend/tests/test_authority_connections_api.py"
+      ],
+      "plannedCommands": [
+        "npm run test:authority-connections"
+      ],
+      "expectedResult": "Callback/token/company/scope/external reference mismatch rejected; no credential leaves backend; provider facts pinned before pass."
+    },
+    {
+      "id": "GH-150-A3",
+      "requirement": "Founder and operator authority operations retain MFA and redacted audit requirements.",
+      "status": "planned-not-implemented",
+      "plannedEvidencePaths": [
+        "apps/backend/tests/test_authority_connections_authorization.py",
+        "apps/backend/tests/test_supabase_authority_connections_runtime.py"
+      ],
+      "plannedCommands": [
+        "npm run test:authority-connections",
+        "npm run test:supabase:local"
+      ],
+      "expectedResult": "Current owner/operator/founder permission and fresh MFA rechecked; no cross-company data or credential leakage."
+    },
+    {
+      "id": "GH-150-A4",
+      "requirement": "Retry and ambiguous-outcome handling remain idempotent and observable.",
+      "status": "planned-not-implemented",
+      "plannedEvidencePaths": [
+        "apps/backend/tests/test_authority_connections_service.py",
+        "apps/backend/tests/test_supabase_authority_connections_runtime.py"
+      ],
+      "plannedCommands": [
+        "npm run test:authority-connections",
+        "npm run test:supabase:local"
+      ],
+      "expectedResult": "Persist original intent before external effect; duplicate/lost-response/unknown outcomes reconcile safely and remain observable."
+    },
+    {
+      "id": "GH-150-A5",
+      "requirement": "All authority connections use owned ports/adapters.",
+      "status": "planned-not-implemented",
+      "plannedEvidencePaths": [
+        "apps/backend/src/talli_backend/modules/authority_connections/module.json",
+        "architecture/backend-system.json",
+        "architecture/dependency-evidence.json"
+      ],
+      "plannedCommands": [
+        "npm run check:architecture",
+        "npm run test:authority-connections"
+      ],
+      "expectedResult": "Only public Authority Connections contracts and declared ports/adapters; foreign ownership preserved."
+    },
+    {
+      "id": "GH-150-A6",
+      "requirement": "Legacy TypeScript control-plane policy, credential paths, and active-stage compatibility code are removed.",
+      "status": "planned-not-implemented",
+      "plannedEvidencePaths": [
+        "architecture/compatibility.json",
+        "apps/web/app/actions.ts",
+        "apps/web/app/lib/maskinporten.ts",
+        "apps/web/app/lib/authority-operations.ts",
+        "apps/web/app/lib/system-user-flow.ts"
+      ],
+      "plannedCommands": [
+        "npm run check:architecture",
+        "npm run test:architecture",
+        "npm run test:supabase:local"
+      ],
+      "expectedResult": "Exact active legacy policy/credential/writer/facade paths removed after equivalent cutover; the two RF credential consumers relocate only within the approved exact scope."
+    },
+    {
+      "id": "GH-150-A7",
+      "requirement": "The complete `authority_connections` stage exit criteria from issue #132 pass before filing migration begins.",
+      "status": "planned-not-implemented",
+      "plannedEvidencePaths": [
+        "architecture/evidence/issues/150/requirements.json",
+        "architecture/evidence/customer-ready-gates",
+        "architecture/compatibility.json"
+      ],
+      "plannedCommands": [
+        "npm run gate:customer-ready",
+        "npm run gate:customer-ready -- --previous <first-passing-revision>"
+      ],
+      "expectedResult": "All #132 stage8 criteria, two immutable consecutive complete gates, rollback/recutover, protected and exact-main integration verified before #151."
+    }
+  ],
+  "completeGates": [],
+  "localValidation": [
+    {
+      "scope": "predecessor System User flow and presentation characterization",
+      "command": "node --test tests/system_user_flow.test.mjs tests/system_user_connections_page.test.mjs",
+      "result": "20 passed, 0 failed, 0 skipped"
+    },
+    {
+      "scope": "historical schema/server characterization, not current contracted RLS proof",
+      "command": "node --test tests/system_user_requests_schema.test.mjs",
+      "result": "11 passed, 0 failed, 0 skipped"
+    }
+  ],
+  "closeState": "OPEN; entry baseline verified. Implementation acceptance, rollback, two final complete gates and protected integration remain pending.",
+  "taskId": "01a08515-2cd8-7093-8a34-3b9b3d458840",
+  "branch": "codex/issue-150-authority-01a08515"
+}
