@@ -24,6 +24,8 @@ import {
   isLoopbackSupabaseUrl,
 } from "./support/supabase_fixture_safety.mjs";
 
+import { fixtureTableTransaction } from "./support/rf1086-fixture-access.mjs";
+
 loadDotEnv();
 
 const nextCli = createRequire(
@@ -793,30 +795,40 @@ async function seedAnnualLoop(admin, database, ids, onCompanyCreated) {
     )`,
     [companyId, ownerId, orgNumber],
   );
-  await assertNoError(
-    admin.from("opening_balance_setups").insert({
-      id: setupId,
-      company_id: companyId,
-      income_year: 2025,
-      bank_balance: 30000,
-      share_capital: 30000,
-      share_count: 100,
-      nominal_value: 300,
-      created_by: ownerId,
-    }),
-  );
-  await assertNoError(
-    admin.from("opening_shareholders").insert({
-      id: shareholderId,
-      setup_id: setupId,
-      company_id: companyId,
-      name: "Ola Nordmann",
-      shareholder_kind: "norwegian_person",
-      national_id: "01017012345",
-      share_count: 100,
-      created_by: ownerId,
-    }),
-  );
+  // Exact historical source projection for the declared RF canonical/Ledger
+  // overlap fixture. Each pair shares its supplied ID and transaction timestamp;
+  // application writes and the later simulation still use their real routes.
+  await fixtureTableTransaction(database, [
+    "shareholder_register_filing.opening_balance_setups",
+    "shareholder_register_filing.opening_shareholders",
+    "ledger.opening_bank_inputs",
+    "public.opening_balance_setups",
+    "public.opening_shareholders",
+  ], async () => {
+    await database.query(`insert into shareholder_register_filing.opening_balance_setups
+      (id,company_id,income_year,share_capital,share_count,nominal_value,created_by)
+      values($1,$2,2025,30000,100,300,$3)`, [setupId,companyId,ownerId]);
+    await database.query(`insert into ledger.opening_bank_inputs
+      (snapshot_id,company_id,income_year,bank_balance_nok,recorded_by,recorded_at)
+      values($1,$2,2025,30000,$3,now())`, [setupId,companyId,ownerId]);
+    await database.query(`insert into public.opening_balance_setups
+      (id,company_id,income_year,bank_balance,share_capital,share_count,nominal_value,created_by)
+      values($1,$2,2025,30000,30000,100,300,$3)`, [setupId,companyId,ownerId]);
+    await database.query(`insert into shareholder_register_filing.opening_shareholders
+      (id,setup_id,company_id,name,shareholder_kind,national_id,share_count,created_by)
+      values($1,$2,$3,'Ola Nordmann','norwegian_person','01017012345',100,$4)`,
+      [shareholderId,setupId,companyId,ownerId]);
+    await database.query(`insert into public.opening_shareholders
+      (id,setup_id,company_id,name,shareholder_kind,national_id,share_count,created_by)
+      values($1,$2,$3,'Ola Nordmann','norwegian_person','01017012345',100,$4)`,
+      [shareholderId,setupId,companyId,ownerId]);
+    assert.equal((await database.query(`select to_jsonb(p)=to_jsonb(r)||jsonb_build_object('bank_balance',b.bank_balance_nok) exact
+      from public.opening_balance_setups p join shareholder_register_filing.opening_balance_setups r using(id)
+      join ledger.opening_bank_inputs b on b.snapshot_id=r.id where p.id=$1`, [setupId])).rows[0].exact, true);
+    assert.equal((await database.query(`select count(*)::int count from public.opening_shareholders p
+      full join shareholder_register_filing.opening_shareholders r using(id) where coalesce(p.setup_id,r.setup_id)=$1
+      and to_jsonb(p) is distinct from to_jsonb(r)`, [setupId])).rows[0].count, 0);
+  });
   await database.query(
     String.raw`
       insert into ledger.entries (
@@ -876,24 +888,43 @@ async function seedAnnualLoop(admin, database, ids, onCompanyCreated) {
       updated_by: ownerId,
     }),
   );
-  // This is a synthetic accepted connection record for the exact supported
-  // validation fixture, not evidence of an actual Altinn connection or filing.
-  await database.query(`
-    insert into public.system_user_requests (
-      id, company_id, initiating_owner_user_id, obligation, external_ref,
-      status, preflight_verified_at, accepted_at
-    ) values ($1, $2, $3, 'aksjonaerregisteroppgaven', $4, 'accepted', now(), now())
-  `, [systemUserRequestId, companyId, ownerId,
-    createHash("sha256").update(`browser-system-user:${systemUserRequestId}`).digest("base64url")]);
+  // This is a synthetic accepted connection and historical preview, not
+  // evidence of an actual Altinn connection, provider approval or filing.
+  await fixtureTableTransaction(database, [
+    "authority_connections.system_user_requests",
+    "shareholder_register_filing.authority_permissions",
+    "shareholder_register_filing.filing_previews",
+    "public.authority_permissions",
+    "public.filing_previews",
+  ], async () => {
+    await database.query(`insert into authority_connections.system_user_requests
+      (id,company_id,initiating_owner_user_id,obligation,external_ref,status,preflight_verified_at,accepted_at)
+      values($1,$2,$3,'aksjonaerregisteroppgaven',$4,'accepted',now(),now())`,
+      [systemUserRequestId,companyId,ownerId,
+        createHash("sha256").update(`browser-system-user:${systemUserRequestId}`).digest("base64url")]);
+    const permission = (await database.query(`insert into shareholder_register_filing.authority_permissions
+      (company_id,obligation,submitter_user_id,confirmed_by,production_enabled)
+      values($1,'aksjonaerregisteroppgaven',$2,$2,true) returning id`, [companyId,ownerId])).rows[0];
+    await database.query(`insert into public.authority_permissions
+      select (jsonb_populate_record(null::public.authority_permissions,to_jsonb(r))).*
+      from shareholder_register_filing.authority_permissions r where r.id=$1`, [permission.id]);
+    await database.query(`insert into shareholder_register_filing.filing_previews
+      (id,company_id,setup_id,income_year,filing,status,issues,preview,hovedskjema_xml,underskjema_xml,source,created_by)
+      values($1,$2,$3,2025,'aksjonærregisteroppgaven','ready','[]',$4,$5,$6::jsonb,'browser_test',$7)`,
+      [previewId,companyId,setupId,"RF-1086 forhåndsvisning for Talli Browser Holding AS",
+        "<RF-1086><org>test</org></RF-1086>",
+        JSON.stringify({ [shareholderId]: "<RF-1086U><shareholder>test</shareholder></RF-1086U>" }),ownerId]);
+    await database.query(`insert into public.filing_previews
+      select (jsonb_populate_record(null::public.filing_previews,to_jsonb(r))).*
+      from shareholder_register_filing.filing_previews r where r.id=$1`, [previewId]);
+    for (const [table, id] of [["authority_permissions", permission.id], ["filing_previews", previewId]]) {
+      assert.equal((await database.query(`select to_jsonb(p)=to_jsonb(r) exact
+        from public.${table} p join shareholder_register_filing.${table} r using(id)
+        where p.id=$1`, [id])).rows[0].exact, true);
+    }
+  });
   await assertNoError(
     admin.from("authority_permissions").insert([
-      {
-        company_id: companyId,
-        obligation: "aksjonaerregisteroppgaven",
-        submitter_user_id: ownerId,
-        confirmed_by: ownerId,
-        production_enabled: true,
-      },
       {
         company_id: companyId,
         obligation: "skattemelding",
@@ -910,24 +941,7 @@ async function seedAnnualLoop(admin, database, ids, onCompanyCreated) {
       },
     ]),
   );
-  await assertNoError(
-    admin.from("filing_previews").insert({
-      id: previewId,
-      company_id: companyId,
-      setup_id: setupId,
-      income_year: 2025,
-      filing: "aksjonærregisteroppgaven",
-      status: "ready",
-      issues: [],
-      preview: "RF-1086 forhåndsvisning for Talli Browser Holding AS",
-      hovedskjema_xml: "<RF-1086><org>test</org></RF-1086>",
-      underskjema_xml: {
-        [shareholderId]: "<RF-1086U><shareholder>test</shareholder></RF-1086U>",
-      },
-      source: "browser_test",
-      created_by: ownerId,
-    }),
-  );
+
 }
 
 async function establishOwnerAal2(page, baseUrl) {
@@ -1082,7 +1096,7 @@ async function assertLedgerDatabaseBoundaries({ companyId, databaseUrl, ownerEma
       })],
     );
     await ledgerDatabase.query(
-      "select * from backend_system.list_opening_snapshots_legacy_v1(array[$1]::uuid[], null, 100, $2)",
+      "select * from backend_system.read_new_year_opening_snapshots_v1(array[$1]::uuid[], null, 100, $2)",
       [companyId, ownerId],
     );
     await ledgerDatabase.query(

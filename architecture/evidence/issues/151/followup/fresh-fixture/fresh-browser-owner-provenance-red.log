@@ -1,0 +1,30 @@
+✖ fresh RF basis binds every opening row to its existing owner without seeding filing success (2.801416ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 80.402166
+
+✖ failing tests:
+
+test at tests/shareholder_register_browser_fixture_safety.test.mjs:124:1
+✖ fresh RF basis binds every opening row to its existing owner without seeding filing success (2.801416ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /\(id,setup_id,company_id,name,shareholder_kind,org_number,share_count,created_by\)/u. Input:
+  
+  'insert into shareholder_register_filing.opening_shareholders\n' +
+    '      (id,setup_id,company_id,name,shareholder_kind,org_number,share_count)\n' +
+    "      values($1,$2,$3,'Synthetic Fixture Owner AS','norwegian_company','999999999',100)"
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding%20accounting/tests/shareholder_register_browser_fixture_safety.test.mjs:145:10)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: "insert into shareholder_register_filing.opening_shareholders\n      (id,setup_id,company_id,name,shareholder_kind,org_number,share_count)\n      values($1,$2,$3,'Synthetic Fixture Owner AS','norwegian_company','999999999',100)",
+    expected: /\(id,setup_id,company_id,name,shareholder_kind,org_number,share_count,created_by\)/u,
+    operator: 'match',
+    diff: 'simple'
+  }

@@ -1,0 +1,13 @@
+# Workspace AU overlap correction review
+
+Scoped source pass. C subsequently completed actual corrected rollback→workspace; its source and transcript hashes match this review.
+
+The prior source-only choreography missed an ordinary Billing dependency. C's actual shipped restoration failed with `authority_rf_resource_cutover_required`; its catalog inspection identified `public.manage_production_pilot_entitlement` as the remaining reader. The AU contract correctly refuses to drop a referenced public request view (`supabase/contract-migrations/20260909124659_authority_connections_contract.sql:8–16`). Billing's later contract removes that exact function (`supabase/contract-migrations/20260905013000_billing_contract.sql:58`).
+
+Root's correction changes only the workspace branch: it omits AU final contract and requires `authority_kind === "v"` together with the existing Ledger ordinary-view/setup and public-opening conditions. The final recutover path still runs the same AU/operator/RF150 expansions, AU contract, signoff contract, RF151 expansion/cutover and final RF contract, in the same order. Its prerequisite and final predicates still require contracted Ledger and removal of AU/public opening surfaces. Rollback dependency order and fail-before-later-SQL behavior are unchanged.
+
+The focused test now distinguishes workspace's exact file sequence and explicitly excludes AU/Ledger/RF final contracts, while the unchanged final-sequence tests still require them in recutover. The shell's explanatory comment records the same dependency; no lane or mandatory fresh-browser invocation is removed. Product AU guard and Billing expansion hashes exactly match the captured pre-correction bytes; no SQL/ACL/contract guard was weakened.
+
+This is an additive correction to the earlier source-only review, which remains historical. The actual failed restoration log is preserved and hashed; it receives no successful-restoration credit. Exact current source and failure-log hashes are in `/tmp/talli-151-workspace-au-overlap-corrective-review.json`.
+
+No repository edits or DB/provider/test calls by this reviewer. I authored the earlier runner proposal; independent assessment here covers root's correction against the captured pre-correction snapshot only. C executed the actual rollback→workspace rerun. The corrective receipt reports RF canonical_overlap, AU/Ledger public views, retained opening table/setup column, zero company/user rows and disabled runtime principals. This review independently matched all five captured source hashes and both transcript hashes in `/tmp/talli-151-workspace-restoration-corrected.json`. It did not rerun the database. Full lane, fresh journey, pending16 and stage exit remain unclaimed.

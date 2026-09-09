@@ -1,0 +1,13 @@
+
+> talli-repository@0.1.0 test:ledger-hosted-migration-authority
+> node --test tests/ledger_hosted_migration_authority.test.mjs
+
+✔ hosted non-super migrator rehearses contract, rollback, recutover, and failed authority cleanup (244.323917ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 309.158041

@@ -156,6 +156,8 @@ CREATE TRIGGER company_archive_track_opening_shareholders BEFORE INSERT OR DELET
 
 CREATE TRIGGER company_archive_track_opening_shareholders BEFORE INSERT OR DELETE OR UPDATE ON shareholder_register_filing.opening_shareholders FOR EACH ROW EXECUTE FUNCTION public.company_archive_track_source_write_v1('company', 'company_id');
 
+CREATE TRIGGER company_archive_track_opening_bank_inputs BEFORE INSERT OR DELETE OR UPDATE ON ledger.opening_bank_inputs FOR EACH ROW EXECUTE FUNCTION public.company_archive_track_source_write_v1('year', 'company_id');
+
 do $restore_archive_grant$ declare principal name:=current_user; begin
  if not (select had_execute from rf151_archive_grant) then
   execute 'set local role company_archive_projection_executor';

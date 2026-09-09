@@ -1,0 +1,54 @@
+{
+  "verifiedAt": "2026-09-09T21:52:11.406564+00:00",
+  "scope": "actual local generated FastAPI transport and DB fixtures; no providers; no final gate credit",
+  "results": {
+    "workspace": {
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0
+    },
+    "fixtureGuards": {
+      "passed": 16,
+      "skipped": 0,
+      "failed": 0
+    },
+    "standaloneCompanyJanitor": {
+      "passed": 2,
+      "skipped": 0,
+      "failed": 0
+    }
+  },
+  "sourceHashes": {
+    "tests/support/rf1086-fixture-access.mjs": "ac623515a4564af9e2fe9997d2b281fbec9dabc15b58f2e389b90ed808f8c542",
+    "tests/support/rf1086-workspace-api.mjs": "96c0428a7ad15a40558843f086fb39b32789a22a3a7bcce8dc96f0da320b3eec",
+    "tests/browser_authority_connections.mjs": "452dfb792bd81b6076a1da8b7d6c4fee70c29e5133e2bb4ec06cd4a3693049d4",
+    "tests/rf1086_feedback_schema.test.mjs": "9915622ba401ba978d89716b91e93fa674ce423b49ab56f00dc121cb0546af51",
+    "tests/rf1086_workspace_fixture_safety.test.mjs": "28450ab96828b54da45446e31275a11cae8e421ec697956439d66e270dae7668",
+    "tests/supabase_workspace.test.mjs": "19e2d629b2da34d498cc670c27726c363943b23b70c10fd089c069b19094d9bd",
+    "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql": "187f4210ab2df4b230ddfc631875eb6879216b8d8618b4d5b3ecd50764cac05b"
+  },
+  "logs": {
+    "/tmp/talli-151-workspace-overlap-run7.log": "15f5c443c18a96147f7db8c1ce5899a31978fd32d957ea6d1215b105cd755965",
+    "/tmp/talli-151-fixture-correction-guards-final.log": "09b87e9de7d3931d4eef2b3a2d9ba46edde84012bc780a3ee56a21b081f0cb4b",
+    "/tmp/talli-151-fixture-janitor-overlap.log": "d5e9501b326a224e54091a56690037665a97679c61223bafb28ef2a1e2fc564f",
+    "/tmp/talli-151-workspace-residue-cleanup.log": "d0954e4b771f234cb2f05e7eb2a04cfc40d840b71ae95c2198da716410fdfcea"
+  },
+  "originalCoverage": [
+    "all nine frozen Ledger table assertions",
+    "tax TT02 import and idempotent retry, malformed data and MFA/role denials",
+    "audit, notifications, storage and archive assertions",
+    "actual canonical RF preview/permission/overrides/simulation receipt/retry/review and outsider denials"
+  ],
+  "limits": [
+    "The full fresh RF web journey remains dependent on pending finite16-scope amendment.",
+    "This run uses declared RF canonical_overlap plus ordinary Ledger compatibility view, not final contracts.",
+    "Exact two shipped read-only SQL grants applied after fresh normal reset; no further reset credit claimed.",
+    "Final-schema tests and full lifecycle must be rerun by DB owner after final contracts for the corrected product source."
+  ],
+  "handoff": {
+    "rfPhase": "canonical_overlap",
+    "legacyLedgerView": true,
+    "companies": 0,
+    "runtimeLogins": 0
+  }
+}

@@ -1,0 +1,28 @@
+✔ all migrations use portable JSONB object checks (7.483833ms)
+✔ creates a separate production-only aggregate with constrained states (2.256083ms)
+✔ denies direct customer mutation and keeps authority events service-only (0.38025ms)
+✔ approval and begin RPCs enforce owner AAL2 and an exact active entitlement (0.444416ms)
+✔ acceptance requires explicit final authority evidence and events are append-only (0.173625ms)
+✔ rollback revokes RPC access before dropping additive objects (0.100584ms)
+✔ Systembruker binding preserves every existing production filing gate (0.547166ms)
+✔ canonical RF relocation preserves physical production aggregates and uses dedicated authority (1.509584ms)
+✔ canonical begin retains owner MFA, exact System User and Billing bindings, and every original release gate (0.892083ms)
+✔ feedback fixture cleanup preserves primary and returned Supabase errors (1.325584ms)
+✔ creates private, constrained feedback metadata and durable reconciliation state (0.75375ms)
+✔ uses explicit least privilege grants and owner/operator read policies (1.25675ms)
+✔ recording validates exact relationships and the deterministic private key (0.43025ms)
+✔ change-only reconciliation events are serialized and expose safe diagnostics only (0.486959ms)
+✔ backfills and atomically claims only an exact valid succeeded confirmation reference (0.707584ms)
+✔ rollback revokes functions first and restores only feature-owned schema and storage policy changes (0.43725ms)
+✔ local Supabase exposes owned RLS metadata and dedicated-executor mutation authority (43.476291ms)
+✔ local Supabase recovers confirmed submissions and limits feedback data to authorized readers (9403.960541ms)
+✔ canonical feedback preserves owner-only metadata and dedicated immutable journal authority (2.009375ms)
+✔ local fixture restores exact authority and keeps internal foreign keys active on success and failure (477.909416ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10097.372625

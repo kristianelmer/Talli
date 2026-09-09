@@ -1,0 +1,41 @@
+{
+  "reviewed_at": "2026-09-09T22:05:19.021858+00:00",
+  "base": "7730bd3473943f5308136207b2acce4f720c851c",
+  "verdict": "no findings in exact five fixture timestamp corrections",
+  "files": {
+    "apps/backend/tests/test_supabase_billing_runtime.py": {
+      "current_sha256": "bef0e354492584ae3b2e93cc3fb046c1feae701a9f51ad6c768e54ac678cfea7",
+      "base_sha256": "b3d01fbaf583475b285f5a0e91c75603a9b35639d4dddde1619e6fde44fc4b0d",
+      "clock_expressions_changed": 3,
+      "whole_ast_otherwise_exact": true,
+      "assertions_and_stale_expiry_branches_unchanged": true
+    },
+    "apps/backend/tests/test_legacy_billing_retirement_runtime.py": {
+      "current_sha256": "a369b0717095e7eee6ab8c27dae24d4e7c1610a7259d137c080e91d2977484e8",
+      "base_sha256": "ce18641b9e1bcd7b61dd51391fe7328a0bc62c8efb1acc071b9c8fd2bbddbb36",
+      "clock_expressions_changed": 1,
+      "whole_ast_otherwise_exact": true,
+      "assertions_and_stale_expiry_branches_unchanged": true
+    },
+    "apps/backend/tests/test_annual_purchase_basis_runtime.py": {
+      "current_sha256": "019584d0680b3f19a2f4f3bf7b708da2841328a00471a36eb81b27411349e977",
+      "base_sha256": "e5e5d9d71a37b5bc2ea1ccb416c732f0804c73ec55bf25b73b88daa0382b921a",
+      "clock_expressions_changed": 1,
+      "whole_ast_otherwise_exact": true,
+      "assertions_and_stale_expiry_branches_unchanged": true
+    }
+  },
+  "external_execution": {
+    "reported_result": "34 passed, zero skips",
+    "log": "/tmp/talli-151-final-billing-clock-affected.log",
+    "log_sha256": "940145eaa7cc63ccd75d93ee662ac2ff8b7932a09553ada0d19ac0714d8bd1e2",
+    "executed_by": "architecture_patch",
+    "independently_rerun": false,
+    "source_binding_limit": "Affected-run receipt originally omitted these three test hashes; this review captures them after the run and relies on author stability confirmation, not a fabricated pre-run capture."
+  },
+  "limits": [
+    "No product auth/MFA clock, SQL, ACL or test business assertion changed.",
+    "No reviewer DB use or tests run.",
+    "Full Billing and canonical gate remain pending."
+  ]
+}

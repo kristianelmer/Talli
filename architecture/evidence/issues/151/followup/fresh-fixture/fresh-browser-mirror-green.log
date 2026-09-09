@@ -1,0 +1,18 @@
+✔ fresh RF fixture permits only its five exact method templates and loopback egress (197.354834ms)
+✔ fresh local RF mock preserves request identity and emits relationship-bound feedback (42.588792ms)
+✔ fresh browser starts without a preview or approval and verifies the complete durable result (0.955417ms)
+✔ ambiguous fresh mock response records the original mutation before disconnecting (6.536042ms)
+✔ fresh RF browser uses finite fixture authority while preserving foreign keys and signoff storage (0.642625ms)
+✔ fresh RF cleanup removes scoped public mirrors before openings (success) (1.530125ms)
+✔ fresh RF cleanup removes scoped public mirrors before openings (failure preserved) (0.721166ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (success) (9.272875ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (seed) (0.993833ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (restore) (1.077625ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 337.214459

@@ -1,0 +1,23 @@
+{
+  "startedAt": "2026-09-09T22:14:32.818737+00:00",
+  "head": "7730bd3473943f5308136207b2acce4f720c851c",
+  "scope": "focused fake orchestration and cancellation static inventory; not complete gate",
+  "sourceHashes": {
+    "package.json": "0f9a6888fa135b5b66d9496f382b88adf1d52650124cf40875442634183b1248",
+    "scripts/test-supabase-local.sh": "6aff56c815a5fb248c6586abe6785a38a6fa404af9c14e5e385160179945649d",
+    "scripts/rehearse-authority-topology.mjs": "85900cfd7ab3bbf263a1aaadf99efb1172d1c0d37a4e95d64583dfb207d68e15",
+    "tests/ci_release_gate.test.mjs": "eddb32995119b420b5899eefed4e185a3c20293d7e8764c6f40c1385364eb170",
+    "tests/company_access_cancellation_schema.test.mjs": "9827f9c7c6bce58b8fd8bba1895b9abe056da15139cc3ff2337db5d57a3f5ad7",
+    "architecture/company-archive-sources.json": "daa47be25df45bba2bea3c6cb09ac123ea4f3cdb8e7be5f2a6327e331b620a52"
+  },
+  "command": [
+    "node",
+    "--test",
+    "tests/ci_release_gate.test.mjs",
+    "tests/company_access_cancellation_schema.test.mjs"
+  ],
+  "completedAt": "2026-09-09T22:14:58.347012+00:00",
+  "exitCode": 0,
+  "sourceUnchanged": true,
+  "logSha256": "4ff70ac3b1038fc6f32e6853fc080bb40895fcc5a07269fe929e14086186398f"
+}

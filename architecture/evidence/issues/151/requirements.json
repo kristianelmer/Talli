@@ -4,7 +4,7 @@
   "source": "https://github.com/kristianelmer/Talli/issues/151",
   "sourceCheckedAt": "2026-09-09T18:58:36Z",
   "status": "implementation-in-progress-exit-verification-pending",
-  "notice": "RF implementation is in progress after checkpoint 3e8bf5187d614a3a2d02437f12186d90dbd19078. Exact original historical TT02 payload regeneration now passes; full criterion evidence, complete gates and protected integration remain open.",
+  "notice": "RF implementation remains in progress. Exact original historical TT02 payload regeneration and focused final-schema, HTTP, historical browser, fixture restoration and build checks pass; full criterion evidence, complete gates and protected integration remain open.",
   "entryBlockers": [
     {
       "issue": "#150",
@@ -219,7 +219,7 @@
         "npm run check:architecture",
         "npm run test:architecture"
       ],
-      "expectedResult": "One owned implementation/writer; shareholder fields and RF generic rows migrated without sibling/ledger/foreign-owner acquisition; both web Python bridges and duplicate TS rules removed, frozen RF backend compatibility absorbed, RF tool calls canonical generator, obsolete authority contracted, temporary parity/allowlist debt removed. Baseline stays byte-identical. Exact pending15scope exception only if approved.",
+      "expectedResult": "One owned implementation/writer; shareholder fields and RF generic rows migrated without sibling/ledger/foreign-owner acquisition; both web Python bridges and duplicate TS rules removed, frozen RF backend compatibility absorbed, RF tool calls canonical generator, obsolete authority contracted, temporary parity/allowlist debt removed. Baseline stays byte-identical. Exact pending16scope exception only if approved.",
       "newEvidence": [
         "architecture/evidence/issues/151/implementation-checkpoint.md"
       ]
@@ -366,6 +366,12 @@
       "state": "passed-focused-working-tree-checks",
       "qualifiesAsCompleteImmutableGate": false,
       "limit": "Files evolved during focused checks; linked transcript hashes and implementation-checkpoint.md disclose counts, omissions and skips."
+    },
+    {
+      "evidence": "architecture/evidence/issues/151/followup-verification.md",
+      "state": "focused-final-schema-and-historical-replay-pass",
+      "qualifiesAsCompleteImmutableGate": false,
+      "limit": "Updated108 mandatoryDB cases pass without skips; preceding699 PythonBilling +1 NodeBilling pass with disclosed fixture-clock corrections. Final feedback/schema22, real-auth openingHTTP5 and historicalbrowser1 pass. Historical broaderbackend2808pass2existingoptionalskips and exactTT02 reproduction remain. Retainedworkspace, webboundary, contractchecks, bothbuilds and installedpackagesmoke pass. Fresh RF fixture safety11 and shared cleanup/onboarding/restoration checks pass; the full fresh owner flow, pending16-entry exception, full gates and integration remain open."
     }
   ],
   "predecessorEvidence": {
@@ -385,5 +391,6 @@
     "productionRevisionToRemainFrozen": "d331ee2717d1eeacef0d81db42b9d4fb5848b408"
   },
   "implementationCheckpoint": "architecture/evidence/issues/151/implementation-checkpoint.md",
-  "implementationRevision": "3e8bf5187d614a3a2d02437f12186d90dbd19078"
+  "implementationRevision": "3e8bf5187d614a3a2d02437f12186d90dbd19078",
+  "latestSourceCheckpoint": "7730bd3473943f5308136207b2acce4f720c851c"
 }

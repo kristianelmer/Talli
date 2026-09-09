@@ -1,0 +1,2 @@
+architecture: compat-company-archive-persistence: legacy operation changed: apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts operation:GET
+architecture: compat-company-archive-persistence: registered compatibility scope has no matching finding: apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts direct-web-business-persistence table:opening_balance_setups operation:GET

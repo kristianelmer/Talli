@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { fixtureTableTransaction } from "./rf1086-fixture-access.mjs";
 import { randomUUID } from "node:crypto";
 import { createTalliApiClient, TalliApiError } from "../../packages/talli-api-client/src/index.ts";
 import { presentRf1086Preview, presentRf1086Simulation, presentRf1086Override,
@@ -101,39 +102,41 @@ export async function seedHistoricalRfOpening(database, companyId, actorId, inpu
       values($1,$2,2025,$3,$4,$5,$6)`, [setupId, companyId, input.shareCapital, input.shareCount, input.nominalValue, actorId]);
     await database.query(`insert into ledger.opening_bank_inputs(snapshot_id,company_id,income_year,bank_balance_nok,recorded_by,recorded_at)
       values($1,$2,2025,$3,$4,now())`, [setupId, companyId, input.bankBalance, actorId]);
-    for (const holder of input.shareholders) await database.query(`insert into shareholder_register_filing.opening_shareholders
+    const projectionPresent = (await database.query("select to_regclass('public.opening_balance_setups') is not null present")).rows[0].present;
+    if (projectionPresent) await database.query(`insert into public.opening_balance_setups
+      (id,company_id,income_year,bank_balance,share_capital,share_count,nominal_value,created_by)
+      values($1,$2,2025,$3,$4,$5,$6,$7)`, [setupId,companyId,input.bankBalance,input.shareCapital,input.shareCount,input.nominalValue,actorId]);
+    for (const holder of input.shareholders) {
+      const holderId = randomUUID();
+      await database.query(`insert into shareholder_register_filing.opening_shareholders
       (id,setup_id,company_id,name,shareholder_kind,national_id,org_number,share_count,created_by)
-      values($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [randomUUID(),setupId,companyId,holder.name,holder.shareholderKind,
+      values($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [holderId,setupId,companyId,holder.name,holder.shareholderKind,
         holder.nationalId ?? null,holder.orgNumber ?? null,holder.shareCount,actorId]);
-  });
+      if (projectionPresent) await database.query(`insert into public.opening_shareholders
+        (id,setup_id,company_id,name,shareholder_kind,national_id,org_number,share_count,created_by)
+        values($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [holderId,setupId,companyId,holder.name,holder.shareholderKind,
+          holder.nationalId ?? null,holder.orgNumber ?? null,holder.shareCount,actorId]);
+    }
+    if (projectionPresent) {
+      assert.equal((await database.query(`select to_jsonb(p)=to_jsonb(r)||jsonb_build_object('bank_balance',b.bank_balance_nok) exact
+        from public.opening_balance_setups p join shareholder_register_filing.opening_balance_setups r using(id)
+        join ledger.opening_bank_inputs b on b.snapshot_id=r.id where p.id=$1`, [setupId])).rows[0].exact, true);
+      assert.equal((await database.query(`select count(*)::int count from public.opening_shareholders p
+        full join shareholder_register_filing.opening_shareholders r using(id) where coalesce(p.setup_id,r.setup_id)=$1
+        and to_jsonb(p) is distinct from to_jsonb(r)`, [setupId])).rows[0].count, 0);
+    }
+  }, { openingProjection: true });
   return setupId;
 }
 
 export const RF_FIXTURE_TABLES = ["production_feedback_artifacts", "production_filing_submissions", "filing_approval_snapshots",
   "filing_review_comments", "filing_overrides", "filing_submissions", "authority_test_runs", "authority_permissions", "filing_previews",
   "opening_shareholders", "opening_balance_setups", "migration_inventory", "migration_quarantine"];
-export async function rfFixtureTransaction(database, operation, { feedbackSupport = false } = {}) {
-  await database.query("begin");
-  try {
-    await database.query("set local session_replication_role=replica");
-    const borrowed = [];
-    for (const role of ["shareholder_register_filing_store_owner", "ledger_store_owner", ...(feedbackSupport ? ["billing_store_owner", "documents_store_owner"] : [])]) {
-      if (!(await database.query("select pg_has_role(current_user,$1,'MEMBER') present", [role])).rows[0].present) {
-        await database.query(`do $fixture$ begin execute format('grant ${role} to %I',current_user); end $fixture$`);
-        borrowed.push(role);
-      }
-    }
-    const forced = [];
-    for (const relation of [...RF_FIXTURE_TABLES.map(name => `shareholder_register_filing.${name}`), "shareholder_register_filing.production_filing_events", "ledger.opening_bank_inputs", ...(feedbackSupport ? ["billing.production_pilot_entitlements", "public.documents", "documents.evidence_references"] : [])]) {
-      if ((await database.query("select relforcerowsecurity forced from pg_class where oid=$1::regclass", [relation])).rows[0].forced) {
-        await database.query(`alter table ${relation} no force row level security`);
-        forced.push(relation);
-      }
-    }
-    const result = await operation();
-    for (const relation of forced) await database.query(`alter table ${relation} force row level security`);
-    for (const role of borrowed) await database.query(`do $fixture$ begin execute format('revoke ${role} from %I',current_user); end $fixture$`);
-    await database.query("commit");
-    return result;
-  } catch (error) { await database.query("rollback"); throw error; }
+export async function rfFixtureTransaction(database, operation, { feedbackSupport = false, openingProjection = false } = {}) {
+  const projections = openingProjection && (await database.query("select to_regclass('public.opening_balance_setups') is not null present")).rows[0].present
+    ? ["public.opening_balance_setups", "public.opening_shareholders"] : [];
+  return fixtureTableTransaction(database, [...RF_FIXTURE_TABLES.map(name => `shareholder_register_filing.${name}`),
+    "shareholder_register_filing.production_filing_events", "ledger.opening_bank_inputs", ...projections,
+    ...["filing_review_comments", "filing_overrides", "filing_submissions", "filing_previews", "authority_permissions", "authority_test_runs"].map(name => `public.${name}`),
+    ...(feedbackSupport ? ["billing.production_pilot_entitlements", "public.documents", "documents.evidence_references"] : [])], operation);
 }

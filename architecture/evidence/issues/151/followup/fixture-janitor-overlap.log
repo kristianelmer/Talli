@@ -1,0 +1,10 @@
+✔ local company janitor restores its own missing Billing SET grant on success (80.098959ms)
+✔ local company janitor restores its own missing Billing SET grant on failure (51.099083ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 287.383292

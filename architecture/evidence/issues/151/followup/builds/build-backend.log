@@ -1,0 +1,8 @@
+
+> talli-repository@0.1.0 build:backend
+> uv build --project apps/backend
+
+Building source distribution...
+Building wheel from source distribution...
+Successfully built apps/backend/dist/talli_backend-0.1.0.tar.gz
+Successfully built apps/backend/dist/talli_backend-0.1.0-py3-none-any.whl

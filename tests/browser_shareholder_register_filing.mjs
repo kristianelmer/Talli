@@ -14,6 +14,7 @@ import { SYSTEM_USER_COOKIE } from "../apps/web/app/lib/system-user-presentation
 import { installBrowserEgressGuard } from "./fixtures/system-user-authority-mock.mjs";
 import { allocateLoopbackPort, ownedProcessDiagnostics, startOwnedProcess, stopOwnedProcess, waitForOwnedReadiness } from "./support/owned-process-lifecycle.mjs";
 import { isLoopbackPostgresUrl, isLoopbackSupabaseUrl } from "./support/supabase_fixture_safety.mjs";
+import { fixtureTableTransaction, deleteRfFixtureCompanies } from "./support/rf1086-fixture-access.mjs";
 
 import { startRf1086FilingAuthorityMock } from "./fixtures/rf1086-filing-authority-mock.mjs";
 
@@ -387,24 +388,9 @@ async function seedCompany(admin, database, ownerId, name, companies) {
 }
 
 async function authorityFixtureTransaction(database, operation) {
-  await database.query("begin");
-  try {
-    await database.query("set local session_replication_role=replica");
-    await database.query(`do $fixture$ begin execute format('grant authority_connections_store_owner to %I',current_user); end $fixture$`);
-    await database.query("set local role authority_connections_store_owner");
-    await database.query("alter table authority_connections.authority_operations no force row level security");
-    await database.query("alter table authority_connections.system_user_requests no force row level security");
-    const result = await operation();
-    await database.query("alter table authority_connections.authority_operations force row level security");
-    await database.query("alter table authority_connections.system_user_requests force row level security");
-    await database.query("reset role");
-    await database.query(`do $fixture$ begin execute format('revoke authority_connections_store_owner from %I',current_user); end $fixture$`);
-    await database.query("commit");
-    return result;
-  } catch (error) {
-    await database.query("rollback");
-    throw error;
-  }
+  return fixtureTableTransaction(database, [
+    "authority_connections.authority_operations", "authority_connections.system_user_requests",
+  ], operation);
 }
 
 async function seedCallbackAudit(database, actorId) {
@@ -416,34 +402,36 @@ async function seedCallbackAudit(database, actorId) {
 }
 
 async function cleanupFixture(database, companyIds, userIds) {
-  await rfFixtureTransaction(database, async () => {
+  await fixtureTableTransaction(database, [
+    ...RF_FIXTURE_RELATIONS,
+    "authority_connections.system_user_requests", "authority_connections.authority_operations",
+    "public.audit_events", "public.support_operators", "public.customer_agreement_acceptances",
+    "public.company_memberships", "public.companies",
+  ], async () => {
     await database.query("delete from shareholder_register_filing.production_feedback_artifacts where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from documents.evidence_references where document_id in (select id from public.documents where company_id=any($1::uuid[]))", [companyIds]);
     await database.query("delete from shareholder_register_filing.production_filing_events where submission_id in (select id from shareholder_register_filing.production_filing_submissions where company_id=any($1::uuid[]))", [companyIds]);
     await database.query("delete from shareholder_register_filing.production_filing_submissions where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from shareholder_register_filing.filing_approval_snapshots where company_id=any($1::uuid[])", [companyIds]);
+    // Normal RF writes keep these public projections. Their setup FKs still
+    // reference the canonical opening after contract, so remove children first.
+    for (const table of RF_PUBLIC_PROJECTION_TABLES)
+      await database.query(`delete from public.${table} where company_id=any($1::uuid[])`, [companyIds]);
+    await database.query("delete from ledger.opening_bank_inputs where company_id=any($1::uuid[])", [companyIds]);
     for (const table of ["filing_review_comments", "filing_overrides", "filing_submissions", "authority_test_runs", "authority_permissions", "filing_previews", "opening_shareholders", "opening_balance_setups", "migration_inventory", "migration_quarantine"])
       await database.query(`delete from shareholder_register_filing.${table} where company_id=any($1::uuid[])`, [companyIds]);
-    await database.query("delete from ledger.opening_bank_inputs where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from public.filing_readiness_snapshots where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from public.documents where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from billing.production_pilot_entitlements where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from public.company_archive_source_generations where company_id=any($1::uuid[])", [companyIds]);
-  });
-  await authorityFixtureTransaction(database, async () => {
     await database.query("delete from authority_connections.system_user_requests where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from authority_connections.authority_operations where actor_id=any($1::uuid[])", [userIds]);
-  });
-  await database.query("begin");
-  try {
-    await database.query("set local session_replication_role=replica");
     await database.query("delete from public.audit_events where actor_id=any($1::uuid[])", [userIds]);
     await database.query("delete from public.support_operators where user_id=any($1::uuid[])", [userIds]);
     await database.query("delete from public.customer_agreement_acceptances where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from public.company_memberships where company_id=any($1::uuid[])", [companyIds]);
-    await database.query("delete from public.companies where id=any($1::uuid[])", [companyIds]);
-    await database.query("commit");
-  } catch (error) { await database.query("rollback"); throw error; }
+    await deleteRfFixtureCompanies(database, companyIds);
+  });
 }
 
 async function login(page, origin, user) {
@@ -492,31 +480,20 @@ const RF_TABLES = ["opening_balance_setups", "opening_shareholders", "filing_pre
   "filing_overrides", "filing_review_comments", "authority_permissions", "authority_test_runs", "filing_approval_snapshots",
   "production_filing_submissions", "production_filing_events", "production_feedback_artifacts", "migration_inventory", "migration_quarantine"];
 const SIGNOFF_KEYS = ["launch_legal_name_public_copy", "legal_policy_pack", "security_restore", "support_rollback", "founder_production_go_live", "rf1086_authority"];
+const RF_PUBLIC_PROJECTION_TABLES = Object.freeze([
+  "filing_review_comments", "filing_overrides", "filing_submissions",
+  "authority_test_runs", "authority_permissions", "filing_previews",
+]);
+
+const RF_FIXTURE_RELATIONS = Object.freeze([
+  ...RF_TABLES.map((name) => `shareholder_register_filing.${name}`),
+  ...RF_PUBLIC_PROJECTION_TABLES.map((name) => `public.${name}`),
+  "ledger.opening_bank_inputs", "billing.production_pilot_entitlements", "documents.evidence_references",
+  "public.documents", "public.filing_readiness_snapshots", "public.company_archive_source_generations",
+]);
 
 async function rfFixtureTransaction(database, operation) {
-  await database.query("begin");
-  try {
-    await database.query("set local session_replication_role=replica");
-    const borrowed = [];
-    for (const role of ["shareholder_register_filing_store_owner", "ledger_store_owner", "billing_store_owner", "documents_store_owner"]) {
-      const previous = (await database.query("select pg_has_role(current_user,$1,'MEMBER') present", [role])).rows[0];
-      if (!previous.present) {
-        await database.query(`do $fixture$ begin execute format('grant ${role} to %I',current_user); end $fixture$`);
-        borrowed.push(role);
-      }
-    }
-    const relations = [...RF_TABLES.map((name) => `shareholder_register_filing.${name}`), "ledger.opening_bank_inputs"];
-    const forced = [];
-    for (const relation of relations) {
-      const previous = (await database.query("select relforcerowsecurity forced from pg_class where oid=$1::regclass", [relation])).rows[0];
-      if (previous.forced) { await database.query(`alter table ${relation} no force row level security`); forced.push(relation); }
-    }
-    const result = await operation();
-    for (const relation of forced) await database.query(`alter table ${relation} force row level security`);
-    for (const role of borrowed) await database.query(`do $fixture$ begin execute format('revoke ${role} from %I',current_user); end $fixture$`);
-    await database.query("commit");
-    return result;
-  } catch (error) { await database.query("rollback"); throw error; }
+  return fixtureTableTransaction(database, RF_FIXTURE_RELATIONS, operation);
 }
 
 async function seedFreshBasis(database, companyId, ownerId) {
@@ -528,8 +505,8 @@ async function seedFreshBasis(database, companyId, ownerId) {
     await database.query(`insert into ledger.opening_bank_inputs(snapshot_id,company_id,income_year,bank_balance_nok,recorded_by,recorded_at)
       values($1,$2,2025,30000,$3,now())`, [setupId, companyId, ownerId]);
     await database.query(`insert into shareholder_register_filing.opening_shareholders
-      (id,setup_id,company_id,name,shareholder_kind,org_number,share_count)
-      values($1,$2,$3,'Synthetic Fixture Owner AS','norwegian_company','999999999',100)`, [randomUUID(), setupId, companyId]);
+      (id,setup_id,company_id,name,shareholder_kind,org_number,share_count,created_by)
+      values($1,$2,$3,'Synthetic Fixture Owner AS','norwegian_company','999999999',100,$4)`, [randomUUID(), setupId, companyId, ownerId]);
     // This local prerequisite records the exact supported no-activity case;
     // no paid account, preview, approval, journal or provider receipt is seeded.
     await database.query(`insert into public.filing_readiness_snapshots
@@ -539,28 +516,25 @@ async function seedFreshBasis(database, companyId, ownerId) {
 }
 
 async function seedLocalReleaseSignoffs(database, actorId) {
-  await database.query("begin");
-  try {
+  // Technical signoff storage remains this physical table after authenticated
+  // access is contracted; the finite fixture restores its exact previous rows.
+  return fixtureTableTransaction(database, ["public.launch_signoffs"], async () => {
     const previous = (await database.query("select to_jsonb(s) value from public.launch_signoffs s where key=any($1::text[])", [SIGNOFF_KEYS])).rows.map(({ value }) => value);
     for (const key of SIGNOFF_KEYS) await database.query(`insert into public.launch_signoffs
       (key,status,reviewer,reviewed_at,evidence_link,decision,recorded_by)
       values($1,'approved','Synthetic local browser',now()-interval '1 minute','local-synthetic-rf-browser','Local fixture only',$2)
       on conflict(key) do update set status=excluded.status,reviewer=excluded.reviewer,reviewed_at=excluded.reviewed_at,
         evidence_link=excluded.evidence_link,decision=excluded.decision,recorded_by=excluded.recorded_by`, [key, actorId]);
-    await database.query("commit");
     return previous;
-  } catch (error) { await database.query("rollback"); throw error; }
+  });
 }
 
 async function restoreLocalReleaseSignoffs(database, previous) {
   if (previous === undefined) return;
-  await database.query("begin");
-  try {
-    await database.query("set local session_replication_role=replica");
+  await fixtureTableTransaction(database, ["public.launch_signoffs"], async () => {
     await database.query("delete from public.launch_signoffs where key=any($1::text[])", [SIGNOFF_KEYS]);
     for (const row of previous) await database.query("insert into public.launch_signoffs select * from jsonb_populate_record(null::public.launch_signoffs,$1::jsonb)", [JSON.stringify(row)]);
-    await database.query("commit");
-  } catch (error) { await database.query("rollback"); throw error; }
+  });
 }
 
 function captureBrowserHealth(context, health) {

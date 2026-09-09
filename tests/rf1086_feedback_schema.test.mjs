@@ -6,6 +6,7 @@ import test from "node:test";
 import { createClient } from "@supabase/supabase-js";
 import pg from "pg";
 import { createRfDatabaseActor } from "./support/rf1086-database-actor.mjs";
+import { deleteRfFixtureCompanies } from "./support/rf1086-fixture-access.mjs";
 import { rfFixtureTransaction } from "./support/rf1086-workspace-api.mjs";
 
 const files = await readdir(new URL("../supabase/migrations/", import.meta.url));
@@ -720,7 +721,9 @@ test(
         ["delete from public.company_memberships where company_id = $1", [companyId]],
         ["delete from public.companies where id = $1", [companyId]],
       ]) {
-        await collectCleanupError(() => fixtureQuery(statement, parameters), cleanupErrors);
+        await collectCleanupError(() => statement === "delete from public.companies where id = $1"
+          ? rfFixtureTransaction(database, () => deleteRfFixtureCompanies(database, [companyId]), { feedbackSupport: true })
+          : fixtureQuery(statement, parameters), cleanupErrors);
       }
       for (const client of clients) {
         await collectCleanupError(() => assertNoCleanupError(client.auth.signOut()), cleanupErrors);
@@ -747,4 +750,59 @@ test("canonical feedback preserves owner-only metadata and dedicated immutable j
   }
   assert.match(canonicalSql, /alter table public\.production_feedback_artifacts set schema shareholder_register_filing/iu);
   assert.match(canonicalSql, /alter table shareholder_register_filing\.production_feedback_artifacts force row level security/iu);
+});
+
+
+test("local fixture restores exact authority and keeps internal foreign keys active on success and failure", {
+  skip: isLocalDatabase() ? false : "local Supabase DATABASE_URL is required", timeout: 30_000,
+}, async () => {
+  const database = new pg.Client({ connectionString: process.env.DATABASE_URL });
+  await database.connect();
+  const snapshot = async () => (await database.query(`select
+    (select jsonb_agg(to_jsonb(m) order by roleid,member,grantor) from pg_auth_members m) memberships,
+    (select jsonb_agg(jsonb_build_array(c.oid,c.relacl::text,c.relforcerowsecurity) order by c.oid)
+      from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in
+      ('public','shareholder_register_filing','ledger','billing','documents')) relations,
+    (select jsonb_agg(jsonb_build_array(oid,tgenabled) order by oid) from pg_trigger) triggers,
+    (select jsonb_agg(jsonb_build_array(oid,nspacl::text) order by oid) from pg_namespace) schemas`)).rows[0];
+  try {
+    const before = await snapshot();
+    assert.equal(await rfFixtureTransaction(database, async () => "fixture-result", { feedbackSupport: true }), "fixture-result");
+    assert.deepEqual(await snapshot(), before);
+    const failure = new Error("original fixture error");
+    await assert.rejects(rfFixtureTransaction(database, async () => { throw failure; }, { feedbackSupport: true }), error => error === failure);
+    assert.deepEqual(await snapshot(), before);
+    await assert.rejects(rfFixtureTransaction(database, () => database.query(`insert into shareholder_register_filing.filing_previews
+      (company_id,income_year,filing,issues,status,preview,hovedskjema_xml,underskjema_xml,created_by) values($1,2025,'aksjonærregisteroppgaven','[]','ready','synthetic','<xml/>','{}',$1)`, [randomUUID()])), error => error.code === "23503");
+    assert.deepEqual(await snapshot(), before);
+  } finally { await database.end(); }
+});
+
+
+for (const lateFailure of [false, true]) test(`local company janitor restores its own missing Billing SET grant on ${lateFailure ? "failure" : "success"}`, {
+  skip: isLocalDatabase() ? false : "local Supabase DATABASE_URL is required", timeout: 30_000,
+}, async () => {
+  const database = new pg.Client({ connectionString: process.env.DATABASE_URL });
+  await database.connect();
+  const actorId = randomUUID(), companyId = randomUUID();
+  try {
+    await database.query("begin");
+    await database.query("insert into auth.users(id,email) values($1,$2)", [actorId, `rf-fixture-cleanup-${actorId}@example.test`]);
+    await database.query(`insert into public.companies(id,org_number,name,entity_type,created_by)
+      values($1,'123456789','Temporary RF cleanup fixture','AS',$2)`, [companyId, actorId]);
+    const snapshot = async () => (await database.query(`select
+      (select jsonb_agg(to_jsonb(m) order by roleid,member,grantor) from pg_auth_members m) memberships,
+      (select relacl::text from pg_class where oid='billing.billing_command_receipts'::regclass) receipt_acl`)).rows[0];
+    const before = await snapshot();
+    const failure = new Error("late fixture company deletion failure");
+    const wrapped = { connectionParameters: database.connectionParameters, query: async (statement, parameters) => {
+      const result = await database.query(statement, parameters);
+      if (lateFailure && statement === "delete from public.companies where id=any($1::uuid[])") throw failure;
+      return result;
+    } };
+    if (lateFailure) await assert.rejects(deleteRfFixtureCompanies(wrapped, [companyId]), error => error === failure);
+    else await deleteRfFixtureCompanies(wrapped, [companyId]);
+    assert.deepEqual(await snapshot(), before);
+    assert.equal((await database.query("select count(*)::int count from public.companies where id=$1", [companyId])).rows[0].count, lateFailure ? 1 : 0);
+  } finally { await database.query("rollback"); await database.end(); }
 });

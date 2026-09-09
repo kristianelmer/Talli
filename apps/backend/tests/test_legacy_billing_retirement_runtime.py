@@ -9,7 +9,7 @@ import psycopg
 from psycopg import sql
 import pytest
 
-from test_annual_purchase_basis_runtime import DATABASE_URL, ROOT, admitted, scoped, test_role_authority
+from test_annual_purchase_basis_runtime import database_now, DATABASE_URL, ROOT, admitted, scoped, test_role_authority
 from test_legacy_billing_retirement import ObservedProvider
 from talli_backend.adapters.supabase_billing import SupabaseBillingSession
 from talli_backend.adapters.supabase_ledger import _VerifiedActor
@@ -80,11 +80,12 @@ def historical(admitted, request):
     return admitted | {"events": events}
 
 
+# Use the database authorization clock for ordinary fresh synthetic MFA.
 def session(state, *, fresh=True):
     return SupabaseBillingSession(DATABASE_URL, _VerifiedActor(
         actor_id=ActorId(ActorKind.USER, UserId(str(state["owner"]))),
         claims_json=json.dumps({"sub": str(state["owner"]), "role": "authenticated", "aal": "aal2",
-            "amr": [{"method": "totp", "timestamp": datetime.now(UTC).timestamp() if fresh else 1}]})))
+            "amr": [{"method": "totp", "timestamp": database_now().timestamp() - 1 if fresh else 1}]})))
 
 
 def command(state, kind, *, key=None):

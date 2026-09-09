@@ -1,0 +1,54 @@
+
+> talli-repository@0.1.0 test:billing-database-lifecycle
+> : "${DATABASE_URL:?DATABASE_URL must identify the disposable test database}" && uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_supabase_billing_runtime.py apps/backend/tests/test_billing_persistence_deadlines.py apps/backend/tests/test_legacy_billing_retirement_runtime.py apps/backend/tests/test_annual_purchase_basis_runtime.py apps/backend/tests/test_annual_purchase_ledger_runtime.py apps/backend/tests/test_annual_checkout_runtime.py apps/backend/tests/test_annual_checkout_withdrawal_runtime.py apps/backend/tests/test_annual_cancellation_runtime.py apps/backend/tests/test_annual_cleanup_runtime.py apps/backend/tests/test_annual_billing_read_runtime.py apps/backend/tests/test_annual_refund_runtime.py apps/backend/tests/test_annual_refund_recovery_runtime.py apps/backend/tests/test_annual_refund_targets_runtime.py apps/backend/tests/test_annual_support_refund_recovery_runtime.py apps/backend/tests/test_annual_support_cleanup_runtime.py apps/backend/tests/test_annual_support_refund_targets_runtime.py apps/backend/tests/test_annual_refund_cleanup_runtime.py apps/backend/tests/test_annual_support_runtime.py apps/backend/tests/test_annual_notification_runtime.py apps/backend/tests/test_annual_observation_runtime.py -q && node --test --test-concurrency=1 tests/billing_database_runtime.test.mjs
+
+........................................................................ [ 10%]
+........................................................................ [ 20%]
+........................................................................ [ 30%]
+........................................................................ [ 41%]
+........................................................................ [ 51%]
+........................................................................ [ 61%]
+........................................................................ [ 72%]
+........................................................................ [ 82%]
+........................................................................ [ 92%]
+...................................................                      [100%]
+699 passed in 339.06s (0:05:39)
+✖ billing expansion, RLS, rollback, contract, and recutover are repeatable twice (51.860459ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 128.580791
+
+✖ failing tests:
+
+test at tests/billing_database_runtime.test.mjs:250:1
+✖ billing expansion, RLS, rollback, contract, and recutover are repeatable twice (51.860459ms)
+  error: new row violates row-level security policy for table "billing_command_receipts"
+      at /Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/node_modules/pg/lib/client.js:646:17
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async seedCommandReceipt (file:///Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding%20accounting/tests/billing_database_runtime.test.mjs:145:7)
+      at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding%20accounting/tests/billing_database_runtime.test.mjs:360:7)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    length: 147,
+    severity: 'ERROR',
+    code: '42501',
+    detail: undefined,
+    hint: undefined,
+    position: undefined,
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'execMain.c',
+    line: '2158',
+    routine: 'ExecWithCheckOptions'
+  }

@@ -1,7 +1,7 @@
 # Supabase RLS and Storage Security Audit
 
-Status: current local Supabase stack passed; deployed staging/production evidence pending
-Last updated: 2026-07-14
+Status: historical local evidence retained; current RF full rehearsal and hosted evidence pending
+Last updated: 2026-09-10
 Target issue: #74
 
 This audit proves tenant isolation against the real Supabase/Postgres RLS and
@@ -9,16 +9,19 @@ Storage policies, not only the local JSON/Python workspace seams.
 
 ## Required Environment
 
-Run against a non-production Supabase project:
+The complete current runner creates its own disposable local Supabase stack.
+It requires Docker and the repository's pinned Node/Python dependencies; it
+obtains the following values from that stack:
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `DIRECT_DATABASE_URL` or `DATABASE_URL`
 
-The test applies every SQL file in `supabase/migrations/` in lexical order, creates
-temporary confirmed users, signs in through the anon client, exercises RLS as
-owner/reviewer/read-only/outsider, then removes the created company and users.
+The runner applies normal migrations, then rehearses the explicit predecessor,
+RF workspace and final contract phases. Each phase uses temporary confirmed
+users and removes its fixtures. A named phase can use an already configured
+disposable database only when its schema matches that phase.
 
 ## Command
 
@@ -26,12 +29,17 @@ owner/reviewer/read-only/outsider, then removes the created company and users.
 npm run test:supabase
 ```
 
-For a clean local deployment-shaped run using the pinned Supabase CLI and a
-fresh database, run:
+`test:supabase` is an alias for the complete local runner below. Both commands
+use the pinned Supabase CLI and a fresh database:
 
 ```bash
 npm run test:supabase:local
 ```
+
+The internal phase commands are `test:supabase-predecessor`,
+`test:supabase-rf-workspace` and `test:supabase-rf-feedback`. A single phase does
+not provide complete audit evidence. The master runner preserves all existing
+test files and the mandatory browser checks across their required schema phases.
 
 The 2026-07-14 local run applied every migration from zero, reported zero
 blocking security/error advisor findings, exercised authenticated owner,
@@ -68,6 +76,7 @@ review. It should be run against staging after every schema/RLS change.
 
 ## Interpretation
 
-Passing this audit is evidence for the staging Supabase project used in the run.
+Passing the complete local runner is evidence for that disposable schema and
+tested source revision. A separate hosted rehearsal is evidence for its exact project.
 It is not global proof for production unless production has the same migration,
 same storage bucket policy, same env separation, and no manual policy drift.

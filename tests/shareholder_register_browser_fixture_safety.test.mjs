@@ -3,8 +3,10 @@ import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import vm from "node:vm";
 
 import { startRf1086FilingAuthorityMock } from "./fixtures/rf1086-filing-authority-mock.mjs";
+import { fixtureTableTransaction } from "./support/rf1086-fixture-access.mjs";
 
 test("fresh RF fixture permits only its five exact method templates and loopback egress", () => {
   const program = `import runpy
@@ -105,4 +107,168 @@ test("ambiguous fresh mock response records the original mutation before disconn
   assert.equal(mock.snapshot()[0].operation, "post_hovedskjema");
   assert.equal(mock.snapshot()[0].key, key);
   assert.ok(mock.snapshot()[0].id);
+});
+
+test("fresh RF browser uses finite fixture authority while preserving foreign keys and signoff storage", () => {
+  const source = readFileSync(new URL("./browser_shareholder_register_filing.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /session_replication_role|no force row level security|disable trigger/iu);
+  assert.match(source, /return fixtureTableTransaction\(database, RF_FIXTURE_RELATIONS, operation\)/u);
+  assert.match(source, /await deleteRfFixtureCompanies\(database, companyIds\)/u);
+  assert.doesNotMatch(source, /backend_system\.launch_signoffs/u);
+  const cleanup = source.slice(source.indexOf("async function cleanupFixture("), source.indexOf("async function login("));
+  assert.equal((cleanup.match(/await fixtureTableTransaction\(/gu) ?? []).length, 1);
+  assert.ok(cleanup.indexOf("delete from ledger.opening_bank_inputs") < cleanup.indexOf('"opening_balance_setups"'));
+  assert.ok(cleanup.indexOf("delete from billing.production_pilot_entitlements") < cleanup.indexOf("delete from authority_connections.system_user_requests"));
+});
+
+test("fresh RF basis binds every opening row to its existing owner without seeding filing success", async () => {
+  const source = readFileSync(new URL("./browser_shareholder_register_filing.mjs", import.meta.url), "utf8");
+  const seed = source.slice(source.indexOf("async function seedFreshBasis("), source.indexOf("async function seedLocalReleaseSignoffs("));
+  const owner = randomUUID();
+  const company = randomUUID();
+  const writes = [];
+  const database = { query: async (statement, parameters) => { writes.push({ statement, parameters }); return { rows: [] }; } };
+  const seedFreshBasis = vm.runInNewContext(`(${seed.trim()})`, {
+    randomUUID,
+    rfFixtureTransaction: async (client, operation) => { assert.equal(client, database); return operation(); },
+  });
+  await seedFreshBasis(database, company, owner);
+  assert.equal(writes.length, 4);
+  const opening = writes.find(({ statement }) => statement.startsWith("insert into shareholder_register_filing.opening_balance_setups"));
+  const bank = writes.find(({ statement }) => statement.startsWith("insert into ledger.opening_bank_inputs"));
+  const shareholder = writes.find(({ statement }) => statement.startsWith("insert into shareholder_register_filing.opening_shareholders"));
+  assert.ok(opening && bank && shareholder);
+  assert.equal(opening.parameters[1], company);
+  assert.equal(opening.parameters[2], owner);
+  assert.equal(bank.parameters[0], opening.parameters[0]);
+  assert.equal(bank.parameters[2], owner);
+  assert.match(shareholder.statement, /\(id,setup_id,company_id,name,shareholder_kind,org_number,share_count,created_by\)/u);
+  assert.match(shareholder.statement, /'999999999',100,\$4\)/u);
+  assert.deepEqual(Array.from(shareholder.parameters).slice(1), [opening.parameters[0], company, owner]);
+  assert.doesNotMatch(writes.map(({ statement }) => statement).join("\n"), /insert into [^\n]*(?:filing_previews|filing_approval_snapshots|production_filing|production_feedback)/u);
+});
+
+for (const failCleanup of [false, true]) test(`fresh RF cleanup removes scoped public mirrors before openings (${failCleanup ? "failure preserved" : "success"})`, async () => {
+  const source = readFileSync(new URL("./browser_shareholder_register_filing.mjs", import.meta.url), "utf8");
+  const cleanup = source.slice(source.indexOf("async function cleanupFixture("), source.indexOf("async function login("));
+  const constants = source.slice(source.indexOf("const RF_TABLES ="), source.indexOf("async function rfFixtureTransaction("));
+  const company = "10000000-0000-4000-8000-000000000001";
+  const otherCompany = "20000000-0000-4000-8000-000000000002";
+  const mirrors = ["filing_review_comments", "filing_overrides", "filing_submissions", "authority_test_runs", "authority_permissions", "filing_previews"].map(name => `public.${name}`);
+  const original = Object.fromEntries(mirrors.map(table => [table, [company, otherCompany]]));
+  let rows = structuredClone(original);
+  const statements = [];
+  let declared;
+  let reachedOpening = false;
+  const failure = new Error("synthetic public mirror cleanup failure");
+  const database = { query: async (statement, parameters) => {
+    statements.push(statement);
+    const mirror = mirrors.find(table => statement.startsWith(`delete from ${table} `));
+    if (mirror) {
+      assert.ok(declared.includes(mirror), `missing finite fixture authority for ${mirror}`);
+      assert.ok(statement.endsWith("where company_id=any($1::uuid[])"));
+      assert.deepEqual(parameters[0], [company]);
+      rows[mirror] = rows[mirror].filter(id => !parameters[0].includes(id));
+      if (failCleanup && mirror === "public.filing_submissions") throw failure;
+    }
+    if (statement.startsWith("delete from shareholder_register_filing.opening_balance_setups ")) {
+      // Model the retained projection setup FKs: each selected mirror must
+      // already be gone before its canonical parent can be removed.
+      assert.ok(mirrors.every(table => !rows[table].includes(company)), "retained public projection still references the RF opening");
+      reachedOpening = true;
+    }
+    return { rows: [] };
+  } };
+  const cleanupFixture = vm.runInNewContext(`${constants}\n${cleanup}\ncleanupFixture`, {
+    fixtureTableTransaction: async (client, relations, operation) => {
+      assert.equal(client, database);
+      declared = relations;
+      const before = structuredClone(rows);
+      try { return await operation(); }
+      catch (error) { rows = before; throw error; }
+    },
+    deleteRfFixtureCompanies: async (client, ids) => {
+      assert.equal(client, database);
+      assert.deepEqual(ids, [company]);
+    },
+  });
+  if (failCleanup) {
+    await assert.rejects(cleanupFixture(database, [company], ["synthetic-user"]), error => error === failure);
+    assert.equal(reachedOpening, false);
+    assert.deepEqual(rows, original);
+  } else {
+    await cleanupFixture(database, [company], ["synthetic-user"]);
+    assert.equal(reachedOpening, true);
+    for (const table of mirrors) {
+      assert.deepEqual(rows[table], [otherCompany]);
+      assert.ok(declared.includes(table));
+      assert.ok(statements.findIndex(statement => statement.startsWith(`delete from ${table} `))
+        < statements.findIndex(statement => statement.startsWith("delete from shareholder_register_filing.opening_balance_setups ")));
+    }
+  }
+});
+
+for (const failureAt of [null, "seed", "restore"]) test(`fresh signoff fixture restores exact prior rows and USER triggers (${failureAt ?? "success"})`, async () => {
+  const source = readFileSync(new URL("./browser_shareholder_register_filing.mjs", import.meta.url), "utf8");
+  const keys = ["launch_legal_name_public_copy", "legal_policy_pack"];
+  const functions = source.slice(source.indexOf("async function seedLocalReleaseSignoffs("), source.indexOf("function captureBrowserHealth("));
+  const { seedLocalReleaseSignoffs, restoreLocalReleaseSignoffs } = vm.runInNewContext(
+    `${functions}; ({ seedLocalReleaseSignoffs, restoreLocalReleaseSignoffs })`,
+    { fixtureTableTransaction, SIGNOFF_KEYS: keys, JSON },
+  );
+  const original = [
+    { key: keys[0], status: "pending", reviewer: "Original reviewer", reviewed_at: "2026-01-01T12:34:56.123456+00:00", evidence_link: "original", decision: "pending", recorded_by: "original-actor", updated_at: "2026-01-02T00:00:00+00:00" },
+    { key: "unrelated", status: "approved", evidence_link: "keep-exact" },
+  ];
+  let rows = structuredClone(original);
+  const originalTriggers = [{ name: "original", mode: "O" }, { name: "already_disabled", mode: "D" }];
+  let triggers = structuredClone(originalTriggers);
+  let snapshot;
+  let stage = "seed";
+  let injected = false;
+  const failure = new Error("synthetic fixture interruption");
+  const statements = [];
+  const database = { connectionParameters: { host: "127.0.0.1" }, query: async (statement, parameters) => {
+    statements.push(statement);
+    if (statement === "begin") snapshot = { rows: structuredClone(rows), triggers: structuredClone(triggers) };
+    if (statement === "rollback") ({ rows, triggers } = snapshot);
+    if (statement.includes("select current_user principal")) return { rows: [{ principal: "postgres", bypass: true }] };
+    if (statement.includes("nspacl::text acl,has_schema_privilege")) return { rows: [{ acl: "schema-acl", permitted: true }] };
+    if (statement.includes("nspacl::text acl")) return { rows: [{ acl: "schema-acl" }] };
+    if (statement.includes("c.relacl::text acl")) return { rows: [{ acl: "table-acl", forced: true, owner: "postgres", missing: [] }] };
+    if (statement.includes("select relacl::text acl")) return { rows: [{ acl: "table-acl", forced: true }] };
+    if (statement.includes("from pg_trigger")) { assert.ok(statement.includes("not tgisinternal")); return { rows: structuredClone(triggers) }; }
+    const alteration = /^alter table "public"\."launch_signoffs" (enable|disable) trigger "([a-z_]+)"$/u.exec(statement);
+    if (alteration) triggers.find(({ name }) => name === alteration[2]).mode = alteration[1] === "enable" ? "O" : "D";
+    if (statement.startsWith("select to_jsonb(s) value")) return { rows: rows.filter(({ key }) => parameters[0].includes(key)).map(value => ({ value: structuredClone(value) })) };
+    if (/^(?:insert into|delete from) public\.launch_signoffs/u.test(statement)) {
+      assert.ok(triggers.every(({ mode }) => mode === "D"));
+      if (statement.startsWith("delete")) rows = rows.filter(({ key }) => !parameters[0].includes(key));
+      else if (statement.includes("jsonb_populate_record")) rows.push(JSON.parse(parameters[0]));
+      else {
+        const [key, actor] = parameters;
+        rows = rows.filter(row => row.key !== key);
+        rows.push({ key, status: "approved", recorded_by: actor, evidence_link: "local-synthetic-rf-browser" });
+      }
+      if (failureAt === stage && !injected) { injected = true; throw failure; }
+    }
+    return { rows: [] };
+  } };
+  if (failureAt === "seed") {
+    await assert.rejects(seedLocalReleaseSignoffs(database, "synthetic-owner"), error => error === failure);
+  } else {
+    const previous = await seedLocalReleaseSignoffs(database, "synthetic-owner");
+    assert.deepEqual(previous, [original[0]]);
+    assert.deepEqual(rows.find(({ key }) => key === "unrelated"), original[1]);
+    const seeded = structuredClone(rows);
+    stage = "restore";
+    if (failureAt === "restore") {
+      await assert.rejects(restoreLocalReleaseSignoffs(database, previous), error => error === failure);
+      assert.deepEqual(rows, seeded);
+    }
+    await restoreLocalReleaseSignoffs(database, previous);
+  }
+  assert.deepEqual(rows.sort((a, b) => a.key.localeCompare(b.key)), original.sort((a, b) => a.key.localeCompare(b.key)));
+  assert.deepEqual(triggers, originalTriggers);
+  assert.doesNotMatch(statements.join("\n"), /session_replication_role|no force row level security|disable trigger (?:all|user)/iu);
 });

@@ -1,0 +1,33 @@
+{
+  "observed_at": "2026-09-09T22:27:08.809654+00:00",
+  "base_revision": "7730bd3473943f5308136207b2acce4f720c851c",
+  "source_sha256": {
+    "tests/browser_shareholder_register_filing.mjs": "df7cf9633d118d6c448117676b35444534b2d2525469f71110e9f5b1b763cb44",
+    "tests/shareholder_register_browser_fixture_safety.test.mjs": "7414a3fb8c07d60def78d49087995d781d7391d621830cee7234d07da5535a09",
+    "tests/support/rf1086-fixture-access.mjs": "08b2cd8207949a8d39f33f1ff3b6b772e2c57268fb92f91291b6e322b479c48f",
+    "tests/fixtures/start_shareholder_register_filing_backend.py": "b19380206bc2c006beffde7e0e6e6a9ab823f6882fd6d5fd6cad54dae6fd7d16",
+    "tests/fixtures/rf1086-filing-authority-mock.mjs": "92916244d2b14bb50ff4106f6cb7b0524d4c3bfa1ca1a7cd1d376ea104dcb0a5",
+    "tests/fixtures/system-user-authority-mock.mjs": "0e7dd66b57f106c8ceb699cb3e0c3d06f8df2e528fdcc2eabeb9f8a4b447e4eb",
+    "scripts/rehearse-authority-topology.mjs": "85900cfd7ab3bbf263a1aaadf99efb1172d1c0d37a4e95d64583dfb207d68e15",
+    "scripts/test-supabase-local.sh": "6aff56c815a5fb248c6586abe6785a38a6fa404af9c14e5e385160179945649d",
+    "package.json": "0f9a6888fa135b5b66d9496f382b88adf1d52650124cf40875442634183b1248",
+    "tests/ci_release_gate.test.mjs": "eddb32995119b420b5899eefed4e185a3c20293d7e8764c6f40c1385364eb170",
+    "supabase/migrations/0001_authenticated_workspace.sql": "efa28a79444eea498e526d26912f3bb3f60b044b1ab0209602296e9cee6ad0ca",
+    "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql": "187f4210ab2df4b230ddfc631875eb6879216b8d8618b4d5b3ecd50764cac05b"
+  },
+  "review_mode": "read-only source, no tests/DB/Next/provider operations",
+  "result": "scoped source pass; one reported finding corrected and independently closed",
+  "closure": {
+    "finding": "required shareholder created_by omitted",
+    "browser_only_changed_by_two_owner_binding_replacements": true,
+    "created_by_parameter": "$4",
+    "bound_value": "existing ownerId",
+    "author_validation_receipt": "/tmp/talli-151-fresh-browser-owner-provenance-correction.json",
+    "author_reported_tests": {
+      "passed": 11,
+      "skipped": 0,
+      "red_confirmed": true
+    },
+    "reviewer_reran_tests": false
+  }
+}

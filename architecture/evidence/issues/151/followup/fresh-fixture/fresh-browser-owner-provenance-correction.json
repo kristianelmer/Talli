@@ -1,0 +1,29 @@
+{
+  "at": "2026-09-09T22:26:26.412835+00:00",
+  "scope": "Existing fresh RF fixture opening shareholder owner provenance correction",
+  "source_sha256": {
+    "tests/browser_shareholder_register_filing.mjs": "df7cf9633d118d6c448117676b35444534b2d2525469f71110e9f5b1b763cb44",
+    "tests/shareholder_register_browser_fixture_safety.test.mjs": "7414a3fb8c07d60def78d49087995d781d7391d621830cee7234d07da5535a09",
+    "tests/support/rf1086-fixture-access.mjs": "08b2cd8207949a8d39f33f1ff3b6b772e2c57268fb92f91291b6e322b479c48f"
+  },
+  "log_sha256": {
+    "/tmp/talli-151-fresh-browser-owner-provenance-red.log": "f63c17947b8e82724d028c394ee4ba5d86da0a94a565eeffd4f6f9b4fa86748c",
+    "/tmp/talli-151-fresh-browser-owner-provenance-green.log": "c25fff460a7ca617a76cfb4f9189fed16f280a73c0efd01a7c3bdb78f339f4b8"
+  },
+  "preservation": {
+    "entire_browser_callback_byte_identical": true,
+    "seed_except_created_by_binding_byte_identical": true,
+    "existing_owner_used_for_created_by": true,
+    "no_seeded_preview_approval_journal_receipt": true
+  },
+  "validation": {
+    "red": "Executed extracted seed fails focused check because the original NOT NULL created_by column/owner argument is absent.",
+    "green": "All11 fixture safety cases pass; zero skips. Extracted seed confirms opening/bank/shareholder share existing company/owner and original setup identity.",
+    "diff_check": "passed"
+  },
+  "limits": [
+    "No DB/Next/browser run.",
+    "No shared helper edits.",
+    "No actual provider calls or fresh-journey/stage exit claim."
+  ]
+}

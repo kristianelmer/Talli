@@ -451,15 +451,17 @@ test("mandatory local lane preserves every predecessor before Billing and final 
         "HARNESS_NPM:run test:ledger-database-lifecycle", "HARNESS_NPM:run test:banking-database-lifecycle",
         "HARNESS_NPM:run test:investments-database-lifecycle", "HARNESS_NPM:run test:documents-database-lifecycle",
         "HARNESS_NPM:run test:marketing-measurement-database", "HARNESS_NPM:run test:validation-observation",
-        "HARNESS_NPM:run test:supabase", "HARNESS_NPM:run test:browser-owner",
+        "HARNESS_NPM:run test:supabase-predecessor", "AUTHORITY_TOPOLOGY:workspace",
+        "HARNESS_NPM:run test:supabase-rf-workspace", "HARNESS_NPM:run test:browser-owner",
+        "AUTHORITY_TOPOLOGY:rollback",
         "HARNESS_NPM:run test:ledger-hosted-migration-authority", "HARNESS_NPM:run test:corporate-governance-database-lifecycle",
         "HARNESS_NPM:run test:billing-database-lifecycle",
         ...(mode !== "billing-failure" ? ["AUTHORITY_TOPOLOGY:recutover"] : []),
-        ...(mode === "success" ? ["HARNESS_NPM:run test:authority-connections-database", "HARNESS_NPM:run test:browser-authority-connections"] : []),
+        ...(mode === "success" ? ["HARNESS_NPM:run test:authority-connections-database", "HARNESS_NPM:run test:supabase-rf-feedback", "HARNESS_NPM:run test:browser-authority-connections", "HARNESS_NPM:run test:browser-shareholder-register-filing"] : []),
       ];
       let previous = -1;
       for (const milestone of milestones) {
-        const position = result.stdout.indexOf(milestone + "\n");
+        const position = result.stdout.indexOf(milestone + "\n", previous + 1);
         assert.ok(position > previous, `${mode}: missing or reordered ${milestone}\n${result.stdout}`);
         previous = position;
       }
@@ -470,31 +472,154 @@ test("mandatory local lane preserves every predecessor before Billing and final 
 });
 
 
-test("Authority topology rehearsal unwinds dependent RF first and fails before later SQL on error", async () => {
-  const { rehearseAuthorityTopology } = await import("../scripts/rehearse-authority-topology.mjs");
-  const authority = "20260909120610_authority_connections_capability.sql";
-  const operations = "20260909123709_authority_operations_capability.sql";
-  const rf = "20260909125113_legacy_rf1086_authority_relocation.sql";
-  const contract = "20260909124659_authority_connections_contract.sql";
-  for (const contracted of [false, true]) {
-    const executed = [];
-    const database = { async query(sql) {
-      if (sql.startsWith("select c.relkind")) return { rows: contracted ? [] : [{ kind: "v" }] };
-      executed.push(sql);
-      return { rows: [] };
-    } };
-    await rehearseAuthorityTopology({ direction: "rollback", database, loadSql: async (file) => file });
-    assert.deepEqual(executed, [...(contracted ? [`rollback/${contract}`] : []), `rollback/${rf}`, `rollback/${operations}`, `rollback/${authority}`]);
+// Exact #150/#151 fixture dependency and source-file partition regressions.
+{
+const {rehearseAuthorityTopology}=await import("../scripts/rehearse-authority-topology.mjs");
+const AU='20260909120610_authority_connections_capability.sql';
+const OP='20260909123709_authority_operations_capability.sql';
+const RF='20260909125113_legacy_rf1086_authority_relocation.sql';
+const AUC='20260909124659_authority_connections_contract.sql';
+const SIGN='20260909125250_backend_system_launch_signoffs_contract.sql';
+const RFX='20260909190548_shareholder_register_filing_capability.sql';
+const RFC='20260909190905_shareholder_register_filing_cutover.sql';
+const RFF='20260909190955_shareholder_register_filing_contract.sql';
+const predecessor={rf_owned:false,authority_kind:'r',ledger_kind:'v',ledger_setup:true,opening_kind:'r'};
+const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`];
+const workspaceForward=forward.filter(path=>path!==`contract-migrations/${AUC}`);
+function fake(initial,{fail,noEffect=false}={}) {
+ const state={...initial},executed=[];
+ return {executed,database:{async query(sql) {
+  if(sql.startsWith('select\n')) return {rows:[{...state}]};
+  executed.push(sql); if(sql===fail) throw new Error('synthetic_dependency_failure');
+  if(!noEffect){
+   if(sql===`rollback/${RFX}`){state.rf_owned=false;state.opening_kind='r';}
+   if(sql===`rollback/${AUC}`)state.authority_kind='v';
+   if(sql===`rollback/${AU}`)state.authority_kind='r';
+   if(sql===`migrations/${AU}`)state.authority_kind='v';
+   if(sql===`contract-migrations/${AUC}`)state.authority_kind=null;
+   if(sql===`migrations/${RFX}`)state.rf_owned=true;
+   if(sql===`contract-migrations/${RFF}`)state.opening_kind=null;
   }
-  const executed = [];
-  const database = { async query(sql) {
-    if (sql.startsWith("select c.relkind")) return { rows: [{ kind: "r" }] };
-    executed.push(sql);
-    if (sql === `migrations/${rf}`) throw new Error("synthetic_rf_recutover_failed");
-    return { rows: [] };
-  } };
-  await assert.rejects(rehearseAuthorityTopology({ direction: "recutover", database, loadSql: async (file) => file }), /synthetic_rf_recutover_failed/u);
-  assert.deepEqual(executed, [`migrations/${authority}`, `migrations/${operations}`, `migrations/${rf}`]);
-  // A failed dependency never contracts either public overlap or proceeds to
-  // the required post-cutover database and browser lanes.
+  return {rows:[]};
+ }}};
+}
+const run=(direction,fixture)=>rehearseAuthorityTopology({direction,database:fixture.database,loadSql:async path=>path});
+for(const authority_kind of ['v',null]) for(const rf_owned of [false,true]) {
+ test(`rollback RF=${rf_owned} AU=${authority_kind} restores dependency order`,async()=>{
+  const fixture=fake({...predecessor,authority_kind,rf_owned});await run('rollback',fixture);
+  assert.deepEqual(fixture.executed,[...(rf_owned?[`rollback/${RFX}`]:[]),...(authority_kind===null?[`rollback/${AUC}`]:[]),`rollback/${RF}`,`rollback/${OP}`,`rollback/${AU}`]);
+ });
+}
+test('RF rollback failure prevents all predecessor mutations',async()=>{
+ const f=fake({...predecessor,rf_owned:true,authority_kind:null},{fail:`rollback/${RFX}`});
+ await assert.rejects(run('rollback',f),/synthetic_dependency_failure/);assert.deepEqual(f.executed,[`rollback/${RFX}`]);
 });
+test('workspace retains AU and Ledger overlap for Billing and sibling consumers',async()=>{
+ const f=fake(predecessor);await run('workspace',f);assert.deepEqual(f.executed,workspaceForward);
+ assert.ok(!f.executed.some(p=>p.includes('ledger_capability_contract')||p===`contract-migrations/${AUC}`||p===`contract-migrations/${RFF}`));
+});
+for(const wrong of [{ledger_kind:null,ledger_setup:false},{ledger_kind:'r'},{ledger_setup:false},{opening_kind:null}])test(`workspace refuses wrong Ledger topology ${JSON.stringify(wrong)}`,async()=>{
+ const f=fake({...predecessor,...wrong});await assert.rejects(run('workspace',f),/workspace_requires_ledger_ordinary_overlap/);assert.deepEqual(f.executed,[]);
+});
+test('final RF contract follows explicit final Ledger guard and owner recutover',async()=>{
+ const f=fake({...predecessor,ledger_kind:null,ledger_setup:false});await run('recutover',f);assert.deepEqual(f.executed,[...forward,`contract-migrations/${RFF}`]);
+});
+for(const wrong of [{ledger_kind:'v',ledger_setup:true},{ledger_kind:null,ledger_setup:true},{ledger_kind:'v',ledger_setup:false}])test(`final refuses incomplete Ledger contract ${JSON.stringify(wrong)}`,async()=>{
+ const f=fake({...predecessor,...wrong});await assert.rejects(run('recutover',f),/final_rf_requires_ledger_contract/);assert.deepEqual(f.executed,[]);
+});
+for(const fail of [`migrations/${RF}`,`migrations/${RFX}`,`migrations/${RFC}`,`contract-migrations/${RFF}`])test(`dependency failure stops final sequence at ${fail}`,async()=>{
+ const f=fake({...predecessor,ledger_kind:null,ledger_setup:false},{fail});await assert.rejects(run('recutover',f),/synthetic_dependency_failure/);
+ const files=[...forward,`contract-migrations/${RFF}`];assert.deepEqual(f.executed,files.slice(0,files.indexOf(fail)+1));
+});
+test('success is refused if SQL does not establish target state',async()=>{
+ const f=fake(predecessor,{noEffect:true});await assert.rejects(run('workspace',f),/authority_rehearsal_target_not_reached/);
+});
+test('unexpected earlier owner topology fails before mutation',async()=>{
+ const f=fake({...predecessor,authority_kind:'v'});await assert.rejects(run('workspace',f),/authority_predecessor_topology_required/);assert.deepEqual(f.executed,[]);
+});
+test('unknown direction fails before even probing the database',async()=>{
+ await assert.rejects(rehearseAuthorityTopology({direction:'all',database:{query(){assert.fail('query must not run');}}}),/invalid_authority_rehearsal_direction/);
+});
+test('package partition retains every original file once',()=>{
+ const previous=["tests/supabase_workspace.test.mjs", "tests/rf1086_feedback_schema.test.mjs", "tests/company_access_invitations_schema.test.mjs", "tests/company_access_cancellation_schema.test.mjs", "tests/company_year_admission_schema.test.mjs", "tests/current_legal_evidence_schema.test.mjs", "tests/current_legal_evidence_migration_lifecycle.test.mjs", "tests/support_access_schema.test.mjs", "tests/company_access_database_runtime.test.mjs", "tests/company_access_onboarding_database_runtime.test.mjs", "tests/support_access_database_runtime.test.mjs", "tests/support_access_migration_lifecycle.test.mjs", "tests/documents_database_runtime.test.mjs", "tests/documents_migration_lifecycle.test.mjs"];
+ const allScripts=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).scripts;
+ const scripts=Object.fromEntries(['test:supabase-predecessor','test:supabase-rf-workspace','test:supabase-rf-feedback'].map(name=>[name,allScripts[name]]));
+ assert.equal(allScripts['test:supabase'],'npm run test:supabase:local');
+ assert.doesNotMatch(readFileSync(databaseHarnessPath,'utf8'),/npm run test:supabase\s*$/mu);
+ const actual=Object.values(scripts).flatMap(x=>x.split(' ').filter(y=>y.startsWith('tests/')));
+ assert.equal(actual.length,new Set(actual).size);assert.deepEqual([...actual].sort(),[...previous].sort());
+});
+test("complete local runner requires the fresh RF browser after historical recovery", () => {
+  const scripts = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).scripts;
+  assert.equal(scripts["test:browser-shareholder-register-filing"],
+    "node --test --test-concurrency=1 tests/shareholder_register_browser_fixture_safety.test.mjs tests/browser_shareholder_register_filing.mjs");
+  const harness = readFileSync(databaseHarnessPath, "utf8");
+  const fresh = "npm run test:browser-shareholder-register-filing";
+  assert.equal(harness.split(fresh).length, 2);
+  assert.ok(harness.indexOf(fresh) > harness.indexOf("npm run test:browser-authority-connections"));
+});
+
+}
+
+// Execute the actual shell with local shims; no database or provider process starts.
+{
+const shell=fileURLToPath(new URL('../scripts/test-supabase-local.sh',import.meta.url));
+const phases=['topology:rollback:1','npm:test:ledger-database-lifecycle','npm:test:banking-database-lifecycle',
+ 'npm:test:investments-database-lifecycle','npm:test:documents-database-lifecycle','npm:test:marketing-measurement-database',
+ 'npm:test:validation-observation','npm:test:supabase-predecessor','topology:workspace','npm:test:supabase-rf-workspace',
+ 'npm:test:browser-owner','topology:rollback:2','npm:test:ledger-hosted-migration-authority',
+ 'npm:test:corporate-governance-database-lifecycle','npm:test:billing-database-lifecycle','topology:recutover',
+ 'npm:test:authority-connections-database','npm:test:supabase-rf-feedback','npm:test:browser-authority-connections','npm:test:browser-shareholder-register-filing'];
+const nodeShim=`#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$1" == "scripts/prepare-isolated-supabase-workdir.mjs" ]]; then exit 0; fi
+[[ "$1" == "scripts/rehearse-authority-topology.mjs" ]]
+phase="topology:$2"
+if [[ "$2" == "rollback" ]]; then
+ count=0; [[ ! -f rollback-count ]] || count=$(cat rollback-count)
+ count=$((count+1)); printf '%s' "$count" > rollback-count; phase="$phase:$count"
+fi
+printf 'PHASE:%s\\n' "$phase"
+if [[ "$phase" == "$FAIL_PHASE" ]]; then exit 23; fi
+`;
+const npmShim=`#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$*" == *"supabase status --workdir"* && "$*" == *"--output env"* ]]; then
+ printf '%s\\n' 'API_URL=http://127.0.0.1:54321' 'PUBLISHABLE_KEY=synthetic' 'SECRET_KEY=synthetic' 'DB_URL=postgresql://127.0.0.1/local'
+ exit 0
+fi
+if [[ "$1" == "exec" ]]; then exit 0; fi
+[[ "$1" == "run" ]]
+if [[ "$2" == "test:supabase-advisors" ]]; then exit 0; fi
+phase="npm:$2"; printf 'PHASE:%s\\n' "$phase"
+if [[ "$2" == "test:browser-owner" ]]; then
+ printf 'generated\\n' > apps/web/next-env.d.ts
+ printf 'generated\\n' > apps/web/tsconfig.json
+ printf 'generated\\n' > apps/web/AGENTS.md
+ printf 'generated\\n' > apps/web/CLAUDE.md
+fi
+if [[ "$phase" == "$FAIL_PHASE" ]]; then exit 23; fi
+`;
+for(const fail of ['', 'topology:workspace','npm:test:supabase-rf-workspace','npm:test:browser-owner','topology:rollback:2',
+ 'npm:test:ledger-hosted-migration-authority','npm:test:billing-database-lifecycle','topology:recutover','npm:test:supabase-rf-feedback',
+ 'npm:test:browser-shareholder-register-filing']) {
+ test(`real shell stops at ${fail||'success'} and restores owned generated files`,()=>{
+  const dir=mkdtempSync(join(tmpdir(),'talli-151-shell-proof-'));
+  try {
+   mkdirSync(join(dir,'apps/web'),{recursive:true});mkdirSync(join(dir,'bin'));mkdirSync(join(dir,'snapshots'));
+   writeFileSync(join(dir,'apps/web/next-env.d.ts'),'original declaration\r\n');
+   writeFileSync(join(dir,'apps/web/tsconfig.json'),'original config\r\n');
+   for(const [name,body] of [['node',nodeShim],['npm',npmShim]]) {const path=join(dir,'bin',name);writeFileSync(path,body);chmodSync(path,0o755);}
+   const result=spawnSync('bash',[shell],{cwd:dir,encoding:'utf8',env:{...process.env,FAIL_PHASE:fail,PATH:join(dir,'bin')+':'+process.env.PATH,TMPDIR:join(dir,'snapshots')}});
+   assert.equal(result.status,fail?23:0,result.stderr);
+   const seen=result.stdout.split('\n').filter(x=>x.startsWith('PHASE:')).map(x=>x.slice(6));
+   assert.deepEqual(seen,fail?phases.slice(0,phases.indexOf(fail)+1):phases);
+   assert.equal(readFileSync(join(dir,'apps/web/next-env.d.ts'),'utf8'),'original declaration\r\n');
+   assert.equal(readFileSync(join(dir,'apps/web/tsconfig.json'),'utf8'),'original config\r\n');
+   assert.deepEqual(readdirSync(join(dir,'apps/web')).sort(),['next-env.d.ts','tsconfig.json']);
+   assert.deepEqual(readdirSync(join(dir,'snapshots')),[]);
+  } finally {rmSync(dir,{recursive:true,force:true});}
+ });
+}
+
+}

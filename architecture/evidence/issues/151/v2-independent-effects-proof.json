@@ -1,0 +1,70 @@
+{
+  "behaviorComparisonRevision": "7a49f010229baf13d4942364d352786d7cddc5c3",
+  "archiveAuthorizationAndBeginStatementsIdentical": true,
+  "archiveSerializationReceiptAndResponseStatementsIdentical": true,
+  "adjacentOriginalEffects": [
+    {
+      "record": "compat-audit-persistence",
+      "operation": "acknowledgeFilingReviewComment",
+      "resource": "table:audit_events",
+      "expected": 1,
+      "current": 1
+    },
+    {
+      "record": "compat-audit-persistence",
+      "operation": "addFilingOverride",
+      "resource": "table:audit_events",
+      "expected": 1,
+      "current": 1
+    },
+    {
+      "record": "compat-audit-persistence",
+      "operation": "addFilingReviewComment",
+      "resource": "table:audit_events",
+      "expected": 1,
+      "current": 1
+    },
+    {
+      "record": "compat-audit-persistence",
+      "operation": "confirmAuthorityPermission",
+      "resource": "table:audit_events",
+      "expected": 1,
+      "current": 1
+    },
+    {
+      "record": "compat-audit-persistence",
+      "operation": "confirmSimulatedRf1086Submission",
+      "resource": "table:audit_events",
+      "expected": 1,
+      "current": 1
+    },
+    {
+      "record": "compat-audit-persistence",
+      "operation": "queueDeadlineReminders",
+      "resource": "table:audit_events",
+      "expected": 1,
+      "current": 1
+    },
+    {
+      "record": "compat-audit-persistence",
+      "operation": "recordAuthorityTestEvidence",
+      "resource": "table:audit_events",
+      "expected": 1,
+      "current": 1
+    },
+    {
+      "record": "compat-audit-persistence",
+      "operation": "refreshAnnualReadinessSnapshots",
+      "resource": "table:audit_events",
+      "expected": 1,
+      "current": 1
+    },
+    {
+      "record": "compat-notification-persistence",
+      "operation": "queueDeadlineReminders",
+      "resource": "table:notification_outbox",
+      "expected": 2,
+      "current": 2
+    }
+  ]
+}

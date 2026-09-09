@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { fixtureTableTransaction } from "./support/rf1086-fixture-access.mjs";
 import { apiRequest, deniedRf } from "./support/rf1086-workspace-api.mjs";
 import { TalliApiError } from "../packages/talli-api-client/src/index.ts";
 import { createRfDatabaseActor } from "./support/rf1086-database-actor.mjs";
@@ -91,7 +92,45 @@ test("workspace RF assertions use canonical commands and preserve sibling tax an
     assert.ok(source.includes(assertion), assertion);
   const seed = helper.slice(helper.indexOf("export async function seedHistoricalRfOpening"), helper.indexOf("export const RF_FIXTURE_TABLES"));
   assert.doesNotMatch(seed, /insert into [^\n]*(?:filing_preview|filing_submission|approval|feedback|company_year_admission)/u);
-  assert.match(helper, /set local session_replication_role=replica/u);
+  assert.doesNotMatch(helper, /session_replication_role/u);
   assert.match(helper, /alter role \$\{role\} nologin password null/u);
   assert.match(source, /if \(rf\) await collectCleanupError\(\(\) => rf\.close\(\)/u);
+});
+
+
+test("fixture access refuses external databases and undeclared relations before SQL", async () => {
+  const database = { connectionParameters: { host: "remote.invalid" }, query: () => { throw new Error("unexpected SQL"); } };
+  await assert.rejects(fixtureTableTransaction(database, ["public.audit_events"], async () => {}), /loopback/u);
+  database.connectionParameters.host = "127.0.0.1";
+  await assert.rejects(fixtureTableTransaction(database, ["auth.users"], async () => {}), /undeclared/u);
+});
+
+for (const fails of [false, true]) test(`fixture restores exact USER trigger modes on ${fails ? "rollback" : "success"} without disabling foreign keys`, async () => {
+  const original = [{ name: 'quoted"trigger', mode: "O" }, { name: "disabled", mode: "D" }, { name: "replica", mode: "R" }, { name: "always", mode: "A" }];
+  let current = structuredClone(original);
+  const statements = [];
+  const database = { connectionParameters: { host: "127.0.0.1" }, query: async statement => {
+    statements.push(statement);
+    if (statement.includes("select current_user principal")) return { rows: [{ principal: "postgres", bypass: true }] };
+    if (statement.includes("nspacl::text acl,has_schema_privilege")) return { rows: [{ acl: "original-schema-acl", permitted: true }] };
+    if (statement.includes("nspacl::text acl")) return { rows: [{ acl: "original-schema-acl" }] };
+    if (statement.includes("c.relacl::text acl")) return { rows: [{ acl: "original-table-acl", forced: true, owner: "postgres", missing: [] }] };
+    if (statement.includes("select relacl::text acl")) return { rows: [{ acl: "original-table-acl", forced: true }] };
+    if (statement.includes("from pg_trigger")) { assert.ok(statement.includes("not tgisinternal")); return { rows: structuredClone(current) }; }
+    const alteration = /^alter table "public"\."audit_events" (enable replica|enable always|enable|disable) trigger "((?:[^"]|"")+)"$/u.exec(statement);
+    if (alteration) current.find(row => row.name === alteration[2].replaceAll('""', '"')).mode = { enable: "O", disable: "D", "enable replica": "R", "enable always": "A" }[alteration[1]];
+    if (statement === "rollback") current = structuredClone(original);
+    return { rows: [] };
+  } };
+  const failure = new Error("fixture operation failed");
+  const action = fixtureTableTransaction(database, ["public.audit_events"], async () => {
+    assert.ok(current.every(trigger => trigger.mode === "D"));
+    if (fails) throw failure;
+    return "fixture-result";
+  });
+  if (fails) await assert.rejects(action, error => error === failure);
+  else assert.equal(await action, "fixture-result");
+  assert.deepEqual(current, original);
+  assert.equal(statements.at(-1), fails ? "rollback" : "commit");
+  assert.doesNotMatch(statements.join("\n"), /session_replication_role|disable trigger (?:all|user)|no force row level security/iu);
 });

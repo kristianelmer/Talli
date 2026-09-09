@@ -1,0 +1,11 @@
+{
+  "reviewed_at": "2026-09-09T22:12:02.343223+00:00",
+  "base_commit": "7730bd3473943f5308136207b2acce4f720c851c",
+  "file": "tests/billing_database_runtime.test.mjs",
+  "base_sha256": "307c7ccf842fdb1953aea6c6177ed94cd9c4711c9fc587c6d48871d0ab865428",
+  "reviewed_sha256": "b6956c1fef13b47df12a84264b02fa0890a4547a780386542c2731b8cd4325ff",
+  "verdict": "no findings in two Node Billing fixture clock corrections",
+  "equivalence": "Reversing precisely two DB clock-read declarations/comments and two AMR property replacements restores the entire original file byte-for-byte.",
+  "scope": "Fixture-only epoch clock_timestamp minus one second, inside each preexisting transaction and billing_store_owner role. Original sub/aal/method, claims GUCs, transaction/rollback, receipt DML/query, lifecycle/grant assertions and date vectors unchanged.",
+  "limitations": "Read-only source review. No DB/provider calls or test execution by reviewer. Does not certify pending Node runtime/full gate."
+}

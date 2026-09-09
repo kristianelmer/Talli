@@ -1,0 +1,13 @@
+{
+  "verifiedAt": "2026-09-09T22:32:07.564218+00:00",
+  "baseline": "7730bd3473943f5308136207b2acce4f720c851c",
+  "file": "tests/browser_owner_annual_loop.mjs",
+  "currentSha256": "4cec91925cf1a72b2f2e02d94d1299d95f22302773cb5b020915a709b9c2bab4",
+  "allOriginalBrowserScenariosAndAssertionsByteIdentical": true,
+  "exactChangedRegions": [
+    "one finite fixture helper import",
+    "seedAnnualLoop historical fixture persistence bindings",
+    "one Ledger opening read function name under unchanged ledger_executor context"
+  ],
+  "method": "Byte comparison of the whole source after substituting only those three exact regions with baseline bytes; all other setup, journey, assertion, MFA, Billing, simulation, reload and investment code remains byte-identical."
+}

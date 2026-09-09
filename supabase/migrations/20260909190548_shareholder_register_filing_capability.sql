@@ -817,6 +817,8 @@ revoke all on function ledger.record_opening_bank_input_v1(uuid,uuid,integer,num
  ledger.read_opening_bank_inputs_v1(uuid,integer,text) from public,anon,authenticated,service_role;
 grant execute on function ledger.record_opening_bank_input_v1(uuid,uuid,integer,numeric,text),
  ledger.read_opening_bank_inputs_v1(uuid,integer,text) to ledger_workflow_executor,ledger_workflow_store_owner;
+-- Ordinary authenticated query sessions use ledger_executor, never the writer role.
+grant execute on function ledger.read_opening_bank_inputs_v1(uuid,integer,text) to ledger_executor;
 reset role;
 
 -- New backend can inspect the canonical mirrored records during either rollout order.
@@ -2810,7 +2812,7 @@ alter function backend_system.read_new_year_opening_snapshots_v1(uuid[],text,int
 revoke all on function backend_system.read_new_year_opening_snapshots_v1(uuid[],text,integer,text,integer)
   from public,anon,authenticated,service_role;
 grant execute on function backend_system.read_new_year_opening_snapshots_v1(uuid[],text,integer,text,integer)
-  to ledger_workflow_executor;
+  to ledger_executor,ledger_workflow_executor;
 
 do $restore_roles$ declare r record; begin
  if (select workflow_create from rf151_schema_grants) then revoke create on schema backend_system from ledger_workflow_store_owner; end if;

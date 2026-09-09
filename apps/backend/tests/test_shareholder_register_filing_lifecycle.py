@@ -205,8 +205,8 @@ def test_composed_new_year_read_preserves_original_values_pagination_and_cursor(
     bind(db,owner,company_id)
     db.execute('reset role')
     principal=db.execute('select current_user').fetchone()[0]
-    db.execute(sql.SQL('grant ledger_workflow_executor to {} with inherit false,set true').format(sql.Identifier(principal)))
-    db.execute('set local role ledger_workflow_executor')
+    db.execute(sql.SQL('grant ledger_executor to {} with inherit false,set true').format(sql.Identifier(principal)))
+    db.execute('set local role ledger_executor')
     args=([company_id,other],None,1,str(owner).upper())
     first=db.execute('select * from backend_system.read_new_year_opening_snapshots_v1(%s,%s,%s,%s)',args).fetchone()
     assert len(first[0])==1 and first[2] and first[1]
@@ -394,12 +394,13 @@ def test_successful_resimulation_clears_predecessor_failure_columns(db,phase):
     assert result['failure_code'] is None and result['failure_message'] is None
 
 
-def _new_year_reader(db,owner,company_id):
+def _new_year_reader(db,owner,company_id,role="ledger_executor"):
     bind(db,owner,company_id)
     db.execute('reset role')
     principal=db.execute('select current_user').fetchone()[0]
-    db.execute(sql.SQL('grant ledger_workflow_executor to {} with inherit false,set true').format(sql.Identifier(principal)))
-    db.execute('set local role ledger_workflow_executor')
+    assert role in {'ledger_executor','ledger_workflow_executor'}
+    db.execute(sql.SQL('grant {} to {} with inherit false,set true').format(sql.Identifier(role),sql.Identifier(principal)))
+    db.execute(sql.SQL('set local role {}').format(sql.Identifier(role)))
 
 
 def test_year_scoped_archive_opening_does_not_read_another_year_quarantine(db):
@@ -487,7 +488,7 @@ def test_split_opening_projection_waits_for_exact_ledger_bank_and_admits_scope_a
     company_id,owner=company(db);_admit_opening_year(db,company_id,owner)
     migration(db,EXPAND)
     if phase==CUTOVER:migration(db,CUTOVER)
-    _new_year_reader(db,owner,company_id)
+    _new_year_reader(db,owner,company_id,role="ledger_workflow_executor")
     with pytest.raises(psycopg.Error,match='rf1086_opening_bank_projection_missing'):
         with db.transaction():
             _record_split_opening(db,company_id,owner)
@@ -533,3 +534,80 @@ def test_frozen_projection_fixture_cleanup_restores_trigger_modes_on_success_and
     delete_legacy_fixture_projections(db,company_id)
     assert not db.execute('select 1 from public.filing_previews where id=%s',(preview_id,)).fetchone()
     assert modes()==original
+
+
+@pytest.mark.parametrize('phase',[EXPAND,CUTOVER],ids=['rf-expand','rf-cutover'])
+def test_shipped_ledger_read_role_uses_both_read_ports_without_write_authority(db,phase):
+    company_id,owner=company(db)
+    other_company,other_owner=company(db)
+    setup=opening(db,company_id,owner)
+    opening(db,other_company,other_owner)
+    migration(db,EXPAND)
+    if phase==CUTOVER:migration(db,CUTOVER)
+    _new_year_reader(db,owner,company_id)
+    assert db.execute('select current_user').fetchone()[0]=='ledger_executor'
+    original=db.execute('select * from backend_system.read_new_year_opening_snapshots_v1(%s,null,1,%s)',([company_id],str(owner))).fetchone()
+    scoped=db.execute('select * from backend_system.read_new_year_opening_snapshots_v1(%s,null,1,%s,2025)',([company_id],str(owner))).fetchone()
+    assert scoped==original and not scoped[2]
+    assert scoped[0][0]['setupId']==str(setup) and scoped[0][0]['bankBalance']=='321'
+    bank=db.execute('select * from ledger.read_opening_bank_inputs_v1(%s,2025,%s)',(company_id,str(owner))).fetchone()
+    assert bank[0]==setup and bank[1]==company_id and bank[2]==2025 and str(bank[3])=='321' and bank[4]==owner
+    for statement,args in (
+        ('select * from backend_system.read_new_year_opening_snapshots_v1(%s,null,1,%s,2025)',([company_id],str(other_owner))),
+        ('select * from ledger.read_opening_bank_inputs_v1(%s,2025,%s)',(company_id,str(other_owner))),
+    ):
+        with pytest.raises(psycopg.Error,match='ledger_forbidden'):
+            with db.transaction():db.execute(statement,args)
+    assert db.execute('select * from backend_system.read_new_year_opening_snapshots_v1(%s,null,1,%s,2025)',([other_company],str(owner))).fetchone()[0]==[]
+    with pytest.raises(psycopg.Error,match='ledger_not_found'):
+        with db.transaction():db.execute('select * from ledger.read_opening_bank_inputs_v1(%s,2025,%s)',(other_company,str(owner)))
+    for statement,args in (
+        ('select * from ledger.record_opening_bank_input_v1(%s,%s,2025,1,%s)',(uuid4(),company_id,str(owner))),
+        ('select shareholder_register_filing.record_opening_snapshot_v1(%s,2025,1,1,1,%s,%s)',(company_id,Jsonb([]),str(owner))),
+        ('select * from ledger.opening_bank_inputs',()),
+        ('select * from shareholder_register_filing.opening_balance_setups',()),
+    ):
+        with pytest.raises(psycopg.Error) as denied:
+            with db.transaction():db.execute(statement,args)
+        assert denied.value.sqlstate=='42501'
+
+
+@pytest.mark.parametrize('phase',[CUTOVER,CONTRACT],ids=['rf-cutover','rf-contract'])
+def test_bank_only_record_advances_archive_generation_and_rollback_restores_it(db,phase):
+    company_id,owner=company(db)
+    _admit_opening_year(db,company_id,owner)
+    for path in (EXPAND,CUTOVER):migration(db,path)
+    if phase==CONTRACT:migration(db,CONTRACT)
+    _new_year_reader(db,owner,company_id,role='ledger_workflow_executor')
+    snapshot=_record_split_opening(db,company_id,owner)
+    def generation():
+        db.execute('reset role')
+        return db.execute('select generation from public.company_archive_source_generations where company_id=%s and income_year=2026',(company_id,)).fetchone()[0]
+    def bank_record():
+        db.execute('set local role ledger_workflow_executor')
+        db.execute('select * from ledger.record_opening_bank_input_v1(%s,%s,2026,123.45,%s)',(snapshot,company_id,str(owner)))
+    before=generation()
+    # No second RF write accompanies this bank-only step; it must invalidate an
+    # export snapshot captured after the RF opening was recorded.
+    with pytest.raises(RuntimeError,match='rollback bank record'):
+        with db.transaction():
+            bank_record()
+            assert generation()==before+1
+            raise RuntimeError('rollback bank record')
+    assert generation()==before
+    bank_record()
+    assert generation()==before+1
+    # Restore the actual workflow role after the fixture's generation read.
+    db.execute('set local role ledger_workflow_executor')
+    db.execute('set constraints all immediate')
+    db.execute('reset role')
+    _new_year_reader(db,owner,company_id)
+    items=db.execute('select * from backend_system.read_new_year_opening_snapshots_v1(%s,null,1,%s,2026)',([company_id],str(owner))).fetchone()[0]
+    assert len(items)==1 and items[0]['setupId']==str(snapshot) and items[0]['bankBalance']=='123.45'
+    db.execute('reset role')
+    if phase==CONTRACT:migration(db,'supabase/rollback/20260909190955_shareholder_register_filing_contract.sql')
+    migration(db,'supabase/rollback/20260909190905_shareholder_register_filing_cutover.sql')
+    assert not db.execute("select 1 from pg_trigger where tgrelid='ledger.opening_bank_inputs'::regclass and tgname='company_archive_track_opening_bank_inputs'").fetchone()
+    migration(db,ROLLBACK)
+    assert db.execute("select to_regclass('ledger.opening_bank_inputs')").fetchone()[0] is None
+    assert str(db.execute('select bank_balance from public.opening_balance_setups where id=%s',(snapshot,)).fetchone()[0])=='123.45'

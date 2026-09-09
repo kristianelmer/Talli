@@ -69,6 +69,89 @@ skips and803 database cases deselected. Mandatory database coverage is the
 separate104-pass, zero-skip result above. The credential test/scanner command
 also passed. These focused runs do not replace either complete gate.
 
+The [independent opening review](opening-contract-independent-review.md) found
+no material issue in final disposal/reconstruction and verified the actual
+database receipt's source and log hashes. The
+[independent production review](production-coordinator-independent-review.md)
+compared27 functions with the #150 baseline:22 were AST-identical, four changed
+only canonical type names, and one adapts immutable approved-manifest containers
+while preserving validation. Neither reviewer certifies their own code.
+
+The retained workspace now passes on RF canonical overlap with ordinary Ledger
+storage. Its [source-bound receipt](followup/workspace-fixture-runtime-proof.json)
+covers real Auth, generated HTTP transport and canonical RF commands, while
+preserving all nine Ledger assertions and the sibling tax, audit, notification,
+storage and archive checks. The actual read path exposed two missing EXECUTE
+grants for `ledger_executor`; the correction grants only those reads, with
+mutation authority still denied. Final schema revalidation remains separate.
+
+The fixture helper now preserves FORCE RLS and internal foreign keys while
+temporarily disabling only captured USER triggers under exact owner authority.
+It restores original ACLs, memberships and trigger modes on success and rollback.
+The retained workspace, sixteen fixture guards and two actual standalone cleanup
+cases pass with no skips. Earlier twenty-case feedback and hydrated historical
+recovery results retain their original source hashes and are explicitly marked
+intermediate. The complete web boundary rerun passes225 checks with zero skips.
+The additional contract boundary passes53 checks. Both application builds,
+the canonical production-artifact smoke and a fresh installed-wheel smoke pass;
+the [build receipt](followup/builds/receipt.json) binds495 unchanged source inputs,
+logs and package digests. Installed RF schemas and a fixed synthetic payload match
+their expected hashes without importing the old root package. This does not
+claim the build gate's separate public-acquisition browser subcheck.
+
+The updated [final database run](followup/final-db/final-combined-108.json)
+passes108 cases with zero skips after the read-role and bank archive corrections.
+Its263 source hashes matched at handoff. The later workspace-only runner
+correction below has separate evidence; the tested product sources are unchanged. The bank-only write advances the
+export generation, transaction rollback restores it, and full rollback preserves
+the original bank amount. The final catalog verifies retired-table absence,
+enabled archive tracking, allowed opening reads and denied writes.
+
+The preceding Ledger authority rehearsal passes1 case, governance passes26,
+and Billing passes699 Python cases plus its separate Node lifecycle. Host-clock
+MFA fixtures were several milliseconds ahead of the database, so five Python
+and two Node timestamps now use its existing clock-minus-one-second pattern.
+Independent whole-file comparisons verify all other assertions are unchanged.
+The first Billing aggregate's Node failure and the later corrected success remain
+separate logs with their actual exit codes; the
+[phase report](followup/final-db/final-verification-report.md) discloses the
+earlier wrapper inventory omissions and their explicitly timed supplements.
+
+The complete runner now requires the fresh RF browser after historical recovery.
+All62 orchestration/cancellation checks pass, including stop-on-failure behavior
+and retention of every original database test. The
+[corrected runner receipt](followup/orchestration-au-overlap.json) supersedes the
+earlier mock-only result after actual workspace restoration exposed an AU
+contract ordering error. The workspace phase retains the AU view while the
+ordinary Billing pilot coordinator still depends on it. Final recutover still
+contracts AU after Billing retires that dependency; no product guard changed.
+The [corrective review](workspace-au-overlap-corrective-review.md) verifies the
+small source delta and the actual successful rollback/workspace receipt. This
+proves the corrected phase, not the whole aggregate or pending fresh RF flow.
+
+The [updated final HTTP/browser receipt](followup/final-web/final-browser-read-verification.json)
+records22 feedback/schema passes, five actual Supabase-auth opening HTTP checks,
+and one hydrated historical authority/recovery browser pass, all without skips.
+The HTTP checks retain exact share/bank identity and provenance, year filtering,
+other-owner concealment and denied bank mutation/direct-table access. All owned
+fixtures were cleaned, runtime logins disabled and generated Next files restored.
+
+The [shared fixture receipt](followup/owner-fixture/owner-fixture-verification.json)
+records34 passes in each of the predecessor and overlap layouts, the unchanged
+onboarding browser, and an actual late cleanup failure that restores rows, ACLs,
+USER triggers, schema permissions and memberships while retaining FORCE RLS and
+internal foreign keys. The
+[whole-source comparison](followup/owner-fixture/retained-scenario-preservation.json)
+preserves every original owner journey and assertion outside the exact historical
+seed bindings, helper import and Ledger read name. These checks do not replace
+the full owner journey. Corrected workspace restoration ends at RF canonical
+overlap, with zero company/user residue and disabled runtime logins.
+
+The fresh RF fixture safety suite passes11 checks after correcting mirror cleanup
+and the required creator attribution; the
+[independent review](fresh-browser-independent-review.md) closes both fixture
+findings. Its actual fresh filing journey remains pending.
+
 Log hashes are in [followup/manifest.json](followup/manifest.json). Remaining
-browser/receiver checks, the pending16-tuple decision, full review and the two
+fresh-browser checks, the pending16-tuple decision, full review and the two
 immutable complete gates remain open. No stage or #192 completion is claimed.

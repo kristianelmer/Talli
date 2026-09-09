@@ -92,10 +92,15 @@ hard-routed to loopback authority mocks and is not a deployed enablement.
 
 ## Required Test Run
 
-The deployed no-activity preview renderer and simulation adapter run in-process
-in TypeScript so they do not depend on a Python runtime in Vercel. The Python
-implementation remains the offline reference oracle: parity tests require the
-TypeScript XML bytes and simulated request plan to match it exactly.
+The canonical backend owns RF preview rendering and simulation; the web uses
+the generated authenticated client. Characterization preserves the original
+XML bytes and simulated request plan. Historical code-gate results below retain
+the implementation and commands that were tested at that time.
+
+The current `test:supabase` command aliases `test:supabase:local`: it creates a
+disposable stack and runs every database/browser phase in migration order. It
+does not target a configured hosted project. Individual named schema phases
+cannot substitute for the complete runner.
 
 Before release signoff:
 
@@ -119,8 +124,8 @@ Latest run of the code-side release evidence (all green):
 | `npm run test:filing-release-gate` | 3 passed |
 | `npm run test:backup-restore` | 4 passed |
 
-`npm run test:supabase` requires Supabase env and is run in an environment with
-credentials. This code-gate verification proves the deterministic logic is release-ready;
+At the time of this historical run, `npm run test:supabase` required externally
+configured Supabase credentials. This code-gate verification covered the deterministic logic;
 it does **not** substitute for the external authority access, test submission, and human
 release signoff rows above, which keep production disabled.
 

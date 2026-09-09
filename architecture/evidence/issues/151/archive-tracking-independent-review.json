@@ -1,0 +1,46 @@
+{
+  "reviewed_at": "2026-09-09T22:03:48.485836+00:00",
+  "base_commit": "7730bd3473943f5308136207b2acce4f720c851c",
+  "review_kind": "bounded independent mutable-source review",
+  "verdict": "no material findings in scoped delta",
+  "source_sha256": {
+    "architecture/company-archive-sources.json": "daa47be25df45bba2bea3c6cb09ac123ea4f3cdb8e7be5f2a6327e331b620a52",
+    "tests/company_access_cancellation_schema.test.mjs": "9827f9c7c6bce58b8fd8bba1895b9abe056da15139cc3ff2337db5d57a3f5ad7",
+    "supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql": "4259df64004a9ba4382db74be357f6a0e411449ede805f7d30d30590d27ed891",
+    "supabase/rollback/20260909190905_shareholder_register_filing_cutover.sql": "7228ca0cfbe2f838468e32fa7514f5358473dab98877c93efc87a871fdca5b9f",
+    "apps/backend/tests/test_shareholder_register_filing_lifecycle.py": "c2e224e57f5363e263ba69ec25f7a3021ac66023fd7adb079461e0b7e35ec373",
+    "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql": "187f4210ab2df4b230ddfc631875eb6879216b8d8618b4d5b3ecd50764cac05b",
+    "supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql": "413b755cf8f5dc589bfd2827787f4f0cd74db13118d6eca3735c06417c55f8ad",
+    "supabase/rollback/20260909190548_shareholder_register_filing_capability.sql": "b14ed6bd2224be710adc31e089dea6468cd992f0960ef1494924b504ff056e71",
+    "supabase/rollback/20260909190955_shareholder_register_filing_contract.sql": "5f9d6a6782bf8aa90b3dfb9786e10e9b767263da5ed58612427d58495060929b",
+    "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql": "2d9e10172c2e491dc59d25d8a1f79e578e4498f3663e81242ecd8c8e72194e5f",
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "bc061d7ba670dbb5ffca303464c4a71c3be5673adbb82de9d424ddbe58349f99",
+    "apps/backend/src/talli_backend/adapters/supabase_ledger.py": "9b38c9d5cd5e5bd8730d30b0e3140d31aa6cff16e36ccdb7f429ac689e24d9fa",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts": "c83ccf71c9eeb9a05316bed2b5a5fee387f36d478cafc08c201afa1bb6bf2373"
+  },
+  "inventory_delta": {
+    "removed": [
+      "opening_balance_setups",
+      "opening_shareholders"
+    ],
+    "added": [
+      "ledger.opening_bank_inputs",
+      "shareholder_register_filing.authority_permissions",
+      "shareholder_register_filing.authority_test_runs",
+      "shareholder_register_filing.filing_previews",
+      "shareholder_register_filing.filing_review_comments",
+      "shareholder_register_filing.filing_submissions",
+      "shareholder_register_filing.opening_balance_setups",
+      "shareholder_register_filing.opening_shareholders"
+    ],
+    "changed_existing_sources": [],
+    "preserved_generic_sibling_sources": 5
+  },
+  "runtime_status": "new bank cutover/contract regressions not executed by reviewer; execution pending at source review",
+  "independence_limit": "Reviewer authored earlier archive receiver/public helpers and runner choreography; these are inspected only to trace source reads and are excluded from independent certification. Root inventory/static changes and B bank SQL/regressions were independently reviewed.",
+  "limits": [
+    "No repository edits, database access, provider calls, hosted changes or test suites in this review.",
+    "Does not approve the pending finite16 compatibility amendment.",
+    "Does not certify fresh owner browser, full108 database cases, architecture gate, stage151 exit or final192 completion."
+  ]
+}

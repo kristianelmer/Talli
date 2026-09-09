@@ -1,0 +1,24 @@
+{
+  "scope": "Actual extracted checked-in historical browser seed and shared cleanup on synthetic local canonical-overlap fixture; no browser or simulation/provider/approval execution.",
+  "startedAt": "2026-09-09T22:26:32.983Z",
+  "passed": true,
+  "topology": {
+    "phase": "canonical_overlap",
+    "ledger_kind": "v",
+    "opening_kind": "r"
+  },
+  "seedPassed": true,
+  "rollbackPassed": true,
+  "rollbackScope": "Injected failure after earlier company-scoped deletes; all named physical-table owner/ACL/FORCE/USER modes, schema ACLs, owner membership flags and original fixture rows restored.",
+  "cleanupPassed": true,
+  "cleanupFailures": [],
+  "remainingCompanyRows": 0,
+  "remainingFixtureUsers": 0,
+  "finishedAt": "2026-09-09T22:26:34.912Z",
+  "producerSha256": "7fe062ace6613110a2d47a2182468eaa64ed8a8e2bd50452dffbfc188d244ad9",
+  "sourceHashes": {
+    "tests/browser_owner_annual_loop.mjs": "4cec91925cf1a72b2f2e02d94d1299d95f22302773cb5b020915a709b9c2bab4",
+    "tests/support/browser-owner-cleanup.mjs": "25c81125c76c094d3b6c480fa01da2f1ddebd81eb874b6b78d26a8117c853fe0",
+    "tests/support/rf1086-fixture-access.mjs": "08b2cd8207949a8d39f33f1ff3b6b772e2c57268fb92f91291b6e322b479c48f"
+  }
+}

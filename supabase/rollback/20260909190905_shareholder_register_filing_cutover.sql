@@ -198,6 +198,7 @@ do $grant_archive$ declare principal name:=current_user; begin
 end; $grant_archive$;
 
 
+drop trigger company_archive_track_opening_bank_inputs on ledger.opening_bank_inputs;
 drop trigger company_archive_track_filing_previews on shareholder_register_filing.filing_previews;
 drop trigger company_archive_track_filing_previews on public.filing_previews;
 CREATE TRIGGER company_archive_track_filing_previews BEFORE INSERT OR DELETE OR UPDATE ON public.filing_previews FOR EACH ROW EXECUTE FUNCTION public.company_archive_track_source_write_v1('year', 'company_id');

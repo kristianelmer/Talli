@@ -1,0 +1,48 @@
+{
+  "verifiedAt": "2026-09-09T22:20:59.351702+00:00",
+  "checkpoint": "7730bd3473943f5308136207b2acce4f720c851c",
+  "scope": "Current uncommitted source; disposable final-contracted local DB. Real Supabase-auth HTTP; local-fake provider browser recovery. Not a complete gate, fresh RF send or authority-tested filing proof.",
+  "results": {
+    "feedbackSchema": {
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0
+    },
+    "openingHttp": {
+      "checksPassed": 5,
+      "cleanupPassed": true
+    },
+    "authorityBrowser": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 28340.960166
+    }
+  },
+  "after": {
+    "companyRows": 1129,
+    "borrowedRuntimeLoginsDisabled": true,
+    "rfPhase": "contracted",
+    "generatedFilesRestored": true
+  },
+  "sourceHashes": {
+    "tests/rf1086_feedback_schema.test.mjs": "9915622ba401ba978d89716b91e93fa674ce423b49ab56f00dc121cb0546af51",
+    "tests/controlled_production_beta_schema.test.mjs": "78fbaa8485c9b865b034df87406af5e6ca57e86f036d59da451f47688b3125da",
+    "tests/browser_authority_connections.mjs": "452dfb792bd81b6076a1da8b7d6c4fee70c29e5133e2bb4ec06cd4a3693049d4",
+    "tests/support/rf1086-fixture-access.mjs": "08b2cd8207949a8d39f33f1ff3b6b772e2c57268fb92f91291b6e322b479c48f",
+    "tests/support/rf1086-workspace-api.mjs": "96c0428a7ad15a40558843f086fb39b32789a22a3a7bcce8dc96f0da320b3eec",
+    "tests/fixtures/start_rf1086_workspace_backend.py": "e94edea47ed4f376b117ef5ef42e7483c002fed3cde5503836834c54b70d7bd2",
+    "tests/fixtures/start_authority_connections_backend.py": "717e4a6a6a211fd7a81f0d2789a07839c7cdb948340f7fc668057d0548a5d3f5",
+    "apps/backend/src/talli_backend/main.py": "6c54165f320fe0c304515bcb022c73470714d4c45f9d89b13d68b0a9b00e8177",
+    "apps/backend/src/talli_backend/adapters/supabase_ledger.py": "9b38c9d5cd5e5bd8730d30b0e3140d31aa6cff16e36ccdb7f429ac689e24d9fa",
+    "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql": "187f4210ab2df4b230ddfc631875eb6879216b8d8618b4d5b3ecd50764cac05b",
+    "supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql": "4259df64004a9ba4382db74be357f6a0e411449ede805f7d30d30590d27ed891",
+    "supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql": "413b755cf8f5dc589bfd2827787f4f0cd74db13118d6eca3735c06417c55f8ad"
+  },
+  "artifacts": {
+    "/tmp/talli-151-feedback-schema-final-current.log": "bfce9227fda362f86089725870709252ef9df1f41def464bf0c0b908cc7a8dcf",
+    "/tmp/talli-151-final-opening-http-proof.log": "ca448c934d16a654671a4f7d5c6fc0c785aeb04b2cd682456e8927cb1abbcb5d",
+    "/tmp/talli-151-final-opening-http-proof.json": "3ccf534be628cdce0b44170917fcd5f278ba24177ece9e7e36b1b3c8e89c3654",
+    "/tmp/talli-151-authority-browser-final-current.log": "1df2e7d426f16a544363fd7a77fe589387d714c072c459a3c61752088a045278"
+  }
+}

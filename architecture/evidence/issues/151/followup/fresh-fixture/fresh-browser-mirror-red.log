@@ -1,0 +1,56 @@
+✖ fresh RF cleanup removes scoped public mirrors before openings (success) (4.110208ms)
+✖ fresh RF cleanup removes scoped public mirrors before openings (failure preserved) (1.135417ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 74.94975
+
+✖ failing tests:
+
+test at tests/shareholder_register_browser_fixture_safety.test.mjs:124:42
+✖ fresh RF cleanup removes scoped public mirrors before openings (success) (4.110208ms)
+  AssertionError [ERR_ASSERTION]: retained public projection still references the RF opening
+      at Object.query (file:///Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding%20accounting/tests/shareholder_register_browser_fixture_safety.test.mjs:150:14)
+      at evalmachine.<anonymous>:27:22
+      at async fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding%20accounting/tests/shareholder_register_browser_fixture_safety.test.mjs:160:20)
+      at async cleanupFixture (evalmachine.<anonymous>:14:3)
+      at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding%20accounting/tests/shareholder_register_browser_fixture_safety.test.mjs:173:5)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/shareholder_register_browser_fixture_safety.test.mjs:124:42
+✖ fresh RF cleanup removes scoped public mirrors before openings (failure preserved) (1.135417ms)
+  AssertionError [ERR_ASSERTION]: The validation function is expected to return "true". Received false
+  
+  Caught error:
+  
+  AssertionError [ERR_ASSERTION]: retained public projection still references the RF opening
+      at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding%20accounting/tests/shareholder_register_browser_fixture_safety.test.mjs:169:5)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: AssertionError [ERR_ASSERTION]: retained public projection still references the RF opening
+        at Object.query (file:///Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding%20accounting/tests/shareholder_register_browser_fixture_safety.test.mjs:150:14)
+        at evalmachine.<anonymous>:27:22
+        at async fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding%20accounting/tests/shareholder_register_browser_fixture_safety.test.mjs:160:20)
+        at async cleanupFixture (evalmachine.<anonymous>:14:3)
+        at async waitForActual (node:assert:646:5)
+        at async strict.rejects (node:assert:769:25)
+        at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding%20accounting/tests/shareholder_register_browser_fixture_safety.test.mjs:169:5)
+        at async Test.run (node:internal/test_runner/test:1404:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:969:7),
+    operator: 'rejects',
+    diff: 'simple'
+  }

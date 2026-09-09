@@ -1,0 +1,7 @@
+
+> talli-repository@0.1.0 test:authority-connections-database
+> : "${DATABASE_URL:?DATABASE_URL must identify the disposable test database}" && uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_authority_connections_database_runtime.py apps/backend/tests/test_authority_operations_database_runtime.py apps/backend/tests/test_launch_signoffs_database_runtime.py apps/backend/tests/test_rf1086_database_runtime.py apps/backend/tests/test_shareholder_register_filing_lifecycle.py -q
+
+........................................................................ [ 66%]
+....................................                                     [100%]
+108 passed in 30.93s

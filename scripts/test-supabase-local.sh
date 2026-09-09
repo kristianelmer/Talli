@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# test:supabase is the complete aggregate alias for this disposable local stack.
+# For an already configured test database, use only the named predecessor,
+# RF-workspace or RF-feedback command that matches its explicit schema phase.
+
 : "${TALLI_PYTHON_BIN:=apps/backend/.venv/bin/python}"
 export TALLI_PYTHON_BIN
 
@@ -89,9 +93,8 @@ local_anon_key="${PUBLISHABLE_KEY:-$ANON_KEY}"
 local_service_key="${SECRET_KEY:-$SERVICE_ROLE_KEY}"
 
 TALLI_SUPABASE_WORKDIR="$isolated_workdir" npm run test:supabase-advisors
-# Frozen RF and support rehearsals still exercise their predecessor table/RPC
-# contracts. Restore that single topology before any predecessor consumer; the
-# final lane below independently verifies the contracted successor instead.
+# Frozen support and sibling rehearsals require their original table/RPC
+# topology. Unwind RF151 before its #150 predecessor; neither is the final lane.
 DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs rollback
 npm run test:ledger-database-lifecycle
 npm run test:banking-database-lifecycle
@@ -104,7 +107,17 @@ SUPABASE_URL="$API_URL" \
 SUPABASE_ANON_KEY="$local_anon_key" \
 SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
 DATABASE_URL="$DB_URL" \
-npm run test:supabase
+npm run test:supabase-predecessor
+
+# Only the retained RF workspace/current owner UI move to canonical RF overlap.
+# Ledger remains at ordinary expansion for the unchanged sibling Ledger cases.
+# AU retains its overlap view until Billing retires the pilot coordinator below.
+DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs workspace
+SUPABASE_URL="$API_URL" \
+SUPABASE_ANON_KEY="$local_anon_key" \
+SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+DATABASE_URL="$DB_URL" \
+npm run test:supabase-rf-workspace
 
 NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
 NEXT_PUBLIC_SUPABASE_ANON_KEY="$local_anon_key" \
@@ -114,6 +127,9 @@ SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
 DATABASE_URL="$DB_URL" \
 npm run test:browser-owner
 
+# Restore published predecessor definitions before their unchanged lifecycle
+# rehearsals. The Ledger authority test then establishes the final Ledger contract.
+DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs rollback
 TALLI_LEDGER_HOSTED_AUTHORITY_REHEARSAL=1 \
 DATABASE_URL="$DB_URL" \
 npm run test:ledger-hosted-migration-authority
@@ -127,11 +143,16 @@ DATABASE_URL="$DB_URL" npm run test:corporate-governance-database-lifecycle
 # its unchanged lifecycle runs against the physical predecessor request table.
 DATABASE_URL="$DB_URL" npm run test:billing-database-lifecycle
 
-# Recut the exact Authority/RF surface and contract only after predecessor
-# consumers pass. Its required database and hydrated owner lanes then exercise
-# the final private storage boundary, with no live authority provider calls.
+# Require the already established Ledger contract before the RF final contract.
+# Every final database, feedback and hydrated owner lane uses private RF storage;
+# no authority provider is called.
 DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs recutover
 DATABASE_URL="$DB_URL" npm run test:authority-connections-database
+SUPABASE_URL="$API_URL" \
+SUPABASE_ANON_KEY="$local_anon_key" \
+SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+DATABASE_URL="$DB_URL" \
+npm run test:supabase-rf-feedback
 NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
 NEXT_PUBLIC_SUPABASE_ANON_KEY="$local_anon_key" \
 SUPABASE_URL="$API_URL" \
@@ -139,3 +160,12 @@ SUPABASE_ANON_KEY="$local_anon_key" \
 SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
 DATABASE_URL="$DB_URL" \
 npm run test:browser-authority-connections
+
+# The fresh RF journey must create its own preview, approval and filing journal.
+NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
+NEXT_PUBLIC_SUPABASE_ANON_KEY="$local_anon_key" \
+SUPABASE_URL="$API_URL" \
+SUPABASE_ANON_KEY="$local_anon_key" \
+SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+DATABASE_URL="$DB_URL" \
+npm run test:browser-shareholder-register-filing

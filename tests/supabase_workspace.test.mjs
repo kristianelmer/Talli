@@ -1,3 +1,4 @@
+import { deleteRfFixtureCompanies } from "./support/rf1086-fixture-access.mjs";
 import assert from "node:assert/strict";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
@@ -334,11 +335,13 @@ async function deleteWorkspaceCompanyFixture(companyId) {
     await database.connect();
     connected = true;
     await rfFixtureTransaction(database, async () => {
+      for (const table of ["filing_review_comments", "filing_overrides", "filing_submissions", "filing_previews", "authority_permissions", "authority_test_runs"])
+        await database.query(`delete from public.${table} where company_id=$1`, [companyId]);
       await database.query("delete from shareholder_register_filing.production_filing_events where submission_id in (select id from shareholder_register_filing.production_filing_submissions where company_id=$1)", [companyId]);
       for (const table of RF_FIXTURE_TABLES) await database.query(`delete from shareholder_register_filing.${table} where company_id=$1`, [companyId]);
       await database.query("delete from ledger.opening_bank_inputs where company_id=$1", [companyId]);
       for (const table of RF_FIXTURE_TABLES) assert.equal((await database.query(`select count(*)::int count from shareholder_register_filing.${table} where company_id=$1`, [companyId])).rows[0].count, 0);
-    });
+    }, { openingProjection: true });
     await database.query("begin");
     await database.query(String.raw`
       do $authority$ begin
@@ -382,13 +385,21 @@ async function deleteWorkspaceCompanyFixture(companyId) {
       await database.query(`delete from public.${table} where company_id = $1`, [companyId]);
     }
     await database.query("delete from public.company_archive_source_generations where company_id = $1", [companyId]);
-    await database.query("delete from public.companies where id = $1", [companyId]);
     await database.query(String.raw`
       do $authority$ begin
         execute pg_catalog.format('revoke documents_store_owner from %I', current_user);
       end $authority$
     `);
     await database.query("commit");
+    await rfFixtureTransaction(database, async () => {
+      // Frozen Ledger entries retain their setup FK until their fixture rows
+      // above are removed. Internal FK triggers remain active throughout.
+      if ((await database.query("select to_regclass('public.opening_balance_setups') is not null present")).rows[0].present) {
+        await database.query("delete from public.opening_shareholders where company_id=$1", [companyId]);
+        await database.query("delete from public.opening_balance_setups where company_id=$1", [companyId]);
+      }
+      await deleteRfFixtureCompanies(database, [companyId]);
+    }, { openingProjection: true });
   } catch (error) {
     operationError = error;
     if (connected) {
@@ -592,10 +603,15 @@ test(
     reviewer = await signIn(reviewerUser);
     readOnly = await signIn(readOnlyUser);
     invitee = await signIn(inviteeUser);
-    // Use a distinct real MFA session for RF. The original owner session stays
-    // aal1 for the existing sibling tax-import denial assertion below.
+    // RF uses a real MFA session. Verifying the first factor revokes older
+    // AAL1 sessions, so sign the sibling fixture in again without MFA; its
+    // original tax-import denial must exercise a valid AAL1 session.
     rfOwner = await signIn(ownerUser);
     await elevateToAal2(rfOwner);
+    owner = await signIn(ownerUser);
+    const siblingAssurance = await owner.auth.mfa.getAuthenticatorAssuranceLevel();
+    assert.ifError(siblingAssurance.error);
+    assert.equal(siblingAssurance.data.currentLevel, "aal1");
     rfDatabase = new pg.Client(getDatabaseConfig());
     await rfDatabase.connect();
     rf = await startWorkspaceRfApi(rfDatabase, getDatabaseConfig());
@@ -723,7 +739,14 @@ test(
     await assertNoError(
       admin.from("company_memberships").delete().eq("company_id", companyId).eq("user_id", inviteeUser.id),
     );
-    await assertNoError(admin.from("companies").delete().eq("id", foreignCompanyId));
+    const fixtureDatabase = new pg.Client(getDatabaseConfig());
+    await fixtureDatabase.connect();
+    try {
+      await fixtureDatabase.query("begin");
+      await deleteRfFixtureCompanies(fixtureDatabase, [foreignCompanyId]);
+      await fixtureDatabase.query("commit");
+    } catch (error) { await fixtureDatabase.query("rollback"); throw error; }
+    finally { await fixtureDatabase.end(); }
     foreignCompanyId = undefined;
 
     const { error: auditError } = await owner.from("audit_events").insert({
@@ -970,7 +993,7 @@ test(
 
     const openingReload = (await rf.openings(rfOwner, companyId)).find((row) => row.id === setup.id);
     assert.equal(openingReload.share_count, 100);
-    await assert.rejects(rf.openings(outsider, companyId), deniedRf);
+    assert.deepEqual(await rf.openings(outsider, companyId), []);
 
     const { data: persistedCompany, error: persistedCompanyError } = await owner
       .from("companies")
@@ -1137,7 +1160,14 @@ test(
     });
     assert.match(noMfaImportError?.message ?? "", /company_tax_evidence_mfa_required/u);
 
-    await elevateToAal2(owner);
+    // The same owner already verified a real factor for RF. Reuse that
+    // authenticated AAL2 session after proving the sibling AAL1 denial; an
+    // AAL1 session cannot enroll a second factor once one is verified.
+    const verifiedRfSession = await rfOwner.auth.getSession();
+    assert.ifError(verifiedRfSession.error);
+    assert.ok(verifiedRfSession.data.session);
+    assert.ifError((await owner.auth.setSession(verifiedRfSession.data.session)).error);
+    assert.equal((await owner.auth.mfa.getAuthenticatorAssuranceLevel()).data.currentLevel, "aal2");
     for (const [label, evidenceUrl] of [
       ["missing host", "https:///missing-host"],
       ["non-canonical host-only URL", "https://evidence.example"],
@@ -1498,30 +1528,8 @@ test(
       })
       .select("id")
       .single();
-    assert.ifError(directSimulationSubmissionError);
-    const { error: simulationToTestAuthorityError } = await owner
-      .from("filing_submissions")
-      .update({
-        mode: "test_authority",
-        adapter_mode: "test_authority",
-        preview_id: null,
-        authority_test_run_id: directAuthorityRow.id,
-      })
-      .eq("id", directSimulationSubmission.id);
-    assert.ok(simulationToTestAuthorityError);
-    const { data: unchangedSimulationSubmission, error: unchangedSimulationSubmissionError } = await owner
-      .from("filing_submissions")
-      .select("mode, adapter_mode, preview_id, authority_test_run_id")
-      .eq("id", directSimulationSubmission.id)
-      .single();
-    assert.ifError(unchangedSimulationSubmissionError);
-    assert.deepEqual(unchangedSimulationSubmission, {
-      mode: "simulation",
-      adapter_mode: "simulation",
-      preview_id: filingPreview.id,
-      authority_test_run_id: null,
-    });
-
+    assert.match(directSimulationSubmissionError?.message ?? "", /rf1086_legacy_writer_retired/u);
+    assert.equal(directSimulationSubmission, null);
     const { data: directTestAuthorityUpdates, error: directTestAuthorityUpdateError } = await owner
       .from("filing_submissions")
       .update({
@@ -1829,6 +1837,31 @@ test(
     assert.equal(filingSubmission.submitted_payload_ref.payloadHash, submissionPayloadHash);
     assert.equal(filingSubmission.submitted_payload.hovedskjemaXml, filingPreview.hovedskjema_xml);
     assert.deepEqual(filingSubmission.submitted_payload.underskjemaXml, filingPreview.underskjema_xml);
+    // The original cross-obligation conversion denial now targets the actual
+    // canonical simulation receipt, rather than inserting a retired RF row.
+    const { error: simulationToTestAuthorityError } = await owner
+      .from("filing_submissions")
+      .update({
+        mode: "test_authority",
+        adapter_mode: "test_authority",
+        preview_id: null,
+        authority_test_run_id: directAuthorityRow.id,
+      })
+      .eq("id", filingSubmission.id);
+    assert.ok(simulationToTestAuthorityError);
+    const { data: unchangedSimulationSubmission, error: unchangedSimulationSubmissionError } = await owner
+      .from("filing_submissions")
+      .select("mode, adapter_mode, preview_id, authority_test_run_id")
+      .eq("id", filingSubmission.id)
+      .single();
+    assert.ifError(unchangedSimulationSubmissionError);
+    assert.deepEqual(unchangedSimulationSubmission, {
+      mode: "simulation",
+      adapter_mode: "simulation",
+      preview_id: filingPreview.id,
+      authority_test_run_id: null,
+    });
+
     const retryResult = await rf.call(rfOwner, "rf1086ConfirmSimulation", simulationInput);
     assert.equal(retryResult.recordId, filingSubmission.id);
     const reloadedSubmissions = (await rf.workspace(rfOwner, companyId)).submissions.filter((row) => row.preview_id === filingPreview.id);
@@ -1869,7 +1902,7 @@ test(
     const hardBlockComment = (await rf.workspace(rfOwner, companyId)).comments.find((row) => row.id === hardBlockResult.recordId);
     assert.equal(hardBlockComment.severity, "hard_block");
     await assert.rejects(rf.call(rfOwner, "rf1086AcknowledgeReviewComment", { commentId: hardBlockComment.id }),
-      (error) => error instanceof TalliApiError && [409, 422].includes(error.status));
+      (error) => error instanceof TalliApiError && error.status === 403 && error.problem?.code === "SHAREHOLDER_REGISTER_FILING_FORBIDDEN");
     assert.equal((await rf.workspace(rfOwner, companyId)).comments.find((row) => row.id === hardBlockComment.id).acknowledged_at, null);
     await assert.rejects(rf.call(rfOwner, "rf1086ConfirmSimulation", simulationInput),
       (error) => error instanceof TalliApiError && error.status === 409);

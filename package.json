@@ -106,7 +106,7 @@
     "test:tax-settlement": "node --experimental-strip-types --test tests/tax_settlement.test.mjs",
     "test:web": "node --test tests/web_workspace.test.mjs",
     "test:workspace-presentation": "node --test tests/workspace_presentation.test.mjs",
-    "test:supabase": "node --test --test-concurrency=1 tests/supabase_workspace.test.mjs tests/rf1086_feedback_schema.test.mjs tests/company_access_invitations_schema.test.mjs tests/company_access_cancellation_schema.test.mjs tests/company_year_admission_schema.test.mjs tests/current_legal_evidence_schema.test.mjs tests/current_legal_evidence_migration_lifecycle.test.mjs tests/support_access_schema.test.mjs tests/company_access_database_runtime.test.mjs tests/company_access_onboarding_database_runtime.test.mjs tests/support_access_database_runtime.test.mjs tests/support_access_migration_lifecycle.test.mjs tests/documents_database_runtime.test.mjs tests/documents_migration_lifecycle.test.mjs",
+    "test:supabase": "npm run test:supabase:local",
     "test:supabase-advisors": "node scripts/assert-supabase-advisors.mjs",
     "test:supabase-grants": "node --test tests/supabase_explicit_grants.test.mjs",
     "test:supabase:local": "bash scripts/test-supabase-local.sh",
@@ -117,7 +117,11 @@
     "typecheck": "npm --prefix apps/web run typecheck",
     "test:authority-connections-database": ": \"${DATABASE_URL:?DATABASE_URL must identify the disposable test database}\" && uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_authority_connections_database_runtime.py apps/backend/tests/test_authority_operations_database_runtime.py apps/backend/tests/test_launch_signoffs_database_runtime.py apps/backend/tests/test_rf1086_database_runtime.py apps/backend/tests/test_shareholder_register_filing_lifecycle.py -q",
     "test:authority-connections": "uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_authority_connections_service.py apps/backend/tests/test_authority_connections_api.py apps/backend/tests/test_authority_callback_transport.py apps/backend/tests/test_maskinporten.py apps/backend/tests/test_altinn_system_user.py -q apps/backend/tests/test_authority_operations.py apps/backend/tests/test_altinn_authority_operations.py apps/backend/tests/test_authority_operations_api.py apps/backend/tests/test_launch_signoffs_api.py apps/backend/tests/test_postgres_authority_connections.py apps/backend/tests/test_authority_connections_state_workflow.py apps/backend/tests/test_legacy_rf1086_api.py",
-    "test:browser-authority-connections": "node --test --test-concurrency=1 tests/browser_authority_connections_contract.test.mjs tests/authority_browser_fixture_safety.test.mjs tests/browser_authority_connections.mjs"
+    "test:browser-authority-connections": "node --test --test-concurrency=1 tests/browser_authority_connections_contract.test.mjs tests/authority_browser_fixture_safety.test.mjs tests/browser_authority_connections.mjs",
+    "test:supabase-predecessor": "node --test --test-concurrency=1 tests/company_access_invitations_schema.test.mjs tests/company_access_cancellation_schema.test.mjs tests/company_year_admission_schema.test.mjs tests/current_legal_evidence_schema.test.mjs tests/current_legal_evidence_migration_lifecycle.test.mjs tests/support_access_schema.test.mjs tests/company_access_database_runtime.test.mjs tests/company_access_onboarding_database_runtime.test.mjs tests/support_access_database_runtime.test.mjs tests/support_access_migration_lifecycle.test.mjs tests/documents_database_runtime.test.mjs tests/documents_migration_lifecycle.test.mjs",
+    "test:supabase-rf-workspace": "node --test --test-concurrency=1 tests/supabase_workspace.test.mjs",
+    "test:supabase-rf-feedback": "node --test --test-concurrency=1 tests/rf1086_feedback_schema.test.mjs",
+    "test:browser-shareholder-register-filing": "node --test --test-concurrency=1 tests/shareholder_register_browser_fixture_safety.test.mjs tests/browser_shareholder_register_filing.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",

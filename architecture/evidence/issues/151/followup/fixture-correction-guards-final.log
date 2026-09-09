@@ -1,0 +1,24 @@
+✔ authority fixture admits only exact local addresses and existing fixed owner provider requests (230.414291ms)
+✔ authority fixture socket guard rejects external DNS and connections before network I/O (132.804209ms)
+✔ mandatory authority browser uses real generated HTTP, backend-owned callback proof and scoped cleanup (2.147375ms)
+✔ historical RF fixture admits two fixed GET templates and rejects business mutations (132.623458ms)
+✔ workspace RF backend refuses hosted database before opening a listener (159.459958ms)
+✔ workspace RF backend refuses hosted Supabase before opening a listener (129.78375ms)
+✔ workspace RF backend refuses global RF activation before opening a listener (129.533792ms)
+✔ workspace RF backend refuses global operator activation before opening a listener (127.24425ms)
+✔ workspace RF backend refuses ambient credential before opening a listener (129.71075ms)
+✔ workspace API requests use the actual current Supabase session and exact denial statuses (7.707833ms)
+✔ feedback fixture refuses hosted databases and undeclared operations before actor or SQL effects (2.610125ms)
+✔ feedback fixture verifies the token owner before reading membership or connecting an actor database session (0.481958ms)
+✔ workspace RF assertions use canonical commands and preserve sibling tax and audit rehearsals (0.82325ms)
+✔ fixture access refuses external databases and undeclared relations before SQL (0.433583ms)
+✔ fixture restores exact USER trigger modes on success without disabling foreign keys (0.626208ms)
+✔ fixture restores exact USER trigger modes on rollback without disabling foreign keys (0.192666ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 815.677083

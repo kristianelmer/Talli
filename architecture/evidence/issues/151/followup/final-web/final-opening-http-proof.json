@@ -1,0 +1,34 @@
+{
+  "scope": "Synthetic local final-schema source fixture; actual local Supabase Auth and shipped FastAPI/SupabaseLedgerSession reads. No provider operations or statutory filing evidence.",
+  "startedAt": "2026-09-09T22:19:30.480Z",
+  "passed": true,
+  "checks": [
+    "Actual authenticated all-year HTTP read returns exact RF share identity plus independently stored Ledger bank amount",
+    "Actual year-scoped HTTP read equals the supported source row with complete identity and provenance",
+    "Unselected income year returns no source row",
+    "Independent authenticated owner cannot enumerate the first company in either HTTP read",
+    "ledger_executor cannot execute the opening-bank writer or directly read/write the owned bank table"
+  ],
+  "sourceHashes": {
+    "apps/backend/src/talli_backend/main.py": "6c54165f320fe0c304515bcb022c73470714d4c45f9d89b13d68b0a9b00e8177",
+    "apps/backend/src/talli_backend/adapters/supabase_ledger.py": "9b38c9d5cd5e5bd8730d30b0e3140d31aa6cff16e36ccdb7f429ac689e24d9fa",
+    "tests/support/rf1086-workspace-api.mjs": "96c0428a7ad15a40558843f086fb39b32789a22a3a7bcce8dc96f0da320b3eec",
+    "tests/support/rf1086-fixture-access.mjs": "08b2cd8207949a8d39f33f1ff3b6b772e2c57268fb92f91291b6e322b479c48f",
+    "tests/fixtures/start_rf1086_workspace_backend.py": "e94edea47ed4f376b117ef5ef42e7483c002fed3cde5503836834c54b70d7bd2",
+    "tests/fixtures/start_talli_backend.py": "fc3948bbf1de6c3e828e76c64f2a9461435aa4e498be19af0a184a1cf5911099",
+    "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql": "187f4210ab2df4b230ddfc631875eb6879216b8d8618b4d5b3ecd50764cac05b",
+    "supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql": "4259df64004a9ba4382db74be357f6a0e411449ede805f7d30d30590d27ed891",
+    "supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql": "413b755cf8f5dc589bfd2827787f4f0cd74db13118d6eca3735c06417c55f8ad"
+  },
+  "topology": {
+    "opening_absent": true,
+    "holders_absent": true,
+    "ledger_link_absent": true,
+    "phase": "contracted"
+  },
+  "cleanup": {
+    "passed": true,
+    "errorNames": []
+  },
+  "finishedAt": "2026-09-09T22:19:33.587Z"
+}

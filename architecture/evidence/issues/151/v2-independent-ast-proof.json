@@ -1,0 +1,98 @@
+{
+  "observedAt": "2026-09-09T21:22:33.820Z",
+  "head": "3e8bf5187d614a3a2d02437f12186d90dbd19078",
+  "originalArtifactHashes": {
+    "proposal": "3cc58e95162e6cd52328a075019419e1005f9ca8794eda1811b77fc30ae50d40",
+    "scope": "af56cf7ad98bdf0feca6c4b2d9208545fc1c633d3f66596f3bf5dfa8ff950da3",
+    "inventory": "e0e8f9e2a3835ca206817f3b6d1a0529ce6340e1638b8c59b624f5aef2240f12"
+  },
+  "immutableBaselineSha256": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+  "scopeMatches": 1,
+  "proofs": {
+    "baseline": {
+      "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+      "occurrences": 1
+    },
+    "current": {
+      "sourceDigest": "sha256:ee842cde4213510412ce1ae636f76c5844541dfeb8e47cfcea3a42f285cfb151",
+      "occurrences": 0
+    }
+  },
+  "currentFileSha256": "c83ccf71c9eeb9a05316bed2b5a5fee387f36d478cafc08c201afa1bb6bf2373",
+  "genericChains": [
+    {
+      "resource": "filing_submissions",
+      "originalCount": 1,
+      "currentCount": 1,
+      "identical": true
+    },
+    {
+      "resource": "authority_test_runs",
+      "originalCount": 1,
+      "currentCount": 1,
+      "identical": true
+    },
+    {
+      "resource": "filing_previews",
+      "originalCount": 1,
+      "currentCount": 1,
+      "identical": true
+    },
+    {
+      "resource": "holding_actions",
+      "originalCount": 1,
+      "currentCount": 1,
+      "identical": true
+    },
+    {
+      "resource": "authority_permissions",
+      "originalCount": 1,
+      "currentCount": 1,
+      "identical": true
+    },
+    {
+      "resource": "filing_review_comments",
+      "originalCount": 1,
+      "currentCount": 1,
+      "identical": true
+    },
+    {
+      "resource": "audit_events",
+      "originalCount": 1,
+      "currentCount": 1,
+      "identical": true
+    },
+    {
+      "resource": "bank_suggestion_acceptances",
+      "originalCount": 1,
+      "currentCount": 1,
+      "identical": true
+    }
+  ],
+  "rpcs": [
+    {
+      "method": "rpc",
+      "resource": "company_archive_begin_export",
+      "expression": "supabase.rpc(\"company_archive_begin_export\", { p_company_id: companyId, p_income_year: incomeYear })",
+      "originalExactlySame": true
+    },
+    {
+      "method": "rpc",
+      "resource": "company_archive_complete_export",
+      "expression": "archiveProjection.rpc(\"company_archive_complete_export\", { p_attempt_id: archiveAttemptId, p_archive_sha256: archiveSha256 })",
+      "originalExactlySame": true
+    }
+  ],
+  "currentDynamic": 0,
+  "currentOpeningResourceMentions": false,
+  "artifactHashes": {
+    "architecture/evidence/issues/151/compatibility-amendment-v2-proposal.md": "37472588213825c948c4a4870e9df7396b10aa273e9d1c5118db929d9149b09a",
+    "architecture/evidence/issues/151/compatibility-amendment-v2-inventory.json": "698439251dbba00606c04ea9599032db5f3a082a14946ad4cb1beef24d121c28",
+    "architecture/evidence/issues/151/opening-catalog-assessment.md": "c337794eab75e7186a9dcafeb367f789a41e1b5c65f277ecf77dd0433569995f",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts": "c83ccf71c9eeb9a05316bed2b5a5fee387f36d478cafc08c201afa1bb6bf2373",
+    "scripts/check-architecture.mjs": "1e3167d86cd9a9b9ed04e6df803e93bba1f749bc2f750ac0242e8041eab83031",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "e9c5a49e099776bed786104d0c361c951670c21a27d08eee5c1cb0f3c22716ba",
+    "architecture/database-catalog.json": "336827088e88d2e2c0dc9ed18a237e8352bb68bb25866b06a5fa523d9c3a6822",
+    "architecture/database-catalog.schema.json": "87565d2a446d140fdfb6fe42ad28f0e11c82596bf1dd48cc0589f4422ae7d52e"
+  }
+}
