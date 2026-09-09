@@ -65,6 +65,46 @@
       "to": "backend:billing"
     },
     {
+      "from": "backend-system:authority-connections-owner-lifecycle",
+      "imports": [
+        "talli_backend.modules.authority_connections.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:authority_connections"
+    },
+    {
+      "from": "backend-system:authority-connections-owner-lifecycle",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:authority-connections-state",
+      "imports": [
+        "talli_backend.modules.authority_connections.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:authority_connections"
+    },
+    {
+      "from": "backend-system:authority-connections-state",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:authority-operations",
+      "imports": [
+        "talli_backend.modules.authority_connections.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:authority_connections"
+    },
+    {
       "from": "backend-system:banking-reconciliation",
       "imports": [
         "talli_backend.modules.banking.public"
@@ -177,12 +217,44 @@
       "to": "backend:ledger"
     },
     {
+      "from": "backend-system:launch-signoff-records",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
       "from": "backend-system:ledger-posting-and-period-control",
       "imports": [
         "talli_backend.modules.ledger.public"
       ],
       "kind": "workflow",
       "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:legacy-rf1086-authority-relocation",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:legacy-rf1086-authority-relocation",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:legacy-rf1086-authority-relocation",
+      "imports": [
+        "talli_backend.modules.documents.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:documents"
     },
     {
       "from": "backend-system:marketing-funnel-measurement",
@@ -230,6 +302,7 @@
     "backend-system:marketing_measurement",
     "backend-system:system_boundary",
     "backend-system:validation_observation",
+    "backend:authority_connections",
     "backend:banking",
     "backend:billing",
     "backend:company_access",
@@ -238,6 +311,7 @@
     "backend:investments",
     "backend:ledger",
     "backend:shareholder_register_filing",
+    "web:authority-connections",
     "web:banking",
     "web:billing",
     "web:company-access",
@@ -245,6 +319,8 @@
     "web:documents",
     "web:investments",
     "web:ledger",
+    "web:legacy-rf1086",
+    "web:operator-controls",
     "web:public-acquisition",
     "web:system-boundary"
   ],
@@ -257,6 +333,10 @@
     {
       "owner": "backend-system",
       "table": "backend_system.annual_checkout_observation_work"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.authority_connections_overlap_grants"
     },
     {
       "owner": "backend-system",

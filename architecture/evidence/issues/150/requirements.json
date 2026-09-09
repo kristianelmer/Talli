@@ -3,7 +3,7 @@
   "issue": "#150",
   "source": "https://github.com/kristianelmer/Talli/issues/150",
   "sourceCheckedAt": "2026-09-09T11:38:11.288649+00:00",
-  "status": "entry-baseline-verified-claim-ready",
+  "status": "implementation-active",
   "entryBlockers": [
     {
       "issue": "#137",
@@ -30,16 +30,18 @@
   "decisionBoundary": {
     "migrationOrderSource": "https://github.com/kristianelmer/Talli/issues/132#issuecomment-5083588592",
     "routeSource": "https://github.com/kristianelmer/Talli/issues/165",
-    "scope": "Authority Connections only; #192 billing implementation remains paused. The exact two-coordinator RF compatibility relocation is approved, with RF ownership and filing/recovery behavior preserved.",
+    "scope": "Authority Connections only; #192 billing implementation remains paused. Owner-approved exact RF coordinators and four standalone authority CLI credential workflows relocate backend-only with RF/tax/accounts ownership and filing behavior preserved.",
     "authority": "No production provider activation, live filing, spending or production promotion.",
     "relocationApproval": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5601323119",
-    "relocationScope": "architecture/evidence/issues/150/rf-credential-relocation-2026-09-09.md"
+    "relocationScope": "architecture/evidence/issues/150/rf-credential-relocation-2026-09-09.md",
+    "testToolRelocationApproval": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5602427247",
+    "testToolRelocationScope": "architecture/evidence/issues/150/test-tool-credential-relocation-2026-09-09.md"
   },
   "criteria": [
     {
       "id": "GH-150-A1",
       "requirement": "Owners can initiate and reconcile the supported System User connection flow through the web and backend.",
-      "status": "planned-not-implemented",
+      "status": "implemented-scoped-validation-passed-final-evidence-pending",
       "plannedEvidencePaths": [
         "apps/backend/src/talli_backend/modules/authority_connections/public.py",
         "apps/backend/src/talli_backend/modules/authority_connections/service.py",
@@ -48,16 +50,16 @@
       ],
       "plannedCommands": [
         "npm run test:authority-connections",
-        "npm run test:browser-system-user"
+        "npm run test:browser-authority-connections"
       ],
       "expectedResult": "Owner start/reconcile uses generated API, original connection identity and same supported/blocked Norwegian journey."
     },
     {
       "id": "GH-150-A2",
       "requirement": "Callback, token, company, scope, and relationship validation fail closed.",
-      "status": "planned-not-implemented",
+      "status": "implemented-scoped-validation-passed-final-evidence-pending",
       "plannedEvidencePaths": [
-        "apps/backend/tests/test_authority_connections_provider.py",
+        "apps/backend/tests/test_altinn_system_user.py",
         "apps/backend/tests/test_authority_connections_api.py"
       ],
       "plannedCommands": [
@@ -68,10 +70,10 @@
     {
       "id": "GH-150-A3",
       "requirement": "Founder and operator authority operations retain MFA and redacted audit requirements.",
-      "status": "planned-not-implemented",
+      "status": "implemented-scoped-validation-passed-final-evidence-pending",
       "plannedEvidencePaths": [
-        "apps/backend/tests/test_authority_connections_authorization.py",
-        "apps/backend/tests/test_supabase_authority_connections_runtime.py"
+        "apps/backend/tests/test_authority_operations_api.py",
+        "apps/backend/tests/test_authority_connections_database_runtime.py"
       ],
       "plannedCommands": [
         "npm run test:authority-connections",
@@ -82,10 +84,10 @@
     {
       "id": "GH-150-A4",
       "requirement": "Retry and ambiguous-outcome handling remain idempotent and observable.",
-      "status": "planned-not-implemented",
+      "status": "implemented-scoped-validation-passed-final-evidence-pending",
       "plannedEvidencePaths": [
         "apps/backend/tests/test_authority_connections_service.py",
-        "apps/backend/tests/test_supabase_authority_connections_runtime.py"
+        "apps/backend/tests/test_authority_connections_database_runtime.py"
       ],
       "plannedCommands": [
         "npm run test:authority-connections",
@@ -96,7 +98,7 @@
     {
       "id": "GH-150-A5",
       "requirement": "All authority connections use owned ports/adapters.",
-      "status": "planned-not-implemented",
+      "status": "implemented-scoped-validation-passed-final-evidence-pending",
       "plannedEvidencePaths": [
         "apps/backend/src/talli_backend/modules/authority_connections/module.json",
         "architecture/backend-system.json",
@@ -111,13 +113,11 @@
     {
       "id": "GH-150-A6",
       "requirement": "Legacy TypeScript control-plane policy, credential paths, and active-stage compatibility code are removed.",
-      "status": "planned-not-implemented",
+      "status": "implemented-scoped-validation-passed-final-evidence-pending",
       "plannedEvidencePaths": [
         "architecture/compatibility.json",
-        "apps/web/app/actions.ts",
-        "apps/web/app/lib/maskinporten.ts",
-        "apps/web/app/lib/authority-operations.ts",
-        "apps/web/app/lib/system-user-flow.ts"
+        "tests/authority_connections_retirement.test.mjs",
+        "architecture/evidence/issues/150/cutover-and-validation.md"
       ],
       "plannedCommands": [
         "npm run check:architecture",
@@ -129,7 +129,7 @@
     {
       "id": "GH-150-A7",
       "requirement": "The complete `authority_connections` stage exit criteria from issue #132 pass before filing migration begins.",
-      "status": "planned-not-implemented",
+      "status": "pending-final-stage-verification",
       "plannedEvidencePaths": [
         "architecture/evidence/issues/150/requirements.json",
         "architecture/evidence/customer-ready-gates",
@@ -153,9 +153,79 @@
       "scope": "historical schema/server characterization, not current contracted RLS proof",
       "command": "node --test tests/system_user_requests_schema.test.mjs",
       "result": "11 passed, 0 failed, 0 skipped"
+    },
+    {
+      "scope": "owner/operator/callback generated API integration using actual workflows and local ports",
+      "command": "uv run --project apps/backend pytest apps/backend/tests/test_launch_signoffs_api.py apps/backend/tests/test_authority_operations_api.py apps/backend/tests/test_authority_connections_api.py -q",
+      "result": "41 passed, 0 failed, 0 skipped; local only"
+    },
+    {
+      "scope": "hydrated owner web and callback with real database and shipped provider adapters against loopback fixtures",
+      "command": "npm run test:browser-authority-connections",
+      "result": "4 passed, 0 failed, 0 skipped; isolated fixture rows/principals/servers cleaned; provider conformance not claimed",
+      "localTranscript": "/tmp/talli-150-browser-authority-run2.log"
+    },
+    {
+      "scope": "technical launch-signoff current authorization, rollback and recutover",
+      "command": "pytest apps/backend/tests/test_launch_signoffs_database_runtime.py",
+      "result": "8 passed, 0 failed, 0 skipped on owned disposable database",
+      "localTranscript": "/tmp/talli-150-launch-db-run1.log"
+    },
+    {
+      "scope": "RF API invokes frozen send/recovery coordinator and preserves trust/order/historical recovery boundaries",
+      "command": "uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_legacy_rf1086_api.py -q",
+      "result": "20 passed, 0 failed, 0 skipped; local fake provider ports only"
+    },
+    {
+      "scope": "web boundary including 201-company connection batching, generated transport and callback authorization delegation",
+      "command": "npm run test:boundary-web",
+      "result": "174 passed, 0 failed, 0 skipped",
+      "localTranscript": "/tmp/talli-150-web-boundary-run2.log"
+    },
+    {
+      "scope": "backend boundary before final CLI additions and RF manifest correction",
+      "command": "npm run test:boundary-backend",
+      "result": "2194 passed; 2 existing DB-only marketing/validation tests skipped in this lane and covered by mandatory isolated DB lane; 760 DB cases deselected",
+      "localTranscript": "/tmp/talli-150-backend-boundary.log"
+    },
+    {
+      "scope": "existing and new generated API contracts",
+      "command": "npm run test:boundary-contract",
+      "result": "53 passed, 0 failed, 0 skipped",
+      "localTranscript": "/tmp/talli-150-contract-boundary.log"
+    },
+    {
+      "scope": "fresh RF, Authority Connections, operator and launch-signoff contracted database",
+      "command": "pytest test_rf1086_database_runtime.py test_authority_connections_database_runtime.py test_authority_operations_database_runtime.py test_launch_signoffs_database_runtime.py",
+      "result": "61 passed, 0 failed, 0 skipped, including rollback and recutover",
+      "localTranscript": "/tmp/talli-150-rf-au-db-combined.log"
+    },
+    {
+      "scope": "frozen RF approval manifest and JSON/order parity against the retained pure source builder",
+      "command": "pytest test_rf1086_compatibility.py test_postgres_legacy_rf1086_authority.py test_legacy_rf1086_api.py",
+      "result": "184 passed, 0 failed, 0 skipped; malformed production keys denied before token, journal or provider"
+    },
+    {
+      "scope": "standalone tax/accounts command and transport corrections from independent review",
+      "command": "pytest test_authority_filing_tools.py test_authority_filing_transports.py",
+      "result": "116 passed, 0 failed, 0 skipped; 15 new regressions failed before corrections",
+      "localTranscript": "/tmp/talli-150-filing-parity-green.log"
+    },
+    {
+      "scope": "standalone token/RF command corrections from independent review",
+      "command": "pytest test_authority_tool_grant.py test_authority_tool_rf1086.py",
+      "result": "63 passed, 0 failed, 0 skipped; local subprocess and fake HTTP only"
     }
   ],
-  "closeState": "OPEN; entry baseline verified. Implementation acceptance, rollback, two final complete gates and protected integration remain pending.",
+  "closeState": "OPEN; implementation active. Scoped tests pass; final stage verification and integration remain pending.",
   "taskId": "01a08515-2cd8-7093-8a34-3b9b3d458840",
-  "branch": "codex/issue-150-authority-01a08515"
+  "branch": "codex/issue-150-authority-01a08515",
+  "implementationClaim": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5601486395",
+  "progressCheckedAt": "2026-09-09T16:09:51.709689+00:00",
+  "remainingWork": [
+    "Complete successor browser RF recovery/download/accessibility verification",
+    "Independent whole-stage review of a committed implementation revision",
+    "Final combined mandatory local database/browser lane and two new immutable complete stage gates",
+    "Protected integration and exact-main Release/Preview verification"
+  ]
 }

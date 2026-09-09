@@ -2964,6 +2964,127 @@ export interface BillingUnsupportedWire {
 
 export type ProductionPilotStatus = "pending" | "active" | "suspended" | "completed" | "revoked";
 
+export interface LegacyRf1086SendCommandWire {
+  approvalId: string;
+}
+
+export interface LegacyRf1086ReconcileCommandWire {
+  submissionId: string;
+}
+
+export interface LegacyRf1086SendResultWire {
+  submissionId: string;
+}
+
+export interface LegacyRf1086ReconcileResultWire {
+  errorCode: "invalid_request" | "authentication_required" | "approval_expired" | "basis_unavailable" | "connection_unavailable" | "payload_changed" | "configuration_unavailable" | "send_unavailable" | "status_unavailable" | "status_busy" | "step_up_required" | null;
+  requiresManualRetry: boolean;
+  state: "sent" | "processing" | "accepted" | "rejected" | "action_required" | "unknown" | null;
+}
+
+export type LaunchSignoffKey = "launch_legal_name_public_copy" | "legal_policy_pack" | "security_restore" | "billing_refund" | "rf1086_authority" | "annual_accounts_authority" | "tax_return_authority" | "support_rollback" | "founder_production_go_live";
+
+export type LaunchSignoffStatus = "approved" | "rejected" | "pending";
+
+export interface LaunchSignoffCommandWire {
+  decision: string;
+  evidenceLink: string;
+  key: LaunchSignoffKey;
+  reviewedAt: string;
+  reviewer: string;
+  status: LaunchSignoffStatus;
+}
+
+export interface LaunchSignoffRecordWire {
+  decision: string;
+  evidenceLink: string;
+  key: LaunchSignoffKey;
+  recordedBy: string;
+  reviewedAt: string;
+  reviewer: string;
+  status: LaunchSignoffStatus;
+  updatedAt: string;
+}
+
+export interface LaunchSignoffListWire {
+  signoffs: LaunchSignoffRecordWire[];
+}
+
+export type AuthorityOperationKind = "register_rf1086_system" | "set_rf1086_systembruker_callback";
+
+export type AuthorityOperationStatus = "started" | "succeeded" | "failed" | "conflict";
+
+export type AuthorityOperationCode = "started" | "created_and_verified" | "already_verified" | "definition_conflict" | "callback_already_verified" | "callback_updated_and_verified" | "authority_token_error" | "authority_network_error" | "authority_http_error" | "authority_response_invalid" | "authority_verification_error" | "authority_operation_failed" | "authority_ops_disabled" | "authority_ops_unavailable" | "admin_operator_required" | "authority_step_up_required" | "authority_step_up_failed" | "authority_operation_invalid" | "authority_client_id_invalid" | "authority_key_id_invalid" | "authority_private_key_invalid" | "authority_environment_invalid" | "authority_audit_unavailable" | "authority_audit_start_failed" | "authority_audit_completion_failed" | "authority_operation_conflict";
+
+export interface AuthorityOperationCommandWire {
+  confirmation: string;
+  operation: AuthorityOperationKind;
+  operationId: string;
+}
+
+export interface AuthorityOperationRecordWire {
+  actorId: string;
+  authorityHttpStatus: number | null;
+  completedAt: string | null;
+  createdAt: string;
+  metadata: Record<string, string>;
+  operation: AuthorityOperationKind;
+  operationId: string;
+  requestHash: string;
+  resultCode: AuthorityOperationCode;
+  status: AuthorityOperationStatus;
+}
+
+export interface AuthorityOperationListWire {
+  operations: AuthorityOperationRecordWire[];
+}
+
+export type AuthorityFailureCode = "invalid_environment" | "invalid_timeout" | "invalid_bearer_token" | "invalid_organization_number" | "invalid_external_reference" | "invalid_request_id" | "network_error" | "response_too_large" | "response_contract_mismatch" | "invalid_confirmation_url" | "duplicate_system_user_request" | "authority_http_error" | "maskinporten_grant_signing_failed" | "maskinporten_network_error" | "maskinporten_http_error" | "maskinporten_response_invalid" | "maskinporten_token_error";
+
+export type SystemUserRequestStatus = "creating" | "new" | "accepted" | "rejected" | "denied" | "timedout" | "verification_failed";
+
+export interface SystemUserCommandWire {
+  companyId: string;
+  requestId: string;
+}
+
+export interface SystemUserCallbackWire {
+  requestId: string;
+}
+
+export interface SystemUserResultWire {
+  companyId: string;
+  confirmationUrl: string | null;
+  failureCode: AuthorityFailureCode | null;
+  preflightVerifiedAt: string | null;
+  requestId: string;
+  status: SystemUserRequestStatus;
+}
+
+export interface SystemUserRecordWire {
+  acceptedAt: string | null;
+  companyId: string;
+  confirmationUrl: string | null;
+  createdAt: string | null;
+  externalReference: string;
+  failureCode: AuthorityFailureCode | null;
+  initiatingOwnerUserId: string;
+  lastStatusCheckedAt: string | null;
+  obligation: "aksjonaerregisteroppgaven";
+  operatorEvidenceId: string | null;
+  preflightVerifiedAt: string | null;
+  providerRequestId: string | null;
+  requestId: string;
+  requestedAt: string | null;
+  resolvedAt: string | null;
+  status: SystemUserRequestStatus;
+  updatedAt: string | null;
+}
+
+export interface SystemUserListWire {
+  requests: SystemUserRecordWire[];
+}
+
 export interface MarketingFunnelReportResponse {
   counts: Record<string, number>;
   medianSeconds: Record<string, number | number | null>;
@@ -6982,6 +7103,201 @@ function isProductionPilotStatus(value: unknown): value is ProductionPilotStatus
   return value === "pending" || value === "active" || value === "suspended" || value === "completed" || value === "revoked";
 }
 
+function isLegacyRf1086SendCommandWire(value: unknown): value is LegacyRf1086SendCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approvalId"]) &&
+    isUuid(value.approvalId)
+  );
+}
+
+function isLegacyRf1086ReconcileCommandWire(value: unknown): value is LegacyRf1086ReconcileCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["submissionId"]) &&
+    isUuid(value.submissionId)
+  );
+}
+
+function isLegacyRf1086SendResultWire(value: unknown): value is LegacyRf1086SendResultWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["submissionId"]) &&
+    isUuid(value.submissionId)
+  );
+}
+
+function isLegacyRf1086ReconcileResultWire(value: unknown): value is LegacyRf1086ReconcileResultWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["errorCode","requiresManualRetry","state"]) &&
+    ((value.errorCode === "invalid_request" || value.errorCode === "authentication_required" || value.errorCode === "approval_expired" || value.errorCode === "basis_unavailable" || value.errorCode === "connection_unavailable" || value.errorCode === "payload_changed" || value.errorCode === "configuration_unavailable" || value.errorCode === "send_unavailable" || value.errorCode === "status_unavailable" || value.errorCode === "status_busy" || value.errorCode === "step_up_required") || value.errorCode === null) &&
+    typeof value.requiresManualRetry === "boolean" &&
+    ((value.state === "sent" || value.state === "processing" || value.state === "accepted" || value.state === "rejected" || value.state === "action_required" || value.state === "unknown") || value.state === null)
+  );
+}
+
+function isLaunchSignoffKey(value: unknown): value is LaunchSignoffKey {
+  return value === "launch_legal_name_public_copy" || value === "legal_policy_pack" || value === "security_restore" || value === "billing_refund" || value === "rf1086_authority" || value === "annual_accounts_authority" || value === "tax_return_authority" || value === "support_rollback" || value === "founder_production_go_live";
+}
+
+function isLaunchSignoffStatus(value: unknown): value is LaunchSignoffStatus {
+  return value === "approved" || value === "rejected" || value === "pending";
+}
+
+function isLaunchSignoffCommandWire(value: unknown): value is LaunchSignoffCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["decision","evidenceLink","key","reviewedAt","reviewer","status"]) &&
+    typeof value.decision === "string" &&
+    typeof value.evidenceLink === "string" &&
+    isLaunchSignoffKey(value.key) &&
+    isDateTime(value.reviewedAt) &&
+    typeof value.reviewer === "string" &&
+    isLaunchSignoffStatus(value.status)
+  );
+}
+
+function isLaunchSignoffRecordWire(value: unknown): value is LaunchSignoffRecordWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["decision","evidenceLink","key","recordedBy","reviewedAt","reviewer","status","updatedAt"]) &&
+    typeof value.decision === "string" &&
+    typeof value.evidenceLink === "string" &&
+    isLaunchSignoffKey(value.key) &&
+    isUuid(value.recordedBy) &&
+    isDateTime(value.reviewedAt) &&
+    typeof value.reviewer === "string" &&
+    isLaunchSignoffStatus(value.status) &&
+    isDateTime(value.updatedAt)
+  );
+}
+
+function isLaunchSignoffListWire(value: unknown): value is LaunchSignoffListWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["signoffs"]) &&
+    Array.isArray(value.signoffs) && value.signoffs.every((item) => isLaunchSignoffRecordWire(item))
+  );
+}
+
+function isAuthorityOperationKind(value: unknown): value is AuthorityOperationKind {
+  return value === "register_rf1086_system" || value === "set_rf1086_systembruker_callback";
+}
+
+function isAuthorityOperationStatus(value: unknown): value is AuthorityOperationStatus {
+  return value === "started" || value === "succeeded" || value === "failed" || value === "conflict";
+}
+
+function isAuthorityOperationCode(value: unknown): value is AuthorityOperationCode {
+  return value === "started" || value === "created_and_verified" || value === "already_verified" || value === "definition_conflict" || value === "callback_already_verified" || value === "callback_updated_and_verified" || value === "authority_token_error" || value === "authority_network_error" || value === "authority_http_error" || value === "authority_response_invalid" || value === "authority_verification_error" || value === "authority_operation_failed" || value === "authority_ops_disabled" || value === "authority_ops_unavailable" || value === "admin_operator_required" || value === "authority_step_up_required" || value === "authority_step_up_failed" || value === "authority_operation_invalid" || value === "authority_client_id_invalid" || value === "authority_key_id_invalid" || value === "authority_private_key_invalid" || value === "authority_environment_invalid" || value === "authority_audit_unavailable" || value === "authority_audit_start_failed" || value === "authority_audit_completion_failed" || value === "authority_operation_conflict";
+}
+
+function isAuthorityOperationCommandWire(value: unknown): value is AuthorityOperationCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["confirmation","operation","operationId"]) &&
+    (typeof value.confirmation === "string" && value.confirmation.length <= 128) &&
+    isAuthorityOperationKind(value.operation) &&
+    isUuid(value.operationId)
+  );
+}
+
+function isAuthorityOperationRecordWire(value: unknown): value is AuthorityOperationRecordWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["actorId","authorityHttpStatus","completedAt","createdAt","metadata","operation","operationId","requestHash","resultCode","status"]) &&
+    isUuid(value.actorId) &&
+    (typeof value.authorityHttpStatus === "number" && Number.isInteger(value.authorityHttpStatus) || value.authorityHttpStatus === null) &&
+    (isDateTime(value.completedAt) || value.completedAt === null) &&
+    isDateTime(value.createdAt) &&
+    isRecord(value.metadata) && Object.values(value.metadata).every((item) => typeof item === "string") &&
+    isAuthorityOperationKind(value.operation) &&
+    isUuid(value.operationId) &&
+    (typeof value.requestHash === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.requestHash)) &&
+    isAuthorityOperationCode(value.resultCode) &&
+    isAuthorityOperationStatus(value.status)
+  );
+}
+
+function isAuthorityOperationListWire(value: unknown): value is AuthorityOperationListWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["operations"]) &&
+    Array.isArray(value.operations) && value.operations.every((item) => isAuthorityOperationRecordWire(item))
+  );
+}
+
+function isAuthorityFailureCode(value: unknown): value is AuthorityFailureCode {
+  return value === "invalid_environment" || value === "invalid_timeout" || value === "invalid_bearer_token" || value === "invalid_organization_number" || value === "invalid_external_reference" || value === "invalid_request_id" || value === "network_error" || value === "response_too_large" || value === "response_contract_mismatch" || value === "invalid_confirmation_url" || value === "duplicate_system_user_request" || value === "authority_http_error" || value === "maskinporten_grant_signing_failed" || value === "maskinporten_network_error" || value === "maskinporten_http_error" || value === "maskinporten_response_invalid" || value === "maskinporten_token_error";
+}
+
+function isSystemUserRequestStatus(value: unknown): value is SystemUserRequestStatus {
+  return value === "creating" || value === "new" || value === "accepted" || value === "rejected" || value === "denied" || value === "timedout" || value === "verification_failed";
+}
+
+function isSystemUserCommandWire(value: unknown): value is SystemUserCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","requestId"]) &&
+    isUuid(value.companyId) &&
+    isUuid(value.requestId)
+  );
+}
+
+function isSystemUserCallbackWire(value: unknown): value is SystemUserCallbackWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["requestId"]) &&
+    isUuid(value.requestId)
+  );
+}
+
+function isSystemUserResultWire(value: unknown): value is SystemUserResultWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","confirmationUrl","failureCode","preflightVerifiedAt","requestId","status"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.confirmationUrl === "string" || value.confirmationUrl === null) &&
+    (isAuthorityFailureCode(value.failureCode) || value.failureCode === null) &&
+    (isDateTime(value.preflightVerifiedAt) || value.preflightVerifiedAt === null) &&
+    isUuid(value.requestId) &&
+    isSystemUserRequestStatus(value.status)
+  );
+}
+
+function isSystemUserRecordWire(value: unknown): value is SystemUserRecordWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["acceptedAt","companyId","confirmationUrl","createdAt","externalReference","failureCode","initiatingOwnerUserId","lastStatusCheckedAt","obligation","operatorEvidenceId","preflightVerifiedAt","providerRequestId","requestId","requestedAt","resolvedAt","status","updatedAt"]) &&
+    (isDateTime(value.acceptedAt) || value.acceptedAt === null) &&
+    isUuid(value.companyId) &&
+    (typeof value.confirmationUrl === "string" || value.confirmationUrl === null) &&
+    (isDateTime(value.createdAt) || value.createdAt === null) &&
+    typeof value.externalReference === "string" &&
+    (isAuthorityFailureCode(value.failureCode) || value.failureCode === null) &&
+    isUuid(value.initiatingOwnerUserId) &&
+    (isDateTime(value.lastStatusCheckedAt) || value.lastStatusCheckedAt === null) &&
+    value.obligation === "aksjonaerregisteroppgaven" &&
+    (isUuid(value.operatorEvidenceId) || value.operatorEvidenceId === null) &&
+    (isDateTime(value.preflightVerifiedAt) || value.preflightVerifiedAt === null) &&
+    (isUuid(value.providerRequestId) || value.providerRequestId === null) &&
+    isUuid(value.requestId) &&
+    (isDateTime(value.requestedAt) || value.requestedAt === null) &&
+    (isDateTime(value.resolvedAt) || value.resolvedAt === null) &&
+    isSystemUserRequestStatus(value.status) &&
+    (isDateTime(value.updatedAt) || value.updatedAt === null)
+  );
+}
+
+function isSystemUserListWire(value: unknown): value is SystemUserListWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["requests"]) &&
+    Array.isArray(value.requests) && value.requests.every((item) => isSystemUserRecordWire(item))
+  );
+}
+
 function isMarketingFunnelReportResponse(value: unknown): value is MarketingFunnelReportResponse {
   return (
     isRecord(value) &&
@@ -8704,6 +9020,80 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async legacyRf1086SendApprovedFiling(
+      body: LegacyRf1086SendCommandWire, request: TalliRequestOptions = {},
+    ): Promise<LegacyRf1086SendResultWire> {
+      return executeJson(baseUrl + "/api/v1/legacy-rf1086/production-filings", "POST", request, body, isLegacyRf1086SendResultWire);
+    },
+
+    async legacyRf1086ReconcileFeedback(
+      body: LegacyRf1086ReconcileCommandWire, request: TalliRequestOptions = {},
+    ): Promise<LegacyRf1086ReconcileResultWire> {
+      return executeJson(baseUrl + "/api/v1/legacy-rf1086/feedback-reconciliations", "POST", request, body, isLegacyRf1086ReconcileResultWire);
+    },
+
+    async operatorControlsListLaunchSignoffs(
+      request: TalliRequestOptions = {},
+    ): Promise<LaunchSignoffListWire> {
+      return executeJson(baseUrl + "/api/v1/operator-controls/launch-signoffs", "GET", request, undefined, isLaunchSignoffListWire);
+    },
+
+    async operatorControlsRecordLaunchSignoff(
+      body: LaunchSignoffCommandWire, request: TalliRequestOptions = {},
+    ): Promise<LaunchSignoffRecordWire> {
+      return executeJson(baseUrl + "/api/v1/operator-controls/launch-signoffs", "POST", request, body, isLaunchSignoffRecordWire);
+    },
+
+    async authorityConnectionsListOperations(
+      request: TalliRequestOptions = {},
+    ): Promise<AuthorityOperationListWire> {
+      return executeJson(baseUrl + "/api/v1/authority-connections/operations", "GET", request, undefined, isAuthorityOperationListWire);
+    },
+
+    async authorityConnectionsRunOperation(
+      body: AuthorityOperationCommandWire, request: TalliRequestOptions = {},
+    ): Promise<AuthorityOperationRecordWire> {
+      return executeJson(baseUrl + "/api/v1/authority-connections/operations", "POST", request, body, isAuthorityOperationRecordWire);
+    },
+
+    async authorityConnectionsListSystemUserRequests(
+      companyIds: string[], request: TalliRequestOptions = {},
+    ): Promise<SystemUserListWire> {
+      const query = new URLSearchParams();
+      for (const companyId of companyIds) query.append("companyIds", companyId);
+      return executeJson(baseUrl + "/api/v1/authority-connections/system-user-requests?" + query,
+        "GET", request, undefined, isSystemUserListWire);
+    },
+
+    async authorityConnectionsStartSystemUserRequest(
+      body: SystemUserCommandWire, request: TalliRequestOptions = {},
+    ): Promise<SystemUserResultWire> {
+      return executeJson(baseUrl + "/api/v1/authority-connections/system-user-requests",
+        "POST", request, body, isSystemUserResultWire);
+    },
+
+    async authorityConnectionsRetrySystemUserRequest(
+      body: SystemUserCommandWire, request: TalliRequestOptions = {},
+    ): Promise<SystemUserResultWire> {
+      return executeJson(baseUrl + "/api/v1/authority-connections/system-user-requests/retries",
+        "POST", request, body, isSystemUserResultWire);
+    },
+
+    async authorityConnectionsReconcileSystemUserRequest(
+      body: SystemUserCommandWire, request: TalliRequestOptions = {},
+    ): Promise<SystemUserResultWire> {
+      return executeJson(baseUrl + "/api/v1/authority-connections/system-user-requests/reconciliations",
+        "POST", request, body, isSystemUserResultWire);
+    },
+
+    async authorityConnectionsReconcileSystemUserCallback(
+      body: SystemUserCallbackWire, proof: string, request: TalliRequestOptions = {},
+    ): Promise<SystemUserResultWire> {
+      return executeJson(baseUrl + "/api/v1/authority-connections/system-user-callbacks", "POST",
+        { ...request, headers: { ...request.headers, "X-Talli-Authority-Callback-Proof": proof } },
+        body, isSystemUserResultWire);
     },
 
     async billingPrepareAnnualCheckout(

@@ -4,146 +4,712 @@
   "ownershipPolicy": "capability owners are authoritative",
   "compatibilityAdapterRegistry": "architecture/compatibility.json",
   "tables": [
-    { "name": "annual_notification_inbox.receipts", "kind": "technical" },
-    { "name": "backend_system.annual_checkout_observation_work", "kind": "technical" },
-    { "name": "backend_system.banking_command_receipts", "kind": "technical" },
-    { "name": "backend_system.banking_migration_reconciliations", "kind": "technical" },
-    { "name": "backend_system.banking_migration_runs", "kind": "technical" },
-    { "name": "backend_system.banking_migration_source_rows", "kind": "technical" },
-    { "name": "backend_system.ledger_command_receipts", "kind": "technical" },
-    { "name": "backend_system.ledger_cursor_signing_keys", "kind": "technical" },
-    { "name": "backend_system.ledger_migration_quarantine", "kind": "technical" },
-    { "name": "backend_system.ledger_migration_reconciliations", "kind": "technical" },
-    { "name": "backend_system.ledger_migration_runs", "kind": "technical" },
-    { "name": "backend_system.ledger_migration_source_rows", "kind": "technical" },
-    { "name": "backend_system.ledger_workflow_receipts", "kind": "technical" },
-    { "name": "backend_system.marketing_funnel_events", "kind": "technical" },
-    { "name": "backend_system.marketing_funnel_withdrawals", "kind": "technical" },
-    { "name": "backend_system.marketing_consent_actions", "kind": "technical" },
-    { "name": "backend_system.marketing_measurement_releases", "kind": "technical" },
-    { "name": "backend_system.validation_observation_control", "kind": "technical" },
-    { "name": "backend_system.validation_observations", "kind": "technical" },
-    { "name": "backend_system.validation_pilot_entitlements", "kind": "technical" },
-    { "name": "backend_system.validation_reviewers", "kind": "technical" },
-    { "name": "backend_system.validation_runs", "kind": "technical" },
-    { "name": "banking.accounts", "kind": "capability-business", "owner": "backend:banking" },
-    { "name": "banking.connections", "kind": "capability-business", "owner": "backend:banking" },
-    { "name": "banking.coverage_intervals", "kind": "capability-business", "owner": "backend:banking" },
-    { "name": "banking.source_files", "kind": "capability-business", "owner": "backend:banking" },
-    { "name": "banking.suggestion_acceptances", "kind": "capability-business", "owner": "backend:banking" },
-    { "name": "banking.sync_attempts", "kind": "capability-business", "owner": "backend:banking" },
-    { "name": "banking.transaction_sources", "kind": "capability-business", "owner": "backend:banking" },
-    { "name": "banking.transactions", "kind": "capability-business", "owner": "backend:banking" },
-    { "name": "billing.annual_checkout_observation_authorities", "kind": "capability-business", "owner": "backend:billing" },
-    { "name": "billing.annual_checkout_observation_principals", "kind": "capability-business", "owner": "backend:billing" },
-    { "name": "billing.annual_checkout_withdrawals", "kind": "capability-business", "owner": "backend:billing" },
-    { "name": "billing.annual_cancellation_requests", "kind": "capability-business", "owner": "backend:billing" },
-    { "name": "billing.annual_operations", "kind": "capability-business", "owner": "backend:billing" },
-    { "name": "billing.annual_purchases", "kind": "capability-business", "owner": "backend:billing" },
-    { "name": "billing.annual_refund_cases", "kind": "capability-business", "owner": "backend:billing" },
-    { "name": "billing.annual_refund_requests", "kind": "capability-business", "owner": "backend:billing" },
-    { "name": "billing.billing_accounts", "kind": "capability-business", "owner": "backend:billing", "compatibilityResources": ["table:billing_accounts"] },
-    { "name": "billing.billing_command_receipts", "kind": "technical" },
-    { "name": "billing.billing_payment_events", "kind": "capability-business", "owner": "backend:billing", "compatibilityResources": ["table:billing_payment_events"] },
-    { "name": "billing.production_pilot_entitlements", "kind": "capability-business", "owner": "backend:billing", "compatibilityResources": ["table:production_pilot_entitlements"] },
-    { "name": "corporate_governance.annual_close_artifacts", "kind": "capability-business", "owner": "backend:corporate_governance" },
-    { "name": "corporate_governance.annual_close_decisions", "kind": "capability-business", "owner": "backend:corporate_governance" },
-    { "name": "corporate_governance.annual_close_events", "kind": "capability-business", "owner": "backend:corporate_governance" },
-    { "name": "corporate_governance.annual_close_finalizations", "kind": "capability-business", "owner": "backend:corporate_governance" },
-    { "name": "corporate_governance.owner_dividend_accounting_policies", "kind": "capability-business", "owner": "backend:corporate_governance" },
-    { "name": "corporate_governance.owner_dividend_artifacts", "kind": "capability-business", "owner": "backend:corporate_governance", "compatibilityResources": ["table:corporate_document_artifacts"] },
-    { "name": "corporate_governance.owner_dividend_decisions", "kind": "capability-business", "owner": "backend:corporate_governance", "compatibilityResources": ["table:corporate_decisions", "table:corporate_document_sets"] },
-    { "name": "corporate_governance.owner_dividend_events", "kind": "capability-business", "owner": "backend:corporate_governance", "compatibilityResources": ["table:corporate_document_events"] },
-    { "name": "corporate_governance.owner_dividend_finalizations", "kind": "capability-business", "owner": "backend:corporate_governance", "compatibilityResources": ["table:corporate_decision_finalizations"] },
-    { "name": "corporate_governance.owner_dividend_payments", "kind": "capability-business", "owner": "backend:corporate_governance" },
-    { "name": "corporate_governance.shareholder_loans", "kind": "capability-business", "owner": "backend:corporate_governance" },
-    { "name": "corporate_governance.supported_events", "kind": "capability-business", "owner": "backend:corporate_governance" },
-    { "name": "documents.evidence_references", "kind": "capability-business", "owner": "backend:documents" },
-    { "name": "investments.acquisition_lots", "kind": "capability-business", "owner": "backend:investments", "compatibilityResources": ["table:investment_lots"] },
-    { "name": "investments.cash_settlements", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.company_year_policies", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.corrections", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.economic_events", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.event_sources", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.lifecycle_correction_sources", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.lifecycle_corrections", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.measurement_sources", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.position_boundary_confirmations", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.position_classifications", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.positions", "kind": "capability-business", "owner": "backend:investments", "compatibilityResources": ["table:investment_positions"] },
-    { "name": "investments.received_dividend_recognitions", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.received_dividends", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.received_fund_distribution_recognitions", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.received_fund_distributions", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.share_purchase_recognitions", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.share_purchases", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.share_sale_allocations", "kind": "capability-business", "owner": "backend:investments", "compatibilityResources": ["table:investment_lot_allocations"] },
-    { "name": "investments.share_sales", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.source_fact_registry", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "investments.year_end_measurements", "kind": "capability-business", "owner": "backend:investments" },
-    { "name": "public.annual_data", "kind": "legacy-business" },
-    { "name": "public.audit_events", "kind": "legacy-business" },
-    { "name": "public.authority_operations", "kind": "legacy-business" },
-    { "name": "public.authority_permissions", "kind": "legacy-business" },
-    { "name": "public.authority_test_runs", "kind": "legacy-business" },
-    { "name": "public.companies", "kind": "capability-business", "owner": "backend:company_access" },
-    { "name": "public.company_archive_export_attempts", "kind": "legacy-business" },
-    { "name": "public.company_archive_export_receipts", "kind": "legacy-business" },
-    { "name": "public.company_archive_source_generations", "kind": "legacy-business" },
-    { "name": "public.company_cancellations", "kind": "capability-business", "owner": "backend:company_access" },
-    { "name": "public.company_access_command_receipts", "kind": "technical" },
-    { "name": "public.company_deletion_reviews", "kind": "capability-business", "owner": "backend:company_access" },
-    { "name": "public.company_eligibility_assessments", "kind": "capability-business", "owner": "backend:company_access" },
-    { "name": "public.company_invitations", "kind": "capability-business", "owner": "backend:company_access" },
-    { "name": "public.company_memberships", "kind": "capability-business", "owner": "backend:company_access" },
-    { "name": "public.company_year_acceptances", "kind": "capability-business", "owner": "backend:company_access" },
-    { "name": "public.company_year_admissions", "kind": "capability-business", "owner": "backend:company_access" },
-    { "name": "public.customer_agreement_acceptances", "kind": "capability-business", "owner": "backend:company_access" },
-    { "name": "public.documents", "kind": "capability-business", "owner": "backend:documents" },
-    { "name": "public.filing_approval_snapshots", "kind": "legacy-business" },
-    { "name": "public.filing_overrides", "kind": "legacy-business" },
-    { "name": "public.filing_previews", "kind": "legacy-business" },
-    { "name": "public.filing_readiness_snapshots", "kind": "legacy-business" },
-    { "name": "public.filing_review_comments", "kind": "legacy-business" },
-    { "name": "public.filing_submissions", "kind": "legacy-business" },
-    { "name": "public.holding_actions", "kind": "legacy-business" },
-    { "name": "public.launch_signoffs", "kind": "technical" },
-    { "name": "ledger.bank_loan_anchors", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.bank_loan_payment_allocations", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.cash_capital_increase_phases", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.company_year_close_assessments", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.company_year_close_evidence", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.company_year_close_locks", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.company_year_close_reporting_outputs", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.entries", "kind": "capability-business", "owner": "backend:ledger", "compatibilityResources": ["table:ledger_entries"] },
-    { "name": "ledger.entry_contexts", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.entry_corrections", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.entry_reversals", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.entry_sources", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.loss_coverage_capital_reduction_phases", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.opening_position_component_sources", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.opening_position_components", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.opening_position_rebuilds", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.opening_received_dividend_settlements", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.received_dividend_decisions", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.received_dividend_settlements", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.reconstruction_assessments", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.reconstruction_economic_fact_sets", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.reconstruction_economic_facts", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.reconstruction_evidence", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.reconstruction_source_evidence_bindings", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "ledger.reconstruction_source_evidence_sets", "kind": "capability-business", "owner": "backend:ledger" },
-    { "name": "public.notification_outbox", "kind": "technical" },
-    { "name": "public.opening_balance_setups", "kind": "legacy-business" },
-    { "name": "public.opening_shareholders", "kind": "legacy-business" },
-    { "name": "ledger.period_locks", "kind": "capability-business", "owner": "backend:ledger", "compatibilityResources": ["table:period_locks"] },
-    { "name": "public.production_feedback_artifacts", "kind": "legacy-business" },
-    { "name": "public.production_filing_events", "kind": "legacy-business" },
-    { "name": "public.production_filing_submissions", "kind": "legacy-business" },
-    { "name": "public.support_access_grants", "kind": "capability-business", "owner": "backend:company_access" },
-    { "name": "public.support_access_operation_receipts", "kind": "capability-business", "owner": "backend:company_access" },
-    { "name": "public.support_case_openings", "kind": "capability-business", "owner": "backend:company_access" },
-    { "name": "public.support_operators", "kind": "capability-business", "owner": "backend:company_access" },
-    { "name": "public.system_user_requests", "kind": "legacy-business" }
+    {
+      "name": "annual_notification_inbox.receipts",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.annual_checkout_observation_work",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.banking_command_receipts",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.banking_migration_reconciliations",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.banking_migration_runs",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.banking_migration_source_rows",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.ledger_command_receipts",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.ledger_cursor_signing_keys",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.ledger_migration_quarantine",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.ledger_migration_reconciliations",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.ledger_migration_runs",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.ledger_migration_source_rows",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.ledger_workflow_receipts",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.marketing_funnel_events",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.marketing_funnel_withdrawals",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.marketing_consent_actions",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.marketing_measurement_releases",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.validation_observation_control",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.validation_observations",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.validation_pilot_entitlements",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.validation_reviewers",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.validation_runs",
+      "kind": "technical"
+    },
+    {
+      "name": "banking.accounts",
+      "kind": "capability-business",
+      "owner": "backend:banking"
+    },
+    {
+      "name": "banking.connections",
+      "kind": "capability-business",
+      "owner": "backend:banking"
+    },
+    {
+      "name": "banking.coverage_intervals",
+      "kind": "capability-business",
+      "owner": "backend:banking"
+    },
+    {
+      "name": "banking.source_files",
+      "kind": "capability-business",
+      "owner": "backend:banking"
+    },
+    {
+      "name": "banking.suggestion_acceptances",
+      "kind": "capability-business",
+      "owner": "backend:banking"
+    },
+    {
+      "name": "banking.sync_attempts",
+      "kind": "capability-business",
+      "owner": "backend:banking"
+    },
+    {
+      "name": "banking.transaction_sources",
+      "kind": "capability-business",
+      "owner": "backend:banking"
+    },
+    {
+      "name": "banking.transactions",
+      "kind": "capability-business",
+      "owner": "backend:banking"
+    },
+    {
+      "name": "billing.annual_checkout_observation_authorities",
+      "kind": "capability-business",
+      "owner": "backend:billing"
+    },
+    {
+      "name": "billing.annual_checkout_observation_principals",
+      "kind": "capability-business",
+      "owner": "backend:billing"
+    },
+    {
+      "name": "billing.annual_checkout_withdrawals",
+      "kind": "capability-business",
+      "owner": "backend:billing"
+    },
+    {
+      "name": "billing.annual_cancellation_requests",
+      "kind": "capability-business",
+      "owner": "backend:billing"
+    },
+    {
+      "name": "billing.annual_operations",
+      "kind": "capability-business",
+      "owner": "backend:billing"
+    },
+    {
+      "name": "billing.annual_purchases",
+      "kind": "capability-business",
+      "owner": "backend:billing"
+    },
+    {
+      "name": "billing.annual_refund_cases",
+      "kind": "capability-business",
+      "owner": "backend:billing"
+    },
+    {
+      "name": "billing.annual_refund_requests",
+      "kind": "capability-business",
+      "owner": "backend:billing"
+    },
+    {
+      "name": "billing.billing_accounts",
+      "kind": "capability-business",
+      "owner": "backend:billing",
+      "compatibilityResources": [
+        "table:billing_accounts"
+      ]
+    },
+    {
+      "name": "billing.billing_command_receipts",
+      "kind": "technical"
+    },
+    {
+      "name": "billing.billing_payment_events",
+      "kind": "capability-business",
+      "owner": "backend:billing",
+      "compatibilityResources": [
+        "table:billing_payment_events"
+      ]
+    },
+    {
+      "name": "billing.production_pilot_entitlements",
+      "kind": "capability-business",
+      "owner": "backend:billing",
+      "compatibilityResources": [
+        "table:production_pilot_entitlements"
+      ]
+    },
+    {
+      "name": "corporate_governance.annual_close_artifacts",
+      "kind": "capability-business",
+      "owner": "backend:corporate_governance"
+    },
+    {
+      "name": "corporate_governance.annual_close_decisions",
+      "kind": "capability-business",
+      "owner": "backend:corporate_governance"
+    },
+    {
+      "name": "corporate_governance.annual_close_events",
+      "kind": "capability-business",
+      "owner": "backend:corporate_governance"
+    },
+    {
+      "name": "corporate_governance.annual_close_finalizations",
+      "kind": "capability-business",
+      "owner": "backend:corporate_governance"
+    },
+    {
+      "name": "corporate_governance.owner_dividend_accounting_policies",
+      "kind": "capability-business",
+      "owner": "backend:corporate_governance"
+    },
+    {
+      "name": "corporate_governance.owner_dividend_artifacts",
+      "kind": "capability-business",
+      "owner": "backend:corporate_governance",
+      "compatibilityResources": [
+        "table:corporate_document_artifacts"
+      ]
+    },
+    {
+      "name": "corporate_governance.owner_dividend_decisions",
+      "kind": "capability-business",
+      "owner": "backend:corporate_governance",
+      "compatibilityResources": [
+        "table:corporate_decisions",
+        "table:corporate_document_sets"
+      ]
+    },
+    {
+      "name": "corporate_governance.owner_dividend_events",
+      "kind": "capability-business",
+      "owner": "backend:corporate_governance",
+      "compatibilityResources": [
+        "table:corporate_document_events"
+      ]
+    },
+    {
+      "name": "corporate_governance.owner_dividend_finalizations",
+      "kind": "capability-business",
+      "owner": "backend:corporate_governance",
+      "compatibilityResources": [
+        "table:corporate_decision_finalizations"
+      ]
+    },
+    {
+      "name": "corporate_governance.owner_dividend_payments",
+      "kind": "capability-business",
+      "owner": "backend:corporate_governance"
+    },
+    {
+      "name": "corporate_governance.shareholder_loans",
+      "kind": "capability-business",
+      "owner": "backend:corporate_governance"
+    },
+    {
+      "name": "corporate_governance.supported_events",
+      "kind": "capability-business",
+      "owner": "backend:corporate_governance"
+    },
+    {
+      "name": "documents.evidence_references",
+      "kind": "capability-business",
+      "owner": "backend:documents"
+    },
+    {
+      "name": "investments.acquisition_lots",
+      "kind": "capability-business",
+      "owner": "backend:investments",
+      "compatibilityResources": [
+        "table:investment_lots"
+      ]
+    },
+    {
+      "name": "investments.cash_settlements",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.company_year_policies",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.corrections",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.economic_events",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.event_sources",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.lifecycle_correction_sources",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.lifecycle_corrections",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.measurement_sources",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.position_boundary_confirmations",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.position_classifications",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.positions",
+      "kind": "capability-business",
+      "owner": "backend:investments",
+      "compatibilityResources": [
+        "table:investment_positions"
+      ]
+    },
+    {
+      "name": "investments.received_dividend_recognitions",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.received_dividends",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.received_fund_distribution_recognitions",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.received_fund_distributions",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.share_purchase_recognitions",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.share_purchases",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.share_sale_allocations",
+      "kind": "capability-business",
+      "owner": "backend:investments",
+      "compatibilityResources": [
+        "table:investment_lot_allocations"
+      ]
+    },
+    {
+      "name": "investments.share_sales",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.source_fact_registry",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "investments.year_end_measurements",
+      "kind": "capability-business",
+      "owner": "backend:investments"
+    },
+    {
+      "name": "public.annual_data",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.audit_events",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "authority_connections.authority_operations",
+      "kind": "capability-business",
+      "owner": "backend:authority_connections",
+      "compatibilityResources": [
+        "table:authority_operations"
+      ]
+    },
+    {
+      "name": "public.authority_permissions",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.authority_test_runs",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.companies",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.company_archive_export_attempts",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.company_archive_export_receipts",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.company_archive_source_generations",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.company_cancellations",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.company_access_command_receipts",
+      "kind": "technical"
+    },
+    {
+      "name": "public.company_deletion_reviews",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.company_eligibility_assessments",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.company_invitations",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.company_memberships",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.company_year_acceptances",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.company_year_admissions",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.customer_agreement_acceptances",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.documents",
+      "kind": "capability-business",
+      "owner": "backend:documents"
+    },
+    {
+      "name": "public.filing_approval_snapshots",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.filing_overrides",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.filing_previews",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.filing_readiness_snapshots",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.filing_review_comments",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.filing_submissions",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.holding_actions",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.launch_signoffs",
+      "kind": "technical"
+    },
+    {
+      "name": "ledger.bank_loan_anchors",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.bank_loan_payment_allocations",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.cash_capital_increase_phases",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.company_year_close_assessments",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.company_year_close_evidence",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.company_year_close_locks",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.company_year_close_reporting_outputs",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.entries",
+      "kind": "capability-business",
+      "owner": "backend:ledger",
+      "compatibilityResources": [
+        "table:ledger_entries"
+      ]
+    },
+    {
+      "name": "ledger.entry_contexts",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.entry_corrections",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.entry_reversals",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.entry_sources",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.loss_coverage_capital_reduction_phases",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.opening_position_component_sources",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.opening_position_components",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.opening_position_rebuilds",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.opening_received_dividend_settlements",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.received_dividend_decisions",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.received_dividend_settlements",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.reconstruction_assessments",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.reconstruction_economic_fact_sets",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.reconstruction_economic_facts",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.reconstruction_evidence",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.reconstruction_source_evidence_bindings",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.reconstruction_source_evidence_sets",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
+      "name": "public.notification_outbox",
+      "kind": "technical"
+    },
+    {
+      "name": "public.opening_balance_setups",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.opening_shareholders",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "ledger.period_locks",
+      "kind": "capability-business",
+      "owner": "backend:ledger",
+      "compatibilityResources": [
+        "table:period_locks"
+      ]
+    },
+    {
+      "name": "public.production_feedback_artifacts",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.production_filing_events",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.production_filing_submissions",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.support_access_grants",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.support_access_operation_receipts",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.support_case_openings",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.support_operators",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "authority_connections.system_user_requests",
+      "kind": "capability-business",
+      "owner": "backend:authority_connections",
+      "compatibilityResources": [
+        "table:system_user_requests"
+      ]
+    },
+    {
+      "name": "backend_system.authority_connections_overlap_grants",
+      "kind": "technical"
+    }
   ]
 }

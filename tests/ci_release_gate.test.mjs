@@ -80,6 +80,9 @@ function createHarnessWorkspace(mode, guideState) {
     join(directory, "scripts/prepare-isolated-supabase-workdir.mjs"),
     "// Test fixture: the npm shim owns the isolated Supabase lifecycle.\n",
   );
+  writeFileSync(join(directory, "scripts/rehearse-authority-topology.mjs"),
+    "console.log('AUTHORITY_TOPOLOGY:' + process.argv[2]);\n"
+    + `if (process.argv[2] === 'recutover' && ${JSON.stringify(mode)} === 'authority-recutover-failure') process.exit(11);\n`);
   const npmPath = join(binDirectory, "npm");
   writeFileSync(
     npmPath,
@@ -88,6 +91,10 @@ set -euo pipefail
 if [[ "$*" == *"supabase status --workdir"* && "$*" == *"--output env"* ]]; then
   printf '%s\\n' 'API_URL=http://127.0.0.1:54321' 'PUBLISHABLE_KEY=local-anon' 'SECRET_KEY=local-service' 'DB_URL=postgresql://127.0.0.1/local'
   exit 0
+fi
+printf 'HARNESS_NPM:%s\\n' "$*"
+if [[ "$*" == "run test:billing-database-lifecycle" && "${mode}" == "billing-failure" ]]; then
+  exit 13
 fi
 if [[ "$*" == "run test:browser-owner" ]]; then
   printf 'generated declaration\\n' > apps/web/next-env.d.ts
@@ -369,11 +376,14 @@ test("Vercel deploys the Next output near the owner-designated database", () => 
   assert.deepEqual(config.regions, ["dub1"]);
 });
 
-test("backend boundary assigns every billing DB test exclusively to the mandatory database lane", () => {
+test("backend boundary partitions every test across the ordinary, Billing and Authority mandatory lanes", () => {
   const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
   const lifecycle = packageJson.scripts["test:billing-database-lifecycle"];
+  const authorityLifecycle = packageJson.scripts["test:authority-connections-database"];
   const files = lifecycle.match(/apps\/backend\/tests\/test_\w+\.py/gu);
+  const authorityFiles = authorityLifecycle.match(/apps\/backend\/tests\/test_\w+\.py/gu);
   assert.ok(files?.length, "the mandatory database lane must name its test files");
+  assert.ok(authorityFiles?.length, "the mandatory Authority lane must name its test files");
   const env = { ...process.env };
   delete env.DATABASE_URL;
   const collect = (command) => {
@@ -391,15 +401,22 @@ test("backend boundary assigns every billing DB test exclusively to the mandator
   assert.ok(database.size >= 158, "existing annual and predecessor DB cases must remain collected");
   const marked = collect(`${pytest} apps/backend/tests -m billing_database`);
   assert.deepEqual(marked, database, "marked exclusions must exactly match the mandatory lifecycle selection");
+  const authority = collect(`${pytest} ${authorityFiles.join(" ")}`);
+  const authorityMarked = collect(`${pytest} apps/backend/tests -m authority_database`);
+  assert.deepEqual(authorityMarked, authority, "every excluded Authority/RF/signoff case must be in its mandatory lane");
+  assert.ok(authority.size >= 36, "owner, operator and technical signoff cases must remain collected");
   const boundary = collect(packageJson.scripts["test:boundary-backend"]);
   const all = collect(`${pytest} apps/backend/tests`);
-  assert.deepEqual(new Set([...boundary, ...database]), all, "no backend test may disappear between lanes");
+  assert.deepEqual(new Set([...boundary, ...database, ...authority]), all, "no backend test may disappear between lanes");
   assert.deepEqual([...boundary].filter((id) => database.has(id)), [], "database fixtures must not run in the ordinary boundary lane");
+  assert.deepEqual([...boundary].filter((id) => authority.has(id)), [], "Authority fixtures must not run in the ordinary boundary lane");
+  assert.deepEqual([...authority].filter((id) => database.has(id)), [], "database lifecycle lanes must not overlap");
   assert.match(readFileSync(databaseHarnessPath, "utf8"), /DATABASE_URL="\$DB_URL" npm run test:billing-database-lifecycle/u);
+  assert.match(readFileSync(databaseHarnessPath, "utf8"), /DATABASE_URL="\$DB_URL" npm run test:authority-connections-database/u);
   assert.match(lifecycle, /&& node --test --test-concurrency=1 tests\/billing_database_runtime\.test\.mjs/u);
 });
 
-test("billing database lifecycle refuses missing DB configuration before running either test runner", () => {
+test("mandatory Billing and Authority lifecycles refuse missing DB configuration before any test runner", () => {
   const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
   const directory = mkdtempSync(join(tmpdir(), "talli-billing-lane-test-"));
   try {
@@ -410,11 +427,73 @@ test("billing database lifecycle refuses missing DB configuration before running
     }
     const env = { ...process.env, PATH: `${directory}:${process.env.PATH}` };
     delete env.DATABASE_URL;
-    const result = run("sh", ["-c", packageJson.scripts["test:billing-database-lifecycle"]], { env });
-    assert.notEqual(result.status, 0, "missing DATABASE_URL must fail the required lane");
-    assert.match(result.stderr, /DATABASE_URL.*disposable/u);
-    assert.doesNotMatch(result.stdout, /TEST_RUNNER_STARTED/u);
+    for (const lane of ["test:billing-database-lifecycle", "test:authority-connections-database"]) {
+      const result = run("sh", ["-c", packageJson.scripts[lane]], { env });
+      assert.notEqual(result.status, 0, `missing DATABASE_URL must fail ${lane}`);
+      assert.match(result.stderr, /DATABASE_URL.*disposable/u);
+      assert.doesNotMatch(result.stdout, /TEST_RUNNER_STARTED/u);
+    }
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+
+test("mandatory local lane preserves every predecessor before Billing and final Authority verification", () => {
+  for (const mode of ["success", "billing-failure", "authority-recutover-failure"]) {
+    const workspace = createHarnessWorkspace(mode, "absent");
+    try {
+      const result = run("bash", [fileURLToPath(databaseHarnessPath)], { cwd: workspace.directory,
+        env: { ...process.env, PATH: `${workspace.binDirectory}:${process.env.PATH}`, TMPDIR: workspace.snapshotDirectory } });
+      assert.equal(result.status, mode === "success" ? 0 : mode === "billing-failure" ? 13 : 11, result.stderr);
+      const milestones = [
+        "HARNESS_NPM:run test:ledger-database-lifecycle", "HARNESS_NPM:run test:banking-database-lifecycle",
+        "HARNESS_NPM:run test:investments-database-lifecycle", "HARNESS_NPM:run test:documents-database-lifecycle",
+        "HARNESS_NPM:run test:marketing-measurement-database", "HARNESS_NPM:run test:validation-observation",
+        "HARNESS_NPM:run test:supabase", "HARNESS_NPM:run test:browser-owner",
+        "HARNESS_NPM:run test:ledger-hosted-migration-authority", "HARNESS_NPM:run test:corporate-governance-database-lifecycle",
+        "AUTHORITY_TOPOLOGY:rollback", "HARNESS_NPM:run test:billing-database-lifecycle",
+        ...(mode !== "billing-failure" ? ["AUTHORITY_TOPOLOGY:recutover"] : []),
+        ...(mode === "success" ? ["HARNESS_NPM:run test:authority-connections-database", "HARNESS_NPM:run test:browser-authority-connections"] : []),
+      ];
+      let previous = -1;
+      for (const milestone of milestones) {
+        const position = result.stdout.indexOf(milestone + "\n");
+        assert.ok(position > previous, `${mode}: missing or reordered ${milestone}\n${result.stdout}`);
+        previous = position;
+      }
+      if (mode !== "success") assert.doesNotMatch(result.stdout, /HARNESS_NPM:run test:(?:authority-connections-database|browser-authority-connections)/u);
+      assert.deepEqual(readdirSync(workspace.snapshotDirectory), []);
+    } finally { rmSync(workspace.directory, { recursive: true, force: true }); }
+  }
+});
+
+
+test("Authority topology rehearsal unwinds dependent RF first and fails before later SQL on error", async () => {
+  const { rehearseAuthorityTopology } = await import("../scripts/rehearse-authority-topology.mjs");
+  const authority = "20260909120610_authority_connections_capability.sql";
+  const operations = "20260909123709_authority_operations_capability.sql";
+  const rf = "20260909125113_legacy_rf1086_authority_relocation.sql";
+  const contract = "20260909124659_authority_connections_contract.sql";
+  for (const contracted of [false, true]) {
+    const executed = [];
+    const database = { async query(sql) {
+      if (sql.startsWith("select c.relkind")) return { rows: contracted ? [] : [{ kind: "v" }] };
+      executed.push(sql);
+      return { rows: [] };
+    } };
+    await rehearseAuthorityTopology({ direction: "rollback", database, loadSql: async (file) => file });
+    assert.deepEqual(executed, [...(contracted ? [`rollback/${contract}`] : []), `rollback/${rf}`, `rollback/${operations}`, `rollback/${authority}`]);
+  }
+  const executed = [];
+  const database = { async query(sql) {
+    if (sql.startsWith("select c.relkind")) return { rows: [{ kind: "r" }] };
+    executed.push(sql);
+    if (sql === `migrations/${rf}`) throw new Error("synthetic_rf_recutover_failed");
+    return { rows: [] };
+  } };
+  await assert.rejects(rehearseAuthorityTopology({ direction: "recutover", database, loadSql: async (file) => file }), /synthetic_rf_recutover_failed/u);
+  assert.deepEqual(executed, [`migrations/${authority}`, `migrations/${operations}`, `migrations/${rf}`]);
+  // A failed dependency never contracts either public overlap or proceeds to
+  // the required post-cutover database and browser lanes.
 });

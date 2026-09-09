@@ -1,0 +1,157 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-capability",
+  "name": "authority_connections",
+  "path": "apps/backend/src/talli_backend/modules/authority_connections",
+  "owner": "backend:authority_connections",
+  "purpose": "Own the existing RF System User connection lifecycle, fixed authority delegation and redacted authority operations behind backend ports.",
+  "documentation": "apps/backend/src/talli_backend/modules/authority_connections/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.authority_connections.public",
+  "exports": {
+    "commands": [
+      "StartSystemUserRequestCommand",
+      "ReconcileSystemUserRequestCommand",
+      "RunAuthorityOperationCommand"
+    ],
+    "queries": [
+      "SystemUserRequest",
+      "SystemUserFlowResult",
+      "SystemUserOwner",
+      "AuthorityOperationRecord"
+    ],
+    "events": [],
+    "errors": [
+      "AuthorityConnectionsError",
+      "AuthorityConnectionsErrorCode",
+      "AuthorityFailureCode",
+      "AuthorityProviderError",
+      "AuthorityOperationError",
+      "AuthorityOperationCode"
+    ],
+    "identifiers": [
+      "AuthorityConnectionsCommands",
+      "AuthorityConnectionsQueries",
+      "QueriedSystemUser",
+      "SystemUserAuthorityProvider",
+      "SystemUserCallbackOperation",
+      "SystemUserIdentity",
+      "SystemUserPersistence",
+      "SystemUserRequestObservation",
+      "SystemUserRequestStatus",
+      "SystemUserStateUpdate",
+      "SYSTEM_USER_CALLBACK_PATH",
+      "SYSTEM_USER_CALLBACK_URL",
+      "SYSTEM_USER_CONFIRMATION_PREFIX",
+      "SYSTEM_USER_OBLIGATION",
+      "SYSTEM_USER_RIGHT",
+      "SYSTEM_USER_SYSTEM_ID",
+      "system_user_authority_provider_adapter",
+      "system_user_persistence_adapter",
+      "SystemUserStateTransaction",
+      "AuthorityOperationCompletion",
+      "AuthorityOperationIntent",
+      "AuthorityOperationKind",
+      "AuthorityOperationStatus",
+      "AuthorityOperationsCommands",
+      "AuthorityOperationsPersistence",
+      "AuthorityOperationsProvider",
+      "AuthorityOperationsQueries",
+      "authority_operations_persistence_adapter",
+      "authority_operations_provider_adapter"
+    ]
+  },
+  "owns": {
+    "postgresSchemas": [
+      "authority_connections"
+    ],
+    "tables": [
+      "authority_connections.system_user_requests",
+      "authority_connections.authority_operations"
+    ],
+    "storageBuckets": [],
+    "projections": [
+      "SystemUserRequest"
+    ],
+    "migrations": "supabase/migrations/2026090912[03]*_authority_*.sql"
+  },
+  "ports": [
+    {
+      "name": "SystemUserPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.authority_connections.public.SystemUserPersistence",
+      "registrationDecorator": "talli_backend.modules.authority_connections.public.system_user_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_authority_connections.PostgresAuthorityConnectionsSession"
+      ]
+    },
+    {
+      "name": "SystemUserAuthorityProvider",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.authority_connections.public.SystemUserAuthorityProvider",
+      "registrationDecorator": "talli_backend.modules.authority_connections.public.system_user_authority_provider_adapter",
+      "adapters": [
+        "talli_backend.adapters.altinn_system_user.AltinnSystemUserAdapter"
+      ]
+    },
+    {
+      "name": "SystemUserStateTransaction",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.authority_connections.public.SystemUserStateTransaction",
+      "registrationDecorator": "talli_backend.modules.authority_connections.public.system_user_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_authority_connections._AuthorityStateTransaction"
+      ]
+    },
+    {
+      "name": "AuthorityOperationsPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.authority_connections.public.AuthorityOperationsPersistence",
+      "registrationDecorator": "talli_backend.modules.authority_connections.public.authority_operations_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_authority_connections.PostgresAuthorityConnectionsSession"
+      ]
+    },
+    {
+      "name": "AuthorityOperationsProvider",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.authority_connections.public.AuthorityOperationsProvider",
+      "registrationDecorator": "talli_backend.modules.authority_connections.public.authority_operations_provider_adapter",
+      "adapters": [
+        "talli_backend.adapters.altinn_authority_operations.AltinnAuthorityOperationsAdapter"
+      ]
+    }
+  ],
+  "dependencies": [],
+  "allowedImports": [
+    "__future__",
+    "collections.abc",
+    "dataclasses",
+    "datetime",
+    "enum",
+    "re",
+    "secrets",
+    "talli_backend.shared.kernel",
+    "typing",
+    "uuid",
+    "hashlib",
+    "json"
+  ],
+  "forbiddenResponsibilities": [
+    "RF statutory payload, filing journal or feedback classification policy",
+    "Billing entitlement rules or direct foreign storage ownership",
+    "Provider credentials or tokens in generated browser contracts",
+    "New authority endpoints, production activation or real filings without explicit authority"
+  ],
+  "tests": {
+    "policy": "apps/backend/tests/test_authority_connections_service.py",
+    "provider": "apps/backend/tests/test_altinn_system_user.py",
+    "delegation": "apps/backend/tests/test_maskinporten.py",
+    "callbackTransport": "apps/backend/tests/test_authority_callback_transport.py",
+    "api": "apps/backend/tests/test_authority_connections_api.py",
+    "database": "apps/backend/tests/test_authority_connections_database_runtime.py",
+    "architecture": "tests/architecture_foundation.test.mjs",
+    "operations": "apps/backend/tests/test_authority_operations.py",
+    "operatorDatabase": "apps/backend/tests/test_authority_operations_database_runtime.py"
+  },
+  "compatibilityExceptions": []
+}

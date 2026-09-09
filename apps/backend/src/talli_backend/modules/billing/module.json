@@ -18,7 +18,8 @@
       "RefundFilingPackageCommand",
       "StartAnnualCheckoutCommand",
       "CancelAnnualRenewalCommand",
-      "RequestAnnualRefundCommand"
+      "RequestAnnualRefundCommand",
+      "SuspendProductionPilotForAuthorityFailureCommand"
     ],
     "queries": [
       "BillingEntitlementDecision",
@@ -145,7 +146,8 @@
       "annual_checkout_observation_operations",
       "AnnualSupportCleanupRecoveryPersistence",
       "AnnualSupportCleanupRecoveryOperations",
-      "annual_support_cleanup_recovery_operations"
+      "annual_support_cleanup_recovery_operations",
+      "AuthorityFailurePilotSuspension"
     ]
   },
   "owns": {
@@ -308,6 +310,15 @@
       "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
       "adapters": [
         "talli_backend.adapters.postgres_annual_support_cleanup.PostgresAnnualSupportCleanupRecoverySession"
+      ]
+    },
+    {
+      "name": "AuthorityFailurePilotSuspension",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AuthorityFailurePilotSuspension",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_authority_connections._PilotSuspension"
       ]
     }
   ],

@@ -1,18 +1,14 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
-
-import {
-  SYSTEM_USER_COOKIE,
-} from "../apps/web/app/lib/system-user-flow.ts";
-import {
-  createSystemUserCallbackHandler,
-  systemUserSiteOrigin,
-} from "../apps/web/app/auth/systembruker/confirm/route.ts";
+import { SYSTEM_USER_COOKIE } from "../apps/web/app/lib/system-user-presentation.ts";
+import { systemUserCallbackProof } from "../apps/web/app/lib/authority-callback-transport.ts";
+import { createSystemUserCallbackHandler, systemUserSiteOrigin } from "../apps/web/app/auth/systembruker/confirm/route.ts";
 
 const requestId = "22345678-1234-4234-8234-123456789abc";
 const companyId = "12345678-1234-4234-8234-123456789abc";
-const ownerId = "32345678-1234-4234-8234-123456789abc";
+const token = "synthetic-owner-session";
+const key = "local-test-callback-key-with-32-bytes-minimum";
 
 test("production route import defers canonical origin validation until a callback request", () => {
   const routeUrl = new URL("../apps/web/app/auth/systembruker/confirm/route.ts", import.meta.url).href;
@@ -38,89 +34,33 @@ test("production route import defers canonical origin validation until a callbac
   assert.equal(result.status, 0, result.stderr);
 });
 
+
 function callbackFixture(options = {}) {
-  const queries = [];
-  const companyLoads = [];
-  const deletions = [];
-  const reconciliations = [];
-  const requestRow = options.requestRow === undefined
-    ? {
-        id: requestId,
-        company_id: companyId,
-        initiating_owner_user_id: ownerId,
-        obligation: "aksjonaerregisteroppgaven",
-        external_ref: "A".repeat(43),
-        altinn_request_id: "42345678-1234-4234-8234-123456789abc",
-        status: "new",
-        confirm_url: "https://am.ui.altinn.no/accessmanagement/ui/systemuser/request?id=42345678-1234-4234-8234-123456789abc",
-        preflight_verified_at: null,
-        failure_code: null,
-      }
-    : options.requestRow;
-  const companyRow = options.companyRow === undefined
-    ? { id: companyId, org_number: "310279617", role: "owner" }
-    : options.companyRow;
-
-  const supabase = {
-    auth: {
-      async getUser() {
-        return { data: { user: options.user === undefined ? { id: ownerId } : options.user }, error: null };
-      },
-    },
-    from(table) {
-      const filters = [];
-      const builder = {
-        select(columns) {
-          queries.push({ table, columns, filters });
-          return builder;
-        },
-        eq(column, value) {
-          filters.push([column, value]);
-          return builder;
-        },
-        async maybeSingle() {
-          return { data: requestRow, error: null };
-        },
-      };
-      return builder;
-    },
-  };
-
+  const deletions = [], reconciliations = [], proofs = [];
   const handler = createSystemUserCallbackHandler({
     siteOrigin: "https://talli.no",
-    async createSupabaseClient() {
-      return supabase;
-    },
+    async getAccessToken() { return options.noSession ? null : token; },
     async getCookieStore() {
       return {
-        get(name) {
-          if (options.cookieMissing) return undefined;
-          return { name, value: options.cookieValue ?? requestId };
-        },
-        delete(value) {
-          deletions.push(value);
-        },
+        get() { return options.cookieMissing ? undefined : { value: options.cookieValue ?? requestId }; },
+        delete(value) { deletions.push(value); },
       };
     },
-    async loadCompany(candidateCompanyId) {
-      companyLoads.push(candidateCompanyId);
-      return companyRow;
+    createProof(id, accessToken) {
+      proofs.push({ id, accessToken });
+      return systemUserCallbackProof(id, accessToken,
+        { TALLI_AUTHORITY_CALLBACK_INTERNAL_KEY: options.noKey ? "" : key }, 1788960000000);
     },
-    async reconcileRequest(input) {
-      reconciliations.push(input);
-      if (options.reconcileError) throw new Error("raw authority error with PII");
+    async reconcileRequest(accessToken, id, proof) {
+      reconciliations.push({ accessToken, id, proof });
+      if (options.backendReject) throw new Error("private owner/provider diagnostic");
       return options.result ?? {
-        requestId,
-        companyId,
-        status: "accepted",
-        preflightVerifiedAt: "2026-07-16T12:00:00.000Z",
-        confirmUrl: null,
-        failureCode: null,
+        requestId, companyId, status: "accepted", preflightVerifiedAt: "2026-07-16T12:00:00.000Z",
+        confirmationUrl: null, failureCode: null,
       };
     },
   });
-
-  return { handler, queries, companyLoads, deletions, reconciliations };
+  return { handler, deletions, reconciliations, proofs };
 }
 
 test("callback redirects use only the fixed Talli origin, with localhost limited to non-production", () => {
@@ -140,93 +80,69 @@ test("callback redirects use only the fixed Talli origin, with localhost limited
   }
 });
 
-test("callback ignores every query parameter and uses only authenticated user, cookie UUID, and company-access authorization", async () => {
+
+test("callback ignores all query parameters and forwards only its local cookie with bound server proof", async () => {
   const fixture = callbackFixture();
-
-  const response = await fixture.handler(new Request(
-    `https://evil.invalid/auth/systembruker/confirm?request=${encodeURIComponent("attacker")}&company=${encodeURIComponent("other")}&next=https://evil.invalid`,
-  ));
-
+  const response = await fixture.handler(new Request("https://evil.invalid/auth/systembruker/confirm?request=attacker&company=other&next=https://evil.invalid"));
   assert.equal(response.status, 307);
   assert.equal(response.headers.get("location"), `https://talli.no/connections?company=${companyId}&systembruker=connected`);
-  assert.deepEqual(fixture.queries[0].filters, [
-    ["id", requestId],
-    ["initiating_owner_user_id", ownerId],
-  ]);
-  assert.deepEqual(fixture.queries.map(({ table }) => table), ["system_user_requests"]);
-  assert.deepEqual(fixture.companyLoads, [companyId]);
+  assert.deepEqual(fixture.proofs, [{ id: requestId, accessToken: token }]);
   assert.equal(fixture.reconciliations.length, 1);
-  assert.equal(fixture.reconciliations[0].request.id, requestId);
-  assert.equal(fixture.reconciliations[0].orgNumber, "310279617");
+  assert.equal(fixture.reconciliations[0].id, requestId);
+  assert.equal(fixture.reconciliations[0].accessToken, token);
+  assert.match(fixture.reconciliations[0].proof, /^v1:1788960000:[a-f0-9]{64}$/u);
   assert.deepEqual(fixture.deletions, [{ name: SYSTEM_USER_COOKIE.name, path: SYSTEM_USER_COOKIE.options.path }]);
-  assert.doesNotMatch(response.headers.get("location"), /evil|attacker|other/u);
+  assert.doesNotMatch(response.headers.get("location"), /evil|attacker|other|session|key/u);
 });
 
-test("missing cookie redirects to fixed manual status and still deletes the exact cookie path", async () => {
-  const fixture = callbackFixture({ cookieMissing: true });
-
-  const response = await fixture.handler(new Request("https://talli.no/auth/systembruker/confirm?error=reflected"));
-
-  assert.equal(response.headers.get("location"), "https://talli.no/connections?systembruker=manual");
-  assert.equal(fixture.queries.length, 0);
-  assert.equal(fixture.reconciliations.length, 0);
-  assert.deepEqual(fixture.deletions, [{ name: SYSTEM_USER_COOKIE.name, path: SYSTEM_USER_COOKIE.options.path }]);
-});
-
-test("invalid cookie, missing user, stale request, and cross-owner request all fail closed", async () => {
-  for (const options of [
-    { cookieValue: "not-a-uuid" },
-    { user: null },
-    { requestRow: null },
-    {
-      requestRow: { id: requestId, initiating_owner_user_id: ownerId },
-      user: { id: "92345678-1234-4234-8234-123456789abc" },
-    },
-    { companyRow: { id: companyId, org_number: "310279617", role: "reviewer" } },
-  ]) {
+test("missing or invalid cookie, missing session, and missing transport key fail before backend effects", async () => {
+  for (const options of [{ cookieMissing: true }, { cookieValue: "not-a-uuid" }, { noSession: true }, { noKey: true }]) {
     const fixture = callbackFixture(options);
-    const response = await fixture.handler(new Request("https://talli.no/auth/systembruker/confirm?company=secret"));
+    const response = await fixture.handler(new Request("https://talli.no/auth/systembruker/confirm?error=reflected"));
     assert.equal(response.headers.get("location"), "https://talli.no/connections?systembruker=manual");
     assert.equal(fixture.reconciliations.length, 0);
     assert.deepEqual(fixture.deletions, [{ name: SYSTEM_USER_COOKIE.name, path: SYSTEM_USER_COOKIE.options.path }]);
   }
 });
 
-test("callback errors expose no provider detail, identifiers, or reflected input", async () => {
-  const fixture = callbackFixture({ reconcileError: true });
-
+test("backend owner, stale-request or provider rejection exposes no private diagnostic", async () => {
+  const fixture = callbackFixture({ backendReject: true });
   const response = await fixture.handler(new Request("https://talli.no/auth/systembruker/confirm?error=raw-secret"));
-
   assert.equal(response.headers.get("location"), "https://talli.no/connections?systembruker=manual");
-  assert.doesNotMatch(response.headers.get("location"), /raw|secret|authority|310279617|A{43}/u);
+  assert.doesNotMatch(response.headers.get("location"), /raw|secret|provider|session|private/u);
   assert.deepEqual(fixture.deletions, [{ name: SYSTEM_USER_COOKIE.name, path: SYSTEM_USER_COOKIE.options.path }]);
 });
 
-test("callback maps only allowlisted local states", async () => {
-  const cases = [
-    ["creating", null, "pending"],
-    ["new", null, "pending"],
-    ["accepted", null, "verifying"],
-    ["accepted", "2026-07-16T12:00:00.000Z", "connected"],
-    ["rejected", null, "rejected"],
-    ["denied", null, "denied"],
-    ["timedout", null, "timedout"],
-    ["verification_failed", null, "manual"],
-  ];
-  for (const [status, preflightVerifiedAt, state] of cases) {
-    const fixture = callbackFixture({
-      result: {
-        requestId,
-        companyId,
-        status,
-        preflightVerifiedAt,
-        confirmUrl: null,
-        failureCode: status === "verification_failed" ? "maskinporten_token_error" : null,
-      },
-    });
+test("callback rejects a backend result for another request", async () => {
+  const fixture = callbackFixture({ result: { requestId: "92345678-1234-4234-8234-123456789abc", companyId, status: "accepted", preflightVerifiedAt: "2026-07-16T12:00:00Z" } });
+  const response = await fixture.handler(new Request("https://talli.no/auth/systembruker/confirm"));
+  assert.equal(response.headers.get("location"), "https://talli.no/connections?systembruker=manual");
+});
+
+test("callback maps only existing local presentation states", async () => {
+  for (const [status, preflightVerifiedAt, expected] of [
+    ["creating", null, "pending"], ["new", null, "pending"], ["accepted", null, "verifying"],
+    ["accepted", "2026-07-16T12:00:00Z", "connected"], ["rejected", null, "rejected"],
+    ["denied", null, "denied"], ["timedout", null, "timedout"], ["verification_failed", null, "manual"],
+  ]) {
+    const fixture = callbackFixture({ result: { requestId, companyId, status, preflightVerifiedAt, confirmationUrl: null, failureCode: null } });
     const response = await fixture.handler(new Request("https://talli.no/auth/systembruker/confirm"));
     const location = new URL(response.headers.get("location"));
-    assert.equal(location.searchParams.get("systembruker"), state);
+    assert.equal(location.searchParams.get("systembruker"), expected);
     assert.equal(location.searchParams.get("company"), companyId);
   }
+});
+
+test("web callback proof interoperates with the backend verifier and binds request plus bearer", () => {
+  const proof = systemUserCallbackProof(requestId, token, { TALLI_AUTHORITY_CALLBACK_INTERNAL_KEY: key }, 1788960000000);
+  const result = spawnSync("apps/backend/.venv/bin/python", ["-c", `
+import json,sys
+from talli_backend.adapters.authority_callback_transport import AuthorityCallbackTransport
+v=json.load(sys.stdin)
+a=AuthorityCallbackTransport(v['key'],clock=lambda:1788960000)
+assert a.verify(request_id=v['request'],bearer=v['token'],proof=v['proof'])
+assert not a.verify(request_id=v['request'],bearer='different-session',proof=v['proof'])
+`], { input: JSON.stringify({ key, request: requestId, token, proof }), encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  assert.notEqual(proof, systemUserCallbackProof(requestId, "another-session", { TALLI_AUTHORITY_CALLBACK_INTERNAL_KEY: key }, 1788960000000));
 });

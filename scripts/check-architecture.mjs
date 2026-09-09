@@ -96,6 +96,40 @@ const LEDGER_ATOMIC_COORDINATOR_RELOCATION = Object.freeze({
     "compat-audit-persistence\0table:audit_events\0recordTaxSettlement",
   ]),
 });
+// ADR0013, owner decision #150 comment 5601323119. Both coordinators move
+// together; the two current-owner reads alone remain an ordinary owner cutover.
+const RF_AUTHORITY_CREDENTIAL_RELOCATION = Object.freeze({
+  capability: "authority_connections",
+  issue: "#150",
+  path: "apps/web/app/actions.ts",
+  rule: "direct-web-business-persistence",
+  operations: new Set([
+    "sendApprovedRf1086ProductionFiling",
+    "reconcileRf1086ProductionAction",
+  ]),
+  // Already removed by Company Access/Billing before the #150 entry revision.
+  // These are NOT authorized here: ordinary completed-owner deletion proof
+  // below continues to validate each one against that owner's immutable gate.
+  predecessorScopes: new Set([
+    "compat-billing-persistence\0billing\0#137\0table:production_pilot_entitlements\0reconcileRf1086ProductionAction",
+    "compat-billing-persistence\0billing\0#137\0table:production_pilot_entitlements\0sendApprovedRf1086ProductionFiling",
+    "compat-rf1086-persistence\0shareholder_register_filing\0#151\0table:companies\0reconcileRf1086ProductionAction",
+    "compat-rf1086-persistence\0shareholder_register_filing\0#151\0table:company_memberships\0reconcileRf1086ProductionAction",
+    "compat-rf1086-persistence\0shareholder_register_filing\0#151\0table:companies\0sendApprovedRf1086ProductionFiling",
+  ]),
+  scopes: new Set([
+    "compat-rf1086-persistence\0shareholder_register_filing\0#151\0rpc:claim_production_feedback_reconciliation\0reconcileRf1086ProductionAction",
+    "compat-rf1086-persistence\0shareholder_register_filing\0#151\0rpc:release_production_feedback_reconciliation\0reconcileRf1086ProductionAction",
+    "compat-rf1086-persistence\0shareholder_register_filing\0#151\0table:filing_approval_snapshots\0reconcileRf1086ProductionAction",
+    "compat-rf1086-persistence\0shareholder_register_filing\0#151\0table:filing_previews\0reconcileRf1086ProductionAction",
+    "compat-rf1086-persistence\0shareholder_register_filing\0#151\0table:production_filing_submissions\0reconcileRf1086ProductionAction",
+    "compat-rf1086-persistence\0shareholder_register_filing\0#151\0rpc:begin_production_filing\0sendApprovedRf1086ProductionFiling",
+    "compat-rf1086-persistence\0shareholder_register_filing\0#151\0table:filing_approval_snapshots\0sendApprovedRf1086ProductionFiling",
+    "compat-rf1086-persistence\0shareholder_register_filing\0#151\0table:filing_previews\0sendApprovedRf1086ProductionFiling",
+    "compat-authority-connections-persistence\0authority_connections\0#150\0table:system_user_requests\0reconcileRf1086ProductionAction",
+    "compat-authority-connections-persistence\0authority_connections\0#150\0table:system_user_requests\0sendApprovedRf1086ProductionFiling",
+  ]),
+});
 const SUPPORT_CASE_SECURITY_AMENDMENT = Object.freeze({
   issue: "#200",
   path: "apps/web/app/lib/supabase/server.ts",
@@ -1884,6 +1918,49 @@ export function validateCompatibilityRegistry(path, {
     }
     atomicLedgerRelocationOperations.add(operationKey);
   }
+  const rfRelocationCompleted = exitedCapabilities.has(
+    RF_AUTHORITY_CREDENTIAL_RELOCATION.capability,
+  ) && completedStages.some((stage) => (
+    stage.capability === RF_AUTHORITY_CREDENTIAL_RELOCATION.capability
+    && stage.removalIssues?.includes(RF_AUTHORITY_CREDENTIAL_RELOCATION.issue)
+  ));
+  const rfRelocationAuthorized = rfRelocationCompleted || (
+    currentCapability === RF_AUTHORITY_CREDENTIAL_RELOCATION.capability
+    && registry.migration?.currentIssue === RF_AUTHORITY_CREDENTIAL_RELOCATION.issue
+  );
+  const rfRelocationOperationKeys = new Set(
+    [...RF_AUTHORITY_CREDENTIAL_RELOCATION.operations].map((operation) => (
+      compatibilityOperationKey(RF_AUTHORITY_CREDENTIAL_RELOCATION.path, operation)
+    )),
+  );
+  const rfRelocationAttempted = removedFrozenScopes.some(({ record, scope }) => (
+    record.id === "compat-rf1086-persistence"
+    && rfRelocationOperationKeys.has(compatibilityOperationKey(scope.path, scope.operation))
+    && !RF_AUTHORITY_CREDENTIAL_RELOCATION.predecessorScopes.has(rfRelocationScopeKey(record, scope))
+  ));
+  let rfRelocationAtomic = false;
+  if (rfRelocationAttempted) {
+    const allFrozenScopes = [...frozenScopeOwners.values()].filter(({ record, scope }) => (
+      rfRelocationOperationKeys.has(compatibilityOperationKey(scope.path, scope.operation))
+      && !RF_AUTHORITY_CREDENTIAL_RELOCATION.predecessorScopes.has(rfRelocationScopeKey(record, scope))
+    ));
+    const exactScope = allFrozenScopes.length === RF_AUTHORITY_CREDENTIAL_RELOCATION.scopes.size
+      && allFrozenScopes.every(({ record, scope }) => (
+        RF_AUTHORITY_CREDENTIAL_RELOCATION.scopes.has(rfRelocationScopeKey(record, scope))
+      ));
+    const allRemoved = allFrozenScopes.every(({ scope }) => !activeLegacyScopeKeys.has(
+      compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation),
+    ));
+    if (!rfRelocationAuthorized) {
+      errors.push("RF credential relocation is authorized only for authority_connections #150 or its evidenced completion");
+    } else if (!exactScope) {
+      errors.push("RF credential relocation is outside the owner-approved exact ten-scope whitelist");
+    } else if (!allRemoved) {
+      errors.push("RF credential relocation must remove both coordinators and every frozen scope together");
+    } else {
+      rfRelocationAtomic = true;
+    }
+  }
   const supportSecurityOperationKey = compatibilityOperationKey(
     SUPPORT_CASE_SECURITY_AMENDMENT.path,
     SUPPORT_CASE_SECURITY_AMENDMENT.operation,
@@ -2039,6 +2116,11 @@ export function validateCompatibilityRegistry(path, {
         if (atomicLedgerRelocation && ledgerRelocationCompleted) {
           completedDeletionOwner = LEDGER_ATOMIC_COORDINATOR_RELOCATION.capability;
         }
+        const atomicRfRelocation = rfRelocationAtomic
+          && RF_AUTHORITY_CREDENTIAL_RELOCATION.scopes.has(rfRelocationScopeKey(record, scope));
+        if (atomicRfRelocation && rfRelocationCompleted) {
+          completedDeletionOwner = RF_AUTHORITY_CREDENTIAL_RELOCATION.capability;
+        }
         const authorizedResourceOwners = new Set([
           currentCapability,
           ...exitedCapabilities,
@@ -2052,7 +2134,7 @@ export function validateCompatibilityRegistry(path, {
           && LEGACY_ACQUISITION_RETIREMENT_AMENDMENT.scopes.has(
             acquisitionRetirementScopeKey(record, scope),
           );
-        if (!atomicLedgerRelocation && !supportSecurityRemoval && !acquisitionRetirementRemoval
+        if (!atomicLedgerRelocation && !atomicRfRelocation && !supportSecurityRemoval && !acquisitionRetirementRemoval
           && !authorizedResourceOwners.has(scopeResourceOwner)) {
           errors.push(
             `${prefix} future frozen scope resource ${scope.resource} is not owned by active or exited capability`,
@@ -2353,6 +2435,14 @@ function supportSecurityScopeKey(recordId, scope) {
     return undefined;
   }
   return [recordId, scope.resource, scope.operation].join("\u0000");
+}
+
+function rfRelocationScopeKey(record, scope) {
+  if (scope.path !== RF_AUTHORITY_CREDENTIAL_RELOCATION.path
+    || scope.rule !== RF_AUTHORITY_CREDENTIAL_RELOCATION.rule) {
+    return undefined;
+  }
+  return [record.id, record.capability, record.removalIssue, scope.resource, scope.operation].join("\u0000");
 }
 
 function acquisitionRetirementScopeKey(record, scope) {

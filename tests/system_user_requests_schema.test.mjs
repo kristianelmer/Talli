@@ -267,7 +267,6 @@ test("server data layer exposes the durable request row and an explicit ordered 
     server,
     /export async function listSystemUserRequests\(\s*supabase: SupabaseClient,\s*companyIds: string\[\],\s*\): Promise<SystemUserRequestRow\[\]>/u,
   );
-  assert.match(server, /from\("system_user_requests"\)/u);
-  assert.match(server, /\.in\("company_id", companyIds\)/u);
-  assert.match(server, /\.order\("created_at", \{ ascending: false \}\)/u);
+  assert.match(server, /loadSystemUserRequests\(accessToken, companyIds\)/u);
+  assert.doesNotMatch(server, /from\("system_user_requests"\)/u);
 });

@@ -22,18 +22,15 @@ const authorityQuery = server.slice(
   server.indexOf("export async function readOperatorSupportDashboard"),
 );
 
-test("authority operation is admin-only, AAL2-gated, exact, and service-audited", () => {
-  assert.match(actions, /export async function runProductionAuthorityOperation/u);
-  assert.match(authorityAction, /loadAuthorizedSupportOperator\(\)/u);
-  assert.match(authorityAction, /operator\.role !== "admin"/u);
-  assert.doesNotMatch(authorityAction, /from\("support_operators"\)/u);
-  assert.match(actions, /assertStepUpAllowed\("authority_operations"/u);
-  assert.match(actions, /assertAuthorityOperationIntent/u);
-  assert.match(actions, /authorityOperationEnvironmentFailureCode/u);
-  assert.match(actions, /createSupabaseServiceRoleClient/u);
-  assert.match(actions, /from\("authority_operations"\)\.insert/u);
-  assert.match(actions, /executeRf1086SystemRegistration/u);
-  assert.doesNotMatch(authorityAction, /accessToken|privateKeyPem/iu);
+test("authority actions carry exact intent to the authenticated backend without web audit or credentials", () => {
+  const flow = actions.slice(actions.indexOf("async function runExistingAuthorityOperation"), actions.indexOf("function systemUserConnectionTarget"));
+  assert.match(flow, /loadAuthorizedSupportOperator\(\)/u);
+  assert.match(flow, /operator\.role !== "admin"/u);
+  assert.match(flow, /assertStepUpAllowed\("authority_operations"/u);
+  assert.match(flow, /runAuthorityOperation\(accessToken/u);
+  assert.match(flow, /operationId: randomUUID\(\)/u);
+  assert.doesNotMatch(flow, /\.from\(|\.rpc\(|createSupabaseServiceRoleClient|privateKey|requestMaskinporten|executeRf1086/u);
+  assert.match(authorityAction, /runExistingAuthorityOperation\(formData, "register_rf1086_system"\)/u);
 });
 
 test("operator UI exposes only the immutable RF-1086 operation and redacted results", () => {
@@ -48,33 +45,17 @@ test("operator UI exposes only the immutable RF-1086 operation and redacted resu
   assert.doesNotMatch(operatorPage, /private key|access token/iu);
 });
 
-test("the server query is limited to recent redacted rows for active admins", () => {
+test("operator audit history uses generated transport and retains current-admin UI visibility", () => {
   assert.match(authorityQuery, /backendOperatorSession\(supabase\)/u);
   assert.match(authorityQuery, /operator\.role !== "admin"/u);
-  assert.doesNotMatch(authorityQuery, /from\("support_operators"\)/u);
-  assert.match(authorityQuery, /from\("authority_operations"\)/u);
-  assert.match(
-    authorityQuery,
-    /order\("created_at", \{ ascending: false \}\)\s*\.limit\(10\)/u,
-  );
-  assert.doesNotMatch(authorityQuery, /private_key|access_token|assertion/iu);
+  assert.match(authorityQuery, /loadAuthorityOperations\(token\)/u);
+  assert.doesNotMatch(authorityQuery, /\.from\(|\.rpc\(|private_key|assertion/iu);
 });
 
-test("callback update has a separate admin, fresh-AAL2, ops-gated audited action", () => {
-  assert.match(actions, /export async function runProductionSystembrukerCallbackOperation/u);
-  assert.match(callbackAction, /loadAuthorizedSupportOperator\(\)/u);
-  assert.match(callbackAction, /operator\.role !== "admin"/u);
-  assert.doesNotMatch(callbackAction, /from\("support_operators"\)/u);
-  assert.match(callbackAction, /assertStepUpAllowed\("authority_operations"/u);
-  assert.match(callbackAction, /assertSystembrukerCallbackOperationIntent/u);
-  assert.match(callbackAction, /productionAuthorityOperationEnvironment/u);
-  assert.match(callbackAction, /SYSTEMBRUKER_CALLBACK_OPERATION/u);
-  assert.match(callbackAction, /executeRf1086SystembrukerCallbackUpdate/u);
-  assert.match(callbackAction, /from\("authority_operations"\)\.insert/u);
-  assert.match(callbackAction, /callbackPath: SYSTEMBRUKER_CALLBACK_PATH/u);
-  assert.match(actions, /case "authority_verification_error"/u);
+test("callback operation carries only its fixed action identity through the shared transport", () => {
+  assert.match(callbackAction, /runExistingAuthorityOperation\(formData, "set_rf1086_systembruker_callback"\)/u);
   assert.match(operatorPage, /authority_verification_error/u);
-  assert.doesNotMatch(callbackAction, /clientId:|right:|accessToken|privateKeyPem|response\.body/iu);
+  assert.doesNotMatch(callbackAction, /clientId:|right:|privateKeyPem|response\.body|\.from\(/iu);
 });
 
 test("operator callback UI is native, exact, and honest about its narrow effect", () => {

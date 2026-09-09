@@ -24,6 +24,15 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import ClientDisconnect
 
+from talli_backend.compatibility.rf1086_authority_workflow import (
+    LegacyRf1086AuthenticationError, LegacyRf1086Error, LegacyRf1086SessionFactory,
+    send_approved_rf1086_production_filing, reconcile_rf1086_production,
+)
+from talli_backend.application.launch_signoffs import (
+    LaunchSignoffAuthenticationError, LaunchSignoffError, LaunchSignoffKey,
+    LaunchSignoffRecord, LaunchSignoffSessionFactory, LaunchSignoffStatus,
+    LaunchSignoffWorkflow, RecordLaunchSignoff,
+)
 from talli_backend.application.annual_notifications import AnnualNotificationIntake
 from talli_backend.modules.billing.public import AnnualNotificationRejected, AnnualNotificationUnavailable
 
@@ -32,6 +41,27 @@ from talli_backend.adapters.annual_billing_runtime import compose_annual_billing
 from talli_backend.adapters.supabase_banking import compose_banking_application
 from talli_backend.adapters.simulation_billing import SimulationBillingProvider
 from talli_backend.adapters.supabase_billing import SupabaseBillingAdapter
+from talli_backend.adapters.authority_callback_transport import AuthorityCallbackTransport
+from talli_backend.application.authority_connections_session import (
+    AuthorityConnectionsAuthenticationError,
+    AuthorityConnectionsSessionFactory,
+)
+from talli_backend.modules.authority_connections.public import (
+    AuthorityConnectionsError,
+    AuthorityOperationCode, AuthorityOperationError, AuthorityOperationKind,
+    AuthorityOperationRecord, AuthorityOperationStatus, AuthorityOperationsProvider,
+    RunAuthorityOperationCommand,
+    AuthorityConnectionsErrorCode,
+    AuthorityFailureCode,
+    AuthorityProviderError,
+    ReconcileSystemUserRequestCommand,
+    StartSystemUserRequestCommand,
+    SystemUserAuthorityProvider,
+    SystemUserFlowResult,
+    SystemUserRequest,
+    SystemUserRequestStatus,
+)
+from talli_backend.application.authority_connections_workflow import AuthorityConnectionsWorkflow, AuthorityOperationsWorkflow
 from talli_backend.adapters.supabase_annual_billing import SupabaseAnnualBillingAdapter
 from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
 from talli_backend.adapters.supabase_corporate_governance import (
@@ -720,6 +750,109 @@ class BillingConfigureWire(StrictTransportModel):
     company_id: UUID
     pricing_plan: BillingPlan
     founder_cohort_number: int | None = Field(default=None, ge=1, le=100)
+
+
+class SystemUserCommandWire(StrictTransportModel):
+    company_id: UUID
+    request_id: UUID
+
+
+class SystemUserCallbackWire(StrictTransportModel):
+    request_id: UUID
+
+
+class SystemUserResultWire(TransportModel):
+    request_id: UUID
+    company_id: UUID
+    status: SystemUserRequestStatus
+    preflight_verified_at: datetime | None
+    confirmation_url: str | None
+    failure_code: AuthorityFailureCode | None
+
+
+class SystemUserRecordWire(SystemUserResultWire):
+    initiating_owner_user_id: UUID
+    obligation: Literal["aksjonaerregisteroppgaven"]
+    external_reference: str
+    provider_request_id: UUID | None
+    operator_evidence_id: UUID | None
+    requested_at: datetime | None
+    last_status_checked_at: datetime | None
+    accepted_at: datetime | None
+    resolved_at: datetime | None
+    created_at: datetime | None
+    updated_at: datetime | None
+
+
+class SystemUserListWire(TransportModel):
+    requests: list[SystemUserRecordWire]
+
+
+class AuthorityOperationCommandWire(StrictTransportModel):
+    operation_id: UUID
+    operation: AuthorityOperationKind
+    confirmation: str = Field(max_length=128)
+
+
+class AuthorityOperationRecordWire(TransportModel):
+    operation_id: UUID
+    operation: AuthorityOperationKind
+    actor_id: UUID
+    status: AuthorityOperationStatus
+    request_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    result_code: AuthorityOperationCode
+    metadata: dict[str, str]
+    authority_http_status: int | None
+    created_at: datetime
+    completed_at: datetime | None
+
+
+class AuthorityOperationListWire(TransportModel):
+    operations: list[AuthorityOperationRecordWire]
+
+
+class LaunchSignoffCommandWire(StrictTransportModel):
+    key: LaunchSignoffKey
+    status: LaunchSignoffStatus
+    reviewer: str
+    reviewed_at: datetime
+    evidence_link: str
+    decision: str
+
+
+class LaunchSignoffRecordWire(TransportModel):
+    key: LaunchSignoffKey
+    status: LaunchSignoffStatus
+    reviewer: str
+    reviewed_at: datetime
+    evidence_link: str
+    decision: str
+    recorded_by: UUID
+    updated_at: datetime
+
+
+class LaunchSignoffListWire(TransportModel):
+    signoffs: list[LaunchSignoffRecordWire]
+
+
+class LegacyRf1086SendCommandWire(StrictTransportModel):
+    approval_id: UUID
+
+
+class LegacyRf1086ReconcileCommandWire(StrictTransportModel):
+    submission_id: UUID
+
+
+class LegacyRf1086SendResultWire(TransportModel):
+    submission_id: UUID
+
+
+class LegacyRf1086ReconcileResultWire(TransportModel):
+    state: Literal["sent", "processing", "accepted", "rejected", "action_required", "unknown"] | None
+    error_code: Literal["invalid_request", "authentication_required", "approval_expired", "basis_unavailable",
+        "connection_unavailable", "payload_changed", "configuration_unavailable", "send_unavailable",
+        "status_unavailable", "status_busy", "step_up_required"] | None
+    requires_manual_retry: bool
 
 
 class BillingCompanyWire(StrictTransportModel):
@@ -3266,7 +3399,7 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         request.state.request_id = _request_id(request)
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
-        if request.url.path.startswith("/api/v1/billing/annual/"):
+        if request.url.path.startswith(("/api/v1/billing/annual/", "/api/v1/authority-connections/", "/api/v1/operator-controls/", "/api/v1/legacy-rf1086/")):
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -3309,6 +3442,12 @@ def create_app(
     banking_providers: Mapping[str, BankDataProvider] | None = None,
     billing_session_factory: BillingSessionFactory | None = None,
     billing_payment_provider: BillingPaymentProvider | None = None,
+    legacy_rf1086_session_factory: LegacyRf1086SessionFactory | None = None,
+    launch_signoff_session_factory: LaunchSignoffSessionFactory | None = None,
+    authority_connections_session_factory: AuthorityConnectionsSessionFactory | None = None,
+    system_user_authority_provider: SystemUserAuthorityProvider | None = None,
+    authority_operations_provider: AuthorityOperationsProvider | None = None,
+    authority_callback_internal_key: str | None = None,
     annual_billing_session_factory: AnnualBillingSessionFactory | None = None,
     annual_billing_provider: AnnualBillingProvider | None = None,
     annual_checkout_prerequisites: AnnualCheckoutPrerequisiteResolver | None = None,
@@ -3377,6 +3516,43 @@ def create_app(
         )
 
     billing_provider = billing_payment_provider or SimulationBillingProvider()
+    if legacy_rf1086_session_factory is None:
+        from talli_backend.adapters.postgres_legacy_rf1086_authority import PostgresLegacyRf1086AuthorityAdapter
+        async def rf_billing_queries(access_token: str):
+            return BillingWorkflow(await billing_sessions.session(access_token), billing_provider)
+        legacy_rf1086_session_factory = PostgresLegacyRf1086AuthorityAdapter.from_environment(
+            billing_queries_factory=rf_billing_queries, documents_session_factory=documents_application,
+            company_access_service=company_access_service,
+        )
+
+    if launch_signoff_session_factory is None:
+        from talli_backend.adapters.postgres_launch_signoffs import PostgresLaunchSignoffsAdapter
+        launch_signoff_session_factory = PostgresLaunchSignoffsAdapter.from_environment()
+
+    async def launch_signoff_workflow(credentials: HTTPAuthorizationCredentials | None):
+        return LaunchSignoffWorkflow(await launch_signoff_session_factory.session(bearer_token(credentials)))
+
+    if authority_connections_session_factory is None:
+        from talli_backend.adapters.postgres_authority_connections import PostgresAuthorityConnectionsAdapter
+        authority_connections_session_factory = PostgresAuthorityConnectionsAdapter.from_environment()
+    if system_user_authority_provider is None:
+        from talli_backend.adapters.altinn_system_user import AltinnSystemUserAdapter
+        system_user_authority_provider = AltinnSystemUserAdapter.from_environment()
+    if authority_operations_provider is None:
+        from talli_backend.adapters.altinn_authority_operations import AltinnAuthorityOperationsAdapter
+        authority_operations_provider = AltinnAuthorityOperationsAdapter.from_environment()
+    callback_transport = AuthorityCallbackTransport(
+        authority_callback_internal_key if authority_callback_internal_key is not None
+        else os.environ.get("TALLI_AUTHORITY_CALLBACK_INTERNAL_KEY", ""),
+    )
+
+    async def authority_connections_service(credentials: HTTPAuthorizationCredentials | None):
+        session = await authority_connections_session_factory.session(bearer_token(credentials))
+        return session, AuthorityConnectionsWorkflow(session, system_user_authority_provider)
+
+    async def authority_operations_workflow(credentials: HTTPAuthorizationCredentials | None):
+        session = await authority_connections_session_factory.session(bearer_token(credentials))
+        return session, AuthorityOperationsWorkflow(session, authority_operations_provider)
 
     async def billing_workflow(
         credentials: HTTPAuthorizationCredentials | None,
@@ -3739,6 +3915,87 @@ def create_app(
                 title="Faktureringsforespørselen mislyktes",
                 detail=error.message or details[BillingErrorCode(error.code)],
             ) from None
+
+    async def authority_connections_call(call: Callable[[], Awaitable[ResponseT]]) -> ResponseT:
+        try:
+            return await call()
+        except (AuthorityConnectionsAuthenticationError, LaunchSignoffAuthenticationError):
+            raise ApiProblem(
+                status=401, code="AUTHENTICATION_REQUIRED", title="Innlogging kreves",
+                detail="En gyldig innlogging kreves.",
+            ) from None
+        except (AuthorityConnectionsError, AuthorityOperationError, LaunchSignoffError) as error:
+            statuses = {
+                ErrorCategory.INVALID_INPUT: 422,
+                ErrorCategory.NOT_FOUND: 404,
+                ErrorCategory.CONFLICT: 409,
+                ErrorCategory.FORBIDDEN: 403,
+                ErrorCategory.PRECONDITION_FAILED: 409,
+                ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
+            }
+            raise ApiProblem(
+                status=statuses[error.category], code=error.code,
+                title="Systembrukerforespørselen mislyktes",
+                detail="Systembrukerforespørselen kunne ikke behandles.",
+            ) from None
+        except AuthorityProviderError as error:
+            raise ApiProblem(
+                status=503, code=error.code.value, title="Systembruker er midlertidig utilgjengelig",
+                detail="Status kunne ikke bekreftes. Prøv igjen senere.",
+            ) from None
+
+    async def legacy_rf1086_call(call: Callable[[], Awaitable[ResponseT]]) -> ResponseT:
+        try:
+            return await call()
+        except LegacyRf1086AuthenticationError:
+            raise ApiProblem(status=401, code="authentication_required", title="Innlogging kreves",
+                detail="En gyldig innlogging kreves.") from None
+        except LegacyRf1086Error as error:
+            status = 422 if error.code == "invalid_request" else 401 if error.code == "authentication_required" else (
+                503 if error.code in {"configuration_unavailable", "send_unavailable", "status_unavailable"} else 409)
+            raise ApiProblem(status=status, code=error.code, title="RF-1086-handlingen kunne ikke fullføres",
+                detail="Se lagret innsendingsstatus før du prøver igjen.") from None
+
+    def launch_signoff_wire(value: LaunchSignoffRecord) -> LaunchSignoffRecordWire:
+        return LaunchSignoffRecordWire(
+            key=value.key, status=value.status, reviewer=value.reviewer,
+            reviewed_at=value.reviewed_at.value, evidence_link=value.evidence_link, decision=value.decision,
+            recorded_by=UUID(str(value.recorded_by)), updated_at=value.updated_at.value,
+        )
+
+    def authority_operation_wire(value: AuthorityOperationRecord) -> AuthorityOperationRecordWire:
+        return AuthorityOperationRecordWire(
+            operation_id=UUID(value.operation_id), operation=value.operation,
+            actor_id=UUID(str(value.actor_id)), status=value.status,
+            request_hash=value.request_hash, result_code=value.result_code,
+            metadata=dict(value.metadata), authority_http_status=value.authority_http_status,
+            created_at=value.created_at.value,
+            completed_at=value.completed_at.value if value.completed_at else None,
+        )
+
+    def system_user_result_wire(value: SystemUserFlowResult | SystemUserRequest) -> SystemUserResultWire:
+        return SystemUserResultWire(
+            request_id=UUID(value.request_id),
+            company_id=UUID(str(value.identity.company_id if isinstance(value, SystemUserRequest) else value.company_id)),
+            status=value.status,
+            preflight_verified_at=value.preflight_verified_at.value if value.preflight_verified_at else None,
+            confirmation_url=value.confirmation_url, failure_code=value.failure_code,
+        )
+
+    def system_user_record_wire(value: SystemUserRequest) -> SystemUserRecordWire:
+        timestamps = {
+            field: getattr(value, field).value if getattr(value, field) else None
+            for field in ("requested_at", "last_status_checked_at", "accepted_at", "resolved_at", "created_at", "updated_at")
+        }
+        return SystemUserRecordWire(
+            **system_user_result_wire(value).model_dump(),
+            initiating_owner_user_id=UUID(str(value.identity.owner_id)),
+            obligation=value.obligation,
+            external_reference=value.identity.external_reference,
+            provider_request_id=UUID(value.provider_request_id) if value.provider_request_id else None,
+            operator_evidence_id=UUID(value.operator_evidence_id) if value.operator_evidence_id else None,
+            **timestamps,
+        )
 
     def ledger_input(factory: Callable[[], ResponseT]) -> ResponseT:
         try:
@@ -9221,6 +9478,212 @@ def create_app(
             {"status": "ready"},
             headers={"Cache-Control": "no-store"},
         )
+
+    authority_errors: Any = {
+        status: {
+            "description": "Authority Connections request failed.",
+            "headers": {"X-Request-ID": REQUEST_ID_HEADER},
+            "content": {"application/problem+json": {"schema": ProblemDetails.model_json_schema(by_alias=True)}},
+        } for status in (401, 403, 404, 409, 422, 503)
+    }
+
+    @application.get(
+        "/api/v1/authority-connections/system-user-requests",
+        operation_id="authorityConnectionsListSystemUserRequests", response_model=SystemUserListWire,
+        responses=authority_errors, tags=["authority-connections"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_system_user_requests(
+        company_ids: Annotated[list[UUID], Query(alias="companyIds", min_length=1, max_length=100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> SystemUserListWire:
+        async def execute():
+            session, service = await authority_connections_service(credentials)
+            records = await service.list_requests(
+                company_ids=tuple(CompanyId(str(value)) for value in company_ids), actor_id=session.actor_id,
+            )
+            return SystemUserListWire(requests=[system_user_record_wire(value) for value in records])
+        return await authority_connections_call(execute)
+
+    @application.post(
+        "/api/v1/authority-connections/system-user-requests",
+        operation_id="authorityConnectionsStartSystemUserRequest", response_model=SystemUserResultWire,
+        responses=authority_errors, tags=["authority-connections"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def start_system_user_request(
+        body: SystemUserCommandWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> SystemUserResultWire:
+        async def execute():
+            session, service = await authority_connections_service(credentials)
+            if not callback_transport.configured:
+                raise AuthorityConnectionsError(
+                    AuthorityConnectionsErrorCode.CALLBACK_NOT_VERIFIED,
+                    ErrorCategory.PRECONDITION_FAILED,
+                )
+            return system_user_result_wire(await service.start(StartSystemUserRequestCommand(
+                CompanyId(str(body.company_id)), session.actor_id, str(body.request_id),
+            )))
+        return await authority_connections_call(execute)
+
+    @application.post(
+        "/api/v1/authority-connections/system-user-requests/retries",
+        operation_id="authorityConnectionsRetrySystemUserRequest", response_model=SystemUserResultWire,
+        responses=authority_errors, tags=["authority-connections"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def retry_system_user_request(
+        body: SystemUserCommandWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> SystemUserResultWire:
+        async def execute():
+            session, service = await authority_connections_service(credentials)
+            command = ReconcileSystemUserRequestCommand(
+                CompanyId(str(body.company_id)), session.actor_id, str(body.request_id),
+            )
+            if not callback_transport.configured:
+                stored = await service.read(command)
+                if stored.status is SystemUserRequestStatus.CREATING:
+                    raise AuthorityConnectionsError(AuthorityConnectionsErrorCode.CALLBACK_NOT_VERIFIED)
+            return system_user_result_wire(await service.retry(command))
+        return await authority_connections_call(execute)
+
+    @application.post(
+        "/api/v1/authority-connections/system-user-requests/reconciliations",
+        operation_id="authorityConnectionsReconcileSystemUserRequest", response_model=SystemUserResultWire,
+        responses=authority_errors, tags=["authority-connections"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def reconcile_system_user_request(
+        body: SystemUserCommandWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> SystemUserResultWire:
+        async def execute():
+            session, service = await authority_connections_service(credentials)
+            return system_user_result_wire(await service.reconcile(ReconcileSystemUserRequestCommand(
+                CompanyId(str(body.company_id)), session.actor_id, str(body.request_id),
+            )))
+        return await authority_connections_call(execute)
+
+    @application.post(
+        "/api/v1/authority-connections/system-user-callbacks",
+        operation_id="authorityConnectionsReconcileSystemUserCallback", response_model=SystemUserResultWire,
+        responses=authority_errors, tags=["authority-connections"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def reconcile_system_user_callback(
+        body: SystemUserCallbackWire,
+        callback_proof: Annotated[str, Header(alias="X-Talli-Authority-Callback-Proof", max_length=128)] = "",
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> SystemUserResultWire:
+        async def execute():
+            token = bearer_token(credentials)
+            if not callback_transport.verify(request_id=str(body.request_id), bearer=token, proof=callback_proof):
+                raise AuthorityConnectionsAuthenticationError()
+            session, service = await authority_connections_service(credentials)
+            owner = await service.resolve_owner(str(body.request_id), session.actor_id)
+            return system_user_result_wire(await service.reconcile(ReconcileSystemUserRequestCommand(
+                owner.company_id, session.actor_id, str(body.request_id), require_fresh_mfa=False,
+            )))
+        return await authority_connections_call(execute)
+
+    @application.get(
+        "/api/v1/authority-connections/operations",
+        operation_id="authorityConnectionsListOperations", response_model=AuthorityOperationListWire,
+        responses=authority_errors, tags=["authority-connections"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_authority_operations(
+        limit: Annotated[int, Query(ge=1, le=10)] = 10,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AuthorityOperationListWire:
+        async def execute():
+            _, workflow = await authority_operations_workflow(credentials)
+            records = await workflow.list_operations(limit)
+            return AuthorityOperationListWire(operations=[authority_operation_wire(value) for value in records])
+        return await authority_connections_call(execute)
+
+    @application.post(
+        "/api/v1/authority-connections/operations",
+        operation_id="authorityConnectionsRunOperation", response_model=AuthorityOperationRecordWire,
+        responses=authority_errors, tags=["authority-connections"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def run_authority_operation(
+        body: AuthorityOperationCommandWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AuthorityOperationRecordWire:
+        async def execute():
+            session, workflow = await authority_operations_workflow(credentials)
+            return authority_operation_wire(await workflow.run(RunAuthorityOperationCommand(
+                session.actor_id, str(body.operation_id), body.operation, body.confirmation,
+            )))
+        return await authority_connections_call(execute)
+
+    @application.get(
+        "/api/v1/operator-controls/launch-signoffs",
+        operation_id="operatorControlsListLaunchSignoffs", response_model=LaunchSignoffListWire,
+        responses=authority_errors, tags=["operator-controls"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_launch_signoffs(
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LaunchSignoffListWire:
+        async def execute():
+            workflow = await launch_signoff_workflow(credentials)
+            return LaunchSignoffListWire(signoffs=[launch_signoff_wire(value) for value in await workflow.list_signoffs()])
+        return await authority_connections_call(execute)
+
+    @application.post(
+        "/api/v1/operator-controls/launch-signoffs",
+        operation_id="operatorControlsRecordLaunchSignoff", response_model=LaunchSignoffRecordWire,
+        responses=authority_errors, tags=["operator-controls"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def record_launch_signoff(
+        body: LaunchSignoffCommandWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LaunchSignoffRecordWire:
+        async def execute():
+            workflow = await launch_signoff_workflow(credentials)
+            return launch_signoff_wire(await workflow.record_signoff(RecordLaunchSignoff(
+                body.key, body.status, body.reviewer, body.reviewed_at, body.evidence_link, body.decision,
+            )))
+        return await authority_connections_call(execute)
+
+    @application.post(
+        "/api/v1/legacy-rf1086/production-filings",
+        operation_id="legacyRf1086SendApprovedFiling", response_model=LegacyRf1086SendResultWire,
+        responses=authority_errors, tags=["legacy-rf1086"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def send_legacy_rf1086(
+        body: LegacyRf1086SendCommandWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LegacyRf1086SendResultWire:
+        async def execute():
+            session = await legacy_rf1086_session_factory.session(bearer_token(credentials))
+            result = await send_approved_rf1086_production_filing(session, str(body.approval_id))
+            return LegacyRf1086SendResultWire(submission_id=UUID(result.submission_id))
+        return await legacy_rf1086_call(execute)
+
+    @application.post(
+        "/api/v1/legacy-rf1086/feedback-reconciliations",
+        operation_id="legacyRf1086ReconcileFeedback", response_model=LegacyRf1086ReconcileResultWire,
+        responses=authority_errors, tags=["legacy-rf1086"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def reconcile_legacy_rf1086(
+        body: LegacyRf1086ReconcileCommandWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LegacyRf1086ReconcileResultWire:
+        async def execute():
+            session = await legacy_rf1086_session_factory.session(bearer_token(credentials))
+            result = await reconcile_rf1086_production(session, str(body.submission_id))
+            return LegacyRf1086ReconcileResultWire(state=result.state,error_code=result.error_code,
+                requires_manual_retry=result.requires_manual_retry)
+        return await legacy_rf1086_call(execute)
 
     billing_errors: Any = {
         status: {

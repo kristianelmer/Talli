@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Talli FastAPI production boundary"
 requires-python = ">=3.12,<3.14"
 dependencies = [
+  "cryptography==50.0.1",
   "fastapi==0.116.1",
   "httpx==0.28.1",
   "psycopg[binary]==3.2.9",
@@ -27,4 +28,7 @@ packages = ["src/talli_backend"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
-markers = ["billing_database: mandatory isolated billing database lifecycle (test:billing-database-lifecycle)"]
+markers = [
+  "billing_database: mandatory isolated billing database lifecycle (test:billing-database-lifecycle)",
+  "authority_database: mandatory isolated Authority Connections database lifecycle (test:authority-connections-database)",
+]

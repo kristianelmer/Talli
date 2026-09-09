@@ -148,83 +148,39 @@ test("a verified user without an owner company reaches onboarding but other cont
   }
 });
 
-test("system-user callback resolves company authorization through its injected company-access query", async () => {
+test("system-user callback delegates relationship authorization to the verified backend boundary", async () => {
   const requestId = "22345678-1234-4234-8234-123456789abc";
   const companyId = "12345678-1234-4234-8234-123456789abc";
-  const ownerId = "32345678-1234-4234-8234-123456789abc";
-  const companyLoads = [];
   const reconciliations = [];
   const deletedCookies = [];
-  const queriedTables = [];
-  let companyRole = "owner";
-  const supabase = {
-    auth: {
-      async getUser() {
-        return { data: { user: { id: ownerId } }, error: null };
-      },
-    },
-    from(table) {
-      queriedTables.push(table);
-      assert.equal(table, "system_user_requests");
-      const builder = {
-        select() { return builder; },
-        eq() { return builder; },
-        async maybeSingle() {
-          return {
-            data: {
-              id: requestId,
-              company_id: companyId,
-              initiating_owner_user_id: ownerId,
-            },
-            error: null,
-          };
-        },
-      };
-      return builder;
-    },
-  };
+  let denied = false;
   const handler = createSystemUserCallbackHandler({
     siteOrigin: "https://talli.no",
-    async createSupabaseClient() { return supabase; },
-    async getCookieStore() {
-      return {
-        get() { return { value: requestId }; },
-        delete(options) { deletedCookies.push(options); },
-      };
+    async getAccessToken() { return "verified-session"; },
+    async getCookieStore() { return {
+      get() { return { value: requestId }; },
+      delete(options) { deletedCookies.push(options); },
+    }; },
+    createProof(id, token) {
+      assert.equal(id, requestId); assert.equal(token, "verified-session");
+      return "callback-proof";
     },
-    async loadCompany(candidate) {
-      companyLoads.push(candidate);
-      return { id: companyId, org_number: "310279617", role: companyRole };
-    },
-    async reconcileRequest(input) {
+    async reconcileRequest(...input) {
       reconciliations.push(input);
-      return {
-        requestId,
-        companyId,
-        status: "accepted",
-        preflightVerifiedAt: "2026-08-26T00:00:00Z",
-        confirmUrl: null,
-        failureCode: null,
-      };
+      if (denied) throw new TalliApiError(403, problem(403, "FORBIDDEN"));
+      return { requestId, companyId, status: "accepted", preflightVerifiedAt: "2026-08-26T00:00:00Z",
+        confirmationUrl: null, failureCode: null };
     },
   });
-
-  const response = await handler(new Request("https://talli.no/auth/systembruker/confirm"));
-
+  const response = await handler(new Request("https://talli.no/auth/systembruker/confirm?companyId=ignored"));
   assert.equal(response.status, 307);
   assert.equal(response.headers.get("location"), `https://talli.no/connections?company=${companyId}&systembruker=connected`);
-  assert.deepEqual(queriedTables, ["system_user_requests"]);
-  assert.deepEqual(companyLoads, [companyId]);
-  assert.equal(reconciliations[0].orgNumber, "310279617");
-  assert.deepEqual(deletedCookies, [{
-    name: "talli_system_user_request",
-    path: "/auth/systembruker/confirm",
-  }]);
-
-  companyRole = "reviewer";
+  assert.deepEqual(reconciliations, [["verified-session", requestId, "callback-proof"]]);
+  assert.deepEqual(deletedCookies, [{ name: "talli_system_user_request", path: "/auth/systembruker/confirm" }]);
+  denied = true;
   const concealed = await handler(new Request("https://talli.no/auth/systembruker/confirm"));
   assert.equal(concealed.headers.get("location"), "https://talli.no/connections?systembruker=manual");
-  assert.equal(reconciliations.length, 1);
+  assert.equal(deletedCookies.length, 2);
 });
 
 async function sourceFiles(directory) {
@@ -295,8 +251,8 @@ test("every Stage 1 web consumer authorizes through company-access contracts", a
     supabaseServer.indexOf("export async function readOperatorSupportDashboard"),
   );
   assert.doesNotMatch(supportDashboard, /\.from\(/u);
-  assert.match(callbackRoute, /loadCompany\(companyId: string\)/u);
-  assert.match(callbackRoute, /dependencies\.loadCompany\(request\.company_id\)/u);
+  assert.match(callbackRoute, /reconcileOwnerSystemUserCallback\(accessToken, requestId, proof\)/u);
+  assert.doesNotMatch(callbackRoute, /\.from\(|loadCompany|orgNumber/u);
   assert.match(previewRoute, /loadAcceptedMembershipCompany/u);
   assert.match(previewRoute, /company\.role !== "owner"/u);
   assert.match(corporateDecisionPage, /loadAcceptedMembershipCompany/u);

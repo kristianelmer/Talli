@@ -213,197 +213,329 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
 
   assert.deepEqual(result.errors, []);
   assert.deepEqual(result.evidence.modules, [
-    "backend-system:marketing_measurement",
-    "backend-system:system_boundary",
-    "backend-system:validation_observation",
-    "backend:banking",
-    "backend:billing",
-    "backend:company_access",
-    "backend:corporate_governance",
-    "backend:documents",
-    "backend:investments",
-    "backend:ledger",
-    "backend:shareholder_register_filing",
-    "web:banking",
-    "web:billing",
-    "web:company-access",
-    "web:corporate-governance",
-    "web:documents",
-    "web:investments",
-    "web:ledger",
-    "web:public-acquisition",
-    "web:system-boundary",
-  ]);
+  "backend-system:marketing_measurement",
+  "backend-system:system_boundary",
+  "backend-system:validation_observation",
+  "backend:authority_connections",
+  "backend:banking",
+  "backend:billing",
+  "backend:company_access",
+  "backend:corporate_governance",
+  "backend:documents",
+  "backend:investments",
+  "backend:ledger",
+  "backend:shareholder_register_filing",
+  "web:authority-connections",
+  "web:banking",
+  "web:billing",
+  "web:company-access",
+  "web:corporate-governance",
+  "web:documents",
+  "web:investments",
+  "web:ledger",
+  "web:legacy-rf1086",
+  "web:operator-controls",
+  "web:public-acquisition",
+  "web:system-boundary"
+]);
   assert.deepEqual(result.evidence.edges, [
-    {
-      from: "backend-system:accounting-document-lifecycle",
-      imports: ["talli_backend.modules.documents.public"],
-      kind: "workflow",
-      to: "backend:documents",
-    },
-    {
-      from: "backend-system:annual-agreement-cleanup",
-      imports: ["talli_backend.modules.billing.public"],
-      kind: "workflow",
-      to: "backend:billing",
-    },
-    {
-      from: "backend-system:annual-billing-reads-and-cancellation",
-      imports: ["talli_backend.modules.billing.public"],
-      kind: "workflow",
-      to: "backend:billing",
-    },
-    {
-      from: "backend-system:annual-billing-support",
-      imports: ["talli_backend.modules.billing.public"],
-      kind: "workflow",
-      to: "backend:billing",
-    },
-    {
-      from: "backend-system:annual-provider-notification-intake",
-      imports: ["talli_backend.modules.billing.public"],
-      kind: "workflow",
-      to: "backend:billing",
-    },
-    {
-      from: "backend-system:annual-refund-recovery",
-      imports: ["talli_backend.modules.billing.public"],
-      kind: "workflow",
-      to: "backend:billing",
-    },
-    {
-      from: "backend-system:annual-support-agreement-cleanup-recovery",
-      imports: ["talli_backend.modules.billing.public"],
-      kind: "workflow",
-      to: "backend:billing",
-    },
-    {
-      from: "backend-system:annual-support-refund-recovery",
-      imports: ["talli_backend.modules.billing.public"],
-      kind: "workflow",
-      to: "backend:billing",
-    },
-    {
-      from: "backend-system:banking-reconciliation",
-      imports: ["talli_backend.modules.banking.public"],
-      kind: "workflow",
-      to: "backend:banking",
-    },
-    {
-      from: "backend-system:billing-and-filing-entitlement",
-      imports: ["talli_backend.modules.billing.public"],
-      kind: "workflow",
-      to: "backend:billing",
-    },
-    {
-      from: "backend-system:company-access-administration",
-      imports: ["talli_backend.modules.company_access.public"],
-      kind: "workflow",
-      to: "backend:company_access",
-    },
-    {
-      from: "backend-system:company-access-context",
-      imports: ["talli_backend.modules.company_access.public"],
-      kind: "workflow",
-      to: "backend:company_access",
-    },
-    {
-      from: "backend-system:company-access-onboarding-and-support",
-      imports: ["talli_backend.modules.company_access.public"],
-      kind: "workflow",
-      to: "backend:company_access",
-    },
-    {
-      from: "backend-system:company-year-eligibility-and-admission",
-      imports: ["talli_backend.modules.company_access.public"],
-      kind: "workflow",
-      to: "backend:company_access",
-    },
-    {
-      from: "backend-system:corporate-governance",
-      imports: ["talli_backend.modules.banking.public"],
-      kind: "workflow",
-      to: "backend:banking",
-    },
-    {
-      from: "backend-system:corporate-governance",
-      imports: ["talli_backend.modules.company_access.public"],
-      kind: "workflow",
-      to: "backend:company_access",
-    },
-    {
-      from: "backend-system:corporate-governance",
-      imports: ["talli_backend.modules.corporate_governance.public"],
-      kind: "workflow",
-      to: "backend:corporate_governance",
-    },
-    {
-      from: "backend-system:corporate-governance",
-      imports: ["talli_backend.modules.documents.public"],
-      kind: "workflow",
-      to: "backend:documents",
-    },
-    {
-      from: "backend-system:corporate-governance",
-      imports: ["talli_backend.modules.ledger.public"],
-      kind: "workflow",
-      to: "backend:ledger",
-    },
-    {
-      from: "backend-system:investment-activity",
-      imports: ["talli_backend.modules.banking.public"],
-      kind: "workflow",
-      to: "backend:banking",
-    },
-    {
-      from: "backend-system:investment-activity",
-      imports: ["talli_backend.modules.investments.public"],
-      kind: "workflow",
-      to: "backend:investments",
-    },
-    {
-      from: "backend-system:investment-activity",
-      imports: ["talli_backend.modules.ledger.public"],
-      kind: "workflow",
-      to: "backend:ledger",
-    },
-    {
-      from: "backend-system:ledger-posting-and-period-control",
-      imports: ["talli_backend.modules.ledger.public"],
-      kind: "workflow",
-      to: "backend:ledger",
-    },
-    {
-      from: "backend-system:marketing-funnel-measurement",
-      imports: ["talli_backend.modules.marketing_measurement.public"],
-      kind: "workflow",
-      to: "backend-system:marketing_measurement",
-    },
-    {
-      from: "backend-system:new-year-start",
-      imports: ["talli_backend.modules.ledger.public"],
-      kind: "workflow",
-      to: "backend:ledger",
-    },
-    {
-      from: "backend-system:new-year-start",
-      imports: ["talli_backend.modules.shareholder_register_filing.public"],
-      kind: "workflow",
-      to: "backend:shareholder_register_filing",
-    },
-    {
-      from: "backend-system:passive-validation-observation",
-      imports: ["talli_backend.modules.validation_observation.public"],
-      kind: "workflow",
-      to: "backend-system:validation_observation",
-    },
-    {
-      from: "backend-system:system-boundary-tracer",
-      imports: ["talli_backend.modules.system_boundary.public"],
-      kind: "workflow",
-      to: "backend-system:system_boundary",
-    },
-  ]);
+  {
+    "from": "backend-system:accounting-document-lifecycle",
+    "imports": [
+      "talli_backend.modules.documents.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:documents"
+  },
+  {
+    "from": "backend-system:annual-agreement-cleanup",
+    "imports": [
+      "talli_backend.modules.billing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:billing"
+  },
+  {
+    "from": "backend-system:annual-billing-reads-and-cancellation",
+    "imports": [
+      "talli_backend.modules.billing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:billing"
+  },
+  {
+    "from": "backend-system:annual-billing-support",
+    "imports": [
+      "talli_backend.modules.billing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:billing"
+  },
+  {
+    "from": "backend-system:annual-provider-notification-intake",
+    "imports": [
+      "talli_backend.modules.billing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:billing"
+  },
+  {
+    "from": "backend-system:annual-refund-recovery",
+    "imports": [
+      "talli_backend.modules.billing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:billing"
+  },
+  {
+    "from": "backend-system:annual-support-agreement-cleanup-recovery",
+    "imports": [
+      "talli_backend.modules.billing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:billing"
+  },
+  {
+    "from": "backend-system:annual-support-refund-recovery",
+    "imports": [
+      "talli_backend.modules.billing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:billing"
+  },
+  {
+    "from": "backend-system:authority-connections-owner-lifecycle",
+    "imports": [
+      "talli_backend.modules.authority_connections.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:authority_connections"
+  },
+  {
+    "from": "backend-system:authority-connections-owner-lifecycle",
+    "imports": [
+      "talli_backend.modules.company_access.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_access"
+  },
+  {
+    "from": "backend-system:authority-connections-state",
+    "imports": [
+      "talli_backend.modules.authority_connections.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:authority_connections"
+  },
+  {
+    "from": "backend-system:authority-connections-state",
+    "imports": [
+      "talli_backend.modules.billing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:billing"
+  },
+  {
+    "from": "backend-system:authority-operations",
+    "imports": [
+      "talli_backend.modules.authority_connections.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:authority_connections"
+  },
+  {
+    "from": "backend-system:banking-reconciliation",
+    "imports": [
+      "talli_backend.modules.banking.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:banking"
+  },
+  {
+    "from": "backend-system:billing-and-filing-entitlement",
+    "imports": [
+      "talli_backend.modules.billing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:billing"
+  },
+  {
+    "from": "backend-system:company-access-administration",
+    "imports": [
+      "talli_backend.modules.company_access.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_access"
+  },
+  {
+    "from": "backend-system:company-access-context",
+    "imports": [
+      "talli_backend.modules.company_access.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_access"
+  },
+  {
+    "from": "backend-system:company-access-onboarding-and-support",
+    "imports": [
+      "talli_backend.modules.company_access.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_access"
+  },
+  {
+    "from": "backend-system:company-year-eligibility-and-admission",
+    "imports": [
+      "talli_backend.modules.company_access.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_access"
+  },
+  {
+    "from": "backend-system:corporate-governance",
+    "imports": [
+      "talli_backend.modules.banking.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:banking"
+  },
+  {
+    "from": "backend-system:corporate-governance",
+    "imports": [
+      "talli_backend.modules.company_access.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_access"
+  },
+  {
+    "from": "backend-system:corporate-governance",
+    "imports": [
+      "talli_backend.modules.corporate_governance.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:corporate_governance"
+  },
+  {
+    "from": "backend-system:corporate-governance",
+    "imports": [
+      "talli_backend.modules.documents.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:documents"
+  },
+  {
+    "from": "backend-system:corporate-governance",
+    "imports": [
+      "talli_backend.modules.ledger.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:ledger"
+  },
+  {
+    "from": "backend-system:investment-activity",
+    "imports": [
+      "talli_backend.modules.banking.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:banking"
+  },
+  {
+    "from": "backend-system:investment-activity",
+    "imports": [
+      "talli_backend.modules.investments.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:investments"
+  },
+  {
+    "from": "backend-system:investment-activity",
+    "imports": [
+      "talli_backend.modules.ledger.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:ledger"
+  },
+  {
+    "from": "backend-system:launch-signoff-records",
+    "imports": [
+      "talli_backend.modules.company_access.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_access"
+  },
+  {
+    "from": "backend-system:ledger-posting-and-period-control",
+    "imports": [
+      "talli_backend.modules.ledger.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:ledger"
+  },
+  {
+    "from": "backend-system:legacy-rf1086-authority-relocation",
+    "imports": [
+      "talli_backend.modules.billing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:billing"
+  },
+  {
+    "from": "backend-system:legacy-rf1086-authority-relocation",
+    "imports": [
+      "talli_backend.modules.company_access.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_access"
+  },
+  {
+    "from": "backend-system:legacy-rf1086-authority-relocation",
+    "imports": [
+      "talli_backend.modules.documents.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:documents"
+  },
+  {
+    "from": "backend-system:marketing-funnel-measurement",
+    "imports": [
+      "talli_backend.modules.marketing_measurement.public"
+    ],
+    "kind": "workflow",
+    "to": "backend-system:marketing_measurement"
+  },
+  {
+    "from": "backend-system:new-year-start",
+    "imports": [
+      "talli_backend.modules.ledger.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:ledger"
+  },
+  {
+    "from": "backend-system:new-year-start",
+    "imports": [
+      "talli_backend.modules.shareholder_register_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:shareholder_register_filing"
+  },
+  {
+    "from": "backend-system:passive-validation-observation",
+    "imports": [
+      "talli_backend.modules.validation_observation.public"
+    ],
+    "kind": "workflow",
+    "to": "backend-system:validation_observation"
+  },
+  {
+    "from": "backend-system:system-boundary-tracer",
+    "imports": [
+      "talli_backend.modules.system_boundary.public"
+    ],
+    "kind": "workflow",
+    "to": "backend-system:system_boundary"
+  }
+]);
   assert.equal(existsSync(new URL("../architecture/module.schema.json", import.meta.url)), true);
   assert.equal(existsSync(new URL("../architecture/backend-system.schema.json", import.meta.url)), true);
   assert.equal(existsSync(new URL("../architecture/release-state.schema.json", import.meta.url)), true);
@@ -909,6 +1041,98 @@ test("ledger #139 may relocate only the owner-approved atomic coordinator scopes
       validateCompatibilityRegistry(registryPath, options).join("\n"),
       /future frozen scope resource table:bank_transactions is not owned by active or exited capability/u,
     );
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("#150 RF relocation permits only both exact coordinators with all ten scopes", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-rf-authority-relocation-"));
+  const actionPath = "apps/web/app/actions.ts";
+  const send = "sendApprovedRf1086ProductionFiling";
+  const reconcile = "reconcileRf1086ProductionAction";
+  const scope = (resource, operation) => ({
+    path: actionPath, rule: "direct-web-business-persistence", resource, operation,
+  });
+  const facades = [
+    legacyFacade({
+      id: "compat-authority-connections-persistence", capability: "authority_connections",
+      removalIssue: "#150",
+      scopes: [scope("table:system_user_requests", send), scope("table:system_user_requests", reconcile)],
+    }),
+    legacyFacade({
+      id: "compat-rf1086-persistence", capability: "shareholder_register_filing",
+      removalIssue: "#151",
+      scopes: [
+        scope("rpc:claim_production_feedback_reconciliation", reconcile),
+        scope("rpc:release_production_feedback_reconciliation", reconcile),
+        scope("table:filing_approval_snapshots", reconcile),
+        scope("table:filing_previews", reconcile),
+        scope("table:production_filing_submissions", reconcile),
+        scope("rpc:begin_production_filing", send),
+        scope("table:filing_approval_snapshots", send),
+        scope("table:filing_previews", send),
+      ],
+    }),
+  ];
+  const registry = compatibilityFixture({
+    records: [], currentCapability: "authority_connections", currentIssue: "#150",
+    exitedCapabilities: [],
+  });
+  registry.migration.order = [
+    { capability: "authority_connections", removalIssues: ["#150"] },
+    { capability: "shareholder_register_filing", removalIssues: ["#151"] },
+  ];
+  const baseline = compatibilityBaseline(facades);
+  const { registryPath, baselinePath } = writeCompatibilityFixture(temporaryRoot, registry, baseline);
+  let currentSource = "export const authorityCoordinatorsRelocated = true;\n";
+  const options = {
+    baselinePath, expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+    currentSource: () => currentSource,
+    sourceAtGateRevision: () => "export const authorityCoordinatorsRelocated = true;\n",
+  };
+  const check = () => {
+    writeFileSync(registryPath, JSON.stringify(registry));
+    writeFileSync(baselinePath, JSON.stringify(baseline));
+    return validateCompatibilityRegistry(registryPath, options);
+  };
+  try {
+    assert.deepEqual(check(), []);
+    registry.records = [{ ...facades[1], scopes: [facades[1].scopes[0]] }];
+    assert.match(check().join("\n"), /must remove both coordinators and every frozen scope together/u);
+    registry.records = [{ ...facades[0], scopes: [facades[0].scopes[0]] }];
+    assert.match(check().join("\n"), /must remove both coordinators and every frozen scope together/u);
+    registry.records = [];
+    registry.migration.currentIssue = "#151";
+    assert.match(check().join("\n"), /RF credential relocation is authorized only for authority_connections #150/u);
+    registry.migration.currentIssue = "#150";
+    baseline.records[1].scopes.push(scope("table:unexpected_future_state", send));
+    assert.match(check().join("\n"), /outside the owner-approved exact ten-scope whitelist/u);
+    baseline.records[1].scopes.pop();
+    baseline.records[1].removalIssue = "#152";
+    assert.match(check().join("\n"), /outside the owner-approved exact ten-scope whitelist/u);
+    baseline.records[1].removalIssue = "#151";
+    baseline.records[1].scopes[0].rule = "direct-business-fetch";
+    assert.match(check().join("\n"), /outside the owner-approved exact ten-scope whitelist/u);
+    baseline.records[1].scopes[0].rule = "direct-web-business-persistence";
+    currentSource = `export function ${send}() { client.rpc("begin_production_filing"); }\n`;
+    assert.match(check().join("\n"), /removed frozen scope still exists/u);
+    currentSource = `export function ${send}() { client.from("unexpected_writer"); }\n`;
+    assert.match(check().join("\n"), /added writer outside the frozen baseline/u);
+    currentSource = "export const authorityCoordinatorsRelocated = true;\n";
+    registry.migration.currentCapability = "shareholder_register_filing";
+    registry.migration.currentIssue = "#151";
+    registry.migration.exitedCapabilities = ["authority_connections"];
+    registry.migration.completedStages = [{
+      capability: "authority_connections", removalIssues: ["#150"],
+      gates: ["1".repeat(40), "2".repeat(40)].map((revision) => ({
+        revision, evidencePath: `architecture/evidence/customer-ready-gates/${revision}.json`,
+        evidenceDigest: `sha256:${revision}${revision.slice(0, 24)}`,
+      })),
+    }];
+    assert.deepEqual(check(), [], "verified #150 relocation survives stage advance");
+    options.sourceAtGateRevision = () => `export function ${send}() { client.from("system_user_requests"); }\n`;
+    assert.match(check().join("\n"), /was not deleted at completed authority_connections gate/u);
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }
@@ -2108,8 +2332,8 @@ test("the immutable frozen inventory remains exact while the active registry is 
   }
   assert.equal(expected.size, baseline.records.length);
 
-  assert.equal(registry.records.length, 8);
-  assert.equal(registry.records.flatMap((record) => record.scopes).length, 92);
+  assert.equal(registry.records.length, 7);
+  assert.equal(registry.records.flatMap((record) => record.scopes).length, 76);
   const baselineById = new Map(baseline.records.map((record) => [record.id, record]));
   const scopeKey = (scope) => [scope.path, scope.rule, scope.resource, scope.operation].join("\0");
   for (const record of registry.records) {
@@ -2141,6 +2365,7 @@ test("the immutable frozen inventory remains exact while the active registry is 
       "compat-documents-persistence",
       "compat-corporate-governance-persistence",
       "compat-billing-persistence",
+      "compat-authority-connections-persistence",
     ]),
   );
 });
@@ -2346,7 +2571,7 @@ Promise.resolve().then(() => client.from("documents"));
   writeFileSync(compatibilityPath, JSON.stringify(compatibility));
 
   try {
-    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");
+    const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false, now: new Date("2026-08-27T12:00:00Z") }).errors.join("\n");
     assert.doesNotMatch(errors, /operation:onboardCompany/u);
     assert.doesNotMatch(errors, /operation:cancelCompany/u);
     assert.match(errors, new RegExp(`${fixture}.*table:companies.*operation:unregisteredCompany`, "u"));
@@ -2686,7 +2911,8 @@ test("generated-client deep imports reject ambiguous same-ticket exceptions", ()
     resource: "module:@talli/talli-api-client/*",
     operation: "module",
   };
-  const activeFacade = compatibility.records.find((record) => (
+  const baseline = JSON.parse(readFileSync(join(temporaryRoot, "architecture/compatibility-baseline.json"), "utf8"));
+  const activeFacade = baseline.records.find((record) => (
     record.kind === "legacy-facade"
     && record.capability === compatibility.migration.currentCapability
   ));
@@ -2904,13 +3130,18 @@ from ..other import internal as other_internal
 `,
   );
   const backendDocumentationPath = join(temporaryRoot, "architecture/BACKEND-SYSTEM.md");
-  writeFileSync(
-    backendDocumentationPath,
-    readFileSync(backendDocumentationPath, "utf8").replace(
-      '"routes":["/api/v1/company-access/cancellations","/api/v1/company-access/cancellations/{cancellation_id}/finalize","/api/v1/company-access/cancellations/{cancellation_id}/resume","/api/v1/company-access/cancellations/{cancellation_id}/reviews","/api/v1/company-access/context","/api/v1/company-access/invitation-side-effects/pending","/api/v1/company-access/invitation-side-effects/{operation_id}/complete","/api/v1/company-access/invitations","/api/v1/company-access/invitations/accept","/api/v1/company-access/invitations/lookup","/api/v1/company-access/invitations/{invitation_id}/resend","/api/v1/company-access/invitations/{invitation_id}/revoke","/api/v1/company-access/memberships","/api/v1/company-access/memberships/{user_id}","/api/v1/system-boundary/tracer"]',
-      '"routes":["/invented-system-route"]',
-    ),
+  const backendDocumentation = readFileSync(backendDocumentationPath, "utf8");
+  const changedDocumentation = backendDocumentation.replace(
+    /<!--\s*architecture-inventory\s*([\s\S]*?)-->/gu,
+    (whole, source) => {
+      const inventory = JSON.parse(source);
+      if (!inventory.routes?.includes("/api/v1/system-boundary/tracer")) return whole;
+      inventory.routes = ["/invented-system-route"];
+      return `<!-- architecture-inventory ${JSON.stringify(inventory)} -->`;
+    },
   );
+  assert.notEqual(changedDocumentation, backendDocumentation, "fixture must actually change the route inventory");
+  writeFileSync(backendDocumentationPath, changedDocumentation);
 
   try {
     const errors = checkArchitecture({ root: temporaryRoot, writeEvidence: false }).errors.join("\n");

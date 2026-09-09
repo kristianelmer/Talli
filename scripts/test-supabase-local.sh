@@ -119,6 +119,21 @@ npm run test:ledger-hosted-migration-authority
 # intentionally retires the legacy governance-owned ledger coordinators.
 DATABASE_URL="$DB_URL" npm run test:corporate-governance-database-lifecycle
 
-# Billing is last because its contract removes the temporary public overlap
-# views still exercised by predecessor browser and Supabase characterization.
+# Preserve the frozen Billing lifecycle against the physical predecessor System
+# User table. The shipped #150 rollbacks retain its verified-request projection;
+# the approved RF coordinator must roll back before its Authority dependency.
+DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs rollback
 DATABASE_URL="$DB_URL" npm run test:billing-database-lifecycle
+
+# Recut the exact Authority/RF surface and contract only after predecessor
+# consumers pass. Its required database and hydrated owner lanes then exercise
+# the final private storage boundary, with no live authority provider calls.
+DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs recutover
+DATABASE_URL="$DB_URL" npm run test:authority-connections-database
+NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
+NEXT_PUBLIC_SUPABASE_ANON_KEY="$local_anon_key" \
+SUPABASE_URL="$API_URL" \
+SUPABASE_ANON_KEY="$local_anon_key" \
+SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+DATABASE_URL="$DB_URL" \
+npm run test:browser-authority-connections

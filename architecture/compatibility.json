@@ -389,70 +389,6 @@
       ]
     },
     {
-      "id": "compat-authority-connections-persistence",
-      "kind": "legacy-facade",
-      "capability": "authority_connections",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
-      "removalIssue": "#150",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
-      "canonicalImplementation": "web:legacy-runtime:authority_connections",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove System User, authority-operation, and operator-control persistence in #150.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:system_user_requests",
-          "operation": "reconcileRf1086ProductionAction"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:launch_signoffs",
-          "operation": "recordLaunchSignoff"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:authority_operations",
-          "operation": "runProductionAuthorityOperation"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:authority_operations",
-          "operation": "runProductionSystembrukerCallbackOperation"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:system_user_requests",
-          "operation": "sendApprovedRf1086ProductionFiling"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:authority_operations",
-          "operation": "listAuthorityOperations"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:launch_signoffs",
-          "operation": "listLaunchSignoffs"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:system_user_requests",
-          "operation": "listSystemUserRequests"
-        }
-      ]
-    },
-    {
       "id": "compat-rf1086-persistence",
       "kind": "legacy-facade",
       "capability": "shareholder_register_filing",
@@ -523,36 +459,6 @@
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "rpc:claim_production_feedback_reconciliation",
-          "operation": "reconcileRf1086ProductionAction"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "rpc:release_production_feedback_reconciliation",
-          "operation": "reconcileRf1086ProductionAction"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:filing_approval_snapshots",
-          "operation": "reconcileRf1086ProductionAction"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:filing_previews",
-          "operation": "reconcileRf1086ProductionAction"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:production_filing_submissions",
-          "operation": "reconcileRf1086ProductionAction"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "table:authority_test_runs",
           "operation": "recordAuthorityTestEvidence"
         },
@@ -573,24 +479,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_submissions",
           "operation": "refreshAnnualReadinessSnapshots"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "rpc:begin_production_filing",
-          "operation": "sendApprovedRf1086ProductionFiling"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:filing_approval_snapshots",
-          "operation": "sendApprovedRf1086ProductionFiling"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:filing_previews",
-          "operation": "sendApprovedRf1086ProductionFiling"
         },
         {
           "path": "apps/web/app/lib/supabase/server.ts",

@@ -87,3 +87,41 @@ Maskinporten's existing token exchange is the separate Authority Connections cre
 ## Physical implementation boundary
 
 The one frozen RF implementation is `apps/backend/src/talli_backend/compatibility/rf1086_authority_workflow.py`, with invocation-equivalent persistence at `apps/backend/src/talli_backend/adapters/postgres_legacy_rf1086_authority.py`. Any extracted helper stays in the same frozen RF boundary and is listed before editing. Authority Connections supplies credential and connection contracts only. #151 absorbs/removes this compatibility implementation.
+
+Before implementation, the existing five-method HTTP helper is assigned to
+`apps/backend/src/talli_backend/adapters/rf1086_authority.py`, bound only to the
+frozen RF workflow's typed port. It relocates exactly the enumerated
+`rf1086-authority-client.ts` methods, response parsing and transport bounds; it
+adds no endpoint, provider authority or generic relay. The existing feedback
+classifier and journal/state helpers remain inside the single
+`compatibility/rf1086_authority_workflow.py`. These are the same enumerated source
+helpers above, with RF ownership preserved until #151 absorbs/removes them.
+
+## Approval serialization and document-order equivalence
+
+The relocated coordinator reads the existing immutable approval row's `manifest`
+alongside its `manifest_hash`. It rebuilds the current manifest from the original
+preview, actor and company, validates every stored document name/hash against the
+current XML bytes, and preserves the approved document-array order. It then
+compares all manifest fields and the original SHA-256. It does not regenerate
+approval state or transfer its ownership. This preserves the order already
+chosen by the web's `localeCompare` without depending on the backend host locale.
+JavaScript integer object-key ordering, UTF-16 warning sorting, `trim` characters
+and well-formed JSON string escaping are retained explicitly.
+
+The production subdocument write order uses the stored shareholder UUIDs. The
+shipped `buildFilingCase` in `apps/web/app/lib/rf1086.ts` takes `shareholder.id`
+unchanged from PostgreSQL; the same renderer uses `snapshot.shareholder_id` as
+each `underskjemaXml` key. Canonical lowercase UUIDs have identical hyphen
+positions and the same lexical and original `localeCompare` order. A malformed
+stored production preview with noncanonical keys fails before token acquisition,
+journal creation or provider effects. Generic renderer/test inputs with arbitrary
+identifiers do not establish another production basis. The standalone RF tool
+retains its separate fixed JSON-only Node ordering helper under the independently
+approved command-relocation scope.
+
+`test_rf1086_compatibility.py` compares against the retained pure web approval
+builder using mixed case, combining/non-ASCII characters, astral characters,
+integer-like keys, JavaScript whitespace and UUIDs. It also rejects missing or
+tampered approval fields and noncanonical production keys before any external
+effect. The API runtime has no Node or ICU dependency.
