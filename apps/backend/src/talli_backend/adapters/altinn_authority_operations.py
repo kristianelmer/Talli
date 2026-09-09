@@ -117,6 +117,7 @@ class _Response:
     status: int
     content_type: str
     body: bytes
+    callback: bool = False
 
 
 def _unique_object(items: list[tuple[str, object]]) -> dict[str, object]:
@@ -132,7 +133,12 @@ def _parse(response: _Response, *, creation: bool = False) -> object:
     try:
         if "application/json" not in response.content_type.lower():
             raise ValueError("missing JSON media type")
-        value = json.loads(response.body.decode("utf-8"), object_pairs_hook=_unique_object,
+        # Registration used Response.text() (BOM stripping); the callback
+        # used Buffer.toString() (BOM retained). Both replace malformed UTF-8.
+        decoded = response.body.decode("utf-8" if response.callback else "utf-8-sig", errors="replace")
+        if len(decoded.encode("utf-8")) > _MAX_RESPONSE_BYTES:
+            raise ValueError("decoded response too large")
+        value = json.loads(decoded, object_pairs_hook=_unique_object,
                            parse_constant=lambda _: (_ for _ in ()).throw(ValueError("invalid JSON constant")))
         if creation:
             if not isinstance(value, str) or not _UUID.fullmatch(value):
@@ -171,7 +177,11 @@ async def _request(
                         chunks.extend(chunk)
                 except Exception:
                     raise AuthorityOperationError(Code.AUTHORITY_RESPONSE_INVALID, response.status_code) from None
-                return _Response(response.status_code, response.headers.get("content-type", ""), bytes(chunks))
+                # The original capped callback reader applied this bound
+                # before branching on status, including non-success bodies.
+                if callback and len(chunks.decode("utf-8", errors="replace").encode("utf-8")) > _MAX_RESPONSE_BYTES:
+                    raise AuthorityOperationError(Code.AUTHORITY_RESPONSE_INVALID, response.status_code)
+                return _Response(response.status_code, response.headers.get("content-type", ""), bytes(chunks), callback)
     except AuthorityOperationError:
         raise
     except Exception:

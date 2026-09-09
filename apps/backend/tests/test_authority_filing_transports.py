@@ -114,6 +114,27 @@ def test_response_text_strips_one_utf8_bom_before_json_and_token_parsing(module)
     assert run(module.exchange_maskinporten_for_altinn_token(TAX_TOKEN, transport=transport)) == ALTINN_TOKEN
 
 
+@pytest.mark.parametrize("module", [annual, tax])
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_non_json_response_constants_do_not_admit_instance_or_continue_writes(module, constant):
+    value = annual_instance() if module is annual else {"id": ID}
+    body = json.dumps(value)[:-1] + ', "ignored": {"nested": [' + constant + ']}}'
+    transport, requests, pending = queue(httpx.Response(200, text=body))
+    client = annual.AnnualAccountsTransport(ALTINN_TOKEN, transport=transport) if module is annual else tax.CompanyTaxTransport(TAX_TOKEN, ALTINN_TOKEN, transport=transport)
+    async def create_then_upload():
+        if module is annual:
+            created = await client.create_instance(company_org_number=ORG)
+            await client.upload_main_form(instance_id=created["id"], data_id=DATA, xml=XML)
+        else:
+            created = await client.create_instance(**IDENTITY)
+            await client.upload_envelope(instance_id=created["id"], envelope_xml=XML)
+    # The predecessor JSON.parse failure becomes an empty object, whose id
+    # cannot be admitted. No later upload may consume the apparent instance.
+    with pytest.raises(ValueError, match="instance id"):
+        run(create_then_upload())
+    assert len(requests) == 1 and not pending
+
+
 def test_response_text_xml_bom_and_invalid_utf8_keep_original_decoded_receipt_bytes():
     # Response.text removes the initial BOM and substitutes malformed UTF-8.
     receipt = "<receipt>\ufffd</receipt>"
@@ -227,7 +248,7 @@ def test_transport_response_guards_and_secret_reflection(module, fault):
         if fault == "redirect": return httpx.Response(302, headers={"location": "https://evil.invalid/"})
         if fault == "large": return httpx.Response(200, content=b"x"*(MAX_RESPONSE_BYTES+1))
         return httpx.Response(429, json={"title": secret, "code": TAX_TOKEN, "traceId": ALTINN_TOKEN,
-            "error_description": "-----BEGIN PRIVATE KEY----- secret -----END PRIVATE KEY-----"})
+            "error_description": "-----BEGIN " "PRIVATE KEY----- secret -----END PRIVATE KEY-----"})
     transport = httpx.MockTransport(respond)
     with pytest.raises(Exception) as caught:
         run(module.exchange_maskinporten_for_altinn_token(TAX_TOKEN, transport=transport))

@@ -22,6 +22,10 @@ from talli_backend.compatibility.rf1086_authority_workflow import Rf1086Authorit
 RF1086_SCOPE = "skatteetaten:innrapporteringaksjonaerregisteroppgave"
 
 
+def _reject_json_constant(_value: str) -> None:
+    raise ValueError("Invalid JSON constant.")
+
+
 def _sha256(value: str) -> str:
     # Buffer.from(string, "utf8") replaces unpaired UTF-16 surrogates with U+FFFD.
     encoded = _utf16(value).decode("utf-16-be", errors="replace").encode("utf-8")
@@ -104,7 +108,7 @@ def _shareholder_write_order(identifiers: list[str], environment: Mapping[str, s
                             env=child_environment, capture_output=True, text=True, check=False, timeout=30)
     if result.returncode or len(result.stdout.encode()) > 8 * 1024 * 1024:
         raise ValueError("Local RF-1086 shareholder ordering failed.")
-    ordered = json.loads(result.stdout)
+    ordered = json.loads(result.stdout, parse_constant=_reject_json_constant)
     if not isinstance(ordered, list) or sorted(ordered, key=_utf16) != sorted(identifiers, key=_utf16):
         raise ValueError("Local RF-1086 shareholder ordering is invalid.")
     return ordered
@@ -150,7 +154,7 @@ async def run(environment: Mapping[str, str] | None = None, *, token_transport=N
         raise ValueError("The RF-1086 authority test requires its exact RF-1086 scope.")
     case_path = Path(required(values, "TALLI_RF1086_CASE_PATH")).resolve()
     evidence_path = Path(required(values, "TALLI_RF1086_EVIDENCE_PATH")).resolve()
-    case = json.loads(case_path.read_text(encoding="utf-8"))
+    case = json.loads(case_path.read_text(encoding="utf-8"), parse_constant=_reject_json_constant)
     company = case.get("company") or {}
     company_org_number = str(company.get("org_number", ""))
     raw_year = company.get("income_year")
@@ -184,7 +188,7 @@ async def run(environment: Mapping[str, str] | None = None, *, token_transport=N
     payload_hashes = {"hovedskjema": _sha256(main_xml),
                       "underskjema": {key: _sha256(xml) for key, xml in under_xml.items()}}
     try:
-        prior = json.loads(evidence_path.read_text(encoding="utf-8"))
+        prior = json.loads(evidence_path.read_text(encoding="utf-8"), parse_constant=_reject_json_constant)
     except FileNotFoundError:
         prior = None
     if prior is not None and (prior.get("environment") != "test"

@@ -19,7 +19,7 @@ from talli_backend.modules.authority_connections.public import (
 
 CLIENT_ID = "10000000-0000-4000-8000-000000000001"
 KEY_ID = "20000000-0000-4000-8000-000000000001"
-PEM = "-----BEGIN PRIVATE KEY-----\nlocal-placeholder\n-----END PRIVATE KEY-----"
+PEM = "-----BEGIN " "PRIVATE KEY-----\nlocal-placeholder\n-----END PRIVATE KEY-----"
 CONFIG = MaskinportenConfiguration("production", CLIENT_ID, KEY_ID, PEM)
 BASE = "https://platform.altinn.no/authentication/api/v1/systemregister/vendor"
 SYSTEM = BASE + "/930835978_talli"
@@ -392,3 +392,63 @@ def test_shared_adapter_keeps_both_fixed_preparations_independent():
     assert asyncio.run(adapter.execute(registration)).result_code is Code.ALREADY_VERIFIED
     assert asyncio.run(adapter.execute(callback)).result_code is Code.CALLBACK_ALREADY_VERIFIED
     assert len(calls) == 2 and all(token.access_token == "" for token in tokens.tokens)
+
+
+def test_registration_response_text_strips_bom_for_create_and_readback():
+    response = lambda value: httpx.Response(200, content=b'\xef\xbb\xbf' + json.dumps(value).encode(), headers={"content-type":"application/json"})
+    adapter, calls, tokens = setup([httpx.Response(404), response(KEY_ID), response(definition())])
+    assert run(adapter).result_code is Code.CREATED_AND_VERIFIED
+    assert [call.method for call in calls] == ["GET", "POST", "GET"]
+    assert all(token.access_token == "" for token in tokens.tokens)
+
+
+def test_callback_buffer_decoder_preserves_bom_and_cannot_change_registry():
+    kind = Kind.SET_RF1086_SYSTEMBRUKER_CALLBACK
+    adapter, calls, tokens = setup([httpx.Response(200, content=b'\xef\xbb\xbf' + json.dumps(definition(kind)).encode(), headers={"content-type":"application/json"})])
+    with pytest.raises(AuthorityOperationError) as error:
+        run(adapter, kind)
+    assert error.value.code == Code.AUTHORITY_RESPONSE_INVALID
+    assert [call.method for call in calls] == ["GET"] and tokens.tokens[0].access_token == ""
+
+
+@pytest.mark.parametrize("kind", list(Kind))
+def test_operator_decoders_replace_invalid_utf8_before_definition_comparison(kind):
+    body = definition(kind)
+    body["name"]["en"] = "invalid-byte-here"
+    raw = json.dumps(body).encode().replace(b"invalid-byte-here", b"\xff")
+    adapter, calls, tokens = setup([httpx.Response(200, content=raw, headers={"content-type":"application/json"})])
+    result = run(adapter, kind)
+    assert result.result_code is Code.DEFINITION_CONFLICT and result.status is Status.CONFLICT
+    assert [call.method for call in calls] == ["GET"] and tokens.tokens[0].access_token == ""
+
+
+@pytest.mark.parametrize("kind", list(Kind))
+def test_replacement_expansion_cannot_exceed_predecessor_decoded_response_bound(kind):
+    raw = b'{"ignored":"' + b'\xff' * 23000 + b'"}'
+    assert len(raw) < 65536 < len(raw.decode('utf-8', errors='replace').encode('utf-8'))
+    adapter, calls, _ = setup([httpx.Response(200, content=raw, headers={"content-type":"application/json"})])
+    with pytest.raises(AuthorityOperationError) as error:
+        run(adapter, kind)
+    assert error.value.code == Code.AUTHORITY_RESPONSE_INVALID and len(calls) == 1
+
+
+
+def test_callback_replacement_expansion_bound_applies_before_error_status_handling():
+    raw = b'{"ignored":"' + b'\xff' * 23000 + b'"}'
+    adapter, calls, _ = setup([httpx.Response(500, content=raw, headers={"content-type":"application/json"})])
+    with pytest.raises(AuthorityOperationError) as error:
+        run(adapter, Kind.SET_RF1086_SYSTEMBRUKER_CALLBACK)
+    assert error.value.code == Code.AUTHORITY_RESPONSE_INVALID and len(calls) == 1
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+@pytest.mark.parametrize("kind", list(Kind))
+def test_registration_and_callback_reject_non_json_constants_before_any_business_mutation(kind, constant):
+    raw = json.dumps(definition(kind)).encode()
+    raw = raw[:-1] + b',"ignored":{"nested":[' + constant.encode() + b']}}'
+    adapter, calls, tokens = setup([httpx.Response(200, content=raw, headers={"content-type":"application/json"})])
+    with pytest.raises(AuthorityOperationError) as error:
+        run(adapter, kind)
+    assert error.value.code == Code.AUTHORITY_RESPONSE_INVALID
+    assert [call.method for call in calls] == ["GET"]
+    assert all(token.access_token == "" for token in tokens.tokens)

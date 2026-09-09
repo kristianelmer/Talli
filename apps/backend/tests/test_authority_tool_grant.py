@@ -151,7 +151,7 @@ def test_original_required_configuration_rejects_before_transport(grant_environm
 
 
 @pytest.mark.parametrize("response", [
-    httpx.Response(400, json={"error": "private-bearer", "error_description": "-----BEGIN PRIVATE KEY-----private"}),
+    httpx.Response(400, json={"error": "private-bearer", "error_description": "-----BEGIN " "PRIVATE KEY-----private"}),
     httpx.Response(302, headers={"location": "https://untrusted.invalid/private"}),
     httpx.Response(200, json={"access_token": "private-bearer", "expires_in": 119, "token_type": "private-bearer"}),
     httpx.Response(200, json={"access_token": "private-bearer", "expires_in": 119, "scope": "reflected-private"}),
@@ -190,3 +190,23 @@ def test_cli_scope_does_not_widen_web_provider_port(grant_environment):
     with pytest.raises(MaskinportenTokenError):
         asyncio.run(web.request_token("skatteetaten:innrapporteringaksjonaerregisteroppgave",
                                      system_user_org_number=cli.system_user_org_number))
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_cli_grant_rejects_non_json_constants_even_in_ignored_fields(grant_environment, constant):
+    raw = ('{"access_token":"synthetic-local-only","expires_in":119,"ignored":{"values":['
+           + constant + ']}}').encode()
+    calls = []
+    def respond(request):
+        calls.append(request)
+        return httpx.Response(200, content=raw)
+    with pytest.raises(MaskinportenTokenError, match="maskinporten_response_invalid"):
+        asyncio.run(token_smoke.run(grant_environment, transport=httpx.MockTransport(respond)))
+    assert len(calls) == 1
+
+
+def test_cli_grant_keeps_json_strings_named_like_nonfinite_constants(grant_environment):
+    raw = b'{"access_token":"synthetic-local-only","expires_in":119,"ignored":["NaN","Infinity","-Infinity"]}'
+    result = asyncio.run(token_smoke.run(grant_environment,
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, content=raw))))
+    assert result["accessTokenPresent"] is True

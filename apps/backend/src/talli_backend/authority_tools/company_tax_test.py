@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import sys
 
-from ._filing import case_income_year, check_private_key_file, git_commit, local_error, now, org_number, payload, read_evidence, required, sha256, validate_xml, write_evidence
+from ._filing import _parse_json, case_income_year, check_private_key_file, git_commit, local_error, now, org_number, payload, read_evidence, required, sha256, validate_xml, write_evidence
 from .company_tax_transport import (CompanyTaxReturnAuthorityError, CompanyTaxTransport,
     exchange_maskinporten_for_altinn_token, wait_for_clean_envelope, wait_for_feedback, wait_for_validation)
 
@@ -60,7 +60,7 @@ async def run(environment=None, *, client_factory=_client, generate=payload, val
     if mode == "prepare":
         case_path = Path(required(environment, "TALLI_COMPANY_TAX_CASE_PATH")).resolve()
         xsd = Path(required(environment, "TALLI_SKATTE_XSD_DIR")).resolve()
-        case = json.loads(case_path.read_text())
+        case = _parse_json(case_path.read_text())
         company = case.get("company") or {}
         organization = org_number(str(company.get("orgNumber", "")))
         year = case_income_year(company.get("incomeYear", float("nan")))

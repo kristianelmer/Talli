@@ -50,6 +50,11 @@ _STATUSES = {spelling: status for status, spellings in (
 ) for spelling in spellings}
 
 
+def _invalid_json_constant(_value: str):
+    # JSON.parse rejects these non-JSON Python extensions even in unused fields.
+    raise ValueError("invalid JSON constant")
+
+
 def _fail(code: Failure = Failure.RESPONSE_CONTRACT_MISMATCH) -> None:
     raise AuthorityProviderError(code)
 
@@ -191,9 +196,15 @@ class AltinnSystemUserAdapter:
                         if len(raw) + len(chunk) > _MAX_RESPONSE_BYTES:
                             _fail(Failure.RESPONSE_TOO_LARGE)
                         raw.extend(chunk)
+            # The predecessor uses fatal TextDecoder UTF-8 decoding, which
+            # strips one leading BOM even on a non-success HTTP response.
+            try:
+                decoded = raw.decode("utf-8-sig")
+            except UnicodeError:
+                _fail()
             parsed = None
             try:
-                parsed = json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_object)
+                parsed = json.loads(decoded, object_pairs_hook=_unique_object, parse_constant=_invalid_json_constant)
             except (ValueError, UnicodeError, RecursionError):
                 if 200 <= status < 300:
                     _fail()

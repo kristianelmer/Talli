@@ -211,7 +211,7 @@ def test_unsupported_events_and_changed_payload_never_reuse_saved_intent(rf_envi
 
 
 @pytest.mark.parametrize("reflected", [SECRET, "prefix-" + SECRET, "Bearer another-private-value",
-                                        "-----BEGIN PRIVATE KEY-----private", "eyJabc.eyJdef.signature"])
+                                        "-----BEGIN " "PRIVATE KEY-----private", "eyJabc.eyJdef.signature"])
 def test_success_response_reflection_is_blocked_before_evidence_or_summary(rf_environment, fake_xml, reflected):
     def echo(request):
         if request.url.path.endswith("/bekreft"):
@@ -381,3 +381,39 @@ def test_original_harness_pagination_projection_does_not_gain_an_acceptance_gate
             return httpx.Response(200, json={"dokumenter": ["<archive/>"], "totalItems": "1", "totalPages": "unknown"})
     summary, _ = execute(rf_environment, handler=mixed_page)
     assert summary["status"] == "accepted" and evidence(rf_environment)["archive"]["totalPages"] is None
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_rf_case_rejects_non_json_constants_before_generation_or_transport(rf_environment, fake_xml, constant):
+    path = Path(rf_environment["TALLI_RF1086_CASE_PATH"])
+    path.write_text(path.read_text().rstrip()[:-1] + ',"ignored":{"values":[' + constant + ']}}')
+    with pytest.raises(ValueError) as caught:
+        execute(rf_environment)
+    assert caught.value.test_calls == [] and fake_xml[0] == []
+    assert not Path(rf_environment["TALLI_RF1086_EVIDENCE_PATH"]).exists()
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_rf_prior_evidence_rejects_non_json_constants_without_rewrite_or_transport(rf_environment, fake_xml, constant):
+    execute(rf_environment)
+    path = Path(rf_environment["TALLI_RF1086_EVIDENCE_PATH"])
+    path.write_text(path.read_text().rstrip()[:-1] + ',"ignored":{"values":[' + constant + ']}}')
+    previous = path.read_bytes()
+    with pytest.raises(ValueError) as caught:
+        execute(rf_environment)
+    assert caught.value.test_calls == [] and path.read_bytes() == previous
+
+
+def test_rf_case_and_prior_evidence_keep_json_strings_named_like_nonfinite_constants(rf_environment, fake_xml):
+    case_path = Path(rf_environment["TALLI_RF1086_CASE_PATH"])
+    case = json.loads(case_path.read_text())
+    case["ignored"] = ["NaN", "Infinity", "-Infinity"]
+    case_path.write_text(json.dumps(case))
+    original, _ = execute(rf_environment)
+    evidence_path = Path(rf_environment["TALLI_RF1086_EVIDENCE_PATH"])
+    stored = evidence(rf_environment)
+    stored["ignored"] = ["NaN", "Infinity", "-Infinity"]
+    evidence_path.write_text(json.dumps(stored))
+    previous = evidence_path.read_bytes()
+    replayed, calls = execute(rf_environment)
+    assert replayed == original and calls == [] and evidence_path.read_bytes() == previous

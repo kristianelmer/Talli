@@ -154,9 +154,16 @@ def git_commit():
     return result.stdout.strip() if result.returncode == 0 else "unknown"
 
 
+def _parse_json(value):
+    """Keep the frozen tools' JSON.parse syntax, including ignored fields."""
+    def reject_constant(_):
+        raise ValueError("Non-standard JSON constant.")
+    return json.loads(value, parse_constant=reject_constant)
+
+
 def read_evidence(path):
     try:
-        result = json.loads(path.read_text())
+        result = _parse_json(path.read_text())
         if result is not None and (not isinstance(result, dict) or not result):
             raise ValueError("Existing authority evidence is invalid.")
         return result
@@ -189,7 +196,7 @@ def payload(operation: str, value: dict[str, Any]):
         text=True, capture_output=True, timeout=30)
     if result.returncode or len(result.stdout.encode()) > MAX_RESPONSE_BYTES:
         raise ValueError("Local authority payload generation failed.")
-    return json.loads(result.stdout)
+    return _parse_json(result.stdout)
 
 
 def validate_xml(documents, schemas=None):
@@ -251,7 +258,7 @@ class FixedTransport:
         if any(secret and secret in raw for secret in self._secrets):
             raise self._error_type("Authority response contains reflected credentials.", code=self._prefix+"_RESPONSE_INVALID")
         try:
-            parsed = json.loads(raw) if raw else {}
+            parsed = _parse_json(raw) if raw else {}
         except ValueError:
             parsed = {}
         return raw, parsed, status, response_headers

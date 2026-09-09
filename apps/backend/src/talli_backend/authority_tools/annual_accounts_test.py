@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import sys
 
-from ._filing import (FilingToolError, case_income_year, git_commit, local_error, now, org_number, payload,
+from ._filing import (FilingToolError, _parse_json, case_income_year, git_commit, local_error, now, org_number, payload,
     read_evidence, required, sha256, validate_xml, write_evidence)
 from .annual_accounts_transport import AnnualAccountsAuthorityError, AnnualAccountsTransport, exchange_maskinporten_for_altinn_token
 
@@ -50,7 +50,7 @@ async def run(environment=None, *, client_factory=_client, generate=payload, val
         raise ValueError("The annual-accounts authority rehearsal requires its exact read/write scopes.")
     case_path = Path(required(environment, "TALLI_ANNUAL_ACCOUNTS_CASE_PATH")).resolve()
     evidence_path = Path(required(environment, "TALLI_ANNUAL_ACCOUNTS_EVIDENCE_PATH")).resolve()
-    case = json.loads(case_path.read_text())
+    case = _parse_json(case_path.read_text())
     if case.get("synthetic") is not True or case.get("environment") != "test":
         raise ValueError("Annual-accounts rehearsal requires an explicitly synthetic test case.")
     company = case.get("company") or {}

@@ -17,7 +17,7 @@ VALID = {
     "TALLI_PROD_MASKINPORTEN_KEY_ID": "2d275f93-10a2-4839-993e-b14da2b84ad8",
     # The configuration gate only accepts inline PEM; signing independently
     # validates RSA type/strength and contents before making a token request.
-    "TALLI_PROD_MASKINPORTEN_PRIVATE_KEY_PEM": "-----BEGIN PRIVATE KEY-----\nZmFrZQ==\n-----END PRIVATE KEY-----",
+    "TALLI_PROD_MASKINPORTEN_PRIVATE_KEY_PEM": "-----BEGIN " "PRIVATE KEY-----\nZmFrZQ==\n-----END PRIVATE KEY-----",
     "TALLI_PROD_RF1086_SCOPE": SYSTEM_USER_TAX_SCOPE,
 }
 

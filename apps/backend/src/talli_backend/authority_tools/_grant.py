@@ -29,6 +29,10 @@ _ISSUERS = {"test": "https://test.maskinporten.no/", "production": "https://mask
 _MAX_RESPONSE_BYTES = 65_536
 
 
+def _reject_json_constant(_value: str) -> None:
+    raise ValueError("Invalid JSON constant.")
+
+
 def required(environment: Mapping[str, str], name: str) -> str:
     value = environment.get(name, "").strip()
     if not value:
@@ -122,7 +126,7 @@ async def request_token(configuration: CliGrantConfiguration, *,
                     if len(raw) + len(chunk) > _MAX_RESPONSE_BYTES:
                         raise ValueError()
                     raw.extend(chunk)
-        data = json.loads(raw.decode("utf-8-sig", errors="replace"))
+        data = json.loads(raw.decode("utf-8-sig", errors="replace"), parse_constant=_reject_json_constant)
         if not isinstance(data, dict):
             raise ValueError()
         access_token = data.get("access_token")

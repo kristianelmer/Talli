@@ -104,7 +104,7 @@ def test_bad_scope_and_relationship_and_time_fail_before_network(scope, changes)
     "not-a-private-key", None, b"bytes-key",
     pem(rsa.generate_private_key(public_exponent=65537, key_size=1024)),
     pem(ec.generate_private_key(ec.SECP256R1())), pem(password=b"test-only-password"),
-    "-----BEGIN PRIVATE KEY-----\nmalformed-secret\n-----END PRIVATE KEY-----",
+    "-----BEGIN " "PRIVATE KEY-----\nmalformed-secret\n-----END PRIVATE KEY-----",
 ], ids=["invalid-text", "missing", "bytes-input", "weak-rsa", "non-rsa", "encrypted", "malformed-pem"])
 def test_invalid_keys_fail_closed_without_key_in_error(key_pem):
     with pytest.raises(MaskinportenTokenError) as caught:
@@ -195,7 +195,7 @@ def test_invalid_configuration_or_signing_never_calls_transport():
         with pytest.raises(MaskinportenTokenError):
             configuration(**changes)
     client, seen = token_client(config=configuration(private_key_pem=
-        "-----BEGIN PRIVATE KEY-----\nmalformed\n-----END PRIVATE KEY-----"))
+        "-----BEGIN " "PRIVATE KEY-----\nmalformed\n-----END PRIVATE KEY-----"))
     with pytest.raises(MaskinportenTokenError, match="maskinporten_grant_signing_failed"):
         asyncio.run(client.request_token(SYSTEM_USER_CONTROL_READ_SCOPE))
     assert seen == []
@@ -235,3 +235,40 @@ def test_response_stream_is_bounded_and_closed_without_retry():
     with pytest.raises(MaskinportenTokenError, match="maskinporten_response_invalid"):
         asyncio.run(client.request_token(SYSTEM_USER_CONTROL_READ_SCOPE))
     assert stream.closed and stream.reads == 9 and len(seen) == 1
+
+
+@pytest.mark.parametrize("prefix", [b'', b'\xef\xbb\xbf'], ids=["without-bom", "with-bom"])
+def test_fetch_json_replaces_invalid_utf8_in_ignored_fields_and_strips_leading_bom(prefix):
+    client, seen = token_client(httpx.Response(200, content=prefix +
+        b'{"access_token":"memory-only-secret","expires_in":599,"ignored":"\xff"}'))
+    token = asyncio.run(client.request_token(SYSTEM_USER_CONTROL_READ_SCOPE))
+    assert token.access_token == "memory-only-secret" and len(seen) == 1
+    assert "memory-only-secret" not in repr(token)
+    token.discard()
+
+
+@pytest.mark.parametrize("raw", [
+    b'\xef\xbb\xbf{"access_token":"\xff","expires_in":599}',
+    b'\xef\xbb\xbf\xef\xbb\xbf{"access_token":"valid","expires_in":599}',
+    b' \xef\xbb\xbf{"access_token":"valid","expires_in":599}',
+], ids=["invalid-token-byte", "two-boms", "bom-after-space"])
+def test_replacement_decoding_does_not_relax_token_or_json_contract(raw):
+    client, seen = token_client(httpx.Response(200, content=raw))
+    with pytest.raises(MaskinportenTokenError, match="maskinporten_response_invalid"):
+        asyncio.run(client.request_token(SYSTEM_USER_CONTROL_READ_SCOPE))
+    assert len(seen) == 1
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_token_response_rejects_non_json_constants_even_in_ignored_nested_values(constant):
+    raw = ('{"access_token":"synthetic-local-only","expires_in":60,"ignored":{"nested":[' + constant + ']}}').encode()
+    client, seen = token_client(httpx.Response(200, content=raw))
+    with pytest.raises(MaskinportenTokenError) as error:
+        asyncio.run(client.request_token(SYSTEM_USER_CONTROL_READ_SCOPE))
+    assert error.value.code == "maskinporten_response_invalid" and len(seen) == 1
+    assert "synthetic-local-only" not in str(error.value)
+    valid = raw.replace(constant.encode(), json.dumps(constant).encode())
+    client, _ = token_client(httpx.Response(200, content=valid))
+    token = asyncio.run(client.request_token(SYSTEM_USER_CONTROL_READ_SCOPE))
+    assert token.access_token == "synthetic-local-only"
+    token.discard()

@@ -172,6 +172,59 @@ def test_fractional_and_non_number_case_years_still_fail_before_provider(tmp_pat
     assert not (tmp_path/"evidence.json").exists()
 
 
+@pytest.mark.parametrize("kind", ["annual", "tax"])
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_non_json_case_constants_fail_before_provider_or_evidence(tmp_path, kind, constant):
+    module = annual if kind == "annual" else tax
+    env = environment(tmp_path, kind)
+    name = "ANNUAL_ACCOUNTS" if kind == "annual" else "COMPANY_TAX"
+    case = Path(env[f"TALLI_{name}_CASE_PATH"]).read_text().rstrip()
+    path = tmp_path/"case.json"
+    path.write_text(case[:-1] + ', "ignored": {"nested": [' + constant + ']}}')
+    env[f"TALLI_{name}_CASE_PATH"] = str(path)
+    async def unavailable(*_): pytest.fail("invalid JSON case reached provider construction")
+    with pytest.raises(ValueError):
+        asyncio.run(module.run(env, client_factory=unavailable, validate=lambda *_: None))
+    assert not (tmp_path/"evidence.json").exists()
+
+
+@pytest.mark.parametrize("kind", ["annual", "tax"])
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_non_json_evidence_constants_fail_before_provider_and_preserve_bytes(tmp_path, kind, constant):
+    module = annual if kind == "annual" else tax
+    env = environment(tmp_path, kind)
+    transport, _, _ = prepared_tax_queue() if kind == "tax" else queue(
+        annual_instance(), httpx.Response(201), httpx.Response(201), [],
+        {"currentTask": {"altinnTaskType": "signing"}}, annual_instance("signing"))
+    execute(module, env, transport)
+    path = tmp_path/"evidence.json"
+    saved = path.read_text().rstrip()
+    path.write_text(saved[:-1] + ', "ignored": {"nested": [' + constant + ']}}')
+    previous = path.read_bytes()
+    async def unavailable(*_): pytest.fail("invalid JSON evidence reached provider construction")
+    with pytest.raises(ValueError):
+        asyncio.run(module.run(env, client_factory=unavailable, validate=lambda *_: None))
+    assert path.read_bytes() == previous
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_local_payload_output_rejects_non_json_constants(monkeypatch, constant):
+    def spawn(*args, **kwargs):
+        return subprocess.CompletedProcess(args[0], 0,
+            '{"result":"validertOK","ignored":[' + constant + ']}', '')
+    monkeypatch.setattr(subprocess, "run", spawn)
+    with pytest.raises(ValueError):
+        payload("company_tax_validation_summary", {"resultXml": "<r/>"})
+
+
+def test_json_string_values_and_valid_numeric_syntax_remain_accepted(tmp_path):
+    path = tmp_path/"evidence.json"
+    path.write_text('{"values":["NaN","Infinity","-Infinity"],"incomeYear":2025.0,"ignored":1e400}')
+    result = read_evidence(path)
+    assert result["values"] == ["NaN", "Infinity", "-Infinity"]
+    assert result["incomeYear"] == 2025.0 and result["ignored"] == float("inf")
+
+
 @pytest.mark.parametrize("year,accepted", [(2025.0, True), ("2025.0", False), (2025.5, False)])
 def test_tax_resume_preserves_number_is_integer_without_string_coercion(tmp_path, year, accepted):
     env = environment(tmp_path, "tax")

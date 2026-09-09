@@ -795,3 +795,18 @@ def test_generic_journal_requires_explicit_complete_unique_order_before_any_effe
     with pytest.raises(ValueError, match="RF1086_DOCUMENT_ORDER_INVALID"):
         execute(journal, authority, replace(INPUT, document_order=order))
     assert not authority.calls and not journal.events
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("<archive>\ud800</archive>", "<archive>\ufffd</archive>"),
+    ("<archive>\udc00</archive>", "<archive>\ufffd</archive>"),
+    ("<archive>\ud83d\ude00</archive>", "<archive>😀</archive>"),
+], ids=["unpaired-high", "unpaired-low", "valid-pair"])
+def test_inline_archive_textencoder_replacement_is_stored_before_unknown_schema_decision(text, expected):
+    journal = FeedbackJournal()
+    result, _ = reconcile(journal, ReadOnlyArchive([page([text])]))
+    assert result.state == "action_required" and result.artifact_count == 1
+    assert len(journal.artifacts) == 1 and len(journal.events) == 1
+    artifact = next(iter(journal.artifacts.values()))
+    assert artifact.bytes == expected.encode('utf-8') and artifact.sha256 == sha(expected)
+    assert artifact.authority_reference == "inline:" + artifact.sha256

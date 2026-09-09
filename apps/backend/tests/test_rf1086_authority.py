@@ -494,3 +494,18 @@ def test_persistence_operation_prepare_preserves_latest_key_attempt_and_exact_su
     with pytest.raises(Exception, match="basis_unavailable"):
         asyncio.run(journal.prepare(submission_id=DOCUMENT, name="post_hovedskjema", body_hash=ARTIFACT.sha256, idempotency_key=KEY))
     assert len(calls) == 1
+
+
+def test_shared_rf_http_keeps_fatal_textdecoder_for_invalid_utf8_inside_json_strings():
+    client, seen = adapter(httpx.Response(200, content=b'{"dokumenter":[],"ignored":"\xff"}', headers={"content-type":"application/json"}))
+    with pytest.raises(Rf1086AuthorityError, match="RF1086_JSON_INVALID"):
+        call(client)
+    assert len(seen) == 1
+
+
+@pytest.mark.parametrize("xml,expected", [("<H>\ud800</H>", "<H>\ufffd</H>"), ("<H>\ud83d\ude00</H>", "<H>😀</H>")], ids=["unpaired", "paired"])
+def test_outgoing_textencoder_bytes_and_call_hash_agree_on_surrogate_replacement(xml, expected):
+    client, seen = adapter(httpx.Response(200, json={"hovedskjemaId": MAIN}))
+    result = call(client, "main", xml=xml)
+    assert seen[0].content == expected.encode("utf-8")
+    assert result.call.body_hash == hashlib.sha256(seen[0].content).hexdigest()

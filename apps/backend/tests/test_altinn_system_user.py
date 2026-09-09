@@ -367,3 +367,52 @@ def test_oversized_stream_stops_reading_and_closes_before_full_body_arrives():
     with pytest.raises(AuthorityProviderError, match="response_too_large"):
         asyncio.run(client.create_request(IDENTITY))
     assert stream.closed and stream.reads == 9 and len(seen) == 1 and tokens.tokens[0].access_token == ""
+
+
+def test_system_user_fatal_textdecoder_accepts_single_leading_bom_and_preserves_error_code():
+    raw = b'\xef\xbb\xbf' + json.dumps(request_body()).encode()
+    client, seen, tokens = provider(handler=lambda _: httpx.Response(200, content=raw))
+    assert asyncio.run(client.get_request(IDENTITY, REQUEST_ID)).provider_request_id == REQUEST_ID
+    assert len(seen) == 1 and tokens.tokens[0].access_token == ""
+    client, seen, tokens = provider(handler=lambda _: httpx.Response(409, content=b'\xef\xbb\xbf{"code":"AUTH-00007"}'))
+    with pytest.raises(AuthorityProviderError) as error:
+        asyncio.run(client.create_request(IDENTITY))
+    assert error.value.code is Failure.DUPLICATE_SYSTEM_USER_REQUEST
+    assert len(seen) == 1 and tokens.tokens[0].access_token == ""
+
+
+@pytest.mark.parametrize("status", [200, 409])
+def test_system_user_utf8_is_fatal_even_in_ignored_fields_and_non_success_responses(status):
+    raw = json.dumps(query_body(productName="invalid-byte-here")).encode().replace(b"invalid-byte-here", b"\xff")
+    client, seen, tokens = provider(handler=lambda _: httpx.Response(status, content=raw))
+    with pytest.raises(AuthorityProviderError) as error:
+        asyncio.run(client.query_system_user(IDENTITY))
+    assert error.value.code is Failure.RESPONSE_CONTRACT_MISMATCH
+    assert len(seen) == 1 and tokens.tokens[0].access_token == ""
+
+
+@pytest.mark.parametrize("prefix", [b'\xef\xbb\xbf\xef\xbb\xbf', b' \xef\xbb\xbf'], ids=["two-boms", "bom-after-space"])
+def test_system_user_only_strips_one_bom_at_the_start(prefix):
+    client, _, _ = provider(handler=lambda _: httpx.Response(200, content=prefix + json.dumps(request_body()).encode()))
+    with pytest.raises(AuthorityProviderError, match="response_contract_mismatch"):
+        asyncio.run(client.get_request(IDENTITY, REQUEST_ID))
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_system_user_json_constants_cannot_complete_a_query_or_select_duplicate_recovery(constant):
+    raw = json.dumps(query_body(productName="replace-constant")).replace('"replace-constant"', constant).encode()
+    client, seen, tokens = provider(handler=lambda _: httpx.Response(200, content=raw))
+    with pytest.raises(AuthorityProviderError) as error:
+        asyncio.run(client.query_system_user(IDENTITY))
+    assert error.value.code is Failure.RESPONSE_CONTRACT_MISMATCH
+    assert len(seen) == 1 and tokens.tokens[0].access_token == ""
+    # On non-success, the predecessor discarded invalid JSON before selecting
+    # safe provider codes. A non-JSON constant must not enable duplicate lookup.
+    error_raw = ('{"code":"AUTH-00007","ignored":[' + constant + ']}').encode()
+    client, seen, tokens = provider(handler=lambda _: httpx.Response(409, content=error_raw))
+    with pytest.raises(AuthorityProviderError) as error:
+        asyncio.run(client.create_request(IDENTITY))
+    assert error.value.code is Failure.AUTHORITY_HTTP_ERROR
+    assert len(seen) == 1 and tokens.tokens[0].access_token == ""
+    client, _, _ = provider(query_body(productName=constant))
+    assert asyncio.run(client.query_system_user(IDENTITY)).system_user_id == USER_ID

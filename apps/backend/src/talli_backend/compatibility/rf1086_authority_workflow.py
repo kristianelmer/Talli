@@ -204,8 +204,14 @@ async def execute_rf1086_production_release(
         discard_token(token)
 
 
+def _js_utf8_bytes(value: str) -> bytes:
+    # TextEncoder/Buffer UTF-8 combines valid UTF-16 pairs and replaces each
+    # unpaired surrogate with U+FFFD, rather than dropping an archive artifact.
+    return value.encode("utf-16-le", errors="surrogatepass").decode("utf-16-le", errors="replace").encode("utf-8")
+
+
 def _sha256(value: str | bytes) -> str:
-    return hashlib.sha256(value.encode("utf-8") if isinstance(value, str) else value).hexdigest()
+    return hashlib.sha256(_js_utf8_bytes(value) if isinstance(value, str) else value).hexdigest()
 
 
 def _reference(value: str | None) -> str:
@@ -518,7 +524,7 @@ async def _read_feedback_once(journal: Rf1086ProductionJournal, authority: Rf108
     classifications: list[Rf1086FeedbackClassification] = []
     for archived in page.documents:
         if isinstance(archived, str):
-            bytes_value = archived.encode("utf-8")
+            bytes_value = _js_utf8_bytes(archived)
             content_type = "application/xml"
             reference = "inline:" + _sha256(bytes_value)
         else:

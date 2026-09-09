@@ -150,6 +150,11 @@ def sign_maskinporten_grant(
         raise MaskinportenTokenError("maskinporten_grant_signing_failed") from None
 
 
+def _invalid_json_constant(_value: str):
+    # JSON.parse rejects these non-JSON Python extensions even in unused fields.
+    raise ValueError("invalid JSON constant")
+
+
 def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
     result: dict[str, object] = {}
     for key, value in pairs:
@@ -207,7 +212,10 @@ class MaskinportenClient:
                         if len(raw) + len(chunk) > _MAX_RESPONSE_BYTES:
                             raise MaskinportenTokenError("maskinporten_response_invalid", status=status)
                         raw.extend(chunk)
-            data = json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_object)
+            # Fetch Response.json() uses UTF-8 replacement decoding and strips
+            # its leading BOM; field validation still rejects malformed tokens.
+            data = json.loads(raw.decode("utf-8-sig", errors="replace"), object_pairs_hook=_unique_object,
+                              parse_constant=_invalid_json_constant)
             if not isinstance(data, dict):
                 raise ValueError()
             access_token = _identifier(data.get("access_token"), maximum=8192)
