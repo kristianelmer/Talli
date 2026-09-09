@@ -39,6 +39,10 @@ const companyAccessBillingRollback = readFileSync(
   new URL("../supabase/rollback/20260905003000_company_access_billing_owner_subject.sql", import.meta.url),
   "utf8",
 );
+const authorityConnectionsMigration = readFileSync(
+  new URL("../supabase/migrations/20260909120610_authority_connections_capability.sql", import.meta.url),
+  "utf8",
+);
 
 test("web billing commands and queries cross only the generated backend client", () => {
   assert.match(transport, /createTalliApiClient/);
@@ -74,8 +78,14 @@ test("annual submission review renders the backend entitlement without a second 
   assert.doesNotMatch(submissionReview, /billingAccounts|filing_package_paid|pricing_plan|founder/u);
 });
 
-test("billing uses the versioned company-access authorization seam", () => {
-  assert.match(billingAdapter, /company_access_is_accepted_owner_subject_v1/);
+test("billing locks the owned verified request through the versioned company-access authorization seam", () => {
+  assert.match(billingAdapter, /authority_connections\.lock_verified_pilot_request_v1/);
+  assert.doesNotMatch(billingAdapter, /from (?:public|authority_connections)\.system_user_requests/u);
+  const verifiedRequest = authorityConnectionsMigration.match(
+    /create or replace function authority_connections\.lock_verified_pilot_request_v1[\s\S]+?\$function\$;/u,
+  )?.[0] ?? "";
+  assert.match(verifiedRequest, /public\.company_access_is_accepted_owner_subject_v1\(r\.company_id,r\.initiating_owner_user_id\)/u);
+  assert.match(verifiedRequest, /for update;/iu);
   assert.doesNotMatch(billingAdapter, /from public\.company_memberships/u);
   assert.doesNotMatch(billingMigration, /create or replace function public\.company_access_/iu);
   assert.doesNotMatch(billingMigration, /from public\.company_memberships/iu);

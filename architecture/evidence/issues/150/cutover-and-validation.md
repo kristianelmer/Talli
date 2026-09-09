@@ -59,8 +59,9 @@ The database suites also exercise the individual rollback/recutover contracts.
 
 ## Local evidence and review scope
 
-The mandatory database lane uses a disposable loopback Supabase stack. It runs
-all predecessor consumers, their browser journey and Billing lifecycle, then
+The mandatory database lane uses a disposable loopback Supabase stack. After
+checking the expanded schema, it restores the predecessor topology for frozen
+RF/support consumers, their browser journey and the Billing lifecycle, then
 recuts and tests the contracted Authority/RF/launch topology. The successor
 browser uses real authentication, backend workflows, SQL and Documents storage
 with a bounded loopback authority fake. This proves application integration;

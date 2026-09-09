@@ -447,12 +447,13 @@ test("mandatory local lane preserves every predecessor before Billing and final 
         env: { ...process.env, PATH: `${workspace.binDirectory}:${process.env.PATH}`, TMPDIR: workspace.snapshotDirectory } });
       assert.equal(result.status, mode === "success" ? 0 : mode === "billing-failure" ? 13 : 11, result.stderr);
       const milestones = [
+        "AUTHORITY_TOPOLOGY:rollback",
         "HARNESS_NPM:run test:ledger-database-lifecycle", "HARNESS_NPM:run test:banking-database-lifecycle",
         "HARNESS_NPM:run test:investments-database-lifecycle", "HARNESS_NPM:run test:documents-database-lifecycle",
         "HARNESS_NPM:run test:marketing-measurement-database", "HARNESS_NPM:run test:validation-observation",
         "HARNESS_NPM:run test:supabase", "HARNESS_NPM:run test:browser-owner",
         "HARNESS_NPM:run test:ledger-hosted-migration-authority", "HARNESS_NPM:run test:corporate-governance-database-lifecycle",
-        "AUTHORITY_TOPOLOGY:rollback", "HARNESS_NPM:run test:billing-database-lifecycle",
+        "HARNESS_NPM:run test:billing-database-lifecycle",
         ...(mode !== "billing-failure" ? ["AUTHORITY_TOPOLOGY:recutover"] : []),
         ...(mode === "success" ? ["HARNESS_NPM:run test:authority-connections-database", "HARNESS_NPM:run test:browser-authority-connections"] : []),
       ];

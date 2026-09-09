@@ -89,6 +89,10 @@ local_anon_key="${PUBLISHABLE_KEY:-$ANON_KEY}"
 local_service_key="${SECRET_KEY:-$SERVICE_ROLE_KEY}"
 
 TALLI_SUPABASE_WORKDIR="$isolated_workdir" npm run test:supabase-advisors
+# Frozen RF and support rehearsals still exercise their predecessor table/RPC
+# contracts. Restore that single topology before any predecessor consumer; the
+# final lane below independently verifies the contracted successor instead.
+DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs rollback
 npm run test:ledger-database-lifecycle
 npm run test:banking-database-lifecycle
 npm run test:investments-database-lifecycle
@@ -119,10 +123,8 @@ npm run test:ledger-hosted-migration-authority
 # intentionally retires the legacy governance-owned ledger coordinators.
 DATABASE_URL="$DB_URL" npm run test:corporate-governance-database-lifecycle
 
-# Preserve the frozen Billing lifecycle against the physical predecessor System
-# User table. The shipped #150 rollbacks retain its verified-request projection;
-# the approved RF coordinator must roll back before its Authority dependency.
-DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs rollback
+# The shipped #150 rollback retains Billing's verified-request projection while
+# its unchanged lifecycle runs against the physical predecessor request table.
 DATABASE_URL="$DB_URL" npm run test:billing-database-lifecycle
 
 # Recut the exact Authority/RF surface and contract only after predecessor
