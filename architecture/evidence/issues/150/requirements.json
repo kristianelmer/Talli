@@ -219,7 +219,7 @@
     {
       "scope": "successor hydrated Authority Connections and historical RF recovery with actual backend and owned Documents",
       "command": "npm run test:browser-authority-connections",
-      "result": "fixture safety4 and fulljourney1 passed; no live authority calls; accepted after2reloads; originalreceiptSHA256; both-owner denial and console/error guards; zero fixtureusers/companies",
+      "result": "fixture safety 4 and full journey 1 passed; no live authority calls; accepted after two reloads; original receipt SHA-256; both-owner denial and console/error guards; zero fixture users/companies",
       "localTranscript": "/tmp/talli-150-browser-rf-health-final.log"
     },
     {
@@ -233,16 +233,44 @@
       "command": "npm run test:architecture",
       "result": "54 passed, 0 failed, 0 skipped",
       "localTranscript": "/tmp/talli-150-architecture-tests-run2.log"
+    },
+    {
+      "scope": "provider decoder, strict JSON and RF TextEncoder correction",
+      "command": "pytest test_maskinporten.py test_altinn_system_user.py test_altinn_authority_operations.py test_rf1086_authority.py test_rf1086_compatibility.py and affected API suites",
+      "result": "590 passed, 0 failed, 0 skipped; local ports only"
+    },
+    {
+      "scope": "private grant/RF strict JSON and unchanged synthetic credential markers",
+      "command": "pytest test_authority_tool_grant.py test_authority_tool_rf1086.py test_postgres_legacy_rf1086_authority.py",
+      "result": "102 passed, 0 failed, 0 skipped; credential scan passed with unchanged scanner and allowlist"
+    },
+    {
+      "scope": "tax/accounts strict JSON preserves original input, HTTP fallback and valid numeric syntax",
+      "command": "pytest test_authority_filing_tools.py test_authority_filing_transports.py",
+      "result": "138 passed, 0 failed, 0 skipped; 21 regression cases failed before correction",
+      "localTranscript": "/tmp/talli-150-filing-strict-json-green.log"
+    },
+    {
+      "scope": "Billing runtime after matching the fixture to the real verified authenticated-role claim",
+      "command": "pytest test_supabase_billing_runtime.py",
+      "result": "37 passed, 0 failed, 0 skipped on the shipped predecessor rollback topology; no SQL or business assertion changes",
+      "localTranscript": "/tmp/talli-150-billing-role-fixed-runtime.log"
     }
   ],
-  "closeState": "OPEN; implementation active. Scoped tests pass; final stage verification and integration remain pending.",
+  "closeState": "OPEN; implementation and independent source review complete. Immutable complete gates and protected/exact-main integration remain pending.",
   "taskId": "01a08515-2cd8-7093-8a34-3b9b3d458840",
   "branch": "codex/issue-150-authority-01a08515",
   "implementationClaim": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5601486395",
-  "progressCheckedAt": "2026-09-09T16:15:59.352823+00:00",
+  "progressCheckedAt": "2026-09-09T16:36:08.690693+00:00",
   "remainingWork": [
-    "Resolve whole-stage independent review findings and review final committed browser/correction delta",
-    "Final combined mandatory local database/browser lane and two new immutable complete stage gates",
+    "Two new immutable complete customer-ready gates, including final combined database/browser lane",
     "Protected integration and exact-main Release/Preview verification"
-  ]
+  ],
+  "independentReview": {
+    "status": "closed-no-outstanding-source-findings",
+    "revision": "c9a7f4e6752b837d0ee58624548b984ecbafe37e",
+    "evidencePath": "architecture/evidence/issues/150/independent-review.md",
+    "standardsFindingsResolved": 1,
+    "specFindingsResolved": 2
+  }
 }
