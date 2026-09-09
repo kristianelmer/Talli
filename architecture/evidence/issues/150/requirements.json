@@ -3,7 +3,7 @@
   "issue": "#150",
   "source": "https://github.com/kristianelmer/Talli/issues/150",
   "sourceCheckedAt": "2026-09-09T11:38:11.288649+00:00",
-  "status": "implementation-active",
+  "status": "local-stage-exit-passed-protected-integration-pending",
   "entryBlockers": [
     {
       "issue": "#137",
@@ -41,7 +41,7 @@
     {
       "id": "GH-150-A1",
       "requirement": "Owners can initiate and reconcile the supported System User connection flow through the web and backend.",
-      "status": "implemented-first-complete-gate-passed-linked-pair-and-integration-pending",
+      "status": "implemented-linked-complete-gates-passed-protected-integration-pending",
       "plannedEvidencePaths": [
         "apps/backend/src/talli_backend/modules/authority_connections/public.py",
         "apps/backend/src/talli_backend/modules/authority_connections/service.py",
@@ -57,7 +57,7 @@
     {
       "id": "GH-150-A2",
       "requirement": "Callback, token, company, scope, and relationship validation fail closed.",
-      "status": "implemented-first-complete-gate-passed-linked-pair-and-integration-pending",
+      "status": "implemented-linked-complete-gates-passed-protected-integration-pending",
       "plannedEvidencePaths": [
         "apps/backend/tests/test_altinn_system_user.py",
         "apps/backend/tests/test_authority_connections_api.py"
@@ -70,7 +70,7 @@
     {
       "id": "GH-150-A3",
       "requirement": "Founder and operator authority operations retain MFA and redacted audit requirements.",
-      "status": "implemented-first-complete-gate-passed-linked-pair-and-integration-pending",
+      "status": "implemented-linked-complete-gates-passed-protected-integration-pending",
       "plannedEvidencePaths": [
         "apps/backend/tests/test_authority_operations_api.py",
         "apps/backend/tests/test_authority_connections_database_runtime.py"
@@ -84,7 +84,7 @@
     {
       "id": "GH-150-A4",
       "requirement": "Retry and ambiguous-outcome handling remain idempotent and observable.",
-      "status": "implemented-first-complete-gate-passed-linked-pair-and-integration-pending",
+      "status": "implemented-linked-complete-gates-passed-protected-integration-pending",
       "plannedEvidencePaths": [
         "apps/backend/tests/test_authority_connections_service.py",
         "apps/backend/tests/test_authority_connections_database_runtime.py"
@@ -98,7 +98,7 @@
     {
       "id": "GH-150-A5",
       "requirement": "All authority connections use owned ports/adapters.",
-      "status": "implemented-first-complete-gate-passed-linked-pair-and-integration-pending",
+      "status": "implemented-linked-complete-gates-passed-protected-integration-pending",
       "plannedEvidencePaths": [
         "apps/backend/src/talli_backend/modules/authority_connections/module.json",
         "architecture/backend-system.json",
@@ -113,7 +113,7 @@
     {
       "id": "GH-150-A6",
       "requirement": "Legacy TypeScript control-plane policy, credential paths, and active-stage compatibility code are removed.",
-      "status": "implemented-first-complete-gate-passed-linked-pair-and-integration-pending",
+      "status": "implemented-linked-complete-gates-passed-protected-integration-pending",
       "plannedEvidencePaths": [
         "architecture/compatibility.json",
         "tests/authority_connections_retirement.test.mjs",
@@ -129,7 +129,7 @@
     {
       "id": "GH-150-A7",
       "requirement": "The complete `authority_connections` stage exit criteria from issue #132 pass before filing migration begins.",
-      "status": "first-complete-gate-passed-second-gate-and-integration-pending",
+      "status": "linked-complete-gates-passed-stage-registration-and-protected-integration-pending",
       "plannedEvidencePaths": [
         "architecture/evidence/issues/150/requirements.json",
         "architecture/evidence/customer-ready-gates",
@@ -155,6 +155,30 @@
       "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
       "executedAt": "2026-09-09T17:36:29.132Z",
       "independentValidation": "schema, exact 11 checks/zero exits, commands/order/markers, canonical JSON digest, raw transcript and tested producer verified before receipt commit",
+      "validationLimits": {
+        "backendBoundary": "2486 passed, 2 optional database adapter skips, 764 database cases deselected; dedicated PostgreSQL lanes passed",
+        "standaloneValidation": "17 passed, 1 optional database adapter skip; dedicated PostgreSQL rehearsal passed",
+        "finalBillingDatabase": "699 Python and 1 Node passed, 0 skipped",
+        "finalAuthorityDatabase": "65 passed, 0 skipped",
+        "finalAuthorityBrowser": "11 passed, 0 skipped",
+        "advisors": "0 blocking findings, 41 existing performance warnings",
+        "productionDependencies": "root and web audits each reported 0 vulnerabilities"
+      },
+      "evidenceCommittedRevision": "538a99b387a504a3b99e9e8e77e3d57d8376e3c6"
+    },
+    {
+      "revision": "538a99b387a504a3b99e9e8e77e3d57d8376e3c6",
+      "previousPassingRevision": "ed7c3c4000f910e10a5d90dd91be5885bccc9a94",
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/538a99b387a504a3b99e9e8e77e3d57d8376e3c6.json",
+      "evidenceDigest": "sha256:ec555252389867487a8e7685f14eb2643428f05b19226ad795ab740421a3521b",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:a5f465ba9b817c58913751e71729fe5abf250cb1393b70a7bbd8e6832ada260d",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "startedAt": "2026-09-09T17:39:40.053Z",
+      "executedAt": "2026-09-09T17:57:29.262Z",
+      "independentValidation": "Linked pair independently verified before R2 receipt commit: exact schema/checks/commands/markers/hashes and ordered ancestry; final committed-pair and registry review pending.",
       "validationLimits": {
         "backendBoundary": "2486 passed, 2 optional database adapter skips, 764 database cases deselected; dedicated PostgreSQL lanes passed",
         "standaloneValidation": "17 passed, 1 optional database adapter skip; dedicated PostgreSQL rehearsal passed",
@@ -315,14 +339,13 @@
       "localTranscript": "/tmp/talli-150-cleanup-browser-proof.log"
     }
   ],
-  "closeState": "OPEN; independent source review and first immutable complete gate passed. Linked second gate, stage-exit registration and protected/exact-main integration remain pending.",
+  "closeState": "OPEN; independent source review and both linked immutable-revision complete gates passed. Stage-exit registration, final committed-evidence review and protected/exact-main integration remain pending.",
   "taskId": "01a08515-2cd8-7093-8a34-3b9b3d458840",
   "branch": "codex/issue-150-authority-01a08515",
   "implementationClaim": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5601486395",
-  "progressCheckedAt": "2026-09-09T17:37:25.339704+00:00",
+  "progressCheckedAt": "2026-09-09T17:59:16.328087+00:00",
   "remainingWork": [
-    "Second linked immutable complete customer-ready gate",
-    "Stage-exit evidence/registry update and independent exact-delta review",
+    "Stage-exit registration and independent final committed-pair/evidence-only delta review",
     "Protected integration and exact-main Release/Preview verification"
   ],
   "independentReview": {
