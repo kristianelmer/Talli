@@ -1,5 +1,19 @@
 # Billing web feature
 
+## Approved interim and final billing scope
+
+The [9 September 2026 owner decision](https://github.com/kristianelmer/Talli/issues/192#issuecomment-5599100453)
+approves the exact legacy retirement and source-order option B. #192 stays open.
+Implemented historical/annual recorded recovery and the unavailable acquisition
+and renewal defaults form the interim checkpoint. It requires independent review,
+two linked immutable complete gates and protected-main plus exact-main
+Release/Preview before #150 may start. Billing implementation then pauses while
+source owners execute serially. After #149 and Company Access year prerequisite
+#208, #192 must bind actual source contracts and complete ordinary paid
+entitlement, automatic renewal/refunds and every A1–A8 criterion before #194 or
+#197's billing tranche. No absent source is replaced with a fixture or legacy
+readiness row, and no future public dependency is declared before it exists.
+
 <!-- architecture-inventory
 {"apiOperations":["billingRecoverAnnualSupportCleanup","billingReadAnnualSupportRefundRecoveryTargets","billingRecoverAnnualSupportRefund","billingStartAnnualCheckout","billingWithdrawAnnualCheckoutRequest","billingPrepareAnnualCheckout","billingReadAnnualRefundRecoveryTargets","billingRecoverAnnualRefund","billingObserveAnnualCheckout","billingReadAnnualPurchaseHistory","billingReadAnnualRefundSnapshot","billingReadAnnualSupportPurchases","billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
 -->

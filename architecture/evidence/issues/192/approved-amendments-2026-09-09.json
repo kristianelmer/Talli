@@ -1,0 +1,78 @@
+{
+  "date": "2026-09-09",
+  "owner": "Kristian",
+  "verbatimDecision": "approved",
+  "context": "Reply to the assistant request to approve the exact four legacy removals and source-order option B, linked at proposal revision 576be5ac.",
+  "reviewedProposalRevision": "576be5ac874fded9eff1ac54eda8fd23ace8583c",
+  "decisionUrl": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5599100453",
+  "retirementProposal": "architecture/evidence/issues/192/legacy-retirement-amendment-proposal.md",
+  "sourceOrderProposal": "architecture/evidence/issues/192/source-order-amendment-proposal.md",
+  "yearPrerequisiteIssue": "https://github.com/kristianelmer/Talli/issues/208",
+  "trackerUpdates": [
+    {
+      "issue": "#192",
+      "bodySha256": "894630bd0626d33fa83f1824d822bfa57b65d49e1a10c3448adeef9e2558025e",
+      "state": "OPEN"
+    },
+    {
+      "issue": "#165",
+      "bodySha256": "957bbd966f2eb06bf712332f4ca84fd837c0c26d23d1fa05c323b15560e4fc87",
+      "state": "CLOSED"
+    },
+    {
+      "issue": "#180",
+      "bodySha256": "4414b67f03c67374be32f5653409eaebf8aa18a66940f4e9364a137e3fba15f6",
+      "state": "CLOSED"
+    },
+    {
+      "issue": "#150",
+      "bodySha256": "d92a97df57df923e154b9e75b6964acc20d5ef915ccdf4dfbfb69cb820f5f5c6",
+      "state": "OPEN"
+    },
+    {
+      "issue": "#151",
+      "bodySha256": "8aad2dc4f12885aef5984f2b898fd477ea0a5010c433bf21424e55b3d50bd26a",
+      "state": "OPEN"
+    },
+    {
+      "issue": "#152",
+      "bodySha256": "5b60e597ee8de6b5e4f9da0e6551294fafbd81d9821b92b7479060b8221c39d4",
+      "state": "OPEN"
+    },
+    {
+      "issue": "#153",
+      "bodySha256": "874a7ec2a71baf5abddd6384b0e4b3634b1914efb0ba65b78b546f430b1cc086",
+      "state": "OPEN"
+    },
+    {
+      "issue": "#193",
+      "bodySha256": "d772aa6706ec864155c3f240d7d5ccd670392dbc7aab5c9146703194b94c41eb",
+      "state": "OPEN"
+    },
+    {
+      "issue": "#149",
+      "bodySha256": "dcd445b7cdea2a4ad8655d665d090f032eeae9693ebee6f06489844e6a8317ff",
+      "state": "OPEN"
+    },
+    {
+      "issue": "#194",
+      "bodySha256": "9b5dbc62a9378bbb9c6f321c75972effb7aba4d7644a0f0a86519c1fc9cfc9f1",
+      "state": "OPEN"
+    },
+    {
+      "issue": "#197",
+      "bodySha256": "738445d5f36b286780a465a295aab1d91ee42a310eb069f49ef7b22daeeac971",
+      "state": "OPEN"
+    },
+    {
+      "issue": "#172",
+      "bodySha256": "0658b920dcc70e58789e59891f7a9ee24e323a0b9cf5c0adbc10f76e16cec93c",
+      "state": "CLOSED"
+    }
+  ],
+  "implementation": "Exact four-tuple atomic retirement checker plus approved ADR, control-plane, current requirements and source-ticket handoffs. Immutable baseline and existing capability registry position unchanged.",
+  "checkpointStatus": "pending independent final review, two linked complete gates and protected-main/exact-main integration",
+  "finalIssueStatus": "open and incomplete; final source integration follows #149/#208 before #194 and #197 billing",
+  "actualMerchantTest": "9 September checkpoint evidence unchanged; original recurring capture/refund/STOP due 10 September still pending.",
+  "automation": "No automatic continuation authorized or created by this two-amendment approval."
+}

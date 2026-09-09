@@ -3,9 +3,9 @@
   "issue": "#192",
   "capability": "billing",
   "status": "implementation-in-progress",
-  "canonicalRoute": "#137 \u2192 #192 \u2192 #150",
+  "canonicalRoute": "#137 \u2192 #192 interim checkpoint \u2192 #150 \u2192 #151 \u2192 #146 \u2192 #152 \u2192 #153 \u2192 #193 [RF \u2192 tax \u2192 accounts] \u2192 #149 \u2192 Company Access year prerequisite (#208) \u2192 #192 final acceptance \u2192 #194",
   "ownershipCheckpoint": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5563509657",
-  "routeCorrection": "Oversight reconciled source-handoff #137\u2192#150 shorthand against approved #165/#180: #192 is mandatory before #150. #150 remains unclaimed.",
+  "routeCorrection": "Owner approved source-order option B on 2026-09-09. #192 stays open; only its reviewed, twice-gated, protected-main interim receipt may allow #150. Registry authority_connections/#150 is not a claim. Full #192 follows #149 and the Company Access year prerequisite, before #194.",
   "baseline": {
     "revision": "ccf1dcba56a4eb05c5252b00286dba6b2b8b480e",
     "evidenceCommittedRevision": "f0ec97ccfea24268b432f5c91f43dc2c01e170b7",
@@ -33,7 +33,7 @@
     {
       "id": "GH-192-A4",
       "requirement": "Vipps test-mode agreement, charge, webhook replay, retry, receipt, cancellation, full/partial refund, reconciliation and failure recovery.",
-      "status": "local-provider-and-durable-authenticated-receipts-tested-reconciliation-runtime-and-real-MT-pending"
+      "status": "actual-MT-initial-capture-refunds-cancellation-stop-webhook-replay-proven-recurring-capture-refund-pending"
     },
     {
       "id": "GH-192-A5",
@@ -43,12 +43,12 @@
     {
       "id": "GH-192-A6",
       "requirement": "Actionable customer plan/cancel/refund/export and operator exceptions.",
-      "status": "owner-checkout-and-recovery-ui-and-operator-bound-refund-backend-ui-verified-remaining-operator-cleanup-and-automatic-refund-pending"
+      "status": "owner-and-operator-recorded-recovery-including-agreement-stop-verified-source-backed-automatic-and-representative-acceptance-pending"
     },
     {
       "id": "GH-192-A7",
       "requirement": "Provider-neutral boundary, no live activation/charge without approval.",
-      "status": "test-origin-provider-and-http-boundary-implemented-default-provider-disabled-actual-MT-and-final-runtime-pending"
+      "status": "test-origin-provider-actual-MT-and-closed-defaults-proven-final-source-backed-runtime-pending"
     },
     {
       "id": "GH-192-A8",
@@ -1359,8 +1359,9 @@
     }
   },
   "externalEvidence": {
-    "vippsMerchantTest": "Existing designated Talli Recurring MT TEST unit MSN535717 verified by oversight; free test-only setup/use confirmed. Backend credentials, MT app user and callback setup remain pending. Runtime/runner implemented locally, actual MT not run.",
-    "discovery": "Official Vipps Business Portal opened in Opera; owner electronic-ID sign-in required. No credentials retrieved or new unit created; zero provider requests."
+    "vippsMerchantTest": "Actual existing MSN535717 MT evidence at checkpoint-2026-09-09. Initial captures, partial/remaining and independent full refund, cancellation, STOP and signed webhook/replay proved. Original recurring charge due2026-09-10 remains DUE; recurring capture/refund/STOP pending. Raw checkout-create idempotency failed; runner reconciles original agreement and prohibits creation replay.",
+    "evidencePath": "architecture/evidence/issues/192/checkpoint-2026-09-09/README.md",
+    "runtimeConfiguration": "Private backend-only configuration retained; synthetic phone/NIN and secrets excluded from repository. Temporary callback/tunnel/isolated DB removed."
   },
   "preservedGates": [
     "#189",
@@ -1383,13 +1384,60 @@
     "operationalClearanceOwner": "#179/#198 production release/provider gates, separately required",
     "legacySnapshotLimitation": "public.filing_readiness_snapshots allows owner/browser INSERT/UPDATE; billing.read_legacy_filing_readiness_v1 trusts its ready/empty blockers. This is not authoritative annual-charge evidence.",
     "currentBinding": "application.unavailable_annual_checkout_prerequisites always returns FILING_NOT_READY; isolated test prerequisites are not production readiness or MT proof.",
-    "exitConstraint": "Oversight explicitly preserves #192 exit criteria. Unavailable production binding is interim only; if completion requires premature #149/#193 source work, report that dependency conflict rather than declaring the sold path complete.",
-    "alternatePaths": "Authenticated annual checkout start/reconciliation POST routes now compose the existing service through the public operations factory. Provider is absent by default; the source resolver and independent real-DB verifier remain unavailable. Annual reads/local cancellation APIs and UI exist. Legacy retirement still awaits the exact architecture amendment; none is final sold-path acceptance."
+    "exitConstraint": "Approved option B permits only a gated interim checkpoint before #150; full source-backed #192 acceptance remains after #149/year prerequisite and before #194. Missing sources cannot establish sold-path completion.",
+    "alternatePaths": "Authenticated annual checkout and original-intent recovery, owner/operator history/cancellation/refund/STOP recovery exist. Provider and trusted readiness bindings remain unavailable by default. The four-scope retirement amendment is approved; no interim or final completion receipt yet."
   },
   "runtimeCutover": {
     "acquisition": "Retire default SimulationBillingProvider acquisition, account reset/configuration, subscription activation and filing-package purchase across main.py HTTP, BillingWorkflow/BillingService, persistence and web actions/controls.",
     "entitlement": "Replace legacy billing_accounts subscription_active/filing_package_paid plus editable readiness authorization; existing simulated flags must not become annual paid authority.",
     "preservation": "Retain historical payment evidence/reconciliation and cancellation/refund recovery as appropriate. Annual cancellation preserves paid-year access; legacy subscription cancellation cannot stand in. Free validation authority remains distinct.",
-    "authority": "Annual source-owned filing readiness and actual MT still pending. Do not make legacy snapshots authoritative, invent owner worker claims, or move #193/#149 source ownership forward without resolving route conflict."
+    "authority": "Source owners execute serially under approved option B. Actual MT evidence is partial until recurring capture/refund/STOP. Do not make legacy snapshots authoritative, fabricate worker owner claims or move source ownership."
+  },
+  "routeAmendment": {
+    "approvedAt": "2026-09-09",
+    "decision": "approved",
+    "decisionUrl": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5599100453",
+    "option": "B",
+    "proposalRevision": "576be5ac874fded9eff1ac54eda8fd23ace8583c",
+    "interim": {
+      "status": "pending",
+      "issueRemainsOpen": true,
+      "requires": [
+        "currently-implementable-billing-complete",
+        "independent-review",
+        "two-linked-immutable-11-of-11-gates",
+        "protected-main-release-preview-merge",
+        "exact-main-release-preview"
+      ],
+      "completeGateReceipts": [],
+      "integrationReceipt": null,
+      "authorizesNextIssue": "#150"
+    },
+    "sourceOrder": [
+      "#150",
+      "#151",
+      "#146",
+      "#152",
+      "#153",
+      "#193",
+      "#149"
+    ],
+    "yearPrerequisite": {
+      "owner": "company_access",
+      "position": "after #149, before #192 final",
+      "accepted2026References": "preserved",
+      "unvalidatedYears": "unavailable",
+      "issue": "#208"
+    },
+    "final": {
+      "status": "pending",
+      "allOriginalCriteriaRequired": true,
+      "requiredBefore": [
+        "#194",
+        "#197 billing tranche"
+      ]
+    },
+    "overlap": "#192 implementation pauses while source owners execute; read-only analysis only",
+    "registryState": "authority_connections/#150 unchanged; does not permit claim without interim receipt"
   }
 }

@@ -19,6 +19,16 @@ const route = [
   141, 142, 143, 190, 147, 144, 145, 148, 191, 137, 192, 150,
   151, 146, 152, 153, 193, 149, 194, 155, 156, 157, 195, 199, 154,
 ];
+const routeLabels = route.map((issue) => {
+  if (issue === 192) return "#192 interim checkpoint";
+  if (issue === 193) return "#193 [RF → tax → accounts]";
+  if (issue === 194) return "Company Access year prerequisite (#208) → #192 final acceptance → #194";
+  return `#${issue}`;
+});
+const issue192Requirements = JSON.parse(readFileSync(
+  new URL("../architecture/evidence/issues/192/requirements.json", import.meta.url),
+  "utf8",
+));
 const completedPrefix = [188, 140];
 const parallelAndClearance = [189, 196, 197, 198];
 const signoffs = [
@@ -39,11 +49,8 @@ const signoffs = [
 ];
 
 test("the live execution control plane pins the complete route and sole clearance", () => {
-  assert.match(
-    controlPlane,
-    new RegExp(`\`${route.map((issue) => `#${issue}`).join(" → ")}\``),
-  );
-  for (const issue of [...completedPrefix, ...route, ...parallelAndClearance]) {
+  assert.ok(controlPlane.includes(`\`${routeLabels.join(" → ")}\``));
+  for (const issue of [...completedPrefix, ...route, 208, ...parallelAndClearance]) {
     assert.equal(
       controlPlane.split("\n").filter((line) => (
         line.startsWith(`| #${issue} |`) && line.split("|").length === 6
@@ -139,4 +146,34 @@ test("the control plane blocks premature banking, validation, spend, and externa
   assert.match(controlPlane, /provider, best estimate, one-time\/recurring\/usage basis\s+and a free\/cheaper alternative/u);
   assert.match(controlPlane, /Unknown payment, filing or provider effects are reconciled/u);
   assert.match(controlPlane, /seven\s+consecutive-day observation window/u);
+});
+
+test("approved billing split preserves source order and both completion barriers", () => {
+  const amendment = issue192Requirements.routeAmendment;
+  assert.equal(amendment.option, "B");
+  assert.equal(amendment.decision, "approved");
+  assert.match(amendment.decisionUrl, /issues\/192#issuecomment-5599100453$/u);
+  assert.equal(amendment.interim.issueRemainsOpen, true);
+  assert.deepEqual(amendment.sourceOrder, ["#150", "#151", "#146", "#152", "#153", "#193", "#149"]);
+  assert.deepEqual(amendment.interim.requires, [
+    "currently-implementable-billing-complete", "independent-review",
+    "two-linked-immutable-11-of-11-gates", "protected-main-release-preview-merge",
+    "exact-main-release-preview",
+  ]);
+  assert.equal(amendment.final.allOriginalCriteriaRequired, true);
+  assert.deepEqual(amendment.final.requiredBefore, ["#194", "#197 billing tranche"]);
+  assert.deepEqual(issue192Requirements.criteria.map(({ id }) => id),
+    Array.from({ length: 8 }, (_, index) => `GH-192-A${index + 1}`));
+  assert.equal(amendment.yearPrerequisite.owner, "company_access");
+  assert.equal(amendment.yearPrerequisite.issue, "#208");
+  assert.equal(amendment.yearPrerequisite.accepted2026References, "preserved");
+  assert.equal(amendment.yearPrerequisite.unvalidatedYears, "unavailable");
+  assert.match(controlPlane, /#150 remains\s+unclaimed/u);
+  assert.match(controlPlane, /Approval or a green local check is not the checkpoint receipt/u);
+  assert.match(controlPlane, /implementation pauses during serial #150 through #149/u);
+  assert.match(controlPlane, /#193 is internally serialized RF-1086 → company tax → annual\s+accounts/u);
+  assert.match(controlPlane, /Full #192 is required\s+before #194 and #197's billing tranche/u);
+  assert.match(controlPlane, /#150 \| #192 interim receipt including two linked 11\/11 gates, protected merge and exact-main Release\/Preview/u);
+  assert.match(controlPlane, /#194 \| #149 exited and full #192 completed/u);
+  assert.match(controlPlane, /billing after full #192 \(never the interim checkpoint\)/u);
 });

@@ -1,5 +1,11 @@
 # Proposed exact legacy acquisition retirement amendment
 
+> **Approved on 9 September 2026.** Kristian replied "approved" to both linked
+> proposals; see the [decision record](https://github.com/kristianelmer/Talli/issues/192#issuecomment-5599100453)
+> and current ADR 0013. The proposal text below is retained as reviewed, including
+> its historical pending status. The separate approved option B controls the
+> interim/final sequence; approval is not gate or completion evidence.
+
 Status: **pending Kristian's explicit architecture approval**. This document is a
 reviewable proposal, not an amendment to ADR 0013 and not passing gate evidence.
 

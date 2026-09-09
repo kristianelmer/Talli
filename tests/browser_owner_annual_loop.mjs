@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 
 import { createClient } from "@supabase/supabase-js";
+import { createTalliApiClient } from "@talli/talli-api-client";
 import { chromium } from "playwright";
 import pg from "pg";
 
@@ -131,6 +132,7 @@ test("browser owner annual loop uses persisted state and survives reload", async
     const setupId = randomUUID();
     const shareholderId = randomUUID();
     const previewId = randomUUID();
+    const systemUserRequestId = randomUUID();
 
     const { data: createdUser, error: createUserError } =
       await admin.auth.admin.createUser({
@@ -150,6 +152,7 @@ test("browser owner annual loop uses persisted state and survives reload", async
         setupId,
         shareholderId,
         previewId,
+        systemUserRequestId,
         ownerId,
         orgNumber,
       },
@@ -196,6 +199,38 @@ test("browser owner annual loop uses persisted state and survives reload", async
     await page.waitForLoadState("networkidle");
     await establishOwnerAal2(page, baseUrl);
     const ownerSession = await browserSupabaseSession(page);
+    const billingApi = createTalliApiClient({ baseUrl: backendBaseUrl });
+    const billingRequest = {
+      headers: { Authorization: `Bearer ${ownerSession.access_token}` },
+    };
+    const validationQuery = {
+      companyId, incomeYear: 2025, obligation: "aksjonaerregisteroppgaven",
+      caseProfile: "rf1086_no_activity_v1",
+    };
+    const beforeValidation = await billingApi.billingReadEntitlement({ ...validationQuery, ...billingRequest });
+    assert.equal(beforeValidation.status, "annual_billing_unavailable");
+    assert.equal(beforeValidation.allowed, false);
+    assert.equal(beforeValidation.chargeAllowed, false);
+    assert.equal(beforeValidation.billingExempt, false);
+    // The synthetic no-activity case uses the supported exact free-validation
+    // grant. It is never a legacy paid account or annual paid entitlement.
+    const validation = await billingApi.billingManagePilotEntitlement({
+      companyId, userId: ownerId, incomeYear: 2025, status: "active",
+      billingExempt: true, systemUserRequestId,
+      startsAt: new Date(Date.now() - 60_000).toISOString(),
+      expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+      evidenceReference: `synthetic-browser-no-activity:${previewId}`,
+    }, { ...billingRequest, idempotencyKey: `browser-validation-${systemUserRequestId}` });
+    assert.equal(validation.companyId, companyId);
+    assert.equal(validation.userId, ownerId);
+    assert.equal(validation.incomeYear, 2025);
+    assert.equal(validation.caseProfile, "rf1086_no_activity_v1");
+    assert.equal(validation.billingExempt, true);
+    const beforeReadiness = await billingApi.billingReadEntitlement({ ...validationQuery, ...billingRequest });
+    assert.equal(beforeReadiness.allowed, false);
+    assert.equal(beforeReadiness.chargeAllowed, false);
+    assert.equal(beforeReadiness.billingExempt, true);
+    assert.equal(beforeReadiness.pilotEntitlementId, validation.entitlementId);
     await assertLedgerReadBoundaries({
       accessToken: ownerSession.access_token,
       backendBaseUrl,
@@ -251,14 +286,7 @@ test("browser owner annual loop uses persisted state and survives reload", async
     await page.goto(`${baseUrl}/workspace`);
     await page.waitForLoadState("networkidle");
 
-    await page
-      .getByRole("button", { name: "Marker filingpakke betalt" })
-      .click();
-    await page.waitForLoadState("networkidle");
-    await expectText(
-      page,
-      "Innsendingskontrollen må være klar før innsendingspakken kan betales.",
-    );
+    assert.equal(await page.getByRole("button", { name: "Marker filingpakke betalt" }).count(), 0);
 
     await page.getByRole("button", { name: "Oppdater readiness" }).click();
     await page.waitForLoadState("networkidle");
@@ -266,10 +294,18 @@ test("browser owner annual loop uses persisted state and survives reload", async
     await page.waitForLoadState("networkidle");
     await expectText(page, "Klar for produksjonsinnsending");
 
-    await page
-      .getByRole("button", { name: "Marker filingpakke betalt" })
-      .click();
-    await page.waitForLoadState("networkidle");
+    const readyValidation = await billingApi.billingReadEntitlement({ ...validationQuery, ...billingRequest });
+    assert.equal(readyValidation.status, "pilot_entitlement_active");
+    assert.equal(readyValidation.allowed, true);
+    assert.equal(readyValidation.chargeAllowed, false);
+    assert.equal(readyValidation.billingExempt, true);
+    assert.equal(readyValidation.pilotEntitlementId, validation.entitlementId);
+    for (const obligation of ["skattemelding", "aarsregnskap"]) {
+      const other = await billingApi.billingReadEntitlement({ companyId, incomeYear: 2025, obligation, ...billingRequest });
+      assert.equal(other.allowed, false, "The RF validation grant must not authorize another obligation");
+      assert.equal(other.chargeAllowed, false);
+      assert.equal(other.billingExempt, false);
+    }
     await page
       .getByLabel("Jeg bekrefter rett til å sende inn for selskapet.")
       .check();
@@ -705,7 +741,7 @@ async function seedInvestmentEvidence(
 }
 
 async function seedAnnualLoop(admin, database, ids, onCompanyCreated) {
-  const { companyId, setupId, shareholderId, previewId, ownerId, orgNumber } =
+  const { companyId, setupId, shareholderId, previewId, systemUserRequestId, ownerId, orgNumber } =
     ids;
   await assertNoError(
     admin.from("companies").insert({
@@ -840,21 +876,15 @@ async function seedAnnualLoop(admin, database, ids, onCompanyCreated) {
       updated_by: ownerId,
     }),
   );
-  await assertNoError(
-    admin.from("billing_accounts").insert({
-      company_id: companyId,
-      pricing_plan: "founder",
-      monthly_nok: 29,
-      filing_package_nok: 299,
-      founder_cohort_number: 1,
-      subscription_active: true,
-      filing_package_paid: false,
-      supported_case: true,
-      refund_eligible: false,
-      no_charge_reason: null,
-      updated_by: ownerId,
-    }),
-  );
+  // This is a synthetic accepted connection record for the exact supported
+  // validation fixture, not evidence of an actual Altinn connection or filing.
+  await database.query(`
+    insert into public.system_user_requests (
+      id, company_id, initiating_owner_user_id, obligation, external_ref,
+      status, preflight_verified_at, accepted_at
+    ) values ($1, $2, $3, 'aksjonaerregisteroppgaven', $4, 'accepted', now(), now())
+  `, [systemUserRequestId, companyId, ownerId,
+    createHash("sha256").update(`browser-system-user:${systemUserRequestId}`).digest("base64url")]);
   await assertNoError(
     admin.from("authority_permissions").insert([
       {

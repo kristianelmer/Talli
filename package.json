@@ -55,7 +55,7 @@
     "test:company-tax-return-xml": "node --experimental-strip-types --test tests/company_tax_return_xml.test.mjs",
     "test:customer-agreements": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/customer_agreements.test.mjs",
     "test:customer-agreement-actions": "node --experimental-strip-types --test tests/customer_agreement_actions.test.mjs tests/customer_agreement_reacceptance_ui.test.mjs tests/onboarding_presentation.test.mjs",
-    "test:ci-gate": "node --test tests/ci_release_gate.test.mjs",
+    "test:ci-gate": "node --test tests/ci_release_gate.test.mjs tests/mass_market_execution_control_plane.test.mjs",
     "test:corporate-documents": "node --experimental-strip-types --test tests/corporate_documents.test.mjs tests/corporate_document_schema.test.mjs tests/corporate_document_database_runtime.test.mjs",
     "test:corporate-decision-workflow": "node --experimental-strip-types --test tests/corporate_decision_workflow.test.mjs",
     "test:corporate-governance-database-lifecycle": "node --test --test-concurrency=1 tests/corporate_governance_capability_schema.test.mjs tests/corporate_governance_database_runtime.test.mjs tests/corporate_governance_migration_lifecycle.test.mjs tests/corporate_governance_annual_close_schema.test.mjs tests/corporate_governance_annual_close_database_runtime.test.mjs tests/corporate_governance_supported_events_schema.test.mjs tests/corporate_governance_supported_events_ui.test.mjs && node --test --test-concurrency=1 tests/corporate_governance_contract_migration_lifecycle.test.mjs",

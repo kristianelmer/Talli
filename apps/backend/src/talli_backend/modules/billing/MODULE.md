@@ -1,5 +1,19 @@
 # Billing backend capability
 
+## Approved interim and final billing scope
+
+The [9 September 2026 owner decision](https://github.com/kristianelmer/Talli/issues/192#issuecomment-5599100453)
+approves the exact legacy retirement and source-order option B. #192 stays open.
+Implemented historical/annual recorded recovery and the unavailable acquisition
+and renewal defaults form the interim checkpoint. It requires independent review,
+two linked immutable complete gates and protected-main plus exact-main
+Release/Preview before #150 may start. Billing implementation then pauses while
+source owners execute serially. After #149 and Company Access year prerequisite
+#208, #192 must bind actual source contracts and complete ordinary paid
+entitlement, automatic renewal/refunds and every A1–A8 criterion before #194 or
+#197's billing tranche. No absent source is replaced with a fixture or legacy
+readiness row, and no future public dependency is declared before it exists.
+
 <!-- architecture-inventory
 {"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests","billing.annual_refund_requests","billing.annual_checkout_withdrawals","billing.annual_checkout_observation_principals","billing.annual_checkout_observation_authorities"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence","AnnualSupportReadPersistence","AnnualRefundRecoveryPersistence","AnnualSupportRefundRecoveryPersistence","AnnualNotificationAuthentication","AnnualNotificationPersistence","AnnualCheckoutObservationPersistence","AnnualSupportCleanupRecoveryPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
 -->

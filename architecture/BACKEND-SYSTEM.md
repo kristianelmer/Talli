@@ -1,5 +1,19 @@
 # Backend system boundary
 
+## Approved interim and final billing scope
+
+The [9 September 2026 owner decision](https://github.com/kristianelmer/Talli/issues/192#issuecomment-5599100453)
+approves the exact legacy retirement and source-order option B. #192 stays open.
+Implemented historical/annual recorded recovery and the unavailable acquisition
+and renewal defaults form the interim checkpoint. It requires independent review,
+two linked immutable complete gates and protected-main plus exact-main
+Release/Preview before #150 may start. Billing implementation then pauses while
+source owners execute serially. After #149 and Company Access year prerequisite
+#208, #192 must bind actual source contracts and complete ordinary paid
+entitlement, automatic renewal/refunds and every A1–A8 criterion before #194 or
+#197's billing tranche. No absent source is replaced with a fixture or legacy
+readiness row, and no future public dependency is declared before it exists.
+
 <!-- architecture-inventory
 {"adapterBindingModes":["MarketingMeasurementGateway=>private generated-client transport and SET-only restricted PostgreSQL functions"],"adapterBindingOwners":["MarketingMeasurementGateway=>backend-system"],"adapterBindings":["MarketingMeasurementGateway=>talli_backend.adapters.supabase_marketing_measurement.SupabaseMarketingMeasurementAdapter"],"adapterDependencies":["talli_backend.modules.marketing_measurement.public"],"ports":["MarketingMeasurementGateway"],"publicPackages":["talli_backend.modules.marketing_measurement.public"],"routes":["/api/v1/marketing-measurement/events","/api/v1/marketing-measurement/report","/api/v1/marketing-measurement/withdrawals"],"technicalMigrations":["supabase/migrations/20260828103000_marketing_funnel_measurement.sql"],"technicalTables":["backend_system.marketing_funnel_events","backend_system.marketing_funnel_withdrawals"],"transportDependencies":["asyncio","os","secrets","talli_backend.adapters.supabase_marketing_measurement","talli_backend.modules.marketing_measurement.public"],"workflowDependencies":["talli_backend.modules.marketing_measurement.public"],"workflowPurposes":["marketing-funnel-measurement=>Accepts only consented bounded anonymous funnel codes through a private server transport, deletes withdrawn raw sessions, and returns aggregate-only reports to independently verified active operators."],"workflows":["marketing-funnel-measurement"]}
 -->
@@ -388,7 +402,7 @@ settlement against the latest locked purchase and operation. Readiness defaults
 to unavailable; no annual HTTP/runtime composition is enabled by this adapter.
 
 <!-- architecture-inventory
-{"ports":["AnnualCheckoutPersistence"],"adapterBindings":["AnnualCheckoutPersistence=>talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCheckoutSession"],"adapterBindingOwners":["AnnualCheckoutPersistence=>backend-system"],"adapterBindingModes":["AnnualCheckoutPersistence=>restricted verified-actor PostgreSQL claims and settlement; readiness defaults unavailable; runtime cutover pending #192"]}
+{"ports":["AnnualCheckoutPersistence"],"adapterBindings":["AnnualCheckoutPersistence=>talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCheckoutSession"],"adapterBindingOwners":["AnnualCheckoutPersistence=>backend-system"],"adapterBindingModes":["AnnualCheckoutPersistence=>restricted verified-actor PostgreSQL original-intent claims and settlement; trusted readiness unavailable until #149/#208 and final #192"]}
 -->
 
 `AnnualCancellationPersistence` is registered to
@@ -397,7 +411,7 @@ It records local renewal cancellation before any provider cleanup. HTTP/runtime
 composition, provider cleanup and worker recovery remain pending.
 
 <!-- architecture-inventory
-{"ports":["AnnualCancellationPersistence"],"adapterBindings":["AnnualCancellationPersistence=>talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCancellationSession"],"adapterBindingOwners":["AnnualCancellationPersistence=>backend-system"],"adapterBindingModes":["AnnualCancellationPersistence=>verified-owner local renewal cancellation and immutable receipts; provider cleanup and runtime cutover pending #192"]}
+{"ports":["AnnualCancellationPersistence"],"adapterBindings":["AnnualCancellationPersistence=>talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCancellationSession"],"adapterBindingOwners":["AnnualCancellationPersistence=>backend-system"],"adapterBindingModes":["AnnualCancellationPersistence=>verified-owner local renewal cancellation and immutable receipts; source-backed renewal and ordinary entitlement deferred to final #192"]}
 -->
 
 
@@ -411,7 +425,7 @@ original cleanup operation. Owner HTTP recovery is composed below; worker and
 support authority remain pending #192.
 
 <!-- architecture-inventory
-{"ports":["AnnualAgreementCleanupPersistence"],"adapterBindings":["AnnualAgreementCleanupPersistence=>talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession"],"adapterBindingOwners":["AnnualAgreementCleanupPersistence=>backend-system"],"adapterBindingModes":["AnnualAgreementCleanupPersistence=>verified-owner receipt-bound original agreement cleanup through authenticated POST; provider absent by default, worker/support authority pending #192"]}
+{"ports":["AnnualAgreementCleanupPersistence"],"adapterBindings":["AnnualAgreementCleanupPersistence=>talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession"],"adapterBindingOwners":["AnnualAgreementCleanupPersistence=>backend-system"],"adapterBindingModes":["AnnualAgreementCleanupPersistence=>verified-owner receipt-bound original agreement cleanup through authenticated POST; provider absent by default; automatic processing deferred to final #192"]}
 -->
 
 

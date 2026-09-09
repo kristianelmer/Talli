@@ -1,5 +1,11 @@
 # Proposed source and order amendment for completing issue #192
 
+> **Approved on 9 September 2026.** Kristian replied "approved" to both linked
+> proposals; see the [decision record](https://github.com/kristianelmer/Talli/issues/192#issuecomment-5599100453)
+> and current ADR 0013. The proposal text below is retained as reviewed, including
+> its historical pending status. The separate approved option B controls the
+> interim/final sequence; approval is not gate or completion evidence.
+
 Status: **DRAFT FOR KRISTIAN — not approved or applied**. Prepared 7 September 2026 against repository revision `27a2eecb` and read-only live issue bodies/comments. This proposal does not close #192, modify a manifest, advance a migration, authorize a provider call, or grant any spending/production authority.
 
 ## Decision in one paragraph

@@ -1,7 +1,8 @@
 # Mass-market execution control plane
 
 Status: active execution control  
-Repository basis: 2026-08-31, task `01a0564b-8c6e-7691-8c08-2b3e7e7df038`, pre-amendment revision `e362006a`
+Original repository basis: 2026-08-31, task `01a0564b-8c6e-7691-8c08-2b3e7e7df038`, pre-amendment revision `e362006a`
+Billing route amendment: 2026-09-09, [owner approval](https://github.com/kristianelmer/Talli/issues/192#issuecomment-5599100453)
 Artifact identity: the immutable Git commit containing this path, published and linked from #188  
 Authoritative queue: GitHub issue [#165](https://github.com/kristianelmer/Talli/issues/165) and its live child tickets  
 Mandatory preflight source: [#188 comment 5434701877](https://github.com/kristianelmer/Talli/issues/188#issuecomment-5434701877)
@@ -47,11 +48,12 @@ Completed prefix:
 
 Current ADR-0013 serialized implementation path:
 
-`#141 → #142 → #143 → #190 → #147 → #144 → #145 → #148 → #191 → #137 → #192 → #150 → #151 → #146 → #152 → #153 → #193 → #149 → #194 → #155 → #156 → #157 → #195 → #199 → #154`
+`#141 → #142 → #143 → #190 → #147 → #144 → #145 → #148 → #191 → #137 → #192 interim checkpoint → #150 → #151 → #146 → #152 → #153 → #193 [RF → tax → accounts] → #149 → Company Access year prerequisite (#208) → #192 final acceptance → #194 → #155 → #156 → #157 → #195 → #199 → #154`
 
 Only one ADR-0013 business capability migration may be active. A post-migration
 mass-market slice immediately following a capability must finish before the next
-capability begins. #193 is internally serialized RF-1086 → company tax → annual
+capability begins, except the explicitly approved #192 interim/final split below.
+#193 is internally serialized RF-1086 → company tax → annual
 accounts; it may not mutate two filing capabilities concurrently.
 
 Permitted overlap:
@@ -82,13 +84,42 @@ persistence, capability migrations, generated contracts, or shared integration
 files while the serialized owner is changing them. One integration owner merges
 and gates all bounded contributions.
 
-Live blocker audit at this snapshot: #140 is closed with two immutable complete
-gates, the architecture registry identifies `investments/#141` as the sole active
-capability stage, and #141 is the sole next implementation claim. #189 remains
-open as the independent external gate described above; its label or open state
-does not reopen banking or authorize provider-specific assumptions. Every later
-`Blocked by` edge remains serialized, and `ready-for-agent` labels do not override
-those edges.
+Live blocker audit on 9 September 2026: #137 has exited. The registry identifies
+`authority_connections/#150` because it has no idle post-migration state; this is
+registry readiness, not a permitted implementation claim. #192 is the sole active
+billing implementation lane until its interim receipt is complete. #150 remains
+unclaimed. #189 remains the independent external gate above. Labels do not override
+these entry conditions.
+
+### Approved billing source-order split
+
+The [owner decision](https://github.com/kristianelmer/Talli/issues/192#issuecomment-5599100453)
+approved source-order option B and the separate exact four-scope retirement.
+The #192 interim checkpoint remains **pending**. It must complete currently
+implementable billing work, retain truthful unavailable acquisition/renewal
+states, preserve historical recovery/cancellation/refunds/read/export, and pass
+independent review and two linked immutable complete 11/11 gates. Protected
+Release/Preview merge and exact-main Release/Preview evidence are required before
+#150 may be claimed. Approval or a green local check is not the checkpoint receipt.
+
+Issue #192 stays open. Its implementation pauses during serial #150 through #149;
+only read-only #192 analysis may overlap those source owners. Filing owners
+publish immutable company/year/obligation readiness, complete submission history,
+corrections and terminal/unknown outcomes. #149 verifies and aggregates these
+public contracts independently of paid entitlement. Incident producers attest
+only their own facts; billing alone decides #177 liability. Missing sources
+remain unavailable and cannot establish that no production filing occurred.
+
+After #149, canonical Company Access must provide immutable year-selected
+admission manifests and current-year renewal checks. Preserve accepted 2026
+references; unvalidated years fail closed and 2027 requires its own support proof.
+Then #192 binds the real sources and completes ordinary paid entitlement,
+automatic renewal/refunds and all original A1–A8 acceptance. Full #192 is required
+before #194 and #197's billing tranche. All original provider, representative,
+security/privacy/accounting, browser/mobile, independent review, two complete
+immutable gates and protected-main evidence remain mandatory. Neither the interim
+checkpoint nor this amendment grants spending, real filing, provider activation,
+named-data, outreach or launch authority.
 
 ### Continuous-main integration rule
 
@@ -99,6 +130,8 @@ and the Vercel Preview check on that immutable revision, and merge the pull
 request. The next serialized ticket may be claimed only after that merge is on
 `main` and the post-merge Release gate is green. A closed-but-unmerged ticket
 remains the active stage; agents must neither rotate to nor begin its successor.
+For #192 only, the approved interim receipt may authorize #150 while #192 stays
+open; full #192 must later satisfy this same integration rule before #194.
 
 `release/production` is an independent production pointer. Capability PRs never
 advance it, and a green Preview deployment is not production authorization.
@@ -106,7 +139,7 @@ The #189 provider gate and #198 final release/launch gate remain mandatory.
 
 ## Ownership zones
 
-Every business zone `L` through `AR` includes its module manifests and scoped
+Every business zone `CA` through `AR` includes its module manifests and scoped
 docs, generated OpenAPI/client surface, capability tests,
 architecture/database-catalog changes, additive migration, separate contract
 migration, and phase-aware rollback when those are needed. Presentation,
@@ -118,6 +151,7 @@ root gate scripts) have one integration owner and are never assigned concurrentl
 
 | Zone | Capability/data owner | Exclusive files and legacy contraction surface |
 |---|---|---|
+| `CA` | `backend:company_access`; company/year membership, immutable eligibility/admission and accepted capability/legal evidence | existing `modules/company_access/**`, its public-contract adapters/workflows/features and scoped migrations/tests; #208 adds year selection after #149 without reopening the exited #138 migration or changing another source owner |
 | `L` | `backend:ledger`; `ledger.entries`, `ledger.period_locks` and opening-ledger projections. Receipt/migration/cursor infrastructure remains `backend-system` technical ownership | `apps/backend/src/talli_backend/modules/ledger/**`, `application/ledger_*`, `adapters/supabase_ledger.py`, `apps/web/features/ledger/**`, ledger/onboarding forms and ledger migrations/tests |
 | `B` | `backend:banking`; `bank_transactions`, `bank_suggestion_acceptances`, provider-neutral read models | new `modules/banking/**`, banking workflows/adapters, `features/banking/**`, transaction/import pages, `lib/bank*.ts`; remove `compat-banking-persistence` at #140 |
 | `I` | `backend:investments`; positions, lots, allocations and investment semantic rows | new `modules/investments/**`, investment workflow/adapters/features, `lib/share-*`, `lib/dividend-received.ts`; remove investment compatibility records at #141/#142/#143 |
@@ -264,15 +298,16 @@ deployment, outreach, claims, ads and unrestricted opening.
 | #148 | #145 closed; same active zone `G`, stage exit | Decisions, reviewed facts, deterministic artifacts, signed immutable lifecycle and readiness; `U C D W S X G G2` | Block finalization/upload, preserve artifact hashes, rehearse rollback/recutover; remove subprocess bridge, legacy writers and governance facade. Then #191. `local` |
 | #191 | #148 exited; zone `G` | Supported cash capital, loss coverage, owner/intercompany loans, bank debt and group contribution facts/documents/postings; `U C D W S X G` | Hard-block personal-company loans, foreign/non-cash/complex/consolidation/reorganization/judgment cases; owned correction/reversal only. Then #137. `local` |
 | #137 | #191 closed; active `billing`, zone `BL` | Canonical plan/subscription/entitlement/refund policy and simulated provider port; `U C D W S X G G2` | Deny entitlement/consequential actions, quarantine ambiguous provider events, preserve disabled simulation; delete billing facade/TS policy. Then #192. `local`; no paid provider |
-| #192 | #137 exited; zone `BL` | Exact NOK 1,490 incl. VAT company-year, definitive-eligibility checkout, recurring consent/renewal/cancel/refund/receipt/reconciliation and Vipps conformance | `U C D W S X O G`; stop checkout/charging, reconcile webhooks, preserve customer cancel/export and automatic refund. Then #150. Test adapter `local`; live adapter/charge/refund is `credential cost production` |
-| #150 | #192 closed; active `authority_connections`, zone `AU` | System User/Maskinporten lifecycle, callback/token/scope checks, MFA operator controls, retries and observability; `U C D W S X O G G2` | Disable affected authority/filing operations, revoke/reconcile unknown outcomes, never expose credentials; delete authority facade/TS control policy. Then #151. Local fakes `local`; hosted credentials/provider calls `credential production` |
+| #192 | Interim after #137; final after #149 and the Company Access year prerequisite; zone `BL` | Interim: implemented recovery and truthful unavailable acquisition/renewal, independent review and `U C D W S X O G G2`. Final: real-source NOK 1,490 annual entitlement, consent/renewal/cancel/automatic refund/receipt/reconciliation, actual MT and every A1–A8 criterion | Preserve customer recovery/cancel/export. Interim requires protected merge and exact-main Release/Preview before #150; issue stays open and implementation pauses through #149. Final acceptance before #194 and #197 billing. Test adapter `local`; live adapter/charge/refund is `credential cost production` |
+| #150 | #192 interim receipt including two linked 11/11 gates, protected merge and exact-main Release/Preview; active `authority_connections`, zone `AU` | System User/Maskinporten lifecycle, callback/token/scope checks, MFA operator controls, retries and observability; `U C D W S X O G G2` | Disable affected authority/filing operations, revoke/reconcile unknown outcomes, never expose credentials; delete authority facade/TS control policy. Then #151. Local fakes `local`; hosted credentials/provider calls `credential production` |
 | #151 | #150 exited; active `shareholder_register_filing`, zone `RF` | RF-1086 readiness/payload/approval/journal/submit/feedback/receipt/archive with current golden/TT02 equivalence; `U C D W S X O G G2` | Kill submission, preserve journal/read/export, reconcile unknown outcome before retry; remove both CLI bridges/generic rows/facade. Then #146. Local/TT02 as authorized; real filing `credential data production` |
 | #146 | #151 exited; active tax slice 1, zone `TX` | Tax-settlement validation/posting/bank match/presentation; `U C D W X G` | Block settlement atomically; reconcile bank/ledger receipt; remove duplicate rule. Then #152. `local` |
 | #152 | #146 closed; same active zone `TX`, stage exit | Company-tax supported-scope calculation, XML/attachment gates, approval/journal/submission/feedback/receipt/archive; `U C D W S X O G G2` | Kill submission and reconcile unknown journal/cash/ledger effects; remove generic rows/TS calculations/facade. Then #153. Real filing `credential data production` |
 | #153 | #152 exited; active `annual_accounts_filing`, zone `AA` | Annual-accounts calculations/XML/corporate evidence/hybrid signing/journal/feedback/receipt; `U C D W S X O G G2` | Kill filing, preserve governance/doc/ledger state and journal/read/export; remove generic rows/TS rules/facade. Then #193. Real filing `credential data production` |
 | #193 | #153 exited; zones `RF`, then `TX`, then `AA`, never concurrently | Production-complete RF-1086 → tax → annual accounts. Before the first slice, create schema-validated `architecture/filing-production-slices.json`; it records each slice's two linked immutable gates/digests independently of ADR capability exits. Each sub-slice needs current schema/code list, TT02/service, representative final genuine-company result, correction and `U C D W S X O G G2 H` | Per-service kill switch, submit-once journal and unknown-effect reconciliation; close only after all three registered immutable sub-slices and old adapters are gone. Then #149. Credentials, named data and each real filing are separately `credential data production` |
-| #149 | #193 closed; active `annual_compliance`, zone `AC` | Typed annual workspace over three published readiness/completion contracts; interview/deadlines/states/summaries; `U C D W S X G G2` | Preserve prior safe state, never override obligation decisions; remove six-file cycle, web readiness assembly and facade. Then #194. `local` |
-| #194 | #149 exited; zones `AC` plus presentation-only shared UI under one integration owner | Complete calm journey across precheck/purchase/reconstruction/year/events/close/filings/archive/renewal/exit; `U C W S X G` plus WCAG 2.2 AA and ≥90% unaided/median support evidence | Keep canonical safe states and unsupported exit; revert presentation without changing business facts; close only after repeated confusion is fixed/rerun. Then #155. Representative users are `data/public` gated by #197 |
+| #149 | #193 closed; active `annual_compliance`, zone `AC` | Typed annual workspace over three published readiness/completion contracts; verified charging readiness independent of paid entitlement; interview/deadlines/states/summaries; `U C D W S X G G2` | Preserve prior safe state, never override obligation decisions; remove six-file cycle, web readiness assembly and facade. Then Company Access year prerequisite and #192 final acceptance before #194. `local` |
+| #208 | #149 complete and protected-main integrated; bounded canonical Company Access change, zone `CA` | Immutable year-selected admission and current renewal checks; preserve accepted 2026 references, prove actual year support and fail closed for unvalidated years; `U C D W S X G G2` | Preserve prior accepted evidence and read/export; no new scope claim without proof. Then #192 final integration before #194. `local`; no production authority |
+| #194 | #149 exited and full #192 completed after its year prerequisite; zones `AC` plus presentation-only shared UI under one integration owner | Complete calm journey across precheck/purchase/reconstruction/year/events/close/filings/archive/renewal/exit; `U C W S X G` plus WCAG 2.2 AA and ≥90% unaided/median support evidence | Keep canonical safe states and unsupported exit; revert presentation without changing business facts; close only after repeated confusion is fixed/rerun. Then #155. Representative users are `data/public` gated by #197 |
 | #155 | #194 closed; active `audit`, zone `AD` | Atomic append-only public audit command/query for every consequential producer; actor/company/correlation/order/retention/redaction; `U C D W S X G G2` | Required audit failure blocks business commit; rollback restores the exact characterized mixed predecessor topology (Option-A continuations plus transaction-local future placements), reconciles immutable IDs, and never revives arbitrary writers; exit deletes every direct writer/facade. Then #156. `local` |
 | #156 | #155 exited; active `notifications`, zone `N` | Owned intent/outbox, at-least-once delivery, dedupe/retry/terminal state/templates/redaction; `U C D W S O G G2` | Provider failure never rolls back committed business; retain pending intent and disabled/simulated delivery; remove old writers/workers/facade. Then #157. Local simulation `local`; external delivery `credential cost public` |
 | #157 | #156 exited; active `company_archive`, zone `AR` | Deterministic archive from capability projections/contracts only; names/order/hashes/private access and incomplete-output discard; `U C D W S X O G G2` | Abort/discard incomplete output without source mutation; restore old exporter only as single writer during rehearsed rollback; delete broad direct-query exporter/facade. Then #195. `local` |
@@ -280,7 +315,7 @@ deployment, outreach, claims, ads and unrestricted opening.
 | #199 | #195 closed and every canonical source/output owner exists; zone `CI`, no cross-capability writer | Actual source-owner January-to-close topology and executable stable-ID/hash agreement across ledger, bank, investments, governance, all filings, SAF-T, audit and archive; every #172 golden pattern against real calculators; `U C D W S X G G2` | Block close/readiness/export on incomplete, stale, drifted or unexplained facts; route fixes to one owner at a time and rerun the graph; no private-table reads, facade, or duplicate policy. Then #154 and #197's final archive/SAF-T tranche. `local`; representative data remains #197-gated |
 | #154 | #199 closed and every capability exited; whole-repo contraction with one integration owner | Zero web business persistence, legacy rule/RPC/bridge/adapter/exception/debt; final manifests/docs/graph/tests; `C D W S X O G G2` | Contract artifacts apply only after preflight; rollback preserves canonical writers/read/export. Close with two immutable complete gates and recorded stage dispositions. Then #198 becomes implementation-chain-green. `local`; no deployment |
 | #196 | #187 closed; zone `P`; may overlap only with explicit files not owned by serialized work | Homepage/free precheck/scope/price/refund/signup-consent-checkout shell/help/legal/SEO/privacy-safe aggregate funnel and capability-linked copy; `U C W S G` | Feature-gate checkout/live claims/analytics; revert public slice without business-state impact. Close when all rendered/copy/accessibility/performance/SEO/stop-rule evidence passes. Produces #179 lane 12 and opens #197 recruitment gate. Deployment/analytics/ads/outreach are `cost public` |
-| #197 | Claim only after #196 closes; zone `V`, no code writer. Tranches: legal/DPA/hosted controls before named intake; ledger after #188; bank after #189; investments after #190; governance after #191; billing after #192; each filing after its #193 sub-slice; journey after #194; audit after #155; archive/SAF-T and final zero-difference acceptance after #199 | 8–12 company-years, pattern matrix, six near-boundary rejections, historical/live comparisons, UX/support, all three final genuine outcomes, zero unexplained material differences; `H X O` | Stop intake/effects, honor withdrawal/export/delete, log incident/refund/unsupported exit and rerun after fixes. Close only with named conclusions and immutable evidence. Then #198. `data credential cost production public` as applicable |
+| #197 | Claim only after #196 closes; zone `V`, no code writer. Tranches: legal/DPA/hosted controls before named intake; ledger after #188; bank after #189; investments after #190; governance after #191; billing after full #192 (never the interim checkpoint); each filing after its #193 sub-slice; journey after #194; audit after #155; archive/SAF-T and final zero-difference acceptance after #199 | 8–12 company-years, pattern matrix, six near-boundary rejections, historical/live comparisons, UX/support, all three final genuine outcomes, zero unexplained material differences; `H X O` | Stop intake/effects, honor withdrawal/export/delete, log incident/refund/unsupported exit and rerun after fixes. Close only with named conclusions and immutable evidence. Then #198. `data credential cost production public` as applicable |
 | #198 | Both #154 and #197 closed; zone `R`; immutable deployed candidate with switches off | Exact #179 record, all 12 lanes current and all 14 signoffs approved; deployed hash verification, kill/rollback/unknown-effect rehearsal; `H O G` | Any red/stale lane blocks admission and affected operation; systemic ledger/isolation/restore/eligibility/billing/submission failure stops all consequential operations while read/export remains. Founder signoff last. Charges/providers/filings/deployment/launch/ads each remain `cost production public` |
 
 ### Planned criterion map

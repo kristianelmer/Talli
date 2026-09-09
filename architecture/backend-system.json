@@ -484,19 +484,19 @@
       "port": "AnnualCheckoutPersistence",
       "adapter": "talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCheckoutSession",
       "owner": "backend-system",
-      "mode": "restricted verified-actor PostgreSQL claims and settlement; readiness defaults unavailable; runtime cutover pending #192"
+      "mode": "restricted verified-actor PostgreSQL original-intent claims and settlement; trusted readiness unavailable until #149/#208 and final #192"
     },
     {
       "port": "AnnualCancellationPersistence",
       "adapter": "talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCancellationSession",
       "owner": "backend-system",
-      "mode": "verified-owner local renewal cancellation and immutable receipts; provider cleanup and runtime cutover pending #192"
+      "mode": "verified-owner local renewal cancellation and immutable receipts; source-backed renewal and ordinary entitlement deferred to final #192"
     },
     {
       "port": "AnnualAgreementCleanupPersistence",
       "adapter": "talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession",
       "owner": "backend-system",
-      "mode": "verified-owner receipt-bound original agreement cleanup through authenticated POST; provider absent by default, worker/support authority pending #192"
+      "mode": "verified-owner receipt-bound original agreement cleanup through authenticated POST; provider absent by default; automatic processing deferred to final #192"
     },
     {
       "port": "AnnualBillingReadPersistence",

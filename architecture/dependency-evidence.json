@@ -49,6 +49,22 @@
       "to": "backend:billing"
     },
     {
+      "from": "backend-system:annual-support-agreement-cleanup-recovery",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-support-refund-recovery",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
       "from": "backend-system:banking-reconciliation",
       "imports": [
         "talli_backend.modules.banking.public"
@@ -237,6 +253,10 @@
     {
       "owner": "backend-system",
       "table": "annual_notification_inbox.receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.annual_checkout_observation_work"
     },
     {
       "owner": "backend-system",
