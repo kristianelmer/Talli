@@ -1,0 +1,357 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#151",
+  "source": "https://github.com/kristianelmer/Talli/issues/151",
+  "sourceCheckedAt": "2026-09-09T18:58:36Z",
+  "status": "entry-complete-serialized-claim-pending",
+  "notice": "Entry evidence only. All six original criteria remain pending; no implementation or final RF gate is claimed.",
+  "entryBlockers": [
+    {
+      "issue": "#150",
+      "requiredState": "CLOSED with independently verified protected integration",
+      "observedState": "CLOSED",
+      "closedAt": "2026-09-09T18:39:46Z",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5606893685",
+      "mainRevision": "91b178c281bcc5fb887a6257d2f72e380199f3e6"
+    },
+    {
+      "name": "prior stage prerequisites",
+      "requiredState": "ledger and investments exited; billing approved interim exited; authority_connections exited",
+      "observedState": "recorded in current compatibility registry and predecessor closure",
+      "evidence": [
+        "architecture/compatibility.json",
+        "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5606893685",
+        "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5600490534"
+      ],
+      "limit": "#192 final remains OPEN under approved source order; do not require or imply its final acceptance at RF entry."
+    },
+    {
+      "name": "immutable entry baseline",
+      "revision": "91b178c281bcc5fb887a6257d2f72e380199f3e6",
+      "command": "npm run gate:customer-ready",
+      "status": "pass-independently-verified-storage-commit-pending",
+      "evidencePath": "architecture/evidence/customer-ready-gates/91b178c281bcc5fb887a6257d2f72e380199f3e6.json",
+      "rawTranscriptPath": "architecture/evidence/customer-ready-gates/91b178c281bcc5fb887a6257d2f72e380199f3e6.log",
+      "checkCount": 11,
+      "canonicalDigest": "sha256:1ac57b0619c2ae8f95ed0a6c776315e6562d4fc0be6af55d23e37222463b2607",
+      "transcriptDigest": "sha256:99ee6b001f8271ac0c8b6da5e58e162759e4f2aa2aef2b05c7c76383a5d2583b",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "storageRevision": "This entry evidence commit; exact immutable storage revision is published in the subsequent serialized GitHub claim.",
+      "startedAt": "2026-09-09T18:40:21.300Z",
+      "finishedAt": "2026-09-09T18:58:17.826Z",
+      "requiredProof": "Actual completed11checks/zero exits; canonical schema/sortedJSON/rawlog/testedproducer digest; clean committed tested revision and committed evidence storage. This is entry evidence, not either #151 final exit pass.",
+      "independentReview": "architecture/evidence/issues/151/entry-independent-review.json"
+    },
+    {
+      "name": "entry inventory",
+      "status": "adopted-at-entry-baseline",
+      "evidence": [
+        "architecture/evidence/issues/151/legacy-inventory.md",
+        "architecture/evidence/issues/151/storage-ownership-inventory.md",
+        "architecture/evidence/issues/151/characterization-matrix.md",
+        "architecture/evidence/issues/151/source-contract-requirements.md",
+        "architecture/evidence/issues/151/characterization-test-plan.md",
+        "architecture/evidence/issues/151/tt02-replay-availability.md"
+      ],
+      "requiredProof": "Adopt/pin current legacy entrypoints, all consumers, row/field ownership, rules, tests and rollback assets to actual entry revision. Older draft timestamps/statuses are historical; do not copy their stale150pending status."
+    },
+    {
+      "name": "serialized claim",
+      "status": "UNCLAIMED",
+      "observation": {
+        "state": "OPEN",
+        "assignees": [],
+        "commentCount": 0,
+        "labels": [
+          "ready-for-agent"
+        ],
+        "ticketUpdatedAt": "2026-09-09T08:56:06Z",
+        "openPrSearch151": []
+      },
+      "claimUrl": null,
+      "branch": null,
+      "requiredNext": "Re-read issue/comments and relevant active work immediately before root makes a bounded claim after completed entry baseline. Registry pointer alone is not a claim. Search has a time-of-check race and is not an atomic lock."
+    }
+  ],
+  "decisionBoundary": {
+    "migrationOrderSource": "https://github.com/kristianelmer/Talli/issues/132#issuecomment-5083588592",
+    "sourceHandoffApproval": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5599100453",
+    "predecessorClosure": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5606893685",
+    "route": "#151 -> #146 -> #152 -> #153 -> #193 [RF -> tax -> accounts] -> #149 -> #208 -> #192 final -> #194",
+    "approvedNow": "RF semantics/row ownership, public contracts, canonical backend rules, normal reversible migration and exact behavior-preserving dependency query; start only after normal entry. Do not migrate sibling rules/annual aggregation/audit/notifications.",
+    "pendingException": {
+      "status": "PENDING_OWNER_DECISION",
+      "proposal": "architecture/evidence/issues/151/compatibility-amendment-proposal.md",
+      "proposalDigest": "sha256:3cc58e95162e6cd52328a075019419e1005f9ca8794eda1811b77fc30ae50d40",
+      "scope": "architecture/evidence/issues/151/frozen-scope-disposition.md",
+      "scopeDigest": "sha256:af56cf7ad98bdf0feca6c4b2d9208545fc1c633d3f66596f3bf5dfa8ff950da3",
+      "inventoryDigest": "sha256:e0e8f9e2a3835ca206817f3b6d1a0529ce6340e1638b8c59b624f5aef2240f12",
+      "approvalEvidence": null,
+      "counts": {
+        "mixedTupleReattributions": 12,
+        "futureReadDeletions": 3,
+        "adjacentAuditCallsUnchanged": 8,
+        "adjacentNotificationCallsUnchanged": 2
+      },
+      "restriction": "No dependent tuple reattribution/deletion or checker exception until affirmative exact approval. Pending bookkeeping does not block independent already-approved semantic work after normal entry.",
+      "expiry": "Each retained tuple leaves when last real sibling source migrates, no later than last filing cutover; #149 is not blanket retention authority.",
+      "inventory": "architecture/evidence/issues/151/frozen-scope-inventory.json",
+      "independentReview": "architecture/evidence/issues/151/frozen-scope-independent-review.md",
+      "publicationNote": "Copied byte-for-byte from the reviewed proposal. Its earlier status paragraph is historical; approval remains pending. Entry records the completed predecessor separately."
+    },
+    "noAuthority": "No provider activation/live filing/spending/production promotion/hosted schema application. Real provider evidence and named-company production remain separate authorized later work.",
+    "historicalPayloadReplay": {
+      "status": "original-input-or-xml-path-requested",
+      "evidence": "architecture/evidence/issues/151/tt02-replay-availability.md",
+      "limit": "Historical accepted TT02 hashes are preserved; exact regeneration remains unproven. Synthetic migration characterization does not replace this evidence."
+    }
+  },
+  "criteria": [
+    {
+      "id": "GH-151-A1",
+      "requirement": "Supported RF-1086 cases produce payloads identical to current authority-tested evidence.",
+      "status": "NOT_IMPLEMENTED_NOT_VALIDATED_IN_151",
+      "existingCharacterizationPaths": [
+        "tests/fixtures/rf1086",
+        "tests/fixtures/rf1086_invalid",
+        "tests/test_rf1086.py",
+        "tests/rf1086_persisted_preview.test.mjs",
+        "tests/rf1086_submission_persisted.test.mjs",
+        "docs/filing/evidence/rf1086-tt02-2026-07-14.json",
+        "docs/filing/rf1086-code-evidence-register.md"
+      ],
+      "existingFocusedCommands": [
+        "npm run test:rf1086:persisted",
+        "npm run test:rf1086:submission",
+        "npm run test:authority-evidence"
+      ],
+      "expectedResult": "Fixed input/clock/ID old-new equality for supported no-activity preview/XML bytes, hashes, order, defaults, coded errors and exclusion behavior. Historical TT02 hashes retained; broader offline fixtures do not imply live support.",
+      "newEvidence": []
+    },
+    {
+      "id": "GH-151-A2",
+      "requirement": "Owner confirmation, AAL2, entitlement, release, and pilot gates remain mandatory.",
+      "status": "NOT_IMPLEMENTED_NOT_VALIDATED_IN_151",
+      "existingCharacterizationPaths": [
+        "tests/production_approval.test.mjs",
+        "tests/production_pilot.test.mjs",
+        "tests/controlled_production_beta_actions.test.mjs",
+        "apps/backend/tests/test_rf1086_database_runtime.py",
+        "apps/backend/tests/test_rf1086_compatibility.py"
+      ],
+      "existingFocusedCommands": [
+        "npm run test:rf1086:production-pilot"
+      ],
+      "expectedResult": "Fresh complete owner preview-to-approval-to-Send journey and independent fail-closed owner/AAL2/authority/preflight/readiness/review/override/entitlement/release/pilot checks. Token failure precedes begin; no unauthorized effects. Historical recovery preserves its distinct original authority.",
+      "newEvidence": []
+    },
+    {
+      "id": "GH-151-A3",
+      "requirement": "Submission, retry, feedback, unknown outcomes, and receipts remain idempotent and auditable.",
+      "status": "NOT_IMPLEMENTED_NOT_VALIDATED_IN_151",
+      "existingCharacterizationPaths": [
+        "apps/backend/tests/test_rf1086_compatibility.py",
+        "apps/backend/tests/test_rf1086_database_runtime.py",
+        "apps/backend/tests/test_rf1086_authority.py",
+        "apps/backend/tests/test_postgres_legacy_rf1086_authority.py",
+        "tests/production_submission.test.mjs"
+      ],
+      "existingFocusedCommands": [
+        "npm run test:rf1086:production-pilot",
+        "npm run test:rf1086:authority-client"
+      ],
+      "expectedResult": "Permanent original-intent journal, exact per-operation body/key, concurrency/lease/retry-cap/partial-send/unknown outcomes, no blind POST replay, explicit feedback classification and Documents receipt integrity/conditional rollback.",
+      "newEvidence": []
+    },
+    {
+      "id": "GH-151-A4",
+      "requirement": "The complete owner filing flow uses the generated API client.",
+      "status": "NOT_IMPLEMENTED_NOT_VALIDATED_IN_151",
+      "existingCharacterizationPaths": [
+        "apps/web/app/actions.ts",
+        "apps/web/app/lib/supabase/server.ts",
+        "apps/web/app/(owner)/filing/[obligation]/page.tsx",
+        "apps/web/app/components/annual-workspace/ObligationWorkspace.tsx",
+        "apps/web/features/legacy-rf1086/transport.ts",
+        "tests/browser_authority_connections.mjs"
+      ],
+      "existingFocusedCommands": [],
+      "expectedResult": "New complete owned generated API covers opening facts/readiness/preview/review/override/confirmation/approval/Send/recovery/receipt presentation. Real local auth, backend and RLS with loopback provider; current seeded historical browser proof is retained but does not replace fresh owner-journey evidence.",
+      "newEvidence": []
+    },
+    {
+      "id": "GH-151-A5",
+      "requirement": "Both RF-1086 CLI bridges, generic RF-1086 rows, duplicate TypeScript rules, and active-stage compatibility code are removed.",
+      "status": "NOT_IMPLEMENTED_NOT_VALIDATED_IN_151",
+      "existingCharacterizationPaths": [
+        "apps/backend/src/talli_backend/modules/shareholder_register_filing",
+        "apps/backend/src/talli_backend/application/shareholder_register_compatibility.py",
+        "apps/backend/src/talli_backend/application/opening_snapshot_compatibility.py",
+        "apps/backend/src/talli_backend/compatibility/rf1086_authority_workflow.py",
+        "apps/backend/src/talli_backend/adapters/postgres_legacy_rf1086_authority.py",
+        "apps/backend/src/talli_backend/authority_tools/rf1086_test.py",
+        "apps/web/app/lib/rf1086.ts",
+        "apps/web/app/lib/rf1086-submission.ts",
+        "architecture/compatibility.json",
+        "architecture/compatibility-baseline.json",
+        "architecture/database-catalog.json"
+      ],
+      "existingFocusedCommands": [
+        "npm run check:architecture",
+        "npm run test:architecture"
+      ],
+      "expectedResult": "One owned implementation/writer; shareholder fields and RF generic rows migrated without sibling/ledger/foreign-owner acquisition; both web Python bridges and duplicate TS rules removed, frozen RF backend compatibility absorbed, RF tool calls canonical generator, obsolete authority contracted, temporary parity/allowlist debt removed. Baseline stays byte-identical. Exact pending15scope exception only if approved.",
+      "newEvidence": []
+    },
+    {
+      "id": "GH-151-A6",
+      "requirement": "The complete `shareholder_register_filing` stage exit criteria from issue #132 pass before company-tax migration begins.",
+      "status": "NOT_IMPLEMENTED_NOT_VALIDATED_IN_151",
+      "existingCharacterizationPaths": [
+        "architecture/compatibility.json",
+        "architecture/backend-system.json",
+        "architecture/dependency-evidence.json",
+        "architecture/customer-ready-gate-evidence.schema.json",
+        ".github/workflows"
+      ],
+      "existingFocusedCommands": [
+        "npm run gate:customer-ready",
+        "npm run gate:customer-ready -- --previous <FIRST_PASSING_151_REVISION>"
+      ],
+      "expectedResult": "Complete #132 envelope, independent review, two linked immutable11/11 gates, protected PR/exact-main Release+Preview and preserved production freeze before successor. Activated production alone would additionally require approved seven-day observation; no activation or such observation is planned or claimed.",
+      "newEvidence": []
+    }
+  ],
+  "approvedSourceHandoff": {
+    "status": "REQUIRED_NOT_IMPLEMENTED",
+    "requiredFacts": [
+      "immutable company/year/obligation readiness",
+      "complete production-submission history and positive completeness evidence before declaring none submitted",
+      "terminal and unknown outcomes",
+      "existing correction/relationship facts without introducing new correction writer",
+      "source-owned incident facts with supported attribution",
+      "evidence identity, source version, currentness, timing and actor/source attribution"
+    ],
+    "boundaries": [
+      "Absent/incomplete source is unavailable, never false evidence of no submission.",
+      "Legacy owner-writable annual-ready row is only frozen workflow input, not new trusted checkout evidence.",
+      "RF readiness source must avoid circular dependence on paid entitlement; actual Send retains action-time commercial gate.",
+      "Billing alone applies#177 monetary/commercial classification; no second billing writer.",
+      "Annual Compliance later aggregates all3 owners; Company Access#208 supplies year admission."
+    ]
+  },
+  "completeExitEnvelope": [
+    {
+      "name": "fixed-input characterization and golden/statutory equivalence",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "name": "owned data and one authoritative writer",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "name": "expand/migrate/count-hash/backfill reconciliation",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "name": "full API/web contract and deployment order cutover",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "name": "restricted roles/FORCE RLS/verified actor/tenant/concurrency safety",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "name": "permanent journal and unknown-effect rollback/quarantine",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "name": "rollback and recutover with immutable identity preserved",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "name": "exact old-code/genericRF/CLI/compatibility/parity-suite cleanup",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "name": "sibling audit notification archive support and annual input equivalence",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "name": "full fresh owner browser plus historical recovery journey",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "name": "both builds, package smoke, security/dependency/advisors",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "name": "independent Standards and Spec review with self-overlap disclosed",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "name": "matching module/system/catalog/generated/dependency evidence",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "name": "two consecutive linked immutable complete gates",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "name": "protected integration and exact-main Release/Preview truth",
+      "status": "PENDING",
+      "evidence": []
+    }
+  ],
+  "observation": {
+    "activatedProduction": false,
+    "sevenDayEvidence": null,
+    "status": "NOT_APPLICABLE_UNLESS_PATH_ACTIVATED",
+    "note": "Do not turn optional semantic Graphify into a blocker; deterministic manifest dependency evidence is mandatory under ADR0013."
+  },
+  "completeGates": [],
+  "expectedCanonicalChecks": [
+    "credential-scan",
+    "typecheck",
+    "architecture",
+    "boundary",
+    "build-web",
+    "build-backend",
+    "boundary-smoke",
+    "launch-rehearsal",
+    "production-dependency-audit",
+    "database-isolation",
+    "whitespace"
+  ],
+  "localValidation": [],
+  "predecessorEvidence": {
+    "issue": "#150",
+    "closure": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5606893685",
+    "limit": "Predecessor passing suites, TT02 historical evidence and seeded RF recovery are carried characterization sources, not #151 newly passed evidence."
+  },
+  "protectedIntegration": {
+    "status": "PENDING_NOT_STARTED",
+    "pullRequest": null,
+    "premergeHead": null,
+    "prReleaseRun": null,
+    "mergedMain": null,
+    "mainReleaseRun": null,
+    "preview": null,
+    "productionBranch": "release/production",
+    "productionRevisionToRemainFrozen": "d331ee2717d1eeacef0d81db42b9d4fb5848b408"
+  }
+}
