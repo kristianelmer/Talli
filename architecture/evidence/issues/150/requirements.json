@@ -261,13 +261,30 @@
       "command": "npm run build:backend && npm run test:boundary-smoke",
       "result": "1 passed, 0 failed, 0 skipped; actual rebuilt wheel and production web artifacts, both deployment orders and backend failure isolation",
       "localTranscript": "/tmp/talli-150-wheel-package-smoke.log"
+    },
+    {
+      "scope": "fresh complete launch rehearsal on ddb921be",
+      "command": "npm run test:launch-rehearsal",
+      "result": "passed within failed complete gate ddb921be; fake/local providers only",
+      "localTranscript": "/tmp/talli-150-gate-ddb921be-raw-private.log"
+    },
+    {
+      "scope": "full Billing database lifecycle on ddb921be after predecessor rollback and governance",
+      "command": "npm run test:billing-database-lifecycle",
+      "result": "699 passed, 0 failed; successor fixture teardown then failed, so this is not complete database-isolation acceptance",
+      "localTranscript": "/tmp/talli-150-gate-ddb921be-raw-private.log"
+    },
+    {
+      "scope": "fixture company cascade after Billing receipt rollback/recutover",
+      "command": "pytest test_authority_connections_database_runtime.py -k fixture_company_cleanup -q",
+      "result": "4 passed, 0 failed, 0 skipped; missing-DELETE cases failed before correction; absent/present DELETE, exact ACL preservation, late failure rollback and independent observer checked"
     }
   ],
-  "closeState": "OPEN; implementation and independent source review complete. Immutable complete gates and protected/exact-main integration remain pending.",
+  "closeState": "OPEN; source and corrective fixture/generated-file reviews complete. Two immutable complete gates, including the full post-Billing successor database/browser lane, and protected/exact-main integration remain pending.",
   "taskId": "01a08515-2cd8-7093-8a34-3b9b3d458840",
   "branch": "codex/issue-150-authority-01a08515",
   "implementationClaim": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5601486395",
-  "progressCheckedAt": "2026-09-09T16:47:14.550141+00:00",
+  "progressCheckedAt": "2026-09-09T17:14:49.791628+00:00",
   "remainingWork": [
     "Two new immutable complete customer-ready gates, including final combined database/browser lane",
     "Protected integration and exact-main Release/Preview verification"
@@ -288,6 +305,17 @@
       "reason": "Built wheel could not import talli_backend.compatibility; its source directory lacked a package initializer. The editable-source tests did not expose this packaging error.",
       "correction": "Add the compatibility package initializer; rebuild and rerun the actual built-artifact smoke. No behavior or permission changes.",
       "exitGateCredit": false
+    },
+    {
+      "revision": "ddb921be9049644898e22e27aea831f49ec59144",
+      "verdict": "fail",
+      "failedCheck": "database-isolation",
+      "transcriptPath": "architecture/evidence/issues/150/failed-gates/ddb921be9049644898e22e27aea831f49ec59144.redacted.log",
+      "transcriptKind": "redacted diagnostic only; not immutable passing-gate evidence",
+      "reason": "Billing completed 699 tests; all 61 successor AU/operator/launch/RF tests passed assertions but each failed fixture company-deletion teardown. Billing expansion rollback revokes all receipt-owner privileges; recutover restores SELECT/INSERT/UPDATE but not DELETE, which the fixture FK cascade requires.",
+      "additionalCandidateCorrection": "Restore two generated next-env imports to the exact b303 production baseline; the accidentally committed development paths would fail the final clean-tree check. Independently reviewed; no product behavior change.",
+      "exitGateCredit": false,
+      "correction": "The AU/RF disposable janitors share the established Billing cleanup pattern: borrow missing receipt-owner DELETE only within the cleanup transaction, delete the exact fixture company, and restore the original ACL. Runtime/production SQL and executor privileges are unchanged."
     }
   ]
 }

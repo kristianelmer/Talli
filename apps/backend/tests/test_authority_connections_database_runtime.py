@@ -45,6 +45,19 @@ def ensure_fixture_admin_access(connection):
         connection.execute(sql.SQL("grant {} to {}").format(sql.Identifier(role),sql.Identifier(principal)))
 
 
+def delete_fixture_company(connection, company):
+    # Billing recutover intentionally leaves its receipt owner without DELETE.
+    # Borrow only for this disposable company cascade, in the caller's transaction.
+    borrowed = not connection.execute(
+        "select has_table_privilege('billing_store_owner','billing.billing_command_receipts','DELETE')"
+    ).fetchone()[0]
+    if borrowed:
+        connection.execute("grant delete on billing.billing_command_receipts to billing_store_owner")
+    connection.execute("delete from public.companies where id=%s", (company,))
+    if borrowed:
+        connection.execute("revoke delete on billing.billing_command_receipts from billing_store_owner")
+
+
 @pytest.fixture(scope="module")
 def backend_url():
     assert DATABASE_URL, "DATABASE_URL must identify the owned disposable test database"
@@ -98,8 +111,46 @@ def fixture(backend_url):
             connection.execute("delete from authority_connections.system_user_requests where company_id=%s",(company,))
             connection.execute("delete from authority_connections.authority_operations where actor_id=any(%s::uuid[])",([owner,outsider,admin],))
             connection.execute("delete from public.support_operators where user_id=any(%s::uuid[])",([owner,outsider,admin],))
-            connection.execute("delete from public.companies where id=%s",(company,))
+            delete_fixture_company(connection, company)
             connection.execute("delete from auth.users where id=any(%s::uuid[])",([owner,outsider,admin],))
+
+
+@pytest.mark.parametrize("delete_present", [False, True])
+@pytest.mark.parametrize("late_failure", [False, True])
+def test_fixture_company_cleanup_preserves_receipt_acl_and_atomic_rollback(fixture, delete_present, late_failure):
+    with psycopg.connect(DATABASE_URL) as connection:
+        baseline_acl = connection.execute(
+            "select relacl::text from pg_class where oid='billing.billing_command_receipts'::regclass"
+        ).fetchone()[0]
+        try:
+            connection.execute(
+                ("grant delete on billing.billing_command_receipts to billing_store_owner" if delete_present
+                 else "revoke delete on billing.billing_command_receipts from billing_store_owner")
+            )
+            original_acl = connection.execute(
+                "select relacl::text from pg_class where oid='billing.billing_command_receipts'::regclass"
+            ).fetchone()[0]
+            connection.execute("savepoint fixture_cleanup")
+            delete_fixture_company(connection, fixture["company"])
+            assert connection.execute("select count(*) from public.companies where id=%s", (fixture["company"],)).fetchone()[0] == 0
+            assert connection.execute(
+                "select relacl::text from pg_class where oid='billing.billing_command_receipts'::regclass"
+            ).fetchone()[0] == original_acl
+            if late_failure:
+                with pytest.raises(psycopg.errors.DivisionByZero):
+                    connection.execute("select 1/0")
+                connection.execute("rollback to savepoint fixture_cleanup")
+                assert connection.execute("select count(*) from public.companies where id=%s", (fixture["company"],)).fetchone()[0] == 1
+                assert connection.execute(
+                    "select relacl::text from pg_class where oid='billing.billing_command_receipts'::regclass"
+                ).fetchone()[0] == original_acl
+        finally:
+            connection.rollback()
+    with psycopg.connect(DATABASE_URL) as observer:
+        assert observer.execute("select count(*) from public.companies where id=%s", (fixture["company"],)).fetchone()[0] == 1
+        assert observer.execute(
+            "select relacl::text from pg_class where oid='billing.billing_command_receipts'::regclass"
+        ).fetchone()[0] == baseline_acl
 
 
 def claims(fixture, *, actor=None, fresh=True):

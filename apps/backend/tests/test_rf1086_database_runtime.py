@@ -30,6 +30,7 @@ from talli_backend.compatibility.rf1086_authority_workflow import (
 from talli_backend.modules.documents.public import StoredDocumentObject
 from talli_backend.modules.documents.service import DocumentsService
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, UserId
+from test_authority_connections_database_runtime import delete_fixture_company
 
 
 pytestmark = pytest.mark.authority_database
@@ -125,7 +126,7 @@ def fixture(backend_url):
             connection.execute("delete from public.authority_permissions where company_id=%s", (company,))
             connection.execute("delete from public.filing_readiness_snapshots where company_id=%s", (company,))
             connection.execute("delete from public.company_archive_source_generations where company_id=%s", (company,))
-            connection.execute("delete from public.companies where id=%s", (company,))
+            delete_fixture_company(connection, company)
             connection.execute("delete from public.launch_signoffs where key=any(%s)", (list(SIGNOFFS),))
             for row in signoffs:
                 connection.execute("insert into public.launch_signoffs select * from jsonb_populate_record(null::public.launch_signoffs,%s::jsonb)", (json.dumps(row[0]),))

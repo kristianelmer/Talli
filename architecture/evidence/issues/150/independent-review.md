@@ -85,3 +85,31 @@ RF coordinator are present in the rebuilt wheel with exact source bytes. The
 existing built-artifact smoke then passed both deployment orders and backend
 failure isolation (1 passed, 0 skipped). No source finding remains. The failed
 gate is retained separately and receives no exit-gate credit.
+
+## Generated Next.js declaration correction
+
+Independent review identified that `11633707` accidentally changed the two
+`next-env.d.ts` imports from the entry baseline's `.next/types` to `.next/dev/types`.
+The production build regenerates the baseline form, leaving a tracked diff that
+the final clean-tree gate must reject. Restoring the exact `b30312de` bytes is a
+generated-file correction only; no product, authority, TypeScript configuration
+or test-harness behavior changes. The failed `ddb921be` attempt receives no
+exit-gate credit and also requires a separate fixture-cleanup correction.
+
+## Successor fixture cleanup correction
+
+The complete `ddb921be` attempt passed the 699-case Billing database lifecycle,
+then all 61 successor cases passed assertions and failed company-deletion
+teardown. Independent source diagnosis traced this to the receipt-owner ACL
+after Billing expansion rollback and recutover. The two new fixture janitors
+now share Billing's existing transaction-scoped cleanup pattern: borrow missing
+DELETE only for their exact fixture company cascade and restore the original ACL.
+No runtime code, production SQL, executor grant or browser cleanup changed.
+
+Independent review found no implementation issue. All callers use disposable
+administrator transactions, and exceptions propagate to connection rollback.
+Four actual-database regressions verify existing/absent DELETE, exact ACL text,
+company deletion/restoration, and the independent observer's baseline after a
+late failure and rollback. The missing-DELETE cases failed before the correction.
+The failed attempt is retained as a redacted diagnostic transcript, with no
+immutable-gate credit.
