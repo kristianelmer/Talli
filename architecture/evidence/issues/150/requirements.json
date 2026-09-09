@@ -41,7 +41,7 @@
     {
       "id": "GH-150-A1",
       "requirement": "Owners can initiate and reconcile the supported System User connection flow through the web and backend.",
-      "status": "implemented-scoped-validation-passed-final-evidence-pending",
+      "status": "implemented-first-complete-gate-passed-linked-pair-and-integration-pending",
       "plannedEvidencePaths": [
         "apps/backend/src/talli_backend/modules/authority_connections/public.py",
         "apps/backend/src/talli_backend/modules/authority_connections/service.py",
@@ -57,7 +57,7 @@
     {
       "id": "GH-150-A2",
       "requirement": "Callback, token, company, scope, and relationship validation fail closed.",
-      "status": "implemented-scoped-validation-passed-final-evidence-pending",
+      "status": "implemented-first-complete-gate-passed-linked-pair-and-integration-pending",
       "plannedEvidencePaths": [
         "apps/backend/tests/test_altinn_system_user.py",
         "apps/backend/tests/test_authority_connections_api.py"
@@ -70,7 +70,7 @@
     {
       "id": "GH-150-A3",
       "requirement": "Founder and operator authority operations retain MFA and redacted audit requirements.",
-      "status": "implemented-scoped-validation-passed-final-evidence-pending",
+      "status": "implemented-first-complete-gate-passed-linked-pair-and-integration-pending",
       "plannedEvidencePaths": [
         "apps/backend/tests/test_authority_operations_api.py",
         "apps/backend/tests/test_authority_connections_database_runtime.py"
@@ -84,7 +84,7 @@
     {
       "id": "GH-150-A4",
       "requirement": "Retry and ambiguous-outcome handling remain idempotent and observable.",
-      "status": "implemented-scoped-validation-passed-final-evidence-pending",
+      "status": "implemented-first-complete-gate-passed-linked-pair-and-integration-pending",
       "plannedEvidencePaths": [
         "apps/backend/tests/test_authority_connections_service.py",
         "apps/backend/tests/test_authority_connections_database_runtime.py"
@@ -98,7 +98,7 @@
     {
       "id": "GH-150-A5",
       "requirement": "All authority connections use owned ports/adapters.",
-      "status": "implemented-scoped-validation-passed-final-evidence-pending",
+      "status": "implemented-first-complete-gate-passed-linked-pair-and-integration-pending",
       "plannedEvidencePaths": [
         "apps/backend/src/talli_backend/modules/authority_connections/module.json",
         "architecture/backend-system.json",
@@ -113,7 +113,7 @@
     {
       "id": "GH-150-A6",
       "requirement": "Legacy TypeScript control-plane policy, credential paths, and active-stage compatibility code are removed.",
-      "status": "implemented-scoped-validation-passed-final-evidence-pending",
+      "status": "implemented-first-complete-gate-passed-linked-pair-and-integration-pending",
       "plannedEvidencePaths": [
         "architecture/compatibility.json",
         "tests/authority_connections_retirement.test.mjs",
@@ -129,7 +129,7 @@
     {
       "id": "GH-150-A7",
       "requirement": "The complete `authority_connections` stage exit criteria from issue #132 pass before filing migration begins.",
-      "status": "pending-final-stage-verification",
+      "status": "first-complete-gate-passed-second-gate-and-integration-pending",
       "plannedEvidencePaths": [
         "architecture/evidence/issues/150/requirements.json",
         "architecture/evidence/customer-ready-gates",
@@ -142,7 +142,30 @@
       "expectedResult": "All #132 stage8 criteria, two immutable consecutive complete gates, rollback/recutover, protected and exact-main integration verified before #151."
     }
   ],
-  "completeGates": [],
+  "completeGates": [
+    {
+      "revision": "ed7c3c4000f910e10a5d90dd91be5885bccc9a94",
+      "previousPassingRevision": null,
+      "executor": "local-script",
+      "evidencePath": "architecture/evidence/customer-ready-gates/ed7c3c4000f910e10a5d90dd91be5885bccc9a94.json",
+      "evidenceDigest": "sha256:f10f5ce3c5258cfb0db67ae25da90f98896b2e6f90facfd3fa5ca309ccaa6da2",
+      "verdict": "pass",
+      "checkCount": 11,
+      "transcriptDigest": "sha256:9d827819b7c594428c2bf0c7b766118f0fcc8cf0153577a6b56327c339bf7922",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "executedAt": "2026-09-09T17:36:29.132Z",
+      "independentValidation": "schema, exact 11 checks/zero exits, commands/order/markers, canonical JSON digest, raw transcript and tested producer verified before receipt commit",
+      "validationLimits": {
+        "backendBoundary": "2486 passed, 2 optional database adapter skips, 764 database cases deselected; dedicated PostgreSQL lanes passed",
+        "standaloneValidation": "17 passed, 1 optional database adapter skip; dedicated PostgreSQL rehearsal passed",
+        "finalBillingDatabase": "699 Python and 1 Node passed, 0 skipped",
+        "finalAuthorityDatabase": "65 passed, 0 skipped",
+        "finalAuthorityBrowser": "11 passed, 0 skipped",
+        "advisors": "0 blocking findings, 41 existing performance warnings",
+        "productionDependencies": "root and web audits each reported 0 vulnerabilities"
+      }
+    }
+  ],
   "localValidation": [
     {
       "scope": "predecessor System User flow and presentation characterization",
@@ -278,20 +301,33 @@
       "scope": "fixture company cascade after Billing receipt rollback/recutover",
       "command": "pytest test_authority_connections_database_runtime.py -k fixture_company_cleanup -q",
       "result": "4 passed, 0 failed, 0 skipped; missing-DELETE cases failed before correction; absent/present DELETE, exact ACL preservation, late failure rollback and independent observer checked"
+    },
+    {
+      "scope": "actual Billing rollback/recutover followed by corrected successor database suite",
+      "command": "node --test tests/billing_database_runtime.test.mjs; authority topology recutover; npm run test:authority-connections-database",
+      "result": "Billing lifecycle 1 passed; successor database 65 passed, 0 failed, 0 skipped; exact receipt ACL restored and DELETE absent afterward",
+      "localTranscript": "/tmp/talli-150-cleanup-lifecycle-sequence.log"
+    },
+    {
+      "scope": "successor browser after the actual Billing lifecycle and authority recutover",
+      "command": "npm run test:browser-authority-connections",
+      "result": "11 passed, 0 failed, 0 skipped; fixture rows/principals and generated files restored",
+      "localTranscript": "/tmp/talli-150-cleanup-browser-proof.log"
     }
   ],
-  "closeState": "OPEN; source and corrective fixture/generated-file reviews complete. Two immutable complete gates, including the full post-Billing successor database/browser lane, and protected/exact-main integration remain pending.",
+  "closeState": "OPEN; independent source review and first immutable complete gate passed. Linked second gate, stage-exit registration and protected/exact-main integration remain pending.",
   "taskId": "01a08515-2cd8-7093-8a34-3b9b3d458840",
   "branch": "codex/issue-150-authority-01a08515",
   "implementationClaim": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5601486395",
-  "progressCheckedAt": "2026-09-09T17:14:49.791628+00:00",
+  "progressCheckedAt": "2026-09-09T17:37:25.339704+00:00",
   "remainingWork": [
-    "Two new immutable complete customer-ready gates, including final combined database/browser lane",
+    "Second linked immutable complete customer-ready gate",
+    "Stage-exit evidence/registry update and independent exact-delta review",
     "Protected integration and exact-main Release/Preview verification"
   ],
   "independentReview": {
     "status": "closed-no-outstanding-source-findings",
-    "revision": "c9a7f4e6752b837d0ee58624548b984ecbafe37e",
+    "revision": "ed7c3c4000f910e10a5d90dd91be5885bccc9a94",
     "evidencePath": "architecture/evidence/issues/150/independent-review.md",
     "standardsFindingsResolved": 1,
     "specFindingsResolved": 2
