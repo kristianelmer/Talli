@@ -13,7 +13,9 @@ from talli_backend.adapters.postgres_annual_notifications import PostgresAnnualN
 from talli_backend.adapters.vipps_billing import VippsTestBillingProvider, VippsTestConfiguration
 from talli_backend.adapters.vipps_webhook import VippsWebhookAuthentication
 from talli_backend.application.annual_notifications import AnnualNotificationIntake
-from talli_backend.modules.billing.public import AnnualBillingProvider, BillingError
+from talli_backend.modules.billing.public import (
+    AnnualBillingProvider, AnnualCheckoutObservationOperations, BillingError,
+)
 
 
 ANNUAL_NOTIFICATION_PATH = "/api/v1/billing/annual/provider-notifications"
@@ -50,6 +52,21 @@ def _https_url(value: str, setting: str, *, path: str) -> None:
         valid = False
     if not valid:
         raise AnnualBillingRuntimeConfigurationError(setting)
+
+
+def _postgres_database_url(environment: Mapping[str, str], setting: str) -> str:
+    database_url = _required(environment, setting)
+    try:
+        parsed = urlsplit(database_url)
+        details = conninfo_to_dict(database_url)
+        valid = (parsed.scheme in {"postgres", "postgresql"} and parsed.hostname
+                 and not parsed.fragment and parsed.port != 0
+                 and all(details.get(key) for key in ("host", "user", "dbname")))
+    except (ValueError, psycopg.Error):
+        valid = False
+    if not valid:
+        raise AnnualBillingRuntimeConfigurationError(setting) from None
+    return database_url
 
 
 def load_vipps_mt_configuration(environment: Mapping[str, str]) -> VippsTestConfiguration:
@@ -99,18 +116,7 @@ class AnnualBillingRuntimeConfiguration:
         if len(secret) > 1024:
             raise AnnualBillingRuntimeConfigurationError(secret_setting)
         webhook = VippsWebhookAuthentication(vipps.merchant_serial_number, callback, secret)
-        database_setting = "TALLI_ANNUAL_NOTIFICATION_DATABASE_URL"
-        database_url = _required(environment, database_setting)
-        try:
-            parsed = urlsplit(database_url)
-            details = conninfo_to_dict(database_url)
-            valid = (parsed.scheme in {"postgres", "postgresql"} and parsed.hostname
-                     and not parsed.fragment and parsed.port != 0
-                     and all(details.get(key) for key in ("host", "user", "dbname")))
-        except (ValueError, psycopg.Error):
-            valid = False
-        if not valid:
-            raise AnnualBillingRuntimeConfigurationError(database_setting) from None
+        database_url = _postgres_database_url(environment, "TALLI_ANNUAL_NOTIFICATION_DATABASE_URL")
         return cls(vipps, webhook, database_url)
 
 
@@ -136,3 +142,45 @@ def compose_annual_billing_runtime(
     return AnnualBillingRuntime(
         provider, AnnualNotificationIntake(configuration.webhook, inbox),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutReconciliationConfiguration:
+    """Independent observation worker settings; no owner or webhook authority."""
+
+    vipps: VippsTestConfiguration
+    database_url: str = field(repr=False)
+
+    @classmethod
+    def from_environment(
+        cls, environment: Mapping[str, str],
+    ) -> "AnnualCheckoutReconciliationConfiguration | None":
+        mode_setting = "TALLI_ANNUAL_CHECKOUT_RECONCILIATION_MODE"
+        mode = environment.get(mode_setting, "off")
+        if mode == "off":
+            return None
+        if mode != "vipps-mt":
+            raise AnnualBillingRuntimeConfigurationError(mode_setting)
+        return cls(
+            load_vipps_mt_configuration(environment),
+            _postgres_database_url(environment, "TALLI_ANNUAL_CHECKOUT_RECONCILIATION_DATABASE_URL"),
+        )
+
+
+def compose_annual_checkout_reconciliation(
+    environment: Mapping[str, str] | None = None,
+) -> AnnualCheckoutObservationOperations | None:
+    """Construct one explicit MT observation worker; no database or provider I/O."""
+    configuration = AnnualCheckoutReconciliationConfiguration.from_environment(
+        os.environ if environment is None else environment,
+    )
+    if configuration is None:
+        return None
+    from talli_backend.adapters.postgres_annual_observation import PostgresAnnualCheckoutObservationStore
+    from talli_backend.modules.billing.public import annual_checkout_observation_operations
+
+    provider = VippsTestBillingProvider(configuration.vipps)
+    store = PostgresAnnualCheckoutObservationStore(
+        configuration.database_url, provider.provider, provider.account_reference,
+    )
+    return annual_checkout_observation_operations(store, provider)

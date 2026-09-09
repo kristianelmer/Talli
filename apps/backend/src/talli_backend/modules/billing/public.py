@@ -1124,6 +1124,90 @@ class AnnualCheckoutClaim:
     newly_claimed: bool
 
 
+class AnnualCheckoutObservationOutcome(StrEnum):
+    IDLE = "idle"
+    RECONCILED = "reconciled"
+    RETRY = "retry"
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutObservationBinding:
+    """Original purchase/operation links checked before worker authority exists."""
+
+    purchase_id: AnnualPurchaseId
+    operation_id: BillingPaymentEventId
+    company_id: CompanyId
+    income_year: IncomeYear
+    created_by: UserId
+    accepted_at: Timestamp
+    created_at: Timestamp
+    amount_minor: int
+    agreement_external_reference: str
+    charge_reference: str
+    recurring_consent: bool
+    consent_version: str
+
+
+def validate_annual_checkout_observation(checkout: AnnualCheckout, binding: AnnualCheckoutObservationBinding) -> None:
+    from talli_backend.modules.billing.annual_observation import validate_observation_binding
+
+    validate_observation_binding(checkout, binding)
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualCheckoutObservationLease:
+    """A fenced observation of one committed intent, never permission to execute."""
+
+    checkout: AnnualCheckout
+    token: str
+    fence: int
+
+
+class AnnualCheckoutObservationPersistence(Protocol):
+    @property
+    def provider(self) -> str: ...
+
+    @property
+    def provider_account(self) -> str: ...
+
+    async def claim_checkout_observation(self) -> AnnualCheckoutObservationLease | None:
+        """Claim only an existing pending checkout under account-bound worker authority.
+
+        Persist immutable operation authority and a short fenced lease. No owner
+        identity, readiness lookup, new purchase/operation or provider call.
+        """
+        ...
+
+    async def authorize_checkout_observation(self, lease: AnnualCheckoutObservationLease) -> None:
+        """Recheck the current principal epoch and lease immediately before provider GET."""
+        ...
+
+    async def settle_checkout_observation(
+        self, lease: AnnualCheckoutObservationLease, observation: AnnualProviderObservation | None,
+    ) -> AnnualCheckout:
+        """Lock purchase, operation, then lease; recheck authority/fence after waits.
+
+        Apply settle_annual_checkout to current state and commit financial rows
+        with technical completion/retry. None changes technical retry only.
+        Recheck authority before return; missed writes or authority loss roll back.
+        Preserve original actors and every immutable intent/acceptance field.
+        """
+        ...
+
+
+class AnnualCheckoutObservationOperations(Protocol):
+    async def run_once(self) -> AnnualCheckoutObservationOutcome: ...
+
+
+def annual_checkout_observation_operations(
+    persistence: AnnualCheckoutObservationPersistence, provider: AnnualBillingProvider | None,
+) -> AnnualCheckoutObservationOperations:
+    """Observe one original checkout without granting new provider execution."""
+    from talli_backend.modules.billing.annual_observation import AnnualCheckoutObservationService
+
+    return AnnualCheckoutObservationService(persistence, provider)
+
+
 def settle_annual_checkout(
     checkout: AnnualCheckout, observation: AnnualProviderObservation, at: Timestamp,
 ) -> AnnualCheckout:
@@ -1698,6 +1782,13 @@ class AnnualNotificationPersistence(Protocol):
 
 
 __all__ = [
+    "AnnualCheckoutObservationOutcome",
+    "AnnualCheckoutObservationBinding",
+    "validate_annual_checkout_observation",
+    "AnnualCheckoutObservationLease",
+    "AnnualCheckoutObservationPersistence",
+    "AnnualCheckoutObservationOperations",
+    "annual_checkout_observation_operations",
     "annual_support_refund_recovery_operations",
     "AnnualSupportRefundRecoveryOperations",
     "AnnualSupportRefundRecoveryPersistence",

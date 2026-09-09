@@ -4,11 +4,10 @@ from asyncio import timeout
 from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from hashlib import sha256
-import json
 from uuid import uuid4
 
 from talli_backend.modules.billing.annual_policy import annual_offer
+from talli_backend.modules.billing.annual_observation import accepted_checkout_fingerprint
 from talli_backend.modules.billing.public import (
     AnnualBillingProvider, AnnualCheckout, AnnualCheckoutPersistence,
     AnnualCheckoutPrerequisites, AnnualCheckoutQuery, AnnualProviderIntent,
@@ -24,13 +23,12 @@ from talli_backend.shared.kernel import Timestamp
 
 def checkout_fingerprint(command: StartAnnualCheckoutCommand) -> str:
     # Generated identities and refreshed assessments do not change customer intent.
-    body = {
-        "company": str(command.company_id), "year": command.income_year.value,
-        "actor": str(command.actor_id.subject), "offer": command.offer_version,
-        "terms": command.terms_digest, "accepted": command.purchase_accepted,
-        "recurring": command.recurring_consent, "consent": command.consent_version,
-    }
-    return sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return accepted_checkout_fingerprint(
+        company=command.company_id, year=command.income_year.value,
+        actor=command.actor_id.subject, offer=command.offer_version,
+        terms=command.terms_digest, accepted=command.purchase_accepted,
+        recurring=command.recurring_consent, consent=command.consent_version,
+    )
 
 
 class AnnualCheckoutService:
