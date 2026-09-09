@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const browserSource = readFileSync(
-  new URL("./browser_system_user_flow.mjs", import.meta.url),
+  new URL("./browser_authority_connections.mjs", import.meta.url),
   "utf8",
 );
 
@@ -73,51 +73,48 @@ test("browser contexts use a catch-all fail-closed egress guard", async () => {
 test("signed feedback redirect is inspected before a bounded loopback follow", () => {
   assert.match(
     browserSource,
-    /const appDownload = await ownerContext\.request\.get\([\s\S]+?maxRedirects: 0[\s\S]+?const signedLocation[\s\S]+?LOOPBACK_HOSTS\.has\(signedUrl\.hostname\)[\s\S]+?const signedDownload = await ownerContext\.request\.get\(signedUrl\.href,[\s\S]+?maxRedirects: 0/u,
+    /const receipt = await context\.request\.get\([\s\S]+?maxRedirects: 0[\s\S]+?const signed = new URL[\s\S]+?isLoopbackSupabaseUrl\(signed\.origin\)[\s\S]+?const bytes = await context\.request\.get\(signed\.href,[\s\S]+?maxRedirects: 0/u,
   );
 });
 
 test("current reconciliation UI reaches Godkjent before DB and reload assertions", () => {
-  const click = browserSource.indexOf('getByRole("button", { name: "Sjekk status på nytt" }).click()');
+  const click = browserSource.indexOf('await retry.press("Enter")');
   const acceptedUi = browserSource.indexOf(
     'productionSection.getByText("Godkjent", { exact: true }).waitFor()',
     click,
   );
-  const database = browserSource.indexOf("await waitForDatabaseState", click);
-  const reload = browserSource.indexOf("await ownerPage.reload()", click);
+  const database = browserSource.indexOf("const storedFiling = await database.query", click);
+  const reload = browserSource.indexOf("await page.reload()", click);
   assert.ok(click >= 0 && click < acceptedUi && acceptedUi < database && database < reload);
 });
 
 test("both browser contexts close before final health and egress assertions", () => {
-  const ownerClose = browserSource.indexOf("await ownerContext.close()");
+  const ownerClose = browserSource.indexOf("await context.close()");
   const otherClose = browserSource.indexOf("await otherContext.close()");
-  const healthGate = browserSource.indexOf("assert.deepEqual(browserProblems, [])");
+  const healthGate = browserSource.indexOf("assert.deepEqual(health, [])");
   assert.ok(ownerClose >= 0 && ownerClose < healthGate);
   assert.ok(otherClose >= 0 && otherClose < healthGate);
 });
 
-test("local Supabase stop failures join teardown errors", () => {
+test("owned process cleanup failures join teardown errors", () => {
   assert.match(
     browserSource,
-    /teardownStep\(\(\) => stopLocalSupabase\(\), cleanupErrors\)/u,
+    /await attempt\(\(\) => stopOwnedProcess\(resources\.web\)\)/u,
   );
   assert.match(
     browserSource,
-    /function stopLocalSupabase\(\) \{[\s\S]+?const stopped = supabaseCommand[\s\S]+?stopped\.status !== 0[\s\S]+?local_supabase_stop_failed/u,
+    /await attempt\(\(\) => stopOwnedProcess\(resources\.backend\)\)[\s\S]+?if \(cleanupErrors\.length\) throw new AggregateError/u,
   );
 });
 
 test("RF-1086 reconciliation controls have responsive overflow and focus coverage", () => {
-  assert.match(browserSource, /verifyRf1086ResponsiveViewports\(ownerPage\)/u);
-  const helper = browserSource.match(
-    /async function verifyRf1086ResponsiveViewports[\s\S]+?\n\}/u,
-  )?.[0] ?? "";
-  assert.match(helper, /\[320, 1440\]/u);
-  assert.match(helper, /scrollWidth/u);
-  assert.match(helper, /Sjekk status på nytt/u);
-  assert.match(helper, /Last ned/u);
-  assert.match(helper, /tilbakemelding/u);
-  assert.match(helper, /document\.activeElement/u);
+  const journey = browserSource.slice(browserSource.indexOf("const production = await seedHistoricalRf"), browserSource.indexOf("const otherContext"));
+  assert.match(journey, /\[320, 768, 1440\]/u);
+  assert.match(journey, /scrollWidth/u);
+  assert.match(journey, /Sjekk status på nytt/u);
+  assert.match(journey, /Last ned/u);
+  assert.match(journey, /tilbakemelding/u);
+  assert.equal((journey.match(/document\.activeElement/gu) ?? []).length, 2);
 });
 
 function fakeContext() {

@@ -215,16 +215,33 @@
       "scope": "standalone token/RF command corrections from independent review",
       "command": "pytest test_authority_tool_grant.py test_authority_tool_rf1086.py",
       "result": "63 passed, 0 failed, 0 skipped; local subprocess and fake HTTP only"
+    },
+    {
+      "scope": "successor hydrated Authority Connections and historical RF recovery with actual backend and owned Documents",
+      "command": "npm run test:browser-authority-connections",
+      "result": "fixture safety4 and fulljourney1 passed; no live authority calls; accepted after2reloads; originalreceiptSHA256; both-owner denial and console/error guards; zero fixtureusers/companies",
+      "localTranscript": "/tmp/talli-150-browser-rf-health-final.log"
+    },
+    {
+      "scope": "retargeted predecessor browser egress/download/focus/teardown contracts plus backend fixture safety",
+      "command": "node --test tests/browser_authority_connections_contract.test.mjs tests/authority_browser_fixture_safety.test.mjs",
+      "result": "10 passed, 0 failed, 0 skipped",
+      "localTranscript": "/tmp/talli-150-browser-contract-retarget.log"
+    },
+    {
+      "scope": "complete architecture checker regression suite with exact AU facade and approved RF tuple retirement",
+      "command": "npm run test:architecture",
+      "result": "54 passed, 0 failed, 0 skipped",
+      "localTranscript": "/tmp/talli-150-architecture-tests-run2.log"
     }
   ],
   "closeState": "OPEN; implementation active. Scoped tests pass; final stage verification and integration remain pending.",
   "taskId": "01a08515-2cd8-7093-8a34-3b9b3d458840",
   "branch": "codex/issue-150-authority-01a08515",
   "implementationClaim": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5601486395",
-  "progressCheckedAt": "2026-09-09T16:09:51.709689+00:00",
+  "progressCheckedAt": "2026-09-09T16:15:59.352823+00:00",
   "remainingWork": [
-    "Complete successor browser RF recovery/download/accessibility verification",
-    "Independent whole-stage review of a committed implementation revision",
+    "Resolve whole-stage independent review findings and review final committed browser/correction delta",
     "Final combined mandatory local database/browser lane and two new immutable complete stage gates",
     "Protected integration and exact-main Release/Preview verification"
   ]

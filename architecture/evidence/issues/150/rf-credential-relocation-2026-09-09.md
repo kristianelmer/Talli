@@ -110,7 +110,7 @@ JavaScript integer object-key ordering, UTF-16 warning sorting, `trim` character
 and well-formed JSON string escaping are retained explicitly.
 
 The production subdocument write order uses the stored shareholder UUIDs. The
-shipped `buildFilingCase` in `apps/web/app/lib/rf1086.ts` takes `shareholder.id`
+shipped `buildNoActivityRf1086Case` in `apps/web/app/lib/rf1086.ts` takes `shareholder.id`
 unchanged from PostgreSQL; the same renderer uses `snapshot.shareholder_id` as
 each `underskjemaXml` key. Canonical lowercase UUIDs have identical hyphen
 positions and the same lexical and original `localeCompare` order. A malformed
