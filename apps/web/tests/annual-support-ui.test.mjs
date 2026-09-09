@@ -28,6 +28,7 @@ function compile(source, dependencies = {}) {
     target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX,
   } }).outputText, { exports, require: id => id === "../../lib/operator-support"
     ? { operatorReadRecovery, operatorRecoveryHref, operatorSupportLocation }
+    : id === "../../components/billing/AnnualSupportCleanupRecoveryControl" ? { AnnualSupportCleanupRecoveryControl }
     : id === "../../components/billing/AnnualSupportRefundRecoveryControl" ? { AnnualSupportRefundRecoveryControl }
     : id === "../ui" ? {
       Banner: ({ children }) => React.createElement("div", {}, children),
@@ -38,6 +39,7 @@ function compile(source, dependencies = {}) {
   return exports;
 }
 const { AnnualSupportRefundRecoveryControl } = compile(readFileSync(new URL("../app/components/billing/AnnualSupportRefundRecoveryControl.tsx", import.meta.url), "utf8"));
+const { AnnualSupportCleanupRecoveryControl } = compile(readFileSync(new URL("../app/components/billing/AnnualSupportCleanupRecoveryControl.tsx", import.meta.url), "utf8"));
 const { AnnualBillingSupport } = compile(readFileSync(new URL("../app/(operator)/operator/annual-billing-support.tsx", import.meta.url), "utf8"));
 function render(extra = {}) {
   return renderToStaticMarkup(React.createElement(AnnualBillingSupport, { page, supportCaseId: caseId, error: null, ...extra }));
@@ -289,4 +291,22 @@ test("unreadable target-page reload preserves the complete selected request and 
   assert.equal(link.hash, "");
   assert.deepEqual(Object.fromEntries(link.searchParams), { supportCase: caseId, annualBefore: purchaseId,
     companyId, refundPurchaseId: purchaseId, refundRequestId: requestId, beforeRefundRequestId: refundCursor });
+});
+
+
+test("operator STOP check is available only for recorded cleanup in an authorized purchase page", () => {
+  const control = { initiatingUserId: operatorId, beforePurchaseId: purchaseId,
+    recoverCleanupAction: async () => { throw new Error("render must not reconcile"); } };
+  const html = render(control);
+  assert.match(html, /Sjekk avtalestopp/);
+  assert.match(html, /990,00/);
+  for (const [name, value] of Object.entries({ initiatingUserId: operatorId, supportCaseId: caseId,
+    companyId, purchaseId, beforePurchaseId: purchaseId })) {
+    assert.match(html, new RegExp(`name="${name}" value="${value}"`));
+  }
+  for (const changes of [{ page: { ...page, purchases: [{ ...recorded, cleanupStatus: null }] } },
+    { initiatingUserId: undefined }, { recoverCleanupAction: undefined }, { error: "step-up" }]) {
+    assert.doesNotMatch(render({ ...control, ...changes }), /Sjekk avtalestopp/);
+  }
+  assert.doesNotMatch(html, /name="(?:idempotencyKey|operationId|refundRequestId|cancellationId)"/);
 });

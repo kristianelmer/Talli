@@ -32,7 +32,8 @@
       "AnnualRefundRecoveryTargetsQuery",
       "AnnualCheckoutPreparationQuery",
       "AnnualSupportRefundRecoveryQuery",
-      "AnnualSupportRefundRecoveryTargetsQuery"
+      "AnnualSupportRefundRecoveryTargetsQuery",
+      "AnnualSupportCleanupRecoveryQuery"
     ],
     "events": [
       "BillingPaymentEvent"
@@ -134,7 +135,17 @@
       "AnnualCheckoutWithdrawalId",
       "AnnualSupportRefundRecoveryPersistence",
       "AnnualSupportRefundRecoveryOperations",
-      "annual_support_refund_recovery_operations"
+      "annual_support_refund_recovery_operations",
+      "AnnualCheckoutObservationOutcome",
+      "AnnualCheckoutObservationBinding",
+      "validate_annual_checkout_observation",
+      "AnnualCheckoutObservationLease",
+      "AnnualCheckoutObservationPersistence",
+      "AnnualCheckoutObservationOperations",
+      "annual_checkout_observation_operations",
+      "AnnualSupportCleanupRecoveryPersistence",
+      "AnnualSupportCleanupRecoveryOperations",
+      "annual_support_cleanup_recovery_operations"
     ]
   },
   "owns": {
@@ -151,7 +162,9 @@
       "billing.annual_operations",
       "billing.annual_cancellation_requests",
       "billing.annual_refund_requests",
-      "billing.annual_checkout_withdrawals"
+      "billing.annual_checkout_withdrawals",
+      "billing.annual_checkout_observation_principals",
+      "billing.annual_checkout_observation_authorities"
     ],
     "storageBuckets": [],
     "projections": [
@@ -159,7 +172,7 @@
       "BillingSnapshot",
       "AnnualSupportPage"
     ],
-    "migrations": "supabase/migrations/20260906221800_annual_checkout_withdrawals.sql"
+    "migrations": "supabase/migrations/20260907153938_annual_checkout_observation.sql"
   },
   "ports": [
     {
@@ -278,6 +291,24 @@
       "adapters": [
         "talli_backend.adapters.postgres_annual_refund.PostgresAnnualSupportRefundRecoverySession"
       ]
+    },
+    {
+      "name": "AnnualCheckoutObservationPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualCheckoutObservationPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_observation.PostgresAnnualCheckoutObservationStore"
+      ]
+    },
+    {
+      "name": "AnnualSupportCleanupRecoveryPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.billing.public.AnnualSupportCleanupRecoveryPersistence",
+      "registrationDecorator": "talli_backend.modules.billing.public.billing_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_support_cleanup.PostgresAnnualSupportCleanupRecoverySession"
+      ]
     }
   ],
   "dependencies": [],
@@ -338,7 +369,14 @@
     "annualSupportRefundRecoveryApi": "apps/backend/tests/test_annual_support_refund_recovery_api.py",
     "annualSupportRefundTargetsApi": "apps/backend/tests/test_annual_support_refund_targets_api.py",
     "annualSupportRefundRecoveryDatabase": "apps/backend/tests/test_annual_support_refund_recovery_runtime.py",
-    "annualSupportRefundTargetsDatabase": "apps/backend/tests/test_annual_support_refund_targets_runtime.py"
+    "annualSupportRefundTargetsDatabase": "apps/backend/tests/test_annual_support_refund_targets_runtime.py",
+    "annualCheckoutObservation": "apps/backend/tests/test_annual_observation_service.py",
+    "annualCheckoutObservationDatabase": "apps/backend/tests/test_annual_observation_runtime.py",
+    "annualCheckoutObservationCli": "apps/backend/tests/test_annual_checkout_reconciliation_cli.py",
+    "annualRuntimeConfiguration": "apps/backend/tests/test_annual_billing_runtime_configuration.py",
+    "annualSupportCleanupRecovery": "apps/backend/tests/test_annual_support_cleanup_service.py",
+    "annualSupportCleanupRecoveryApi": "apps/backend/tests/test_annual_support_cleanup_api.py",
+    "annualSupportCleanupRecoveryDatabase": "apps/backend/tests/test_annual_support_cleanup_runtime.py"
   },
   "compatibilityExceptions": []
 }

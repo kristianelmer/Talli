@@ -1,7 +1,7 @@
 # Billing backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests","billing.annual_refund_requests","billing.annual_checkout_withdrawals"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence","AnnualSupportReadPersistence","AnnualRefundRecoveryPersistence","AnnualSupportRefundRecoveryPersistence","AnnualNotificationAuthentication","AnnualNotificationPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
+{"dependencies":[],"ownedTables":["billing.billing_accounts","billing.billing_payment_events","billing.production_pilot_entitlements","billing.annual_purchases","billing.annual_refund_cases","billing.annual_operations","billing.annual_cancellation_requests","billing.annual_refund_requests","billing.annual_checkout_withdrawals","billing.annual_checkout_observation_principals","billing.annual_checkout_observation_authorities"],"ports":["BillingPersistence","BillingPaymentProvider","AnnualBillingProvider","AnnualCheckoutPersistence","AnnualCancellationPersistence","AnnualAgreementCleanupPersistence","AnnualBillingReadPersistence","AnnualRefundPersistence","AnnualSupportReadPersistence","AnnualRefundRecoveryPersistence","AnnualSupportRefundRecoveryPersistence","AnnualNotificationAuthentication","AnnualNotificationPersistence","AnnualCheckoutObservationPersistence","AnnualSupportCleanupRecoveryPersistence"],"publicEntryPoints":["talli_backend.modules.billing.public"]}
 -->
 
 ## Purpose and ownership
@@ -742,3 +742,45 @@ The additive support GET and POST expose scoped case/company/purchase/request ID
 income year and operation status. They do not expose requester or provider facts,
 and one confirmed operation does not establish that all purchase liability is
 refunded. Canonical support purchase history remains the balance projection.
+
+## Durable checkout observation
+
+`annual_checkout_observation_operations` reconciles one already committed checkout
+through `AnnualCheckoutObservationOperations` and returns an
+`AnnualCheckoutObservationOutcome`. `AnnualCheckoutObservationPersistence`
+supplies an `AnnualCheckoutObservationLease`; its
+`AnnualCheckoutObservationBinding` is checked by
+`validate_annual_checkout_observation` against the immutable original intent.
+Billing owns the immutable
+accepted-intent projection in `annual_checkout_observation_authorities` and the
+provider/account-bound principal registration in
+`annual_checkout_observation_principals`. It reuses annual checkout settlement
+policy and preserves the original accepting actor and consent. These records
+confer no new-sale readiness, owner membership, renewal or refund-initiation authority.
+
+Backend-system infrastructure owns the fenced lease and retry record. Its
+dedicated database login must match the registered role OID and exact account;
+owner claims and ambient support context confer no worker access. Current
+principal epoch and lease authority are rechecked before provider observation and
+locked settlement. The provider is called only through read-only reconciliation.
+
+The one-pass CLI is off by default and requires explicit `vipps-mt` runtime
+configuration plus a separately provisioned restricted database login. The
+migration creates no login or enabled principal. Rollback withdraws execution
+grants and preserves acceptance, principal, lease and retry evidence for recutover.
+See `docs/billing/annual-checkout-reconciliation.md` for invocation and outcomes.
+
+## Operator recovery of a recorded agreement stop
+
+`AnnualSupportCleanupRecoveryQuery` selects the one immutable STOP already stored
+for a purchase. `AnnualSupportCleanupRecoveryOperations`, composed by
+`annual_support_cleanup_recovery_operations`, loads and reconciles it through
+`AnnualSupportCleanupRecoveryPersistence`. It requires the current active admin,
+an explicitly opened same-company billing case, and fresh MFA, even when that
+operator is also an owner. Purchase, original checkout and STOP locks retain the
+original intent, cancellation/refund receipt and requesting actor.
+
+Recovery updates only the existing STOP observation and status. It requires one
+settlement row and rechecks current case authority before returning; late denial
+rolls back the change. Missing STOP returns not-found. The route cannot claim new
+cleanup, execute a provider operation, initiate a refund or change paid access.

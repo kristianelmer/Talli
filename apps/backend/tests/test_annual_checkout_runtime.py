@@ -14,6 +14,7 @@ from test_annual_purchase_basis_runtime import (
     ROOT,
     admitted,
     basis,
+    database_now,
     insert,
     scoped,
     test_role_authority,
@@ -100,7 +101,7 @@ def session(setup, *, actor=None, fresh=True, current=True, session_type=Postgre
                 "sub": str(who.subject),
                 "aal": "aal2",
                 "amr": [
-                    {"method": "totp", "timestamp": datetime.now(UTC).timestamp() - (0 if fresh else 7200)}
+                    {"method": "totp", "timestamp": database_now().timestamp() - (1 if fresh else 7200)}
                 ],
             }
         ),
@@ -873,6 +874,7 @@ def test_adapter_records_survive_two_rollback_recutover_cycles(setup):
     migration = "20260905083150_annual_billing_purchase_ledger.sql"
     for _ in range(2):
         with psycopg.connect(DATABASE_URL, autocommit=True) as connection:
+            connection.execute((ROOT / "supabase" / "rollback" / "20260907153938_annual_checkout_observation.sql").read_text())
             connection.execute((ROOT / "supabase" / "rollback" / "20260906221800_annual_checkout_withdrawals.sql").read_text())
             connection.execute((ROOT / "supabase" / "rollback" / "20260905145000_annual_refund_agreement_cleanup.sql").read_text())
             connection.execute((ROOT / "supabase" / "rollback" / "20260905141500_annual_refund_requests.sql").read_text())
@@ -895,6 +897,7 @@ def test_adapter_records_survive_two_rollback_recutover_cycles(setup):
             connection.execute((ROOT / "supabase" / "migrations" / "20260905141500_annual_refund_requests.sql").read_text())
             connection.execute((ROOT / "supabase" / "migrations" / "20260905145000_annual_refund_agreement_cleanup.sql").read_text())
             connection.execute((ROOT / "supabase" / "migrations" / "20260906221800_annual_checkout_withdrawals.sql").read_text())
+            connection.execute((ROOT / "supabase" / "migrations" / "20260907153938_annual_checkout_observation.sql").read_text())
             principal = connection.execute("select current_user").fetchone()[0]
             connection.execute(
                 psycopg.sql.SQL("grant billing_store_owner to {}").format(psycopg.sql.Identifier(principal))

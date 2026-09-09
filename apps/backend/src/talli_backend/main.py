@@ -71,7 +71,7 @@ from talli_backend.application.billing_session import (
     BillingSessionFactory,
 )
 from talli_backend.application.billing_workflow import BillingWorkflow
-from talli_backend.application.annual_billing import AnnualBillingSessionFactory, AnnualBillingWorkflow, AnnualCheckoutWorkflow, AnnualCheckoutPrerequisiteResolver, AnnualAgreementCleanupWorkflow, AnnualSupportWorkflow, AnnualRefundRecoveryWorkflow, AnnualSupportRefundRecoveryWorkflow
+from talli_backend.application.annual_billing import AnnualBillingSessionFactory, AnnualBillingWorkflow, AnnualCheckoutWorkflow, AnnualCheckoutPrerequisiteResolver, AnnualAgreementCleanupWorkflow, AnnualSupportWorkflow, AnnualRefundRecoveryWorkflow, AnnualSupportRefundRecoveryWorkflow, AnnualSupportCleanupRecoveryWorkflow
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceAuthenticationError,
     CorporateGovernanceSessionFactory,
@@ -187,6 +187,7 @@ from talli_backend.modules.billing.public import (
     AnnualCheckoutPreparationQuery,
     AnnualRefundRecoveryQuery, AnnualRefundRequestId,
     AnnualRefundRecoveryTargetsQuery, AnnualSupportRefundRecoveryQuery, AnnualSupportRefundRecoveryTargetsQuery,
+    AnnualSupportCleanupRecoveryQuery,
     ActivateSubscriptionCommand,
     BillingAccount,
     BillingEntitlementDecision,
@@ -671,6 +672,21 @@ class AnnualSupportRefundRecoveryWire(AnnualRefundRecoveryWire):
 
 class AnnualSupportRefundRecoveryTargetPageWire(AnnualRefundRecoveryTargetPageWire):
     support_case_id: UUID
+
+
+class AnnualSupportCleanupRecoveryCommandWire(StrictTransportModel):
+    company_id: UUID
+    purchase_id: UUID
+    support_case_id: UUID
+
+
+class AnnualSupportCleanupRecoveryWire(TransportModel):
+    company_id: UUID
+    purchase_id: UUID
+    support_case_id: UUID
+    operation_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    status: Literal["pending", "unknown", "confirmed"]
 
 
 class AnnualRenewalCancellationCommandWire(StrictTransportModel):
@@ -9473,6 +9489,33 @@ def create_app(
                 purchase_id=UUID(str(resolution.request.purchase_id)),
                 refund_request_id=UUID(str(result.refund_request_id)), income_year=resolution.facts.income_year.value,
                 support_case_id=command.support_case_id, status=resolution.operation.observation.status.value,
+            )
+
+        response.headers["Cache-Control"] = "no-store"
+        return await billing_call(execute)
+
+    @application.post(
+        "/api/v1/billing/annual/support/agreement-cleanup-recoveries",
+        operation_id="billingRecoverAnnualSupportCleanup", response_model=AnnualSupportCleanupRecoveryWire,
+        responses={200: {"description": "Observe the one recorded agreement stop under an opened billing case; no new cleanup or provider execution."} | billing_success} | billing_errors,
+        tags=["billing"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def recover_annual_support_cleanup(
+        response: Response, command: AnnualSupportCleanupRecoveryCommandWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualSupportCleanupRecoveryWire:
+        async def execute():
+            workflow = AnnualSupportCleanupRecoveryWorkflow(
+                await annual_billing_sessions.session(bearer_token(credentials)), annual_billing_provider,
+            )
+            result = await workflow.recover_cleanup(AnnualSupportCleanupRecoveryQuery(
+                company_id=CompanyId(str(command.company_id)), purchase_id=AnnualPurchaseId(str(command.purchase_id)),
+                support_case_id=AnnualSupportCaseId(str(command.support_case_id)), actor_id=workflow.actor_id,
+            ))
+            return AnnualSupportCleanupRecoveryWire(
+                company_id=UUID(str(result.intent.company_id)), purchase_id=UUID(str(result.purchase_id)),
+                support_case_id=command.support_case_id, operation_id=UUID(str(result.intent.operation_id)),
+                income_year=result.intent.income_year.value, status=result.observation.status.value,
             )
 
         response.headers["Cache-Control"] = "no-store"

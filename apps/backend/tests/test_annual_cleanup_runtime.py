@@ -578,6 +578,7 @@ def test_cleanup_evidence_survives_two_full_predecessor_cycles(setup, purchase):
         store.settle_agreement_cleanup(original, stop_observation(original, AnnualProviderStatus.UNKNOWN))
     )
     migrations = [
+        "20260907153938_annual_checkout_observation.sql",
         "20260906221800_annual_checkout_withdrawals.sql",
         "20260905145000_annual_refund_agreement_cleanup.sql",
         "20260905141500_annual_refund_requests.sql",
@@ -674,6 +675,7 @@ def cleanup_http(setup, provider=None, **options):
     from talli_backend.adapters.supabase_annual_billing import _AnnualBillingSession, PostgresAnnualBillingReadSession
     from talli_backend.adapters.postgres_annual_checkout import PostgresAnnualCancellationSession
     from talli_backend.adapters.postgres_annual_support import PostgresAnnualSupportReadSession
+    from talli_backend.adapters.postgres_annual_support_cleanup import PostgresAnnualSupportCleanupRecoverySession
     from talli_backend.adapters.postgres_annual_refund import (
         PostgresAnnualRefundRecoverySession, PostgresAnnualSupportRefundRecoverySession,
     )
@@ -688,6 +690,7 @@ def cleanup_http(setup, provider=None, **options):
                 PostgresAnnualBillingReadSession(checkout), PostgresAnnualCancellationSession(checkout),
                 checkout, PostgresAnnualCleanupSession(checkout), PostgresAnnualSupportReadSession(checkout),
                 PostgresAnnualRefundRecoverySession(checkout), PostgresAnnualSupportRefundRecoverySession(checkout),
+                PostgresAnnualSupportCleanupRecoverySession(checkout),
             )
 
     return TestClient(create_app(annual_billing_session_factory=Factory(), annual_billing_provider=provider))

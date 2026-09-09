@@ -101,6 +101,28 @@ one calendar day ahead in Europe/Oslo.
 | `cancel-charge` | Second recurring charge pending with zero captured | Cancel that charge and reconcile its cancellation. |
 | `stop` | Original charge terminal; any scheduled renewals refunded, canceled, or terminal with zero captured/refunded | Stop the agreement; reconcile the stopped status. |
 
+The optional `initial-full-refund` stage refunds one initial charge's full
+149000 øre in a single operation. Use it on a **second, separately approved
+checkout**, with its own durable state path, to collect that evidence before
+recurring due-date processing. It requires confirmed initial capture of exactly
+149000 øre with zero refunded and keeps the original initial charge identity.
+For example, start and approve a second checkout using the commands above with
+`TALLI_MT_INITIAL_FULL_STATE="$HOME/.local/state/talli/vipps-mt/initial-full-01.json"`
+as its state path, then run:
+
+```sh
+uv run --project apps/backend python apps/backend/scripts/run_vipps_mt_conformance.py \
+  --action execute --allow-mt --stage initial-full-refund --state "$TALLI_MT_INITIAL_FULL_STATE"
+```
+
+`initial-full-refund` and the `partial-refund`/`remaining-refund` path are mutually
+exclusive within one run. The durable dispatch marker reserves that choice even
+if the response is unknown or the attempt is interrupted. Reconcile the original
+stage; do not edit or delete state to switch paths. Keep the first run for its
+split refund and recurring scenarios. The original **`full-refund` on a captured
+recurring charge remains mandatory** after actual MT due-date processing. An
+initial full refund does not satisfy that recurring acceptance requirement.
+
 Run `stop` last. New scenarios cannot start once the stop stage exists. A stop
 does not silently cancel an unresolved renewal: a scheduled `renewal` requires
 its confirmed `full-refund`, and `cancel-renewal` requires confirmed
@@ -125,10 +147,21 @@ invocations. Atomic, fsynced state writes record dispatch before any network
 request, including token acquisition, so a lost response or crash cannot cause
 an ordinary rerun to create a second operation.
 
+Checkout creation cannot be deliberately repeated: `repeat-execute` for
+`checkout` is rejected before any provider request or state change. In actual MT
+testing, replaying the same checkout intent and idempotency key created another
+agreement. Reconciliation binds reads to the single consistent agreement
+reference already observed in that checkout's attempt history, including an
+earlier observation before a later unknown result or rate limit. It preserves
+the stored intent and key. Conflicting observed references are rejected. With
+no prior observed reference, provider discovery must find exactly one matching
+agreement; the runner never selects the latest of multiple matches.
+
 For a deliberate provider idempotency test, use `--action repeat-execute` on an
-existing stage whose latest completed result is pending or confirmed. This
-resubmits the exact stored request and provider key. It is rejected after an
-unknown result or interrupted attempt; use `reconcile` in those cases. Do not
+existing non-checkout stage whose latest completed result is pending or
+confirmed; `initial-full-refund` requires a confirmed result. This resubmits the
+exact stored request and provider key. A pending initial full refund, any unknown
+result, or an interrupted attempt must use `reconcile` instead. Do not
 delete the state or create a fresh run to recover a lost response.
 
 The private state file retains bounded typed observations, timestamps, source
@@ -157,7 +190,10 @@ uv run --project apps/backend pytest -c apps/backend/pyproject.toml \
   apps/backend/tests/test_vipps_mt_conformance_runner.py -q
 ```
 
-It covers the complete scenario sequence, duplicate provider keys, concurrent
-commands, response loss, interrupted evidence writes, blocked prerequisites,
-immutable intent conflicts, missing opt-in/configuration and secret redaction.
+It covers the original scenario sequence and optional initial full refund,
+reserved refund-path conflicts, duplicate refund keys, non-idempotent agreement
+creation, checkout replay rejection, binding prior agreement evidence after an
+unknown result/rate limit, concurrent commands, response loss, interrupted
+evidence writes, blocked prerequisites, immutable intent conflicts, missing
+opt-in/configuration and secret redaction.
 These tests make no requests to MT or any other third-party target.

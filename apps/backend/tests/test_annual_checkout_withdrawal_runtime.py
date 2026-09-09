@@ -323,6 +323,7 @@ def test_withdrawal_and_function_identity_survive_full_rollback_recutover_twice(
     for _ in range(2):
         with psycopg.connect(DATABASE_URL,autocommit=True) as connection:
             before_role = connection.execute("select pg_has_role(current_user,'billing_store_owner','SET')").fetchone()[0]
+            connection.execute((ROOT/'supabase'/'rollback'/'20260907153938_annual_checkout_observation.sql').read_text())
             connection.execute((ROOT/'supabase'/'rollback'/MIGRATION).read_text())
             assert connection.execute("select pg_has_role(current_user,'billing_store_owner','SET')").fetchone()[0] == before_role
             assert connection.execute("select 'billing_annual_retired.guard_annual_checkout_request_v1()'::regprocedure::oid").fetchone()[0] == oid
@@ -337,6 +338,7 @@ def test_withdrawal_and_function_identity_survive_full_rollback_recutover_twice(
             connection.execute(psycopg.sql.SQL('grant billing_store_owner to {}').format(psycopg.sql.Identifier(principal)))
             denied_old_claim()
             connection.execute((ROOT/'supabase'/'migrations'/MIGRATION).read_text())
+            connection.execute((ROOT/'supabase'/'migrations'/'20260907153938_annual_checkout_observation.sql').read_text())
             assert connection.execute("select 'billing.guard_annual_checkout_request_v1()'::regprocedure::oid").fetchone()[0] == oid
         assert receipts(setup) == original
         assert asyncio.run(withdraw(setup)) == result

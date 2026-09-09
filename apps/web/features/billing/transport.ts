@@ -8,6 +8,7 @@ import {
   type AnnualSupportRequest,
   type AnnualSupportRefundRecoveryTargetsRequest,
   type AnnualSupportRefundRecoveryCommandWire,
+  type AnnualSupportCleanupRecoveryCommandWire,
   type AnnualAgreementCleanupCommandWire,
   type AnnualCheckoutObservationCommandWire,
   type AnnualCheckoutCommandWire,
@@ -58,6 +59,13 @@ export async function recoverAnnualSupportRefund(accessToken: string, body: Annu
       || value.purchaseId !== body.purchaseId || value.refundRequestId !== body.refundRequestId) {
     throw new TalliApiError(502, undefined);
   }
+  return value;
+}
+
+export async function recoverAnnualSupportCleanup(accessToken: string, body: AnnualSupportCleanupRecoveryCommandWire) {
+  const value = await client(accessToken).billingRecoverAnnualSupportCleanup(body, request());
+  if (value.supportCaseId !== body.supportCaseId || value.companyId !== body.companyId
+      || value.purchaseId !== body.purchaseId) throw new TalliApiError(502, undefined);
   return value;
 }
 

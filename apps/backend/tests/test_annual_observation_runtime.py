@@ -9,6 +9,7 @@ from uuid import uuid4
 import psycopg
 from psycopg import sql
 from psycopg.conninfo import make_conninfo
+from psycopg.types.json import Jsonb
 import pytest
 
 from test_annual_checkout_runtime import (
@@ -380,6 +381,29 @@ def test_worker_has_no_write_columns_or_role_escalation(worker):
         with psycopg.connect(worker.url) as con:
             with pytest.raises(psycopg.errors.InsufficientPrivilege):
                 con.execute(sql.SQL('set role {}').format(sql.Identifier(role)))
+
+
+@pytest.mark.parametrize('field,value', [
+    ('provider', 'other-provider'), ('operation', 'refund'),
+    ('charge_reference', 'other-purchase-charge'), ('amount_minor', 1),
+])
+def test_direct_worker_settlement_cannot_rebind_provider_evidence(setup, worker, field, value):
+    checkout = purchase(setup, worker)
+    lease = asyncio.run(worker.store.claim_checkout_observation())
+    before = checkout_company_records(setup), work_record(checkout)
+    evidence = {
+        'provider': checkout.provider, 'operation': 'checkout', 'status': 'confirmed',
+        'agreement_reference': 'agr-test', 'charge_reference': checkout.intent.charge_reference,
+        'amount_minor': checkout.offer.gross_minor, 'captured_minor': checkout.offer.gross_minor,
+        'refunded_minor': 0, 'captured_at': datetime.now(UTC).isoformat(), 'checkout_url': None,
+    } | {field: value}
+    with psycopg.connect(worker.url) as con:
+        con.execute('set local role annual_checkout_observer_executor')
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            con.execute('select billing.annual_observer_finish_v1(%s,%s,%s,%s,%s)', (
+                str(checkout.intent.operation_id), lease.token, lease.fence, 'paid', Jsonb(evidence),
+            ))
+    assert (checkout_company_records(setup), work_record(checkout)) == before
 
 
 def test_rollback_preserves_evidence_and_recutover_requires_explicit_reactivation(setup, worker):

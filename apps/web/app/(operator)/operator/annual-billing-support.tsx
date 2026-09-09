@@ -1,4 +1,6 @@
 import { AnnualSupportRefundRecoveryControl } from "../../components/billing/AnnualSupportRefundRecoveryControl";
+import { AnnualSupportCleanupRecoveryControl } from "../../components/billing/AnnualSupportCleanupRecoveryControl";
+import type { AnnualSupportCleanupRecoveryAction } from "../../lib/annual-support-cleanup-recovery";
 import type { AnnualSupportRefundTargetsView, AnnualSupportRefundRecoveryAction } from "../../lib/annual-support-refund-recovery";
 import type { AnnualSupportPageWire } from "../../../features/billing";
 import { operatorRecoveryHref, operatorSupportLocation, type OperatorReadRecovery } from "../../lib/operator-support";
@@ -33,7 +35,7 @@ export function OperatorReadRecoveryView({ recovery, returnTo }: {
   </section>;
 }
 
-export function AnnualBillingSupport({ page, error, supportCaseId, beforePurchaseId, initiatingUserId, refundTargets, recoverAction }: {
+export function AnnualBillingSupport({ page, error, supportCaseId, beforePurchaseId, initiatingUserId, refundTargets, recoverAction, recoverCleanupAction }: {
   page: AnnualSupportPageWire | null;
   error: "sign-in" | "step-up" | "unavailable" | null;
   supportCaseId: string;
@@ -41,6 +43,7 @@ export function AnnualBillingSupport({ page, error, supportCaseId, beforePurchas
   initiatingUserId?: string;
   refundTargets?: AnnualSupportRefundTargetsView | null;
   recoverAction?: AnnualSupportRefundRecoveryAction;
+  recoverCleanupAction?: AnnualSupportCleanupRecoveryAction;
 }) {
   if (!page && !error) return null;
   const { returnTo } = operatorSupportLocation({ supportCase: supportCaseId, annualBefore: beforePurchaseId });
@@ -69,6 +72,10 @@ export function AnnualBillingSupport({ page, error, supportCaseId, beforePurchas
             .join(", ") || "Ingen registrert"}.</p>
           <p>Fornyelse i Talli: {purchase.renewalCanceledAt ? `stoppet ${date(purchase.renewalCanceledAt)}` : purchase.recurringConsent ? "ikke stoppet" : "ikke valgt"}.</p>
           <p>Stopp hos betalingsleverandør: <strong>{purchase.cleanupStatus ? operationLabels[purchase.cleanupStatus] : "Ingen operasjon registrert"}</strong>.</p>
+          {purchase.cleanupStatus && initiatingUserId && recoverCleanupAction ? <AnnualSupportCleanupRecoveryControl
+            key={`operator-cleanup:${initiatingUserId}:${supportCaseId}:${page.companyId}:${purchase.purchaseId}`}
+            initiatingUserId={initiatingUserId} supportCaseId={supportCaseId} companyId={page.companyId}
+            purchaseId={purchase.purchaseId} beforePurchaseId={beforePurchaseId} recoverAction={recoverCleanupAction} /> : null}
           <p>Avtalte datoer: tilgang til {date(purchase.paidThrough)}, eksport til {date(purchase.exportThrough)}.</p>
           <small>Betalingsstatus oppdatert {date(purchase.updatedAt)}.</small>
           {purchase.refundRequestCount > 0 && refundTargets?.purchaseId !== purchase.purchaseId ? <p><a href={operatorSupportLocation({

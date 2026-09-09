@@ -1057,6 +1057,55 @@ class AnnualAgreementCleanupClaim:
     newly_claimed: bool
 
 
+@dataclass(frozen=True, slots=True)
+class AnnualSupportCleanupRecoveryQuery:
+    company_id: CompanyId
+    purchase_id: AnnualPurchaseId
+    support_case_id: AnnualSupportCaseId
+    actor_id: ActorId
+
+
+class AnnualSupportCleanupRecoveryPersistence(Protocol):
+    @property
+    def actor_id(self) -> ActorId: ...
+
+    async def load_cleanup_recovery(self, query: AnnualSupportCleanupRecoveryQuery) -> AnnualAgreementCleanup:
+        """Load the one immutable STOP already recorded for this purchase.
+
+        Require current active admin, explicitly opened same-company billing case
+        and fresh MFA before/after locks and successful return. Lock purchase,
+        original checkout, then STOP. Bind its original cancellation/refund receipt
+        and accepting intent; never claim, allocate, resolve sources or use owner
+        authority as a substitute. Missing STOP is not found, never created.
+        """
+        ...
+
+    async def settle_cleanup_recovery(
+        self, query: AnnualSupportCleanupRecoveryQuery, cleanup: AnnualAgreementCleanup,
+        observation: AnnualProviderObservation,
+    ) -> AnnualAgreementCleanup:
+        """Reload under the same current case and preserve the original envelope.
+
+        Apply settle_annual_agreement_cleanup to locked current evidence. Update
+        only that STOP's status/observation, require exactly one affected row, and
+        recheck case/admin/MFA before return. Late denial rolls back. No purchase,
+        receipt, new operation or original requester mutation is permitted.
+        """
+        ...
+
+
+class AnnualSupportCleanupRecoveryOperations(Protocol):
+    async def recover_cleanup(self, query: AnnualSupportCleanupRecoveryQuery) -> AnnualAgreementCleanup: ...
+
+
+def annual_support_cleanup_recovery_operations(
+    persistence: AnnualSupportCleanupRecoveryPersistence, provider: AnnualBillingProvider | None,
+) -> AnnualSupportCleanupRecoveryOperations:
+    from talli_backend.modules.billing.annual_support_cleanup import AnnualSupportCleanupRecoveryService
+
+    return AnnualSupportCleanupRecoveryService(persistence, provider)
+
+
 @runtime_checkable
 class AnnualAgreementCleanupPersistence(Protocol):
     @property
@@ -1782,6 +1831,10 @@ class AnnualNotificationPersistence(Protocol):
 
 
 __all__ = [
+    "AnnualSupportCleanupRecoveryQuery",
+    "AnnualSupportCleanupRecoveryPersistence",
+    "AnnualSupportCleanupRecoveryOperations",
+    "annual_support_cleanup_recovery_operations",
     "AnnualCheckoutObservationOutcome",
     "AnnualCheckoutObservationBinding",
     "validate_annual_checkout_observation",

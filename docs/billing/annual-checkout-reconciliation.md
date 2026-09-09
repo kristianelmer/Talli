@@ -41,6 +41,12 @@ identity, its authorization epoch and the lease fence. Configuration alone does
 not establish database authority. This command neither provisions the principal
 nor accepts owner claims or a caller-selected company/purchase identifier.
 
+Settlement also checks the stored provider, checkout operation, charge reference
+and accepted amount inside PostgreSQL before attaching an observation. Billing's
+Python settlement policy validates the provider result and monetary transitions;
+the database checks prevent the restricted worker login from attaching another
+operation's evidence to its leased checkout.
+
 Use a dedicated login and connection string, not an HTTP business/inbox connection
 or a migration/service-role principal. Keep its password and MT keys out of
 command arguments, checked-in files and logs. The shared configuration loader
@@ -83,6 +89,11 @@ no automatic repeat, and a timeout does not authorize a second provider mutation
 Stopping invocation or setting worker mode to `off` disables future passes.
 Database principal revocation remains the authority control for a running pass;
 an environment change cannot retroactively change a process's configuration.
+
+Before rolling back predecessor annual-billing migrations, apply this worker's
+rollback first. On recutover, restore it after those predecessors. Its authority
+and lease records survive both cycles, and disabled principals require explicit
+reactivation before another pass can claim work.
 
 ## Limits and local verification
 

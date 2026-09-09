@@ -14,6 +14,7 @@ export type {
   AnnualRefundRecoveryTargetPageWire,
   AnnualSupportPageWire,
   AnnualSupportRefundRecoveryWire,
+  AnnualSupportCleanupRecoveryWire,
   AnnualSupportRefundRecoveryTargetPageWire,
   AnnualSupportPurchaseWire,
   AnnualPurchaseSummaryWire,

@@ -10,6 +10,7 @@ from talli_backend.adapters.postgres_annual_checkout import (
 from talli_backend.adapters.postgres_annual_cleanup import PostgresAnnualCleanupSession
 from talli_backend.adapters.postgres_annual_refund_targets import _read_refund_recovery_targets
 from talli_backend.adapters.postgres_annual_support import PostgresAnnualSupportReadSession
+from talli_backend.adapters.postgres_annual_support_cleanup import PostgresAnnualSupportCleanupRecoverySession
 from talli_backend.adapters.postgres_annual_refund import (
     PostgresAnnualRefundRecoverySession, PostgresAnnualSupportRefundRecoverySession,
 )
@@ -20,6 +21,7 @@ from talli_backend.modules.billing.public import (
     AnnualAgreementCleanupPersistence,
     AnnualSupportReadPersistence,
     AnnualRefundRecoveryPersistence, AnnualSupportRefundRecoveryPersistence,
+    AnnualSupportCleanupRecoveryPersistence,
     AnnualRefundRecoveryTargetsQuery,
     AnnualRefundRecoveryTargetPage,
     AnnualBillingReadPersistence,
@@ -161,6 +163,7 @@ class _AnnualBillingSession:
     support_reads: AnnualSupportReadPersistence
     refund_recovery: AnnualRefundRecoveryPersistence
     support_refund_recovery: AnnualSupportRefundRecoveryPersistence
+    support_cleanup_recovery: AnnualSupportCleanupRecoveryPersistence
 
     @property
     def actor_id(self):
@@ -193,4 +196,5 @@ class SupabaseAnnualBillingAdapter:
             PostgresAnnualCleanupSession(checkout),
             PostgresAnnualSupportReadSession(checkout), PostgresAnnualRefundRecoverySession(checkout),
             PostgresAnnualSupportRefundRecoverySession(checkout),
+            PostgresAnnualSupportCleanupRecoverySession(checkout),
         )

@@ -9,7 +9,7 @@
   "publicEntryPoint": "@/features/billing",
   "publicImportPaths": ["@/features/billing", "apps/web/features/billing", "apps/web/features/billing/index.ts"],
   "ownedRoutes": ["/billing", "/workspace", "/operator", "/filing/aksjonaerregisteroppgaven"],
-  "apiOperations": ["billingReadAnnualSupportRefundRecoveryTargets", "billingRecoverAnnualSupportRefund", "billingStartAnnualCheckout", "billingWithdrawAnnualCheckoutRequest", "billingPrepareAnnualCheckout", "billingReadAnnualRefundRecoveryTargets", "billingRecoverAnnualRefund", "billingObserveAnnualCheckout", "billingReadAnnualPurchaseHistory", "billingReadAnnualRefundSnapshot", "billingReadAnnualSupportPurchases", "billingCleanupAnnualAgreement", "billingCancelAnnualRenewal", "billingCancelSubscription", "billingManagePilotEntitlement", "billingMarkUnsupported", "billingReadAnnualSnapshot", "billingReadEntitlement", "billingReadSnapshot", "billingRefundFilingPackage"],
+  "apiOperations": ["billingRecoverAnnualSupportCleanup", "billingReadAnnualSupportRefundRecoveryTargets", "billingRecoverAnnualSupportRefund", "billingStartAnnualCheckout", "billingWithdrawAnnualCheckoutRequest", "billingPrepareAnnualCheckout", "billingReadAnnualRefundRecoveryTargets", "billingRecoverAnnualRefund", "billingObserveAnnualCheckout", "billingReadAnnualPurchaseHistory", "billingReadAnnualRefundSnapshot", "billingReadAnnualSupportPurchases", "billingCleanupAnnualAgreement", "billingCancelAnnualRenewal", "billingCancelSubscription", "billingManagePilotEntitlement", "billingMarkUnsupported", "billingReadAnnualSnapshot", "billingReadEntitlement", "billingReadSnapshot", "billingRefundFilingPackage"],
   "dependencies": [],
   "allowedImports": ["#backend-configuration", "@talli/talli-api-client"],
   "cachePolicy": { "default": "no-store", "allowed": [] },
@@ -20,6 +20,7 @@
   ],
   "tests": {
     "feature": "apps/web/tests/billing-transport.test.mjs",
+    "operatorCleanupRecovery": "apps/web/tests/annual-support-cleanup-recovery.test.mjs",
     "operatorRefundRecovery": "apps/web/tests/annual-support-refund-recovery.test.mjs",
     "operatorSupport": "apps/web/tests/annual-support-ui.test.mjs",
     "operatorReadRecovery": "apps/web/tests/operator-read-recovery.test.mjs",

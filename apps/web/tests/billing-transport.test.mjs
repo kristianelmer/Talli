@@ -664,3 +664,31 @@ test("operator missing-route and domain errors remain failures for both discover
     }
   }
 });
+
+
+test("operator STOP recovery authenticates without a new attempt key and validates exact existing scope", async () => {
+  const body = { companyId, purchaseId: "30000000-0000-4000-8000-000000000001",
+    supportCaseId: "50000000-0000-4000-8000-000000000001" };
+  const payload = { ...body, operationId: "40000000-0000-4000-8000-000000000001", incomeYear: 2026, status: "confirmed" };
+  for (const status of ["pending", "unknown", "confirmed"]) {
+    let captured;
+    const run = ownerSnapshotLoader(async (url, request) => { captured = { url, request }; return Response.json({ ...payload, status }); }, "recoverAnnualSupportCleanup");
+    assert.deepEqual(await run("verified-operator", body), { ...payload, status });
+    assert.equal(captured.url, "https://backend.example/api/v1/billing/annual/support/agreement-cleanup-recoveries");
+    assert.equal(captured.request.method, "POST");
+    assert.equal(captured.request.cache, "no-store");
+    assert.equal(captured.request.headers.Authorization, "Bearer verified-operator");
+    assert.equal(captured.request.headers["Idempotency-Key"], undefined);
+    assert.deepEqual(JSON.parse(captured.request.body), body);
+  }
+  for (const change of [{ status: "created" }, { status: "failed" }, { operationId: null }, { incomeYear: "2026" },
+    ...Object.keys(body).map(field => ({ [field]: "60000000-0000-4000-8000-000000000001" }))]) {
+    const run = ownerSnapshotLoader(async () => Response.json({ ...payload, ...change }), "recoverAnnualSupportCleanup");
+    await assert.rejects(run("verified-operator", body), error => error instanceof TalliApiError && error.status === 502);
+  }
+  for (const [status, code] of [[401, "AUTHENTICATION_REQUIRED"], [403, "BILLING_STEP_UP_REQUIRED"],
+    [404, "BILLING_NOT_FOUND"], [503, "BILLING_UNAVAILABLE"]]) {
+    const run = ownerSnapshotLoader(async () => Response.json({ status, code, detail: "Unavailable" }, { status }), "recoverAnnualSupportCleanup");
+    await assert.rejects(run("verified-operator", body), error => error instanceof TalliApiError && error.status === status);
+  }
+});

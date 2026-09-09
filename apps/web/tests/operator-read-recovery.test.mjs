@@ -26,6 +26,7 @@ function compile(text, dependencies = {}, globals = {}) {
 const views = compile(source("(operator)/operator/annual-billing-support.tsx"), {
   "../../lib/operator-support": support,
   "../../components/billing/AnnualSupportRefundRecoveryControl": { AnnualSupportRefundRecoveryControl: () => null },
+  "../../components/billing/AnnualSupportCleanupRecoveryControl": { AnnualSupportCleanupRecoveryControl: () => null },
 });
 const ready = { recovery: null, user: { id: "operator", email: "synthetic@example.invalid" }, operator: { active: true, role: "support" } };
 function entry(route, { access = ready, dashboardRecovery = null } = {}) {

@@ -58,11 +58,26 @@ def legal_fields(*, privacy=False):
     return fields | {"authority_statement_version": "authority-v1", "acceptance_method": "in_app_clickwrap"}
 
 
+def database_now(connection=None):
+    """Use the authorization clock for synthetic facts and MFA claims.
+
+    The local database can run in a VM whose wall clock briefly differs from the
+    host. Host-issued fixture timestamps would then look like future evidence.
+    Ordinary fresh fixtures use evidence one second old, away from the exact
+    future boundary; expiry tests explicitly select their own boundary offset.
+    """
+    if connection is not None:
+        with connection.cursor(row_factory=psycopg.rows.tuple_row) as cursor:
+            return cursor.execute("select clock_timestamp()").fetchone()[0]
+    with psycopg.connect(DATABASE_URL) as database:
+        return database_now(database)
+
+
 @pytest.fixture
 def admitted(request):
     assert DATABASE_URL, "DATABASE_URL must identify the disposable test database"
     owner, outsider, company, admission, accepted, current, acceptance, legal = [uuid4() for _ in range(8)]
-    now = datetime.now(UTC)
+    now = database_now() - timedelta(seconds=1)
     promise = {
         "accountingYear": 2026, "startsOn": "2026-01-01", "endsOn": "2026-12-31",
         "reconstructionRequiredFrom": "2026-01-01", "onlyAccountingAndFilingProduct": True,
@@ -116,7 +131,7 @@ def admitted(request):
 def scoped(connection, actor, *, role="billing_store_owner", fresh=True):
     connection.execute(sql.SQL("set local role {}").format(sql.Identifier(role)))
     connection.execute("select set_config('talli.verified_actor_id', %s, true), set_config('talli.verified_actor_claims', %s, true)", (
-        str(actor), json.dumps({"sub": str(actor), "aal": "aal2", "amr": [{"method": "totp", "timestamp": datetime.now(UTC).timestamp() - (0 if fresh else 7200)}]}),
+        str(actor), json.dumps({"sub": str(actor), "aal": "aal2", "amr": [{"method": "totp", "timestamp": database_now(connection).timestamp() - (1 if fresh else 7200)}]}),
     ))
 
 
@@ -208,6 +223,7 @@ def test_rollback_and_recutover_preserve_the_exact_accepted_evidence(admitted):
         before = basis(connection, admitted)
     for _ in range(2):
         with psycopg.connect(DATABASE_URL, autocommit=True) as connection:
+            connection.execute((ROOT / "supabase" / "rollback" / "20260907153938_annual_checkout_observation.sql").read_text())
             connection.execute((ROOT / "supabase" / "rollback" / "20260906221800_annual_checkout_withdrawals.sql").read_text())
             connection.execute((ROOT / "supabase" / "rollback" / "20260905145000_annual_refund_agreement_cleanup.sql").read_text())
             connection.execute((ROOT / "supabase" / "rollback" / "20260905141500_annual_refund_requests.sql").read_text())
@@ -225,6 +241,7 @@ def test_rollback_and_recutover_preserve_the_exact_accepted_evidence(admitted):
             connection.execute((ROOT / "supabase" / "migrations" / "20260905141500_annual_refund_requests.sql").read_text())
             connection.execute((ROOT / "supabase" / "migrations" / "20260905145000_annual_refund_agreement_cleanup.sql").read_text())
             connection.execute((ROOT / "supabase" / "migrations" / "20260906221800_annual_checkout_withdrawals.sql").read_text())
+            connection.execute((ROOT / "supabase" / "migrations" / "20260907153938_annual_checkout_observation.sql").read_text())
             principal = connection.execute("select current_user").fetchone()[0]
             connection.execute(sql.SQL("grant billing_store_owner to {}").format(sql.Identifier(principal)))
         with psycopg.connect(DATABASE_URL) as connection:

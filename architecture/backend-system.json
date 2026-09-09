@@ -5,6 +5,16 @@
   "compositionRoot": "apps/backend/src/talli_backend/main.py",
   "workflows": [
     {
+      "name": "annual-support-agreement-cleanup-recovery",
+      "purpose": "Reconciles the one already-recorded agreement STOP under current active-admin, explicitly opened same-company billing case and fresh MFA; preserves original receipt and intent and never claims or executes a provider mutation.",
+      "publicPackages": [
+        "talli_backend.modules.billing.public"
+      ],
+      "routes": [
+        "/api/v1/billing/annual/support/agreement-cleanup-recoveries"
+      ]
+    },
+    {
       "name": "annual-provider-notification-intake",
       "purpose": "Authenticates exact provider delivery bytes and commits immutable technical receipts; no actor, purchase resolution, provider call or financial mutation; disabled by default with explicit designated-MT composition.",
       "publicPackages": ["talli_backend.modules.billing.public"],
@@ -268,6 +278,7 @@
     "schemas": ["backend_system", "public", "annual_notification_inbox"],
     "tables": [
       "annual_notification_inbox.receipts",
+      "backend_system.annual_checkout_observation_work",
       "backend_system.banking_command_receipts",
       "billing.billing_command_receipts",
       "backend_system.banking_migration_reconciliations",
@@ -295,6 +306,7 @@
     ],
     "migrations": [
       "supabase/migrations/20260906204352_annual_notification_receipts.sql",
+      "supabase/migrations/20260907153938_annual_checkout_observation.sql",
       "supabase/migrations/0001_authenticated_workspace.sql",
       "supabase/migrations/20260801090000_company_access_invitations.sql",
       "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql",
@@ -339,9 +351,21 @@
     "idempotency": "Durable idempotency records are required for consequential commands before provider I/O.",
     "eventDelivery": "public.notification_outbox persists outbound deliveries. annual_notification_inbox.receipts retains authenticated annual provider delivery hints and exact-byte replay identity independently of business-table rollback; no business settlement authority.",
     "migrationRunner": "Supabase migrations in supabase/migrations are applied by the deployment migration runner.",
-    "durableWorker": "A durable worker consumes persisted delivery state outside the initiating transaction."
+    "durableWorker": "The opt-in annual checkout CLI invokes billing public operations once. backend_system.annual_checkout_observation_work owns fenced leases, retries and completion only; billing owns accepted-intent and provider/account authority. No scheduler, provider execution, fabricated owner claims or new business decisions."
   },
   "adapterBindings": [
+    {
+      "port": "AnnualSupportCleanupRecoveryPersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_support_cleanup.PostgresAnnualSupportCleanupRecoverySession",
+      "owner": "backend-system",
+      "mode": "opened same-company billing support case with fresh MFA at load, locks and final settlement; one stored STOP only, provider absent by default"
+    },
+    {
+      "port": "AnnualCheckoutObservationPersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_observation.PostgresAnnualCheckoutObservationStore",
+      "owner": "backend-system",
+      "mode": "dedicated account-bound database principal and fenced one-pass reconciliation of committed checkout intent; no provider execution or new claims"
+    },
     {
       "port": "SystemBoundaryTransport",
       "adapter": "talli_backend.main.create_app",
@@ -594,6 +618,7 @@
     "adapters": [
       "psycopg.conninfo",
       "talli_backend.adapters.postgres_annual_notifications",
+      "talli_backend.adapters.postgres_annual_observation",
       "talli_backend.adapters.vipps_billing",
       "talli_backend.adapters.vipps_webhook",
       "talli_backend.application.annual_notifications",

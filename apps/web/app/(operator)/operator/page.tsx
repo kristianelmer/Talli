@@ -6,6 +6,7 @@ import { operatorRecoveryHref, operatorSupportLocation } from "../../lib/operato
 import {
   grantSupportAccess,
   recoverAnnualSupportRefund,
+  recoverAnnualSupportCleanup,
   openSupportCase,
   recordLaunchSignoff,
   reviewCompanyDeletion,
@@ -588,6 +589,7 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
           initiatingUserId={user.id}
           refundTargets={operatorDashboard.annualRefundTargets}
           recoverAction={recoverAnnualSupportRefund}
+          recoverCleanupAction={recoverAnnualSupportCleanup}
         />
         <div className="readinessGrid">
           {operatorDashboard.summaries.map((summary) => (

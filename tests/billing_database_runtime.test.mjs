@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import pg from "pg";
@@ -258,7 +259,9 @@ test(
       readFile(new URL("../supabase/migrations/20260905061339_billing_provider_reconciliation.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/rollback/20260905061339_billing_provider_reconciliation.sql", import.meta.url), "utf8"),
     ]);
-    const [withdrawals, withdrawalsRollback, refundCleanup, refundCleanupRollback, refundRequests, refundRequestsRollback, retirement, retirementRollback, cleanup, cleanupRollback, cancellation, cancellationRollback, annual, annualRollback, basis, basisRollback] = await Promise.all([
+    const [observation, observationRollback, withdrawals, withdrawalsRollback, refundCleanup, refundCleanupRollback, refundRequests, refundRequestsRollback, retirement, retirementRollback, cleanup, cleanupRollback, cancellation, cancellationRollback, annual, annualRollback, basis, basisRollback] = await Promise.all([
+      readFile(new URL("../supabase/migrations/20260907153938_annual_checkout_observation.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260907153938_annual_checkout_observation.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/migrations/20260906221800_annual_checkout_withdrawals.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/rollback/20260906221800_annual_checkout_withdrawals.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/migrations/20260905145000_annual_refund_agreement_cleanup.sql", import.meta.url), "utf8"),
@@ -340,16 +343,19 @@ test(
         ) on conflict (company_id, income_year, obligation) do update set ready=true,
           status='ready', hard_blocks='[]'::jsonb;
       `);
+      // Each invocation creates its own event; earlier rehearsal evidence stays
+      // intact and remains part of the exact before/after lifecycle comparison.
+      const pendingEventId = randomUUID();
+      const pendingEventKey = `billing-rollback-pending-${pendingEventId}`;
       await client.query(`
         insert into billing.billing_payment_events (
-          company_id, provider, provider_reference, idempotency_key, kind,
+          id, company_id, provider, provider_reference, idempotency_key, kind,
           status, amount_nok, income_year, payload, created_by
         ) values (
-          '${companyId}', 'simulation', 'intent_billing-rollback-pending-00000001',
-          'billing-rollback-pending-00000001', 'filing_package', 'created', 299,
-          2025, '{"obligation":"aksjonaerregisteroppgaven"}'::jsonb, '${ownerId}'
+          $1::uuid, $2::uuid, 'simulation', $3, $4, 'filing_package', 'created', 299,
+          2025, '{"obligation":"aksjonaerregisteroppgaven"}'::jsonb, $5::uuid
         )
-      `);
+      `, [pendingEventId, companyId, `intent_${pendingEventKey}`, pendingEventKey, ownerId]);
       await client.query(retirement);
       await seedCommandReceipt(client);
       const evidence = await canonicalEvidence(client);
@@ -358,6 +364,7 @@ test(
       await assertTenantBoundaryAndReadiness(client);
 
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
+        await client.query(observationRollback);
         await client.query(withdrawalsRollback);
         await client.query(refundCleanupRollback);
         await client.query(refundRequestsRollback);
@@ -390,6 +397,7 @@ test(
         await client.query(refundRequests);
         await client.query(refundCleanup);
         await client.query(withdrawals);
+        await client.query(observation);
         const successor = await topology(client);
         assert.equal(successor.billing_schema, true);
         assert.equal(successor.canonical_accounts, true);

@@ -30,9 +30,12 @@ class Merchant:
         self.calls = []
         self.effects = []
         self.agreement = None
+        self.other_agreements = []
         self.charges = {}
         self.keys = {}
         self.lose_create_response = False
+        self.lose_refund_response = False
+        self.rate_limit = False
 
     def capture(self, reference):
         charge = self.charges[reference]
@@ -60,12 +63,15 @@ class Merchant:
         assert request.url.host == "apitest.vipps.no"
         assert request.headers["Merchant-Serial-Number"] == "535717"
         if request.url.path == "/accesstoken/get":
+            if self.rate_limit:
+                return httpx.Response(429)
             return httpx.Response(200, json={"access_token": "fixture-access-token-private"})
         assert request.headers["Authorization"] == "Bearer fixture-access-token-private"
         path = request.url.path
         if request.method == "GET":
             if path == "/recurring/v3/agreements":
-                rows = [self.agreement] if self.agreement and self.agreement["status"] == request.url.params["status"] else []
+                agreements = ([self.agreement] if self.agreement else []) + self.other_agreements
+                rows = [row for row in agreements if row["status"] == request.url.params["status"]]
                 return httpx.Response(200, json=rows)
             if "/charges/" in path:
                 return httpx.Response(200, json=self.charges[path.rsplit("/", 1)[1]])
@@ -73,11 +79,14 @@ class Merchant:
         key = request.headers["Idempotency-Key"]
         body = json.loads(request.content) if request.content else None
         identity = request.method, path, body
-        if key in self.keys:
+        # Real MT agreement creation did not deduplicate an exact same-key replay.
+        if key in self.keys and path != "/recurring/v3/agreements":
             saved, status, content = self.keys[key]
             assert identity == saved, "Provider key must bind the exact immutable request"
             return httpx.Response(status, json=content) if content else httpx.Response(status)
         if path == "/recurring/v3/agreements":
+            if self.agreement is not None:
+                self.other_agreements.append(self.agreement)
             self.agreement = {name: body[name] for name in (
                 "externalId", "pricing", "interval", "productName", "merchantRedirectUrl", "merchantAgreementUrl",
             )}
@@ -108,6 +117,8 @@ class Merchant:
         self.keys[key] = identity, status, content
         if path == "/recurring/v3/agreements" and self.lose_create_response:
             raise httpx.ReadTimeout("fixture-secret-private lost response")
+        if path.endswith("/refund") and self.lose_refund_response:
+            raise httpx.ReadTimeout("fixture-secret-private lost refund response")
         return httpx.Response(status, json=content) if content else httpx.Response(status)
 
 
@@ -173,7 +184,7 @@ def test_lost_response_and_concurrent_execute_reconcile_original_intent(harness)
     first = run()
     assert first["observation"]["status"] == "unknown"
     original = json.loads(state.read_text())["stages"]["checkout"]["intent"]
-    with pytest.raises(runner.ConformanceError, match="ambiguous_mutation_cannot_be_repeated"):
+    with pytest.raises(runner.ConformanceError, match="checkout_mutation_cannot_be_repeated"):
         run(action="repeat-execute")
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(pool.map(lambda _: run(), range(2)))
@@ -193,12 +204,79 @@ def test_two_simultaneous_initial_commands_create_one_agreement(harness):
     assert len(json.loads(state.read_text())["stages"]["checkout"]["attempts"]) == 2
 
 
+@pytest.mark.parametrize("confirmed", [False, True])
+def test_checkout_raw_replay_is_rejected_before_state_or_network(harness, confirmed):
+    run, merchant, state = harness
+    if confirmed:
+        approved(harness)
+    else:
+        run()
+    before, calls = state.read_text(), len(merchant.calls)
+    with pytest.raises(runner.ConformanceError, match="checkout_mutation_cannot_be_repeated"):
+        run(action="repeat-execute")
+    assert state.read_text() == before and len(merchant.calls) == calls
+    assert run()["action"] == "reconcile" and len(merchant.effects) == 1
+
+
+def test_original_checkout_agreement_survives_unknown_and_rate_limit_with_duplicate_search_matches(harness):
+    run, merchant, state = harness
+    approved(harness)
+    original_agreement = merchant.agreement["id"]
+    merchant.other_agreements.append(merchant.agreement | {"id": "agr_duplicate", "status": "PENDING"})
+    saved = json.loads(state.read_text())
+    checkout = saved["stages"]["checkout"]
+    immutable = checkout["intent"], checkout["intent_sha256"], checkout["operation_key"]
+    checkout["attempts"].append(checkout["attempts"][-1] | {
+        "observation": checkout["attempts"][-1]["observation"] | {
+            "status": "unknown", "agreement_reference": None, "captured_minor": 0,
+        },
+    })
+    state.write_text(json.dumps(saved))
+    merchant.rate_limit = True
+    limited = run()
+    assert limited["observation"]["status"] == "unknown"
+    assert limited["observation"]["agreement_reference"] == original_agreement
+    merchant.rate_limit = False
+    calls = len(merchant.calls)
+    recovered = run()
+    assert recovered["observation"]["status"] == "confirmed"
+    assert recovered["observation"]["agreement_reference"] == original_agreement
+    assert all(request.url.path != "/recurring/v3/agreements" for request in merchant.calls[calls:])
+    assert len(merchant.effects) == 1
+    checkout = json.loads(state.read_text())["stages"]["checkout"]
+    assert (checkout["intent"], checkout["intent_sha256"], checkout["operation_key"]) == immutable
+    assert checkout["intent"]["agreement_reference"] is None
+
+
+def test_conflicting_checkout_agreement_evidence_is_rejected_without_selecting_a_match(harness):
+    run, merchant, state = harness
+    approved(harness)
+    saved = json.loads(state.read_text())
+    saved["stages"]["checkout"]["attempts"][-1]["observation"]["agreement_reference"] = "agr_conflicting"
+    state.write_text(json.dumps(saved))
+    before, calls = state.read_text(), len(merchant.calls)
+    for stage in ("checkout", "partial-refund", "initial-full-refund"):
+        with pytest.raises(runner.ConformanceError, match="conflicting_checkout_agreement_references"):
+            run(stage)
+    assert state.read_text() == before and len(merchant.calls) == calls
+
+
+def test_unbound_checkout_with_multiple_search_matches_stays_unknown(harness):
+    run, merchant, _ = harness
+    merchant.lose_create_response = True
+    assert run()["observation"]["agreement_reference"] is None
+    merchant.other_agreements.append(merchant.agreement | {"id": "agr_duplicate"})
+    result = run()
+    assert result["action"] == "reconcile"
+    assert result["observation"]["status"] == "unknown"
+    assert result["observation"]["agreement_reference"] is None
+    assert len(merchant.effects) == 1
+
+
 def test_all_stages_preserve_refund_amounts_and_provider_keys(harness):
     run, merchant, state = harness
     approved(harness)
     initial = next(iter(merchant.charges))
-    assert run(action="repeat-execute")["observation"]["status"] == "pending"
-    assert len(merchant.charges) == 1
     assert run()["observation"]["status"] == "confirmed"
     renewal = run("renewal", "execute", "--due-date", "2026-09-08")
     renewal_reference = renewal["observation"]["charge_reference"]
@@ -220,14 +298,171 @@ def test_all_stages_preserve_refund_amounts_and_provider_keys(harness):
     assert merchant.charges[renewal_reference]["summary"]["refunded"] == 149000
     assert merchant.charges[cancel_reference]["summary"]["captured"] == 0
     saved = json.loads(state.read_text())
-    assert set(saved["stages"]) == set(runner.STAGES)
+    assert set(saved["stages"]) == set(runner.STAGES) - {"initial-full-refund"}
     assert len({stage["operation_key"] for stage in saved["stages"].values()}) == 8
     assert stop["limits"]["whole_issue_acceptance"] == "not-established"
     assert state.stat().st_mode & 0o777 == 0o600
 
 
+def test_initial_full_refund_is_one_original_charge_refund_and_preserves_recurring_scenario(harness):
+    run, merchant, state = harness
+    approved(harness)
+    initial = next(iter(merchant.charges))
+    result = run("initial-full-refund")
+    assert result["observation"]["status"] == "confirmed"
+    assert result["observation"]["captured_minor"] == result["observation"]["refunded_minor"] == 149000
+    saved = json.loads(state.read_text())
+    intent = saved["stages"]["initial-full-refund"]["intent"]
+    assert intent["charge_reference"] == initial == saved["stages"]["checkout"]["intent"]["charge_reference"]
+    assert intent["amount_minor"] == intent["original_charge_minor"] == 149000
+    assert intent["original_charge_is_renewal"] is False and intent["due_date"] is None
+    effects = list(merchant.effects)
+    assert effects[-1][1].endswith(f"/{initial}/refund") and effects[-1][2]["amount"] == 149000
+    # Refreshing the checkout after its refund must not invalidate the saved refund intent.
+    assert run("checkout")["observation"]["refunded_minor"] == 149000
+    for action in ("execute", "reconcile", "repeat-execute"):
+        repeat = run("initial-full-refund", action)
+        assert repeat["action"] == ("reconcile" if action == "execute" else action)
+        assert repeat["operation_key"] == result["operation_key"]
+        assert repeat["observation"]["refunded_minor"] == 149000
+        assert merchant.effects == effects
+    calls = len(merchant.calls)
+    with pytest.raises(runner.ConformanceError, match="stage_prerequisite_not_observed"):
+        run("full-refund")
+    assert len(merchant.calls) == calls
+    recurring = run("renewal", "execute", "--due-date", "2026-09-08")["observation"]["charge_reference"]
+    merchant.capture(recurring)
+    run("renewal", "reconcile")
+    assert run("full-refund")["observation"]["refunded_minor"] == 149000
+    saved = json.loads(state.read_text())
+    assert saved["schema_version"] == 1
+    assert saved["stages"]["full-refund"]["intent"]["charge_reference"] == recurring != initial
+    assert saved["stages"]["full-refund"]["intent"]["original_charge_is_renewal"] is True
+
+
+@pytest.mark.parametrize("chosen,blocked", [
+    ("initial-full-refund", "partial-refund"), ("initial-full-refund", "remaining-refund"),
+    ("partial-refund", "initial-full-refund"), ("remaining-refund", "initial-full-refund"),
+])
+@pytest.mark.parametrize("outcome", ["confirmed", "unknown", "interrupted"])
+def test_initial_refund_path_is_reserved_even_without_a_confirmed_result(harness, chosen, blocked, outcome):
+    run, merchant, state = harness
+    approved(harness)
+    if chosen == "remaining-refund":
+        run("partial-refund")
+    run(chosen)
+    saved = json.loads(state.read_text())
+    attempt = saved["stages"][chosen]["attempts"][-1]
+    if outcome == "interrupted":
+        del attempt["observation"]
+        del attempt["finished_at"]
+    else:
+        attempt["observation"]["status"] = outcome
+    state.write_text(json.dumps(saved))
+    before, calls = state.read_text(), len(merchant.calls)
+    for action in ("execute", "reconcile", "repeat-execute"):
+        with pytest.raises(runner.ConformanceError, match="initial_refund_path_conflict"):
+            run(blocked, action)
+    assert len(merchant.calls) == calls and state.read_text() == before
+
+
+def test_lost_initial_full_refund_response_reconciles_without_replaying(harness):
+    run, merchant, _ = harness
+    approved(harness)
+    merchant.lose_refund_response = True
+    result = run("initial-full-refund")
+    assert result["observation"]["status"] == "unknown"
+    calls, effects = len(merchant.calls), list(merchant.effects)
+    with pytest.raises(runner.ConformanceError, match="ambiguous_mutation_cannot_be_repeated"):
+        run("initial-full-refund", "repeat-execute")
+    with pytest.raises(runner.ConformanceError, match="initial_refund_path_conflict"):
+        run("partial-refund")
+    assert len(merchant.calls) == calls
+    recovered = run("initial-full-refund")
+    assert recovered["action"] == "reconcile" and recovered["observation"]["status"] == "confirmed"
+    assert recovered["operation_key"] == result["operation_key"] and merchant.effects == effects
+
+
+def test_interrupted_initial_full_refund_result_keeps_path_reserved(harness, monkeypatch):
+    run, merchant, state = harness
+    approved(harness)
+    save, saves = runner.save_state, []
+
+    def lose_result(path, value):
+        saves.append(True)
+        if len(saves) == 2:
+            raise OSError("fixture lost result write")
+        save(path, value)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(runner, "save_state", lose_result)
+        with pytest.raises(OSError):
+            run("initial-full-refund")
+    attempt = json.loads(state.read_text())["stages"]["initial-full-refund"]["attempts"][-1]
+    assert "observation" not in attempt
+    calls, effects = len(merchant.calls), list(merchant.effects)
+    with pytest.raises(runner.ConformanceError, match="initial_refund_path_conflict"):
+        run("remaining-refund")
+    with pytest.raises(runner.ConformanceError, match="ambiguous_mutation_cannot_be_repeated"):
+        run("initial-full-refund", "repeat-execute")
+    assert len(merchant.calls) == calls
+    assert run("initial-full-refund")["observation"]["status"] == "confirmed"
+    assert merchant.effects == effects
+
+
+def test_pending_initial_full_refund_cannot_be_blindly_repeated(harness):
+    run, merchant, state = harness
+    approved(harness)
+    run("initial-full-refund")
+    saved = json.loads(state.read_text())
+    saved["stages"]["initial-full-refund"]["attempts"][-1]["observation"]["status"] = "pending"
+    state.write_text(json.dumps(saved))
+    calls, effects = len(merchant.calls), list(merchant.effects)
+    with pytest.raises(runner.ConformanceError, match="ambiguous_mutation_cannot_be_repeated"):
+        run("initial-full-refund", "repeat-execute")
+    assert len(merchant.calls) == calls
+    assert run("initial-full-refund")["action"] == "reconcile" and merchant.effects == effects
+
+
+@pytest.mark.parametrize("field,value", [
+    ("captured_minor", 148999), ("refunded_minor", 1), ("amount_minor", 148999),
+    ("charge_reference", "another-initial-charge"),
+])
+def test_initial_full_refund_requires_exact_original_capture(harness, field, value):
+    run, merchant, state = harness
+    approved(harness)
+    saved = json.loads(state.read_text())
+    saved["stages"]["checkout"]["attempts"][-1]["observation"][field] = value
+    state.write_text(json.dumps(saved))
+    calls = len(merchant.calls)
+    with pytest.raises(runner.ConformanceError):
+        run("initial-full-refund")
+    assert len(merchant.calls) == calls
+
+
+@pytest.mark.parametrize("field,value", [
+    ("charge_reference", "another-initial-charge"), ("original_charge_is_renewal", True),
+    ("amount_minor", 37250), ("original_charge_minor", 298000),
+])
+def test_saved_initial_full_refund_must_preserve_its_original_charge_intent(harness, field, value):
+    run, merchant, state = harness
+    approved(harness)
+    run("initial-full-refund")
+    saved = json.loads(state.read_text())
+    stage = saved["stages"]["initial-full-refund"]
+    stage["intent"][field] = value
+    stage["intent_sha256"] = runner.digest(stage["intent"])
+    stage["operation_key"] = runner.vipps_operation_key(
+        runner.load_vipps_mt_configuration(ENV), runner.read_intent(stage["intent"]))
+    state.write_text(json.dumps(saved))
+    calls = len(merchant.calls)
+    with pytest.raises(runner.ConformanceError, match="invalid_initial_charge"):
+        run("initial-full-refund")
+    assert len(merchant.calls) == calls
+
+
 @pytest.mark.parametrize("stage,extra", [
-    ("partial-refund", ()), ("remaining-refund", ()), ("full-refund", ()),
+    ("partial-refund", ()), ("remaining-refund", ()), ("full-refund", ()), ("initial-full-refund", ()),
     ("cancel-charge", ()), ("stop", ()),
     ("renewal", ("--due-date", "2026-09-07")), ("renewal", ()),
 ])

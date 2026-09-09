@@ -1,7 +1,7 @@
 # Billing web feature
 
 <!-- architecture-inventory
-{"apiOperations":["billingReadAnnualSupportRefundRecoveryTargets","billingRecoverAnnualSupportRefund","billingStartAnnualCheckout","billingWithdrawAnnualCheckoutRequest","billingPrepareAnnualCheckout","billingReadAnnualRefundRecoveryTargets","billingRecoverAnnualRefund","billingObserveAnnualCheckout","billingReadAnnualPurchaseHistory","billingReadAnnualRefundSnapshot","billingReadAnnualSupportPurchases","billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
+{"apiOperations":["billingRecoverAnnualSupportCleanup","billingReadAnnualSupportRefundRecoveryTargets","billingRecoverAnnualSupportRefund","billingStartAnnualCheckout","billingWithdrawAnnualCheckoutRequest","billingPrepareAnnualCheckout","billingReadAnnualRefundRecoveryTargets","billingRecoverAnnualRefund","billingObserveAnnualCheckout","billingReadAnnualPurchaseHistory","billingReadAnnualRefundSnapshot","billingReadAnnualSupportPurchases","billingCleanupAnnualAgreement","billingCancelAnnualRenewal","billingCancelSubscription","billingManagePilotEntitlement","billingMarkUnsupported","billingReadAnnualSnapshot","billingReadEntitlement","billingReadSnapshot","billingRefundFilingPackage"],"dependencies":[],"publicEntryPoints":["@/features/billing","apps/web/features/billing","apps/web/features/billing/index.ts"],"routes":["/billing","/workspace","/operator","/filing/aksjonaerregisteroppgaven"]}
 -->
 
 ## Purpose and boundary
@@ -34,7 +34,7 @@ The operator support view uses `billingReadAnnualSupportPurchases` with the comp
 and case returned by the explicitly opened support-case read. It lists stored
 purchases across years and preserves the case in pagination. Billing-only grants
 work without profile rows. Backend access/MFA failures remain distinct from an
-authorized empty page; the view performs no provider or refund commands.
+authorized empty page; rendering the view performs no provider or refund commands.
 
 The owner view offers an explicit `billingCleanupAnnualAgreement` server action
 only for a purchase whose stored local renewal cancellation is visible. It
@@ -159,3 +159,24 @@ confirmation. The keyed client control blocks duplicate pending events and late
 results after unmount, retains the same request after a lost response, and never
 posts on render, navigation, reload or authentication return. Confirmation applies
 to one operation; canonical history remains the authority for outstanding money.
+
+
+## Explicit operator recovery of a recorded agreement stop
+
+`recoverAnnualSupportCleanup` carries only the opened support case, company and
+purchase IDs through `billingRecoverAnnualSupportCleanup`. The backend resolves
+the purchase's unique recorded STOP and preserves its original intent, requester
+and cancellation/refund receipt. Missing STOP evidence remains an error. The web
+cannot create a cleanup claim, supply provider/source authority or execute STOP.
+
+`AnnualSupportCleanupRecoveryControl` is available only when canonical authorized
+history shows a recorded cleanup. An explicit click verifies the initiating user
+against the exact session token, then reconciles that original operation. Scoped
+results and failures refresh operator history. The control retains the case,
+company, purchase and history cursor through identity recovery and lost-response
+retry; it ignores foreign or late results and blocks duplicate pending submits.
+Render, refresh, navigation and authentication return do not reconcile. Only a
+scoped confirmed response announces provider confirmation; pending/unknown remain
+unconfirmed. The feature test `annual-support-cleanup-recovery.test.mjs` exercises
+these action and control boundaries; transport and support-view tests cover the
+generated response validation and visibility of the control.

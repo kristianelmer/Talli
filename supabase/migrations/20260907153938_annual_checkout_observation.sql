@@ -278,6 +278,14 @@ begin
  select lease_until into deadline from backend_system.annual_checkout_observation_work where operation_id=p_operation;
  select * into p from billing.annual_purchases where id=(snapshot->'purchase'->>'id')::uuid;
  if p_observation is not null then
+   -- The adapter owns settlement policy, but its restricted login cannot attach
+   -- another provider operation's evidence to this immutable checkout authority.
+   if pg_catalog.jsonb_typeof(p_observation) is distinct from 'object'
+     or p_observation->>'provider' is distinct from p.provider
+     or p_observation->>'operation' is distinct from 'checkout'
+     or p_observation->>'charge_reference' is distinct from p.charge_reference
+     or p_observation->'amount_minor' is distinct from pg_catalog.to_jsonb(p.gross_minor) then
+     raise insufficient_privilege using message='annual_observer_observation_identity_invalid'; end if;
    update billing.annual_purchases set status=p_status,agreement_reference=p_observation->>'agreement_reference',
      captured_minor=(p_observation->>'captured_minor')::bigint,refunded_minor=(p_observation->>'refunded_minor')::bigint,
      captured_at=(p_observation->>'captured_at')::timestamptz,updated_at=pg_catalog.clock_timestamp() where id=p.id;

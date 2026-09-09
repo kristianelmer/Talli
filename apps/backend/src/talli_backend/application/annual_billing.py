@@ -34,6 +34,8 @@ from talli_backend.modules.billing.public import (
     annual_refund_recovery_operations,
     AnnualSupportRefundRecoveryQuery, AnnualSupportRefundRecoveryTargetsQuery,
     AnnualSupportRefundRecoveryPersistence, annual_support_refund_recovery_operations,
+    AnnualSupportCleanupRecoveryQuery, AnnualSupportCleanupRecoveryPersistence,
+    annual_support_cleanup_recovery_operations,
 )
 from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear
 
@@ -62,6 +64,9 @@ class AuthenticatedAnnualBillingSession(Protocol):
 
     @property
     def support_refund_recovery(self) -> AnnualSupportRefundRecoveryPersistence: ...
+
+    @property
+    def support_cleanup_recovery(self) -> AnnualSupportCleanupRecoveryPersistence: ...
 
 
 class AnnualBillingSessionFactory(Protocol):
@@ -289,3 +294,22 @@ class AnnualSupportRefundRecoveryWorkflow:
         if query.actor_id != self.actor_id:
             raise BillingError.forbidden()
         return await self._operations.recover_refund(query)
+
+
+class AnnualSupportCleanupRecoveryWorkflow:
+    """Observe the stored agreement stop under an explicitly opened billing case."""
+
+    def __init__(self, session: AuthenticatedAnnualBillingSession, provider: AnnualBillingProvider | None):
+        if session.actor_id != session.support_cleanup_recovery.actor_id:
+            raise BillingError.forbidden()
+        self._actor_id = session.actor_id
+        self._operations = annual_support_cleanup_recovery_operations(session.support_cleanup_recovery, provider)
+
+    @property
+    def actor_id(self) -> ActorId:
+        return self._actor_id
+
+    async def recover_cleanup(self, query: AnnualSupportCleanupRecoveryQuery) -> AnnualAgreementCleanup:
+        if query.actor_id != self.actor_id:
+            raise BillingError.forbidden()
+        return await self._operations.recover_cleanup(query)

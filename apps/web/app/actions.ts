@@ -1,6 +1,7 @@
 "use server";
 
 import type { AnnualSupportRefundRecoveryActionState, AnnualSupportRefundIdentity } from "./lib/annual-support-refund-recovery";
+import type { AnnualSupportCleanupRecoveryActionState, AnnualSupportCleanupIdentity } from "./lib/annual-support-cleanup-recovery";
 import { operatorReadRecovery, operatorRecoveryHref, operatorSupportLocation } from "./lib/operator-support";
 import type { AnnualRefundRecoveryActionState } from "./lib/annual-refund-recovery";
 
@@ -82,6 +83,7 @@ import {
   annualCheckoutNeedsWithdrawal,
   recoverAnnualRefund as recoverAnnualRefundThroughApi,
   recoverAnnualSupportRefund as recoverAnnualSupportRefundThroughApi,
+  recoverAnnualSupportCleanup as recoverAnnualSupportCleanupThroughApi,
   annualBillingAccessRejected,
   cancelBillingSubscription as cancelBillingSubscriptionThroughApi,
   manageProductionPilotEntitlement,
@@ -4286,6 +4288,54 @@ export async function revokeSupportAccess(formData: FormData) {
     redirect(`/operator?error=${encodeURIComponent(error instanceof Error ? error.message : "support_access_revoke_failed")}`);
   }
   redirect("/operator?grant=revoked");
+}
+
+export async function recoverAnnualSupportCleanup(
+  _previousState: AnnualSupportCleanupRecoveryActionState,
+  formData: FormData,
+): Promise<AnnualSupportCleanupRecoveryActionState> {
+  let identity: AnnualSupportCleanupIdentity;
+  let beforePurchaseId: string | undefined;
+  try {
+    const required = ["initiatingUserId", "supportCaseId", "companyId", "purchaseId"] as const;
+    if (required.some(name => formData.getAll(name).length !== 1) || formData.getAll("beforePurchaseId").length > 1) {
+      return { kind: "invalid" };
+    }
+    identity = {
+      initiatingUserId: requiredFormUuid(formData, "initiatingUserId"),
+      supportCaseId: requiredFormUuid(formData, "supportCaseId"), companyId: requiredFormUuid(formData, "companyId"),
+      purchaseId: requiredFormUuid(formData, "purchaseId"),
+    };
+    beforePurchaseId = formData.has("beforePurchaseId") ? requiredFormUuid(formData, "beforePurchaseId") : undefined;
+  } catch { return { kind: "invalid" }; }
+  const location = operatorSupportLocation({ supportCase: identity.supportCaseId, companyId: identity.companyId,
+    annualBefore: beforePurchaseId });
+  if (location.invalid) return { kind: "invalid" };
+  const recover = (reason: ReturnType<typeof operatorReadRecovery>): AnnualSupportCleanupRecoveryActionState => ({
+    kind: "recovery", ...identity, reason, href: operatorRecoveryHref(reason, location.returnTo),
+  });
+  try {
+    const accessToken = await getCurrentSessionAccessToken();
+    if (!accessToken) { revalidatePath("/operator"); return recover("sign-in"); }
+    const supabase = await createSupabaseServerClient();
+    const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+    if (error || !user) { revalidatePath("/operator"); return recover("sign-in"); }
+    if (user.id !== identity.initiatingUserId) {
+      revalidatePath("/operator");
+      return { kind: "different-user", ...identity };
+    }
+    const { companyId, purchaseId, supportCaseId } = identity;
+    const value = await recoverAnnualSupportCleanupThroughApi(accessToken, { companyId, purchaseId, supportCaseId });
+    if (value.companyId !== companyId || value.purchaseId !== purchaseId || value.supportCaseId !== supportCaseId) {
+      revalidatePath("/operator");
+      return recover("unavailable");
+    }
+    revalidatePath("/operator");
+    return { kind: "observed", ...identity, status: value.status };
+  } catch (error) {
+    try { revalidatePath("/operator"); } catch { return recover("unavailable"); }
+    return recover(operatorReadRecovery(error));
+  }
 }
 
 export async function recoverAnnualSupportRefund(

@@ -2635,6 +2635,21 @@ export interface AnnualSupportRefundRecoveryWire {
   supportCaseId: string;
 }
 
+export interface AnnualSupportCleanupRecoveryCommandWire {
+  companyId: string;
+  purchaseId: string;
+  supportCaseId: string;
+}
+
+export interface AnnualSupportCleanupRecoveryWire {
+  companyId: string;
+  incomeYear: number;
+  operationId: string;
+  purchaseId: string;
+  status: "pending" | "unknown" | "confirmed";
+  supportCaseId: string;
+}
+
 export interface AnnualSupportRefundRecoveryTargetPageWire {
   companyId: string;
   incomeYear: number;
@@ -6506,6 +6521,29 @@ function isAnnualSupportRefundRecoveryWire(value: unknown): value is AnnualSuppo
   );
 }
 
+function isAnnualSupportCleanupRecoveryCommandWire(value: unknown): value is AnnualSupportCleanupRecoveryCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","purchaseId","supportCaseId"]) &&
+    isUuid(value.companyId) &&
+    isUuid(value.purchaseId) &&
+    isUuid(value.supportCaseId)
+  );
+}
+
+function isAnnualSupportCleanupRecoveryWire(value: unknown): value is AnnualSupportCleanupRecoveryWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","operationId","purchaseId","status","supportCaseId"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    isUuid(value.operationId) &&
+    isUuid(value.purchaseId) &&
+    (value.status === "pending" || value.status === "unknown" || value.status === "confirmed") &&
+    isUuid(value.supportCaseId)
+  );
+}
+
 function isAnnualSupportRefundRecoveryTargetPageWire(value: unknown): value is AnnualSupportRefundRecoveryTargetPageWire {
   return (
     isRecord(value) &&
@@ -8710,6 +8748,13 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       request: TalliRequestOptions = {},
     ): Promise<AnnualSupportRefundRecoveryWire> {
       return executeJson(baseUrl + "/api/v1/billing/annual/support/refund-recoveries", "POST", request, body, isAnnualSupportRefundRecoveryWire);
+    },
+
+    async billingRecoverAnnualSupportCleanup(
+      body: AnnualSupportCleanupRecoveryCommandWire,
+      request: TalliRequestOptions = {},
+    ): Promise<AnnualSupportCleanupRecoveryWire> {
+      return executeJson(baseUrl + "/api/v1/billing/annual/support/agreement-cleanup-recoveries", "POST", request, body, isAnnualSupportCleanupRecoveryWire);
     },
 
     async billingReadAnnualSupportRefundRecoveryTargets(

@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 from contextlib import contextmanager
-from dataclasses import fields
+from dataclasses import fields, replace
 from datetime import UTC, date, datetime, timedelta
 import fcntl
 import hashlib
@@ -38,9 +38,10 @@ ENV_NAMES = tuple("TALLI_VIPPS_MT_" + name for name in (
 STAGES = (
     "checkout", "renewal", "partial-refund", "remaining-refund", "full-refund",
     "cancel-renewal", "cancel-charge", "stop",
+    "initial-full-refund",
 )
 OPERATIONS = dict(zip(STAGES, (
-    "checkout", "renewal", "refund", "refund", "refund", "renewal", "cancel_charge", "stop_agreement",
+    "checkout", "renewal", "refund", "refund", "refund", "renewal", "cancel_charge", "stop_agreement", "refund",
 )))
 LIMITS = {
     "evidence_scope": "provider-observations-only",
@@ -124,6 +125,22 @@ def latest(stage):
     return stage["attempts"][-1].get("observation") if stage["attempts"] else None
 
 
+def observed_checkout_agreement(stage, intent):
+    references = {intent.agreement_reference} if intent.agreement_reference else set()
+    for attempt in stage["attempts"]:
+        observation = attempt.get("observation")
+        reference = observation.get("agreement_reference") if observation else None
+        if reference is not None:
+            if (not isinstance(reference, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", reference)
+                    or observation.get("charge_reference") != intent.charge_reference
+                    or observation.get("amount_minor") != intent.amount_minor):
+                raise ConformanceError("invalid_checkout_observation")
+            references.add(reference)
+    if len(references) > 1:
+        raise ConformanceError("conflicting_checkout_agreement_references")
+    return next(iter(references), None)
+
+
 def require_observation(state, name, *, captured=None, refunded=None, statuses=("confirmed",)):
     stage = state["stages"].get(name)
     observation = latest(stage) if stage else None
@@ -141,6 +158,37 @@ def terminal_without_capture(state, stage):
     ) == ("failed", 0, 0)
 
 
+def require_initial_refund_path(state, stage):
+    started = state["stages"]
+    if ((stage == "initial-full-refund" and {"partial-refund", "remaining-refund"} & started.keys())
+            or (stage in {"partial-refund", "remaining-refund"} and "initial-full-refund" in started)):
+        # Presence reserves the path, including a dispatch marker without a result.
+        raise ConformanceError("initial_refund_path_conflict")
+
+
+def initial_charge_intent(state):
+    checkout = state["stages"].get("checkout")
+    if checkout is None:
+        raise ConformanceError("stage_prerequisite_not_observed")
+    intent = read_intent(checkout["intent"])
+    expected = "talli-mt-" + str(uuid5(UUID(state["context"]["run_id"]), "checkout"))
+    if (intent.operation is not AnnualProviderOperation.CHECKOUT
+            or intent.charge_reference != expected or intent.amount_minor != 149000
+            or intent.original_charge_minor != 149000 or intent.original_charge_is_renewal
+            or intent.due_date is not None):
+        raise ConformanceError("invalid_initial_charge")
+    return intent
+
+
+def require_initial_full_refund_intent(state, intent):
+    checkout = initial_charge_intent(state)
+    if (intent.operation is not AnnualProviderOperation.REFUND
+            or intent.charge_reference != checkout.charge_reference or intent.amount_minor != 149000
+            or intent.original_charge_minor != 149000 or intent.original_charge_is_renewal
+            or intent.due_date is not None):
+        raise ConformanceError("invalid_initial_charge")
+
+
 def new_intent(state, stage, due, at):
     context = state["context"]
     operation_id = str(uuid5(UUID(context["run_id"]), stage))
@@ -150,6 +198,7 @@ def new_intent(state, stage, due, at):
     renewal = stage in {"renewal", "cancel-renewal", "cancel-charge", "full-refund"}
     amount = {"checkout": 149000, "renewal": 149000, "cancel-renewal": 149000,
               "partial-refund": 37250, "remaining-refund": 111750, "full-refund": 149000,
+              "initial-full-refund": 149000,
               "cancel-charge": 0, "stop": 0}[stage]
     due_date = None
     if stage != "checkout":
@@ -167,6 +216,13 @@ def new_intent(state, stage, due, at):
         charge = "talli-mt-" + operation_id
     elif stage == "partial-refund":
         require_observation(state, "checkout", captured=149000, refunded=0)
+    elif stage == "initial-full-refund":
+        original = require_observation(state, "checkout", captured=149000, refunded=0)
+        initial = initial_charge_intent(state)
+        if (original["charge_reference"] != initial.charge_reference
+                or original["amount_minor"] != 149000 or not original["agreement_reference"]):
+            raise ConformanceError("invalid_initial_charge")
+        charge = initial.charge_reference
     elif stage == "remaining-refund":
         require_observation(state, "partial-refund", captured=149000, refunded=37250)
     elif stage == "full-refund":
@@ -218,6 +274,11 @@ def load_state(path, configuration):
                 or intent.agreement_external_reference != "talli-mt-" + context["run_id"]
                 or not isinstance(stage["attempts"], list) or not stage["attempts"]):
             raise ConformanceError("invalid_state")
+        require_initial_refund_path(state, name)
+        if name == "checkout":
+            observed_checkout_agreement(stage, intent)
+        if name == "initial-full-refund":
+            require_initial_full_refund_intent(state, intent)
     return state
 
 
@@ -293,6 +354,9 @@ def run(args, environment, *, transport=None, now=None, open_browser=webbrowser.
         raise ConformanceError("explicit_mt_opt_in_required")
     if args.state is None:
         raise ConformanceError("durable_state_required")
+    if args.stage == "checkout" and args.action == "repeat-execute":
+        # Actual MT agreement creation produced a duplicate for the same stored key.
+        raise ConformanceError("checkout_mutation_cannot_be_repeated")
     configuration = load_vipps_mt_configuration(environment)
     if configuration.merchant_serial_number != EXPECTED_MSN:
         raise ConformanceError("designated_test_sales_unit_required")
@@ -312,6 +376,7 @@ def run(args, environment, *, transport=None, now=None, open_browser=webbrowser.
                        "income_year": clock().year, "merchant_serial_number": EXPECTED_MSN,
                        "return_url": test_url(args.return_url), "management_url": test_url(args.management_url)}
             state = {"schema_version": 1, "context": context, "context_sha256": digest(context), "stages": {}}
+        require_initial_refund_path(state, args.stage)
         stage = state["stages"].get(args.stage)
         action = args.action
         if stage is None:
@@ -330,15 +395,22 @@ def run(args, environment, *, transport=None, now=None, open_browser=webbrowser.
                 action = "reconcile"
             if action == "repeat-execute":
                 previous = stage["attempts"][-1].get("observation")
-                if previous is None or previous["status"] not in {"pending", "confirmed"}:
+                repeatable = {"confirmed"} if args.stage == "initial-full-refund" else {"pending", "confirmed"}
+                if previous is None or previous["status"] not in repeatable:
                     raise ConformanceError("ambiguous_mutation_cannot_be_repeated")
         attempt = {"action": action, "started_at": clock().isoformat(), "source_revision": revision()}
+        dispatched_intent = intent
+        if args.stage == "checkout" and action == "reconcile":
+            # Bind reads to consistent prior evidence; preserve the immutable intent and key.
+            reference = observed_checkout_agreement(stage, intent)
+            if reference:
+                dispatched_intent = replace(intent, agreement_reference=reference)
         stage["attempts"].append(attempt)
         # This durable marker precedes every network call, including token acquisition.
         # A crash or lost response makes the next ordinary execute reconcile only.
         save_state(path, state)
         operation = provider.reconcile if action == "reconcile" else provider.execute
-        observation = asyncio.run(operation(intent))
+        observation = asyncio.run(operation(dispatched_intent))
         attempt["observation"] = observation_record(observation, intent)
         attempt["finished_at"] = clock().isoformat()
         save_state(path, state)
