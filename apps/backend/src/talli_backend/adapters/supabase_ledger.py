@@ -1918,6 +1918,32 @@ class SupabaseLedgerSession:
                 str(actor_id.subject),
             ),
         )
+        return self._opening_snapshot_page(rows)
+
+    async def list_opening_snapshots_for_year(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        correlation_id: CorrelationId,
+    ) -> OpeningSnapshotPage:
+        if actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        _ = correlation_id
+        rows = await self._database_rows(
+            "select * from backend_system.read_new_year_opening_snapshots_v1(%s::uuid[], %s::text, %s::integer, %s::text, %s::integer)",
+            ([str(company_id)], None, 1, str(actor_id.subject), income_year.value),
+        )
+        page = self._opening_snapshot_page(rows)
+        if (page.has_more or len(page.items) > 1 or any(
+            item.company_id != company_id or item.income_year != income_year
+            for item in page.items
+        )):
+            raise self._unavailable()
+        return page
+
+    def _opening_snapshot_page(self, rows) -> OpeningSnapshotPage:
         if len(rows) != 1 or not isinstance(rows[0].get("items"), list):
             raise self._unavailable()
         try:

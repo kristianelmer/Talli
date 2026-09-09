@@ -1,0 +1,14 @@
+{
+  "producerPath": "scripts/verify-rf1086-historical-replay.py",
+  "producerSha256": "28838d9b476625d7399f83f881fd95b31454e0863c3912a9931850e0b63ebf00",
+  "passed": [
+    "case_hash",
+    "xml_hash",
+    "child_extent",
+    "preflight_extent",
+    "hash_before_case_parse",
+    "no_overwrite"
+  ],
+  "count": 6,
+  "mandatoryPrivateFixtureGateAdded": false
+}

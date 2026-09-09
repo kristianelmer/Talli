@@ -182,3 +182,78 @@ def test_every_persisted_journal_attempt_fact_invalidates_source_evidence(field,
     facts=build_source_facts(QUERY,original)
     changed=replace(original,journal_events=(replace(original.journal_events[0],**{field:value}),))
     assert not verify_source_evidence(VerifyRf1086SourceEvidenceQuery(QUERY,facts.evidence),changed)
+
+
+def override(*,risk='advisory',id='override'):
+    return Rf1086OverrideRecord(id,preview().id,str(COMPANY),2025,preview().filing,
+        'rf1086.x','0','1','Owner-confirmed explanation',risk,str(ACTOR.subject),NOW,str(ACTOR.subject),NOW)
+
+
+@pytest.mark.parametrize('risk',['advisory','warning'])
+def test_non_block_override_preserves_acceptance_and_original_source_fact(risk):
+    original=snapshot();record=override(risk=risk)
+    current=replace(original,workspace=replace(original.workspace,overrides=(record,)))
+    facts=build_source_facts(QUERY,current)
+    assert facts.readiness_status=='ready'
+    assert len(facts.warnings)==1
+    warning=facts.warnings[0]
+    assert (warning.code,warning.message,warning.source,warning.source_id)==(
+        'accepted_filing_override',record.reason,'filing_overrides',record.id)
+    assert (warning.risk_level,warning.accepted,warning.accepted_by,warning.accepted_at)==(
+        risk,True,record.owner_confirmed_by,record.owner_confirmed_at)
+    with pytest.raises((TypeError,AttributeError)):warning.accepted=False
+    changed=replace(current,workspace=replace(current.workspace,overrides=(replace(record,owner_confirmed_at='2026-09-09T11:00:00Z'),)))
+    assert not verify_source_evidence(VerifyRf1086SourceEvidenceQuery(QUERY,facts.evidence),changed)
+
+
+def test_preview_warning_is_unaccepted_and_equal_override_reasons_keep_distinct_sources():
+    from talli_backend.modules.shareholder_register_filing.public import Rf1086ReadinessIssue
+    original=snapshot();p=replace(preview(),issues=(Rf1086ReadinessIssue('warning','synthetic_warning','Check the source'),))
+    current=replace(original,workspace=replace(original.workspace,previews=(p,),overrides=(override(id='one'),override(id='two'))))
+    facts=build_source_facts(QUERY,current)
+    warning=facts.warnings[0]
+    assert (warning.code,warning.message,warning.source,warning.source_id)==(
+        'synthetic_warning','Check the source','filing_previews',p.id)
+    assert (warning.risk_level,warning.accepted,warning.accepted_by,warning.accepted_at)==(None,False,None,None)
+    assert [value.source_id for value in facts.warnings[1:]]==['one','two']
+
+
+def test_block_override_does_not_become_accepted_warning():
+    original=snapshot();current=replace(original,workspace=replace(original.workspace,overrides=(override(risk='block'),)))
+    facts=build_source_facts(QUERY,current)
+    assert facts.readiness_status=='blocked'
+    assert facts.hard_blocks==('blocking_filing_override',)
+    assert facts.warnings==()
+
+
+@pytest.mark.parametrize('status',['accepted','rejected','action_required','received'])
+def test_successful_reconciliation_keeps_outcome_discovery_separate_from_mutation(status):
+    record=replace(submission(status=status),feedback_state='pending' if status=='received' else status,
+        feedback_artifact_count=0 if status=='received' else 1)
+    mutation=replace(event(state='succeeded',reference='main-id',failure=None),created_at='2026-09-09T11:00:00Z')
+    reconciliation=replace(event(state='succeeded',operation='reconciliation:local-observation',failure=None),
+        id='80000000-0000-4000-8000-000000000009',sequence=2,resulting_status=status)
+    artifacts=() if status=='received' else (Rf1086FeedbackArtifactRecord(
+        '40000000-0000-4000-8000-000000000001',str(COMPANY),record.id,
+        '40000000-0000-4000-8000-000000000002','application/xml',100,'f'*64,NOW,status),)
+    current=with_attempt(snapshot(),record,(mutation,reconciliation))
+    current=replace(current,workspace=replace(current.workspace,feedback_artifacts=artifacts))
+    facts=build_source_facts(QUERY,current)
+    assert facts.history_coverage.status=='complete'
+    assert facts.production_attempts[0].observed_at=='2026-09-09T11:00:00Z'
+    assert facts.incidents==()
+    assert len(facts.outcomes)==1
+    outcome=facts.outcomes[0]
+    assert (outcome.event_id,outcome.submission_id,outcome.resulting_status,outcome.observed_at)==(
+        reconciliation.id,record.id,status,NOW)
+    assert outcome.attribution=='unknown'
+    with pytest.raises((TypeError,AttributeError)):outcome.resulting_status='invented'
+    changed=replace(current,journal_events=(mutation,replace(reconciliation,created_at='2026-09-09T12:00:01Z')))
+    assert not verify_source_evidence(VerifyRf1086SourceEvidenceQuery(QUERY,facts.evidence),changed)
+
+
+def test_unknown_reconciliation_retains_incident_without_known_outcome():
+    current=with_attempt(snapshot(),events=(event(operation='reconciliation:local-unknown'),))
+    facts=build_source_facts(QUERY,current)
+    assert len(facts.incidents)==1 and facts.incidents[0].observed_at==NOW
+    assert facts.outcomes==()

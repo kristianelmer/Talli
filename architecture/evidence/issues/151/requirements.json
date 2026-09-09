@@ -3,8 +3,8 @@
   "issue": "#151",
   "source": "https://github.com/kristianelmer/Talli/issues/151",
   "sourceCheckedAt": "2026-09-09T18:58:36Z",
-  "status": "entry-complete-serialized-claim-pending",
-  "notice": "Entry evidence only. All six original criteria remain pending; no implementation or final RF gate is claimed.",
+  "status": "implementation-in-progress-exit-verification-pending",
+  "notice": "RF implementation is in progress after checkpoint 3e8bf5187d614a3a2d02437f12186d90dbd19078. Exact original historical TT02 payload regeneration now passes; full criterion evidence, complete gates and protected integration remain open.",
   "entryBlockers": [
     {
       "issue": "#150",
@@ -29,14 +29,14 @@
       "name": "immutable entry baseline",
       "revision": "91b178c281bcc5fb887a6257d2f72e380199f3e6",
       "command": "npm run gate:customer-ready",
-      "status": "pass-independently-verified-storage-commit-pending",
+      "status": "pass-independently-verified-committed",
       "evidencePath": "architecture/evidence/customer-ready-gates/91b178c281bcc5fb887a6257d2f72e380199f3e6.json",
       "rawTranscriptPath": "architecture/evidence/customer-ready-gates/91b178c281bcc5fb887a6257d2f72e380199f3e6.log",
       "checkCount": 11,
       "canonicalDigest": "sha256:1ac57b0619c2ae8f95ed0a6c776315e6562d4fc0be6af55d23e37222463b2607",
       "transcriptDigest": "sha256:99ee6b001f8271ac0c8b6da5e58e162759e4f2aa2aef2b05c7c76383a5d2583b",
       "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
-      "storageRevision": "This entry evidence commit; exact immutable storage revision is published in the subsequent serialized GitHub claim.",
+      "storageRevision": "7a49f010229baf13d4942364d352786d7cddc5c3",
       "startedAt": "2026-09-09T18:40:21.300Z",
       "finishedAt": "2026-09-09T18:58:17.826Z",
       "requiredProof": "Actual completed11checks/zero exits; canonical schema/sortedJSON/rawlog/testedproducer digest; clean committed tested revision and committed evidence storage. This is entry evidence, not either #151 final exit pass.",
@@ -57,8 +57,10 @@
     },
     {
       "name": "serialized claim",
-      "status": "UNCLAIMED",
-      "observation": {
+      "status": "CLAIMED",
+      "claimUrl": "https://github.com/kristianelmer/Talli/issues/151#issuecomment-5607212335",
+      "branch": "codex/issue-151-rf1086-01a08515",
+      "observationAtEntry": {
         "state": "OPEN",
         "assignees": [],
         "commentCount": 0,
@@ -67,10 +69,7 @@
         ],
         "ticketUpdatedAt": "2026-09-09T08:56:06Z",
         "openPrSearch151": []
-      },
-      "claimUrl": null,
-      "branch": null,
-      "requiredNext": "Re-read issue/comments and relevant active work immediately before root makes a bounded claim after completed entry baseline. Registry pointer alone is not a claim. Search has a time-of-check race and is not an atomic lock."
+      }
     }
   ],
   "decisionBoundary": {
@@ -81,29 +80,39 @@
     "approvedNow": "RF semantics/row ownership, public contracts, canonical backend rules, normal reversible migration and exact behavior-preserving dependency query; start only after normal entry. Do not migrate sibling rules/annual aggregation/audit/notifications.",
     "pendingException": {
       "status": "PENDING_OWNER_DECISION",
-      "proposal": "architecture/evidence/issues/151/compatibility-amendment-proposal.md",
-      "proposalDigest": "sha256:3cc58e95162e6cd52328a075019419e1005f9ca8794eda1811b77fc30ae50d40",
-      "scope": "architecture/evidence/issues/151/frozen-scope-disposition.md",
-      "scopeDigest": "sha256:af56cf7ad98bdf0feca6c4b2d9208545fc1c633d3f66596f3bf5dfa8ff950da3",
-      "inventoryDigest": "sha256:e0e8f9e2a3835ca206817f3b6d1a0529ce6340e1638b8c59b624f5aef2240f12",
+      "proposal": "architecture/evidence/issues/151/compatibility-amendment-v2-proposal.md",
+      "proposalDigest": "sha256:37472588213825c948c4a4870e9df7396b10aa273e9d1c5118db929d9149b09a",
+      "scope": "architecture/evidence/issues/151/compatibility-amendment-v2-inventory.json",
+      "scopeDigest": "sha256:698439251dbba00606c04ea9599032db5f3a082a14946ad4cb1beef24d121c28",
+      "inventoryDigest": "sha256:698439251dbba00606c04ea9599032db5f3a082a14946ad4cb1beef24d121c28",
       "approvalEvidence": null,
       "counts": {
         "mixedTupleReattributions": 12,
-        "futureReadDeletions": 3,
+        "futureReadDeletions": 4,
         "adjacentAuditCallsUnchanged": 8,
         "adjacentNotificationCallsUnchanged": 2
       },
       "restriction": "No dependent tuple reattribution/deletion or checker exception until affirmative exact approval. Pending bookkeeping does not block independent already-approved semantic work after normal entry.",
       "expiry": "Each retained tuple leaves when last real sibling source migrates, no later than last filing cutover; #149 is not blanket retention authority.",
-      "inventory": "architecture/evidence/issues/151/frozen-scope-inventory.json",
-      "independentReview": "architecture/evidence/issues/151/frozen-scope-independent-review.md",
-      "publicationNote": "Copied byte-for-byte from the reviewed proposal. Its earlier status paragraph is historical; approval remains pending. Entry records the completed predecessor separately."
+      "inventory": "architecture/evidence/issues/151/compatibility-amendment-v2-inventory.json",
+      "independentReview": "architecture/evidence/issues/151/compatibility-amendment-v2-independent-review.md",
+      "publicationNote": "Revision2 supersedes the pending15-entry question with exactly one split-resource archive retirement. The original15proposal and inventory remain unchanged. No dependent exception implemented or approved.",
+      "previousFifteenTupleProposal": {
+        "proposal": "architecture/evidence/issues/151/compatibility-amendment-proposal.md",
+        "proposalDigest": "sha256:3cc58e95162e6cd52328a075019419e1005f9ca8794eda1811b77fc30ae50d40",
+        "scope": "architecture/evidence/issues/151/frozen-scope-disposition.md",
+        "scopeDigest": "sha256:af56cf7ad98bdf0feca6c4b2d9208545fc1c633d3f66596f3bf5dfa8ff950da3",
+        "inventory": "architecture/evidence/issues/151/frozen-scope-inventory.json",
+        "inventoryDigest": "sha256:e0e8f9e2a3835ca206817f3b6d1a0529ce6340e1638b8c59b624f5aef2240f12",
+        "independentReview": "architecture/evidence/issues/151/frozen-scope-independent-review.md"
+      }
     },
     "noAuthority": "No provider activation/live filing/spending/production promotion/hosted schema application. Real provider evidence and named-company production remain separate authorized later work.",
     "historicalPayloadReplay": {
-      "status": "original-input-or-xml-path-requested",
-      "evidence": "architecture/evidence/issues/151/tt02-replay-availability.md",
-      "limit": "Historical accepted TT02 hashes are preserved; exact regeneration remains unproven. Synthetic migration characterization does not replace this evidence."
+      "status": "exact-historical-payload-regeneration-pass",
+      "evidence": "architecture/evidence/issues/151/tt02-deterministic-replay.json",
+      "procedure": "architecture/evidence/issues/151/tt02-deterministic-replay.md",
+      "limit": "Original single2025 no-activity case reproduces both accepted document hashes byte for byte offline, including bundled XSD validation; no new provider acceptance or full stage exit is claimed."
     }
   },
   "criteria": [
@@ -127,7 +136,9 @@
       ],
       "expectedResult": "Fixed input/clock/ID old-new equality for supported no-activity preview/XML bytes, hashes, order, defaults, coded errors and exclusion behavior. Historical TT02 hashes retained; broader offline fixtures do not imply live support.",
       "newEvidence": [
-        "architecture/evidence/issues/151/implementation-checkpoint.md"
+        "architecture/evidence/issues/151/implementation-checkpoint.md",
+        "architecture/evidence/issues/151/tt02-deterministic-replay.json",
+        "architecture/evidence/issues/151/followup-verification.md"
       ]
     },
     {
@@ -349,7 +360,14 @@
     "database-isolation",
     "whitespace"
   ],
-  "localValidation": [],
+  "localValidation": [
+    {
+      "evidence": "architecture/evidence/issues/151/focused/manifest.json",
+      "state": "passed-focused-working-tree-checks",
+      "qualifiesAsCompleteImmutableGate": false,
+      "limit": "Files evolved during focused checks; linked transcript hashes and implementation-checkpoint.md disclose counts, omissions and skips."
+    }
+  ],
   "predecessorEvidence": {
     "issue": "#150",
     "closure": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5606893685",
@@ -366,5 +384,6 @@
     "productionBranch": "release/production",
     "productionRevisionToRemainFrozen": "d331ee2717d1eeacef0d81db42b9d4fb5848b408"
   },
-  "implementationCheckpoint": "architecture/evidence/issues/151/implementation-checkpoint.md"
+  "implementationCheckpoint": "architecture/evidence/issues/151/implementation-checkpoint.md",
+  "implementationRevision": "3e8bf5187d614a3a2d02437f12186d90dbd19078"
 }

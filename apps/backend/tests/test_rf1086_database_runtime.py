@@ -50,8 +50,101 @@ def insert(connection, table, values):
         sql.SQL(",").join(sql.Placeholder() for _ in values)), tuple(values.values()))
 
 
+def delete_legacy_fixture_projections(connection, company):
+    """Remove only this fixture's frozen overlap projections as their table owner.
+
+    Exact trigger modes are restored within the same transaction; an exception
+    rolls back both fixture DML and trigger DDL. No application ACL is changed.
+    """
+    tables = ("filing_review_comments", "filing_overrides", "filing_submissions", "filing_previews", "authority_permissions", "authority_test_runs")
+    with connection.transaction():
+        triggers = connection.execute(
+            "select c.relname,t.tgname,t.tgenabled from pg_trigger t join pg_class c on c.oid=t.tgrelid "
+            "join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname=any(%s) "
+            "and not t.tgisinternal order by c.relname,t.tgname", (list(tables),)).fetchall()
+        for table, name, _ in triggers:
+            connection.execute(sql.SQL("alter table {} disable trigger {}").format(sql.Identifier("public",table),sql.Identifier(name)))
+        for table in tables:
+            connection.execute(sql.SQL("delete from {} where company_id=%s").format(sql.Identifier("public",table)),(company,))
+        for table,name,mode in triggers:
+            command = {"O":"enable", "D":"disable", "R":"enable replica", "A":"enable always"}[mode]
+            connection.execute(sql.SQL("alter table {} {} trigger {}").format(sql.Identifier("public",table),sql.SQL(command),sql.Identifier(name)))
+
+
 @pytest.fixture(scope="module")
-def backend_url():
+def rf_fixture_admin_access():
+    """Temporarily restore former table-owner fixture access to the existing admin.
+
+    Application logins never receive these grants. Keep FORCE RLS unchanged;
+    the designated disposable postgres principal already has BYPASSRLS. Borrow
+    exact missing ACLs once so the existing lock/observer cases have no per-read
+    DDL or catalog locks, and restore them after all fixture cleanup, even on error.
+    """
+    assert DATABASE_URL, "DATABASE_URL must identify the owned disposable test database"
+    owner_role = "shareholder_register_filing_store_owner"
+    tables = ("filing_previews", "filing_approval_snapshots", "production_filing_submissions",
+              "production_filing_events", "production_feedback_artifacts", "authority_permissions")
+    borrowed = {}
+    membership_changed = False
+    prior_membership = None
+    with psycopg.connect(DATABASE_URL) as connection:
+        principal, bypass = connection.execute(
+            "select current_user,rolbypassrls from pg_roles where rolname=current_user"
+        ).fetchone()
+        assert bypass, "RF fixture requires the designated disposable database admin"
+        if not connection.execute("select pg_has_role(current_user,%s,'SET')", (owner_role,)).fetchone()[0]:
+            prior_membership = connection.execute(
+                "select m.admin_option,m.inherit_option,m.set_option from pg_auth_members m "
+                "join pg_roles r on r.oid=m.roleid where r.rolname=%s "
+                "and m.member=(select oid from pg_roles where rolname=current_user) "
+                "and m.grantor=m.member", (owner_role,),
+            ).fetchone()
+            connection.execute(sql.SQL("grant {} to {} with set true granted by {}").format(
+                sql.Identifier(owner_role), sql.Identifier(principal), sql.Identifier(principal)))
+            membership_changed = True
+        schema_acl = connection.execute("select nspacl::text from pg_namespace where nspname='shareholder_register_filing'").fetchone()[0]
+        schema_borrowed = not connection.execute("select has_schema_privilege(current_user,'shareholder_register_filing','USAGE')").fetchone()[0]
+        for table in tables:
+            relation = "shareholder_register_filing." + table
+            acl, force = connection.execute("select relacl::text,relforcerowsecurity from pg_class where oid=%s::regclass", (relation,)).fetchone()
+            missing = tuple(privilege for privilege in ("SELECT", "INSERT", "UPDATE", "DELETE")
+                if not connection.execute("select has_table_privilege(current_user,%s,%s)", (relation,privilege)).fetchone()[0])
+            borrowed[table] = (acl, force, missing)
+        connection.execute(sql.SQL("set local role {}").format(sql.Identifier(owner_role)))
+        if schema_borrowed:
+            connection.execute(sql.SQL("grant usage on schema shareholder_register_filing to {}").format(sql.Identifier(principal)))
+        for table, (_, _, missing) in borrowed.items():
+            if missing:
+                connection.execute(sql.SQL("grant {} on {} to {}").format(
+                    sql.SQL(",").join(map(sql.SQL,missing)), sql.Identifier("shareholder_register_filing",table), sql.Identifier(principal)))
+    try:
+        yield
+    finally:
+        with psycopg.connect(DATABASE_URL) as connection:
+            connection.execute(sql.SQL("set local role {}").format(sql.Identifier(owner_role)))
+            for table, (_, _, missing) in borrowed.items():
+                if missing:
+                    connection.execute(sql.SQL("revoke {} on {} from {}").format(
+                        sql.SQL(",").join(map(sql.SQL,missing)), sql.Identifier("shareholder_register_filing",table), sql.Identifier(principal)))
+            if schema_borrowed:
+                connection.execute(sql.SQL("revoke usage on schema shareholder_register_filing from {}").format(sql.Identifier(principal)))
+            connection.execute("reset role")
+            for table, (acl, force, _) in borrowed.items():
+                current = connection.execute("select relacl::text,relforcerowsecurity from pg_class where oid=%s::regclass", ("shareholder_register_filing."+table,)).fetchone()
+                assert current == (acl,force), "RF fixture must restore exact ACL and FORCE RLS"
+            assert connection.execute("select nspacl::text from pg_namespace where nspname='shareholder_register_filing'").fetchone()[0] == schema_acl
+            if membership_changed:
+                if prior_membership is None:
+                    connection.execute(sql.SQL("revoke {} from {} granted by {}").format(
+                        sql.Identifier(owner_role), sql.Identifier(principal), sql.Identifier(principal)))
+                else:
+                    connection.execute(sql.SQL("grant {} to {} with admin {}, inherit {}, set {} granted by {}").format(
+                        sql.Identifier(owner_role), sql.Identifier(principal),
+                        *(sql.SQL(str(value).lower()) for value in prior_membership), sql.Identifier(principal)))
+
+
+@pytest.fixture(scope="module")
+def backend_url(rf_fixture_admin_access):
     assert DATABASE_URL, "DATABASE_URL must identify the owned disposable test database"
     username, password = "rf_test_" + uuid4().hex, uuid4().hex
     borrowed = []
@@ -118,6 +211,7 @@ def fixture(backend_url):
         yield data
     finally:
         with psycopg.connect(DATABASE_URL) as connection:
+            delete_legacy_fixture_projections(connection, company)
             connection.execute("delete from shareholder_register_filing.production_feedback_artifacts where company_id=%s", (company,))
             connection.execute("delete from documents.evidence_references where document_id in (select id from public.documents where company_id=%s)", (company,))
             connection.execute("delete from shareholder_register_filing.production_filing_submissions where company_id=%s", (company,))
@@ -357,3 +451,49 @@ def test_request_lock_is_acquired_before_billing_pilot_lock(fixture):
             lock.commit()
             return await pending
     assert asyncio.run(check())
+
+
+def test_year_scoped_archive_source_ignores_unrelated_legacy_preview_decode_failure(fixture):
+    from talli_backend.modules.shareholder_register_filing.public import Rf1086ArchiveQuery, ShareholderRegisterFilingError
+    from talli_backend.shared.kernel import IncomeYear
+    historical=uuid4()
+    with psycopg.connect(DATABASE_URL) as connection:
+        insert(connection,'shareholder_register_filing.filing_previews',{
+            'id':historical,'company_id':fixture['company'],'income_year':2024,'filing':OBLIGATION,'status':'ready',
+            'preview':'Retained original warning shape','issues':Jsonb([{'level':'warning','message':'historical'}]),'created_by':fixture['owner'],
+        })
+    session=store(fixture)
+    result=asyncio.run(session.archive_source(Rf1086ArchiveQuery(
+        company_id=CompanyId(str(fixture['company'])),income_year=IncomeYear(2025),actor_id=session.actor_id)))
+    assert [row.id for row in result.previews]==[str(fixture['preview'])]
+    with pytest.raises(ShareholderRegisterFilingError) as captured:
+        asyncio.run(session.archive_source(Rf1086ArchiveQuery(
+            company_id=CompanyId(str(fixture['company'])),income_year=IncomeYear(2024),actor_id=session.actor_id)))
+    assert captured.value.code=='SHAREHOLDER_REGISTER_FILING_DEPENDENCY_UNAVAILABLE'
+
+
+def test_old_and_new_backend_journal_invocations_share_one_submission_during_overlap(fixture):
+    from psycopg.conninfo import conninfo_to_dict
+    root=Path(__file__).resolve().parents[3]
+    login=conninfo_to_dict(fixture['url'])['user']
+    reverse=root/'supabase/rollback/20260909190955_shareholder_register_filing_contract.sql'
+    contract=root/'supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql'
+    with psycopg.connect(DATABASE_URL,autocommit=True) as admin:
+        admin.execute(reverse.read_text())
+        admin.execute(sql.SQL('grant legacy_rf1086_executor to {} with inherit false,set true').format(sql.Identifier(login)))
+    try:
+        def old_begin():
+            with psycopg.connect(fixture['url']) as connection:
+                actor=str(fixture['owner']);verified=json.dumps(claims(fixture))
+                connection.execute('set local role legacy_rf1086_executor')
+                connection.execute("select set_config('request.jwt.claims',%s,true),set_config('talli.verified_actor_id',%s,true),set_config('talli.verified_actor_claims',%s,true)",(verified,actor,verified))
+                return str(connection.execute('select id from public.begin_production_filing(%s)',(fixture['approval'],)).fetchone()[0])
+        original=old_begin()
+        assert begin(fixture)==original
+        assert old_begin()==original
+        with psycopg.connect(DATABASE_URL) as admin:
+            assert admin.execute('select count(*) from shareholder_register_filing.production_filing_submissions where approval_id=%s',(fixture['approval'],)).fetchone()[0]==1
+    finally:
+        with psycopg.connect(DATABASE_URL,autocommit=True) as admin:
+            admin.execute(sql.SQL('revoke legacy_rf1086_executor from {}').format(sql.Identifier(login)))
+            admin.execute(contract.read_text())

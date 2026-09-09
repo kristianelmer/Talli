@@ -481,6 +481,18 @@ class Rf1086WorkspaceQuery:
 
 
 @dataclass(frozen=True, slots=True)
+class Rf1086ArchiveQuery:
+    company_id: CompanyId
+    income_year: IncomeYear
+    actor_id: ActorId
+
+    def __post_init__(self) -> None:
+        if (not isinstance(self.company_id,CompanyId) or not isinstance(self.income_year,IncomeYear)
+                or not isinstance(self.actor_id,ActorId)):
+            raise ShareholderRegisterFilingError.invalid_input()
+
+
+@dataclass(frozen=True, slots=True)
 class Rf1086SourceQuery:
     company_id: CompanyId
     income_year: IncomeYear
@@ -963,6 +975,19 @@ class Rf1086WorkspaceSnapshot(_ImmutableRf1086Value):
 
 
 @dataclass(frozen=True, slots=True)
+class Rf1086ArchiveSnapshot(_ImmutableRf1086Value):
+    """The original archive's year-scoped filing and company-wide review extent."""
+
+    company_id: CompanyId
+    income_year: IncomeYear
+    previews: tuple[Rf1086PreviewRecord, ...] = ()
+    simulations: tuple[Rf1086SimulationRecord, ...] = ()
+    review_comments: tuple[Rf1086ReviewCommentRecord, ...] = ()
+    permissions: tuple[Rf1086FilingPermissionRecord, ...] = ()
+    test_evidence: tuple[Rf1086TestEvidenceRecord, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class Rf1086OpeningBasis(_ImmutableRf1086Value):
     company_id: CompanyId
     opening_snapshot_id: OpeningSnapshotId
@@ -1117,15 +1142,39 @@ class Rf1086IncidentFact(_ImmutableRf1086Value):
 
 
 @dataclass(frozen=True, slots=True)
+class Rf1086WarningFact(_ImmutableRf1086Value):
+    code: str
+    message: str
+    source: Literal["filing_previews", "filing_overrides"]
+    source_id: str
+    risk_level: str | None
+    accepted: bool
+    accepted_by: str | None
+    accepted_at: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086OutcomeFact(_ImmutableRf1086Value):
+    """An RF journal observation, not the authority's unobserved event time."""
+
+    event_id: str
+    submission_id: str
+    resulting_status: str
+    observed_at: str
+    attribution: Literal["unknown"] = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
 class Rf1086SourceFacts(_ImmutableRf1086Value):
     evidence: Rf1086SourceEvidence
     readiness_status: Literal["ready", "blocked", "unavailable"]
     hard_blocks: tuple[str, ...]
-    warnings: tuple[str, ...]
+    warnings: tuple[Rf1086WarningFact, ...]
     history_coverage: Rf1086HistoryCoverage
     production_attempts: tuple[Rf1086ProductionAttemptFact, ...]
     correction_links: tuple[Rf1086CorrectionLink, ...]
     incidents: tuple[Rf1086IncidentFact, ...]
+    outcomes: tuple[Rf1086OutcomeFact, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -1135,6 +1184,7 @@ class VerifyRf1086SourceEvidenceQuery(_ImmutableRf1086Value):
 
 
 class Rf1086PreparationPersistence(Protocol):
+    async def archive_source(self, query: Rf1086ArchiveQuery) -> Rf1086ArchiveSnapshot: ...
     async def preview_record(self, query: ReadRf1086PreviewQuery) -> Rf1086PreviewRecord | None: ...
     async def load_opening(self, command: GenerateRf1086PreviewCommand) -> Rf1086OpeningBasis: ...
     async def record_preview(self, command: GenerateRf1086PreviewCommand, prepared: Rf1086PreparedPreview) -> Rf1086RecordedResult: ...
@@ -1152,6 +1202,7 @@ class Rf1086PreparationPersistence(Protocol):
 
 
 class ShareholderRegisterFilingQueries(Protocol):
+    async def archive_source(self, query: Rf1086ArchiveQuery) -> Rf1086ArchiveSnapshot: ...
     async def read_preview(self, query: ReadRf1086PreviewQuery) -> Rf1086PreviewRecord | None: ...
     async def workspace(self, query: Rf1086WorkspaceQuery) -> Rf1086WorkspaceSnapshot: ...
     async def source_facts(self, query: Rf1086SourceQuery) -> Rf1086SourceFacts: ...
@@ -1437,4 +1488,4 @@ def rf1086_production_scope_exclusions(case: Rf1086Case | None = None) -> tuple[
     from .codes import production_scope_exclusions, production_scope_exclusions_for_case
     return production_scope_exclusions() if case is None else production_scope_exclusions_for_case(case)
 
-__all__ = ['ShareholderRegisterFilingErrorCode', 'ShareholderRegisterFilingError', 'OpeningSnapshotId', 'OpeningShareholder', 'RecordOpeningSnapshotCommand', 'ShareholderRegisterFilingCommands', 'Rf1086ShareholderKind', 'Rf1086Company', 'Rf1086ShareSnapshot', 'Rf1086Shareholder', 'Rf1086ShareholderSnapshot', 'Rf1086FormationAllocation', 'Rf1086FormationEvent', 'Rf1086ShareSaleEvent', 'Rf1086DividendAllocation', 'Rf1086DividendEvent', 'Rf1086Case', 'Rf1086ReadinessIssue', 'Rf1086ReadinessResult', 'Rf1086DocumentSet', 'Rf1086RenderedPreview', 'PreviewId', 'OverrideId', 'ReviewCommentId', 'ApprovalId', 'SubmissionId', 'TestEvidenceId', 'Rf1086RecordedResult', 'GenerateRf1086PreviewCommand', 'RecordRf1086OverrideCommand', 'AddRf1086ReviewCommentCommand', 'AcknowledgeRf1086ReviewCommentCommand', 'ConfirmRf1086SimulationCommand', 'ConfirmRf1086FilingPermissionCommand', 'RecordRf1086TestEvidenceCommand', 'ApproveRf1086ProductionCommand', 'SendApprovedRf1086Command', 'ReconcileRf1086FeedbackCommand', 'Rf1086WorkspaceQuery', 'Rf1086SourceQuery', 'Rf1086ActionAvailability', 'Rf1086AuthorityError', 'Rf1086AuthorityCall', 'Rf1086MainResponse', 'Rf1086PostResponse', 'Rf1086Confirmation', 'Rf1086DocumentReference', 'Rf1086DocumentPage', 'Rf1086AuthorityDocument', 'Rf1086ReadOnlyAuthority', 'Rf1086MutationAuthority', 'ProductionOperation', 'ProductionOperationFailure', 'ProductionOperationJournal', 'JournaledRf1086ProductionInput', 'JournaledRf1086ProductionResult', 'Rf1086UnknownProductionOutcomeError', 'Rf1086BlockedProductionOperationError', 'Rf1086FeedbackResult', 'Rf1086ReconciliationSnapshot', 'Rf1086ReconciliationArtifact', 'Rf1086FeedbackArtifactPersistenceError', 'Rf1086ProductionJournal', 'Rf1086ReconciliationInput', 'Rf1086ReconciliationResult', 'Rf1086ProductionError', 'Rf1086Approval', 'Rf1086Preview', 'Rf1086Submission', 'Rf1086Connection', 'Rf1086SendResult', 'Rf1086OwnerReconciliationResult', 'Rf1086PreviewRecord', 'Rf1086SimulationRecord', 'Rf1086OverrideRecord', 'Rf1086ReviewCommentRecord', 'Rf1086FilingPermissionRecord', 'Rf1086TestEvidenceRecord', 'Rf1086ApprovalRecord', 'Rf1086ProductionSubmissionRecord', 'Rf1086FeedbackArtifactRecord', 'Rf1086WorkspaceSnapshot', 'Rf1086OpeningBasis', 'Rf1086PreparedPreview', 'Rf1086SimulationBasis', 'Rf1086PreparedSimulation', 'Rf1086ApprovalBasis', 'Rf1086PreparedApproval', 'Rf1086MigrationInventory', 'Rf1086JournalEvent', 'Rf1086SourceSnapshot', 'Rf1086OpeningSource', 'Rf1086SourceEvidence', 'Rf1086HistoryCoverage', 'Rf1086ProductionAttemptFact', 'Rf1086CorrectionLink', 'Rf1086IncidentFact', 'Rf1086SourceFacts', 'VerifyRf1086SourceEvidenceQuery', 'Rf1086PreparationPersistence', 'ShareholderRegisterFilingQueries', 'rf1086_payload_utf8_bytes', 'parse_rf1086_case', 'generate_rf1086_documents', 'assess_rf1086_readiness', 'render_rf1086_preview', 'render_no_activity_rf1086_preview', 'create_rf1086_preparation_service', 'ReadRf1086PreviewQuery', 'resume_production_operation', 'create_rf1086_feedback_artifact_persistence_error', 'rf1086_xml_schema', 'OpeningSnapshotPersistence', 'OpeningSnapshotCommands', 'create_opening_snapshot_service', 'execute_journaled_rf1086_production', 'rf1086_current_manifest_hash', 'rf1086_production_document_order', 'reconcile_journaled_rf1086_production', 'Rf1086CompanyFacts', 'Rf1086OpeningShareholderFact', 'Rf1086OpeningFacts', 'build_no_activity_rf1086_case', 'Rf1086PreparationOperations', 'rf1086_adapter', 'Rf1086OfflineSimulationInput', 'Rf1086OfflineSimulationCall', 'Rf1086OfflineSimulationResult', 'Rf1086ValidationInput', 'Rf1086ValidationCaseResult', 'Rf1086ValidationReport', 'Rf1086CodeVerificationStatus', 'Rf1086CodeDecision', 'parse_rf1086_offline_simulation_input', 'simulate_rf1086_offline_submission', 'validate_rf1086_cases', 'format_rf1086_readiness_report', 'rf1086_code_decisions', 'rf1086_code_decisions_for_case', 'rf1086_production_code_blockers', 'rf1086_production_scope_exclusions', 'ProductionOperationState', 'FailureClassification', 'Rf1086FeedbackClassification', 'Rf1086ReconciliationState']
+__all__ = ['ShareholderRegisterFilingErrorCode', 'ShareholderRegisterFilingError', 'OpeningSnapshotId', 'OpeningShareholder', 'RecordOpeningSnapshotCommand', 'ShareholderRegisterFilingCommands', 'Rf1086ShareholderKind', 'Rf1086Company', 'Rf1086ShareSnapshot', 'Rf1086Shareholder', 'Rf1086ShareholderSnapshot', 'Rf1086FormationAllocation', 'Rf1086FormationEvent', 'Rf1086ShareSaleEvent', 'Rf1086DividendAllocation', 'Rf1086DividendEvent', 'Rf1086Case', 'Rf1086ReadinessIssue', 'Rf1086ReadinessResult', 'Rf1086DocumentSet', 'Rf1086RenderedPreview', 'PreviewId', 'OverrideId', 'ReviewCommentId', 'ApprovalId', 'SubmissionId', 'TestEvidenceId', 'Rf1086RecordedResult', 'GenerateRf1086PreviewCommand', 'RecordRf1086OverrideCommand', 'AddRf1086ReviewCommentCommand', 'AcknowledgeRf1086ReviewCommentCommand', 'ConfirmRf1086SimulationCommand', 'ConfirmRf1086FilingPermissionCommand', 'RecordRf1086TestEvidenceCommand', 'ApproveRf1086ProductionCommand', 'SendApprovedRf1086Command', 'ReconcileRf1086FeedbackCommand', 'Rf1086WorkspaceQuery', 'Rf1086ArchiveQuery', 'Rf1086SourceQuery', 'Rf1086ActionAvailability', 'Rf1086AuthorityError', 'Rf1086AuthorityCall', 'Rf1086MainResponse', 'Rf1086PostResponse', 'Rf1086Confirmation', 'Rf1086DocumentReference', 'Rf1086DocumentPage', 'Rf1086AuthorityDocument', 'Rf1086ReadOnlyAuthority', 'Rf1086MutationAuthority', 'ProductionOperation', 'ProductionOperationFailure', 'ProductionOperationJournal', 'JournaledRf1086ProductionInput', 'JournaledRf1086ProductionResult', 'Rf1086UnknownProductionOutcomeError', 'Rf1086BlockedProductionOperationError', 'Rf1086FeedbackResult', 'Rf1086ReconciliationSnapshot', 'Rf1086ReconciliationArtifact', 'Rf1086FeedbackArtifactPersistenceError', 'Rf1086ProductionJournal', 'Rf1086ReconciliationInput', 'Rf1086ReconciliationResult', 'Rf1086ProductionError', 'Rf1086Approval', 'Rf1086Preview', 'Rf1086Submission', 'Rf1086Connection', 'Rf1086SendResult', 'Rf1086OwnerReconciliationResult', 'Rf1086PreviewRecord', 'Rf1086SimulationRecord', 'Rf1086OverrideRecord', 'Rf1086ReviewCommentRecord', 'Rf1086FilingPermissionRecord', 'Rf1086TestEvidenceRecord', 'Rf1086ApprovalRecord', 'Rf1086ProductionSubmissionRecord', 'Rf1086FeedbackArtifactRecord', 'Rf1086WorkspaceSnapshot', 'Rf1086ArchiveSnapshot', 'Rf1086OpeningBasis', 'Rf1086PreparedPreview', 'Rf1086SimulationBasis', 'Rf1086PreparedSimulation', 'Rf1086ApprovalBasis', 'Rf1086PreparedApproval', 'Rf1086MigrationInventory', 'Rf1086JournalEvent', 'Rf1086SourceSnapshot', 'Rf1086OpeningSource', 'Rf1086SourceEvidence', 'Rf1086HistoryCoverage', 'Rf1086ProductionAttemptFact', 'Rf1086CorrectionLink', 'Rf1086IncidentFact', 'Rf1086WarningFact', 'Rf1086OutcomeFact', 'Rf1086SourceFacts', 'VerifyRf1086SourceEvidenceQuery', 'Rf1086PreparationPersistence', 'ShareholderRegisterFilingQueries', 'rf1086_payload_utf8_bytes', 'parse_rf1086_case', 'generate_rf1086_documents', 'assess_rf1086_readiness', 'render_rf1086_preview', 'render_no_activity_rf1086_preview', 'create_rf1086_preparation_service', 'ReadRf1086PreviewQuery', 'resume_production_operation', 'create_rf1086_feedback_artifact_persistence_error', 'rf1086_xml_schema', 'OpeningSnapshotPersistence', 'OpeningSnapshotCommands', 'create_opening_snapshot_service', 'execute_journaled_rf1086_production', 'rf1086_current_manifest_hash', 'rf1086_production_document_order', 'reconcile_journaled_rf1086_production', 'Rf1086CompanyFacts', 'Rf1086OpeningShareholderFact', 'Rf1086OpeningFacts', 'build_no_activity_rf1086_case', 'Rf1086PreparationOperations', 'rf1086_adapter', 'Rf1086OfflineSimulationInput', 'Rf1086OfflineSimulationCall', 'Rf1086OfflineSimulationResult', 'Rf1086ValidationInput', 'Rf1086ValidationCaseResult', 'Rf1086ValidationReport', 'Rf1086CodeVerificationStatus', 'Rf1086CodeDecision', 'parse_rf1086_offline_simulation_input', 'simulate_rf1086_offline_submission', 'validate_rf1086_cases', 'format_rf1086_readiness_report', 'rf1086_code_decisions', 'rf1086_code_decisions_for_case', 'rf1086_production_code_blockers', 'rf1086_production_scope_exclusions', 'ProductionOperationState', 'FailureClassification', 'Rf1086FeedbackClassification', 'Rf1086ReconciliationState']

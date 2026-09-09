@@ -227,6 +227,46 @@ class PostgresShareholderRegisterFilingSession:
         async with self._transaction(snapshot=True) as connection:
             return await self._opening_basis(connection, command.company_id, command.opening_snapshot_id)
 
+    async def archive_source(self, query):
+        self._command_actor(query)
+        async with self._transaction(snapshot=True) as connection:
+            company_id, year = str(query.company_id), int(query.income_year)
+            await connection.execute("select shareholder_register_filing.assert_member_v1(%s::uuid)", (company_id,))
+            values = {}
+            # Closed receiver inventory: unrelated years' payloads and production
+            # arrays are not read, while comments/permissions remain company-wide.
+            for name, table, record_type, ordered_at, scoped_year in (
+                ("previews", "filing_previews", rf.Rf1086PreviewRecord, "created_at", True),
+                ("simulations", "filing_submissions", rf.Rf1086SimulationRecord, "created_at", True),
+                ("review_comments", "filing_review_comments", rf.Rf1086ReviewCommentRecord, "created_at", False),
+                ("permissions", "authority_permissions", rf.Rf1086FilingPermissionRecord, "updated_at", False),
+            ):
+                where = " and t.income_year=%s::integer" if scoped_year else ""
+                rows = await (await connection.execute(
+                    f"select t.* from shareholder_register_filing.{table} t where t.company_id=%s::uuid{where} "
+                    f"order by t.{ordered_at} desc,t.id desc",
+                    (company_id, year) if scoped_year else (company_id,),
+                )).fetchall()
+                try:
+                    values[name] = tuple(self._wire_record(record_type, row) for row in rows)
+                except (TypeError, ValueError, KeyError):
+                    raise rf.ShareholderRegisterFilingError.unavailable() from None
+            evidence_ids = sorted({row.authority_test_run_id for row in values["simulations"]
+                if row.mode == "test_authority" and row.authority_test_run_id is not None})
+            values["test_evidence"] = ()
+            if evidence_ids:
+                rows = await (await connection.execute(
+                    "select t.* from shareholder_register_filing.authority_test_runs t "
+                    "where t.company_id=%s::uuid and t.obligation='aksjonaerregisteroppgaven' "
+                    "and t.id=any(%s::uuid[]) order by t.recorded_at desc,t.id desc",
+                    (company_id,evidence_ids),
+                )).fetchall()
+                try:
+                    values["test_evidence"] = tuple(self._wire_record(rf.Rf1086TestEvidenceRecord, row) for row in rows)
+                except (TypeError, ValueError, KeyError):
+                    raise rf.ShareholderRegisterFilingError.unavailable() from None
+            return rf.Rf1086ArchiveSnapshot(query.company_id, query.income_year, **values)
+
     async def _workspace(self, connection, query):
         self._command_actor(query)
         company_id = str(query.company_id)
@@ -503,7 +543,8 @@ class PostgresShareholderRegisterFilingSession:
 
     async def read_approval(self, approval_id):
         rows = await self._rows("select id,entitlement_id,preview_id,company_id,user_id,income_year,obligation,"
-            "case_profile,invalidated_at,manifest_hash,manifest from shareholder_register_filing.filing_approval_snapshots where id=%s::uuid", (approval_id,))
+            "case_profile,invalidated_at,manifest_hash,manifest from shareholder_register_filing.filing_approval_snapshots where id=%s::uuid "
+            "and user_id=shareholder_register_filing.actor_v1() and public.company_access_is_accepted_owner_v1(company_id)", (approval_id,))
         if not rows:
             return None
         row = rows[0]
@@ -512,7 +553,8 @@ class PostgresShareholderRegisterFilingSession:
 
     async def read_preview(self, preview_id):
         rows = await self._rows("select id,company_id,income_year,filing,hovedskjema_xml,underskjema_xml,issues "
-            "from shareholder_register_filing.filing_previews where id=%s::uuid", (preview_id,))
+            "from shareholder_register_filing.filing_previews where id=%s::uuid "
+            "and public.company_access_is_accepted_owner_v1(company_id)", (preview_id,))
         if not rows:
             return None
         row = rows[0]
@@ -526,7 +568,8 @@ class PostgresShareholderRegisterFilingSession:
 
     async def read_submission(self, submission_id):
         rows = await self._rows("select id,approval_id,entitlement_id,company_id,user_id,income_year,obligation,"
-            "case_profile,environment,feedback_state from shareholder_register_filing.production_filing_submissions where id=%s::uuid", (submission_id,))
+            "case_profile,environment,feedback_state from shareholder_register_filing.production_filing_submissions where id=%s::uuid "
+            "and user_id=shareholder_register_filing.actor_v1() and public.company_access_is_accepted_owner_v1(company_id)", (submission_id,))
         if not rows:
             return None
         row = rows[0]

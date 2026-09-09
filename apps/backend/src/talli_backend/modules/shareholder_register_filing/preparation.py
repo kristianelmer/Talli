@@ -13,7 +13,8 @@ from .public import (
     RecordRf1086TestEvidenceCommand, ApproveRf1086ProductionCommand,
     Rf1086PreparationPersistence, Rf1086PreparedPreview, Rf1086PreparedSimulation,
     Rf1086PreparedApproval, Rf1086Preview, Rf1086PreviewRecord,
-    Rf1086SimulationBasis, Rf1086WorkspaceQuery, Rf1086SourceQuery,
+    Rf1086SimulationBasis, Rf1086WorkspaceQuery, Rf1086SourceQuery, Rf1086ArchiveQuery, Rf1086ArchiveSnapshot,
+    Rf1086SimulationRecord, Rf1086ReviewCommentRecord, Rf1086FilingPermissionRecord, Rf1086TestEvidenceRecord,
     ReadRf1086PreviewQuery, VerifyRf1086SourceEvidenceQuery,
     ShareholderRegisterFilingError, Rf1086RecordedResult, Rf1086WorkspaceSnapshot, OpeningSnapshotId,
 )
@@ -60,6 +61,31 @@ def validate_workspace(query: Rf1086WorkspaceQuery, result: Rf1086WorkspaceSnaps
             or len({action.action for action in result.actions}) != len(result.actions)):
         raise ShareholderRegisterFilingError.unavailable()
     return result
+
+def _validate_archive_source(query: Rf1086ArchiveQuery, result: Rf1086ArchiveSnapshot):
+    if (not isinstance(result,Rf1086ArchiveSnapshot) or result.company_id != query.company_id
+            or result.income_year != query.income_year):
+        raise ShareholderRegisterFilingError.unavailable()
+    for collection,record_type in (
+        (result.previews,Rf1086PreviewRecord),(result.simulations,Rf1086SimulationRecord),
+        (result.review_comments,Rf1086ReviewCommentRecord),(result.permissions,Rf1086FilingPermissionRecord),
+        (result.test_evidence,Rf1086TestEvidenceRecord),
+    ):
+        if (any(not isinstance(row,record_type) or row.company_id != str(query.company_id) for row in collection)
+                or len({row.id for row in collection}) != len(collection)):
+            raise ShareholderRegisterFilingError.unavailable()
+    if any(row.income_year != query.income_year.value or row.filing not in ('aksjonærregisteroppgaven','aksjonaerregisteroppgaven')
+            for collection in (result.previews,result.simulations) for row in collection):
+        raise ShareholderRegisterFilingError.unavailable()
+    if (any(row.target != 'rf1086_preview' for row in result.review_comments)
+            or any(row.obligation != 'aksjonaerregisteroppgaven' for collection in (result.permissions,result.test_evidence) for row in collection)):
+        raise ShareholderRegisterFilingError.unavailable()
+    referenced = {row.authority_test_run_id for row in result.simulations
+        if row.mode == 'test_authority' and row.authority_test_run_id is not None}
+    if {row.id for row in result.test_evidence} != referenced:
+        raise ShareholderRegisterFilingError.unavailable()
+    return result
+
 
 def _required_confirmation(value: bool) -> None:
     if value is not True:
@@ -179,6 +205,9 @@ class Rf1086PreparationService:
         from talli_backend.shared.kernel import CompanyId, IncomeYear
         return _recorded_result(await self._persistence.record_approval(command,Rf1086PreparedApproval(basis,manifest,digest)),
             company_id=CompanyId(basis.preview.company_id),income_year=IncomeYear(basis.preview.income_year))
+
+    async def archive_source(self, query: Rf1086ArchiveQuery):
+        return _validate_archive_source(query,await self._persistence.archive_source(query))
 
     async def workspace(self, query: Rf1086WorkspaceQuery):
         return validate_workspace(query,await self._persistence.workspace(query))

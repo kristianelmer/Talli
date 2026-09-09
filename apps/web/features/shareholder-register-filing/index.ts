@@ -1,5 +1,5 @@
 export {
-  loadRf1086Workspaces, loadRf1086Preview, generateRf1086PreviewThroughApi,
+  loadRf1086Workspaces, loadRf1086ArchiveSource, loadRf1086Preview, generateRf1086PreviewThroughApi,
   recordRf1086OverrideThroughApi, addRf1086ReviewCommentThroughApi,
   acknowledgeRf1086ReviewCommentThroughApi, confirmRf1086SimulationThroughApi,
   confirmRf1086PermissionThroughApi, recordRf1086TestEvidenceThroughApi,
@@ -12,6 +12,6 @@ export {
   presentRf1086Approval, presentRf1086ProductionSubmission, presentRf1086FeedbackArtifact,
 } from "./presentation.ts";
 export type {
-  Rf1086WorkspaceWire, Rf1086PreviewWire, Rf1086RecordedResultWire,
+  Rf1086WorkspaceWire, Rf1086ArchiveSourceWire, Rf1086PreviewWire, Rf1086RecordedResultWire,
   Rf1086ReceiptMetadataWire, Rf1086SubmittedPayloadReferenceWire, Rf1086SubmittedPayloadWire,
 } from "@talli/talli-api-client";

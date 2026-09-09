@@ -62,7 +62,7 @@ create table shareholder_register_filing.migration_state(
  singleton boolean primary key default true check(singleton),
  phase text not null check(phase in ('legacy_overlap','canonical_overlap','contracted')),
  version text not null, source_revision text not null, expanded_at timestamptz not null default now(),
- original_objects jsonb not null default '{}'::jsonb, original_relations jsonb not null default '{}'::jsonb, reconciliation jsonb not null default '{}'::jsonb
+ original_objects jsonb not null default '{}'::jsonb, original_relations jsonb not null default '{}'::jsonb, original_foreign_policies jsonb not null default '{}'::jsonb, original_opening_schema jsonb not null default '{}'::jsonb, reconciliation jsonb not null default '{}'::jsonb
 );
 insert into shareholder_register_filing.migration_state(singleton,phase,version,source_revision)
 values(true,'legacy_overlap','rf1086-storage-v1','7a49f010229baf13d4942364d352786d7cddc5c3');
@@ -95,6 +95,19 @@ update shareholder_register_filing.migration_state set original_relations=(
  'permissive',pol.polpermissive,'qual',pg_catalog.pg_get_expr(pol.polqual,pol.polrelid),'with_check',pg_catalog.pg_get_expr(pol.polwithcheck,pol.polrelid))), '[]'::jsonb) from pg_catalog.pg_policy pol where pol.polrelid=c.oid)))
  from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace
  where n.nspname='public' and c.relname in ('opening_balance_setups','opening_shareholders','filing_previews','filing_submissions','filing_overrides','filing_review_comments','authority_permissions','authority_test_runs','filing_approval_snapshots','production_filing_submissions','production_filing_events','production_feedback_artifacts'));
+
+update shareholder_register_filing.migration_state set original_foreign_policies=(select pg_catalog.jsonb_object_agg(pol.polname,pg_catalog.jsonb_build_object('qual',pg_catalog.pg_get_expr(pol.polqual,pol.polrelid),'check',pg_catalog.pg_get_expr(pol.polwithcheck,pol.polrelid))) from pg_catalog.pg_policy pol where pol.polrelid='billing.production_pilot_entitlements'::regclass and pol.polname in ('billing_rf_pilot_owner_read','billing_rf_pilot_owner_lock'));
+
+do $capture_opening_schema$ declare original_path text:=pg_catalog.current_setting('search_path'); begin
+perform pg_catalog.set_config('search_path','',true);
+update shareholder_register_filing.migration_state set original_opening_schema=(select pg_catalog.jsonb_object_agg(c.relname,pg_catalog.jsonb_build_object(
+ 'columns',(select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('attnum',a.attnum,'name',a.attname,'format_type',pg_catalog.format_type(a.atttypid,a.atttypmod),'not_null',a.attnotnull,'default_sql',pg_catalog.pg_get_expr(d.adbin,d.adrelid),'identity',a.attidentity,'generated',a.attgenerated,'collation_schema',case when a.attcollation<>t.typcollation then cn.nspname end,'collation_name',case when a.attcollation<>t.typcollation then co.collname end) order by a.attnum) from pg_catalog.pg_attribute a join pg_catalog.pg_type t on t.oid=a.atttypid left join pg_catalog.pg_attrdef d on d.adrelid=a.attrelid and d.adnum=a.attnum left join pg_catalog.pg_collation co on co.oid=a.attcollation left join pg_catalog.pg_namespace cn on cn.oid=co.collnamespace where a.attrelid=c.oid and a.attnum>0 and not a.attisdropped),
+ 'constraints',(select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('name',x.conname,'type',x.contype,'definition',pg_catalog.pg_get_constraintdef(x.oid),'validated',x.convalidated) order by x.conname),'[]'::jsonb) from pg_catalog.pg_constraint x where x.conrelid=c.oid),
+ 'indexes',(select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('name',ic.relname,'definition',pg_catalog.pg_get_indexdef(i.indexrelid)) order by ic.relname),'[]'::jsonb) from pg_catalog.pg_index i join pg_catalog.pg_class ic on ic.oid=i.indexrelid where i.indrelid=c.oid and not exists(select 1 from pg_catalog.pg_constraint x where x.conindid=i.indexrelid)),
+ 'triggers',(select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('name',g.tgname,'definition',pg_catalog.pg_get_triggerdef(g.oid),'enabled',g.tgenabled) order by g.tgname),'[]'::jsonb) from pg_catalog.pg_trigger g where g.tgrelid=c.oid and not g.tgisinternal),
+ 'rls_enabled',c.relrowsecurity)) from pg_catalog.pg_class c where c.oid in ('public.opening_balance_setups'::regclass,'public.opening_shareholders'::regclass));
+perform pg_catalog.set_config('search_path',original_path,true);
+end; $capture_opening_schema$;
 
 create table shareholder_register_filing.opening_balance_setups (like public.opening_balance_setups including all);
 
@@ -134,6 +147,27 @@ create view public.production_feedback_artifacts with (security_invoker=true) as
 grant select on public.production_feedback_artifacts to authenticated,service_role,legacy_rf1086_executor;
 grant usage on schema shareholder_register_filing to authenticated,service_role,legacy_rf1086_executor;
 
+-- Run at expand after physical production tables have moved and their four
+-- security-invoker public views exist. No function is dropped, so existing
+-- return-type OIDs, grants, ownership, attributes and dependencies remain.
+-- Only four fixed physical relation references are rebound; no RF rule changes.
+do $rf151_rebind_legacy_physical_journal$ declare item record; statement text; n text; restored integer:=0; begin
+ for item in select * from pg_catalog.jsonb_each((select original_objects from shareholder_register_filing.migration_state where singleton))
+ where pg_catalog.split_part(key,'(',1)=any(array['public.release_production_feedback_reconciliation','public.approve_production_filing','public.append_production_filing_event','public.begin_production_filing','public.claim_production_feedback_reconciliation','public.record_production_feedback_artifact','legacy_rf1086.assert_fresh_owner_v1','legacy_rf1086.actor_v1','legacy_rf1086.can_read_company_v1','legacy_rf1086.can_read_submission_v1','legacy_rf1086.assert_submission_v1','legacy_rf1086.prepare_operation_v1','public.append_production_feedback_reconciliation','public.rf1086_confirmation_forsendelse_id']) order by key loop
+  if pg_catalog.to_regprocedure(item.key) is null then raise exception 'rf1086_original_function_missing'; end if;
+  -- Read the current definition: ALTER TABLE SET SCHEMA already moved return
+  -- composite types with their physical tables; saved pre-expand return names
+  -- would resolve to the new compatibility view type instead.
+  statement:=pg_catalog.pg_get_functiondef(pg_catalog.to_regprocedure(item.key));
+  foreach n in array array['filing_approval_snapshots','production_filing_submissions','production_filing_events','production_feedback_artifacts'] loop
+   statement:=pg_catalog.replace(statement,'public.'||n,'shareholder_register_filing.'||n);
+  end loop;
+  execute statement;
+  restored:=restored+1;
+ end loop;
+ if restored<>14 then raise exception 'rf1086_original_function_inventory_incomplete'; end if;
+end; $rf151_rebind_legacy_physical_journal$;
+
 create function shareholder_register_filing.verified_actor_v1() returns uuid
 language plpgsql stable security definer set search_path='' as $function$
 declare a uuid:=nullif(pg_catalog.current_setting('talli.verified_actor_id',true),'')::uuid;
@@ -167,6 +201,7 @@ begin
   if family in ('filing_submissions','filing_overrides','filing_review_comments') and row_data->>'preview_id' is not null then
     select pg_catalog.to_jsonb(v) into p from public.filing_previews v where v.id=(row_data->>'preview_id')::uuid;
     if p is not null and shareholder_register_filing.is_rf_label_v1(p->>'filing') then
+      if shareholder_register_filing.classify_legacy_row_v1('filing_previews',p)<>'rf' then return 'quarantine'; end if;
       if (not candidate) or p->>'company_id' is distinct from row_data->>'company_id'
         or (row_data ? 'income_year' and p->>'income_year' is distinct from row_data->>'income_year')
         or (row_data ? 'filing' and p->>'filing' is distinct from row_data->>'filing')
@@ -175,7 +210,11 @@ begin
     elsif candidate then return 'quarantine'; end if;
   end if;
   if candidate and family in ('opening_shareholders','filing_previews','filing_submissions') and row_data->>'setup_id' is not null then
-    select pg_catalog.to_jsonb(v) into s from public.opening_balance_setups v where v.id=(row_data->>'setup_id')::uuid;
+    if shareholder_register_filing.phase_v1()='contracted' then
+      select pg_catalog.to_jsonb(v) into s from shareholder_register_filing.opening_balance_setups v where v.id=(row_data->>'setup_id')::uuid;
+    else
+      select pg_catalog.to_jsonb(v) into s from public.opening_balance_setups v where v.id=(row_data->>'setup_id')::uuid;
+    end if;
     if s is null or s->>'company_id' is distinct from row_data->>'company_id'
       or (row_data ? 'income_year' and s->>'income_year' is distinct from row_data->>'income_year')
     then return 'quarantine'; end if;
@@ -895,7 +934,7 @@ end; $function$;
 create function shareholder_register_filing.add_review_comment_v1(p_preview_id uuid,p_severity text,p_body text)
 returns jsonb language plpgsql security definer set search_path='' as $function$
 declare a uuid; p shareholder_register_filing.filing_previews%rowtype; begin
- select * into p from shareholder_register_filing.filing_previews where id=p_preview_id for update;
+ select * into p from shareholder_register_filing.filing_previews where id=p_preview_id;
  if p.id is null then raise exception 'rf1086_not_found'; end if;
  a:=shareholder_register_filing.assert_preparation_access_v1(p.company_id,true);
  if p_severity not in ('advisory','hard_block') or p_body is null or p_body='' then raise exception 'rf1086_invalid_input'; end if;
@@ -949,7 +988,7 @@ declare a uuid; p shareholder_register_filing.filing_previews%rowtype; result js
  then raise exception 'rf1086_company_year_not_admitted'; end if;
  -- Exact original upsert key preserves repeat simulation semantics.
  v_schema:=case when shareholder_register_filing.phase_v1()='legacy_overlap' then 'public' else 'shareholder_register_filing' end;
- execute pg_catalog.format('insert into %I.filing_submissions(preview_id,setup_id,company_id,income_year,filing,mode,adapter_mode,payload_hash,idempotency_key,status,calls,receipt_id,feedback_document_ids,feedback_items,receipt_metadata,submitted_payload_ref,submitted_payload,authority_confirmed_by,authority_confirmed_at,preview_confirmed_by,preview_confirmed_at,created_by,submitted_by) values($1,$2,$3,$4,$5,''simulation'',''simulation'',$6->>''payload_hash'',$6->>''idempotency_key'',$6->>''status'',$6->''calls'',$6->>''receipt_id'',$6->''feedback_document_ids'',$6->''feedback_items'',$6->''receipt_metadata'',$6->''submitted_payload_ref'',$6->''submitted_payload'',$7,($6->>''authority_confirmed_at'')::timestamptz,$7,($6->>''preview_confirmed_at'')::timestamptz,$7,$7) on conflict(preview_id) do update set mode=excluded.mode,adapter_mode=excluded.adapter_mode,payload_hash=excluded.payload_hash,idempotency_key=excluded.idempotency_key,status=excluded.status,calls=excluded.calls,receipt_id=excluded.receipt_id,feedback_document_ids=excluded.feedback_document_ids,feedback_items=excluded.feedback_items,receipt_metadata=excluded.receipt_metadata,submitted_payload_ref=excluded.submitted_payload_ref,submitted_payload=excluded.submitted_payload,authority_confirmed_by=excluded.authority_confirmed_by,authority_confirmed_at=excluded.authority_confirmed_at,preview_confirmed_by=excluded.preview_confirmed_by,preview_confirmed_at=excluded.preview_confirmed_at,created_by=excluded.created_by,submitted_by=excluded.submitted_by,updated_at=pg_catalog.now() returning pg_catalog.to_jsonb(filing_submissions.*)',v_schema)
+ execute pg_catalog.format('insert into %I.filing_submissions(preview_id,setup_id,company_id,income_year,filing,mode,adapter_mode,payload_hash,idempotency_key,status,calls,receipt_id,feedback_document_ids,feedback_items,receipt_metadata,submitted_payload_ref,submitted_payload,failure_code,failure_message,authority_confirmed_by,authority_confirmed_at,preview_confirmed_by,preview_confirmed_at,created_by,submitted_by) values($1,$2,$3,$4,$5,''simulation'',''simulation'',$6->>''payload_hash'',$6->>''idempotency_key'',$6->>''status'',$6->''calls'',$6->>''receipt_id'',$6->''feedback_document_ids'',$6->''feedback_items'',$6->''receipt_metadata'',$6->''submitted_payload_ref'',$6->''submitted_payload'',$6->>''failure_code'',$6->>''failure_message'',$7,($6->>''authority_confirmed_at'')::timestamptz,$7,($6->>''preview_confirmed_at'')::timestamptz,$7,$7) on conflict(preview_id) do update set mode=excluded.mode,adapter_mode=excluded.adapter_mode,payload_hash=excluded.payload_hash,idempotency_key=excluded.idempotency_key,status=excluded.status,calls=excluded.calls,receipt_id=excluded.receipt_id,feedback_document_ids=excluded.feedback_document_ids,feedback_items=excluded.feedback_items,receipt_metadata=excluded.receipt_metadata,submitted_payload_ref=excluded.submitted_payload_ref,submitted_payload=excluded.submitted_payload,failure_code=excluded.failure_code,failure_message=excluded.failure_message,authority_confirmed_by=excluded.authority_confirmed_by,authority_confirmed_at=excluded.authority_confirmed_at,preview_confirmed_by=excluded.preview_confirmed_by,preview_confirmed_at=excluded.preview_confirmed_at,created_by=excluded.created_by,submitted_by=excluded.submitted_by,updated_at=pg_catalog.now() returning pg_catalog.to_jsonb(filing_submissions.*)',v_schema)
  into result using p.id,p.setup_id,p.company_id,p.income_year,p.filing,p_data,a;
  return result;
 end; $function$;
@@ -1851,6 +1890,10 @@ alter function shareholder_register_filing.assert_fresh_production_owner_v1(uuid
 
 revoke all on function shareholder_register_filing.assert_fresh_production_owner_v1(uuid) from public,anon,authenticated,service_role;
 
+alter policy rf151_approval_read on shareholder_register_filing.filing_approval_snapshots using(shareholder_register_filing.actor_v1() is not null and public.company_access_is_accepted_member_v1(company_id));
+alter policy rf151_submission_read on shareholder_register_filing.production_filing_submissions using(shareholder_register_filing.actor_v1() is not null and public.company_access_is_accepted_member_v1(company_id));
+alter policy rf151_artifact_read on shareholder_register_filing.production_feedback_artifacts using(shareholder_register_filing.actor_v1() is not null and public.company_access_is_accepted_owner_v1(company_id));
+
 create function backend_system.rf_opening_quarantine_count_v1(p_company_id uuid,p_opening_ids uuid[]) returns bigint
 language sql stable security definer set search_path='' as $function$
  select count(*) from shareholder_register_filing.migration_quarantine q
@@ -1998,6 +2041,7 @@ alter function shareholder_register_filing.record_opening_snapshot_v1(uuid,integ
 
 revoke all on function shareholder_register_filing.record_opening_snapshot_v1(uuid,integer,numeric,integer,numeric,jsonb,text) from public,anon,authenticated,service_role;
 grant execute on function shareholder_register_filing.record_opening_snapshot_v1(uuid,integer,numeric,integer,numeric,jsonb,text) to ledger_workflow_executor,ledger_workflow_store_owner;
+grant usage on schema ledger to shareholder_register_filing_store_owner;
 grant execute on function ledger.lock_company_year_v1(uuid,integer) to shareholder_register_filing_store_owner;
 create function shareholder_register_filing.read_opening_snapshots_v1(p_company_id uuid,p_income_year integer,p_verified_subject text)
 returns setof shareholder_register_filing.opening_balance_setups language plpgsql stable security definer set search_path='' as $function$
@@ -2139,8 +2183,8 @@ grant execute on function public.company_access_has_open_support_case_v1(uuid,uu
 create function shareholder_register_filing.read_support_filing_history_v1(p_company_id uuid,p_case_id uuid)
 returns jsonb language plpgsql stable security definer set search_path='' as $function$
 begin
- if p_case_id is distinct from public.company_access_current_support_case_id_v1() then return '{"filing_approval_snapshots":[],"production_filing_submissions":[],"production_filing_events":[],"production_feedback_artifacts":[]}'::jsonb; end if;
- return pg_catalog.jsonb_build_object('filing_approval_snapshots',coalesce((
+ if p_case_id is distinct from public.company_access_current_support_case_id_v1() then return '{"filing_approval_snapshots":[],"production_filing_submissions":[],"production_filing_events":[],"production_feedback_artifacts":[],"authority_permissions":[],"authority_test_runs":[]}'::jsonb; end if;
+ return pg_catalog.jsonb_build_object('filing_approval_snapshots',case when public.company_access_has_open_support_case_v1(p_case_id,p_company_id,'production') then coalesce((
         select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
           'id', f.id, 'company_id', f.company_id, 'income_year', f.income_year,
           'obligation', f.obligation, 'case_profile', f.case_profile,
@@ -2150,8 +2194,8 @@ begin
         ) order by f.approved_at desc)
         from shareholder_register_filing.filing_approval_snapshots f
         where f.company_id = p_company_id
-      ), '[]'::jsonb),
-'production_filing_submissions',coalesce((
+      ), '[]'::jsonb) else '[]'::jsonb end,
+'production_filing_submissions',case when public.company_access_has_open_support_case_v1(p_case_id,p_company_id,'production') then coalesce((
         select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
           'id', p.id, 'company_id', p.company_id, 'income_year', p.income_year,
           'obligation', p.obligation, 'case_profile', p.case_profile,
@@ -2161,8 +2205,8 @@ begin
         ) order by p.updated_at desc)
         from shareholder_register_filing.production_filing_submissions p
         where p.company_id = p_company_id
-      ), '[]'::jsonb),
-'production_filing_events',coalesce((
+      ), '[]'::jsonb) else '[]'::jsonb end,
+'production_filing_events',case when public.company_access_has_open_support_case_v1(p_case_id,p_company_id,'production') then coalesce((
         select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
           'id', e.id, 'submission_id', e.submission_id,
           'operation_name', e.operation_name, 'operation_state', e.operation_state,
@@ -2172,8 +2216,8 @@ begin
         from shareholder_register_filing.production_filing_events e
         join shareholder_register_filing.production_filing_submissions p on p.id = e.submission_id
         where p.company_id = p_company_id
-      ), '[]'::jsonb),
-'production_feedback_artifacts',coalesce((
+      ), '[]'::jsonb) else '[]'::jsonb end,
+'production_feedback_artifacts',case when public.company_access_has_open_support_case_v1(p_case_id,p_company_id,'documents') then coalesce((
         select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
           'id', p.id, 'company_id', p.company_id, 'submission_id', p.submission_id,
           'document_id', p.document_id, 'content_type', p.content_type,
@@ -2182,7 +2226,22 @@ begin
         ) order by p.retrieved_at desc)
         from shareholder_register_filing.production_feedback_artifacts p
         where p.company_id = p_company_id
-      ), '[]'::jsonb));
+      ), '[]'::jsonb) else '[]'::jsonb end,
+'authority_permissions',case when public.company_access_has_open_support_case_v1(p_case_id,p_company_id,'authority') then coalesce((
+        select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+          'id', a.id, 'company_id', a.company_id, 'obligation', a.obligation,
+          'production_enabled', a.production_enabled, 'updated_at', a.updated_at
+        )) from shareholder_register_filing.authority_permissions a
+        where a.company_id = p_company_id
+      ), '[]'::jsonb) else '[]'::jsonb end,
+'authority_test_runs',case when public.company_access_has_open_support_case_v1(p_case_id,p_company_id,'authority') then coalesce((
+        select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+          'id', a.id, 'company_id', a.company_id, 'obligation', a.obligation,
+          'environment', a.environment, 'status', a.status,
+          'test_reference', a.test_reference, 'recorded_at', a.recorded_at
+        ) order by a.recorded_at desc)
+        from shareholder_register_filing.authority_test_runs a where a.company_id = p_company_id
+      ), '[]'::jsonb) else '[]'::jsonb end);
 end; $function$;
 alter function shareholder_register_filing.read_support_filing_history_v1(uuid,uuid) owner to shareholder_register_filing_store_owner;
 revoke all on function shareholder_register_filing.read_support_filing_history_v1(uuid,uuid) from public,anon,authenticated,service_role;
@@ -2196,6 +2255,10 @@ create policy rf151_support_read on shareholder_register_filing.production_filin
 create policy rf151_support_read on shareholder_register_filing.production_filing_events for select to shareholder_register_filing_store_owner using(exists(select 1 from shareholder_register_filing.production_filing_submissions s where s.id=submission_id and public.company_access_has_open_support_case_v1(public.company_access_current_support_case_id_v1(),s.company_id,'production')));
 
 create policy rf151_support_read on shareholder_register_filing.production_feedback_artifacts for select to shareholder_register_filing_store_owner using(public.company_access_has_open_support_case_v1(public.company_access_current_support_case_id_v1(),company_id,'documents'));
+
+create policy rf151_support_read on shareholder_register_filing.authority_permissions for select to shareholder_register_filing_store_owner using(public.company_access_has_open_support_case_v1(public.company_access_current_support_case_id_v1(),company_id,'authority'));
+
+create policy rf151_support_read on shareholder_register_filing.authority_test_runs for select to shareholder_register_filing_store_owner using(public.company_access_has_open_support_case_v1(public.company_access_current_support_case_id_v1(),company_id,'authority'));
 
 CREATE OR REPLACE FUNCTION public.company_access_read_support_case(p_case_id uuid)
  RETURNS TABLE(case_id uuid, company_id uuid, scopes text[], resources jsonb)
@@ -2295,21 +2358,55 @@ begin
         )) from billing.billing_payment_events b
         where b.company_id = v_grant.company_id
       ), '[]'::jsonb),
-      'authority_permissions', coalesce((
+      'authority_permissions', (
+        with legacy as (
+          select item, ordinal::bigint as position
+          from pg_catalog.jsonb_array_elements(coalesce((
         select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
           'id', a.id, 'company_id', a.company_id, 'obligation', a.obligation,
           'production_enabled', a.production_enabled, 'updated_at', a.updated_at
         )) from public.authority_permissions a
         where a.company_id = v_grant.company_id
-      ), '[]'::jsonb),
-      'authority_test_runs', coalesce((
+      ), '[]'::jsonb)) with ordinality as entries(item,ordinal)
+        ), current_rf as (
+          select item, ordinal::bigint as position
+          from pg_catalog.jsonb_array_elements(
+            shareholder_register_filing.read_support_filing_history_v1(v_grant.company_id,p_case_id)->'authority_permissions'
+          ) with ordinality as entries(item,ordinal)
+        ), combined as (
+          select coalesce(c.item,l.item) as item,l.position
+          from legacy l left join current_rf c on c.item->>'id'=l.item->>'id'
+          union all
+          select c.item,(select count(*) from legacy)+c.position
+          from current_rf c where not exists(select 1 from legacy l where l.item->>'id'=c.item->>'id')
+        )
+        select coalesce(pg_catalog.jsonb_agg(item order by position),'[]'::jsonb) from combined
+      ),
+      'authority_test_runs', (
+        with legacy as (
+          select item, ordinal::bigint as position
+          from pg_catalog.jsonb_array_elements(coalesce((
         select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
           'id', a.id, 'company_id', a.company_id, 'obligation', a.obligation,
           'environment', a.environment, 'status', a.status,
           'test_reference', a.test_reference, 'recorded_at', a.recorded_at
         ) order by a.recorded_at desc)
         from public.authority_test_runs a where a.company_id = v_grant.company_id
-      ), '[]'::jsonb),
+      ), '[]'::jsonb)) with ordinality as entries(item,ordinal)
+        ), current_rf as (
+          select item, ordinal::bigint as position
+          from pg_catalog.jsonb_array_elements(
+            shareholder_register_filing.read_support_filing_history_v1(v_grant.company_id,p_case_id)->'authority_test_runs'
+          ) with ordinality as entries(item,ordinal)
+        ), combined as (
+          select coalesce(c.item,l.item) as item,l.position
+          from legacy l left join current_rf c on c.item->>'id'=l.item->>'id'
+          union all
+          select c.item,(select count(*) from legacy)+c.position
+          from current_rf c where not exists(select 1 from legacy l where l.item->>'id'=c.item->>'id')
+        )
+        select coalesce(pg_catalog.jsonb_agg(item order by (item->>'recorded_at')::timestamptz desc, position),'[]'::jsonb) from combined
+      ),
       'system_user_requests', authority_connections.read_support_requests_v1(v_grant.company_id,p_case_id),
       'production_pilot_entitlements', coalesce((
         select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
@@ -2504,7 +2601,8 @@ create or replace function backend_system.read_new_year_opening_snapshots_v1(
   p_company_ids uuid[],
   p_cursor text,
   p_limit integer,
-  p_verified_subject text
+  p_verified_subject text,
+  p_income_year integer default null
 )
 returns table (items jsonb, next_cursor text, has_more boolean)
 language plpgsql
@@ -2531,6 +2629,7 @@ declare
   v_page jsonb;
   v_setup jsonb;
   v_shareholders jsonb;
+  v_resource text := case when p_income_year is null then 'opening_snapshots' else 'opening_snapshots:'||p_income_year::text end;
 begin
   if v_actor_id is null
     or p_verified_subject is null
@@ -2548,6 +2647,7 @@ begin
   then
     raise exception 'ledger_invalid_input';
   end if;
+  if p_income_year is not null and (p_income_year < 2000 or p_income_year > 2100) then raise exception 'ledger_invalid_input'; end if;
   select pg_catalog.count(company_id), pg_catalog.count(distinct company_id)
   into v_company_count, v_distinct_company_count
   from pg_catalog.unnest(p_company_ids) company_id;
@@ -2589,7 +2689,7 @@ begin
         ), 'hex')
         or v_issued_at < pg_catalog.statement_timestamp() - interval '7 days'
         or v_issued_at > pg_catalog.statement_timestamp() + interval '5 minutes'
-        or v_payload ->> 'resource' <> 'opening_snapshots'
+        or v_payload ->> 'resource' <> v_resource
         or v_payload ->> 'companies' <> v_company_hash
       then
         raise exception 'ledger_invalid_cursor';
@@ -2612,13 +2712,13 @@ begin
     select opening.*
     from visible_companies company
     cross join lateral shareholder_register_filing.read_opening_snapshots_v1(
-      company.company_id, null, v_actor_id::text
+      company.company_id, p_income_year, v_actor_id::text
     ) opening
   ), source_banks as materialized (
     select bank.*
     from visible_companies company
     cross join lateral ledger.read_opening_bank_inputs_v1(
-      company.company_id, null, v_actor_id::text
+      company.company_id, p_income_year, v_actor_id::text
     ) bank
   ), page as (
     select opening.*, bank.snapshot_id as bank_snapshot_id,
@@ -2696,7 +2796,7 @@ begin
 
   if has_more and pg_catalog.jsonb_array_length(items) > 0 then
     next_cursor := ledger.cursor_encode_v1(
-      'opening_snapshots', p_company_ids, v_last_created_at, v_last_id
+      v_resource, p_company_ids, v_last_created_at, v_last_id
     );
   else
     next_cursor := null;
@@ -2705,11 +2805,11 @@ begin
 end;
 $function$;
 
-alter function backend_system.read_new_year_opening_snapshots_v1(uuid[],text,integer,text)
+alter function backend_system.read_new_year_opening_snapshots_v1(uuid[],text,integer,text,integer)
   owner to ledger_workflow_store_owner;
-revoke all on function backend_system.read_new_year_opening_snapshots_v1(uuid[],text,integer,text)
+revoke all on function backend_system.read_new_year_opening_snapshots_v1(uuid[],text,integer,text,integer)
   from public,anon,authenticated,service_role;
-grant execute on function backend_system.read_new_year_opening_snapshots_v1(uuid[],text,integer,text)
+grant execute on function backend_system.read_new_year_opening_snapshots_v1(uuid[],text,integer,text,integer)
   to ledger_workflow_executor;
 
 do $restore_roles$ declare r record; begin

@@ -30,7 +30,16 @@ do not enable a production provider.
 Source facts describe the complete Talli-recorded RF journal extent only when
 positive migration inventory and a complete current read support it. Missing,
 quarantined or stale proof is unavailable. Unknown attempts and correction links
-remain explicit; source facts make no commercial refund decision.
+remain explicit. Warning facts retain their source and owner acceptance; known
+reconciliation outcomes retain their journal observation time separately from
+transport incidents and mutation observations. Source facts make no commercial
+refund decision.
+
+The archive projection reads previews and simulations for the requested year
+before decoding them, plus the original company-wide comments and permissions
+and test evidence referenced by those simulations. It does not require another
+year's payloads or extend the original archive to production submissions. The
+workspace query retains its existing all-year and optional-year behavior.
 
 ## Storage and migration
 
@@ -81,6 +90,7 @@ Queries:
 - `Rf1086ReadinessResult`
 - `Rf1086RecordedResult`
 - `Rf1086WorkspaceQuery`
+- `Rf1086ArchiveQuery`
 - `Rf1086SourceQuery`
 - `JournaledRf1086ProductionResult`
 - `Rf1086FeedbackResult`
@@ -98,6 +108,7 @@ Queries:
 - `Rf1086ProductionSubmissionRecord`
 - `Rf1086FeedbackArtifactRecord`
 - `Rf1086WorkspaceSnapshot`
+- `Rf1086ArchiveSnapshot`
 - `Rf1086SourceSnapshot`
 - `Rf1086SourceFacts`
 - `VerifyRf1086SourceEvidenceQuery`
@@ -193,6 +204,8 @@ Values, identifiers and ports:
 - `Rf1086ProductionAttemptFact`
 - `Rf1086CorrectionLink`
 - `Rf1086IncidentFact`
+- `Rf1086WarningFact`
+- `Rf1086OutcomeFact`
 - `Rf1086PreparationPersistence`
 - `rf1086_payload_utf8_bytes`
 - `resume_production_operation`
@@ -213,3 +226,5 @@ Values, identifiers and ports:
 - `Rf1086ValidationInput`
 - `Rf1086CodeVerificationStatus`
 - `Rf1086CodeDecision`
+
+The mandatory database lane also runs `apps/backend/tests/test_shareholder_register_filing_lifecycle.py` for real phase, role and retained-row regressions.

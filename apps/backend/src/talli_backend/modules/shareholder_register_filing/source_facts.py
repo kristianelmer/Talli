@@ -11,7 +11,7 @@ import re
 from .public import (
     Rf1086SourceQuery, Rf1086SourceSnapshot, Rf1086SourceEvidence,
     Rf1086SourceFacts, Rf1086HistoryCoverage, Rf1086ProductionAttemptFact,
-    Rf1086CorrectionLink, Rf1086IncidentFact, VerifyRf1086SourceEvidenceQuery,
+    Rf1086CorrectionLink, Rf1086IncidentFact, Rf1086WarningFact, Rf1086OutcomeFact, VerifyRf1086SourceEvidenceQuery,
     ShareholderRegisterFilingError,
 )
 from .rendering import render_no_activity_rf1086_preview
@@ -130,12 +130,15 @@ def _readiness(snapshot: Rf1086SourceSnapshot):
     if current.hovedskjema_xml != preview.hovedskjema_xml or current.underskjema_xml != preview.underskjema_xml:
         hard_blocks.append('rf1086_preview_source_changed')
     hard_blocks.extend(issue.code for issue in preview.issues if issue.level == 'error')
-    warnings.extend(issue.message for issue in preview.issues if issue.level == 'warning')
+    warnings.extend(Rf1086WarningFact(issue.code,issue.message,'filing_previews',preview.id,None,False,None,None)
+        for issue in preview.issues if issue.level == 'warning')
     if any(comment.preview_id == preview.id and comment.severity == 'hard_block' for comment in workspace.review_comments):
         hard_blocks.append('hard_review_block')
     if any(override.risk_level == 'block' for override in workspace.overrides): hard_blocks.append('blocking_filing_override')
-    warnings.extend(override.reason for override in workspace.overrides if override.risk_level == 'warning')
-    return ('blocked' if hard_blocks else 'ready'),tuple(dict.fromkeys(hard_blocks)),tuple(dict.fromkeys(warnings))
+    warnings.extend(Rf1086WarningFact('accepted_filing_override',override.reason,'filing_overrides',override.id,
+        override.risk_level,True,override.owner_confirmed_by,override.owner_confirmed_at)
+        for override in workspace.overrides if override.risk_level != 'block')
+    return ('blocked' if hard_blocks else 'ready'),tuple(dict.fromkeys(hard_blocks)),tuple(warnings)
 
 
 def build_source_facts(query: Rf1086SourceQuery, snapshot: Rf1086SourceSnapshot) -> Rf1086SourceFacts:
@@ -160,7 +163,11 @@ def build_source_facts(query: Rf1086SourceQuery, snapshot: Rf1086SourceSnapshot)
     corrections = tuple(Rf1086CorrectionLink(row.id,row.supersedes_submission_id) for row in snapshot.workspace.production_submissions if row.supersedes_submission_id)
     incidents = tuple(Rf1086IncidentFact(event.id,event.submission_id,event.failure_classification,event.safe_error_code,event.created_at)
         for event in snapshot.journal_events if event.state in ('failed','unknown'))
-    return Rf1086SourceFacts(evidence,readiness,blocks,warnings,coverage,tuple(attempts),corrections,incidents)
+    # A successful read can discover a negative authority result. Preserve that
+    # observation independently of failed transport operations and mutation time.
+    outcomes = tuple(Rf1086OutcomeFact(event.id,event.submission_id,event.resulting_status,event.created_at)
+        for event in snapshot.journal_events if event.state == 'succeeded' and event.operation_name.startswith('reconciliation:'))
+    return Rf1086SourceFacts(evidence,readiness,blocks,warnings,coverage,tuple(attempts),corrections,incidents,outcomes)
 
 
 def verify_source_evidence(query: VerifyRf1086SourceEvidenceQuery, snapshot: Rf1086SourceSnapshot) -> bool:

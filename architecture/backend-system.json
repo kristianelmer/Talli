@@ -232,6 +232,7 @@
       "routes": [
         "/api/v1/ledger/entries",
         "/api/v1/ledger/opening-snapshots",
+        "/api/v1/ledger/opening-snapshots/by-year",
         "/api/v1/ledger/period-locks",
         "/api/v1/ledger/company-year-close-assessment",
         "/api/v1/ledger/reconstruction-assessment",
@@ -377,6 +378,7 @@
         "/api/v1/legacy-rf1086/production-filings",
         "/api/v1/legacy-rf1086/feedback-reconciliations",
         "/api/v1/shareholder-register-filings/workspace",
+        "/api/v1/shareholder-register-filings/archive-source",
         "/api/v1/shareholder-register-filings/previews/{previewId}",
         "/api/v1/shareholder-register-filings/previews",
         "/api/v1/shareholder-register-filings/overrides",

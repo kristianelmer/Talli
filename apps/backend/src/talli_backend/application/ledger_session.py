@@ -12,7 +12,7 @@ from talli_backend.modules.shareholder_register_filing.public import (
     OpeningSnapshotId,
     RecordOpeningSnapshotCommand,
 )
-from talli_backend.shared.kernel import ActorId, CompanyId, CorrelationId
+from talli_backend.shared.kernel import ActorId, CompanyId, CorrelationId, IncomeYear
 
 
 class LedgerAuthenticationError(Exception):
@@ -76,6 +76,15 @@ class AuthenticatedLedgerSession(LedgerPersistence, Protocol):
         correlation_id: CorrelationId,
         cursor: OpeningSnapshotCursor | None,
         limit: int,
+    ) -> OpeningSnapshotPage: ...
+
+    async def list_opening_snapshots_for_year(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        correlation_id: CorrelationId,
     ) -> OpeningSnapshotPage: ...
 
 

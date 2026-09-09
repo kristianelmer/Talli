@@ -2301,3 +2301,42 @@ def test_opening_snapshot_query_maps_inconsistent_facts_to_unavailable() -> None
             )
         )
     assert failure.value.code == "LEDGER_DEPENDENCY_UNAVAILABLE"
+
+
+@pytest.mark.parametrize("variant", ["valid", "empty", "wrong_year", "wrong_company", "has_more"])
+def test_opening_year_query_scopes_database_before_decoding_and_rejects_other_scope(variant):
+    session = bound_session()
+    calls = []
+    item = opening_snapshot_payload()
+    if variant == "wrong_year": item["incomeYear"] = 2024
+    if variant == "wrong_company":
+        item["companyId"] = "10000000-0000-0000-0000-000000000099"
+        item["shareholders"][0]["companyId"] = item["companyId"]
+    async def database_rows(query, parameters=()):
+        calls.append((query, parameters))
+        return [{"items": [] if variant == "empty" else [item],
+                 "next_cursor": "next" if variant == "has_more" else None,
+                 "has_more": variant == "has_more"}]
+    session._database_rows = database_rows
+    command = dict(actor_id=ACTOR_ID, company_id=CompanyId("10000000-0000-0000-0000-000000000001"),
+                   income_year=IncomeYear(2026), correlation_id=CorrelationId("opening-year-test"))
+    if variant in ("valid", "empty"):
+        page = asyncio.run(session.list_opening_snapshots_for_year(**command))
+        assert len(page.items) == (0 if variant == "empty" else 1)
+        if page.items: assert page.items[0].bank_balance == Money.nok("9007199254740993.12")
+    else:
+        with pytest.raises(LedgerError):
+            asyncio.run(session.list_opening_snapshots_for_year(**command))
+    assert calls[0][1] == ([str(command["company_id"])], None, 1, str(ACTOR_ID.subject), 2026)
+    assert calls[0][0].count("%s") == 5
+
+
+def test_opening_year_query_rejects_forged_actor_before_database():
+    session = bound_session()
+    async def no_database(*args, **kwargs): raise AssertionError("unexpected database access")
+    session._database_rows = no_database
+    with pytest.raises(LedgerError):
+        asyncio.run(session.list_opening_snapshots_for_year(
+            actor_id=ActorId(kind=ActorKind.USER,subject=UserId("20000000-0000-0000-0000-000000000099")),
+            company_id=CompanyId("10000000-0000-0000-0000-000000000001"), income_year=IncomeYear(2026),
+            correlation_id=CorrelationId("opening-year-test")))

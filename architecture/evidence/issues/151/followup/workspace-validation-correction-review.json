@@ -1,0 +1,10 @@
+{
+  "verdict": "CLOSED: selected workspace output validation is handled as dependency-unavailable503/no-store with no reflected data",
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/main.py": "6c54165f320fe0c304515bcb022c73470714d4c45f9d89b13d68b0a9b00e8177",
+    "apps/backend/tests/test_shareholder_register_filing_api.py": "c00dff7b8ef0c6612a9c7bccc623fd39fc6f3771b699251d8fedc4c594bfd2a9"
+  },
+  "workspaceHandlerSha256": "5173f2317be533b48d551289e95d419f747c61073a65b6ceffd9aceb7f5f953e",
+  "independentEvidence": "/tmp/talli-151-workspace-validation-correction.json",
+  "validation": "One replay of the original local fake-session request, no suite/DB/provider calls."
+}

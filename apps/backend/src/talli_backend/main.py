@@ -18,7 +18,7 @@ from fastapi import Depends, FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError, model_validator
 from pydantic.json_schema import SkipJsonSchema
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -428,7 +428,7 @@ from talli_backend.modules.shareholder_register_filing.public import (
     AcknowledgeRf1086ReviewCommentCommand, AddRf1086ReviewCommentCommand,
     ApprovalId, ApproveRf1086ProductionCommand, ConfirmRf1086FilingPermissionCommand,
     ConfirmRf1086SimulationCommand, GenerateRf1086PreviewCommand, OpeningShareholder,
-    OpeningSnapshotId, PreviewId, ReadRf1086PreviewQuery, ReconcileRf1086FeedbackCommand,
+    Rf1086ArchiveQuery, OpeningSnapshotId, PreviewId, ReadRf1086PreviewQuery, ReconcileRf1086FeedbackCommand,
     RecordRf1086OverrideCommand, RecordRf1086TestEvidenceCommand, ReviewCommentId,
     Rf1086ProductionError, Rf1086RecordedResult, Rf1086WorkspaceQuery,
     SendApprovedRf1086Command, ShareholderRegisterFilingError, SubmissionId,
@@ -1155,6 +1155,16 @@ class Rf1086WorkspaceWire(TransportModel):
     production_submissions: list[Rf1086ProductionSubmissionWire]
     feedback_artifacts: list[Rf1086FeedbackArtifactWire]
     actions: list[Rf1086ActionAvailabilityWire]
+
+
+class Rf1086ArchiveSourceWire(TransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    previews: list[Rf1086PreviewWire]
+    simulations: list[Rf1086SimulationWire]
+    review_comments: list[Rf1086ReviewCommentWire]
+    permissions: list[Rf1086PermissionWire]
+    test_evidence: list[Rf1086TestEvidenceWire]
 
 
 class BillingCompanyWire(StrictTransportModel):
@@ -3701,7 +3711,7 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         request.state.request_id = _request_id(request)
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
-        if request.url.path.startswith(("/api/v1/billing/annual/", "/api/v1/authority-connections/", "/api/v1/operator-controls/", "/api/v1/legacy-rf1086/", "/api/v1/shareholder-register-filings/")):
+        if request.url.path == "/api/v1/ledger/opening-snapshots/by-year" or request.url.path.startswith(("/api/v1/billing/annual/", "/api/v1/authority-connections/", "/api/v1/operator-controls/", "/api/v1/legacy-rf1086/", "/api/v1/shareholder-register-filings/")):
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -9358,6 +9368,41 @@ def create_app(
         return await ledger_call(execute)
 
     @application.get(
+        "/api/v1/ledger/opening-snapshots/by-year",
+        operation_id="ledgerListOpeningSnapshotsForYear",
+        response_model=LedgerOpeningSnapshotPageWire,
+        responses={200: {"description": "Authorized opening source for one company-year."} | ledger_success}
+        | ledger_errors,
+        tags=["ledger"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_opening_snapshots_for_year(
+        request: Request,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerOpeningSnapshotPageWire:
+        async def execute() -> LedgerOpeningSnapshotPageWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            snapshots = await session.list_opening_snapshots_for_year(
+                actor_id=session.actor_id,
+                company_id=CompanyId(str(company_id)),
+                income_year=IncomeYear(income_year),
+                correlation_id=ledger_correlation(request),
+            )
+            if (snapshots.has_more or snapshots.next_cursor is not None or len(snapshots.items) > 1
+                    or any(str(item.company_id) != str(company_id) or item.income_year.value != income_year
+                           for item in snapshots.items)):
+                raise LedgerError.unavailable()
+            return LedgerOpeningSnapshotPageWire(
+                items=[_opening_snapshot_wire(item) for item in snapshots.items],
+                next_cursor=None,
+                has_more=False,
+            )
+
+        return await ledger_call(execute)
+
+    @application.get(
         "/api/v1/ledger/period-locks",
         operation_id="ledgerListPeriodLocks",
         response_model=LedgerPeriodLockPageWire,
@@ -9986,6 +10031,35 @@ def create_app(
         return await authority_connections_call(execute)
 
     @application.get(
+        "/api/v1/shareholder-register-filings/archive-source",
+        operation_id="rf1086GetArchiveSource", response_model=Rf1086ArchiveSourceWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_archive_source(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> Rf1086ArchiveSourceWire:
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            result = await workflow.archive_source(Rf1086ArchiveQuery(
+                company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year), actor_id=workflow.actor_id,
+            ))
+            try:
+                return Rf1086ArchiveSourceWire(
+                    company_id=UUID(str(result.company_id)), income_year=int(result.income_year),
+                    previews=[Rf1086PreviewWire.model_validate(row, from_attributes=True) for row in result.previews],
+                    simulations=[Rf1086SimulationWire.model_validate(row, from_attributes=True) for row in result.simulations],
+                    review_comments=[Rf1086ReviewCommentWire.model_validate(row, from_attributes=True) for row in result.review_comments],
+                    permissions=[Rf1086PermissionWire.model_validate(row, from_attributes=True) for row in result.permissions],
+                    test_evidence=[Rf1086TestEvidenceWire.model_validate(row, from_attributes=True) for row in result.test_evidence],
+                )
+            except ValidationError:
+                raise ShareholderRegisterFilingError.unavailable() from None
+        return await shareholder_register_filing_call(execute)
+
+    @application.get(
         "/api/v1/shareholder-register-filings/workspace",
         operation_id="rf1086Workspace", response_model=Rf1086WorkspaceWire,
         responses=authority_errors, tags=["shareholder-register-filings"],
@@ -10002,22 +10076,25 @@ def create_app(
                 CompanyId(str(company_id)), workflow.actor_id,
                 IncomeYear(income_year) if income_year is not None else None,
             ))
-            return Rf1086WorkspaceWire(
-                company_id=UUID(str(result.company_id)),
-                income_year=int(result.income_year) if result.income_year is not None else None,
-                previews=[Rf1086PreviewWire.model_validate(row, from_attributes=True) for row in result.previews],
-                simulations=[Rf1086SimulationWire.model_validate(row, from_attributes=True) for row in result.simulations],
-                overrides=[Rf1086OverrideWire.model_validate(row, from_attributes=True) for row in result.overrides],
-                review_comments=[Rf1086ReviewCommentWire.model_validate(row, from_attributes=True) for row in result.review_comments],
-                permissions=[Rf1086PermissionWire.model_validate(row, from_attributes=True) for row in result.permissions],
-                test_evidence=[Rf1086TestEvidenceWire.model_validate(row, from_attributes=True) for row in result.test_evidence],
-                approvals=[Rf1086ApprovalWire.model_validate(row, from_attributes=True).model_copy(
-                    update={"manifest": rf1086_json_wire(row.manifest)},
-                ) for row in result.approvals],
-                production_submissions=[Rf1086ProductionSubmissionWire.model_validate(row, from_attributes=True) for row in result.production_submissions],
-                feedback_artifacts=[Rf1086FeedbackArtifactWire.model_validate(row, from_attributes=True) for row in result.feedback_artifacts],
-                actions=[Rf1086ActionAvailabilityWire.model_validate(row, from_attributes=True) for row in result.actions],
-            )
+            try:
+                return Rf1086WorkspaceWire(
+                    company_id=UUID(str(result.company_id)),
+                    income_year=int(result.income_year) if result.income_year is not None else None,
+                    previews=[Rf1086PreviewWire.model_validate(row, from_attributes=True) for row in result.previews],
+                    simulations=[Rf1086SimulationWire.model_validate(row, from_attributes=True) for row in result.simulations],
+                    overrides=[Rf1086OverrideWire.model_validate(row, from_attributes=True) for row in result.overrides],
+                    review_comments=[Rf1086ReviewCommentWire.model_validate(row, from_attributes=True) for row in result.review_comments],
+                    permissions=[Rf1086PermissionWire.model_validate(row, from_attributes=True) for row in result.permissions],
+                    test_evidence=[Rf1086TestEvidenceWire.model_validate(row, from_attributes=True) for row in result.test_evidence],
+                    approvals=[Rf1086ApprovalWire.model_validate(row, from_attributes=True).model_copy(
+                        update={"manifest": rf1086_json_wire(row.manifest)},
+                    ) for row in result.approvals],
+                    production_submissions=[Rf1086ProductionSubmissionWire.model_validate(row, from_attributes=True) for row in result.production_submissions],
+                    feedback_artifacts=[Rf1086FeedbackArtifactWire.model_validate(row, from_attributes=True) for row in result.feedback_artifacts],
+                    actions=[Rf1086ActionAvailabilityWire.model_validate(row, from_attributes=True) for row in result.actions],
+                )
+            except ValidationError:
+                raise ShareholderRegisterFilingError.unavailable() from None
         return await shareholder_register_filing_call(execute)
 
     @application.get(

@@ -11,7 +11,7 @@ from talli_backend.modules.shareholder_register_filing.public import (
     ConfirmRf1086FilingPermissionCommand, ConfirmRf1086SimulationCommand, GenerateRf1086PreviewCommand,
     JournaledRf1086ProductionInput, ReconcileRf1086FeedbackCommand, RecordRf1086OverrideCommand,
     RecordRf1086TestEvidenceCommand, Rf1086OwnerReconciliationResult, Rf1086RecordedResult,
-    ReadRf1086PreviewQuery, Rf1086PreviewRecord, Rf1086SourceFacts, Rf1086SourceQuery, Rf1086WorkspaceQuery, Rf1086WorkspaceSnapshot,
+    Rf1086ArchiveQuery, Rf1086ArchiveSnapshot, ReadRf1086PreviewQuery, Rf1086PreviewRecord, Rf1086SourceFacts, Rf1086SourceQuery, Rf1086WorkspaceQuery, Rf1086WorkspaceSnapshot,
     VerifyRf1086SourceEvidenceQuery, create_rf1086_preparation_service,
     execute_journaled_rf1086_production, rf1086_current_manifest_hash, rf1086_production_document_order,
     reconcile_journaled_rf1086_production,
@@ -203,6 +203,10 @@ class ShareholderRegisterFilingWorkflow:
     async def workspace(self, query: Rf1086WorkspaceQuery) -> Rf1086WorkspaceSnapshot:
         self._actor(query.actor_id)
         return await create_rf1086_preparation_service(self._persistence).workspace(query)
+
+    async def archive_source(self, query: Rf1086ArchiveQuery) -> Rf1086ArchiveSnapshot:
+        self._actor(query.actor_id)
+        return await create_rf1086_preparation_service(self._persistence).archive_source(query)
 
     async def source_facts(self, query: Rf1086SourceQuery) -> Rf1086SourceFacts:
         self._actor(query.actor_id)

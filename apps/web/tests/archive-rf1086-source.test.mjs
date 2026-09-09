@@ -7,6 +7,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { presentOpeningSnapshots } from "../features/ledger/presentation.ts";
 import * as rfPresentation from "../features/shareholder-register-filing/presentation.ts";
+import { loadRf1086ArchiveSource } from "../features/shareholder-register-filing/transport.ts";
 
 const require = createRequire(import.meta.url);
 const source = readFileSync(new URL("../app/archive/[companyId]/[incomeYear]/download/route.ts", import.meta.url), "utf8");
@@ -49,8 +50,8 @@ const workspace = () => ({ companyId, incomeYear: null,
 });
 
 function route({ generic = {}, failures = {}, rf = workspace(), openings = [opening(2025), opening(2024)],
-  user = true, token = true, mfa = true, receiptError = false, routeSource = source } = {}) {
-  const calls = [], readTables = [], captures = [];
+  user = true, token = true, mfa = true, receiptError = false, routeSource = source, rfLoader } = {}) {
+  const calls = [], readTables = [], captures = [], openingYears = [], rfYears = [];
   const ledgerProjection = presentOpeningSnapshots(openings);
   const legacy = { opening_balance_setups: ledgerProjection.setups, opening_shareholders: ledgerProjection.shareholders, ...generic };
   const supabase = {
@@ -75,20 +76,33 @@ function route({ generic = {}, failures = {}, rf = workspace(), openings = [open
   const empty = async () => [];
   const dependencies = {
     "../../../../../features/ledger": {
-      loadOpeningSnapshots: async (access, companies) => { calls.push("read:opening-api"); assert.equal(access, "verified-owner");
-        assert.deepEqual(plain(companies), [companyId]); if (failures.opening) throw Error("unavailable"); return openings; },
+      loadOpeningSnapshotsForYear: async (access, company, year) => {
+        calls.push("read:opening-api"); openingYears.push(year); assert.equal(access, "verified-owner");
+        assert.equal(company, companyId); assert.equal(Number.isInteger(year), true);
+        if (failures.opening || failures.openingYears?.[year]) throw Error("unavailable");
+        return openings.filter(row => row.incomeYear === year);
+      },
       presentOpeningSnapshots, loadLedgerEntriesForArchive: empty, presentLedgerEntriesForArchive: value => value,
     },
     "../../../../../features/shareholder-register-filing": { ...rfPresentation,
-      loadRf1086Workspaces: async (access, companies, year) => { calls.push("read:rf-api"); assert.equal(access, "verified-owner");
-        assert.deepEqual(plain(companies), [companyId]); assert.equal(year, undefined);
-        if (failures.rf) throw Error("unavailable"); return [rf]; },
+      loadRf1086ArchiveSource: async (access, company, year) => {
+        calls.push("read:rf-api"); rfYears.push(year); assert.equal(access, "verified-owner");
+        assert.equal(company, companyId); assert.equal(Number.isInteger(year), true);
+        if (failures.rf) throw Error("unavailable");
+        if (rfLoader) return rfLoader(access, company, year);
+        const simulations = rf.simulations.filter(row => row.incomeYear === year);
+        const evidenceIds = new Set(simulations.map(row => row.authorityTestRunId).filter(Boolean));
+        return { companyId: company, incomeYear: year, simulations,
+          previews: rf.previews.filter(row => row.incomeYear === year),
+          reviewComments: rf.reviewComments, permissions: rf.permissions,
+          testEvidence: rf.testEvidence.filter(row => evidenceIds.has(row.id)) };
+      },
     },
     "../../../../../features/investments": Object.fromEntries([
       ...["loadInvestmentAcquisitionLots", "loadInvestmentActivity", "loadInvestmentPositions", "loadInvestmentShareSaleAllocations", "loadInvestmentCorrections"].map(key => [key, empty]),
       ...["effectiveInvestmentActivity", "presentAcquisitionLots", "presentInvestmentActivity", "presentInvestmentPositions", "presentShareSaleAllocations", "presentInvestmentCorrections"].map(key => [key, value => value]),
     ]),
-    "../../../../../features/documents": { loadDocumentBackupProjection: async () => ({ companyId, incomeYear: 2025, objects: [] }) },
+    "../../../../../features/documents": { loadDocumentBackupProjection: async (_access, _company, incomeYear) => ({ companyId, incomeYear, objects: [] }) },
     "../../../../../features/corporate-governance": { listCorporateDecisionLifecycle: async () => ({ corporateDecisions: [], corporateDocumentSets: [], corporateDocumentArtifacts: [], corporateDocumentEvents: [], corporateDecisionFinalizations: [] }), listSupportedCorporateEvents: empty },
     "../../../../../features/billing": { loadBillingSnapshot: async () => ({ accounts: [] }), presentBillingAccount: value => value },
     "../../../../lib/archive": { firstArchiveSourceError: results => results.find(result => result.error)?.error ?? null,
@@ -105,7 +119,8 @@ function route({ generic = {}, failures = {}, rf = workspace(), openings = [open
   const exports = {};
   vm.runInNewContext(ts.transpileModule(routeSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText,
     { exports, require: id => id in dependencies ? dependencies[id] : require(id), Response, Request, Error, Set, Map });
-  return { calls, captures, readTables, run: () => exports.GET(new Request("https://talli.example/archive"), { params: Promise.resolve({ companyId, incomeYear: "2025" }) }) };
+  return { calls, captures, readTables, openingYears, rfYears,
+    run: (incomeYear = 2025) => exports.GET(new Request("https://talli.example/archive"), { params: Promise.resolve({ companyId, incomeYear: String(incomeYear) }) }) };
 }
 
 // Captured original query chains at 91b before removing the two wholly owned opening reads.
@@ -173,8 +188,25 @@ test("archive preserves original selected opening and shareholder fields through
   assert.deepEqual(plain(input.shareholders), [{ id: uid(2125), setup_id: uid(2025), company_id: companyId, name: "Original æ eier",
     shareholder_kind: "norwegian_person", national_id: "01017012345", org_number: null, share_count: 100 }]);
   assert.deepEqual(fixture.calls.filter(call => call === "read:opening-api"), ["read:opening-api"]);
+  assert.deepEqual(fixture.openingYears, [2025]);
   assert.equal(fixture.calls.at(-1), "company_archive_complete_export");
   assert.ok(fixture.calls.indexOf("build") > fixture.calls.lastIndexOf("read:opening-api"));
+});
+
+test("a failing 2024 opening does not prevent a valid 2025 archive but still blocks the 2024 export", async () => {
+  const options = { failures: { openingYears: { 2024: Error("historical opening unavailable") } } };
+  const valid = route(options);
+  assert.equal((await valid.run(2025)).status, 200);
+  assert.deepEqual(valid.openingYears, [2025]);
+  assert.deepEqual(plain(valid.captures[0].setups).map(row => row.income_year), [2025]);
+  assert.deepEqual(plain(valid.captures[0].shareholders).map(row => row.setup_id), [uid(2025)]);
+  assert.equal(valid.calls.at(-1), "company_archive_complete_export");
+
+  const unavailable = route(options);
+  assert.equal((await unavailable.run(2024)).status, 500);
+  assert.deepEqual(unavailable.openingYears, [2024]);
+  assert.equal(unavailable.captures.length, 0);
+  assert.equal(unavailable.calls.includes("company_archive_complete_export"), false);
 });
 
 test("RF-only archive preserves original nested payload identities, requested year and company-wide history", async () => {
@@ -188,6 +220,43 @@ test("RF-only archive preserves original nested payload identities, requested ye
   assert.equal(input.authorityPermissions.length, 1); assert.deepEqual(plain(input.authorityTestRuns), []);
   assert.equal("productionSubmissions" in input, false); assert.equal("feedbackArtifacts" in input, false);
   assert.equal(fixture.readTables.includes("authority_test_runs"), false);
+  assert.deepEqual(fixture.rfYears, [2025]);
+});
+
+test("actual generated RF archive transport isolates a malformed 2024 preview from the valid 2025 download", async (t) => {
+  const previousUrl = process.env.TALLI_BACKEND_URL;
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+  t.after(() => {
+    if (previousUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = previousUrl;
+  });
+  const queries = [];
+  t.mock.method(globalThis, "fetch", async (url, request) => {
+    const parsed = new URL(url), year = Number(parsed.searchParams.get("incomeYear"));
+    assert.equal(parsed.pathname, "/api/v1/shareholder-register-filings/archive-source");
+    assert.deepEqual([...parsed.searchParams.entries()].sort(), [["companyId", companyId], ["incomeYear", String(year)]]);
+    assert.equal(new Headers(request.headers).get("Authorization"), "Bearer verified-owner");
+    assert.equal(request.cache, "no-store");
+    queries.push(year);
+    const row = preview(year);
+    if (year === 2024) row.issues = [{ level: "warning", message: "Retained historical issue without a code" }];
+    return Response.json({ companyId, incomeYear: year, previews: [row],
+      simulations: [{ ...simulation(year), calls: [], feedbackItems: [], receiptMetadata: null,
+        submittedPayloadRef: null, submittedPayload: null }],
+      reviewComments: workspace().reviewComments, permissions: workspace().permissions, testEvidence: [] });
+  });
+  const valid = route({ rfLoader: loadRf1086ArchiveSource });
+  assert.equal((await valid.run(2025)).status, 200);
+  assert.deepEqual(valid.rfYears, [2025]);
+  assert.deepEqual(plain(valid.captures[0].filingPreviews).map(row => row.income_year), [2025]);
+  assert.deepEqual(plain(valid.captures[0].reviewComments), [rfPresentation.presentRf1086ReviewComment(workspace().reviewComments[0])]);
+  assert.equal(valid.calls.at(-1), "company_archive_complete_export");
+
+  const malformed = route({ rfLoader: loadRf1086ArchiveSource });
+  assert.equal((await malformed.run(2024)).status, 500);
+  assert.equal(malformed.captures.length, 0);
+  assert.equal(malformed.calls.includes("company_archive_complete_export"), false);
+  assert.deepEqual(queries, [2025, 2024]);
 });
 
 test("RF authority evidence is limited to retained submission references without adding a generic persistence call", async () => {

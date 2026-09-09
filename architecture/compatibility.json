@@ -436,18 +436,6 @@
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
-          "resource": "rpc:approve_production_filing",
-          "operation": "approveProductionFiling"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:filing_previews",
-          "operation": "approveProductionFiling"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
           "resource": "table:authority_permissions",
           "operation": "confirmAuthorityPermission"
         },
@@ -462,12 +450,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_submissions",
           "operation": "confirmSimulatedRf1086Submission"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:filing_previews",
-          "operation": "generateRf1086Preview"
         },
         {
           "path": "apps/web/app/actions.ts",
@@ -522,24 +504,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_submissions",
           "operation": "listFilingSubmissions"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:filing_approval_snapshots",
-          "operation": "listProductionFilingState"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:production_feedback_artifacts",
-          "operation": "listProductionFilingState"
-        },
-        {
-          "path": "apps/web/app/lib/supabase/server.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:production_filing_submissions",
-          "operation": "listProductionFilingState"
         }
       ]
     },
@@ -841,12 +805,6 @@
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:opening_balance_setups",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_shareholders",
           "operation": "GET"
         }
       ]

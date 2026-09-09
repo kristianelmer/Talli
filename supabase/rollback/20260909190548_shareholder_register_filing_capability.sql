@@ -20,7 +20,110 @@ end; $borrow$;
 
 create temporary table rf151_schema_grants on commit drop as select false as ledger_create,false as company_access_create,false as workflow_create,false as backend_create;
 
-create temporary table rf151_saved_objects on commit drop as select original_objects,original_relations from shareholder_register_filing.migration_state where singleton;
+create temporary table rf151_saved_objects on commit drop as select original_objects,original_relations,original_foreign_policies,original_opening_schema from shareholder_register_filing.migration_state where singleton;
+
+-- SECTION A: recreate only absent original opening tables from pre-move metadata.
+create temporary table rf151_reconstructed_openings(name text primary key) on commit drop;
+do $reconstruct_opening_tables$
+declare
+  original_schema jsonb; original_relations jsonb; table_name text; shape jsonb;
+  column_spec jsonb; constraint_spec jsonb; index_spec jsonb; column_position integer;
+  expected_columns text[]; expected_types text[]; actual_columns text[];
+  expected_default text; expected_not_null boolean; present_count integer;
+begin
+  select s.original_opening_schema,s.original_relations into original_schema,original_relations
+    from shareholder_register_filing.migration_state s where singleton;
+  if (select pg_catalog.array_agg(key order by key) from pg_catalog.jsonb_object_keys(original_schema) key)
+    is distinct from array['opening_balance_setups','opening_shareholders']
+  then raise exception 'rf1086_original_opening_schema_missing'; end if;
+  select count(*) into present_count from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+    where n.nspname='public' and c.relname=any(array['opening_balance_setups','opening_shareholders']);
+  if present_count=2 then
+    if exists(select 1 from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+      where n.nspname='public' and c.relname=any(array['opening_balance_setups','opening_shareholders']) and c.relkind<>'r')
+    then raise exception 'rf1086_existing_opening_relation_is_not_original_table'; end if;
+    return;
+  elsif present_count<>0 then raise exception 'rf1086_partial_opening_drop'; end if;
+  if exists(select 1 from pg_catalog.pg_attribute
+    where attrelid='ledger.entries'::regclass and attname='setup_id' and not attisdropped)
+  then raise exception 'rf1086_opening_reconstruction_requires_retired_ledger_setup'; end if;
+  -- Validate both complete, original column shapes before either CREATE.
+  foreach table_name in array array['opening_balance_setups','opening_shareholders'] loop
+    shape:=original_schema->table_name;
+    if original_relations->table_name->>'owner' is distinct from current_user
+      or pg_catalog.jsonb_typeof(shape->'columns') is distinct from 'array'
+      or pg_catalog.jsonb_typeof(shape->'constraints') is distinct from 'array'
+      or pg_catalog.jsonb_typeof(shape->'indexes') is distinct from 'array'
+      or pg_catalog.jsonb_typeof(shape->'triggers') is distinct from 'array'
+      or not(shape ? 'rls_enabled')
+    then raise exception 'rf1086_original_opening_schema_invalid'; end if;
+    expected_columns:=case table_name
+      when 'opening_balance_setups' then array['id','company_id','income_year','bank_balance','share_capital','share_count','nominal_value','locked_at','created_by','created_at']
+      else array['id','setup_id','company_id','name','shareholder_kind','national_id','org_number','share_count','created_by','created_at'] end;
+    expected_types:=case table_name
+      when 'opening_balance_setups' then array['uuid','uuid','integer','numeric','numeric','integer','numeric','timestamp with time zone','uuid','timestamp with time zone']
+      else array['uuid','uuid','uuid','text','text','text','text','integer','uuid','timestamp with time zone'] end;
+    select pg_catalog.array_agg(value->>'name' order by (value->>'attnum')::integer) into actual_columns
+      from pg_catalog.jsonb_array_elements(shape->'columns');
+    if actual_columns is distinct from expected_columns
+    then raise exception 'rf1086_original_opening_columns_changed'; end if;
+    column_position:=0;
+    for column_spec in select value from pg_catalog.jsonb_array_elements(shape->'columns') order by (value->>'attnum')::integer loop
+      column_position:=column_position+1;
+      expected_default:=case
+        when column_position=1 then 'gen_random_uuid()'
+        when column_position=10 or (table_name='opening_balance_setups' and column_position=8) then 'now()'
+        else null end;
+      expected_not_null:=not(table_name='opening_shareholders' and column_position in (6,7));
+      if (column_spec->>'attnum')::integer is distinct from column_position
+        or column_spec->>'format_type' is distinct from expected_types[column_position]
+        or (column_spec->>'not_null')::boolean is distinct from expected_not_null
+        or column_spec->>'default_sql' is distinct from expected_default
+        or column_spec->>'identity' is distinct from '' or column_spec->>'generated' is distinct from ''
+        or column_spec->>'collation_schema' is not null or column_spec->>'collation_name' is not null
+      then raise exception 'rf1086_original_opening_column_unsupported'; end if;
+    end loop;
+  end loop;
+  -- Exact original columns from 0001; constraints and indexes below use captured definitions.
+  create table if not exists public.opening_balance_setups (
+    id uuid not null default pg_catalog.gen_random_uuid(),
+    company_id uuid not null,
+    income_year integer not null,
+    bank_balance numeric not null,
+    share_capital numeric not null,
+    share_count integer not null,
+    nominal_value numeric not null,
+    locked_at timestamp with time zone not null default pg_catalog.now(),
+    created_by uuid not null,
+    created_at timestamp with time zone not null default pg_catalog.now()
+  );
+  create table if not exists public.opening_shareholders (
+    id uuid not null default pg_catalog.gen_random_uuid(),
+    setup_id uuid not null,
+    company_id uuid not null,
+    name text not null,
+    shareholder_kind text not null,
+    national_id text,
+    org_number text,
+    share_count integer not null,
+    created_by uuid not null,
+    created_at timestamp with time zone not null default pg_catalog.now()
+  );
+  insert into rf151_reconstructed_openings values('opening_balance_setups'),('opening_shareholders');
+  -- Both tables exist before FK restoration; primary/unique constraints precede references.
+  foreach table_name in array array['opening_balance_setups','opening_shareholders'] loop
+    for constraint_spec in select value from pg_catalog.jsonb_array_elements(original_schema->table_name->'constraints')
+      order by case when value->>'type' in ('p','u') then 0 when value->>'type'='f' then 2 else 1 end,value->>'name' loop
+      execute pg_catalog.format('alter table public.%I add constraint %I %s',table_name,constraint_spec->>'name',constraint_spec->>'definition');
+      if (select c.convalidated from pg_catalog.pg_constraint c where c.conrelid=pg_catalog.to_regclass('public.'||table_name) and c.conname=constraint_spec->>'name')
+        is distinct from (constraint_spec->>'validated')::boolean
+      then raise exception 'rf1086_original_opening_constraint_validation_changed'; end if;
+    end loop;
+    for index_spec in select value from pg_catalog.jsonb_array_elements(original_schema->table_name->'indexes') loop
+      execute index_spec->>'definition';
+    end loop;
+  end loop;
+end; $reconstruct_opening_tables$;
 
 lock table public.opening_balance_setups,public.opening_shareholders,public.filing_previews,public.filing_submissions,public.filing_overrides,public.filing_review_comments,public.authority_permissions,public.authority_test_runs,shareholder_register_filing.opening_balance_setups,shareholder_register_filing.opening_shareholders,shareholder_register_filing.filing_previews,shareholder_register_filing.filing_submissions,shareholder_register_filing.filing_overrides,shareholder_register_filing.filing_review_comments,shareholder_register_filing.authority_permissions,shareholder_register_filing.authority_test_runs,shareholder_register_filing.filing_approval_snapshots,shareholder_register_filing.production_filing_submissions,shareholder_register_filing.production_filing_events,shareholder_register_filing.production_feedback_artifacts in access exclusive mode;
 
@@ -130,6 +233,115 @@ grant select,insert,update,delete on shareholder_register_filing.production_feed
 
 alter table ledger.opening_bank_inputs no force row level security; grant select on ledger.opening_bank_inputs to postgres;
 
+-- SECTION B: copy into new original tables only. No triggers yet, so no archive effects.
+-- Original FK/check constraints stay active throughout. RLS/ACL restored in C before COMMIT.
+do $restore_opening_rows$
+declare q record; table_name text; expected_keys text[]; keys text[];
+begin
+  if not exists(select 1 from rf151_reconstructed_openings) then return; end if;
+  if exists(select 1 from shareholder_register_filing.opening_balance_setups r
+    left join ledger.opening_bank_inputs b on b.snapshot_id=r.id and b.company_id=r.company_id and b.income_year=r.income_year
+    where b.snapshot_id is null or b.recorded_by is distinct from r.created_by or b.recorded_at is distinct from r.created_at)
+  then raise exception 'rf1086_rollback_bank_input_missing'; end if;
+  insert into public.opening_balance_setups(id,company_id,income_year,bank_balance,share_capital,share_count,nominal_value,locked_at,created_by,created_at)
+    select r.id,r.company_id,r.income_year,b.bank_balance_nok,r.share_capital,r.share_count,r.nominal_value,r.locked_at,r.created_by,r.created_at
+    from shareholder_register_filing.opening_balance_setups r join ledger.opening_bank_inputs b
+      on b.snapshot_id=r.id and b.company_id=r.company_id and b.income_year=r.income_year;
+  -- Quarantine is retained historical evidence; do not silently discard or merge its identity.
+  foreach table_name in array array['opening_balance_setups','opening_shareholders'] loop
+    select pg_catalog.array_agg(a.attname::text order by a.attname::text) into expected_keys from pg_catalog.pg_attribute a
+      where a.attrelid=pg_catalog.to_regclass('public.'||table_name) and a.attnum>0 and not a.attisdropped;
+    for q in select * from shareholder_register_filing.migration_quarantine where family=table_name order by record_id loop
+      select pg_catalog.array_agg(key order by key) into keys from pg_catalog.jsonb_object_keys(q.original_row) key;
+      if keys is distinct from expected_keys or (q.original_row->>'id')::uuid is distinct from q.record_id
+      then raise exception 'rf1086_quarantined_opening_record_invalid'; end if;
+      if table_name='opening_balance_setups' and not exists(select 1 from ledger.opening_bank_inputs b
+        where b.snapshot_id=q.record_id and b.company_id=(q.original_row->>'company_id')::uuid
+          and b.income_year=(q.original_row->>'income_year')::integer
+          and b.recorded_by=(q.original_row->>'created_by')::uuid
+          and b.recorded_at=(q.original_row->>'created_at')::timestamptz
+          and b.bank_balance_nok=(q.original_row->>'bank_balance')::numeric)
+      then raise exception 'rf1086_quarantined_opening_bank_binding_invalid'; end if;
+      -- Any canonical/quarantine identity collision raises through the original PK.
+      execute pg_catalog.format('insert into public.%I select * from pg_catalog.jsonb_populate_record(null::public.%I,$1)',table_name,table_name) using q.original_row;
+    end loop;
+  end loop;
+  insert into public.opening_shareholders(id,setup_id,company_id,name,shareholder_kind,national_id,org_number,share_count,created_by,created_at)
+    select id,setup_id,company_id,name,shareholder_kind,national_id,org_number,share_count,created_by,created_at
+    from shareholder_register_filing.opening_shareholders;
+  if (select count(*) from public.opening_balance_setups)<>(select count(*) from shareholder_register_filing.opening_balance_setups)+(select count(*) from shareholder_register_filing.migration_quarantine where family='opening_balance_setups')
+    or (select count(*) from public.opening_shareholders)<>(select count(*) from shareholder_register_filing.opening_shareholders)+(select count(*) from shareholder_register_filing.migration_quarantine where family='opening_shareholders')
+  then raise exception 'rf1086_opening_reconstruction_extent_mismatch'; end if;
+end; $restore_opening_rows$;
+
+-- SECTION E: after B, before canonical storage can be removed; original two
+-- incoming generic setup FKs return to public. No Ledger column/FK is recreated.
+-- Exact predecessor constraints: public.filing_previews/filing_submissions,
+-- setup_id -> public.opening_balance_setups(id), ON DELETE RESTRICT, immediate.
+do $restore_public_opening_references$
+declare table_name text; constraint_name text; original_constraint record; setup_att smallint; id_att smallint;
+begin
+  if not exists(select 1 from rf151_reconstructed_openings) then return; end if;
+  select attnum into id_att from pg_catalog.pg_attribute where attrelid='public.opening_balance_setups'::regclass and attname='id';
+  foreach table_name in array array['filing_previews','filing_submissions'] loop
+    constraint_name:=table_name||'_setup_id_fkey';
+    select attnum into setup_att from pg_catalog.pg_attribute where attrelid=pg_catalog.to_regclass('public.'||table_name) and attname='setup_id';
+    select * into original_constraint from pg_catalog.pg_constraint
+      where conrelid=pg_catalog.to_regclass('public.'||table_name) and conname=constraint_name;
+    if not found or original_constraint.contype<>'f' or original_constraint.conkey<>array[setup_att]
+      or original_constraint.confdeltype<>'r' or original_constraint.confupdtype<>'a'
+      or original_constraint.condeferrable or original_constraint.condeferred or not original_constraint.convalidated
+      or original_constraint.confrelid not in ('public.opening_balance_setups'::regclass,'shareholder_register_filing.opening_balance_setups'::regclass)
+    then raise exception 'rf1086_original_incoming_opening_constraint_changed'; end if;
+    if original_constraint.confrelid='public.opening_balance_setups'::regclass then
+      if original_constraint.confkey<>array[id_att] then raise exception 'rf1086_original_incoming_opening_key_changed'; end if;
+    else
+      if original_constraint.confkey<>array[(select attnum from pg_catalog.pg_attribute where attrelid='shareholder_register_filing.opening_balance_setups'::regclass and attname='id')]
+      then raise exception 'rf1086_canonical_incoming_opening_key_changed'; end if;
+      execute pg_catalog.format('alter table public.%I drop constraint %I',table_name,constraint_name);
+      execute pg_catalog.format('alter table public.%I add constraint %I foreign key(setup_id) references public.opening_balance_setups(id) on delete restrict',table_name,constraint_name);
+    end if;
+  end loop;
+end; $restore_public_opening_references$;
+
+-- SECTION C: replay captured original table owner, RLS, policies and effective ACL.
+-- Execute before adding phase-specific overlap policies/grants and before original policies' helper retirement.
+do $restore_opening_security$
+declare table_name text; shape jsonb; relation jsonb; policy jsonb; role_names text; a record; grantee text; saved_acl aclitem[];
+  original_path text:=pg_catalog.current_setting('search_path');
+begin
+  -- Original policy deparse was captured with public visible; schema metadata itself is qualified.
+  perform pg_catalog.set_config('search_path','public,pg_catalog',true);
+  for table_name in select name from rf151_reconstructed_openings order by name loop
+    select s.original_opening_schema->table_name,s.original_relations->table_name into shape,relation
+      from shareholder_register_filing.migration_state s where singleton;
+    execute pg_catalog.format('alter table public.%I owner to %I',table_name,relation->>'owner');
+    for policy in select value from pg_catalog.jsonb_array_elements(relation->'policies') loop
+      select pg_catalog.string_agg(case when value='public' then 'public' else pg_catalog.quote_ident(value) end,',') into role_names
+        from pg_catalog.jsonb_array_elements_text(policy->'roles');
+      execute pg_catalog.format('create policy %I on public.%I as %s for %s to %s%s%s',policy->>'name',table_name,
+        case when (policy->>'permissive')::boolean then 'permissive' else 'restrictive' end,policy->>'command',role_names,
+        case when policy->>'qual' is null then '' else ' using ('||(policy->>'qual')||')' end,
+        case when policy->>'with_check' is null then '' else ' with check ('||(policy->>'with_check')||')' end);
+    end loop;
+    execute pg_catalog.format('alter table public.%I %s row level security',table_name,case when (shape->>'rls_enabled')::boolean then 'enable' else 'disable' end);
+    execute pg_catalog.format('alter table public.%I %sforce row level security',table_name,case when (relation->>'force_rls')::boolean then '' else 'no ' end);
+    for a in select distinct x.grantee from pg_catalog.pg_class c
+      cross join lateral pg_catalog.aclexplode(coalesce(c.relacl,pg_catalog.acldefault('r',c.relowner))) x
+      where c.oid=pg_catalog.to_regclass('public.'||table_name) loop
+      grantee:=case when a.grantee=0 then 'public' else pg_catalog.quote_ident(pg_catalog.pg_get_userbyid(a.grantee)) end;
+      execute pg_catalog.format('revoke all on table public.%I from %s',table_name,grantee);
+    end loop;
+    if relation->'acl'='null'::jsonb then saved_acl:=pg_catalog.acldefault('r',(select oid from pg_catalog.pg_roles where rolname=relation->>'owner'));
+    else saved_acl:=array(select value::aclitem from pg_catalog.jsonb_array_elements_text(relation->'acl')); end if;
+    for a in select * from pg_catalog.aclexplode(saved_acl) loop
+      grantee:=case when a.grantee=0 then 'public' else pg_catalog.quote_ident(pg_catalog.pg_get_userbyid(a.grantee)) end;
+      execute pg_catalog.format('grant %s on table public.%I to %s%s',a.privilege_type,table_name,grantee,case when a.is_grantable then ' with grant option' else '' end);
+    end loop;
+  end loop;
+  perform pg_catalog.set_config('search_path',original_path,true);
+end; $restore_opening_security$;
+
 update shareholder_register_filing.migration_state set phase='legacy_overlap' where singleton;
 
 do $bank$ begin if exists(select 1 from shareholder_register_filing.opening_balance_setups r left join ledger.opening_bank_inputs b on b.snapshot_id=r.id and b.company_id=r.company_id and b.income_year=r.income_year where b.snapshot_id is null or b.recorded_by<>r.created_by or b.recorded_at<>r.created_at) then raise exception 'rf1086_rollback_bank_input_missing'; end if; end; $bank$;
@@ -238,6 +450,15 @@ do $original_functions$ declare item record; signature text; schema_name text; f
  end loop;
 end; $original_functions$;
 
+grant select on rf151_saved_objects to billing_store_owner;
+set local role billing_store_owner;
+do $billing_policies$ declare p record; begin
+ for p in select * from pg_catalog.jsonb_each((select original_foreign_policies from rf151_saved_objects)) loop
+ execute pg_catalog.format('alter policy %I on billing.production_pilot_entitlements%s%s',p.key,case when p.value->>'qual' is null then '' else ' using ('||(p.value->>'qual')||')' end,case when p.value->>'check' is null then '' else ' with check ('||(p.value->>'check')||')' end);
+ end loop;
+end; $billing_policies$;
+reset role;
+
 do $restore_relations$ declare item record; current_grantee oid; acl record; target text; grantee text; begin
  for item in select * from pg_catalog.jsonb_each((select original_relations from rf151_saved_objects)) loop
   target:='public.'||pg_catalog.quote_ident(item.key);
@@ -275,37 +496,37 @@ create policy "legacy_rf1086_submission_read" on public.production_filing_submis
 
 grant execute on function public.company_archive_track_source_write_v1() to postgres;
 
-drop trigger company_archive_track_filing_previews on public.filing_previews;
+drop trigger if exists company_archive_track_filing_previews on public.filing_previews;
 
 CREATE TRIGGER company_archive_track_filing_previews BEFORE INSERT OR DELETE OR UPDATE ON public.filing_previews FOR EACH ROW EXECUTE FUNCTION public.company_archive_track_source_write_v1('year', 'company_id');
 
-drop trigger company_archive_track_filing_submissions on public.filing_submissions;
+drop trigger if exists company_archive_track_filing_submissions on public.filing_submissions;
 
 CREATE TRIGGER company_archive_track_filing_submissions BEFORE INSERT OR DELETE OR UPDATE ON public.filing_submissions FOR EACH ROW EXECUTE FUNCTION public.company_archive_track_source_write_v1('year', 'company_id');
 
-drop trigger company_archive_track_filing_review_comments on public.filing_review_comments;
+drop trigger if exists company_archive_track_filing_review_comments on public.filing_review_comments;
 
 CREATE TRIGGER company_archive_track_filing_review_comments BEFORE INSERT OR DELETE OR UPDATE ON public.filing_review_comments FOR EACH ROW EXECUTE FUNCTION public.company_archive_track_source_write_v1('company', 'company_id');
 
-drop trigger company_archive_track_authority_permissions on public.authority_permissions;
+drop trigger if exists company_archive_track_authority_permissions on public.authority_permissions;
 
 CREATE TRIGGER company_archive_track_authority_permissions BEFORE INSERT OR DELETE OR UPDATE ON public.authority_permissions FOR EACH ROW EXECUTE FUNCTION public.company_archive_track_source_write_v1('company', 'company_id');
 
-drop trigger company_archive_track_authority_test_runs on public.authority_test_runs;
+drop trigger if exists company_archive_track_authority_test_runs on public.authority_test_runs;
 
 CREATE TRIGGER company_archive_track_authority_test_runs BEFORE INSERT OR DELETE OR UPDATE ON public.authority_test_runs FOR EACH ROW EXECUTE FUNCTION public.company_archive_track_source_write_v1('company', 'company_id');
 
-drop trigger company_archive_track_opening_balance_setups on public.opening_balance_setups;
+drop trigger if exists company_archive_track_opening_balance_setups on public.opening_balance_setups;
 
 CREATE TRIGGER company_archive_track_opening_balance_setups BEFORE INSERT OR DELETE OR UPDATE ON public.opening_balance_setups FOR EACH ROW EXECUTE FUNCTION public.company_archive_track_source_write_v1('year', 'company_id');
 
-drop trigger company_archive_track_opening_shareholders on public.opening_shareholders;
+drop trigger if exists company_archive_track_opening_shareholders on public.opening_shareholders;
 
 CREATE TRIGGER company_archive_track_opening_shareholders BEFORE INSERT OR DELETE OR UPDATE ON public.opening_shareholders FOR EACH ROW EXECUTE FUNCTION public.company_archive_track_source_write_v1('company', 'company_id');
 
 revoke execute on function public.company_archive_track_source_write_v1() from postgres;
 
-drop function if exists backend_system.read_new_year_opening_snapshots_v1(uuid[],text,integer,text);
+drop function if exists backend_system.read_new_year_opening_snapshots_v1(uuid[],text,integer,text,integer);
 
 drop function if exists backend_system.sync_rf_preparation_projection_v1();
 

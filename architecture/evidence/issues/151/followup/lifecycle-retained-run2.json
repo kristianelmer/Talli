@@ -1,0 +1,19 @@
+{
+  "started_at": "2026-09-09T20:50:55.224123+00:00",
+  "finished_at": "2026-09-09T20:51:05.606063+00:00",
+  "exit_code": 0,
+  "log": "/tmp/talli-151-lifecycle-retained-run2.log",
+  "log_sha256": "4bb6bb23217333f9fe8d9c9582bfae8326ed7e67ac3a7ba8e96351ca19370421",
+  "source_sha256": {
+    "apps/backend/tests/test_shareholder_register_filing_lifecycle.py": "a9705f9cc791fad08c7d9ff93594c9353ceddb470ff6362bca6481ff06e06db1",
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "fb31d10dca2e2e3c8053edaa245a08619854b8fb6d7b2142d9622619242e4e79",
+    "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql": "0e97a5f1f8f0b2ca6f54b36f02a751db5bbe8f4112b8e7441c51f2e60756eea6",
+    "supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql": "4b88c63a76f133f743eb63254eef0d8300defb5f6d31934b9a7a10c1593cc109",
+    "supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql": "af98f4f4387acf192825cba6cd28a50d0b97cd59cad4eceefef3fa24d8481a23",
+    "supabase/rollback/20260909190548_shareholder_register_filing_capability.sql": "551e3150a3e90be30a0b6c1209be9f8e87981f5763d7fe9d597f7b2e403e8c5d",
+    "supabase/rollback/20260909190905_shareholder_register_filing_cutover.sql": "0ac7af94f08fbba31b16058a802b22749138950da56df89fcfa9c19be222f129",
+    "supabase/rollback/20260909190955_shareholder_register_filing_contract.sql": "94fa445738930f25c4785d295198ec6a34491e79e071a3d07340196b8d6e6392"
+  },
+  "source_unchanged_during_run": true,
+  "topology": "retained RF contracted; Ledger entries.setup_id retired; all fixture and rehearsal changes rollback; actual local disposable DB only; no provider calls"
+}

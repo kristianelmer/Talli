@@ -167,6 +167,15 @@ class LedgerSessionStub:
         )
         return self.opening_snapshots
 
+    async def list_opening_snapshots_for_year(
+        self, *, actor_id, company_id, income_year, correlation_id
+    ) -> OpeningSnapshotPage:
+        self.calls.append(("list_opening_snapshots_for_year", {
+            "actor_id": actor_id, "company_id": company_id,
+            "income_year": income_year, "correlation_id": correlation_id,
+        }))
+        return self.opening_snapshots
+
     async def complete_workflow(
         self,
         *,
@@ -1059,3 +1068,40 @@ def test_source_unaware_database_keeps_legacy_reads_but_blocks_source_queries() 
     assert "createdAt" not in legacy_response.json()["items"][0]
     assert source_response.status_code == 503
     assert source_response.json()["code"] == "LEDGER_DEPENDENCY_UNAVAILABLE"
+
+
+def test_opening_year_query_binds_verified_actor_and_requested_year_without_all_year_read():
+    client, session = client_and_session()
+    response = client.get(
+        f"/api/v1/ledger/opening-snapshots/by-year?companyId={COMPANY_ID}&incomeYear=2025",
+        headers={"Authorization": "Bearer session-token"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json() == {"items": [], "hasMore": False, "nextCursor": None}
+    assert response.headers["cache-control"] == "no-store"
+    call = next(value for name, value in session.calls if name == "list_opening_snapshots_for_year")
+    assert call["actor_id"] == ACTOR_ID
+    assert call["company_id"] == COMPANY_ID
+    assert call["income_year"] == IncomeYear(2025)
+    assert not any(name == "list_opening_snapshots" for name, _ in session.calls)
+
+
+def test_opening_year_query_rejects_missing_or_invalid_scope_before_session():
+    client, session = client_and_session()
+    for query in [f"companyId={COMPANY_ID}", f"companyId={COMPANY_ID}&incomeYear=1999",
+                  "companyId=invalid&incomeYear=2025", "incomeYear=2025"]:
+        response = client.get("/api/v1/ledger/opening-snapshots/by-year?" + query,
+                              headers={"Authorization": "Bearer session-token"})
+        assert response.status_code == 422, response.text
+    assert session.calls == []
+
+
+def test_opening_year_query_denies_paginated_projection():
+    client, session = client_and_session()
+    session.opening_snapshots = OpeningSnapshotPage(items=(), has_more=True,
+                                                   next_cursor=OpeningSnapshotCursor("unexpected"))
+    response = client.get(
+        f"/api/v1/ledger/opening-snapshots/by-year?companyId={COMPANY_ID}&incomeYear=2025",
+        headers={"Authorization": "Bearer session-token"},
+    )
+    assert response.status_code == 503, response.text

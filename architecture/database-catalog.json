@@ -673,14 +673,6 @@
       "kind": "technical"
     },
     {
-      "name": "public.opening_balance_setups",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.opening_shareholders",
-      "kind": "legacy-business"
-    },
-    {
       "name": "public.support_access_grants",
       "kind": "capability-business",
       "owner": "backend:company_access"
@@ -758,7 +750,10 @@
     {
       "name": "shareholder_register_filing.opening_shareholders",
       "kind": "capability-business",
-      "owner": "backend:shareholder_register_filing"
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": [
+        "table:opening_shareholders"
+      ]
     },
     {
       "name": "shareholder_register_filing.production_feedback_artifacts",

@@ -25,7 +25,8 @@
     "rf1086ConfirmSimulation",
     "rf1086ConfirmFilingPermission",
     "rf1086RecordTestEvidence",
-    "rf1086ApproveProduction"
+    "rf1086ApproveProduction",
+    "rf1086GetArchiveSource"
   ],
   "dependencies": [],
   "allowedImports": [

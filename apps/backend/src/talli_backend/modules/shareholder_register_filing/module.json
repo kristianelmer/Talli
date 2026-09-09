@@ -74,7 +74,9 @@
       "rf1086_code_decisions",
       "rf1086_code_decisions_for_case",
       "rf1086_production_code_blockers",
-      "rf1086_production_scope_exclusions"
+      "rf1086_production_scope_exclusions",
+      "Rf1086ArchiveQuery",
+      "Rf1086ArchiveSnapshot"
     ],
     "events": [],
     "errors": [
@@ -141,6 +143,8 @@
       "Rf1086ProductionAttemptFact",
       "Rf1086CorrectionLink",
       "Rf1086IncidentFact",
+      "Rf1086WarningFact",
+      "Rf1086OutcomeFact",
       "Rf1086PreparationPersistence",
       "rf1086_payload_utf8_bytes",
       "resume_production_operation",
@@ -184,7 +188,8 @@
     "storageBuckets": [],
     "projections": [
       "Rf1086WorkspaceSnapshot",
-      "Rf1086SourceFacts"
+      "Rf1086SourceFacts",
+      "Rf1086ArchiveSnapshot"
     ],
     "migrations": "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql; supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql; supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql"
   },
@@ -285,7 +290,9 @@
     "offline": "apps/backend/tests/test_rf1086_offline_equivalence.py",
     "cli": "apps/backend/tests/test_rf1086_cli_equivalence.py",
     "postgresAdapter": "apps/backend/tests/test_postgres_shareholder_register_filing.py",
-    "database": "apps/backend/tests/test_rf1086_database_runtime.py"
+    "database": "apps/backend/tests/test_rf1086_database_runtime.py",
+    "lifecycle": "apps/backend/tests/test_shareholder_register_filing_lifecycle.py",
+    "archiveSource": "apps/backend/tests/test_rf1086_archive_source.py"
   },
   "compatibilityExceptions": []
 }

@@ -13,7 +13,7 @@ from talli_backend.main import create_app
 from talli_backend.modules.shareholder_register_filing.public import (
     OpeningSnapshotId, Rf1086ApprovalBasis, Rf1086ApprovalRecord, Rf1086FeedbackArtifactRecord,
     Rf1086OpeningBasis, Rf1086PreviewRecord, Rf1086RecordedResult, Rf1086SimulationBasis, Rf1086SimulationRecord,
-    Rf1086WorkspaceSnapshot, ShareholderRegisterFilingError, parse_rf1086_case,
+    Rf1086ArchiveSnapshot, Rf1086ReviewCommentRecord, Rf1086WorkspaceSnapshot, ShareholderRegisterFilingError, parse_rf1086_case,
 )
 from talli_backend.shared.kernel import CompanyId, IncomeYear
 from test_shareholder_register_filing_production import (
@@ -92,8 +92,19 @@ class PreparationSession(CoordinatorSession):
         self.observed(query)
         return self.record if self.preview_visible else None
 
+    async def archive_source(self, query):
+        self.observed(query)
+        if hasattr(self, "archive_result"):
+            return self.archive_result
+        return Rf1086ArchiveSnapshot(query.company_id, query.income_year,
+            previews=(self.record,) if int(query.income_year) == 2025 else (),
+            review_comments=(Rf1086ReviewCommentRecord(COMMENT, DOCUMENT, COMPANY, "rf1086_preview",
+                "advisory", "Older-year company-wide review", OWNER, None, None, STAMP),))
+
     async def workspace(self, query):
         self.observed(query)
+        if hasattr(self, "workspace_result"):
+            return self.workspace_result
         previews = (self.record, replace(self.record, id=DOCUMENT, income_year=2024))
         if query.income_year is not None:
             previews = tuple(row for row in previews if row.income_year == int(query.income_year))
@@ -290,3 +301,63 @@ def test_workspace_preserves_nested_historical_timestamp_precision(timestamp):
     case["receipt_metadata"]["receivedAt"] = timestamp
     case["submitted_payload_ref"]["storedAt"] = timestamp
     _assert_original_simulation_json_through_workspace(case)
+
+
+@pytest.mark.parametrize("year", [2025, 2024])
+def test_archive_source_preserves_requested_year_and_company_wide_comment_scope(year):
+    api, sessions = setup()
+    response = api.get(BASE + f"/archive-source?companyId={COMPANY}&incomeYear={year}", headers=HEADERS)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["companyId"] == COMPANY and body["incomeYear"] == year
+    assert len(body["previews"]) == (1 if year == 2025 else 0)
+    assert body["reviewComments"][0]["previewId"] == DOCUMENT
+    assert set(body) == {"companyId", "incomeYear", "previews", "simulations", "reviewComments", "permissions", "testEvidence"}
+    assert response.headers["cache-control"] == "no-store"
+    assert sessions.value.commands[0].actor_id == sessions.value.actor_id
+    assert int(sessions.value.commands[0].income_year) == year
+
+
+@pytest.mark.parametrize("query", [f"companyId={COMPANY}", "incomeYear=2025", f"companyId={COMPANY}&incomeYear=1999", "companyId=bad&incomeYear=2025"])
+def test_archive_source_rejects_incomplete_or_invalid_scope_before_session(query):
+    api, sessions = setup()
+    response = api.get(BASE + "/archive-source?" + query, headers=HEADERS)
+    assert response.status_code == 422
+    assert sessions.tokens == []
+
+
+@pytest.mark.parametrize("variant", ["company", "year", "preview_year", "preview_company", "duplicate", "missing_auth"])
+def test_archive_source_cannot_publish_wrong_scope_or_unverified_identity(variant):
+    api, sessions = setup()
+    result = Rf1086ArchiveSnapshot(CompanyId(COMPANY), IncomeYear(2025), previews=(sessions.value.record,))
+    if variant == "company": result = replace(result, company_id=CompanyId(DOCUMENT))
+    if variant == "year": result = replace(result, income_year=IncomeYear(2024))
+    if variant == "preview_year": result = replace(result, previews=(replace(sessions.value.record, income_year=2024),))
+    if variant == "preview_company": result = replace(result, previews=(replace(sessions.value.record, company_id=DOCUMENT),))
+    if variant == "duplicate": result = replace(result, previews=(sessions.value.record, sessions.value.record))
+    sessions.value.archive_result = result
+    response = api.get(BASE + f"/archive-source?companyId={COMPANY}&incomeYear=2025",
+                       headers={} if variant == "missing_auth" else HEADERS)
+    assert response.status_code == (401 if variant == "missing_auth" else 503), response.text
+    assert response.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize("endpoint", ["archive-source", "workspace"])
+def test_rf_read_rejects_malformed_selected_receipt_without_caching_or_exposure(endpoint):
+    _, record = _simulation_workspace_api(SIMULATION_ORACLES[0])
+    sessions = Sessions()
+    snapshot_type = Rf1086ArchiveSnapshot if endpoint == "archive-source" else Rf1086WorkspaceSnapshot
+    result = snapshot_type(
+        CompanyId(record.company_id), IncomeYear(record.income_year),
+        simulations=(replace(record, receipt_metadata={"privateDetail": "must-not-be-exposed"}),),
+    )
+    if endpoint == "archive-source": sessions.value.archive_result = result
+    else: sessions.value.workspace_result = result
+    api = TestClient(create_app(shareholder_register_filing_session_factory=sessions),
+                     raise_server_exceptions=False)
+    response = api.get(BASE + f"/{endpoint}?companyId={record.company_id}&incomeYear={record.income_year}", headers=HEADERS)
+    assert response.status_code == 503, response.text
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["x-request-id"] == HEADERS["X-Request-ID"]
+    assert response.json()["code"] == str(ShareholderRegisterFilingError.unavailable().code)
+    assert "privateDetail" not in response.text and "must-not-be-exposed" not in response.text

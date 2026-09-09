@@ -52,6 +52,7 @@ const ledgerOperations = {
     "ledgerGetReconstructionAssessment",
   ],
   listOpeningSnapshots: ["/api/v1/ledger/opening-snapshots", "get", "ledgerListOpeningSnapshots"],
+  listOpeningSnapshotsForYear: ["/api/v1/ledger/opening-snapshots/by-year", "get", "ledgerListOpeningSnapshotsForYear"],
   listEntries: ["/api/v1/ledger/entries", "get", "ledgerListEntries"],
   listPeriodLocks: ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
   postAdministrativeCost: ["/api/v1/ledger/administrative-costs", "post", "ledgerPostAdministrativeCost"],
@@ -276,6 +277,7 @@ const bankingOperations = {
   ],
 };
 const shareholderRegisterFilingOperations = {
+  archiveSource: ["/api/v1/shareholder-register-filings/archive-source", "get", "rf1086GetArchiveSource"],
   workspace: ["/api/v1/shareholder-register-filings/workspace", "get", "rf1086Workspace"],
   preview: ["/api/v1/shareholder-register-filings/previews/{previewId}", "get", "rf1086Preview"],
   generate: ["/api/v1/shareholder-register-filings/previews", "post", "rf1086GeneratePreview"],
@@ -860,6 +862,7 @@ const shareholderRegisterFilingSchemas = Object.fromEntries([
   "Rf1086FeedbackArtifactWire",
   "Rf1086ActionAvailabilityWire",
   "Rf1086WorkspaceWire",
+  "Rf1086ArchiveSourceWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const authorityConnectionsSchemas = Object.fromEntries([
   "LaunchSignoffKey", "LaunchSignoffStatus", "LaunchSignoffCommandWire", "LaunchSignoffRecordWire", "LaunchSignoffListWire",
@@ -1151,6 +1154,11 @@ export interface LedgerOpeningSnapshotListRequest extends TalliRequestOptions {
   companyIds: readonly string[];
   cursor?: string;
   limit?: number;
+}
+
+export interface LedgerOpeningSnapshotYearRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
 }
 
 export interface LedgerReconstructionRequest extends TalliRequestOptions {
@@ -2471,6 +2479,19 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
+    async ledgerListOpeningSnapshotsForYear(
+      request: LedgerOpeningSnapshotYearRequest,
+    ): Promise<LedgerOpeningSnapshotPageWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/opening-snapshots/by-year?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isLedgerOpeningSnapshotPageWire,
+      );
+    },
+
     async ledgerListPeriodLocks(
       request: LedgerListRequest,
     ): Promise<LedgerPeriodLockPageWire> {
@@ -2714,6 +2735,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async rf1086GetArchiveSource(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<Rf1086ArchiveSourceWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source?" + query,
+        "GET", request, undefined, isRf1086ArchiveSourceWire);
     },
 
     async rf1086Workspace(

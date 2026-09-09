@@ -3266,6 +3266,16 @@ export interface Rf1086WorkspaceWire {
   testEvidence: Rf1086TestEvidenceWire[];
 }
 
+export interface Rf1086ArchiveSourceWire {
+  companyId: string;
+  incomeYear: number;
+  permissions: Rf1086PermissionWire[];
+  previews: Rf1086PreviewWire[];
+  reviewComments: Rf1086ReviewCommentWire[];
+  simulations: Rf1086SimulationWire[];
+  testEvidence: Rf1086TestEvidenceWire[];
+}
+
 export type LaunchSignoffKey = "launch_legal_name_public_copy" | "legal_policy_pack" | "security_restore" | "billing_refund" | "rf1086_authority" | "annual_accounts_authority" | "tax_return_authority" | "support_rollback" | "founder_production_go_live";
 
 export type LaunchSignoffStatus = "approved" | "rejected" | "pending";
@@ -7809,6 +7819,20 @@ function isRf1086WorkspaceWire(value: unknown): value is Rf1086WorkspaceWire {
   );
 }
 
+function isRf1086ArchiveSourceWire(value: unknown): value is Rf1086ArchiveSourceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","permissions","previews","reviewComments","simulations","testEvidence"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    Array.isArray(value.permissions) && value.permissions.every((item) => isRf1086PermissionWire(item)) &&
+    Array.isArray(value.previews) && value.previews.every((item) => isRf1086PreviewWire(item)) &&
+    Array.isArray(value.reviewComments) && value.reviewComments.every((item) => isRf1086ReviewCommentWire(item)) &&
+    Array.isArray(value.simulations) && value.simulations.every((item) => isRf1086SimulationWire(item)) &&
+    Array.isArray(value.testEvidence) && value.testEvidence.every((item) => isRf1086TestEvidenceWire(item))
+  );
+}
+
 function isLaunchSignoffKey(value: unknown): value is LaunchSignoffKey {
   return value === "launch_legal_name_public_copy" || value === "legal_policy_pack" || value === "security_restore" || value === "billing_refund" || value === "rf1086_authority" || value === "annual_accounts_authority" || value === "tax_return_authority" || value === "support_rollback" || value === "founder_production_go_live";
 }
@@ -8129,6 +8153,11 @@ export interface LedgerOpeningSnapshotListRequest extends TalliRequestOptions {
   companyIds: readonly string[];
   cursor?: string;
   limit?: number;
+}
+
+export interface LedgerOpeningSnapshotYearRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
 }
 
 export interface LedgerReconstructionRequest extends TalliRequestOptions {
@@ -9449,6 +9478,19 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
+    async ledgerListOpeningSnapshotsForYear(
+      request: LedgerOpeningSnapshotYearRequest,
+    ): Promise<LedgerOpeningSnapshotPageWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(
+        `${baseUrl}/api/v1/ledger/opening-snapshots/by-year?${query}`,
+        "GET",
+        request,
+        undefined,
+        isLedgerOpeningSnapshotPageWire,
+      );
+    },
+
     async ledgerListPeriodLocks(
       request: LedgerListRequest,
     ): Promise<LedgerPeriodLockPageWire> {
@@ -9692,6 +9734,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async rf1086GetArchiveSource(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<Rf1086ArchiveSourceWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source?" + query,
+        "GET", request, undefined, isRf1086ArchiveSourceWire);
     },
 
     async rf1086Workspace(

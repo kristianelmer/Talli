@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import {
   loadLedgerEntriesForArchive,
   presentLedgerEntriesForArchive,
-  loadOpeningSnapshots,
+  loadOpeningSnapshotsForYear,
   presentOpeningSnapshots,
 } from "../../../../../features/ledger";
 import {
@@ -27,7 +27,7 @@ import {
   listSupportedCorporateEvents,
 } from "../../../../../features/corporate-governance";
 import {
-  loadRf1086Workspaces,
+  loadRf1086ArchiveSource,
   presentRf1086Preview,
   presentRf1086Simulation,
   presentRf1086Permission,
@@ -49,7 +49,7 @@ import {
 
 async function loadArchiveOpeningSnapshots(accessToken: string, companyId: string, incomeYear: number) {
   try {
-    const projection = presentOpeningSnapshots(await loadOpeningSnapshots(accessToken, [companyId]));
+    const projection = presentOpeningSnapshots(await loadOpeningSnapshotsForYear(accessToken, companyId, incomeYear));
     if ([...projection.setups, ...projection.shareholders].some((row) => row.company_id !== companyId)) {
       throw new Error("Opening query escaped the authorized company scope.");
     }
@@ -63,9 +63,8 @@ async function loadArchiveOpeningSnapshots(accessToken: string, companyId: strin
 
 async function loadArchiveRf1086(accessToken: string, companyId: string, incomeYear: number) {
   try {
-    // Comments and permissions were company-wide in the original archive.
-    const [workspace] = await loadRf1086Workspaces(accessToken, [companyId]);
-    if (!workspace) throw new Error("RF archive source unavailable.");
+    // The source keeps company-wide comments/permissions and selects year-bound rows before decoding.
+    const workspace = await loadRf1086ArchiveSource(accessToken, companyId, incomeYear);
     const submissions = workspace.simulations.filter((row) => row.incomeYear === incomeYear).map(presentRf1086Simulation);
     const evidenceIds = new Set(submissions.filter((row) => row.mode === "test_authority")
       .map((row) => row.authority_test_run_id).filter((id): id is string => Boolean(id)));

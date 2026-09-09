@@ -5,6 +5,7 @@
     "added": [
       "Rf1086ActionAvailabilityWire",
       "Rf1086ApprovalWire",
+      "Rf1086ArchiveSourceWire",
       "Rf1086FeedbackArtifactWire",
       "Rf1086GeneratePreviewWire",
       "Rf1086IssueWire",
@@ -34,6 +35,8 @@
   "paths": {
     "changedExisting": [],
     "added": [
+      "/api/v1/ledger/opening-snapshots/by-year",
+      "/api/v1/shareholder-register-filings/archive-source",
       "/api/v1/shareholder-register-filings/filing-permissions",
       "/api/v1/shareholder-register-filings/overrides",
       "/api/v1/shareholder-register-filings/previews",
@@ -47,5 +50,5 @@
     ]
   },
   "originalSha256": "67b0214da353755e12621b268fe5d2fac57de307b833b9760fb2fdafe047ca9c",
-  "candidateSha256": "2fcd69f655787d298e6e7e2c03b09be10b973edc66b30525d4f994c67a32fb37"
+  "candidateSha256": "2cfca140bee4fcf3d88c33c8d6527e16a18f7ca3e851b20a1b115194949cdbd9"
 }

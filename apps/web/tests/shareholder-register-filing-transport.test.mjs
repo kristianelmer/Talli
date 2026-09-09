@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createTalliApiClient, TalliApiError } from "@talli/talli-api-client";
 import {
-  loadRf1086Workspaces, generateRf1086PreviewThroughApi, loadRf1086Preview,
+  loadRf1086Workspaces, loadRf1086ArchiveSource, generateRf1086PreviewThroughApi, loadRf1086Preview,
   presentRf1086Approval, presentRf1086Simulation, rf1086ApiErrorCode,
 } from "../features/shareholder-register-filing/index.ts";
 
@@ -18,6 +18,13 @@ const preview = (companyId = company, incomeYear = 2025) => ({
 const workspace = (companyId = company, incomeYear = null) => ({
   companyId, incomeYear, previews: [preview(companyId, incomeYear ?? 2025)], simulations: [], overrides: [],
   reviewComments: [], permissions: [], testEvidence: [], approvals: [], productionSubmissions: [], feedbackArtifacts: [], actions: [],
+});
+const archiveSource = (incomeYear = 2025) => ({
+  companyId: company, incomeYear, previews: [preview(company, incomeYear)], simulations: [],
+  reviewComments: [{ id: "40000000-0000-4000-8000-000000000005", companyId: company, previewId: setupId,
+    target: "rf1086_preview", severity: "hard_block", body: "Retained older-year review",
+    createdBy: other, acknowledgedBy: null, acknowledgedAt: null, createdAt: "2025-01-01T12:00:00Z" }],
+  permissions: [], testEvidence: [],
 });
 function environment(t) {
   const prior = process.env.TALLI_BACKEND_URL;
@@ -42,6 +49,65 @@ test("retained history reads keep every requested company and all years with aut
   const values = await loadRf1086Workspaces("owner", [company, other, company]);
   assert.deepEqual(calls, [company, other]);
   assert.deepEqual(values.flatMap(value => value.previews.map(row => row.incomeYear)), [2025, 2024, 2025, 2024]);
+});
+
+test("archive source requests exactly one company/year and retains company-wide review facts", async (t) => {
+  environment(t);
+  const calls = [], value = archiveSource();
+  t.mock.method(globalThis, "fetch", async (url, request) => {
+    calls.push({ url: new URL(url), request });
+    return Response.json(value);
+  });
+  assert.deepEqual(await loadRf1086ArchiveSource("owner", company, 2025, "rf-archive-request"), value);
+  assert.equal(calls.length, 1);
+  const { url, request } = calls[0];
+  assert.equal(url.pathname, "/api/v1/shareholder-register-filings/archive-source");
+  assert.deepEqual([...url.searchParams.entries()].sort(), [["companyId", company], ["incomeYear", "2025"]]);
+  assert.equal(request.method, "GET");
+  assert.equal(request.body, undefined);
+  assert.equal(request.cache, "no-store");
+  assert.equal(new Headers(request.headers).get("Authorization"), "Bearer owner");
+  assert.equal(new Headers(request.headers).get("X-Request-ID"), "rf-archive-request");
+  assert.equal(request.signal instanceof AbortSignal, true);
+});
+
+for (const corruption of ["company", "year", "preview-company", "preview-year", "duplicate-preview", "comment-company", "duplicate-comment", "nested-issue", "extra-workspace-field"]) {
+  test(`archive source rejects ${corruption} without silently broadening or dropping evidence`, async (t) => {
+    environment(t);
+    const value = archiveSource();
+    if (corruption === "company") value.companyId = other;
+    if (corruption === "year") value.incomeYear = 2024;
+    if (corruption === "preview-company") value.previews[0].companyId = other;
+    if (corruption === "preview-year") value.previews[0].incomeYear = 2024;
+    if (corruption === "duplicate-preview") value.previews.push(value.previews[0]);
+    if (corruption === "comment-company") value.reviewComments[0].companyId = other;
+    if (corruption === "duplicate-comment") value.reviewComments.push(value.reviewComments[0]);
+    if (corruption === "nested-issue") value.previews[0].issues = [{ level: "warning", message: "Historical issue without code" }];
+    if (corruption === "extra-workspace-field") value.productionSubmissions = [];
+    let calls = 0;
+    t.mock.method(globalThis, "fetch", async () => { calls += 1; return Response.json(value); });
+    await assert.rejects(loadRf1086ArchiveSource("owner", company, 2025), invalidResponse);
+    assert.equal(calls, 1);
+  });
+}
+
+test("year-bound archive decoding does not relax the unchanged all-history workspace decoder", async (t) => {
+  environment(t);
+  const malformed = { ...preview(company, 2024), id: setupId, issues: [{ level: "warning", message: "Original optional-code historical issue" }] };
+  const calls = [];
+  t.mock.method(globalThis, "fetch", async url => {
+    const parsed = new URL(url); calls.push(parsed.pathname);
+    if (parsed.pathname.endsWith("/archive-source")) {
+      const year = Number(parsed.searchParams.get("incomeYear"));
+      return Response.json({ ...archiveSource(year), previews: [year === 2024 ? malformed : preview()] });
+    }
+    assert.equal(parsed.searchParams.has("incomeYear"), false);
+    return Response.json({ ...workspace(), previews: [preview(), malformed] });
+  });
+  assert.equal((await loadRf1086ArchiveSource("owner", company, 2025)).previews[0].incomeYear, 2025);
+  await assert.rejects(loadRf1086ArchiveSource("owner", company, 2024), invalidResponse);
+  await assert.rejects(loadRf1086Workspaces("owner", [company]), invalidResponse);
+  assert.deepEqual(calls, ["/api/v1/shareholder-register-filings/archive-source", "/api/v1/shareholder-register-filings/archive-source", "/api/v1/shareholder-register-filings/workspace"]);
 });
 
 for (const corruption of ["company", "child-company", "duplicate", "year", "invalid-status"]) {

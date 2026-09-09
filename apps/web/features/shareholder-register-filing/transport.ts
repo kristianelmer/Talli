@@ -4,7 +4,7 @@ import {
   type Rf1086ReviewCommentCommandWire, type Rf1086ReviewAcknowledgementWire,
   type Rf1086SimulationCommandWire, type Rf1086PermissionCommandWire,
   type Rf1086TestEvidenceCommandWire, type Rf1086ProductionApprovalCommandWire,
-  type Rf1086RecordedResultWire, type Rf1086WorkspaceWire,
+  type Rf1086RecordedResultWire, type Rf1086WorkspaceWire, type Rf1086ArchiveSourceWire,
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
 
@@ -44,6 +44,21 @@ export async function loadRf1086Workspaces(accessToken: string, companyIds: read
     results.push(scopedWorkspace(await api.rf1086Workspace(companyId, incomeYear, request()), companyId, incomeYear));
   }
   return results;
+}
+
+export async function loadRf1086ArchiveSource(
+  accessToken: string, companyId: string, incomeYear: number, requestId?: string,
+): Promise<Rf1086ArchiveSourceWire> {
+  const value = await client(accessToken).rf1086GetArchiveSource(companyId, incomeYear, { ...request(), requestId });
+  if (value.companyId !== companyId || value.incomeYear !== incomeYear) throw new TalliApiError(502, undefined);
+  for (const rows of [value.previews, value.simulations, value.reviewComments, value.permissions, value.testEvidence]) {
+    if (rows.some((row) => row.companyId !== companyId)
+        || new Set(rows.map((row) => row.id)).size !== rows.length) throw new TalliApiError(502, undefined);
+  }
+  if ([value.previews, value.simulations].some((rows) => rows.some((row) => row.incomeYear !== incomeYear))) {
+    throw new TalliApiError(502, undefined);
+  }
+  return value;
 }
 
 export async function loadRf1086Preview(accessToken: string, previewId: string) {

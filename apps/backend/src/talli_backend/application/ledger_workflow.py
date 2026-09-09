@@ -714,6 +714,21 @@ class LedgerApplicationSession:
             limit=limit,
         )
 
+    async def list_opening_snapshots_for_year(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        correlation_id: CorrelationId,
+    ) -> OpeningSnapshotPage:
+        return await self._persistence.list_opening_snapshots_for_year(
+            actor_id=actor_id,
+            company_id=company_id,
+            income_year=income_year,
+            correlation_id=correlation_id,
+        )
+
 
 class LedgerApplication:
     def __init__(

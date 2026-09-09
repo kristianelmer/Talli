@@ -1,3 +1,4 @@
+-- CONTRACT RELEASE ARTIFACT: #151 shareholder register filing owner cutover.
 -- Run only after both application orders passed and the approved receiver reads are rebound.
 begin;
 set local lock_timeout='5s';
@@ -195,6 +196,54 @@ revoke all on shareholder_register_filing.production_filing_events from postgres
 drop policy rf151_old_function_owner on shareholder_register_filing.production_feedback_artifacts;
 
 revoke all on shareholder_register_filing.production_feedback_artifacts from postgres,legacy_rf1086_executor,authenticated,service_role;
+
+-- The old bank-bearing opening projection is retired only after its readers are rebound.
+-- Surviving generic filing rows retain only the RF-owned opening identity relation.
+do $opening_contract$ declare n text; c record; begin
+ if exists(select 1 from pg_catalog.pg_attribute where attrelid='ledger.entries'::regclass and attname='setup_id' and not attisdropped)
+ then raise exception 'rf1086_opening_contract_requires_ledger_contract'; end if;
+ if (select count(*) from pg_catalog.jsonb_object_keys((select original_opening_schema from shareholder_register_filing.migration_state where singleton)))<>2
+ then raise exception 'rf1086_original_opening_schema_missing'; end if;
+ foreach n in array array['filing_previews','filing_submissions'] loop
+  select * into c from pg_catalog.pg_constraint where conrelid=pg_catalog.to_regclass('public.'||n) and conname=n||'_setup_id_fkey';
+  if not found or c.contype<>'f' or c.confrelid<>'public.opening_balance_setups'::regclass
+    or c.confdeltype<>'r' or c.confupdtype<>'a' or c.condeferrable or not c.convalidated
+  then raise exception 'rf1086_original_incoming_opening_constraint_changed'; end if;
+  execute pg_catalog.format('alter table public.%I drop constraint %I',n,n||'_setup_id_fkey');
+  execute pg_catalog.format('alter table public.%I add constraint %I foreign key(setup_id) references shareholder_register_filing.opening_balance_setups(id) on delete restrict',n,n||'_setup_id_fkey');
+ end loop;
+end; $opening_contract$;
+drop function backend_system.record_opening_snapshot_legacy_v1(uuid,integer,numeric,numeric,integer,numeric,jsonb,text);
+drop function backend_system.list_opening_snapshots_legacy_v1(uuid[],text,integer,text);
+-- Reconcile every original projection row, including quarantined holders, before disposal.
+do $opening_projection_reconciliation$ declare original jsonb; retained jsonb; begin
+ select jsonb_agg(to_jsonb(o) order by id) into original from public.opening_balance_setups o;
+ select jsonb_agg(item order by item->>'id') into retained from (
+  select to_jsonb(o)||jsonb_build_object('bank_balance',b.bank_balance_nok) item
+  from shareholder_register_filing.opening_balance_setups o join ledger.opening_bank_inputs b on b.snapshot_id=o.id
+   and b.company_id=o.company_id and b.income_year=o.income_year and b.recorded_by=o.created_by and b.recorded_at=o.created_at
+  union all select original_row from shareholder_register_filing.migration_quarantine where family='opening_balance_setups') r;
+ if original is distinct from retained then raise exception 'rf1086_opening_projection_reconciliation_failed'; end if;
+ select jsonb_agg(to_jsonb(o) order by id) into original from public.opening_shareholders o;
+ select jsonb_agg(item order by item->>'id') into retained from (
+  select to_jsonb(o) item from shareholder_register_filing.opening_shareholders o
+  union all select original_row from shareholder_register_filing.migration_quarantine where family='opening_shareholders') r;
+ if original is distinct from retained then raise exception 'rf1086_opening_projection_reconciliation_failed'; end if;
+ if exists(select 1 from pg_catalog.pg_trigger where tgrelid in ('public.opening_balance_setups'::regclass,'public.opening_shareholders'::regclass) and not tgisinternal and tgtype & 32 <> 0)
+ then raise exception 'rf1086_unexpected_opening_truncate_trigger'; end if;
+end; $opening_projection_reconciliation$;
+-- TRUNCATE names both original relations and never CASCADEs. Row-level archive triggers do not fire.
+truncate public.opening_shareholders,public.opening_balance_setups;
+do $opening_empty_preflight$ begin
+ if pg_catalog.to_regclass('public.opening_shareholders') is not null
+ and exists(select 1 from public.opening_shareholders)
+ then raise exception 'rf1086_opening_projection_not_empty'; end if;
+ if pg_catalog.to_regclass('public.opening_balance_setups') is not null
+ and exists(select 1 from public.opening_balance_setups)
+ then raise exception 'rf1086_opening_projection_not_empty'; end if;
+end; $opening_empty_preflight$;
+drop table if exists public.opening_shareholders;
+drop table if exists public.opening_balance_setups;
 
 update shareholder_register_filing.migration_state set phase='contracted' where singleton;
 

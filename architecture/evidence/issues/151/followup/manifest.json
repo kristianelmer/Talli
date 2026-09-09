@@ -1,0 +1,35 @@
+{
+  "checkpointRevision": "3e8bf5187d614a3a2d02437f12186d90dbd19078",
+  "state": "working-tree follow-up verification; not a complete immutable gate",
+  "files": {
+    "year-opening-root-tests.log": "ac3b12d56eccec737bce0cac171b7ad594488a3233330ee22762c61228d4694e",
+    "archive-opening-year-web.log": "4201d533253216a9d0eebf0d7e1d42152220a897ea31b9e6eff42bbddd976298",
+    "lifecycle-retained-run2.log": "4bb6bb23217333f9fe8d9c9582bfae8326ed7e67ac3a7ba8e96351ca19370421",
+    "lifecycle-retained-run2.json": "1f0ca96f8829affd60e89be20132fef339bb5688344a83a1974c4fdbadc5f54d",
+    "year-archive-api-green.log": "e4288e030f11e99c5a93c2c799197bf8f93524e33a431648b0d33e72da69770d",
+    "archive-no-store-red.log": "8ffe276377173388479284c235046e2eb3519e70a4f76eb8ad08c9e39355460a",
+    "rf-archive-source-web.log": "9535b3b152f0205338930b6eafac038f7b0f2a576f8c927fb41dbde1296d6f26",
+    "source-facts-integration.log": "2ecbf2d38b3e96c60302b80023af24793e45a1b98724a2e5cfa89df2d1685441",
+    "archive-source-green.log": "70c626e7896c56c692915c6ecd987b92b41c5b74a47a28889c89ce5dd7a72ba1",
+    "source-facts-correction-review.json": "80a9681aa4c1ea6f74f967cd888c0762afc02e95636b0867ac176bec3e06b2a9",
+    "source-facts-correction-repro.jsonl": "6358cbb82b91b2ddb9e19e1cd0575c037fbe0c152bff83f74578e8b136108de9",
+    "rf-read-api-green.log": "07407e2ac03b3fea5b44ed75d35b8dbc5c8bad0a79401ad652b7a40303904eb5",
+    "workspace-no-store-red.log": "56754946166c7752b0e97cb1ad5a8c36d34d69cf57bbf8c44e80e8b0467db208",
+    "workspace-validation-correction-review.json": "02fd1760364dfce8263a4c30aa1c269cd3880b9767831af5af55f940fcb1ee1a",
+    "workspace-validation-correction.json": "7e10daeb17d6f1b02de2c6bffabc65a5dd8892709d04f50e2fd5eacc04b8a055",
+    "combined-runtime-run2.json": "e5f6a4c3ea86ad4c4f4883f3ca3f2a8395d9d5395150df574220a5c3d4e8443e",
+    "combined-runtime-run2.log": "f0b37ce575c903b707b24a6efb8a510cf03c65a2d492b6ffd3264086b37d8fb0",
+    "replay-producer-checks.json": "309a4690f71e066b6c9380d7427c7191ab633169138d93f7a5d8312b145cc613",
+    "followup-backend-boundary.log": "f1eb1446c3e0b1580b7bc5e0a68fefa729636a4c76d1d0075c0acd13e2d8ed16",
+    "followup-credential-scan.log": "ae71d2f328cc156feb3d8bf1d6fabbe24850ef2a85dd00330365c2447443b3a0"
+  },
+  "databaseEvidenceLimit": "lifecycle-retained-run2 is historical intermediate topology; combined-runtime-run2 proves final original opening absence and literal reconstruction in the disposable DB, with source hashes. Neither is an immutable complete gate.",
+  "backendBoundaryResult": {
+    "passed": 2808,
+    "skipped": 2,
+    "deselected": 803,
+    "durationSeconds": 178.67,
+    "selection": "not billing_database and not authority_database",
+    "limit": "Two pre-existing optional checks skipped; mandatory database evidence is the separate104-pass zero-skip receipt."
+  }
+}

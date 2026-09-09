@@ -1,7 +1,7 @@
 # Ledger web feature
 
 <!-- architecture-inventory
-{"apiOperations":["ledgerGetCompanyYearCloseAssessment","ledgerGetReconstructionAssessment","ledgerListEntries","ledgerListOpeningSnapshots","ledgerListPeriodLocks","ledgerLockPeriod","ledgerPostAdministrativeCost","ledgerPostManualJournal","ledgerPostTaxSettlement","ledgerStartNewYear"],"dependencies":[],"publicEntryPoints":["@/features/ledger","apps/web/features/ledger","apps/web/features/ledger/index.ts"],"routes":["/actions/[type]","/workspace","/year-end"]}
+{"apiOperations":["ledgerGetCompanyYearCloseAssessment","ledgerGetReconstructionAssessment","ledgerListEntries","ledgerListOpeningSnapshots","ledgerListOpeningSnapshotsForYear","ledgerListPeriodLocks","ledgerLockPeriod","ledgerPostAdministrativeCost","ledgerPostManualJournal","ledgerPostTaxSettlement","ledgerStartNewYear"],"dependencies":[],"publicEntryPoints":["@/features/ledger","apps/web/features/ledger","apps/web/features/ledger/index.ts"],"routes":["/actions/[type]","/workspace","/year-end"]}
 -->
 
 ## Purpose and boundary
@@ -40,3 +40,5 @@ immutable facts.
 Direct Supabase access to `ledger_entries`, `period_locks`, or ledger RPCs,
 handwritten business DTOs, generated-client deep imports, and direct business
 `fetch` calls are forbidden.
+
+`ledgerListOpeningSnapshotsForYear` carries the existing archive company-year scope into both source owners before validation; unrelated years are not read.
