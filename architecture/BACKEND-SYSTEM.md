@@ -398,8 +398,10 @@ production payments or complete the annual application workflow.
 `AnnualCheckoutPersistence` is registered to
 `talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCheckoutSession`.
 It commits annual purchase/operation claims before external I/O and serializes
-settlement against the latest locked purchase and operation. Readiness defaults
-to unavailable; no annual HTTP/runtime composition is enabled by this adapter.
+settlement against the latest locked purchase and operation. Authenticated annual
+HTTP checkout and original-intent recovery are composed through the application;
+trusted readiness and the provider remain unavailable by default. Final
+source-backed acquisition follows #149/#208 under the approved #192 split.
 
 <!-- architecture-inventory
 {"ports":["AnnualCheckoutPersistence"],"adapterBindings":["AnnualCheckoutPersistence=>talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCheckoutSession"],"adapterBindingOwners":["AnnualCheckoutPersistence=>backend-system"],"adapterBindingModes":["AnnualCheckoutPersistence=>restricted verified-actor PostgreSQL original-intent claims and settlement; trusted readiness unavailable until #149/#208 and final #192"]}
@@ -407,8 +409,9 @@ to unavailable; no annual HTTP/runtime composition is enabled by this adapter.
 
 `AnnualCancellationPersistence` is registered to
 `talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCancellationSession`.
-It records local renewal cancellation before any provider cleanup. HTTP/runtime
-composition, provider cleanup and worker recovery remain pending.
+It records local renewal cancellation before any provider cleanup. Authenticated
+HTTP/runtime composition and receipt-bound cleanup/recovery are implemented.
+Automatic source-backed renewal/cleanup processing remains deferred to final #192.
 
 <!-- architecture-inventory
 {"ports":["AnnualCancellationPersistence"],"adapterBindings":["AnnualCancellationPersistence=>talli_backend.adapters.postgres_annual_checkout.PostgresAnnualCancellationSession"],"adapterBindingOwners":["AnnualCancellationPersistence=>backend-system"],"adapterBindingModes":["AnnualCancellationPersistence=>verified-owner local renewal cancellation and immutable receipts; source-backed renewal and ordinary entitlement deferred to final #192"]}
@@ -421,8 +424,9 @@ composition, provider cleanup and worker recovery remain pending.
 `talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession`.
 It shares the verified-owner PostgreSQL transaction boundary, locks purchase
 before operations, binds a persisted cancellation receipt, and settles only the
-original cleanup operation. Owner HTTP recovery is composed below; worker and
-support authority remain pending #192.
+original cleanup operation. Owner HTTP recovery is composed below; case-bound
+operator recovery uses its separately declared restricted support port. Automatic
+source-backed cleanup authority remains deferred to final #192.
 
 <!-- architecture-inventory
 {"ports":["AnnualAgreementCleanupPersistence"],"adapterBindings":["AnnualAgreementCleanupPersistence=>talli_backend.adapters.postgres_annual_cleanup.PostgresAnnualCleanupSession"],"adapterBindingOwners":["AnnualAgreementCleanupPersistence=>backend-system"],"adapterBindingModes":["AnnualAgreementCleanupPersistence=>verified-owner receipt-bound original agreement cleanup through authenticated POST; provider absent by default; automatic processing deferred to final #192"]}

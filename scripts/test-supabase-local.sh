@@ -13,6 +13,15 @@ tsconfig_path="apps/web/tsconfig.json"
 tsconfig_snapshot="$(mktemp "${TMPDIR:-/tmp}/talli-tsconfig.XXXXXX")"
 cp -- "$next_env_path" "$next_env_snapshot"
 cp -- "$tsconfig_path" "$tsconfig_snapshot"
+generated_guide_paths=("apps/web/AGENTS.md" "apps/web/CLAUDE.md")
+generated_guide_snapshots=("" "")
+for guide_index in "${!generated_guide_paths[@]}"; do
+  guide_path="${generated_guide_paths[$guide_index]}"
+  if [[ -e "$guide_path" || -L "$guide_path" ]]; then
+    generated_guide_snapshots[$guide_index]="$(mktemp "${TMPDIR:-/tmp}/talli-next-guide.XXXXXX")"
+    cp -- "$guide_path" "${generated_guide_snapshots[$guide_index]}"
+  fi
+done
 
 cleanup() {
   local command_status="$1"
@@ -34,6 +43,24 @@ cleanup() {
       "$tsconfig_path" "$tsconfig_snapshot" >&2
     cleanup_status=1
   fi
+  # Next dev can create these guides in an agent environment. Preserve any
+  # pre-existing file exactly; remove only guides absent before this rehearsal.
+  local guide_index guide_path guide_snapshot
+  for guide_index in "${!generated_guide_paths[@]}"; do
+    guide_path="${generated_guide_paths[$guide_index]}"
+    guide_snapshot="${generated_guide_snapshots[$guide_index]}"
+    if [[ -n "$guide_snapshot" ]]; then
+      if cp -- "$guide_snapshot" "$guide_path"; then
+        unlink "$guide_snapshot" || cleanup_status=1
+      else
+        printf 'Could not restore %s; recovery snapshot preserved at %s\n' \
+          "$guide_path" "$guide_snapshot" >&2
+        cleanup_status=1
+      fi
+    else
+      rm -f -- "$guide_path" || cleanup_status=1
+    fi
+  done
   if [[ "$started_here" == "1" ]]; then
     npm exec -- supabase stop --workdir "$isolated_workdir" --no-backup >/dev/null \
       || cleanup_status=1

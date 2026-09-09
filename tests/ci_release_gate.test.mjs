@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -54,10 +55,16 @@ function initializeTemporaryRepository() {
   return directory;
 }
 
-function createHarnessWorkspace(mode) {
+function createHarnessWorkspace(mode, guideState) {
   const directory = mkdtempSync(join(tmpdir(), "talli-database-harness-test-"));
   const nextEnvPath = join(directory, "apps/web/next-env.d.ts");
   const tsconfigPath = join(directory, "apps/web/tsconfig.json");
+  const guidePaths = ["AGENTS.md", "CLAUDE.md"].map((name) => join(directory, "apps/web", name));
+  const originalGuides = guidePaths.map((_, index) => (
+    guideState === "existing" || (guideState === "mixed" && index === 0)
+      ? Buffer.from(`Original guide ${index}: beholdt\r\n`, "utf8")
+      : null
+  ));
   const binDirectory = join(directory, "bin");
   const snapshotDirectory = join(directory, "snapshots");
   mkdirSync(dirname(nextEnvPath), { recursive: true });
@@ -66,6 +73,9 @@ function createHarnessWorkspace(mode) {
   mkdirSync(snapshotDirectory);
   writeFileSync(nextEnvPath, "original declaration\n");
   writeFileSync(tsconfigPath, "original config\n");
+  guidePaths.forEach((path, index) => {
+    if (originalGuides[index]) writeFileSync(path, originalGuides[index]);
+  });
   writeFileSync(
     join(directory, "scripts/prepare-isolated-supabase-workdir.mjs"),
     "// Test fixture: the npm shim owns the isolated Supabase lifecycle.\n",
@@ -82,11 +92,13 @@ fi
 if [[ "$*" == "run test:browser-owner" ]]; then
   printf 'generated declaration\\n' > apps/web/next-env.d.ts
   printf 'generated config\\n' > apps/web/tsconfig.json
-  if [[ "${mode}" == "command-failure" ]]; then
-    exit 7
-  fi
-  if [[ "${mode}" == "restore-failure" ]]; then
+  printf 'generated agent guide\\n' > apps/web/AGENTS.md
+  printf 'generated Claude guide\\n' > apps/web/CLAUDE.md
+  if [[ "${mode}" == "restore-failure" || "${mode}" == "command-and-restore-failure" ]]; then
     mv apps/web apps/web-displaced
+  fi
+  if [[ "${mode}" == "command-failure" || "${mode}" == "command-and-restore-failure" ]]; then
+    exit 7
   fi
 fi
 `,
@@ -96,6 +108,8 @@ fi
     directory,
     nextEnvPath,
     tsconfigPath,
+    guidePaths,
+    originalGuides,
     snapshotDirectory,
     binDirectory,
   };
@@ -275,8 +289,10 @@ test("local immutable gate normalizes terminal output before recording it", () =
 });
 
 test("database harness restores generated drift and preserves failure semantics", () => {
-  for (const mode of ["success", "command-failure", "restore-failure"]) {
-    const workspace = createHarnessWorkspace(mode);
+  for (const [mode, guideState] of [
+    "success", "command-failure", "restore-failure", "command-and-restore-failure",
+  ].flatMap((mode) => ["absent", "existing", "mixed"].map((guideState) => [mode, guideState]))) {
+    const workspace = createHarnessWorkspace(mode, guideState);
     try {
       const result = run("bash", [fileURLToPath(databaseHarnessPath)], {
         cwd: workspace.directory,
@@ -287,19 +303,27 @@ test("database harness restores generated drift and preserves failure semantics"
         },
       });
 
-      if (mode === "success") {
-        assert.equal(result.status, 0, result.stderr);
+      if (mode === "success" || mode === "command-failure") {
+        assert.equal(result.status, mode === "success" ? 0 : 7, result.stderr);
         assert.equal(readFileSync(workspace.nextEnvPath, "utf8"), "original declaration\n");
         assert.equal(readFileSync(workspace.tsconfigPath, "utf8"), "original config\n");
-        assert.deepEqual(readdirSync(workspace.snapshotDirectory), []);
-      } else if (mode === "command-failure") {
-        assert.equal(result.status, 7, result.stderr);
-        assert.equal(readFileSync(workspace.nextEnvPath, "utf8"), "original declaration\n");
-        assert.equal(readFileSync(workspace.tsconfigPath, "utf8"), "original config\n");
+        workspace.guidePaths.forEach((path, index) => {
+          if (workspace.originalGuides[index]) {
+            assert.deepEqual(readFileSync(path), workspace.originalGuides[index], `${mode}/${guideState}`);
+          } else {
+            assert.equal(existsSync(path), false, `${mode}/${guideState}: remove only newly generated guides`);
+          }
+        });
         assert.deepEqual(readdirSync(workspace.snapshotDirectory), []);
       } else {
-        assert.notEqual(result.status, 0);
-        assert.equal(readdirSync(workspace.snapshotDirectory).length, 2);
+        assert.equal(result.status, mode === "command-and-restore-failure" ? 7 : 1, result.stderr);
+        const snapshots = readdirSync(workspace.snapshotDirectory)
+          .map((name) => readFileSync(join(workspace.snapshotDirectory, name), "utf8"))
+          .sort();
+        assert.deepEqual(snapshots, [
+          "original declaration\n", "original config\n",
+          ...workspace.originalGuides.filter(Boolean).map((bytes) => bytes.toString("utf8")),
+        ].sort(), "failed restoration must retain the original bytes for recovery");
       }
     } finally {
       rmSync(workspace.directory, { recursive: true, force: true });
