@@ -2982,6 +2982,290 @@ export interface LegacyRf1086ReconcileResultWire {
   state: "sent" | "processing" | "accepted" | "rejected" | "action_required" | "unknown" | null;
 }
 
+export interface Rf1086GeneratePreviewWire {
+  companyId: string;
+  openingSnapshotId: string;
+}
+
+export interface Rf1086OverrideCommandWire {
+  fieldTarget: string;
+  newValue: string;
+  oldValue: string;
+  ownerConfirmed: boolean;
+  previewId: string;
+  reason: string;
+  riskLevel: "advisory" | "warning" | "block";
+}
+
+export interface Rf1086ReviewCommentCommandWire {
+  body: string;
+  previewId: string;
+  severity: "advisory" | "hard_block";
+}
+
+export interface Rf1086ReviewAcknowledgementWire {
+  commentId: string;
+}
+
+export interface Rf1086SimulationCommandWire {
+  authorityConfirmed: boolean;
+  previewConfirmed: boolean;
+  previewId: string;
+}
+
+export interface Rf1086PermissionCommandWire {
+  companyId: string;
+  productionEnabled: boolean;
+}
+
+export interface Rf1086TestEvidenceCommandWire {
+  archiveReference: string | null;
+  companyId: string;
+  environment: "test" | "manual_evidence";
+  evidenceUrl: string | null;
+  feedbackSummary: string;
+  payloadHash: string | null;
+  receiptReference: string | null;
+  status: "accepted" | "rejected" | "blocked" | "pending";
+  testReference: string;
+}
+
+export interface Rf1086ProductionApprovalCommandWire {
+  entitlementId: string;
+  previewId: string;
+  realFilingConfirmed: boolean;
+}
+
+export interface Rf1086RecordedResultWire {
+  companyId: string;
+  incomeYear: number | null;
+  recordId: string;
+}
+
+export interface Rf1086IssueWire {
+  code: string;
+  level: string;
+  message: string;
+}
+
+export interface Rf1086PreviewWire {
+  companyId: string;
+  createdAt: string;
+  filing: string;
+  hovedskjemaXml: string | null;
+  id: string;
+  incomeYear: number;
+  issues: Rf1086IssueWire[];
+  preview: string;
+  setupId: string | null;
+  source: string;
+  status: "ready" | "blocked" | "warning";
+  underskjemaXml: Record<string, string>;
+}
+
+export interface Rf1086OverrideWire {
+  companyId: string;
+  createdAt: string;
+  createdBy: string;
+  fieldTarget: string;
+  filing: string;
+  id: string;
+  incomeYear: number;
+  newValue: string;
+  oldValue: string;
+  ownerConfirmedAt: string;
+  ownerConfirmedBy: string;
+  previewId: string | null;
+  reason: string;
+  riskLevel: "advisory" | "warning" | "block";
+}
+
+export interface Rf1086ReviewCommentWire {
+  acknowledgedAt: string | null;
+  acknowledgedBy: string | null;
+  body: string;
+  companyId: string;
+  createdAt: string;
+  createdBy: string;
+  id: string;
+  previewId: string;
+  severity: "advisory" | "hard_block";
+  target: string;
+}
+
+export interface Rf1086PermissionWire {
+  companyId: string;
+  confirmedAt: string;
+  confirmedBy: string;
+  id: string;
+  obligation: "aksjonaerregisteroppgaven";
+  productionEnabled: boolean;
+  submitterUserId: string;
+  updatedAt: string;
+}
+
+export interface Rf1086TestEvidenceWire {
+  archiveReference: string | null;
+  companyId: string;
+  environment: "test" | "manual_evidence";
+  evidenceUrl: string | null;
+  feedbackSummary: string;
+  id: string;
+  obligation: "aksjonaerregisteroppgaven";
+  payloadHash: string | null;
+  receiptReference: string | null;
+  recordedAt: string;
+  recordedBy: string;
+  status: "accepted" | "rejected" | "blocked" | "pending";
+  testReference: string;
+}
+
+export interface Rf1086SimulationCallWire {
+  bodyHash: string;
+  createdAt: string;
+  endpoint: string;
+  idempotencyKey: string | null;
+  status: string;
+}
+
+export interface Rf1086SimulationFeedbackWire {
+  code: string;
+  documentId: string | null;
+  message: string;
+  severity: "accepted" | "error" | "warning";
+}
+
+export interface Rf1086ReceiptMetadataWire {
+  authority: "simulation" | "skatteetaten";
+  feedbackDocumentIds: string[];
+  receiptId: string;
+  receivedAt: string;
+  status: "receipt_stored";
+}
+
+export interface Rf1086SubmittedPayloadReferenceWire {
+  callCount: number;
+  hovedskjemaHash: string | null;
+  payloadHash: string;
+  previewId: string;
+  storedAt: string;
+  underskjemaHashes: Record<string, string>;
+}
+
+export interface Rf1086SubmittedPayloadWire {
+  companyId: string;
+  filing: string;
+  hovedskjemaXml: string | null;
+  incomeYear: number;
+  payloadHash: string;
+  underskjemaXml: Record<string, string>;
+}
+
+export interface Rf1086SimulationWire {
+  adapterMode: "simulation" | "test_authority" | "production";
+  authorityConfirmedAt: string | null;
+  authorityTestRunId: string | null;
+  calls: Rf1086SimulationCallWire[];
+  companyId: string;
+  createdAt: string;
+  feedbackDocumentIds: string[];
+  feedbackItems: Rf1086SimulationFeedbackWire[];
+  filing: string;
+  id: string;
+  idempotencyKey: string | null;
+  incomeYear: number;
+  mode: "simulation" | "test_authority";
+  payloadHash: string | null;
+  previewConfirmedAt: string | null;
+  previewId: string | null;
+  receiptId: string | null;
+  receiptMetadata: Rf1086ReceiptMetadataWire | null;
+  status: string;
+  submittedBy: string | null;
+  submittedPayload: Rf1086SubmittedPayloadWire | null;
+  submittedPayloadRef: Rf1086SubmittedPayloadReferenceWire | null;
+  updatedAt: string;
+}
+
+export interface Rf1086ApprovalWire {
+  adapterVersion: string;
+  approvedAt: string;
+  approvedBy: string;
+  caseProfile: "rf1086_no_activity_v1";
+  companyId: string;
+  entitlementId: string;
+  id: string;
+  incomeYear: number;
+  invalidatedAt: string | null;
+  invalidationReason: string | null;
+  manifest: Record<string, unknown>;
+  manifestHash: string;
+  obligation: "aksjonaerregisteroppgaven";
+  payloadHash: string;
+  previewId: string;
+  userId: string;
+}
+
+export interface Rf1086ProductionSubmissionWire {
+  adapterVersion: string;
+  approvalId: string;
+  authorityReferences: Record<string, string>;
+  caseProfile: "rf1086_no_activity_v1";
+  companyId: string;
+  createdAt: string;
+  entitlementId: string;
+  environment: "production";
+  failureClass: string | null;
+  feedbackArtifactCount: number;
+  feedbackCorrelationId: string | null;
+  feedbackLastChangedAt: string | null;
+  feedbackLastCheckedAt: string | null;
+  feedbackSafeErrorCode: string | null;
+  feedbackState: "sent" | "processing" | "accepted" | "rejected" | "action_required" | "unknown";
+  id: string;
+  incomeYear: number;
+  obligation: "aksjonaerregisteroppgaven";
+  payloadHash: string;
+  status: "approved" | "sending" | "received" | "processing" | "accepted" | "rejected" | "action_required" | "unknown";
+  submittedBy: string;
+  supersedesSubmissionId: string | null;
+  updatedAt: string;
+  userId: string;
+}
+
+export interface Rf1086FeedbackArtifactWire {
+  byteLength: number;
+  classification: "accepted" | "rejected" | "action_required";
+  companyId: string;
+  contentType: "application/xml" | "text/xml" | "application/pdf" | "text/plain" | "application/octet-stream";
+  documentId: string;
+  id: string;
+  retrievedAt: string;
+  sha256: string;
+  submissionId: string;
+}
+
+export interface Rf1086ActionAvailabilityWire {
+  action: string;
+  allowed: boolean;
+  reasonCode: string | null;
+}
+
+export interface Rf1086WorkspaceWire {
+  actions: Rf1086ActionAvailabilityWire[];
+  approvals: Rf1086ApprovalWire[];
+  companyId: string;
+  feedbackArtifacts: Rf1086FeedbackArtifactWire[];
+  incomeYear: number | null;
+  overrides: Rf1086OverrideWire[];
+  permissions: Rf1086PermissionWire[];
+  previews: Rf1086PreviewWire[];
+  productionSubmissions: Rf1086ProductionSubmissionWire[];
+  reviewComments: Rf1086ReviewCommentWire[];
+  simulations: Rf1086SimulationWire[];
+  testEvidence: Rf1086TestEvidenceWire[];
+}
+
 export type LaunchSignoffKey = "launch_legal_name_public_copy" | "legal_policy_pack" | "security_restore" | "billing_refund" | "rf1086_authority" | "annual_accounts_authority" | "tax_return_authority" | "support_rollback" | "founder_production_go_live";
 
 export type LaunchSignoffStatus = "approved" | "rejected" | "pending";
@@ -7137,6 +7421,394 @@ function isLegacyRf1086ReconcileResultWire(value: unknown): value is LegacyRf108
   );
 }
 
+function isRf1086GeneratePreviewWire(value: unknown): value is Rf1086GeneratePreviewWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","openingSnapshotId"]) &&
+    isUuid(value.companyId) &&
+    isUuid(value.openingSnapshotId)
+  );
+}
+
+function isRf1086OverrideCommandWire(value: unknown): value is Rf1086OverrideCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["fieldTarget","newValue","oldValue","ownerConfirmed","previewId","reason","riskLevel"]) &&
+    typeof value.fieldTarget === "string" &&
+    typeof value.newValue === "string" &&
+    typeof value.oldValue === "string" &&
+    typeof value.ownerConfirmed === "boolean" &&
+    isUuid(value.previewId) &&
+    typeof value.reason === "string" &&
+    (value.riskLevel === "advisory" || value.riskLevel === "warning" || value.riskLevel === "block")
+  );
+}
+
+function isRf1086ReviewCommentCommandWire(value: unknown): value is Rf1086ReviewCommentCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["body","previewId","severity"]) &&
+    typeof value.body === "string" &&
+    isUuid(value.previewId) &&
+    (value.severity === "advisory" || value.severity === "hard_block")
+  );
+}
+
+function isRf1086ReviewAcknowledgementWire(value: unknown): value is Rf1086ReviewAcknowledgementWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["commentId"]) &&
+    isUuid(value.commentId)
+  );
+}
+
+function isRf1086SimulationCommandWire(value: unknown): value is Rf1086SimulationCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["authorityConfirmed","previewConfirmed","previewId"]) &&
+    typeof value.authorityConfirmed === "boolean" &&
+    typeof value.previewConfirmed === "boolean" &&
+    isUuid(value.previewId)
+  );
+}
+
+function isRf1086PermissionCommandWire(value: unknown): value is Rf1086PermissionCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","productionEnabled"]) &&
+    isUuid(value.companyId) &&
+    typeof value.productionEnabled === "boolean"
+  );
+}
+
+function isRf1086TestEvidenceCommandWire(value: unknown): value is Rf1086TestEvidenceCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["archiveReference","companyId","environment","evidenceUrl","feedbackSummary","payloadHash","receiptReference","status","testReference"]) &&
+    (typeof value.archiveReference === "string" || value.archiveReference === null) &&
+    isUuid(value.companyId) &&
+    (value.environment === "test" || value.environment === "manual_evidence") &&
+    (typeof value.evidenceUrl === "string" || value.evidenceUrl === null) &&
+    typeof value.feedbackSummary === "string" &&
+    (typeof value.payloadHash === "string" || value.payloadHash === null) &&
+    (typeof value.receiptReference === "string" || value.receiptReference === null) &&
+    (value.status === "accepted" || value.status === "rejected" || value.status === "blocked" || value.status === "pending") &&
+    typeof value.testReference === "string"
+  );
+}
+
+function isRf1086ProductionApprovalCommandWire(value: unknown): value is Rf1086ProductionApprovalCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["entitlementId","previewId","realFilingConfirmed"]) &&
+    isUuid(value.entitlementId) &&
+    isUuid(value.previewId) &&
+    typeof value.realFilingConfirmed === "boolean"
+  );
+}
+
+function isRf1086RecordedResultWire(value: unknown): value is Rf1086RecordedResultWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","recordId"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) || value.incomeYear === null) &&
+    isUuid(value.recordId)
+  );
+}
+
+function isRf1086IssueWire(value: unknown): value is Rf1086IssueWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["code","level","message"]) &&
+    typeof value.code === "string" &&
+    typeof value.level === "string" &&
+    typeof value.message === "string"
+  );
+}
+
+function isRf1086PreviewWire(value: unknown): value is Rf1086PreviewWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","createdAt","filing","hovedskjemaXml","id","incomeYear","issues","preview","setupId","source","status","underskjemaXml"]) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    typeof value.filing === "string" &&
+    (typeof value.hovedskjemaXml === "string" || value.hovedskjemaXml === null) &&
+    isUuid(value.id) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    Array.isArray(value.issues) && value.issues.every((item) => isRf1086IssueWire(item)) &&
+    typeof value.preview === "string" &&
+    (isUuid(value.setupId) || value.setupId === null) &&
+    typeof value.source === "string" &&
+    (value.status === "ready" || value.status === "blocked" || value.status === "warning") &&
+    isRecord(value.underskjemaXml) && Object.values(value.underskjemaXml).every((item) => typeof item === "string")
+  );
+}
+
+function isRf1086OverrideWire(value: unknown): value is Rf1086OverrideWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","createdAt","createdBy","fieldTarget","filing","id","incomeYear","newValue","oldValue","ownerConfirmedAt","ownerConfirmedBy","previewId","reason","riskLevel"]) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    typeof value.fieldTarget === "string" &&
+    typeof value.filing === "string" &&
+    isUuid(value.id) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.newValue === "string" &&
+    typeof value.oldValue === "string" &&
+    isDateTime(value.ownerConfirmedAt) &&
+    isUuid(value.ownerConfirmedBy) &&
+    (isUuid(value.previewId) || value.previewId === null) &&
+    typeof value.reason === "string" &&
+    (value.riskLevel === "advisory" || value.riskLevel === "warning" || value.riskLevel === "block")
+  );
+}
+
+function isRf1086ReviewCommentWire(value: unknown): value is Rf1086ReviewCommentWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["acknowledgedAt","acknowledgedBy","body","companyId","createdAt","createdBy","id","previewId","severity","target"]) &&
+    (isDateTime(value.acknowledgedAt) || value.acknowledgedAt === null) &&
+    (isUuid(value.acknowledgedBy) || value.acknowledgedBy === null) &&
+    typeof value.body === "string" &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    isUuid(value.id) &&
+    isUuid(value.previewId) &&
+    (value.severity === "advisory" || value.severity === "hard_block") &&
+    typeof value.target === "string"
+  );
+}
+
+function isRf1086PermissionWire(value: unknown): value is Rf1086PermissionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","confirmedAt","confirmedBy","id","obligation","productionEnabled","submitterUserId","updatedAt"]) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.confirmedAt) &&
+    isUuid(value.confirmedBy) &&
+    isUuid(value.id) &&
+    value.obligation === "aksjonaerregisteroppgaven" &&
+    typeof value.productionEnabled === "boolean" &&
+    isUuid(value.submitterUserId) &&
+    isDateTime(value.updatedAt)
+  );
+}
+
+function isRf1086TestEvidenceWire(value: unknown): value is Rf1086TestEvidenceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["archiveReference","companyId","environment","evidenceUrl","feedbackSummary","id","obligation","payloadHash","receiptReference","recordedAt","recordedBy","status","testReference"]) &&
+    (typeof value.archiveReference === "string" || value.archiveReference === null) &&
+    isUuid(value.companyId) &&
+    (value.environment === "test" || value.environment === "manual_evidence") &&
+    (typeof value.evidenceUrl === "string" || value.evidenceUrl === null) &&
+    typeof value.feedbackSummary === "string" &&
+    isUuid(value.id) &&
+    value.obligation === "aksjonaerregisteroppgaven" &&
+    (typeof value.payloadHash === "string" || value.payloadHash === null) &&
+    (typeof value.receiptReference === "string" || value.receiptReference === null) &&
+    isDateTime(value.recordedAt) &&
+    isUuid(value.recordedBy) &&
+    (value.status === "accepted" || value.status === "rejected" || value.status === "blocked" || value.status === "pending") &&
+    typeof value.testReference === "string"
+  );
+}
+
+function isRf1086SimulationCallWire(value: unknown): value is Rf1086SimulationCallWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["bodyHash","createdAt","endpoint","idempotencyKey","status"]) &&
+    typeof value.bodyHash === "string" &&
+    isDateTime(value.createdAt) &&
+    typeof value.endpoint === "string" &&
+    (typeof value.idempotencyKey === "string" || value.idempotencyKey === null) &&
+    typeof value.status === "string"
+  );
+}
+
+function isRf1086SimulationFeedbackWire(value: unknown): value is Rf1086SimulationFeedbackWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["code","documentId","message","severity"]) &&
+    typeof value.code === "string" &&
+    (typeof value.documentId === "string" || value.documentId === null) &&
+    typeof value.message === "string" &&
+    (value.severity === "accepted" || value.severity === "error" || value.severity === "warning")
+  );
+}
+
+function isRf1086ReceiptMetadataWire(value: unknown): value is Rf1086ReceiptMetadataWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["authority","feedbackDocumentIds","receiptId","receivedAt","status"]) &&
+    (value.authority === "simulation" || value.authority === "skatteetaten") &&
+    Array.isArray(value.feedbackDocumentIds) && value.feedbackDocumentIds.every((item) => typeof item === "string") &&
+    typeof value.receiptId === "string" &&
+    isDateTime(value.receivedAt) &&
+    value.status === "receipt_stored"
+  );
+}
+
+function isRf1086SubmittedPayloadReferenceWire(value: unknown): value is Rf1086SubmittedPayloadReferenceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["callCount","hovedskjemaHash","payloadHash","previewId","storedAt","underskjemaHashes"]) &&
+    typeof value.callCount === "number" && Number.isInteger(value.callCount) &&
+    (typeof value.hovedskjemaHash === "string" || value.hovedskjemaHash === null) &&
+    typeof value.payloadHash === "string" &&
+    isUuid(value.previewId) &&
+    isDateTime(value.storedAt) &&
+    isRecord(value.underskjemaHashes) && Object.values(value.underskjemaHashes).every((item) => typeof item === "string")
+  );
+}
+
+function isRf1086SubmittedPayloadWire(value: unknown): value is Rf1086SubmittedPayloadWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","filing","hovedskjemaXml","incomeYear","payloadHash","underskjemaXml"]) &&
+    isUuid(value.companyId) &&
+    typeof value.filing === "string" &&
+    (typeof value.hovedskjemaXml === "string" || value.hovedskjemaXml === null) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.payloadHash === "string" &&
+    isRecord(value.underskjemaXml) && Object.values(value.underskjemaXml).every((item) => typeof item === "string")
+  );
+}
+
+function isRf1086SimulationWire(value: unknown): value is Rf1086SimulationWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["adapterMode","authorityConfirmedAt","authorityTestRunId","calls","companyId","createdAt","feedbackDocumentIds","feedbackItems","filing","id","idempotencyKey","incomeYear","mode","payloadHash","previewConfirmedAt","previewId","receiptId","receiptMetadata","status","submittedBy","submittedPayload","submittedPayloadRef","updatedAt"]) &&
+    (value.adapterMode === "simulation" || value.adapterMode === "test_authority" || value.adapterMode === "production") &&
+    (isDateTime(value.authorityConfirmedAt) || value.authorityConfirmedAt === null) &&
+    (isUuid(value.authorityTestRunId) || value.authorityTestRunId === null) &&
+    Array.isArray(value.calls) && value.calls.every((item) => isRf1086SimulationCallWire(item)) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    Array.isArray(value.feedbackDocumentIds) && value.feedbackDocumentIds.every((item) => typeof item === "string") &&
+    Array.isArray(value.feedbackItems) && value.feedbackItems.every((item) => isRf1086SimulationFeedbackWire(item)) &&
+    typeof value.filing === "string" &&
+    isUuid(value.id) &&
+    (typeof value.idempotencyKey === "string" || value.idempotencyKey === null) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    (value.mode === "simulation" || value.mode === "test_authority") &&
+    (typeof value.payloadHash === "string" || value.payloadHash === null) &&
+    (isDateTime(value.previewConfirmedAt) || value.previewConfirmedAt === null) &&
+    (isUuid(value.previewId) || value.previewId === null) &&
+    (typeof value.receiptId === "string" || value.receiptId === null) &&
+    (isRf1086ReceiptMetadataWire(value.receiptMetadata) || value.receiptMetadata === null) &&
+    typeof value.status === "string" &&
+    (isUuid(value.submittedBy) || value.submittedBy === null) &&
+    (isRf1086SubmittedPayloadWire(value.submittedPayload) || value.submittedPayload === null) &&
+    (isRf1086SubmittedPayloadReferenceWire(value.submittedPayloadRef) || value.submittedPayloadRef === null) &&
+    isDateTime(value.updatedAt)
+  );
+}
+
+function isRf1086ApprovalWire(value: unknown): value is Rf1086ApprovalWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["adapterVersion","approvedAt","approvedBy","caseProfile","companyId","entitlementId","id","incomeYear","invalidatedAt","invalidationReason","manifest","manifestHash","obligation","payloadHash","previewId","userId"]) &&
+    typeof value.adapterVersion === "string" &&
+    isDateTime(value.approvedAt) &&
+    isUuid(value.approvedBy) &&
+    value.caseProfile === "rf1086_no_activity_v1" &&
+    isUuid(value.companyId) &&
+    isUuid(value.entitlementId) &&
+    isUuid(value.id) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    (isDateTime(value.invalidatedAt) || value.invalidatedAt === null) &&
+    (typeof value.invalidationReason === "string" || value.invalidationReason === null) &&
+    isRecord(value.manifest) &&
+    typeof value.manifestHash === "string" &&
+    value.obligation === "aksjonaerregisteroppgaven" &&
+    typeof value.payloadHash === "string" &&
+    isUuid(value.previewId) &&
+    isUuid(value.userId)
+  );
+}
+
+function isRf1086ProductionSubmissionWire(value: unknown): value is Rf1086ProductionSubmissionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["adapterVersion","approvalId","authorityReferences","caseProfile","companyId","createdAt","entitlementId","environment","failureClass","feedbackArtifactCount","feedbackCorrelationId","feedbackLastChangedAt","feedbackLastCheckedAt","feedbackSafeErrorCode","feedbackState","id","incomeYear","obligation","payloadHash","status","submittedBy","supersedesSubmissionId","updatedAt","userId"]) &&
+    typeof value.adapterVersion === "string" &&
+    isUuid(value.approvalId) &&
+    isRecord(value.authorityReferences) && Object.values(value.authorityReferences).every((item) => typeof item === "string") &&
+    value.caseProfile === "rf1086_no_activity_v1" &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.entitlementId) &&
+    value.environment === "production" &&
+    (typeof value.failureClass === "string" || value.failureClass === null) &&
+    typeof value.feedbackArtifactCount === "number" && Number.isInteger(value.feedbackArtifactCount) &&
+    (typeof value.feedbackCorrelationId === "string" || value.feedbackCorrelationId === null) &&
+    (isDateTime(value.feedbackLastChangedAt) || value.feedbackLastChangedAt === null) &&
+    (isDateTime(value.feedbackLastCheckedAt) || value.feedbackLastCheckedAt === null) &&
+    (typeof value.feedbackSafeErrorCode === "string" || value.feedbackSafeErrorCode === null) &&
+    (value.feedbackState === "sent" || value.feedbackState === "processing" || value.feedbackState === "accepted" || value.feedbackState === "rejected" || value.feedbackState === "action_required" || value.feedbackState === "unknown") &&
+    isUuid(value.id) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    value.obligation === "aksjonaerregisteroppgaven" &&
+    typeof value.payloadHash === "string" &&
+    (value.status === "approved" || value.status === "sending" || value.status === "received" || value.status === "processing" || value.status === "accepted" || value.status === "rejected" || value.status === "action_required" || value.status === "unknown") &&
+    isUuid(value.submittedBy) &&
+    (isUuid(value.supersedesSubmissionId) || value.supersedesSubmissionId === null) &&
+    isDateTime(value.updatedAt) &&
+    isUuid(value.userId)
+  );
+}
+
+function isRf1086FeedbackArtifactWire(value: unknown): value is Rf1086FeedbackArtifactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["byteLength","classification","companyId","contentType","documentId","id","retrievedAt","sha256","submissionId"]) &&
+    typeof value.byteLength === "number" && Number.isInteger(value.byteLength) &&
+    (value.classification === "accepted" || value.classification === "rejected" || value.classification === "action_required") &&
+    isUuid(value.companyId) &&
+    (value.contentType === "application/xml" || value.contentType === "text/xml" || value.contentType === "application/pdf" || value.contentType === "text/plain" || value.contentType === "application/octet-stream") &&
+    isUuid(value.documentId) &&
+    isUuid(value.id) &&
+    isDateTime(value.retrievedAt) &&
+    typeof value.sha256 === "string" &&
+    isUuid(value.submissionId)
+  );
+}
+
+function isRf1086ActionAvailabilityWire(value: unknown): value is Rf1086ActionAvailabilityWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["action","allowed","reasonCode"]) &&
+    typeof value.action === "string" &&
+    typeof value.allowed === "boolean" &&
+    (typeof value.reasonCode === "string" || value.reasonCode === null)
+  );
+}
+
+function isRf1086WorkspaceWire(value: unknown): value is Rf1086WorkspaceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["actions","approvals","companyId","feedbackArtifacts","incomeYear","overrides","permissions","previews","productionSubmissions","reviewComments","simulations","testEvidence"]) &&
+    Array.isArray(value.actions) && value.actions.every((item) => isRf1086ActionAvailabilityWire(item)) &&
+    Array.isArray(value.approvals) && value.approvals.every((item) => isRf1086ApprovalWire(item)) &&
+    isUuid(value.companyId) &&
+    Array.isArray(value.feedbackArtifacts) && value.feedbackArtifacts.every((item) => isRf1086FeedbackArtifactWire(item)) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) || value.incomeYear === null) &&
+    Array.isArray(value.overrides) && value.overrides.every((item) => isRf1086OverrideWire(item)) &&
+    Array.isArray(value.permissions) && value.permissions.every((item) => isRf1086PermissionWire(item)) &&
+    Array.isArray(value.previews) && value.previews.every((item) => isRf1086PreviewWire(item)) &&
+    Array.isArray(value.productionSubmissions) && value.productionSubmissions.every((item) => isRf1086ProductionSubmissionWire(item)) &&
+    Array.isArray(value.reviewComments) && value.reviewComments.every((item) => isRf1086ReviewCommentWire(item)) &&
+    Array.isArray(value.simulations) && value.simulations.every((item) => isRf1086SimulationWire(item)) &&
+    Array.isArray(value.testEvidence) && value.testEvidence.every((item) => isRf1086TestEvidenceWire(item))
+  );
+}
+
 function isLaunchSignoffKey(value: unknown): value is LaunchSignoffKey {
   return value === "launch_legal_name_public_copy" || value === "legal_policy_pack" || value === "security_restore" || value === "billing_refund" || value === "rf1086_authority" || value === "annual_accounts_authority" || value === "tax_return_authority" || value === "support_rollback" || value === "founder_production_go_live";
 }
@@ -9020,6 +9692,78 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async rf1086Workspace(
+      companyId: string, incomeYear?: number, request: TalliRequestOptions = {},
+    ): Promise<Rf1086WorkspaceWire> {
+      const query = new URLSearchParams({ companyId });
+      if (incomeYear !== undefined) query.set("incomeYear", String(incomeYear));
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/workspace?" + query,
+        "GET", request, undefined, isRf1086WorkspaceWire);
+    },
+
+    async rf1086Preview(
+      previewId: string, request: TalliRequestOptions = {},
+    ): Promise<Rf1086PreviewWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/previews/" + encodeURIComponent(previewId),
+        "GET", request, undefined, isRf1086PreviewWire);
+    },
+
+    async rf1086GeneratePreview(
+      body: Rf1086GeneratePreviewWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/previews",
+        "POST", request, body, isRf1086RecordedResultWire);
+    },
+
+    async rf1086RecordOverride(
+      body: Rf1086OverrideCommandWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/overrides",
+        "POST", request, body, isRf1086RecordedResultWire);
+    },
+
+    async rf1086AddReviewComment(
+      body: Rf1086ReviewCommentCommandWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/review-comments",
+        "POST", request, body, isRf1086RecordedResultWire);
+    },
+
+    async rf1086AcknowledgeReviewComment(
+      body: Rf1086ReviewAcknowledgementWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/review-comment-acknowledgements",
+        "POST", request, body, isRf1086RecordedResultWire);
+    },
+
+    async rf1086ConfirmSimulation(
+      body: Rf1086SimulationCommandWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/simulations",
+        "POST", request, body, isRf1086RecordedResultWire);
+    },
+
+    async rf1086ConfirmFilingPermission(
+      body: Rf1086PermissionCommandWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/filing-permissions",
+        "POST", request, body, isRf1086RecordedResultWire);
+    },
+
+    async rf1086RecordTestEvidence(
+      body: Rf1086TestEvidenceCommandWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/test-evidence",
+        "POST", request, body, isRf1086RecordedResultWire);
+    },
+
+    async rf1086ApproveProduction(
+      body: Rf1086ProductionApprovalCommandWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/production-approvals",
+        "POST", request, body, isRf1086RecordedResultWire);
     },
 
     async legacyRf1086SendApprovedFiling(

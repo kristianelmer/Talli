@@ -16,12 +16,9 @@ from talli_backend.application.ledger_session import (
     LedgerSessionFactory,
     LedgerWorkflowTransaction,
 )
-from talli_backend.application.opening_snapshot_compatibility import (
-    LegacyOpeningSnapshotCursor,
-    LegacyOpeningSnapshotPage,
-)
-from talli_backend.application.shareholder_register_compatibility import (
-    LegacyShareholderRegisterFilingFacade,
+from talli_backend.application.new_year_opening import (
+    OpeningSnapshotCursor,
+    OpeningSnapshotPage,
 )
 from talli_backend.modules.ledger.public import (
     AdministrativeCostCategory,
@@ -61,14 +58,16 @@ from talli_backend.modules.ledger.public import (
     ReconstructionEconomicFactCandidates,
     ReconstructionEconomicFactSnapshot,
     RecordReconstructionAssessmentCommand,
+    RecordOpeningBankInputCommand,
     TaxSettlementKind,
 )
 from talli_backend.modules.shareholder_register_filing.public import (
     OpeningShareholder,
     OpeningSnapshotId,
     RecordOpeningSnapshotCommand,
-    ShareholderRegisterFilingCommands,
+    OpeningSnapshotCommands,
     ShareholderRegisterFilingError,
+    create_opening_snapshot_service,
 )
 from talli_backend.shared.kernel import (
     ActorId,
@@ -420,7 +419,7 @@ class LedgerFacade(LedgerCommands, LedgerQueries, Protocol):
 
 LedgerFacadeFactory = Callable[[LedgerPersistence], LedgerFacade]
 OpeningSnapshotFacadeFactory = Callable[
-    [LedgerWorkflowTransaction, Money], ShareholderRegisterFilingCommands
+    [LedgerWorkflowTransaction], OpeningSnapshotCommands
 ]
 
 
@@ -474,9 +473,17 @@ class LedgerApplicationSession:
 
             setup_id = await self._opening_snapshot_factory(
                 transaction,
-                command.bank_balance,
             ).record_opening_snapshot(_opening_snapshot_command(command))
             ledger = self._facade_factory(transaction)
+            await ledger.record_opening_bank_input(RecordOpeningBankInputCommand(
+                company_id=command.company_id,
+                actor_id=command.actor_id,
+                correlation_id=command.correlation_id,
+                idempotency_key=command.idempotency_key,
+                income_year=command.income_year,
+                snapshot_id=str(setup_id),
+                bank_balance=command.bank_balance,
+            ))
             if command.opening_mode is OpeningPositionMode.NEW_COMPANY:
                 opening_command = _new_company_opening_command(command, setup_id)
             else:
@@ -696,9 +703,9 @@ class LedgerApplicationSession:
         actor_id: ActorId,
         company_ids: tuple[CompanyId, ...],
         correlation_id: CorrelationId,
-        cursor: LegacyOpeningSnapshotCursor | None,
+        cursor: OpeningSnapshotCursor | None,
         limit: int,
-    ) -> LegacyOpeningSnapshotPage:
+    ) -> OpeningSnapshotPage:
         return await self._persistence.list_opening_snapshots(
             actor_id=actor_id,
             company_ids=company_ids,
@@ -714,7 +721,7 @@ class LedgerApplication:
         sessions: LedgerSessionFactory,
         facade_factory: LedgerFacadeFactory,
         opening_snapshot_factory: OpeningSnapshotFacadeFactory = (
-            LegacyShareholderRegisterFilingFacade
+            create_opening_snapshot_service
         ),
     ) -> None:
         self._sessions = sessions

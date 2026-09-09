@@ -749,6 +749,48 @@ class LedgerCommand:
 
 
 @dataclass(frozen=True, slots=True)
+class RecordOpeningBankInputCommand(LedgerCommand):
+    """Retain the original bank input alongside the atomic new-year posting."""
+
+    snapshot_id: str
+    bank_balance: Money
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "snapshot_id", _opaque_uuid(self.snapshot_id, "opening source id"))
+        if (
+            not isinstance(self.bank_balance, Money)
+            or self.bank_balance.currency != "NOK"
+            or self.bank_balance.amount < 0
+        ):
+            raise LedgerError.invalid_input("LEDGER_OPENING_BALANCE_INVALID")
+
+
+@dataclass(frozen=True, slots=True)
+class OpeningBankInput:
+    """Exact recorded input, independent of current balances and RF share facts."""
+
+    snapshot_id: str
+    company_id: CompanyId
+    income_year: IncomeYear
+    bank_balance: Money
+    recorded_by: ActorId
+    recorded_at: Timestamp
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "snapshot_id", _opaque_uuid(self.snapshot_id, "opening source id"))
+        if (
+            not isinstance(self.company_id, CompanyId)
+            or not isinstance(self.income_year, IncomeYear)
+            or not isinstance(self.bank_balance, Money)
+            or self.bank_balance.currency != "NOK"
+            or self.bank_balance.amount < 0
+            or not isinstance(self.recorded_by, ActorId)
+            or not isinstance(self.recorded_at, Timestamp)
+        ):
+            raise ValueError("invalid opening bank input")
+
+
+@dataclass(frozen=True, slots=True)
 class RecognizeHoldingActionCommand(LedgerCommand):
     event_date: LocalDate
     primary_source: LedgerFactReference
@@ -1585,6 +1627,19 @@ class LedgerError(DomainError):
 
 
 class LedgerPersistence(Protocol):
+    async def record_opening_bank_input(
+        self, command: RecordOpeningBankInputCommand
+    ) -> OpeningBankInput: ...
+
+    async def read_opening_bank_inputs(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear | None,
+        correlation_id: CorrelationId,
+    ) -> tuple[OpeningBankInput, ...]: ...
+
     async def get_company_year_close_assessment(
         self,
         *,
@@ -1824,6 +1879,10 @@ def ledger_persistence_adapter(
 
 
 class LedgerCommands(Protocol):
+    async def record_opening_bank_input(
+        self, command: RecordOpeningBankInputCommand
+    ) -> OpeningBankInput: ...
+
     async def close_company_year(
         self, command: CloseCompanyYearCommand
     ) -> CompanyYearCloseAssessment: ...
@@ -1896,6 +1955,15 @@ class LedgerCommands(Protocol):
 
 
 class LedgerQueries(Protocol):
+    async def read_opening_bank_inputs(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear | None,
+        correlation_id: CorrelationId,
+    ) -> tuple[OpeningBankInput, ...]: ...
+
     async def get_reconstruction_economic_facts(
         self,
         *,
@@ -1954,6 +2022,8 @@ class LedgerQueries(Protocol):
 
 
 __all__ = [
+    "OpeningBankInput",
+    "RecordOpeningBankInputCommand",
     "AdministrativeCostBlock",
     "AdministrativeCostCategory",
     "AdministrativeCostCorrectionFacts",

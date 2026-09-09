@@ -121,7 +121,7 @@
     },
     {
       "name": "new-year-start",
-      "purpose": "Coordinates the frozen shareholder-register opening snapshot and ledger opening posting through their public contracts in one backend-owned transaction.",
+      "purpose": "Coordinates RF-owned opening shareholder facts, the original Ledger bank input and Ledger opening posting in one backend-owned transaction with the same snapshot identity and whole-workflow replay.",
       "publicPackages": [
         "talli_backend.modules.ledger.public",
         "talli_backend.modules.shareholder_register_filing.public"
@@ -225,7 +225,7 @@
     },
     {
       "name": "ledger-posting-and-period-control",
-      "purpose": "Authenticates one verified actor and runs intent-specific narrow-ledger posting, immutable source-owned full-year reconstruction and company-year close assessment, cross-capability writer coordination, deterministic cursor queries, the frozen opening-snapshot compatibility read, and compatibility locking without changing a future capability contract.",
+      "purpose": "Authenticates one verified actor and runs intent-specific narrow-ledger posting, immutable source-owned full-year reconstruction and company-year close assessment, cross-capability writer coordination, deterministic cursor queries, the composed RF/Ledger opening-snapshot read, and compatibility locking through declared public contracts.",
       "publicPackages": [
         "talli_backend.modules.ledger.public"
       ],
@@ -365,16 +365,27 @@
       ]
     },
     {
-      "name": "legacy-rf1086-authority-relocation",
-      "purpose": "Runs only the two owner-approved frozen RF send and historical feedback coordinators through verified backend sessions, original RF journals and published Billing, Company Access and Documents contracts; RF ownership remains frozen until #151.",
+      "name": "shareholder-register-filing",
+      "purpose": "Runs authenticated RF preview, review, confirmation, simulation, approval and retained production history through the canonical RF public package; preserves exact owner/MFA/Billing/connection/release gates and the two shipped Send/recovery HTTP contracts.",
       "publicPackages": [
         "talli_backend.modules.billing.public",
         "talli_backend.modules.company_access.public",
-        "talli_backend.modules.documents.public"
+        "talli_backend.modules.documents.public",
+        "talli_backend.modules.shareholder_register_filing.public"
       ],
       "routes": [
         "/api/v1/legacy-rf1086/production-filings",
-        "/api/v1/legacy-rf1086/feedback-reconciliations"
+        "/api/v1/legacy-rf1086/feedback-reconciliations",
+        "/api/v1/shareholder-register-filings/workspace",
+        "/api/v1/shareholder-register-filings/previews/{previewId}",
+        "/api/v1/shareholder-register-filings/previews",
+        "/api/v1/shareholder-register-filings/overrides",
+        "/api/v1/shareholder-register-filings/review-comments",
+        "/api/v1/shareholder-register-filings/review-comment-acknowledgements",
+        "/api/v1/shareholder-register-filings/simulations",
+        "/api/v1/shareholder-register-filings/filing-permissions",
+        "/api/v1/shareholder-register-filings/test-evidence",
+        "/api/v1/shareholder-register-filings/production-approvals"
       ]
     }
   ],
@@ -395,8 +406,8 @@
     "tables": [
       "annual_notification_inbox.receipts",
       "backend_system.annual_checkout_observation_work",
+      "backend_system.authority_connections_overlap_grants",
       "backend_system.banking_command_receipts",
-      "billing.billing_command_receipts",
       "backend_system.banking_migration_reconciliations",
       "backend_system.banking_migration_runs",
       "backend_system.banking_migration_source_rows",
@@ -416,10 +427,13 @@
       "backend_system.validation_pilot_entitlements",
       "backend_system.validation_reviewers",
       "backend_system.validation_runs",
+      "billing.billing_command_receipts",
       "public.company_access_command_receipts",
       "public.launch_signoffs",
       "public.notification_outbox",
-      "backend_system.authority_connections_overlap_grants"
+      "shareholder_register_filing.migration_inventory",
+      "shareholder_register_filing.migration_quarantine",
+      "shareholder_register_filing.migration_state"
     ],
     "migrations": [
       "supabase/migrations/20260906204352_annual_notification_receipts.sql",
@@ -694,6 +708,42 @@
       "adapter": "talli_backend.adapters.altinn_authority_operations.AltinnAuthorityOperationsAdapter",
       "owner": "backend-system",
       "mode": "two fixed production-off-by-default operations, read before write and bounded readback"
+    },
+    {
+      "port": "OpeningSnapshotPersistence",
+      "adapter": "talli_backend.adapters.supabase_ledger.SupabaseLedgerWorkflowTransaction",
+      "owner": "backend-system",
+      "mode": "verified request-scoped RF capability binding"
+    },
+    {
+      "port": "Rf1086PreparationPersistence",
+      "adapter": "talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession",
+      "owner": "backend-system",
+      "mode": "verified request-scoped RF capability binding"
+    },
+    {
+      "port": "ProductionOperationJournal",
+      "adapter": "talli_backend.adapters.postgres_shareholder_register_filing._OperationJournal",
+      "owner": "backend-system",
+      "mode": "verified request-scoped RF capability binding"
+    },
+    {
+      "port": "Rf1086ProductionJournal",
+      "adapter": "talli_backend.adapters.postgres_shareholder_register_filing._FeedbackJournal",
+      "owner": "backend-system",
+      "mode": "verified request-scoped RF capability binding"
+    },
+    {
+      "port": "Rf1086ReadOnlyAuthority",
+      "adapter": "talli_backend.adapters.rf1086_authority.Rf1086ReadOnlyAuthorityAdapter",
+      "owner": "backend-system",
+      "mode": "verified request-scoped RF capability binding"
+    },
+    {
+      "port": "Rf1086MutationAuthority",
+      "adapter": "talli_backend.adapters.rf1086_authority.Rf1086AuthorityAdapter",
+      "owner": "backend-system",
+      "mode": "verified request-scoped RF capability binding"
     }
   ],
   "allowedDependencies": {
@@ -720,7 +770,7 @@
       "talli_backend.adapters.brreg_company_registry",
       "talli_backend.adapters.postgres_authority_connections",
       "talli_backend.adapters.postgres_launch_signoffs",
-      "talli_backend.adapters.postgres_legacy_rf1086_authority",
+      "talli_backend.adapters.postgres_shareholder_register_filing",
       "talli_backend.adapters.simulation_billing",
       "talli_backend.adapters.supabase_annual_billing",
       "talli_backend.adapters.supabase_banking",
@@ -745,8 +795,9 @@
       "talli_backend.application.investments_workflow",
       "talli_backend.application.launch_signoffs",
       "talli_backend.application.ledger_workflow",
-      "talli_backend.application.opening_snapshot_compatibility",
-      "talli_backend.compatibility.rf1086_authority_workflow",
+      "talli_backend.application.new_year_opening",
+      "talli_backend.application.shareholder_register_filing_session",
+      "talli_backend.application.shareholder_register_filing_workflow",
       "talli_backend.modules.authority_connections.public",
       "talli_backend.modules.banking.public",
       "talli_backend.modules.billing.public",
@@ -769,8 +820,8 @@
       "talli_backend.application.annual_checkout_prerequisites",
       "talli_backend.application.annual_data_compatibility",
       "talli_backend.application.authority_connections_session",
-      "talli_backend.application.opening_snapshot_compatibility",
-      "talli_backend.compatibility.rf1086_authority_workflow",
+      "talli_backend.application.new_year_opening",
+      "talli_backend.application.shareholder_register_filing_session",
       "talli_backend.modules.authority_connections.operations",
       "talli_backend.modules.authority_connections.public",
       "talli_backend.modules.authority_connections.service",
@@ -834,8 +885,8 @@
       "talli_backend.application.launch_signoffs",
       "talli_backend.application.ledger_session",
       "talli_backend.application.ledger_workflow",
-      "talli_backend.application.opening_snapshot_compatibility",
-      "talli_backend.compatibility.rf1086_authority_workflow",
+      "talli_backend.application.new_year_opening",
+      "talli_backend.application.shareholder_register_filing_session",
       "talli_backend.modules.authority_connections.public",
       "talli_backend.modules.banking.public",
       "talli_backend.modules.billing.public",

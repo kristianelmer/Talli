@@ -13,7 +13,7 @@ import pytest
 
 from test_authority_tool_grant import grant_environment
 from talli_backend.authority_tools import rf1086_test as tool
-from talli_backend.compatibility.rf1086_authority_workflow import Rf1086AuthorityError
+from talli_backend.modules.shareholder_register_filing.public import Rf1086AuthorityError
 
 ROOT = Path(__file__).resolve().parents[3]
 MAIN_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
@@ -38,13 +38,14 @@ def fake_xml(monkeypatch):
     calls = []
     main = "<?xml version=\"1.0\"?>\r\n<Skjema>Å</Skjema>\r\n"
     under = "<Skjema>ø</Skjema>\r\n"
-    def generate(args, environment):
-        calls.append(args)
-        if args[0] == "simulate-aksjonaerregister":
-            output = Path(args[args.index("--out") + 1])
-            (output / "1086H.xml").write_bytes(main.encode())
-            (output / "1086U-founder.xml").write_bytes(under.encode())
-    monkeypatch.setattr(tool, "_run_python", generate)
+    def generate(raw_case, output):
+        calls.append(("generate", raw_case))
+        (output / "1086H.xml").write_bytes(main.encode())
+        (output / "1086U-founder.xml").write_bytes(under.encode())
+    def validate(main_path, under_paths, environment):
+        calls.append(("validate", main_path, tuple(under_paths)))
+    monkeypatch.setattr(tool, "_generate_xml", generate)
+    monkeypatch.setattr(tool, "_validate_xml", validate)
     return calls, main, under
 
 
@@ -223,7 +224,7 @@ def test_success_response_reflection_is_blocked_before_evidence_or_summary(rf_en
     assert stored["confirmation"] is None and reflected not in json.dumps(stored)
 
 
-def test_actual_holding_cli_generation_preserves_source_xml_bytes(rf_environment, monkeypatch):
+def test_actual_canonical_generation_preserves_source_xml_bytes(rf_environment, monkeypatch):
     monkeypatch.chdir(ROOT)
     summary, calls = execute(rf_environment)
     assert summary["status"] == "accepted"
@@ -233,20 +234,56 @@ def test_actual_holding_cli_generation_preserves_source_xml_bytes(rf_environment
     assert evidence(rf_environment)["payloadHashes"]["hovedskjema"] == hashlib.sha256(calls[1].content).hexdigest()
 
 
-def test_local_generator_subprocess_never_receives_credentials(rf_environment, monkeypatch):
+@pytest.mark.parametrize("name", ["no_activity", "stiftelse", "stiftelse_two_founders"])
+def test_tool_generates_exact_pinned_predecessor_fixture_bytes_before_mock_send(rf_environment, name):
+    vectors = json.loads((Path(__file__).parent / "fixtures/rf1086_oracle/python-oracle.json").read_text())
+    vector = next(row for row in vectors if row["name"] == name)
+    Path(rf_environment["TALLI_RF1086_CASE_PATH"]).write_text(json.dumps(vector["input"]))
+    rf_environment["TALLI_MASKINPORTEN_SYSTEM_USER_ORG"] = vector["input"]["company"]["org_number"]
+    summary, calls = execute(rf_environment)
+    assert summary["status"] == "accepted"
+    assert calls[1].content == vector["output"]["hovedskjemaXml"].encode("utf-8")
+    children = [request.content for request in calls if request.url.path.endswith("/1086U")]
+    expected = vector["output"]["underskjemaXml"]
+    assert children == [expected[key].encode("utf-8") for key in tool._shareholder_write_order(list(expected), rf_environment)]
+
+
+def test_missing_local_xml_validator_stops_before_token_or_existing_evidence_mutation(rf_environment):
+    path = Path(rf_environment["TALLI_RF1086_EVIDENCE_PATH"])
+    path.parent.mkdir(parents=True)
+    original = b'{"private":"existing journal remains unchanged"}\n'
+    path.write_bytes(original)
+    rf_environment["PATH"] = ""
+    with pytest.raises(ValueError, match="Local RF-1086 command failed") as caught:
+        execute(rf_environment)
+    assert caught.value.test_calls == [] and path.read_bytes() == original
+
+
+def test_invalid_generated_xml_cannot_reach_evidence_or_token(rf_environment, monkeypatch):
+    def malformed(_case, output):
+        (output / "1086H.xml").write_bytes(b"<wrong-schema/>")
+        (output / "1086U-founder.xml").write_bytes(b"<wrong-schema/>")
+    monkeypatch.setattr(tool, "_generate_xml", malformed)
+    with pytest.raises(ValueError, match="Local RF-1086 command failed") as caught:
+        execute(rf_environment)
+    assert caught.value.test_calls == []
+    assert not Path(rf_environment["TALLI_RF1086_EVIDENCE_PATH"]).exists()
+
+
+def test_local_xml_validation_subprocess_never_receives_credentials(rf_environment, monkeypatch):
     seen = []
     actual_popen = tool.subprocess.Popen
     def launch(arguments, **kwargs):
         seen.append((arguments, kwargs))
         return actual_popen([sys.executable, "-c", "pass"], **kwargs)
     monkeypatch.setattr(tool.subprocess, "Popen", launch)
-    tool._run_python(["validate-rf1086-xml", "--hovedskjema", "input.xml"], rf_environment | {"NODE_OPTIONS": "private"})
-    assert seen[0][0][1:3] == ["-m", "holding_cli.main"]
+    tool._run_xml_command(["xmllint", "--noout", "--schema", "schema.xsd", "input.xml"], rf_environment | {"NODE_OPTIONS": "private"})
+    assert seen[0][0] == ["xmllint", "--noout", "--schema", "schema.xsd", "input.xml"]
     assert set(seen[0][1]["env"]) <= {"PATH", "LANG", "LC_ALL", "SYSTEMROOT"}
 
 
 @pytest.mark.parametrize("stream", ["stdout", "stderr", "combined"])
-def test_generator_is_killed_and_reaped_when_output_exceeds_eight_mib(rf_environment, tmp_path, monkeypatch, stream):
+def test_xml_validator_is_killed_and_reaped_when_output_exceeds_eight_mib(rf_environment, tmp_path, monkeypatch, stream):
     marker = tmp_path / "should-not-be-reached"
     children = []
     actual_popen = tool.subprocess.Popen
@@ -259,14 +296,14 @@ def test_generator_is_killed_and_reaped_when_output_exceeds_eight_mib(rf_environ
         return process
     monkeypatch.setattr(tool.subprocess, "Popen", launch)
     with pytest.raises(ValueError, match="Local RF-1086 command failed"):
-        tool._run_python(["simulate-aksjonaerregister"], rf_environment)
+        tool._run_xml_command(["xmllint"], rf_environment)
     assert not marker.exists() and len(children) == 1
     assert children[0].returncode is not None and children[0].returncode != 0
     with pytest.raises(ChildProcessError):
         os.waitpid(children[0].pid, os.WNOHANG)
 
 
-def test_generator_accepts_exact_eight_mib_and_reaps_normal_or_failed_exit(rf_environment, tmp_path, monkeypatch):
+def test_xml_validator_accepts_exact_eight_mib_and_reaps_normal_or_failed_exit(rf_environment, tmp_path, monkeypatch):
     marker = tmp_path / "completed"
     actual_popen = tool.subprocess.Popen
     children = []
@@ -277,11 +314,11 @@ def test_generator_accepts_exact_eight_mib_and_reaps_normal_or_failed_exit(rf_en
         children.append(process)
         return process
     monkeypatch.setattr(tool.subprocess, "Popen", launch)
-    tool._run_python(["simulate-aksjonaerregister"], rf_environment)
+    tool._run_xml_command(["xmllint"], rf_environment)
     assert marker.read_text() == "finished" and children[0].returncode == 0
     script = "import sys;sys.stderr.write('private-child-diagnostic');sys.exit(7)"
     with pytest.raises(ValueError) as caught:
-        tool._run_python(["validate-rf1086-xml"], rf_environment)
+        tool._run_xml_command(["xmllint"], rf_environment)
     assert children[1].returncode == 7 and "private" not in str(caught.value)
 
 

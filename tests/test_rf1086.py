@@ -5,22 +5,59 @@ import subprocess
 import tempfile
 import unittest
 import json
+import sys
 from pathlib import Path
 
-from holding_core.models import FilingCase
-from holding_core.rf1086 import filing_preview, generate_rf1086, readiness_report, write_rf1086
-from holding_core.rf1086_codes import (
-    ACQUISITION_PURCHASE_CODE,
-    CodeVerificationStatus,
-    DISPOSAL_SALE_CODE,
-    DIVIDEND_DISTRIBUTION_CODE,
-    FORMATION_STIFTELSE_CODE,
-    production_code_blockers,
-    production_code_blockers_for_case,
-    production_scope_exclusions_for_case,
-    rf1086_code_decisions,
+from talli_backend.modules.shareholder_register_filing.public import (
+    parse_rf1086_case, generate_rf1086_documents as generate_rf1086,
+    render_rf1086_preview, assess_rf1086_readiness, format_rf1086_readiness_report,
+    Rf1086CodeVerificationStatus as CodeVerificationStatus,
+    rf1086_code_decisions, rf1086_production_code_blockers as production_code_blockers,
+    rf1086_production_code_blockers as production_code_blockers_for_case,
+    rf1086_production_scope_exclusions as production_scope_exclusions_for_case,
+    Rf1086ValidationInput, validate_rf1086_cases,
 )
-from holding_core.validation import run_rf1086_validation
+
+# Evidence assertions are independent literal expectations, not a second registry.
+FORMATION_STIFTELSE_CODE = "N"
+ACQUISITION_PURCHASE_CODE = "K"
+DISPOSAL_SALE_CODE = "S"
+DIVIDEND_DISTRIBUTION_CODE = "U"
+
+
+def load_case(path):
+    return parse_rf1086_case(Path(path).read_text(encoding="utf-8"))
+
+
+def filing_preview(case):
+    return render_rf1086_preview(case).preview
+
+
+def readiness_report(case):
+    return format_rf1086_readiness_report(assess_rf1086_readiness(case))
+
+
+def write_rf1086(case, directory):
+    # Test-only file adaptation for the actual official-XSD subprocess proof.
+    documents = generate_rf1086(case)
+    files = [("1086H.xml", documents.hovedskjema_xml),
+        *[(f"1086U-{key}.xml", xml) for key, xml in documents.underskjema_xml.items()]]
+    paths = []
+    for name, xml in files:
+        path = Path(directory) / name
+        path.write_text(xml, encoding="utf-8")
+        paths.append(path)
+    return paths
+
+
+def run_rf1086_validation(paths):
+    inputs = []
+    for path in paths:
+        try:
+            inputs.append(Rf1086ValidationInput(str(path), Path(path).read_text(encoding="utf-8")))
+        except (OSError, ValueError) as error:
+            inputs.append(Rf1086ValidationInput(str(path), None, str(error)))
+    return validate_rf1086_cases(tuple(inputs))
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,7 +71,7 @@ class Rf1086SimulationTest(unittest.TestCase):
     def test_fixture_cases_generate_xml(self) -> None:
         for fixture in sorted(FIXTURE_DIR.glob("*.json")):
             with self.subTest(fixture=fixture.name):
-                case = FilingCase.from_json_file(fixture)
+                case = load_case(fixture)
                 documents = generate_rf1086(case)
 
                 self.assertIn("<Skjema", documents.hovedskjema_xml)
@@ -56,7 +93,7 @@ class Rf1086SimulationTest(unittest.TestCase):
 
         for fixture in sorted(FIXTURE_DIR.glob("*.json")):
             with self.subTest(fixture=fixture.name):
-                case = FilingCase.from_json_file(fixture)
+                case = load_case(fixture)
                 with tempfile.TemporaryDirectory() as temp_dir:
                     paths = write_rf1086(case, temp_dir)
                     hoved = next(path for path in paths if path.name == "1086H.xml")
@@ -75,7 +112,7 @@ class Rf1086SimulationTest(unittest.TestCase):
             fixture = FIXTURE_DIR / "stiftelse.json"
             result = subprocess.run(
                 [
-                    "python3",
+                    sys.executable,
                     "-m",
                     "holding_cli.main",
                     "simulate-aksjonaerregister",
@@ -97,7 +134,7 @@ class Rf1086SimulationTest(unittest.TestCase):
             unders = sorted(str(path) for path in Path(temp_dir).glob("1086U-*.xml"))
             result = subprocess.run(
                 [
-                    "python3",
+                    sys.executable,
                     "-m",
                     "holding_cli.main",
                     "validate-rf1086-xml",
@@ -117,7 +154,7 @@ class Rf1086SimulationTest(unittest.TestCase):
         fixture = FIXTURE_DIR / "dividend.json"
         result = subprocess.run(
             [
-                "python3",
+                sys.executable,
                 "-m",
                 "holding_cli.main",
                 "validate-case",
@@ -140,7 +177,7 @@ class Rf1086SimulationTest(unittest.TestCase):
         fixture = INVALID_FIXTURE_DIR / "mismatched_share_count.json"
         result = subprocess.run(
             [
-                "python3",
+                sys.executable,
                 "-m",
                 "holding_cli.main",
                 "simulate-aksjonaerregister",
@@ -164,7 +201,7 @@ class Rf1086SimulationTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             result = subprocess.run(
                 [
-                    "python3",
+                    sys.executable,
                     "-m",
                     "holding_cli.main",
                     "simulate-aksjonaerregister",
@@ -202,7 +239,7 @@ class Rf1086SimulationTest(unittest.TestCase):
     def test_cli_public_data_validation_json(self) -> None:
         result = subprocess.run(
             [
-                "python3",
+                sys.executable,
                 "-m",
                 "holding_cli.main",
                 "validate-public-data",
@@ -224,7 +261,7 @@ class Rf1086SimulationTest(unittest.TestCase):
         self.assertEqual([case["outcome"] for case in payload["cases"]], ["pass", "blocked"])
 
     def test_formation_allocations_are_per_shareholder(self) -> None:
-        case = FilingCase.from_json_file(FIXTURE_DIR / "stiftelse_two_founders.json")
+        case = load_case(FIXTURE_DIR / "stiftelse_two_founders.json")
         documents = generate_rf1086(case)
 
         founder_a_xml = documents.underskjema_xml["founder_a"]
@@ -254,14 +291,14 @@ class Rf1086SimulationTest(unittest.TestCase):
         self.assertEqual(blockers, set())
 
     def test_generated_xml_uses_central_transaction_code_registry(self) -> None:
-        sale_case = FilingCase.from_json_file(FIXTURE_DIR / "share_sale.json")
+        sale_case = load_case(FIXTURE_DIR / "share_sale.json")
         sale_documents = generate_rf1086(sale_case)
         joined_sale_xml = "\n".join(sale_documents.underskjema_xml.values())
 
         self.assertIn(f">{ACQUISITION_PURCHASE_CODE}</AksjeErvervType-datadef-17745>", joined_sale_xml)
         self.assertIn(f">{DISPOSAL_SALE_CODE}</AksjerArvMvOmsattType-datadef-17753>", joined_sale_xml)
 
-        dividend_case = FilingCase.from_json_file(FIXTURE_DIR / "dividend.json")
+        dividend_case = load_case(FIXTURE_DIR / "dividend.json")
         dividend_documents = generate_rf1086(dividend_case)
 
         self.assertIn(
@@ -270,9 +307,9 @@ class Rf1086SimulationTest(unittest.TestCase):
         )
 
     def test_production_code_blockers_are_case_specific(self) -> None:
-        stiftelse = FilingCase.from_json_file(FIXTURE_DIR / "stiftelse.json")
-        share_sale = FilingCase.from_json_file(FIXTURE_DIR / "share_sale.json")
-        dividend = FilingCase.from_json_file(FIXTURE_DIR / "dividend.json")
+        stiftelse = load_case(FIXTURE_DIR / "stiftelse.json")
+        share_sale = load_case(FIXTURE_DIR / "share_sale.json")
+        dividend = load_case(FIXTURE_DIR / "dividend.json")
 
         self.assertEqual(production_code_blockers_for_case(stiftelse), ())
         self.assertEqual(production_scope_exclusions_for_case(stiftelse), ())

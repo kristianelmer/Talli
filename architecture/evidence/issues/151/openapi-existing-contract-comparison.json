@@ -1,0 +1,51 @@
+{
+  "baseline": "91b178c281bcc5fb887a6257d2f72e380199f3e6",
+  "schemas": {
+    "changedExisting": [],
+    "added": [
+      "Rf1086ActionAvailabilityWire",
+      "Rf1086ApprovalWire",
+      "Rf1086FeedbackArtifactWire",
+      "Rf1086GeneratePreviewWire",
+      "Rf1086IssueWire",
+      "Rf1086OverrideCommandWire",
+      "Rf1086OverrideWire",
+      "Rf1086PermissionCommandWire",
+      "Rf1086PermissionWire",
+      "Rf1086PreviewWire",
+      "Rf1086ProductionApprovalCommandWire",
+      "Rf1086ProductionSubmissionWire",
+      "Rf1086ReceiptMetadataWire",
+      "Rf1086RecordedResultWire",
+      "Rf1086ReviewAcknowledgementWire",
+      "Rf1086ReviewCommentCommandWire",
+      "Rf1086ReviewCommentWire",
+      "Rf1086SimulationCallWire",
+      "Rf1086SimulationCommandWire",
+      "Rf1086SimulationFeedbackWire",
+      "Rf1086SimulationWire",
+      "Rf1086SubmittedPayloadReferenceWire",
+      "Rf1086SubmittedPayloadWire",
+      "Rf1086TestEvidenceCommandWire",
+      "Rf1086TestEvidenceWire",
+      "Rf1086WorkspaceWire"
+    ]
+  },
+  "paths": {
+    "changedExisting": [],
+    "added": [
+      "/api/v1/shareholder-register-filings/filing-permissions",
+      "/api/v1/shareholder-register-filings/overrides",
+      "/api/v1/shareholder-register-filings/previews",
+      "/api/v1/shareholder-register-filings/previews/{previewId}",
+      "/api/v1/shareholder-register-filings/production-approvals",
+      "/api/v1/shareholder-register-filings/review-comment-acknowledgements",
+      "/api/v1/shareholder-register-filings/review-comments",
+      "/api/v1/shareholder-register-filings/simulations",
+      "/api/v1/shareholder-register-filings/test-evidence",
+      "/api/v1/shareholder-register-filings/workspace"
+    ]
+  },
+  "originalSha256": "67b0214da353755e12621b268fe5d2fac57de307b833b9760fb2fdafe047ca9c",
+  "candidateSha256": "2fcd69f655787d298e6e7e2c03b09be10b973edc66b30525d4f994c67a32fb37"
+}

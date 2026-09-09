@@ -56,6 +56,7 @@ from talli_backend.modules.ledger.public import (
     LockPeriodCommand,
     OpeningBalanceCategory,
     OpeningBalanceComponent,
+    OpeningBankInput,
     OpeningBankLoanComponent,
     OpeningCapitalIncreaseComponent,
     OpeningCapitalReductionComponent,
@@ -92,6 +93,7 @@ from talli_backend.modules.ledger.public import (
     ReconstructionGapCode,
     ReconstructionState,
     RecordReconstructionAssessmentCommand,
+    RecordOpeningBankInputCommand,
     ShareholderLoanDirection,
     TaxSettlementKind,
 )
@@ -688,6 +690,44 @@ def _balanced(lines: tuple[LedgerLine, ...], *, permit_zero_line: bool = False) 
 class LedgerService:
     def __init__(self, persistence: LedgerPersistence) -> None:
         self._persistence = persistence
+
+    async def record_opening_bank_input(
+        self, command: RecordOpeningBankInputCommand
+    ) -> OpeningBankInput:
+        recorded = await self._persistence.record_opening_bank_input(command)
+        if (
+            not isinstance(recorded, OpeningBankInput)
+            or recorded.snapshot_id != command.snapshot_id
+            or recorded.company_id != command.company_id
+            or recorded.income_year != command.income_year
+            or recorded.bank_balance != command.bank_balance
+            or recorded.recorded_by != command.actor_id
+        ):
+            raise LedgerError.unavailable()
+        return recorded
+
+    async def read_opening_bank_inputs(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear | None,
+        correlation_id: CorrelationId,
+    ) -> tuple[OpeningBankInput, ...]:
+        rows = await self._persistence.read_opening_bank_inputs(
+            actor_id=actor_id, company_id=company_id,
+            income_year=income_year, correlation_id=correlation_id,
+        )
+        if (
+            not isinstance(rows, tuple)
+            or any(not isinstance(row, OpeningBankInput) for row in rows)
+            or len({row.snapshot_id for row in rows}) != len(rows)
+            or any(row.company_id != company_id or (
+                income_year is not None and row.income_year != income_year
+            ) for row in rows)
+        ):
+            raise LedgerError.unavailable()
+        return rows
 
     async def get_company_year_close_assessment(
         self,

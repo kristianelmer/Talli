@@ -8,6 +8,7 @@ import json
 import math
 import os
 import subprocess
+import shutil
 import sys
 import tempfile
 from collections.abc import Mapping
@@ -17,7 +18,10 @@ from uuid import uuid4
 
 from talli_backend.adapters.rf1086_authority import Rf1086AuthorityAdapter
 from talli_backend.authority_tools._grant import CliGrantConfiguration, request_token, required
-from talli_backend.compatibility.rf1086_authority_workflow import Rf1086AuthorityCall, Rf1086AuthorityError
+from talli_backend.modules.shareholder_register_filing.public import (
+    Rf1086AuthorityCall, Rf1086AuthorityError, assess_rf1086_readiness,
+    generate_rf1086_documents, parse_rf1086_case, rf1086_xml_schema,
+)
 
 RF1086_SCOPE = "skatteetaten:innrapporteringaksjonaerregisteroppgave"
 
@@ -74,28 +78,52 @@ def _write_json(path: Path, value: dict) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def _run_python(arguments: list[str], environment: Mapping[str, str]) -> None:
-    configured = environment.get("TALLI_PYTHON_BIN", "").strip()
-    candidates = (Path.cwd() / ".venv/bin/python", Path.cwd() / ".venv/Scripts/python.exe")
-    binary = configured or next((str(path) for path in candidates if path.exists()), sys.executable)
-    # Statutory generation is unchanged; the subprocess receives no credentials.
+def _generate_xml(raw_case: object, output: Path) -> None:
+    case = parse_rf1086_case(raw_case)
+    if not assess_rf1086_readiness(case).is_ready:
+        raise ValueError("Local RF-1086 command failed (simulate-aksjonaerregister).")
+    documents = generate_rf1086_documents(case)
+    (output / "1086H.xml").write_text(documents.hovedskjema_xml, encoding="utf-8")
+    for shareholder_id, xml in documents.underskjema_xml.items():
+        (output / f"1086U-{shareholder_id}.xml").write_text(xml, encoding="utf-8")
+
+
+def _run_xml_command(arguments: list[str], environment: Mapping[str, str], *, remaining: int = 8 * 1024 * 1024) -> int:
+    # Validation remains a fixed local xmllint operation. No credential or
+    # application loader reaches the subprocess; combined diagnostics remain
+    # bounded across the original main-then-children validation loop.
     child_environment = {name: value for name, value in environment.items()
                          if name in {"PATH", "LANG", "LC_ALL", "SYSTEMROOT"}}
-    with subprocess.Popen([binary, "-m", "holding_cli.main", *arguments], cwd=Path.cwd(),
-            env=child_environment, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, bufsize=0) as process:
+    with subprocess.Popen(arguments, env=child_environment, stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=0) as process:
         try:
-            remaining = 8 * 1024 * 1024
             while chunk := process.stdout.read(min(65_536, remaining + 1)):
                 remaining -= len(chunk)
                 if remaining < 0:
-                    raise ValueError(f"Local RF-1086 command failed ({arguments[0]}).")
+                    raise ValueError("Local RF-1086 command failed (validate-rf1086-xml).")
             if process.wait():
-                raise ValueError(f"Local RF-1086 command failed ({arguments[0]}).")
+                raise ValueError("Local RF-1086 command failed (validate-rf1086-xml).")
+            return remaining
         finally:
             if process.poll() is None:
                 process.kill()
             process.wait()
+
+
+def _validate_xml(main_path: Path, under_paths: list[Path], environment: Mapping[str, str]) -> None:
+    binary = shutil.which("xmllint", path=environment.get("PATH", ""))
+    if not binary:
+        raise ValueError("Local RF-1086 command failed (validate-rf1086-xml).")
+    with tempfile.TemporaryDirectory(prefix="talli-rf1086-schemas-") as directory:
+        schemas = {}
+        for name in ("hovedskjema", "underskjema"):
+            path = Path(directory) / f"{name}.xsd"
+            path.write_bytes(rf1086_xml_schema(name))
+            schemas[name] = path
+        remaining = 8 * 1024 * 1024
+        for name, xml_path in [("hovedskjema", main_path), *(("underskjema", path) for path in under_paths)]:
+            remaining = _run_xml_command([binary, "--noout", "--schema", str(schemas[name]), str(xml_path)],
+                                         environment, remaining=remaining)
 
 
 def _shareholder_write_order(identifiers: list[str], environment: Mapping[str, str]) -> list[str]:
@@ -172,15 +200,14 @@ async def run(environment: Mapping[str, str] | None = None, *, token_transport=N
         raise ValueError("RF-1086 authority rehearsal is limited to no-activity or formation cases.")
     output_directory = evidence_path.parent / "xml"
     output_directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-    _run_python(["simulate-aksjonaerregister", "--case", str(case_path), "--out", str(output_directory)], values)
+    _generate_xml(case, output_directory)
     main_path = output_directory / "1086H.xml"
     under_paths = sorted((path for path in output_directory.iterdir()
                          if path.name.startswith("1086U-") and path.name.endswith(".xml")),
                          key=lambda path: _utf16(path.name))
     if not under_paths:
         raise ValueError("Generated RF-1086 payload has no underskjema.")
-    _run_python(["validate-rf1086-xml", "--hovedskjema", str(main_path), "--underskjema",
-                 *(str(path) for path in under_paths)], values)
+    _validate_xml(main_path, under_paths, values)
     # read_bytes avoids Python newline translation of the exact statutory XML.
     main_xml = main_path.read_bytes().decode("utf-8")
     under_xml = {path.name[len("1086U-"):-len(".xml")]: path.read_bytes().decode("utf-8") for path in under_paths}

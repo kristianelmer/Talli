@@ -1,0 +1,825 @@
+[
+  {
+    "name": "dividend",
+    "input": {
+      "case_id": "dividend",
+      "company": {
+        "org_number": "314259521",
+        "name": "TALLI UTBYTTE HOLDING AS",
+        "address": "Testveien 4",
+        "postal_code": "0123",
+        "city": "OSLO",
+        "income_year": 2025,
+        "contact_email": "kontakt@talli.no"
+      },
+      "share_snapshot": {
+        "previous_share_capital": 30000,
+        "current_share_capital": 30000,
+        "previous_nominal_value": 300,
+        "current_nominal_value": 300,
+        "previous_share_count": 100,
+        "current_share_count": 100,
+        "previous_paid_in_share_capital": 30000,
+        "current_paid_in_share_capital": 30000
+      },
+      "shareholders": [
+        {
+          "id": "owner_a",
+          "kind": "norwegian_person",
+          "name": "Utbytte Eier A",
+          "national_id": "26829398612"
+        },
+        {
+          "id": "owner_b",
+          "kind": "norwegian_company",
+          "name": "UTBYTTE EIER B AS",
+          "org_number": "999999999"
+        }
+      ],
+      "shareholder_snapshots": [
+        {
+          "shareholder_id": "owner_a",
+          "previous_share_count": 70,
+          "current_share_count": 70
+        },
+        {
+          "shareholder_id": "owner_b",
+          "previous_share_count": 30,
+          "current_share_count": 30
+        }
+      ],
+      "events": [
+        {
+          "type": "dividend",
+          "timestamp": "2025-05-20T12:00:00",
+          "total_amount": 100000,
+          "per_share_amount": 1000,
+          "allocations": [
+            {
+              "shareholder_id": "owner_a",
+              "amount": 70000,
+              "share_count_basis": 70
+            },
+            {
+              "shareholder_id": "owner_b",
+              "amount": 30000,
+              "share_count_basis": 30
+            }
+          ]
+        }
+      ]
+    },
+    "normalizedInput": {
+      "case_id": "dividend",
+      "company": {
+        "org_number": "314259521",
+        "name": "TALLI UTBYTTE HOLDING AS",
+        "address": "Testveien 4",
+        "postal_code": "0123",
+        "city": "OSLO",
+        "income_year": 2025,
+        "share_type": "01",
+        "contact_email": "kontakt@talli.no"
+      },
+      "share_snapshot": {
+        "previous_share_capital": 30000.0,
+        "current_share_capital": 30000.0,
+        "previous_nominal_value": 300.0,
+        "current_nominal_value": 300.0,
+        "previous_share_count": 100,
+        "current_share_count": 100,
+        "previous_paid_in_share_capital": 30000.0,
+        "current_paid_in_share_capital": 30000.0,
+        "previous_paid_in_premium": 0.0,
+        "current_paid_in_premium": 0.0
+      },
+      "shareholders": [
+        {
+          "id": "owner_a",
+          "kind": "norwegian_person",
+          "name": "Utbytte Eier A",
+          "national_id": "26829398612",
+          "org_number": null
+        },
+        {
+          "id": "owner_b",
+          "kind": "norwegian_company",
+          "name": "UTBYTTE EIER B AS",
+          "national_id": null,
+          "org_number": "999999999"
+        }
+      ],
+      "shareholder_snapshots": [
+        {
+          "shareholder_id": "owner_a",
+          "previous_share_count": 70,
+          "current_share_count": 70
+        },
+        {
+          "shareholder_id": "owner_b",
+          "previous_share_count": 30,
+          "current_share_count": 30
+        }
+      ],
+      "events": [
+        {
+          "type": "dividend",
+          "timestamp": "2025-05-20T12:00:00",
+          "total_amount": 100000.0,
+          "per_share_amount": 1000.0,
+          "allocations": [
+            {
+              "shareholder_id": "owner_a",
+              "amount": 70000.0,
+              "share_count_basis": 70
+            },
+            {
+              "shareholder_id": "owner_b",
+              "amount": 30000.0,
+              "share_count_basis": 30
+            }
+          ]
+        }
+      ]
+    },
+    "output": {
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "status": "ready",
+      "issues": [],
+      "preview": "Aksjon\u00e6rregisteroppgaven 2025\nSelskap: TALLI UTBYTTE HOLDING AS (314259521)\nAksjeklasse: ordin\u00e6re (01)\n\nSelskapsniv\u00e5:\n- Aksjekapital 1. januar: 30000 kr\n- Aksjekapital 31. desember: 30000 kr\n- Antall aksjer 1. januar: 100\n- Antall aksjer 31. desember: 100\n\nAksjon\u00e6rer:\n- Utbytte Eier A: 70 aksjer 1. januar, 70 aksjer 31. desember\n- UTBYTTE EIER B AS: 30 aksjer 1. januar, 30 aksjer 31. desember\n\nHendelser:\n- Utbytte 2025-05-20T12:00:00: totalt 100000 kr, 1000 kr per aksje\n",
+      "hovedskjemaXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"890\" spesifikasjonsnummer=\"12144\" blankettnummer=\"RF-1086\" tittel=\"Aksjon\u00e6rregisteroppgaven\" gruppeid=\"2586\" etatid=\"974761076\">\n  <GenerellInformasjon-grp-2587 gruppeid=\"2587\">\n    <Selskap-grp-2588 gruppeid=\"2588\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <EnhetNavn-datadef-1 orid=\"1\">TALLI UTBYTTE HOLDING AS</EnhetNavn-datadef-1>\n      <EnhetAdresse-datadef-15 orid=\"15\">Testveien 4</EnhetAdresse-datadef-15>\n      <EnhetPostnummer-datadef-6673 orid=\"6673\">0123</EnhetPostnummer-datadef-6673>\n      <EnhetPoststed-datadef-6674 orid=\"6674\">OSLO</EnhetPoststed-datadef-6674>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskap-grp-2588>\n    <Kontaktperson-grp-3442 gruppeid=\"3442\">\n      <KontaktpersonSkjemaEPost-datadef-30533 orid=\"30533\">kontakt@talli.no</KontaktpersonSkjemaEPost-datadef-30533>\n    </Kontaktperson-grp-3442>\n    <AnnenKontaktperson-grp-5384 gruppeid=\"5384\" />\n  </GenerellInformasjon-grp-2587>\n  <Selskapsopplysninger-grp-2589 gruppeid=\"2589\">\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\"3443\">\n      <AksjekapitalFjoraret-datadef-7129 orid=\"7129\">30000</AksjekapitalFjoraret-datadef-7129>\n      <Aksjekapital-datadef-87 orid=\"87\">30000</Aksjekapital-datadef-87>\n    </AksjekapitalForHeleSelskapet-grp-3443>\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\"3444\">\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\"17663\">30000</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\"17664\">30000</AksjekapitalISINAksjetype-datadef-17664>\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\n    <PalydendePerAksje-grp-3447 gruppeid=\"3447\">\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\"23944\">300</AksjeMvPalydendeFjoraret-datadef-23944>\n      <AksjeMvPalydende-datadef-23945 orid=\"23945\">300</AksjeMvPalydende-datadef-23945>\n    </PalydendePerAksje-grp-3447>\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\"3445\">\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\"29166\">100</AksjerMvAntallFjoraret-datadef-29166>\n      <AksjerMvAntall-datadef-29167 orid=\"29167\">100</AksjerMvAntall-datadef-29167>\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\"3446\">\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\"8020\">30000</AksjekapitalInnbetaltFjoraret-datadef-8020>\n      <AksjekapitalInnbetalt-datadef-5867 orid=\"5867\">30000</AksjekapitalInnbetalt-datadef-5867>\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\"3448\">\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\"17662\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\"17661\">0</AksjeOverkursISINAksjetype-datadef-17661>\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\n  </Selskapsopplysninger-grp-2589>\n  <Utbytte-grp-3449 gruppeid=\"3449\">\n    <UtdeltSkatterettsligUtbytteILopetAvInntektsaret-grp-3451 gruppeid=\"3451\">\n      <AksjeUtbytteISINAksjetype-datadef-17665 orid=\"17665\">01</AksjeUtbytteISINAksjetype-datadef-17665>\n      <AksjeUtbyttePerAksje-datadef-23946 orid=\"23946\">1000</AksjeUtbyttePerAksje-datadef-23946>\n      <AksjeUtbytteHendelsestype-datadef-36564 orid=\"36564\">U</AksjeUtbytteHendelsestype-datadef-36564>\n      <AksjeUtbytteTidspunkt-datadef-17667 orid=\"17667\">2025-05-20T12:00:00</AksjeUtbytteTidspunkt-datadef-17667>\n    </UtdeltSkatterettsligUtbytteILopetAvInntektsaret-grp-3451>\n  </Utbytte-grp-3449>\n</Skjema>\n",
+      "underskjemaXml": {
+        "owner_a": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjon\u00e6rregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Utbytte Eier A</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">70</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">70</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n    <UtdeltUtbyttePerAksjonar-grp-3991 gruppeid=\"3991\">\n      <Aksjeutbytte-datadef-29169 orid=\"29169\">70000</Aksjeutbytte-datadef-29169>\n      <AksjerUtbytteAntall-datadef-17742 orid=\"17742\">70</AksjerUtbytteAntall-datadef-17742>\n      <AksjerUtbytteTidspunkt-datadef-17769 orid=\"17769\">2025-05-20T12:00:00</AksjerUtbytteTidspunkt-datadef-17769>\n      <AutomatiskMotregningOnskerIkke-datadef-37159 orid=\"37159\">0</AutomatiskMotregningOnskerIkke-datadef-37159>\n    </UtdeltUtbyttePerAksjonar-grp-3991>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n",
+        "owner_b": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjon\u00e6rregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarOrganisasjonsnummer-datadef-7597 orid=\"7597\">999999999</AksjonarOrganisasjonsnummer-datadef-7597>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">UTBYTTE EIER B AS</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">30</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">30</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n    <UtdeltUtbyttePerAksjonar-grp-3991 gruppeid=\"3991\">\n      <Aksjeutbytte-datadef-29169 orid=\"29169\">30000</Aksjeutbytte-datadef-29169>\n      <AksjerUtbytteAntall-datadef-17742 orid=\"17742\">30</AksjerUtbytteAntall-datadef-17742>\n      <AksjerUtbytteTidspunkt-datadef-17769 orid=\"17769\">2025-05-20T12:00:00</AksjerUtbytteTidspunkt-datadef-17769>\n      <AutomatiskMotregningOnskerIkke-datadef-37159 orid=\"37159\">0</AutomatiskMotregningOnskerIkke-datadef-37159>\n    </UtdeltUtbyttePerAksjonar-grp-3991>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n"
+      }
+    },
+    "liveExclusions": [
+      "U"
+    ]
+  },
+  {
+    "name": "no_activity",
+    "input": {
+      "case_id": "no_activity",
+      "company": {
+        "org_number": "314259521",
+        "name": "TALLI TEST HOLDING AS",
+        "address": "Testveien 1",
+        "postal_code": "0123",
+        "city": "OSLO",
+        "income_year": 2025,
+        "contact_email": "kontakt@talli.no"
+      },
+      "share_snapshot": {
+        "previous_share_capital": 30000,
+        "current_share_capital": 30000,
+        "previous_nominal_value": 300,
+        "current_nominal_value": 300,
+        "previous_share_count": 100,
+        "current_share_count": 100,
+        "previous_paid_in_share_capital": 30000,
+        "current_paid_in_share_capital": 30000
+      },
+      "shareholders": [
+        {
+          "id": "owner",
+          "kind": "norwegian_person",
+          "name": "Ola Nordmann",
+          "national_id": "26829398612"
+        }
+      ],
+      "shareholder_snapshots": [
+        {
+          "shareholder_id": "owner",
+          "previous_share_count": 100,
+          "current_share_count": 100
+        }
+      ],
+      "events": []
+    },
+    "normalizedInput": {
+      "case_id": "no_activity",
+      "company": {
+        "org_number": "314259521",
+        "name": "TALLI TEST HOLDING AS",
+        "address": "Testveien 1",
+        "postal_code": "0123",
+        "city": "OSLO",
+        "income_year": 2025,
+        "share_type": "01",
+        "contact_email": "kontakt@talli.no"
+      },
+      "share_snapshot": {
+        "previous_share_capital": 30000.0,
+        "current_share_capital": 30000.0,
+        "previous_nominal_value": 300.0,
+        "current_nominal_value": 300.0,
+        "previous_share_count": 100,
+        "current_share_count": 100,
+        "previous_paid_in_share_capital": 30000.0,
+        "current_paid_in_share_capital": 30000.0,
+        "previous_paid_in_premium": 0.0,
+        "current_paid_in_premium": 0.0
+      },
+      "shareholders": [
+        {
+          "id": "owner",
+          "kind": "norwegian_person",
+          "name": "Ola Nordmann",
+          "national_id": "26829398612",
+          "org_number": null
+        }
+      ],
+      "shareholder_snapshots": [
+        {
+          "shareholder_id": "owner",
+          "previous_share_count": 100,
+          "current_share_count": 100
+        }
+      ],
+      "events": []
+    },
+    "output": {
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "status": "ready",
+      "issues": [],
+      "preview": "Aksjon\u00e6rregisteroppgaven 2025\nSelskap: TALLI TEST HOLDING AS (314259521)\nAksjeklasse: ordin\u00e6re (01)\n\nSelskapsniv\u00e5:\n- Aksjekapital 1. januar: 30000 kr\n- Aksjekapital 31. desember: 30000 kr\n- Antall aksjer 1. januar: 100\n- Antall aksjer 31. desember: 100\n\nAksjon\u00e6rer:\n- Ola Nordmann: 100 aksjer 1. januar, 100 aksjer 31. desember\n",
+      "hovedskjemaXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"890\" spesifikasjonsnummer=\"12144\" blankettnummer=\"RF-1086\" tittel=\"Aksjon\u00e6rregisteroppgaven\" gruppeid=\"2586\" etatid=\"974761076\">\n  <GenerellInformasjon-grp-2587 gruppeid=\"2587\">\n    <Selskap-grp-2588 gruppeid=\"2588\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <EnhetNavn-datadef-1 orid=\"1\">TALLI TEST HOLDING AS</EnhetNavn-datadef-1>\n      <EnhetAdresse-datadef-15 orid=\"15\">Testveien 1</EnhetAdresse-datadef-15>\n      <EnhetPostnummer-datadef-6673 orid=\"6673\">0123</EnhetPostnummer-datadef-6673>\n      <EnhetPoststed-datadef-6674 orid=\"6674\">OSLO</EnhetPoststed-datadef-6674>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskap-grp-2588>\n    <Kontaktperson-grp-3442 gruppeid=\"3442\">\n      <KontaktpersonSkjemaEPost-datadef-30533 orid=\"30533\">kontakt@talli.no</KontaktpersonSkjemaEPost-datadef-30533>\n    </Kontaktperson-grp-3442>\n    <AnnenKontaktperson-grp-5384 gruppeid=\"5384\" />\n  </GenerellInformasjon-grp-2587>\n  <Selskapsopplysninger-grp-2589 gruppeid=\"2589\">\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\"3443\">\n      <AksjekapitalFjoraret-datadef-7129 orid=\"7129\">30000</AksjekapitalFjoraret-datadef-7129>\n      <Aksjekapital-datadef-87 orid=\"87\">30000</Aksjekapital-datadef-87>\n    </AksjekapitalForHeleSelskapet-grp-3443>\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\"3444\">\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\"17663\">30000</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\"17664\">30000</AksjekapitalISINAksjetype-datadef-17664>\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\n    <PalydendePerAksje-grp-3447 gruppeid=\"3447\">\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\"23944\">300</AksjeMvPalydendeFjoraret-datadef-23944>\n      <AksjeMvPalydende-datadef-23945 orid=\"23945\">300</AksjeMvPalydende-datadef-23945>\n    </PalydendePerAksje-grp-3447>\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\"3445\">\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\"29166\">100</AksjerMvAntallFjoraret-datadef-29166>\n      <AksjerMvAntall-datadef-29167 orid=\"29167\">100</AksjerMvAntall-datadef-29167>\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\"3446\">\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\"8020\">30000</AksjekapitalInnbetaltFjoraret-datadef-8020>\n      <AksjekapitalInnbetalt-datadef-5867 orid=\"5867\">30000</AksjekapitalInnbetalt-datadef-5867>\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\"3448\">\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\"17662\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\"17661\">0</AksjeOverkursISINAksjetype-datadef-17661>\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\n  </Selskapsopplysninger-grp-2589>\n</Skjema>\n",
+      "underskjemaXml": {
+        "owner": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjon\u00e6rregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">100</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">100</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n"
+      }
+    },
+    "liveExclusions": []
+  },
+  {
+    "name": "share_sale",
+    "input": {
+      "case_id": "share_sale",
+      "company": {
+        "org_number": "314259521",
+        "name": "TALLI SALG HOLDING AS",
+        "address": "Testveien 3",
+        "postal_code": "0123",
+        "city": "OSLO",
+        "income_year": 2025,
+        "contact_email": "kontakt@talli.no"
+      },
+      "share_snapshot": {
+        "previous_share_capital": 30000,
+        "current_share_capital": 30000,
+        "previous_nominal_value": 300,
+        "current_nominal_value": 300,
+        "previous_share_count": 100,
+        "current_share_count": 100,
+        "previous_paid_in_share_capital": 30000,
+        "current_paid_in_share_capital": 30000
+      },
+      "shareholders": [
+        {
+          "id": "seller",
+          "kind": "norwegian_person",
+          "name": "Selger Person",
+          "national_id": "26829398612"
+        },
+        {
+          "id": "buyer",
+          "kind": "norwegian_person",
+          "name": "Kjoper Person",
+          "national_id": "16829398613"
+        }
+      ],
+      "shareholder_snapshots": [
+        {
+          "shareholder_id": "seller",
+          "previous_share_count": 100,
+          "current_share_count": 60
+        },
+        {
+          "shareholder_id": "buyer",
+          "previous_share_count": 0,
+          "current_share_count": 40
+        }
+      ],
+      "events": [
+        {
+          "type": "share_sale",
+          "timestamp": "2025-06-30T12:00:00",
+          "seller_shareholder_id": "seller",
+          "buyer_shareholder_id": "buyer",
+          "share_count": 40,
+          "consideration": 50000
+        }
+      ]
+    },
+    "normalizedInput": {
+      "case_id": "share_sale",
+      "company": {
+        "org_number": "314259521",
+        "name": "TALLI SALG HOLDING AS",
+        "address": "Testveien 3",
+        "postal_code": "0123",
+        "city": "OSLO",
+        "income_year": 2025,
+        "share_type": "01",
+        "contact_email": "kontakt@talli.no"
+      },
+      "share_snapshot": {
+        "previous_share_capital": 30000.0,
+        "current_share_capital": 30000.0,
+        "previous_nominal_value": 300.0,
+        "current_nominal_value": 300.0,
+        "previous_share_count": 100,
+        "current_share_count": 100,
+        "previous_paid_in_share_capital": 30000.0,
+        "current_paid_in_share_capital": 30000.0,
+        "previous_paid_in_premium": 0.0,
+        "current_paid_in_premium": 0.0
+      },
+      "shareholders": [
+        {
+          "id": "seller",
+          "kind": "norwegian_person",
+          "name": "Selger Person",
+          "national_id": "26829398612",
+          "org_number": null
+        },
+        {
+          "id": "buyer",
+          "kind": "norwegian_person",
+          "name": "Kjoper Person",
+          "national_id": "16829398613",
+          "org_number": null
+        }
+      ],
+      "shareholder_snapshots": [
+        {
+          "shareholder_id": "seller",
+          "previous_share_count": 100,
+          "current_share_count": 60
+        },
+        {
+          "shareholder_id": "buyer",
+          "previous_share_count": 0,
+          "current_share_count": 40
+        }
+      ],
+      "events": [
+        {
+          "type": "share_sale",
+          "timestamp": "2025-06-30T12:00:00",
+          "seller_shareholder_id": "seller",
+          "buyer_shareholder_id": "buyer",
+          "share_count": 40,
+          "consideration": 50000.0
+        }
+      ]
+    },
+    "output": {
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "status": "ready",
+      "issues": [],
+      "preview": "Aksjon\u00e6rregisteroppgaven 2025\nSelskap: TALLI SALG HOLDING AS (314259521)\nAksjeklasse: ordin\u00e6re (01)\n\nSelskapsniv\u00e5:\n- Aksjekapital 1. januar: 30000 kr\n- Aksjekapital 31. desember: 30000 kr\n- Antall aksjer 1. januar: 100\n- Antall aksjer 31. desember: 100\n\nAksjon\u00e6rer:\n- Selger Person: 100 aksjer 1. januar, 60 aksjer 31. desember\n- Kjoper Person: 0 aksjer 1. januar, 40 aksjer 31. desember\n\nHendelser:\n- Aksjesalg 2025-06-30T12:00:00: 40 aksjer fra Selger Person til Kjoper Person, vederlag 50000 kr\n",
+      "hovedskjemaXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"890\" spesifikasjonsnummer=\"12144\" blankettnummer=\"RF-1086\" tittel=\"Aksjon\u00e6rregisteroppgaven\" gruppeid=\"2586\" etatid=\"974761076\">\n  <GenerellInformasjon-grp-2587 gruppeid=\"2587\">\n    <Selskap-grp-2588 gruppeid=\"2588\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <EnhetNavn-datadef-1 orid=\"1\">TALLI SALG HOLDING AS</EnhetNavn-datadef-1>\n      <EnhetAdresse-datadef-15 orid=\"15\">Testveien 3</EnhetAdresse-datadef-15>\n      <EnhetPostnummer-datadef-6673 orid=\"6673\">0123</EnhetPostnummer-datadef-6673>\n      <EnhetPoststed-datadef-6674 orid=\"6674\">OSLO</EnhetPoststed-datadef-6674>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskap-grp-2588>\n    <Kontaktperson-grp-3442 gruppeid=\"3442\">\n      <KontaktpersonSkjemaEPost-datadef-30533 orid=\"30533\">kontakt@talli.no</KontaktpersonSkjemaEPost-datadef-30533>\n    </Kontaktperson-grp-3442>\n    <AnnenKontaktperson-grp-5384 gruppeid=\"5384\" />\n  </GenerellInformasjon-grp-2587>\n  <Selskapsopplysninger-grp-2589 gruppeid=\"2589\">\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\"3443\">\n      <AksjekapitalFjoraret-datadef-7129 orid=\"7129\">30000</AksjekapitalFjoraret-datadef-7129>\n      <Aksjekapital-datadef-87 orid=\"87\">30000</Aksjekapital-datadef-87>\n    </AksjekapitalForHeleSelskapet-grp-3443>\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\"3444\">\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\"17663\">30000</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\"17664\">30000</AksjekapitalISINAksjetype-datadef-17664>\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\n    <PalydendePerAksje-grp-3447 gruppeid=\"3447\">\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\"23944\">300</AksjeMvPalydendeFjoraret-datadef-23944>\n      <AksjeMvPalydende-datadef-23945 orid=\"23945\">300</AksjeMvPalydende-datadef-23945>\n    </PalydendePerAksje-grp-3447>\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\"3445\">\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\"29166\">100</AksjerMvAntallFjoraret-datadef-29166>\n      <AksjerMvAntall-datadef-29167 orid=\"29167\">100</AksjerMvAntall-datadef-29167>\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\"3446\">\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\"8020\">30000</AksjekapitalInnbetaltFjoraret-datadef-8020>\n      <AksjekapitalInnbetalt-datadef-5867 orid=\"5867\">30000</AksjekapitalInnbetalt-datadef-5867>\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\"3448\">\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\"17662\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\"17661\">0</AksjeOverkursISINAksjetype-datadef-17661>\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\n  </Selskapsopplysninger-grp-2589>\n</Skjema>\n",
+      "underskjemaXml": {
+        "seller": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjon\u00e6rregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Selger Person</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">100</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">60</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n  <SalgArvGaveLikvidasjonPartiellLikvidasjonMv-grp-3995 gruppeid=\"3995\">\n    <AksjerIAvgang-grp-4002 gruppeid=\"4002\">\n      <AksjerArvMvOmsattAntall-datadef-17752 orid=\"17752\">40</AksjerArvMvOmsattAntall-datadef-17752>\n      <AksjerArvMvOmsattType-datadef-17753 orid=\"17753\">S</AksjerArvMvOmsattType-datadef-17753>\n      <AksjerArvMvOmsattTidspunkt-datadef-17754 orid=\"17754\">2025-06-30T12:00:00</AksjerArvMvOmsattTidspunkt-datadef-17754>\n      <AksjerArvMvOmsatt-datadef-17755 orid=\"17755\">50000</AksjerArvMvOmsatt-datadef-17755>\n      <AksjonarOvertakendeFodselsnummer-datadef-26532 orid=\"26532\">16829398613</AksjonarOvertakendeFodselsnummer-datadef-26532>\n    </AksjerIAvgang-grp-4002>\n  </SalgArvGaveLikvidasjonPartiellLikvidasjonMv-grp-3995>\n</Skjema>\n",
+        "buyer": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjon\u00e6rregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">16829398613</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Kjoper Person</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">0</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">40</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n  <Transaksjoner-grp-3992 gruppeid=\"3992\">\n    <KjopArvGaveStiftelseNyemisjonMv-grp-3993 gruppeid=\"3993\">\n      <AntallAksjerITilgang-grp-3998 gruppeid=\"3998\">\n        <AksjerKjopAntall-datadef-12153 orid=\"12153\">40</AksjerKjopAntall-datadef-12153>\n        <AksjeErvervType-datadef-17745 orid=\"17745\">K</AksjeErvervType-datadef-17745>\n        <AksjerErvervsdato-datadef-17746 orid=\"17746\">2025-06-30T12:00:00</AksjerErvervsdato-datadef-17746>\n        <AksjeAnskaffelsesverdi-datadef-17636 orid=\"17636\">50000</AksjeAnskaffelsesverdi-datadef-17636>\n        <AksjonarTidligereFodselsnummer-datadef-26530 orid=\"26530\">26829398612</AksjonarTidligereFodselsnummer-datadef-26530>\n      </AntallAksjerITilgang-grp-3998>\n    </KjopArvGaveStiftelseNyemisjonMv-grp-3993>\n  </Transaksjoner-grp-3992>\n</Skjema>\n"
+      }
+    },
+    "liveExclusions": [
+      "K",
+      "S"
+    ]
+  },
+  {
+    "name": "stiftelse",
+    "input": {
+      "case_id": "stiftelse",
+      "company": {
+        "org_number": "314259521",
+        "name": "TALLI NY HOLDING AS",
+        "address": "Testveien 2",
+        "postal_code": "0123",
+        "city": "OSLO",
+        "income_year": 2025,
+        "contact_email": "kontakt@talli.no"
+      },
+      "share_snapshot": {
+        "previous_share_capital": 0,
+        "current_share_capital": 30000,
+        "previous_nominal_value": 0,
+        "current_nominal_value": 300,
+        "previous_share_count": 0,
+        "current_share_count": 100,
+        "previous_paid_in_share_capital": 0,
+        "current_paid_in_share_capital": 30000
+      },
+      "shareholders": [
+        {
+          "id": "founder",
+          "kind": "norwegian_person",
+          "name": "Kari Nordmann",
+          "national_id": "26829398612"
+        }
+      ],
+      "shareholder_snapshots": [
+        {
+          "shareholder_id": "founder",
+          "previous_share_count": 0,
+          "current_share_count": 100
+        }
+      ],
+      "events": [
+        {
+          "type": "formation",
+          "timestamp": "2025-01-02T12:00:00",
+          "issued_share_count": 100,
+          "share_count_after": 100,
+          "nominal_value": 300,
+          "premium": 0,
+          "allocations": [
+            {
+              "shareholder_id": "founder",
+              "share_count": 100,
+              "acquisition_value": 30000
+            }
+          ]
+        }
+      ]
+    },
+    "normalizedInput": {
+      "case_id": "stiftelse",
+      "company": {
+        "org_number": "314259521",
+        "name": "TALLI NY HOLDING AS",
+        "address": "Testveien 2",
+        "postal_code": "0123",
+        "city": "OSLO",
+        "income_year": 2025,
+        "share_type": "01",
+        "contact_email": "kontakt@talli.no"
+      },
+      "share_snapshot": {
+        "previous_share_capital": 0.0,
+        "current_share_capital": 30000.0,
+        "previous_nominal_value": 0.0,
+        "current_nominal_value": 300.0,
+        "previous_share_count": 0,
+        "current_share_count": 100,
+        "previous_paid_in_share_capital": 0.0,
+        "current_paid_in_share_capital": 30000.0,
+        "previous_paid_in_premium": 0.0,
+        "current_paid_in_premium": 0.0
+      },
+      "shareholders": [
+        {
+          "id": "founder",
+          "kind": "norwegian_person",
+          "name": "Kari Nordmann",
+          "national_id": "26829398612",
+          "org_number": null
+        }
+      ],
+      "shareholder_snapshots": [
+        {
+          "shareholder_id": "founder",
+          "previous_share_count": 0,
+          "current_share_count": 100
+        }
+      ],
+      "events": [
+        {
+          "type": "formation",
+          "timestamp": "2025-01-02T12:00:00",
+          "issued_share_count": 100,
+          "share_count_after": 100,
+          "nominal_value": 300.0,
+          "premium": 0.0,
+          "allocations": [
+            {
+              "shareholder_id": "founder",
+              "share_count": 100,
+              "acquisition_value": 30000.0
+            }
+          ]
+        }
+      ]
+    },
+    "output": {
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "status": "ready",
+      "issues": [],
+      "preview": "Aksjon\u00e6rregisteroppgaven 2025\nSelskap: TALLI NY HOLDING AS (314259521)\nAksjeklasse: ordin\u00e6re (01)\n\nSelskapsniv\u00e5:\n- Aksjekapital 1. januar: 0 kr\n- Aksjekapital 31. desember: 30000 kr\n- Antall aksjer 1. januar: 0\n- Antall aksjer 31. desember: 100\n\nAksjon\u00e6rer:\n- Kari Nordmann: 0 aksjer 1. januar, 100 aksjer 31. desember\n\nHendelser:\n- Stiftelse/utstedelse 2025-01-02T12:00:00: 100 aksjer, p\u00e5lydende 300 kr, 1 aksjon\u00e6r(er)\n",
+      "hovedskjemaXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"890\" spesifikasjonsnummer=\"12144\" blankettnummer=\"RF-1086\" tittel=\"Aksjon\u00e6rregisteroppgaven\" gruppeid=\"2586\" etatid=\"974761076\">\n  <GenerellInformasjon-grp-2587 gruppeid=\"2587\">\n    <Selskap-grp-2588 gruppeid=\"2588\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <EnhetNavn-datadef-1 orid=\"1\">TALLI NY HOLDING AS</EnhetNavn-datadef-1>\n      <EnhetAdresse-datadef-15 orid=\"15\">Testveien 2</EnhetAdresse-datadef-15>\n      <EnhetPostnummer-datadef-6673 orid=\"6673\">0123</EnhetPostnummer-datadef-6673>\n      <EnhetPoststed-datadef-6674 orid=\"6674\">OSLO</EnhetPoststed-datadef-6674>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskap-grp-2588>\n    <Kontaktperson-grp-3442 gruppeid=\"3442\">\n      <KontaktpersonSkjemaEPost-datadef-30533 orid=\"30533\">kontakt@talli.no</KontaktpersonSkjemaEPost-datadef-30533>\n    </Kontaktperson-grp-3442>\n    <AnnenKontaktperson-grp-5384 gruppeid=\"5384\" />\n  </GenerellInformasjon-grp-2587>\n  <Selskapsopplysninger-grp-2589 gruppeid=\"2589\">\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\"3443\">\n      <AksjekapitalFjoraret-datadef-7129 orid=\"7129\">0</AksjekapitalFjoraret-datadef-7129>\n      <Aksjekapital-datadef-87 orid=\"87\">30000</Aksjekapital-datadef-87>\n    </AksjekapitalForHeleSelskapet-grp-3443>\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\"3444\">\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\"17663\">0</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\"17664\">30000</AksjekapitalISINAksjetype-datadef-17664>\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\n    <PalydendePerAksje-grp-3447 gruppeid=\"3447\">\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\"23944\">0</AksjeMvPalydendeFjoraret-datadef-23944>\n      <AksjeMvPalydende-datadef-23945 orid=\"23945\">300</AksjeMvPalydende-datadef-23945>\n    </PalydendePerAksje-grp-3447>\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\"3445\">\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\"29166\">0</AksjerMvAntallFjoraret-datadef-29166>\n      <AksjerMvAntall-datadef-29167 orid=\"29167\">100</AksjerMvAntall-datadef-29167>\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\"3446\">\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\"8020\">0</AksjekapitalInnbetaltFjoraret-datadef-8020>\n      <AksjekapitalInnbetalt-datadef-5867 orid=\"5867\">30000</AksjekapitalInnbetalt-datadef-5867>\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\"3448\">\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\"17662\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\"17661\">0</AksjeOverkursISINAksjetype-datadef-17661>\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\n  </Selskapsopplysninger-grp-2589>\n  <UtstedelseAvAksjerIfmStiftelseNyemisjonMv-grp-3452 gruppeid=\"3452\">\n    <AntallNyutstedteAksjer-grp-3453 gruppeid=\"3453\">\n      <AksjerNyutstedteStiftelseMvAntall-datadef-17668 orid=\"17668\">100</AksjerNyutstedteStiftelseMvAntall-datadef-17668>\n      <AksjerStiftelseMvAntall-datadef-17669 orid=\"17669\">100</AksjerStiftelseMvAntall-datadef-17669>\n      <AksjerNyutstedteStiftelseMvType-datadef-17670 orid=\"17670\">N</AksjerNyutstedteStiftelseMvType-datadef-17670>\n      <AksjerNyutstedteStiftelseMvTidspunkt-datadef-17671 orid=\"17671\">2025-01-02T12:00:00</AksjerNyutstedteStiftelseMvTidspunkt-datadef-17671>\n      <AksjerNyutstedteStiftelseMvPalydende-datadef-23947 orid=\"23947\">300</AksjerNyutstedteStiftelseMvPalydende-datadef-23947>\n      <AksjerNyutstedteStiftelseMvOverkurs-datadef-23948 orid=\"23948\">0</AksjerNyutstedteStiftelseMvOverkurs-datadef-23948>\n    </AntallNyutstedteAksjer-grp-3453>\n  </UtstedelseAvAksjerIfmStiftelseNyemisjonMv-grp-3452>\n</Skjema>\n",
+      "underskjemaXml": {
+        "founder": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjon\u00e6rregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Kari Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">0</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">100</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n  <Transaksjoner-grp-3992 gruppeid=\"3992\">\n    <KjopArvGaveStiftelseNyemisjonMv-grp-3993 gruppeid=\"3993\">\n      <AntallAksjerITilgang-grp-3998 gruppeid=\"3998\">\n        <AksjerKjopAntall-datadef-12153 orid=\"12153\">100</AksjerKjopAntall-datadef-12153>\n        <AksjeErvervType-datadef-17745 orid=\"17745\">N</AksjeErvervType-datadef-17745>\n        <AksjerErvervsdato-datadef-17746 orid=\"17746\">2025-01-02T12:00:00</AksjerErvervsdato-datadef-17746>\n        <AksjeAnskaffelsesverdi-datadef-17636 orid=\"17636\">30000</AksjeAnskaffelsesverdi-datadef-17636>\n      </AntallAksjerITilgang-grp-3998>\n    </KjopArvGaveStiftelseNyemisjonMv-grp-3993>\n  </Transaksjoner-grp-3992>\n</Skjema>\n"
+      }
+    },
+    "liveExclusions": []
+  },
+  {
+    "name": "stiftelse_two_founders",
+    "input": {
+      "case_id": "stiftelse_two_founders",
+      "company": {
+        "org_number": "314259521",
+        "name": "TALLI TO STIFTERE AS",
+        "address": "Testveien 5",
+        "postal_code": "0123",
+        "city": "OSLO",
+        "income_year": 2025,
+        "contact_email": "kontakt@talli.no"
+      },
+      "share_snapshot": {
+        "previous_share_capital": 0,
+        "current_share_capital": 30000,
+        "previous_nominal_value": 0,
+        "current_nominal_value": 300,
+        "previous_share_count": 0,
+        "current_share_count": 100,
+        "previous_paid_in_share_capital": 0,
+        "current_paid_in_share_capital": 30000
+      },
+      "shareholders": [
+        {
+          "id": "founder_a",
+          "kind": "norwegian_person",
+          "name": "Stifter A",
+          "national_id": "26829398612"
+        },
+        {
+          "id": "founder_b",
+          "kind": "norwegian_person",
+          "name": "Stifter B",
+          "national_id": "16829398613"
+        }
+      ],
+      "shareholder_snapshots": [
+        {
+          "shareholder_id": "founder_a",
+          "previous_share_count": 0,
+          "current_share_count": 60
+        },
+        {
+          "shareholder_id": "founder_b",
+          "previous_share_count": 0,
+          "current_share_count": 40
+        }
+      ],
+      "events": [
+        {
+          "type": "formation",
+          "timestamp": "2025-01-02T12:00:00",
+          "issued_share_count": 100,
+          "share_count_after": 100,
+          "nominal_value": 300,
+          "premium": 0,
+          "allocations": [
+            {
+              "shareholder_id": "founder_a",
+              "share_count": 60,
+              "acquisition_value": 18000
+            },
+            {
+              "shareholder_id": "founder_b",
+              "share_count": 40,
+              "acquisition_value": 12000
+            }
+          ]
+        }
+      ]
+    },
+    "normalizedInput": {
+      "case_id": "stiftelse_two_founders",
+      "company": {
+        "org_number": "314259521",
+        "name": "TALLI TO STIFTERE AS",
+        "address": "Testveien 5",
+        "postal_code": "0123",
+        "city": "OSLO",
+        "income_year": 2025,
+        "share_type": "01",
+        "contact_email": "kontakt@talli.no"
+      },
+      "share_snapshot": {
+        "previous_share_capital": 0.0,
+        "current_share_capital": 30000.0,
+        "previous_nominal_value": 0.0,
+        "current_nominal_value": 300.0,
+        "previous_share_count": 0,
+        "current_share_count": 100,
+        "previous_paid_in_share_capital": 0.0,
+        "current_paid_in_share_capital": 30000.0,
+        "previous_paid_in_premium": 0.0,
+        "current_paid_in_premium": 0.0
+      },
+      "shareholders": [
+        {
+          "id": "founder_a",
+          "kind": "norwegian_person",
+          "name": "Stifter A",
+          "national_id": "26829398612",
+          "org_number": null
+        },
+        {
+          "id": "founder_b",
+          "kind": "norwegian_person",
+          "name": "Stifter B",
+          "national_id": "16829398613",
+          "org_number": null
+        }
+      ],
+      "shareholder_snapshots": [
+        {
+          "shareholder_id": "founder_a",
+          "previous_share_count": 0,
+          "current_share_count": 60
+        },
+        {
+          "shareholder_id": "founder_b",
+          "previous_share_count": 0,
+          "current_share_count": 40
+        }
+      ],
+      "events": [
+        {
+          "type": "formation",
+          "timestamp": "2025-01-02T12:00:00",
+          "issued_share_count": 100,
+          "share_count_after": 100,
+          "nominal_value": 300.0,
+          "premium": 0.0,
+          "allocations": [
+            {
+              "shareholder_id": "founder_a",
+              "share_count": 60,
+              "acquisition_value": 18000.0
+            },
+            {
+              "shareholder_id": "founder_b",
+              "share_count": 40,
+              "acquisition_value": 12000.0
+            }
+          ]
+        }
+      ]
+    },
+    "output": {
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "status": "ready",
+      "issues": [],
+      "preview": "Aksjon\u00e6rregisteroppgaven 2025\nSelskap: TALLI TO STIFTERE AS (314259521)\nAksjeklasse: ordin\u00e6re (01)\n\nSelskapsniv\u00e5:\n- Aksjekapital 1. januar: 0 kr\n- Aksjekapital 31. desember: 30000 kr\n- Antall aksjer 1. januar: 0\n- Antall aksjer 31. desember: 100\n\nAksjon\u00e6rer:\n- Stifter A: 0 aksjer 1. januar, 60 aksjer 31. desember\n- Stifter B: 0 aksjer 1. januar, 40 aksjer 31. desember\n\nHendelser:\n- Stiftelse/utstedelse 2025-01-02T12:00:00: 100 aksjer, p\u00e5lydende 300 kr, 2 aksjon\u00e6r(er)\n",
+      "hovedskjemaXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"890\" spesifikasjonsnummer=\"12144\" blankettnummer=\"RF-1086\" tittel=\"Aksjon\u00e6rregisteroppgaven\" gruppeid=\"2586\" etatid=\"974761076\">\n  <GenerellInformasjon-grp-2587 gruppeid=\"2587\">\n    <Selskap-grp-2588 gruppeid=\"2588\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <EnhetNavn-datadef-1 orid=\"1\">TALLI TO STIFTERE AS</EnhetNavn-datadef-1>\n      <EnhetAdresse-datadef-15 orid=\"15\">Testveien 5</EnhetAdresse-datadef-15>\n      <EnhetPostnummer-datadef-6673 orid=\"6673\">0123</EnhetPostnummer-datadef-6673>\n      <EnhetPoststed-datadef-6674 orid=\"6674\">OSLO</EnhetPoststed-datadef-6674>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskap-grp-2588>\n    <Kontaktperson-grp-3442 gruppeid=\"3442\">\n      <KontaktpersonSkjemaEPost-datadef-30533 orid=\"30533\">kontakt@talli.no</KontaktpersonSkjemaEPost-datadef-30533>\n    </Kontaktperson-grp-3442>\n    <AnnenKontaktperson-grp-5384 gruppeid=\"5384\" />\n  </GenerellInformasjon-grp-2587>\n  <Selskapsopplysninger-grp-2589 gruppeid=\"2589\">\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\"3443\">\n      <AksjekapitalFjoraret-datadef-7129 orid=\"7129\">0</AksjekapitalFjoraret-datadef-7129>\n      <Aksjekapital-datadef-87 orid=\"87\">30000</Aksjekapital-datadef-87>\n    </AksjekapitalForHeleSelskapet-grp-3443>\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\"3444\">\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\"17663\">0</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\"17664\">30000</AksjekapitalISINAksjetype-datadef-17664>\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\n    <PalydendePerAksje-grp-3447 gruppeid=\"3447\">\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\"23944\">0</AksjeMvPalydendeFjoraret-datadef-23944>\n      <AksjeMvPalydende-datadef-23945 orid=\"23945\">300</AksjeMvPalydende-datadef-23945>\n    </PalydendePerAksje-grp-3447>\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\"3445\">\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\"29166\">0</AksjerMvAntallFjoraret-datadef-29166>\n      <AksjerMvAntall-datadef-29167 orid=\"29167\">100</AksjerMvAntall-datadef-29167>\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\"3446\">\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\"8020\">0</AksjekapitalInnbetaltFjoraret-datadef-8020>\n      <AksjekapitalInnbetalt-datadef-5867 orid=\"5867\">30000</AksjekapitalInnbetalt-datadef-5867>\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\"3448\">\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\"17662\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\"17661\">0</AksjeOverkursISINAksjetype-datadef-17661>\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\n  </Selskapsopplysninger-grp-2589>\n  <UtstedelseAvAksjerIfmStiftelseNyemisjonMv-grp-3452 gruppeid=\"3452\">\n    <AntallNyutstedteAksjer-grp-3453 gruppeid=\"3453\">\n      <AksjerNyutstedteStiftelseMvAntall-datadef-17668 orid=\"17668\">100</AksjerNyutstedteStiftelseMvAntall-datadef-17668>\n      <AksjerStiftelseMvAntall-datadef-17669 orid=\"17669\">100</AksjerStiftelseMvAntall-datadef-17669>\n      <AksjerNyutstedteStiftelseMvType-datadef-17670 orid=\"17670\">N</AksjerNyutstedteStiftelseMvType-datadef-17670>\n      <AksjerNyutstedteStiftelseMvTidspunkt-datadef-17671 orid=\"17671\">2025-01-02T12:00:00</AksjerNyutstedteStiftelseMvTidspunkt-datadef-17671>\n      <AksjerNyutstedteStiftelseMvPalydende-datadef-23947 orid=\"23947\">300</AksjerNyutstedteStiftelseMvPalydende-datadef-23947>\n      <AksjerNyutstedteStiftelseMvOverkurs-datadef-23948 orid=\"23948\">0</AksjerNyutstedteStiftelseMvOverkurs-datadef-23948>\n    </AntallNyutstedteAksjer-grp-3453>\n  </UtstedelseAvAksjerIfmStiftelseNyemisjonMv-grp-3452>\n</Skjema>\n",
+      "underskjemaXml": {
+        "founder_a": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjon\u00e6rregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Stifter A</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">0</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">60</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n  <Transaksjoner-grp-3992 gruppeid=\"3992\">\n    <KjopArvGaveStiftelseNyemisjonMv-grp-3993 gruppeid=\"3993\">\n      <AntallAksjerITilgang-grp-3998 gruppeid=\"3998\">\n        <AksjerKjopAntall-datadef-12153 orid=\"12153\">60</AksjerKjopAntall-datadef-12153>\n        <AksjeErvervType-datadef-17745 orid=\"17745\">N</AksjeErvervType-datadef-17745>\n        <AksjerErvervsdato-datadef-17746 orid=\"17746\">2025-01-02T12:00:00</AksjerErvervsdato-datadef-17746>\n        <AksjeAnskaffelsesverdi-datadef-17636 orid=\"17636\">18000</AksjeAnskaffelsesverdi-datadef-17636>\n      </AntallAksjerITilgang-grp-3998>\n    </KjopArvGaveStiftelseNyemisjonMv-grp-3993>\n  </Transaksjoner-grp-3992>\n</Skjema>\n",
+        "founder_b": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjon\u00e6rregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">16829398613</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Stifter B</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">0</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">40</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n  <Transaksjoner-grp-3992 gruppeid=\"3992\">\n    <KjopArvGaveStiftelseNyemisjonMv-grp-3993 gruppeid=\"3993\">\n      <AntallAksjerITilgang-grp-3998 gruppeid=\"3998\">\n        <AksjerKjopAntall-datadef-12153 orid=\"12153\">40</AksjerKjopAntall-datadef-12153>\n        <AksjeErvervType-datadef-17745 orid=\"17745\">N</AksjeErvervType-datadef-17745>\n        <AksjerErvervsdato-datadef-17746 orid=\"17746\">2025-01-02T12:00:00</AksjerErvervsdato-datadef-17746>\n        <AksjeAnskaffelsesverdi-datadef-17636 orid=\"17636\">12000</AksjeAnskaffelsesverdi-datadef-17636>\n      </AntallAksjerITilgang-grp-3998>\n    </KjopArvGaveStiftelseNyemisjonMv-grp-3993>\n  </Transaksjoner-grp-3992>\n</Skjema>\n"
+      }
+    },
+    "liveExclusions": []
+  },
+  {
+    "name": "mismatched_share_count",
+    "input": {
+      "case_id": "invalid_mismatched_share_count",
+      "company": {
+        "org_number": "314259521",
+        "name": "TALLI TEST HOLDING AS",
+        "address": "Testveien 1",
+        "postal_code": "0123",
+        "city": "OSLO",
+        "income_year": 2025,
+        "contact_email": "kontakt@talli.no"
+      },
+      "share_snapshot": {
+        "previous_share_capital": 30000,
+        "current_share_capital": 30000,
+        "previous_nominal_value": 300,
+        "current_nominal_value": 300,
+        "previous_share_count": 100,
+        "current_share_count": 100,
+        "previous_paid_in_share_capital": 30000,
+        "current_paid_in_share_capital": 30000
+      },
+      "shareholders": [
+        {
+          "id": "owner",
+          "kind": "norwegian_person",
+          "name": "Ola Nordmann",
+          "national_id": "26829398612"
+        }
+      ],
+      "shareholder_snapshots": [
+        {
+          "shareholder_id": "owner",
+          "previous_share_count": 100,
+          "current_share_count": 99
+        }
+      ],
+      "events": []
+    },
+    "error": {
+      "type": "ValidationError",
+      "message": "1 validation error for FilingCase\n  Value error, sum of current shareholder shares must equal company current share count [type=value_error, input_value={'case_id': 'invalid_mism...nt': 99}], 'events': []}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/value_error"
+    }
+  },
+  {
+    "name": "unsupported_share_class",
+    "input": {
+      "case_id": "unsupported_share_class",
+      "company": {
+        "org_number": "314259521",
+        "name": "TALLI TEST HOLDING AS",
+        "address": "Testveien 1",
+        "postal_code": "0123",
+        "city": "OSLO",
+        "income_year": 2025,
+        "share_type": "02",
+        "contact_email": "kontakt@talli.no"
+      },
+      "share_snapshot": {
+        "previous_share_capital": 30000,
+        "current_share_capital": 30000,
+        "previous_nominal_value": 300,
+        "current_nominal_value": 300,
+        "previous_share_count": 100,
+        "current_share_count": 100,
+        "previous_paid_in_share_capital": 30000,
+        "current_paid_in_share_capital": 30000
+      },
+      "shareholders": [
+        {
+          "id": "owner",
+          "kind": "norwegian_person",
+          "name": "Ola Nordmann",
+          "national_id": "26829398612"
+        }
+      ],
+      "shareholder_snapshots": [
+        {
+          "shareholder_id": "owner",
+          "previous_share_count": 100,
+          "current_share_count": 100
+        }
+      ],
+      "events": []
+    },
+    "normalizedInput": {
+      "case_id": "unsupported_share_class",
+      "company": {
+        "org_number": "314259521",
+        "name": "TALLI TEST HOLDING AS",
+        "address": "Testveien 1",
+        "postal_code": "0123",
+        "city": "OSLO",
+        "income_year": 2025,
+        "share_type": "02",
+        "contact_email": "kontakt@talli.no"
+      },
+      "share_snapshot": {
+        "previous_share_capital": 30000.0,
+        "current_share_capital": 30000.0,
+        "previous_nominal_value": 300.0,
+        "current_nominal_value": 300.0,
+        "previous_share_count": 100,
+        "current_share_count": 100,
+        "previous_paid_in_share_capital": 30000.0,
+        "current_paid_in_share_capital": 30000.0,
+        "previous_paid_in_premium": 0.0,
+        "current_paid_in_premium": 0.0
+      },
+      "shareholders": [
+        {
+          "id": "owner",
+          "kind": "norwegian_person",
+          "name": "Ola Nordmann",
+          "national_id": "26829398612",
+          "org_number": null
+        }
+      ],
+      "shareholder_snapshots": [
+        {
+          "shareholder_id": "owner",
+          "previous_share_count": 100,
+          "current_share_count": 100
+        }
+      ],
+      "events": []
+    },
+    "output": {
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "status": "blocked",
+      "issues": [
+        {
+          "level": "error",
+          "code": "unsupported_share_class",
+          "message": "Kun ordin\u00e6r aksjeklasse er st\u00f8ttet i f\u00f8rste versjon."
+        }
+      ],
+      "preview": "Aksjon\u00e6rregisteroppgaven 2025\nSelskap: TALLI TEST HOLDING AS (314259521)\nAksjeklasse: ordin\u00e6re (02)\n\nSelskapsniv\u00e5:\n- Aksjekapital 1. januar: 30000 kr\n- Aksjekapital 31. desember: 30000 kr\n- Antall aksjer 1. januar: 100\n- Antall aksjer 31. desember: 100\n\nAksjon\u00e6rer:\n- Ola Nordmann: 100 aksjer 1. januar, 100 aksjer 31. desember\n",
+      "hovedskjemaXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"890\" spesifikasjonsnummer=\"12144\" blankettnummer=\"RF-1086\" tittel=\"Aksjon\u00e6rregisteroppgaven\" gruppeid=\"2586\" etatid=\"974761076\">\n  <GenerellInformasjon-grp-2587 gruppeid=\"2587\">\n    <Selskap-grp-2588 gruppeid=\"2588\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <EnhetNavn-datadef-1 orid=\"1\">TALLI TEST HOLDING AS</EnhetNavn-datadef-1>\n      <EnhetAdresse-datadef-15 orid=\"15\">Testveien 1</EnhetAdresse-datadef-15>\n      <EnhetPostnummer-datadef-6673 orid=\"6673\">0123</EnhetPostnummer-datadef-6673>\n      <EnhetPoststed-datadef-6674 orid=\"6674\">OSLO</EnhetPoststed-datadef-6674>\n      <AksjeType-datadef-17659 orid=\"17659\">02</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskap-grp-2588>\n    <Kontaktperson-grp-3442 gruppeid=\"3442\">\n      <KontaktpersonSkjemaEPost-datadef-30533 orid=\"30533\">kontakt@talli.no</KontaktpersonSkjemaEPost-datadef-30533>\n    </Kontaktperson-grp-3442>\n    <AnnenKontaktperson-grp-5384 gruppeid=\"5384\" />\n  </GenerellInformasjon-grp-2587>\n  <Selskapsopplysninger-grp-2589 gruppeid=\"2589\">\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\"3443\">\n      <AksjekapitalFjoraret-datadef-7129 orid=\"7129\">30000</AksjekapitalFjoraret-datadef-7129>\n      <Aksjekapital-datadef-87 orid=\"87\">30000</Aksjekapital-datadef-87>\n    </AksjekapitalForHeleSelskapet-grp-3443>\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\"3444\">\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\"17663\">30000</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\"17664\">30000</AksjekapitalISINAksjetype-datadef-17664>\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\n    <PalydendePerAksje-grp-3447 gruppeid=\"3447\">\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\"23944\">300</AksjeMvPalydendeFjoraret-datadef-23944>\n      <AksjeMvPalydende-datadef-23945 orid=\"23945\">300</AksjeMvPalydende-datadef-23945>\n    </PalydendePerAksje-grp-3447>\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\"3445\">\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\"29166\">100</AksjerMvAntallFjoraret-datadef-29166>\n      <AksjerMvAntall-datadef-29167 orid=\"29167\">100</AksjerMvAntall-datadef-29167>\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\"3446\">\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\"8020\">30000</AksjekapitalInnbetaltFjoraret-datadef-8020>\n      <AksjekapitalInnbetalt-datadef-5867 orid=\"5867\">30000</AksjekapitalInnbetalt-datadef-5867>\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\"3448\">\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\"17662\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\"17661\">0</AksjeOverkursISINAksjetype-datadef-17661>\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\n  </Selskapsopplysninger-grp-2589>\n</Skjema>\n",
+      "underskjemaXml": {
+        "owner": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjon\u00e6rregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">02</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">100</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">100</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n"
+      }
+    },
+    "liveExclusions": []
+  }
+]

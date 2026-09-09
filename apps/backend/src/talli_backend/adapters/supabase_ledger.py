@@ -27,11 +27,11 @@ from talli_backend.application.ledger_workflow import (
     RecordAdministrativeCostCommand,
     RecordTaxSettlementCommand,
 )
-from talli_backend.application.opening_snapshot_compatibility import (
-    LegacyOpeningShareholderView,
-    LegacyOpeningSnapshotCursor,
-    LegacyOpeningSnapshotPage,
-    LegacyOpeningSnapshotView,
+from talli_backend.application.new_year_opening import (
+    OpeningShareholderView,
+    OpeningSnapshotCursor,
+    OpeningSnapshotPage,
+    OpeningSnapshotView,
 )
 from talli_backend.modules.ledger.public import (
     ApprovedLossCoverageCapitalReductionFacts,
@@ -72,6 +72,7 @@ from talli_backend.modules.ledger.public import (
     LedgerSourceRecordId,
     LockPeriodCommand,
     OrdinaryBankLoanFacts,
+    OpeningBankInput,
     PeriodLock,
     PeriodLockId,
     PeriodLockPage,
@@ -91,12 +92,16 @@ from talli_backend.modules.ledger.public import (
     ReconstructionGapCode,
     ReconstructionState,
     RecordReconstructionAssessmentCommand,
+    RecordOpeningBankInputCommand,
     ledger_persistence_adapter,
 )
 from talli_backend.modules.ledger.service import LedgerService
 from talli_backend.modules.shareholder_register_filing.public import (
     OpeningSnapshotId,
+    OpeningSnapshotPersistence,
     RecordOpeningSnapshotCommand,
+    ShareholderRegisterFilingError,
+    rf1086_adapter,
 )
 from talli_backend.shared.kernel import (
     ActorId,
@@ -659,6 +664,61 @@ class SupabaseLedgerSession:
     @property
     def actor_id(self) -> ActorId:
         return self._verified.actor_id
+
+    @staticmethod
+    def _opening_bank_input(row: Mapping[str, object]) -> OpeningBankInput:
+        return OpeningBankInput(
+            snapshot_id=str(row["snapshot_id"]),
+            company_id=CompanyId(str(row["company_id"])),
+            income_year=IncomeYear(int(row["income_year"])),
+            bank_balance=_money(row["bank_balance_nok"]),
+            recorded_by=_actor(row["recorded_by"]),
+            recorded_at=_timestamp(row["recorded_at"]),
+        )
+
+    async def record_opening_bank_input(
+        self, command: RecordOpeningBankInputCommand
+    ) -> OpeningBankInput:
+        if command.actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        row = await self._one_idempotent_row(
+            "select * from ledger.record_opening_bank_input_v1(%s::uuid, %s::uuid, %s::integer, %s::numeric, %s::text)",
+            (
+                command.snapshot_id,
+                str(command.company_id),
+                int(command.income_year),
+                command.bank_balance.amount,
+                str(command.actor_id.subject),
+            ),
+        )
+        try:
+            return self._opening_bank_input(row)
+        except (KeyError, TypeError, ValueError):
+            raise self._unavailable() from None
+
+    async def read_opening_bank_inputs(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear | None,
+        correlation_id: CorrelationId,
+    ) -> tuple[OpeningBankInput, ...]:
+        if actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        _ = correlation_id
+        rows = await self._database_rows(
+            "select * from ledger.read_opening_bank_inputs_v1(%s::uuid, %s::integer, %s::text)",
+            (
+                str(company_id),
+                int(income_year) if income_year is not None else None,
+                str(actor_id.subject),
+            ),
+        )
+        try:
+            return tuple(self._opening_bank_input(row) for row in rows)
+        except (KeyError, TypeError, ValueError):
+            raise self._unavailable() from None
 
     def _unavailable(self) -> LedgerError:
         return LedgerError.unavailable()
@@ -1843,14 +1903,14 @@ class SupabaseLedgerSession:
         actor_id: ActorId,
         company_ids: tuple[CompanyId, ...],
         correlation_id: CorrelationId,
-        cursor: LegacyOpeningSnapshotCursor | None,
+        cursor: OpeningSnapshotCursor | None,
         limit: int,
-    ) -> LegacyOpeningSnapshotPage:
+    ) -> OpeningSnapshotPage:
         if actor_id != self.actor_id:
             raise LedgerError.forbidden()
         _ = correlation_id
         rows = await self._database_rows(
-            "select * from backend_system.list_opening_snapshots_legacy_v1(%s::uuid[], %s::text, %s::integer, %s::text)",
+            "select * from backend_system.read_new_year_opening_snapshots_v1(%s::uuid[], %s::text, %s::integer, %s::text)",
             (
                 [str(company_id) for company_id in company_ids],
                 str(cursor) if cursor is not None else None,
@@ -1862,7 +1922,7 @@ class SupabaseLedgerSession:
             raise self._unavailable()
         try:
             items = tuple(
-                LegacyOpeningSnapshotView(
+                OpeningSnapshotView(
                     setup_id=str(item["setupId"]),
                     company_id=CompanyId(str(item["companyId"])),
                     income_year=IncomeYear(int(item["incomeYear"])),
@@ -1874,7 +1934,7 @@ class SupabaseLedgerSession:
                     created_at=_timestamp(item["createdAt"]),
                     created_by=_actor(item["createdBy"]),
                     shareholders=tuple(
-                        LegacyOpeningShareholderView(
+                        OpeningShareholderView(
                             shareholder_id=str(shareholder["shareholderId"]),
                             setup_id=str(shareholder["setupId"]),
                             company_id=CompanyId(str(shareholder["companyId"])),
@@ -1897,10 +1957,10 @@ class SupabaseLedgerSession:
                 )
                 for item in rows[0]["items"]
             )
-            return LegacyOpeningSnapshotPage(
+            return OpeningSnapshotPage(
                 items=items,
                 next_cursor=(
-                    LegacyOpeningSnapshotCursor(str(rows[0]["next_cursor"]))
+                    OpeningSnapshotCursor(str(rows[0]["next_cursor"]))
                     if rows[0].get("next_cursor") is not None
                     else None
                 ),
@@ -2089,8 +2149,9 @@ class SupabaseLedgerSession:
         )
 
 
+@rf1086_adapter(OpeningSnapshotPersistence)
 class SupabaseLedgerWorkflowTransaction(SupabaseLedgerSession):
-    """Ledger and frozen-facade operations bound to one PostgreSQL transaction."""
+    """Owned capability operations bound to one PostgreSQL transaction."""
 
     def __init__(
         self,
@@ -2160,14 +2221,12 @@ class SupabaseLedgerWorkflowTransaction(SupabaseLedgerSession):
             raise self._unavailable()
         return dict(result)
 
-    async def record_legacy_opening_snapshot(
+    async def record_opening_snapshot(
         self,
         command: RecordOpeningSnapshotCommand,
-        *,
-        ledger_bank_balance: Money,
     ) -> OpeningSnapshotId:
         if command.actor_id != self.actor_id:
-            raise LedgerError.forbidden()
+            raise ShareholderRegisterFilingError.forbidden()
         typed = command
         shareholders = [
             {
@@ -2179,25 +2238,36 @@ class SupabaseLedgerWorkflowTransaction(SupabaseLedgerSession):
             }
             for shareholder in typed.shareholders
         ]
-        row = await self._one_idempotent_row(
-            """
-            select backend_system.record_opening_snapshot_legacy_v1(
-              %s::uuid, %s::integer, %s::numeric, %s::numeric,
-              %s::integer, %s::numeric, %s::jsonb, %s::text
-            ) as setup_id
-            """,
-            (
-                str(typed.company_id),
-                int(typed.income_year),
-                ledger_bank_balance.amount,
-                typed.share_capital.amount,
-                typed.share_count,
-                typed.nominal_value.amount,
-                json.dumps(shareholders, separators=(",", ":")),
-                str(typed.actor_id.subject),
-            ),
-        )
-        return OpeningSnapshotId(str(row["setup_id"]))
+        try:
+            row = await self._one_idempotent_row(
+                """
+                select shareholder_register_filing.record_opening_snapshot_v1(
+                  %s::uuid, %s::integer, %s::numeric,
+                  %s::integer, %s::numeric, %s::jsonb, %s::text
+                ) as setup_id
+                """,
+                (
+                    str(typed.company_id),
+                    int(typed.income_year),
+                    typed.share_capital.amount,
+                    typed.share_count,
+                    typed.nominal_value.amount,
+                    json.dumps(shareholders, separators=(",", ":")),
+                    str(typed.actor_id.subject),
+                ),
+            )
+            return OpeningSnapshotId(str(row["setup_id"]))
+        except LedgerError as error:
+            translations = {
+                "LEDGER_INVALID_INPUT": ShareholderRegisterFilingError.invalid_input,
+                "LEDGER_NOT_FOUND": ShareholderRegisterFilingError.not_found,
+                "LEDGER_FORBIDDEN": ShareholderRegisterFilingError.forbidden,
+                "LEDGER_COMPANY_YEAR_NOT_ADMITTED": ShareholderRegisterFilingError.company_year_not_admitted,
+                "LEDGER_OPENING_ALREADY_EXISTS": ShareholderRegisterFilingError.opening_already_exists,
+            }
+            raise translations.get(error.code, ShareholderRegisterFilingError.unavailable)() from None
+        except (KeyError, TypeError, ValueError):
+            raise ShareholderRegisterFilingError.unavailable() from None
 
     async def complete_workflow(
         self,

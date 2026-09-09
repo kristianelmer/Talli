@@ -1,0 +1,79 @@
+
+> talli-repository@0.1.0 build:web
+> npm --prefix apps/web run build
+
+
+> talli-web@0.1.0 build
+> cd ../.. && node apps/web/scripts/run-next.mjs build
+
+▲ Next.js 16.3.4 (Turbopack)
+✓ Running next.config.ts took 72ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 1051ms
+  Running TypeScript ...
+  Finished TypeScript in 4.6s ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/34) ...
+  Generating static pages using 9 workers (8/34)
+  Generating static pages using 9 workers (16/34)
+  Generating static pages using 9 workers (25/34)
+✓ Generating static pages using 9 workers (34/34) in 245ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /actions
+├ ƒ /actions/[type]
+├ ƒ /api/marketing-events
+├ ○ /apple-icon.png
+├ ƒ /archive/[companyId]/[incomeYear]/download
+├ ƒ /auth/confirm
+├ ƒ /auth/systembruker/confirm
+├ ƒ /bank/callback
+├ ƒ /billing
+├ ƒ /companies/[companyId]/annual-reporting/[incomeYear]
+├ ƒ /companies/[companyId]/annual-reporting/[incomeYear]/[obligation]
+├ ƒ /companies/[companyId]/annual-reporting/[incomeYear]/review
+├ ƒ /connections
+├ ƒ /corporate-decisions/[decisionId]
+├ ƒ /dashboard
+├ ○ /databehandleravtale
+├ ƒ /documents
+├ ƒ /documents/[documentId]/download
+├ ƒ /documents/[documentId]/preview
+├ ○ /email-confirmed
+├ ƒ /filing
+├ ƒ /filing/[obligation]
+├ ƒ /health/live
+├ ƒ /health/ready
+├ ○ /hjelp
+├ ○ /icon.svg
+├ ƒ /invite/accept
+├ ƒ /login
+├ ƒ /mfa
+├ ƒ /onboarding
+├ ƒ /operator
+├ ƒ /operator/marketing
+├ ○ /passer-talli
+├ ○ /personvern
+├ ○ /pris
+├ ○ /robots.txt
+├ ƒ /selskapsgrense
+├ ƒ /signup
+├ ○ /sikkerhet
+├ ○ /sitemap.xml
+├ ○ /sjekk-selskapet
+├ ○ /status
+├ ƒ /system-boundary
+├ ƒ /transactions
+├ ○ /ui
+├ ƒ /verify-email
+├ ○ /vilkar
+├ ƒ /workspace
+└ ƒ /year-end
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand

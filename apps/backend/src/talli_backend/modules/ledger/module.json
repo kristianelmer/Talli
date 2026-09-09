@@ -26,7 +26,8 @@
       "RebuildCompanyYearOpeningCommand",
       "RecognizeHoldingActionCommand",
       "ReverseSupportedHoldingActionCommand",
-      "RecordReconstructionAssessmentCommand"
+      "RecordReconstructionAssessmentCommand",
+      "RecordOpeningBankInputCommand"
     ],
     "queries": [
       "CompanyYearCloseAssessment",
@@ -41,10 +42,13 @@
       "ReconstructionAssessment",
       "ReconstructionEconomicFactCandidates",
       "ReconstructionEconomicFactSnapshot",
-      "ReversedLedgerEntry"
+      "ReversedLedgerEntry",
+      "OpeningBankInput"
     ],
     "events": [],
-    "errors": ["LedgerError"],
+    "errors": [
+      "LedgerError"
+    ],
     "identifiers": [
       "AdministrativeCostBlock",
       "AdministrativeCostCategory",
@@ -129,7 +133,9 @@
     ]
   },
   "owns": {
-    "postgresSchemas": ["ledger"],
+    "postgresSchemas": [
+      "ledger"
+    ],
     "tables": [
       "ledger.bank_loan_anchors",
       "ledger.bank_loan_payment_allocations",
@@ -144,6 +150,7 @@
       "ledger.entry_reversals",
       "ledger.entry_sources",
       "ledger.loss_coverage_capital_reduction_phases",
+      "ledger.opening_bank_inputs",
       "ledger.opening_position_component_sources",
       "ledger.opening_position_components",
       "ledger.opening_position_rebuilds",
@@ -198,5 +205,7 @@
     "database": "tests/ledger_database_runtime.test.mjs",
     "architecture": "tests/architecture_foundation.test.mjs"
   },
-  "compatibilityExceptions": ["compat-ledger-persistence"]
+  "compatibilityExceptions": [
+    "compat-ledger-persistence"
+  ]
 }

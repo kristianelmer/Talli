@@ -11,8 +11,8 @@ from asyncio import timeout
 import httpx
 
 from talli_backend.adapters.maskinporten import MaskinportenAccessToken, SYSTEM_USER_TAX_SCOPE
-from talli_backend.compatibility.rf1086_authority_workflow import (
-    _js_utf8_bytes,
+from talli_backend.modules.shareholder_register_filing.public import (
+    rf1086_payload_utf8_bytes, rf1086_adapter, Rf1086MutationAuthority, Rf1086ReadOnlyAuthority,
     Rf1086AuthorityCall, Rf1086AuthorityDocument, Rf1086AuthorityError, Rf1086Confirmation,
     Rf1086DocumentPage, Rf1086DocumentReference, Rf1086MainResponse, Rf1086PostResponse,
 )
@@ -82,6 +82,7 @@ def _integer(value: int | float) -> bool:
     return isinstance(value, (int, float)) and math.isfinite(value) and value == math.floor(value)
 
 
+@rf1086_adapter(Rf1086ReadOnlyAuthority)
 class Rf1086ReadOnlyAuthorityAdapter:
     """Recovery receives this two-method interface, which has no filing POSTs."""
 
@@ -163,7 +164,7 @@ class Rf1086ReadOnlyAuthorityAdapter:
             async with timeout(self._timeout), httpx.AsyncClient(transport=self._transport,
                     timeout=self._timeout, follow_redirects=False, trust_env=False) as client:
                 async with client.stream(method, endpoint, headers=headers,
-                        content=_js_utf8_bytes(body) if body is not None else None) as response:
+                        content=rf1086_payload_utf8_bytes(body) if body is not None else None) as response:
                     # fetch redirect:error classified redirects as an unknown
                     # network outcome; preserve that stop for mutation recovery.
                     if response.is_redirect:
@@ -180,7 +181,7 @@ class Rf1086ReadOnlyAuthorityAdapter:
                             or re.search(r"(?i)Bearer\s+\S+", serialized)):
                         raise Rf1086AuthorityError("RF1086_RESPONSE_SECRET", status=response.status_code)
             return _safe_object(parsed), Rf1086AuthorityCall(method, endpoint,
-                hashlib.sha256(_js_utf8_bytes(body or "")).hexdigest(), idempotency_key)
+                hashlib.sha256(rf1086_payload_utf8_bytes(body or "")).hexdigest(), idempotency_key)
         except (httpx.HTTPError, TimeoutError):
             raise Rf1086AuthorityError("RF1086_NETWORK_ERROR", retryable=True) from None
 
@@ -237,6 +238,7 @@ class Rf1086ReadOnlyAuthorityAdapter:
             raise Rf1086AuthorityError("RF1086_NETWORK_ERROR", retryable=True) from None
 
 
+@rf1086_adapter(Rf1086MutationAuthority)
 class Rf1086AuthorityAdapter(Rf1086ReadOnlyAuthorityAdapter):
     async def post_hovedskjema(self, *, income_year: int, xml: str, idempotency_key: str) -> Rf1086MainResponse:
         data, call = await self._json_request("POST", f"/{_year(income_year)}/1086H",

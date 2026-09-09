@@ -110,7 +110,7 @@
     {
       "id": "GH-151-A1",
       "requirement": "Supported RF-1086 cases produce payloads identical to current authority-tested evidence.",
-      "status": "NOT_IMPLEMENTED_NOT_VALIDATED_IN_151",
+      "status": "IN_PROGRESS_EXIT_VERIFICATION_PENDING",
       "existingCharacterizationPaths": [
         "tests/fixtures/rf1086",
         "tests/fixtures/rf1086_invalid",
@@ -126,12 +126,14 @@
         "npm run test:authority-evidence"
       ],
       "expectedResult": "Fixed input/clock/ID old-new equality for supported no-activity preview/XML bytes, hashes, order, defaults, coded errors and exclusion behavior. Historical TT02 hashes retained; broader offline fixtures do not imply live support.",
-      "newEvidence": []
+      "newEvidence": [
+        "architecture/evidence/issues/151/implementation-checkpoint.md"
+      ]
     },
     {
       "id": "GH-151-A2",
       "requirement": "Owner confirmation, AAL2, entitlement, release, and pilot gates remain mandatory.",
-      "status": "NOT_IMPLEMENTED_NOT_VALIDATED_IN_151",
+      "status": "IN_PROGRESS_EXIT_VERIFICATION_PENDING",
       "existingCharacterizationPaths": [
         "tests/production_approval.test.mjs",
         "tests/production_pilot.test.mjs",
@@ -143,12 +145,14 @@
         "npm run test:rf1086:production-pilot"
       ],
       "expectedResult": "Fresh complete owner preview-to-approval-to-Send journey and independent fail-closed owner/AAL2/authority/preflight/readiness/review/override/entitlement/release/pilot checks. Token failure precedes begin; no unauthorized effects. Historical recovery preserves its distinct original authority.",
-      "newEvidence": []
+      "newEvidence": [
+        "architecture/evidence/issues/151/implementation-checkpoint.md"
+      ]
     },
     {
       "id": "GH-151-A3",
       "requirement": "Submission, retry, feedback, unknown outcomes, and receipts remain idempotent and auditable.",
-      "status": "NOT_IMPLEMENTED_NOT_VALIDATED_IN_151",
+      "status": "IN_PROGRESS_EXIT_VERIFICATION_PENDING",
       "existingCharacterizationPaths": [
         "apps/backend/tests/test_rf1086_compatibility.py",
         "apps/backend/tests/test_rf1086_database_runtime.py",
@@ -161,12 +165,14 @@
         "npm run test:rf1086:authority-client"
       ],
       "expectedResult": "Permanent original-intent journal, exact per-operation body/key, concurrency/lease/retry-cap/partial-send/unknown outcomes, no blind POST replay, explicit feedback classification and Documents receipt integrity/conditional rollback.",
-      "newEvidence": []
+      "newEvidence": [
+        "architecture/evidence/issues/151/implementation-checkpoint.md"
+      ]
     },
     {
       "id": "GH-151-A4",
       "requirement": "The complete owner filing flow uses the generated API client.",
-      "status": "NOT_IMPLEMENTED_NOT_VALIDATED_IN_151",
+      "status": "IN_PROGRESS_EXIT_VERIFICATION_PENDING",
       "existingCharacterizationPaths": [
         "apps/web/app/actions.ts",
         "apps/web/app/lib/supabase/server.ts",
@@ -177,12 +183,14 @@
       ],
       "existingFocusedCommands": [],
       "expectedResult": "New complete owned generated API covers opening facts/readiness/preview/review/override/confirmation/approval/Send/recovery/receipt presentation. Real local auth, backend and RLS with loopback provider; current seeded historical browser proof is retained but does not replace fresh owner-journey evidence.",
-      "newEvidence": []
+      "newEvidence": [
+        "architecture/evidence/issues/151/implementation-checkpoint.md"
+      ]
     },
     {
       "id": "GH-151-A5",
       "requirement": "Both RF-1086 CLI bridges, generic RF-1086 rows, duplicate TypeScript rules, and active-stage compatibility code are removed.",
-      "status": "NOT_IMPLEMENTED_NOT_VALIDATED_IN_151",
+      "status": "IN_PROGRESS_EXIT_VERIFICATION_PENDING",
       "existingCharacterizationPaths": [
         "apps/backend/src/talli_backend/modules/shareholder_register_filing",
         "apps/backend/src/talli_backend/application/shareholder_register_compatibility.py",
@@ -201,12 +209,14 @@
         "npm run test:architecture"
       ],
       "expectedResult": "One owned implementation/writer; shareholder fields and RF generic rows migrated without sibling/ledger/foreign-owner acquisition; both web Python bridges and duplicate TS rules removed, frozen RF backend compatibility absorbed, RF tool calls canonical generator, obsolete authority contracted, temporary parity/allowlist debt removed. Baseline stays byte-identical. Exact pending15scope exception only if approved.",
-      "newEvidence": []
+      "newEvidence": [
+        "architecture/evidence/issues/151/implementation-checkpoint.md"
+      ]
     },
     {
       "id": "GH-151-A6",
       "requirement": "The complete `shareholder_register_filing` stage exit criteria from issue #132 pass before company-tax migration begins.",
-      "status": "NOT_IMPLEMENTED_NOT_VALIDATED_IN_151",
+      "status": "IN_PROGRESS_EXIT_VERIFICATION_PENDING",
       "existingCharacterizationPaths": [
         "architecture/compatibility.json",
         "architecture/backend-system.json",
@@ -219,11 +229,13 @@
         "npm run gate:customer-ready -- --previous <FIRST_PASSING_151_REVISION>"
       ],
       "expectedResult": "Complete #132 envelope, independent review, two linked immutable11/11 gates, protected PR/exact-main Release+Preview and preserved production freeze before successor. Activated production alone would additionally require approved seven-day observation; no activation or such observation is planned or claimed.",
-      "newEvidence": []
+      "newEvidence": [
+        "architecture/evidence/issues/151/implementation-checkpoint.md"
+      ]
     }
   ],
   "approvedSourceHandoff": {
-    "status": "REQUIRED_NOT_IMPLEMENTED",
+    "status": "IMPLEMENTED_DATABASE_VERIFICATION_PENDING",
     "requiredFacts": [
       "immutable company/year/obligation readiness",
       "complete production-submission history and positive completeness evidence before declaring none submitted",
@@ -353,5 +365,6 @@
     "preview": null,
     "productionBranch": "release/production",
     "productionRevisionToRemainFrozen": "d331ee2717d1eeacef0d81db42b9d4fb5848b408"
-  }
+  },
+  "implementationCheckpoint": "architecture/evidence/issues/151/implementation-checkpoint.md"
 }

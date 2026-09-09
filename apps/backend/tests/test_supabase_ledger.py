@@ -21,8 +21,8 @@ from talli_backend.application.ledger_workflow import (
     NewYearStartCommand,
     RecordAdministrativeCostCommand,
 )
-from talli_backend.application.opening_snapshot_compatibility import (
-    LegacyOpeningSnapshotCursor,
+from talli_backend.application.new_year_opening import (
+    OpeningSnapshotCursor,
 )
 from talli_backend.modules.ledger import public as ledger_public
 from talli_backend.modules.ledger.public import (
@@ -2244,9 +2244,9 @@ def test_opening_snapshot_query_binds_actor_scope_and_decodes_facts() -> None:
     assert snapshots.items[0].company_id == company_id
     assert snapshots.items[0].bank_balance == Money.nok("9007199254740993.12")
     assert snapshots.items[0].shareholders[0].national_id == "01010112345"
-    assert snapshots.next_cursor == LegacyOpeningSnapshotCursor("opaque-opening-next")
+    assert snapshots.next_cursor == OpeningSnapshotCursor("opaque-opening-next")
     assert snapshots.has_more is True
-    assert "backend_system.list_opening_snapshots_legacy_v1" in calls[0][0]
+    assert "backend_system.read_new_year_opening_snapshots_v1" in calls[0][0]
     assert calls[0][1] == ([str(company_id)], None, 25, str(ACTOR_ID.subject))
 
 

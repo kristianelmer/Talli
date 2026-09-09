@@ -116,3 +116,47 @@ test("Systembruker binding preserves every existing production filing gate", () 
   assert.match(beginSql, /v_request\.status <> 'accepted'/iu);
   assert.match(beginSql, /v_request\.preflight_verified_at is null/iu);
 });
+
+const canonicalSql = readFileSync(new URL("../supabase/migrations/20260909190548_shareholder_register_filing_capability.sql", import.meta.url), "utf8");
+
+test("canonical RF relocation preserves physical production aggregates and uses dedicated authority", () => {
+  for (const table of ["filing_approval_snapshots", "production_filing_submissions", "production_filing_events"]) {
+    assert.match(canonicalSql, new RegExp(`alter table public\\.${table} set schema shareholder_register_filing`, "iu"));
+    assert.match(canonicalSql, new RegExp(`alter table shareholder_register_filing\\.${table} force row level security`, "iu"));
+  }
+  assert.match(canonicalSql, /shareholder_register_filing_executor nologin noinherit nobypassrls/iu);
+  for (const name of ["approve_production_filing", "begin_production_filing", "append_production_filing_event"]) {
+    assert.match(canonicalSql, new RegExp(`revoke all on function shareholder_register_filing\\.${name}[^;]+from public,anon,authenticated,service_role`, "isu"));
+    assert.match(canonicalSql, new RegExp(`grant execute on function shareholder_register_filing\\.${name}[^;]+to shareholder_register_filing_executor`, "isu"));
+  }
+});
+
+test("canonical begin retains owner MFA, exact System User and Billing bindings, and every original release gate", () => {
+  function functionBody(name) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+    const body = canonicalSql.match(new RegExp(`create(?: or replace)? function ${escaped}\\([^]*?\\$function\\$([^]*?)\\$function\\$`, "iu"))?.[1];
+    assert.ok(body, name);
+    return body;
+  }
+  const body = functionBody("shareholder_register_filing.begin_production_filing");
+  for (const gate of ["assert_fresh_owner_v1", "authority_permissions", "filing_review_comments",
+    "backend_system.rf1086_stored_release_inputs_v1", "backend_system.rf1086_technical_release_ready_v1"])
+    assert.ok(body.includes(gate), gate);
+  assert.match(functionBody("shareholder_register_filing.assert_fresh_owner_v1"), /assert_fresh_production_owner_v1/iu);
+  const storedReleaseInputs = functionBody("backend_system.rf1086_stored_release_inputs_v1");
+  assert.match(storedReleaseInputs, /r\.ready and pg_catalog\.jsonb_array_length\(r\.hard_blocks\)=0/iu);
+  assert.match(storedReleaseInputs, /public\.filing_readiness_snapshots/iu);
+  assert.match(storedReleaseInputs, /not shareholder_register_filing\.has_blocking_override_v1/iu);
+  assert.match(storedReleaseInputs, /public\.filing_overrides[\s\S]+risk_level='block'/iu);
+  const technicalRelease = functionBody("backend_system.rf1086_technical_release_ready_v1");
+  for (const gate of ["public.launch_signoffs", "launch_legal_name_public_copy", "legal_policy_pack", "security_restore",
+    "support_rollback", "founder_production_go_live", "rf1086_authority", "interval '30 days'"])
+    assert.ok(technicalRelease.includes(gate), gate);
+  assert.match(technicalRelease, /s\.status='approved'/iu);
+  assert.match(technicalRelease, /s\.reviewed_at<=pg_catalog\.now\(\)/iu);
+  assert.match(body, /v_entitlement\.system_user_request_id is distinct from v_request\.id/iu);
+  assert.match(body, /v_request\.status <> 'accepted'/iu);
+  assert.match(body, /v_request\.preflight_verified_at is null/iu);
+  assert.match(body, /lock_rf_request_v1/iu);
+  assert.match(body, /lock_rf_pilot_v1/iu);
+});

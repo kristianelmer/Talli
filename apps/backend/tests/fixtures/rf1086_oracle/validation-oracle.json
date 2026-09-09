@@ -1,0 +1,212 @@
+{
+  "paths": [
+    "tests/fixtures/rf1086/dividend.json",
+    "tests/fixtures/rf1086/no_activity.json",
+    "tests/fixtures/rf1086/share_sale.json",
+    "tests/fixtures/rf1086/stiftelse.json",
+    "tests/fixtures/rf1086/stiftelse_two_founders.json",
+    "tests/fixtures/rf1086_invalid/mismatched_share_count.json",
+    "tests/fixtures/rf1086_invalid/unsupported_share_class.json",
+    "missing-case.json"
+  ],
+  "report": {
+    "filing": "aksjon\u00e6rregisteroppgaven",
+    "source": "public/synthetic",
+    "limitations": [
+      "Public and synthetic data cannot prove voucher completeness.",
+      "Public and synthetic data cannot prove exact bank transaction classification.",
+      "Public and synthetic data cannot prove parity with Fiken or accountant-submitted payloads."
+    ],
+    "cases": [
+      {
+        "case_path": "tests/fixtures/rf1086/dividend.json",
+        "case_id": "dividend",
+        "outcome": "pass",
+        "assumptions": [
+          "RF-1086 launch subset",
+          "No production authority submission",
+          "Official XSD validation is separate"
+        ],
+        "issues": [],
+        "generated_documents": 3
+      },
+      {
+        "case_path": "tests/fixtures/rf1086/no_activity.json",
+        "case_id": "no_activity",
+        "outcome": "pass",
+        "assumptions": [
+          "RF-1086 launch subset",
+          "No production authority submission",
+          "Official XSD validation is separate"
+        ],
+        "issues": [],
+        "generated_documents": 2
+      },
+      {
+        "case_path": "tests/fixtures/rf1086/share_sale.json",
+        "case_id": "share_sale",
+        "outcome": "pass",
+        "assumptions": [
+          "RF-1086 launch subset",
+          "No production authority submission",
+          "Official XSD validation is separate"
+        ],
+        "issues": [],
+        "generated_documents": 3
+      },
+      {
+        "case_path": "tests/fixtures/rf1086/stiftelse.json",
+        "case_id": "stiftelse",
+        "outcome": "pass",
+        "assumptions": [
+          "RF-1086 launch subset",
+          "No production authority submission",
+          "Official XSD validation is separate"
+        ],
+        "issues": [],
+        "generated_documents": 2
+      },
+      {
+        "case_path": "tests/fixtures/rf1086/stiftelse_two_founders.json",
+        "case_id": "stiftelse_two_founders",
+        "outcome": "pass",
+        "assumptions": [
+          "RF-1086 launch subset",
+          "No production authority submission",
+          "Official XSD validation is separate"
+        ],
+        "issues": [],
+        "generated_documents": 3
+      },
+      {
+        "case_path": "tests/fixtures/rf1086_invalid/mismatched_share_count.json",
+        "case_id": null,
+        "outcome": "blocked",
+        "assumptions": [
+          "RF-1086 launch subset",
+          "No production authority submission",
+          "Official XSD validation is separate"
+        ],
+        "issues": [
+          "Case validation failed: 1 validation error for FilingCase\n  Value error, sum of current shareholder shares must equal company current share count [type=value_error, input_value={'case_id': 'invalid_mism...nt': 99}], 'events': []}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/value_error"
+        ],
+        "generated_documents": 0
+      },
+      {
+        "case_path": "tests/fixtures/rf1086_invalid/unsupported_share_class.json",
+        "case_id": "unsupported_share_class",
+        "outcome": "blocked",
+        "assumptions": [
+          "RF-1086 launch subset",
+          "No production authority submission",
+          "Official XSD validation is separate"
+        ],
+        "issues": [
+          "Kun ordin\u00e6r aksjeklasse er st\u00f8ttet i f\u00f8rste versjon."
+        ],
+        "generated_documents": 0
+      },
+      {
+        "case_path": "missing-case.json",
+        "case_id": null,
+        "outcome": "blocked",
+        "assumptions": [
+          "RF-1086 launch subset",
+          "No production authority submission",
+          "Official XSD validation is separate"
+        ],
+        "issues": [
+          "Case validation failed: [Errno 2] No such file or directory: 'missing-case.json'"
+        ],
+        "generated_documents": 0
+      }
+    ]
+  },
+  "readiness": [
+    {
+      "path": "tests/fixtures/rf1086/dividend.json",
+      "text": "Filing readiness: aksjon\u00e6rregisteroppgaven\n\nStatus: klar for simulering\n\nIngen kjente blokkerende feil eller advarsler i lanseringssubset.\n",
+      "excludedCodes": [
+        "U"
+      ]
+    },
+    {
+      "path": "tests/fixtures/rf1086/no_activity.json",
+      "text": "Filing readiness: aksjon\u00e6rregisteroppgaven\n\nStatus: klar for simulering\n\nIngen kjente blokkerende feil eller advarsler i lanseringssubset.\n",
+      "excludedCodes": []
+    },
+    {
+      "path": "tests/fixtures/rf1086/share_sale.json",
+      "text": "Filing readiness: aksjon\u00e6rregisteroppgaven\n\nStatus: klar for simulering\n\nIngen kjente blokkerende feil eller advarsler i lanseringssubset.\n",
+      "excludedCodes": [
+        "K",
+        "S"
+      ]
+    },
+    {
+      "path": "tests/fixtures/rf1086/stiftelse.json",
+      "text": "Filing readiness: aksjon\u00e6rregisteroppgaven\n\nStatus: klar for simulering\n\nIngen kjente blokkerende feil eller advarsler i lanseringssubset.\n",
+      "excludedCodes": []
+    },
+    {
+      "path": "tests/fixtures/rf1086/stiftelse_two_founders.json",
+      "text": "Filing readiness: aksjon\u00e6rregisteroppgaven\n\nStatus: klar for simulering\n\nIngen kjente blokkerende feil eller advarsler i lanseringssubset.\n",
+      "excludedCodes": []
+    },
+    {
+      "path": "tests/fixtures/rf1086_invalid/unsupported_share_class.json",
+      "text": "Filing readiness: aksjon\u00e6rregisteroppgaven\n\nStatus: blokkert\n\nBlokkerende feil:\n- Kun ordin\u00e6r aksjeklasse er st\u00f8ttet i f\u00f8rste versjon.\n",
+      "excludedCodes": []
+    }
+  ],
+  "codes": [
+    {
+      "event": "stiftelse",
+      "field_name": "AksjerNyutstedteStiftelseMvType-datadef-17670 / AksjeErvervType-datadef-17745",
+      "code_value": "N",
+      "public_label": "stiftelse",
+      "verification_status": "verified",
+      "production_blocker": false,
+      "authority_note": "Observed in Skatteetaten's public API example for RF-1086/RF-1086-U.",
+      "sources": [
+        "https://skatteetaten.github.io/api-dokumentasjon/api/innrapportering-aksjonaerregisteroppgave"
+      ]
+    },
+    {
+      "event": "kjop",
+      "field_name": "AksjeErvervType-datadef-17745",
+      "code_value": "K",
+      "public_label": "kj\u00f8p",
+      "verification_status": "excluded_from_live_scope",
+      "production_blocker": false,
+      "authority_note": "Skatteetaten public examples document the purchase label and reporting position, but the local XSD leaves the field as free text and does not verify the K code value. Production live filing excludes purchase/sale events until official code-list evidence or test-environment acceptance is recorded.",
+      "sources": [
+        "https://www.skatteetaten.no/bedrift-og-organisasjon/rapportering-og-bransjer/aksjonarregisteroppgaven/eksempler-pa-utfylling-av-aksjonarregisteroppgaven/"
+      ]
+    },
+    {
+      "event": "salg",
+      "field_name": "AksjerArvMvOmsattType-datadef-17753",
+      "code_value": "S",
+      "public_label": "salg",
+      "verification_status": "excluded_from_live_scope",
+      "production_blocker": false,
+      "authority_note": "Skatteetaten public examples document the sale label and reporting position, but the local XSD leaves the field as free text and does not verify the S code value. Production live filing excludes purchase/sale events until official code-list evidence or test-environment acceptance is recorded.",
+      "sources": [
+        "https://www.skatteetaten.no/bedrift-og-organisasjon/rapportering-og-bransjer/aksjonarregisteroppgaven/eksempler-pa-utfylling-av-aksjonarregisteroppgaven/"
+      ]
+    },
+    {
+      "event": "utbytte",
+      "field_name": "AksjeUtbytteHendelsestype-datadef-36564",
+      "code_value": "U",
+      "public_label": "utbytte",
+      "verification_status": "excluded_from_live_scope",
+      "production_blocker": false,
+      "authority_note": "Dividend event type is accepted by local XSD shape, but public sources reviewed do not verify the U code value for production direct filing. Production live filing excludes dividend events until official code-list evidence or test-environment acceptance is recorded.",
+      "sources": [
+        "docs/filing/aksjonaerregisteroppgaveHovedskjema.xsd"
+      ]
+    }
+  ]
+}

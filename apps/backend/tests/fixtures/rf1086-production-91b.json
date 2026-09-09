@@ -1,0 +1,1241 @@
+{
+  "source_commit": "91b178c281bcc5fb887a6257d2f72e380199f3e6",
+  "source_path": "apps/web/app/lib/production-approval.ts",
+  "source_sha256": "2133df1c622aa46834d174bc9e97692c48a29a366376002ce71c93aa89c776b9",
+  "scope": "Synthetic predecessor characterization; not authority or TT02 evidence.",
+  "inputs": [
+    {
+      "id": "a0000000-0000-4000-8000-00000000000a",
+      "company_id": "70000000-0000-4000-8000-000000000007",
+      "income_year": 2025,
+      "filing": "aksjonaerregisteroppgaven",
+      "hovedskjema_xml": " \n<H>Æø &amp; original</H>\n",
+      "underskjema_xml": {
+        "b": "<B/>",
+        "a": "<A/>",
+        "A": "<Upper/>"
+      },
+      "warnings": [
+        "﻿ warning ﻿",
+        "😀",
+        "",
+        "retained",
+        " warning ",
+        " "
+      ],
+      "actor_id": "60000000-0000-4000-8000-000000000006"
+    },
+    {
+      "id": "a0000000-0000-4000-8000-00000000000a",
+      "company_id": "70000000-0000-4000-8000-000000000007",
+      "income_year": 2025,
+      "filing": "aksjonaerregisteroppgaven",
+      "hovedskjema_xml": " \n<H>Æø &amp; original</H>\n",
+      "underskjema_xml": {
+        "é": "<Accent/>",
+        "é": "<Decomposed/>",
+        "ø": "<Norwegian/>",
+        "Å": "<Ring/>"
+      },
+      "warnings": [
+        "﻿ warning ﻿",
+        "😀",
+        "",
+        "retained",
+        " warning ",
+        " "
+      ],
+      "actor_id": "60000000-0000-4000-8000-000000000006"
+    },
+    {
+      "id": "a0000000-0000-4000-8000-00000000000a",
+      "company_id": "70000000-0000-4000-8000-000000000007",
+      "income_year": 2025,
+      "filing": "aksjonaerregisteroppgaven",
+      "hovedskjema_xml": " \n<H>Æø &amp; original</H>\n",
+      "underskjema_xml": {
+        "😀": "<Astral/>",
+        "": "<Private/>",
+        "a": "<A/>"
+      },
+      "warnings": [
+        "﻿ warning ﻿",
+        "😀",
+        "",
+        "retained",
+        " warning ",
+        " "
+      ],
+      "actor_id": "60000000-0000-4000-8000-000000000006"
+    },
+    {
+      "id": "a0000000-0000-4000-8000-00000000000a",
+      "company_id": "70000000-0000-4000-8000-000000000007",
+      "income_year": 2025,
+      "filing": "aksjonaerregisteroppgaven",
+      "hovedskjema_xml": " \n<H>Æø &amp; original</H>\n",
+      "underskjema_xml": {
+        "0": "<Zero/>",
+        "3": "<Three/>",
+        "20": "<Twenty/>",
+        "01": "<Leading/>",
+        "4294967295": "<Max/>"
+      },
+      "warnings": [
+        "﻿ warning ﻿",
+        "😀",
+        "",
+        "retained",
+        " warning ",
+        " "
+      ],
+      "actor_id": "60000000-0000-4000-8000-000000000006"
+    },
+    {
+      "id": "a0000000-0000-4000-8000-00000000000a",
+      "company_id": "70000000-0000-4000-8000-000000000007",
+      "income_year": 2025,
+      "filing": "aksjonaerregisteroppgaven",
+      "hovedskjema_xml": " \n<H>Æø &amp; original</H>\n",
+      "underskjema_xml": {
+        "a ": "<Trailing/>",
+        " a": "<Leading/>",
+        "﻿a﻿": "<Bom/>"
+      },
+      "warnings": [
+        "﻿ warning ﻿",
+        "😀",
+        "",
+        "retained",
+        " warning ",
+        " "
+      ],
+      "actor_id": "60000000-0000-4000-8000-000000000006"
+    },
+    {
+      "id": "a0000000-0000-4000-8000-00000000000a",
+      "company_id": "70000000-0000-4000-8000-000000000007",
+      "income_year": 2025,
+      "filing": "aksjonaerregisteroppgaven",
+      "hovedskjema_xml": " \n<H>Æø &amp; original</H>\n",
+      "underskjema_xml": {
+        "40000000-0000-4000-8000-000000000004": "<B/>",
+        "10000000-0000-4000-8000-000000000001": "<U>preserved\r\nbytes</U>"
+      },
+      "warnings": [
+        "﻿ warning ﻿",
+        "😀",
+        "",
+        "retained",
+        " warning ",
+        " "
+      ],
+      "actor_id": "60000000-0000-4000-8000-000000000006"
+    },
+    {
+      "id": "a0000000-0000-4000-8000-00000000000a",
+      "company_id": "70000000-0000-4000-8000-000000000007",
+      "income_year": 2025,
+      "filing": "aksjonaerregisteroppgaven",
+      "hovedskjema_xml": " \n<H>Æø &amp; original</H>\n",
+      "underskjema_xml": {
+        "6621782c-e52c-6d66-538c-bbb4d2e5081b": "<U/>",
+        "cfec44f6-4dc9-b394-3a39-ef91301824e4": "<U/>",
+        "6b8ad678-29b4-1769-2533-57a67a71c485": "<U/>",
+        "4b0827b6-be7e-02f1-d74e-0a37177de88e": "<U/>",
+        "e6fb99bb-bd89-b581-4800-b002553e1320": "<U/>",
+        "efe93b8c-7169-225d-d463-81c0ee2cc3ab": "<U/>",
+        "eb06557d-0d1d-78e5-6559-4e44c0030171": "<U/>",
+        "d036653e-23a8-f1fb-cda8-00bed3522345": "<U/>",
+        "5ffefad9-7d89-aa05-22a1-e2c1d4bc230f": "<U/>",
+        "4cf07b1d-ae11-a82e-1699-b6a7f2c019a8": "<U/>",
+        "034ddcb1-20c7-9eb8-580b-fcc67b27c6fb": "<U/>",
+        "24097cea-cd04-90d3-1b32-19b00e67c4ba": "<U/>",
+        "cbc9cd7d-349a-0f8e-ffb6-82499188c1d0": "<U/>",
+        "a1c272ac-9f98-daa3-b186-eeba459dd1ca": "<U/>",
+        "94784ccf-89be-c93d-762a-854f7e7f8ef6": "<U/>",
+        "97563ce0-dadf-6879-fed3-bb5f8d4e0ce8": "<U/>",
+        "c1f47ba6-dd27-bfab-a70b-2dd407490b36": "<U/>",
+        "74e3af79-f6a3-7dfb-a51a-150da4c87630": "<U/>",
+        "c57bd76f-08d6-251b-39c4-e9812ba10427": "<U/>",
+        "c6c87202-32e6-0a26-7230-e59f4c6ef73f": "<U/>",
+        "1e6acd61-49f4-6115-ec4a-946a8ecbbb33": "<U/>",
+        "f603f9d4-455f-c2e0-c39e-edf20493cbf9": "<U/>",
+        "8021d8e1-f220-9b92-0b28-32abf15ca5aa": "<U/>",
+        "c11abbe4-4b12-9e46-c2d1-5e4aaae0b407": "<U/>",
+        "d137f092-d483-bb54-12ad-339121abea88": "<U/>",
+        "f6736d27-44dd-c2d1-89a3-43e71fe8c5a2": "<U/>",
+        "44eaa170-2b7b-25da-a651-f92d9355af26": "<U/>",
+        "11cf35f1-10f5-d8c4-6171-d375741314bb": "<U/>",
+        "5af33c17-c7e8-e447-ee78-80745aa437db": "<U/>",
+        "6cfd5e80-d307-ce07-2c38-396fdb9a7251": "<U/>",
+        "07185adf-fa97-4906-2696-ebdfa97736a8": "<U/>",
+        "fb1836fa-2dcd-6576-fb3b-1a5018958fde": "<U/>",
+        "bbdb6088-d41c-22e2-aac5-6fd845771471": "<U/>",
+        "aedd2d5b-93a6-39c8-4a25-140bd2d88747": "<U/>",
+        "22fc6559-5dd6-e0d2-6715-2f94605c0289": "<U/>",
+        "b0e54ac4-9a18-1a5a-a1b5-b394ec6820fc": "<U/>",
+        "ea0b4cdb-0473-aead-4d81-817b340f0277": "<U/>",
+        "7b9f3426-0c49-ba55-6fa9-8a9c15e8fc44": "<U/>",
+        "1e3f288c-49db-40a0-56d0-710165bacd3e": "<U/>",
+        "fe7d2196-0654-248c-613d-7acfaa62cef9": "<U/>",
+        "c9fd877e-2e55-440e-65ff-e4595a80f6bf": "<U/>",
+        "1079beb5-ca1b-c3af-87b8-a181ea613772": "<U/>",
+        "6598a565-fea7-6a9d-d7f6-17cf935f4bb4": "<U/>",
+        "0bbdbb9f-d5e3-ba43-b218-687e4c225c1c": "<U/>",
+        "7542de52-f74d-88ef-74a7-4f223ffe71f1": "<U/>",
+        "f720b2be-e59f-bedc-d015-30c67a2e855e": "<U/>",
+        "f1ae9a56-2619-7a60-3d47-54599ea5e098": "<U/>",
+        "9c45d1d7-458a-5e3e-f836-c166caba2964": "<U/>",
+        "5de504dc-a4a9-f23d-2d5d-c0df6a8a0d60": "<U/>",
+        "fe42aaa9-3229-1203-5858-ecffebde67a3": "<U/>",
+        "00ddff8a-29a8-917a-1c17-622a5a8f512d": "<U/>",
+        "b58e02d3-aa71-e1b9-977e-7800f5ae5344": "<U/>",
+        "b3574a6f-461b-a61f-c0e4-50730396676b": "<U/>",
+        "7a3759ab-07a2-1eb9-99db-5db9e2f423c6": "<U/>",
+        "03b2d6fb-77de-d551-1cfd-c0388dc30b7d": "<U/>",
+        "b25123b5-ddf8-f905-cf4e-87b53c293dc9": "<U/>",
+        "b7a3aac3-1d27-2666-63b6-81ef293bc331": "<U/>",
+        "90a318bb-a5bd-8944-80d2-5cd82e658888": "<U/>",
+        "c347f891-4aa1-f6bf-2dcd-59e845aa6ffc": "<U/>",
+        "7841670b-b2e8-78cb-21a3-41cae35b03a1": "<U/>",
+        "a33010d2-28de-934f-4c5d-915ed3546719": "<U/>",
+        "289433ee-12d2-a673-ea89-d3b719fc7018": "<U/>",
+        "0392592e-55b5-e68e-754e-9c4273afbc57": "<U/>",
+        "1685818c-75a5-18dc-b357-cfb07c7982ca": "<U/>",
+        "abe8570f-6024-b580-143d-78aeb15d4498": "<U/>",
+        "6a62c9ee-14c0-762f-986e-3dc64154aee5": "<U/>",
+        "80304d12-e577-db1a-c688-18a1d2d95334": "<U/>",
+        "b499f22d-1759-1ff6-12c2-8f6651d9a209": "<U/>",
+        "a174f967-6ca9-3dfb-520e-01ec6d45c1dd": "<U/>",
+        "a49d5da1-1dbb-9f61-6542-c414a280ebae": "<U/>",
+        "7ab1a955-379e-c0b7-df65-a84f3385db99": "<U/>",
+        "01c05e21-32f7-f164-5346-367c8ec1a1da": "<U/>",
+        "ffce27d1-9fff-5a23-34f0-fdaa700cac36": "<U/>",
+        "0ea838dc-2279-3151-6006-6b51ffc4746b": "<U/>",
+        "fe05f01f-d643-0e83-7b80-29ed2711fc4d": "<U/>",
+        "ce13bb7c-8c99-2f78-d29c-b8a775358eeb": "<U/>",
+        "3d454540-330e-b65b-c291-297e8d08670d": "<U/>",
+        "0af041c4-4662-35aa-5f59-09831de6dd47": "<U/>",
+        "d9fe1584-42bc-ef8c-0e7c-c937eefe106d": "<U/>",
+        "1e95e9a3-3092-19cc-bec6-576934b853e9": "<U/>",
+        "51314620-e74f-55d5-6c82-5ed92d64db91": "<U/>",
+        "9bf51dcf-b839-b0ae-76ab-f8fad3f9d17a": "<U/>",
+        "4c524e5b-336f-3a6b-73f0-e87a36017611": "<U/>",
+        "3d5d7b22-0752-126d-7374-06fb67b7c386": "<U/>",
+        "18ced0b3-8d7f-9732-36e0-8a7d8b71c885": "<U/>",
+        "8b4fc054-4928-be92-ff81-faaa4e653bef": "<U/>",
+        "47c755dc-b7c9-6345-89e2-89ad7516ca31": "<U/>",
+        "81cd8d0f-d31f-7909-74dc-c1646f8feca8": "<U/>",
+        "03c1f688-5695-afe0-654d-97a7c6bfe55a": "<U/>",
+        "f6ba0853-aebb-9875-0997-0b67daaba22c": "<U/>",
+        "70b51428-300a-3fe5-8ac1-1a4fa18b9f73": "<U/>",
+        "fd07f565-eade-6549-08bb-6572522d06f1": "<U/>",
+        "b3f2da89-73b6-b437-b595-7c34917eb673": "<U/>",
+        "7cf8c839-ae71-89ea-d430-d14855270a11": "<U/>",
+        "3f585202-c45b-e7a5-ac39-4556519fbf77": "<U/>",
+        "b4c55e07-97c2-8d11-628b-29f4bc158d55": "<U/>",
+        "9bedc3dc-f96b-50fb-ae30-0ace94e7ccd5": "<U/>",
+        "b1c53d85-4f6a-c221-6e32-3930fe33a894": "<U/>",
+        "f5e94ba5-8a38-dbaf-9c3a-7c00581fc4f4": "<U/>",
+        "8a8fc901-17e6-927d-fb1a-009dcfd5a823": "<U/>",
+        "961ee769-8fb4-9176-7b81-06d18a836803": "<U/>",
+        "2e2c41b4-4e9a-db45-0d48-6cd0907986a6": "<U/>",
+        "0304fb57-c5f7-8d36-1085-ee47155f8b49": "<U/>",
+        "6ee7ca54-10f2-fa6f-a0ef-04cb0cd281c3": "<U/>",
+        "1482e918-6913-dc96-e9d6-ed5e3ba9be55": "<U/>",
+        "129e0b3b-88c4-4b43-51bf-231e587be88a": "<U/>",
+        "5daed131-27f1-74ee-26ef-53604e10004f": "<U/>",
+        "6f958e15-9eab-409e-b0d8-fb755cb86bdd": "<U/>",
+        "8b1e2c2e-68ab-b13f-c148-1c1cf444e371": "<U/>",
+        "56638128-6fb3-730b-4eca-250283f18aa8": "<U/>",
+        "22c18679-6e2e-df97-dafe-def79e4db407": "<U/>",
+        "2ffbde4c-0448-92a8-3473-d2a26d019416": "<U/>",
+        "ddf2f0ed-e638-5f53-b611-e629ba8a56b4": "<U/>",
+        "bc3e984a-c63e-d3e4-7d8b-2ed0fa76d29f": "<U/>",
+        "00066602-bed7-e924-e5c2-b41e866656f4": "<U/>",
+        "e0e08aeb-4bd3-4da1-af12-0e0a2ae7c90d": "<U/>",
+        "03aed708-5cc4-8375-e84a-d12061a32c22": "<U/>",
+        "f2c4c73b-b16d-e1d4-741c-3d9456dcd7cf": "<U/>",
+        "0fc075d2-a862-4354-a414-865ae18b92ee": "<U/>",
+        "068f764f-5468-a316-0bdd-c0f75efb7b33": "<U/>",
+        "57da92e8-b93f-e62d-289c-8a96d86d9dea": "<U/>",
+        "22e0f975-5c25-3fd6-b22d-cf0e67531e96": "<U/>",
+        "d39e60a1-963a-7f24-75f5-ac5c2cec1499": "<U/>",
+        "2cf5748e-f19e-9098-44c4-b4396fc5e715": "<U/>",
+        "e70f3157-589b-c2f4-b5e2-891903100102": "<U/>",
+        "da253f63-ee10-793a-af60-a506b7f25bc5": "<U/>",
+        "b2387174-74d2-490b-af40-6cfca91518c0": "<U/>",
+        "de956932-c66c-dd42-7cbc-aa95c2084213": "<U/>"
+      },
+      "warnings": [
+        "﻿ warning ﻿",
+        "😀",
+        "",
+        "retained",
+        " warning ",
+        " "
+      ],
+      "actor_id": "60000000-0000-4000-8000-000000000006"
+    }
+  ],
+  "expected": [
+    {
+      "manifest": {
+        "schemaVersion": "production-approval-v1",
+        "companyId": "70000000-0000-4000-8000-000000000007",
+        "userId": "60000000-0000-4000-8000-000000000006",
+        "organizationNumber": "310279617",
+        "incomeYear": 2025,
+        "obligation": "aksjonaerregisteroppgaven",
+        "caseProfile": "rf1086_no_activity_v1",
+        "adapterVersion": "rf1086-production-v1",
+        "previewId": "a0000000-0000-4000-8000-00000000000a",
+        "payloadHash": "31b4438db5a09a1745882006677452e5b74f5157a4830586e57dcb8c447320b8",
+        "documentHashes": [
+          {
+            "name": "hovedskjema",
+            "sha256": "f78966dd4ee61d7818cba6deff6b1a570569f839032b4fc42c9ab404466462ec"
+          },
+          {
+            "name": "underskjema_a",
+            "sha256": "4f6031c3735adbd4e37fdde023095b7a1335852aeff04f3b7435c5a07a00ed8e"
+          },
+          {
+            "name": "underskjema_A",
+            "sha256": "5e0b35e4d164ba10e5dd590ce3ecfa76b12443de57466fd00be78ca184246fe6"
+          },
+          {
+            "name": "underskjema_b",
+            "sha256": "81edeb4b6472f5cc4fef6f511f8949202e71d4b145a2469440005d998826f527"
+          }
+        ],
+        "blockers": [],
+        "warnings": [
+          "warning",
+          "retained",
+          "😀",
+          ""
+        ]
+      },
+      "hash": "329e146846c6c41a60be5465720fd415ae7553ee100138f9e385fcea874a0e09",
+      "payloadHash": "31b4438db5a09a1745882006677452e5b74f5157a4830586e57dcb8c447320b8",
+      "order": [
+        "a",
+        "A",
+        "b"
+      ]
+    },
+    {
+      "manifest": {
+        "schemaVersion": "production-approval-v1",
+        "companyId": "70000000-0000-4000-8000-000000000007",
+        "userId": "60000000-0000-4000-8000-000000000006",
+        "organizationNumber": "310279617",
+        "incomeYear": 2025,
+        "obligation": "aksjonaerregisteroppgaven",
+        "caseProfile": "rf1086_no_activity_v1",
+        "adapterVersion": "rf1086-production-v1",
+        "previewId": "a0000000-0000-4000-8000-00000000000a",
+        "payloadHash": "34683c96324572237e21c2be54ef5724b39b3ceeabd016583497a5c3ba09672e",
+        "documentHashes": [
+          {
+            "name": "hovedskjema",
+            "sha256": "f78966dd4ee61d7818cba6deff6b1a570569f839032b4fc42c9ab404466462ec"
+          },
+          {
+            "name": "underskjema_Å",
+            "sha256": "b4c52a42b43f47a39eb1f5c5901222ab48aaa5598a86d0d9d9e1abafd9223d36"
+          },
+          {
+            "name": "underskjema_é",
+            "sha256": "1791296c391731c0f99ad845253757b206e880ae28b8f05ab61db8407d1bf099"
+          },
+          {
+            "name": "underskjema_é",
+            "sha256": "e98ad941ac1560d12061308a36ec1228c896ae042af9e63fc888be847d27a0bb"
+          },
+          {
+            "name": "underskjema_ø",
+            "sha256": "ed824afdcaf6a6265c27b29d9443f9388dac1c79254cd165735923ee109e8f4e"
+          }
+        ],
+        "blockers": [],
+        "warnings": [
+          "warning",
+          "retained",
+          "😀",
+          ""
+        ]
+      },
+      "hash": "bb2dd3b30c9731b8a383cdc6058d2e5b2fead885cac0c73c5694411e5e5d0f7e",
+      "payloadHash": "34683c96324572237e21c2be54ef5724b39b3ceeabd016583497a5c3ba09672e",
+      "order": [
+        "Å",
+        "é",
+        "é",
+        "ø"
+      ]
+    },
+    {
+      "manifest": {
+        "schemaVersion": "production-approval-v1",
+        "companyId": "70000000-0000-4000-8000-000000000007",
+        "userId": "60000000-0000-4000-8000-000000000006",
+        "organizationNumber": "310279617",
+        "incomeYear": 2025,
+        "obligation": "aksjonaerregisteroppgaven",
+        "caseProfile": "rf1086_no_activity_v1",
+        "adapterVersion": "rf1086-production-v1",
+        "previewId": "a0000000-0000-4000-8000-00000000000a",
+        "payloadHash": "435e332d962bc33ce82f3552dcda7c75984dd218dc01b8aa25b4ff5d8453f796",
+        "documentHashes": [
+          {
+            "name": "hovedskjema",
+            "sha256": "f78966dd4ee61d7818cba6deff6b1a570569f839032b4fc42c9ab404466462ec"
+          },
+          {
+            "name": "underskjema_😀",
+            "sha256": "a226239273b18e95f512e11acdb84e96537275147cd6b7f7cf52d7a4bcd04858"
+          },
+          {
+            "name": "underskjema_a",
+            "sha256": "4f6031c3735adbd4e37fdde023095b7a1335852aeff04f3b7435c5a07a00ed8e"
+          },
+          {
+            "name": "underskjema_",
+            "sha256": "2277bd0507282f694b9ccba8a9b785673125f4ceaba0f81237b2bd5d6b8325c6"
+          }
+        ],
+        "blockers": [],
+        "warnings": [
+          "warning",
+          "retained",
+          "😀",
+          ""
+        ]
+      },
+      "hash": "5cf0a9306acc4733c54519ce0e13b7b5b450c1efeefcb32d73b49884453f6af4",
+      "payloadHash": "435e332d962bc33ce82f3552dcda7c75984dd218dc01b8aa25b4ff5d8453f796",
+      "order": [
+        "😀",
+        "a",
+        ""
+      ]
+    },
+    {
+      "manifest": {
+        "schemaVersion": "production-approval-v1",
+        "companyId": "70000000-0000-4000-8000-000000000007",
+        "userId": "60000000-0000-4000-8000-000000000006",
+        "organizationNumber": "310279617",
+        "incomeYear": 2025,
+        "obligation": "aksjonaerregisteroppgaven",
+        "caseProfile": "rf1086_no_activity_v1",
+        "adapterVersion": "rf1086-production-v1",
+        "previewId": "a0000000-0000-4000-8000-00000000000a",
+        "payloadHash": "c6169d0cfc352b84ca7d16b9ff2cfcdb31bf61c50e6bcfbe0da2a48308567e79",
+        "documentHashes": [
+          {
+            "name": "hovedskjema",
+            "sha256": "f78966dd4ee61d7818cba6deff6b1a570569f839032b4fc42c9ab404466462ec"
+          },
+          {
+            "name": "underskjema_0",
+            "sha256": "562fd5dc37315a191099f0294e38dd64c1e9a386800e7b210e4fc434bbf56bd2"
+          },
+          {
+            "name": "underskjema_01",
+            "sha256": "48cb0dba41ae44a1052d7bd17563c91e74336753a66134332234ea7644411fb7"
+          },
+          {
+            "name": "underskjema_20",
+            "sha256": "cbc04084fafc4d73c40aaa1336ca1578eb4fb2f027ac8023313ee271bc11deb8"
+          },
+          {
+            "name": "underskjema_3",
+            "sha256": "62a2a82ef1b0baf29502ddcf73ea499454e9198e3cad996c099ee47db5c7a778"
+          },
+          {
+            "name": "underskjema_4294967295",
+            "sha256": "5d1dea7e738b9d53c555a5cbea9e093727c71581a19195cc34861812bc274c84"
+          }
+        ],
+        "blockers": [],
+        "warnings": [
+          "warning",
+          "retained",
+          "😀",
+          ""
+        ]
+      },
+      "hash": "94f23d604a96f52d31902b75dbd2bef7a7bf056fa25f1700d54c5cd347610795",
+      "payloadHash": "c6169d0cfc352b84ca7d16b9ff2cfcdb31bf61c50e6bcfbe0da2a48308567e79",
+      "order": [
+        "0",
+        "01",
+        "20",
+        "3",
+        "4294967295"
+      ]
+    },
+    {
+      "manifest": {
+        "schemaVersion": "production-approval-v1",
+        "companyId": "70000000-0000-4000-8000-000000000007",
+        "userId": "60000000-0000-4000-8000-000000000006",
+        "organizationNumber": "310279617",
+        "incomeYear": 2025,
+        "obligation": "aksjonaerregisteroppgaven",
+        "caseProfile": "rf1086_no_activity_v1",
+        "adapterVersion": "rf1086-production-v1",
+        "previewId": "a0000000-0000-4000-8000-00000000000a",
+        "payloadHash": "cf8847a652eba18d5d49dae55213491c85851a4f6027ad1a6a02dd52f3de4bda",
+        "documentHashes": [
+          {
+            "name": "hovedskjema",
+            "sha256": "f78966dd4ee61d7818cba6deff6b1a570569f839032b4fc42c9ab404466462ec"
+          },
+          {
+            "name": "underskjema_ a",
+            "sha256": "48cb0dba41ae44a1052d7bd17563c91e74336753a66134332234ea7644411fb7"
+          },
+          {
+            "name": "underskjema_a",
+            "sha256": "de4276844339762e617fca3e6e4ba635ec527f5e0eee297ee353051d0425abc3"
+          },
+          {
+            "name": "underskjema_﻿a",
+            "sha256": "15e7a75b75b25725ec48cdf546151823af8bdd94a78d68372c799ebe6241a412"
+          }
+        ],
+        "blockers": [],
+        "warnings": [
+          "warning",
+          "retained",
+          "😀",
+          ""
+        ]
+      },
+      "hash": "3d8f11a6b609314297bbe3b6a4aba0e3689df07dda522b57a1c3f52afe9f5a25",
+      "payloadHash": "cf8847a652eba18d5d49dae55213491c85851a4f6027ad1a6a02dd52f3de4bda",
+      "order": [
+        " a",
+        "﻿a﻿",
+        "a "
+      ]
+    },
+    {
+      "manifest": {
+        "schemaVersion": "production-approval-v1",
+        "companyId": "70000000-0000-4000-8000-000000000007",
+        "userId": "60000000-0000-4000-8000-000000000006",
+        "organizationNumber": "310279617",
+        "incomeYear": 2025,
+        "obligation": "aksjonaerregisteroppgaven",
+        "caseProfile": "rf1086_no_activity_v1",
+        "adapterVersion": "rf1086-production-v1",
+        "previewId": "a0000000-0000-4000-8000-00000000000a",
+        "payloadHash": "d0da32dcf0ae5c7447cc52932ef78d81721acdd191f06379683ae5ef96b18622",
+        "documentHashes": [
+          {
+            "name": "hovedskjema",
+            "sha256": "f78966dd4ee61d7818cba6deff6b1a570569f839032b4fc42c9ab404466462ec"
+          },
+          {
+            "name": "underskjema_10000000-0000-4000-8000-000000000001",
+            "sha256": "3a258d0b2eefe08db313419e40878d43e93ecdf9b32175f36fd076accdc5f66a"
+          },
+          {
+            "name": "underskjema_40000000-0000-4000-8000-000000000004",
+            "sha256": "81edeb4b6472f5cc4fef6f511f8949202e71d4b145a2469440005d998826f527"
+          }
+        ],
+        "blockers": [],
+        "warnings": [
+          "warning",
+          "retained",
+          "😀",
+          ""
+        ]
+      },
+      "hash": "7a1364fb52e98c7887fa4fac01e85caecb791cdc15905477b9021b1c3f09a426",
+      "payloadHash": "d0da32dcf0ae5c7447cc52932ef78d81721acdd191f06379683ae5ef96b18622",
+      "order": [
+        "10000000-0000-4000-8000-000000000001",
+        "40000000-0000-4000-8000-000000000004"
+      ]
+    },
+    {
+      "manifest": {
+        "schemaVersion": "production-approval-v1",
+        "companyId": "70000000-0000-4000-8000-000000000007",
+        "userId": "60000000-0000-4000-8000-000000000006",
+        "organizationNumber": "310279617",
+        "incomeYear": 2025,
+        "obligation": "aksjonaerregisteroppgaven",
+        "caseProfile": "rf1086_no_activity_v1",
+        "adapterVersion": "rf1086-production-v1",
+        "previewId": "a0000000-0000-4000-8000-00000000000a",
+        "payloadHash": "f9dca63484491ae45746fefd191dcbcc210cba943097f02e6499836277ec0f3b",
+        "documentHashes": [
+          {
+            "name": "hovedskjema",
+            "sha256": "f78966dd4ee61d7818cba6deff6b1a570569f839032b4fc42c9ab404466462ec"
+          },
+          {
+            "name": "underskjema_00066602-bed7-e924-e5c2-b41e866656f4",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_00ddff8a-29a8-917a-1c17-622a5a8f512d",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_01c05e21-32f7-f164-5346-367c8ec1a1da",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_0304fb57-c5f7-8d36-1085-ee47155f8b49",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_034ddcb1-20c7-9eb8-580b-fcc67b27c6fb",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_0392592e-55b5-e68e-754e-9c4273afbc57",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_03aed708-5cc4-8375-e84a-d12061a32c22",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_03b2d6fb-77de-d551-1cfd-c0388dc30b7d",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_03c1f688-5695-afe0-654d-97a7c6bfe55a",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_068f764f-5468-a316-0bdd-c0f75efb7b33",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_07185adf-fa97-4906-2696-ebdfa97736a8",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_0af041c4-4662-35aa-5f59-09831de6dd47",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_0bbdbb9f-d5e3-ba43-b218-687e4c225c1c",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_0ea838dc-2279-3151-6006-6b51ffc4746b",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_0fc075d2-a862-4354-a414-865ae18b92ee",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_1079beb5-ca1b-c3af-87b8-a181ea613772",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_11cf35f1-10f5-d8c4-6171-d375741314bb",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_129e0b3b-88c4-4b43-51bf-231e587be88a",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_1482e918-6913-dc96-e9d6-ed5e3ba9be55",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_1685818c-75a5-18dc-b357-cfb07c7982ca",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_18ced0b3-8d7f-9732-36e0-8a7d8b71c885",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_1e3f288c-49db-40a0-56d0-710165bacd3e",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_1e6acd61-49f4-6115-ec4a-946a8ecbbb33",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_1e95e9a3-3092-19cc-bec6-576934b853e9",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_22c18679-6e2e-df97-dafe-def79e4db407",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_22e0f975-5c25-3fd6-b22d-cf0e67531e96",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_22fc6559-5dd6-e0d2-6715-2f94605c0289",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_24097cea-cd04-90d3-1b32-19b00e67c4ba",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_289433ee-12d2-a673-ea89-d3b719fc7018",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_2cf5748e-f19e-9098-44c4-b4396fc5e715",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_2e2c41b4-4e9a-db45-0d48-6cd0907986a6",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_2ffbde4c-0448-92a8-3473-d2a26d019416",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_3d454540-330e-b65b-c291-297e8d08670d",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_3d5d7b22-0752-126d-7374-06fb67b7c386",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_3f585202-c45b-e7a5-ac39-4556519fbf77",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_44eaa170-2b7b-25da-a651-f92d9355af26",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_47c755dc-b7c9-6345-89e2-89ad7516ca31",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_4b0827b6-be7e-02f1-d74e-0a37177de88e",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_4c524e5b-336f-3a6b-73f0-e87a36017611",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_4cf07b1d-ae11-a82e-1699-b6a7f2c019a8",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_51314620-e74f-55d5-6c82-5ed92d64db91",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_56638128-6fb3-730b-4eca-250283f18aa8",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_57da92e8-b93f-e62d-289c-8a96d86d9dea",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_5af33c17-c7e8-e447-ee78-80745aa437db",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_5daed131-27f1-74ee-26ef-53604e10004f",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_5de504dc-a4a9-f23d-2d5d-c0df6a8a0d60",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_5ffefad9-7d89-aa05-22a1-e2c1d4bc230f",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_6598a565-fea7-6a9d-d7f6-17cf935f4bb4",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_6621782c-e52c-6d66-538c-bbb4d2e5081b",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_6a62c9ee-14c0-762f-986e-3dc64154aee5",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_6b8ad678-29b4-1769-2533-57a67a71c485",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_6cfd5e80-d307-ce07-2c38-396fdb9a7251",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_6ee7ca54-10f2-fa6f-a0ef-04cb0cd281c3",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_6f958e15-9eab-409e-b0d8-fb755cb86bdd",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_70b51428-300a-3fe5-8ac1-1a4fa18b9f73",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_74e3af79-f6a3-7dfb-a51a-150da4c87630",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_7542de52-f74d-88ef-74a7-4f223ffe71f1",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_7841670b-b2e8-78cb-21a3-41cae35b03a1",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_7a3759ab-07a2-1eb9-99db-5db9e2f423c6",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_7ab1a955-379e-c0b7-df65-a84f3385db99",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_7b9f3426-0c49-ba55-6fa9-8a9c15e8fc44",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_7cf8c839-ae71-89ea-d430-d14855270a11",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_8021d8e1-f220-9b92-0b28-32abf15ca5aa",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_80304d12-e577-db1a-c688-18a1d2d95334",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_81cd8d0f-d31f-7909-74dc-c1646f8feca8",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_8a8fc901-17e6-927d-fb1a-009dcfd5a823",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_8b1e2c2e-68ab-b13f-c148-1c1cf444e371",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_8b4fc054-4928-be92-ff81-faaa4e653bef",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_90a318bb-a5bd-8944-80d2-5cd82e658888",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_94784ccf-89be-c93d-762a-854f7e7f8ef6",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_961ee769-8fb4-9176-7b81-06d18a836803",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_97563ce0-dadf-6879-fed3-bb5f8d4e0ce8",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_9bedc3dc-f96b-50fb-ae30-0ace94e7ccd5",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_9bf51dcf-b839-b0ae-76ab-f8fad3f9d17a",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_9c45d1d7-458a-5e3e-f836-c166caba2964",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_a174f967-6ca9-3dfb-520e-01ec6d45c1dd",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_a1c272ac-9f98-daa3-b186-eeba459dd1ca",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_a33010d2-28de-934f-4c5d-915ed3546719",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_a49d5da1-1dbb-9f61-6542-c414a280ebae",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_abe8570f-6024-b580-143d-78aeb15d4498",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_aedd2d5b-93a6-39c8-4a25-140bd2d88747",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_b0e54ac4-9a18-1a5a-a1b5-b394ec6820fc",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_b1c53d85-4f6a-c221-6e32-3930fe33a894",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_b2387174-74d2-490b-af40-6cfca91518c0",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_b25123b5-ddf8-f905-cf4e-87b53c293dc9",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_b3574a6f-461b-a61f-c0e4-50730396676b",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_b3f2da89-73b6-b437-b595-7c34917eb673",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_b499f22d-1759-1ff6-12c2-8f6651d9a209",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_b4c55e07-97c2-8d11-628b-29f4bc158d55",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_b58e02d3-aa71-e1b9-977e-7800f5ae5344",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_b7a3aac3-1d27-2666-63b6-81ef293bc331",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_bbdb6088-d41c-22e2-aac5-6fd845771471",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_bc3e984a-c63e-d3e4-7d8b-2ed0fa76d29f",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_c11abbe4-4b12-9e46-c2d1-5e4aaae0b407",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_c1f47ba6-dd27-bfab-a70b-2dd407490b36",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_c347f891-4aa1-f6bf-2dcd-59e845aa6ffc",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_c57bd76f-08d6-251b-39c4-e9812ba10427",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_c6c87202-32e6-0a26-7230-e59f4c6ef73f",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_c9fd877e-2e55-440e-65ff-e4595a80f6bf",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_cbc9cd7d-349a-0f8e-ffb6-82499188c1d0",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_ce13bb7c-8c99-2f78-d29c-b8a775358eeb",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_cfec44f6-4dc9-b394-3a39-ef91301824e4",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_d036653e-23a8-f1fb-cda8-00bed3522345",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_d137f092-d483-bb54-12ad-339121abea88",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_d39e60a1-963a-7f24-75f5-ac5c2cec1499",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_d9fe1584-42bc-ef8c-0e7c-c937eefe106d",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_da253f63-ee10-793a-af60-a506b7f25bc5",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_ddf2f0ed-e638-5f53-b611-e629ba8a56b4",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_de956932-c66c-dd42-7cbc-aa95c2084213",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_e0e08aeb-4bd3-4da1-af12-0e0a2ae7c90d",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_e6fb99bb-bd89-b581-4800-b002553e1320",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_e70f3157-589b-c2f4-b5e2-891903100102",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_ea0b4cdb-0473-aead-4d81-817b340f0277",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_eb06557d-0d1d-78e5-6559-4e44c0030171",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_efe93b8c-7169-225d-d463-81c0ee2cc3ab",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_f1ae9a56-2619-7a60-3d47-54599ea5e098",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_f2c4c73b-b16d-e1d4-741c-3d9456dcd7cf",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_f5e94ba5-8a38-dbaf-9c3a-7c00581fc4f4",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_f603f9d4-455f-c2e0-c39e-edf20493cbf9",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_f6736d27-44dd-c2d1-89a3-43e71fe8c5a2",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_f6ba0853-aebb-9875-0997-0b67daaba22c",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_f720b2be-e59f-bedc-d015-30c67a2e855e",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_fb1836fa-2dcd-6576-fb3b-1a5018958fde",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_fd07f565-eade-6549-08bb-6572522d06f1",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_fe05f01f-d643-0e83-7b80-29ed2711fc4d",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_fe42aaa9-3229-1203-5858-ecffebde67a3",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_fe7d2196-0654-248c-613d-7acfaa62cef9",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          },
+          {
+            "name": "underskjema_ffce27d1-9fff-5a23-34f0-fdaa700cac36",
+            "sha256": "772dda1445826cf8d63729643b4de03cf00b335f294ce436d78fe7d01239ee8f"
+          }
+        ],
+        "blockers": [],
+        "warnings": [
+          "warning",
+          "retained",
+          "😀",
+          ""
+        ]
+      },
+      "hash": "458e358d520351a9850cad631379bffe63f850f74a6a8be5edc1e08c85590a90",
+      "payloadHash": "f9dca63484491ae45746fefd191dcbcc210cba943097f02e6499836277ec0f3b",
+      "order": [
+        "00066602-bed7-e924-e5c2-b41e866656f4",
+        "00ddff8a-29a8-917a-1c17-622a5a8f512d",
+        "01c05e21-32f7-f164-5346-367c8ec1a1da",
+        "0304fb57-c5f7-8d36-1085-ee47155f8b49",
+        "034ddcb1-20c7-9eb8-580b-fcc67b27c6fb",
+        "0392592e-55b5-e68e-754e-9c4273afbc57",
+        "03aed708-5cc4-8375-e84a-d12061a32c22",
+        "03b2d6fb-77de-d551-1cfd-c0388dc30b7d",
+        "03c1f688-5695-afe0-654d-97a7c6bfe55a",
+        "068f764f-5468-a316-0bdd-c0f75efb7b33",
+        "07185adf-fa97-4906-2696-ebdfa97736a8",
+        "0af041c4-4662-35aa-5f59-09831de6dd47",
+        "0bbdbb9f-d5e3-ba43-b218-687e4c225c1c",
+        "0ea838dc-2279-3151-6006-6b51ffc4746b",
+        "0fc075d2-a862-4354-a414-865ae18b92ee",
+        "1079beb5-ca1b-c3af-87b8-a181ea613772",
+        "11cf35f1-10f5-d8c4-6171-d375741314bb",
+        "129e0b3b-88c4-4b43-51bf-231e587be88a",
+        "1482e918-6913-dc96-e9d6-ed5e3ba9be55",
+        "1685818c-75a5-18dc-b357-cfb07c7982ca",
+        "18ced0b3-8d7f-9732-36e0-8a7d8b71c885",
+        "1e3f288c-49db-40a0-56d0-710165bacd3e",
+        "1e6acd61-49f4-6115-ec4a-946a8ecbbb33",
+        "1e95e9a3-3092-19cc-bec6-576934b853e9",
+        "22c18679-6e2e-df97-dafe-def79e4db407",
+        "22e0f975-5c25-3fd6-b22d-cf0e67531e96",
+        "22fc6559-5dd6-e0d2-6715-2f94605c0289",
+        "24097cea-cd04-90d3-1b32-19b00e67c4ba",
+        "289433ee-12d2-a673-ea89-d3b719fc7018",
+        "2cf5748e-f19e-9098-44c4-b4396fc5e715",
+        "2e2c41b4-4e9a-db45-0d48-6cd0907986a6",
+        "2ffbde4c-0448-92a8-3473-d2a26d019416",
+        "3d454540-330e-b65b-c291-297e8d08670d",
+        "3d5d7b22-0752-126d-7374-06fb67b7c386",
+        "3f585202-c45b-e7a5-ac39-4556519fbf77",
+        "44eaa170-2b7b-25da-a651-f92d9355af26",
+        "47c755dc-b7c9-6345-89e2-89ad7516ca31",
+        "4b0827b6-be7e-02f1-d74e-0a37177de88e",
+        "4c524e5b-336f-3a6b-73f0-e87a36017611",
+        "4cf07b1d-ae11-a82e-1699-b6a7f2c019a8",
+        "51314620-e74f-55d5-6c82-5ed92d64db91",
+        "56638128-6fb3-730b-4eca-250283f18aa8",
+        "57da92e8-b93f-e62d-289c-8a96d86d9dea",
+        "5af33c17-c7e8-e447-ee78-80745aa437db",
+        "5daed131-27f1-74ee-26ef-53604e10004f",
+        "5de504dc-a4a9-f23d-2d5d-c0df6a8a0d60",
+        "5ffefad9-7d89-aa05-22a1-e2c1d4bc230f",
+        "6598a565-fea7-6a9d-d7f6-17cf935f4bb4",
+        "6621782c-e52c-6d66-538c-bbb4d2e5081b",
+        "6a62c9ee-14c0-762f-986e-3dc64154aee5",
+        "6b8ad678-29b4-1769-2533-57a67a71c485",
+        "6cfd5e80-d307-ce07-2c38-396fdb9a7251",
+        "6ee7ca54-10f2-fa6f-a0ef-04cb0cd281c3",
+        "6f958e15-9eab-409e-b0d8-fb755cb86bdd",
+        "70b51428-300a-3fe5-8ac1-1a4fa18b9f73",
+        "74e3af79-f6a3-7dfb-a51a-150da4c87630",
+        "7542de52-f74d-88ef-74a7-4f223ffe71f1",
+        "7841670b-b2e8-78cb-21a3-41cae35b03a1",
+        "7a3759ab-07a2-1eb9-99db-5db9e2f423c6",
+        "7ab1a955-379e-c0b7-df65-a84f3385db99",
+        "7b9f3426-0c49-ba55-6fa9-8a9c15e8fc44",
+        "7cf8c839-ae71-89ea-d430-d14855270a11",
+        "8021d8e1-f220-9b92-0b28-32abf15ca5aa",
+        "80304d12-e577-db1a-c688-18a1d2d95334",
+        "81cd8d0f-d31f-7909-74dc-c1646f8feca8",
+        "8a8fc901-17e6-927d-fb1a-009dcfd5a823",
+        "8b1e2c2e-68ab-b13f-c148-1c1cf444e371",
+        "8b4fc054-4928-be92-ff81-faaa4e653bef",
+        "90a318bb-a5bd-8944-80d2-5cd82e658888",
+        "94784ccf-89be-c93d-762a-854f7e7f8ef6",
+        "961ee769-8fb4-9176-7b81-06d18a836803",
+        "97563ce0-dadf-6879-fed3-bb5f8d4e0ce8",
+        "9bedc3dc-f96b-50fb-ae30-0ace94e7ccd5",
+        "9bf51dcf-b839-b0ae-76ab-f8fad3f9d17a",
+        "9c45d1d7-458a-5e3e-f836-c166caba2964",
+        "a174f967-6ca9-3dfb-520e-01ec6d45c1dd",
+        "a1c272ac-9f98-daa3-b186-eeba459dd1ca",
+        "a33010d2-28de-934f-4c5d-915ed3546719",
+        "a49d5da1-1dbb-9f61-6542-c414a280ebae",
+        "abe8570f-6024-b580-143d-78aeb15d4498",
+        "aedd2d5b-93a6-39c8-4a25-140bd2d88747",
+        "b0e54ac4-9a18-1a5a-a1b5-b394ec6820fc",
+        "b1c53d85-4f6a-c221-6e32-3930fe33a894",
+        "b2387174-74d2-490b-af40-6cfca91518c0",
+        "b25123b5-ddf8-f905-cf4e-87b53c293dc9",
+        "b3574a6f-461b-a61f-c0e4-50730396676b",
+        "b3f2da89-73b6-b437-b595-7c34917eb673",
+        "b499f22d-1759-1ff6-12c2-8f6651d9a209",
+        "b4c55e07-97c2-8d11-628b-29f4bc158d55",
+        "b58e02d3-aa71-e1b9-977e-7800f5ae5344",
+        "b7a3aac3-1d27-2666-63b6-81ef293bc331",
+        "bbdb6088-d41c-22e2-aac5-6fd845771471",
+        "bc3e984a-c63e-d3e4-7d8b-2ed0fa76d29f",
+        "c11abbe4-4b12-9e46-c2d1-5e4aaae0b407",
+        "c1f47ba6-dd27-bfab-a70b-2dd407490b36",
+        "c347f891-4aa1-f6bf-2dcd-59e845aa6ffc",
+        "c57bd76f-08d6-251b-39c4-e9812ba10427",
+        "c6c87202-32e6-0a26-7230-e59f4c6ef73f",
+        "c9fd877e-2e55-440e-65ff-e4595a80f6bf",
+        "cbc9cd7d-349a-0f8e-ffb6-82499188c1d0",
+        "ce13bb7c-8c99-2f78-d29c-b8a775358eeb",
+        "cfec44f6-4dc9-b394-3a39-ef91301824e4",
+        "d036653e-23a8-f1fb-cda8-00bed3522345",
+        "d137f092-d483-bb54-12ad-339121abea88",
+        "d39e60a1-963a-7f24-75f5-ac5c2cec1499",
+        "d9fe1584-42bc-ef8c-0e7c-c937eefe106d",
+        "da253f63-ee10-793a-af60-a506b7f25bc5",
+        "ddf2f0ed-e638-5f53-b611-e629ba8a56b4",
+        "de956932-c66c-dd42-7cbc-aa95c2084213",
+        "e0e08aeb-4bd3-4da1-af12-0e0a2ae7c90d",
+        "e6fb99bb-bd89-b581-4800-b002553e1320",
+        "e70f3157-589b-c2f4-b5e2-891903100102",
+        "ea0b4cdb-0473-aead-4d81-817b340f0277",
+        "eb06557d-0d1d-78e5-6559-4e44c0030171",
+        "efe93b8c-7169-225d-d463-81c0ee2cc3ab",
+        "f1ae9a56-2619-7a60-3d47-54599ea5e098",
+        "f2c4c73b-b16d-e1d4-741c-3d9456dcd7cf",
+        "f5e94ba5-8a38-dbaf-9c3a-7c00581fc4f4",
+        "f603f9d4-455f-c2e0-c39e-edf20493cbf9",
+        "f6736d27-44dd-c2d1-89a3-43e71fe8c5a2",
+        "f6ba0853-aebb-9875-0997-0b67daaba22c",
+        "f720b2be-e59f-bedc-d015-30c67a2e855e",
+        "fb1836fa-2dcd-6576-fb3b-1a5018958fde",
+        "fd07f565-eade-6549-08bb-6572522d06f1",
+        "fe05f01f-d643-0e83-7b80-29ed2711fc4d",
+        "fe42aaa9-3229-1203-5858-ecffebde67a3",
+        "fe7d2196-0654-248c-613d-7acfaa62cef9",
+        "ffce27d1-9fff-5a23-34f0-fdaa700cac36"
+      ]
+    }
+  ]
+}

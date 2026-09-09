@@ -233,9 +233,9 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   "web:documents",
   "web:investments",
   "web:ledger",
-  "web:legacy-rf1086",
-  "web:operator-controls",
+    "web:operator-controls",
   "web:public-acquisition",
+  "web:shareholder-register-filing",
   "web:system-boundary"
 ]);
   assert.deepEqual(result.evidence.edges, [
@@ -472,30 +472,6 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     "to": "backend:ledger"
   },
   {
-    "from": "backend-system:legacy-rf1086-authority-relocation",
-    "imports": [
-      "talli_backend.modules.billing.public"
-    ],
-    "kind": "workflow",
-    "to": "backend:billing"
-  },
-  {
-    "from": "backend-system:legacy-rf1086-authority-relocation",
-    "imports": [
-      "talli_backend.modules.company_access.public"
-    ],
-    "kind": "workflow",
-    "to": "backend:company_access"
-  },
-  {
-    "from": "backend-system:legacy-rf1086-authority-relocation",
-    "imports": [
-      "talli_backend.modules.documents.public"
-    ],
-    "kind": "workflow",
-    "to": "backend:documents"
-  },
-  {
     "from": "backend-system:marketing-funnel-measurement",
     "imports": [
       "talli_backend.modules.marketing_measurement.public"
@@ -526,6 +502,38 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     ],
     "kind": "workflow",
     "to": "backend-system:validation_observation"
+  },
+  {
+    "from": "backend-system:shareholder-register-filing",
+    "imports": [
+      "talli_backend.modules.billing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:billing"
+  },
+  {
+    "from": "backend-system:shareholder-register-filing",
+    "imports": [
+      "talli_backend.modules.company_access.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_access"
+  },
+  {
+    "from": "backend-system:shareholder-register-filing",
+    "imports": [
+      "talli_backend.modules.documents.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:documents"
+  },
+  {
+    "from": "backend-system:shareholder-register-filing",
+    "imports": [
+      "talli_backend.modules.shareholder_register_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:shareholder_register_filing"
   },
   {
     "from": "backend-system:system-boundary-tracer",

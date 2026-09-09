@@ -525,7 +525,7 @@ test("archive download fetches only sanitized authority runs linked by submissio
     /\.select\("id, company_id, obligation, environment, status, test_reference, feedback_summary, receipt_reference, archive_reference, evidence_url, payload_hash, recorded_by, recorded_at"\)/u,
   );
   assert.doesNotMatch(route, /authority_test_runs[\s\S]*\.select\("\*"\)/u);
-  assert.match(route, /authorityTestRuns: authorityTestRuns \?\? \[\]/u);
+  assert.match(route, /authorityTestRuns: mergeArchiveRfRows\(authorityTestRuns \?\? \[\], rf1086\.data\?\.testEvidence \?\? \[\]\)/u);
   assert.match(
     route,
     /Ekstra identitetsbekreftelse med tofaktorautentisering kreves før arkivet kan lastes ned\./u,

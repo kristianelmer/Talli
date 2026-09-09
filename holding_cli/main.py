@@ -7,6 +7,10 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from collections.abc import Mapping
+from dataclasses import fields, is_dataclass
+from datetime import datetime
+from tempfile import TemporaryDirectory
 
 from pydantic import ValidationError
 
@@ -15,16 +19,14 @@ from holding_core.corporate_documents import (
     CorporateDocumentValidationError,
     render_corporate_documents,
 )
-from holding_core.models import FilingCase
-from holding_core.readiness import assess_rf1086_readiness, format_readiness_report
-from holding_core.rf1086 import filing_preview, generate_rf1086, write_rf1086
-from holding_core.submission import confirm_authority, confirm_preview, mark_submitted, prepare_submission, register_api_call, store_receipt
-from holding_core.validation import run_annual_compliance_validation, run_rf1086_validation
-
-
-ROOT = Path(__file__).resolve().parents[1]
-HOVED_XSD = ROOT / "docs" / "filing" / "aksjonaerregisteroppgaveHovedskjema.xsd"
-UNDER_XSD = ROOT / "docs" / "filing" / "aksjonaerregisteroppgaveUnderskjema.xsd"
+from holding_core.validation import run_annual_compliance_validation
+from talli_backend.modules.shareholder_register_filing.public import (
+    Rf1086Case, Rf1086ValidationInput, parse_rf1086_case,
+    assess_rf1086_readiness, format_rf1086_readiness_report as format_readiness_report,
+    generate_rf1086_documents as generate_rf1086, render_rf1086_preview,
+    validate_rf1086_cases, rf1086_xml_schema,
+    parse_rf1086_offline_simulation_input, simulate_rf1086_offline_submission,
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -106,12 +108,12 @@ def _simulate(case_path: str, out_dir: str, should_preview: bool) -> int:
         print(format_readiness_report(readiness), end="")
         return 1
 
-    paths = write_rf1086(case, out_dir)
+    paths = _write_rf1086(case, out_dir)
     print(f"Generated {len(paths)} files in {out_dir}")
     print(format_readiness_report(readiness), end="")
     if should_preview:
         print()
-        print(filing_preview(case), end="")
+        print(render_rf1086_preview(case).preview, end="")
     return 0
 
 
@@ -120,20 +122,22 @@ def _validate(hovedskjema: str, underskjema: list[str]) -> int:
     if not xmllint:
         print("xmllint is required for XSD validation but was not found.", file=sys.stderr)
         return 2
-
-    checks = [(HOVED_XSD, Path(hovedskjema)), *[(UNDER_XSD, Path(path)) for path in underskjema]]
-    for schema, xml_path in checks:
-        result = subprocess.run(
-            [xmllint, "--noout", "--schema", str(schema), str(xml_path)],
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        if result.returncode != 0:
-            print(result.stdout, end="")
-            print(result.stderr, end="", file=sys.stderr)
-            return result.returncode
-        print(result.stderr.strip())
+    with TemporaryDirectory(prefix="talli-rf1086-xsd-") as directory:
+        hoved_xsd = Path(directory) / "aksjonaerregisteroppgaveHovedskjema.xsd"
+        under_xsd = Path(directory) / "aksjonaerregisteroppgaveUnderskjema.xsd"
+        hoved_xsd.write_bytes(rf1086_xml_schema("hovedskjema"))
+        under_xsd.write_bytes(rf1086_xml_schema("underskjema"))
+        checks = [(hoved_xsd, Path(hovedskjema)), *[(under_xsd, Path(path)) for path in underskjema]]
+        for schema, xml_path in checks:
+            result = subprocess.run(
+                [xmllint, "--noout", "--schema", str(schema), str(xml_path)],
+                text=True, capture_output=True, check=False,
+            )
+            if result.returncode != 0:
+                print(result.stdout, end="")
+                print(result.stderr, end="", file=sys.stderr)
+                return result.returncode
+            print(result.stderr.strip())
     return 0
 
 
@@ -144,16 +148,16 @@ def _validate_case(case_path: str, as_json: bool) -> int:
 
     result = assess_rf1086_readiness(case)
     if as_json:
-        print(json.dumps(result.model_dump(), ensure_ascii=False, indent=2))
+        print(json.dumps(_rf_json_values(result), ensure_ascii=False, indent=2))
     else:
         print(format_readiness_report(result), end="")
     return 0 if result.is_ready else 1
 
 
 def _validate_public_data(case_paths: list[str], as_json: bool) -> int:
-    report = run_rf1086_validation(case_paths)
+    report = validate_rf1086_cases(tuple(_rf_validation_input(path) for path in case_paths))
     if as_json:
-        print(json.dumps(report.model_dump(), ensure_ascii=False, indent=2))
+        print(json.dumps(_rf_json_values(report), ensure_ascii=False, indent=2))
     else:
         print(f"Validation report: {report.filing}")
         print(f"Source: {report.source}")
@@ -198,7 +202,7 @@ def _validate_annual_public_data(case_paths: list[str], as_json: bool) -> int:
 
 def _render_rf1086_preview() -> int:
     try:
-        case = FilingCase.model_validate_json(sys.stdin.read())
+        case = parse_rf1086_case(sys.stdin.read())
     except (ValueError, ValidationError) as error:
         print(json.dumps({"status": "blocked", "issues": [{"code": "invalid_case", "message": str(error)}]}))
         return 1
@@ -207,81 +211,29 @@ def _render_rf1086_preview() -> int:
     payload: dict[str, object] = {
         "filing": readiness.filing,
         "status": readiness.status,
-        "issues": [issue.model_dump() for issue in readiness.issues],
-        "preview": filing_preview(case),
+        "issues": [_rf_json_values(issue) for issue in readiness.issues],
+        "preview": render_rf1086_preview(case).preview,
     }
     if readiness.is_ready:
         documents = generate_rf1086(case)
         payload["hovedskjemaXml"] = documents.hovedskjema_xml
-        payload["underskjemaXml"] = documents.underskjema_xml
+        payload["underskjemaXml"] = dict(documents.underskjema_xml)
     print(json.dumps(payload, ensure_ascii=False))
     return 0 if readiness.is_ready else 1
 
 
 def _simulate_rf1086_submission() -> int:
     try:
-        payload = json.loads(sys.stdin.read())
-        if not payload.get("authority_confirmed"):
-            raise ValueError("authority confirmation is required before simulated submission")
-        if not payload.get("preview_confirmed"):
-            raise ValueError("final preview confirmation is required before simulated submission")
-        underskjema_xml = payload.get("underskjema_xml") or {}
-        if not isinstance(underskjema_xml, dict):
-            raise ValueError("underskjema_xml must be an object")
-
-        submission = prepare_submission(
-            filing=str(payload["filing"]),
-            company_id=str(payload["company_id"]),
-            income_year=int(payload["income_year"]),
-        )
-        submission = confirm_authority(submission, user_id=str(payload["user_id"]))
-        submission = confirm_preview(submission, user_id=str(payload["user_id"]))
-
-        preview_id = str(payload["preview_id"])
-        base_endpoint = f"/api/aksjonaerregister/v1/{submission.income_year}"
-        hovedskjema_id = f"simulated-{preview_id}"
-        submission = register_api_call(
-            submission,
-            endpoint=f"{base_endpoint}/1086H",
-            body={"content_type": "application/xml", "xml": str(payload["hovedskjema_xml"])},
-        )
-        for shareholder_id, xml in sorted(underskjema_xml.items()):
-            submission = register_api_call(
-                submission,
-                endpoint=f"{base_endpoint}/{hovedskjema_id}/1086U",
-                body={"shareholder_id": shareholder_id, "content_type": "application/xml", "xml": str(xml)},
-            )
-        submission = register_api_call(
-            submission,
-            endpoint=(
-                f"{base_endpoint}/{hovedskjema_id}/bekreft"
-                f"?antall_underskjema={len(underskjema_xml)}"
-            ),
-            body={"antall_underskjema": len(underskjema_xml)},
-        )
-        forsendelse_id = f"simulated-forsendelse-{preview_id}"
-        submission = register_api_call(
-            submission,
-            endpoint=f"{base_endpoint}/forsendelser/{forsendelse_id}/dokumenter?page=0&size=50",
-            body={"page": 0, "size": 50},
-        )
-        receipt_id = f"sim-rf1086-{submission.company_id}-{submission.income_year}-{preview_id[:8]}"
-        submission = store_receipt(
-            mark_submitted(submission, feedback_document_ids=(f"sim-feedback-{preview_id[:8]}",)),
-            receipt_id=receipt_id,
-        )
-        print(submission.model_dump_json())
+        request = parse_rf1086_offline_simulation_input(json.loads(sys.stdin.read()))
+        result = simulate_rf1086_offline_submission(request)
+        print(json.dumps(_rf_json_values(result), ensure_ascii=False, separators=(",", ":")))
         return 0
     except (KeyError, TypeError, ValueError) as error:
-        print(
-            json.dumps(
-                {
-                    "status": "failed_blocked",
-                    "failure_code": "simulation_input_blocked",
-                    "failure_message": str(error),
-                }
-            )
-        )
+        print(json.dumps({
+            "status": "failed_blocked",
+            "failure_code": "simulation_input_blocked",
+            "failure_message": str(error),
+        }))
         return 1
 
 
@@ -361,9 +313,41 @@ def _render_corporate_documents() -> int:
         return 1
 
 
-def _load_case(case_path: str) -> FilingCase | None:
+def _rf_json_values(value):
+    if isinstance(value, datetime):
+        return value.isoformat().replace("+00:00", "Z")
+    if is_dataclass(value):
+        return {item.name: _rf_json_values(getattr(value, item.name)) for item in fields(value)}
+    if isinstance(value, Mapping):
+        return {key: _rf_json_values(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_rf_json_values(item) for item in value]
+    return value
+
+
+def _write_rf1086(case: Rf1086Case, out_dir: str) -> list[Path]:
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    documents = generate_rf1086(case)
+    paths = [out / "1086H.xml"]
+    paths[0].write_text(documents.hovedskjema_xml, encoding="utf-8")
+    for shareholder_id, xml in documents.underskjema_xml.items():
+        path = out / f"1086U-{shareholder_id}.xml"
+        path.write_text(xml, encoding="utf-8")
+        paths.append(path)
+    return paths
+
+
+def _rf_validation_input(case_path: str) -> Rf1086ValidationInput:
     try:
-        return FilingCase.from_json_file(case_path)
+        return Rf1086ValidationInput(case_path, Path(case_path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        return Rf1086ValidationInput(case_path, None, str(error))
+
+
+def _load_case(case_path: str) -> Rf1086Case | None:
+    try:
+        return parse_rf1086_case(Path(case_path).read_text(encoding="utf-8"))
     except (OSError, ValueError, ValidationError) as error:
         print(f"Case validation failed: {error}", file=sys.stderr)
         return None

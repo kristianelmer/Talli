@@ -1,11 +1,14 @@
-"""Stable opening-snapshot contract for the future shareholder-register stage."""
+"""RF-owned immutable facts, deterministic commands and journal/provider ports."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Awaitable, Callable, Mapping
+from dataclasses import dataclass, field, fields
+from datetime import datetime
+from types import MappingProxyType
 from enum import StrEnum
 import re
-from typing import Literal, Protocol
+from typing import Literal, Protocol, TypeVar
 from uuid import UUID
 
 from talli_backend.shared.kernel import (
@@ -17,6 +20,7 @@ from talli_backend.shared.kernel import (
     IdempotencyKey,
     IncomeYear,
     Money,
+    Timestamp,
 )
 
 
@@ -147,12 +151,1290 @@ class ShareholderRegisterFilingCommands(Protocol):
         self, command: RecordOpeningSnapshotCommand
     ) -> OpeningSnapshotId: ...
 
+    async def generate_preview(self, command: GenerateRf1086PreviewCommand) -> Rf1086RecordedResult: ...
 
-__all__ = [
-    "OpeningShareholder",
-    "OpeningSnapshotId",
-    "RecordOpeningSnapshotCommand",
-    "ShareholderRegisterFilingCommands",
-    "ShareholderRegisterFilingError",
-    "ShareholderRegisterFilingErrorCode",
-]
+    async def record_override(self, command: RecordRf1086OverrideCommand) -> Rf1086RecordedResult: ...
+
+    async def add_review_comment(self, command: AddRf1086ReviewCommentCommand) -> Rf1086RecordedResult: ...
+
+    async def acknowledge_review_comment(self, command: AcknowledgeRf1086ReviewCommentCommand) -> Rf1086RecordedResult: ...
+
+    async def confirm_simulation(self, command: ConfirmRf1086SimulationCommand) -> Rf1086RecordedResult: ...
+
+    async def confirm_filing_permission(self, command: ConfirmRf1086FilingPermissionCommand) -> Rf1086RecordedResult: ...
+
+    async def record_test_evidence(self, command: RecordRf1086TestEvidenceCommand) -> Rf1086RecordedResult: ...
+
+    async def approve_production(self, command: ApproveRf1086ProductionCommand) -> Rf1086RecordedResult: ...
+
+
+
+# RF case values preserve the existing offline/statutory input vocabulary.
+# Operational UUIDs and UTC timestamps are separate from civil event values.
+class _ImmutableRf1086Value:
+    __slots__ = ()
+    def __post_init__(self) -> None:
+        for item in fields(self):
+            object.__setattr__(self, item.name, _freeze_rf1086_value(getattr(self, item.name)))
+
+
+def _freeze_rf1086_value(value: object) -> object:
+    if isinstance(value, Mapping):
+        return MappingProxyType({key: _freeze_rf1086_value(child) for key, child in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze_rf1086_value(child) for child in value)
+    if isinstance(value, (set, frozenset)):
+        return frozenset(_freeze_rf1086_value(child) for child in value)
+    return value
+
+
+class Rf1086ShareholderKind(StrEnum):
+    NORWEGIAN_PERSON = "norwegian_person"
+    NORWEGIAN_COMPANY = "norwegian_company"
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086Company(_ImmutableRf1086Value):
+    org_number: str
+    name: str
+    address: str
+    postal_code: str
+    city: str
+    income_year: int
+    share_type: str = "01"
+    contact_email: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ShareSnapshot(_ImmutableRf1086Value):
+    previous_share_capital: float
+    current_share_capital: float
+    previous_nominal_value: float
+    current_nominal_value: float
+    previous_share_count: int
+    current_share_count: int
+    previous_paid_in_share_capital: float
+    current_paid_in_share_capital: float
+    previous_paid_in_premium: float = 0
+    current_paid_in_premium: float = 0
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086Shareholder(_ImmutableRf1086Value):
+    id: str
+    kind: Rf1086ShareholderKind
+    name: str
+    national_id: str | None = None
+    org_number: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ShareholderSnapshot(_ImmutableRf1086Value):
+    shareholder_id: str
+    previous_share_count: int
+    current_share_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086FormationAllocation(_ImmutableRf1086Value):
+    shareholder_id: str
+    share_count: int
+    acquisition_value: float
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086FormationEvent(_ImmutableRf1086Value):
+    timestamp: datetime
+    issued_share_count: int
+    share_count_after: int
+    nominal_value: float
+    allocations: tuple[Rf1086FormationAllocation, ...]
+    premium: float = 0
+    type: Literal["formation"] = "formation"
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ShareSaleEvent(_ImmutableRf1086Value):
+    timestamp: datetime
+    seller_shareholder_id: str
+    buyer_shareholder_id: str
+    share_count: int
+    consideration: float
+    type: Literal["share_sale"] = "share_sale"
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086DividendAllocation(_ImmutableRf1086Value):
+    shareholder_id: str
+    amount: float
+    share_count_basis: int
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086DividendEvent(_ImmutableRf1086Value):
+    timestamp: datetime
+    total_amount: float
+    per_share_amount: float
+    allocations: tuple[Rf1086DividendAllocation, ...]
+    type: Literal["dividend"] = "dividend"
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086Case(_ImmutableRf1086Value):
+    case_id: str
+    company: Rf1086Company
+    share_snapshot: Rf1086ShareSnapshot
+    shareholders: tuple[Rf1086Shareholder, ...]
+    shareholder_snapshots: tuple[Rf1086ShareholderSnapshot, ...]
+    events: tuple[Rf1086FormationEvent | Rf1086ShareSaleEvent | Rf1086DividendEvent, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ReadinessIssue(_ImmutableRf1086Value):
+    level: str
+    code: str
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ReadinessResult(_ImmutableRf1086Value):
+    filing: str
+    status: Literal["ready", "blocked", "warning"]
+    issues: tuple[Rf1086ReadinessIssue, ...]
+
+    @property
+    def is_ready(self) -> bool:
+        return self.status == "ready"
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086DocumentSet(_ImmutableRf1086Value):
+    hovedskjema_xml: str = field(repr=False)
+    underskjema_xml: Mapping[str, str] = field(repr=False)
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086RenderedPreview(_ImmutableRf1086Value):
+    filing: str
+    status: Literal["ready", "blocked", "warning"]
+    issues: tuple[Rf1086ReadinessIssue, ...]
+    preview: str
+    hovedskjema_xml: str | None = field(default=None, repr=False)
+    underskjema_xml: Mapping[str, str] = field(default_factory=dict, repr=False)
+
+
+@dataclass(frozen=True, slots=True)
+class _Rf1086Id:
+    value: str
+
+    def __post_init__(self) -> None:
+        try:
+            object.__setattr__(self, "value", str(UUID(self.value)))
+        except (ValueError, AttributeError, TypeError):
+            raise ShareholderRegisterFilingError.invalid_input() from None
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
+class PreviewId(_Rf1086Id):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class OverrideId(_Rf1086Id):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewCommentId(_Rf1086Id):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class ApprovalId(_Rf1086Id):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class SubmissionId(_Rf1086Id):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class TestEvidenceId(_Rf1086Id):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086RecordedResult:
+    record_id: str
+    company_id: CompanyId
+    income_year: IncomeYear | None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "record_id", str(_Rf1086Id(self.record_id)))
+        if not isinstance(self.company_id, CompanyId) or (
+            self.income_year is not None and not isinstance(self.income_year, IncomeYear)
+        ):
+            raise ShareholderRegisterFilingError.invalid_input()
+
+
+@dataclass(frozen=True, slots=True)
+class GenerateRf1086PreviewCommand:
+    company_id: CompanyId
+    opening_snapshot_id: OpeningSnapshotId
+    actor_id: ActorId
+    correlation_id: CorrelationId
+
+
+@dataclass(frozen=True, slots=True)
+class RecordRf1086OverrideCommand:
+    preview_id: PreviewId
+    field_target: str
+    old_value: str
+    new_value: str
+    reason: str
+    risk_level: Literal["advisory", "warning", "block"]
+    owner_confirmed: bool
+    actor_id: ActorId
+    correlation_id: CorrelationId
+
+
+@dataclass(frozen=True, slots=True)
+class AddRf1086ReviewCommentCommand:
+    preview_id: PreviewId
+    severity: Literal["advisory", "hard_block"]
+    body: str
+    actor_id: ActorId
+    correlation_id: CorrelationId
+
+
+@dataclass(frozen=True, slots=True)
+class AcknowledgeRf1086ReviewCommentCommand:
+    comment_id: ReviewCommentId
+    actor_id: ActorId
+    correlation_id: CorrelationId
+
+
+@dataclass(frozen=True, slots=True)
+class ConfirmRf1086SimulationCommand:
+    preview_id: PreviewId
+    authority_confirmed: bool
+    preview_confirmed: bool
+    actor_id: ActorId
+    correlation_id: CorrelationId
+
+
+@dataclass(frozen=True, slots=True)
+class ConfirmRf1086FilingPermissionCommand:
+    company_id: CompanyId
+    production_enabled: bool
+    actor_id: ActorId
+    correlation_id: CorrelationId
+
+
+@dataclass(frozen=True, slots=True)
+class RecordRf1086TestEvidenceCommand:
+    company_id: CompanyId
+    environment: Literal["test", "manual_evidence"]
+    status: Literal["accepted", "rejected", "blocked", "pending"]
+    test_reference: str
+    feedback_summary: str
+    receipt_reference: str | None
+    archive_reference: str | None
+    evidence_url: str | None
+    payload_hash: str | None
+    actor_id: ActorId
+    correlation_id: CorrelationId
+
+
+@dataclass(frozen=True, slots=True)
+class ApproveRf1086ProductionCommand:
+    preview_id: PreviewId
+    entitlement_id: str
+    real_filing_confirmed: bool
+    actor_id: ActorId
+    correlation_id: CorrelationId
+
+
+@dataclass(frozen=True, slots=True)
+class SendApprovedRf1086Command:
+    approval_id: ApprovalId
+    actor_id: ActorId
+    correlation_id: CorrelationId
+
+
+@dataclass(frozen=True, slots=True)
+class ReconcileRf1086FeedbackCommand:
+    submission_id: SubmissionId
+    actor_id: ActorId
+    correlation_id: CorrelationId
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086WorkspaceQuery:
+    company_id: CompanyId
+    actor_id: ActorId
+    income_year: IncomeYear | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086SourceQuery:
+    company_id: CompanyId
+    income_year: IncomeYear
+    actor_id: ActorId
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ActionAvailability:
+    action: str
+    allowed: bool
+    reason_code: str | None = None
+
+# Exact predecessor DTO/port declarations for acceptance_audit to adopt.
+# Source91b; public mappings/tuples must be recursively frozen without changing JSON semantics.
+# Binding handles and authenticated session/factory remain application-private.
+
+
+ProductionOperationState = Literal["prepared", "succeeded", "failed", "unknown"]
+FailureClassification = Literal["retryable", "blocked", "unknown"]
+Rf1086FeedbackClassification = Literal["accepted", "rejected", "action_required"]
+Rf1086ReconciliationState = Literal["sent", "processing", "accepted", "rejected", "action_required", "unknown"]
+
+class Rf1086AuthorityError(Exception):
+    def __init__(self, code: str = "RF1086_AUTHORITY_ERROR", *, status: int | None = None,
+                 correlation_id: str | None = None, specification_codes: tuple[str, ...] = (), retryable: bool = False):
+        self.code = code
+        self.status = status
+        self.correlation_id = correlation_id
+        self.specification_codes = specification_codes
+        self.retryable = retryable
+        # Raw authority messages, submitted values and credentials are not retained.
+        super().__init__(code)
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086AuthorityCall(_ImmutableRf1086Value):
+    method: Literal["GET", "POST"]
+    endpoint: str
+    body_hash: str
+    idempotency_key: str | None
+    status: Literal["accepted"] = "accepted"
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086MainResponse(_ImmutableRf1086Value):
+    hovedskjema_id: str
+    call: Rf1086AuthorityCall
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086PostResponse(_ImmutableRf1086Value):
+    call: Rf1086AuthorityCall
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086Confirmation(_ImmutableRf1086Value):
+    oppgavegivers_leveranse_referanse: str
+    dialog_id: str
+    forsendelse_id: str
+    call: Rf1086AuthorityCall
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086DocumentReference(_ImmutableRf1086Value):
+    reference: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086DocumentPage(_ImmutableRf1086Value):
+    total_items: int | float
+    total_pages: int | float
+    current_page: int | float
+    documents: tuple[str | Rf1086DocumentReference, ...]
+    document_shape_valid: bool
+    call: Rf1086AuthorityCall
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086AuthorityDocument(_ImmutableRf1086Value):
+    reference: str
+    content_type: str
+    bytes: bytes = field(repr=False)
+
+
+class Rf1086ReadOnlyAuthority(Protocol):
+    async def list_documents(self, *, income_year: int, reference_id: str,
+                             page: int = 0, size: int = 50) -> Rf1086DocumentPage: ...
+    async def get_document(self, *, income_year: int, forsendelse_id: str,
+                           document_id: str) -> Rf1086AuthorityDocument: ...
+
+
+class Rf1086MutationAuthority(Protocol):
+    async def post_hovedskjema(self, *, income_year: int, xml: str, idempotency_key: str) -> Rf1086MainResponse: ...
+    async def post_underskjema(self, *, income_year: int, hovedskjema_id: str,
+                              xml: str, idempotency_key: str) -> Rf1086PostResponse: ...
+    async def confirm(self, *, income_year: int, hovedskjema_id: str,
+                       underskjema_count: int, idempotency_key: str) -> Rf1086Confirmation: ...
+    async def list_documents(self, *, income_year: int, reference_id: str,
+                             page: int = 0, size: int = 50) -> Rf1086DocumentPage: ...
+
+
+@dataclass(frozen=True, slots=True)
+class ProductionOperation(_ImmutableRf1086Value):
+    id: str
+    name: str
+    state: ProductionOperationState
+    attempt: int
+    body_hash: str | None
+    idempotency_key: str | None
+    authority_reference: str | None
+    failure_classification: FailureClassification | None
+
+
+@dataclass(frozen=True, slots=True)
+class ProductionOperationFailure(_ImmutableRf1086Value):
+    classification: FailureClassification
+    code: str
+    correlation_id: str | None
+
+
+class ProductionOperationJournal(Protocol):
+    """Prepare commits before I/O and restores persisted body/key identity.
+
+    Existing records use resume_production_operation, so interrupted mutations
+    are unknown and the twentieth failed attempt cannot be retried.
+    """
+    async def prepare(self, *, submission_id: str, name: str, body_hash: str | None,
+                       idempotency_key: str | None) -> ProductionOperation: ...
+    async def succeed(self, operation_id: str, authority_reference: str | None) -> None: ...
+    async def fail(self, operation_id: str, failure: ProductionOperationFailure) -> None: ...
+
+
+@dataclass(frozen=True, slots=True)
+class JournaledRf1086ProductionInput(_ImmutableRf1086Value):
+    submission_id: str
+    income_year: int
+    hovedskjema_xml: str = field(repr=False)
+    underskjema_xml: Mapping[str, str] = field(repr=False)
+    document_order: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class JournaledRf1086ProductionResult(_ImmutableRf1086Value):
+    status: Literal["received", "processing"]
+    hovedskjema_id: str
+    dialog_id: str
+    forsendelse_id: str
+    document_count: int
+    final_authority_decision: None = None
+
+
+class Rf1086UnknownProductionOutcomeError(Exception):
+    code = "rf1086_unknown_production_outcome"
+
+    def __init__(self, operation_name: str):
+        super().__init__(self.code)
+
+
+class Rf1086BlockedProductionOperationError(Exception):
+    code = "rf1086_blocked_production_operation"
+
+    def __init__(self, operation_name: str):
+        super().__init__(self.code)
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086FeedbackResult(_ImmutableRf1086Value):
+    classification: Rf1086FeedbackClassification
+    schema: str
+    transmission_id: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ReconciliationSnapshot(_ImmutableRf1086Value):
+    state: Rf1086ReconciliationState
+    artifact_hashes: tuple[str, ...] = ()
+    safe_error_code: str | None = None
+    correlation_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ReconciliationArtifact(_ImmutableRf1086Value):
+    submission_id: str
+    company_id: str
+    authority_reference: str
+    content_type: str
+    bytes: bytes = field(repr=False)
+    byte_length: int
+    sha256: str
+    classification: Rf1086FeedbackClassification
+
+
+class Rf1086FeedbackArtifactPersistenceError(Exception):
+    def __init__(self, *, retryable: bool):
+        self.retryable = retryable
+        super().__init__("RF1086_FEEDBACK_ARTIFACT_PERSISTENCE_ERROR")
+
+
+class Rf1086ProductionJournal(Protocol):
+    async def read_reconciliation_state(self) -> Rf1086ReconciliationSnapshot: ...
+    async def record_artifact(self, artifact: Rf1086ReconciliationArtifact) -> str: ...
+    async def append_reconciliation(self, event: Rf1086ReconciliationSnapshot) -> bool: ...
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ReconciliationInput(_ImmutableRf1086Value):
+    submission_id: str
+    company_id: str
+    income_year: int
+    forsendelse_id: str
+    hovedskjema_xml: str = field(repr=False)
+    underskjema_xml: Mapping[str, str] = field(repr=False)
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ReconciliationResult(_ImmutableRf1086Value):
+    state: Rf1086ReconciliationState
+    archive_reads: int
+    artifact_count: int
+    artifact_hashes: tuple[str, ...]
+    safe_error_code: str | None
+    correlation_id: str | None
+    changed: bool
+
+
+class Rf1086ProductionError(Exception):
+    def __init__(self, code: str):
+        allowed = {"invalid_request", "authentication_required", "approval_expired", "basis_unavailable",
+            "connection_unavailable", "payload_changed", "configuration_unavailable", "send_unavailable",
+            "status_unavailable", "status_busy", "step_up_required"}
+        self.code = code if code in allowed else "status_unavailable"
+        super().__init__(self.code)
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086Approval(_ImmutableRf1086Value):
+    id: str
+    entitlement_id: str
+    preview_id: str
+    company_id: str
+    user_id: str
+    income_year: int
+    obligation: str
+    case_profile: str
+    invalidated: bool
+    manifest_hash: str
+    manifest: Mapping[str, object] | None = field(default=None, repr=False)
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086Preview(_ImmutableRf1086Value):
+    id: str
+    company_id: str
+    income_year: int
+    filing: str
+    hovedskjema_xml: str = field(repr=False)
+    underskjema_xml: Mapping[str, str] = field(repr=False)
+    warnings: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086Submission(_ImmutableRf1086Value):
+    id: str
+    approval_id: str
+    entitlement_id: str
+    company_id: str
+    user_id: str
+    income_year: int
+    obligation: str
+    case_profile: str
+    environment: str
+    feedback_state: Rf1086ReconciliationState
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086Connection(_ImmutableRf1086Value):
+    id: str
+    company_id: str
+    initiating_owner_user_id: str
+    obligation: str
+    external_ref: str = field(repr=False)
+    status: str
+    preflight_verified: bool
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086SendResult(_ImmutableRf1086Value):
+    submission_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086OwnerReconciliationResult(_ImmutableRf1086Value):
+    state: Rf1086ReconciliationState | None
+    error_code: str | None = None
+    requires_manual_retry: bool = False
+
+
+
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086PreviewRecord(_ImmutableRf1086Value):
+    id: str
+    company_id: str
+    setup_id: str | None
+    income_year: int
+    filing: str
+    status: str
+    issues: tuple[Rf1086ReadinessIssue, ...]
+    preview: str
+    hovedskjema_xml: str | None
+    underskjema_xml: Mapping[str, str]
+    source: str
+    created_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086SimulationRecord(_ImmutableRf1086Value):
+    id: str
+    preview_id: str | None
+    authority_test_run_id: str | None
+    company_id: str
+    income_year: int
+    filing: str
+    mode: str
+    adapter_mode: str
+    payload_hash: str | None
+    idempotency_key: str | None
+    status: str
+    calls: tuple[Mapping[str, object], ...]
+    receipt_id: str | None
+    feedback_document_ids: tuple[str, ...]
+    feedback_items: tuple[Mapping[str, object], ...]
+    receipt_metadata: Mapping[str, object] | None
+    submitted_payload_ref: Mapping[str, object] | None
+    submitted_payload: Mapping[str, object] | None
+    authority_confirmed_at: str | None
+    preview_confirmed_at: str | None
+    created_at: str
+    updated_at: str
+    submitted_by: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086OverrideRecord(_ImmutableRf1086Value):
+    id: str
+    preview_id: str | None
+    company_id: str
+    income_year: int
+    filing: str
+    field_target: str
+    old_value: str
+    new_value: str
+    reason: str
+    risk_level: str
+    owner_confirmed_by: str
+    owner_confirmed_at: str
+    created_by: str
+    created_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ReviewCommentRecord(_ImmutableRf1086Value):
+    id: str
+    preview_id: str
+    company_id: str
+    target: str
+    severity: str
+    body: str
+    created_by: str
+    acknowledged_by: str | None
+    acknowledged_at: str | None
+    created_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086FilingPermissionRecord(_ImmutableRf1086Value):
+    id: str
+    company_id: str
+    obligation: str
+    submitter_user_id: str
+    confirmed_by: str
+    confirmed_at: str
+    production_enabled: bool
+    updated_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086TestEvidenceRecord(_ImmutableRf1086Value):
+    id: str
+    company_id: str
+    obligation: str
+    environment: str
+    status: str
+    test_reference: str
+    feedback_summary: str
+    receipt_reference: str | None
+    archive_reference: str | None
+    evidence_url: str | None
+    payload_hash: str | None
+    recorded_by: str
+    recorded_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ApprovalRecord(_ImmutableRf1086Value):
+    id: str
+    entitlement_id: str
+    preview_id: str
+    company_id: str
+    user_id: str
+    income_year: int
+    obligation: str
+    case_profile: str
+    adapter_version: str
+    payload_hash: str
+    manifest_hash: str
+    manifest: Mapping[str, object]
+    approved_by: str
+    approved_at: str
+    invalidated_at: str | None
+    invalidation_reason: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ProductionSubmissionRecord(_ImmutableRf1086Value):
+    id: str
+    approval_id: str
+    entitlement_id: str
+    company_id: str
+    user_id: str
+    income_year: int
+    obligation: str
+    case_profile: str
+    payload_hash: str
+    adapter_version: str
+    environment: str
+    status: str
+    authority_references: Mapping[str, str]
+    failure_class: str | None
+    supersedes_submission_id: str | None
+    submitted_by: str
+    feedback_state: str
+    feedback_artifact_count: int
+    feedback_last_checked_at: str | None
+    feedback_last_changed_at: str | None
+    feedback_safe_error_code: str | None
+    feedback_correlation_id: str | None
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086FeedbackArtifactRecord(_ImmutableRf1086Value):
+    id: str
+    company_id: str
+    submission_id: str
+    document_id: str
+    content_type: str
+    byte_length: int
+    sha256: str
+    retrieved_at: str
+    classification: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086WorkspaceSnapshot(_ImmutableRf1086Value):
+    company_id: CompanyId
+    income_year: IncomeYear | None
+    previews: tuple[Rf1086PreviewRecord, ...] = ()
+    simulations: tuple[Rf1086SimulationRecord, ...] = ()
+    overrides: tuple[Rf1086OverrideRecord, ...] = ()
+    review_comments: tuple[Rf1086ReviewCommentRecord, ...] = ()
+    permissions: tuple[Rf1086FilingPermissionRecord, ...] = ()
+    test_evidence: tuple[Rf1086TestEvidenceRecord, ...] = ()
+    approvals: tuple[Rf1086ApprovalRecord, ...] = ()
+    production_submissions: tuple[Rf1086ProductionSubmissionRecord, ...] = ()
+    feedback_artifacts: tuple[Rf1086FeedbackArtifactRecord, ...] = ()
+    actions: tuple[Rf1086ActionAvailability, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086OpeningBasis(_ImmutableRf1086Value):
+    company_id: CompanyId
+    opening_snapshot_id: OpeningSnapshotId
+    income_year: IncomeYear
+    case: Rf1086Case
+    source_digest: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086PreparedPreview(_ImmutableRf1086Value):
+    basis: Rf1086OpeningBasis
+    rendered: Rf1086RenderedPreview
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086SimulationBasis(_ImmutableRf1086Value):
+    preview: Rf1086PreviewRecord
+    source_digest: str
+    annual_readiness_ready: bool
+    hard_review_blocks: int
+    blocking_override_targets: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086PreparedSimulation(_ImmutableRf1086Value):
+    basis: Rf1086SimulationBasis
+    result: Mapping[str, object]
+    payload_hash: str
+    idempotency_key: str
+    feedback_items: tuple[Mapping[str, object], ...]
+    receipt_metadata: Mapping[str, object]
+    submitted_payload_ref: Mapping[str, object]
+    submitted_payload: Mapping[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ApprovalBasis(_ImmutableRf1086Value):
+    preview: Rf1086PreviewRecord
+    organization_number: str
+    source_digest: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086PreparedApproval(_ImmutableRf1086Value):
+    basis: Rf1086ApprovalBasis
+    manifest: Mapping[str, object]
+    manifest_hash: str
+    adapter_version: str = "rf1086-production-v1"
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086MigrationInventory(_ImmutableRf1086Value):
+    reference: str
+    version: str
+    digest: str
+    company_id: CompanyId
+    income_year: IncomeYear
+    family_counts: Mapping[str, int]
+    family_digests: Mapping[str, str]
+    quarantined_count: int
+    reconciled: bool
+    scope: Literal["talli_recorded_rf1086"] = "talli_recorded_rf1086"
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086JournalEvent(_ImmutableRf1086Value):
+    id: str
+    submission_id: str
+    sequence: int
+    operation_name: str
+    state: str
+    body_hash: str | None
+    idempotency_key: str | None
+    authority_reference: str | None
+    failure_classification: str | None
+    safe_error_code: str | None
+    created_at: str
+    attempt: int
+    resulting_status: str
+    source_digest: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086OpeningSource(_ImmutableRf1086Value):
+    """Current stored opening extent, including a non-renderable input basis."""
+
+    company_id: CompanyId
+    opening_snapshot_id: OpeningSnapshotId
+    income_year: IncomeYear
+    source_digest: str
+    shareholder_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086SourceSnapshot(_ImmutableRf1086Value):
+    workspace: Rf1086WorkspaceSnapshot
+    inventory: Rf1086MigrationInventory | None
+    journal_events: tuple[Rf1086JournalEvent, ...]
+    opening_facts: tuple[Rf1086OpeningBasis, ...]
+    as_of: Timestamp
+    complete_enumeration: bool
+    opening_sources: tuple[Rf1086OpeningSource, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086SourceEvidence(_ImmutableRf1086Value):
+    company_id: CompanyId
+    income_year: IncomeYear
+    reference: str
+    version: str
+    digest: str
+    evaluated_at: Timestamp
+    obligation: Literal["aksjonaerregisteroppgaven"] = "aksjonaerregisteroppgaven"
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086HistoryCoverage(_ImmutableRf1086Value):
+    status: Literal["complete", "incomplete", "unavailable"]
+    evidence_reference: str | None
+    reasons: tuple[str, ...]
+    as_of: Timestamp
+    event_count: int
+    event_watermark: int | None
+    scope: Literal["talli_recorded_rf1086"] = "talli_recorded_rf1086"
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ProductionAttemptFact(_ImmutableRf1086Value):
+    submission_id: str
+    state: str
+    feedback_state: str
+    effect_status: Literal["confirmed", "unknown", "not_observed"]
+    observed_at: str | None
+    evidence_event_ids: tuple[str, ...]
+    document_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086CorrectionLink(_ImmutableRf1086Value):
+    submission_id: str
+    supersedes_submission_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086IncidentFact(_ImmutableRf1086Value):
+    event_id: str
+    submission_id: str
+    failure_classification: str | None
+    safe_error_code: str | None
+    observed_at: str
+    attribution: Literal["unknown"] = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086SourceFacts(_ImmutableRf1086Value):
+    evidence: Rf1086SourceEvidence
+    readiness_status: Literal["ready", "blocked", "unavailable"]
+    hard_blocks: tuple[str, ...]
+    warnings: tuple[str, ...]
+    history_coverage: Rf1086HistoryCoverage
+    production_attempts: tuple[Rf1086ProductionAttemptFact, ...]
+    correction_links: tuple[Rf1086CorrectionLink, ...]
+    incidents: tuple[Rf1086IncidentFact, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class VerifyRf1086SourceEvidenceQuery(_ImmutableRf1086Value):
+    query: Rf1086SourceQuery
+    evidence: Rf1086SourceEvidence
+
+
+class Rf1086PreparationPersistence(Protocol):
+    async def preview_record(self, query: ReadRf1086PreviewQuery) -> Rf1086PreviewRecord | None: ...
+    async def load_opening(self, command: GenerateRf1086PreviewCommand) -> Rf1086OpeningBasis: ...
+    async def record_preview(self, command: GenerateRf1086PreviewCommand, prepared: Rf1086PreparedPreview) -> Rf1086RecordedResult: ...
+    async def record_override(self, command: RecordRf1086OverrideCommand) -> Rf1086RecordedResult: ...
+    async def add_review_comment(self, command: AddRf1086ReviewCommentCommand) -> Rf1086RecordedResult: ...
+    async def acknowledge_review_comment(self, command: AcknowledgeRf1086ReviewCommentCommand) -> Rf1086RecordedResult: ...
+    async def load_simulation_basis(self, command: ConfirmRf1086SimulationCommand) -> Rf1086SimulationBasis: ...
+    async def record_simulation(self, command: ConfirmRf1086SimulationCommand, prepared: Rf1086PreparedSimulation) -> Rf1086RecordedResult: ...
+    async def confirm_filing_permission(self, command: ConfirmRf1086FilingPermissionCommand) -> Rf1086RecordedResult: ...
+    async def record_test_evidence(self, command: RecordRf1086TestEvidenceCommand) -> Rf1086RecordedResult: ...
+    async def load_approval_basis(self, command: ApproveRf1086ProductionCommand) -> Rf1086ApprovalBasis: ...
+    async def record_approval(self, command: ApproveRf1086ProductionCommand, prepared: Rf1086PreparedApproval) -> Rf1086RecordedResult: ...
+    async def workspace(self, query: Rf1086WorkspaceQuery) -> Rf1086WorkspaceSnapshot: ...
+    async def source_snapshot(self, query: Rf1086SourceQuery) -> Rf1086SourceSnapshot: ...
+
+
+class ShareholderRegisterFilingQueries(Protocol):
+    async def read_preview(self, query: ReadRf1086PreviewQuery) -> Rf1086PreviewRecord | None: ...
+    async def workspace(self, query: Rf1086WorkspaceQuery) -> Rf1086WorkspaceSnapshot: ...
+    async def source_facts(self, query: Rf1086SourceQuery) -> Rf1086SourceFacts: ...
+    async def verify_source_evidence(self, query: VerifyRf1086SourceEvidenceQuery) -> bool: ...
+
+
+def rf1086_payload_utf8_bytes(value: str) -> bytes:
+    from .production import _js_utf8_bytes
+    return _js_utf8_bytes(value)
+
+
+def parse_rf1086_case(value: object) -> Rf1086Case:
+    from .case_parser import parse_rf1086_case as parse
+    return parse(value)
+
+
+def generate_rf1086_documents(case: Rf1086Case) -> Rf1086DocumentSet:
+    from .rendering import generate_rf1086
+    return generate_rf1086(case)
+
+
+def assess_rf1086_readiness(case: Rf1086Case) -> Rf1086ReadinessResult:
+    from .readiness import assess_rf1086_readiness as assess
+    return assess(case)
+
+
+def render_rf1086_preview(case: Rf1086Case) -> Rf1086RenderedPreview:
+    from .rendering import render_rf1086_preview as render
+    return render(case)
+
+
+def render_no_activity_rf1086_preview(value: Rf1086Case | Mapping[str, object]) -> Rf1086RenderedPreview:
+    from .rendering import render_no_activity_rf1086_preview as render
+    return render(value)
+
+
+def create_rf1086_preparation_service(persistence: Rf1086PreparationPersistence) -> Rf1086PreparationOperations:
+    from .preparation import Rf1086PreparationService
+    return Rf1086PreparationService(persistence)
+
+
+
+
+@dataclass(frozen=True, slots=True)
+class ReadRf1086PreviewQuery(_ImmutableRf1086Value):
+    preview_id: PreviewId
+    actor_id: ActorId
+
+
+def resume_production_operation(latest: ProductionOperation, *, is_mutation: bool) -> ProductionOperation:
+    from .production import resume_production_operation as resume
+    return resume(latest, is_mutation=is_mutation)
+
+
+def create_rf1086_feedback_artifact_persistence_error(error: object, *, integrity_failure: bool = False):
+    from .feedback import create_rf1086_feedback_artifact_persistence_error as create
+    return create(error, integrity_failure=integrity_failure)
+
+
+def rf1086_xml_schema(document: Literal["hovedskjema", "underskjema"]) -> bytes:
+    from importlib.resources import files
+    names = {"hovedskjema": "aksjonaerregisteroppgaveHovedskjema.xsd", "underskjema": "aksjonaerregisteroppgaveUnderskjema.xsd"}
+    if document not in names:
+        raise ShareholderRegisterFilingError.invalid_input()
+    return files(__package__).joinpath("schemas", names[document]).read_bytes()
+
+
+
+class OpeningSnapshotPersistence(Protocol):
+    actor_id: ActorId
+    async def record_opening_snapshot(self, command: RecordOpeningSnapshotCommand) -> OpeningSnapshotId: ...
+
+
+class OpeningSnapshotCommands(Protocol):
+    async def record_opening_snapshot(self, command: RecordOpeningSnapshotCommand) -> OpeningSnapshotId: ...
+
+
+def create_opening_snapshot_service(persistence: OpeningSnapshotPersistence) -> OpeningSnapshotCommands:
+    from .preparation import OpeningSnapshotService
+    return OpeningSnapshotService(persistence)
+
+
+
+async def execute_journaled_rf1086_production(input: JournaledRf1086ProductionInput, *, journal: ProductionOperationJournal, authority_client: Rf1086MutationAuthority) -> JournaledRf1086ProductionResult:
+    from .production import execute_journaled_rf1086_production as execute
+    return await execute(input, journal=journal, authority_client=authority_client)
+
+
+def rf1086_current_manifest_hash(preview: Rf1086Preview, *, actor_id: str, organization_number: str, approved_manifest: Mapping[str, object] | None = None) -> str:
+    from .production import rf1086_current_manifest_hash as digest
+    return digest(preview, actor_id=actor_id, organization_number=organization_number, approved_manifest=approved_manifest)
+
+
+def rf1086_production_document_order(preview: Rf1086Preview) -> tuple[str, ...]:
+    from .production import rf1086_production_document_order as order
+    return order(preview)
+
+
+async def reconcile_journaled_rf1086_production(journal: Rf1086ProductionJournal, authority: Rf1086ReadOnlyAuthority, input: Rf1086ReconciliationInput, *, initial_poll: bool | None = None, sleep: Callable[[int], Awaitable[None]] | None = None) -> Rf1086ReconciliationResult:
+    from .feedback import reconcile_journaled_rf1086_production as reconcile
+    return await reconcile(journal, authority, input, initial_poll=initial_poll, sleep=sleep)
+
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086CompanyFacts(_ImmutableRf1086Value):
+    company_id: CompanyId
+    org_number: str
+    name: str
+    address: str | None
+    postal_code: str | None
+    city: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086OpeningShareholderFact(_ImmutableRf1086Value):
+    id: str
+    kind: Rf1086ShareholderKind
+    name: str
+    national_id: str | None
+    org_number: str | None
+    share_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086OpeningFacts(_ImmutableRf1086Value):
+    company_id: CompanyId
+    opening_snapshot_id: OpeningSnapshotId
+    income_year: IncomeYear
+    share_capital: float
+    share_count: int
+    nominal_value: float
+    shareholders: tuple[Rf1086OpeningShareholderFact, ...]
+
+
+def build_no_activity_rf1086_case(*, company: Rf1086CompanyFacts, opening: Rf1086OpeningFacts) -> Rf1086Case:
+    from .rendering import build_no_activity_rf1086_case as build
+    return build(company=company, opening=opening)
+
+
+
+class Rf1086PreparationOperations(ShareholderRegisterFilingQueries, Protocol):
+    async def generate_preview(self, command: GenerateRf1086PreviewCommand) -> Rf1086RecordedResult: ...
+    async def record_override(self, command: RecordRf1086OverrideCommand) -> Rf1086RecordedResult: ...
+    async def add_review_comment(self, command: AddRf1086ReviewCommentCommand) -> Rf1086RecordedResult: ...
+    async def acknowledge_review_comment(self, command: AcknowledgeRf1086ReviewCommentCommand) -> Rf1086RecordedResult: ...
+    async def confirm_simulation(self, command: ConfirmRf1086SimulationCommand) -> Rf1086RecordedResult: ...
+    async def confirm_filing_permission(self, command: ConfirmRf1086FilingPermissionCommand) -> Rf1086RecordedResult: ...
+    async def record_test_evidence(self, command: RecordRf1086TestEvidenceCommand) -> Rf1086RecordedResult: ...
+    async def approve_production(self, command: ApproveRf1086ProductionCommand) -> Rf1086RecordedResult: ...
+
+
+
+Rf1086Adapter = TypeVar("Rf1086Adapter", bound=type[object])
+
+
+def rf1086_adapter(contract: type[object]) -> Callable[[Rf1086Adapter], Rf1086Adapter]:
+    """Declare an RF outbound binding without runtime registration/global state."""
+    def declare(adapter: Rf1086Adapter) -> Rf1086Adapter:
+        _ = contract
+        return adapter
+    return declare
+
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086OfflineSimulationInput(_ImmutableRf1086Value):
+    filing: str
+    company_id: str
+    income_year: int
+    user_id: str
+    preview_id: str
+    hovedskjema_xml: str = field(repr=False)
+    underskjema_xml: Mapping[str, str] = field(repr=False)
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086OfflineSimulationCall(_ImmutableRf1086Value):
+    endpoint: str
+    body_hash: str
+    idempotency_key: str
+    status: Literal["prepared"]
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086OfflineSimulationResult(_ImmutableRf1086Value):
+    filing: str
+    company_id: str
+    income_year: int
+    status: Literal["receipt_stored"]
+    authority_confirmed_by: str
+    authority_confirmed_at: datetime
+    preview_confirmed_by: str
+    preview_confirmed_at: datetime
+    calls: tuple[Rf1086OfflineSimulationCall, ...]
+    receipt_id: str
+    feedback_document_ids: tuple[str, ...]
+    failure_code: None = None
+    failure_message: None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ValidationInput(_ImmutableRf1086Value):
+    case_path: str
+    contents: str | None
+    read_error: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ValidationCaseResult(_ImmutableRf1086Value):
+    case_path: str
+    case_id: str | None
+    outcome: Literal["pass", "warning", "blocked"]
+    assumptions: tuple[str, ...]
+    issues: tuple[str, ...]
+    generated_documents: int
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ValidationReport(_ImmutableRf1086Value):
+    filing: str
+    source: str
+    limitations: tuple[str, ...]
+    cases: tuple[Rf1086ValidationCaseResult, ...]
+
+
+class Rf1086CodeVerificationStatus(StrEnum):
+    VERIFIED = "verified"
+    REJECTED = "rejected"
+    STILL_BLOCKED = "still_blocked"
+    EXCLUDED_FROM_LIVE_SCOPE = "excluded_from_live_scope"
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086CodeDecision(_ImmutableRf1086Value):
+    event: str
+    field_name: str
+    code_value: str
+    public_label: str
+    verification_status: Rf1086CodeVerificationStatus
+    production_blocker: bool
+    authority_note: str
+    sources: tuple[str, ...]
+
+
+def parse_rf1086_offline_simulation_input(value: Mapping[str, object]) -> Rf1086OfflineSimulationInput:
+    from .offline import parse_offline_simulation_input
+    return parse_offline_simulation_input(value)
+
+
+def simulate_rf1086_offline_submission(input: Rf1086OfflineSimulationInput, *, clock: Callable[[], datetime] | None = None) -> Rf1086OfflineSimulationResult:
+    from .offline import simulate_offline_submission
+    return simulate_offline_submission(input, clock=clock)
+
+
+def validate_rf1086_cases(inputs: tuple[Rf1086ValidationInput, ...], *, source: str = "public/synthetic") -> Rf1086ValidationReport:
+    from .validation import validate_cases
+    return validate_cases(inputs, source=source)
+
+
+def format_rf1086_readiness_report(result: Rf1086ReadinessResult) -> str:
+    from .readiness import format_readiness_report
+    return format_readiness_report(result)
+
+
+def rf1086_code_decisions() -> tuple[Rf1086CodeDecision, ...]:
+    from .codes import rf1086_code_decisions as decisions
+    return decisions()
+
+
+def rf1086_code_decisions_for_case(case: Rf1086Case) -> tuple[Rf1086CodeDecision, ...]:
+    from .codes import rf1086_code_decisions_for_case as decisions
+    return decisions(case)
+
+
+def rf1086_production_code_blockers(case: Rf1086Case | None = None) -> tuple[Rf1086CodeDecision, ...]:
+    from .codes import production_code_blockers, production_code_blockers_for_case
+    return production_code_blockers() if case is None else production_code_blockers_for_case(case)
+
+
+def rf1086_production_scope_exclusions(case: Rf1086Case | None = None) -> tuple[Rf1086CodeDecision, ...]:
+    from .codes import production_scope_exclusions, production_scope_exclusions_for_case
+    return production_scope_exclusions() if case is None else production_scope_exclusions_for_case(case)
+
+__all__ = ['ShareholderRegisterFilingErrorCode', 'ShareholderRegisterFilingError', 'OpeningSnapshotId', 'OpeningShareholder', 'RecordOpeningSnapshotCommand', 'ShareholderRegisterFilingCommands', 'Rf1086ShareholderKind', 'Rf1086Company', 'Rf1086ShareSnapshot', 'Rf1086Shareholder', 'Rf1086ShareholderSnapshot', 'Rf1086FormationAllocation', 'Rf1086FormationEvent', 'Rf1086ShareSaleEvent', 'Rf1086DividendAllocation', 'Rf1086DividendEvent', 'Rf1086Case', 'Rf1086ReadinessIssue', 'Rf1086ReadinessResult', 'Rf1086DocumentSet', 'Rf1086RenderedPreview', 'PreviewId', 'OverrideId', 'ReviewCommentId', 'ApprovalId', 'SubmissionId', 'TestEvidenceId', 'Rf1086RecordedResult', 'GenerateRf1086PreviewCommand', 'RecordRf1086OverrideCommand', 'AddRf1086ReviewCommentCommand', 'AcknowledgeRf1086ReviewCommentCommand', 'ConfirmRf1086SimulationCommand', 'ConfirmRf1086FilingPermissionCommand', 'RecordRf1086TestEvidenceCommand', 'ApproveRf1086ProductionCommand', 'SendApprovedRf1086Command', 'ReconcileRf1086FeedbackCommand', 'Rf1086WorkspaceQuery', 'Rf1086SourceQuery', 'Rf1086ActionAvailability', 'Rf1086AuthorityError', 'Rf1086AuthorityCall', 'Rf1086MainResponse', 'Rf1086PostResponse', 'Rf1086Confirmation', 'Rf1086DocumentReference', 'Rf1086DocumentPage', 'Rf1086AuthorityDocument', 'Rf1086ReadOnlyAuthority', 'Rf1086MutationAuthority', 'ProductionOperation', 'ProductionOperationFailure', 'ProductionOperationJournal', 'JournaledRf1086ProductionInput', 'JournaledRf1086ProductionResult', 'Rf1086UnknownProductionOutcomeError', 'Rf1086BlockedProductionOperationError', 'Rf1086FeedbackResult', 'Rf1086ReconciliationSnapshot', 'Rf1086ReconciliationArtifact', 'Rf1086FeedbackArtifactPersistenceError', 'Rf1086ProductionJournal', 'Rf1086ReconciliationInput', 'Rf1086ReconciliationResult', 'Rf1086ProductionError', 'Rf1086Approval', 'Rf1086Preview', 'Rf1086Submission', 'Rf1086Connection', 'Rf1086SendResult', 'Rf1086OwnerReconciliationResult', 'Rf1086PreviewRecord', 'Rf1086SimulationRecord', 'Rf1086OverrideRecord', 'Rf1086ReviewCommentRecord', 'Rf1086FilingPermissionRecord', 'Rf1086TestEvidenceRecord', 'Rf1086ApprovalRecord', 'Rf1086ProductionSubmissionRecord', 'Rf1086FeedbackArtifactRecord', 'Rf1086WorkspaceSnapshot', 'Rf1086OpeningBasis', 'Rf1086PreparedPreview', 'Rf1086SimulationBasis', 'Rf1086PreparedSimulation', 'Rf1086ApprovalBasis', 'Rf1086PreparedApproval', 'Rf1086MigrationInventory', 'Rf1086JournalEvent', 'Rf1086SourceSnapshot', 'Rf1086OpeningSource', 'Rf1086SourceEvidence', 'Rf1086HistoryCoverage', 'Rf1086ProductionAttemptFact', 'Rf1086CorrectionLink', 'Rf1086IncidentFact', 'Rf1086SourceFacts', 'VerifyRf1086SourceEvidenceQuery', 'Rf1086PreparationPersistence', 'ShareholderRegisterFilingQueries', 'rf1086_payload_utf8_bytes', 'parse_rf1086_case', 'generate_rf1086_documents', 'assess_rf1086_readiness', 'render_rf1086_preview', 'render_no_activity_rf1086_preview', 'create_rf1086_preparation_service', 'ReadRf1086PreviewQuery', 'resume_production_operation', 'create_rf1086_feedback_artifact_persistence_error', 'rf1086_xml_schema', 'OpeningSnapshotPersistence', 'OpeningSnapshotCommands', 'create_opening_snapshot_service', 'execute_journaled_rf1086_production', 'rf1086_current_manifest_hash', 'rf1086_production_document_order', 'reconcile_journaled_rf1086_production', 'Rf1086CompanyFacts', 'Rf1086OpeningShareholderFact', 'Rf1086OpeningFacts', 'build_no_activity_rf1086_case', 'Rf1086PreparationOperations', 'rf1086_adapter', 'Rf1086OfflineSimulationInput', 'Rf1086OfflineSimulationCall', 'Rf1086OfflineSimulationResult', 'Rf1086ValidationInput', 'Rf1086ValidationCaseResult', 'Rf1086ValidationReport', 'Rf1086CodeVerificationStatus', 'Rf1086CodeDecision', 'parse_rf1086_offline_simulation_input', 'simulate_rf1086_offline_submission', 'validate_rf1086_cases', 'format_rf1086_readiness_report', 'rf1086_code_decisions', 'rf1086_code_decisions_for_case', 'rf1086_production_code_blockers', 'rf1086_production_scope_exclusions', 'ProductionOperationState', 'FailureClassification', 'Rf1086FeedbackClassification', 'Rf1086ReconciliationState']

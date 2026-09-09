@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "web-feature",
+  "name": "shareholder-register-filing",
+  "path": "apps/web/features/shareholder-register-filing",
+  "owner": "web:shareholder-register-filing",
+  "purpose": "Present RF-1086 owned previews, review, simulation, approval and retained production history through generated authenticated transport.",
+  "documentation": "apps/web/features/shareholder-register-filing/MODULE.md",
+  "publicEntryPoint": "@/features/shareholder-register-filing",
+  "publicImportPaths": [
+    "@/features/shareholder-register-filing",
+    "apps/web/features/shareholder-register-filing",
+    "apps/web/features/shareholder-register-filing/index.ts"
+  ],
+  "ownedRoutes": [],
+  "apiOperations": [
+    "legacyRf1086SendApprovedFiling",
+    "legacyRf1086ReconcileFeedback",
+    "rf1086Workspace",
+    "rf1086Preview",
+    "rf1086GeneratePreview",
+    "rf1086RecordOverride",
+    "rf1086AddReviewComment",
+    "rf1086AcknowledgeReviewComment",
+    "rf1086ConfirmSimulation",
+    "rf1086ConfirmFilingPermission",
+    "rf1086RecordTestEvidence",
+    "rf1086ApproveProduction"
+  ],
+  "dependencies": [],
+  "allowedImports": [
+    "#backend-configuration",
+    "@talli/talli-api-client"
+  ],
+  "cachePolicy": {
+    "default": "no-store",
+    "allowed": []
+  },
+  "directBrowserFlows": [],
+  "forbiddenResponsibilities": [
+    "Authority credentials or arbitrary HTTP/XML provider transport",
+    "Filing journal, billing or feedback policy",
+    "Direct business persistence"
+  ],
+  "tests": {
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

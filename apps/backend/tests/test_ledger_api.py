@@ -6,11 +6,11 @@ from datetime import UTC, date, datetime
 
 from fastapi.testclient import TestClient
 from talli_backend.application.ledger_session import LedgerAuthenticationError
-from talli_backend.application.opening_snapshot_compatibility import (
-    LegacyOpeningShareholderView,
-    LegacyOpeningSnapshotCursor,
-    LegacyOpeningSnapshotPage,
-    LegacyOpeningSnapshotView,
+from talli_backend.application.new_year_opening import (
+    OpeningShareholderView,
+    OpeningSnapshotCursor,
+    OpeningSnapshotPage,
+    OpeningSnapshotView,
 )
 from talli_backend.main import create_app
 from talli_backend.modules.ledger.public import (
@@ -29,6 +29,7 @@ from talli_backend.modules.ledger.public import (
     LedgerRiskFlag,
     LedgerSourceCapability,
     LedgerSourceRecordId,
+    OpeningBankInput,
     PeriodLock,
     PeriodLockId,
     PeriodLockPage,
@@ -66,7 +67,7 @@ class LedgerSessionStub:
         self.tokens: list[str] = []
         self.entry_items: tuple[LedgerEntryView, ...] = ()
         self.entry_next_cursor: LedgerCursor | None = LedgerCursor("opaque-next")
-        self.opening_snapshots = LegacyOpeningSnapshotPage(
+        self.opening_snapshots = OpeningSnapshotPage(
             items=(), next_cursor=None, has_more=False
         )
         self.reconstruction_assessment = ReconstructionAssessment(
@@ -130,17 +131,28 @@ class LedgerSessionStub:
             ("claim_workflow", {"operation": operation_name, "request": request})
         )
 
-    async def record_legacy_opening_snapshot(
-        self, command: object, *, ledger_bank_balance: object
+    async def record_opening_snapshot(
+        self, command: object
     ) -> OpeningSnapshotId:
         self.calls.append(
-            ("record_legacy_opening_snapshot", {"command": command, "bank": ledger_bank_balance})
+            ("record_opening_snapshot", {"command": command})
         )
         return SETUP_ID
 
+    async def record_opening_bank_input(self, command) -> OpeningBankInput:
+        self.calls.append(("record_opening_bank_input", {"command": command}))
+        return OpeningBankInput(
+            snapshot_id=command.snapshot_id,
+            company_id=command.company_id,
+            income_year=command.income_year,
+            bank_balance=command.bank_balance,
+            recorded_by=command.actor_id,
+            recorded_at=NOW,
+        )
+
     async def list_opening_snapshots(
         self, *, actor_id, company_ids, correlation_id, cursor, limit
-    ) -> LegacyOpeningSnapshotPage:
+    ) -> OpeningSnapshotPage:
         self.calls.append(
             (
                 "list_opening_snapshots",
@@ -529,8 +541,8 @@ def test_cross_capability_writers_bind_business_facts_to_one_ledger_result() -> 
 def test_opening_snapshot_query_exposes_the_frozen_projection() -> None:
     client, session = client_and_session()
     shareholder_id = "70000000-0000-0000-0000-000000000007"
-    session.opening_snapshots = LegacyOpeningSnapshotPage(
-        items=(LegacyOpeningSnapshotView(
+    session.opening_snapshots = OpeningSnapshotPage(
+        items=(OpeningSnapshotView(
             setup_id=str(SETUP_ID),
             company_id=COMPANY_ID,
             income_year=IncomeYear(2026),
@@ -542,7 +554,7 @@ def test_opening_snapshot_query_exposes_the_frozen_projection() -> None:
             created_at=Timestamp(datetime(2026, 8, 27, 9, tzinfo=UTC)),
             created_by=ACTOR_ID,
             shareholders=(
-                LegacyOpeningShareholderView(
+                OpeningShareholderView(
                     shareholder_id=shareholder_id,
                     setup_id=str(SETUP_ID),
                     company_id=COMPANY_ID,
@@ -554,7 +566,7 @@ def test_opening_snapshot_query_exposes_the_frozen_projection() -> None:
                 ),
             ),
         ),),
-        next_cursor=LegacyOpeningSnapshotCursor("opaque-opening-next"),
+        next_cursor=OpeningSnapshotCursor("opaque-opening-next"),
         has_more=True,
     )
 

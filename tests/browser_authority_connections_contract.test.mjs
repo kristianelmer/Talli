@@ -83,7 +83,7 @@ test("current reconciliation UI reaches Godkjent before DB and reload assertions
     'productionSection.getByText("Godkjent", { exact: true }).waitFor()',
     click,
   );
-  const database = browserSource.indexOf("const storedFiling = await database.query", click);
+  const database = browserSource.indexOf("const storedFiling = await rfFixtureTransaction(database, () => database.query", click);
   const reload = browserSource.indexOf("await page.reload()", click);
   assert.ok(click >= 0 && click < acceptedUi && acceptedUi < database && database < reload);
 });
