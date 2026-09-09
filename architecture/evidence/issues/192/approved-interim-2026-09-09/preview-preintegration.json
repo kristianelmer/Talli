@@ -1,0 +1,196 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Read-only pre-integration check for the approved #192 interim checkpoint. This is not final #192 acceptance, hosted backend functional proof, production authorization, or an immutable 11/11 gate.",
+  "recordedAtUtc": "2026-09-09T09:30:14Z",
+  "repository": "kristianelmer/Talli",
+  "candidate": {
+    "commit": "12ae20a3d615981b7543ee441e91a6ca9384a59c",
+    "localHeadVerified": true,
+    "pullRequest": 207,
+    "pullRequestUrl": "https://github.com/kristianelmer/Talli/pull/207",
+    "headRef": "codex/issue-192-cancellation-01a07a7f",
+    "baseRef": "main"
+  },
+  "readOnlyScope": {
+    "checkoutModified": false,
+    "hostedSettingsModified": false,
+    "environmentValuesRevealed": false,
+    "deploymentsTriggered": false,
+    "productionActivated": false,
+    "providerOperationsPerformed": false
+  },
+  "ci": {
+    "observedAtUtc": "2026-09-09T09:27:55Z",
+    "runId": 34333087515,
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/34333087515",
+    "event": "pull_request",
+    "headSha": "12ae20a3d615981b7543ee441e91a6ca9384a59c",
+    "status": "completed",
+    "conclusion": "success",
+    "updatedAtUtc": "2026-09-09T09:23:54Z",
+    "checks": [
+      {
+        "name": "Application",
+        "conclusion": "SUCCESS",
+        "completedAtUtc": "2026-09-09T09:19:54Z",
+        "url": "https://github.com/kristianelmer/Talli/actions/runs/34333087515/job/102406014425"
+      },
+      {
+        "name": "Database isolation",
+        "conclusion": "SUCCESS",
+        "completedAtUtc": "2026-09-09T09:23:47Z",
+        "url": "https://github.com/kristianelmer/Talli/actions/runs/34333087515/job/102406014794"
+      },
+      {
+        "name": "Release gate",
+        "conclusion": "SUCCESS",
+        "completedAtUtc": "2026-09-09T09:23:53Z",
+        "url": "https://github.com/kristianelmer/Talli/actions/runs/34333087515/job/102410462852"
+      },
+      {
+        "name": "Immutable evidence",
+        "conclusion": "SKIPPED",
+        "note": "Normal PR run; this result supplies neither of the two separately required complete immutable 11/11 gates."
+      },
+      {
+        "name": "Vercel",
+        "conclusion": "SUCCESS",
+        "url": "https://vercel.com/kristianelmers-projects/talli-web/5EpbWHUpqTsMS5BeGjWetfMrRwsJ"
+      },
+      {
+        "name": "Vercel Preview Comments",
+        "conclusion": "SUCCESS"
+      }
+    ]
+  },
+  "vercel": {
+    "projectId": "prj_1JJkOqzGBhn438IKHYADWiRbVGeZ",
+    "projectName": "talli-web",
+    "teamId": "team_vjY7Lg3yOS7gSUnFqbihoTo2",
+    "teamSlug": "kristianelmers-projects",
+    "readbackMethod": "Vercel get_deployment purpose-built connector for exact deployment ID and production alias; authenticated native browser for project settings metadata.",
+    "preview": {
+      "id": "dpl_5EpbWHUpqTsMS5BeGjWetfMrRwsJ",
+      "projectId": "prj_1JJkOqzGBhn438IKHYADWiRbVGeZ",
+      "projectName": "talli-web",
+      "url": "https://talli-a7n0van1r-kristianelmers-projects.vercel.app",
+      "state": "READY",
+      "readyState": "READY",
+      "target": null,
+      "source": "git",
+      "gitCommit": "12ae20a3d615981b7543ee441e91a6ca9384a59c",
+      "gitRef": "codex/issue-192-cancellation-01a07a7f",
+      "createdAt": "2026-09-09T09:09:06.307Z",
+      "readyAt": "2026-09-09T09:09:28.720Z",
+      "regions": [
+        "dub1"
+      ],
+      "aliases": [
+        "talli-web-git-codex-issue-192-ca-d9f906-kristianelmers-projects.vercel.app"
+      ],
+      "githubDeploymentId": 6346350760,
+      "githubEnvironment": "Preview",
+      "githubProductionEnvironment": false,
+      "githubPrId": 207
+    },
+    "productionAlias": {
+      "requestedAlias": "talli.no",
+      "id": "dpl_HuHzBsgpcgBVTGsFiFLEEy3PqN5f",
+      "projectId": "prj_1JJkOqzGBhn438IKHYADWiRbVGeZ",
+      "projectName": "talli-web",
+      "url": "https://talli-qb8g1v5h7-kristianelmers-projects.vercel.app",
+      "state": "READY",
+      "readyState": "READY",
+      "target": "production",
+      "source": "git",
+      "gitCommit": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+      "gitRef": "main",
+      "createdAt": "2026-08-09T08:25:35.839Z",
+      "readyAt": "2026-08-09T08:26:14.568Z",
+      "regions": [
+        "iad1"
+      ],
+      "aliases": [
+        "talli.no",
+        "www.talli.no",
+        "talli-web.vercel.app",
+        "talli-web-kristianelmers-projects.vercel.app",
+        "talli-web-git-main-kristianelmers-projects.vercel.app"
+      ],
+      "note": "The production artifact's original gitRef is main because the artifact predates the production-branch setting change; it is not the current production-branch setting."
+    },
+    "productionBranchObservation": {
+      "value": "release/production",
+      "url": "https://vercel.com/kristianelmers-projects/talli-web",
+      "method": "Existing authenticated Opera session; live Vercel project Overview read only.",
+      "visibleText": "To update your Production Deployment, push to the release/production branch.",
+      "observationDateUtc": "2026-09-09",
+      "observedNoLaterThanUtc": "2026-09-09T09:27:55Z",
+      "timingNote": "The native UI call had no separately sampled wall-clock timestamp; this is the clock-backed upper bound recorded immediately after the UI observations.",
+      "restApiProductionBranchReadbackAvailable": false,
+      "apiLimitation": "The installed get_project connector returns a summary without productionBranch. Cached CLI had no existing authentication; no login was completed.",
+      "productionPointerAtObservation": "d331ee2717d1eeacef0d81db42b9d4fb5848b408"
+    },
+    "backendEnvironmentMetadata": {
+      "variableName": "TALLI_BACKEND_URL",
+      "projectUrl": "https://vercel.com/kristianelmers-projects/talli-web/settings/environment-variables",
+      "sharedUrl": "https://vercel.com/kristianelmers-projects/talli-web/settings/environment-variables?tab=shared",
+      "filters": "All Types, All Environments, All Editors, All Variables; exact variable-name search.",
+      "projectSearchResult": "No Results Found",
+      "sharedSearchResult": "No Results Found",
+      "observedNoLaterThanUtc": "2026-09-09T09:27:55Z",
+      "valuesViewed": false,
+      "interpretation": "No definition of TALLI_BACKEND_URL was visible in either the current Project or Shared variable metadata. No configured hosted backend origin was established by this inspection; no target was guessed."
+    }
+  },
+  "remoteBranches": {
+    "main": "ccf1dcba56a4eb05c5252b00286dba6b2b8b480e",
+    "releaseProduction": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+    "method": "git ls-remote origin refs/heads/main refs/heads/release/production"
+  },
+  "hostedBackendObservation": {
+    "url": "https://talli-a7n0van1r-kristianelmers-projects.vercel.app/system-boundary",
+    "method": "Vercel protected-deployment web fetch",
+    "observedAtUtcApproximate": "2026-09-09T09:19:52Z",
+    "httpStatus": 200,
+    "renderedHeading": "Tjenesten er midlertidig utilgjengelig",
+    "verdict": "The Preview renders its unavailable state. This does not prove successful hosted FastAPI integration.",
+    "secondaryRead": {
+      "path": "/health/ready",
+      "httpStatus": 302,
+      "body": "Redirecting...",
+      "interpretation": "Redirect response does not establish application readiness or backend reachability."
+    },
+    "readyIsFunctionalHostedProof": false
+  },
+  "deploymentContract": {
+    "configurationKey": "TALLI_BACKEND_URL",
+    "webBehavior": "The server requires an HTTP(S) origin, HTTPS except loopback, without credentials/path/query/hash. Missing configuration fails closed. The generated API client uses that origin for FastAPI calls.",
+    "backendHost": "No exact hosted backend origin or backend deployment target established.",
+    "vercelConfig": "Root vercel.json deploys apps/web/.next in dub1; it does not deploy or route a FastAPI backend.",
+    "healthReadySemantics": "The web /health/ready handler validates backend URL configuration only; it is not an upstream backend connectivity probe.",
+    "ciCoverage": "Release CI uses a loopback backend origin, builds web and Python artifacts, and exercises independent deployment order/failure isolation through the production boundary smoke. This is CI integration evidence, not hosted Preview backend proof.",
+    "sources": [
+      "https://github.com/kristianelmer/Talli/blob/12ae20a3d615981b7543ee441e91a6ca9384a59c/apps/web/lib/backend-configuration.ts",
+      "https://github.com/kristianelmer/Talli/blob/12ae20a3d615981b7543ee441e91a6ca9384a59c/apps/web/features/system-boundary/transport/load-system-boundary.ts",
+      "https://github.com/kristianelmer/Talli/blob/12ae20a3d615981b7543ee441e91a6ca9384a59c/apps/web/app/health/ready/route.ts",
+      "https://github.com/kristianelmer/Talli/blob/12ae20a3d615981b7543ee441e91a6ca9384a59c/vercel.json",
+      "https://github.com/kristianelmer/Talli/blob/12ae20a3d615981b7543ee441e91a6ca9384a59c/.github/workflows/release-gate.yml",
+      "https://github.com/kristianelmer/Talli/blob/12ae20a3d615981b7543ee441e91a6ca9384a59c/tests/production_boundary_smoke.mjs",
+      "https://github.com/kristianelmer/Talli/blob/12ae20a3d615981b7543ee441e91a6ca9384a59c/docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md"
+    ]
+  },
+  "acceptanceInterpretation": {
+    "conclusion": "The unavailable hosted backend is a preserved Preview limitation, not a separately specified additional gate for the approved interim #192 integration.",
+    "basis": "ADR0013's approved interim amendment and the control-plane require currently implementable billing work, truthful unavailable acquisition/renewal, preserved recovery/cancellation/refund/read/export rights, independent review, two linked immutable complete 11/11 gates, protected Release/Preview merge, and exact-main Release/Preview evidence. They do not add a separately hosted FastAPI Preview deployment or smoke. ADR0012 selects no hosting provider.",
+    "limits": "Vercel READY proves deployment status only. It must not be labelled customer-flow, backend connectivity, final #192, production activation, or launch proof. Full #192 remains open for source-backed runtime and all original acceptance. This artifact does not replace any remaining required gate or exact-main receipt.",
+    "integrationEffect": "With the live production branch set to release/production, merging this capability PR into main remains nonproduction. The independent release/production pointer and current production alias stay frozen; no promotion or production write was performed.",
+    "ownerDecision": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5599100453",
+    "sources": [
+      "https://github.com/kristianelmer/Talli/blob/12ae20a3d615981b7543ee441e91a6ca9384a59c/docs/adr/0013-enforce-the-architecture-and-migrate-serially.md#2026-09-09-amendment-billing-checkpoint-before-source-backed-completion",
+      "https://github.com/kristianelmer/Talli/blob/12ae20a3d615981b7543ee441e91a6ca9384a59c/docs/architecture/mass-market-execution-control-plane.md",
+      "https://github.com/kristianelmer/Talli/blob/12ae20a3d615981b7543ee441e91a6ca9384a59c/architecture/evidence/issues/192/source-order-amendment-proposal.md",
+      "https://github.com/kristianelmer/Talli/issues/192"
+    ]
+  }
+}
