@@ -1,0 +1,1109 @@
+customer-ready-release-gate revision=67901fd0f2534772110e68f99290136a88280319
+startedAt=2026-09-09T16:37:53.173Z
+
+[schema-setup] command=git clone --depth 1 --branch v1.62.47 https://github.com/Skatteetaten/skattemeldingen.git
+Cloning into '/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-customer-ready-gate-E3cv5u/skattemeldingen'...
+warning: refs/tags/v1.62.47 980e1eab4d0de1e6582adc4fde9be029d55c4694 is not a commit!
+Note: switching to '7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+[schema-setup] exit=0
+[schema-setup] durationMs=17185
+
+[credential-scan] command=npm run test:credential-scan
+
+> talli-repository@0.1.0 test:credential-scan
+> node --test tests/committed_credentials.test.mjs && node scripts/check-committed-credentials.mjs
+
+✔ the credential scanner scans its own clean repository without matching itself (312.143959ms)
+✔ the credential scanner rejects a tracked source credential (175.454417ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 537.125708
+[credential-scan] exit=0
+[credential-scan] durationMs=1000
+
+[typecheck] command=npm run typecheck
+
+> talli-repository@0.1.0 typecheck
+> npm --prefix apps/web run typecheck
+
+
+> talli-web@0.1.0 typecheck
+> tsc --noEmit
+[typecheck] exit=0
+[typecheck] durationMs=1189
+
+[architecture] command=npm run check:architecture
+
+> talli-repository@0.1.0 check:architecture
+> node scripts/check-architecture.mjs --write-evidence && git diff --exit-code -- architecture/dependency-evidence.json
+
+{
+  "edges": [
+    {
+      "from": "backend-system:accounting-document-lifecycle",
+      "imports": [
+        "talli_backend.modules.documents.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:documents"
+    },
+    {
+      "from": "backend-system:annual-agreement-cleanup",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-billing-reads-and-cancellation",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-billing-support",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-provider-notification-intake",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-refund-recovery",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-support-agreement-cleanup-recovery",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-support-refund-recovery",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:authority-connections-owner-lifecycle",
+      "imports": [
+        "talli_backend.modules.authority_connections.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:authority_connections"
+    },
+    {
+      "from": "backend-system:authority-connections-owner-lifecycle",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:authority-connections-state",
+      "imports": [
+        "talli_backend.modules.authority_connections.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:authority_connections"
+    },
+    {
+      "from": "backend-system:authority-connections-state",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:authority-operations",
+      "imports": [
+        "talli_backend.modules.authority_connections.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:authority_connections"
+    },
+    {
+      "from": "backend-system:banking-reconciliation",
+      "imports": [
+        "talli_backend.modules.banking.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:banking"
+    },
+    {
+      "from": "backend-system:billing-and-filing-entitlement",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:company-access-administration",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:company-access-context",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:company-access-onboarding-and-support",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:company-year-eligibility-and-admission",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:corporate-governance",
+      "imports": [
+        "talli_backend.modules.banking.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:banking"
+    },
+    {
+      "from": "backend-system:corporate-governance",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:corporate-governance",
+      "imports": [
+        "talli_backend.modules.corporate_governance.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:corporate_governance"
+    },
+    {
+      "from": "backend-system:corporate-governance",
+      "imports": [
+        "talli_backend.modules.documents.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:documents"
+    },
+    {
+      "from": "backend-system:corporate-governance",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:investment-activity",
+      "imports": [
+        "talli_backend.modules.banking.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:banking"
+    },
+    {
+      "from": "backend-system:investment-activity",
+      "imports": [
+        "talli_backend.modules.investments.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:investments"
+    },
+    {
+      "from": "backend-system:investment-activity",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:launch-signoff-records",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:ledger-posting-and-period-control",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:legacy-rf1086-authority-relocation",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:legacy-rf1086-authority-relocation",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:legacy-rf1086-authority-relocation",
+      "imports": [
+        "talli_backend.modules.documents.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:documents"
+    },
+    {
+      "from": "backend-system:marketing-funnel-measurement",
+      "imports": [
+        "talli_backend.modules.marketing_measurement.public"
+      ],
+      "kind": "workflow",
+      "to": "backend-system:marketing_measurement"
+    },
+    {
+      "from": "backend-system:new-year-start",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:new-year-start",
+      "imports": [
+        "talli_backend.modules.shareholder_register_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:shareholder_register_filing"
+    },
+    {
+      "from": "backend-system:passive-validation-observation",
+      "imports": [
+        "talli_backend.modules.validation_observation.public"
+      ],
+      "kind": "workflow",
+      "to": "backend-system:validation_observation"
+    },
+    {
+      "from": "backend-system:system-boundary-tracer",
+      "imports": [
+        "talli_backend.modules.system_boundary.public"
+      ],
+      "kind": "workflow",
+      "to": "backend-system:system_boundary"
+    }
+  ],
+  "generatedBy": "scripts/check-architecture.mjs",
+  "modules": [
+    "backend-system:marketing_measurement",
+    "backend-system:system_boundary",
+    "backend-system:validation_observation",
+    "backend:authority_connections",
+    "backend:banking",
+    "backend:billing",
+    "backend:company_access",
+    "backend:corporate_governance",
+    "backend:documents",
+    "backend:investments",
+    "backend:ledger",
+    "backend:shareholder_register_filing",
+    "web:authority-connections",
+    "web:banking",
+    "web:billing",
+    "web:company-access",
+    "web:corporate-governance",
+    "web:documents",
+    "web:investments",
+    "web:ledger",
+    "web:legacy-rf1086",
+    "web:operator-controls",
+    "web:public-acquisition",
+    "web:system-boundary"
+  ],
+  "schemaVersion": "1.0",
+  "technicalOwnership": [
+    {
+      "owner": "backend-system",
+      "table": "annual_notification_inbox.receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.annual_checkout_observation_work"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.authority_connections_overlap_grants"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_command_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_migration_reconciliations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_migration_runs"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_migration_source_rows"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_command_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_cursor_signing_keys"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_quarantine"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_reconciliations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_runs"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_source_rows"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_workflow_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_consent_actions"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_funnel_events"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_funnel_withdrawals"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_measurement_releases"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_observation_control"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_observations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_pilot_entitlements"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_reviewers"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_runs"
+    },
+    {
+      "owner": "backend-system",
+      "table": "billing.billing_command_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "public.company_access_command_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "public.launch_signoffs"
+    },
+    {
+      "owner": "backend-system",
+      "table": "public.notification_outbox"
+    }
+  ]
+}
+[architecture] exit=0
+[architecture] durationMs=13158
+
+[boundary] command=npm run test:boundary
+
+> talli-repository@0.1.0 test:boundary
+> npm run test:boundary-backend && npm run test:boundary-web && npm run test:boundary-contract
+
+
+> talli-repository@0.1.0 test:boundary-backend
+> uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests -m "not billing_database and not authority_database"
+
+============================= test session starts ==============================
+platform darwin -- Python 3.12.11, pytest-8.4.1, pluggy-1.6.0
+rootdir: /Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/apps/backend
+configfile: pyproject.toml
+plugins: anyio-4.14.2
+collected 3248 items / 760 deselected / 2488 selected
+
+apps/backend/tests/test_altinn_authority_operations.py ................. [  0%]
+........................................................................ [  3%]
+.......................                                                  [  4%]
+apps/backend/tests/test_altinn_system_user.py .......................... [  5%]
+........................................................................ [  8%]
+...............                                                          [  9%]
+apps/backend/tests/test_annual_billing_api.py .......................... [ 10%]
+...............                                                          [ 10%]
+apps/backend/tests/test_annual_billing_policy.py ....................... [ 11%]
+................                                                         [ 12%]
+apps/backend/tests/test_annual_billing_runtime_configuration.py ........ [ 12%]
+...................................                                      [ 13%]
+apps/backend/tests/test_annual_checkout_api.py ......................... [ 14%]
+..........................                                               [ 16%]
+apps/backend/tests/test_annual_checkout_reconciliation_cli.py .......... [ 16%]
+.................                                                        [ 17%]
+apps/backend/tests/test_annual_checkout_service.py ..................... [ 17%]
+..............................                                           [ 19%]
+apps/backend/tests/test_annual_cleanup_api.py .......................... [ 20%]
+.......                                                                  [ 20%]
+apps/backend/tests/test_annual_cleanup_service.py ...................... [ 21%]
+.............                                                            [ 21%]
+apps/backend/tests/test_annual_notification_intake.py .................. [ 22%]
+...........                                                              [ 23%]
+apps/backend/tests/test_annual_observation_service.py .................. [ 23%]
+........                                                                 [ 24%]
+apps/backend/tests/test_annual_refund_recovery_api.py .................. [ 24%]
+...                                                                      [ 24%]
+apps/backend/tests/test_annual_refund_recovery_service.py .............. [ 25%]
+...........                                                              [ 25%]
+apps/backend/tests/test_annual_refund_service.py ....................... [ 26%]
+...............................                                          [ 28%]
+apps/backend/tests/test_annual_refund_targets_api.py ................    [ 28%]
+apps/backend/tests/test_annual_support_api.py .................          [ 29%]
+apps/backend/tests/test_annual_support_cleanup_api.py .................. [ 30%]
+.......                                                                  [ 30%]
+apps/backend/tests/test_annual_support_cleanup_service.py .............. [ 31%]
+..............                                                           [ 31%]
+apps/backend/tests/test_annual_support_refund_recovery_api.py .......... [ 31%]
+..................                                                       [ 32%]
+apps/backend/tests/test_annual_support_refund_recovery_service.py ...... [ 32%]
+...................                                                      [ 33%]
+apps/backend/tests/test_annual_support_refund_targets_api.py ........... [ 34%]
+......                                                                   [ 34%]
+apps/backend/tests/test_authority_callback_transport.py ...........      [ 34%]
+apps/backend/tests/test_authority_connections_api.py .................   [ 35%]
+apps/backend/tests/test_authority_connections_service.py ............... [ 36%]
+.................................                                        [ 37%]
+apps/backend/tests/test_authority_connections_state_workflow.py .....    [ 37%]
+apps/backend/tests/test_authority_filing_tools.py ...................... [ 38%]
+......................................................                   [ 40%]
+apps/backend/tests/test_authority_filing_transports.py ................. [ 41%]
+.............................................                            [ 43%]
+apps/backend/tests/test_authority_operations.py ........................ [ 44%]
+.....                                                                    [ 44%]
+apps/backend/tests/test_authority_operations_api.py ............         [ 44%]
+apps/backend/tests/test_authority_tool_grant.py ........................ [ 45%]
+...........                                                              [ 46%]
+apps/backend/tests/test_authority_tool_rf1086.py ....................... [ 47%]
+................                                                         [ 47%]
+apps/backend/tests/test_banking.py ..........                            [ 48%]
+apps/backend/tests/test_banking_api.py ....                              [ 48%]
+apps/backend/tests/test_banking_connections_api.py ..                    [ 48%]
+apps/backend/tests/test_banking_consent.py ....                          [ 48%]
+apps/backend/tests/test_banking_file_fallback.py .....                   [ 48%]
+apps/backend/tests/test_banking_file_workflow.py .                       [ 48%]
+apps/backend/tests/test_banking_provider_adapters.py ....                [ 49%]
+apps/backend/tests/test_banking_provider_contract.py ...                 [ 49%]
+apps/backend/tests/test_banking_public_contract.py ..                    [ 49%]
+apps/backend/tests/test_banking_sync.py ....                             [ 49%]
+apps/backend/tests/test_banking_workflow.py .                            [ 49%]
+apps/backend/tests/test_billing.py ............                          [ 49%]
+apps/backend/tests/test_billing_api.py ......                            [ 50%]
+apps/backend/tests/test_billing_equivalence.py ......................... [ 51%]
+................                                                         [ 51%]
+apps/backend/tests/test_billing_provider.py .....                        [ 52%]
+apps/backend/tests/test_company_access.py .............................. [ 53%]
+....                                                                     [ 53%]
+apps/backend/tests/test_company_cancellation_lifecycle.py .............. [ 53%]
+...........                                                              [ 54%]
+apps/backend/tests/test_company_eligibility.py ......................... [ 55%]
+................................                                         [ 56%]
+apps/backend/tests/test_company_onboarding.py ....................       [ 57%]
+apps/backend/tests/test_company_onboarding_migration.py ...              [ 57%]
+apps/backend/tests/test_company_support_access.py .....                  [ 57%]
+apps/backend/tests/test_corporate_governance.py ....................     [ 58%]
+apps/backend/tests/test_corporate_governance_api.py .........            [ 58%]
+apps/backend/tests/test_corporate_governance_public_contract.py ...      [ 59%]
+apps/backend/tests/test_corporate_governance_supported_events.py ....... [ 59%]
+..........                                                               [ 59%]
+apps/backend/tests/test_corporate_governance_workflow.py ............... [ 60%]
+.                                                                        [ 60%]
+apps/backend/tests/test_documents.py ............                        [ 60%]
+apps/backend/tests/test_documents_api.py ...                             [ 61%]
+apps/backend/tests/test_investments.py .......................           [ 61%]
+apps/backend/tests/test_investments_api.py .............                 [ 62%]
+apps/backend/tests/test_investments_public_contract.py ...               [ 62%]
+apps/backend/tests/test_investments_supported_patterns.py .............. [ 63%]
+.........                                                                [ 63%]
+apps/backend/tests/test_investments_workflow.py ..........               [ 63%]
+apps/backend/tests/test_launch_signoffs_api.py ............              [ 64%]
+apps/backend/tests/test_ledger.py ..........................             [ 65%]
+apps/backend/tests/test_ledger_api.py ....................               [ 66%]
+apps/backend/tests/test_ledger_company_year_close.py ................... [ 67%]
+                                                                         [ 67%]
+apps/backend/tests/test_ledger_corrections.py ...........                [ 67%]
+apps/backend/tests/test_ledger_full_year_reconstruction.py ............  [ 67%]
+apps/backend/tests/test_ledger_public_contract.py ........               [ 68%]
+apps/backend/tests/test_ledger_supported_patterns.py ................... [ 69%]
+.............................................                            [ 70%]
+apps/backend/tests/test_ledger_workflow.py ......                        [ 71%]
+apps/backend/tests/test_legacy_billing_retirement.py ................... [ 71%]
+.............                                                            [ 72%]
+apps/backend/tests/test_legacy_rf1086_api.py ....................        [ 73%]
+apps/backend/tests/test_marketing_measurement_api.py ........            [ 73%]
+apps/backend/tests/test_maskinporten.py ................................ [ 74%]
+.....................................                                    [ 76%]
+apps/backend/tests/test_opening_snapshot_compatibility.py ........       [ 76%]
+apps/backend/tests/test_postgres_authority_connections.py ......         [ 76%]
+apps/backend/tests/test_postgres_legacy_rf1086_authority.py ............ [ 77%]
+................                                                         [ 77%]
+apps/backend/tests/test_rf1086_authority.py ............................ [ 79%]
+........................................................................ [ 81%]
+.........................                                                [ 82%]
+apps/backend/tests/test_rf1086_compatibility.py ........................ [ 83%]
+........................................................................ [ 86%]
+...........................................                              [ 88%]
+apps/backend/tests/test_shareholder_register_filing_contract.py ...      [ 88%]
+apps/backend/tests/test_supabase_banking.py ............                 [ 89%]
+apps/backend/tests/test_supabase_corporate_governance.py ...........     [ 89%]
+apps/backend/tests/test_supabase_documents.py .....                      [ 89%]
+apps/backend/tests/test_supabase_investments.py ...............          [ 90%]
+apps/backend/tests/test_supabase_ledger.py ............................. [ 91%]
+................................................                         [ 93%]
+apps/backend/tests/test_supabase_marketing_measurement.py s              [ 93%]
+apps/backend/tests/test_supabase_validation_observation.py s             [ 93%]
+apps/backend/tests/test_system_boundary.py ......                        [ 93%]
+apps/backend/tests/test_validation_observation.py .................      [ 94%]
+apps/backend/tests/test_vipps_billing.py ............................... [ 95%]
+.......................                                                  [ 96%]
+apps/backend/tests/test_vipps_mt_conformance_runner.py ................. [ 97%]
+...........................................                              [ 99%]
+apps/backend/tests/test_vipps_webhook.py .......................         [100%]
+
+========= 2486 passed, 2 skipped, 760 deselected in 135.92s (0:02:15) ==========
+
+> talli-repository@0.1.0 test:boundary-web
+> node --experimental-strip-types --test apps/web/tests/system-boundary-presentation.test.mjs apps/web/tests/banking-presentation.test.mjs apps/web/tests/banking-connection-presentation.test.mjs apps/web/tests/company-access-presentation.test.mjs apps/web/tests/company-access-administration.test.mjs apps/web/tests/company-access-cancellation.test.mjs apps/web/tests/company-access-onboarding.test.mjs apps/web/tests/company-access-stage-exit.test.mjs apps/web/tests/company-access-action-recovery.test.mjs apps/web/tests/company-eligibility.test.mjs apps/web/tests/company-year-eligibility-gate.test.mjs apps/web/tests/corporate-governance-draft-lifecycle.test.mjs apps/web/tests/corporate-governance-presentation.test.mjs apps/web/tests/corporate-governance-transport.test.mjs apps/web/tests/documents-presentation.test.mjs apps/web/tests/investments-presentation.test.mjs apps/web/tests/invitation-side-effects.test.mjs apps/web/tests/internal-redirect.test.mjs apps/web/tests/ledger-audit-side-effects.test.mjs apps/web/tests/ledger-presentation.test.mjs apps/web/tests/ledger-writer-transport.test.mjs apps/web/tests/marketing-measurement.test.mjs apps/web/tests/owner-mfa-transition.test.mjs apps/web/tests/reauthentication.test.mjs apps/web/tests/public-acquisition.test.mjs tests/customer_agreement_actions.test.mjs tests/customer_agreement_reacceptance_ui.test.mjs apps/web/tests/operator-read-recovery.test.mjs apps/web/tests/authority-connections-transport.test.mjs tests/authority_connections_retirement.test.mjs
+
+✔ company connection reads batch more than 100 memberships without dropping or trusting unrelated records (44.379ms)
+✔ authorityConnectionsStartSystemUserRequest carries only intent identity through authenticated no-store generated transport (0.467958ms)
+✔ authorityConnectionsRetrySystemUserRequest carries only intent identity through authenticated no-store generated transport (0.230292ms)
+✔ authorityConnectionsReconcileSystemUserRequest carries only intent identity through authenticated no-store generated transport (0.196167ms)
+✔ callback generated transport forwards proof separately from its sole request identity (0.245666ms)
+✔ generated authority result rejects unknown statuses and malformed response contracts (0.681ms)
+✔ generated operator mutation preserves exact audit identity and redacted response (0.735541ms)
+✔ technical signoff command has no recording actor or trusted timestamp (1.040875ms)
+✔ connection presentation exposes only masked account, coverage and freshness (0.671458ms)
+✔ recovery states give one calm next action and make missing coverage visible (0.16725ms)
+✔ banking transport follows opaque pages through the generated client (20.2685ms)
+✔ bank file transport persists a backend preview before explicit acceptance (3.496792ms)
+✔ banking presentation preserves the frozen consumer shape without recreating policy (0.804667ms)
+✔ banking error presentation preserves retry identity only for unknown outcomes (0.170625ms)
+✔ create_invitation:outbox remains reachable and recovery finishes without another command (3.197417ms)
+✔ create_invitation:audit remains reachable and recovery finishes without another command (0.1865ms)
+✔ accept_invitation:audit remains reachable and recovery finishes without another command (0.155959ms)
+✔ revoke_invitation:audit remains reachable and recovery finishes without another command (0.153708ms)
+✔ resend_invitation:outbox remains reachable and recovery finishes without another command (0.353625ms)
+✔ resend_invitation:audit remains reachable and recovery finishes without another command (10.481083ms)
+✔ recovery actor comes from the server context and cannot claim another actor's continuation (0.216667ms)
+✔ delivery persistence is owned by atomic completion, never by a browser outbox insert (0.133459ms)
+✔ company-access administration transport uses only generated client operations (116.818042ms)
+✔ generated decoders fail closed on every unknown or token-shaped invitation field (17.410625ms)
+✔ cancellation lifecycle transport uses generated operations with bearer and deadline (46.732917ms)
+✔ generated cancellation decoders reject malformed optional fields, UUIDs, and timestamps (2.469083ms)
+✔ generated review decoder enforces evidence-reference length bounds (1.300667ms)
+✔ truncated successful command JSON becomes a typed 502 and preserves the operation (0.399875ms)
+✔ every concurrent archive source failure trips the completion barrier (0.250708ms)
+✔ actions preserve exact cancellation inputs for network and decoder failures (6.969375ms)
+✔ web cancellation lifecycle has no direct Supabase persistence or caller-owned proof (9.699ms)
+✔ an unknown organization keeps the specific Enhetsregisteret guidance (0.481875ms)
+✔ agreement reacceptance uses an authenticated generated-client request (18.069ms)
+✔ actions and agreement gates have no direct business-persistence facade (36.183667ms)
+✔ company-access and system-boundary transports share typed fail-closed backend configuration (1.185083ms)
+✔ both transports reject remote HTTP in every Node environment (0.350167ms)
+✔ company-access and system-boundary accept the same HTTPS and loopback origins (48.849792ms)
+✔ company-access transport sends the established session only through the generated client (0.556292ms)
+✔ the company-access app boundary owns its presentation model instead of a Supabase row DTO (14.371917ms)
+✔ owner context preserves the admitted company-year and current safety gate (0.634792ms)
+✔ company record presentation maps the generated camel-case contract to existing web registry facts (0.094458ms)
+✔ company-access transport fails closed on a partial context response (0.292333ms)
+✔ generated company-context decoder rejects lower assurance, lower scope, and non-owner roles (0.399542ms)
+✔ company records and case-bound operator access use authenticated generated-client operations (6.431583ms)
+✔ a verified user without an owner company reaches onboarding but other context failures stay closed (0.398208ms)
+✔ system-user callback delegates relationship authorization to the verified backend boundary (1.355458ms)
+✔ every Stage 1 web consumer authorizes through company-access contracts (163.993041ms)
+✔ stale admission evidence gets a truthful restart route (6.1165ms)
+✔ precheck and definitive eligibility use public generated-client calls (29.60175ms)
+✔ company-year admission is authenticated and carries the exact immutable boundary (0.544958ms)
+✔ company-year recheck is authenticated, trigger-bound, and fail-closed decoded (23.838084ms)
+✔ the functional public journey owns no policy, direct fetch, or business persistence (26.5225ms)
+✔ the recheck helper carries future serialized triggers through the API (0.944666ms)
+✔ a blocked recheck stops the consequential operation and preserves its next step (0.303208ms)
+✔ missing admission and provider failure both fail closed (0.171958ms)
+✔ registration failure removes every newly persisted governance document (2.22775ms)
+✔ registration failure preserves cleanup failures for reconciliation (0.209958ms)
+✔ governance errors expose stable Norwegian owner guidance (0.525416ms)
+✔ shareholder-loan form presentation explains treatment without exposing posting policy (0.455ms)
+✔ shareholder-loan errors never fall through to dividend guidance (0.102042ms)
+✔ only transport and server failures preserve an unknown-outcome retry (0.078375ms)
+✔ decision-facts transport sends only identity and accepts the generated response (32.385792ms)
+✔ owner-dividend lifecycle transport preserves path and idempotency evidence (0.462834ms)
+✔ owner-dividend transport rejects malformed lifecycle responses (0.554292ms)
+✔ shareholder-loan transport preserves identity and rejects malformed responses (0.36ms)
+✔ document presentation is a transport-only shape conversion (0.955167ms)
+✔ signed upload uses exactly the backend-issued object and finalizes once (49.725208ms)
+✔ an ambiguous signed-transfer error is not blindly finalized (0.760375ms)
+✔ invitation login continuation accepts only same-origin absolute paths (0.580709ms)
+✔ investments transport uses generated routes, auth, idempotency, and opaque paging (28.033583ms)
+✔ investment unit reads reject lossy wire values (1.06425ms)
+✔ investment position reads preserve contract-declared lifecycle movement facts (61.654667ms)
+✔ investment unit presentation stays decimal-string exact (0.248875ms)
+✔ investments presentation maps canonical wire facts without owning policy (1.091333ms)
+✔ investments errors preserve retry identity only for unknown outcomes (0.118ms)
+✔ investment actions require explicit owner and dividend attestations (20.021375ms)
+✔ investment wizard controls can shrink inside the mobile grid (6.1605ms)
+✔ side-effect identity is deterministic, actor-scoped, and purpose-scoped (0.9615ms)
+✔ two actors can reuse one operation id without losing audit evidence (0.712292ms)
+✔ same-actor retry reconciles exact rows and recovers an audit failure (0.368291ms)
+✔ foreign rows are not an oracle because actor-derived ids never trigger their lookup (0.119083ms)
+✔ ledger audit identity is deterministic and actor scoped (0.862042ms)
+✔ ledger audit replay reconciles the exact immutable row (0.179125ms)
+✔ ledger audit failure cannot be reported as success (0.28925ms)
+✔ an in-progress idempotent command preserves its operation id for retry (0.665542ms)
+✔ ledger errors keep the frozen plain-Norwegian guidance (7.440875ms)
+✔ opening-snapshot transport chunks companies and follows opaque pages (44.262416ms)
+✔ opening-snapshot compatibility projection preserves the frozen shape (0.541542ms)
+✔ opening-snapshot decoders reject malformed collections and invariants (5.66275ms)
+✔ ledger query transport follows opaque pages through the generated client (1.840375ms)
+✔ reconstruction readiness comes from the generated backend contract (0.742792ms)
+✔ current company-year close comes from the generated read-only backend contract (0.467417ms)
+✔ company-year close presentation distinguishes stale and blocked assessments (0.135334ms)
+✔ generated reconstruction decoder rejects unknown gap codes (0.294209ms)
+✔ generated reconstruction decoder preserves historical null and rejects partial bindings (0.4785ms)
+✔ generated company-year close decoder rejects unknown gap codes (0.21425ms)
+✔ generated ledger query rejects a partial expanded source pair (0.335875ms)
+✔ source-aware ledger query fails closed against a source-unaware backend (0.27375ms)
+✔ source-aware ledger queries opt into the expanded response (0.258292ms)
+✔ ledger mutation transport injects decimal money and idempotency headers (0.317416ms)
+✔ administrative-cost transport requires exact purpose-bound success evidence (0.557292ms)
+✔ new-year start uses the generated atomic workflow without exposing ledger lines (0.286792ms)
+✔ new-year start rejects malformed or non-opening success evidence (0.236208ms)
+✔ opening setup action has no direct business persistence or duplicate posting policy (0.786792ms)
+✔ manual journals and period locks reconcile their frozen audit continuation (0.469583ms)
+✔ ledger presentation maps generated facts without recreating posting policy (0.296ms)
+✔ opening entries recover their setup identity from canonical ledger source facts (0.212208ms)
+✔ archive presentation preserves the complete frozen ledger row projection (0.116833ms)
+✔ ledger period-lock transport returns an empty result without a backend call (0.056375ms)
+✔ every approved ledger-coordinator form submits one operation ID (1.921458ms)
+✔ client action wizards keep one stable operation ID for their mounted form (0.285709ms)
+✔ ledger retry IDs are plumbed only to the matching page form (0.388209ms)
+✔ all relocated transactional writers use the stable operation ID at the generated boundary (1.146042ms)
+✔ share purchases and sales use the investments generated interface (0.242208ms)
+✔ share-sale wizard submits intent without duplicating authoritative FIFO policy (0.094208ms)
+✔ committed retries reach the coordinator before mutable legacy state can reject them (0.366083ms)
+✔ unknown coordinator outcomes preserve only the scoped retry operation (0.57675ms)
+✔ apps/web/tests/ledger-writer-transport.test.mjs (215.998667ms)
+✔ consented anonymous funnel events accept only the bounded public vocabulary (1.492458ms)
+✔ the first-party endpoint records one consented event without caching it (38.752458ms)
+✔ the generated backend client receives only an irreversible session hash (1.108583ms)
+✔ consent withdrawal deletes the bounded anonymous session through the same origin (0.505584ms)
+✔ the beacon-compatible POST endpoint accepts only the bounded withdrawal command (0.403167ms)
+✔ the first-party endpoint rejects an oversized chunked body while streaming (0.693417ms)
+✔ the browser creates no optional storage before explicit consent and expires it after thirty minutes (0.228167ms)
+✔ funnel producers emit only a bounded event from an active consent session (0.133ms)
+✔ the operator view consumes aggregate report fields without exposing raw identifiers (6.509334ms)
+✔ consent presentation uses accurate session wording and equal choices (1.137833ms)
+✔ support entry authorizes before protected reads and preserves its recovery destination (79.031583ms)
+✔ marketing entry authorizes before protected reads and preserves its recovery destination (22.690125ms)
+✔ failed case or annual read suppresses ancillary reads, mutation controls and protected evidence (47.032375ms)
+✔ malformed or duplicate case/cursor selection never triggers protected page loaders (53.910375ms)
+✔ authorized support-role entry retains ordinary support and marketing behavior (16.346625ms)
+✔ presentation shell leaves scoped auth recovery to each page without mutating the session (3.0045ms)
+✔ page access preserves missing/rejected sessions, provider errors and both authorized operator roles (11.123ms)
+✔ complete operator selection survives login and MFA without losing either cursor (26.71525ms)
+✔ malformed, duplicate and orphan operator selection cannot invoke protected loaders (152.505875ms)
+✔ late selected-target failure keeps full recovery destination and suppresses ancillary controls (37.606917ms)
+✔ owner AAL2 is distinguished from other context failures without weakening the gate (1.037542ms)
+✔ owner MFA inspection chooses enrollment, challenge, or verified state and fails closed (0.322125ms)
+✔ enrollment and verification expose no provider errors and only resume after confirmed AAL2 (0.408542ms)
+✔ explicit fresh MFA intent challenges an existing AAL2 session without a browser age decision (0.166625ms)
+✔ owner transition is reachable after company-year admission and exposes an accessible, Norwegian MFA gate (27.725667ms)
+✔ the public offer stays in free recruitment mode with one eligibility action (3.361709ms)
+✔ the three-step eligibility explanation keeps its visual order for assistive technology (0.113334ms)
+✔ the static homepage renders every required offer field in the approved order (0.224458ms)
+✔ the recruitment homepage presents the approved annual offer exactly (0.084875ms)
+✔ the public offer carries the approved proof links, minimum FAQ, and final eligibility invitation (0.116292ms)
+✔ the complete public company-year promise is pinned to the canonical manifest (2.396167ms)
+✔ live claims and checkout deny by default and every ad stop rule is binding (0.318292ms)
+✔ the indexable public route set carries canonical metadata and no live overclaim (0.753959ms)
+✔ explicit reauthentication displays the login form despite a backend-rejected but valid Supabase session (28.367708ms)
+✔ ordinary signed-in login and signup redirects and unconfirmed-user gate remain intact (77.510583ms)
+✔ signIn preserves explicit reauthentication and next through failures (19.701166ms)
+✔ signInWithGoogle preserves explicit reauthentication and next through failures (5.489333ms)
+✔ successful password login consumes recovery intent; ordinary unconfirmed credentials keep verification recovery (3.481167ms)
+✔ Google startup carries recovery through its callback URL (1.721833ms)
+✔ the Google form carries the same explicit recovery intent as password sign-in (5.086166ms)
+✔ denied, missing, failed and unavailable OAuth callbacks return to an actionable recovery login (42.541166ms)
+✔ successful callback returns to the scoped page while ordinary email confirmation failure is unchanged (4.534084ms)
+✔ presents the generated tracer response as a safe Norwegian success (1.114667ms)
+✔ presents transport failures without leaking exception details (0.267959ms)
+✔ generated client accepts the declared success shape (15.954291ms)
+✔ generated client maps the typed correlation option to the declared header (0.637583ms)
+✔ generated client fails closed on an undeclared success shape (0.427833ms)
+✔ generated client rejects an availability value outside the closed contract (0.245459ms)
+✔ missing backend configuration fails closed with a typed error (0.177125ms)
+✔ web liveness stays process-only while readiness fails invalid configuration (0.31275ms)
+✔ web readiness validates local configuration without depending on backend reachability (0.237834ms)
+✔ Authority Connections retirement leaves no web authority signing, token or credential transport (31.551084ms)
+✔ the four standalone authority commands execute backend modules and retain their public command names (1.1115ms)
+✔ the authority facade is retired while later filing owners retain their frozen records (1.051791ms)
+✔ company-year admission validates explicit authority and every immutable document before the generated command (5.280833ms)
+✔ the customer sees and explicitly accepts the complete pinned promise (3.014833ms)
+✔ legacy AS-only creation controls are absent (20.619834ms)
+✔ owner layout replaces children with an accessible reacceptance gate (0.998709ms)
+✔ Server Action reaccepts through the authenticated generated-client boundary (0.4385ms)
+ℹ tests 177
+ℹ suites 0
+ℹ pass 177
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1507.432833
+
+> talli-repository@0.1.0 test:boundary-contract
+> node --test tests/contract/web_fastapi_boundary.test.mjs tests/company_access_review_fixes.test.mjs tests/company_access_review_round_2.test.mjs tests/company_access_onboarding_cutover.test.mjs tests/corporate_governance_review_fixes.test.mjs
+
+✔ eligibility, admission, and agreement operations are generated-client boundaries (12.961583ms)
+✔ the web onboarding slice has no legacy business-policy or persistence path (1.289458ms)
+✔ the complete Stage 1 web boundary is Supabase-auth-only (12.184542ms)
+✔ company access owns agreement evidence and the #138 facade has exited (0.478208ms)
+✔ the onboarding overlap and destructive contract are separate release artifacts (0.919ms)
+✔ capability owns immutable business request contracts (5.143958ms)
+✔ every invitation decoder rejects unknown and token-shaped response fields (1.949542ms)
+✔ all company-access success responses declare X-Request-ID (7.681709ms)
+✔ login preserves a sanitized invitation continuation for password and OAuth (0.95425ms)
+✔ invitation side effects reconcile in the trusted actor and command namespace (0.932792ms)
+✔ shipped server actions expose receipt-owned recovery without browser command inputs (0.967167ms)
+✔ membership role selector has a target-specific accessible name (0.469542ms)
+✔ capability manifest attributes the latest company-access ownership migration (0.443084ms)
+✔ authorization and hashing use versioned least-privilege helper boundaries (4.170584ms)
+✔ destructive contract is a later release artifact outside the automatic runner (0.844667ms)
+✔ cutover removes every authenticated self-membership update surface (1.581833ms)
+✔ command receipts are backend-system technical idempotency state (2.234584ms)
+✔ owner receipt visibility is atomic while acceptance keeps actor replay semantics (0.822208ms)
+✔ evidence distinguishes forced receipt RLS from genuine non-owner RLS (1.261833ms)
+✔ OpenAPI validates command UUIDs and RFC3339 revisions (7.757875ms)
+✔ the committed contract exposes one stable capability-prefixed tracer operation (8.661459ms)
+✔ the committed contract exposes the authenticated company-context operation (6.760709ms)
+✔ the committed contract exposes company-access invitation and membership administration (6.046125ms)
+✔ the committed contract exposes only ledger-owned browser commands (5.970167ms)
+✔ the committed contract assigns shareholder loans to corporate governance (5.923ms)
+✔ the committed contract gives investments its complete activity interface (6.023667ms)
+✔ opening snapshots use the ledger compatibility authenticated read contract (5.725917ms)
+✔ the committed contract exposes the account-free banking workflow (6.6ms)
+✔ the tracer contract declares optional request and response correlation headers (5.644417ms)
+✔ OpenAPI and generated TypeScript artifacts are byte-clean (1586.641209ms)
+✔ the OpenAPI document validates and operation IDs are globally unique (26.07675ms)
+✔ the current response contract remains compatible with the explicit v1 baseline (62.179666ms)
+✔ compatibility rejects newly required parameters and request bodies (29.783208ms)
+✔ compatibility rejects narrower authentication requirements (8.024958ms)
+✔ compatibility rejects removed or changed response headers (16.449708ms)
+✔ the generated package version matches the OpenAPI contract version (13.971ms)
+✔ the generated client is committed and carries its provenance marker (1.294375ms)
+✔ the web tracer uses the generated package through a thin transport wrapper (0.127333ms)
+✔ annual refund recovery is an additive authenticated POST with no caller authority fields (5.509417ms)
+✔ annual refund target discovery preserves a minimal independent read contract (5.852584ms)
+✔ annual checkout preparation is an independent read without purchase authority (5.755083ms)
+✔ annual checkout withdrawal uses the original accepted body and key with a separate minimal result (5.628625ms)
+✔ corporate-governance manifests declare the implemented public surface (3.70975ms)
+✔ backend workflow documentation has one canonical governance workflow (0.950791ms)
+✔ lifecycle reader exposes migrated source-hash compatibility explicitly (1.399167ms)
+✔ local gate rehearses predecessor ledger cutover before governance retires it (0.577333ms)
+✔ complete gate uses the backend-managed Python runtime (0.6725ms)
+✔ governance review regressions run in the complete acceptance boundary (0.659334ms)
+✔ document evidence ownership is acyclic and declared (1.591792ms)
+✔ document evidence registration cannot forge trusted actor or owner context (0.822125ms)
+✔ historical document evidence uses a migration-only backfill contract (0.664917ms)
+✔ future annual-data compatibility scopes remain frozen without a checker bypass (2.026166ms)
+✔ canonical decision payloads share one serializer (0.969375ms)
+ℹ tests 53
+ℹ suites 0
+ℹ pass 53
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1884.195125
+[boundary] exit=0
+[boundary] durationMs=140938
+
+[build-web] command=TALLI_BACKEND_URL=http://127.0.0.1:8000 TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY=<local-only> npm run build:web && npm run test:browser-public-acquisition:built
+
+> talli-repository@0.1.0 build:web
+> npm --prefix apps/web run build
+
+
+> talli-web@0.1.0 build
+> cd ../.. && node apps/web/scripts/run-next.mjs build
+
+▲ Next.js 16.3.4 (Turbopack)
+✓ Running next.config.ts took 58ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.8s
+  Running TypeScript ...
+  Finished TypeScript in 4.5s ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/34) ...
+  Generating static pages using 9 workers (8/34)
+  Generating static pages using 9 workers (16/34)
+  Generating static pages using 9 workers (25/34)
+✓ Generating static pages using 9 workers (34/34) in 245ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /actions
+├ ƒ /actions/[type]
+├ ƒ /api/marketing-events
+├ ○ /apple-icon.png
+├ ƒ /archive/[companyId]/[incomeYear]/download
+├ ƒ /auth/confirm
+├ ƒ /auth/systembruker/confirm
+├ ƒ /bank/callback
+├ ƒ /billing
+├ ƒ /companies/[companyId]/annual-reporting/[incomeYear]
+├ ƒ /companies/[companyId]/annual-reporting/[incomeYear]/[obligation]
+├ ƒ /companies/[companyId]/annual-reporting/[incomeYear]/review
+├ ƒ /connections
+├ ƒ /corporate-decisions/[decisionId]
+├ ƒ /dashboard
+├ ○ /databehandleravtale
+├ ƒ /documents
+├ ƒ /documents/[documentId]/download
+├ ƒ /documents/[documentId]/preview
+├ ○ /email-confirmed
+├ ƒ /filing
+├ ƒ /filing/[obligation]
+├ ƒ /health/live
+├ ƒ /health/ready
+├ ○ /hjelp
+├ ○ /icon.svg
+├ ƒ /invite/accept
+├ ƒ /login
+├ ƒ /mfa
+├ ƒ /onboarding
+├ ƒ /operator
+├ ƒ /operator/marketing
+├ ○ /passer-talli
+├ ○ /personvern
+├ ○ /pris
+├ ○ /robots.txt
+├ ƒ /selskapsgrense
+├ ƒ /signup
+├ ○ /sikkerhet
+├ ○ /sitemap.xml
+├ ○ /sjekk-selskapet
+├ ○ /status
+├ ƒ /system-boundary
+├ ƒ /transactions
+├ ○ /ui
+├ ƒ /verify-email
+├ ○ /vilkar
+├ ƒ /workspace
+└ ƒ /year-end
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+> talli-repository@0.1.0 test:browser-public-acquisition:built
+> node --test tests/browser_public_acquisition.mjs
+
+✔ the production public journey is consent-silent, accessible, mobile-safe, and privacy bounded (4495.98625ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4784.628
+[build-web] exit=0
+[build-web] durationMs=15072
+
+[build-backend] command=npm run build:backend
+
+> talli-repository@0.1.0 build:backend
+> uv build --project apps/backend
+Building source distribution...
+Building wheel from source distribution...
+Successfully built apps/backend/dist/talli_backend-0.1.0.tar.gz
+Successfully built apps/backend/dist/talli_backend-0.1.0-py3-none-any.whl
+[build-backend] exit=0
+[build-backend] durationMs=1506
+
+[boundary-smoke] command=npm run test:boundary-smoke
+
+> talli-repository@0.1.0 test:boundary-smoke
+> node --test tests/production_boundary_smoke.mjs
+
+✖ built artifacts support both deployment orders and isolate backend failure (526.171834ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 591.803417
+
+✖ failing tests:
+
+test at tests/production_boundary_smoke.mjs:112:1
+✖ built artifacts support both deployment orders and isolate backend failure (526.171834ms)
+  Error: process exited before http://127.0.0.1:54129/health/live
+  Traceback (most recent call last):
+    File "<frozen runpy>", line 198, in _run_module_as_main
+    File "<frozen runpy>", line 88, in _run_code
+    File "/Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/uvicorn/__main__.py", line 4, in <module>
+      uvicorn.main()
+    File "/Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/click/core.py", line 1569, in __call__
+      return self.main(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/click/core.py", line 1490, in main
+      rv = self.invoke(ctx)
+           ^^^^^^^^^^^^^^^^
+    File "/Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/click/core.py", line 1353, in invoke
+      return ctx.invoke(self.callback, **ctx.params)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/click/core.py", line 907, in invoke
+      return callback(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/uvicorn/main.py", line 413, in main
+      run(
+    File "/Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/uvicorn/main.py", line 580, in run
+      server.run()
+    File "/Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/uvicorn/server.py", line 67, in run
+      return asyncio.run(self.serve(sockets=sockets))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/Users/kristianelmer/miniforge3/lib/python3.12/asyncio/runners.py", line 195, in run
+      return runner.run(main)
+             ^^^^^^^^^^^^^^^^
+    File "/Users/kristianelmer/miniforge3/lib/python3.12/asyncio/runners.py", line 118, in run
+      return self._loop.run_until_complete(task)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/Users/kristianelmer/miniforge3/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+      return future.result()
+             ^^^^^^^^^^^^^^^
+    File "/Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/uvicorn/server.py", line 71, in serve
+      await self._serve(sockets)
+    File "/Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/uvicorn/server.py", line 78, in _serve
+      config.load()
+    File "/Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/uvicorn/config.py", line 436, in load
+      self.loaded_app = import_from_string(self.app)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/uvicorn/importer.py", line 22, in import_from_string
+      raise exc from None
+    File "/Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/uvicorn/importer.py", line 19, in import_from_string
+      module = importlib.import_module(module_str)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "/Users/kristianelmer/miniforge3/lib/python3.12/importlib/__init__.py", line 90, in import_module
+      return _bootstrap._gcd_import(name[level:], package, level)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+    File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+    File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+    File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+    File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+    File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+    File "/Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding accounting/apps/backend/dist/talli_backend-0.1.0-py3-none-any.whl/talli_backend/main.py", line 27, in <module>
+  ModuleNotFoundError: No module named 'talli_backend.compatibility'
+
+      at waitFor (file:///Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding%20accounting/tests/production_boundary_smoke.mjs:59:13)
+      at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/192-cancellation-01a07a7f/Holding%20accounting/tests/production_boundary_smoke.mjs:137:5)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+[boundary-smoke] exit=1
+[boundary-smoke] durationMs=745

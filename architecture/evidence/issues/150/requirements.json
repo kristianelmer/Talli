@@ -255,13 +255,19 @@
       "command": "pytest test_supabase_billing_runtime.py",
       "result": "37 passed, 0 failed, 0 skipped on the shipped predecessor rollback topology; no SQL or business assertion changes",
       "localTranscript": "/tmp/talli-150-billing-role-fixed-runtime.log"
+    },
+    {
+      "scope": "corrected packaged backend import and deployment-order isolation",
+      "command": "npm run build:backend && npm run test:boundary-smoke",
+      "result": "1 passed, 0 failed, 0 skipped; actual rebuilt wheel and production web artifacts, both deployment orders and backend failure isolation",
+      "localTranscript": "/tmp/talli-150-wheel-package-smoke.log"
     }
   ],
   "closeState": "OPEN; implementation and independent source review complete. Immutable complete gates and protected/exact-main integration remain pending.",
   "taskId": "01a08515-2cd8-7093-8a34-3b9b3d458840",
   "branch": "codex/issue-150-authority-01a08515",
   "implementationClaim": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5601486395",
-  "progressCheckedAt": "2026-09-09T16:36:08.690693+00:00",
+  "progressCheckedAt": "2026-09-09T16:47:14.550141+00:00",
   "remainingWork": [
     "Two new immutable complete customer-ready gates, including final combined database/browser lane",
     "Protected integration and exact-main Release/Preview verification"
@@ -272,5 +278,16 @@
     "evidencePath": "architecture/evidence/issues/150/independent-review.md",
     "standardsFindingsResolved": 1,
     "specFindingsResolved": 2
-  }
+  },
+  "failedCompleteGateAttempts": [
+    {
+      "revision": "67901fd0f2534772110e68f99290136a88280319",
+      "verdict": "fail",
+      "failedCheck": "boundary-smoke",
+      "transcriptPath": "architecture/evidence/issues/150/failed-gates/67901fd0f2534772110e68f99290136a88280319.log",
+      "reason": "Built wheel could not import talli_backend.compatibility; its source directory lacked a package initializer. The editable-source tests did not expose this packaging error.",
+      "correction": "Add the compatibility package initializer; rebuild and rerun the actual built-artifact smoke. No behavior or permission changes.",
+      "exitGateCredit": false
+    }
+  ]
 }

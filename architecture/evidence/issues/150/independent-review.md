@@ -73,3 +73,15 @@ No SQL privilege or authorization gate was weakened to make that fixture pass.
 This source review does not certify the complete database lane, two immutable
 exit gates, protected integration or exact-main Release/Preview. Those remain
 separate acceptance evidence in `requirements.json`; #150 and #192 remain open.
+
+## Packaged artifact correction
+
+The complete gate at `67901fd0f2534772110e68f99290136a88280319` failed
+because the wheel importer could not resolve `talli_backend.compatibility`.
+An independent narrow review checked the added `compatibility/__init__.py`: it
+contains only a docstring, with no imports, registrations, provider effects or
+authority changes. Read-only ZIP inspection confirmed the initializer and frozen
+RF coordinator are present in the rebuilt wheel with exact source bytes. The
+existing built-artifact smoke then passed both deployment orders and backend
+failure isolation (1 passed, 0 skipped). No source finding remains. The failed
+gate is retained separately and receives no exit-gate credit.
