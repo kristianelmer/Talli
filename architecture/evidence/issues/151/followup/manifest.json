@@ -1,6 +1,6 @@
 {
   "checkpointRevision": "3e8bf5187d614a3a2d02437f12186d90dbd19078",
-  "state": "working-tree follow-up verification; not a complete immutable gate",
+  "state": "committed focused follow-up evidence; not a complete immutable gate",
   "files": {
     "archive-no-store-red.log": "8ffe276377173388479284c235046e2eb3519e70a4f76eb8ad08c9e39355460a",
     "archive-opening-year-web.log": "4201d533253216a9d0eebf0d7e1d42152220a897ea31b9e6eff42bbddd976298",
@@ -167,7 +167,7 @@
       "limit": "Before the separately reviewed fresh-holder created_by fixture correction; its updated safety suite is recorded separately."
     }
   },
-  "latestCommittedSourceCheckpoint": "7730bd3473943f5308136207b2acce4f720c851c",
+  "latestCommittedSourceCheckpoint": "4081b4104282f8ece7ed77da178bae1a3eab0fc6",
   "architectureDiagnostic": {
     "status": "expected-pending-amendment-errors",
     "errors": 2,
