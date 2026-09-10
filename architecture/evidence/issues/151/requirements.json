@@ -3,8 +3,8 @@
   "issue": "#151",
   "source": "https://github.com/kristianelmer/Talli/issues/151",
   "sourceCheckedAt": "2026-09-09T18:58:36Z",
-  "status": "first-immutable-exit-gate-passed-second-and-integration-pending",
-  "notice": "First immutable complete gate passed11/11 on dd1a7dba, including final130-case RF/authority database suite and fresh/historical browsers. Exact predecessor RF protocol supplement passed29checks/33HTTPrequests and repeated under pinnedNode24. Second linked complete gate and protected integration remain pending.",
+  "status": "local-stage-exit-passed-protected-integration-pending",
+  "notice": "All local #151/#132 stage-exit evidence and two linked immutable11/11 gates pass. Protected PR, exact-main Release/Preview and published closure remain pending; no successor implementation starts before protected #151 exit.",
   "entryBlockers": [
     {
       "issue": "#150",
@@ -79,7 +79,7 @@
     "route": "#151 -> #146 -> #152 -> #153 -> #193 [RF -> tax -> accounts] -> #149 -> #208 -> #192 final -> #194",
     "approvedNow": "RF semantics/row ownership, public contracts, canonical backend rules, normal reversible migration and exact behavior-preserving dependency query; start only after normal entry. Do not migrate sibling rules/annual aggregation/audit/notifications.",
     "pendingException": {
-      "status": "APPROVED_IMPLEMENTED_COMPLETE_GATES_PENDING",
+      "status": "APPROVED_IMPLEMENTED_LOCAL_STAGE_VERIFIED",
       "proposal": "architecture/evidence/issues/151/compatibility-amendment-v2-proposal.md",
       "proposalDigest": "sha256:37472588213825c948c4a4870e9df7396b10aa273e9d1c5118db929d9149b09a",
       "scope": "architecture/evidence/issues/151/compatibility-amendment-v2-inventory.json",
@@ -119,7 +119,7 @@
     {
       "id": "GH-151-A1",
       "requirement": "Supported RF-1086 cases produce payloads identical to current authority-tested evidence.",
-      "status": "IN_PROGRESS_EXIT_VERIFICATION_PENDING",
+      "status": "PASS_LOCAL_VERIFIED",
       "existingCharacterizationPaths": [
         "tests/fixtures/rf1086",
         "tests/fixtures/rf1086_invalid",
@@ -138,13 +138,18 @@
       "newEvidence": [
         "architecture/evidence/issues/151/implementation-checkpoint.md",
         "architecture/evidence/issues/151/tt02-deterministic-replay.json",
-        "architecture/evidence/issues/151/followup-verification.md"
+        "architecture/evidence/issues/151/followup-verification.md",
+        "architecture/evidence/issues/151/tt02-deterministic-replay.md",
+        "architecture/evidence/issues/151/characterization-matrix.md",
+        "architecture/evidence/issues/151/cli-retirement-validation.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
       ]
     },
     {
       "id": "GH-151-A2",
       "requirement": "Owner confirmation, AAL2, entitlement, release, and pilot gates remain mandatory.",
-      "status": "IN_PROGRESS_EXIT_VERIFICATION_PENDING",
+      "status": "PASS_LOCAL_VERIFIED",
       "existingCharacterizationPaths": [
         "tests/production_approval.test.mjs",
         "tests/production_pilot.test.mjs",
@@ -157,13 +162,17 @@
       ],
       "expectedResult": "Fresh complete owner preview-to-approval-to-Send journey and independent fail-closed owner/AAL2/authority/preflight/readiness/review/override/entitlement/release/pilot checks. Token failure precedes begin; no unauthorized effects. Historical recovery preserves its distinct original authority.",
       "newEvidence": [
-        "architecture/evidence/issues/151/implementation-checkpoint.md"
+        "architecture/evidence/issues/151/implementation-checkpoint.md",
+        "architecture/evidence/issues/151/approved-amendment/candidate-spec-acceptance.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
       ]
     },
     {
       "id": "GH-151-A3",
       "requirement": "Submission, retry, feedback, unknown outcomes, and receipts remain idempotent and auditable.",
-      "status": "IN_PROGRESS_EXIT_VERIFICATION_PENDING",
+      "status": "PASS_LOCAL_VERIFIED",
       "existingCharacterizationPaths": [
         "apps/backend/tests/test_rf1086_compatibility.py",
         "apps/backend/tests/test_rf1086_database_runtime.py",
@@ -177,13 +186,18 @@
       ],
       "expectedResult": "Permanent original-intent journal, exact per-operation body/key, concurrency/lease/retry-cap/partial-send/unknown outcomes, no blind POST replay, explicit feedback classification and Documents receipt integrity/conditional rollback.",
       "newEvidence": [
-        "architecture/evidence/issues/151/implementation-checkpoint.md"
+        "architecture/evidence/issues/151/implementation-checkpoint.md",
+        "architecture/evidence/issues/151/production-coordinator-independent-review.md",
+        "architecture/evidence/issues/151/approved-amendment/candidate-spec-acceptance.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
       ]
     },
     {
       "id": "GH-151-A4",
       "requirement": "The complete owner filing flow uses the generated API client.",
-      "status": "IN_PROGRESS_EXIT_VERIFICATION_PENDING",
+      "status": "PASS_LOCAL_VERIFIED",
       "existingCharacterizationPaths": [
         "apps/web/app/actions.ts",
         "apps/web/app/lib/supabase/server.ts",
@@ -195,13 +209,18 @@
       "existingFocusedCommands": [],
       "expectedResult": "New complete owned generated API covers opening facts/readiness/preview/review/override/confirmation/approval/Send/recovery/receipt presentation. Real local auth, backend and RLS with loopback provider; current seeded historical browser proof is retained but does not replace fresh owner-journey evidence.",
       "newEvidence": [
-        "architecture/evidence/issues/151/implementation-checkpoint.md"
+        "architecture/evidence/issues/151/implementation-checkpoint.md",
+        "architecture/evidence/issues/151/exit-protocol/independent-spec-closure.md",
+        "architecture/evidence/issues/151/exit-protocol/README.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
       ]
     },
     {
       "id": "GH-151-A5",
       "requirement": "Both RF-1086 CLI bridges, generic RF-1086 rows, duplicate TypeScript rules, and active-stage compatibility code are removed.",
-      "status": "IN_PROGRESS_EXIT_VERIFICATION_PENDING",
+      "status": "PASS_LOCAL_VERIFIED",
       "existingCharacterizationPaths": [
         "apps/backend/src/talli_backend/modules/shareholder_register_filing",
         "apps/backend/src/talli_backend/application/shareholder_register_compatibility.py",
@@ -221,13 +240,20 @@
       ],
       "expectedResult": "One owned implementation/writer; shareholder fields and RF generic rows migrated without sibling/ledger/foreign-owner acquisition; both web Python bridges and duplicate TS rules removed, frozen RF backend compatibility absorbed, RF tool calls canonical generator, obsolete authority contracted, temporary parity/allowlist debt removed. Baseline stays byte-identical. Exact approved sixteen-entry amendment only; preserve all sibling effects and expiry.",
       "newEvidence": [
-        "architecture/evidence/issues/151/implementation-checkpoint.md"
+        "architecture/evidence/issues/151/implementation-checkpoint.md",
+        "architecture/evidence/issues/151/approved-amendment-standards-review.md",
+        "architecture/evidence/issues/151/approved-amendment/exit-standards-audit.md",
+        "architecture/evidence/issues/151/approved-amendment/candidate-spec-acceptance.md",
+        "architecture/evidence/issues/151/compatibility-amendment-v2-decision.json",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
       ]
     },
     {
       "id": "GH-151-A6",
       "requirement": "The complete `shareholder_register_filing` stage exit criteria from issue #132 pass before company-tax migration begins.",
-      "status": "IN_PROGRESS_EXIT_VERIFICATION_PENDING",
+      "status": "LOCAL_PASS_PROTECTED_INTEGRATION_PENDING",
       "existingCharacterizationPaths": [
         "architecture/compatibility.json",
         "architecture/backend-system.json",
@@ -241,12 +267,18 @@
       ],
       "expectedResult": "Complete #132 envelope, independent review, two linked immutable11/11 gates, protected PR/exact-main Release+Preview and preserved production freeze before successor. Activated production alone would additionally require approved seven-day observation; no activation or such observation is planned or claimed.",
       "newEvidence": [
-        "architecture/evidence/issues/151/implementation-checkpoint.md"
+        "architecture/evidence/issues/151/implementation-checkpoint.md",
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-protocol/independent-spec-closure.md",
+        "architecture/evidence/issues/151/gate-pair-independent-review.json",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
       ]
     }
   ],
   "approvedSourceHandoff": {
-    "status": "IMPLEMENTED_DATABASE_VERIFICATION_PENDING",
+    "status": "PASS_LOCAL_IMPLEMENTED_AND_DATABASE_VERIFIED",
     "requiredFacts": [
       "immutable company/year/obligation readiness",
       "complete production-submission history and positive completeness evidence before declaring none submitted",
@@ -261,82 +293,160 @@
       "RF readiness source must avoid circular dependence on paid entitlement; actual Send retains action-time commercial gate.",
       "Billing alone applies#177 monetary/commercial classification; no second billing writer.",
       "Annual Compliance later aggregates all3 owners; Company Access#208 supplies year admission."
+    ],
+    "evidence": [
+      "architecture/evidence/issues/151/source-facts-independent-review.md",
+      "architecture/evidence/issues/151/approved-amendment-spec-review.md",
+      "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+      "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
     ]
   },
   "completeExitEnvelope": [
     {
       "name": "fixed-input characterization and golden/statutory equivalence",
-      "status": "PENDING",
-      "evidence": []
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
     },
     {
       "name": "owned data and one authoritative writer",
-      "status": "PENDING",
-      "evidence": []
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
     },
     {
       "name": "expand/migrate/count-hash/backfill reconciliation",
-      "status": "PENDING",
-      "evidence": []
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
     },
     {
       "name": "full API/web contract and deployment order cutover",
-      "status": "PENDING",
-      "evidence": []
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json",
+        "architecture/evidence/issues/151/exit-protocol/independent-spec-closure.md"
+      ]
     },
     {
       "name": "restricted roles/FORCE RLS/verified actor/tenant/concurrency safety",
-      "status": "PENDING",
-      "evidence": []
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
     },
     {
       "name": "permanent journal and unknown-effect rollback/quarantine",
-      "status": "PENDING",
-      "evidence": []
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
     },
     {
       "name": "rollback and recutover with immutable identity preserved",
-      "status": "PENDING",
-      "evidence": []
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
     },
     {
       "name": "exact old-code/genericRF/CLI/compatibility/parity-suite cleanup",
-      "status": "PENDING",
-      "evidence": []
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
     },
     {
       "name": "sibling audit notification archive support and annual input equivalence",
-      "status": "PENDING",
-      "evidence": []
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
     },
     {
       "name": "full fresh owner browser plus historical recovery journey",
-      "status": "PENDING",
-      "evidence": []
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
     },
     {
       "name": "both builds, package smoke, security/dependency/advisors",
-      "status": "PENDING",
-      "evidence": []
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
     },
     {
       "name": "independent Standards and Spec review with self-overlap disclosed",
-      "status": "PENDING",
-      "evidence": []
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
     },
     {
       "name": "matching module/system/catalog/generated/dependency evidence",
-      "status": "PENDING",
-      "evidence": []
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
     },
     {
       "name": "two consecutive linked immutable complete gates",
-      "status": "PENDING",
-      "evidence": []
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json",
+        "architecture/evidence/issues/151/gate-pair-independent-review.json"
+      ]
     },
     {
       "name": "protected integration and exact-main Release/Preview truth",
-      "status": "PENDING",
+      "status": "PENDING_PROTECTED_INTEGRATION",
       "evidence": []
     }
   ],
@@ -356,9 +466,22 @@
       "checkCount": 11,
       "startedAt": "2026-09-10T12:46:33.872Z",
       "finishedAt": "2026-09-10T13:06:15.791Z",
-      "status": "pass-validated-awaiting-evidence-storage",
-      "storageRevision": null,
+      "status": "pass-independently-verified-committed",
+      "storageRevision": "c8a8f3dd79ebe990136bda63bcfc126432104d6d",
       "independentReview": "architecture/evidence/issues/151/approved-amendment/gate1-independent-review.json"
+    },
+    {
+      "revision": "c8a8f3dd79ebe990136bda63bcfc126432104d6d",
+      "evidencePath": "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json",
+      "evidenceDigest": "sha256:95b09ebd71aa6d0ac0082ac12bb446afa7a9ff3bdb193d2020ee6fb2d92e14c7",
+      "transcriptDigest": "sha256:382db8a0b90dc1745d79e7e5d8baec7e0dfc6be8c813ea82db33a17d8f6d8971",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "checkCount": 11,
+      "startedAt": "2026-09-10T13:12:58.970Z",
+      "finishedAt": "2026-09-10T13:32:40.212Z",
+      "status": "pass-independently-verified-committed",
+      "storageRevision": "2982a662c9cc1ebb8413d7a3a36abf07f4a713b6",
+      "independentReview": "architecture/evidence/issues/151/gate-pair-independent-review.json"
     }
   ],
   "expectedCanonicalChecks": [
@@ -424,5 +547,19 @@
   },
   "implementationCheckpoint": "architecture/evidence/issues/151/implementation-checkpoint.md",
   "implementationRevision": "3e8bf5187d614a3a2d02437f12186d90dbd19078",
-  "latestSourceCheckpoint": "dd1a7dba8192746f5e882d5b119d895bf7730ce1"
+  "latestSourceCheckpoint": "dd1a7dba8192746f5e882d5b119d895bf7730ce1",
+  "stageExit": {
+    "capability": "shareholder_register_filing",
+    "issue": "#151",
+    "localVerdict": "pass",
+    "nextRegistryCapability": "company_tax_filing",
+    "nextRegistryIssue": "#146",
+    "nextStageClaimed": false,
+    "scope": "Registry advances after both linked gates. #146 claim and implementation remain blocked until protected #151 integration and exact-main Release/Preview verification."
+  },
+  "remainingWork": [
+    "Protected PR and exact-main Release/Preview verification",
+    "Independent published-closure reread before closing #151",
+    "Serialized successor entry after protected #151 exit"
+  ]
 }

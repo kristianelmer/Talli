@@ -10,6 +10,6 @@
   "inventory": "architecture/evidence/issues/151/compatibility-amendment-v2-inventory.json",
   "inventorySha256": "698439251dbba00606c04ea9599032db5f3a082a14946ad4cb1beef24d121c28",
   "amendmentCount": 16,
-  "implementationStatus": "implemented-focused-verification-passed-complete-gates-pending",
+  "implementationStatus": "implemented-two-complete-gates-passed-protected-integration-pending",
   "limits": "Exact reviewed scope only; previous approvals, serialized source order, immutable baseline and production freeze remain. No provider tests, real filings, spending or production activation/promotion."
 }

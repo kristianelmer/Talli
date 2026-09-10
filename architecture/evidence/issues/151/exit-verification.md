@@ -2,8 +2,9 @@
 
 Implementation candidate: `dd1a7dba8192746f5e882d5b119d895bf7730ce1`.
 Predecessor: `91b178c281bcc5fb887a6257d2f72e380199f3e6`.
-This record supplements the historical focused evidence; it does not yet claim
-the second complete gate, protected integration or closure of #151/#192.
+Both linked immutable customer-ready gates now pass. This record supplements
+the historical focused evidence and establishes local stage exit; protected
+integration and closure of #151/#192 remain pending.
 
 The first immutable customer-ready gate passed all eleven checks between
 2026-09-10T12:46:33.872Z and 2026-09-10T13:06:15.791Z. Its exact
@@ -35,6 +36,32 @@ Source and artifact hashes are retained with both runs. The
 both runs and their exact source bindings. These use existing local
 in-memory session/persistence/provider ports and six extracted action bodies;
 they are not additional database or hydrated-browser evidence.
+
+## Linked gate pair and local stage exit
+
+The second immutable gate tested `c8a8f3dd79ebe990136bda63bcfc126432104d6d`
+from 2026-09-10T13:12:58.970Z through 2026-09-10T13:32:40.212Z, passed all eleven
+checks and explicitly names the first passing revision as its predecessor. The
+[second receipt](../../customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json)
+and [transcript](../../customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.log)
+are stored in `2982a662c9cc1ebb8413d7a3a36abf07f4a713b6`. The first receipt and
+transcript were stored in `c8a8f3dd79ebe990136bda63bcfc126432104d6d` before that
+second run. Only evidence changed between the two tested revisions; runtime,
+schema, tests, manifest rules and the immutable baseline are identical.
+
+The [independent pair review](gate-pair-independent-review.json) verifies committed
+bytes, schema, canonical receipt digests, transcript and tested-producer digests,
+all eleven command exits and durations, chronological order, exact link and Git
+ancestry. Both runs repeat the final database and browser results and disclose the
+same existing optional skips. Neither entry-gate nor focused-check evidence is
+counted as one of this pair.
+
+The criterion ledger records local passes for the six original criteria and common
+exit envelope, retaining protected integration as pending. The registry records RF
+local completion and prepares Company Tax/#146 as the next serialized stage. That
+pointer is not a successor claim: #146 implementation remains blocked until #151's
+protected merge and exact-main Release/Preview verification are published and
+independently checked. No criterion, frozen scope or original approval is relaxed.
 
 ## Deployment and rollback sequence
 
