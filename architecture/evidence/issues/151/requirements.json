@@ -3,8 +3,8 @@
   "issue": "#151",
   "source": "https://github.com/kristianelmer/Talli/issues/151",
   "sourceCheckedAt": "2026-09-09T18:58:36Z",
-  "status": "implementation-in-progress-exit-verification-pending",
-  "notice": "Exact approved sixteen-entry amendment implemented; fresh owner browser and focused SQL retirement/rollback/security regressions pass. Immutable complete gates and protected integration remain open.",
+  "status": "first-immutable-exit-gate-passed-second-and-integration-pending",
+  "notice": "First immutable complete gate passed11/11 on dd1a7dba, including final130-case RF/authority database suite and fresh/historical browsers. Exact predecessor RF protocol supplement passed29checks/33HTTPrequests and repeated under pinnedNode24. Second linked complete gate and protected integration remain pending.",
   "entryBlockers": [
     {
       "issue": "#150",
@@ -346,7 +346,21 @@
     "status": "NOT_APPLICABLE_UNLESS_PATH_ACTIVATED",
     "note": "Do not turn optional semantic Graphify into a blocker; deterministic manifest dependency evidence is mandatory under ADR0013."
   },
-  "completeGates": [],
+  "completeGates": [
+    {
+      "revision": "dd1a7dba8192746f5e882d5b119d895bf7730ce1",
+      "evidencePath": "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+      "evidenceDigest": "sha256:a50f815ba3c980b1f3e48d559f850a9ee2732210a43c31e63f70f77ba3d14fc5",
+      "transcriptDigest": "sha256:41a8db718e186ea0c294aa6484e9f926b24ae32835902df89531ce5cd732000e",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "checkCount": 11,
+      "startedAt": "2026-09-10T12:46:33.872Z",
+      "finishedAt": "2026-09-10T13:06:15.791Z",
+      "status": "pass-validated-awaiting-evidence-storage",
+      "storageRevision": null,
+      "independentReview": "architecture/evidence/issues/151/approved-amendment/gate1-independent-review.json"
+    }
+  ],
   "expectedCanonicalChecks": [
     "credential-scan",
     "typecheck",
@@ -378,6 +392,18 @@
       "state": "approved-amendment-and-exit-corrections-focused-verification",
       "qualifiesAsCompleteImmutableGate": false,
       "limit": "Finite approved amendment, independently found SQL retirement/classification/rollback corrections, and complete fresh owner browser have focused passing evidence. Full gates and protected integration remain pending."
+    },
+    {
+      "evidence": "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+      "state": "first-complete-immutable-gate-pass",
+      "qualifiesAsCompleteImmutableGate": true,
+      "limit": "All11checks pass, final RF/authority DB130, Billing699, historicalbrowser11 and freshbrowser12. Backend boundary has2existing optional environment-gated skips; validation-observation Python has1existing optional environment-gated skip while its mandatoryNodeSQLtest passes. Advisors report0blockingsecurity/error findings and60performancewarnings. Second linked gate, RF protocol supplement and protected integration remain open."
+    },
+    {
+      "evidence": "architecture/evidence/issues/151/exit-protocol/README.md",
+      "state": "exact-predecessor-candidate-rf-protocol-pass",
+      "qualifiesAsCompleteImmutableGate": false,
+      "limit": "29checks/33real-loopbackHTTPrequests; independently repeated withNode24.20.0. Exact pinned app/transport/generated source, existing in-memory identity/persistence/authority ports and six extracted actions. No DB/browser/provider acceptance; complements first full gate."
     }
   ],
   "predecessorEvidence": {
@@ -398,5 +424,5 @@
   },
   "implementationCheckpoint": "architecture/evidence/issues/151/implementation-checkpoint.md",
   "implementationRevision": "3e8bf5187d614a3a2d02437f12186d90dbd19078",
-  "latestSourceCheckpoint": "4081b4104282f8ece7ed77da178bae1a3eab0fc6"
+  "latestSourceCheckpoint": "dd1a7dba8192746f5e882d5b119d895bf7730ce1"
 }

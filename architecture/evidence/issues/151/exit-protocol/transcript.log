@@ -1,0 +1,30 @@
+PASS old transport -> new backend: Send wire, token-before-begin, same five operation identities on retry
+PASS old transport -> new backend: compatible read-only recovery
+PASS old transport -> new backend: unknown outcome never blindly reposted
+PASS old transport -> new backend: token failure precedes every mutation
+PASS old transport -> new backend: invalid bearer cannot begin
+PASS old generated client -> new backend: explicit correlation preserved
+PASS new transport -> old backend: Send wire, token-before-begin, same five operation identities on retry
+PASS new transport -> old backend: compatible read-only recovery
+PASS new transport -> old backend: unknown outcome never blindly reposted
+PASS new transport -> old backend: token failure precedes every mutation
+PASS new transport -> old backend: invalid bearer cannot begin
+PASS new generated client -> old backend: explicit correlation preserved
+PASS new findRf1086Preview -> predecessor missing route: typed error, no ownership fallback or backend ports
+PASS new acknowledgeOwnedRf1086Comment -> predecessor missing route: typed error, no ownership fallback or backend ports
+PASS new loadRf1086Workspaces -> predecessor missing route: typed error, no ownership fallback or backend ports
+PASS new loadRf1086ArchiveSource -> predecessor missing route: typed error, no ownership fallback or backend ports
+PASS new generateRf1086PreviewThroughApi -> predecessor missing route: typed error, no ownership fallback or backend ports
+PASS new recordRf1086OverrideThroughApi -> predecessor missing route: typed error, no ownership fallback or backend ports
+PASS new addRf1086ReviewCommentThroughApi -> predecessor missing route: typed error, no ownership fallback or backend ports
+PASS new confirmRf1086SimulationThroughApi -> predecessor missing route: typed error, no ownership fallback or backend ports
+PASS new confirmRf1086PermissionThroughApi -> predecessor missing route: typed error, no ownership fallback or backend ports
+PASS new recordRf1086TestEvidenceThroughApi -> predecessor missing route: typed error, no ownership fallback or backend ports
+PASS new approveRf1086ProductionThroughApi -> predecessor missing route: typed error, no ownership fallback or backend ports
+PASS current action addFilingOverride -> predecessor: no public read/write/audit or success redirect after missing-route error
+PASS current action addFilingReviewComment -> predecessor: no public read/write/audit or success redirect after missing-route error
+PASS current action acknowledgeFilingReviewComment -> predecessor: no public read/write/audit or success redirect after missing-route error
+PASS current action confirmSimulatedRf1086Submission -> predecessor: no public read/write/audit or success redirect after missing-route error
+PASS current action confirmAuthorityPermission -> predecessor: no public read/write/audit or success redirect after missing-route error
+PASS current action recordAuthorityTestEvidence -> predecessor: no public read/write/audit or success redirect after missing-route error
+PASS total 29; all 33 real API fetches used no-store; no external calls.
