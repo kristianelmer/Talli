@@ -95,7 +95,7 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     resources.signoffs = await seedLocalReleaseSignoffs(database, owner.id);
     await seedCallbackAudit(database, owner.id);
     const databases = {};
-    for (const role of ["talli_company_access_backend", "talli_ledger_backend"]) {
+    for (const role of ["talli_company_access_backend", "talli_ledger_backend", "talli_banking_backend"]) {
       const previous = await database.query("select rolcanlogin,rolinherit,rolbypassrls from pg_roles where rolname=$1", [role]);
       assert.deepEqual(previous.rows, [{ rolcanlogin: false, rolinherit: false, rolbypassrls: false }]);
       const password = randomUUID().replaceAll("-", "");
@@ -122,6 +122,7 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
         ...runtimeEnvironment(), DATABASE_URL: databaseUrl, TALLI_LOCAL_RF1086_FRESH_SEND_FIXTURE: "true",
         SUPABASE_URL: supabaseUrl, SUPABASE_ANON_KEY: anonKey, SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
         TALLI_LEDGER_DATABASE_URL: databases.talli_ledger_backend,
+        TALLI_BANKING_DATABASE_URL: databases.talli_banking_backend,
         TALLI_COMPANY_ACCESS_DATABASE_URL: databases.talli_company_access_backend,
         TALLI_AUTHORITY_CALLBACK_INTERNAL_KEY: callbackKey,
         TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL: resources.mock.baseUrl,
@@ -205,6 +206,7 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     const before = await api.rf1086Workspace(primary.id, 2025, { headers: authorization });
     assert.deepEqual(before.previews, []);
     assert.deepEqual(before.approvals, []);
+    assert.deepEqual((await api.bankingListTransactions({ companyIds: [primary.id], limit: 100, headers: authorization })).items, []);
     await page.goto(annualHref);
     await page.getByRole("button", { name: "Lag ny forhåndsvisning", exact: true }).click();
     await page.getByRole("button", { name: "Lagre kommentar", exact: true }).waitFor();
@@ -286,7 +288,7 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     const otherSession = await browserSession(otherContext);
     const otherHeaders = { Authorization: `Bearer ${otherSession.access_token}` };
     const denied = await fetch(`${backendOrigin}/api/v1/shareholder-register-filings/workspace?companyId=${primary.id}`, { headers: otherHeaders });
-    assert.equal(denied.status, 403);
+    assert.equal(denied.status, 404); // Conceal another company's RF workspace.
     assert.equal(denied.headers.get("cache-control"), "no-store");
     assert.ok(!(await denied.text()).includes(preview.id));
     const deniedReceipt = await otherContext.request.get(`${siteOrigin}/documents/${artifact.documentId}/download`, { maxRedirects: 0 });

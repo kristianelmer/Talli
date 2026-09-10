@@ -1,0 +1,15 @@
+{
+  "status": "approved",
+  "owner": "Kristian Elmer",
+  "decisionDate": "2026-09-10",
+  "decisionText": "approved",
+  "decisionContext": "Direct reply in the requested handoff destination task to the exact sixteen-entry revision-2 approval question.",
+  "startingRevision": "8f86488cb32e8d50ad8546654e20ea46d9c8885d",
+  "proposal": "architecture/evidence/issues/151/compatibility-amendment-v2-proposal.md",
+  "proposalSha256": "37472588213825c948c4a4870e9df7396b10aa273e9d1c5118db929d9149b09a",
+  "inventory": "architecture/evidence/issues/151/compatibility-amendment-v2-inventory.json",
+  "inventorySha256": "698439251dbba00606c04ea9599032db5f3a082a14946ad4cb1beef24d121c28",
+  "amendmentCount": 16,
+  "implementationStatus": "implemented-focused-verification-passed-complete-gates-pending",
+  "limits": "Exact reviewed scope only; previous approvals, serialized source order, immutable baseline and production freeze remain. No provider tests, real filings, spending or production activation/promotion."
+}

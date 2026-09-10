@@ -1,0 +1,215 @@
+{
+  "status": "focused-working-tree-evidence-not-complete-gates",
+  "startingRevision": "8f86488cb32e8d50ad8546654e20ea46d9c8885d",
+  "createdAt": "2026-09-10T12:41:18.640923+00:00",
+  "sourceBindingLimit": "Sources evolved between runs. Results describe their named correction phase; no single immutable candidate or full gate is claimed. Original transcript bytes are preserved losslessly; raw and compressed digests are both recorded.",
+  "runs": [
+    {
+      "name": "architecture-tests",
+      "transcript": "architecture-tests.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "ee8fda0b29a5bd80e1a3a703947618890d2ad893bb042286e9fca82ab5d3a3bd",
+      "storedSha256": "966b6173151421a110a49239e0bd6f7f4f256264790e5d643e8bcfbb7dc5a9a2",
+      "exitCode": 0,
+      "result": "56 architecture tests; before later SQL exit corrections"
+    },
+    {
+      "name": "boundary-backend",
+      "transcript": "boundary-backend.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "e43acc551da090bdeb0c378bb3e11f9d35a4a23a3712b3a26fc7f07a06172383",
+      "storedSha256": "e235c10337dea3108dcee6537a9f57caa25645d54d1601e4e1f03bfde5ec4b08",
+      "exitCode": 0,
+      "result": "2811 passed;2 existing optional skips;807 database deselected"
+    },
+    {
+      "name": "boundary-web",
+      "transcript": "boundary-web.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "f271159fbd172c9e19833a4815b1ffe71b5194f34b389410a4b17454578df43a",
+      "storedSha256": "1635682ea44ee4852d51b09357d38dc020ee7983237ade92a948e0a0d90bca20",
+      "exitCode": 0,
+      "result": "213+40 passed;0 skipped"
+    },
+    {
+      "name": "production-audit",
+      "transcript": "production-audit.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "6d8c5c8f3d7684adb070417bd608d01ae90aa3dc26a65af03ffda4955f38d9a3",
+      "storedSha256": "727d1f57551fa4ea9e85b997a4dc41fa9b793e2ef784a35bb5f857dbb93eb46c",
+      "exitCode": 0,
+      "result": "0 production vulnerabilities"
+    },
+    {
+      "name": "web-production-audit",
+      "transcript": "web-production-audit.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "6d8c5c8f3d7684adb070417bd608d01ae90aa3dc26a65af03ffda4955f38d9a3",
+      "storedSha256": "727d1f57551fa4ea9e85b997a4dc41fa9b793e2ef784a35bb5f857dbb93eb46c",
+      "exitCode": 0,
+      "result": "0 production vulnerabilities"
+    },
+    {
+      "name": "database-aggregate-first",
+      "transcript": "database-aggregate-first.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "3257956a5b73124b0a7cf8f24fd14a1b932157a8f34027382d1f4014206e627e",
+      "storedSha256": "6b7e6658088d9fdbd544f9312513c0d924e4e7969bde7e5580c5d15494f26a16",
+      "exitCode": 1,
+      "result": "External node_modules symlink prevented Next browser startup; replaced with owned npm ci"
+    },
+    {
+      "name": "database-aggregate-second",
+      "transcript": "database-aggregate-second.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "ab37db87ff3744d4c1245fa12aa8c4ad6c0b10b86f0c861475b1abedc1e0fdea",
+      "storedSha256": "abd91329a98fb80efbc669696cf8bb31e9e37529d0f784daac9acf871048739b",
+      "exitCode": 1,
+      "result": "Retained owner browsers and699 Python+1 NodeBilling passed; stopped on repeated signoff policy contract before final RF lane"
+    },
+    {
+      "name": "exit-regressions-red",
+      "transcript": "exit-regressions-red.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "960c1f854508fbd9d976b2442b31619e1c9e4163c3834a6d593c1ef6bc7b53fc",
+      "storedSha256": "d5ef02fe32ae24ccb3a1859d11d40fae2cafdd45bde96e8f25546d74e38cd5c2",
+      "exitCode": 1,
+      "result": "7 regressions reproduced generic RF retention and sibling comment defects"
+    },
+    {
+      "name": "exit-regressions-first-green",
+      "transcript": "exit-regressions-first-green.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "4029d0fc3b9853faca694cfae1b7854b75c163295a8c637da4f4fff393b98ae0",
+      "storedSha256": "6e1341d4306297e952b63f8aa45ed958764f3ac6445539c6460a9580e58a5c86",
+      "exitCode": 0,
+      "result": "8 initial targeted corrections passed"
+    },
+    {
+      "name": "lifecycle-intermediate",
+      "transcript": "lifecycle-intermediate.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "754286ca748cfddd47fa2b8426720de21ad5d6f87ad9415bc9217e11dcbe5f99",
+      "storedSha256": "1ead92cc8b53c594481335080e218285fd7479170e7519e61096fba687302832",
+      "exitCode": 1,
+      "result": "47 passed;5 failed: obsolete projection expectation,2 invalid new fixtures,2 missing inventory-reader grant"
+    },
+    {
+      "name": "lifecycle-52",
+      "transcript": "lifecycle-52.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "5b6023999e44055cb277dd014cc88b4235d030b360cb9c3656a3dc5f1375090f",
+      "storedSha256": "eda4579af602cf4e40e786c80a8f3a15c1961372527c214982a87f0268bfc43f",
+      "exitCode": 0,
+      "result": "52 lifecycle passed before later collision/archive corrections"
+    },
+    {
+      "name": "authority-db-intermediate",
+      "transcript": "authority-db-intermediate.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "607f6e46f83355419cb4b2128d6dc8b2103eb6910b537195ddec0158379e9afb",
+      "storedSha256": "a05227f9c5e19fad0e560ce745fe31438e032c1850284e40c8384dfc84d0240c",
+      "exitCode": 1,
+      "result": "117 passed;2 final-topology checks failed because Authority view remained in focused stack"
+    },
+    {
+      "name": "authority-db-119",
+      "transcript": "authority-db-119.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "957e8987b5bfa6825757343fef2c79d47a5162c3b4a783353fe9552d5a23e1be",
+      "storedSha256": "6435475a5ac2350fc99ee3621ceb1fbc847bf5a1405dd271e5fa2899c854b070",
+      "exitCode": 0,
+      "result": "119 passed on contracted topology; before later full-rollback collision/archive corrections"
+    },
+    {
+      "name": "collision-red",
+      "transcript": "collision-red.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "8be8f67da98dcbbd0068be73d14b0d748dcba182f46a34a11b7bfdaf6ea3aaf7",
+      "storedSha256": "00668a06fc286179a93fc69483468a94bfbd172aad7a5598e6c48df4863bb2c5",
+      "exitCode": 1,
+      "result": "Full reverse overwrote sibling;phase reverse passed"
+    },
+    {
+      "name": "archive-reverse-red",
+      "transcript": "archive-reverse-red.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "4ce75e73ed507c9f1e9c720c8b4ff5bbbd9db7612a87d35d3975c5118c4865bd",
+      "storedSha256": "07ba59470a82c108f12c8c3517da0f9a1fe2a41e2cd565edb21734fef98c90bd",
+      "exitCode": 1,
+      "result": "Full reverse advanced archive generation;phase reverse passed"
+    },
+    {
+      "name": "lifecycle-54",
+      "transcript": "lifecycle-54.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "7e7306e57b03afe2ce1cfff51e4e529f2c92d73c631c47b56b94432f9dffb797",
+      "storedSha256": "181c8c04dd54443dcca674ce9142c80513311c2f731c1d49dd24b089dc68994b",
+      "exitCode": 0,
+      "result": "54 passed after collision/archive corrections"
+    },
+    {
+      "name": "quarantine-17",
+      "transcript": "quarantine-17.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "459c52221a33e0e6dc1794b4da01f46f5d399d17ab8b7c134c0e21e4c26784d0",
+      "storedSha256": "b43bca929d84552c7157a0482fbc8ba9a7d2b5997a5eb4ec1d9f1b9f2848e446",
+      "exitCode": 0,
+      "result": "17 passed with6 parent/dependent reverse cases and6 malformed-evidence atomic rejection cases"
+    },
+    {
+      "name": "signoff-order-red",
+      "transcript": "signoff-order-red.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "a61d344eb111493f68aa580b106becc3eb1c2ebb30ed4784056cacdc2fb92906",
+      "storedSha256": "caf7827bcfe27204754e0ddf4ce63fbe74ad657098b43ea7d23028e7b3dd617f",
+      "exitCode": 1,
+      "result": "Reproduced repeated contract against removed policies"
+    },
+    {
+      "name": "signoff-order-green",
+      "transcript": "signoff-order-green.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "42439a090ccef5f4f75ea73cd2dca851ce67d3c17606a77cf89e307b6c9709b6",
+      "storedSha256": "8554da390b2a6be24b3fb8c979bbb945906f2b8c2eb75fa82e1d8bffda2081a1",
+      "exitCode": 0,
+      "result": "47 runner tests passed"
+    },
+    {
+      "name": "fresh-browser-first",
+      "transcript": "fresh-browser-first.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "c14c855f9eae036f4c60ee00e30f4fe3dcd4822c7c1b7c1290596ccee190160c",
+      "storedSha256": "9f7e8af54815d88f442484f0ddcc31e92df17a0a92a664e8ac575607943994b8",
+      "exitCode": 1,
+      "result": "Banking runtime login absent in local fixture"
+    },
+    {
+      "name": "fresh-browser-second",
+      "transcript": "fresh-browser-second.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "3ea673374e955668a455a8f0229a3a1381681bf57daba1e9e72971a04e9170f6",
+      "storedSha256": "c0f8c016db4a131e498f5d1e39ecac04eee0c05a3b8bd506bfe2a2f853e24545",
+      "exitCode": 1,
+      "result": "New diagnostic generated-client call supplied headers in wrong argument; fixed fixture call"
+    },
+    {
+      "name": "fresh-browser-third",
+      "transcript": "fresh-browser-third.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "d293d1c2151e83fbcb4c2608cab70cc476e528788a849a5b6ee2dfdda2dbcf32",
+      "storedSha256": "e6714d6d769224e2c960be68a286848bd4841f3565f5050b57beea7fefe08bf5",
+      "exitCode": 1,
+      "result": "Full preview/review/approval/send/receipt passed; cross-tenant workspace expected403 instead of contract404"
+    },
+    {
+      "name": "fresh-browser-complete",
+      "transcript": "fresh-browser-complete.log.gz",
+      "encoding": "gzip",
+      "rawSha256": "a8b9d7d55ee08414c9a75aceefff6515f18cba2d62a4128cb4b42a7152b95050",
+      "storedSha256": "9955ed5355ddc2f6987e37c0eb0466410b084b68ee35940b2be772e306e7da21",
+      "exitCode": 0,
+      "result": "1 complete hydrated owner journey plus11fixture guards;12pass0skip;successful/unknown outcomes and no-blind-retry;all owned fixtures cleaned"
+    }
+  ]
+}

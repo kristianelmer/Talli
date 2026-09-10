@@ -138,6 +138,12 @@ def _readiness(snapshot: Rf1086SourceSnapshot):
     warnings.extend(Rf1086WarningFact('accepted_filing_override',override.reason,'filing_overrides',override.id,
         override.risk_level,True,override.owner_confirmed_by,override.owner_confirmed_at)
         for override in workspace.overrides if override.risk_level != 'block')
+    permission = next((item for item in workspace.permissions
+        if item.obligation == 'aksjonaerregisteroppgaven'), None)
+    if permission is None or not permission.confirmed_at:
+        hard_blocks.append('missing_authority_confirmation')
+    elif not permission.production_enabled:
+        hard_blocks.append('production_disabled')
     return ('blocked' if hard_blocks else 'ready'),tuple(dict.fromkeys(hard_blocks)),tuple(warnings)
 
 

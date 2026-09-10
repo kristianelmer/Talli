@@ -233,6 +233,19 @@ grant select,insert,update,delete on shareholder_register_filing.production_feed
 
 alter table ledger.opening_bank_inputs no force row level security; grant select on ledger.opening_bank_inputs to postgres;
 
+-- Projection reconstruction is housekeeping: retain every USER trigger mode
+-- without firing archive/business effects. Internal foreign keys stay enabled.
+create temporary table rf151_full_reverse_triggers(relation text,name name,enabled "char") on commit drop;
+do $suspend_full_reverse_triggers$ declare t record; begin
+ for t in select n.nspname||'.'||c.relname relation,g.tgname,g.tgenabled
+ from pg_catalog.pg_trigger g join pg_catalog.pg_class c on c.oid=g.tgrelid
+ join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+ where n.nspname='public' and c.relname=any(array['opening_balance_setups','opening_shareholders','filing_previews','filing_submissions','filing_overrides','filing_review_comments','authority_permissions','authority_test_runs']) and not g.tgisinternal loop
+  insert into rf151_full_reverse_triggers values(t.relation,t.tgname,t.tgenabled);
+  execute pg_catalog.format('alter table %s disable trigger %I',t.relation,t.tgname);
+ end loop;
+end; $suspend_full_reverse_triggers$;
+
 -- SECTION B: copy into new original tables only. No triggers yet, so no archive effects.
 -- Original FK/check constraints stay active throughout. RLS/ACL restored in C before COMMIT.
 do $restore_opening_rows$
@@ -350,17 +363,135 @@ insert into public.opening_balance_setups(id,company_id,income_year,bank_balance
 
 insert into public.opening_shareholders(id,setup_id,company_id,name,shareholder_kind,national_id,org_number,share_count,created_by,created_at) select r.id,r.setup_id,r.company_id,r.name,r.shareholder_kind,r.national_id,r.org_number,r.share_count,r.created_by,r.created_at from shareholder_register_filing.opening_shareholders r on conflict(id) do update set id=excluded.id,setup_id=excluded.setup_id,company_id=excluded.company_id,name=excluded.name,shareholder_kind=excluded.shareholder_kind,national_id=excluded.national_id,org_number=excluded.org_number,share_count=excluded.share_count,created_by=excluded.created_by,created_at=excluded.created_at;
 
+-- A permitted sibling must never be overwritten by a restored RF identity.
+do $generic_identity_collisions$ declare n text; collision boolean; begin
+ foreach n in array array['filing_previews','authority_permissions','authority_test_runs','filing_submissions','filing_overrides','filing_review_comments'] loop
+  execute pg_catalog.format('select exists(select 1 from shareholder_register_filing.%I r join public.%I p using(id) where shareholder_register_filing.classify_legacy_row_v1(%L,to_jsonb(p))<>''rf'')',n,n,n) into collision;
+  if collision then raise exception 'rf1086_rollback_conflicting_projection'; end if;
+ end loop;
+end; $generic_identity_collisions$;
+
 insert into public.filing_previews(id,company_id,setup_id,income_year,filing,status,issues,preview,hovedskjema_xml,underskjema_xml,source,created_by,created_at) select r.id,r.company_id,r.setup_id,r.income_year,r.filing,r.status,r.issues,r.preview,r.hovedskjema_xml,r.underskjema_xml,r.source,r.created_by,r.created_at from shareholder_register_filing.filing_previews r on conflict(id) do update set id=excluded.id,company_id=excluded.company_id,setup_id=excluded.setup_id,income_year=excluded.income_year,filing=excluded.filing,status=excluded.status,issues=excluded.issues,preview=excluded.preview,hovedskjema_xml=excluded.hovedskjema_xml,underskjema_xml=excluded.underskjema_xml,source=excluded.source,created_by=excluded.created_by,created_at=excluded.created_at;
+do $restore_generic_quarantine$
+declare q record; existing_row jsonb; expected_keys text[]; actual_keys text[];
+begin
+ select array_agg(a.attname::text order by a.attname::text) into expected_keys from pg_catalog.pg_attribute a
+ where a.attrelid='public.filing_previews'::regclass and a.attnum>0 and not a.attisdropped;
+ for q in select * from shareholder_register_filing.migration_quarantine where family='filing_previews' order by record_id loop
+  select array_agg(key order by key) into actual_keys from jsonb_object_keys(q.original_row) key;
+  if actual_keys is distinct from expected_keys or (q.original_row->>'id')::uuid is distinct from q.record_id
+  then raise exception 'rf1086_quarantined_generic_record_invalid'; end if;
+  if exists(select 1 from shareholder_register_filing.filing_previews where id=q.record_id)
+  then raise exception 'rf1086_rollback_conflicting_projection'; end if;
+  select to_jsonb(p) into existing_row from public.filing_previews p where id=q.record_id;
+  if existing_row is not null and existing_row is distinct from q.original_row
+  then raise exception 'rf1086_rollback_conflicting_projection'; end if;
+  if existing_row is null then insert into public.filing_previews select * from jsonb_populate_record(null::public.filing_previews,q.original_row); end if;
+ end loop;
+end; $restore_generic_quarantine$;
 
-insert into public.filing_submissions(id,preview_id,company_id,setup_id,income_year,filing,mode,adapter_mode,payload_hash,idempotency_key,status,authority_confirmed_by,authority_confirmed_at,preview_confirmed_by,preview_confirmed_at,calls,receipt_id,feedback_document_ids,feedback_items,receipt_metadata,submitted_payload_ref,submitted_payload,failure_code,failure_message,created_by,submitted_by,created_at,updated_at,authority_test_run_id) select r.id,r.preview_id,r.company_id,r.setup_id,r.income_year,r.filing,r.mode,r.adapter_mode,r.payload_hash,r.idempotency_key,r.status,r.authority_confirmed_by,r.authority_confirmed_at,r.preview_confirmed_by,r.preview_confirmed_at,r.calls,r.receipt_id,r.feedback_document_ids,r.feedback_items,r.receipt_metadata,r.submitted_payload_ref,r.submitted_payload,r.failure_code,r.failure_message,r.created_by,r.submitted_by,r.created_at,r.updated_at,r.authority_test_run_id from shareholder_register_filing.filing_submissions r on conflict(id) do update set id=excluded.id,preview_id=excluded.preview_id,company_id=excluded.company_id,setup_id=excluded.setup_id,income_year=excluded.income_year,filing=excluded.filing,mode=excluded.mode,adapter_mode=excluded.adapter_mode,payload_hash=excluded.payload_hash,idempotency_key=excluded.idempotency_key,status=excluded.status,authority_confirmed_by=excluded.authority_confirmed_by,authority_confirmed_at=excluded.authority_confirmed_at,preview_confirmed_by=excluded.preview_confirmed_by,preview_confirmed_at=excluded.preview_confirmed_at,calls=excluded.calls,receipt_id=excluded.receipt_id,feedback_document_ids=excluded.feedback_document_ids,feedback_items=excluded.feedback_items,receipt_metadata=excluded.receipt_metadata,submitted_payload_ref=excluded.submitted_payload_ref,submitted_payload=excluded.submitted_payload,failure_code=excluded.failure_code,failure_message=excluded.failure_message,created_by=excluded.created_by,submitted_by=excluded.submitted_by,created_at=excluded.created_at,updated_at=excluded.updated_at,authority_test_run_id=excluded.authority_test_run_id;
-
-insert into public.filing_overrides(id,preview_id,company_id,income_year,filing,field_target,old_value,new_value,reason,risk_level,owner_confirmed_by,owner_confirmed_at,created_by,created_at) select r.id,r.preview_id,r.company_id,r.income_year,r.filing,r.field_target,r.old_value,r.new_value,r.reason,r.risk_level,r.owner_confirmed_by,r.owner_confirmed_at,r.created_by,r.created_at from shareholder_register_filing.filing_overrides r on conflict(id) do update set id=excluded.id,preview_id=excluded.preview_id,company_id=excluded.company_id,income_year=excluded.income_year,filing=excluded.filing,field_target=excluded.field_target,old_value=excluded.old_value,new_value=excluded.new_value,reason=excluded.reason,risk_level=excluded.risk_level,owner_confirmed_by=excluded.owner_confirmed_by,owner_confirmed_at=excluded.owner_confirmed_at,created_by=excluded.created_by,created_at=excluded.created_at;
-
-insert into public.filing_review_comments(id,preview_id,company_id,target,severity,body,created_by,acknowledged_by,acknowledged_at,created_at) select r.id,r.preview_id,r.company_id,r.target,r.severity,r.body,r.created_by,r.acknowledged_by,r.acknowledged_at,r.created_at from shareholder_register_filing.filing_review_comments r on conflict(id) do update set id=excluded.id,preview_id=excluded.preview_id,company_id=excluded.company_id,target=excluded.target,severity=excluded.severity,body=excluded.body,created_by=excluded.created_by,acknowledged_by=excluded.acknowledged_by,acknowledged_at=excluded.acknowledged_at,created_at=excluded.created_at;
 
 insert into public.authority_permissions(id,company_id,obligation,submitter_user_id,confirmed_by,confirmed_at,production_enabled,updated_at) select r.id,r.company_id,r.obligation,r.submitter_user_id,r.confirmed_by,r.confirmed_at,r.production_enabled,r.updated_at from shareholder_register_filing.authority_permissions r on conflict(id) do update set id=excluded.id,company_id=excluded.company_id,obligation=excluded.obligation,submitter_user_id=excluded.submitter_user_id,confirmed_by=excluded.confirmed_by,confirmed_at=excluded.confirmed_at,production_enabled=excluded.production_enabled,updated_at=excluded.updated_at;
+do $restore_generic_quarantine$
+declare q record; existing_row jsonb; expected_keys text[]; actual_keys text[];
+begin
+ select array_agg(a.attname::text order by a.attname::text) into expected_keys from pg_catalog.pg_attribute a
+ where a.attrelid='public.authority_permissions'::regclass and a.attnum>0 and not a.attisdropped;
+ for q in select * from shareholder_register_filing.migration_quarantine where family='authority_permissions' order by record_id loop
+  select array_agg(key order by key) into actual_keys from jsonb_object_keys(q.original_row) key;
+  if actual_keys is distinct from expected_keys or (q.original_row->>'id')::uuid is distinct from q.record_id
+  then raise exception 'rf1086_quarantined_generic_record_invalid'; end if;
+  if exists(select 1 from shareholder_register_filing.authority_permissions where id=q.record_id)
+  then raise exception 'rf1086_rollback_conflicting_projection'; end if;
+  select to_jsonb(p) into existing_row from public.authority_permissions p where id=q.record_id;
+  if existing_row is not null and existing_row is distinct from q.original_row
+  then raise exception 'rf1086_rollback_conflicting_projection'; end if;
+  if existing_row is null then insert into public.authority_permissions select * from jsonb_populate_record(null::public.authority_permissions,q.original_row); end if;
+ end loop;
+end; $restore_generic_quarantine$;
+
 
 insert into public.authority_test_runs(id,company_id,obligation,environment,status,test_reference,feedback_summary,receipt_reference,archive_reference,evidence_url,payload_hash,recorded_by,recorded_at) select r.id,r.company_id,r.obligation,r.environment,r.status,r.test_reference,r.feedback_summary,r.receipt_reference,r.archive_reference,r.evidence_url,r.payload_hash,r.recorded_by,r.recorded_at from shareholder_register_filing.authority_test_runs r on conflict(id) do update set id=excluded.id,company_id=excluded.company_id,obligation=excluded.obligation,environment=excluded.environment,status=excluded.status,test_reference=excluded.test_reference,feedback_summary=excluded.feedback_summary,receipt_reference=excluded.receipt_reference,archive_reference=excluded.archive_reference,evidence_url=excluded.evidence_url,payload_hash=excluded.payload_hash,recorded_by=excluded.recorded_by,recorded_at=excluded.recorded_at;
+do $restore_generic_quarantine$
+declare q record; existing_row jsonb; expected_keys text[]; actual_keys text[];
+begin
+ select array_agg(a.attname::text order by a.attname::text) into expected_keys from pg_catalog.pg_attribute a
+ where a.attrelid='public.authority_test_runs'::regclass and a.attnum>0 and not a.attisdropped;
+ for q in select * from shareholder_register_filing.migration_quarantine where family='authority_test_runs' order by record_id loop
+  select array_agg(key order by key) into actual_keys from jsonb_object_keys(q.original_row) key;
+  if actual_keys is distinct from expected_keys or (q.original_row->>'id')::uuid is distinct from q.record_id
+  then raise exception 'rf1086_quarantined_generic_record_invalid'; end if;
+  if exists(select 1 from shareholder_register_filing.authority_test_runs where id=q.record_id)
+  then raise exception 'rf1086_rollback_conflicting_projection'; end if;
+  select to_jsonb(p) into existing_row from public.authority_test_runs p where id=q.record_id;
+  if existing_row is not null and existing_row is distinct from q.original_row
+  then raise exception 'rf1086_rollback_conflicting_projection'; end if;
+  if existing_row is null then insert into public.authority_test_runs select * from jsonb_populate_record(null::public.authority_test_runs,q.original_row); end if;
+ end loop;
+end; $restore_generic_quarantine$;
+
+
+insert into public.filing_submissions(id,preview_id,company_id,setup_id,income_year,filing,mode,adapter_mode,payload_hash,idempotency_key,status,authority_confirmed_by,authority_confirmed_at,preview_confirmed_by,preview_confirmed_at,calls,receipt_id,feedback_document_ids,feedback_items,receipt_metadata,submitted_payload_ref,submitted_payload,failure_code,failure_message,created_by,submitted_by,created_at,updated_at,authority_test_run_id) select r.id,r.preview_id,r.company_id,r.setup_id,r.income_year,r.filing,r.mode,r.adapter_mode,r.payload_hash,r.idempotency_key,r.status,r.authority_confirmed_by,r.authority_confirmed_at,r.preview_confirmed_by,r.preview_confirmed_at,r.calls,r.receipt_id,r.feedback_document_ids,r.feedback_items,r.receipt_metadata,r.submitted_payload_ref,r.submitted_payload,r.failure_code,r.failure_message,r.created_by,r.submitted_by,r.created_at,r.updated_at,r.authority_test_run_id from shareholder_register_filing.filing_submissions r on conflict(id) do update set id=excluded.id,preview_id=excluded.preview_id,company_id=excluded.company_id,setup_id=excluded.setup_id,income_year=excluded.income_year,filing=excluded.filing,mode=excluded.mode,adapter_mode=excluded.adapter_mode,payload_hash=excluded.payload_hash,idempotency_key=excluded.idempotency_key,status=excluded.status,authority_confirmed_by=excluded.authority_confirmed_by,authority_confirmed_at=excluded.authority_confirmed_at,preview_confirmed_by=excluded.preview_confirmed_by,preview_confirmed_at=excluded.preview_confirmed_at,calls=excluded.calls,receipt_id=excluded.receipt_id,feedback_document_ids=excluded.feedback_document_ids,feedback_items=excluded.feedback_items,receipt_metadata=excluded.receipt_metadata,submitted_payload_ref=excluded.submitted_payload_ref,submitted_payload=excluded.submitted_payload,failure_code=excluded.failure_code,failure_message=excluded.failure_message,created_by=excluded.created_by,submitted_by=excluded.submitted_by,created_at=excluded.created_at,updated_at=excluded.updated_at,authority_test_run_id=excluded.authority_test_run_id;
+do $restore_generic_quarantine$
+declare q record; existing_row jsonb; expected_keys text[]; actual_keys text[];
+begin
+ select array_agg(a.attname::text order by a.attname::text) into expected_keys from pg_catalog.pg_attribute a
+ where a.attrelid='public.filing_submissions'::regclass and a.attnum>0 and not a.attisdropped;
+ for q in select * from shareholder_register_filing.migration_quarantine where family='filing_submissions' order by record_id loop
+  select array_agg(key order by key) into actual_keys from jsonb_object_keys(q.original_row) key;
+  if actual_keys is distinct from expected_keys or (q.original_row->>'id')::uuid is distinct from q.record_id
+  then raise exception 'rf1086_quarantined_generic_record_invalid'; end if;
+  if exists(select 1 from shareholder_register_filing.filing_submissions where id=q.record_id)
+  then raise exception 'rf1086_rollback_conflicting_projection'; end if;
+  select to_jsonb(p) into existing_row from public.filing_submissions p where id=q.record_id;
+  if existing_row is not null and existing_row is distinct from q.original_row
+  then raise exception 'rf1086_rollback_conflicting_projection'; end if;
+  if existing_row is null then insert into public.filing_submissions select * from jsonb_populate_record(null::public.filing_submissions,q.original_row); end if;
+ end loop;
+end; $restore_generic_quarantine$;
+
+
+insert into public.filing_overrides(id,preview_id,company_id,income_year,filing,field_target,old_value,new_value,reason,risk_level,owner_confirmed_by,owner_confirmed_at,created_by,created_at) select r.id,r.preview_id,r.company_id,r.income_year,r.filing,r.field_target,r.old_value,r.new_value,r.reason,r.risk_level,r.owner_confirmed_by,r.owner_confirmed_at,r.created_by,r.created_at from shareholder_register_filing.filing_overrides r on conflict(id) do update set id=excluded.id,preview_id=excluded.preview_id,company_id=excluded.company_id,income_year=excluded.income_year,filing=excluded.filing,field_target=excluded.field_target,old_value=excluded.old_value,new_value=excluded.new_value,reason=excluded.reason,risk_level=excluded.risk_level,owner_confirmed_by=excluded.owner_confirmed_by,owner_confirmed_at=excluded.owner_confirmed_at,created_by=excluded.created_by,created_at=excluded.created_at;
+do $restore_generic_quarantine$
+declare q record; existing_row jsonb; expected_keys text[]; actual_keys text[];
+begin
+ select array_agg(a.attname::text order by a.attname::text) into expected_keys from pg_catalog.pg_attribute a
+ where a.attrelid='public.filing_overrides'::regclass and a.attnum>0 and not a.attisdropped;
+ for q in select * from shareholder_register_filing.migration_quarantine where family='filing_overrides' order by record_id loop
+  select array_agg(key order by key) into actual_keys from jsonb_object_keys(q.original_row) key;
+  if actual_keys is distinct from expected_keys or (q.original_row->>'id')::uuid is distinct from q.record_id
+  then raise exception 'rf1086_quarantined_generic_record_invalid'; end if;
+  if exists(select 1 from shareholder_register_filing.filing_overrides where id=q.record_id)
+  then raise exception 'rf1086_rollback_conflicting_projection'; end if;
+  select to_jsonb(p) into existing_row from public.filing_overrides p where id=q.record_id;
+  if existing_row is not null and existing_row is distinct from q.original_row
+  then raise exception 'rf1086_rollback_conflicting_projection'; end if;
+  if existing_row is null then insert into public.filing_overrides select * from jsonb_populate_record(null::public.filing_overrides,q.original_row); end if;
+ end loop;
+end; $restore_generic_quarantine$;
+
+
+insert into public.filing_review_comments(id,preview_id,company_id,target,severity,body,created_by,acknowledged_by,acknowledged_at,created_at) select r.id,r.preview_id,r.company_id,r.target,r.severity,r.body,r.created_by,r.acknowledged_by,r.acknowledged_at,r.created_at from shareholder_register_filing.filing_review_comments r on conflict(id) do update set id=excluded.id,preview_id=excluded.preview_id,company_id=excluded.company_id,target=excluded.target,severity=excluded.severity,body=excluded.body,created_by=excluded.created_by,acknowledged_by=excluded.acknowledged_by,acknowledged_at=excluded.acknowledged_at,created_at=excluded.created_at;
+do $restore_generic_quarantine$
+declare q record; existing_row jsonb; expected_keys text[]; actual_keys text[];
+begin
+ select array_agg(a.attname::text order by a.attname::text) into expected_keys from pg_catalog.pg_attribute a
+ where a.attrelid='public.filing_review_comments'::regclass and a.attnum>0 and not a.attisdropped;
+ for q in select * from shareholder_register_filing.migration_quarantine where family='filing_review_comments' order by record_id loop
+  select array_agg(key order by key) into actual_keys from jsonb_object_keys(q.original_row) key;
+  if actual_keys is distinct from expected_keys or (q.original_row->>'id')::uuid is distinct from q.record_id
+  then raise exception 'rf1086_quarantined_generic_record_invalid'; end if;
+  if exists(select 1 from shareholder_register_filing.filing_review_comments where id=q.record_id)
+  then raise exception 'rf1086_rollback_conflicting_projection'; end if;
+  select to_jsonb(p) into existing_row from public.filing_review_comments p where id=q.record_id;
+  if existing_row is not null and existing_row is distinct from q.original_row
+  then raise exception 'rf1086_rollback_conflicting_projection'; end if;
+  if existing_row is null then insert into public.filing_review_comments select * from jsonb_populate_record(null::public.filing_review_comments,q.original_row); end if;
+ end loop;
+end; $restore_generic_quarantine$;
+
+
+
 
 drop policy if exists "legacy_rf1086_approval_read" on shareholder_register_filing.filing_approval_snapshots;
 
@@ -523,6 +654,13 @@ CREATE TRIGGER company_archive_track_opening_balance_setups BEFORE INSERT OR DEL
 drop trigger if exists company_archive_track_opening_shareholders on public.opening_shareholders;
 
 CREATE TRIGGER company_archive_track_opening_shareholders BEFORE INSERT OR DELETE OR UPDATE ON public.opening_shareholders FOR EACH ROW EXECUTE FUNCTION public.company_archive_track_source_write_v1('company', 'company_id');
+
+do $restore_full_reverse_triggers$ declare t record; begin
+ for t in select * from rf151_full_reverse_triggers loop
+  execute pg_catalog.format('alter table %s %s trigger %I',t.relation,
+   case t.enabled when 'D' then 'disable' when 'A' then 'enable always' when 'R' then 'enable replica' else 'enable' end,t.name);
+ end loop;
+end; $restore_full_reverse_triggers$;
 
 revoke execute on function public.company_archive_track_source_write_v1() from postgres;
 

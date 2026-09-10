@@ -1,4 +1,5 @@
 export {
+  findRf1086Preview, acknowledgeOwnedRf1086Comment,
   loadRf1086Workspaces, loadRf1086ArchiveSource, loadRf1086Preview, generateRf1086PreviewThroughApi,
   recordRf1086OverrideThroughApi, addRf1086ReviewCommentThroughApi,
   acknowledgeRf1086ReviewCommentThroughApi, confirmRf1086SimulationThroughApi,

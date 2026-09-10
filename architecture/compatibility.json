@@ -120,7 +120,7 @@
     ],
     "currentCapability": "shareholder_register_filing",
     "currentIssue": "#151",
-    "status": "active",
+    "status": "exit-review",
     "exitedCapabilities": [
       "company_access",
       "ledger",
@@ -295,7 +295,7 @@
       "canonicalImplementation": "web:legacy-runtime:annual_compliance",
       "approvedBy": "Kristian Elmer",
       "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove annual compliance workspace persistence in #149.",
+      "removalCondition": "Remove each reattributed #151 sibling call when its last real source migrates, no later than the last filing cutover; #149 retains only its annual aggregation and final wrapper cleanup. Exact sixteen-entry decision 2026-09-10.",
       "scopes": [
         {
           "path": "apps/web/app/actions.ts",
@@ -314,24 +314,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_review_comments",
           "operation": "addFilingReviewComment"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:filing_overrides",
-          "operation": "confirmSimulatedRf1086Submission"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:filing_readiness_snapshots",
-          "operation": "confirmSimulatedRf1086Submission"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:filing_review_comments",
-          "operation": "confirmSimulatedRf1086Submission"
         },
         {
           "path": "apps/web/app/actions.ts",
@@ -404,23 +386,7 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:filing_review_comments",
           "operation": "listFilingReviewComments"
-        }
-      ]
-    },
-    {
-      "id": "compat-rf1086-persistence",
-      "kind": "legacy-facade",
-      "capability": "shareholder_register_filing",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
-      "removalIssue": "#151",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
-      "canonicalImplementation": "web:legacy-runtime:shareholder_register_filing",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove RF-1086 filing and feedback persistence in #151.",
-      "scopes": [
+        },
         {
           "path": "apps/web/app/actions.ts",
           "rule": "direct-web-business-persistence",
@@ -438,18 +404,6 @@
           "rule": "direct-web-business-persistence",
           "resource": "table:authority_permissions",
           "operation": "confirmAuthorityPermission"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:filing_previews",
-          "operation": "confirmSimulatedRf1086Submission"
-        },
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:filing_submissions",
-          "operation": "confirmSimulatedRf1086Submission"
         },
         {
           "path": "apps/web/app/actions.ts",
@@ -799,12 +753,6 @@
           "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
           "rule": "direct-web-business-persistence",
           "resource": "table:holding_actions",
-          "operation": "GET"
-        },
-        {
-          "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "table:opening_balance_setups",
           "operation": "GET"
         }
       ]

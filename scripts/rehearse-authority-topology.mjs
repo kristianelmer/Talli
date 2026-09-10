@@ -39,7 +39,8 @@ export async function rehearseAuthorityTopology({ direction, database, loadSql =
       state = await topology(database);
     }
     if (state.rf_owned || ![null, "v"].includes(state.authority_kind)) throw new Error("authority_overlap_topology_required");
-    await apply([...(state.authority_kind === null ? [`rollback/${CONTRACT}`] : []),
+    await apply([`rollback/${SIGNOFF_CONTRACT}`,
+      ...(state.authority_kind === null ? [`rollback/${CONTRACT}`] : []),
       `rollback/${RF}`, `rollback/${OPERATIONS}`, `rollback/${AUTHORITY}`]);
   } else {
     if (state.rf_owned || state.authority_kind !== "r") throw new Error("authority_predecessor_topology_required");

@@ -116,8 +116,9 @@ def test_review_comment_preserves_owner_reviewer_access_and_read_only_denial(db,
         assert db.execute('select count(*) from shareholder_register_filing.filing_review_comments where id=%s',(row['id'],)).fetchone()[0] == 1
 
 
+@pytest.mark.parametrize('reverse',[ROLLBACK,'supabase/rollback/20260909190955_shareholder_register_filing_contract.sql'])
 @pytest.mark.parametrize('family',['filing_review_comments','filing_overrides','filing_submissions'])
-def test_preview_quarantine_propagates_to_its_dependent_rows_without_abandoning_migration(db,family):
+def test_preview_quarantine_propagates_to_its_dependent_rows_without_abandoning_migration(db,family,reverse):
     company_id, owner=company(db)
     foreign_company,_=company(db,owner)
     preview_id=preview(db,company_id,owner,opening(db,foreign_company,owner))
@@ -132,6 +133,12 @@ def test_preview_quarantine_propagates_to_its_dependent_rows_without_abandoning_
     assert db.execute('select original_row from shareholder_register_filing.migration_quarantine where family=%s and record_id=%s',(family,record_id)).fetchone()[0]==original
     assert db.execute(sql.SQL('select count(*) from {} where id=%s').format(sql.Identifier(SCHEMA,family)),(record_id,)).fetchone()[0]==0
     assert db.execute(sql.SQL('select to_jsonb(t) from {} t where id=%s').format(sql.Identifier('public',family)),(record_id,)).fetchone()[0]==original
+    migration(db,CUTOVER);migration(db,CONTRACT)
+    assert not db.execute('select 1 from public.filing_previews where id=%s',(preview_id,)).fetchone()
+    assert not db.execute(sql.SQL('select 1 from {} where id=%s').format(sql.Identifier('public',family)),(record_id,)).fetchone()
+    migration(db,reverse)
+    assert db.execute(sql.SQL('select to_jsonb(t) from {} t where id=%s').format(sql.Identifier('public',family)),(record_id,)).fetchone()[0]==original
+    assert db.execute('select setup_id from public.filing_previews where id=%s',(preview_id,)).fetchone()[0] is not None
 
 
 def test_all_reverse_phases_preserve_retained_rows_and_replay(db):
@@ -323,7 +330,7 @@ def test_support_reads_current_rf_permission_and_new_test_after_contract_without
     assert tests[0]['test_reference'] == 'new-synthetic-post-contract'
     assert all(set(row) == {'id','company_id','obligation','environment','status','test_reference','recorded_at'} for row in tests)
     db.execute('reset role')
-    assert db.execute('select production_enabled from public.authority_permissions where id=%s', (ids['authority_permissions'],)).fetchone()[0] is False
+    assert db.execute('select production_enabled from public.authority_permissions where id=%s', (ids['authority_permissions'],)).fetchone() is None
     assert db.execute('select count(*) from public.authority_test_runs where id=%s', (test['id'],)).fetchone()[0] == 0
 
 
@@ -506,20 +513,54 @@ def test_split_opening_projection_waits_for_exact_ledger_bank_and_admits_scope_a
     assert db.execute('select count(*) from shareholder_register_filing.migration_inventory where company_id=%s and income_year=2026',(company_id,)).fetchone()[0]==12
 
 
-def test_contracted_legacy_rf_projection_rejects_direct_deletion(db):
+def test_contracted_legacy_rf_writer_cannot_recreate_a_projection(db):
     company_id,owner=company(db)
     preview_id=preview(db,company_id,owner,opening(db,company_id,owner))
     for path in (EXPAND,CUTOVER,CONTRACT):migration(db,path)
     with pytest.raises(psycopg.Error,match='rf1086_legacy_writer_retired'):
-        with db.transaction():db.execute('delete from public.filing_previews where id=%s',(preview_id,))
-    assert db.execute('select count(*) from public.filing_previews where id=%s',(preview_id,)).fetchone()[0]==1
+        with db.transaction():
+            insert(db,'public.filing_previews',id=preview_id,company_id=company_id,income_year=2025,
+                   filing='aksjonærregisteroppgaven',status='ready',preview='Forbidden mirror',created_by=owner)
+    assert db.execute('select count(*) from public.filing_previews where id=%s',(preview_id,)).fetchone()[0]==0
+
+
+@pytest.mark.parametrize('filing',['skattemelding for AS','arsregnskap'])
+@pytest.mark.parametrize('phase',[EXPAND,CUTOVER,CONTRACT])
+def test_sibling_review_comment_keeps_original_default_target_and_writer(db,filing,phase):
+    company_id,owner=company(db)
+    setup=opening(db,company_id,owner)
+    preview_id=uuid4()
+    insert(db,'public.filing_previews',id=preview_id,company_id=company_id,setup_id=setup,
+           income_year=2025,filing=filing,status='ready',preview='Sibling preview',created_by=owner)
+    migration(db,EXPAND)
+    if phase!=EXPAND:migration(db,CUTOVER)
+    if phase==CONTRACT:migration(db,CONTRACT)
+    bind(db,owner,company_id)
+    db.execute('set local role authenticated')
+    comment_id=uuid4()
+    insert(db,'public.filing_review_comments',id=comment_id,preview_id=preview_id,company_id=company_id,
+           target='rf1086_preview',severity='advisory',body='Original shared default',created_by=owner)
+    assert db.execute('select body from public.filing_review_comments where id=%s',(comment_id,)).fetchone()[0]=='Original shared default'
+    db.execute('reset role')
+    assert not db.execute('select 1 from shareholder_register_filing.filing_review_comments where id=%s',(comment_id,)).fetchone()
+    assert not db.execute('select 1 from shareholder_register_filing.migration_quarantine where record_id=%s',(comment_id,)).fetchone()
+
+
+def test_contract_removes_rf_generic_rows_without_losing_canonical_preview(db):
+    company_id,owner=company(db)
+    preview_id=preview(db,company_id,owner,opening(db,company_id,owner))
+    original=db.execute('select to_jsonb(p) from public.filing_previews p where id=%s',(preview_id,)).fetchone()[0]
+    for path in (EXPAND,CUTOVER,CONTRACT):migration(db,path)
+    assert not db.execute('select 1 from public.filing_previews where id=%s',(preview_id,)).fetchone()
+    bind(db,owner,company_id)
+    assert db.execute('select to_jsonb(p) from shareholder_register_filing.filing_previews p where id=%s',(preview_id,)).fetchone()[0]==original
 
 
 def test_frozen_projection_fixture_cleanup_restores_trigger_modes_on_success_and_rollback(db):
     from test_rf1086_database_runtime import delete_legacy_fixture_projections
     company_id,owner=company(db)
     preview_id=preview(db,company_id,owner,opening(db,company_id,owner))
-    for path in (EXPAND,CUTOVER,CONTRACT):migration(db,path)
+    for path in (EXPAND,CUTOVER):migration(db,path)
     def modes():
         return db.execute("select t.tgrelid,t.tgname,t.tgenabled from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and not t.tgisinternal order by 1,2").fetchall()
     original=modes()
@@ -611,3 +652,91 @@ def test_bank_only_record_advances_archive_generation_and_rollback_restores_it(d
     migration(db,ROLLBACK)
     assert db.execute("select to_regclass('ledger.opening_bank_inputs')").fetchone()[0] is None
     assert str(db.execute('select bank_balance from public.opening_balance_setups where id=%s',(snapshot,)).fetchone()[0])=='123.45'
+
+
+@pytest.mark.parametrize('reverse',[ROLLBACK,'supabase/rollback/20260909190955_shareholder_register_filing_contract.sql'])
+def test_six_generic_families_retire_restore_and_recutover_without_sibling_or_archive_changes(db,reverse):
+    company_id,owner=company(db)
+    setup=opening(db,company_id,owner)
+    families=['filing_previews','authority_permissions','authority_test_runs','filing_submissions','filing_overrides','filing_review_comments']
+    for filing,obligation in [('aksjonærregisteroppgaven','aksjonaerregisteroppgaven'),('skattemelding for AS','skattemelding'),('årsregnskap','aarsregnskap')]:
+        p,t=uuid4(),uuid4()
+        insert(db,'public.filing_previews',id=p,company_id=company_id,setup_id=setup,income_year=2025,filing=filing,status='ready',preview='Retained '+filing,created_by=owner)
+        insert(db,'public.authority_permissions',id=uuid4(),company_id=company_id,obligation=obligation,submitter_user_id=owner,confirmed_by=owner,production_enabled=True)
+        insert(db,'public.authority_test_runs',id=t,company_id=company_id,obligation=obligation,environment='manual_evidence',status='accepted',test_reference='Original evidence',recorded_by=owner)
+        insert(db,'public.filing_submissions',id=uuid4(),setup_id=setup,company_id=company_id,income_year=2025,filing=filing,mode='test_authority',adapter_mode='test_authority',status='receipt_stored',authority_test_run_id=t,created_by=owner)
+        insert(db,'public.filing_overrides',id=uuid4(),preview_id=p,company_id=company_id,income_year=2025,filing=filing,field_target='original.field',old_value='before',new_value='after',reason='Retained reason',risk_level='warning',owner_confirmed_by=owner,owner_confirmed_at=db.execute('select now()').fetchone()[0],created_by=owner)
+        insert(db,'public.filing_review_comments',id=uuid4(),preview_id=p,company_id=company_id,target='rf1086_preview',severity='advisory',body='Original review',created_by=owner)
+    def rows(schema,n):
+        return db.execute(sql.SQL('select to_jsonb(p) from {} p where company_id=%s order by id').format(sql.Identifier(schema,n)),(company_id,)).fetchall()
+    originals={n:rows('public',n) for n in families}
+    migration(db,EXPAND);migration(db,CUTOVER)
+    siblings={n:db.execute(sql.SQL("select to_jsonb(p) from {} p where company_id=%s and shareholder_register_filing.classify_legacy_row_v1(%s,to_jsonb(p))='sibling' order by id").format(sql.Identifier('public',n)),(company_id,n)).fetchall() for n in families}
+    def generations():return db.execute('select to_jsonb(g) from public.company_archive_source_generations g where company_id=%s order by income_year',(company_id,)).fetchall()
+    before=generations()
+    migration(db,CONTRACT)
+    assert generations()==before
+    for n in families:assert rows('public',n)==siblings[n]
+    # The contracted catalog contains no dormant public writer/mirror branch.
+    for name in ['insert_preparation_row_v1','acknowledge_review_comment_v1','confirm_filing_permission_v1','record_simulation_v1','sync_legacy_projection_v1']:
+        body=db.execute("select prosrc from pg_proc where pronamespace='shareholder_register_filing'::regnamespace and proname=%s",(name,)).fetchone()[0]
+        assert 'legacy_overlap' not in body
+        assert 'update public.' not in body
+    migration(db,reverse)
+    assert generations()==before
+    for n in families:assert rows('public',n)==originals[n]
+    if reverse==ROLLBACK:migration(db,EXPAND);migration(db,CUTOVER)
+    migration(db,CONTRACT)
+    for n in families:assert rows('public',n)==siblings[n]
+
+
+@pytest.mark.parametrize('reverse',[ROLLBACK,'supabase/rollback/20260909190955_shareholder_register_filing_contract.sql'])
+def test_conflicting_override_is_quarantined_retired_and_restored_exactly(db,reverse):
+    company_id,owner=company(db)
+    p=uuid4();setup=opening(db,company_id,owner)
+    insert(db,'public.filing_previews',id=p,company_id=company_id,setup_id=setup,income_year=2025,filing='skattemelding for AS',status='ready',preview='Sibling',created_by=owner)
+    oid=uuid4()
+    insert(db,'public.filing_overrides',id=oid,preview_id=p,company_id=company_id,income_year=2025,filing='skattemelding for AS',field_target='rf1086.conflict',old_value='before',new_value='after',reason='Conflicting original evidence',risk_level='block',owner_confirmed_by=owner,owner_confirmed_at=db.execute('select now()').fetchone()[0],created_by=owner)
+    original=db.execute('select to_jsonb(o) from public.filing_overrides o where id=%s',(oid,)).fetchone()[0]
+    migration(db,EXPAND);migration(db,CUTOVER);migration(db,CONTRACT)
+    assert db.execute('select original_row from shareholder_register_filing.migration_quarantine where record_id=%s',(oid,)).fetchone()[0]==original
+    assert not db.execute('select 1 from public.filing_overrides where id=%s',(oid,)).fetchone()
+    bind(db,owner,company_id)
+    assert db.execute('select shareholder_register_filing.read_migration_inventory_v1(%s,2025)',(company_id,)).fetchone()[0]['quarantined_count']==1
+    db.execute('reset role');migration(db,reverse)
+    assert db.execute('select to_jsonb(o) from public.filing_overrides o where id=%s',(oid,)).fetchone()[0]==original
+
+
+@pytest.mark.parametrize('reverse',[ROLLBACK,'supabase/rollback/20260909190955_shareholder_register_filing_contract.sql'])
+def test_reverse_refuses_same_id_sibling_instead_of_overwriting_it(db,reverse):
+    company_id,owner=company(db);setup=opening(db,company_id,owner)
+    p=preview(db,company_id,owner,setup)
+    for path in (EXPAND,CUTOVER,CONTRACT):migration(db,path)
+    insert(db,'public.filing_previews',id=p,company_id=company_id,setup_id=setup,income_year=2025,filing='skattemelding for AS',status='ready',preview='Must survive collision',created_by=owner)
+    before=db.execute('select to_jsonb(p) from public.filing_previews p where id=%s',(p,)).fetchone()[0]
+    with pytest.raises(psycopg.Error,match='rf1086_rollback_conflicting_projection'):
+        with db.transaction():migration(db,reverse)
+    assert db.execute('select to_jsonb(p) from public.filing_previews p where id=%s',(p,)).fetchone()[0]==before
+    assert db.execute('select phase from shareholder_register_filing.migration_state').fetchone()[0]=='contracted'
+
+
+@pytest.mark.parametrize('reverse',[ROLLBACK,'supabase/rollback/20260909190955_shareholder_register_filing_contract.sql'])
+@pytest.mark.parametrize('corruption',['missing_key','extra_key','wrong_id'])
+def test_reverse_rejects_malformed_generic_quarantine_atomically(db,reverse,corruption):
+    company_id,owner=company(db);foreign,_=company(db,owner)
+    p=preview(db,company_id,owner,opening(db,foreign,owner))
+    for path in (EXPAND,CUTOVER,CONTRACT):migration(db,path)
+    row=db.execute("select original_row from shareholder_register_filing.migration_quarantine where family='filing_previews' and record_id=%s",(p,)).fetchone()[0]
+    if corruption=='missing_key':row.pop('preview')
+    elif corruption=='extra_key':row['invented_field']='not part of the captured schema'
+    else:row['id']=str(uuid4())
+    db.execute("update shareholder_register_filing.migration_quarantine set original_row=%s where family='filing_previews' and record_id=%s",(Jsonb(row),p))
+    before=original_boundary(db)
+    generations=db.execute('select to_jsonb(g) from public.company_archive_source_generations g order by company_id,income_year').fetchall()
+    with pytest.raises(psycopg.Error,match='rf1086_quarantined_generic_record_invalid'):
+        with db.transaction():migration(db,reverse)
+    assert original_boundary(db)==before
+    assert db.execute('select phase from shareholder_register_filing.migration_state').fetchone()[0]=='contracted'
+    assert db.execute("select to_regclass('public.opening_balance_setups')").fetchone()[0] is None
+    assert not db.execute('select 1 from public.filing_previews where id=%s',(p,)).fetchone()
+    assert db.execute('select to_jsonb(g) from public.company_archive_source_generations g order by company_id,income_year').fetchall()==generations

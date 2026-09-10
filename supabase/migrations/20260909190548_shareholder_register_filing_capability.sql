@@ -198,6 +198,17 @@ begin
     candidate:=row_data->>'obligation'='aksjonaerregisteroppgaven';
   elsif family='filing_review_comments' then candidate:=row_data->>'target'='rf1086_preview';
   else raise exception 'rf1086_unknown_migration_family'; end if;
+  -- The shared predecessor UI used this target for every obligation. The
+  -- referenced preview, with matching company, determines a comment's owner.
+  if family='filing_review_comments' then
+    select pg_catalog.to_jsonb(v) into p from public.filing_previews v where v.id=(row_data->>'preview_id')::uuid;
+    if p is not null and not shareholder_register_filing.is_rf_label_v1(p->>'filing') then
+      return case when p->>'company_id'=row_data->>'company_id' then 'sibling' else 'quarantine' end;
+    end if;
+  end if;
+  -- Conflicting labels/field targets cannot attest complete RF readiness.
+  if family='filing_overrides' and not candidate and row_data->>'field_target' like 'rf1086.%'
+  then return 'quarantine'; end if;
   if family in ('filing_submissions','filing_overrides','filing_review_comments') and row_data->>'preview_id' is not null then
     select pg_catalog.to_jsonb(v) into p from public.filing_previews v where v.id=(row_data->>'preview_id')::uuid;
     if p is not null and shareholder_register_filing.is_rf_label_v1(p->>'filing') then
@@ -2097,6 +2108,9 @@ end; $function$;
 alter function shareholder_register_filing.opening_ids_v1(uuid,integer) owner to shareholder_register_filing_store_owner;
 revoke all on function shareholder_register_filing.opening_ids_v1(uuid,integer) from public,anon,authenticated,service_role;
 grant execute on function shareholder_register_filing.opening_ids_v1(uuid,integer) to postgres;
+-- The technical inventory reader owns only migration evidence and still calls
+-- the RF owner's verified-member check before reading that evidence.
+grant execute on function shareholder_register_filing.assert_member_v1(uuid) to postgres;
 -- Runtime receives only the immutable scoped attestation; it cannot fabricate it.
 create function shareholder_register_filing.read_migration_inventory_v1(p_company_id uuid,p_income_year integer)
 returns jsonb language plpgsql stable security definer set search_path='' as $function$

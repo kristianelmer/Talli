@@ -477,7 +477,10 @@
       "supabase/migrations/20260829074916_validation_observation_authority.sql",
       "supabase/migrations/20260829080345_marketing_measurement_consent_proof.sql",
       "supabase/migrations/20260909120610_authority_connections_capability.sql",
-      "supabase/migrations/20260909124946_backend_system_launch_signoffs.sql"
+      "supabase/migrations/20260909124946_backend_system_launch_signoffs.sql",
+      "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql",
+      "supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql",
+      "supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },

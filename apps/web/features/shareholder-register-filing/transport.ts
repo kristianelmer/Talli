@@ -67,6 +67,21 @@ export async function loadRf1086Preview(accessToken: string, previewId: string) 
   return result;
 }
 
+function isMissingRfRecord(error: unknown) {
+  return error instanceof TalliApiError && error.status === 404
+    && error.problem?.code === "SHAREHOLDER_REGISTER_FILING_NOT_FOUND";
+}
+
+export async function findRf1086Preview(accessToken: string, previewId: string) {
+  try { return await loadRf1086Preview(accessToken, previewId); }
+  catch (error) { if (isMissingRfRecord(error)) return null; throw error; }
+}
+
+export async function acknowledgeOwnedRf1086Comment(accessToken: string, commentId: string) {
+  try { return await acknowledgeRf1086ReviewCommentThroughApi(accessToken, { commentId }); }
+  catch (error) { if (isMissingRfRecord(error)) return null; throw error; }
+}
+
 export async function generateRf1086PreviewThroughApi(accessToken: string, body: Rf1086GeneratePreviewWire) {
   return recorded(await client(accessToken).rf1086GeneratePreview(body, request()), body.companyId);
 }

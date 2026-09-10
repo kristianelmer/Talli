@@ -487,11 +487,13 @@ const predecessor={rf_owned:false,authority_kind:'r',ledger_kind:'v',ledger_setu
 const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`];
 const workspaceForward=forward.filter(path=>path!==`contract-migrations/${AUC}`);
 function fake(initial,{fail,noEffect=false}={}) {
- const state={...initial},executed=[];
- return {executed,database:{async query(sql) {
+ const state={signoff_open:true,...initial},executed=[];
+ return {state,executed,database:{async query(sql) {
   if(sql.startsWith('select\n')) return {rows:[{...state}]};
   executed.push(sql); if(sql===fail) throw new Error('synthetic_dependency_failure');
   if(!noEffect){
+   if(sql===`contract-migrations/${SIGN}`){if(!state.signoff_open)throw new Error('launch_signoff_policy_missing');state.signoff_open=false;}
+   if(sql===`rollback/${SIGN}`)state.signoff_open=true;
    if(sql===`rollback/${RFX}`){state.rf_owned=false;state.opening_kind='r';}
    if(sql===`rollback/${AUC}`)state.authority_kind='v';
    if(sql===`rollback/${AU}`)state.authority_kind='r';
@@ -507,9 +509,14 @@ const run=(direction,fixture)=>rehearseAuthorityTopology({direction,database:fix
 for(const authority_kind of ['v',null]) for(const rf_owned of [false,true]) {
  test(`rollback RF=${rf_owned} AU=${authority_kind} restores dependency order`,async()=>{
   const fixture=fake({...predecessor,authority_kind,rf_owned});await run('rollback',fixture);
-  assert.deepEqual(fixture.executed,[...(rf_owned?[`rollback/${RFX}`]:[]),...(authority_kind===null?[`rollback/${AUC}`]:[]),`rollback/${RF}`,`rollback/${OP}`,`rollback/${AU}`]);
+  assert.deepEqual(fixture.executed,[...(rf_owned?[`rollback/${RFX}`]:[]),`rollback/${SIGN}`,...(authority_kind===null?[`rollback/${AUC}`]:[]),`rollback/${RF}`,`rollback/${OP}`,`rollback/${AU}`]);
  });
 }
+test('workspace rollback followed by final recutover restores signoff policy topology',async()=>{
+ const f=fake(predecessor);await run('workspace',f);await run('rollback',f);
+ f.state.ledger_kind=null;f.state.ledger_setup=false;
+ await run('recutover',f);assert.equal(f.state.signoff_open,false);
+});
 test('RF rollback failure prevents all predecessor mutations',async()=>{
  const f=fake({...predecessor,rf_owned:true,authority_kind:null},{fail:`rollback/${RFX}`});
  await assert.rejects(run('rollback',f),/synthetic_dependency_failure/);assert.deepEqual(f.executed,[`rollback/${RFX}`]);

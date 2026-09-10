@@ -4,7 +4,7 @@
   "source": "https://github.com/kristianelmer/Talli/issues/151",
   "sourceCheckedAt": "2026-09-09T18:58:36Z",
   "status": "implementation-in-progress-exit-verification-pending",
-  "notice": "RF implementation remains in progress. Exact original historical TT02 payload regeneration and focused final-schema, HTTP, historical browser, fixture restoration and build checks pass; full criterion evidence, complete gates and protected integration remain open.",
+  "notice": "Exact approved sixteen-entry amendment implemented; fresh owner browser and focused SQL retirement/rollback/security regressions pass. Immutable complete gates and protected integration remain open.",
   "entryBlockers": [
     {
       "issue": "#150",
@@ -79,24 +79,24 @@
     "route": "#151 -> #146 -> #152 -> #153 -> #193 [RF -> tax -> accounts] -> #149 -> #208 -> #192 final -> #194",
     "approvedNow": "RF semantics/row ownership, public contracts, canonical backend rules, normal reversible migration and exact behavior-preserving dependency query; start only after normal entry. Do not migrate sibling rules/annual aggregation/audit/notifications.",
     "pendingException": {
-      "status": "PENDING_OWNER_DECISION",
+      "status": "APPROVED_IMPLEMENTED_COMPLETE_GATES_PENDING",
       "proposal": "architecture/evidence/issues/151/compatibility-amendment-v2-proposal.md",
       "proposalDigest": "sha256:37472588213825c948c4a4870e9df7396b10aa273e9d1c5118db929d9149b09a",
       "scope": "architecture/evidence/issues/151/compatibility-amendment-v2-inventory.json",
       "scopeDigest": "sha256:698439251dbba00606c04ea9599032db5f3a082a14946ad4cb1beef24d121c28",
       "inventoryDigest": "sha256:698439251dbba00606c04ea9599032db5f3a082a14946ad4cb1beef24d121c28",
-      "approvalEvidence": null,
+      "approvalEvidence": "architecture/evidence/issues/151/compatibility-amendment-v2-decision.json",
       "counts": {
         "mixedTupleReattributions": 12,
         "futureReadDeletions": 4,
         "adjacentAuditCallsUnchanged": 8,
         "adjacentNotificationCallsUnchanged": 2
       },
-      "restriction": "No dependent tuple reattribution/deletion or checker exception until affirmative exact approval. Pending bookkeeping does not block independent already-approved semantic work after normal entry.",
+      "restriction": "Exact sixteen-entry revision-2 amendment approved 2026-09-10; implement only the bound scope with preserved effects and expiry. Full stage acceptance remains required.",
       "expiry": "Each retained tuple leaves when last real sibling source migrates, no later than last filing cutover; #149 is not blanket retention authority.",
       "inventory": "architecture/evidence/issues/151/compatibility-amendment-v2-inventory.json",
       "independentReview": "architecture/evidence/issues/151/compatibility-amendment-v2-independent-review.md",
-      "publicationNote": "Revision2 supersedes the pending15-entry question with exactly one split-resource archive retirement. The original15proposal and inventory remain unchanged. No dependent exception implemented or approved.",
+      "publicationNote": "Revision2 approved by exact reply in handoff destination; original proposals and bound inventories remain unchanged as historical decision inputs.",
       "previousFifteenTupleProposal": {
         "proposal": "architecture/evidence/issues/151/compatibility-amendment-proposal.md",
         "proposalDigest": "sha256:3cc58e95162e6cd52328a075019419e1005f9ca8794eda1811b77fc30ae50d40",
@@ -219,7 +219,7 @@
         "npm run check:architecture",
         "npm run test:architecture"
       ],
-      "expectedResult": "One owned implementation/writer; shareholder fields and RF generic rows migrated without sibling/ledger/foreign-owner acquisition; both web Python bridges and duplicate TS rules removed, frozen RF backend compatibility absorbed, RF tool calls canonical generator, obsolete authority contracted, temporary parity/allowlist debt removed. Baseline stays byte-identical. Exact pending16scope exception only if approved.",
+      "expectedResult": "One owned implementation/writer; shareholder fields and RF generic rows migrated without sibling/ledger/foreign-owner acquisition; both web Python bridges and duplicate TS rules removed, frozen RF backend compatibility absorbed, RF tool calls canonical generator, obsolete authority contracted, temporary parity/allowlist debt removed. Baseline stays byte-identical. Exact approved sixteen-entry amendment only; preserve all sibling effects and expiry.",
       "newEvidence": [
         "architecture/evidence/issues/151/implementation-checkpoint.md"
       ]
@@ -372,6 +372,12 @@
       "state": "focused-final-schema-and-historical-replay-pass",
       "qualifiesAsCompleteImmutableGate": false,
       "limit": "Updated108 mandatoryDB cases pass without skips; preceding699 PythonBilling +1 NodeBilling pass with disclosed fixture-clock corrections. Final feedback/schema22, real-auth openingHTTP5 and historicalbrowser1 pass. Historical broaderbackend2808pass2existingoptionalskips and exactTT02 reproduction remain. Retainedworkspace, webboundary, contractchecks, bothbuilds and installedpackagesmoke pass. Fresh RF fixture safety11 and shared cleanup/onboarding/restoration checks pass; the full fresh owner flow, pending16-entry exception, full gates and integration remain open."
+    },
+    {
+      "evidence": "architecture/evidence/issues/151/approved-amendment-verification.md",
+      "state": "approved-amendment-and-exit-corrections-focused-verification",
+      "qualifiesAsCompleteImmutableGate": false,
+      "limit": "Finite approved amendment, independently found SQL retirement/classification/rollback corrections, and complete fresh owner browser have focused passing evidence. Full gates and protected integration remain pending."
     }
   ],
   "predecessorEvidence": {

@@ -161,6 +161,84 @@ const LEGACY_ACQUISITION_RETIREMENT_AMENDMENT = Object.freeze({
     "compat-annual-compliance-persistence\0annual_compliance\0#149\0table:filing_readiness_snapshots\0requestFilingPackagePayment",
   ]),
 });
+// ADR0013: exact sixteen-entry decision, 2026-09-10. These identities are
+// deliberately finite; the immutable baseline remains the source of counts.
+const RF_COMPATIBILITY_AMENDMENT = Object.freeze({
+  capability: "shareholder_register_filing",
+  sourceRecord: "compat-rf1086-persistence",
+  targetRecord: "compat-annual-compliance-persistence",
+  handoffs: new Set([
+    "apps/web/app/actions.ts\0direct-web-business-persistence\0table:filing_previews\0addFilingOverride",
+    "apps/web/app/actions.ts\0direct-web-business-persistence\0table:filing_previews\0addFilingReviewComment",
+    "apps/web/app/actions.ts\0direct-web-business-persistence\0table:authority_permissions\0confirmAuthorityPermission",
+    "apps/web/app/actions.ts\0direct-web-business-persistence\0table:authority_test_runs\0recordAuthorityTestEvidence",
+    "apps/web/app/actions.ts\0direct-web-business-persistence\0table:filing_submissions\0queueDeadlineReminders",
+    "apps/web/app/actions.ts\0direct-web-business-persistence\0table:authority_permissions\0refreshAnnualReadinessSnapshots",
+    "apps/web/app/actions.ts\0direct-web-business-persistence\0table:filing_previews\0refreshAnnualReadinessSnapshots",
+    "apps/web/app/actions.ts\0direct-web-business-persistence\0table:filing_submissions\0refreshAnnualReadinessSnapshots",
+    "apps/web/app/lib/supabase/server.ts\0direct-web-business-persistence\0table:authority_permissions\0listAuthorityPermissions",
+    "apps/web/app/lib/supabase/server.ts\0direct-web-business-persistence\0table:authority_test_runs\0listAuthorityTestRuns",
+    "apps/web/app/lib/supabase/server.ts\0direct-web-business-persistence\0table:filing_previews\0listFilingPreviews",
+    "apps/web/app/lib/supabase/server.ts\0direct-web-business-persistence\0table:filing_submissions\0listFilingSubmissions",
+  ]),
+  simulationResources: new Set([
+    "table:filing_overrides", "table:filing_review_comments", "table:filing_readiness_snapshots",
+    "table:filing_previews", "table:filing_submissions",
+  ]),
+});
+// Pin the bounded RF compositions as well as their unchanged sibling chains.
+// A new behavior change must not inherit permission merely by keeping counts.
+const RF_COMPOSITION_DIGESTS = new Map([
+  [
+    "apps/web/app/actions.ts\u0000addFilingOverride",
+    "sha256:5a920b5d97a6d2f874e09926040e0b890cbfe452b5674379b387150f47d4dabd"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000addFilingReviewComment",
+    "sha256:d1e8bab2c1e3b0a2cfed27ac08f247477abbce64a2ee4606e4b33f59b5398f5b"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000acknowledgeFilingReviewComment",
+    "sha256:85513413b66ec74e6a3f8d9a7993114815dd9b4eb6bde31109d618d8e78277d2"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000confirmAuthorityPermission",
+    "sha256:1881b07830624aea2ee4a71e603fe43222efada2a60eeab2e97076e8edc4291a"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000recordAuthorityTestEvidence",
+    "sha256:8c9514d17ad0c60a2dbadf7536dc517d892d99e6a57c6929faad5ba4494416ff"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000queueDeadlineReminders",
+    "sha256:061d50fd1577a49ddb30f2dc6eda0d5890be70620c16f05f7d84431d26e308be"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000refreshAnnualReadinessSnapshots",
+    "sha256:f743d27da07334b19d34b27a33e32821a64e988bf86a8ab75af77230e6ee0afc"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000confirmSimulatedRf1086Submission",
+    "sha256:e9852ccb1c7bc83176019898d8ce6a0ecab96d9b1b3af5954c2fe2579912ceb0"
+  ],
+  [
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts\u0000GET",
+    "sha256:ee842cde4213510412ce1ae636f76c5844541dfeb8e47cfcea3a42f285cfb151"
+  ]
+]);
+function rfAmendmentRead(record, scope) {
+  if (scope.rule !== "direct-web-business-persistence") return false;
+  return (record.id === "compat-annual-compliance-persistence"
+    && record.capability === "annual_compliance" && record.removalIssue === "#149"
+    && scope.path === "apps/web/app/actions.ts"
+    && scope.operation === "confirmSimulatedRf1086Submission"
+    && ["table:filing_overrides", "table:filing_review_comments", "table:filing_readiness_snapshots"].includes(scope.resource))
+    || (record.id === "compat-company-archive-persistence"
+      && record.capability === "company_archive" && record.removalIssue === "#157"
+      && scope.path === "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts"
+      && scope.operation === "GET" && scope.resource === "table:opening_balance_setups");
+}
+
 function isBackendModule(manifest) {
   return ["backend-capability", "backend-technical-module"].includes(manifest.kind);
 }
@@ -408,6 +486,8 @@ function legacyOperationAnalysis(source, path, operationName) {
   const operation = matches[0];
   const resourceOccurrences = new Map();
   const persistenceOccurrences = new Map();
+  const persistenceChains = new Map();
+  const printer = ts.createPrinter({ removeComments: true });
   function countResource(node) {
     if (ts.isCallExpression(node)
       && (ts.isPropertyAccessExpression(node.expression)
@@ -419,12 +499,10 @@ function legacyOperationAnalysis(source, path, operationName) {
           ? access.argumentExpression.text
           : undefined;
       const argument = node.arguments[0];
-      if (["from", "rpc"].includes(name)
-        && argument
-        && (ts.isStringLiteralLike(argument) || ts.isIdentifier(argument))) {
+      if (["from", "rpc"].includes(name) && argument) {
         const resourceName = ts.isStringLiteralLike(argument)
           ? argument.text
-          : stringConstants.get(argument.text);
+          : ts.isIdentifier(argument) ? stringConstants.get(argument.text) : undefined;
         const receiver = access.expression;
         const storage = name === "from"
           && ts.isPropertyAccessExpression(receiver)
@@ -433,15 +511,27 @@ function legacyOperationAnalysis(source, path, operationName) {
         const resource = resourceName === undefined
           ? `${resourceKind}:*`
           : `${resourceKind}:${resourceName}`;
-        resourceOccurrences.set(resource, (resourceOccurrences.get(resource) ?? 0) + 1);
         const standardLibraryFrom = name === "from"
           && ts.isIdentifier(receiver)
           && ["Array", "Buffer"].includes(receiver.text);
+        // Preserve the immutable baseline proof algorithm, including its literal
+        // identifier counts. Strict deletion analysis below also sees dynamic
+        // expressions and excludes standard-library conversions.
+        if (ts.isStringLiteralLike(argument) || ts.isIdentifier(argument)) {
+          resourceOccurrences.set(resource, (resourceOccurrences.get(resource) ?? 0) + 1);
+        }
         if (!standardLibraryFrom) {
           persistenceOccurrences.set(
             resource,
             (persistenceOccurrences.get(resource) ?? 0) + 1,
           );
+          let chain = node;
+          while ((ts.isPropertyAccessExpression(chain.parent) || ts.isElementAccessExpression(chain.parent))
+            && chain.parent.expression === chain && ts.isCallExpression(chain.parent.parent)
+            && chain.parent.parent.expression === chain.parent) chain = chain.parent.parent;
+          const chains = persistenceChains.get(resource) ?? [];
+          chains.push(printer.printNode(ts.EmitHint.Unspecified, chain, sourceFile));
+          persistenceChains.set(resource, chains);
         }
       }
     }
@@ -453,6 +543,7 @@ function legacyOperationAnalysis(source, path, operationName) {
     sourceDigest: `sha256:${createHash("sha256").update(operation.getText(sourceFile)).digest("hex")}`,
     resourceOccurrences,
     persistenceOccurrences,
+    persistenceChains,
   };
 }
 
@@ -1851,9 +1942,49 @@ export function validateCompatibilityRegistry(path, {
         compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation)
       ))),
   );
+  const rfStageIndex = stageIndexes.get(RF_COMPATIBILITY_AMENDMENT.capability);
+  const rfAmendmentAvailable = rfStageIndex !== undefined && currentStageIndex >= rfStageIndex;
+  const rfCompleted = exitedCapabilities.has(RF_COMPATIBILITY_AMENDMENT.capability);
+  const rfSourceRecord = baselineById.get(RF_COMPATIBILITY_AMENDMENT.sourceRecord);
+  const rfHandoffScopes = new Map((rfSourceRecord?.scopes ?? []).filter((scope) => (
+    RF_COMPATIBILITY_AMENDMENT.handoffs.has(compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation))
+  )).map((scope) => [compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation), scope]));
+  const rfTarget = registry.records.find((record) => record.id === RF_COMPATIBILITY_AMENDMENT.targetRecord);
+  const reattributedRfScopes = (rfTarget?.scopes ?? []).filter((scope) => (
+    RF_COMPATIBILITY_AMENDMENT.handoffs.has(compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation))
+  ));
+  if (reattributedRfScopes.length) {
+    if (!rfAmendmentAvailable) errors.push("RF compatibility amendment is authorized only at #151 or later");
+    if (rfSourceRecord?.capability !== "shareholder_register_filing" || rfSourceRecord?.removalIssue !== "#151"
+      || rfHandoffScopes.size !== 12 || [...rfHandoffScopes.values()].some((scope) => scope.occurrences !== 1)) {
+      errors.push("RF compatibility amendment requires the exact twelve original single-call tuples");
+    }
+    const uniqueHandoffs = new Set(reattributedRfScopes.map((scope) =>
+      compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation)));
+    if (uniqueHandoffs.size !== reattributedRfScopes.length) errors.push("RF compatibility amendment contains duplicate handoff tuples");
+    if (!rfCompleted && uniqueHandoffs.size !== 12) {
+      errors.push("RF compatibility amendment must reattribute all twelve tuples at RF cutover");
+    }
+    if (registry.records.some((record) => record.id === RF_COMPATIBILITY_AMENDMENT.sourceRecord
+      && record.scopes.some((scope) => RF_COMPATIBILITY_AMENDMENT.handoffs.has(
+        compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation))))) {
+      errors.push("RF compatibility amendment cannot retain duplicate source attribution");
+    }
+    if (exitedCapabilities.has("annual_accounts_filing")
+      || (currentCapability === "annual_accounts_filing" && registry.migration.status === "exit-review")) {
+      errors.push("RF residual sibling tuples must retire by the last filing cutover");
+    }
+  }
   const removedFrozenScopes = [...frozenScopeOwners]
     .filter(([scopeKey]) => !activeLegacyScopeKeys.has(scopeKey))
-    .map(([, ownedScope]) => ownedScope);
+    .map(([, ownedScope]) => {
+      const key = compatibilityScopeKey(ownedScope.scope.path, ownedScope.scope.rule, ownedScope.scope.resource, ownedScope.scope.operation);
+      if (rfCompleted && ownedScope.record.id === RF_COMPATIBILITY_AMENDMENT.sourceRecord
+        && RF_COMPATIBILITY_AMENDMENT.handoffs.has(key)) {
+        return { record: baselineById.get(RF_COMPATIBILITY_AMENDMENT.targetRecord), scope: ownedScope.scope };
+      }
+      return ownedScope;
+    });
   const removedScopesByOperation = new Map();
   for (const removed of removedFrozenScopes) {
     const operationKey = compatibilityOperationKey(removed.scope.path, removed.scope.operation);
@@ -2012,6 +2143,32 @@ export function validateCompatibilityRegistry(path, {
     currentOperationAnalyses.set(operationKey, analysis);
     return analysis;
   };
+  const removedRfReads = removedFrozenScopes.filter(({ record, scope }) => rfAmendmentRead(record, scope));
+  const rfSimulationRemoved = removedRfReads.some(({ scope }) => scope.operation === "confirmSimulatedRf1086Submission");
+  let rfSimulationAtomic = false;
+  if (rfSimulationRemoved) {
+    const operationKey = compatibilityOperationKey("apps/web/app/actions.ts", "confirmSimulatedRf1086Submission");
+    const removed = removedScopesByOperation.get(operationKey) ?? [];
+    rfSimulationAtomic = [...RF_COMPATIBILITY_AMENDMENT.simulationResources].every((resource) => (
+      removed.some(({ record, scope }) => scope.resource === resource
+        && (rfAmendmentRead(record, scope) || (record.id === RF_COMPATIBILITY_AMENDMENT.sourceRecord
+          && record.capability === "shareholder_register_filing" && record.removalIssue === "#151")))
+    ));
+    if (!rfSimulationAtomic) errors.push("RF compatibility amendment must retire all five simulation tuples atomically");
+  }
+  if (rfAmendmentAvailable && sourceRegistry) {
+    for (const { scope } of removedRfReads) {
+      const key = compatibilityOperationKey(scope.path, scope.operation);
+      const retainedSiblings = (frozenScopesByOperation.get(key) ?? []).some((item) => activeLegacyScopeKeys.has(
+        compatibilityScopeKey(item.path, item.rule, item.resource, item.operation)));
+      if (retainedSiblings && currentOperationAnalysis(scope)?.sourceDigest !== RF_COMPOSITION_DIGESTS.get(key)) {
+        errors.push(`RF compatibility amendment retirement differs from its bounded composition: ${operationLabel(key)}`);
+      }
+    }
+  }
+  if (removedRfReads.length && !rfAmendmentAvailable) {
+    errors.push("RF compatibility amendment read retirement is authorized only at #151 or later");
+  }
   const acquisitionRetirementScopes = removedFrozenScopes.filter(({ record, scope }) => (
     LEGACY_ACQUISITION_RETIREMENT_AMENDMENT.scopes.has(
       acquisitionRetirementScopeKey(record, scope),
@@ -2090,6 +2247,35 @@ export function validateCompatibilityRegistry(path, {
     }
     return true;
   };
+  const rfCompositionOperations = new Set();
+  if (rfAmendmentAvailable && reattributedRfScopes.length) {
+    const approvedOperations = new Set([
+      ...[...RF_COMPATIBILITY_AMENDMENT.handoffs].map((key) => {
+        const [path, , , operation] = key.split("\0");
+        return compatibilityOperationKey(path, operation);
+      }),
+      compatibilityOperationKey("apps/web/app/actions.ts", "acknowledgeFilingReviewComment"),
+    ]);
+    for (const operationKey of approvedOperations) {
+      const scopes = frozenScopesByOperation.get(operationKey) ?? [];
+      const scope = scopes[0];
+      if (!scope) continue;
+      const analysis = currentOperationAnalysis(scope);
+      const original = legacyOperationAnalysis(sourceAtRevision?.(scope.path), scope.path, scope.operation);
+      const retainedScopes = scopes.filter((item) => activeLegacyScopeKeys.has(
+        compatibilityScopeKey(item.path, item.rule, item.resource, item.operation)));
+      if (!retainedScopes.length) continue;
+      const preserved = analysis?.state === "found" && original?.state === "found"
+        && (analysis.sourceDigest === original.sourceDigest
+          || analysis.sourceDigest === RF_COMPOSITION_DIGESTS.get(operationKey))
+        && retainedScopes.every((item) => JSON.stringify(analysis.persistenceChains.get(item.resource))
+          === JSON.stringify(original.persistenceChains.get(item.resource)))
+        && [...analysis.persistenceOccurrences].every(([resource, count]) => count === 0
+          || (!resource.endsWith(":*") && scopes.some((item) => item.resource === resource)));
+      if (!preserved) errors.push(`RF compatibility amendment requires unchanged sibling persistence chains: ${operationLabel(operationKey)}`);
+      else rfCompositionOperations.add(operationKey);
+    }
+  }
   const deletionAuthorizedOperations = new Set();
   for (const [operationKey, removedScopes] of removedScopesByOperation) {
     let operationDeletionProven = true;
@@ -2134,7 +2320,14 @@ export function validateCompatibilityRegistry(path, {
           && LEGACY_ACQUISITION_RETIREMENT_AMENDMENT.scopes.has(
             acquisitionRetirementScopeKey(record, scope),
           );
-        if (!atomicLedgerRelocation && !atomicRfRelocation && !supportSecurityRemoval && !acquisitionRetirementRemoval
+        const rfReadRemoval = rfAmendmentAvailable && rfAmendmentRead(record, scope)
+          && (scope.operation !== "confirmSimulatedRf1086Submission" || rfSimulationAtomic);
+        if (rfReadRemoval && scope.resource === "table:opening_balance_setups" && scopeResourceOwner !== undefined) {
+          errors.push("RF archive historical split resource must remain alias-free; bank amounts are not wholly RF-owned");
+          operationDeletionProven = false;
+        }
+        if (rfReadRemoval && rfCompleted) completedDeletionOwner = RF_COMPATIBILITY_AMENDMENT.capability;
+        if (!atomicLedgerRelocation && !atomicRfRelocation && !supportSecurityRemoval && !acquisitionRetirementRemoval && !rfReadRemoval
           && !authorizedResourceOwners.has(scopeResourceOwner)) {
           errors.push(
             `${prefix} future frozen scope resource ${scope.resource} is not owned by active or exited capability`,
@@ -2255,12 +2448,14 @@ export function validateCompatibilityRegistry(path, {
       const frozenScopes = scopeSet(baselineRecord.scopes);
       for (const scope of Array.isArray(entry.scopes) ? entry.scopes : []) {
         const key = compatibilityScopeKey(scope.path, scope.rule, scope.resource, scope.operation);
-        if (!frozenScopes.has(key)) {
+        const rfHandoff = rfAmendmentAvailable && entry.id === RF_COMPATIBILITY_AMENDMENT.targetRecord
+          && rfHandoffScopes.has(key);
+        if (!frozenScopes.has(key) && !rfHandoff) {
           errors.push(`${prefix} scope is outside the frozen baseline: ${compatibilityScopeLabel(scope)}`);
           continue;
         }
         if (currentSource) {
-          const frozenScope = baselineRecord.scopes.find((candidate) => (
+          const frozenScope = (rfHandoff ? [rfHandoffScopes.get(key)] : baselineRecord.scopes).find((candidate) => (
             compatibilityScopeKey(
               candidate.path,
               candidate.rule,
@@ -2273,7 +2468,8 @@ export function validateCompatibilityRegistry(path, {
             errors.push(`${prefix} scope has an added writer: ${compatibilityScopeLabel(scope)}`);
           } else if (proof.occurrences !== frozenScope.occurrences
             || (proof.sourceDigest !== frozenScope.sourceDigest
-              && !deletionAuthorizedOperations.has(compatibilityOperationKey(scope.path, scope.operation)))) {
+              && !deletionAuthorizedOperations.has(compatibilityOperationKey(scope.path, scope.operation))
+              && !rfCompositionOperations.has(compatibilityOperationKey(scope.path, scope.operation)))) {
             errors.push(`${prefix} legacy operation changed: ${scope.path} operation:${scope.operation}`);
           }
         }

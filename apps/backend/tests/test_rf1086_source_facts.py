@@ -6,7 +6,7 @@ from talli_backend.modules.shareholder_register_filing.public import (
     Rf1086SourceQuery,Rf1086WorkspaceSnapshot,Rf1086OpeningBasis,OpeningSnapshotId,
     Rf1086SourceSnapshot,Rf1086OpeningSource,Rf1086MigrationInventory,VerifyRf1086SourceEvidenceQuery,
     Rf1086ProductionSubmissionRecord,Rf1086JournalEvent,Rf1086FeedbackArtifactRecord,
-    Rf1086OverrideRecord,Rf1086ReviewCommentRecord,ShareholderRegisterFilingError,
+    Rf1086OverrideRecord,Rf1086ReviewCommentRecord,Rf1086FilingPermissionRecord,ShareholderRegisterFilingError,
     parse_rf1086_case,
 )
 from talli_backend.modules.shareholder_register_filing.source_facts import build_source_facts,verify_source_evidence,_REQUIRED_FAMILIES
@@ -18,7 +18,9 @@ NOW_TS=Timestamp(datetime.fromisoformat(NOW.replace('Z','+00:00')))
 
 def snapshot():
     opening=Rf1086OpeningBasis(COMPANY,OpeningSnapshotId('40000000-0000-4000-8000-000000000004'),YEAR,parse_rf1086_case(CASES[0]['input']),'a'*64)
-    workspace=Rf1086WorkspaceSnapshot(COMPANY,YEAR,previews=(preview(),))
+    permission=Rf1086FilingPermissionRecord('f0000000-0000-4000-8000-000000000001',str(COMPANY),
+        'aksjonaerregisteroppgaven',str(ACTOR.subject),str(ACTOR.subject),NOW,True,NOW)
+    workspace=Rf1086WorkspaceSnapshot(COMPANY,YEAR,previews=(preview(),),permissions=(permission,))
     inventory=Rf1086MigrationInventory('migration-151:'+str(COMPANY)+':2025','rf151-v1','b'*64,COMPANY,YEAR,
         {name:0 for name in _REQUIRED_FAMILIES},{name:'c'*64 for name in _REQUIRED_FAMILIES},0,True)
     return Rf1086SourceSnapshot(workspace,inventory,(),(opening,),NOW_TS,True,
@@ -257,3 +259,25 @@ def test_unknown_reconciliation_retains_incident_without_known_outcome():
     facts=build_source_facts(QUERY,current)
     assert len(facts.incidents)==1 and facts.incidents[0].observed_at==NOW
     assert facts.outcomes==()
+
+
+@pytest.mark.parametrize('state,expected', [
+    ('missing', 'missing_authority_confirmation'),
+    ('unconfirmed', 'missing_authority_confirmation'),
+    ('disabled', 'production_disabled'),
+])
+def test_owned_authority_gate_blocks_source_readiness_and_invalidates_prior_evidence(state, expected):
+    original = snapshot()
+    ready = build_source_facts(QUERY, original)
+    assert ready.readiness_status == 'ready'
+    permission = original.workspace.permissions[0]
+    permissions = () if state == 'missing' else (replace(permission,
+        confirmed_at='' if state == 'unconfirmed' else permission.confirmed_at,
+        production_enabled=state != 'disabled'),)
+    changed = replace(original, workspace=replace(original.workspace, permissions=permissions))
+    facts = build_source_facts(QUERY, changed)
+    assert facts.readiness_status == 'blocked'
+    assert facts.hard_blocks == (expected,)
+    assert facts.history_coverage.status == 'complete'
+    assert facts.production_attempts == ()
+    assert not verify_source_evidence(VerifyRf1086SourceEvidenceQuery(QUERY, ready.evidence), changed)

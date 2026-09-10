@@ -1,3 +1,4 @@
+import { loadPresentedRf1086Source, newestFirst, composeFilingSources } from "./rf1086-workspace-source";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation.js";
 
@@ -64,6 +65,7 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     commentsResult,
     billingEntitlement,
     authorityResult,
+    rfSource,
   ] = await Promise.all([
     listDocumentsForCompanies(companyIds),
     listOpeningSetups(companyIds),
@@ -86,9 +88,11 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
       caseProfile: "rf1086_no_activity_v1",
     }),
     listAuthorityPermissions(companyIds),
+    loadPresentedRf1086Source(accessToken, companyIds, context.incomeYear),
   ]);
 
   const failedSources = [
+    ["rf1086", rfSource.error],
     ["documents", documentsResult.error],
     ["opening", openingResult.error],
     ["locks", locksResult.error],
@@ -116,9 +120,9 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     shareholders: openingResult.shareholders,
     locks: locksResult.locks,
     annualData: annualDataResult.annualData,
-    previews: previewsResult.previews,
-    submissions: submissionsResult.submissions,
-    overrides: overridesResult.overrides,
+    previews: newestFirst(composeFilingSources(previewsResult.previews, rfSource.previews), (row) => row.created_at),
+    submissions: newestFirst(composeFilingSources(submissionsResult.submissions, rfSource.submissions), (row) => row.updated_at),
+    overrides: newestFirst(composeFilingSources(overridesResult.overrides, rfSource.overrides), (row) => row.created_at),
     transactions: transactionsResult.transactions,
     actions: effectiveInvestmentActivity(
       actionsResult.actions,
@@ -127,8 +131,8 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     positions: positionsResult.positions,
     entries: entriesResult.entries,
     snapshots: snapshotsResult.readinessSnapshots,
-    comments: commentsResult.comments,
-    authorityPermissions: authorityResult.authorityPermissions,
+    comments: newestFirst(composeFilingSources(commentsResult.comments, rfSource.comments), (row) => row.created_at),
+    authorityPermissions: newestFirst(composeFilingSources(authorityResult.authorityPermissions, rfSource.authorityPermissions), (row) => row.updated_at),
   });
   const deadlines = buildDeadlineDashboard({ incomeYear: context.incomeYear, submissions: records.submissions });
   const model = buildAnnualWorkspaceViewModel({

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createTalliApiClient, TalliApiError } from "@talli/talli-api-client";
 import {
+  findRf1086Preview, acknowledgeOwnedRf1086Comment,
   loadRf1086Workspaces, loadRf1086ArchiveSource, generateRf1086PreviewThroughApi, loadRf1086Preview,
   presentRf1086Approval, presentRf1086Simulation, rf1086ApiErrorCode,
 } from "../features/shareholder-register-filing/index.ts";
@@ -188,3 +189,22 @@ test("canonical invalid approval input and stale MFA retain existing owner guida
   assert.equal(rf1086ApiErrorCode(problem("step_up_required")), "step_up_required");
   assert.equal(rf1086ApiErrorCode(problem("untrusted_provider_body")), "status_unavailable");
 });
+
+for (const [status, code, absent] of [
+  [404, "SHAREHOLDER_REGISTER_FILING_NOT_FOUND", true],
+  [404, "OTHER_NOT_FOUND", false],
+  [403, "SHAREHOLDER_REGISTER_FILING_FORBIDDEN", false],
+  [503, "SHAREHOLDER_REGISTER_FILING_UNAVAILABLE", false],
+]) {
+  test(`canonical ownership fallback requires exact not-found (${status}/${code})`, async (t) => {
+    environment(t);
+    t.mock.method(globalThis, "fetch", async () => Response.json({
+      type: "about:blank", title: "Unavailable", status, detail: "Sanitized", code,
+      instance: "/fixture", requestId: "ownership-fixture",
+    }, { status, headers: { "content-type": "application/problem+json" } }));
+    for (const operation of [() => findRf1086Preview("owner", previewId), () => acknowledgeOwnedRf1086Comment("owner", previewId)]) {
+      if (absent) assert.equal(await operation(), null);
+      else await assert.rejects(operation, (error) => error instanceof TalliApiError && error.status === status);
+    }
+  });
+}
