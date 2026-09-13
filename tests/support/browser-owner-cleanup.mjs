@@ -66,21 +66,13 @@ export function cleanupFailure(primaryFailure, cleanupErrors) {
 }
 
 // This list is the retained owner/onboarding cleanup inventory. Catalog checks
-// select only named RF/AU/Billing rollout replacements and the existing optional
+// select only named capability rollout replacements and the existing optional
 // investment projections; an unexpected absence of a required family fails.
 const requiredCleanupRelations = Object.freeze([
   "public.company_year_acceptances",
   "public.company_year_admissions",
   "public.company_eligibility_assessments",
   "public.customer_agreement_acceptances",
-  "public.corporate_document_events",
-  "public.corporate_decision_finalizations",
-  "public.corporate_document_artifacts",
-  "public.corporate_document_sets",
-  "public.corporate_decisions",
-  "public.bank_suggestion_acceptances",
-  "public.holding_actions",
-  "public.bank_transactions",
   "backend_system.banking_command_receipts",
   "banking.transaction_sources",
   "banking.coverage_intervals",
@@ -138,7 +130,18 @@ const requiredCleanupRelations = Object.freeze([
   "public.companies",
   "documents.evidence_references"
 ]);
+const canonicalGovernanceCleanupRelations = Object.freeze(["corporate_governance.owner_dividend_payments", "corporate_governance.owner_dividend_finalizations", "corporate_governance.owner_dividend_events", "corporate_governance.owner_dividend_artifacts", "corporate_governance.owner_dividend_decisions", "corporate_governance.annual_close_finalizations", "corporate_governance.annual_close_events", "corporate_governance.annual_close_artifacts", "corporate_governance.annual_close_decisions", "corporate_governance.shareholder_loans"]);
 const rolloutCleanupRelations = Object.freeze([
+  "public.bank_suggestion_acceptances",
+  "public.corporate_document_events",
+  "public.corporate_decision_finalizations",
+  "public.corporate_document_artifacts",
+  "public.corporate_document_sets",
+  "public.corporate_decisions",
+  "public.holding_actions",
+  "public.bank_transactions",
+  "company_tax_filing.settlements",
+  ...canonicalGovernanceCleanupRelations,
   "public.investment_lot_allocations",
   "public.investment_lots",
   "public.investment_positions",
@@ -181,6 +184,19 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
     if (row && ["r", "p"].includes(row.relkind)) present.add(relation);
     else assert.ok(!row || row.relkind === "v", "unexpected fixture relation kind");
   }
+  if (!present.has("public.holding_actions")) {
+    assert.ok(present.has("company_tax_filing.settlements"), "missing Tax fixture family");
+  }
+  if (!present.has("public.corporate_decisions")) {
+    for (const relation of canonicalGovernanceCleanupRelations) {
+      assert.ok(present.has(relation), `missing Corporate Governance fixture family ${relation}`);
+    }
+  } else {
+    for (const relation of ["public.corporate_document_events", "public.corporate_decision_finalizations",
+      "public.corporate_document_artifacts", "public.corporate_document_sets"]) {
+      assert.ok(present.has(relation), `missing Corporate Governance fixture family ${relation}`);
+    }
+  }
   const rfSchema = present.has("shareholder_register_filing.production_filing_submissions")
     ? "shareholder_register_filing" : "public";
   for (const name of [
@@ -213,6 +229,8 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
     const remove = async (relation) => {
       if (present.has(relation)) await database.query(`delete from ${relation} where company_id = $1`, [companyId]);
     };
+    await remove("company_tax_filing.settlements");
+    for (const relation of canonicalGovernanceCleanupRelations) await remove(relation);
     // Corporate finalizations/holding actions and bank links precede the Ledger
     // entries they reference. Internal FK triggers remain enabled throughout.
     for (const name of [

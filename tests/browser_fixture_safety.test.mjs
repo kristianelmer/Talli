@@ -127,14 +127,17 @@ test("retained annual browser seeds canonical historical RF/AU facts without rep
   assert.match(statements, /insert into shareholder_register_filing\.filing_previews/u);
   assert.match(statements, /insert into shareholder_register_filing\.authority_permissions/u);
   assert.match(statements, /insert into ledger\.opening_bank_inputs/u);
-  for (const schema of ["public", "shareholder_register_filing"]) {
-    for (const table of ["opening_balance_setups", "opening_shareholders"]) {
-      const row = sql.find(row => row.statement.includes(`insert into ${schema}.${table}`));
-      assert.ok(row, `${schema}.${table} is seeded with the same historical source`);
-      assert.ok(row.values.includes(table === "opening_shareholders" ? ids.shareholderId : ids.setupId));
-      assert.ok(row.values.includes(ids.companyId) && row.values.includes(ids.ownerId));
-    }
+  for (const table of ["opening_balance_setups", "opening_shareholders"]) {
+    const row = sql.find(row => row.statement.includes(`insert into shareholder_register_filing.${table}`));
+    assert.ok(row, `${table} retains its canonical historical source`);
+    assert.ok(row.values.includes(table === "opening_shareholders" ? ids.shareholderId : ids.setupId));
+    assert.ok(row.values.includes(ids.companyId) && row.values.includes(ids.ownerId));
   }
+  assert.doesNotMatch(statements, /insert into public\.opening_(?:balance_setups|shareholders)/u);
+  const opening = sql.find(row => row.statement.includes("insert into ledger.entries"));
+  assert.doesNotMatch(opening.statement, /setup_id/u);
+  assert.ok(opening.values.includes(`opening-setup:${ids.setupId}`));
+  assert.ok(borrowed.includes("ledger.entries"));
   assert.ok(borrowed.includes("authority_connections.system_user_requests"));
   assert.ok(borrowed.includes("shareholder_register_filing.filing_previews"));
   for (const [table, id] of [["authority_permissions", "fixture-permission"], ["filing_previews", ids.previewId]]) {

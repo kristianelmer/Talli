@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 const owners = Object.freeze({
   shareholder_register_filing: "shareholder_register_filing_store_owner",
   company_tax_filing: "company_tax_filing_store_owner",
+  corporate_governance: "corporate_governance_store_owner",
   ledger: "ledger_store_owner", billing: "billing_store_owner",
   documents: "documents_store_owner", authority_connections: "authority_connections_store_owner",
   public: "postgres", banking: "banking_store_owner", investments: "investments_store_owner", backend_system: "ledger_store_owner",
@@ -20,6 +21,17 @@ const specialOwners = Object.freeze({
 });
 const relationOwner = relation => specialOwners[relation] ?? owners[relation.split(".")[0]];
 const allowed = new Set([
+  "corporate_governance.owner_dividend_payments",
+  "corporate_governance.owner_dividend_finalizations",
+  "corporate_governance.owner_dividend_events",
+  "corporate_governance.owner_dividend_artifacts",
+  "corporate_governance.owner_dividend_decisions",
+  "corporate_governance.annual_close_finalizations",
+  "corporate_governance.annual_close_events",
+  "corporate_governance.annual_close_artifacts",
+  "corporate_governance.annual_close_decisions",
+  "corporate_governance.shareholder_loans",
+
   "company_tax_filing.settlements",
   "backend_system.ledger_workflow_receipts",
   "public.filing_readiness_snapshots",

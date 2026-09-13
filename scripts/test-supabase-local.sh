@@ -149,6 +149,15 @@ DATABASE_URL="$DB_URL" npm run test:billing-database-lifecycle
 DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs recutover
 DATABASE_URL="$DB_URL" npm run test:authority-connections-database
 DATABASE_URL="$DB_URL" npm run test:company-tax-database
+# The current annual readiness action requires the contracted Tax read source.
+# Predecessor cleanup/onboarding checks above retain their original topology.
+NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
+NEXT_PUBLIC_SUPABASE_ANON_KEY="$local_anon_key" \
+SUPABASE_URL="$API_URL" \
+SUPABASE_ANON_KEY="$local_anon_key" \
+SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+DATABASE_URL="$DB_URL" \
+npm run test:browser-owner-annual
 SUPABASE_URL="$API_URL" \
 SUPABASE_ANON_KEY="$local_anon_key" \
 SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \

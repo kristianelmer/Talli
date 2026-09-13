@@ -463,7 +463,7 @@ test("mandatory local lane preserves every predecessor before Billing and final 
         "HARNESS_NPM:run test:ledger-hosted-migration-authority", "HARNESS_NPM:run test:corporate-governance-database-lifecycle",
         "HARNESS_NPM:run test:billing-database-lifecycle",
         ...(mode !== "billing-failure" ? ["AUTHORITY_TOPOLOGY:recutover"] : []),
-        ...(mode === "success" ? ["HARNESS_NPM:run test:authority-connections-database", "HARNESS_NPM:run test:company-tax-database", "HARNESS_NPM:run test:supabase-rf-feedback", "HARNESS_NPM:run test:browser-authority-connections", "HARNESS_NPM:run test:browser-shareholder-register-filing"] : []),
+        ...(mode === "success" ? ["HARNESS_NPM:run test:authority-connections-database", "HARNESS_NPM:run test:company-tax-database", "HARNESS_NPM:run test:browser-owner-annual", "HARNESS_NPM:run test:supabase-rf-feedback", "HARNESS_NPM:run test:browser-authority-connections", "HARNESS_NPM:run test:browser-shareholder-register-filing"] : []),
       ];
       let previous = -1;
       for (const milestone of milestones) {
@@ -582,7 +582,7 @@ const phases=['topology:rollback:1','npm:test:ledger-database-lifecycle','npm:te
  'npm:test:validation-observation','npm:test:supabase-predecessor','topology:workspace','npm:test:supabase-rf-workspace',
  'npm:test:browser-owner','topology:rollback:2','npm:test:ledger-hosted-migration-authority',
  'npm:test:corporate-governance-database-lifecycle','npm:test:billing-database-lifecycle','topology:recutover',
- 'npm:test:authority-connections-database','npm:test:company-tax-database','npm:test:supabase-rf-feedback','npm:test:browser-authority-connections','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax'];
+ 'npm:test:authority-connections-database','npm:test:company-tax-database','npm:test:browser-owner-annual','npm:test:supabase-rf-feedback','npm:test:browser-authority-connections','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax'];
 const nodeShim=`#!/usr/bin/env bash
 set -euo pipefail
 if [[ "$1" == "scripts/prepare-isolated-supabase-workdir.mjs" ]]; then exit 0; fi
@@ -615,7 +615,7 @@ if [[ "$phase" == "$FAIL_PHASE" ]]; then exit 23; fi
 `;
 for(const fail of ['', 'topology:workspace','npm:test:supabase-rf-workspace','npm:test:browser-owner','topology:rollback:2',
  'npm:test:ledger-hosted-migration-authority','npm:test:billing-database-lifecycle','topology:recutover','npm:test:supabase-rf-feedback',
- 'npm:test:company-tax-database','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax']) {
+ 'npm:test:company-tax-database','npm:test:browser-owner-annual','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax']) {
  test(`real shell stops at ${fail||'success'} and restores owned generated files`,()=>{
   const dir=mkdtempSync(join(tmpdir(),'talli-151-shell-proof-'));
   try {
