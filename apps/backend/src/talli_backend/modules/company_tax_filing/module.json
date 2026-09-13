@@ -4,7 +4,7 @@
   "name": "company_tax_filing",
   "path": "apps/backend/src/talli_backend/modules/company_tax_filing",
   "owner": "backend:company_tax_filing",
-  "purpose": "Own company tax settlement capture facts and normalization; annual estimate and filing migrate in the next slice.",
+  "purpose": "Own company tax settlements and deterministic annual estimates, filing payload/XML and sanitized TT02 receipt projections; full filing workflow cutover is in progress under #152.",
   "documentation": "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.company_tax_filing.public",
   "exports": {
@@ -16,7 +16,19 @@
       "TaxSettlementInput",
       "normalize_tax_settlement",
       "validate_new_tax_settlement",
-      "TaxSettlementArchiveQuery"
+      "TaxSettlementArchiveQuery",
+      "CompanyTaxReturnSource",
+      "CompanyTaxReturnCandidate",
+      "AnnualTaxEstimate",
+      "CompanyTaxReturnDocuments",
+      "CompanyTaxEnvelopeInput",
+      "build_company_tax_return",
+      "estimate_annual_tax",
+      "render_company_tax_return",
+      "render_company_tax_envelope",
+      "CompanyTaxEvidenceInput",
+      "CompanyTaxEvidenceProjection",
+      "project_company_tax_evidence"
     ],
     "events": [],
     "errors": [
@@ -69,22 +81,29 @@
   "dependencies": [],
   "allowedImports": [
     "__future__",
+    "base64",
+    "calendar",
     "collections.abc",
     "dataclasses",
+    "decimal",
     "enum",
+    "hashlib",
+    "ipaddress",
     "math",
     "re",
     "talli_backend.modules.company_tax_filing.public",
     "talli_backend.modules.company_tax_filing.service",
     "talli_backend.shared.kernel",
+    "types",
     "typing",
+    "urllib.parse",
     "uuid"
   ],
   "forbiddenResponsibilities": [
     "Ledger account selection and posting policy",
     "Bank matching and document storage ownership",
-    "Provider operations, annual tax estimates and filing before slice 2",
-    "Transport or database types in the public contract"
+    "Transport or database types in the public contract",
+    "Enabling production or broadening the approved test-only, human-confirmed filing scope"
   ],
   "tests": {
     "policy": "apps/backend/tests/test_company_tax_filing.py",

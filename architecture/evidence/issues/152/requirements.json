@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#152",
   "source": "https://github.com/kristianelmer/Talli/issues/152",
-  "status": "CLAIMED_PURE_CHARACTERIZATION_CAPTURED",
+  "status": "PURE_BACKEND_IMPLEMENTATION_IN_PROGRESS",
   "scope": "Company Tax stage10 slice2 and full capability exit",
   "baselineRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
   "predecessor": {
@@ -74,9 +74,31 @@
     "evidenceImportCases": 24,
     "fixture": "legacy-characterization.json",
     "sha256": "2c50fe51fb47ea12e5890198966d4b5b460565056ecc9e9d5f188fc83c1b83a7",
-    "statefulDatabaseAndOwnerWorkflow": "PENDING",
-    "independentReview": "INITIAL_PROVENANCE_PASS_POSITIVE_IMPORT_GAP_ADDRESSED_REREAD_PENDING",
+    "statefulDatabaseAndOwnerWorkflow": "SQL_CAPTURE_PASS_OWNER_HTTP_AND_BROWSER_PENDING",
+    "independentReview": "PASS_BOTH_AXES_PURE_CAPTURE_B7E524AE",
     "evidenceImportSuccessCases": 4,
-    "historicalEvidenceNote": "The unchanged archived TT02 fixture is rejected by the existing timestamp validator (seven fractional digits); successful synthetic fixtures are captured separately without changing official evidence or claiming new provider validation."
+    "historicalEvidenceNote": "The unchanged archived TT02 fixture is rejected by the existing timestamp validator (seven fractional digits); successful synthetic fixtures are captured separately without changing official evidence or claiming new provider validation.",
+    "database": {
+      "fixture": "legacy-database-characterization.json",
+      "sha256": "59809ac5f43fee05706066c19b6e7d9b891fe6b4a20f9b3e3c6ca8bbf9b6a201",
+      "cases": 18,
+      "status": "PASS",
+      "limits": "Actual unchanged PostgreSQL RPC/RLS using synthetic SQL claims; no HTTP JWT/MFA, provider or browser claim. Injected Audit failure rolls back all import effects; fixture rolled back and absence verified."
+    },
+    "additionalImportBoundaries": {
+      "fixture": "legacy-import-boundaries.json",
+      "cases": 59,
+      "successful": 13,
+      "sha256": "834ebca97082d477899954de1f2c4134c9551ea3e435536457a62879ebffe34f"
+    }
+  },
+  "implementationProgress": {
+    "publicPureContracts": "IMPLEMENTED_NOT_ROUTED",
+    "comparison": "32 payload/annual-estimate/XML/envelope cases and83 evidence-import outcomes match frozen predecessor fixtures",
+    "focusedTests": 169,
+    "settlementRegression": "PASS",
+    "authorityValidationSummary": "PENDING_NORWEGIAN_COLLATION_PARITY",
+    "apiWebSqlCutover": "PENDING",
+    "fullStageExit": "PENDING"
   }
 }

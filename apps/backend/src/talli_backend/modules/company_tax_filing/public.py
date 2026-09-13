@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from collections.abc import Callable, Mapping
 from typing import Protocol, TypeVar
+from types import MappingProxyType
 
 from talli_backend.shared.kernel import (
     ActorId, CompanyId, CorrelationId, DomainError, ErrorCategory,
@@ -160,7 +161,151 @@ class TaxSettlementArchivePersistence(Protocol):
         ...
 
 
+def _freeze_return_fact(value: object) -> object:
+    if isinstance(value, Mapping):
+        return MappingProxyType({key: _freeze_return_fact(child) for key, child in value.items()})
+    if isinstance(value, (tuple, list)):
+        return tuple(_freeze_return_fact(child) for child in value)
+    return value
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxReturnSource:
+    """Annual/Ledger/holding facts supplied by the named application workflow.
+
+    Taking a snapshot copies and recursively freezes nested source values. Tax
+    never receives a repository handle or discovers another owner's data here.
+    """
+    organization_number: str
+    income_year: int
+    annual_data: Mapping[str, object] | None
+    ledger_entries: tuple[Mapping[str, object], ...]
+    holding_actions: tuple[Mapping[str, object], ...]
+    party_number: str | None = None
+
+    def __post_init__(self) -> None:
+        for name in ('annual_data', 'ledger_entries', 'holding_actions'):
+            object.__setattr__(self, name, _freeze_return_fact(getattr(self, name)))
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxReturnCandidate:
+    schema: Mapping[str, object]
+    derived: Mapping[str, object]
+    fields: tuple[Mapping[str, object], ...]
+    feedback: tuple[Mapping[str, object], ...]
+
+    def __post_init__(self) -> None:
+        for name in ('schema', 'derived', 'fields', 'feedback'):
+            object.__setattr__(self, name, _freeze_return_fact(getattr(self, name)))
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualTaxEstimate:
+    admin_costs: float
+    interest_income: float
+    participation_exemption_add_back: float
+    taxable_share_sale_gain: float
+    deductible_share_sale_loss: float
+    tax_basis: float
+    estimated_tax: float
+    status: str
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxReturnDocuments:
+    tax_return_xml: str
+    business_specification_xml: str
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxEnvelopeInput:
+    documents: CompanyTaxReturnDocuments
+    organization_number: str
+    income_year: int
+    created_by: str
+    current_document_reference: str | None = None
+
+
+def _calculation_source(source: CompanyTaxReturnSource) -> Mapping[str, object]:
+    return {'companyOrgNumber': source.organization_number, 'companyPartyNumber': source.party_number,
+            'incomeYear': source.income_year, 'annualData': source.annual_data,
+            'ledgerEntries': source.ledger_entries, 'holdingActions': source.holding_actions}
+
+
+def build_company_tax_return(source: CompanyTaxReturnSource) -> CompanyTaxReturnCandidate:
+    from .calculation import build
+    return CompanyTaxReturnCandidate(**build(_calculation_source(source)))
+
+
+def estimate_annual_tax(source: CompanyTaxReturnSource) -> AnnualTaxEstimate:
+    from .calculation import estimate
+    value = estimate(_calculation_source(source))
+    return AnnualTaxEstimate(
+        admin_costs=value['adminCosts'], interest_income=value['interestIncome'],
+        participation_exemption_add_back=value['fritaksmetodenAddBack'],
+        taxable_share_sale_gain=value['taxableShareSaleGain'], deductible_share_sale_loss=value['deductibleShareSaleLoss'],
+        tax_basis=value['taxBasis'], estimated_tax=value['estimatedTax'], status=value['status'],
+    )
+
+
+def render_company_tax_return(candidate: CompanyTaxReturnCandidate) -> CompanyTaxReturnDocuments:
+    from .rendering import render
+    value = render(candidate.fields)
+    return CompanyTaxReturnDocuments(value['skattemeldingXml'], value['naeringsspesifikasjonXml'])
+
+
+def render_company_tax_envelope(input: CompanyTaxEnvelopeInput) -> str:
+    from .rendering import envelope
+    value = {'skattemeldingXml': input.documents.tax_return_xml,
+             'naeringsspesifikasjonXml': input.documents.business_specification_xml,
+             'companyOrgNumber': input.organization_number, 'incomeYear': input.income_year,
+             'createdBy': input.created_by}
+    if input.current_document_reference is not None:
+        value['currentDocumentReference'] = input.current_document_reference
+    return envelope(value)
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxEvidenceInput:
+    company_id: str
+    expected_organization_number: str
+    expected_income_year: int
+    evidence: Mapping[str, object]
+    recorded_by: str
+    evidence_url: str | None = None
+    recorded_at: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'evidence', _freeze_return_fact(self.evidence))
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxEvidenceProjection:
+    authority_run: Mapping[str, object]
+    submission: Mapping[str, object]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'authority_run', _freeze_return_fact(self.authority_run))
+        object.__setattr__(self, 'submission', _freeze_return_fact(self.submission))
+
+
+def project_company_tax_evidence(input: CompanyTaxEvidenceInput) -> CompanyTaxEvidenceProjection:
+    from .evidence import project
+    source = {'companyId': input.company_id, 'expectedCompanyOrgNumber': input.expected_organization_number,
+              'expectedIncomeYear': input.expected_income_year, 'evidence': input.evidence,
+              'recordedBy': input.recorded_by, 'evidenceUrl': input.evidence_url}
+    if input.recorded_at is not None:
+        source['recordedAt'] = input.recorded_at
+    result = project(source)
+    return CompanyTaxEvidenceProjection(result['authorityRun'], result['submission'])
+
+
 __all__ = [
+    "CompanyTaxEvidenceInput", "CompanyTaxEvidenceProjection", "project_company_tax_evidence",
+    "CompanyTaxReturnSource", "CompanyTaxReturnCandidate", "AnnualTaxEstimate",
+    "CompanyTaxReturnDocuments", "CompanyTaxEnvelopeInput", "build_company_tax_return",
+    "estimate_annual_tax", "render_company_tax_return", "render_company_tax_envelope",
     "TaxSettlementArchiveQuery", "TaxSettlementArchivePersistence",
     "NormalizedTaxSettlement",
     "TaxSettlementDocumentStatus",
