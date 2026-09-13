@@ -1,0 +1,106 @@
+{
+  "reviewAxis": "Standards bounded follow-up",
+  "base": "01d600fc5573967d50879e216c96d96445fdb949",
+  "candidate": "1d440ae4471c4c377d951650595b0828cc13d9b2",
+  "diffCommand": "git diff 01d600fc5573967d50879e216c96d96445fdb949...1d440ae4471c4c377d951650595b0828cc13d9b2",
+  "commits": [
+    "1d440ae4 Keep Tax retries stable across preview outages and invalid text (#146)"
+  ],
+  "files": [
+    {
+      "path": "apps/backend/src/talli_backend/main.py",
+      "sha256": "500558cfb66ffe99e0fb151eec4794b31920679cf53e84e00d74f4ea7045bbf1"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/public.py",
+      "sha256": "49f3411a3e9770b5cf49e795926faf8750b76acda46da7f5006e38b4b093ea65"
+    },
+    {
+      "path": "apps/backend/tests/test_company_tax_filing_api.py",
+      "sha256": "c9713c7d271b58793c5c8cc9a0897bdd75d05e4d16d089b9f2793d63440f5cae"
+    },
+    {
+      "path": "apps/web/app/actions.ts",
+      "sha256": "a859be4f46dd66491c99be1e4fa811c413b531958426932b5929c1a287967f61"
+    },
+    {
+      "path": "apps/web/tests/company-tax-transport.test.mjs",
+      "sha256": "057fb5b4c1f971746ac895a3f03cce2e5c8c143779aa8f8b53d7a14592be7efe"
+    },
+    {
+      "path": "architecture/evidence/issues/146/review-86951/disposition.json",
+      "sha256": "ada5bfe4691eff41c6fb482c844874e9bbe294c5f88247ada3a0ff11b671c4a4"
+    },
+    {
+      "path": "architecture/evidence/issues/146/review-86951/final-spec-review-86951-bindings.json",
+      "sha256": "ad8dd577a72add3f06d34255095468ee5ee9b60b92b893c5c358fab48e243544"
+    },
+    {
+      "path": "architecture/evidence/issues/146/review-86951/final-spec-review-86951.md",
+      "sha256": "7b02842196f0b3f7d5294cc4bb7c1cd7dfc958e1be1e3466486c9a298c303cd1"
+    },
+    {
+      "path": "architecture/evidence/issues/146/review-86951/final-standards-review-86951-bindings.json",
+      "sha256": "a436e2fb1f2654d4be0862ca96b6474066d73e8c5305b8c0c77ce327e3c752cc"
+    },
+    {
+      "path": "architecture/evidence/issues/146/review-86951/final-standards-review-86951-focused-tests.log",
+      "sha256": "946aca5a62e1c263b690514a0da706ea3482b630e9c6e72bd698c3d1cf980706"
+    },
+    {
+      "path": "architecture/evidence/issues/146/review-86951/final-standards-review-86951.md",
+      "sha256": "18f85ebf96f5cf4b51c91ef3f848cd11dc40ff102395545fe1849e8de1affbfa"
+    },
+    {
+      "path": "architecture/evidence/issues/146/review-86951/tax-browser-review-fixes.log",
+      "sha256": "28673ab9e98445a7bd647e4434febcd2b8189366786d66b901732ecdae3eaccc"
+    },
+    {
+      "path": "architecture/evidence/issues/146/review-86951/tax-transport-review-fixes.log",
+      "sha256": "7d160024f3978780e22453148f6e60c169ca3fabe2c536c22d3b082af2b0c982"
+    },
+    {
+      "path": "architecture/evidence/issues/146/source-read-retirements.json",
+      "sha256": "489962f66a2c50508928027d0f2241e80dfae5e9cbca9c324ca7c709d78eb826"
+    },
+    {
+      "path": "contracts/openapi/talli-v1.json",
+      "sha256": "fe425ae4354e4bfb5d9612cc6fc3178e299e025944ee83808364dbb66448c61d"
+    },
+    {
+      "path": "packages/talli-api-client/src/generated/client.ts",
+      "sha256": "826014202a4bacee79d6b63bea2b7d83904984829084a9319dfb6b2aeb4f2d23"
+    },
+    {
+      "path": "tests/browser_tax_settlement.mjs",
+      "sha256": "8c516256cbfd4b52b54894c47359b9c241c1154257a0f1637b4dde5772f674da"
+    },
+    {
+      "path": "tests/support/tax-browser-fixture.mjs",
+      "sha256": "28ff2cc5f9689d4cc20a2aa937b47e90e4bb260bdba63c08492f3bcbb375f18a"
+    }
+  ],
+  "staticChecks": {
+    "compatibilityRegistryBaselineCatalogCheckerAndRequirementsUnchanged": true,
+    "amountRequiredButNullableInOpenAPI": true,
+    "sourceReadFileHashesVerified": true
+  },
+  "independentValidation": {
+    "apiTests": "26 passed in 5.76s, isolated pinned-source fake-session FastAPI; no database/browser/provider use",
+    "priorRuntimeCorrection": "Earlier focused test transcript accurately records v25.6.1; old report prose incorrectly said Node24 based on executable path. Private prose corrected explicitly; committed copy requires correction.",
+    "separateNode24Rerun": {
+      "runtime": "v24.20.0",
+      "sourceRevision": "86951dbb5d14c1b74ca8e1c1b581327bed4b48d2",
+      "result": "2 passed, 0 failed",
+      "commandRuntimePath": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+      "transcript": "final-standards-review-86951-node24-rerun.log"
+    }
+  },
+  "artifactDigests": {
+    "final-standards-review-86951.md": "2aabd34eb7cf17fb44044b9e9f239595d94aa6621aed0c1ef180a89c8c5a4a19",
+    "final-standards-review-86951-focused-tests.log": "946aca5a62e1c263b690514a0da706ea3482b630e9c6e72bd698c3d1cf980706",
+    "final-standards-review-86951-node24-rerun.log": "447cac5da49b369a107f3dffe8049dddb0f7c33a5ae0c3817384637ec7c68614",
+    "final-standards-followup-1d440.md": "f4cb79d16f0e1166a4ea1c057e52753868223b4b7776bd05329491bf0ea4b5c0",
+    "final-standards-followup-1d440-api.log": "c875c48530a8879db23cabd147cf653c9cce0cf348038426f6c2f7b3ad069baa"
+  }
+}

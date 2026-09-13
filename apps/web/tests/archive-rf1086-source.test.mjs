@@ -84,6 +84,15 @@ function route({ generic = {}, failures = {}, rf = workspace(), openings = [open
       },
       presentOpeningSnapshots, loadLedgerEntriesForArchive: empty, presentLedgerEntriesForArchive: value => value,
     },
+    "../../../../../features/company-tax-filing": {
+      loadTaxSettlementArchiveSource: async (access, company, year) => {
+        calls.push("read:tax-api");
+        assert.equal(access, "verified-owner"); assert.equal(company, companyId);
+        assert.equal(Number.isInteger(year), true);
+        return { data: (generic.holding_actions ?? []).filter(row => row.company_id === company && row.income_year === year),
+          error: failures.tax ?? null };
+      },
+    },
     "../../../../../features/shareholder-register-filing": { ...rfPresentation,
       loadRf1086ArchiveSource: async (access, company, year) => {
         calls.push("read:rf-api"); rfYears.push(year); assert.equal(access, "verified-owner");
@@ -174,8 +183,9 @@ function queryChains(text) {
   return chains;
 }
 
-test("archive preserves every frozen mixed persistence chain exactly once and removes only both opening reads", () => {
-  assert.deepEqual(queryChains(source), ORIGINAL_MIXED_CHAINS);
+test("archive preserves frozen mixed chains except the exact owned RF and Tax read retirements", () => {
+  assert.deepEqual(queryChains(source), ORIGINAL_MIXED_CHAINS.filter(chain => chain.table !== "holding_actions"));
+  assert.equal(source.includes('.from("holding_actions")'), false);
   assert.equal(source.includes('.from("opening_balance_setups")'), false);
   assert.equal(source.includes('.from("opening_shareholders")'), false);
 });
@@ -278,7 +288,7 @@ test("mixed sibling chains retain their conditional authority read and overlap n
   assert.deepEqual(plain(fixture.captures[0].authorityTestRuns), [siblingEvidence]);
 });
 
-for (const failure of ["rf", "opening", "filing_previews", "authority_permissions", "filing_review_comments", "audit_events"]) {
+for (const failure of ["rf", "opening", "tax", "filing_previews", "authority_permissions", "filing_review_comments", "audit_events"]) {
   test(`unavailable ${failure} source cannot complete the authoritative export`, async () => {
     const fixture = route({ failures: { [failure]: Error("unavailable") } });
     assert.equal((await fixture.run()).status, 500);
@@ -308,4 +318,18 @@ test("empty retained history still rejects export and failed receipt never yield
   const empty = route({ rf }); assert.equal((await empty.run()).status, 409); assert.equal(empty.captures.length, 0);
   const denied = route({ receiptError: true }); const response = await denied.run();
   assert.equal(response.status, 409); assert.equal(response.headers.get("content-disposition"), null);
+});
+
+
+test("owned Tax source preserves all thirteen original fields beside unchanged RF history", async () => {
+  const row = { id: uid(90), company_id: companyId, income_year: 2025, action_type: "tax_settlement",
+    action_date: "2025-09-01", payload: { amount: 125.5, settlement_type: "payment", original_extra: { retained: [1, "æ"] } },
+    ledger_entry_id: uid(91), bank_transaction_id: uid(92), document_id: uid(93), risk_level: "ready",
+    blocker_code: null, created_by: uid(1), created_at: "2025-09-01T10:11:12.123456+00:00" };
+  const fixture = route({ generic: { holding_actions: [row] } });
+  assert.equal((await fixture.run()).status, 200);
+  assert.deepEqual(plain(fixture.captures[0].holdingActions), [row]);
+  assert.equal(fixture.readTables.includes("holding_actions"), false);
+  assert.equal(fixture.calls.filter(call => call === "read:tax-api").length, 1);
+  assert.equal(fixture.calls.at(-1), "company_archive_complete_export");
 });

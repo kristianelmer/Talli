@@ -1,0 +1,44 @@
+{
+  "baseRevision": "01d600fc5573967d50879e216c96d96445fdb949",
+  "reviewedRevision": "1d440ae4471c4c377d951650595b0828cc13d9b2",
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/main.py": "500558cfb66ffe99e0fb151eec4794b31920679cf53e84e00d74f4ea7045bbf1",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "49f3411a3e9770b5cf49e795926faf8750b76acda46da7f5006e38b4b093ea65",
+    "apps/backend/tests/test_company_tax_filing_api.py": "c9713c7d271b58793c5c8cc9a0897bdd75d05e4d16d089b9f2793d63440f5cae",
+    "apps/web/app/actions.ts": "a859be4f46dd66491c99be1e4fa811c413b531958426932b5929c1a287967f61",
+    "apps/web/tests/company-tax-transport.test.mjs": "057fb5b4c1f971746ac895a3f03cce2e5c8c143779aa8f8b53d7a14592be7efe",
+    "architecture/evidence/issues/146/review-86951/disposition.json": "ada5bfe4691eff41c6fb482c844874e9bbe294c5f88247ada3a0ff11b671c4a4",
+    "architecture/evidence/issues/146/review-86951/final-spec-review-86951-bindings.json": "ad8dd577a72add3f06d34255095468ee5ee9b60b92b893c5c358fab48e243544",
+    "architecture/evidence/issues/146/review-86951/final-spec-review-86951.md": "7b02842196f0b3f7d5294cc4bb7c1cd7dfc958e1be1e3466486c9a298c303cd1",
+    "architecture/evidence/issues/146/review-86951/final-standards-review-86951-bindings.json": "a436e2fb1f2654d4be0862ca96b6474066d73e8c5305b8c0c77ce327e3c752cc",
+    "architecture/evidence/issues/146/review-86951/final-standards-review-86951-focused-tests.log": "946aca5a62e1c263b690514a0da706ea3482b630e9c6e72bd698c3d1cf980706",
+    "architecture/evidence/issues/146/review-86951/final-standards-review-86951.md": "18f85ebf96f5cf4b51c91ef3f848cd11dc40ff102395545fe1849e8de1affbfa",
+    "architecture/evidence/issues/146/review-86951/tax-browser-review-fixes.log": "28673ab9e98445a7bd647e4434febcd2b8189366786d66b901732ecdae3eaccc",
+    "architecture/evidence/issues/146/review-86951/tax-transport-review-fixes.log": "7d160024f3978780e22453148f6e60c169ca3fabe2c536c22d3b082af2b0c982",
+    "architecture/evidence/issues/146/source-read-retirements.json": "489962f66a2c50508928027d0f2241e80dfae5e9cbca9c324ca7c709d78eb826",
+    "contracts/openapi/talli-v1.json": "fe425ae4354e4bfb5d9612cc6fc3178e299e025944ee83808364dbb66448c61d",
+    "packages/talli-api-client/src/generated/client.ts": "826014202a4bacee79d6b63bea2b7d83904984829084a9319dfb6b2aeb4f2d23",
+    "tests/browser_tax_settlement.mjs": "8c516256cbfd4b52b54894c47359b9c241c1154257a0f1637b4dde5772f674da",
+    "tests/support/tax-browser-fixture.mjs": "28ff2cc5f9689d4cc20a2aa937b47e90e4bb260bdba63c08492f3bcbb375f18a"
+  },
+  "requirementsBytesUnchanged": true,
+  "openApiPathsUnchanged": true,
+  "onlyChangedOpenApiSchema": [
+    "TaxSettlementPreviewInputWire"
+  ],
+  "tests": {
+    "backend": "45 passed in5.71s (26 API +19 normalization)",
+    "transport": "16 passed,0skip in205.852209ms Node25.6.1",
+    "exactActionReproduction": "preview outage redirects to tax retry route with original UUID;0capture,0audit"
+  },
+  "privateArtifactsSha256": {
+    "reproduce-preview-retry-fixed-1d440.mjs": "6632f15c4a9f20bd7d637ab0ac4d0da7b35a84994636bf6a2ffaf62a373d6b66",
+    "preview-retry-identity-fixed-1d440.json": "84966e9e80aa9f12d3e566445cfbaa6ec9a954a0c33a0bd09859b8dba2c7c607"
+  },
+  "committedBrowserLog": "architecture/evidence/issues/146/review-86951/tax-browser-review-fixes.log;1passed0skip in24334.482083ms; inspected, not independently rerun",
+  "scopeLimits": [
+    "Dependency stubs in exact-action replay; synthetic authenticated session in API tests",
+    "No DB/browser/provider/repository mutation",
+    "No complete gate, deployment-order or protected-integration acceptance"
+  ]
+}

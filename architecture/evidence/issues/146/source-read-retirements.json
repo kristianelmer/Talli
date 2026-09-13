@@ -48,7 +48,7 @@
   "artifactBindings": {
     "cutover": {
       "path": "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql",
-      "sha256": "783e456de88c44d32755fc58d2eeff9ec9d7ada57043dd92ec448b6fd1603168"
+      "sha256": "20783cbd00406594a9203292052094029e7bbe21f83d7e53991e65513910a9bd"
     },
     "contract": {
       "path": "supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql",
@@ -56,7 +56,7 @@
     },
     "rollback": {
       "path": "supabase/rollback/20260913171000_company_tax_settlement_expand.sql",
-      "sha256": "a2628267136a5e0a1abfa7d9a3ff843497928a4d0f2a75f0b4b43d0ad5e8b32c"
+      "sha256": "f2e79ac013f608582e29ebd32bbbb047d0b105a1cac9db8b1905387e0094f687"
     }
   }
 }

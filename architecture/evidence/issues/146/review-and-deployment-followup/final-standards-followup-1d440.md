@@ -1,0 +1,13 @@
+# #146 bounded Standards follow-up
+
+**No Standards regression found** in `git diff 01d600fc5573967d50879e216c96d96445fdb949...1d440ae4471c4c377d951650595b0828cc13d9b2`: one commit, 18 files. Exact committed-file SHA-256 bindings are in `final-standards-followup-1d440-bindings.json`. Review applied the existing AGENTS/CONTEXT, ADR0011/0012/0013, module documentation and twelve heuristic smell baseline; no new heuristic finding.
+
+- `apps/web/app/actions.ts:3936–3941` carries the already validated operation UUID through every new submission-preview failure. It reuses the existing safe owner-path redirect helper and does not post, audit, regenerate identity or retry the write in that failure branch. The original successful capture and after-commit Audit order remain unchanged.
+- `apps/backend/src/talli_backend/main.py:1819` and `modules/company_tax_filing/public.py:35` expose a required, nullable preview amount. This is a transport representation for unparseable/nonfinite browser input; the unchanged Tax normalizer (`service.py:18–23`) owns rejection and preserves date-before-amount precedence. OpenAPI and the generated client agree. The actual capture command has not become nullable or less strict. No TypeScript tax policy or new SQL authority was added.
+- Static comparison confirms compatibility registry/baseline, database catalog, checker, stage/criteria state and SQL are unchanged. The updated source-read file hash matches the pinned actions file; the two approved operation compositions are unaffected.
+
+**Independent validation:** the isolated pinned backend sources passed all 26 FastAPI preview tests, using injected local fake sessions and no database/browser/provider operations. Transcript: `final-standards-followup-1d440-api.log`. Parent-reported browser and transport runs were source-reviewed but not independently rerun here.
+
+**Evidence correction:** the earlier two focused architecture tests ran under Node v25.6.1, as their transcript states; my earlier report prose incorrectly called that Node24 from its executable path. The private original report now states v25.6.1. The committed review copy needs the same explicit correction and updated digest. This changes runtime attribution, not the historical 2/2 result, and must not be treated as a Node24 run. A separate rerun on the verified Node v24.20.0 binary now passed the same two cases against isolated `86951dbb` sources; see `final-standards-review-86951-node24-rerun.log`.
+
+Full immutable gates, deployment-order evidence, protected integration and final acceptance remain separate and pending. No exit credit or successor advancement is asserted.

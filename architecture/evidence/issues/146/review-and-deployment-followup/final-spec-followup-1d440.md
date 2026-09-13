@@ -1,0 +1,11 @@
+# #146 bounded Spec correction review
+
+**PASS — both remaining findings closed; no new actionable regression found.** Compared `01d600fc5573967d50879e216c96d96445fdb949...1d440ae4471c4c377d951650595b0828cc13d9b2`. Source and reproduction SHA256 bindings are in sibling `final-spec-followup-1d440-bindings.json`.
+
+**P1 retry identity: closed.** Submission preview failure now redirects through `ownerPathWithQuery`, retaining the original `taxSettlementOperationId` and using `/actions/tax-settlement` for the wizard. Independent execution of the exact AST-extracted action/helper bodies changed the earlier failing result to `/actions/tax-settlement?error=…&taxSettlementOperationId=70000000-0000-4000-8000-000000000001`, with zero capture/audit calls. This closes the plan's “Repeated/ambiguous operations retain identity and never post twice” defect. The committed extended browser test covers committed-response loss, a subsequent submission preview503, same-ID recovery and exactly one settlement/entry/receipt/audit; its raw log reports one pass, zero skips. I inspected this evidence without rerunning the browser.
+
+**P2 nonfinite text: closed.** The additive preview wire accepts required explicit null, and the existing backend normalizer rejects it with `invalid_amount` after the date check. Browser JSON serialization of `abc`, `Infinity` and `1,5` therefore retains the original Norwegian message, with the separate coded submission formatter preserved. Strict boolean/string rejection remains. Only `TaxSettlementPreviewInputWire` changes in OpenAPI; all paths and the released capture contract remain unchanged.
+
+Independent isolated tests: **45 backend tests passed in5.71s** (26 API plus19 normalization) and **16 transport tests passed, zero skips**. The latter use Node25.6.1; API authentication and action dependencies are synthetic. No database/browser/provider or repository mutation occurred. Original requirements bytes are unchanged. The earlier submission-prefix P2 was already closed at01d600fc; all findings from the pinned86951 review are now closed.
+
+This is correction acceptance only. Full immutable gates, exact deployment-order evidence and protected integration remain separate pending obligations; no complete #146 acceptance, #152 stage exit or production claim is made.

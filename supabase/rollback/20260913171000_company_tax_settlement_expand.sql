@@ -124,8 +124,14 @@ end;
 $rollback$;
 revoke execute on function company_tax_filing.archive_settlements_v1(uuid,integer,text),company_tax_filing.prepare_settlement_v1(jsonb,text),company_tax_filing.complete_settlement_v1(jsonb,uuid,text),
  ledger.post_company_tax_settlement_v1(text,uuid,integer,text,jsonb,text,text,text),
- banking.prepare_tax_settlement_transaction_v1(jsonb,text),banking.claim_tax_settlement_transaction_v1(jsonb,text),
- documents.lock_metadata_binding_v1(uuid,uuid,integer,text) from company_tax_filing_workflow_executor;
+ banking.prepare_tax_settlement_transaction_v1(jsonb,text),banking.claim_tax_settlement_transaction_v1(jsonb,text) from company_tax_filing_workflow_executor;
+do $disable_document_binding$
+begin
+ if to_regprocedure('documents.lock_metadata_binding_v1(uuid,uuid,integer,text)') is not null then
+  revoke execute on function documents.lock_metadata_binding_v1(uuid,uuid,integer,text) from company_tax_filing_workflow_executor;
+ end if;
+end;
+$disable_document_binding$;
 do $restore_schema_authority$
 begin
  if not current_setting('talli.tax146.rollback_backend_create')::boolean then

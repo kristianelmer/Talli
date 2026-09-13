@@ -9,7 +9,7 @@ import { installBrowserEgressGuard } from "./fixtures/system-user-authority-mock
 
 // Mandatory full-stack lane. Only identity/admission prerequisites are seeded;
 // the normal owner form, verified JWT, restricted SQL and Audit create effects.
-test("owner previews all settlement kinds and retries a lost committed response without duplicate effects", { timeout: 240_000 }, async (t) => {
+test("owner captures every settlement kind through wizard and workspace and retries without duplicate effects", { timeout: 240_000 }, async (t) => {
   const fixture = await startTaxBrowserFixture();
   let browser;
   t.after(async () => { try { await browser?.close(); } finally { await fixture.close(); } });
@@ -94,6 +94,30 @@ test("owner previews all settlement kinds and retries a lost committed response 
       (select count(*)::int from public.audit_events where company_id=$1 and action='tax_settlement_recorded') audits`, [fixture.companyId]);
     assert.deepEqual(rows, [{ settlements:1, entries:1, receipts:1, audits:1 }]);
   });
+  // Complete the other supported captures through both shipped owner forms.
+  await page.goto(fixture.siteOrigin + "/actions/tax-settlement");
+  await kind.selectOption("payment");
+  await fill("12.34");
+  await page.getByRole("cell", { name: "1920 Bankinnskudd", exact: true }).waitFor();
+  await confirm.click();
+  await page.waitForURL(url => url.pathname === "/actions" && !url.searchParams.has("error"));
+  await page.goto(fixture.siteOrigin + "/workspace");
+  const workspaceForm = page.locator("form").filter({ has: page.getByRole("button", { name: "Poster skatteoppgjør", exact: true }) });
+  await workspaceForm.locator('input[name="incomeYear"]').fill(year);
+  await workspaceForm.locator('input[name="settlementDate"]').fill(`${year}-09-02`);
+  await workspaceForm.locator('select[name="settlementType"]').selectOption("refund");
+  await workspaceForm.locator('input[name="amount"]').fill("33.10");
+  const workspaceOperation = await workspaceForm.locator('input[name="operationId"]').inputValue();
+  await workspaceForm.getByRole("button", { name: "Poster skatteoppgjør", exact: true }).click();
+  await page.waitForFunction(previous => {
+    const form = [...document.forms].find(item => item.querySelector('select[name="settlementType"]'));
+    const value = form?.querySelector('input[name="operationId"]')?.value;
+    return Boolean(value && value !== previous);
+  }, workspaceOperation);
+  assert.equal(new URL(page.url()).pathname, "/workspace");
+  assert.equal(new URL(page.url()).searchParams.has("error"), false);
+  assert.deepEqual(fixture.controls.captures.map(call => [call.body.settlementKind, call.status, call.response.replayed]),
+    [["payable",201,false],["payable",201,true],["payment",201,false],["refund",201,false]]);
   assert.deepEqual(blockedRequests, []);
 });
 

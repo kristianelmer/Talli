@@ -334,8 +334,13 @@ def test_expand_keeps_predecessor_document_retention_until_tax_cutover(fixture):
     )''')
     assert predecessor!=definition
     db.execute(predecessor)
+    db.execute('grant documents_store_owner to postgres')
+    db.execute('drop function documents.lock_metadata_binding_v1(uuid,uuid,integer,text)')
     before=db.execute("select pg_get_functiondef('documents.has_evidence_references_v1(uuid)'::regprocedure)").fetchone()[0]
     migration(db,EXPAND)
+    assert db.execute("select to_regprocedure('documents.lock_metadata_binding_v1(uuid,uuid,integer,text)')").fetchone()[0] is None
+    # Expansion-only rollback also tolerates the not-yet-installed port.
+    migration(db,ROLLBACK)
     assert db.execute("select pg_get_functiondef('documents.has_evidence_references_v1(uuid)'::regprocedure)").fetchone()[0]==before
     migration(db,CUTOVER)
     assert db.execute("select pg_get_functiondef('documents.has_evidence_references_v1(uuid)'::regprocedure)").fetchone()[0]==definition

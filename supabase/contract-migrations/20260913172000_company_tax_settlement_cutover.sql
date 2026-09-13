@@ -14,6 +14,41 @@ set local role company_archive_projection_executor;
 grant execute on function public.company_archive_track_source_write_v1() to company_tax_filing_store_owner;
 reset role;
 
+-- Documents locks its own metadata while the Tax reference is established.
+grant execute on function public.company_access_auth_uid_v1(), public.company_access_is_accepted_owner_v1(uuid) to documents_store_owner;
+select set_config('talli.tax146.cutover_documents_create',has_schema_privilege('documents_store_owner','documents','CREATE')::text,true);
+set local role documents_store_owner;
+grant create on schema documents to documents_store_owner;
+create or replace function documents.lock_metadata_binding_v1(p_document uuid,p_company uuid,p_year integer,p_subject text)
+returns void language plpgsql security definer set search_path='' as $function$
+begin
+ if public.company_access_auth_uid_v1() is null or public.company_access_auth_uid_v1() is distinct from p_subject::uuid
+  or not public.company_access_is_accepted_owner_v1(p_company) then raise exception 'ledger_forbidden'; end if;
+ perform 1 from public.documents where id=p_document and company_id=p_company and income_year=p_year for share;
+ if not found then raise exception 'ledger_invalid_input'; end if;
+end;
+$function$;
+drop policy if exists documents_tax_binding_read on public.documents;
+create policy documents_tax_binding_read on public.documents for select to documents_store_owner
+ using(current_setting('role',true)='company_tax_filing_workflow_executor' and public.company_access_is_accepted_owner_v1(company_id));
+-- PostgreSQL row-locking reads also require an UPDATE visibility policy.
+-- WITH CHECK(false) grants no mutation through this purpose-specific policy.
+drop policy if exists documents_tax_binding_lock on public.documents;
+create policy documents_tax_binding_lock on public.documents for update to documents_store_owner
+ using(current_setting('role',true)='company_tax_filing_workflow_executor' and public.company_access_is_accepted_owner_v1(company_id))
+ with check(false);
+reset role;
+revoke all on function documents.lock_metadata_binding_v1(uuid,uuid,integer,text) from public,anon,authenticated,service_role;
+grant usage on schema documents to company_tax_filing_workflow_executor;
+
+do $restore_documents_schema_create$
+begin
+ if not current_setting('talli.tax146.cutover_documents_create')::boolean then
+  revoke create on schema documents from documents_store_owner;
+ end if;
+end;
+$restore_documents_schema_create$;
+
 -- Retarget only the two retired storage predicates in the currently installed
 -- Documents routine. Every other owner, receipt and reference predicate is retained.
 do $document_retention$

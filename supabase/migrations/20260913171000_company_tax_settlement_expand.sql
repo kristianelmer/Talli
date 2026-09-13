@@ -324,31 +324,8 @@ revoke all on function banking.prepare_tax_settlement_transaction_v1(jsonb,text)
  from public,anon,authenticated,service_role;
 grant usage on schema banking to company_tax_filing_workflow_executor;
 
--- Documents locks its own metadata while the Tax reference is established.
-grant execute on function public.company_access_auth_uid_v1(), public.company_access_is_accepted_owner_v1(uuid) to documents_store_owner;
-set local role documents_store_owner;
-grant create on schema documents to documents_store_owner;
-create or replace function documents.lock_metadata_binding_v1(p_document uuid,p_company uuid,p_year integer,p_subject text)
-returns void language plpgsql security definer set search_path='' as $function$
-begin
- if public.company_access_auth_uid_v1() is null or public.company_access_auth_uid_v1() is distinct from p_subject::uuid
-  or not public.company_access_is_accepted_owner_v1(p_company) then raise exception 'ledger_forbidden'; end if;
- perform 1 from public.documents where id=p_document and company_id=p_company and income_year=p_year for share;
- if not found then raise exception 'ledger_invalid_input'; end if;
-end;
-$function$;
-drop policy if exists documents_tax_binding_read on public.documents;
-create policy documents_tax_binding_read on public.documents for select to documents_store_owner
- using(current_setting('role',true)='company_tax_filing_workflow_executor' and public.company_access_is_accepted_owner_v1(company_id));
--- PostgreSQL row-locking reads also require an UPDATE visibility policy.
--- WITH CHECK(false) grants no mutation through this purpose-specific policy.
-drop policy if exists documents_tax_binding_lock on public.documents;
-create policy documents_tax_binding_lock on public.documents for update to documents_store_owner
- using(current_setting('role',true)='company_tax_filing_workflow_executor' and public.company_access_is_accepted_owner_v1(company_id))
- with check(false);
-reset role;
-revoke all on function documents.lock_metadata_binding_v1(uuid,uuid,integer,text) from public,anon,authenticated,service_role;
-grant usage on schema documents to company_tax_filing_workflow_executor;
+-- The Documents binding port is installed with Tax cutover, after the
+-- predecessor Documents rollback/recutover has finished.
 
 set local role company_tax_filing_store_owner;
 create or replace function company_tax_filing.prepare_settlement_v1(p_request jsonb,p_subject text)

@@ -1,0 +1,28 @@
+{
+  "status": "PARTIAL_PROOFS_ADOPTED_FULL_GATES_AND_LATEST_REHEARSAL_FIX_REVIEW_PENDING",
+  "implementationRevision": "1d440ae4471c4c377d951650595b0828cc13d9b2",
+  "independentReviews": {
+    "spec": "PASS_all_three_findings_closed",
+    "standards": "PASS_no_residual_findings"
+  },
+  "runtimeAttributionCorrection": "Earlier Standards prose called its isolated architecture run Node24 based on an executable path. Its unchanged original transcript records25.6.1. Corrected report names25.6.1; a separate verified24.20.0 rerun passed2/2 and is retained independently. Neither substitutes for the complete immutable gate.",
+  "artifacts": {
+    "final-spec-followup-1d440.md": "37fb19801338f05a03b143848415538f2a2c553d184296c6c4dce2011292bdce",
+    "final-spec-followup-1d440-bindings.json": "5542a2da9789e118843d477d391f1b8a495d2bcfca897549e0d01228ba61e002",
+    "final-standards-followup-1d440.md": "f4cb79d16f0e1166a4ea1c057e52753868223b4b7776bd05329491bf0ea4b5c0",
+    "final-standards-followup-1d440-bindings.json": "2ade717e326728e454fd5ee744b8099be20ede7f4dad501cd4a18ed59c482412",
+    "final-standards-followup-1d440-api.log": "c875c48530a8879db23cabd147cf653c9cce0cf348038426f6c2f7b3ad069baa",
+    "final-standards-review-86951-node24-rerun.log": "447cac5da49b369a107f3dffe8049dddb0f7c33a5ae0c3817384637ec7c68614",
+    "final-standards-review-86951.md": "2aabd34eb7cf17fb44044b9e9f239595d94aa6621aed0c1ef180a89c8c5a4a19",
+    "deployment-order-proof-manifest.json": "6ceb622e74f6beba50db3928baa3e4032b0aef078631a3400da3a0f898c7e1da",
+    "new-preview-old-backend-proof.json": "bcab2a42e1583c734029f918aab7768ee8fc622c19de43e4f98d959ef760136a",
+    "old-linked-rollback-proof.json": "adff4882a36d4c6a6ea089a50402c9c4493968d3d6fe0576fb0460683455308a",
+    "old-client-after-contract-proof.json": "c226e6c6d5dd3b3bee5dcf5fb094b3975e0e1090569552e81b1dc625f080cf53",
+    "pinned-rollback-api.log": "8a32f94d5c18b2d70d7c6b97a365e001aaeea561fbc8c9bc04eee15fb1529e6b"
+  },
+  "remaining": [
+    "Complete immutable gate and evidence reread",
+    "Protected integration and final stage receipt",
+    "Advance within Company Tax to#152 only after#146 closure"
+  ]
+}
