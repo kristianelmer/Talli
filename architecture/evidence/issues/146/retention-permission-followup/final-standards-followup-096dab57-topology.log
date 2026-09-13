@@ -1,0 +1,90 @@
+PASS absent legacy function plus restored physical Governance table
+PASS legacy function retains original loan then full contract order
+PASS already contracted Governance skips predecessor artifacts
+PASS Banking and Investments stay before restored Governance and Tax
+PASS Governance error aborts before Tax expansion and closes connection
+PASS view is not treated as restored physical Governance table
+PASS Ledger predecessor guard remains before all migrations
+PASS remote database is rejected before constructing a connection
+{
+  "revision": "096dab57a8593f6df16a2b3e82a382e3d95a9b4f",
+  "runtime": "v24.20.0",
+  "cases": 8,
+  "passed": 8,
+  "limits": "Actual immutable script and safety source executed with mocked pg and filesystem ports; SQL bytes checked but never executed; no real database, browser or shared process operations.",
+  "results": [
+    {
+      "name": "absent legacy function plus restored physical Governance table",
+      "status": "PASS",
+      "appliedArtifacts": [
+        "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql",
+        "supabase/migrations/20260913171000_company_tax_settlement_expand.sql"
+      ],
+      "connectionClosed": true
+    },
+    {
+      "name": "legacy function retains original loan then full contract order",
+      "status": "PASS",
+      "appliedArtifacts": [
+        "supabase/contract-migrations/20260902071000_corporate_governance_shareholder_loan_contract.sql",
+        "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql",
+        "supabase/migrations/20260913171000_company_tax_settlement_expand.sql"
+      ],
+      "connectionClosed": true
+    },
+    {
+      "name": "already contracted Governance skips predecessor artifacts",
+      "status": "PASS",
+      "appliedArtifacts": [
+        "supabase/migrations/20260913171000_company_tax_settlement_expand.sql"
+      ],
+      "connectionClosed": true
+    },
+    {
+      "name": "Banking and Investments stay before restored Governance and Tax",
+      "status": "PASS",
+      "appliedArtifacts": [
+        "supabase/contract-migrations/20260828101000_banking_capability_contract.sql",
+        "supabase/contract-migrations/20260831133000_investments_share_purchase_contract.sql",
+        "supabase/contract-migrations/20260831170000_investments_share_sale_contract.sql",
+        "supabase/contract-migrations/20260831190000_investments_received_dividend_contract.sql",
+        "supabase/contract-migrations/20260831193000_investments_stage_exit.sql",
+        "supabase/contract-migrations/20260901001500_investments_stage_exit_policy_cleanup.sql",
+        "supabase/contract-migrations/20260901150538_investments_lifecycle_public_cutover.sql",
+        "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql",
+        "supabase/migrations/20260913171000_company_tax_settlement_expand.sql"
+      ],
+      "connectionClosed": true
+    },
+    {
+      "name": "Governance error aborts before Tax expansion and closes connection",
+      "status": "PASS",
+      "appliedArtifacts": [
+        "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql"
+      ],
+      "connectionClosed": true
+    },
+    {
+      "name": "view is not treated as restored physical Governance table",
+      "status": "PASS",
+      "appliedArtifacts": [
+        "supabase/migrations/20260913171000_company_tax_settlement_expand.sql"
+      ],
+      "connectionClosed": true
+    },
+    {
+      "name": "Ledger predecessor guard remains before all migrations",
+      "status": "PASS",
+      "appliedArtifacts": [],
+      "connectionClosed": true
+    },
+    {
+      "name": "remote database is rejected before constructing a connection",
+      "status": "PASS",
+      "appliedArtifacts": [],
+      "connectionClosed": false
+    }
+  ]
+}
+(node:97453) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

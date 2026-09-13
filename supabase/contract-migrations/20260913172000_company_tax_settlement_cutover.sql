@@ -5,7 +5,7 @@ set local timezone='UTC';
 set local statement_timeout='120s';
 do $membership$
 begin
- execute format('grant company_tax_filing_store_owner,company_tax_filing_workflow_executor,company_tax_filing_ledger_bridge_owner,ledger_store_owner,banking_store_owner,documents_store_owner,company_archive_projection_executor to %I',current_user);
+ execute format('grant company_tax_filing_identity_guard_owner,company_tax_filing_store_owner,company_tax_filing_workflow_executor,company_tax_filing_ledger_bridge_owner,ledger_store_owner,banking_store_owner,documents_store_owner,company_archive_projection_executor to %I',current_user);
 end;
 $membership$;
 select set_config('talli.tax146.principal',current_user,true);
@@ -182,7 +182,7 @@ grant company_tax_filing_workflow_executor to talli_ledger_backend with inherit 
 revoke create on schema public from company_tax_filing_store_owner;
 do $cleanup$
 begin
- execute format('revoke company_tax_filing_store_owner,company_tax_filing_workflow_executor,company_tax_filing_ledger_bridge_owner,ledger_store_owner,banking_store_owner,documents_store_owner,company_archive_projection_executor from %I',current_user);
+ execute format('revoke company_tax_filing_identity_guard_owner,company_tax_filing_store_owner,company_tax_filing_workflow_executor,company_tax_filing_ledger_bridge_owner,ledger_store_owner,banking_store_owner,documents_store_owner,company_archive_projection_executor from %I',current_user);
 end;
 $cleanup$;
 commit;

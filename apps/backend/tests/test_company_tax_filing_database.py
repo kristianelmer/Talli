@@ -235,6 +235,9 @@ def test_failure_after_ledger_and_bank_claim_rolls_back_every_effect(fixture):
 def test_document_removal_retains_tax_references_through_deployment_phases(fixture,phase):
     db,cid,owner=fixture;body=linked_request(db,cid,owner,'payment');api=client(db,owner)
     assert post(api,body).status_code==201
+    # Fixture insertion temporarily borrows these owners. Retention must work
+    # through its own grants even when no migration/fixture role is inherited.
+    db.execute('revoke banking_store_owner,documents_store_owner,company_tax_filing_store_owner from postgres')
     if phase!='cutover': migration(db,ROLLBACK)
     if phase=='recutover': migration(db,CUTOVER)
     db.execute('grant documents_executor to postgres with inherit false,set true')

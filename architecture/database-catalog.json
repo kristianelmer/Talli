@@ -812,7 +812,7 @@
       "artifacts": {
         "cutover": {
           "path": "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql",
-          "sha256": "20783cbd00406594a9203292052094029e7bbe21f83d7e53991e65513910a9bd"
+          "sha256": "28842782cf47aea849ba25e8dc672c98f0453852ba8cf157e5a58f725209c206"
         },
         "contract": {
           "path": "supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql",
