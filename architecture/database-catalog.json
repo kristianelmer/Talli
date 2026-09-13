@@ -93,6 +93,26 @@
       "kind": "technical"
     },
     {
+      "name": "backend_system.tax_settlement_migration_inventory",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.tax_settlement_migration_state",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.tax_settlement_quarantine",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.tax_settlement_reconciliations",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.tax_settlement_source_rows",
+      "kind": "technical"
+    },
+    {
       "name": "backend_system.validation_observation_control",
       "kind": "technical"
     },
@@ -218,6 +238,14 @@
       "owner": "backend:billing",
       "compatibilityResources": [
         "table:production_pilot_entitlements"
+      ]
+    },
+    {
+      "name": "company_tax_filing.settlements",
+      "kind": "capability-business",
+      "owner": "backend:company_tax_filing",
+      "compatibilityResources": [
+        "table:holding_actions"
       ]
     },
     {
@@ -661,10 +689,6 @@
       "kind": "legacy-business"
     },
     {
-      "name": "public.holding_actions",
-      "kind": "legacy-business"
-    },
-    {
       "name": "public.launch_signoffs",
       "kind": "technical"
     },
@@ -778,6 +802,27 @@
       "compatibilityResources": [
         "table:production_filing_submissions"
       ]
+    }
+  ],
+  "preservedSourceRetirements": [
+    {
+      "source": "public.holding_actions",
+      "successor": "company_tax_filing.settlements",
+      "issue": "#146",
+      "artifacts": {
+        "cutover": {
+          "path": "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql",
+          "sha256": "28842782cf47aea849ba25e8dc672c98f0453852ba8cf157e5a58f725209c206"
+        },
+        "contract": {
+          "path": "supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql",
+          "sha256": "99b636f296f92096fccceb45c8d5c1724ab8e75bc33db71cb93ccc59da221271"
+        },
+        "rollback": {
+          "path": "supabase/rollback/20260913171000_company_tax_settlement_expand.sql",
+          "sha256": "f2e79ac013f608582e29ebd32bbbb047d0b105a1cac9db8b1905387e0094f687"
+        }
+      }
     }
   ]
 }

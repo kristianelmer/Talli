@@ -1,0 +1,554 @@
+{
+  "revision": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
+  "source": "apps/web/app/lib/tax-settlement.ts",
+  "sourceSha256": "8ea0dd637bdfb1ebec72b5b1289f3fbbe849cdcecab9a3f695b699b4493dc605",
+  "node": "v24.20.0",
+  "recordedAt": "2026-09-13T15:44:09.878Z",
+  "scope": "Historical web validation/preview only. Calendar/date-year, rounded-zero, authorization, database, ledger and bank enforcement occur later in the original command and are not certified by this preview-only capture.",
+  "cases": [
+    {
+      "name": "payable",
+      "input": {
+        "settlementDate": "2026-04-15",
+        "amount": 125.5,
+        "settlementType": "payable",
+        "documentStatus": "attached",
+        "bankTransactionId": null,
+        "documentId": "70000000-0000-4000-8000-000000000072"
+      },
+      "result": {
+        "payload": {
+          "settlement_date": "2026-04-15",
+          "amount": 125.5,
+          "settlement_type": "payable",
+          "document_status": "attached",
+          "bank_transaction_id": null,
+          "document_id": "70000000-0000-4000-8000-000000000072"
+        },
+        "lines": [
+          {
+            "account": "8300",
+            "description": "Skattekostnad",
+            "debit": 125.5,
+            "credit": 0
+          },
+          {
+            "account": "2500",
+            "description": "Betalbar skatt",
+            "debit": 0,
+            "credit": 125.5
+          }
+        ],
+        "expectedBankAmount": null
+      }
+    },
+    {
+      "name": "payment",
+      "input": {
+        "settlementDate": "2026-04-15",
+        "amount": 125.5,
+        "settlementType": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "70000000-0000-4000-8000-000000000071",
+        "documentId": "70000000-0000-4000-8000-000000000072"
+      },
+      "result": {
+        "payload": {
+          "settlement_date": "2026-04-15",
+          "amount": 125.5,
+          "settlement_type": "payment",
+          "document_status": "attached",
+          "bank_transaction_id": "70000000-0000-4000-8000-000000000071",
+          "document_id": "70000000-0000-4000-8000-000000000072"
+        },
+        "lines": [
+          {
+            "account": "2500",
+            "description": "Betalt skatt",
+            "debit": 125.5,
+            "credit": 0
+          },
+          {
+            "account": "1920",
+            "description": "Bank",
+            "debit": 0,
+            "credit": 125.5
+          }
+        ],
+        "expectedBankAmount": -125.5
+      }
+    },
+    {
+      "name": "refund",
+      "input": {
+        "settlementDate": "2026-04-15",
+        "amount": 125.5,
+        "settlementType": "refund",
+        "documentStatus": "attached",
+        "bankTransactionId": "70000000-0000-4000-8000-000000000071",
+        "documentId": "70000000-0000-4000-8000-000000000072"
+      },
+      "result": {
+        "payload": {
+          "settlement_date": "2026-04-15",
+          "amount": 125.5,
+          "settlement_type": "refund",
+          "document_status": "attached",
+          "bank_transaction_id": "70000000-0000-4000-8000-000000000071",
+          "document_id": "70000000-0000-4000-8000-000000000072"
+        },
+        "lines": [
+          {
+            "account": "1920",
+            "description": "Skatterefusjon mottatt",
+            "debit": 125.5,
+            "credit": 0
+          },
+          {
+            "account": "1570",
+            "description": "Skatt til gode",
+            "debit": 0,
+            "credit": 125.5
+          }
+        ],
+        "expectedBankAmount": 125.5
+      }
+    },
+    {
+      "name": "unlinked-payment",
+      "input": {
+        "settlementDate": "2026-04-15",
+        "amount": 125.5,
+        "settlementType": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": null,
+        "documentId": null
+      },
+      "result": {
+        "payload": {
+          "settlement_date": "2026-04-15",
+          "amount": 125.5,
+          "settlement_type": "payment",
+          "document_status": "attached",
+          "bank_transaction_id": null,
+          "document_id": null
+        },
+        "lines": [
+          {
+            "account": "2500",
+            "description": "Betalt skatt",
+            "debit": 125.5,
+            "credit": 0
+          },
+          {
+            "account": "1920",
+            "description": "Bank",
+            "debit": 0,
+            "credit": 125.5
+          }
+        ],
+        "expectedBankAmount": -125.5
+      }
+    },
+    {
+      "name": "missing-document-warning",
+      "input": {
+        "settlementDate": "2026-04-15",
+        "amount": 125.5,
+        "settlementType": "payment",
+        "documentStatus": "missing_accepted_warning",
+        "bankTransactionId": "70000000-0000-4000-8000-000000000071",
+        "documentId": null
+      },
+      "result": {
+        "payload": {
+          "settlement_date": "2026-04-15",
+          "amount": 125.5,
+          "settlement_type": "payment",
+          "document_status": "missing_accepted_warning",
+          "bank_transaction_id": "70000000-0000-4000-8000-000000000071",
+          "document_id": null
+        },
+        "lines": [
+          {
+            "account": "2500",
+            "description": "Betalt skatt",
+            "debit": 125.5,
+            "credit": 0
+          },
+          {
+            "account": "1920",
+            "description": "Bank",
+            "debit": 0,
+            "credit": 125.5
+          }
+        ],
+        "expectedBankAmount": -125.5
+      }
+    },
+    {
+      "name": "document-not-required",
+      "input": {
+        "settlementDate": "2026-04-15",
+        "amount": 125.5,
+        "settlementType": "payment",
+        "documentStatus": "not_required",
+        "bankTransactionId": "70000000-0000-4000-8000-000000000071",
+        "documentId": null
+      },
+      "result": {
+        "payload": {
+          "settlement_date": "2026-04-15",
+          "amount": 125.5,
+          "settlement_type": "payment",
+          "document_status": "not_required",
+          "bank_transaction_id": "70000000-0000-4000-8000-000000000071",
+          "document_id": null
+        },
+        "lines": [
+          {
+            "account": "2500",
+            "description": "Betalt skatt",
+            "debit": 125.5,
+            "credit": 0
+          },
+          {
+            "account": "1920",
+            "description": "Bank",
+            "debit": 0,
+            "credit": 125.5
+          }
+        ],
+        "expectedBankAmount": -125.5
+      }
+    },
+    {
+      "name": "trim-date",
+      "input": {
+        "settlementDate": " 2026-04-15 ",
+        "amount": 125.5,
+        "settlementType": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "70000000-0000-4000-8000-000000000071",
+        "documentId": "70000000-0000-4000-8000-000000000072"
+      },
+      "result": {
+        "payload": {
+          "settlement_date": "2026-04-15",
+          "amount": 125.5,
+          "settlement_type": "payment",
+          "document_status": "attached",
+          "bank_transaction_id": "70000000-0000-4000-8000-000000000071",
+          "document_id": "70000000-0000-4000-8000-000000000072"
+        },
+        "lines": [
+          {
+            "account": "2500",
+            "description": "Betalt skatt",
+            "debit": 125.5,
+            "credit": 0
+          },
+          {
+            "account": "1920",
+            "description": "Bank",
+            "debit": 0,
+            "credit": 125.5
+          }
+        ],
+        "expectedBankAmount": -125.5
+      }
+    },
+    {
+      "name": "empty-optional-ids",
+      "input": {
+        "settlementDate": "2026-04-15",
+        "amount": 125.5,
+        "settlementType": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "",
+        "documentId": ""
+      },
+      "result": {
+        "payload": {
+          "settlement_date": "2026-04-15",
+          "amount": 125.5,
+          "settlement_type": "payment",
+          "document_status": "attached",
+          "bank_transaction_id": null,
+          "document_id": null
+        },
+        "lines": [
+          {
+            "account": "2500",
+            "description": "Betalt skatt",
+            "debit": 125.5,
+            "credit": 0
+          },
+          {
+            "account": "1920",
+            "description": "Bank",
+            "debit": 0,
+            "credit": 125.5
+          }
+        ],
+        "expectedBankAmount": -125.5
+      }
+    },
+    {
+      "name": "round-125.505",
+      "input": {
+        "settlementDate": "2026-04-15",
+        "amount": 125.505,
+        "settlementType": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "70000000-0000-4000-8000-000000000071",
+        "documentId": "70000000-0000-4000-8000-000000000072"
+      },
+      "result": {
+        "payload": {
+          "settlement_date": "2026-04-15",
+          "amount": 125.51,
+          "settlement_type": "payment",
+          "document_status": "attached",
+          "bank_transaction_id": "70000000-0000-4000-8000-000000000071",
+          "document_id": "70000000-0000-4000-8000-000000000072"
+        },
+        "lines": [
+          {
+            "account": "2500",
+            "description": "Betalt skatt",
+            "debit": 125.51,
+            "credit": 0
+          },
+          {
+            "account": "1920",
+            "description": "Bank",
+            "debit": 0,
+            "credit": 125.51
+          }
+        ],
+        "expectedBankAmount": -125.51
+      }
+    },
+    {
+      "name": "round-1.005",
+      "input": {
+        "settlementDate": "2026-04-15",
+        "amount": 1.005,
+        "settlementType": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "70000000-0000-4000-8000-000000000071",
+        "documentId": "70000000-0000-4000-8000-000000000072"
+      },
+      "result": {
+        "payload": {
+          "settlement_date": "2026-04-15",
+          "amount": 1,
+          "settlement_type": "payment",
+          "document_status": "attached",
+          "bank_transaction_id": "70000000-0000-4000-8000-000000000071",
+          "document_id": "70000000-0000-4000-8000-000000000072"
+        },
+        "lines": [
+          {
+            "account": "2500",
+            "description": "Betalt skatt",
+            "debit": 1,
+            "credit": 0
+          },
+          {
+            "account": "1920",
+            "description": "Bank",
+            "debit": 0,
+            "credit": 1
+          }
+        ],
+        "expectedBankAmount": -1
+      }
+    },
+    {
+      "name": "round-small-positive",
+      "input": {
+        "settlementDate": "2026-04-15",
+        "amount": 0.001,
+        "settlementType": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "70000000-0000-4000-8000-000000000071",
+        "documentId": "70000000-0000-4000-8000-000000000072"
+      },
+      "result": {
+        "payload": {
+          "settlement_date": "2026-04-15",
+          "amount": 0,
+          "settlement_type": "payment",
+          "document_status": "attached",
+          "bank_transaction_id": "70000000-0000-4000-8000-000000000071",
+          "document_id": "70000000-0000-4000-8000-000000000072"
+        },
+        "lines": [
+          {
+            "account": "2500",
+            "description": "Betalt skatt",
+            "debit": 0,
+            "credit": 0
+          },
+          {
+            "account": "1920",
+            "description": "Bank",
+            "debit": 0,
+            "credit": 0
+          }
+        ],
+        "expectedBankAmount": 0
+      }
+    },
+    {
+      "name": "bad-date-shape",
+      "input": {
+        "settlementDate": "15.04.2026",
+        "amount": 125.5,
+        "settlementType": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "70000000-0000-4000-8000-000000000071",
+        "documentId": "70000000-0000-4000-8000-000000000072"
+      },
+      "error": {
+        "name": "TaxSettlementValidationError",
+        "code": "invalid_date",
+        "message": "Oppgjørsdato må være YYYY-MM-DD."
+      }
+    },
+    {
+      "name": "legacy-calendar-date-preview",
+      "input": {
+        "settlementDate": "2026-02-30",
+        "amount": 125.5,
+        "settlementType": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "70000000-0000-4000-8000-000000000071",
+        "documentId": "70000000-0000-4000-8000-000000000072"
+      },
+      "result": {
+        "payload": {
+          "settlement_date": "2026-02-30",
+          "amount": 125.5,
+          "settlement_type": "payment",
+          "document_status": "attached",
+          "bank_transaction_id": "70000000-0000-4000-8000-000000000071",
+          "document_id": "70000000-0000-4000-8000-000000000072"
+        },
+        "lines": [
+          {
+            "account": "2500",
+            "description": "Betalt skatt",
+            "debit": 125.5,
+            "credit": 0
+          },
+          {
+            "account": "1920",
+            "description": "Bank",
+            "debit": 0,
+            "credit": 125.5
+          }
+        ],
+        "expectedBankAmount": -125.5
+      }
+    },
+    {
+      "name": "zero",
+      "input": {
+        "settlementDate": "2026-04-15",
+        "amount": 0,
+        "settlementType": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "70000000-0000-4000-8000-000000000071",
+        "documentId": "70000000-0000-4000-8000-000000000072"
+      },
+      "error": {
+        "name": "TaxSettlementValidationError",
+        "code": "invalid_amount",
+        "message": "Skattebeløp må være større enn 0."
+      }
+    },
+    {
+      "name": "negative",
+      "input": {
+        "settlementDate": "2026-04-15",
+        "amount": -1,
+        "settlementType": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "70000000-0000-4000-8000-000000000071",
+        "documentId": "70000000-0000-4000-8000-000000000072"
+      },
+      "error": {
+        "name": "TaxSettlementValidationError",
+        "code": "invalid_amount",
+        "message": "Skattebeløp må være større enn 0."
+      }
+    },
+    {
+      "name": "unknown-kind",
+      "input": {
+        "settlementDate": "2026-04-15",
+        "amount": 125.5,
+        "settlementType": "other",
+        "documentStatus": "attached",
+        "bankTransactionId": "70000000-0000-4000-8000-000000000071",
+        "documentId": "70000000-0000-4000-8000-000000000072"
+      },
+      "error": {
+        "name": "TaxSettlementValidationError",
+        "code": "invalid_settlement_type",
+        "message": "Ugyldig skatteoppgjørstype."
+      }
+    },
+    {
+      "name": "unknown-document-status",
+      "input": {
+        "settlementDate": "2026-04-15",
+        "amount": 125.5,
+        "settlementType": "payment",
+        "documentStatus": "other",
+        "bankTransactionId": "70000000-0000-4000-8000-000000000071",
+        "documentId": "70000000-0000-4000-8000-000000000072"
+      },
+      "error": {
+        "name": "TaxSettlementValidationError",
+        "code": "invalid_document_status",
+        "message": "Ugyldig dokumentstatus."
+      }
+    },
+    {
+      "name": "payable-with-bank",
+      "input": {
+        "settlementDate": "2026-04-15",
+        "amount": 125.5,
+        "settlementType": "payable",
+        "documentStatus": "attached",
+        "bankTransactionId": "70000000-0000-4000-8000-000000000071",
+        "documentId": "70000000-0000-4000-8000-000000000072"
+      },
+      "error": {
+        "name": "TaxSettlementValidationError",
+        "code": "payable_bank_link_blocked",
+        "message": "Betalbar skatt-estimat skal ikke knyttes direkte til bank."
+      }
+    },
+    {
+      "name": "validation-order",
+      "input": {
+        "settlementDate": "invalid",
+        "amount": -1,
+        "settlementType": "other",
+        "documentStatus": "other",
+        "bankTransactionId": "70000000-0000-4000-8000-000000000071",
+        "documentId": "70000000-0000-4000-8000-000000000072"
+      },
+      "error": {
+        "name": "TaxSettlementValidationError",
+        "code": "invalid_date",
+        "message": "Oppgjørsdato må være YYYY-MM-DD."
+      }
+    }
+  ]
+}

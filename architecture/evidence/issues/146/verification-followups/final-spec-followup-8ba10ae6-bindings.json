@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_NO_ACTIONABLE_FINDINGS",
+  "baseRevision": "4ce5f625c95ea14bb188c4169814130b3327e2ff",
+  "candidateRevision": "8ba10ae60a5e45c01a082a93f0b1b73f9943103b",
+  "diffCommand": "git diff 4ce5f625c95ea14bb188c4169814130b3327e2ff...8ba10ae60a5e45c01a082a93f0b1b73f9943103b",
+  "commits": [
+    "8ba10ae60a5e45c01a082a93f0b1b73f9943103b test(tax): run annual owner journey on contracted sources (#146)"
+  ],
+  "bindings": [
+    {
+      "path": "package.json",
+      "baseSha256": "32d8c669e182d2962159b555090d3d23b6815c694fd750ac7d6eab723447f873",
+      "candidateSha256": "5a3129f1408d7201d0b22d94489f9db7376dc79a1cf0277ddd60f086e8ec57c8"
+    },
+    {
+      "path": "scripts/test-supabase-local.sh",
+      "baseSha256": "9100aabe6db56ee9162eee1a32a7039469194241ac36e64b9b9672247d98ff36",
+      "candidateSha256": "8a009312a445888353458d5fa768b987d686d9e29a78cf595ee52b143373b7f6"
+    },
+    {
+      "path": "tests/browser_fixture_safety.test.mjs",
+      "baseSha256": "476806d2dc2ed94d8f9286121b5f85e8385c79119f7c22d41c978458ae108001",
+      "candidateSha256": "d2896c998c0a2c8f04d25858d0b96697360d3ec9b9ceed342b5ee8da3cfda552"
+    },
+    {
+      "path": "tests/browser_owner_annual_loop.mjs",
+      "baseSha256": "4cec91925cf1a72b2f2e02d94d1299d95f22302773cb5b020915a709b9c2bab4",
+      "candidateSha256": "397d8add73b6a735457adbb6ead293d8fb1c217869e797dbb059c590fbb3f5fa"
+    },
+    {
+      "path": "tests/browser_process_lifecycle.test.mjs",
+      "baseSha256": "f76e34f81cfa6118a7b3022f57b307fae5c7be1100fac8fc1bb0aebeec2af06a",
+      "candidateSha256": "43ee473d894aebbb218346510ebda2aaf2809d281dc0d3998c472a32c9adda29"
+    },
+    {
+      "path": "tests/ci_release_gate.test.mjs",
+      "baseSha256": "f1fa915b78b1f8378915195d46087631d38677ddaa395995e89d70e78deda097",
+      "candidateSha256": "a7ee8eafec2a786bc7d404f1f639e86bf87f85af9252769184b65f51441f127c"
+    },
+    {
+      "path": "tests/support/browser-owner-cleanup.mjs",
+      "baseSha256": "25c81125c76c094d3b6c480fa01da2f1ddebd81eb874b6b78d26a8117c853fe0",
+      "candidateSha256": "dd9421ba3a4d10caed8e81c474867d42e1bd26381b21d580cf140980da419b1e"
+    },
+    {
+      "path": "tests/support/rf1086-fixture-access.mjs",
+      "baseSha256": "117b6fb2fe7f22f991af72ba804ec7a29349ab15c315e9156ce572849336aa9e",
+      "candidateSha256": "77396b61a11d44c325b293affc6dfc2553ab5af8ae4f99a38ed6cb727936ecf8"
+    },
+    {
+      "path": "architecture/evidence/issues/146/requirements.json",
+      "baseSha256": "6ef6894e12f033b1674412cb4ae166a43fdf310c807cde51c62653d42140b150",
+      "candidateSha256": "6ef6894e12f033b1674412cb4ae166a43fdf310c807cde51c62653d42140b150"
+    },
+    {
+      "path": "architecture/evidence/issues/146/characterization-and-cutover-plan.md",
+      "baseSha256": "3a190c08d643eb9a33e3b1f895eb090eee1025c7acd4e0f376912275c6365048",
+      "candidateSha256": "3a190c08d643eb9a33e3b1f895eb090eee1025c7acd4e0f376912275c6365048"
+    },
+    {
+      "path": "supabase/migrations/20260902040000_corporate_governance_owner_dividend.sql",
+      "baseSha256": "c64f260a40dd651f80d0890e9a72278bca57c58abe8f7e0991af7492ff3c1c03",
+      "candidateSha256": "c64f260a40dd651f80d0890e9a72278bca57c58abe8f7e0991af7492ff3c1c03"
+    },
+    {
+      "path": "supabase/migrations/20260902090000_corporate_governance_annual_close.sql",
+      "baseSha256": "14b2f130fe974bcaf00ed50a8666590cc473af1cb037d6c21d6a2fded6294c6d",
+      "candidateSha256": "14b2f130fe974bcaf00ed50a8666590cc473af1cb037d6c21d6a2fded6294c6d"
+    },
+    {
+      "path": "supabase/migrations/20260902100000_corporate_governance_artifact_lifecycle.sql",
+      "baseSha256": "35efc3575ea7313cc62d8c33bf4c5f9d45b5a2f7841b58dd0815b2dc5411908b",
+      "candidateSha256": "35efc3575ea7313cc62d8c33bf4c5f9d45b5a2f7841b58dd0815b2dc5411908b"
+    }
+  ],
+  "checks": {
+    "annualBodyUnchangedExceptContractedPrecondition": true,
+    "allFunctionsAfterSeedUnchanged": true,
+    "retainedSeedAfterOpeningUnchanged": true,
+    "originalRequirementsBytesUnchanged": true,
+    "ancestor": true,
+    "runtimeAndMigrationFilesChanged": false
+  },
+  "tests": [
+    {
+      "command": [
+        "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+        "--test",
+        "--test-concurrency=1",
+        "tests/browser_fixture_safety.test.mjs",
+        "tests/browser_process_lifecycle.test.mjs"
+      ],
+      "cwd": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/spec-8ba10ae6-isolated",
+      "exitCode": 0,
+      "log": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/final-spec-followup-8ba10ae6-test-1.log",
+      "sha256": "9579bf1fc462e11efc43509da6ebbc6c73450f1686c672e9b32edb003c150210"
+    },
+    {
+      "command": [
+        "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+        "--test",
+        "--test-name-pattern=mandatory local lane|real shell stops",
+        "tests/ci_release_gate.test.mjs"
+      ],
+      "cwd": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/spec-8ba10ae6-isolated",
+      "exitCode": 0,
+      "log": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/final-spec-followup-8ba10ae6-test-2.log",
+      "sha256": "a75291c717fac3c41e63a89efc9601bccfbd6c947335793e777a65a4f8d1058b"
+    }
+  ],
+  "runtime": {
+    "version": "v24.20.0",
+    "path": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node"
+  },
+  "limits": [
+    "Outside-repository fixed-source archive; installed dependencies reused via read-only links.",
+    "22 fixture/process tests plus 14 shell-shim tests passed; real Supabase cleanup test explicitly skipped because environment intentionally removed.",
+    "No database/browser or full aggregate/gate execution, no protected integration or full Company Tax exit credit."
+  ],
+  "report": {
+    "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/final-spec-followup-8ba10ae6.md",
+    "sha256": "67d007a038922d793482ffee60f310970a168ac8af36e6072f81f2a9de921abd"
+  }
+}

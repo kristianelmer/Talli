@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
+const loan='contract-migrations/20260902071000_corporate_governance_shareholder_loan_contract.sql';
+const full='contract-migrations/20260902110000_corporate_governance_contract.sql';
+const expand='migrations/20260913171000_company_tax_settlement_expand.sql';
+async function run(label,{old=false,table,phase='expanded',direction='prepare',fail=false,ledger=false}={}) {
+ const source=await readFile(new URL(`./final-spec-followup-096dab57-${label}.mjs`,import.meta.url),'utf8');
+ const body=source.replace(/^import .*;\n/gm,'').replaceAll('import.meta.url','"file:///mock/scripts/rehearse-tax-topology.mjs"');
+ const applied=[];let ended=false;
+ class Client { async connect(){};async end(){ended=true};async query(sql,values){
+  if(sql.startsWith('select relkind'))return {rows:values[0]==='public.corporate_decisions'&&table?[{relkind:table}]:values[0]==='public.ledger_entries'&&ledger?[{relkind:'r'}]:[]};
+  if(sql.startsWith('select to_regprocedure'))return {rows:[{present:old}]};
+  if(sql.startsWith('select phase'))return {rows:[{phase}]};
+  applied.push(sql);if(fail&&sql===full)throw Error('reconciliation_failed');return {rows:[]};
+ }}
+ let error;
+ try{await new AsyncFunction('pg','readFile','isLoopbackPostgresUrl','process','URL','console',body)({Client},async url=>url.pathname.split('/supabase/')[1],()=>true,{env:{DATABASE_URL:'postgresql://mock@127.0.0.1/mock'},argv:['node','mock',direction]},URL,{log(){}})}catch(e){error=e.message}
+ return {applied,ended,error};
+}
+const cases=[
+ ['restored physical table, retired loan',{table:'r'},[full,expand]],
+ ['fully contracted Governance',{},[expand]],
+ ['old loan and restored table',{old:true,table:'r'},[loan,full,expand]],
+ ['old loan only',{old:true},[loan,full,expand]],
+ ['view is not restored table',{table:'v'},[expand]],
+ ['rolled-back Tax refresh',{table:'r',phase:'rolled_back'},[full,expand]],
+ ['contracted Tax no expansion',{table:'r',phase:'contracted'},[full]],
+ ['Tax contract direction',{direction:'contract',table:'r'},['contract-migrations/20260913172000_company_tax_settlement_cutover.sql','contract-migrations/20260913173000_company_tax_settlement_contract.sql']],
+];
+for(const [name,input,expected] of cases){const r=await run('candidate',input);assert.deepEqual(r.applied,expected,name);assert.equal(r.error,undefined);assert.equal(r.ended,true);console.log('PASS',name)}
+const failed=await run('candidate',{table:'r',fail:true});assert.deepEqual(failed.applied,[full]);assert.equal(failed.error,'reconciliation_failed');assert.equal(failed.ended,true);console.log('PASS reconciliation failure propagates before Tax refresh and ends client');
+const blocked=await run('candidate',{table:'r',ledger:true});assert.deepEqual(blocked.applied,[]);assert.equal(blocked.error,'tax_rehearsal_requires_final_ledger_and_rf_contracts');assert.equal(blocked.ended,true);console.log('PASS predecessor prerequisite still blocks');
+const prior=await run('base',{table:'r'});assert.deepEqual(prior.applied,[expand]);console.log('BASE REPRODUCED: retired loan plus physical table skipped full Governance contract');
+console.log(JSON.stringify({version:process.version,execPath:process.execPath,passed:10,baseRegressionReproduced:true}));

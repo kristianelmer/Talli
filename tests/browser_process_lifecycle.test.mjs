@@ -193,7 +193,7 @@ test("partial setup cleanup closes the database and removes only known resources
   );
 });
 
-for (const phase of ["predecessor", "overlap", "contracted"]) {
+for (const phase of ["predecessor", "overlap", "contracted", "tax-contracted"]) {
   test(`browser owner cleanup preserves every prior family in ${phase} before company and user`, async () => {
     const calls = [];
     const database = cleanupDatabaseProbe(calls, { phase });
@@ -217,7 +217,7 @@ for (const phase of ["predecessor", "overlap", "contracted"]) {
       ...["production_filing_events", "production_feedback_artifacts", "production_filing_submissions",
         "filing_approval_snapshots"].map(name => `${rf}.${name}`),
       `${authority}.system_user_requests`, "billing.production_pilot_entitlements", "billing.billing_accounts",
-      ...["opening_shareholders", "opening_balance_setups"].map(name => `${phase === "contracted" ? rf : "public"}.${name}`),
+      ...["opening_shareholders", "opening_balance_setups"].map(name => `${["contracted", "tax-contracted"].includes(phase) ? rf : "public"}.${name}`),
       ...["transaction_sources", "coverage_intervals", "suggestion_acceptances", "transactions", "source_files",
         "sync_attempts", "accounts", "connections"].map(name => `banking.${name}`),
       ...["opening_received_dividend_settlements", "opening_position_component_sources", "opening_position_components",
@@ -230,10 +230,21 @@ for (const phase of ["predecessor", "overlap", "contracted"]) {
       "backend_system.banking_command_receipts", "backend_system.ledger_command_receipts", "backend_system.ledger_workflow_receipts",
     ];
     assert.equal(required.length, 77);
+    if (phase === "tax-contracted") {
+      for (const name of ["corporate_document_events", "corporate_decision_finalizations", "corporate_document_artifacts",
+        "corporate_document_sets", "corporate_decisions", "holding_actions", "bank_transactions", "bank_suggestion_acceptances",
+        "investment_lot_allocations", "investment_lots", "investment_positions"]) {
+        required.splice(required.indexOf(`public.${name}`), 1);
+      }
+      required.push("company_tax_filing.settlements", ...["owner_dividend_payments", "owner_dividend_finalizations",
+        "owner_dividend_events", "owner_dividend_artifacts", "owner_dividend_decisions", "annual_close_finalizations",
+        "annual_close_events", "annual_close_artifacts", "annual_close_decisions", "shareholder_loans"]
+        .map(name => `corporate_governance.${name}`));
+    }
     for (const relation of required) assert.ok(calls.some(call => call.startsWith(`delete from ${relation} `)), relation);
     const deletion = relation => calls.findIndex(call => call.startsWith(`delete from ${relation} `));
-    assert.ok(deletion("public.corporate_decision_finalizations") < deletion("ledger.entries"));
-    assert.ok(deletion("public.holding_actions") < deletion("ledger.entries"));
+    assert.ok(deletion(phase === "tax-contracted" ? "corporate_governance.owner_dividend_finalizations" : "public.corporate_decision_finalizations") < deletion("ledger.entries"));
+    assert.ok(deletion(phase === "tax-contracted" ? "company_tax_filing.settlements" : "public.holding_actions") < deletion("banking.transactions"));
     assert.ok(deletion("banking.suggestion_acceptances") < deletion("ledger.entries"));
     assert.ok(deletion("ledger.entry_sources") < deletion("ledger.entries"));
     assert.ok(deletion("ledger.entry_corrections") < deletion("ledger.entries"));
@@ -576,7 +587,8 @@ function cleanupDatabaseProbe(calls, { phase = "overlap", failStatement, failure
   const tables = new Map();
   const schemas = new Map();
   let role = "postgres";
-  const ownerBySchema = { public: "postgres", backend_system: "ledger_store_owner",
+  const ownerBySchema = { company_tax_filing: "company_tax_filing_store_owner",
+    corporate_governance: "corporate_governance_store_owner", public: "postgres", backend_system: "ledger_store_owner",
     ledger: "ledger_store_owner", banking: "banking_store_owner", investments: "investments_store_owner",
     billing: "billing_store_owner", documents: "documents_store_owner",
     authority_connections: "authority_connections_store_owner", shareholder_register_filing: "shareholder_register_filing_store_owner" };
@@ -594,15 +606,19 @@ function cleanupDatabaseProbe(calls, { phase = "overlap", failStatement, failure
     return tables.get(relation);
   };
   const physicalKind = relation => {
+    if (phase === "tax-contracted" && ["public.corporate_document_events", "public.corporate_decision_finalizations",
+      "public.corporate_document_artifacts", "public.corporate_document_sets", "public.corporate_decisions",
+      "public.holding_actions", "public.bank_transactions", "public.bank_suggestion_acceptances", "public.investment_lot_allocations",
+      "public.investment_lots", "public.investment_positions"].includes(relation)) return undefined;
     if (defect === "missing-family" && relation === "shareholder_register_filing.filing_previews") return undefined;
     if (["public.billing_accounts", "public.production_pilot_entitlements"].includes(relation)) return "v";
     if (phase === "predecessor") {
       if (relation.startsWith("shareholder_register_filing.") || relation.startsWith("authority_connections.") || relation === "ledger.opening_bank_inputs") return undefined;
     } else if (["public.system_user_requests", ...["production_feedback_artifacts", "production_filing_events",
       "production_filing_submissions", "filing_approval_snapshots"].map(name => `public.${name}`)].includes(relation)) {
-      return phase === "contracted" ? undefined : "v";
+      return ["contracted", "tax-contracted"].includes(phase) ? undefined : "v";
     }
-    if (phase === "contracted" && ["public.opening_balance_setups", "public.opening_shareholders"].includes(relation)) return undefined;
+    if (["contracted", "tax-contracted"].includes(phase) && ["public.opening_balance_setups", "public.opening_shareholders"].includes(relation)) return undefined;
     return "r";
   };
   const decode = identifier => identifier.replaceAll('"', "");

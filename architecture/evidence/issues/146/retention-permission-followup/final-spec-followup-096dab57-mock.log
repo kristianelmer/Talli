@@ -1,0 +1,12 @@
+PASS restored physical table, retired loan
+PASS fully contracted Governance
+PASS old loan and restored table
+PASS old loan only
+PASS view is not restored table
+PASS rolled-back Tax refresh
+PASS contracted Tax no expansion
+PASS Tax contract direction
+PASS reconciliation failure propagates before Tax refresh and ends client
+PASS predecessor prerequisite still blocks
+BASE REPRODUCED: retired loan plus physical table skipped full Governance contract
+{"version":"v24.20.0","execPath":"/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node","passed":10,"baseRegressionReproduced":true}

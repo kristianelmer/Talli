@@ -1,0 +1,9 @@
+cutover before (['company_tax_filing_identity_guard_owner=X/company_tax_filing_identity_guard_owner', 'documents_store_owner=X/company_tax_filing_identity_guard_owner', 'postgres=X/company_tax_filing_identity_guard_owner'], True)
+cutover PASS
+cutover after (['company_tax_filing_identity_guard_owner=X/company_tax_filing_identity_guard_owner', 'documents_store_owner=X/company_tax_filing_identity_guard_owner', 'postgres=X/company_tax_filing_identity_guard_owner'], True)
+rolled_back before (['company_tax_filing_identity_guard_owner=X/company_tax_filing_identity_guard_owner', 'documents_store_owner=X/company_tax_filing_identity_guard_owner', 'postgres=X/company_tax_filing_identity_guard_owner'], True)
+rolled_back PASS
+rolled_back after (['company_tax_filing_identity_guard_owner=X/company_tax_filing_identity_guard_owner', 'documents_store_owner=X/company_tax_filing_identity_guard_owner', 'postgres=X/company_tax_filing_identity_guard_owner'], True)
+recutover before (['company_tax_filing_identity_guard_owner=X/company_tax_filing_identity_guard_owner', 'documents_store_owner=X/company_tax_filing_identity_guard_owner', 'postgres=X/company_tax_filing_identity_guard_owner'], True)
+recutover PASS
+recutover after (['company_tax_filing_identity_guard_owner=X/company_tax_filing_identity_guard_owner', 'documents_store_owner=X/company_tax_filing_identity_guard_owner', 'postgres=X/company_tax_filing_identity_guard_owner'], True)

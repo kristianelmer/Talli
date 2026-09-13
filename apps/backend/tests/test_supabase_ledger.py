@@ -1980,12 +1980,10 @@ def test_transaction_adapter_names_all_remaining_exact_prepare_and_complete_rout
     source = Path(__file__).parents[1].joinpath(
         "src/talli_backend/adapters/supabase_ledger.py"
     ).read_text(encoding="utf-8")
-    for operation in (
-        "administrative_cost",
-        "tax_settlement",
-    ):
-        assert f"backend_system.prepare_{operation}_v1" in source
-        assert f"backend_system.complete_{operation}_v1" in source
+    assert "backend_system.prepare_administrative_cost_v1" in source
+    assert "backend_system.complete_administrative_cost_v1" in source
+    assert "backend_system.prepare_tax_settlement_v1" not in source
+    assert "backend_system.complete_tax_settlement_v1" not in source
     assert "backend_system.prepare_bank_transaction_suggestion_v1" not in source
     assert "backend_system.complete_bank_transaction_suggestion_v1" not in source
     assert "backend_system.prepare_investment_dividend_v1" not in source

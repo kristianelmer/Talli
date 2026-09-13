@@ -20,8 +20,6 @@ import { apiRequest, deniedRf, startWorkspaceRfApi, seedHistoricalRfOpening,
   rfFixtureTransaction, RF_FIXTURE_TABLES } from "./support/rf1086-workspace-api.mjs";
 import {
   estimateAnnualTax,
-  taxSettlementLedgerLines,
-  validateTaxSettlement,
 } from "../apps/web/app/lib/tax-settlement.ts";
 
 const requiredEnv = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
@@ -2274,15 +2272,17 @@ test(
       .select("id, amount")
       .single();
     assert.ifError(taxBankTransactionError);
-    const taxPayload = validateTaxSettlement({
-      settlementDate: "2025-12-31",
-      amount: taxEstimate.estimatedTax,
-      settlementType: "payment",
-      documentStatus: "attached",
-      bankTransactionId: taxBankTransaction.id,
-      documentId: taxDocumentId,
-    });
-    const taxLines = taxSettlementLedgerLines(taxPayload);
+    // Frozen predecessor seed for this historical workspace fixture. Canonical
+    // settlement capture and preview are exercised through the Python HTTP/SQL suite.
+    const taxPayload = {
+      settlement_date: "2025-12-31", amount: taxEstimate.estimatedTax,
+      settlement_type: "payment", document_status: "attached",
+      bank_transaction_id: taxBankTransaction.id, document_id: taxDocumentId,
+    };
+    const taxLines = [
+      { account: "2500", description: "Betalt skatt", debit: 17.6, credit: 0 },
+      { account: "1920", description: "Bank", debit: 0, credit: 17.6 },
+    ];
     const { data: taxEntry, error: taxEntryError } = await owner
       .from("ledger_entries")
       .insert({

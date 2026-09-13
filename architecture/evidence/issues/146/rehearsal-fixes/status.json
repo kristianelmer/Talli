@@ -1,0 +1,25 @@
+{
+  "status": "FULL_FRESH_REHEARSAL_RUNNING",
+  "localGate": {
+    "revision": "1d440ae4471c4c377d951650595b0828cc13d9b2",
+    "verdict": "FAIL",
+    "failure": "Archive RF test fixture retained removed Tax source read and lacked the owned Tax query dependency",
+    "transcript": "architecture/evidence/customer-ready-gates/1d440ae4471c4c377d951650595b0828cc13d9b2.log",
+    "exitCredit": false
+  },
+  "githubDatabaseFailure": {
+    "run": "https://github.com/kristianelmer/Talli/actions/runs/34773603747/job/103767545346",
+    "cause": "Documents predecessor rollback cannot drop its schema while an expansion-installed Tax binding function remains.",
+    "fix": "Install the Documents-owned binding function and its exact policies at Tax cutover; expansion-only rollback permits its absence. No CASCADE or predecessor rollback change."
+  },
+  "checks": {
+    "archive": "20 passed: frozen RF chains retained; only Tax read retired; exact13Taxfields and unavailable Tax source fail-closed",
+    "browser": "PASS payable/payment/refund capture through wizard and workspace, all earlier retry/invalid-text checks retained",
+    "taxLifecycle": "22 passed, including expansion-only rollback with no Documents binding function"
+  },
+  "remaining": [
+    "Fresh all-predecessor local Supabase aggregate",
+    "Independent review of new migration and test changes",
+    "Complete immutable gates and protected integration"
+  ]
+}

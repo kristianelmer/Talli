@@ -88,6 +88,8 @@ test("browser owner annual loop uses persisted state and survives reload", async
   try {
     resources.databaseStarted = true;
     await database.connect();
+    assert.equal((await database.query("select phase from backend_system.tax_settlement_migration_state where singleton")).rows[0]?.phase,
+      "contracted", "annual owner journey requires the final Tax topology");
     const backendDatabasePassword = randomUUID().replaceAll("-", "");
     const ledgerDatabasePassword = randomUUID().replaceAll("-", "");
     const bankingDatabasePassword = randomUUID().replaceAll("-", "");
@@ -795,15 +797,13 @@ async function seedAnnualLoop(admin, database, ids, onCompanyCreated) {
     )`,
     [companyId, ownerId, orgNumber],
   );
-  // Exact historical source projection for the declared RF canonical/Ledger
-  // overlap fixture. Each pair shares its supplied ID and transaction timestamp;
-  // application writes and the later simulation still use their real routes.
+  // Exact historical opening facts in their final RF and Ledger stores.
+  // Application writes and the later simulation still use their real routes.
   await fixtureTableTransaction(database, [
     "shareholder_register_filing.opening_balance_setups",
     "shareholder_register_filing.opening_shareholders",
     "ledger.opening_bank_inputs",
-    "public.opening_balance_setups",
-    "public.opening_shareholders",
+    "ledger.entries",
   ], async () => {
     await database.query(`insert into shareholder_register_filing.opening_balance_setups
       (id,company_id,income_year,share_capital,share_count,nominal_value,created_by)
@@ -811,56 +811,42 @@ async function seedAnnualLoop(admin, database, ids, onCompanyCreated) {
     await database.query(`insert into ledger.opening_bank_inputs
       (snapshot_id,company_id,income_year,bank_balance_nok,recorded_by,recorded_at)
       values($1,$2,2025,30000,$3,now())`, [setupId,companyId,ownerId]);
-    await database.query(`insert into public.opening_balance_setups
-      (id,company_id,income_year,bank_balance,share_capital,share_count,nominal_value,created_by)
-      values($1,$2,2025,30000,30000,100,300,$3)`, [setupId,companyId,ownerId]);
     await database.query(`insert into shareholder_register_filing.opening_shareholders
       (id,setup_id,company_id,name,shareholder_kind,national_id,share_count,created_by)
       values($1,$2,$3,'Ola Nordmann','norwegian_person','01017012345',100,$4)`,
       [shareholderId,setupId,companyId,ownerId]);
-    await database.query(`insert into public.opening_shareholders
-      (id,setup_id,company_id,name,shareholder_kind,national_id,share_count,created_by)
-      values($1,$2,$3,'Ola Nordmann','norwegian_person','01017012345',100,$4)`,
-      [shareholderId,setupId,companyId,ownerId]);
-    assert.equal((await database.query(`select to_jsonb(p)=to_jsonb(r)||jsonb_build_object('bank_balance',b.bank_balance_nok) exact
-      from public.opening_balance_setups p join shareholder_register_filing.opening_balance_setups r using(id)
-      join ledger.opening_bank_inputs b on b.snapshot_id=r.id where p.id=$1`, [setupId])).rows[0].exact, true);
-    assert.equal((await database.query(`select count(*)::int count from public.opening_shareholders p
-      full join shareholder_register_filing.opening_shareholders r using(id) where coalesce(p.setup_id,r.setup_id)=$1
-      and to_jsonb(p) is distinct from to_jsonb(r)`, [setupId])).rows[0].count, 0);
+    await database.query(
+      String.raw`
+        insert into ledger.entries (
+          company_id, income_year, entry_kind, memo, lines, created_by,
+          source_capability, source_record_id, correlation_id
+        ) values ($1, 2025, 'OPENING_BALANCE', 'Åpningsbalanse', $2::jsonb, $3,
+          'SHAREHOLDER_REGISTER_FILING', $4, $5)
+      `,
+      [
+        companyId,
+        JSON.stringify([
+          {
+            account: "1920",
+            description: "Bankinnskudd",
+            debit: "30000.00",
+            credit: "0.00",
+            currency: "NOK",
+          },
+          {
+            account: "2000",
+            description: "Aksjekapital",
+            debit: "0.00",
+            credit: "30000.00",
+            currency: "NOK",
+          },
+        ]),
+        ownerId,
+        `opening-setup:${setupId}`,
+        `browser-fixture:${setupId}`,
+      ],
+    );
   });
-  await database.query(
-    String.raw`
-      insert into ledger.entries (
-        company_id, setup_id, income_year, entry_kind, memo, lines, created_by,
-        source_capability, source_record_id, correlation_id
-      ) values ($1, $2, 2025, 'OPENING_BALANCE', 'Åpningsbalanse', $3::jsonb, $4,
-        'SHAREHOLDER_REGISTER_FILING', $5, $6)
-    `,
-    [
-      companyId,
-      setupId,
-      JSON.stringify([
-        {
-          account: "1920",
-          description: "Bankinnskudd",
-          debit: "30000.00",
-          credit: "0.00",
-          currency: "NOK",
-        },
-        {
-          account: "2000",
-          description: "Aksjekapital",
-          debit: "0.00",
-          credit: "30000.00",
-          currency: "NOK",
-        },
-      ]),
-      ownerId,
-      `opening-setup:${setupId}`,
-      `browser-fixture:${setupId}`,
-    ],
-  );
   await assertNoError(
     admin.from("annual_data").insert({
       company_id: companyId,

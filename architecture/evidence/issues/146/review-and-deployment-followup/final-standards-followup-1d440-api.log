@@ -1,0 +1,7 @@
+Pinned source: 1d440ae4471c4c377d951650595b0828cc13d9b2
+Isolated extraction; fake session only, no database/browser/provider operations.
+Command: ['/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python', '-B', '-m', 'pytest', '-c', '/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-146-86951-standards-73uvbb9g/apps/backend/pyproject.toml', '-p', 'no:cacheprovider', '/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-146-86951-standards-73uvbb9g/apps/backend/tests/test_company_tax_filing_api.py', '-q']
+..........................                                               [100%]
+26 passed in 5.76s
+
+Exit code: 0

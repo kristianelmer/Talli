@@ -1,0 +1,20 @@
+[
+  {
+    "id": "dpl_HuHzBsgpcgBVTGsFiFLEEy3PqN5f",
+    "project": "prj_1JJkOqzGBhn438IKHYADWiRbVGeZ",
+    "revision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+    "state": "READY",
+    "target": "production",
+    "url": "talli-qb8g1v5h7-kristianelmers-projects.vercel.app",
+    "checkedAt": "2026-09-13T19:32:40.562Z"
+  },
+  {
+    "id": "dpl_3ny9MG3zEtKtd4y8t3dUwoe5zCcq",
+    "project": "prj_1JJkOqzGBhn438IKHYADWiRbVGeZ",
+    "revision": "aad6bb90951120b09771a23f58d5b662713e7a5a",
+    "state": "READY",
+    "target": null,
+    "url": "talli-l46hdxacr-kristianelmers-projects.vercel.app",
+    "checkedAt": "2026-09-13T19:32:40.562Z"
+  }
+]

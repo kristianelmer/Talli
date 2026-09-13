@@ -2964,6 +2964,61 @@ export interface BillingUnsupportedWire {
 
 export type ProductionPilotStatus = "pending" | "active" | "suspended" | "completed" | "revoked";
 
+export interface TaxSettlementArchiveItemWire {
+  action_date: string;
+  action_type: "tax_settlement";
+  bank_transaction_id: string | null;
+  blocker_code: string | null;
+  company_id: string;
+  created_at: string;
+  created_by: string;
+  document_id: string | null;
+  id: string;
+  income_year: number;
+  ledger_entry_id: string | null;
+  payload: Record<string, unknown>;
+  risk_level: "ready" | "warning" | "block";
+}
+
+export interface TaxSettlementArchiveWire {
+  companyId: string;
+  incomeYear: number;
+  settlements: TaxSettlementArchiveItemWire[];
+}
+
+export type TaxSettlementDocumentStatus = "attached" | "missing_accepted_warning" | "not_required";
+
+export interface TaxSettlementPayloadWire {
+  amount: number;
+  bank_transaction_id: string | null;
+  document_id: string | null;
+  document_status: TaxSettlementDocumentStatus;
+  settlement_date: string;
+  settlement_type: TaxSettlementKind;
+}
+
+export interface TaxSettlementPreviewInputWire {
+  amount: number | null;
+  bankTransactionId?: string | null;
+  documentId?: string | null;
+  documentStatus: string;
+  settlementDate: string;
+  settlementType: string;
+}
+
+export interface TaxSettlementPreviewLineWire {
+  account: string;
+  credit: number;
+  debit: number;
+  description: string;
+}
+
+export interface TaxSettlementPreviewWire {
+  expectedBankAmount: number | null;
+  lines: TaxSettlementPreviewLineWire[];
+  payload: TaxSettlementPayloadWire;
+}
+
 export interface LegacyRf1086SendCommandWire {
   approvalId: string;
 }
@@ -7397,6 +7452,87 @@ function isProductionPilotStatus(value: unknown): value is ProductionPilotStatus
   return value === "pending" || value === "active" || value === "suspended" || value === "completed" || value === "revoked";
 }
 
+function isTaxSettlementArchiveItemWire(value: unknown): value is TaxSettlementArchiveItemWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["action_date","action_type","bank_transaction_id","blocker_code","company_id","created_at","created_by","document_id","id","income_year","ledger_entry_id","payload","risk_level"]) &&
+    typeof value.action_date === "string" &&
+    value.action_type === "tax_settlement" &&
+    (typeof value.bank_transaction_id === "string" || value.bank_transaction_id === null) &&
+    (typeof value.blocker_code === "string" || value.blocker_code === null) &&
+    typeof value.company_id === "string" &&
+    typeof value.created_at === "string" &&
+    typeof value.created_by === "string" &&
+    (typeof value.document_id === "string" || value.document_id === null) &&
+    typeof value.id === "string" &&
+    typeof value.income_year === "number" && Number.isInteger(value.income_year) &&
+    (typeof value.ledger_entry_id === "string" || value.ledger_entry_id === null) &&
+    isRecord(value.payload) &&
+    (value.risk_level === "ready" || value.risk_level === "warning" || value.risk_level === "block")
+  );
+}
+
+function isTaxSettlementArchiveWire(value: unknown): value is TaxSettlementArchiveWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","settlements"]) &&
+    isUuid(value.companyId) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    Array.isArray(value.settlements) && value.settlements.every((item) => isTaxSettlementArchiveItemWire(item))
+  );
+}
+
+function isTaxSettlementDocumentStatus(value: unknown): value is TaxSettlementDocumentStatus {
+  return value === "attached" || value === "missing_accepted_warning" || value === "not_required";
+}
+
+function isTaxSettlementPayloadWire(value: unknown): value is TaxSettlementPayloadWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["amount","bank_transaction_id","document_id","document_status","settlement_date","settlement_type"]) &&
+    typeof value.amount === "number" && Number.isFinite(value.amount) &&
+    (typeof value.bank_transaction_id === "string" || value.bank_transaction_id === null) &&
+    (typeof value.document_id === "string" || value.document_id === null) &&
+    isTaxSettlementDocumentStatus(value.document_status) &&
+    typeof value.settlement_date === "string" &&
+    isTaxSettlementKind(value.settlement_type)
+  );
+}
+
+function isTaxSettlementPreviewInputWire(value: unknown): value is TaxSettlementPreviewInputWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["amount","bankTransactionId","documentId","documentStatus","settlementDate","settlementType"]) &&
+    (typeof value.amount === "number" && Number.isFinite(value.amount) || value.amount === null) &&
+    (value.bankTransactionId === undefined || ((typeof value.bankTransactionId === "string" && value.bankTransactionId.length <= 255) || value.bankTransactionId === null)) &&
+    (value.documentId === undefined || ((typeof value.documentId === "string" && value.documentId.length <= 255) || value.documentId === null)) &&
+    (typeof value.documentStatus === "string" && value.documentStatus.length <= 100) &&
+    (typeof value.settlementDate === "string" && value.settlementDate.length <= 255) &&
+    (typeof value.settlementType === "string" && value.settlementType.length <= 100)
+  );
+}
+
+function isTaxSettlementPreviewLineWire(value: unknown): value is TaxSettlementPreviewLineWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["account","credit","debit","description"]) &&
+    typeof value.account === "string" &&
+    typeof value.credit === "number" && Number.isFinite(value.credit) &&
+    typeof value.debit === "number" && Number.isFinite(value.debit) &&
+    typeof value.description === "string"
+  );
+}
+
+function isTaxSettlementPreviewWire(value: unknown): value is TaxSettlementPreviewWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["expectedBankAmount","lines","payload"]) &&
+    (typeof value.expectedBankAmount === "number" && Number.isFinite(value.expectedBankAmount) || value.expectedBankAmount === null) &&
+    Array.isArray(value.lines) && value.lines.every((item) => isTaxSettlementPreviewLineWire(item)) &&
+    isTaxSettlementPayloadWire(value.payload)
+  );
+}
+
 function isLegacyRf1086SendCommandWire(value: unknown): value is LegacyRf1086SendCommandWire {
   return (
     isRecord(value) &&
@@ -9535,6 +9671,32 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         throw new TalliApiError(502, undefined);
       }
       return result;
+    },
+
+    async companyTaxGetSettlementArchiveSource(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<TaxSettlementArchiveWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      const result = await executeJson(
+        `${baseUrl}/api/v1/company-tax/settlement-archive-source?${query}`,
+        "GET", request, undefined, isTaxSettlementArchiveWire,
+      );
+      if (result.companyId !== companyId || result.incomeYear !== incomeYear
+          || result.settlements.some(row => row.company_id !== companyId || row.income_year !== incomeYear)
+          || new Set(result.settlements.map(row => row.id)).size !== result.settlements.length) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxPreviewSettlement(
+      body: TaxSettlementPreviewInputWire,
+      request: TalliRequestOptions = {},
+    ): Promise<TaxSettlementPreviewWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-tax/settlement-previews`,
+        "POST", request, body, isTaxSettlementPreviewWire,
+      );
     },
 
     async ledgerPostTaxSettlement(

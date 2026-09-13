@@ -1,0 +1,11 @@
+{
+  "oldBackendRevision": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
+  "clientRevision": "1d440ae4471c4c377d951650595b0828cc13d9b2",
+  "result": {
+    "status": 404,
+    "message": "Forh\u00e5ndsvisningen kunne ikke hentes. Pr\u00f8v igjen."
+  },
+  "noDatabaseConfiguration": true,
+  "noCaptureAttempt": true,
+  "backendMainSha256": "6c54165f320fe0c304515bcb022c73470714d4c45f9d89b13d68b0a9b00e8177"
+}

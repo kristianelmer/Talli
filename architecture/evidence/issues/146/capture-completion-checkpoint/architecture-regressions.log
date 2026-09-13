@@ -1,0 +1,12 @@
+✔ architecture manifests, scoped documentation, and dependency evidence agree (15253.864541ms)
+✔ architecture evidence is deterministic and committed output is current (14738.785417ms)
+✔ the immutable frozen inventory remains exact while the active registry is a proven subset (1.013167ms)
+✔ #151 bounded retirement compositions remain enforced after RF exits (517.410125ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 30757.843584

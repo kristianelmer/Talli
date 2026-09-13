@@ -1,0 +1,313 @@
+{
+  "verdict": "ONE_BOUNDED_DEPLOYMENT_PROOF_REFRESH_REQUIRED",
+  "candidateRevision": "aad6bb90951120b09771a23f58d5b662713e7a5a",
+  "criteria": [
+    {
+      "criterion": "GH-146-A1",
+      "status": "IMPLEMENTATION_AND_FOCUSED_EVIDENCE_COVERED_COMPLETE_GATES_PENDING",
+      "sourceAndTests": [
+        "apps/backend/tests/test_company_tax_filing_api.py",
+        "tests/browser_tax_settlement.mjs",
+        "apps/web/tests/company-tax-transport.test.mjs"
+      ],
+      "evidence": [
+        "architecture/evidence/issues/146/rehearsal-fixes/browser-all-forms.log",
+        "architecture/evidence/issues/146/verification-followups/tax-final-owner-browser2.log"
+      ]
+    },
+    {
+      "criterion": "GH-146-A2",
+      "status": "IMPLEMENTATION_AND_FOCUSED_EVIDENCE_COVERED_COMPLETE_GATES_PENDING",
+      "sourceAndTests": [
+        "apps/backend/tests/test_company_tax_filing.py",
+        "apps/backend/tests/test_company_tax_filing_workflow.py",
+        "apps/backend/tests/test_company_tax_filing_database.py"
+      ],
+      "evidence": [
+        "architecture/evidence/issues/146/legacy-preview-cases.json",
+        "architecture/evidence/issues/146/legacy-command-cases.json",
+        "architecture/evidence/issues/146/capture-completion-checkpoint/checks.json"
+      ]
+    },
+    {
+      "criterion": "GH-146-A3",
+      "status": "IMPLEMENTATION_AND_FOCUSED_EVIDENCE_COVERED_COMPLETE_GATES_PENDING",
+      "sourceAndTests": [
+        "apps/backend/tests/test_company_tax_filing_database.py",
+        "apps/backend/tests/test_company_tax_filing_runtime.py",
+        "tests/browser_tax_settlement.mjs"
+      ],
+      "evidence": [
+        "architecture/evidence/issues/146/review-86951/disposition.json",
+        "architecture/evidence/issues/146/retention-permission-followup/retention-fix-tax-lifecycle.log"
+      ]
+    },
+    {
+      "criterion": "GH-146-A4",
+      "status": "IMPLEMENTATION_AND_FOCUSED_EVIDENCE_COVERED_COMPLETE_GATES_PENDING",
+      "sourceAndTests": [
+        "apps/backend/src/talli_backend/modules/company_tax_filing/module.json",
+        "architecture/backend-system.json",
+        "apps/backend/tests/test_company_tax_filing_runtime.py"
+      ],
+      "evidence": [
+        "architecture/evidence/issues/146/review-718684/manifest.json",
+        "architecture/evidence/issues/146/review-and-deployment-followup/manifest.json"
+      ]
+    },
+    {
+      "criterion": "GH-146-A5",
+      "status": "IMPLEMENTATION_AND_FOCUSED_EVIDENCE_COVERED_COMPLETE_GATES_PENDING",
+      "sourceAndTests": [
+        "tests/company_tax_architecture.test.mjs",
+        "architecture/database-catalog.json",
+        "architecture/company-archive-sources.json"
+      ],
+      "evidence": [
+        "architecture/evidence/issues/146/source-read-retirements.json",
+        "architecture/evidence/issues/146/retention-permission-followup/manifest.json"
+      ]
+    },
+    {
+      "criterion": "GH-146-A6",
+      "status": "IMPLEMENTATION_AND_FOCUSED_EVIDENCE_COVERED_COMPLETE_GATES_PENDING",
+      "sourceAndTests": [
+        "architecture/compatibility.json",
+        "architecture/compatibility-baseline.json",
+        "apps/web/tests/company-tax-transport.test.mjs"
+      ],
+      "evidence": [
+        "architecture/evidence/issues/146/source-read-retirements.json",
+        "architecture/evidence/issues/146/verification-followups/manifest.json"
+      ]
+    }
+  ],
+  "envelope": [
+    {
+      "requirement": "Entry, inventories and predecessor completion",
+      "status": "COVERED",
+      "evidence": "entry-independent-review.json, entryGate receipt at20999, source-inventory.json"
+    },
+    {
+      "requirement": "Characterization, errors, ordering, effects and Norwegian journeys",
+      "status": "COVERED_FOCUSED_CURRENT_GATE_PENDING",
+      "evidence": "six criterion mappings;19 preview and28 command captures;permanent API/DB/transport/browser tests"
+    },
+    {
+      "requirement": "One writer, exclusive owner, expand/cutover/contract, deterministic hashes",
+      "status": "COVERED_FOCUSED_CURRENT_GATE_PENDING",
+      "evidence": "Tax SQL lifecycle/runtime tests, catalog, source-read-retirements"
+    },
+    {
+      "requirement": "Rollback, quarantine, no ambiguous replay or duplicate effects",
+      "status": "COVERED_FOCUSED_EXCEPT_OLD_APP_PERMISSION_REFRESH",
+      "evidence": "22 lifecycle tests;3 actual-connection tests;browser same-ID retry;deployment gap below"
+    },
+    {
+      "requirement": "Compatibility cleanup, exact future seams, manifests/docs/Graphify agreement",
+      "status": "IMPLEMENTED_ARCHITECTURE_GATE_PENDING",
+      "evidence": "compatibility baseline unchanged;two exact future reads;architecture gate and module/backend-system/catalog contracts"
+    },
+    {
+      "requirement": "Deployment-order compatibility",
+      "status": "ONE_BOUNDED_PROOF_REFRESH_REQUIRED",
+      "evidence": "current transport unchanged since4ce;old-app rollback proof cutover digest stale afterretentionfix"
+    },
+    {
+      "requirement": "Security/RLS, contracts, builds, affected browsers, full aggregator",
+      "status": "FOCUSED_EVIDENCE_COVERED_TWO_COMPLETE_GATES_PENDING",
+      "evidence": "mandatory test-supabase-local lanes + customer-ready aggregator;no current runningreceipt credited"
+    },
+    {
+      "requirement": "Observation and production",
+      "status": "NO_ACTIVATED_PRODUCTION_PATH_IN_SCOPE",
+      "evidence": "production freeze d331;no seven-day activated-path or live-provider claim"
+    },
+    {
+      "requirement": "Protected integration, exact-main Release/Preview, published receipt",
+      "status": "PENDING",
+      "evidence": "root-owned completion work;no#152credit"
+    }
+  ],
+  "gaps": [
+    {
+      "id": "DEPLOYMENT_RETENTION_CURRENT_SQL",
+      "kind": "acceptance_evidence_gap_not_implementation_defect",
+      "requirement": "Plan release-proof4: exact old/new app/transport/schema phases;common#132deployment-order compatibility",
+      "priorProof": "architecture/evidence/issues/146/verification-followups/old-linked-rollback-proof.json",
+      "priorRevision": "4ce5f625c95ea14bb188c4169814130b3327e2ff",
+      "priorCutoverSha256": "20783cbd00406594a9203292052094029e7bbe21f83d7e53991e65513910a9bd",
+      "candidateCutoverSha256": "28842782cf47aea849ba25e8dc672c98f0453852ba8cf157e5a58f725209c206",
+      "reason": "The changed cutover authorization is precisely the authority implicated by prior ambient-privilege masking; historical freshOldAppDocumentProtected does not establish minimally privileged old-app retention on current SQL.",
+      "closure": "After current gate, use isolated owned rehearsal: exact20999 app against rollback from current aad6 SQL; original receipt replay, fresh linked payment, same-ID replay, Documents evidence-linked refusal after removing borrowed owners and unrelated/direct masking grants, then recutover/contract and single-writer/count/journal checks. Bind exact current migration/application hashes. Do not revoke intended purpose-specific grants installed by current cutover."
+    }
+  ],
+  "sourceBindings": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/module.json",
+      "sha256": "5d59a4058d93b041b654bdb8c63bba3e85f80bf7601708adc61085a68ac7cc2c"
+    },
+    {
+      "path": "apps/backend/tests/test_company_tax_filing.py",
+      "sha256": "db9b8875d702143202142f108a5b3b372539d6f4f1f3937a786d8ec91115a18c"
+    },
+    {
+      "path": "apps/backend/tests/test_company_tax_filing_api.py",
+      "sha256": "c9713c7d271b58793c5c8cc9a0897bdd75d05e4d16d089b9f2793d63440f5cae"
+    },
+    {
+      "path": "apps/backend/tests/test_company_tax_filing_database.py",
+      "sha256": "ed5c5b9bb597105153f734b6b5f7e78acfc26d401205c8f109c6e0bdbaa109e4"
+    },
+    {
+      "path": "apps/backend/tests/test_company_tax_filing_runtime.py",
+      "sha256": "38747442095d7e11f71552cea174f295f2d0cf406302a10b922b1d5789ec3f9e"
+    },
+    {
+      "path": "apps/backend/tests/test_company_tax_filing_workflow.py",
+      "sha256": "a3a67eac4700faedf1ac341ca792ec567698af3323bdf56250c6f96599767c0c"
+    },
+    {
+      "path": "apps/web/tests/company-tax-transport.test.mjs",
+      "sha256": "057fb5b4c1f971746ac895a3f03cce2e5c8c143779aa8f8b53d7a14592be7efe"
+    },
+    {
+      "path": "architecture/backend-system.json",
+      "sha256": "f9428bc59a163cb0134294d0115067d36edc6bcdd0c95537985bb8d400cc8a0f"
+    },
+    {
+      "path": "architecture/company-archive-sources.json",
+      "sha256": "f2f3a3ad1127640db0c5ca50b45d45418aa71737c6bdcd8ceb25e7aab9aa9af1"
+    },
+    {
+      "path": "architecture/compatibility-baseline.json",
+      "sha256": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab"
+    },
+    {
+      "path": "architecture/compatibility.json",
+      "sha256": "bdc1c3fecb543afa100cdf3b20bad6c3bc4ed0a9095657c4feeec6f00dae6d36"
+    },
+    {
+      "path": "architecture/database-catalog.json",
+      "sha256": "e01eff2d1dc4a7436b9c911b78686bd9b878eeb713e1a5770fead5276eca1b91"
+    },
+    {
+      "path": "architecture/evidence/issues/146/capture-completion-checkpoint/checks.json",
+      "sha256": "4af161ec244ce95f99a5c7f1b7fb63b5963428d6683fc063d3b9df70914f6896"
+    },
+    {
+      "path": "architecture/evidence/issues/146/characterization-and-cutover-plan.md",
+      "sha256": "3a190c08d643eb9a33e3b1f895eb090eee1025c7acd4e0f376912275c6365048"
+    },
+    {
+      "path": "architecture/evidence/issues/146/legacy-command-cases.json",
+      "sha256": "69f959201afc040aedd341c58747cea9309d9af9a65dcbf95215481e749902f0"
+    },
+    {
+      "path": "architecture/evidence/issues/146/legacy-preview-cases.json",
+      "sha256": "4cd36415412a2b061cbadbb38f2f0b0d74bc950eab6c12ff3aef5ac0d20f9074"
+    },
+    {
+      "path": "architecture/evidence/issues/146/rehearsal-fixes/browser-all-forms.log",
+      "sha256": "3ec7d8509cce1cf06c8f9908e86b16ad1be14af97bf6ee5f6d0ab92314e0cf27"
+    },
+    {
+      "path": "architecture/evidence/issues/146/requirements.json",
+      "sha256": "8a3a236a55c5a7f85a713f11a91279005b6751911f419c4d0bedf4a9ab874513"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/manifest.json",
+      "sha256": "3ec713b42135ef881467bb87518903dbf3c64c88102435824555f73783a2a87a"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/retention-fix-tax-lifecycle.log",
+      "sha256": "c12554de1016fcc49e867af2e88dc190a6a0f53672f39747bdc2ab391f8fcd92"
+    },
+    {
+      "path": "architecture/evidence/issues/146/review-718684/manifest.json",
+      "sha256": "ff3a5844a1db65c26a202e24796178ee79ca6751b9cf4a9fb5402b044fd14304"
+    },
+    {
+      "path": "architecture/evidence/issues/146/review-86951/disposition.json",
+      "sha256": "ada5bfe4691eff41c6fb482c844874e9bbe294c5f88247ada3a0ff11b671c4a4"
+    },
+    {
+      "path": "architecture/evidence/issues/146/review-and-deployment-followup/manifest.json",
+      "sha256": "6ac2aaca0508408efc5283d92f8ed47228c40351c42f8d88a0aad54b47beba1e"
+    },
+    {
+      "path": "architecture/evidence/issues/146/source-read-retirements.json",
+      "sha256": "a08fd312e4c75b1db8c232f0cc20e565d597ec1ede673188c69cc93b03382b36"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/manifest.json",
+      "sha256": "06affcaf5d03c7154a74577fbd90fba796ea7a38ee9000c7039f6b2c165a4fdb"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/new-preview-old-backend-proof.json",
+      "sha256": "75b20ec95c3436d3ae9b0f7cd82184543fe0867ea46ca0aa65a5c8198fa83b67"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/old-client-after-contract-proof.json",
+      "sha256": "c226e6c6d5dd3b3bee5dcf5fb094b3975e0e1090569552e81b1dc625f080cf53"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/old-linked-rollback-proof.json",
+      "sha256": "692f5bd4b0a319437e20680e8745e734e87ca450b0ebdd43ed6be77cfc46fb9b"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/tax-final-owner-browser2.log",
+      "sha256": "e10cdf7a103dcb74e0010f3298888398a0ef7eb3fd2e60690e67c5136e8153ee"
+    },
+    {
+      "path": "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md",
+      "sha256": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482"
+    },
+    {
+      "path": "package.json",
+      "sha256": "5a3129f1408d7201d0b22d94489f9db7376dc79a1cf0277ddd60f086e8ec57c8"
+    },
+    {
+      "path": "scripts/test-supabase-local.sh",
+      "sha256": "8a009312a445888353458d5fa768b987d686d9e29a78cf595ee52b143373b7f6"
+    },
+    {
+      "path": "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql",
+      "sha256": "28842782cf47aea849ba25e8dc672c98f0453852ba8cf157e5a58f725209c206"
+    },
+    {
+      "path": "supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql",
+      "sha256": "99b636f296f92096fccceb45c8d5c1724ab8e75bc33db71cb93ccc59da221271"
+    },
+    {
+      "path": "supabase/rollback/20260913171000_company_tax_settlement_expand.sql",
+      "sha256": "f2e79ac013f608582e29ebd32bbbb047d0b105a1cac9db8b1905387e0094f687"
+    },
+    {
+      "path": "supabase/rollback/20260913173000_company_tax_settlement_contract.sql",
+      "sha256": "0d3f4e0055e4011ff44c5ad81cbb065fa3cdd3faf3e4043d5ec958e237fad977"
+    },
+    {
+      "path": "tests/browser_tax_settlement.mjs",
+      "sha256": "440bf82654556478ee037dadd7dea2169e46543abf759de72fdcf5cc8c67f6b5"
+    },
+    {
+      "path": "tests/company_tax_architecture.test.mjs",
+      "sha256": "9383cfad613dcfbdf021059960d641f4f640b005c154f77b0160714af0c5a441"
+    }
+  ],
+  "specSnapshot": {
+    "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/issue132-with-comments.md",
+    "sha256": "6c1bc0d88cf93369f1551f8cacecd00c3f72916a11c31c8b491d512338011fec"
+  },
+  "appTransportDeltaFromLastDeploymentProof": [
+    "apps/backend/tests/test_company_tax_filing_database.py",
+    "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql"
+  ],
+  "reportSha256": "3e3b821bb6eb3316b05745ad48c85b1d22c994923d7db7a85e2c1be4335532c0",
+  "limits": [
+    "No tests or DB/browser executed in this audit",
+    "Running gate not inspected or credited",
+    "No full stage10/#152 acceptance"
+  ]
+}

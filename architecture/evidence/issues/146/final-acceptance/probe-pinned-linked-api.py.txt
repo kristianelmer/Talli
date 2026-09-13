@@ -1,0 +1,16 @@
+import json,os
+from pathlib import Path
+from fastapi.testclient import TestClient
+from talli_backend.main import create_app
+from talli_backend.adapters.supabase_ledger import SupabaseLedgerSession,_VerifiedActor
+from talli_backend.shared.kernel import ActorId,ActorKind,UserId
+p=json.loads(Path(os.environ['TALLI_PROBE_FIXTURE']).read_text())
+verified=_VerifiedActor(ActorId(ActorKind.USER,UserId(p['owner'])),json.dumps({'sub':p['owner'],'role':'authenticated','aal':'aal2'}))
+class Sessions:
+ async def session(self,token):return SupabaseLedgerSession(p['backend'],verified)
+c=TestClient(create_app(ledger_session_factory=Sessions()));results=[]
+for name,body in p['requests']:
+ key=body['actionId'];r=c.post('/api/v1/ledger/tax-settlements',json=body,headers={'Authorization':'Bearer fixture','Idempotency-Key':key,'X-Request-ID':key})
+ assert r.status_code==201, (name,r.status_code,r.json().get('code'))
+ results.append({'name':name,'status':r.status_code,'replayed':r.json()['replayed'],'entryId':r.json()['postedEntry']['entryId']})
+print(json.dumps(results))

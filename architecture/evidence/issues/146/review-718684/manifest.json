@@ -1,0 +1,16 @@
+{
+  "status": "PASS_BOUNDED_REVIEW",
+  "baseRevision": "1d440ae4471c4c377d951650595b0828cc13d9b2",
+  "reviewedRevision": "7186841f3286c53fdb5c838963703de0efac17cc",
+  "artifacts": {
+    "final-standards-followup-718684.md": "1c4a2577cd3adc69acb57ed2c38a952438e24b580d86cf71c1dd2263a758e719",
+    "final-spec-followup-718684.md": "499a764b79f860e10e38d5cf87c60b509abf238eac1a92bc5d2baf40e5f63d10",
+    "final-standards-followup-718684-archive.log": "a0c0838e7cb441a53386e287881e497ffd69b2906e921abc46e5483c80a8e17b",
+    "final-standards-followup-718684-bindings.json": "22e1f24c410488ee30726b6a4e42dc6ce79f2b8719c42577f0b54ce02b26b055",
+    "final-spec-followup-718684-bindings.json": "5e1502470aef80f6be7400e62398e64b6051e01804e181a9f3997cb3c8339ef5"
+  },
+  "limits": [
+    "No full-gate or capability-exit credit.",
+    "The subsequent Archive source inventory correction requires separate review."
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "baseRevision": "1d440ae4471c4c377d951650595b0828cc13d9b2",
+  "reviewedRevision": "7186841f3286c53fdb5c838963703de0efac17cc",
+  "sourceSha256": {
+    "apps/backend/tests/test_company_tax_filing_database.py": "cdde117b23e55a58708e9039911437a3ec278c05d007f761d86674e5cdadba53",
+    "apps/web/tests/archive-rf1086-source.test.mjs": "a0dfbb9b17da49a91da5197ecb58ba0bddf43845bc41ba6957b7fe3687c387d6",
+    "architecture/database-catalog.json": "3240d01015a6285995a7c6a6364be150ae566359b026ec3c24743c7b4767735d",
+    "architecture/evidence/customer-ready-gates/1d440ae4471c4c377d951650595b0828cc13d9b2.log": "2592c15fa38229438a9608c3475ca77b9d878d762917d998ff99118876ab4249",
+    "architecture/evidence/issues/146/rehearsal-fixes/archive.log": "6d951db2f52232dd213ec2552f30901150f88a54b0b0869590eae03c6e48bddf",
+    "architecture/evidence/issues/146/rehearsal-fixes/browser-all-forms.log": "3ec7d8509cce1cf06c8f9908e86b16ad1be14af97bf6ee5f6d0ab92314e0cf27",
+    "architecture/evidence/issues/146/rehearsal-fixes/status.json": "94895c32c534a6823fcf1c6fbc7001d07608e709c1f090598610c89ea69cd6ba",
+    "architecture/evidence/issues/146/rehearsal-fixes/tax-lifecycle.log": "af0d0a4d6c7f42f09bf3bf1f5e4aaeec4b26c10da79012ebad01aaa62e15b6cf",
+    "architecture/evidence/issues/146/review-and-deployment-followup/deployment-order-proof-manifest.json": "6ceb622e74f6beba50db3928baa3e4032b0aef078631a3400da3a0f898c7e1da",
+    "architecture/evidence/issues/146/review-and-deployment-followup/final-spec-followup-1d440-bindings.json": "5542a2da9789e118843d477d391f1b8a495d2bcfca897549e0d01228ba61e002",
+    "architecture/evidence/issues/146/review-and-deployment-followup/final-spec-followup-1d440.md": "37fb19801338f05a03b143848415538f2a2c553d184296c6c4dce2011292bdce",
+    "architecture/evidence/issues/146/review-and-deployment-followup/final-standards-followup-1d440-api.log": "c875c48530a8879db23cabd147cf653c9cce0cf348038426f6c2f7b3ad069baa",
+    "architecture/evidence/issues/146/review-and-deployment-followup/final-standards-followup-1d440-bindings.json": "2ade717e326728e454fd5ee744b8099be20ede7f4dad501cd4a18ed59c482412",
+    "architecture/evidence/issues/146/review-and-deployment-followup/final-standards-followup-1d440.md": "f4cb79d16f0e1166a4ea1c057e52753868223b4b7776bd05329491bf0ea4b5c0",
+    "architecture/evidence/issues/146/review-and-deployment-followup/final-standards-review-86951-node24-rerun.log": "447cac5da49b369a107f3dffe8049dddb0f7c33a5ae0c3817384637ec7c68614",
+    "architecture/evidence/issues/146/review-and-deployment-followup/final-standards-review-86951.md": "2aabd34eb7cf17fb44044b9e9f239595d94aa6621aed0c1ef180a89c8c5a4a19",
+    "architecture/evidence/issues/146/review-and-deployment-followup/manifest.json": "6ac2aaca0508408efc5283d92f8ed47228c40351c42f8d88a0aad54b47beba1e",
+    "architecture/evidence/issues/146/review-and-deployment-followup/new-preview-old-backend-proof.json": "bcab2a42e1583c734029f918aab7768ee8fc622c19de43e4f98d959ef760136a",
+    "architecture/evidence/issues/146/review-and-deployment-followup/old-client-after-contract-proof.json": "c226e6c6d5dd3b3bee5dcf5fb094b3975e0e1090569552e81b1dc625f080cf53",
+    "architecture/evidence/issues/146/review-and-deployment-followup/old-linked-rollback-proof.json": "adff4882a36d4c6a6ea089a50402c9c4493968d3d6fe0576fb0460683455308a",
+    "architecture/evidence/issues/146/review-and-deployment-followup/pinned-rollback-api.log": "8a32f94d5c18b2d70d7c6b97a365e001aaeea561fbc8c9bc04eee15fb1529e6b",
+    "architecture/evidence/issues/146/source-read-retirements.json": "91d74f8b8d66cb69d06593317a9a7fd2104bbaa2bc9b10d5b84a40241703b2f4",
+    "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql": "20783cbd00406594a9203292052094029e7bbe21f83d7e53991e65513910a9bd",
+    "supabase/migrations/20260913171000_company_tax_settlement_expand.sql": "474256ce15313e2248cc1d99812fe8cf1c2a4747d99a0fa7a20c68fa4f9716a2",
+    "supabase/rollback/20260913171000_company_tax_settlement_expand.sql": "f2e79ac013f608582e29ebd32bbbb047d0b105a1cac9db8b1905387e0094f687",
+    "tests/browser_tax_settlement.mjs": "440bf82654556478ee037dadd7dea2169e46543abf759de72fdcf5cc8c67f6b5"
+  },
+  "checks": {
+    "documentsFunctionDefinitionIdenticalAfterMove": true,
+    "predecessorSourceHashesVerified": 157,
+    "adoptedManifestArtifactHashesVerified": 12,
+    "independentArchiveTests": "20 passed,0skip,636.891209ms,Node25.6.1",
+    "requirementsBytesUnchanged": true,
+    "compatibilityRegistryUnchanged": true
+  },
+  "scopeLimits": [
+    "DB22pass and browser1pass are committed root-owned logs inspected, not independently rerun",
+    "Deployment evidence is explicitly bound to prior1d440 migration bytes; reviewed SQL relocation changes no function body but current fresh aggregate remains pending",
+    "No DB/browser/provider/repository mutation",
+    "No complete immutable gate or protected-integration acceptance"
+  ]
+}

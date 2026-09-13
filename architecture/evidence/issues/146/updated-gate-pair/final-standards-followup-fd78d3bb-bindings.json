@@ -1,0 +1,62 @@
+{
+  "scope": "Independent bounded Standards static/source review, not complete gate or integration verification",
+  "baseRevision": "42ebfe85dde961db158d116e84583a74075bde91",
+  "candidateRevision": "fd78d3bbcf563dbc991f84c703b6816e088bca26",
+  "commits": [
+    "fd78d3bbcf563dbc991f84c703b6816e088bca26 test(rf): await completed review-comment save before reading persistence"
+  ],
+  "diffSha256": "3bbb8402e14ee6c4e53836e131ac30f3bcb4c33f9ba9cd93e34d85587ab86f72",
+  "files": [
+    {
+      "path": "architecture/evidence/issues/146/browser-sync-followup/manifest.json",
+      "candidateSha256": "247c1d11e2c76edf8e7bb6310959979e10847a96dbfd8f719df9ceeb836e3495"
+    },
+    {
+      "path": "architecture/evidence/issues/146/browser-sync-followup/rf-comment-probe-green-30x-source.mjs.txt",
+      "candidateSha256": "c34ab0202bb030973970983428c57a77a1f210868e4a8ef494f770542494f289"
+    },
+    {
+      "path": "architecture/evidence/issues/146/browser-sync-followup/rf-comment-probe-green-30x.log",
+      "candidateSha256": "245fc8420ce4eb2cd65d554aa0c2cbe9b5475d28f412245ea10b854a525f7c76"
+    },
+    {
+      "path": "architecture/evidence/issues/146/browser-sync-followup/rf-comment-probe-pass-6x.log",
+      "candidateSha256": "2baf5c875aa5ae6ed15f371560a1bf5030b90639ada0daff49fc9bd5d88eed76"
+    },
+    {
+      "path": "architecture/evidence/issues/146/browser-sync-followup/rf-comment-probe-red-30x-source.mjs.txt",
+      "candidateSha256": "0648e59331deb0c89de9d003bf09de66c901c8c7b7313ae57672c2c7a6c1384d"
+    },
+    {
+      "path": "architecture/evidence/issues/146/browser-sync-followup/rf-comment-probe-red-30x.log.gz",
+      "candidateSha256": "641af4a24946f050b8db30c3170dfe0e234f68bc864d50e326a43be1c08df87d"
+    },
+    {
+      "path": "architecture/evidence/issues/146/requirements.json",
+      "candidateSha256": "3386361a58c64e0a20a9cd519d7dd1027fa034a21108767b59f0cafcba6451cb"
+    },
+    {
+      "path": "tests/browser_shareholder_register_filing.mjs",
+      "candidateSha256": "5be0d84a77b1f2b791be5856d9a35eabd585fc93793d3d9ebb28ebf598d861d9"
+    }
+  ],
+  "checks": {
+    "allOtherBrowserSourceBytesUnchanged": true,
+    "criteriaScopeAndCheckpointClaimsUnchangedExceptVerificationPointer": true,
+    "artifactDigestsVerified": 5,
+    "decompressedRedTranscriptDigestVerified": true,
+    "isolatedRuntime": "v24.20.0",
+    "isolatedMockCases": 3,
+    "noDatabaseBrowserOrSharedProcessOperations": true
+  },
+  "privateArtifacts": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/final-standards-followup-fd78d3bb-static.mjs",
+      "sha256": "7dd8bcec4eee2779eea42388730c76018ccc6b6286ba71ea6fe00cc5bc694973"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/final-standards-followup-fd78d3bb-static.log",
+      "sha256": "6773157174aed51103d88053957ee2d380cb4487bb930581fa75197b2f6bb419"
+    }
+  ]
+}

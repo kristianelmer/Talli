@@ -1,0 +1,45 @@
+{
+  "status": "LOCAL_GATE_PAIR_PASS_PROTECTED_INTEGRATION_PENDING",
+  "artifacts": {
+    "exit-gate-pair-root-verification.json": "7d41536d0c729a7f88794963b262fa826581691f58b1dd077b62ea698efc5a79",
+    "first-gate-independent-review-aad6bb90.json": "c056b80c4992c4deeb4e9b0378826928f676da901cd45ee335fe42cb6d3c5ce6",
+    "first-gate-independent-review-aad6bb90.md": "b99afc61ec114368d1af5e39559234d442df7303b1da49b16995fcb3205c8fc3",
+    "ci-failure-attempt1-50f969c0.json": "077b94f536fa083ba2d813aacf28e1c20c904baf6dadf2b179b629f6b1520300",
+    "ci-rf-failure-review-50f969c0.md": "7a584eb464e282464dfd40eafed8dbd07db3e8e08517d3d50c9e11c9dce68ce3",
+    "ci-rf-failure-review-50f969c0-bindings.json": "989a0ac361b2228b38b4ee7a2fe1121293083bd06cc3da2e155c65582896c531",
+    "gate-pair-independent-review-146.md": "752c4a8c01cfd75eb51e7424c680543699899f83ffb2ff3c1b59147080f06348",
+    "gate-pair-independent-review-146.json": "91c5a0a598ca8753862b45fda508d1b77072ed55ccd5e3ab3a695077473448d3",
+    "github-release-50f969c0-attempt2.json": "3b43ff0cdf417d4473b4b2b3ab16c083265e19c2e42b9e247646717d9c0f9b02",
+    "ci-retry-result-50f969c0.json": "4c9fee9dea0c31f54406204b1729453b03046d9439902f72ad3ef7afe7ea00e7",
+    "gate-pair-committed-reread-ddcdd34e.json": "8348d4543506136fd2406d36b999d9797784352a3f4bf606555d29e2fc4da3ae",
+    "gate-pair-committed-reread-ddcdd34e.md": "a4000424c67a61effcf75624b2542c646f8f7ae90a88d638c70c6d755ff48a18"
+  },
+  "gates": [
+    {
+      "revision": "aad6bb90951120b09771a23f58d5b662713e7a5a",
+      "canonicalDigest": "sha256:159a7a200f226e857778508abb47d7f45d9a0bfaee30b5c393a2bf457c0fe7b6",
+      "transcriptDigest": "sha256:30382a344a3b6d5441f74189b97fa795a81dfd6d3c28a5669cb4530490d038df",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "startedAt": "2026-09-13T19:24:58.373Z",
+      "executedAt": "2026-09-13T19:46:10.454Z",
+      "checkCount": 11,
+      "previousPassingRevision": null
+    },
+    {
+      "revision": "50f969c04f4eabbe17ee2fcee36ac652d5ddcc05",
+      "canonicalDigest": "sha256:550416dc1164597cb6716bf4ecf7955db7241ae606e2e0d3fc7e4cdf37778533",
+      "transcriptDigest": "sha256:55adddb7df82958060fa9167bbb7e0f95c8cf89c7c1d49952e2f617a555e4f5f",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "startedAt": "2026-09-13T19:46:57.430Z",
+      "executedAt": "2026-09-13T20:08:04.858Z",
+      "checkCount": 11,
+      "previousPassingRevision": "aad6bb90951120b09771a23f58d5b662713e7a5a"
+    }
+  ],
+  "ci": "50f969c0 attempt1 failed RF browser; unchanged attempt2 passed all required jobs and subsequent Tax/public browsers. Exact integration-head checks remain pending.",
+  "limits": [
+    "#146 is slice1 only; no complete Company Tax stage exit before #152.",
+    "No hosted migration, provider activation, real filing, production promotion or seven-day production observation claimed."
+  ],
+  "storage": "Both receipts and pair evidence stored at ddcdd34e0e269fb5b00e56fe51d57deb9ac7b145; independent committed-byte reread PASS."
+}

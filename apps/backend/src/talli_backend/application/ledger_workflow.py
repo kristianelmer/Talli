@@ -51,7 +51,6 @@ from talli_backend.modules.ledger.public import (
     PostAdministrativeCostCommand,
     PostedLedgerEntry,
     PostManualJournalCommand,
-    PostTaxSettlementCommand,
     RebuildCompanyYearOpeningCommand,
     ReconstructionAssessment,
     ReconstructionAssessmentId,
@@ -59,7 +58,6 @@ from talli_backend.modules.ledger.public import (
     ReconstructionEconomicFactSnapshot,
     RecordReconstructionAssessmentCommand,
     RecordOpeningBankInputCommand,
-    TaxSettlementKind,
 )
 from talli_backend.modules.shareholder_register_filing.public import (
     OpeningShareholder,
@@ -90,17 +88,6 @@ class RecordAdministrativeCostCommand(LedgerCommand):
     amount: Money
     paid_date: LocalDate
     document_id: LedgerSourceRecordId | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class RecordTaxSettlementCommand(LedgerCommand):
-    action_id: LedgerSourceRecordId
-    settlement_date: LocalDate
-    amount: Money
-    settlement_kind: TaxSettlementKind
-    document_status: str
-    bank_transaction_id: LedgerSourceRecordId | None
-    document_id: LedgerSourceRecordId | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -561,35 +548,6 @@ class LedgerApplicationSession:
                 replayed=False,
             )
 
-    async def record_tax_settlement(
-        self, command: RecordTaxSettlementCommand
-    ) -> LedgerWriterResult:
-        if command.actor_id != self.actor_id:
-            raise LedgerError.forbidden()
-        async with self._persistence.transaction() as transaction:
-            prepared = await transaction.prepare_tax_settlement(command)
-            replay = prepared.get("replay")
-            if replay is not None:
-                if not isinstance(replay, dict):
-                    raise LedgerError.unavailable()
-                return _replayed_writer(replay, command, LedgerEntryKind.TAX_SETTLEMENT)
-            posted = await self._facade_factory(transaction).post_tax_settlement(
-                PostTaxSettlementCommand(
-                    company_id=command.company_id,
-                    actor_id=command.actor_id,
-                    correlation_id=command.correlation_id,
-                    idempotency_key=command.idempotency_key,
-                    income_year=command.income_year,
-                    settlement_id=command.action_id,
-                    settlement_kind=command.settlement_kind,
-                    amount=command.amount,
-                )
-            )
-            result = await transaction.complete_tax_settlement(
-                command, posted, prepared
-            )
-            return LedgerWriterResult(posted, result, False)
-
     async def post_manual_journal(
         self, command: PostManualJournalCommand
     ) -> PostedLedgerEntry:
@@ -762,5 +720,4 @@ __all__ = [
     "NewYearStartCommand",
     "NewYearStartResult",
     "RecordAdministrativeCostCommand",
-    "RecordTaxSettlementCommand",
 ]

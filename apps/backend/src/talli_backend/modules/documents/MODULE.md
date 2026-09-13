@@ -36,3 +36,9 @@ The stable contract exports `BeginDocumentUploadCommand`, `DocumentBackupObject`
 `DocumentObjectStorage`.
 Infrastructure declares its bindings with `documents_persistence_adapter` and
 `document_object_storage_adapter` and `documents_authorization_adapter`.
+
+The settlement workflow uses `DocumentBindingQuery`, `DocumentBindingPersistence`, `document_binding_persistence_adapter`. The port binds to `talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction`.
+
+<!-- architecture-inventory
+{"ports":["DocumentBindingPersistence"]}
+-->

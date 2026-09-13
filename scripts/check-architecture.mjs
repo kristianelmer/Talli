@@ -188,6 +188,9 @@ const RF_COMPATIBILITY_AMENDMENT = Object.freeze({
 });
 // Pin the bounded RF compositions as well as their unchanged sibling chains.
 // A new behavior change must not inherit permission merely by keeping counts.
+// Later Tax-owned read seams preserve the approved RF compositions and every
+// retained sibling chain. Exact digests prevent this from permitting new behavior.
+const TAX_SOURCE_COMPOSITION_DIGESTS = new Map([["apps/web/app/actions.ts\u0000refreshAnnualReadinessSnapshots", "sha256:8d7b86fe06037a7ce5248c8770ffbae71c275b421f24a2315b9986c77492aed4"], ["apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts\u0000GET", "sha256:fd8e6f5546481fa9fe8c9a8fe4dd9efd681b9b708c8aa705d4ca3650f2616007"]]);
 const RF_COMPOSITION_DIGESTS = new Map([
   [
     "apps/web/app/actions.ts\u0000addFilingOverride",
@@ -1515,6 +1518,33 @@ function validateDatabaseCatalog(root, backendSystem, manifests, compatibility, 
     retirementIssues,
     errors,
   )) discovered.delete(retiredTable);
+  // Row-preserving retirements are distinct from the older empty-table drops.
+  // Exact shipped artifacts remain hash-bound; database tests prove reconciliation.
+  for (const retirement of catalog.preservedSourceRetirements ?? []) {
+    const successor = catalog.tables?.find((entry) => entry.name === retirement.successor);
+    const ownerCapability = successor?.owner?.replace(/^backend:/u, "");
+    const stage = compatibility.migration?.order?.find((entry) => entry.capability === ownerCapability);
+    const activeOrExited = ownerCapability === compatibility.migration?.currentCapability
+      || compatibility.migration?.exitedCapabilities?.includes(ownerCapability);
+    const files = {};
+    let valid = activeOrExited && stage?.removalIssues?.includes(retirement.issue)
+      && successor?.kind === "capability-business"
+      && successor.compatibilityResources?.includes(`table:${retirement.source.slice(7)}`)
+      && !catalog.tables?.some((entry) => entry.name === retirement.source);
+    for (const [phase, artifact] of Object.entries(retirement.artifacts ?? {})) {
+      const path = join(root, artifact.path);
+      const source = existsSync(path) ? readFileSync(path, "utf8") : "";
+      files[phase] = source;
+      valid &&= !!source && createHash("sha256").update(source).digest("hex") === artifact.sha256;
+    }
+    valid &&= files.cutover?.includes(`drop table ${retirement.source};`)
+      && files.cutover.includes(`insert into ${retirement.successor} select * from ${retirement.source};`)
+      && files.contract?.includes(`drop view ${retirement.source};`)
+      && files.rollback?.includes(`create table ${retirement.source} (`)
+      && files.rollback.includes(`insert into ${retirement.source} select * from ${retirement.successor};`);
+    if (valid) discovered.delete(retirement.source);
+    else errors.push(`architecture/database-catalog.json: preserved source retirement is not bound to an active/exited owner and exact reversible artifacts: ${retirement.source}`);
+  }
   const catalogEntries = catalog.tables ?? [];
   const catalogNames = new Set(catalogEntries.map((entry) => entry.name));
   if (catalogNames.size !== catalogEntries.length) errors.push("architecture/database-catalog.json: duplicate table name");
@@ -2143,6 +2173,17 @@ export function validateCompatibilityRegistry(path, {
     currentOperationAnalyses.set(operationKey, analysis);
     return analysis;
   };
+  const taxOwnedSourceRetirement = (scope) => {
+    const key = compatibilityOperationKey(scope.path, scope.operation);
+    const analysis = currentOperationAnalysis(scope);
+    return (currentCapability === "company_tax_filing" || exitedCapabilities.has("company_tax_filing"))
+      && resourceOwner?.("table:holding_actions") === "backend:company_tax_filing"
+      && !activeLegacyScopeKeys.has(compatibilityScopeKey(scope.path, scope.rule, "table:holding_actions", scope.operation))
+      && analysis?.state === "found"
+      && analysis.sourceDigest === TAX_SOURCE_COMPOSITION_DIGESTS.get(key)
+      && (analysis.resourceOccurrences.get("table:holding_actions") ?? 0) === 0
+      && (analysis.resourceOccurrences.get("table:*") ?? 0) === 0;
+  };
   const removedRfReads = removedFrozenScopes.filter(({ record, scope }) => rfAmendmentRead(record, scope));
   const rfSimulationRemoved = removedRfReads.some(({ scope }) => scope.operation === "confirmSimulatedRf1086Submission");
   let rfSimulationAtomic = false;
@@ -2161,7 +2202,8 @@ export function validateCompatibilityRegistry(path, {
       const key = compatibilityOperationKey(scope.path, scope.operation);
       const retainedSiblings = (frozenScopesByOperation.get(key) ?? []).some((item) => activeLegacyScopeKeys.has(
         compatibilityScopeKey(item.path, item.rule, item.resource, item.operation)));
-      if (retainedSiblings && currentOperationAnalysis(scope)?.sourceDigest !== RF_COMPOSITION_DIGESTS.get(key)) {
+      if (retainedSiblings && currentOperationAnalysis(scope)?.sourceDigest !== RF_COMPOSITION_DIGESTS.get(key)
+          && !taxOwnedSourceRetirement(scope)) {
         errors.push(`RF compatibility amendment retirement differs from its bounded composition: ${operationLabel(key)}`);
       }
     }
@@ -2267,7 +2309,8 @@ export function validateCompatibilityRegistry(path, {
       if (!retainedScopes.length) continue;
       const preserved = analysis?.state === "found" && original?.state === "found"
         && (analysis.sourceDigest === original.sourceDigest
-          || analysis.sourceDigest === RF_COMPOSITION_DIGESTS.get(operationKey))
+          || analysis.sourceDigest === RF_COMPOSITION_DIGESTS.get(operationKey)
+          || taxOwnedSourceRetirement(scope))
         && retainedScopes.every((item) => JSON.stringify(analysis.persistenceChains.get(item.resource))
           === JSON.stringify(original.persistenceChains.get(item.resource)))
         && [...analysis.persistenceOccurrences].every(([resource, count]) => count === 0

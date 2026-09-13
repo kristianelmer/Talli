@@ -1,0 +1,59 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import vm from 'node:vm';
+const input = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+for (const [path, source] of Object.entries(input.files)) assert.equal(createHash('sha256').update(source).digest('hex'), input.sha256[path]);
+const prefix = 'supabase/contract-migrations/';
+const loan = prefix + '20260902071000_corporate_governance_shareholder_loan_contract.sql';
+const governance = prefix + '20260902110000_corporate_governance_contract.sql';
+const tax = 'supabase/migrations/20260913171000_company_tax_settlement_expand.sql';
+const banking = prefix + '20260828101000_banking_capability_contract.sql';
+const investments = ['20260831133000_investments_share_purchase_contract.sql','20260831170000_investments_share_sale_contract.sql','20260831190000_investments_received_dividend_contract.sql','20260831193000_investments_stage_exit.sql','20260901001500_investments_stage_exit_policy_cleanup.sql','20260901150538_investments_lifecycle_public_cutover.sql'].map(x=>prefix+x);
+const cases = [
+ {name:'absent legacy function plus restored physical Governance table',kinds:{'public.corporate_decisions':'r'},old:false,expected:[governance,tax]},
+ {name:'legacy function retains original loan then full contract order',kinds:{},old:true,expected:[loan,governance,tax]},
+ {name:'already contracted Governance skips predecessor artifacts',kinds:{},old:false,expected:[tax]},
+ {name:'Banking and Investments stay before restored Governance and Tax',kinds:{'public.bank_transactions':'r','public.investment_positions':'r','public.corporate_decisions':'r'},old:false,expected:[banking,...investments,governance,tax]},
+ {name:'Governance error aborts before Tax expansion and closes connection',kinds:{'public.corporate_decisions':'r'},old:false,fail:governance,expected:[governance],error:/synthetic_governance_failure/},
+ {name:'view is not treated as restored physical Governance table',kinds:{'public.corporate_decisions':'v'},old:false,expected:[tax]},
+ {name:'Ledger predecessor guard remains before all migrations',kinds:{'public.ledger_entries':'r'},old:false,expected:[],error:/tax_rehearsal_requires_final_ledger_and_rf_contracts/},
+ {name:'remote database is rejected before constructing a connection',kinds:{},old:false,url:'postgresql://fixture@remote.example/db',expected:[],error:/tax_rehearsal_requires_owned_loopback_database/,noConnection:true},
+];
+const results=[];
+for (const fixture of cases) {
+ const calls=[];let created=0,connected=0,ended=0;
+ const context=vm.createContext({URL,process:{env:{DATABASE_URL:fixture.url??'postgresql://fixture@127.0.0.1/disposable'},argv:['node','rehearse','prepare']},console:{log(){}}});
+ class Client {
+  constructor(){created++;}
+  async connect(){connected++;}
+  async end(){ended++;}
+  async query(text,params){
+   if(text==='select relkind from pg_class where oid=to_regclass($1)') return {rows: fixture.kinds[params[0]]?[{relkind:fixture.kinds[params[0]]}]:[]};
+   if(text.startsWith("select to_regprocedure('backend_system.prepare_shareholder_loan_v1")) return {rows:[{present:fixture.old}]};
+   if(text==='select phase from backend_system.tax_settlement_migration_state where singleton') return {rows:[{phase:'expanded'}]};
+   const path=Object.keys(input.files).find(path=>path.startsWith('supabase/')&&input.files[path]===text);
+   assert.ok(path,'mock must receive exact pinned SQL bytes');calls.push(path);
+   if(path===fixture.fail)throw new Error('synthetic_governance_failure');
+   return {rows:[]};
+  }
+ }
+ const fsModule=new vm.SyntheticModule(['readFile'],function(){this.setExport('readFile',async url=>{
+  const path=url.pathname.replace(/^\/pinned\//,'');assert.ok(Object.hasOwn(input.files,path));return input.files[path];
+ });},{context});
+ const pgModule=new vm.SyntheticModule(['default'],function(){this.setExport('default',{Client});},{context});
+ const safety=new vm.SourceTextModule(input.files['tests/support/supabase_fixture_safety.mjs'],{context});
+ const script=new vm.SourceTextModule(input.files['scripts/rehearse-tax-topology.mjs'],{context,initializeImportMeta(meta){meta.url='file:///pinned/scripts/rehearse-tax-topology.mjs';}});
+ await script.link(specifier=>{
+  if(specifier==='node:fs/promises')return fsModule;
+  if(specifier==='pg')return pgModule;
+  if(specifier==='../tests/support/supabase_fixture_safety.mjs')return safety;
+  throw new Error('undeclared dependency: '+specifier);
+ });
+ if(fixture.error)await assert.rejects(script.evaluate(),fixture.error);else await script.evaluate();
+ assert.deepEqual(calls,fixture.expected);
+ assert.equal(created,fixture.noConnection?0:1);assert.equal(connected,fixture.noConnection?0:1);assert.equal(ended,fixture.noConnection?0:1);
+ results.push({name:fixture.name,status:'PASS',appliedArtifacts:calls,connectionClosed:ended===1});
+ console.log('PASS '+fixture.name);
+}
+console.log(JSON.stringify({revision:input.revision,runtime:process.version,cases:results.length,passed:results.length,limits:'Actual immutable script and safety source executed with mocked pg and filesystem ports; SQL bytes checked but never executed; no real database, browser or shared process operations.',results},null,2));

@@ -1,0 +1,551 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#146",
+  "revision": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
+  "capturedAt": "2026-09-13T15:39:43.629516+00:00",
+  "status": "adopted-at-passing-entry-revision-pending-independent-review",
+  "scope": "Tax-settlement slice 1 only. Matches include shared consumers and predecessor/future assets, not permission to edit every matching file. No implementation or claim yet.",
+  "sourceSearch": "RecordTaxSettlement|TaxSettlement|tax_settlement|tax-settlement|holding_actions|has_evidence_references_v1 across source, tests, scripts and SQL lifecycle directories",
+  "files": [
+    {
+      "path": "CONTEXT.md",
+      "sha256": "e781ac1914abc8492435e6aa9bf2b96872f7f1941673892a3841c0b3e1c4d0c9"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/adapters/supabase_documents.py",
+      "sha256": "7d1630e6a50b212bade48bffb9fbdc7ddf18c3a93a758143a49abff325fb938f"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/adapters/supabase_ledger.py",
+      "sha256": "9b38c9d5cd5e5bd8730d30b0e3140d31aa6cff16e36ccdb7f429ac689e24d9fa"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/corporate_governance_session.py",
+      "sha256": "65afb07c159cc108b8090c401aa0f625633d28cb528d3c0eac3b72bd7797ad00"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/ledger_session.py",
+      "sha256": "b0779d288f7a9801172cdca0644f35598f76445f8407bb0f133d0ba78312ca45"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/ledger_workflow.py",
+      "sha256": "959c58a9937eaf47192d2cbc0bcdd43ced236d54557b8756f7c3592472ce1117"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/main.py",
+      "sha256": "6c54165f320fe0c304515bcb022c73470714d4c45f9d89b13d68b0a9b00e8177"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/banking/public.py",
+      "sha256": "af2da4d88d172c638eccde0dca6dba63b93fa5f27f7c2184171a5daba5ba1a13"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_access/public.py",
+      "sha256": "96d2e28192df2e0aed9ecf1a3242b1f6d7e30df76d3c62ad63e741e1e793bf87"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md",
+      "sha256": "df043712c30d1344cbf7b7bb17f61b8f76607c688024e6862032defa73c82281"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/documents/public.py",
+      "sha256": "1ad787b16fea9f79a580cb7957c31fe24db9b5a449bab01c368d4206ccda97e0"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/ledger/MODULE.md",
+      "sha256": "7b7d79d2b0622bc3ec61e11e055bfbb23be3a8a3bb07ad8cd080cf64d06c731d"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/ledger/module.json",
+      "sha256": "7d48c738574150810e08dda81d543636525537a8e4efe06db2acd814382bdc2a"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/ledger/public.py",
+      "sha256": "da273f5fa829c056d3b17903d7c0b312c0334ef67c526d01e562e265fcf1af21"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/ledger/service.py",
+      "sha256": "0e42148525a98eab7735e525afebc3278884cadb04e7c37dee56cd432315f87f"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/shared/kernel.py",
+      "sha256": "86b108e5c292ca20e9dc031a463c284c9bd2d7698e1d26a3967d51500bf82fe3"
+    },
+    {
+      "path": "apps/backend/tests/fixtures/rf1086_oracle/manifest.json",
+      "sha256": "803683464787a686c0e8bae3a9101224ee57a55be9aa6161224a259440450c3a"
+    },
+    {
+      "path": "apps/backend/tests/test_ledger.py",
+      "sha256": "242ffdbd7e305e9dc8f24e04d85682ef96e851064985a4656528ee49f36f2a84"
+    },
+    {
+      "path": "apps/backend/tests/test_ledger_api.py",
+      "sha256": "bba45c0845cef560a2cc3253ee3a62a420c1aaf1b1bddd5287ceb81505d84c7f"
+    },
+    {
+      "path": "apps/backend/tests/test_ledger_public_contract.py",
+      "sha256": "589b7176b5c85980231bb4f655bc5f2d9a45e0683aa8a9c1480ff5e3a7b97acb"
+    },
+    {
+      "path": "apps/backend/tests/test_shareholder_register_filing_lifecycle.py",
+      "sha256": "8478625e42aa09c460e0d0dfe4d344ddaa0314e83e89222558f29f58d8c73c91"
+    },
+    {
+      "path": "apps/backend/tests/test_supabase_investments.py",
+      "sha256": "11f979fbd6922e3484c2707dd36bba612f48032bc654dd5df979ee7d495aa1d2"
+    },
+    {
+      "path": "apps/backend/tests/test_supabase_ledger.py",
+      "sha256": "58326b433e0acf4ba7eda30cf7b37480d70a7455c880727c9307c3257e20bb07"
+    },
+    {
+      "path": "apps/web/app/(owner)/actions/[type]/page.tsx",
+      "sha256": "1921ac08900a2ab863d5aa72229d97600450aa057b4aa0cb9ab427b35a928f68"
+    },
+    {
+      "path": "apps/web/app/(owner)/actions/_components/ActionPreview.tsx",
+      "sha256": "a6e7862bc098a9a7dc0b3645c415c7c08f3881ab0a3f743cd3230005dfb9355e"
+    },
+    {
+      "path": "apps/web/app/(owner)/actions/_components/TaxSettlementWizard.tsx",
+      "sha256": "767eeb58a1b6bbaba6d95587bf3596815c0cde839f00bd40080e40edc765f4ed"
+    },
+    {
+      "path": "apps/web/app/(owner)/actions/page.tsx",
+      "sha256": "4fe36cc8d9c02eeeda2e9f25218cb7f34b6e929ea1b6af524e62e8baa7f2e9f2"
+    },
+    {
+      "path": "apps/web/app/(owner)/workspace/page.tsx",
+      "sha256": "0d7c71f4c1b0cf9cfbebff9745365d0f1350dc9a38231c9948137a798b2565d5"
+    },
+    {
+      "path": "apps/web/app/actions.ts",
+      "sha256": "b407f01296b42bb7cc9f5c5e2e2633dcf97110618a818a84ced38270daa8e4f9"
+    },
+    {
+      "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+      "sha256": "c83ccf71c9eeb9a05316bed2b5a5fee387f36d478cafc08c201afa1bb6bf2373"
+    },
+    {
+      "path": "apps/web/app/lib/annual-readiness.ts",
+      "sha256": "23bb49c6c57e69c68418747ca35cb164ea2122892f39de5f9c4ef6e7acccce37"
+    },
+    {
+      "path": "apps/web/app/lib/archive.ts",
+      "sha256": "51370417546e666c9c198d74507df56c0afd080283ca60cfb0683a74a744a03d"
+    },
+    {
+      "path": "apps/web/app/lib/backup-restore.ts",
+      "sha256": "780f13bd39c60f1d35f71ce05f36759bba91c8958dde1eeed5565a6c157be268"
+    },
+    {
+      "path": "apps/web/app/lib/cancellation.ts",
+      "sha256": "720e59f002dc617bb583b543bcae5e61fba02ca87c12df89a2b66df8f8bf6116"
+    },
+    {
+      "path": "apps/web/app/lib/company-tax-return.ts",
+      "sha256": "765b82a633a859c4108e83cb6f30b18e3fd3ad491f56a53485453f6bc3ca6ec7"
+    },
+    {
+      "path": "apps/web/app/lib/copy.ts",
+      "sha256": "43cca596ec05ab9e504441bd5f30f466a2f241878fec4bfb273e0c9e835f1531"
+    },
+    {
+      "path": "apps/web/app/lib/invitation-side-effects.ts",
+      "sha256": "7b832ce0fa18e78b32af044139dea9dd4ed0c3874829f3f2d5db7f82430bccca"
+    },
+    {
+      "path": "apps/web/app/lib/ledger-audit-side-effects.ts",
+      "sha256": "1c4f7ba3d5317e83fd1df36cdf6a3cf8d758bc69a254b406cdb4a51fe6ec6f5e"
+    },
+    {
+      "path": "apps/web/app/lib/supabase/auth-session.ts",
+      "sha256": "a5e5e4d9a617b3412fe67bfe27d74a6a42b3ed75e8f8ce9ecbdd45c203272b70"
+    },
+    {
+      "path": "apps/web/app/lib/supabase/server.ts",
+      "sha256": "5e5f768f0dc6bbebe0e622e62ddb7c9d9409aa29b7d04da2ecdff6b9e9b962fd"
+    },
+    {
+      "path": "apps/web/app/lib/tax-settlement.ts",
+      "sha256": "8ea0dd637bdfb1ebec72b5b1289f3fbbe849cdcecab9a3f695b699b4493dc605"
+    },
+    {
+      "path": "apps/web/app/lib/workspace-data.ts",
+      "sha256": "15f9bace0dc494e4fe3b5e99f941de6602b00a4416e57073c4265df3f8650e73"
+    },
+    {
+      "path": "apps/web/features/ledger/MODULE.md",
+      "sha256": "5218deea350318dba8c9cfca398d3da169273d9baa11d4a97d8d3451cec566cf"
+    },
+    {
+      "path": "apps/web/features/ledger/index.ts",
+      "sha256": "00ba8f52d96b5af50fbfd6a92856bb4b0e8828368042b736719f4c109ff12bd2"
+    },
+    {
+      "path": "apps/web/features/ledger/module.json",
+      "sha256": "fa007a3d8f2f911564e369111df912a9331133f4507a07447de6db987c54201f"
+    },
+    {
+      "path": "apps/web/features/ledger/presentation.ts",
+      "sha256": "49ba7827d9e84d4eef4e6fe382af07cad0f3c51b6fccf877a804d487591463c8"
+    },
+    {
+      "path": "apps/web/features/ledger/transport.ts",
+      "sha256": "eef2e2062c8b8977b09045f7219120801b3c4cbaa2e27b8b6480085e039b5ef8"
+    },
+    {
+      "path": "apps/web/tests/archive-rf1086-source.test.mjs",
+      "sha256": "1e09bd03b0749dad37e34706cd69a064093836d0e796ec8ef1194deede96fc1b"
+    },
+    {
+      "path": "apps/web/tests/invitation-side-effects.test.mjs",
+      "sha256": "b12d621427328d8b1519dd1a2ef32fdd708e74dc36694a497f57fcfb5b840d7f"
+    },
+    {
+      "path": "apps/web/tests/ledger-audit-side-effects.test.mjs",
+      "sha256": "11cc8669416870ab9e446137c849fd2f1709ecee51b3352a9617dbbf58ce0946"
+    },
+    {
+      "path": "apps/web/tests/ledger-presentation.test.mjs",
+      "sha256": "71a176732a8f532c080b9156ee2284b960aa184f9bb52ee723b9f68e61692000"
+    },
+    {
+      "path": "architecture/backend-system.json",
+      "sha256": "a93be96bee1109c7e3a903cb68df657cdd899b8bc34a018eb3da3322ad85274d"
+    },
+    {
+      "path": "architecture/company-archive-sources.json",
+      "sha256": "daa47be25df45bba2bea3c6cb09ac123ea4f3cdb8e7be5f2a6327e331b620a52"
+    },
+    {
+      "path": "architecture/compatibility-baseline.json",
+      "sha256": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab"
+    },
+    {
+      "path": "architecture/compatibility.json",
+      "sha256": "965e6acb38a4d862259631edf52f5793749c07cc2805b369eb146f1daa6cc88f"
+    },
+    {
+      "path": "architecture/database-catalog.json",
+      "sha256": "336827088e88d2e2c0dc9ed18a237e8352bb68bb25866b06a5fa523d9c3a6822"
+    },
+    {
+      "path": "architecture/dependency-evidence.json",
+      "sha256": "ef8ed8f51d568b73aa782d024be1911e341bec091126ebbaeea8ee8184696ec6"
+    },
+    {
+      "path": "contracts/openapi/talli-v1.json",
+      "sha256": "2cfca140bee4fcf3d88c33c8d6527e16a18f7ca3e851b20a1b115194949cdbd9"
+    },
+    {
+      "path": "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md",
+      "sha256": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874"
+    },
+    {
+      "path": "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md",
+      "sha256": "6606f55fe6d355ee1ce7dac4ba419d4040e1015a461958ea8a9bffbacaab9ffa"
+    },
+    {
+      "path": "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md",
+      "sha256": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482"
+    },
+    {
+      "path": "packages/talli-api-client/src/generated/client.ts",
+      "sha256": "ee70c653d820b07771a61bfae5d3063fa9efbd94f8abe566a5f6253f7f4555d5"
+    },
+    {
+      "path": "packages/talli-api-client/src/index.ts",
+      "sha256": "11fb7dcb53eaa17459277ca2d97380b767c44ac906ded043d812e000a5cca177"
+    },
+    {
+      "path": "scripts/check-architecture.mjs",
+      "sha256": "322909cc18857711acfbb597548b2faafe77c831a8eefbfd223ad7f064e5bc68"
+    },
+    {
+      "path": "scripts/generate-api-client.mjs",
+      "sha256": "22db2155e7e9c7ea6752708ac79747bc29a929389285897768aa92fabf9a5e7f"
+    },
+    {
+      "path": "supabase/contract-migrations/20260827101000_ledger_capability_contract.sql",
+      "sha256": "b7aae025d4407dcd99d6bf1ec9d68a811687882fabeedd48f73efa75bbceb113"
+    },
+    {
+      "path": "supabase/contract-migrations/20260828101000_banking_capability_contract.sql",
+      "sha256": "0a228b5892b837a5c47a034df38b755a1ab6e94d6e0ea652f7e9aec26cfd557c"
+    },
+    {
+      "path": "supabase/contract-migrations/20260831133000_investments_share_purchase_contract.sql",
+      "sha256": "e018d5ce0fc6c2c09da2dcd7dda9f93b17932bf8ca5c6f0f0f02e57d0730b62b"
+    },
+    {
+      "path": "supabase/contract-migrations/20260831170000_investments_share_sale_contract.sql",
+      "sha256": "fc51739abd59b142a20fa5b3965e6f5b667cb92af712346192dd8c6d3283dcdc"
+    },
+    {
+      "path": "supabase/contract-migrations/20260831190000_investments_received_dividend_contract.sql",
+      "sha256": "5def53a02ec2aafce0ef5e666a2870a8813e7d1a0db861f04234180e52d9ce26"
+    },
+    {
+      "path": "supabase/contract-migrations/20260831193000_investments_stage_exit.sql",
+      "sha256": "ac8f50d4b9fbe8554c6561c9d10273abe28de0475056acfe3be730d8886738b9"
+    },
+    {
+      "path": "supabase/contract-migrations/20260901001500_investments_stage_exit_policy_cleanup.sql",
+      "sha256": "694624e10d91251ad2c23765a9208d83baaf87286ce56414a099e3e75832542f"
+    },
+    {
+      "path": "supabase/contract-migrations/20260902071000_corporate_governance_shareholder_loan_contract.sql",
+      "sha256": "dc064a592ff6af6c8d58820e0eddb8d43f3d2f4d0b94ef5f22fda2136b88f3de"
+    },
+    {
+      "path": "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql",
+      "sha256": "632ef749740e836f9bddf95e143a8f6f330034119178e39eb30ef282d8957526"
+    },
+    {
+      "path": "supabase/migrations/0001_authenticated_workspace.sql",
+      "sha256": "efa28a79444eea498e526d26912f3bb3f60b044b1ab0209602296e9cee6ad0ca"
+    },
+    {
+      "path": "supabase/migrations/0002_fifo_investment_lots.sql",
+      "sha256": "993685c659c5be35a04df7d5f55a67129280ccdf4468ad28a72f3a01c7a04f48"
+    },
+    {
+      "path": "supabase/migrations/0004_corporate_document_artifacts.sql",
+      "sha256": "f2697b69bbf5c5f406de2236a2fd86825299385403445c78807445321c076eb4"
+    },
+    {
+      "path": "supabase/migrations/20260715143000_retention_safe_document_removal.sql",
+      "sha256": "cbeca92b0acf9afff0efb5075b1f7aaf5e5b78bf59206253fc9a72944f5c9fcf"
+    },
+    {
+      "path": "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql",
+      "sha256": "2d9e10172c2e491dc59d25d8a1f79e578e4498f3663e81242ecd8c8e72194e5f"
+    },
+    {
+      "path": "supabase/migrations/20260827100000_ledger_capability.sql",
+      "sha256": "1d647e053cc0b779a57a75088809b8f7cf63692f2a6445791177284adc800bf4"
+    },
+    {
+      "path": "supabase/migrations/20260827100500_ledger_writer_coordinators.sql",
+      "sha256": "d4dbeb93323e1a79cf0154b826968dd4391d6f757753e547a66f4a3a1a8bf16d"
+    },
+    {
+      "path": "supabase/migrations/20260827102000_ledger_supported_patterns.sql",
+      "sha256": "2155188c2f74210e955b5a332488f4bfe9e3b157b43a210c4ac021c48ed0e0bd"
+    },
+    {
+      "path": "supabase/migrations/20260827103000_ledger_corrections.sql",
+      "sha256": "d71293e5dfeae0b1085825f5821b36caf68c5d4f68f6a08b2a09ec780787d205"
+    },
+    {
+      "path": "supabase/migrations/20260831131203_investments_share_purchase_workflow.sql",
+      "sha256": "e255dc5138e05c268ca12c4b575aa5f6cfc2284ca48ad85ac31156c93e33b2b5"
+    },
+    {
+      "path": "supabase/migrations/20260831162145_investments_share_sale_workflow.sql",
+      "sha256": "cbd07202ddff55e67048333dbe29325ea501f40daa7bacdf3b0ddd5ac959a9ac"
+    },
+    {
+      "path": "supabase/migrations/20260831182000_investments_received_dividend_workflow.sql",
+      "sha256": "b939bc3be2ba41c0b06be46d401fd79f6bfc82be8cdfa19de21878db3d208501"
+    },
+    {
+      "path": "supabase/migrations/20260901118000_investments_year_end_measurement_workflow.sql",
+      "sha256": "67140b6a80c2910611d934aa083e1bb6bbc467fe018d4cdfebd4e99b0a12a2fc"
+    },
+    {
+      "path": "supabase/migrations/20260901233000_documents_capability.sql",
+      "sha256": "a567413db6913c0bdd644d88dfd49059285991e41c4bb8ad0afd41f86b34109d"
+    },
+    {
+      "path": "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql",
+      "sha256": "344ea2777c2841c803e0cf371b2de36936b036597b1a41c4facb9fc8fa40fe85"
+    },
+    {
+      "path": "supabase/migrations/20260902040000_corporate_governance_owner_dividend.sql",
+      "sha256": "c64f260a40dd651f80d0890e9a72278bca57c58abe8f7e0991af7492ff3c1c03"
+    },
+    {
+      "path": "supabase/migrations/20260902070000_corporate_governance_shareholder_loan.sql",
+      "sha256": "b144193d8c6944e0564928cc62204dcd318140422f0f98aacb1e77d8325ffcb0"
+    },
+    {
+      "path": "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql",
+      "sha256": "fa29bbe4b4c7a498554e18bf3f71ede4146d616e414e48b9290815d52fc99e15"
+    },
+    {
+      "path": "supabase/rollback/20260827101000_ledger_capability_contract.sql",
+      "sha256": "d0e7474cb4498ac0c03b0abf52cea1b63d38695ae97df3439385a314e4e50f6d"
+    },
+    {
+      "path": "supabase/rollback/20260828101000_banking_capability_contract.sql",
+      "sha256": "ec889bb435614adb80c47eb024c856cd7fccaaaa7013dede99f14480924ab0b1"
+    },
+    {
+      "path": "supabase/rollback/20260831133000_investments_share_purchase_contract.sql",
+      "sha256": "f0145238d17147682c24b12283ae47ed04e33136f07f5df23f9d8e8a22f2f244"
+    },
+    {
+      "path": "supabase/rollback/20260831170000_investments_share_sale_contract.sql",
+      "sha256": "2789c1171aa4b0409c8dffb5024f4875d7df6b25a8f3f0c12947c829fcab24eb"
+    },
+    {
+      "path": "supabase/rollback/20260831190000_investments_received_dividend_contract.sql",
+      "sha256": "5c8780918c32d246a13b7be9a2e7e8502c4725703a6f5c42be598eb548751e9d"
+    },
+    {
+      "path": "supabase/rollback/20260831193000_investments_stage_exit.sql",
+      "sha256": "4c4822c170010d0d48e8c3d20e090703fd11f4db5ddb00301adf03d592863b3a"
+    },
+    {
+      "path": "supabase/rollback/20260901118000_investments_year_end_measurement_workflow.sql",
+      "sha256": "47e238b5a32b38cb945d08375716e11aa0f433142b9057b9c930191280012b9d"
+    },
+    {
+      "path": "supabase/rollback/20260901233000_documents_capability.sql",
+      "sha256": "8437be1195e2e43f6f7c6e3537a699c4b1e445576eb452df0521858d3c4b6397"
+    },
+    {
+      "path": "supabase/rollback/20260902030000_documents_evidence_reference_registry.sql",
+      "sha256": "cb7bb77078b0d2424a2b9d8686cf38e201e5dc412c48b7159954689cf26e3e9c"
+    },
+    {
+      "path": "supabase/rollback/20260902070000_corporate_governance_shareholder_loan.sql",
+      "sha256": "9965957839ba115243e7367123e483a81450bd635c4e4cfdc4d37de579037030"
+    },
+    {
+      "path": "supabase/rollback/20260902071000_corporate_governance_shareholder_loan_contract.sql",
+      "sha256": "5dd4195d4d3875b3ae45576786208f57f51e2e9cbda0010824cddd475e4d0a81"
+    },
+    {
+      "path": "supabase/rollback/20260902110000_corporate_governance_contract.sql",
+      "sha256": "d2616716b0ecef2aaa8d9eb0e5aabdf9ed2dcf492fa1f2c8ac707576ffb76234"
+    },
+    {
+      "path": "tests/annual_corporate_documents.test.mjs",
+      "sha256": "d37188721cf3a81c2041eab99fc999246bfa89da39f0f2bef612dc29c8896714"
+    },
+    {
+      "path": "tests/annual_readiness_gates.test.mjs",
+      "sha256": "3f76df01b973ddbaf8ac1367fead6564aa61cb63275a9e64c7993ca348f93afd"
+    },
+    {
+      "path": "tests/annual_workspace_view_model.test.mjs",
+      "sha256": "ca691e34b6c5815a589f6cc10374877e06ff50b2c2c060a12643eabf92bdc4ab"
+    },
+    {
+      "path": "tests/architecture_foundation.test.mjs",
+      "sha256": "936a679c249218aa90e61a228d6bdcf89064fef573701310c0259896002058ef"
+    },
+    {
+      "path": "tests/archive_export.test.mjs",
+      "sha256": "ccd640a06fd135a68877620747f20d7708f711ccb0df8cf30756ec9f10fca135"
+    },
+    {
+      "path": "tests/banking_capability_schema.test.mjs",
+      "sha256": "cc63a4bae556392f01f961196b5225853060d7407fcdb5496b35cca3e507ba5f"
+    },
+    {
+      "path": "tests/banking_database_runtime.test.mjs",
+      "sha256": "407fcdb9be1653d783378def60a773b3b7a548cd10d8d43300760f2c8500f8ad"
+    },
+    {
+      "path": "tests/browser_process_lifecycle.test.mjs",
+      "sha256": "f76e34f81cfa6118a7b3022f57b307fae5c7be1100fac8fc1bb0aebeec2af06a"
+    },
+    {
+      "path": "tests/company_access_database_runtime.test.mjs",
+      "sha256": "b2f2099ed7ad41535360cb4f9811fe15117f444aeac8e7b5c550d3401b31a5a1"
+    },
+    {
+      "path": "tests/contract/web_fastapi_boundary.test.mjs",
+      "sha256": "068c09d755a5fa4598cf38140ada47ee3ca8256cf48ecbfc32d4f0444b25c2d5"
+    },
+    {
+      "path": "tests/corporate_governance_capability_schema.test.mjs",
+      "sha256": "f595e226d7d5b93cb9e58543238fc9394d6acdb1ef109f494fb004d0049389f4"
+    },
+    {
+      "path": "tests/corporate_governance_contract_migration_lifecycle.test.mjs",
+      "sha256": "3684376e1493371e41c1fff682a4efb7e81974407e43cddbc7211ac07455a38c"
+    },
+    {
+      "path": "tests/corporate_governance_migration_lifecycle.test.mjs",
+      "sha256": "009215fed6b4c22d3d054f51d1a3f54b9f29f04532a928b8a2fe6f8000fd607a"
+    },
+    {
+      "path": "tests/corporate_governance_review_fixes.test.mjs",
+      "sha256": "f47d09e101d6a702e9bf21432f0b20237ca97d7dd9fd28117db45b4bc6d66e71"
+    },
+    {
+      "path": "tests/document_removal_schema.test.mjs",
+      "sha256": "eb78e670d1f137e98de7b6eab7cbcf5ca5db7c87b39df166fd9001f124427cea"
+    },
+    {
+      "path": "tests/documents_database_runtime.test.mjs",
+      "sha256": "aee9b14c2bdbfabb0cae2af20d84f29675239606fcbd375fee3bca20d5f4f9d0"
+    },
+    {
+      "path": "tests/documents_supported_pattern_evidence.test.mjs",
+      "sha256": "302b1bb159f12d56d80f6b55b045d8a46afb1b9f7af62fcdbb09688836cec732"
+    },
+    {
+      "path": "tests/fixtures/corporate_documents/database_rehearsal.sql",
+      "sha256": "57ad9f5d3974562b77aa59c01c7ea28f99cf61e27a702c590459633f36ff36f4"
+    },
+    {
+      "path": "tests/investments_capability_schema.test.mjs",
+      "sha256": "5fc4154caab5d12c457407a207ff52074c326cb3bf7d8565164bd3bd173916ea"
+    },
+    {
+      "path": "tests/investments_cross_output_reconciliation.test.mjs",
+      "sha256": "d735af7641d527633d9abfd494c68aab8de7e8d14c45945d227acd057d2ed7ca"
+    },
+    {
+      "path": "tests/investments_database_runtime.test.mjs",
+      "sha256": "3b391af47956bebe32eaa889e54eec00bd4e4128fd721920b53b6f9b2cfe39f6"
+    },
+    {
+      "path": "tests/ledger_capability_boundary_regressions.test.mjs",
+      "sha256": "6359b2188e58dd3130d618f81fae50f23c063dc7de1606011b188bd5519f8781"
+    },
+    {
+      "path": "tests/ledger_capability_schema.test.mjs",
+      "sha256": "7020a0888aff76c5560db5f4ec54bebb31e6812ec9ac7ce126cf783e898244af"
+    },
+    {
+      "path": "tests/owner_dividend.test.mjs",
+      "sha256": "996674b0ea7a4d6caaa888083b2625074720953567bea4d29ca1de7eda9ce73e"
+    },
+    {
+      "path": "tests/supabase_workspace.test.mjs",
+      "sha256": "19e2d629b2da34d498cc670c27726c363943b23b70c10fd089c069b19094d9bd"
+    },
+    {
+      "path": "tests/support/browser-owner-cleanup.mjs",
+      "sha256": "25c81125c76c094d3b6c480fa01da2f1ddebd81eb874b6b78d26a8117c853fe0"
+    },
+    {
+      "path": "tests/support/rf1086-fixture-access.mjs",
+      "sha256": "08b2cd8207949a8d39f33f1ff3b6b772e2c57268fb92f91291b6e322b479c48f"
+    },
+    {
+      "path": "tests/tax_settlement.test.mjs",
+      "sha256": "7725e8a358aa9b70c9cf4930fb4f175f42b9f0b5e7f74c56cae4f2380dd8cd31"
+    },
+    {
+      "path": "tests/test_annual.py",
+      "sha256": "02aef5c7802704f586c88f5f0766eade3a0443c8b749e9b4f9327879f7973dc4"
+    },
+    {
+      "path": "tests/test_ledger_and_actions.py",
+      "sha256": "ddbaca71c6f239a9b368ed15f1d9e247e48becf4c50360fd45dfc3c39b7a0174"
+    },
+    {
+      "path": "tests/test_workspace_mvp.py",
+      "sha256": "b5e46b00354e54aeea519a436d3a58cf916072e403c313f99ad6f5ac60fd6a77"
+    }
+  ]
+}

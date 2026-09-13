@@ -1,0 +1,8 @@
+PASS matched complete response
+PASS HTTP failure
+PASS incomplete response
+PASS missing persistence
+PASS duplicate persistence
+PASS wrong preview
+PASS wrong severity
+{"version":"v24.20.0","execPath":"/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node","cases":7,"realNetwork":false}

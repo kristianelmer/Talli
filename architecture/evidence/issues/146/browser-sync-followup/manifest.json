@@ -1,0 +1,32 @@
+{
+  "status": "BROWSER_SYNCHRONIZATION_RED_GREEN_FULL_GATE_AND_CI_PENDING",
+  "baseRevision": "42ebfe85dde961db158d116e84583a74075bde91",
+  "artifacts": {
+    "rf-comment-probe-pass-6x.log": "2baf5c875aa5ae6ed15f371560a1bf5030b90639ada0daff49fc9bd5d88eed76",
+    "rf-comment-probe-red-30x-source.mjs.txt": "0648e59331deb0c89de9d003bf09de66c901c8c7b7313ae57672c2c7a6c1384d",
+    "rf-comment-probe-green-30x.log": "245fc8420ce4eb2cd65d554aa0c2cbe9b5475d28f412245ea10b854a525f7c76",
+    "rf-comment-probe-green-30x-source.mjs.txt": "c34ab0202bb030973970983428c57a77a1f210868e4a8ef494f770542494f289",
+    "rf-comment-probe-red-30x.log.gz": "641af4a24946f050b8db30c3170dfe0e234f68bc864d50e326a43be1c08df87d"
+  },
+  "recurringCiFailure": {
+    "runId": 34780756311,
+    "jobId": 103787218095,
+    "assertion": "RF browser: saved review comment count0 expected1",
+    "logSha256": "243aaca34e7db05b42b7d7d801f784937b6c67890c7de69cfa985a9753b6bd52",
+    "exitCredit": false
+  },
+  "reproduction": {
+    "scope": "Existing real RF browser workflow on owned retained disposable Supabase; CPU throttle applied only after initial annual-page navigation; request/response and DOM event diagnostics, with a one-time delayed read only after failure. No additional save or retry.",
+    "red": "30x CPU: valid56-character form; click and submit observed; immediate workspace query0 comments, delayed query1 without another click; original assertion still fails.",
+    "green": "Same30x CPU and instrumentation: matching save response.finished awaited; immediate workspace query1; entire RF browser journey passes.",
+    "sixTimesThrottle": "Earlier6x run passed; no reproduction claim for it.",
+    "limitations": "CPU throttle exposes timing window; not an assertion about exact CI browser scheduling. No real provider operations or new application behavior."
+  },
+  "fix": "Await the matching URL/POST/comment-body response and its complete body before querying persistence. Preserve exact count, preview identity, severity, approval/send/receipt/cleanup assertions.",
+  "gatePlan": "Run the complete immutable gate linked to prior passing50f969c0; business runtime, SQL and accounting outcomes are unchanged. Independent review must verify updated acceptance and source delta.",
+  "redTranscriptStorage": {
+    "file": "rf-comment-probe-red-30x.log.gz",
+    "format": "gzip, mtime0; preserves raw diagnostic whitespace",
+    "uncompressedSha256": "686a64d599851108b50f44d5b284635f2a8012a04646c887c1566c80ae843bc1"
+  }
+}

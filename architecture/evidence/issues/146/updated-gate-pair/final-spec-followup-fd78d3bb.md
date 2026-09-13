@@ -1,0 +1,13 @@
+# Bounded Spec review: fd78d3bb
+
+**PASS — no actionable Spec finding.** Reviewed `42ebfe85dde961db158d116e84583a74075bde91...fd78d3bbcf563dbc991f84c703b6816e088bca26`. The only non-evidence change since prior passing `50f969c04f4eabbe17ee2fcee36ac652d5ddcc05` is this RF browser synchronization correction; application, Tax, SQL and policies are unchanged.
+
+`tests/browser_shareholder_register_filing.mjs:224` registers the waiter before clicking, matches the exact annual URL, POST and comment text, then requires HTTP200 and successful `response.finished()` before reading persisted comments. Original exact count1, preview identity, advisory severity and all subsequent approval/send/receipt/cleanup assertions remain. No extra submission, retry, fixed delay, or permissive persistence fallback is introduced. A streamed action’s early response is not accepted as completed persistence.
+
+Independent Node **v24.20.0** execution of the extracted code with isolated response ports passed **seven cases**: successful matched completion; rejection of failed/incomplete responses; and unchanged failure on missing/duplicate/wrong-preview/wrong-severity persistence. Predicate probes reject GET, unrelated URL/body and absent body. These are pure control-flow checks, not browser execution.
+
+Evidence integrity: all five manifest hashes and the decompressed red transcript hash match. Normalizing only the reviewed synchronization delta makes green30x’s source byte-identical to red30x’s instrumented source. Red records valid input, one comment click/submit, immediate count0 then delayed count1 without another save; its original assertion still fails. Green records count1 and the entire RF journey passes with zero skips. This establishes the local timing window, not the exact CI scheduler. Earlier6x success and recurring CI failure remain honestly distinguished; full gate/CI are pending.
+
+**Gate eligibility:** #132’s common exit and ADR0013:40–43 require “two consecutive complete gates on immutable revisions”; ADR0013:71 requires two distinct passing revisions. They do not require identical test bytes or two additional passes after every test-only correction. The already verified complete50f pass can precede a completefd78 pass with its explicit link, chronology, ancestry and this reviewed stronger test delta. This is conditional eligibility, not acceptance of the running gate. Refresh the final pair to50f→fd78 and independently verify/commit its receipts. No extra third local full pass is required by these clauses solely for this correction.
+
+Failed CI is not waived; exact-head Release/Preview, protected integration and exact-main evidence remain required. No full Company Tax/#152 credit or shared mutation occurred.

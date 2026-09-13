@@ -96,7 +96,6 @@ import {
   lockLedgerPeriod,
   postLedgerAdministrativeCost,
   postLedgerManualJournal,
-  postLedgerTaxSettlement,
   startNewYear,
   type NewYearShareholderWire,
 } from "../features/ledger";
@@ -214,10 +213,7 @@ import {
   listOpeningSetups,
   listPeriodLocks,
 } from "./lib/supabase/server";
-import {
-  TaxSettlementValidationError,
-  validateTaxSettlement,
-} from "./lib/tax-settlement";
+import { loadTaxSettlementArchiveSource, previewTaxSettlement, postTaxSettlement, taxPreviewErrorMessage, taxSubmissionErrorMessage, type TaxSettlementPreviewInputWire } from "../features/company-tax-filing";
 
 function formString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -3897,6 +3893,16 @@ export async function reverseSupportedCorporateEventAction(formData: FormData) {
   succeedTo(returnTo);
 }
 
+export async function previewTaxSettlementAction(input: TaxSettlementPreviewInputWire) {
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) return { ok: false as const, error: "Innlogging kreves." };
+  try {
+    return { ok: true as const, preview: await previewTaxSettlement(accessToken, input) };
+  } catch (error) {
+    return { ok: false as const, error: taxPreviewErrorMessage(error) };
+  }
+}
+
 export async function recordTaxSettlement(formData: FormData) {
   const returnTo = returnTarget(formData);
   if (!hasSupabaseEnv()) {
@@ -3915,30 +3921,28 @@ export async function recordTaxSettlement(formData: FormData) {
   const incomeYear = Number(formString(formData, "incomeYear") || "2025");
   const bankTransactionId = formString(formData, "bankTransactionId") || null;
   const documentId = formString(formData, "documentId") || null;
-  let payload;
-  try {
-    payload = validateTaxSettlement({
-      settlementDate: formString(formData, "settlementDate"),
-      amount: Number(formString(formData, "amount")),
-      settlementType: formString(formData, "settlementType") as "payable" | "payment" | "refund",
-      documentStatus: formString(formData, "documentStatus") as "attached" | "missing_accepted_warning" | "not_required",
-      bankTransactionId,
-      documentId,
-    });
-  } catch (error) {
-    const message =
-      error instanceof TaxSettlementValidationError
-        ? `${error.code}: ${error.message}`
-        : error instanceof Error
-          ? error.message
-          : "Ugyldig skatteoppgjør";
-    failTo(returnTo, message);
-  }
-
   const accessToken = await getCurrentSessionAccessToken();
   if (!accessToken) failTo(returnTo, "Innlogging kreves.");
+  let payload;
   try {
-    await postLedgerTaxSettlement(
+    payload = (await previewTaxSettlement(accessToken, {
+      settlementDate: formString(formData, "settlementDate"),
+      amount: Number(formString(formData, "amount")),
+      settlementType: formString(formData, "settlementType"),
+      documentStatus: formString(formData, "documentStatus"),
+      bankTransactionId,
+      documentId,
+    })).payload;
+  } catch (error) {
+    const retryTarget = returnTo === "/actions" ? "/actions/tax-settlement" : returnTo;
+    redirect(ownerPathWithQuery(retryTarget, {
+      error: taxSubmissionErrorMessage(error),
+      taxSettlementOperationId: operationId,
+    }));
+  }
+
+  try {
+    await postTaxSettlement(
       accessToken,
       {
         actionId: operationId,
@@ -3951,7 +3955,6 @@ export async function recordTaxSettlement(formData: FormData) {
         settlementDate: payload.settlement_date,
         settlementKind: payload.settlement_type,
       },
-      operationId,
       operationId,
     );
   } catch (error) {
@@ -4599,7 +4602,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
       data: entries.filter((entry) => entry.income_year === incomeYear),
       error: error ? { message: error } : null,
     })),
-    supabase.from("holding_actions").select("id, company_id, income_year, action_type, action_date, payload, ledger_entry_id, bank_transaction_id, document_id, risk_level, blocker_code, created_by, created_at").eq("company_id", companyId).eq("income_year", incomeYear),
+    loadTaxSettlementArchiveSource(accessToken, companyId, incomeYear),
     listPresentedInvestmentActivity(accessToken, [companyId]).then(({ actions, error }) => ({
       data: actions.filter((action) => action.income_year === incomeYear),
       error: error ? { message: error } : null,

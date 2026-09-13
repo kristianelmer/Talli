@@ -148,7 +148,7 @@ The `ledger-posting-and-period-control` workflow serves `/api/v1/ledger/entries`
 `/api/v1/ledger/opening-snapshots`, `/api/v1/ledger/opening-snapshots/by-year`, `/api/v1/ledger/period-locks`,
 `/api/v1/ledger/company-year-close-assessment`,
 `/api/v1/ledger/reconstruction-assessment`,
-`/api/v1/ledger/administrative-costs`, `/api/v1/ledger/tax-settlements`,
+`/api/v1/ledger/administrative-costs`,
 and `/api/v1/ledger/manual-journals`.
 It calls `talli_backend.modules.ledger.public` and injects the
 `LedgerPersistence` port through
@@ -542,3 +542,49 @@ filing rules or writers. The migration evidence ledger records pending scope
 approvals and validation; no module declaration constitutes a completed exit gate.
 
 `/api/v1/shareholder-register-filings/archive-source` reads the original year-scoped filing and company-wide review/permission archive inputs through the RF public contract.
+
+Company Tax settlement capture composes `TaxSettlementPersistence`, `TaxSettlementBankingPersistence`, `DocumentBindingPersistence` and `LedgerPersistence` through `talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction`. Expansion and cutover preserve the original backend-system receipt format and actor-scoped RLS. Migration snapshots are technical evidence, not a second business writer: `backend_system.tax_settlement_migration_state`, `backend_system.tax_settlement_migration_inventory`, `backend_system.tax_settlement_source_rows`, `backend_system.tax_settlement_quarantine`, `backend_system.tax_settlement_reconciliations`.
+
+<!-- architecture-inventory
+{"technicalTables":["backend_system.tax_settlement_migration_state","backend_system.tax_settlement_migration_inventory","backend_system.tax_settlement_source_rows","backend_system.tax_settlement_quarantine","backend_system.tax_settlement_reconciliations"]}
+-->
+
+<!-- architecture-inventory
+{"technicalMigrations":["supabase/migrations/20260913171000_company_tax_settlement_expand.sql"],"ports":["TaxSettlementPersistence","TaxSettlementBankingPersistence","DocumentBindingPersistence","LedgerPersistence"],"adapterBindings":["TaxSettlementPersistence=>talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction","TaxSettlementBankingPersistence=>talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction","DocumentBindingPersistence=>talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction","LedgerPersistence=>talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"],"adapterBindingOwners":["TaxSettlementPersistence=>backend-system","TaxSettlementBankingPersistence=>backend-system","DocumentBindingPersistence=>backend-system","LedgerPersistence=>backend-system"],"adapterBindingModes":["TaxSettlementPersistence=>one request-scoped settlement transaction; verified actor, restricted executor and public capability operations","TaxSettlementBankingPersistence=>one request-scoped settlement transaction; verified actor, restricted executor and public capability operations","DocumentBindingPersistence=>one request-scoped settlement transaction; verified actor, restricted executor and public capability operations","LedgerPersistence=>one request-scoped settlement transaction; verified actor, restricted executor and public capability operations"],"workflowDependencies":["talli_backend.application.company_tax_filing_session","talli_backend.modules.company_tax_filing.public"],"adapterDependencies":["talli_backend.application.company_tax_filing_session","talli_backend.modules.company_tax_filing.public","talli_backend.application.company_tax_filing_workflow"]}
+-->
+
+The `company-tax-settlement` workflow serves `/api/v1/ledger/tax-settlements` through the Company Tax application with public Ledger, Banking and Documents contracts. It preserves the released route and operation identifier.
+
+
+
+<!-- architecture-inventory
+{"workflows":["company-tax-settlement"],"workflowPurposes":["company-tax-settlement=>Records tax settlement facts through Company Tax with atomic public Ledger posting, Banking matching and Documents binding; preserves released v1 transport and receipt identity."],"publicPackages":["talli_backend.modules.company_tax_filing.public","talli_backend.modules.ledger.public","talli_backend.modules.banking.public","talli_backend.modules.documents.public"],"transportDependencies":["talli_backend.adapters.postgres_company_tax_filing","talli_backend.application.company_tax_filing_session","talli_backend.modules.company_tax_filing.public"]}
+-->
+
+Authenticated `/api/v1/company-tax/settlement-previews` normalizes settlement input through Company Tax and obtains account lines through the Ledger public query. It does not claim a receipt or write data.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/company-tax/settlement-previews"]}
+-->
+
+Tax cutover inventories standalone source indexes and rollback restores their exact definitions. The canonical table retains company/year and Ledger-reference access paths.
+
+<!-- architecture-inventory
+{"technicalMigrations": ["supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql"]}
+-->
+
+<!-- architecture-inventory
+{"ports": ["TaxSettlementArchivePersistence"], "adapterBindings": ["TaxSettlementArchivePersistence=>talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"], "adapterBindingOwners": ["TaxSettlementArchivePersistence=>backend-system"], "adapterBindingModes": ["TaxSettlementArchivePersistence=>one request-scoped settlement transaction; verified actor, restricted executor and public capability operations"]}
+-->
+
+The Company Tax Archive source authenticates one company/year and preserves original source-row fields through the public query port.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/company-tax/settlement-archive-source"]}
+-->
+
+The final Tax contract retires the exclusive old projection after Archive and readiness reads move to the owned query. Both rollback forms preserve source and canonical rows and keep one writer.
+
+<!-- architecture-inventory
+{"technicalMigrations": ["supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql"]}
+-->

@@ -1,0 +1,65 @@
+
+> talli-repository@0.1.0 test:boundary-contract
+> node --test tests/contract/web_fastapi_boundary.test.mjs tests/company_access_review_fixes.test.mjs tests/company_access_review_round_2.test.mjs tests/company_access_onboarding_cutover.test.mjs tests/corporate_governance_review_fixes.test.mjs
+
+✔ eligibility, admission, and agreement operations are generated-client boundaries (13.30975ms)
+✔ the web onboarding slice has no legacy business-policy or persistence path (1.121583ms)
+✔ the complete Stage 1 web boundary is Supabase-auth-only (12.869458ms)
+✔ company access owns agreement evidence and the #138 facade has exited (0.505375ms)
+✔ the onboarding overlap and destructive contract are separate release artifacts (0.769458ms)
+✔ capability owns immutable business request contracts (7.390333ms)
+✔ every invitation decoder rejects unknown and token-shaped response fields (2.806959ms)
+✔ all company-access success responses declare X-Request-ID (12.905667ms)
+✔ login preserves a sanitized invitation continuation for password and OAuth (1.687625ms)
+✔ invitation side effects reconcile in the trusted actor and command namespace (1.63525ms)
+✔ shipped server actions expose receipt-owned recovery without browser command inputs (1.859542ms)
+✔ membership role selector has a target-specific accessible name (0.895875ms)
+✔ capability manifest attributes the latest company-access ownership migration (0.539625ms)
+✔ authorization and hashing use versioned least-privilege helper boundaries (6.740042ms)
+✔ destructive contract is a later release artifact outside the automatic runner (1.869792ms)
+✔ cutover removes every authenticated self-membership update surface (2.07775ms)
+✔ command receipts are backend-system technical idempotency state (3.672458ms)
+✔ owner receipt visibility is atomic while acceptance keeps actor replay semantics (1.147167ms)
+✔ evidence distinguishes forced receipt RLS from genuine non-owner RLS (2.166292ms)
+✔ OpenAPI validates command UUIDs and RFC3339 revisions (8.953792ms)
+✔ the committed contract exposes one stable capability-prefixed tracer operation (9.110875ms)
+✔ the committed contract exposes the authenticated company-context operation (7.588333ms)
+✔ the committed contract exposes company-access invitation and membership administration (6.609417ms)
+✔ the committed contract exposes only ledger-owned browser commands (8.913666ms)
+✔ the committed contract assigns shareholder loans to corporate governance (6.777375ms)
+✔ the committed contract gives investments its complete activity interface (6.471625ms)
+✔ opening snapshots use the ledger compatibility authenticated read contract (6.568ms)
+✔ the committed contract exposes the account-free banking workflow (7.619667ms)
+✔ the tracer contract declares optional request and response correlation headers (6.180791ms)
+✔ OpenAPI and generated TypeScript artifacts are byte-clean (1643.817834ms)
+✔ the OpenAPI document validates and operation IDs are globally unique (27.29675ms)
+✔ the current response contract remains compatible with the explicit v1 baseline (70.20075ms)
+✔ compatibility rejects newly required parameters and request bodies (32.572959ms)
+✔ compatibility rejects narrower authentication requirements (10.781958ms)
+✔ compatibility rejects removed or changed response headers (17.153333ms)
+✔ the generated package version matches the OpenAPI contract version (16.387291ms)
+✔ the generated client is committed and carries its provenance marker (1.667666ms)
+✔ the web tracer uses the generated package through a thin transport wrapper (0.193167ms)
+✔ annual refund recovery is an additive authenticated POST with no caller authority fields (6.328625ms)
+✔ annual refund target discovery preserves a minimal independent read contract (5.975834ms)
+✔ annual checkout preparation is an independent read without purchase authority (6.137791ms)
+✔ annual checkout withdrawal uses the original accepted body and key with a separate minimal result (5.841875ms)
+✔ corporate-governance manifests declare the implemented public surface (5.25475ms)
+✔ backend workflow documentation has one canonical governance workflow (1.421417ms)
+✔ lifecycle reader exposes migrated source-hash compatibility explicitly (1.834875ms)
+✔ local gate rehearses predecessor ledger cutover before governance retires it (0.71075ms)
+✔ complete gate uses the backend-managed Python runtime (1.137875ms)
+✔ governance review regressions run in the complete acceptance boundary (1.888083ms)
+✔ document evidence ownership is acyclic and declared (2.48775ms)
+✔ document evidence registration cannot forge trusted actor or owner context (1.1905ms)
+✔ historical document evidence uses a migration-only backfill contract (0.948416ms)
+✔ future annual-data compatibility scopes remain frozen without a checker bypass (1.786041ms)
+✔ canonical decision payloads share one serializer (0.606375ms)
+ℹ tests 53
+ℹ suites 0
+ℹ pass 53
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1982.475125

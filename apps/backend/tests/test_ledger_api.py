@@ -250,15 +250,22 @@ class LedgerSessionStub:
     ) -> dict[str, object]:
         return await self._complete("shareholder_loan", command, posted_entry, prepared)
 
-    async def prepare_tax_settlement(
-        self, command: object
-    ) -> dict[str, object]:
-        return await self._prepare("tax_settlement", command)
+    async def prepare_settlement(self, command):
+        self.calls.append(("prepare_tax", command))
+        return None
 
-    async def complete_tax_settlement(
-        self, command: object, posted_entry: PostedLedgerEntry, prepared: dict[str, object]
-    ) -> dict[str, object]:
-        return await self._complete("tax_settlement", command, posted_entry, prepared)
+    async def complete_settlement(self, command, entry):
+        self.calls.append(("complete_tax", command))
+        return {}
+
+    async def prepare_tax_settlement_bank(self, command):
+        self.calls.append(("bank_lock", command))
+
+    async def claim_tax_settlement_bank(self, command):
+        self.calls.append(("bank_claim", command))
+
+    async def lock_document_binding(self, query):
+        self.calls.append(("document_lock", query))
 
     async def prepare_corporate_decision_finalization(
         self, command: object
@@ -372,7 +379,7 @@ class LedgerSessionStub:
 
 def client_and_session() -> tuple[TestClient, LedgerSessionStub]:
     session = LedgerSessionStub()
-    return TestClient(create_app(ledger_session_factory=session)), session
+    return TestClient(create_app(ledger_session_factory=session, company_tax_session_factory=session)), session
 
 
 def entry_view() -> LedgerEntryView:

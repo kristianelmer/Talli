@@ -896,6 +896,24 @@ class BankTransactionClaimPersistence(Protocol):
     ) -> None: ...
 
 
+@dataclass(frozen=True, slots=True)
+class TaxSettlementBankCommand(BankingCommand):
+    """Claim the legacy settlement action identity without creating a bank audit."""
+    transaction_id: BankTransactionId
+    expected_signed_amount: Money
+    action_reference: ExternalActionReference
+
+
+class TaxSettlementBankingPersistence(Protocol):
+    async def prepare_tax_settlement_bank(self, command: TaxSettlementBankCommand) -> None:
+        """Lock and validate bank scope, amount and unmatched state in the transaction."""
+        ...
+
+    async def claim_tax_settlement_bank(self, command: TaxSettlementBankCommand) -> None:
+        """Set only the original opaque matched-action identity; retain bank date."""
+        ...
+
+
 class BankDataProvider(Protocol):
     @property
     def connector_id(self) -> BankConnectorId: ...
@@ -1151,4 +1169,6 @@ __all__ = [
     "StartBankConnectionCommand",
     "banking_persistence_adapter",
     "bank_data_provider_adapter",
+    "TaxSettlementBankCommand",
+    "TaxSettlementBankingPersistence"
 ]

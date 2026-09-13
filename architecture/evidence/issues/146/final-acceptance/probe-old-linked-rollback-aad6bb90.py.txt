@@ -1,0 +1,66 @@
+import json,os,pathlib,subprocess,sys,hashlib
+from uuid import uuid4
+import psycopg
+from psycopg import sql
+root=pathlib.Path.cwd();private=pathlib.Path('/Users/kristianelmer/.codex/issue-192-private/issue146-entry')
+envdata=json.loads((private/'local-environment-private.json').read_text());fixture=json.loads((private/'cutover-fixture-private.json').read_text());body=fixture['body'];node='/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node'
+paths=['supabase/rollback/20260913171000_company_tax_settlement_expand.sql','supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql','supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql']
+child=private/'probe-pinned-linked-api.py'
+child.write_text('''import json,os
+from pathlib import Path
+from fastapi.testclient import TestClient
+from talli_backend.main import create_app
+from talli_backend.adapters.supabase_ledger import SupabaseLedgerSession,_VerifiedActor
+from talli_backend.shared.kernel import ActorId,ActorKind,UserId
+p=json.loads(Path(os.environ['TALLI_PROBE_FIXTURE']).read_text())
+verified=_VerifiedActor(ActorId(ActorKind.USER,UserId(p['owner'])),json.dumps({'sub':p['owner'],'role':'authenticated','aal':'aal2'}))
+class Sessions:
+ async def session(self,token):return SupabaseLedgerSession(p['backend'],verified)
+c=TestClient(create_app(ledger_session_factory=Sessions()));results=[]
+for name,body in p['requests']:
+ key=body['actionId'];r=c.post('/api/v1/ledger/tax-settlements',json=body,headers={'Authorization':'Bearer fixture','Idempotency-Key':key,'X-Request-ID':key})
+ assert r.status_code==201, (name,r.status_code,r.json().get('code'))
+ results.append({'name':name,'status':r.status_code,'replayed':r.json()['replayed'],'entryId':r.json()['postedEntry']['entryId']})
+print(json.dumps(results))
+''')
+baseenv={k:v for k,v in os.environ.items() if k in ['HOME','PATH','TMPDIR','LANG']};baseenv['DATABASE_URL']=envdata['DB_URL'];baseenv['PATH']=str(pathlib.Path(node).parent)+':'+baseenv.get('PATH','')
+with psycopg.connect(envdata['DB_URL'],autocommit=True) as db:
+ assert db.execute('select phase from backend_system.tax_settlement_migration_state').fetchone()[0]=='contracted'
+ # Remove the historical ambient grant and borrowed owner memberships first.
+ db.execute('grant company_tax_filing_identity_guard_owner to postgres')
+ db.execute('revoke execute on function company_tax_filing.has_document_reference_v1(uuid) from postgres')
+ db.execute('revoke company_tax_filing_identity_guard_owner,documents_store_owner,company_tax_filing_store_owner,banking_store_owner from postgres')
+ assert not db.execute("select has_function_privilege('postgres','company_tax_filing.has_document_reference_v1(uuid)','EXECUTE')").fetchone()[0]
+ db.execute((root/paths[1]).read_text())
+ assert db.execute("select has_function_privilege('postgres','company_tax_filing.has_document_reference_v1(uuid)','EXECUTE')").fetchone()[0]
+ db.execute((root/paths[0]).read_text())
+ try:
+  bank,doc=str(uuid4()),str(uuid4());linked={**body,'actionId':str(uuid4()),'settlementKind':'payment','bankTransactionId':bank,'documentId':doc}
+  seed='''import pg from 'pg';import {fixtureTableTransaction} from './tests/support/rf1086-fixture-access.mjs';
+let raw='';for await(const c of process.stdin)raw+=c;const p=JSON.parse(raw);const db=new pg.Client({connectionString:process.env.DATABASE_URL});await db.connect();
+try{await fixtureTableTransaction(db,['banking.transactions','public.documents'],async()=>{
+ await db.query('insert into banking.transactions(id,company_id,income_year,transaction_date,text,amount,source_hash,created_by) values($1,$2,$3,$4,$5,$6,$7,$8)',[p.bankTransactionId,p.companyId,p.incomeYear,p.settlementDate,'Synthetic old application Tax payment',-Number(p.amount.amount),p.bankTransactionId.replaceAll('-','').repeat(2),p.owner]);
+ await db.query('insert into public.documents(id,company_id,income_year,document_type,name,linked_to,storage_key,created_by) values($1,$2,$3,$4,$5,$6,$7,$8)',[p.documentId,p.companyId,p.incomeYear,'tax_settlement','Synthetic rollback evidence','tax_settlement',p.documentId,p.owner]);
+ });}finally{await db.end();}'''
+  result=subprocess.run([node,'--input-type=module','-e',seed],input=json.dumps({**linked,'owner':fixture['owner']}),env=baseenv,capture_output=True,text=True);assert result.returncode==0,result.stderr
+  runfile=private/'linked-rollback-fixture-private.json';runfile.write_text(json.dumps({**fixture,'requests':[['original-receipt',body],['fresh-linked-payment',linked],['linked-payment-replay',linked]]}))
+  childenv={**baseenv,'PYTHONPATH':str(private/'pinned-predecessor/apps/backend/src'),'TALLI_PROBE_FIXTURE':str(runfile)}
+  result=subprocess.run([str(root/'apps/backend/.venv/bin/python'),str(child)],env=childenv,capture_output=True,text=True);assert result.returncode==0,result.stderr
+  results=json.loads(result.stdout);assert [r['replayed'] for r in results]==[True,False,True]
+  helper_access=db.execute("select pg_get_userbyid(proowner),has_function_privilege(pg_get_userbyid(proowner),'company_tax_filing.has_document_reference_v1(uuid)','EXECUTE') from pg_proc where oid='documents.has_evidence_references_v1(uuid)'::regprocedure").fetchone()
+  assert helper_access==('postgres',True),helper_access
+  for role in ['company_tax_filing_identity_guard_owner','documents_store_owner','company_tax_filing_store_owner','banking_store_owner']:
+   assert not db.execute('select pg_has_role(%s,%s,%s)',('postgres',role,'USAGE')).fetchone()[0],role
+  try:
+   with db.transaction():
+    db.execute('grant documents_executor to postgres with inherit false,set true');db.execute('set local role documents_executor')
+    for key,value in {'talli.verified_actor_id':fixture['owner'],'talli.verified_actor_claims':json.dumps({'sub':fixture['owner'],'role':'authenticated','aal':'aal2'}),'talli.authorized_company_roles':json.dumps({body['companyId']:'owner'})}.items():db.execute('select set_config(%s,%s,true)',(key,value))
+    db.execute('select * from documents.mark_removed_v1(%s,%s,%s)',(doc,'Synthetic old-app reference guard',fixture['owner']))
+   raise AssertionError('old-app document reference removal was allowed')
+  except psycopg.Error as error:assert 'documents_evidence_linked' in str(error),str(error)
+  proof={'oldBackendRevision':'20999f167084492bb4f9a5a50d0cbcd3a48333b3','migrationRevision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'results':results,'freshOldAppDocumentProtected':True,'initialAmbientTaxHelperGrantRemoved':True,'directGrantEstablishedByCurrentCutover':True,'borrowedOwnerPrivilegesAbsentAtRetentionCheck':True,'documentsRetentionOwner':helper_access[0],'artifacts':{p:hashlib.sha256((root/p).read_bytes()).hexdigest() for p in paths}}
+ finally:
+  for path in paths[1:]:db.execute((root/path).read_text())
+ assert db.execute('select phase from backend_system.tax_settlement_migration_state').fetchone()[0]=='contracted'
+ proof['finalPhase']='contracted'
+ (private/'old-linked-rollback-proof-aad6bb90.json').write_text(json.dumps(proof,indent=2)+'\n');print('Pinned old application rollback: receipt replay, fresh linked payment, replay and document retention PASS; canonical contract restored')

@@ -43,7 +43,8 @@
       "ReconstructionEconomicFactCandidates",
       "ReconstructionEconomicFactSnapshot",
       "ReversedLedgerEntry",
-      "OpeningBankInput"
+      "OpeningBankInput",
+      "preview_tax_settlement_lines"
     ],
     "events": [],
     "errors": [
@@ -176,7 +177,8 @@
       "contract": "talli_backend.modules.ledger.public.LedgerPersistence",
       "registrationDecorator": "talli_backend.modules.ledger.public.ledger_persistence_adapter",
       "adapters": [
-        "talli_backend.adapters.supabase_ledger.SupabaseLedgerSession"
+        "talli_backend.adapters.supabase_ledger.SupabaseLedgerSession",
+        "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
       ]
     }
   ],

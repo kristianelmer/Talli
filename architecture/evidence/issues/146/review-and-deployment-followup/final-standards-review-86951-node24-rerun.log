@@ -1,0 +1,15 @@
+Pinned source: 86951dbb5d14c1b74ca8e1c1b581327bed4b48d2
+Runtime: v24.20.0
+Command: ['/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node', '--test', '--test-name-pattern=preserved Tax retirement|#151 bounded retirement compositions', '/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-146-86951-standards-73uvbb9g/tests/architecture_foundation.test.mjs', '/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-146-86951-standards-73uvbb9g/tests/company_tax_architecture.test.mjs']
+✔ #151 bounded retirement compositions remain enforced after RF exits (673.677459ms)
+✔ preserved Tax retirement requires exact artifact bytes, source restoration and exclusive ownership (42844.791167ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 43086.95775
+
+Exit code: 0

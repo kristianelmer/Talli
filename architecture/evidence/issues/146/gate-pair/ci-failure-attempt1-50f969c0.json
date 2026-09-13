@@ -1,0 +1,17 @@
+{
+  "status": "FAILED_CI_ATTEMPT_RETRY_PENDING",
+  "revision": "50f969c04f4eabbe17ee2fcee36ac652d5ddcc05",
+  "runId": 34778737397,
+  "attempt": 1,
+  "jobId": 103781711477,
+  "url": "https://github.com/kristianelmer/Talli/actions/runs/34778737397/job/103781711477",
+  "failure": "RF browser tests/browser_shareholder_register_filing.mjs:224: reviewed.reviewComments.length was 0, expected 1 after clicking Save comment and awaiting networkidle.",
+  "observations": [
+    "Preview POST completed successfully. Captured logs show no completed save-comment action or RF review-comment POST. This does not establish whether a request was dispatched or identify the cause.",
+    "Tax lifecycle22 and restricted runtime3 tests passed; annual owner and Authority browsers passed. Later Tax browser lane was not reached.",
+    "aad6bb90 prior CI and full local11/11 gate passed identical runtime/tests; 50f969c0 changes evidence only."
+  ],
+  "diagnosticAction": "One unchanged failed-job retry started; no assertion, wait, fixture or runtime code changed.",
+  "rawLogSha256": "f16716d933ae864902a38ff62924c8747937270076d2ce9a5ee5981c6b3b074c",
+  "exitCredit": false
+}

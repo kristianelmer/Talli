@@ -1,0 +1,8 @@
+Pinned base 096dab57a8593f6df16a2b3e82a382e3d95a9b4f
+Pinned candidate aad6bb90951120b09771a23f58d5b662713e7a5a
+PASS: removing the identity_guard_owner token from exactly the grant/revoke lines recreates the entire base cutover SQL byte-for-byte.
+PASS: grant/revoke both target current_user; they surround the existing helper EXEC grant and precede commit.
+PASS: fixture-owner revocation precedes all three retention phases and documents.mark_removed_v1 must raise documents_evidence_linked.
+PASS: catalog/source-proof SQL hashes, 15 adopted artifact hashes and failed-gate transcript hash verify; five prior Standards artifacts match private originals.
+PASS: baseline, registry, checker, mandatory commands and requirements unchanged.
+No SQL/database/browser/provider/shared-process operations executed.

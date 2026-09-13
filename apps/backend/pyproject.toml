@@ -29,6 +29,7 @@ packages = ["src/talli_backend"]
 pythonpath = ["src"]
 testpaths = ["tests"]
 markers = [
+  "company_tax_database: mandatory isolated Company Tax lifecycle and concurrency (test:company-tax-database)",
   "billing_database: mandatory isolated billing database lifecycle (test:billing-database-lifecycle)",
   "authority_database: mandatory isolated Authority Connections database lifecycle (test:authority-connections-database)",
 ]

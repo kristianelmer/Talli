@@ -1,0 +1,111 @@
+{
+  "axis": "Standards bounded follow-up",
+  "base": "096dab57a8593f6df16a2b3e82a382e3d95a9b4f",
+  "candidate": "aad6bb90951120b09771a23f58d5b662713e7a5a",
+  "diffCommand": "git diff 096dab57a8593f6df16a2b3e82a382e3d95a9b4f...aad6bb90951120b09771a23f58d5b662713e7a5a",
+  "commits": [
+    "aad6bb90 fix(tax): grant Documents retention access during cutover"
+  ],
+  "files": [
+    {
+      "path": "apps/backend/tests/test_company_tax_filing_database.py",
+      "sha256": "ed5c5b9bb597105153f734b6b5f7e78acfc26d401205c8f109c6e0bdbaa109e4"
+    },
+    {
+      "path": "architecture/database-catalog.json",
+      "sha256": "e01eff2d1dc4a7436b9c911b78686bd9b878eeb713e1a5770fead5276eca1b91"
+    },
+    {
+      "path": "architecture/evidence/customer-ready-gates/096dab57a8593f6df16a2b3e82a382e3d95a9b4f.log",
+      "sha256": "c75f3526833b0a5f206dd67080446b4fc4d2603e9c0052aff29f8416187160f3"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-spec-followup-096dab57-base.mjs.txt",
+      "sha256": "a278155bf5abf0bcc799b509f3bdde97577ff5d63d3a331b3f3b117b7cb46d30"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-spec-followup-096dab57-bindings.json",
+      "sha256": "f5bcb5a3e12b2b06d9702334e36e837877304c442f268b654ea55860b65b5740"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-spec-followup-096dab57-candidate.mjs.txt",
+      "sha256": "2e7c6488ae4a70db742304489c69814138fb7e7e544523996dfd714ab558440e"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-spec-followup-096dab57-mock.log",
+      "sha256": "c93ad3e6539e2a42c98038513bf4b2bb514d51f66ca1cad30fdd75eb8204290a"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-spec-followup-096dab57-mock.mjs.txt",
+      "sha256": "763f4d715a3e58fa8656273fb5f1796084a398e01c3ba7f350e1a907fbaa0376"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-spec-followup-096dab57.md",
+      "sha256": "28f668b38e7a7fc974dcdf080b46c65b715fb03ba74e9a91ca9437abf2837efc"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-standards-followup-096dab57-bindings.json",
+      "sha256": "ae4ddf96381b31c22514e5f789a88850ee46b58ab7b1c21d3506cb7e1885a7ea"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-standards-followup-096dab57-topology-input.json",
+      "sha256": "eea68aa08dc53d41cdba3b395ae4f4dcf9c2a331506da5d051df819c5a6fe916"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-standards-followup-096dab57-topology.log",
+      "sha256": "649edc771fe8ac1d98d70b5ad51126735ac7cc64390ed94e1679c655e87e5173"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-standards-followup-096dab57-topology.mjs.txt",
+      "sha256": "34181cc9479357d61cd401381dc8c8b04cbe0a0b6687cce104a0435b2257d651"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-standards-followup-096dab57.md",
+      "sha256": "1b9a44cdc1bde028aa795f361f0c896e5aac74c6cbf8fa5186c867fc724fac98"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/manifest.json",
+      "sha256": "3ec713b42135ef881467bb87518903dbf3c64c88102435824555f73783a2a87a"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/retention-fix-tax-lifecycle.log",
+      "sha256": "c12554de1016fcc49e867af2e88dc190a6a0f53672f39747bdc2ab391f8fcd92"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/retention-privileges-green.log",
+      "sha256": "e0e4dae7159cb3c9fd4d62019c1576ef2bf0691a0374ca6cb4f13ea1b160fc97"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/retention-privileges-red.log",
+      "sha256": "0cbec8ebe1ff797f8a01b9d43b91981a40af86b075638c59cd8959af9e1b0e48"
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/review-096dab57-adoption-check.json",
+      "sha256": "69341e11007acf10a78552ce150b449d8c9adba1f1a423bc5bb2dcba3d2689b4"
+    },
+    {
+      "path": "architecture/evidence/issues/146/source-read-retirements.json",
+      "sha256": "a08fd312e4c75b1db8c232f0cc20e565d597ec1ede673188c69cc93b03382b36"
+    },
+    {
+      "path": "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql",
+      "sha256": "28842782cf47aea849ba25e8dc672c98f0453852ba8cf157e5a58f725209c206"
+    }
+  ],
+  "staticAssertions": {
+    "onlySQLChangeTemporaryIdentityOwnerMembershipAndMatchingRevoke": true,
+    "membershipSurroundsExistingPurposeSpecificGrant": true,
+    "functionBodiesRLSRuntimeGrantsAndAllOtherSQLBytesUnchanged": true,
+    "testRevokesBorrowedOwnersBeforeEveryRetentionPhaseAndRequiresRealDocumentsDenial": true,
+    "catalogAndRetirementArtifactHashesVerify": true,
+    "adoptedArtifactHashesVerified": 15,
+    "fiveStandardsArtifactsMatchPrivateOriginals": true,
+    "failedGateTranscriptHashVerifiedNoExitCredit": true,
+    "frozenRegistryBaselineCheckerMandatoryScopeAndRequirementsUnchanged": true
+  },
+  "limits": "Read-only static validation and source/log review; no independent SQL runtime execution or full-gate certification.",
+  "artifacts": {
+    "final-standards-followup-aad6bb90.md": "b4099c2e4751b2f3dcc2d0a585b62de9904fe0faf18c3400ac296da8b71fcdbc",
+    "final-standards-followup-aad6bb90-static.log": "3bb958a02d008596006e99c039369f585cec370285676d6458db44d9d4b7c890"
+  }
+}

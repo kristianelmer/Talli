@@ -1,0 +1,217 @@
+{
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_NO_ACTIONABLE_FINDINGS",
+  "baseRevision": "8ba10ae60a5e45c01a082a93f0b1b73f9943103b",
+  "candidateRevision": "096dab57a8593f6df16a2b3e82a382e3d95a9b4f",
+  "bindings": [
+    {
+      "path": "architecture/evidence/customer-ready-gates/8ba10ae60a5e45c01a082a93f0b1b73f9943103b.log",
+      "candidateSha256": "9631b09906b27c14441e97398edb01e36834923966e3ca93a5b5ffc0f57c8d55",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/requirements.json",
+      "candidateSha256": "8a3a236a55c5a7f85a713f11a91279005b6751911f419c4d0bedf4a9ab874513",
+      "baseSha256": "6ef6894e12f033b1674412cb4ae166a43fdf310c807cde51c62653d42140b150"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/deployment-order-proof-manifest-4ce5f625.json",
+      "candidateSha256": "514c9465a9d13379098e9ffca872778505e41f01cf18872e878d4c571ee2ea95",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-spec-followup-4ce5f625-bindings.json",
+      "candidateSha256": "98e388207be1b927d08a9f15eac2b45b97aaaf6ca11c27c95c18131ebe01b6cf",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-spec-followup-4ce5f625.md",
+      "candidateSha256": "c191ab3792bc5c56cd1f89c508f72972aeb281a2fe7f4ad6d4d7d4a3f8618716",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-spec-followup-8ba10ae6-bindings.json",
+      "candidateSha256": "cf96fa22490c729e2535a5e9564de51e5ceaa85ae3b8b41888d63951018be6e6",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-spec-followup-8ba10ae6-test-1.log",
+      "candidateSha256": "9579bf1fc462e11efc43509da6ebbc6c73450f1686c672e9b32edb003c150210",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-spec-followup-8ba10ae6-test-2.log",
+      "candidateSha256": "a75291c717fac3c41e63a89efc9601bccfbd6c947335793e777a65a4f8d1058b",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-spec-followup-8ba10ae6-test-results.json",
+      "candidateSha256": "e0241d998de5848082a21db29eaded3864acfe85de2bc24a0326c92d78b853c4",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-spec-followup-8ba10ae6.md",
+      "candidateSha256": "67d007a038922d793482ffee60f310970a168ac8af36e6072f81f2a9de921abd",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-standards-followup-4ce5f625-bindings.json",
+      "candidateSha256": "b61f892bf19ca552f315a08fcf3d0e8138e22dd6437ed3fcd47cc5db4096cd93",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-standards-followup-4ce5f625-schema.log",
+      "candidateSha256": "d7f67b0524a5d2ea988325b11f4ffd370863dcbab52dcf07823dfb2975931cbb",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-standards-followup-4ce5f625.md",
+      "candidateSha256": "cf0dae149bccedec32d4bda0209618f1622fbbfb58ead366f45ea6f42efb6c6f",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-standards-followup-8ba10ae6-bindings.json",
+      "candidateSha256": "8808a5cd6eac11a3292a266af3e9630e79d3e37f48e9fe6bce160d7aab9a021e",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-standards-followup-8ba10ae6-missing-families.log",
+      "candidateSha256": "a385e447f85fd6a2cae8a17a328edace5366d42bd3ad2dc83f77d2028705ab2a",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-standards-followup-8ba10ae6-static.log",
+      "candidateSha256": "93798caabf6fb776955d3ad48c07a0c0a4cb74d8e5ca99baaffcf6bf352306af",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-standards-followup-8ba10ae6.md",
+      "candidateSha256": "1b3534b97e4e1917a1fbae4c886cd8341236f4fa09907ee9231c921d89ca33a8",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/manifest.json",
+      "candidateSha256": "06affcaf5d03c7154a74577fbd90fba796ea7a38ee9000c7039f6b2c165a4fdb",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/new-preview-old-backend-proof.json",
+      "candidateSha256": "75b20ec95c3436d3ae9b0f7cd82184543fe0867ea46ca0aa65a5c8198fa83b67",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/old-client-after-contract-proof.json",
+      "candidateSha256": "c226e6c6d5dd3b3bee5dcf5fb094b3975e0e1090569552e81b1dc625f080cf53",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/old-linked-rollback-proof.json",
+      "candidateSha256": "692f5bd4b0a319437e20680e8745e734e87ca450b0ebdd43ed6be77cfc46fb9b",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/owner-final-topology-checkpoint.json",
+      "candidateSha256": "e2f6210420d3508fa4b657eeb915108f61bf972bfa941f395e0d72b59282d200",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/production-freeze-8ba10ae6.json",
+      "candidateSha256": "9a80d1b698ee1e95303116d3efbea7f7ba7eccf2b5cf5470bbcd0eca8ec4a4a0",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/review-8ba10ae6-adoption-check.json",
+      "candidateSha256": "9f702d06fe7e19b1df806b7f5f744487385fd3758078dd433296f7beaec71d2a",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/tax-final-owner-browser2.log",
+      "candidateSha256": "e10cdf7a103dcb74e0010f3298888398a0ef7eb3fd2e60690e67c5136e8153ee",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/tax-final-owner-cleanup-recovery.log",
+      "candidateSha256": "d2cd1daa4d563f06773c1e1e5376aecf3c5e28745b3b3580ef6293e5fc998cd2",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/tax-final-owner-fixture-static2.log",
+      "candidateSha256": "bfb1ba8818bb089c6b0e72ca71ad90201ded379d53878a71035ddbd5db83c478",
+      "baseSha256": null
+    },
+    {
+      "path": "scripts/rehearse-tax-topology.mjs",
+      "candidateSha256": "2e7c6488ae4a70db742304489c69814138fb7e7e544523996dfd714ab558440e",
+      "baseSha256": "a278155bf5abf0bcc799b509f3bdde97577ff5d63d3a331b3f3b117b7cb46d30"
+    },
+    {
+      "path": "supabase/contract-migrations/20260902071000_corporate_governance_shareholder_loan_contract.sql",
+      "candidateSha256": "dc064a592ff6af6c8d58820e0eddb8d43f3d2f4d0b94ef5f22fda2136b88f3de",
+      "baseSha256": "dc064a592ff6af6c8d58820e0eddb8d43f3d2f4d0b94ef5f22fda2136b88f3de"
+    },
+    {
+      "path": "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql",
+      "candidateSha256": "632ef749740e836f9bddf95e143a8f6f330034119178e39eb30ef282d8957526",
+      "baseSha256": "632ef749740e836f9bddf95e143a8f6f330034119178e39eb30ef282d8957526"
+    },
+    {
+      "path": "supabase/rollback/20260902110000_corporate_governance_contract.sql",
+      "candidateSha256": "d2616716b0ecef2aaa8d9eb0e5aabdf9ed2dcf492fa1f2c8ac707576ffb76234",
+      "baseSha256": "d2616716b0ecef2aaa8d9eb0e5aabdf9ed2dcf492fa1f2c8ac707576ffb76234"
+    },
+    {
+      "path": "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql",
+      "candidateSha256": "20783cbd00406594a9203292052094029e7bbe21f83d7e53991e65513910a9bd",
+      "baseSha256": "20783cbd00406594a9203292052094029e7bbe21f83d7e53991e65513910a9bd"
+    },
+    {
+      "path": "tests/corporate_governance_contract_migration_lifecycle.test.mjs",
+      "candidateSha256": "3684376e1493371e41c1fff682a4efb7e81974407e43cddbc7211ac07455a38c",
+      "baseSha256": "3684376e1493371e41c1fff682a4efb7e81974407e43cddbc7211ac07455a38c"
+    },
+    {
+      "path": "architecture/evidence/issues/146/characterization-and-cutover-plan.md",
+      "candidateSha256": "3a190c08d643eb9a33e3b1f895eb090eee1025c7acd4e0f376912275c6365048",
+      "baseSha256": "3a190c08d643eb9a33e3b1f895eb090eee1025c7acd4e0f376912275c6365048"
+    }
+  ],
+  "integrityChecks": {
+    "manifestArtifactsVerified": 24,
+    "privateSpecArtifactsByteExact": [
+      "final-spec-followup-4ce5f625-bindings.json",
+      "final-spec-followup-4ce5f625.md",
+      "final-spec-followup-8ba10ae6-test-1.log",
+      "final-spec-followup-8ba10ae6-test-2.log",
+      "final-spec-followup-8ba10ae6-bindings.json",
+      "final-spec-followup-8ba10ae6-test-results.json",
+      "final-spec-followup-8ba10ae6.md"
+    ],
+    "oldBackendSourceHashesVerified": 157,
+    "checkpointSourceHashesVerified": 7,
+    "gateExits": {
+      "schema-setup": 0,
+      "credential-scan": 0,
+      "typecheck": 0,
+      "architecture": 0,
+      "boundary": 0,
+      "build-web": 0,
+      "build-backend": 0,
+      "boundary-smoke": 0,
+      "launch-rehearsal": 0,
+      "production-dependency-audit": 0,
+      "database-isolation": 1
+    },
+    "criteriaTextAndIdsUnchanged": true,
+    "allCriterionEvidencePathsExist": true,
+    "fullGateCredit": false
+  },
+  "mockCasesPassed": 10,
+  "mockLimit": "Query and file application ports replaced with deterministic in-memory probes; no SQL executed.",
+  "artifacts": {
+    "final-spec-followup-096dab57-mock.log": "c93ad3e6539e2a42c98038513bf4b2bb514d51f66ca1cad30fdd75eb8204290a",
+    "final-spec-followup-096dab57-base.mjs": "a278155bf5abf0bcc799b509f3bdde97577ff5d63d3a331b3f3b117b7cb46d30",
+    "final-spec-followup-096dab57-mock.mjs": "763f4d715a3e58fa8656273fb5f1796084a398e01c3ba7f350e1a907fbaa0376",
+    "final-spec-followup-096dab57.md": "28f668b38e7a7fc974dcdf080b46c65b715fb03ba74e9a91ca9437abf2837efc",
+    "final-spec-followup-096dab57-candidate.mjs": "2e7c6488ae4a70db742304489c69814138fb7e7e544523996dfd714ab558440e"
+  }
+}

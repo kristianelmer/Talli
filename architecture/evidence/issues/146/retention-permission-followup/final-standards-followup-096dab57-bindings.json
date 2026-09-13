@@ -1,0 +1,149 @@
+{
+  "axis": "Standards bounded follow-up",
+  "base": "8ba10ae60a5e45c01a082a93f0b1b73f9943103b",
+  "candidate": "096dab57a8593f6df16a2b3e82a382e3d95a9b4f",
+  "diffCommand": "git diff 8ba10ae60a5e45c01a082a93f0b1b73f9943103b...096dab57a8593f6df16a2b3e82a382e3d95a9b4f",
+  "commits": [
+    "096dab57 fix(tax): restore Governance contract before Tax rehearsal (#146)"
+  ],
+  "files": [
+    {
+      "path": "architecture/evidence/customer-ready-gates/8ba10ae60a5e45c01a082a93f0b1b73f9943103b.log",
+      "sha256": "9631b09906b27c14441e97398edb01e36834923966e3ca93a5b5ffc0f57c8d55"
+    },
+    {
+      "path": "architecture/evidence/issues/146/requirements.json",
+      "sha256": "8a3a236a55c5a7f85a713f11a91279005b6751911f419c4d0bedf4a9ab874513"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/deployment-order-proof-manifest-4ce5f625.json",
+      "sha256": "514c9465a9d13379098e9ffca872778505e41f01cf18872e878d4c571ee2ea95"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-spec-followup-4ce5f625-bindings.json",
+      "sha256": "98e388207be1b927d08a9f15eac2b45b97aaaf6ca11c27c95c18131ebe01b6cf"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-spec-followup-4ce5f625.md",
+      "sha256": "c191ab3792bc5c56cd1f89c508f72972aeb281a2fe7f4ad6d4d7d4a3f8618716"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-spec-followup-8ba10ae6-bindings.json",
+      "sha256": "cf96fa22490c729e2535a5e9564de51e5ceaa85ae3b8b41888d63951018be6e6"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-spec-followup-8ba10ae6-test-1.log",
+      "sha256": "9579bf1fc462e11efc43509da6ebbc6c73450f1686c672e9b32edb003c150210"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-spec-followup-8ba10ae6-test-2.log",
+      "sha256": "a75291c717fac3c41e63a89efc9601bccfbd6c947335793e777a65a4f8d1058b"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-spec-followup-8ba10ae6-test-results.json",
+      "sha256": "e0241d998de5848082a21db29eaded3864acfe85de2bc24a0326c92d78b853c4"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-spec-followup-8ba10ae6.md",
+      "sha256": "67d007a038922d793482ffee60f310970a168ac8af36e6072f81f2a9de921abd"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-standards-followup-4ce5f625-bindings.json",
+      "sha256": "b61f892bf19ca552f315a08fcf3d0e8138e22dd6437ed3fcd47cc5db4096cd93"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-standards-followup-4ce5f625-schema.log",
+      "sha256": "d7f67b0524a5d2ea988325b11f4ffd370863dcbab52dcf07823dfb2975931cbb"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-standards-followup-4ce5f625.md",
+      "sha256": "cf0dae149bccedec32d4bda0209618f1622fbbfb58ead366f45ea6f42efb6c6f"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-standards-followup-8ba10ae6-bindings.json",
+      "sha256": "8808a5cd6eac11a3292a266af3e9630e79d3e37f48e9fe6bce160d7aab9a021e"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-standards-followup-8ba10ae6-missing-families.log",
+      "sha256": "a385e447f85fd6a2cae8a17a328edace5366d42bd3ad2dc83f77d2028705ab2a"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-standards-followup-8ba10ae6-static.log",
+      "sha256": "93798caabf6fb776955d3ad48c07a0c0a4cb74d8e5ca99baaffcf6bf352306af"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/final-standards-followup-8ba10ae6.md",
+      "sha256": "1b3534b97e4e1917a1fbae4c886cd8341236f4fa09907ee9231c921d89ca33a8"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/manifest.json",
+      "sha256": "06affcaf5d03c7154a74577fbd90fba796ea7a38ee9000c7039f6b2c165a4fdb"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/new-preview-old-backend-proof.json",
+      "sha256": "75b20ec95c3436d3ae9b0f7cd82184543fe0867ea46ca0aa65a5c8198fa83b67"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/old-client-after-contract-proof.json",
+      "sha256": "c226e6c6d5dd3b3bee5dcf5fb094b3975e0e1090569552e81b1dc625f080cf53"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/old-linked-rollback-proof.json",
+      "sha256": "692f5bd4b0a319437e20680e8745e734e87ca450b0ebdd43ed6be77cfc46fb9b"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/owner-final-topology-checkpoint.json",
+      "sha256": "e2f6210420d3508fa4b657eeb915108f61bf972bfa941f395e0d72b59282d200"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/production-freeze-8ba10ae6.json",
+      "sha256": "9a80d1b698ee1e95303116d3efbea7f7ba7eccf2b5cf5470bbcd0eca8ec4a4a0"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/review-8ba10ae6-adoption-check.json",
+      "sha256": "9f702d06fe7e19b1df806b7f5f744487385fd3758078dd433296f7beaec71d2a"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/tax-final-owner-browser2.log",
+      "sha256": "e10cdf7a103dcb74e0010f3298888398a0ef7eb3fd2e60690e67c5136e8153ee"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/tax-final-owner-cleanup-recovery.log",
+      "sha256": "d2cd1daa4d563f06773c1e1e5376aecf3c5e28745b3b3580ef6293e5fc998cd2"
+    },
+    {
+      "path": "architecture/evidence/issues/146/verification-followups/tax-final-owner-fixture-static2.log",
+      "sha256": "bfb1ba8818bb089c6b0e72ca71ad90201ded379d53878a71035ddbd5db83c478"
+    },
+    {
+      "path": "scripts/rehearse-tax-topology.mjs",
+      "sha256": "2e7c6488ae4a70db742304489c69814138fb7e7e544523996dfd714ab558440e"
+    }
+  ],
+  "staticAssertions": {
+    "onlyExecutableChangeTopologyScript": true,
+    "migrationsAndTaxGuardsUnchanged": true,
+    "mandatoryGateScopeOrderUnchanged": true,
+    "frozenRegistryBaselineCheckerCatalogUnchanged": true,
+    "originalSixCriteriaTextAndIdsUnchanged": true,
+    "allCriteriaExplicitlyPendingCompleteGatesAndIntegration": true,
+    "failedGateGetsNoExitCredit": true,
+    "verifiedAdoptionHashes": 24,
+    "standardsArtifactsMatchPrivateOriginals": 7
+  },
+  "independentValidation": {
+    "type": "actual pinned SourceTextModule plus actual loopback safety module, mocked pg/filesystem",
+    "runtime": "v24.20.0",
+    "result": "8 passed, 0 failed",
+    "test": "final-standards-followup-096dab57-topology.mjs",
+    "inputs": "final-standards-followup-096dab57-topology-input.json",
+    "transcript": "final-standards-followup-096dab57-topology.log",
+    "limits": "No SQL execution or real database/browser/provider/shared-process operation."
+  },
+  "artifacts": {
+    "final-standards-followup-096dab57.md": "1b9a44cdc1bde028aa795f361f0c896e5aac74c6cbf8fa5186c867fc724fac98",
+    "final-standards-followup-096dab57-topology.mjs": "34181cc9479357d61cd401381dc8c8b04cbe0a0b6687cce104a0435b2257d651",
+    "final-standards-followup-096dab57-topology-input.json": "eea68aa08dc53d41cdba3b395ae4f4dcf9c2a331506da5d051df819c5a6fe916",
+    "final-standards-followup-096dab57-topology.log": "649edc771fe8ac1d98d70b5ad51126735ac7cc64390ed94e1679c655e87e5173"
+  }
+}

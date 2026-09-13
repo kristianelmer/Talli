@@ -1,0 +1,15 @@
+cutover before (['company_tax_filing_identity_guard_owner=X/company_tax_filing_identity_guard_owner', 'documents_store_owner=X/company_tax_filing_identity_guard_owner'], False)
+cutover AssertionError Regex pattern did not match.
+ Regex: 'documents_evidence_linked'
+ Input: 'permission denied for function has_document_reference_v1\nCONTEXT:  SQL expression "exists (\n      select 1 from documents.ev
+cutover after (['company_tax_filing_identity_guard_owner=X/company_tax_filing_identity_guard_owner', 'documents_store_owner=X/company_tax_filing_identity_guard_owner'], False)
+rolled_back before (['company_tax_filing_identity_guard_owner=X/company_tax_filing_identity_guard_owner', 'documents_store_owner=X/company_tax_filing_identity_guard_owner'], False)
+rolled_back AssertionError Regex pattern did not match.
+ Regex: 'documents_evidence_linked'
+ Input: 'permission denied for function has_document_reference_v1\nCONTEXT:  SQL expression "exists (\n      select 1 from documents.ev
+rolled_back after (['company_tax_filing_identity_guard_owner=X/company_tax_filing_identity_guard_owner', 'documents_store_owner=X/company_tax_filing_identity_guard_owner'], False)
+recutover before (['company_tax_filing_identity_guard_owner=X/company_tax_filing_identity_guard_owner', 'documents_store_owner=X/company_tax_filing_identity_guard_owner'], False)
+recutover AssertionError Regex pattern did not match.
+ Regex: 'documents_evidence_linked'
+ Input: 'permission denied for function has_document_reference_v1\nCONTEXT:  SQL expression "exists (\n      select 1 from documents.ev
+recutover after (['company_tax_filing_identity_guard_owner=X/company_tax_filing_identity_guard_owner', 'documents_store_owner=X/company_tax_filing_identity_guard_owner'], False)

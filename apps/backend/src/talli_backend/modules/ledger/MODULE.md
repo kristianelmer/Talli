@@ -324,3 +324,5 @@ The input is independent of current account balances and RF-owned shareholder
 facts. Exact replay preserves the original value; a conflicting identity or
 amount fails. The backend new-year transaction binds this write to the RF
 snapshot and existing opening posting, so a later failure rolls all effects back.
+
+`preview_tax_settlement_lines` exposes the same private account mapping used by posting. This pure query permits a zero preview; posting still requires a strictly positive amount and balanced lines.

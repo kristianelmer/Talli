@@ -1,0 +1,31 @@
+✔ Supabase browser fixtures only accept loopback URLs (0.522792ms)
+✔ browser database fixtures only accept loopback PostgreSQL URLs (0.112125ms)
+✔ owner browser harness stops before remote fixture creation (308.95825ms)
+✔ owner browser harness rejects a remote database mixed with local Supabase (346.24725ms)
+✔ retained annual browser seeds canonical historical RF/AU facts without replacing the live simulation (4.054208ms)
+✔ readiness rejects when its owned process exits before an unrelated listener responds (33.454083ms)
+✔ an unrelated ready listener cannot satisfy a live child without its bind proof (44.010917ms)
+✔ readiness failure tears down a live owned process (43.518167ms)
+✔ a listener that never responds cannot outlive the readiness deadline (111.687084ms)
+✔ a ready owned process is terminated and cleanup is idempotent (49.013458ms)
+✔ forced process cleanup has a final timeout and tolerates an undefined handle (13.15725ms)
+✔ partial setup cleanup closes the database and removes only known resources (0.374167ms)
+✔ browser owner cleanup preserves every prior family in predecessor before company and user (13.681792ms)
+✔ browser owner cleanup preserves every prior family in overlap before company and user (12.538166ms)
+✔ browser owner cleanup preserves every prior family in contracted before company and user (11.778292ms)
+✔ browser owner cleanup preserves every prior family in tax-contracted before company and user (12.332625ms)
+✔ browser owner cleanup removes every tracked company before the shared owner (11.442792ms)
+✔ browser owner cleanup preserves source failure and continues independent cleanup (4.256292ms)
+✔ browser owner cleanup preserves both operation and rollback failures (3.665666ms)
+✔ browser owner cleanup fails closed for missing-family (0.502459ms)
+✔ browser owner cleanup fails closed for wrong-owner (0.684167ms)
+✔ browser owner cleanup fails closed for invalid-trigger-mode (2.783334ms)
+﹣ browser owner cleanup removes immutable corporate and production filing graphs (0.196041ms) # local Supabase runtime is required
+ℹ tests 23
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 1410.000416

@@ -217,9 +217,17 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     const payloadHash = createHash("sha256").update(JSON.stringify({ filing: preview.filing,
       company_id: preview.companyId, income_year: preview.incomeYear, hovedskjema_xml: preview.hovedskjemaXml,
       underskjema_xml: preview.underskjemaXml })).digest("hex");
-    await page.getByLabel("Kommentar", { exact: true }).fill("Synthetic owner reviewed the original shareholder basis.");
+    const reviewComment = "Synthetic owner reviewed the original shareholder basis.";
+    await page.getByLabel("Kommentar", { exact: true }).fill(reviewComment);
+    // A streamed server action can still be pending after networkidle. Wait for
+    // this save's complete response before inspecting its durable result.
+    const commentSaved = page.waitForResponse((response) => response.url() === annualHref
+      && response.request().method() === "POST"
+      && response.request().postData()?.includes(reviewComment));
     await page.getByRole("button", { name: "Lagre kommentar", exact: true }).click();
-    await page.waitForLoadState("networkidle");
+    const commentResponse = await commentSaved;
+    assert.equal(commentResponse.status(), 200);
+    assert.equal(await commentResponse.finished(), null);
     const reviewed = await api.rf1086Workspace(primary.id, 2025, { headers: authorization });
     assert.equal(reviewed.reviewComments.length, 1);
     assert.equal(reviewed.reviewComments[0].previewId, preview.id);

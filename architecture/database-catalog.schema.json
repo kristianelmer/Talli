@@ -37,6 +37,98 @@
         ],
         "additionalProperties": false
       }
+    },
+    "preservedSourceRetirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source",
+          "successor",
+          "issue",
+          "artifacts"
+        ],
+        "properties": {
+          "source": {
+            "type": "string",
+            "pattern": "^public\\.[a-z_]+$"
+          },
+          "successor": {
+            "type": "string",
+            "pattern": "^[a-z_]+\\.[a-z_]+$"
+          },
+          "issue": {
+            "type": "string",
+            "pattern": "^#[0-9]+$"
+          },
+          "artifacts": {
+            "type": "object",
+            "required": [
+              "cutover",
+              "contract",
+              "rollback"
+            ],
+            "properties": {
+              "cutover": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^supabase/(contract-migrations|rollback)/[a-z0-9_]+\\.sql$"
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "contract": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^supabase/(contract-migrations|rollback)/[a-z0-9_]+\\.sql$"
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "rollback": {
+                "type": "object",
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "pattern": "^supabase/(contract-migrations|rollback)/[a-z0-9_]+\\.sql$"
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "additionalProperties": false

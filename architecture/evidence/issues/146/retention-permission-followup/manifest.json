@@ -1,0 +1,86 @@
+{
+  "status": "RETENTION_REGRESSION_RED_GREEN_FULL_GATES_PENDING",
+  "baseRevision": "096dab57a8593f6df16a2b3e82a382e3d95a9b4f",
+  "artifacts": {
+    "final-spec-followup-096dab57-base.mjs.txt": {
+      "sourceName": "final-spec-followup-096dab57-base.mjs",
+      "sha256": "a278155bf5abf0bcc799b509f3bdde97577ff5d63d3a331b3f3b117b7cb46d30"
+    },
+    "final-spec-followup-096dab57-bindings.json": {
+      "sourceName": "final-spec-followup-096dab57-bindings.json",
+      "sha256": "f5bcb5a3e12b2b06d9702334e36e837877304c442f268b654ea55860b65b5740"
+    },
+    "final-spec-followup-096dab57-candidate.mjs.txt": {
+      "sourceName": "final-spec-followup-096dab57-candidate.mjs",
+      "sha256": "2e7c6488ae4a70db742304489c69814138fb7e7e544523996dfd714ab558440e"
+    },
+    "final-spec-followup-096dab57-mock.log": {
+      "sourceName": "final-spec-followup-096dab57-mock.log",
+      "sha256": "c93ad3e6539e2a42c98038513bf4b2bb514d51f66ca1cad30fdd75eb8204290a"
+    },
+    "final-spec-followup-096dab57-mock.mjs.txt": {
+      "sourceName": "final-spec-followup-096dab57-mock.mjs",
+      "sha256": "763f4d715a3e58fa8656273fb5f1796084a398e01c3ba7f350e1a907fbaa0376"
+    },
+    "final-spec-followup-096dab57.md": {
+      "sourceName": "final-spec-followup-096dab57.md",
+      "sha256": "28f668b38e7a7fc974dcdf080b46c65b715fb03ba74e9a91ca9437abf2837efc"
+    },
+    "final-standards-followup-096dab57-bindings.json": {
+      "sourceName": "final-standards-followup-096dab57-bindings.json",
+      "sha256": "ae4ddf96381b31c22514e5f789a88850ee46b58ab7b1c21d3506cb7e1885a7ea"
+    },
+    "final-standards-followup-096dab57-topology-input.json": {
+      "sourceName": "final-standards-followup-096dab57-topology-input.json",
+      "sha256": "eea68aa08dc53d41cdba3b395ae4f4dcf9c2a331506da5d051df819c5a6fe916"
+    },
+    "final-standards-followup-096dab57-topology.log": {
+      "sourceName": "final-standards-followup-096dab57-topology.log",
+      "sha256": "649edc771fe8ac1d98d70b5ad51126735ac7cc64390ed94e1679c655e87e5173"
+    },
+    "final-standards-followup-096dab57-topology.mjs.txt": {
+      "sourceName": "final-standards-followup-096dab57-topology.mjs",
+      "sha256": "34181cc9479357d61cd401381dc8c8b04cbe0a0b6687cce104a0435b2257d651"
+    },
+    "final-standards-followup-096dab57.md": {
+      "sourceName": "final-standards-followup-096dab57.md",
+      "sha256": "1b9a44cdc1bde028aa795f361f0c896e5aac74c6cbf8fa5186c867fc724fac98"
+    },
+    "review-096dab57-adoption-check.json": {
+      "sourceName": "review-096dab57-adoption-check.json",
+      "sha256": "69341e11007acf10a78552ce150b449d8c9adba1f1a423bc5bb2dcba3d2689b4"
+    },
+    "retention-privileges-red.log": {
+      "sourceName": "retention-privileges-red.log",
+      "sha256": "0cbec8ebe1ff797f8a01b9d43b91981a40af86b075638c59cd8959af9e1b0e48"
+    },
+    "retention-privileges-green.log": {
+      "sourceName": "retention-privileges-green.log",
+      "sha256": "e0e4dae7159cb3c9fd4d62019c1576ef2bf0691a0374ca6cb4f13ea1b160fc97"
+    },
+    "retention-fix-tax-lifecycle.log": {
+      "sourceName": "retention-fix-tax-lifecycle.log",
+      "sha256": "c12554de1016fcc49e867af2e88dc190a6a0f53672f39747bdc2ab391f8fcd92"
+    }
+  },
+  "failure": {
+    "gateTranscript": "architecture/evidence/customer-ready-gates/096dab57a8593f6df16a2b3e82a382e3d95a9b4f.log",
+    "gateTranscriptSha256": "c75f3526833b0a5f206dd67080446b4fc4d2603e9c0052aff29f8416187160f3",
+    "verdict": "FAIL",
+    "exitCredit": false,
+    "cause": "Tax cutover omitted temporary membership in the identity guard function owner. PostgreSQL warned and did not grant helper execution to the actual Documents retention owner. Fixture Documents-owner membership masked the missing grant until full rollback revoked it."
+  },
+  "fix": "Borrow identity guard owner only during cutover, including the matching cleanup revoke. Retention lifecycle test removes its borrowed fixture owners before every phase. No data privilege or runtime role broadened.",
+  "probe": {
+    "scope": "Owned retained disposable PostgreSQL only; all three phase fixtures and privileges rolled back after each probe. Direct Tax helper grant to postgres removed first to reproduce fresh-stack absence. Existing production HTTP, SQL and Documents removal paths execute.",
+    "red": "All three phases fail with permission denied for function has_document_reference_v1.",
+    "green": "All three phases raise documents_evidence_linked with the direct purpose-specific helper grant.",
+    "exitCredit": false
+  },
+  "limits": [
+    "Complete fresh gate pair and protected integration remain required.",
+    "Prior reviews are bound to 096dab57 and do not review this new fix.",
+    "No Company Tax capability exit before #152."
+  ],
+  "lifecycle": "22 passed on owned retained disposable PostgreSQL; fresh aggregate still required."
+}

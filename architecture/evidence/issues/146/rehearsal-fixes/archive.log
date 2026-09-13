@@ -1,0 +1,28 @@
+✔ archive preserves frozen mixed chains except the exact owned RF and Tax read retirements (17.78875ms)
+✔ archive preserves original selected opening and shareholder fields through the joined owner projection (54.839042ms)
+✔ a failing 2024 opening does not prevent a valid 2025 archive but still blocks the 2024 export (28.062167ms)
+✔ RF-only archive preserves original nested payload identities, requested year and company-wide history (11.775291ms)
+✔ actual generated RF archive transport isolates a malformed 2024 preview from the valid 2025 download (22.619916ms)
+✔ RF authority evidence is limited to retained submission references without adding a generic persistence call (9.206ms)
+✔ mixed sibling chains retain their conditional authority read and overlap never duplicates RF rows (9.102166ms)
+✔ unavailable rf source cannot complete the authoritative export (8.17475ms)
+✔ unavailable opening source cannot complete the authoritative export (9.734042ms)
+✔ unavailable tax source cannot complete the authoritative export (8.244875ms)
+✔ unavailable filing_previews source cannot complete the authoritative export (7.350041ms)
+✔ unavailable authority_permissions source cannot complete the authoritative export (9.963583ms)
+✔ unavailable filing_review_comments source cannot complete the authoritative export (6.472667ms)
+✔ unavailable audit_events source cannot complete the authoritative export (6.33975ms)
+✔ original submission and authority errors retain priority and effect order (16.08275ms)
+✔ authentication and step-up precede every source and export effect {"user":false} (6.735917ms)
+✔ authentication and step-up precede every source and export effect {"token":false} (6.34525ms)
+✔ authentication and step-up precede every source and export effect {"mfa":false} (6.499458ms)
+✔ empty retained history still rejects export and failed receipt never yields a downloadable archive (13.905334ms)
+✔ owned Tax source preserves all thirteen original fields beside unchanged RF history (6.859417ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 523.9765

@@ -119,3 +119,9 @@ later-stage coordinator owners; it has no browser grants or banking policy.
 The company-archive acceptance projection is member-filtered, read-only, and
 derives lines from the linked canonical ledger entry rather than storing a
 second policy copy.
+
+The settlement workflow uses `TaxSettlementBankCommand`, `TaxSettlementBankingPersistence`. The port binds to `talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction`.
+
+<!-- architecture-inventory
+{"ports":["TaxSettlementBankingPersistence"]}
+-->

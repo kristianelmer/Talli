@@ -1,0 +1,35 @@
+{
+  "status": "IMPLEMENTATION_CHECKPOINT_FULL_GATES_AND_NEW_INDEPENDENT_REVIEW_PENDING",
+  "priorCaptureRevision": "86ae2c5a12661fe79a7a3f93ab47398081c92bac",
+  "checks": {
+    "database": "24 passed: 21 lifecycle/API and 3 real-connection concurrency/authority tests",
+    "expansionOrder": "1 additional regression passed after moving retention cutover",
+    "browser": "PASS: actual Supabase login/MFA, all settlement kinds, fractional preview, stale preview, lost committed response retry, exactly one settlement/entry/receipt/audit, fixture teardown",
+    "ciLanes": "49 passed, including mandatory Tax lane collection and shell failure propagation",
+    "webBuild": "PASS",
+    "architecture": "PASS; four previously failing regressions passed after exact owner/read-seam expectations and dependency evidence updated",
+    "boundary": "Backend broad run: 2861 passed, 2 existing skips, 1 stale adapter-location assertion failed. Corrected assertion: all 83 Ledger adapter tests passed. Web: 259 passed. Contract: 53 passed. Full backend rerun remains part of the full gate."
+  },
+  "priorReviewFixes": [
+    "Standalone source indexes captured and restored; canonical lookup indexes added",
+    "Cutover and contract artifacts declared in backend-system technical migration inventory",
+    "Tax adapter is a standalone purpose-specific transaction, without inherited Ledger application transaction methods"
+  ],
+  "artifactSha256": {
+    "database.log": "e21f1fc9e0cf90868b9dc45a670099440a3d57c22dc1b6b77cfdeff49d94dcd6",
+    "expansion-order.log": "2251df77c823e93bcd0a4806d0be726778ce695e3b4df8f5b32823cb2a5493f0",
+    "browser.log": "fb9ab8dc909a7859e6bf2c9a462b1bcdfb8d2b7ec4d27816a6bcb4b426a1ebbd",
+    "ci-lanes.log": "14e9897e8ef5dc0b9d13ab575619a081e826455bef7bb471950a8e094ead33c8",
+    "architecture-regressions.log": "a8584ee420b9bb065e377d83ba009ebd7bd8070622633877d3347b41ae40d55b",
+    "prior-capture-spec-review.md": "614e51e283cb22ec0b6f99c5f89a554382203509f8be60317a4b32b40453f5df",
+    "prior-capture-standards-review.md": "c4af21488ca4e5b23b02fdd63c7a5dc29533cc7eba8b925afb4d3ba430f4d5b5",
+    "ledger-adapter.log": "aed0600bbd4b2693d55b4c4807e3f0d0d4af68fe5d76ca0ad6dc05f11c21f50d",
+    "web-boundary.log": "70560723f4e90e8224eca2587de4d4ac1db6256ad236cc24ae0f03a24961afbf",
+    "contract-boundary.log": "023d58a0feee6eb1b16af2b07be2b243cbbf6b43faa29e9a9fe37483029bb180"
+  },
+  "limits": [
+    "No customer-ready exit credit or issue closure claimed.",
+    "No hosted migration, paid action, real filing, provider activation or production promotion.",
+    "Full predecessor fresh-stack rehearsal and new independent reviews remain pending."
+  ]
+}

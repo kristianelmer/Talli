@@ -2021,7 +2021,17 @@ class LedgerQueries(Protocol):
     ) -> PeriodLockPage: ...
 
 
+def preview_tax_settlement_lines(
+    settlement_kind: TaxSettlementKind, amount: Money
+) -> tuple[LedgerLine, ...]:
+    """Read the same Ledger-owned lines used by posting, without writing state."""
+    from .service import tax_settlement_preview_lines
+
+    return tax_settlement_preview_lines(settlement_kind, amount)
+
+
 __all__ = [
+    "preview_tax_settlement_lines",
     "OpeningBankInput",
     "RecordOpeningBankInputCommand",
     "AdministrativeCostBlock",

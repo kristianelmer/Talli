@@ -1,0 +1,14 @@
+{
+  "from": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
+  "to": "51ce44051bf11a3935d10f1b315b70a22eacac22",
+  "files": {
+    "architecture/evidence/customer-ready-gates/20999f167084492bb4f9a5a50d0cbcd3a48333b3.json": "db5d05e975108108e4e3924e152aa55544a6660a66815d5fec3fef874fb5a387",
+    "architecture/evidence/customer-ready-gates/20999f167084492bb4f9a5a50d0cbcd3a48333b3.log": "72cfcff0dae5d79ac8f9411d193262977b57045f48a928dc5b04fedd62737146",
+    "architecture/evidence/issues/146/characterization-and-cutover-plan.md": "3a190c08d643eb9a33e3b1f895eb090eee1025c7acd4e0f376912275c6365048",
+    "architecture/evidence/issues/146/entry-inventory.md": "f2135c84858ff09bcef14104f326b943a01434c00b1ea021f83fe018c01a3c0b",
+    "architecture/evidence/issues/146/legacy-preview-cases.json": "4cd36415412a2b061cbadbb38f2f0b0d74bc950eab6c12ff3aef5ac0d20f9074",
+    "architecture/evidence/issues/146/requirements.json": "3e95a29b7d45993d41ae2a170f9bd34347a9ebbeb297af512d9678aa4f876ee0",
+    "architecture/evidence/issues/146/source-inventory.json": "7109e4e5b11e15e0b498b545554e02bcd1d2271c9a9bc4a70061b12c3b7acef0"
+  },
+  "scope": "Standards source/plan review; gate/hash replay owned by Spec, no implementation accepted"
+}

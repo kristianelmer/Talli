@@ -1,0 +1,35 @@
+{
+  "oldBackendRevision": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
+  "migrationRevision": "aad6bb90951120b09771a23f58d5b662713e7a5a",
+  "results": [
+    {
+      "name": "original-receipt",
+      "status": 201,
+      "replayed": true,
+      "entryId": "f4b839b9-7588-428a-9d9f-ac803ddd6ee4"
+    },
+    {
+      "name": "fresh-linked-payment",
+      "status": 201,
+      "replayed": false,
+      "entryId": "cfb33111-898d-4fa0-9244-cf058eec17c1"
+    },
+    {
+      "name": "linked-payment-replay",
+      "status": 201,
+      "replayed": true,
+      "entryId": "cfb33111-898d-4fa0-9244-cf058eec17c1"
+    }
+  ],
+  "freshOldAppDocumentProtected": true,
+  "initialAmbientTaxHelperGrantRemoved": true,
+  "directGrantEstablishedByCurrentCutover": true,
+  "borrowedOwnerPrivilegesAbsentAtRetentionCheck": true,
+  "documentsRetentionOwner": "postgres",
+  "artifacts": {
+    "supabase/rollback/20260913171000_company_tax_settlement_expand.sql": "f2e79ac013f608582e29ebd32bbbb047d0b105a1cac9db8b1905387e0094f687",
+    "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql": "28842782cf47aea849ba25e8dc672c98f0453852ba8cf157e5a58f725209c206",
+    "supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql": "99b636f296f92096fccceb45c8d5c1724ab8e75bc33db71cb93ccc59da221271"
+  },
+  "finalPhase": "contracted"
+}

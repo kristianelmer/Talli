@@ -1,0 +1,197 @@
+{
+  "schemaVersion": "1.0",
+  "reviewKind": "independent-code-review-Spec-axis-entry-evidence",
+  "reviewedAt": "2026-09-13T15:58:02.838Z",
+  "issue": "#146",
+  "verdict": "PASS_COMMITTED_ENTRY_READY",
+  "findings": [],
+  "fixedPoint": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
+  "reviewedHead": "51ce44051bf11a3935d10f1b315b70a22eacac22",
+  "storageRevision": "51ce44051bf11a3935d10f1b315b70a22eacac22",
+  "nonemptyDiffVerified": true,
+  "changedPaths": [
+    "architecture/evidence/customer-ready-gates/20999f167084492bb4f9a5a50d0cbcd3a48333b3.json",
+    "architecture/evidence/customer-ready-gates/20999f167084492bb4f9a5a50d0cbcd3a48333b3.log",
+    "architecture/evidence/issues/146/characterization-and-cutover-plan.md",
+    "architecture/evidence/issues/146/entry-inventory.md",
+    "architecture/evidence/issues/146/legacy-preview-cases.json",
+    "architecture/evidence/issues/146/requirements.json",
+    "architecture/evidence/issues/146/source-inventory.json"
+  ],
+  "scope": "Seven evidence-only additions; product/schema/contract/tests/registry/baseline unchanged.",
+  "predecessor": {
+    "issue": "#151",
+    "freshState": "closed",
+    "closedAt": "2026-09-13T15:32:00Z",
+    "gateStartsAfterClosure": true
+  },
+  "originalCriteria": {
+    "source": "https://github.com/kristianelmer/Talli/issues/146",
+    "count": 6,
+    "wordingUnchanged": true,
+    "allUnimplemented": true,
+    "requirements": [
+      "Supported tax-settlement actions complete through the web and FastAPI.",
+      "Resulting entries match existing characterization evidence.",
+      "Invalid, duplicate, or unauthorized requests fail safely.",
+      "Ledger and banking collaboration use only approved public workflows.",
+      "Data ownership and dependency rules pass architecture checks.",
+      "Duplicate TypeScript policy and active-slice compatibility code are removed."
+    ]
+  },
+  "entryGate": {
+    "revision": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
+    "evidencePath": "architecture/evidence/customer-ready-gates/20999f167084492bb4f9a5a50d0cbcd3a48333b3.json",
+    "canonicalDigest": "sha256:f113c673612fcd483204c7176b25f0b06f05393450cfb27d84a08a8809c7f509",
+    "rawReceiptDigest": "sha256:db5d05e975108108e4e3924e152aa55544a6660a66815d5fec3fef874fb5a387",
+    "transcriptPath": "architecture/evidence/customer-ready-gates/20999f167084492bb4f9a5a50d0cbcd3a48333b3.log",
+    "transcriptDigest": "sha256:72cfcff0dae5d79ac8f9411d193262977b57045f48a928dc5b04fedd62737146",
+    "testedProducer": "scripts/run-customer-ready-gate.mjs",
+    "testedProducerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+    "schemaValid": true,
+    "checkCount": 11,
+    "checks": [
+      {
+        "name": "credential-scan",
+        "command": "npm run test:credential-scan",
+        "exitCode": 0,
+        "durationMs": 1079
+      },
+      {
+        "name": "typecheck",
+        "command": "npm run typecheck",
+        "exitCode": 0,
+        "durationMs": 1303
+      },
+      {
+        "name": "architecture",
+        "command": "npm run check:architecture",
+        "exitCode": 0,
+        "durationMs": 15193
+      },
+      {
+        "name": "boundary",
+        "command": "npm run test:boundary",
+        "exitCode": 0,
+        "durationMs": 171730
+      },
+      {
+        "name": "build-web",
+        "command": "TALLI_BACKEND_URL=http://127.0.0.1:8000 TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY=<local-only> npm run build:web && npm run test:browser-public-acquisition:built",
+        "exitCode": 0,
+        "durationMs": 9397
+      },
+      {
+        "name": "build-backend",
+        "command": "npm run build:backend",
+        "exitCode": 0,
+        "durationMs": 1503
+      },
+      {
+        "name": "boundary-smoke",
+        "command": "npm run test:boundary-smoke",
+        "exitCode": 0,
+        "durationMs": 7334
+      },
+      {
+        "name": "launch-rehearsal",
+        "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47> npm run test:launch-rehearsal",
+        "exitCode": 0,
+        "durationMs": 266636
+      },
+      {
+        "name": "production-dependency-audit",
+        "command": "npm audit --omit=dev --audit-level=high && npm audit --prefix apps/web --omit=dev --audit-level=high",
+        "exitCode": 0,
+        "durationMs": 2511
+      },
+      {
+        "name": "database-isolation",
+        "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python npm run test:supabase:local",
+        "exitCode": 0,
+        "durationMs": 684853
+      },
+      {
+        "name": "whitespace",
+        "command": "bash scripts/check-clean-worktree.sh",
+        "exitCode": 0,
+        "durationMs": 86
+      }
+    ],
+    "allActualLogExitsZero": true,
+    "commandsDurationsMatch": true,
+    "startedAt": "2026-09-13T15:32:12.822Z",
+    "executedAt": "2026-09-13T15:52:13.794Z",
+    "elapsedMs": 1200972,
+    "recordedDurationSumMs": 1200970,
+    "overheadMs": 2,
+    "firstAddStorageRevision": "51ce44051bf11a3935d10f1b315b70a22eacac22",
+    "receiptAndTranscriptCommittedAtStorage": true,
+    "entryAncestorOfStorage": true,
+    "countsTowardExitPair": false,
+    "metadataStorageNullNote": "requirements storageRevision null is awaiting this first-storage binding; this report supplies51ce44051bf11a3935d10f1b315b70a22eacac22."
+  },
+  "sourceInventory": {
+    "path": "architecture/evidence/issues/146/source-inventory.json",
+    "revision": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
+    "fileCount": 135,
+    "uniqueCount": 135,
+    "allSourceHashesMatchCommittedEntry": true,
+    "digest": "sha256:7109e4e5b11e15e0b498b545554e02bcd1d2271c9a9bc4a70061b12c3b7acef0"
+  },
+  "legacyPreviewCapture": {
+    "path": "architecture/evidence/issues/146/legacy-preview-cases.json",
+    "source": "apps/web/app/lib/tax-settlement.ts",
+    "sourceDigest": "sha256:8ea0dd637bdfb1ebec72b5b1289f3fbbe849cdcecab9a3f695b699b4493dc605",
+    "captureNode": "v24.20.0",
+    "independentReplayNode": "v25.6.1",
+    "cases": 19,
+    "independentlyReplayedPassing": 19,
+    "comparison": "Exact JSON snapshot equivalence, not Object.is equivalence.",
+    "signedZeroNormalization": {
+      "cases": [
+        "round-small-positive"
+      ],
+      "note": "JSON serializes legacy expected bank amount -0 as0; initial strict-object assertion exposed this representation difference, corrected to compare the published JSON boundary. No changed product behavior inferred."
+    },
+    "scope": "Historical web validation, displayed Ledger lines and expected bank amount only. No calendar/year/rounded-zero/domain authorization/persistence/bank enforcement certified.",
+    "noAnnualEstimateInvocation": true
+  },
+  "envelopeAssessment": {
+    "immutableEntryAndPredecessorSatisfied": true,
+    "entrypointsConsumersStorageRulesTestsRollbackEnumerated": true,
+    "slice1Only": true,
+    "fullCompanyTaxStageExitDeferredTo": "#152",
+    "claimNotPublishedByReviewer": true,
+    "noImplementationClaim": true,
+    "planPreservesSingleLedgerPostingAndBankingOwner": true,
+    "replayNuanceExplicitlyCharacterizedBeforeFutureDecision": true,
+    "baselineUnchanged": true
+  },
+  "limits": {
+    "backendBoundary": {
+      "passed": 2811,
+      "optionalSkipped": 2,
+      "deselected": 829
+    },
+    "validationObservationPython": {
+      "passed": 17,
+      "optionalSkipped": 1,
+      "reason": "TALLI_VALIDATION_OBSERVATION_TEST_DATABASE_URL absent; mandatory Node SQL rehearsal1pass0skip in transcript"
+    },
+    "advisors": {
+      "blockingSecurityError": 0,
+      "performanceWarnings": 60
+    },
+    "finalRfAuthorityDatabase": {
+      "passed": 130,
+      "skipped": 0
+    },
+    "noWholeGateZeroSkipClaim": true,
+    "noProductDatabaseBrowserSuiteRerun": true,
+    "nineteenPurePreviewCasesOnly": true,
+    "noRepositoryEditsOrGithubClaimPublication": true,
+    "noImplementationOrFullStageExitClaim": true,
+    "noLiveProviderHostedSchemaPaidOperationProductionActivation": true
+  }
+}

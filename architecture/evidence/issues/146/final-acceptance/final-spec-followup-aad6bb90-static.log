@@ -1,0 +1,5 @@
+PASS exact two-role-list change, balanced transactional membership, actual retention-owner target, unchanged SQL body
+PASS expansion, both rollback artifacts, requirements unchanged
+PASS test adds only pre-phase fixture role revocation; all assertions and outer rollback preserved
+PASS 15 committed artifact hashes, 6 byte-exact Spec adoptions, failed-gate hash/failure/limits
+PASS both refreshed artifact inventories bind exact cutover bytes
