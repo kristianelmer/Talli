@@ -14,7 +14,7 @@
     { "table": "documents", "scope": "year" },
     { "table": "filing_previews", "scope": "year" },
     { "table": "filing_submissions", "scope": "year" },
-    { "table": "holding_actions", "scope": "year" },
+    { "table": "company_tax_filing.settlements", "scope": "year" },
     { "table": "investments.positions", "scope": "company" },
     { "table": "investments.acquisition_lots", "scope": "company" },
     { "table": "investments.share_purchases", "scope": "year" },

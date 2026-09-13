@@ -31,6 +31,10 @@ const rfCutoverPath = new URL(
   "../supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql",
   import.meta.url,
 );
+const taxCutoverPath = new URL(
+  "../supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql",
+  import.meta.url,
+);
 
 function sql(path) {
   return readFileSync(path, "utf8");
@@ -90,6 +94,7 @@ test("archive route and generation triggers share one complete source inventory"
   const corporateGovernanceStageExit = sql(corporateGovernanceStageExitPath);
   const billingCapability = sql(billingCapabilityPath);
   const rfCutover = sql(rfCutoverPath);
+  const taxCutover = sql(taxCutoverPath);
   const inventory = JSON.parse(sql(archiveInventoryPath));
   const declared = new Map(inventory.sources.map((item) => [item.table, item.scope]));
   const routeTables = new Set([...route.matchAll(/\.from\("([a-z0-9_]+)"\)/gu)].map((match) => match[1]));
@@ -100,6 +105,8 @@ test("archive route and generation triggers share one complete source inventory"
     // Ledger is now loaded through its generated capability query instead of
     // a direct Supabase `.from("ledger_entries")` call.
     "ledger_entries",
+    // Tax settlements come from their owned Archive projection after cutover.
+    "company_tax_filing.settlements",
     // Opening shares and bank amounts come from their separate owners. The
     // other RF sources supplement the retained sibling filing table reads.
     "shareholder_register_filing.opening_balance_setups",
@@ -141,6 +148,7 @@ test("archive route and generation triggers share one complete source inventory"
     [...source.matchAll(/\('([a-z0-9_]+)',\s*'(year|company)',\s*'(?:id|company_id)'\)/gu)]
       .map((match) => [match[1], match[2]]),
   );
+  legacyTriggerInventory.delete("holding_actions");
   for (const retiredOpeningTable of ["opening_balance_setups", "opening_shareholders"]) {
     legacyTriggerInventory.delete(retiredOpeningTable);
   }
@@ -181,6 +189,9 @@ test("archive route and generation triggers share one complete source inventory"
     ...legacyTriggerInventory,
     ...canonicalInvestmentTriggerInventory,
     ...canonicalCorporateTriggerInventory,
+    ...[...taxCutover.matchAll(
+      /before insert or update or delete on (company_tax_filing\.[a-z0-9_]+)\s+for each row\s+execute function public\.company_archive_track_source_write_v1\('(year|company)',\s*'company_id'\)/giu,
+    )].map((match) => [match[1], match[2]]),
     ...[...rfCutover.matchAll(
       /before insert or delete or update on ((?:shareholder_register_filing|ledger)\.[a-z0-9_]+) for each row\s+execute function public\.company_archive_track_source_write_v1\('(year|company)', 'company_id'\)/giu,
     )].map((match) => [match[1], match[2]]),
@@ -202,7 +213,11 @@ test("archive route and generation triggers share one complete source inventory"
       < route.indexOf("loadAcceptedMembershipCompany(companyId)"),
     "every authoritative source read must follow the generation boundary",
   );
-  for (const read of ["loadArchiveOpeningSnapshots(accessToken, companyId, incomeYear)", "loadArchiveRf1086(accessToken, companyId, incomeYear)"]) {
+  for (const read of [
+    "loadArchiveOpeningSnapshots(accessToken, companyId, incomeYear)",
+    "loadArchiveRf1086(accessToken, companyId, incomeYear)",
+    "loadTaxSettlementArchiveSource(accessToken, companyId, incomeYear)",
+  ]) {
     assert.ok(route.indexOf(read) > route.indexOf('"company_archive_begin_export"'));
     assert.ok(route.indexOf(read) < route.indexOf('"company_archive_complete_export"'));
   }

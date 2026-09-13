@@ -1,0 +1,34 @@
+Pinned test/Archive route/client source: 7186841f3286c53fdb5c838963703de0efac17cc
+Runtime: v24.20.0
+Isolated mocked Archive test; no database/browser/provider use.
+Command: ['/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node', '--experimental-strip-types', '--test', '/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-146-86951-standards-73uvbb9g/apps/web/tests/archive-rf1086-source.test.mjs']
+✔ archive preserves frozen mixed chains except the exact owned RF and Tax read retirements (18.583958ms)
+✔ archive preserves original selected opening and shareholder fields through the joined owner projection (52.965542ms)
+✔ a failing 2024 opening does not prevent a valid 2025 archive but still blocks the 2024 export (28.096125ms)
+✔ RF-only archive preserves original nested payload identities, requested year and company-wide history (11.933042ms)
+✔ actual generated RF archive transport isolates a malformed 2024 preview from the valid 2025 download (23.18125ms)
+✔ RF authority evidence is limited to retained submission references without adding a generic persistence call (8.928875ms)
+✔ mixed sibling chains retain their conditional authority read and overlap never duplicates RF rows (9.503625ms)
+✔ unavailable rf source cannot complete the authoritative export (8.875625ms)
+✔ unavailable opening source cannot complete the authoritative export (10.093792ms)
+✔ unavailable tax source cannot complete the authoritative export (8.190041ms)
+✔ unavailable filing_previews source cannot complete the authoritative export (7.80175ms)
+✔ unavailable authority_permissions source cannot complete the authoritative export (9.909833ms)
+✔ unavailable filing_review_comments source cannot complete the authoritative export (6.14475ms)
+✔ unavailable audit_events source cannot complete the authoritative export (6.725959ms)
+✔ original submission and authority errors retain priority and effect order (16.961708ms)
+✔ authentication and step-up precede every source and export effect {"user":false} (6.504125ms)
+✔ authentication and step-up precede every source and export effect {"token":false} (5.743792ms)
+✔ authentication and step-up precede every source and export effect {"mfa":false} (6.180792ms)
+✔ empty retained history still rejects export and failed receipt never yields a downloadable archive (13.65125ms)
+✔ owned Tax source preserves all thirteen original fields beside unchanged RF history (6.882875ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 528.823792
+
+Exit code: 0
