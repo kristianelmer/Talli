@@ -57,8 +57,10 @@ test("owner previews all settlement kinds and retries a lost committed response 
   assert.equal(await confirm.isDisabled(), true);
   await page.waitForFunction(() => document.querySelector("table tbody")?.textContent?.includes("202,00"));
   assert.doesNotMatch(await page.locator("table tbody").innerText(), /101,00/u);
-  await mkdir("output/playwright", { recursive: true });
-  await page.screenshot({ path: "output/playwright/tax-settlement-preview.png", fullPage: true });
+  if (process.env.TALLI_TAX_BROWSER_ARTIFACTS === "1") {
+    await mkdir("output/playwright", { recursive: true });
+    await page.screenshot({ path: "output/playwright/tax-settlement-preview.png", fullPage: true });
+  }
   fixture.controls.dropNextCapture = true;
   await confirm.click();
   await page.waitForURL(url => url.searchParams.get("taxSettlementOperationId") === operationId);
