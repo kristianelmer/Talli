@@ -1,0 +1,158 @@
+{
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_NO_ACTIONABLE_FINDINGS",
+  "baseRevision": "096dab57a8593f6df16a2b3e82a382e3d95a9b4f",
+  "candidateRevision": "aad6bb90951120b09771a23f58d5b662713e7a5a",
+  "bindings": [
+    {
+      "path": "apps/backend/tests/test_company_tax_filing_database.py",
+      "candidateSha256": "ed5c5b9bb597105153f734b6b5f7e78acfc26d401205c8f109c6e0bdbaa109e4",
+      "baseSha256": "cdde117b23e55a58708e9039911437a3ec278c05d007f761d86674e5cdadba53"
+    },
+    {
+      "path": "architecture/database-catalog.json",
+      "candidateSha256": "e01eff2d1dc4a7436b9c911b78686bd9b878eeb713e1a5770fead5276eca1b91",
+      "baseSha256": "3240d01015a6285995a7c6a6364be150ae566359b026ec3c24743c7b4767735d"
+    },
+    {
+      "path": "architecture/evidence/customer-ready-gates/096dab57a8593f6df16a2b3e82a382e3d95a9b4f.log",
+      "candidateSha256": "c75f3526833b0a5f206dd67080446b4fc4d2603e9c0052aff29f8416187160f3",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-spec-followup-096dab57-base.mjs.txt",
+      "candidateSha256": "a278155bf5abf0bcc799b509f3bdde97577ff5d63d3a331b3f3b117b7cb46d30",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-spec-followup-096dab57-bindings.json",
+      "candidateSha256": "f5bcb5a3e12b2b06d9702334e36e837877304c442f268b654ea55860b65b5740",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-spec-followup-096dab57-candidate.mjs.txt",
+      "candidateSha256": "2e7c6488ae4a70db742304489c69814138fb7e7e544523996dfd714ab558440e",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-spec-followup-096dab57-mock.log",
+      "candidateSha256": "c93ad3e6539e2a42c98038513bf4b2bb514d51f66ca1cad30fdd75eb8204290a",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-spec-followup-096dab57-mock.mjs.txt",
+      "candidateSha256": "763f4d715a3e58fa8656273fb5f1796084a398e01c3ba7f350e1a907fbaa0376",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-spec-followup-096dab57.md",
+      "candidateSha256": "28f668b38e7a7fc974dcdf080b46c65b715fb03ba74e9a91ca9437abf2837efc",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-standards-followup-096dab57-bindings.json",
+      "candidateSha256": "ae4ddf96381b31c22514e5f789a88850ee46b58ab7b1c21d3506cb7e1885a7ea",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-standards-followup-096dab57-topology-input.json",
+      "candidateSha256": "eea68aa08dc53d41cdba3b395ae4f4dcf9c2a331506da5d051df819c5a6fe916",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-standards-followup-096dab57-topology.log",
+      "candidateSha256": "649edc771fe8ac1d98d70b5ad51126735ac7cc64390ed94e1679c655e87e5173",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-standards-followup-096dab57-topology.mjs.txt",
+      "candidateSha256": "34181cc9479357d61cd401381dc8c8b04cbe0a0b6687cce104a0435b2257d651",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/final-standards-followup-096dab57.md",
+      "candidateSha256": "1b9a44cdc1bde028aa795f361f0c896e5aac74c6cbf8fa5186c867fc724fac98",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/manifest.json",
+      "candidateSha256": "3ec713b42135ef881467bb87518903dbf3c64c88102435824555f73783a2a87a",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/retention-fix-tax-lifecycle.log",
+      "candidateSha256": "c12554de1016fcc49e867af2e88dc190a6a0f53672f39747bdc2ab391f8fcd92",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/retention-privileges-green.log",
+      "candidateSha256": "e0e4dae7159cb3c9fd4d62019c1576ef2bf0691a0374ca6cb4f13ea1b160fc97",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/retention-privileges-red.log",
+      "candidateSha256": "0cbec8ebe1ff797f8a01b9d43b91981a40af86b075638c59cd8959af9e1b0e48",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/retention-permission-followup/review-096dab57-adoption-check.json",
+      "candidateSha256": "69341e11007acf10a78552ce150b449d8c9adba1f1a423bc5bb2dcba3d2689b4",
+      "baseSha256": null
+    },
+    {
+      "path": "architecture/evidence/issues/146/source-read-retirements.json",
+      "candidateSha256": "a08fd312e4c75b1db8c232f0cc20e565d597ec1ede673188c69cc93b03382b36",
+      "baseSha256": "91d74f8b8d66cb69d06593317a9a7fd2104bbaa2bc9b10d5b84a40241703b2f4"
+    },
+    {
+      "path": "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql",
+      "candidateSha256": "28842782cf47aea849ba25e8dc672c98f0453852ba8cf157e5a58f725209c206",
+      "baseSha256": "20783cbd00406594a9203292052094029e7bbe21f83d7e53991e65513910a9bd"
+    },
+    {
+      "path": "supabase/migrations/20260913171000_company_tax_settlement_expand.sql",
+      "candidateSha256": "474256ce15313e2248cc1d99812fe8cf1c2a4747d99a0fa7a20c68fa4f9716a2",
+      "baseSha256": "474256ce15313e2248cc1d99812fe8cf1c2a4747d99a0fa7a20c68fa4f9716a2"
+    },
+    {
+      "path": "supabase/rollback/20260913171000_company_tax_settlement_expand.sql",
+      "candidateSha256": "f2e79ac013f608582e29ebd32bbbb047d0b105a1cac9db8b1905387e0094f687",
+      "baseSha256": "f2e79ac013f608582e29ebd32bbbb047d0b105a1cac9db8b1905387e0094f687"
+    },
+    {
+      "path": "supabase/rollback/20260913173000_company_tax_settlement_contract.sql",
+      "candidateSha256": "0d3f4e0055e4011ff44c5ad81cbb065fa3cdd3faf3e4043d5ec958e237fad977",
+      "baseSha256": "0d3f4e0055e4011ff44c5ad81cbb065fa3cdd3faf3e4043d5ec958e237fad977"
+    },
+    {
+      "path": "architecture/evidence/issues/146/requirements.json",
+      "candidateSha256": "8a3a236a55c5a7f85a713f11a91279005b6751911f419c4d0bedf4a9ab874513",
+      "baseSha256": "8a3a236a55c5a7f85a713f11a91279005b6751911f419c4d0bedf4a9ab874513"
+    },
+    {
+      "path": "architecture/evidence/issues/146/characterization-and-cutover-plan.md",
+      "candidateSha256": "3a190c08d643eb9a33e3b1f895eb090eee1025c7acd4e0f376912275c6365048",
+      "baseSha256": "3a190c08d643eb9a33e3b1f895eb090eee1025c7acd4e0f376912275c6365048"
+    }
+  ],
+  "checks": {
+    "staticGroupsPassed": 5,
+    "manifestArtifactsVerified": 15,
+    "byteExactPriorSpecAdoptions": [
+      "final-spec-followup-096dab57-base.mjs.txt",
+      "final-spec-followup-096dab57-bindings.json",
+      "final-spec-followup-096dab57-candidate.mjs.txt",
+      "final-spec-followup-096dab57-mock.log",
+      "final-spec-followup-096dab57-mock.mjs.txt",
+      "final-spec-followup-096dab57.md"
+    ],
+    "failureTranscriptVerified": true,
+    "sqlExecuted": false,
+    "gateExitCredit": false
+  },
+  "artifacts": {
+    "final-spec-followup-aad6bb90-static.py": "85744a80cb8cac81b28e3e84a4bedd9e8629ecd9a7f9f751c6cbb83cd9a265ee",
+    "final-spec-followup-aad6bb90-static.log": "a1bd81bfc6d9491613438799b7ea9cf3e41d14b2584a6a6041db50d742d39b3f",
+    "final-spec-followup-aad6bb90.md": "0da2a3a9cbc6f24364e710644081b3b0b518eef961ce6565305d1f9b28ee5fcf"
+  }
+}

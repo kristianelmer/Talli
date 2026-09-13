@@ -1,0 +1,103 @@
+{
+  "status": "FIRST_COMPLETE_GATE_PASS_SECOND_AND_INTEGRATION_PENDING",
+  "candidateRevision": "aad6bb90951120b09771a23f58d5b662713e7a5a",
+  "artifacts": {
+    "final-spec-followup-aad6bb90-bindings.json": {
+      "sourceName": "final-spec-followup-aad6bb90-bindings.json",
+      "sha256": "1ed2ed375cb591a54f21fefdd664bb2e2a030cfb38768c9824af720b6b025ae5"
+    },
+    "final-spec-followup-aad6bb90-static.log": {
+      "sourceName": "final-spec-followup-aad6bb90-static.log",
+      "sha256": "a1bd81bfc6d9491613438799b7ea9cf3e41d14b2584a6a6041db50d742d39b3f"
+    },
+    "final-spec-followup-aad6bb90-static.py.txt": {
+      "sourceName": "final-spec-followup-aad6bb90-static.py",
+      "sha256": "85744a80cb8cac81b28e3e84a4bedd9e8629ecd9a7f9f751c6cbb83cd9a265ee"
+    },
+    "final-spec-followup-aad6bb90.md": {
+      "sourceName": "final-spec-followup-aad6bb90.md",
+      "sha256": "0da2a3a9cbc6f24364e710644081b3b0b518eef961ce6565305d1f9b28ee5fcf"
+    },
+    "final-standards-followup-aad6bb90-bindings.json": {
+      "sourceName": "final-standards-followup-aad6bb90-bindings.json",
+      "sha256": "58f3dfe6ddf8868e068366cb7174295867d229dcc1be11b8f31ef22882cdd06d"
+    },
+    "final-standards-followup-aad6bb90-static.log": {
+      "sourceName": "final-standards-followup-aad6bb90-static.log",
+      "sha256": "3bb958a02d008596006e99c039369f585cec370285676d6458db44d9d4b7c890"
+    },
+    "final-standards-followup-aad6bb90.md": {
+      "sourceName": "final-standards-followup-aad6bb90.md",
+      "sha256": "b4099c2e4751b2f3dcc2d0a585b62de9904fe0faf18c3400ac296da8b71fcdbc"
+    },
+    "final-spec-exit-envelope-aad6bb90-closure.json": {
+      "sourceName": "final-spec-exit-envelope-aad6bb90-closure.json",
+      "sha256": "b4ebc3ec622b0842fc8d035a4da807546e54dddfc473a89e3778a1a60d4e4678"
+    },
+    "final-spec-exit-envelope-aad6bb90-closure.md": {
+      "sourceName": "final-spec-exit-envelope-aad6bb90-closure.md",
+      "sha256": "5afc670d79d0ee4a1b9b7b702a06a4430357b3e4d6a27624ea4c3362d13ff2ba"
+    },
+    "final-spec-exit-envelope-aad6bb90.json": {
+      "sourceName": "final-spec-exit-envelope-aad6bb90.json",
+      "sha256": "561551da07e060a9a608dd83a76be603a7f76c9f20a6c60cb7a8fe0130e9ac7c"
+    },
+    "final-spec-exit-envelope-aad6bb90.md": {
+      "sourceName": "final-spec-exit-envelope-aad6bb90.md",
+      "sha256": "3e3b821bb6eb3316b05745ad48c85b1d22c994923d7db7a85e2c1be4335532c0"
+    },
+    "old-linked-rollback-proof-aad6bb90.json": {
+      "sourceName": "old-linked-rollback-proof-aad6bb90.json",
+      "sha256": "3de61845225b9f9a9bcef5fa6b375ba2ea45a49f89c9b2a249a266b152e153c9"
+    },
+    "old-linked-rollback-aad6bb90.log": {
+      "sourceName": "old-linked-rollback-aad6bb90.log",
+      "sha256": "042e463bb6d06bd05ddd7f7fdca123015bcd4c43ecc7ca9146f22b8d8177d99d"
+    },
+    "rollback-proof-refresh-manifest-aad6bb90.json": {
+      "sourceName": "rollback-proof-refresh-manifest-aad6bb90.json",
+      "sha256": "4c74dd50741dac56cb99bd1f4c07e003576429c5b5314edfba557fc74681b777"
+    },
+    "probe-old-linked-rollback-aad6bb90.py.txt": {
+      "sourceName": "probe-old-linked-rollback-aad6bb90.py",
+      "sha256": "800d7e0b1f36c6361bf22481298666776f838a342e6db64a58255e21bb6fb957"
+    },
+    "probe-pinned-linked-api.py.txt": {
+      "sourceName": "probe-pinned-linked-api.py",
+      "sha256": "3d50b0c50cb3f6374862bf47a0f48aa270c8af803e97435f1bd822d4c1fe83e7"
+    },
+    "review-aad6bb90-adoption-check.json": {
+      "sourceName": "review-aad6bb90-adoption-check.json",
+      "sha256": "859ea8830d8b6394afd1c1cc67ffae840ad6b0ed9468e8841c0387fe80068364"
+    },
+    "deployment-state-aad6bb90.json": {
+      "sourceName": "deployment-state-aad6bb90.json",
+      "sha256": "5b345d6d0d7156018862b397488215430032f0c31718420aff39a51fe0a0820e"
+    },
+    "github-release-aad6bb90.json": {
+      "sourceName": "github-release-aad6bb90.json",
+      "sha256": "11f11d6852b4de0996fe9bf4c6339b09dc5fce03a95a7abec2084dd7bf908f73"
+    },
+    "first-exit-gate-verification.json": {
+      "sourceName": "first-exit-gate-verification.json",
+      "sha256": "6436ac7fceb0e2c221aa7f55320c15672ac8016792a11007e8ed15211c4a1c7a"
+    }
+  },
+  "firstGate": {
+    "revision": "aad6bb90951120b09771a23f58d5b662713e7a5a",
+    "canonicalDigest": "sha256:159a7a200f226e857778508abb47d7f45d9a0bfaee30b5c393a2bf457c0fe7b6",
+    "transcriptDigest": "sha256:30382a344a3b6d5441f74189b97fa795a81dfd6d3c28a5669cb4530490d038df",
+    "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+    "startedAt": "2026-09-13T19:24:58.373Z",
+    "executedAt": "2026-09-13T19:46:10.454Z",
+    "checkCount": 11,
+    "previousPassingRevision": null
+  },
+  "reviews": "Spec and Standards bounded reviews PASS; final Spec exit envelope covers #146 apart from gate pair and protected/exact-main integration.",
+  "limits": [
+    "No full capability exit before #152.",
+    "Two pre-existing optional backend skips and one optional validation-observation Python skip; required database and browser lanes passed.",
+    "Supabase advisors: zero blocking security/error findings, 60 performance warnings.",
+    "No hosted migration, provider activation, real filing or production promotion."
+  ]
+}

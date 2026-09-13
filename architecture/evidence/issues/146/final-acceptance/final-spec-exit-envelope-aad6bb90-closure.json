@@ -1,0 +1,52 @@
+{
+  "verdict": "PASS_ENVELOPE_COVERED_PENDING_GATES_AND_INTEGRATION",
+  "candidateRevision": "aad6bb90951120b09771a23f58d5b662713e7a5a",
+  "supersedesGap": "DEPLOYMENT_RETENTION_CURRENT_SQL",
+  "initialMappingSha256": "561551da07e060a9a608dd83a76be603a7f76c9f20a6c60cb7a8fe0130e9ac7c",
+  "oldBackendHashCount": 157,
+  "pinnedSourceAndGitVerified": true,
+  "migrationArtifactsVerified": {
+    "supabase/rollback/20260913171000_company_tax_settlement_expand.sql": "f2e79ac013f608582e29ebd32bbbb047d0b105a1cac9db8b1905387e0094f687",
+    "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql": "28842782cf47aea849ba25e8dc672c98f0453852ba8cf157e5a58f725209c206",
+    "supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql": "99b636f296f92096fccceb45c8d5c1724ab8e75bc33db71cb93ccc59da221271"
+  },
+  "resultsVerified": [
+    {
+      "name": "original-receipt",
+      "status": 201,
+      "replayed": true,
+      "entryId": "f4b839b9-7588-428a-9d9f-ac803ddd6ee4"
+    },
+    {
+      "name": "fresh-linked-payment",
+      "status": 201,
+      "replayed": false,
+      "entryId": "cfb33111-898d-4fa0-9244-cf058eec17c1"
+    },
+    {
+      "name": "linked-payment-replay",
+      "status": 201,
+      "replayed": true,
+      "entryId": "cfb33111-898d-4fa0-9244-cf058eec17c1"
+    }
+  ],
+  "sourceBindings": {
+    "rollback-proof-refresh-manifest-aad6bb90.json": "4c74dd50741dac56cb99bd1f4c07e003576429c5b5314edfba557fc74681b777",
+    "old-linked-rollback-proof-aad6bb90.json": "3de61845225b9f9a9bcef5fa6b375ba2ea45a49f89c9b2a249a266b152e153c9",
+    "old-linked-rollback-aad6bb90.log": "042e463bb6d06bd05ddd7f7fdca123015bcd4c43ecc7ca9146f22b8d8177d99d",
+    "probe-old-linked-rollback-aad6bb90.py": "800d7e0b1f36c6361bf22481298666776f838a342e6db64a58255e21bb6fb957",
+    "probe-pinned-linked-api.py": "3d50b0c50cb3f6374862bf47a0f48aa270c8af803e97435f1bd822d4c1fe83e7"
+  },
+  "reportSha256": "5afc670d79d0ee4a1b9b7b702a06a4430357b3e4d6a27624ea4c3362d13ff2ba",
+  "remaining": [
+    "Two linked complete immutable customer-ready gates and committed verified evidence",
+    "Protected integration and exact-main Release/Preview evidence",
+    "Truthful final receipt/metadata and issue closure after acceptance"
+  ],
+  "limits": [
+    "No independent DB rerun",
+    "Synthetic verified actor, real restricted adapter/API",
+    "No fullstage10 or#152credit",
+    "Private refresh proof not yet claimed committed"
+  ]
+}

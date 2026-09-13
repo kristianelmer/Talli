@@ -1,0 +1,18 @@
+{
+  "candidate": "aad6bb90951120b09771a23f58d5b662713e7a5a",
+  "specCandidateBindings": "PASS",
+  "reviews": [
+    {
+      "axis": "spec",
+      "reportSha256": "0da2a3a9cbc6f24364e710644081b3b0b518eef961ce6565305d1f9b28ee5fcf",
+      "bindingsSha256": "1ed2ed375cb591a54f21fefdd664bb2e2a030cfb38768c9824af720b6b025ae5"
+    },
+    {
+      "axis": "standards",
+      "reportSha256": "b4099c2e4751b2f3dcc2d0a585b62de9904fe0faf18c3400ac296da8b71fcdbc",
+      "bindingsSha256": "58f3dfe6ddf8868e068366cb7174295867d229dcc1be11b8f31ef22882cdd06d"
+    }
+  ],
+  "standardsCandidateBindings": "PASS",
+  "exitEnvelopeClosureBindings": "PASS"
+}

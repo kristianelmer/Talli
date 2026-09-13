@@ -1,0 +1,51 @@
+import ast,hashlib,json,pathlib,re,subprocess
+OUT=pathlib.Path(__file__).parent
+BASE='096dab57a8593f6df16a2b3e82a382e3d95a9b4f'; REV='aad6bb90951120b09771a23f58d5b662713e7a5a'
+def get(rev,path):return subprocess.check_output(['git','show',rev+':'+path])
+def sha(body):return hashlib.sha256(body).hexdigest()
+path='supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql';before=get(BASE,path).decode();after=get(REV,path).decode()
+role='company_tax_filing_identity_guard_owner,'
+assert after.count(role)==2
+assert after.replace(role,'')==before
+assert after.index('begin;')<after.index("execute format('grant "+role)<after.index('do $document_retention$')<after.index("execute format('revoke "+role)<after.rindex('commit;')
+assert 'into v_sql,v_owner from pg_proc' in after and "grant execute on function company_tax_filing.has_document_reference_v1(uuid),ledger.has_document_memo_reference_v1(uuid,uuid) to %I',v_owner" in after
+print('PASS exact two-role-list change, balanced transactional membership, actual retention-owner target, unchanged SQL body')
+for p in ['supabase/migrations/20260913171000_company_tax_settlement_expand.sql','supabase/rollback/20260913171000_company_tax_settlement_expand.sql','supabase/rollback/20260913173000_company_tax_settlement_contract.sql','architecture/evidence/issues/146/requirements.json']:
+ assert get(BASE,p)==get(REV,p)
+print('PASS expansion, both rollback artifacts, requirements unchanged')
+p='apps/backend/tests/test_company_tax_filing_database.py'; a=ast.parse(get(REV,p)); old=ast.parse(get(BASE,p));removed=0
+for n in ast.walk(a):
+ if isinstance(n,ast.FunctionDef) and n.name=='test_document_removal_retains_tax_references_through_deployment_phases':
+  for i,x in enumerate(n.body):
+   if isinstance(x,ast.Expr) and isinstance(x.value,ast.Call) and x.value.args and isinstance(x.value.args[0],ast.Constant) and x.value.args[0].value=='revoke banking_store_owner,documents_store_owner,company_tax_filing_store_owner from postgres':
+    assert i==4; n.body.pop(i);removed+=1;break
+assert removed==1 and ast.dump(a,include_attributes=False)==ast.dump(old,include_attributes=False)
+print('PASS test adds only pre-phase fixture role revocation; all assertions and outer rollback preserved')
+prefix='architecture/evidence/issues/146/retention-permission-followup/';m=json.loads(get(REV,prefix+'manifest.json'));adopted=[]
+for p,entry in m['artifacts'].items():
+ assert sha(get(REV,prefix+p))==entry['sha256'],p
+ original=OUT/entry['sourceName']
+ if p.startswith('final-spec-') and original.exists():
+  assert original.read_bytes()==get(REV,prefix+p);adopted.append(p)
+assert len(m['artifacts'])==15 and len(adopted)==6
+log=get(REV,m['failure']['gateTranscript']);assert sha(log)==m['failure']['gateTranscriptSha256']
+assert b'2 failed, 20 passed' in log and b'[database-isolation] exit=1' in log
+assert m['failure']['exitCredit'] is False and m['probe']['exitCredit'] is False
+print('PASS 15 committed artifact hashes, 6 byte-exact Spec adoptions, failed-gate hash/failure/limits')
+for p in ['architecture/database-catalog.json','architecture/evidence/issues/146/source-read-retirements.json']:
+ payload=json.loads(get(REV,p));matches=[]
+ def walk(x):
+  if isinstance(x,dict):
+   if x.get('path')==path and 'sha256' in x:matches.append(x['sha256'])
+   for y in x.values():walk(y)
+  elif isinstance(x,list):
+   for y in x:walk(y)
+ walk(payload);assert matches and all(v==sha(after.encode()) for v in matches)
+print('PASS both refreshed artifact inventories bind exact cutover bytes')
+changes=subprocess.check_output(['git','diff','--name-only',BASE+'...'+REV],text=True).splitlines()
+extra=['supabase/migrations/20260913171000_company_tax_settlement_expand.sql','supabase/rollback/20260913171000_company_tax_settlement_expand.sql','supabase/rollback/20260913173000_company_tax_settlement_contract.sql','architecture/evidence/issues/146/requirements.json','architecture/evidence/issues/146/characterization-and-cutover-plan.md']
+bindings=[]
+for p in changes+extra:
+ r=subprocess.run(['git','show',BASE+':'+p],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+ bindings.append({'path':p,'candidateSha256':sha(get(REV,p)),'baseSha256':sha(r.stdout) if r.returncode==0 else None})
+(OUT/'final-spec-followup-aad6bb90-bindings.json').write_text(json.dumps({'axis':'Spec','verdict':'PASS_BOUNDED_NO_ACTIONABLE_FINDINGS','baseRevision':BASE,'candidateRevision':REV,'bindings':bindings,'checks':{'staticGroupsPassed':5,'manifestArtifactsVerified':15,'byteExactPriorSpecAdoptions':adopted,'failureTranscriptVerified':True,'sqlExecuted':False,'gateExitCredit':False}},indent=2)+'\n')

@@ -100,9 +100,8 @@
     "Original Audit continuation placement and identity remain unchanged."
   ],
   "remainingWork": [
-    "Independent review of the four-line Governance topology detector correction",
-    "Two linked complete immutable customer-ready gates",
-    "Protected integration and slice completion receipt",
+    "Second linked complete immutable customer-ready gate",
+    "Independent pair verification, protected integration and exact-main receipt",
     "Full company-tax capability exit remains #152"
   ],
   "claim": {
@@ -112,7 +111,17 @@
   },
   "implementationCheckpoint": {
     "scope": "Canonical Tax capture, backend preview, hydrated web transport, Archive source, final contract and both rollbacks implemented; full gates and protected integration pending.",
-    "verification": "verification-followups/manifest.json",
-    "architecture": "PASS at working implementation checkpoint; no exit gate credit."
+    "verification": "final-acceptance/manifest.json",
+    "architecture": "PASS at working implementation checkpoint; no exit gate credit.",
+    "firstExitGate": {
+      "revision": "aad6bb90951120b09771a23f58d5b662713e7a5a",
+      "canonicalDigest": "sha256:159a7a200f226e857778508abb47d7f45d9a0bfaee30b5c393a2bf457c0fe7b6",
+      "transcriptDigest": "sha256:30382a344a3b6d5441f74189b97fa795a81dfd6d3c28a5669cb4530490d038df",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "startedAt": "2026-09-13T19:24:58.373Z",
+      "executedAt": "2026-09-13T19:46:10.454Z",
+      "checkCount": 11,
+      "previousPassingRevision": null
+    }
   }
 }
