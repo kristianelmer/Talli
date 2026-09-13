@@ -1,0 +1,105 @@
+{
+  "verdict": "PASS_BOUNDED_ACCEPTANCE_DOCUMENTATION_STANDARDS",
+  "candidateRevision": "fd78d3bbcf563dbc991f84c703b6816e088bca26",
+  "previousPassingRevision": "50f969c04f4eabbe17ee2fcee36ac652d5ddcc05",
+  "ciRun": 34782102914,
+  "originalCriteriaUnchanged": 6,
+  "closedFinding": "Clarify retired predecessor backend implementation versus preserved v1 API",
+  "pairVerdictAtInspection": "PASS_TWO_LINKED_LOCAL_GATES_PENDING_COMMITTED_SECOND_RECEIPT",
+  "gates": [
+    {
+      "revision": "50f969c04f4eabbe17ee2fcee36ac652d5ddcc05",
+      "checks": 11,
+      "verdict": "pass",
+      "previousPassingRevision": "aad6bb90951120b09771a23f58d5b662713e7a5a",
+      "transcriptDigest": "sha256:55adddb7df82958060fa9167bbb7e0f95c8cf89c7c1d49952e2f617a555e4f5f"
+    },
+    {
+      "revision": "fd78d3bbcf563dbc991f84c703b6816e088bca26",
+      "checks": 11,
+      "verdict": "pass",
+      "previousPassingRevision": "50f969c04f4eabbe17ee2fcee36ac652d5ddcc05",
+      "transcriptDigest": "sha256:1b5a0dcf96f19f3aa8a1bcb02a99a6806babcdfe97937125d46d564fe3296b99"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/exit-verification-fd78.md",
+      "sha256": "b5db9be0c28f275a0d9a1d257fac02a20ccdf68f09844b97e83a18215ca120cd"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/pr212-final-fd78.md",
+      "sha256": "6fc2b1ee22e5371d45be6e3e0f35053af30add8ab05b64381606608890f3d6d7"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/github-release-fd78d3bb.json",
+      "sha256": "bd06303e28877dfd6bfc2b4cd6aa0ba70f905458b611b677c12fde7d75131f70"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/github-complete-fd78d3bb.log",
+      "sha256": "cc00d71441a98b69f79afcfd0e41d71a3fd234f2cf6dabc8271426b3d82de958"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/updated-gate-pair-root-fd78d3bb.json",
+      "sha256": "05324d43bb155bc197b1ffc599d420166b8340ae122bb064bb52ba50fb2c5114"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/updated-gate-pair-independent-review-fd78d3bb.json",
+      "sha256": "f4a77dfc6e17dbd509174200fb396eb8ec13f5baf0de3ae86241d0ac6af9f6ba"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/final-spec-exit-envelope-aad6bb90-closure.md",
+      "sha256": "5afc670d79d0ee4a1b9b7b702a06a4430357b3e4d6a27624ea4c3362d13ff2ba"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/old-linked-rollback-proof-aad6bb90.json",
+      "sha256": "3de61845225b9f9a9bcef5fa6b375ba2ea45a49f89c9b2a249a266b152e153c9"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/final-standards-followup-fd78d3bb.md",
+      "sha256": "61c7466dddf8d6cd33fb9ce23790e023468fe5ff4eb3ebf5bd7d9a97c247cf26"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/final-standards-followup-fd78d3bb-bindings.json",
+      "sha256": "5ea0d8be3a6d4ff4a38b1106c56cfb48959a24fca67fb97981b6bbcfcbb81323"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/production-freeze-8ba10ae6.json",
+      "sha256": "9a80d1b698ee1e95303116d3efbea7f7ba7eccf2b5cf5470bbcd0eca8ec4a4a0"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/architecture/evidence/customer-ready-gates/50f969c04f4eabbe17ee2fcee36ac652d5ddcc05.json",
+      "sha256": "a91287475c292accc8da5f43936beabc021d16164391c83830e6cd303bf821cb"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/architecture/evidence/customer-ready-gates/50f969c04f4eabbe17ee2fcee36ac652d5ddcc05.log",
+      "sha256": "55adddb7df82958060fa9167bbb7e0f95c8cf89c7c1d49952e2f617a555e4f5f"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/architecture/evidence/customer-ready-gates/fd78d3bbcf563dbc991f84c703b6816e088bca26.json",
+      "sha256": "4f4fdb4597a25697fde97ab96743596a87ac174cf78420d78632e2d89708e026"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/architecture/evidence/customer-ready-gates/fd78d3bbcf563dbc991f84c703b6816e088bca26.log",
+      "sha256": "1b5a0dcf96f19f3aa8a1bcb02a99a6806babcdfe97937125d46d564fe3296b99"
+    }
+  ],
+  "sourceBindings": [
+    {
+      "revision": "51ce44051bf11a3935d10f1b315b70a22eacac22",
+      "path": "architecture/evidence/issues/146/requirements.json",
+      "sha256": "3e95a29b7d45993d41ae2a170f9bd34347a9ebbeb297af512d9678aa4f876ee0"
+    },
+    {
+      "revision": "fd78d3bbcf563dbc991f84c703b6816e088bca26",
+      "path": "architecture/evidence/issues/146/requirements.json",
+      "sha256": "3386361a58c64e0a20a9cd519d7dd1027fa034a21108767b59f0cafcba6451cb"
+    }
+  ],
+  "limits": [
+    "No new runtime/test execution",
+    "No protected integration or exact-main acceptance",
+    "No full Company Tax stage/#152 or hosted production exit",
+    "Pending committed receipt reread as identified by independent pair review"
+  ]
+}

@@ -1,0 +1,6 @@
+PASS: complete executable delta is the bounded response wait; all other source bytes unchanged
+PASS: 5 artifact digests and raw decompressed transcript digest
+PASS: extracted block success; matching predicate rejects unrelated requests; one click; queries=1; fill -> registered -> click -> finished-await -> query
+PASS: extracted block status; matching predicate rejects unrelated requests; one click; queries=0; fill -> registered -> click
+PASS: extracted block finished; matching predicate rejects unrelated requests; one click; queries=0; fill -> registered -> click -> finished-await
+Runtime v24.20.0; static/mock only, no browser or database execution

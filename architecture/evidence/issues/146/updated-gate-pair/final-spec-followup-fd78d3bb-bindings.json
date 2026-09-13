@@ -1,0 +1,72 @@
+{
+  "verdict": "PASS_BOUNDED_SPEC_GATE_LINK_ELIGIBLE_IF_CURRENT_COMPLETE_PASS",
+  "baseRevision": "42ebfe85dde961db158d116e84583a74075bde91",
+  "candidateRevision": "fd78d3bbcf563dbc991f84c703b6816e088bca26",
+  "priorPassingRevision": "50f969c04f4eabbe17ee2fcee36ac652d5ddcc05",
+  "sourceBindings": [
+    {
+      "path": "architecture/evidence/issues/146/browser-sync-followup/manifest.json",
+      "sha256": "247c1d11e2c76edf8e7bb6310959979e10847a96dbfd8f719df9ceeb836e3495"
+    },
+    {
+      "path": "architecture/evidence/issues/146/browser-sync-followup/rf-comment-probe-green-30x-source.mjs.txt",
+      "sha256": "c34ab0202bb030973970983428c57a77a1f210868e4a8ef494f770542494f289"
+    },
+    {
+      "path": "architecture/evidence/issues/146/browser-sync-followup/rf-comment-probe-green-30x.log",
+      "sha256": "245fc8420ce4eb2cd65d554aa0c2cbe9b5475d28f412245ea10b854a525f7c76"
+    },
+    {
+      "path": "architecture/evidence/issues/146/browser-sync-followup/rf-comment-probe-pass-6x.log",
+      "sha256": "2baf5c875aa5ae6ed15f371560a1bf5030b90639ada0daff49fc9bd5d88eed76"
+    },
+    {
+      "path": "architecture/evidence/issues/146/browser-sync-followup/rf-comment-probe-red-30x-source.mjs.txt",
+      "sha256": "0648e59331deb0c89de9d003bf09de66c901c8c7b7313ae57672c2c7a6c1384d"
+    },
+    {
+      "path": "architecture/evidence/issues/146/browser-sync-followup/rf-comment-probe-red-30x.log.gz",
+      "sha256": "641af4a24946f050b8db30c3170dfe0e234f68bc864d50e326a43be1c08df87d"
+    },
+    {
+      "path": "architecture/evidence/issues/146/requirements.json",
+      "sha256": "3386361a58c64e0a20a9cd519d7dd1027fa034a21108767b59f0cafcba6451cb"
+    },
+    {
+      "path": "tests/browser_shareholder_register_filing.mjs",
+      "sha256": "5be0d84a77b1f2b791be5856d9a35eabd585fc93793d3d9ebb28ebf598d861d9"
+    },
+    {
+      "path": "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md",
+      "sha256": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482"
+    }
+  ],
+  "evidenceChecks": {
+    "manifestHashesVerified": 5,
+    "redUncompressedSha256": "686a64d599851108b50f44d5b284635f2a8012a04646c887c1566c80ae843bc1",
+    "greenSourceIdenticalAfterOnlyReviewedWaitDelta": true,
+    "sixCriteriaUnchanged": true,
+    "onlyNonEvidenceChangeSincePriorGate": "tests/browser_shareholder_register_filing.mjs"
+  },
+  "independentChecks": {
+    "runtime": "Node v24.20.0",
+    "casesPassed": 7,
+    "realBrowserOrDatabaseExecuted": false
+  },
+  "privateArtifacts": {
+    "final-spec-followup-fd78d3bb-check.log": "1669c30bf321bce248ac0501b48f1e2fdba5f1a8c45421dd452e42b6abf57d96",
+    "final-spec-followup-fd78d3bb-check.mjs": "e2adbe1e987e8b4089bd0e41ece843f8a0fd7dea6e67dc0b3b635a11957efd7e",
+    "final-spec-followup-fd78d3bb-input.json": "02dcdf2a5356c4c546d7a63f6a6f7f8a5fc7527dc05bd5fab303880b31fc660f"
+  },
+  "reportSha256": "160e0ff6bd831083c4eca4dcc720b90f4db4bc53bfcb41c773825d6287a65326",
+  "gateRuleSource": {
+    "privateIssue132": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/issue132-with-comments.md",
+    "sha256": "6c1bc0d88cf93369f1551f8cacecd00c3f72916a11c31c8b491d512338011fec"
+  },
+  "limits": [
+    "Current completegate not yet accepted",
+    "Final50f\u2192fd78 receipts/link/storage reread required",
+    "Exacthead CI/Preview andprotected/exactmain pending",
+    "No#152exitcredit"
+  ]
+}
