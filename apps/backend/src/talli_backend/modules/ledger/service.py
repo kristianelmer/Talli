@@ -2283,23 +2283,7 @@ class LedgerService:
         self, command: PostTaxSettlementCommand
     ) -> PostedLedgerEntry:
         _positive(command.amount, "LEDGER_INVALID_INPUT")
-        if command.settlement_kind is TaxSettlementKind.PAYABLE:
-            lines = (
-                LedgerLine("8300", "Skattekostnad", command.amount, _ZERO),
-                LedgerLine("2500", "Betalbar skatt", _ZERO, command.amount),
-            )
-        elif command.settlement_kind is TaxSettlementKind.REFUND:
-            lines = (
-                LedgerLine(
-                    "1920", "Skatterefusjon mottatt", command.amount, _ZERO
-                ),
-                LedgerLine("1570", "Skatt til gode", _ZERO, command.amount),
-            )
-        else:
-            lines = (
-                LedgerLine("2500", "Betalt skatt", command.amount, _ZERO),
-                LedgerLine("1920", "Bank", _ZERO, command.amount),
-            )
+        lines = tax_settlement_preview_lines(command.settlement_kind, command.amount)
         _balanced(lines)
         return await self._persistence.post_entry(
             command,
@@ -2387,3 +2371,27 @@ class LedgerService:
             cursor=cursor,
             limit=limit,
         )
+
+
+def tax_settlement_preview_lines(
+    settlement_kind: TaxSettlementKind, amount: Money
+) -> tuple[LedgerLine, ...]:
+    """Ledger-owned presentation; zero is a preview only, never a valid posting."""
+    if settlement_kind is TaxSettlementKind.PAYABLE:
+        lines = (
+            LedgerLine("8300", "Skattekostnad", amount, _ZERO),
+            LedgerLine("2500", "Betalbar skatt", _ZERO, amount),
+        )
+    elif settlement_kind is TaxSettlementKind.REFUND:
+        lines = (
+            LedgerLine(
+                "1920", "Skatterefusjon mottatt", amount, _ZERO
+            ),
+            LedgerLine("1570", "Skatt til gode", _ZERO, amount),
+        )
+    else:
+        lines = (
+            LedgerLine("2500", "Betalt skatt", amount, _ZERO),
+            LedgerLine("1920", "Bank", _ZERO, amount),
+        )
+    return lines

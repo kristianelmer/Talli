@@ -43,7 +43,8 @@
       "ReconstructionEconomicFactCandidates",
       "ReconstructionEconomicFactSnapshot",
       "ReversedLedgerEntry",
-      "OpeningBankInput"
+      "OpeningBankInput",
+      "preview_tax_settlement_lines"
     ],
     "events": [],
     "errors": [

@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#146",
   "source": "https://github.com/kristianelmer/Talli/issues/146",
-  "status": "ENTRY_INDEPENDENTLY_VERIFIED_PENDING_CLAIM",
+  "status": "CLAIMED_CHARACTERIZATION",
   "entryRevision": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
   "predecessor": {
     "issue": "#151",
@@ -80,15 +80,14 @@
     "Original Audit continuation placement and identity remain unchanged."
   ],
   "remainingWork": [
-    "Serialized claim",
     "Characterization and complete owned slice implementation",
     "Migration, rollback, RLS, generated-client and browser verification",
     "Independent reviews, immutable gates and protected integration",
     "Full company-tax stage exit remains#152"
   ],
   "claim": {
-    "status": "NOT_CLAIMED",
+    "status": "CLAIMED",
     "branch": "codex/issue-146-tax-settlement-d060",
-    "url": null
+    "url": "https://github.com/kristianelmer/Talli/issues/146#issuecomment-5654370153"
   }
 }

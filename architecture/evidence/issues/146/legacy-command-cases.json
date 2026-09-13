@@ -1,0 +1,1593 @@
+{
+  "revision": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
+  "recordedAt": "2026-09-13T16:03:12.832496+00:00",
+  "scope": "Actual released FastAPI route, Ledger application/service and Supabase adapter against PostgreSQL 17 in the pinned Ledger expansion fixture. Authentication is synthetic known-subject injection; does not certify remote authentication, current sibling contracted topology, browser or Audit continuation. Requests execute the actual restricted ledger_workflow_executor transaction.",
+  "cases": [
+    {
+      "name": "payable",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "69f11e69-1674-49e6-a33e-c28bc85a4123",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payable",
+        "documentStatus": "attached",
+        "bankTransactionId": null,
+        "documentId": "4a8c240b-95b6-4e46-aaae-a5c4ad46cbd5"
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "69f11e69-1674-49e6-a33e-c28bc85a4123",
+      "correlationId": "69f11e69-1674-49e6-a33e-c28bc85a4123",
+      "status": 201,
+      "response": {
+        "postedEntry": {
+          "entryId": "8342ae46-b3f7-4ebe-8067-a08cedd2c765",
+          "companyId": "10000000-0000-0000-0000-000000000001",
+          "incomeYear": 2026,
+          "entryKind": "TAX_SETTLEMENT",
+          "postedAt": "2026-09-13T16:03:11.929948Z",
+          "replayed": false
+        },
+        "replayed": false
+      },
+      "rows": [
+        {
+          "action": {
+            "id": "69f11e69-1674-49e6-a33e-c28bc85a4123",
+            "payload": {
+              "amount": 125.5,
+              "document_id": "4a8c240b-95b6-4e46-aaae-a5c4ad46cbd5",
+              "document_status": "attached",
+              "settlement_date": "2026-04-15",
+              "settlement_type": "payable",
+              "bank_transaction_id": null
+            },
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:11.918774+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "risk_level": "ready",
+            "action_date": "2026-04-15",
+            "action_type": "tax_settlement",
+            "document_id": "4a8c240b-95b6-4e46-aaae-a5c4ad46cbd5",
+            "income_year": 2026,
+            "blocker_code": null,
+            "ledger_entry_id": "8342ae46-b3f7-4ebe-8067-a08cedd2c765",
+            "bank_transaction_id": null
+          },
+          "entry": {
+            "id": "8342ae46-b3f7-4ebe-8067-a08cedd2c765",
+            "memo": "Skatteoppgj\u00f8r: payable",
+            "lines": [
+              {
+                "debit": 125.5,
+                "credit": 0.0,
+                "account": "8300",
+                "currency": "NOK",
+                "description": "Skattekostnad"
+              },
+              {
+                "debit": 0.0,
+                "credit": 125.5,
+                "account": "2500",
+                "currency": "NOK",
+                "description": "Betalbar skatt"
+              }
+            ],
+            "setup_id": null,
+            "posted_at": "2026-09-13T16:03:11.929948+00:00",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:11.929948+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "entry_kind": "TAX_SETTLEMENT",
+            "risk_flags": [],
+            "income_year": 2026,
+            "correlation_id": "69f11e69-1674-49e6-a33e-c28bc85a4123",
+            "source_record_id": "69f11e69-1674-49e6-a33e-c28bc85a4123",
+            "source_capability": "COMPANY_TAX_FILING",
+            "warning_accepted_at": null,
+            "warning_accepted_by": null
+          }
+        }
+      ],
+      "bank": []
+    },
+    {
+      "name": "payment-bank-date-independent",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "77b82552-08e5-4a60-b782-b038a663c44b",
+        "documentId": "cf67c40c-9a50-444e-9099-8f3af27ff7c8"
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+      "correlationId": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+      "status": 201,
+      "response": {
+        "postedEntry": {
+          "entryId": "765070bf-bc18-4f94-941c-486169641fe2",
+          "companyId": "10000000-0000-0000-0000-000000000001",
+          "incomeYear": 2026,
+          "entryKind": "TAX_SETTLEMENT",
+          "postedAt": "2026-09-13T16:03:12.004064Z",
+          "replayed": false
+        },
+        "replayed": false
+      },
+      "rows": [
+        {
+          "action": {
+            "id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "payload": {
+              "amount": 125.5,
+              "document_id": "cf67c40c-9a50-444e-9099-8f3af27ff7c8",
+              "document_status": "attached",
+              "settlement_date": "2026-04-15",
+              "settlement_type": "payment",
+              "bank_transaction_id": "77b82552-08e5-4a60-b782-b038a663c44b"
+            },
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:11.993942+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "risk_level": "ready",
+            "action_date": "2026-04-15",
+            "action_type": "tax_settlement",
+            "document_id": "cf67c40c-9a50-444e-9099-8f3af27ff7c8",
+            "income_year": 2026,
+            "blocker_code": null,
+            "ledger_entry_id": "765070bf-bc18-4f94-941c-486169641fe2",
+            "bank_transaction_id": "77b82552-08e5-4a60-b782-b038a663c44b"
+          },
+          "entry": {
+            "id": "765070bf-bc18-4f94-941c-486169641fe2",
+            "memo": "Skatteoppgj\u00f8r: payment",
+            "lines": [
+              {
+                "debit": 125.5,
+                "credit": 0.0,
+                "account": "2500",
+                "currency": "NOK",
+                "description": "Betalt skatt"
+              },
+              {
+                "debit": 0.0,
+                "credit": 125.5,
+                "account": "1920",
+                "currency": "NOK",
+                "description": "Bank"
+              }
+            ],
+            "setup_id": null,
+            "posted_at": "2026-09-13T16:03:12.004064+00:00",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:12.004064+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "entry_kind": "TAX_SETTLEMENT",
+            "risk_flags": [],
+            "income_year": 2026,
+            "correlation_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "source_record_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "source_capability": "COMPANY_TAX_FILING",
+            "warning_accepted_at": null,
+            "warning_accepted_by": null
+          }
+        }
+      ],
+      "bank": [
+        {
+          "id": "77b82552-08e5-4a60-b782-b038a663c44b",
+          "matched_action_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+          "matched_entry_id": null
+        }
+      ]
+    },
+    {
+      "name": "refund",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "735a0364-61d8-4b18-b9a3-92a002d373b9",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "refund",
+        "documentStatus": "attached",
+        "bankTransactionId": "a95caf4d-8c5f-4bd9-adae-a5151e1c1949",
+        "documentId": null
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "735a0364-61d8-4b18-b9a3-92a002d373b9",
+      "correlationId": "735a0364-61d8-4b18-b9a3-92a002d373b9",
+      "status": 201,
+      "response": {
+        "postedEntry": {
+          "entryId": "e2397cfb-4be2-467e-baa0-bb08731171bc",
+          "companyId": "10000000-0000-0000-0000-000000000001",
+          "incomeYear": 2026,
+          "entryKind": "TAX_SETTLEMENT",
+          "postedAt": "2026-09-13T16:03:12.059354Z",
+          "replayed": false
+        },
+        "replayed": false
+      },
+      "rows": [
+        {
+          "action": {
+            "id": "735a0364-61d8-4b18-b9a3-92a002d373b9",
+            "payload": {
+              "amount": 125.5,
+              "document_id": null,
+              "document_status": "attached",
+              "settlement_date": "2026-04-15",
+              "settlement_type": "refund",
+              "bank_transaction_id": "a95caf4d-8c5f-4bd9-adae-a5151e1c1949"
+            },
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:12.050282+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "risk_level": "ready",
+            "action_date": "2026-04-15",
+            "action_type": "tax_settlement",
+            "document_id": null,
+            "income_year": 2026,
+            "blocker_code": null,
+            "ledger_entry_id": "e2397cfb-4be2-467e-baa0-bb08731171bc",
+            "bank_transaction_id": "a95caf4d-8c5f-4bd9-adae-a5151e1c1949"
+          },
+          "entry": {
+            "id": "e2397cfb-4be2-467e-baa0-bb08731171bc",
+            "memo": "Skatteoppgj\u00f8r: refund",
+            "lines": [
+              {
+                "debit": 125.5,
+                "credit": 0.0,
+                "account": "1920",
+                "currency": "NOK",
+                "description": "Skatterefusjon mottatt"
+              },
+              {
+                "debit": 0.0,
+                "credit": 125.5,
+                "account": "1570",
+                "currency": "NOK",
+                "description": "Skatt til gode"
+              }
+            ],
+            "setup_id": null,
+            "posted_at": "2026-09-13T16:03:12.059354+00:00",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:12.059354+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "entry_kind": "TAX_SETTLEMENT",
+            "risk_flags": [],
+            "income_year": 2026,
+            "correlation_id": "735a0364-61d8-4b18-b9a3-92a002d373b9",
+            "source_record_id": "735a0364-61d8-4b18-b9a3-92a002d373b9",
+            "source_capability": "COMPANY_TAX_FILING",
+            "warning_accepted_at": null,
+            "warning_accepted_by": null
+          }
+        }
+      ],
+      "bank": [
+        {
+          "id": "a95caf4d-8c5f-4bd9-adae-a5151e1c1949",
+          "matched_action_id": "735a0364-61d8-4b18-b9a3-92a002d373b9",
+          "matched_entry_id": null
+        }
+      ]
+    },
+    {
+      "name": "exact-receipt-replay",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "77b82552-08e5-4a60-b782-b038a663c44b",
+        "documentId": "cf67c40c-9a50-444e-9099-8f3af27ff7c8"
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+      "correlationId": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+      "status": 201,
+      "response": {
+        "postedEntry": {
+          "entryId": "765070bf-bc18-4f94-941c-486169641fe2",
+          "companyId": "10000000-0000-0000-0000-000000000001",
+          "incomeYear": 2026,
+          "entryKind": "TAX_SETTLEMENT",
+          "postedAt": "2026-09-13T16:03:12.004064Z",
+          "replayed": true
+        },
+        "replayed": true
+      },
+      "rows": [
+        {
+          "action": {
+            "id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "payload": {
+              "amount": 125.5,
+              "document_id": "cf67c40c-9a50-444e-9099-8f3af27ff7c8",
+              "document_status": "attached",
+              "settlement_date": "2026-04-15",
+              "settlement_type": "payment",
+              "bank_transaction_id": "77b82552-08e5-4a60-b782-b038a663c44b"
+            },
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:11.993942+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "risk_level": "ready",
+            "action_date": "2026-04-15",
+            "action_type": "tax_settlement",
+            "document_id": "cf67c40c-9a50-444e-9099-8f3af27ff7c8",
+            "income_year": 2026,
+            "blocker_code": null,
+            "ledger_entry_id": "765070bf-bc18-4f94-941c-486169641fe2",
+            "bank_transaction_id": "77b82552-08e5-4a60-b782-b038a663c44b"
+          },
+          "entry": {
+            "id": "765070bf-bc18-4f94-941c-486169641fe2",
+            "memo": "Skatteoppgj\u00f8r: payment",
+            "lines": [
+              {
+                "debit": 125.5,
+                "credit": 0.0,
+                "account": "2500",
+                "currency": "NOK",
+                "description": "Betalt skatt"
+              },
+              {
+                "debit": 0.0,
+                "credit": 125.5,
+                "account": "1920",
+                "currency": "NOK",
+                "description": "Bank"
+              }
+            ],
+            "setup_id": null,
+            "posted_at": "2026-09-13T16:03:12.004064+00:00",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:12.004064+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "entry_kind": "TAX_SETTLEMENT",
+            "risk_flags": [],
+            "income_year": 2026,
+            "correlation_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "source_record_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "source_capability": "COMPANY_TAX_FILING",
+            "warning_accepted_at": null,
+            "warning_accepted_by": null
+          }
+        }
+      ],
+      "bank": [
+        {
+          "id": "77b82552-08e5-4a60-b782-b038a663c44b",
+          "matched_action_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+          "matched_entry_id": null
+        }
+      ]
+    },
+    {
+      "name": "same-key-changed-amount",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "126.00",
+          "currency": "NOK"
+        },
+        "settlementKind": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "77b82552-08e5-4a60-b782-b038a663c44b",
+        "documentId": "cf67c40c-9a50-444e-9099-8f3af27ff7c8"
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+      "correlationId": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+      "status": 409,
+      "response": {
+        "type": "https://talli.no/problems/ledger-idempotency-key-reused",
+        "title": "Ledger request failed",
+        "status": 409,
+        "detail": "The ledger request could not be completed.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "LEDGER_IDEMPOTENCY_KEY_REUSED",
+        "requestId": "39192bf9-7073-4d5e-8754-b86085dd68bf"
+      },
+      "rows": [
+        {
+          "action": {
+            "id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "payload": {
+              "amount": 125.5,
+              "document_id": "cf67c40c-9a50-444e-9099-8f3af27ff7c8",
+              "document_status": "attached",
+              "settlement_date": "2026-04-15",
+              "settlement_type": "payment",
+              "bank_transaction_id": "77b82552-08e5-4a60-b782-b038a663c44b"
+            },
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:11.993942+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "risk_level": "ready",
+            "action_date": "2026-04-15",
+            "action_type": "tax_settlement",
+            "document_id": "cf67c40c-9a50-444e-9099-8f3af27ff7c8",
+            "income_year": 2026,
+            "blocker_code": null,
+            "ledger_entry_id": "765070bf-bc18-4f94-941c-486169641fe2",
+            "bank_transaction_id": "77b82552-08e5-4a60-b782-b038a663c44b"
+          },
+          "entry": {
+            "id": "765070bf-bc18-4f94-941c-486169641fe2",
+            "memo": "Skatteoppgj\u00f8r: payment",
+            "lines": [
+              {
+                "debit": 125.5,
+                "credit": 0.0,
+                "account": "2500",
+                "currency": "NOK",
+                "description": "Betalt skatt"
+              },
+              {
+                "debit": 0.0,
+                "credit": 125.5,
+                "account": "1920",
+                "currency": "NOK",
+                "description": "Bank"
+              }
+            ],
+            "setup_id": null,
+            "posted_at": "2026-09-13T16:03:12.004064+00:00",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:12.004064+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "entry_kind": "TAX_SETTLEMENT",
+            "risk_flags": [],
+            "income_year": 2026,
+            "correlation_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "source_record_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "source_capability": "COMPANY_TAX_FILING",
+            "warning_accepted_at": null,
+            "warning_accepted_by": null
+          }
+        }
+      ],
+      "bank": [
+        {
+          "id": "77b82552-08e5-4a60-b782-b038a663c44b",
+          "matched_action_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+          "matched_entry_id": null
+        }
+      ]
+    },
+    {
+      "name": "same-key-changed-correlation",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "77b82552-08e5-4a60-b782-b038a663c44b",
+        "documentId": "cf67c40c-9a50-444e-9099-8f3af27ff7c8"
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+      "correlationId": "ac15f71e-bd56-44e6-8b05-3c0d3518b4e1",
+      "status": 409,
+      "response": {
+        "type": "https://talli.no/problems/ledger-idempotency-key-reused",
+        "title": "Ledger request failed",
+        "status": 409,
+        "detail": "The ledger request could not be completed.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "LEDGER_IDEMPOTENCY_KEY_REUSED",
+        "requestId": "ac15f71e-bd56-44e6-8b05-3c0d3518b4e1"
+      },
+      "rows": [
+        {
+          "action": {
+            "id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "payload": {
+              "amount": 125.5,
+              "document_id": "cf67c40c-9a50-444e-9099-8f3af27ff7c8",
+              "document_status": "attached",
+              "settlement_date": "2026-04-15",
+              "settlement_type": "payment",
+              "bank_transaction_id": "77b82552-08e5-4a60-b782-b038a663c44b"
+            },
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:11.993942+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "risk_level": "ready",
+            "action_date": "2026-04-15",
+            "action_type": "tax_settlement",
+            "document_id": "cf67c40c-9a50-444e-9099-8f3af27ff7c8",
+            "income_year": 2026,
+            "blocker_code": null,
+            "ledger_entry_id": "765070bf-bc18-4f94-941c-486169641fe2",
+            "bank_transaction_id": "77b82552-08e5-4a60-b782-b038a663c44b"
+          },
+          "entry": {
+            "id": "765070bf-bc18-4f94-941c-486169641fe2",
+            "memo": "Skatteoppgj\u00f8r: payment",
+            "lines": [
+              {
+                "debit": 125.5,
+                "credit": 0.0,
+                "account": "2500",
+                "currency": "NOK",
+                "description": "Betalt skatt"
+              },
+              {
+                "debit": 0.0,
+                "credit": 125.5,
+                "account": "1920",
+                "currency": "NOK",
+                "description": "Bank"
+              }
+            ],
+            "setup_id": null,
+            "posted_at": "2026-09-13T16:03:12.004064+00:00",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:12.004064+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "entry_kind": "TAX_SETTLEMENT",
+            "risk_flags": [],
+            "income_year": 2026,
+            "correlation_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "source_record_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "source_capability": "COMPANY_TAX_FILING",
+            "warning_accepted_at": null,
+            "warning_accepted_by": null
+          }
+        }
+      ],
+      "bank": [
+        {
+          "id": "77b82552-08e5-4a60-b782-b038a663c44b",
+          "matched_action_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+          "matched_entry_id": null
+        }
+      ]
+    },
+    {
+      "name": "existing-action-new-key-conflicting-amount",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "999.00",
+          "currency": "NOK"
+        },
+        "settlementKind": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "77b82552-08e5-4a60-b782-b038a663c44b",
+        "documentId": "cf67c40c-9a50-444e-9099-8f3af27ff7c8"
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "dad308c4-b19f-4809-a544-1c6508ae0576",
+      "correlationId": "dad308c4-b19f-4809-a544-1c6508ae0576",
+      "status": 201,
+      "response": {
+        "postedEntry": {
+          "entryId": "765070bf-bc18-4f94-941c-486169641fe2",
+          "companyId": "10000000-0000-0000-0000-000000000001",
+          "incomeYear": 2026,
+          "entryKind": "TAX_SETTLEMENT",
+          "postedAt": "2026-09-13T16:03:12.004064Z",
+          "replayed": true
+        },
+        "replayed": true
+      },
+      "rows": [
+        {
+          "action": {
+            "id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "payload": {
+              "amount": 125.5,
+              "document_id": "cf67c40c-9a50-444e-9099-8f3af27ff7c8",
+              "document_status": "attached",
+              "settlement_date": "2026-04-15",
+              "settlement_type": "payment",
+              "bank_transaction_id": "77b82552-08e5-4a60-b782-b038a663c44b"
+            },
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:11.993942+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "risk_level": "ready",
+            "action_date": "2026-04-15",
+            "action_type": "tax_settlement",
+            "document_id": "cf67c40c-9a50-444e-9099-8f3af27ff7c8",
+            "income_year": 2026,
+            "blocker_code": null,
+            "ledger_entry_id": "765070bf-bc18-4f94-941c-486169641fe2",
+            "bank_transaction_id": "77b82552-08e5-4a60-b782-b038a663c44b"
+          },
+          "entry": {
+            "id": "765070bf-bc18-4f94-941c-486169641fe2",
+            "memo": "Skatteoppgj\u00f8r: payment",
+            "lines": [
+              {
+                "debit": 125.5,
+                "credit": 0.0,
+                "account": "2500",
+                "currency": "NOK",
+                "description": "Betalt skatt"
+              },
+              {
+                "debit": 0.0,
+                "credit": 125.5,
+                "account": "1920",
+                "currency": "NOK",
+                "description": "Bank"
+              }
+            ],
+            "setup_id": null,
+            "posted_at": "2026-09-13T16:03:12.004064+00:00",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:12.004064+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "entry_kind": "TAX_SETTLEMENT",
+            "risk_flags": [],
+            "income_year": 2026,
+            "correlation_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "source_record_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "source_capability": "COMPANY_TAX_FILING",
+            "warning_accepted_at": null,
+            "warning_accepted_by": null
+          }
+        }
+      ],
+      "bank": [
+        {
+          "id": "77b82552-08e5-4a60-b782-b038a663c44b",
+          "matched_action_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+          "matched_entry_id": null
+        }
+      ]
+    },
+    {
+      "name": "zero",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "7a70ee7c-8ee4-45ad-82c6-fa1986449481",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "0",
+          "currency": "NOK"
+        },
+        "settlementKind": "payable",
+        "documentStatus": "attached",
+        "bankTransactionId": null,
+        "documentId": null
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "7a70ee7c-8ee4-45ad-82c6-fa1986449481",
+      "correlationId": "7a70ee7c-8ee4-45ad-82c6-fa1986449481",
+      "status": 422,
+      "response": {
+        "type": "https://talli.no/problems/ledger-invalid-input",
+        "title": "Ledger request failed",
+        "status": 422,
+        "detail": "The ledger request could not be completed.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "LEDGER_INVALID_INPUT",
+        "requestId": "7a70ee7c-8ee4-45ad-82c6-fa1986449481"
+      },
+      "rows": [],
+      "bank": []
+    },
+    {
+      "name": "negative",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "f4879bc3-bfe6-44e5-9da4-35fdbd51201a",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "-1",
+          "currency": "NOK"
+        },
+        "settlementKind": "payable",
+        "documentStatus": "attached",
+        "bankTransactionId": null,
+        "documentId": null
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "f4879bc3-bfe6-44e5-9da4-35fdbd51201a",
+      "correlationId": "f4879bc3-bfe6-44e5-9da4-35fdbd51201a",
+      "status": 422,
+      "response": {
+        "type": "https://talli.no/problems/ledger-invalid-input",
+        "title": "Ledger request failed",
+        "status": 422,
+        "detail": "The ledger request could not be completed.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "LEDGER_INVALID_INPUT",
+        "requestId": "f4879bc3-bfe6-44e5-9da4-35fdbd51201a"
+      },
+      "rows": [],
+      "bank": []
+    },
+    {
+      "name": "extra-precision",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "9049f2c1-7a13-40b7-bdae-0b76975234e5",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "1.005",
+          "currency": "NOK"
+        },
+        "settlementKind": "payable",
+        "documentStatus": "attached",
+        "bankTransactionId": null,
+        "documentId": null
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "9049f2c1-7a13-40b7-bdae-0b76975234e5",
+      "correlationId": "9049f2c1-7a13-40b7-bdae-0b76975234e5",
+      "status": 422,
+      "response": {
+        "type": "https://talli.no/problems/request-validation-failed",
+        "title": "Request validation failed",
+        "status": 422,
+        "detail": "The request did not satisfy the API contract.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "REQUEST_VALIDATION_FAILED",
+        "requestId": "9049f2c1-7a13-40b7-bdae-0b76975234e5"
+      },
+      "rows": [],
+      "bank": []
+    },
+    {
+      "name": "calendar-invalid",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "fbad587d-815f-469a-b171-20499f2a45a0",
+        "settlementDate": "2026-02-30",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payable",
+        "documentStatus": "attached",
+        "bankTransactionId": null,
+        "documentId": null
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "fbad587d-815f-469a-b171-20499f2a45a0",
+      "correlationId": "fbad587d-815f-469a-b171-20499f2a45a0",
+      "status": 422,
+      "response": {
+        "type": "https://talli.no/problems/request-validation-failed",
+        "title": "Request validation failed",
+        "status": 422,
+        "detail": "The request did not satisfy the API contract.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "REQUEST_VALIDATION_FAILED",
+        "requestId": "fbad587d-815f-469a-b171-20499f2a45a0"
+      },
+      "rows": [],
+      "bank": []
+    },
+    {
+      "name": "date-year-mismatch",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "47beb1b1-f772-4f74-be06-b5e475eccd67",
+        "settlementDate": "2025-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payable",
+        "documentStatus": "attached",
+        "bankTransactionId": null,
+        "documentId": null
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "47beb1b1-f772-4f74-be06-b5e475eccd67",
+      "correlationId": "47beb1b1-f772-4f74-be06-b5e475eccd67",
+      "status": 422,
+      "response": {
+        "type": "https://talli.no/problems/ledger-invalid-input",
+        "title": "Ledger request failed",
+        "status": 422,
+        "detail": "The ledger request could not be completed.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "LEDGER_INVALID_INPUT",
+        "requestId": "47beb1b1-f772-4f74-be06-b5e475eccd67"
+      },
+      "rows": [],
+      "bank": []
+    },
+    {
+      "name": "invalid-kind",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "9d1b7f90-62c9-46ba-939c-750b82b43af7",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "other",
+        "documentStatus": "attached",
+        "bankTransactionId": null,
+        "documentId": null
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "9d1b7f90-62c9-46ba-939c-750b82b43af7",
+      "correlationId": "9d1b7f90-62c9-46ba-939c-750b82b43af7",
+      "status": 422,
+      "response": {
+        "type": "https://talli.no/problems/request-validation-failed",
+        "title": "Request validation failed",
+        "status": 422,
+        "detail": "The request did not satisfy the API contract.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "REQUEST_VALIDATION_FAILED",
+        "requestId": "9d1b7f90-62c9-46ba-939c-750b82b43af7"
+      },
+      "rows": [],
+      "bank": []
+    },
+    {
+      "name": "invalid-document-status",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "18338d6c-51af-41db-a67f-473dd5dc2c2f",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payable",
+        "documentStatus": "other",
+        "bankTransactionId": null,
+        "documentId": null
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "18338d6c-51af-41db-a67f-473dd5dc2c2f",
+      "correlationId": "18338d6c-51af-41db-a67f-473dd5dc2c2f",
+      "status": 422,
+      "response": {
+        "type": "https://talli.no/problems/request-validation-failed",
+        "title": "Request validation failed",
+        "status": 422,
+        "detail": "The request did not satisfy the API contract.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "REQUEST_VALIDATION_FAILED",
+        "requestId": "18338d6c-51af-41db-a67f-473dd5dc2c2f"
+      },
+      "rows": [],
+      "bank": []
+    },
+    {
+      "name": "payable-bank",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "e373ed65-6cc1-4ad1-8c17-910f2feb7f23",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payable",
+        "documentStatus": "attached",
+        "bankTransactionId": "3c2c45f1-fd9d-4a6a-8a88-dc41b78d7353",
+        "documentId": null
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "e373ed65-6cc1-4ad1-8c17-910f2feb7f23",
+      "correlationId": "e373ed65-6cc1-4ad1-8c17-910f2feb7f23",
+      "status": 422,
+      "response": {
+        "type": "https://talli.no/problems/ledger-invalid-input",
+        "title": "Ledger request failed",
+        "status": 422,
+        "detail": "The ledger request could not be completed.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "LEDGER_INVALID_INPUT",
+        "requestId": "e373ed65-6cc1-4ad1-8c17-910f2feb7f23"
+      },
+      "rows": [],
+      "bank": [
+        {
+          "id": "3c2c45f1-fd9d-4a6a-8a88-dc41b78d7353",
+          "matched_action_id": null,
+          "matched_entry_id": null
+        }
+      ]
+    },
+    {
+      "name": "foreign-document",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "502fb039-9c77-41f2-b159-e082ff3161b4",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payable",
+        "documentStatus": "attached",
+        "bankTransactionId": null,
+        "documentId": "f907f19e-ae1c-4f72-895e-568c6bdc52b3"
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "502fb039-9c77-41f2-b159-e082ff3161b4",
+      "correlationId": "502fb039-9c77-41f2-b159-e082ff3161b4",
+      "status": 422,
+      "response": {
+        "type": "https://talli.no/problems/ledger-invalid-input",
+        "title": "Ledger request failed",
+        "status": 422,
+        "detail": "The ledger request could not be completed.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "LEDGER_INVALID_INPUT",
+        "requestId": "502fb039-9c77-41f2-b159-e082ff3161b4"
+      },
+      "rows": [],
+      "bank": []
+    },
+    {
+      "name": "caller-lines",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "84103f5f-f171-4fd6-9ec6-7d40075cd68b",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payable",
+        "documentStatus": "attached",
+        "bankTransactionId": null,
+        "documentId": null,
+        "lines": []
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "84103f5f-f171-4fd6-9ec6-7d40075cd68b",
+      "correlationId": "84103f5f-f171-4fd6-9ec6-7d40075cd68b",
+      "status": 422,
+      "response": {
+        "type": "https://talli.no/problems/request-validation-failed",
+        "title": "Request validation failed",
+        "status": 422,
+        "detail": "The request did not satisfy the API contract.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "REQUEST_VALIDATION_FAILED",
+        "requestId": "84103f5f-f171-4fd6-9ec6-7d40075cd68b"
+      },
+      "rows": [],
+      "bank": []
+    },
+    {
+      "name": "foreign-bank",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "28491179-4cde-458a-9b51-1e361a7b2352",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "1b5bbf0a-d63d-47a7-989b-b431fb4eefb5",
+        "documentId": null
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "28491179-4cde-458a-9b51-1e361a7b2352",
+      "correlationId": "28491179-4cde-458a-9b51-1e361a7b2352",
+      "status": 422,
+      "response": {
+        "type": "https://talli.no/problems/ledger-invalid-input",
+        "title": "Ledger request failed",
+        "status": 422,
+        "detail": "The ledger request could not be completed.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "LEDGER_INVALID_INPUT",
+        "requestId": "28491179-4cde-458a-9b51-1e361a7b2352"
+      },
+      "rows": [],
+      "bank": [
+        {
+          "id": "1b5bbf0a-d63d-47a7-989b-b431fb4eefb5",
+          "matched_action_id": null,
+          "matched_entry_id": null
+        }
+      ]
+    },
+    {
+      "name": "bank-wrong-sign",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "831c852b-b28f-4fb1-9849-6abfb52ebbd7",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "ced78983-2054-498f-995b-2c68c4493b4b",
+        "documentId": null
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "831c852b-b28f-4fb1-9849-6abfb52ebbd7",
+      "correlationId": "831c852b-b28f-4fb1-9849-6abfb52ebbd7",
+      "status": 422,
+      "response": {
+        "type": "https://talli.no/problems/ledger-invalid-input",
+        "title": "Ledger request failed",
+        "status": 422,
+        "detail": "The ledger request could not be completed.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "LEDGER_INVALID_INPUT",
+        "requestId": "831c852b-b28f-4fb1-9849-6abfb52ebbd7"
+      },
+      "rows": [],
+      "bank": [
+        {
+          "id": "ced78983-2054-498f-995b-2c68c4493b4b",
+          "matched_action_id": null,
+          "matched_entry_id": null
+        }
+      ]
+    },
+    {
+      "name": "bank-warning",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "63e393ae-2ece-4b76-a2e0-fd771f9b18ec",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "92ecb24c-2f20-45ae-a0cc-27c7ad3180b0",
+        "documentId": null
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "63e393ae-2ece-4b76-a2e0-fd771f9b18ec",
+      "correlationId": "63e393ae-2ece-4b76-a2e0-fd771f9b18ec",
+      "status": 422,
+      "response": {
+        "type": "https://talli.no/problems/ledger-invalid-input",
+        "title": "Ledger request failed",
+        "status": 422,
+        "detail": "The ledger request could not be completed.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "LEDGER_INVALID_INPUT",
+        "requestId": "63e393ae-2ece-4b76-a2e0-fd771f9b18ec"
+      },
+      "rows": [],
+      "bank": [
+        {
+          "id": "92ecb24c-2f20-45ae-a0cc-27c7ad3180b0",
+          "matched_action_id": null,
+          "matched_entry_id": null
+        }
+      ]
+    },
+    {
+      "name": "bank-already-linked",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "8d92935e-ebcf-4b3f-8ae6-4201bfd4e951",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "77b82552-08e5-4a60-b782-b038a663c44b",
+        "documentId": null
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "8d92935e-ebcf-4b3f-8ae6-4201bfd4e951",
+      "correlationId": "8d92935e-ebcf-4b3f-8ae6-4201bfd4e951",
+      "status": 422,
+      "response": {
+        "type": "https://talli.no/problems/ledger-invalid-input",
+        "title": "Ledger request failed",
+        "status": 422,
+        "detail": "The ledger request could not be completed.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "LEDGER_INVALID_INPUT",
+        "requestId": "8d92935e-ebcf-4b3f-8ae6-4201bfd4e951"
+      },
+      "rows": [],
+      "bank": [
+        {
+          "id": "77b82552-08e5-4a60-b782-b038a663c44b",
+          "matched_action_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+          "matched_entry_id": null
+        }
+      ]
+    },
+    {
+      "name": "reviewer-forbidden",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "ffa1bd7c-2534-49d9-b1ca-b258f52a184f",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payable",
+        "documentStatus": "attached",
+        "bankTransactionId": null,
+        "documentId": null
+      },
+      "actor": "00000000-0000-0000-0000-000000000022",
+      "idempotencyKey": "ffa1bd7c-2534-49d9-b1ca-b258f52a184f",
+      "correlationId": "ffa1bd7c-2534-49d9-b1ca-b258f52a184f",
+      "status": 403,
+      "response": {
+        "type": "https://talli.no/problems/ledger-forbidden",
+        "title": "Ledger request failed",
+        "status": 403,
+        "detail": "The ledger request could not be completed.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "LEDGER_FORBIDDEN",
+        "requestId": "ffa1bd7c-2534-49d9-b1ca-b258f52a184f"
+      },
+      "rows": [],
+      "bank": []
+    },
+    {
+      "name": "outsider-concealed",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "705eb325-57af-4b5f-9133-374161c8b892",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payable",
+        "documentStatus": "attached",
+        "bankTransactionId": null,
+        "documentId": null
+      },
+      "actor": "00000000-0000-0000-0000-000000000044",
+      "idempotencyKey": "705eb325-57af-4b5f-9133-374161c8b892",
+      "correlationId": "705eb325-57af-4b5f-9133-374161c8b892",
+      "status": 404,
+      "response": {
+        "type": "https://talli.no/problems/ledger-not-found",
+        "title": "Ledger request failed",
+        "status": 404,
+        "detail": "The ledger request could not be completed.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "LEDGER_NOT_FOUND",
+        "requestId": "705eb325-57af-4b5f-9133-374161c8b892"
+      },
+      "rows": [],
+      "bank": []
+    },
+    {
+      "name": "missing-auth",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "e813e02b-d72f-4680-a00c-e956c1dc5aa3",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payable",
+        "documentStatus": "attached",
+        "bankTransactionId": null,
+        "documentId": null
+      },
+      "actor": "bad",
+      "idempotencyKey": "e813e02b-d72f-4680-a00c-e956c1dc5aa3",
+      "correlationId": "e813e02b-d72f-4680-a00c-e956c1dc5aa3",
+      "status": 401,
+      "response": {
+        "type": "https://talli.no/problems/authentication-required",
+        "title": "Authentication required",
+        "status": 401,
+        "detail": "A valid session is required.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "AUTHENTICATION_REQUIRED",
+        "requestId": "e813e02b-d72f-4680-a00c-e956c1dc5aa3"
+      },
+      "rows": [],
+      "bank": []
+    },
+    {
+      "name": "locked-year-new-action",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "40c18200-2c0e-4a43-883a-7f53855aebc2",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payable",
+        "documentStatus": "attached",
+        "bankTransactionId": null,
+        "documentId": null
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "40c18200-2c0e-4a43-883a-7f53855aebc2",
+      "correlationId": "40c18200-2c0e-4a43-883a-7f53855aebc2",
+      "status": 409,
+      "response": {
+        "type": "https://talli.no/problems/ledger-period-locked",
+        "title": "Ledger request failed",
+        "status": 409,
+        "detail": "The ledger request could not be completed.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "LEDGER_PERIOD_LOCKED",
+        "requestId": "40c18200-2c0e-4a43-883a-7f53855aebc2"
+      },
+      "rows": [],
+      "bank": []
+    },
+    {
+      "name": "locked-year-exact-receipt",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "77b82552-08e5-4a60-b782-b038a663c44b",
+        "documentId": "cf67c40c-9a50-444e-9099-8f3af27ff7c8"
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+      "correlationId": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+      "status": 201,
+      "response": {
+        "postedEntry": {
+          "entryId": "765070bf-bc18-4f94-941c-486169641fe2",
+          "companyId": "10000000-0000-0000-0000-000000000001",
+          "incomeYear": 2026,
+          "entryKind": "TAX_SETTLEMENT",
+          "postedAt": "2026-09-13T16:03:12.004064Z",
+          "replayed": true
+        },
+        "replayed": true
+      },
+      "rows": [
+        {
+          "action": {
+            "id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "payload": {
+              "amount": 125.5,
+              "document_id": "cf67c40c-9a50-444e-9099-8f3af27ff7c8",
+              "document_status": "attached",
+              "settlement_date": "2026-04-15",
+              "settlement_type": "payment",
+              "bank_transaction_id": "77b82552-08e5-4a60-b782-b038a663c44b"
+            },
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:11.993942+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "risk_level": "ready",
+            "action_date": "2026-04-15",
+            "action_type": "tax_settlement",
+            "document_id": "cf67c40c-9a50-444e-9099-8f3af27ff7c8",
+            "income_year": 2026,
+            "blocker_code": null,
+            "ledger_entry_id": "765070bf-bc18-4f94-941c-486169641fe2",
+            "bank_transaction_id": "77b82552-08e5-4a60-b782-b038a663c44b"
+          },
+          "entry": {
+            "id": "765070bf-bc18-4f94-941c-486169641fe2",
+            "memo": "Skatteoppgj\u00f8r: payment",
+            "lines": [
+              {
+                "debit": 125.5,
+                "credit": 0.0,
+                "account": "2500",
+                "currency": "NOK",
+                "description": "Betalt skatt"
+              },
+              {
+                "debit": 0.0,
+                "credit": 125.5,
+                "account": "1920",
+                "currency": "NOK",
+                "description": "Bank"
+              }
+            ],
+            "setup_id": null,
+            "posted_at": "2026-09-13T16:03:12.004064+00:00",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:12.004064+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "entry_kind": "TAX_SETTLEMENT",
+            "risk_flags": [],
+            "income_year": 2026,
+            "correlation_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "source_record_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "source_capability": "COMPANY_TAX_FILING",
+            "warning_accepted_at": null,
+            "warning_accepted_by": null
+          }
+        }
+      ],
+      "bank": [
+        {
+          "id": "77b82552-08e5-4a60-b782-b038a663c44b",
+          "matched_action_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+          "matched_entry_id": null
+        }
+      ]
+    },
+    {
+      "name": "locked-year-existing-action-new-key",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "77b82552-08e5-4a60-b782-b038a663c44b",
+        "documentId": "cf67c40c-9a50-444e-9099-8f3af27ff7c8"
+      },
+      "actor": "00000000-0000-0000-0000-000000000011",
+      "idempotencyKey": "99c022b3-a331-4d67-a196-4d878b0e5349",
+      "correlationId": "99c022b3-a331-4d67-a196-4d878b0e5349",
+      "status": 409,
+      "response": {
+        "type": "https://talli.no/problems/ledger-period-locked",
+        "title": "Ledger request failed",
+        "status": 409,
+        "detail": "The ledger request could not be completed.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "LEDGER_PERIOD_LOCKED",
+        "requestId": "99c022b3-a331-4d67-a196-4d878b0e5349"
+      },
+      "rows": [
+        {
+          "action": {
+            "id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "payload": {
+              "amount": 125.5,
+              "document_id": "cf67c40c-9a50-444e-9099-8f3af27ff7c8",
+              "document_status": "attached",
+              "settlement_date": "2026-04-15",
+              "settlement_type": "payment",
+              "bank_transaction_id": "77b82552-08e5-4a60-b782-b038a663c44b"
+            },
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:11.993942+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "risk_level": "ready",
+            "action_date": "2026-04-15",
+            "action_type": "tax_settlement",
+            "document_id": "cf67c40c-9a50-444e-9099-8f3af27ff7c8",
+            "income_year": 2026,
+            "blocker_code": null,
+            "ledger_entry_id": "765070bf-bc18-4f94-941c-486169641fe2",
+            "bank_transaction_id": "77b82552-08e5-4a60-b782-b038a663c44b"
+          },
+          "entry": {
+            "id": "765070bf-bc18-4f94-941c-486169641fe2",
+            "memo": "Skatteoppgj\u00f8r: payment",
+            "lines": [
+              {
+                "debit": 125.5,
+                "credit": 0.0,
+                "account": "2500",
+                "currency": "NOK",
+                "description": "Betalt skatt"
+              },
+              {
+                "debit": 0.0,
+                "credit": 125.5,
+                "account": "1920",
+                "currency": "NOK",
+                "description": "Bank"
+              }
+            ],
+            "setup_id": null,
+            "posted_at": "2026-09-13T16:03:12.004064+00:00",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:12.004064+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "entry_kind": "TAX_SETTLEMENT",
+            "risk_flags": [],
+            "income_year": 2026,
+            "correlation_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "source_record_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "source_capability": "COMPANY_TAX_FILING",
+            "warning_accepted_at": null,
+            "warning_accepted_by": null
+          }
+        }
+      ],
+      "bank": [
+        {
+          "id": "77b82552-08e5-4a60-b782-b038a663c44b",
+          "matched_action_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+          "matched_entry_id": null
+        }
+      ]
+    },
+    {
+      "name": "reviewer-exact-receipt",
+      "request": {
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "actionId": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+        "settlementDate": "2026-04-15",
+        "amount": {
+          "amount": "125.50",
+          "currency": "NOK"
+        },
+        "settlementKind": "payment",
+        "documentStatus": "attached",
+        "bankTransactionId": "77b82552-08e5-4a60-b782-b038a663c44b",
+        "documentId": "cf67c40c-9a50-444e-9099-8f3af27ff7c8"
+      },
+      "actor": "00000000-0000-0000-0000-000000000022",
+      "idempotencyKey": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+      "correlationId": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+      "status": 403,
+      "response": {
+        "type": "https://talli.no/problems/ledger-forbidden",
+        "title": "Ledger request failed",
+        "status": 403,
+        "detail": "The ledger request could not be completed.",
+        "instance": "/api/v1/ledger/tax-settlements",
+        "code": "LEDGER_FORBIDDEN",
+        "requestId": "39192bf9-7073-4d5e-8754-b86085dd68bf"
+      },
+      "rows": [
+        {
+          "action": {
+            "id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "payload": {
+              "amount": 125.5,
+              "document_id": "cf67c40c-9a50-444e-9099-8f3af27ff7c8",
+              "document_status": "attached",
+              "settlement_date": "2026-04-15",
+              "settlement_type": "payment",
+              "bank_transaction_id": "77b82552-08e5-4a60-b782-b038a663c44b"
+            },
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:11.993942+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "risk_level": "ready",
+            "action_date": "2026-04-15",
+            "action_type": "tax_settlement",
+            "document_id": "cf67c40c-9a50-444e-9099-8f3af27ff7c8",
+            "income_year": 2026,
+            "blocker_code": null,
+            "ledger_entry_id": "765070bf-bc18-4f94-941c-486169641fe2",
+            "bank_transaction_id": "77b82552-08e5-4a60-b782-b038a663c44b"
+          },
+          "entry": {
+            "id": "765070bf-bc18-4f94-941c-486169641fe2",
+            "memo": "Skatteoppgj\u00f8r: payment",
+            "lines": [
+              {
+                "debit": 125.5,
+                "credit": 0.0,
+                "account": "2500",
+                "currency": "NOK",
+                "description": "Betalt skatt"
+              },
+              {
+                "debit": 0.0,
+                "credit": 125.5,
+                "account": "1920",
+                "currency": "NOK",
+                "description": "Bank"
+              }
+            ],
+            "setup_id": null,
+            "posted_at": "2026-09-13T16:03:12.004064+00:00",
+            "company_id": "10000000-0000-0000-0000-000000000001",
+            "created_at": "2026-09-13T16:03:12.004064+00:00",
+            "created_by": "00000000-0000-0000-0000-000000000011",
+            "entry_kind": "TAX_SETTLEMENT",
+            "risk_flags": [],
+            "income_year": 2026,
+            "correlation_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "source_record_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+            "source_capability": "COMPANY_TAX_FILING",
+            "warning_accepted_at": null,
+            "warning_accepted_by": null
+          }
+        }
+      ],
+      "bank": [
+        {
+          "id": "77b82552-08e5-4a60-b782-b038a663c44b",
+          "matched_action_id": "39192bf9-7073-4d5e-8754-b86085dd68bf",
+          "matched_entry_id": null
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "actions": 3,
+    "taxEntries": 3,
+    "matchedBanks": 2,
+    "workflowReceipts": 3
+  },
+  "caseCount": 28,
+  "assertedTotals": {
+    "actions": 3,
+    "taxEntries": 3,
+    "matchedBanks": 2,
+    "workflowReceipts": 3
+  }
+}

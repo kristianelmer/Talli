@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-capability",
+  "name": "company_tax_filing",
+  "path": "apps/backend/src/talli_backend/modules/company_tax_filing",
+  "owner": "backend:company_tax_filing",
+  "purpose": "Own company tax settlement capture facts and normalization; annual estimate and filing migrate in the next slice.",
+  "documentation": "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.company_tax_filing.public",
+  "exports": {
+    "commands": [],
+    "queries": [
+      "NormalizedTaxSettlement",
+      "TaxSettlementInput",
+      "normalize_tax_settlement"
+    ],
+    "events": [],
+    "errors": [
+      "TaxSettlementValidationError"
+    ],
+    "identifiers": [
+      "TaxSettlementKind",
+      "TaxSettlementDocumentStatus"
+    ]
+  },
+  "owns": {
+    "postgresSchemas": [],
+    "tables": [],
+    "storageBuckets": [],
+    "projections": [],
+    "migrations": "None"
+  },
+  "ports": [],
+  "dependencies": [],
+  "allowedImports": [
+    "__future__",
+    "dataclasses",
+    "enum",
+    "math",
+    "re",
+    "talli_backend.modules.company_tax_filing.public",
+    "talli_backend.modules.company_tax_filing.service",
+    "talli_backend.shared.kernel"
+  ],
+  "forbiddenResponsibilities": [
+    "Ledger account selection and posting policy",
+    "Bank matching and document storage ownership",
+    "Provider operations, annual tax estimates and filing before slice 2",
+    "Transport or database types in the public contract"
+  ],
+  "tests": {
+    "policy": "apps/backend/tests/test_company_tax_filing.py",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

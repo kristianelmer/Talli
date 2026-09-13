@@ -314,6 +314,7 @@
     "backend:banking",
     "backend:billing",
     "backend:company_access",
+    "backend:company_tax_filing",
     "backend:corporate_governance",
     "backend:documents",
     "backend:investments",
