@@ -36,6 +36,8 @@ def test_full_imported_source_rows_are_recursively_immutable():
     lambda r: r['test_evidence'].clear(),
     lambda r: r['test_evidence'][0].update(obligation='aarsregnskap'),
     lambda r: r.update(submissions=None),
+    lambda r: r.update(submissions={}),
+    lambda r: r.update(submissions=''),
     lambda r: r['submissions'][0].update(id='not-an-id'),
 ])
 def test_repository_scope_corruption_fails_closed(mutate):

@@ -190,6 +190,8 @@ class CompanyTaxFilingRows:
 
     def __post_init__(self) -> None:
         for name in ('previews', 'submissions', 'overrides', 'review_comments', 'permissions', 'test_evidence'):
+            if not isinstance(getattr(self, name), (list, tuple)):
+                raise CompanyTaxError.unavailable()
             object.__setattr__(self, name, _freeze_return_fact(getattr(self, name)))
         from .workspace import validate_rows
         validate_rows(self)
