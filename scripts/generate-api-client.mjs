@@ -277,6 +277,7 @@ const bankingOperations = {
   ],
 };
 const companyTaxOperations = {
+  importEvidence: ["/api/v1/company-tax/tt02-evidence-imports", "post", "companyTaxImportTt02Evidence"],
   workspace: ["/api/v1/company-tax/filing-workspace", "get", "companyTaxGetFilingWorkspace"],
   archive: ["/api/v1/company-tax/settlement-archive-source", "get", "companyTaxGetSettlementArchiveSource"],
   preview: ["/api/v1/company-tax/settlement-previews", "post", "companyTaxPreviewSettlement"],
@@ -845,6 +846,7 @@ const bankingSchemas = Object.fromEntries([
   "StartBankConnectionWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const companyTaxSchemas = Object.fromEntries([
+  "CompanyTaxEvidenceImportRequest", "CompanyTaxEvidenceImportWire",
   "CompanyTaxWorkspaceWire", "CompanyTaxPreviewWire", "CompanyTaxSubmissionWire",
   "CompanyTaxOverrideWire", "CompanyTaxReviewCommentWire", "CompanyTaxPermissionWire", "CompanyTaxTestEvidenceWire",
   "TaxSettlementArchiveItemWire", "TaxSettlementArchiveWire",
@@ -2557,6 +2559,15 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         throw new TalliApiError(502, undefined);
       }
       return result;
+    },
+
+    async companyTaxImportTt02Evidence(
+      body: CompanyTaxEvidenceImportRequest, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxEvidenceImportWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-tax/tt02-evidence-imports\`,
+        "POST", request, body, isCompanyTaxEvidenceImportWire,
+      );
     },
 
     async companyTaxGetFilingWorkspace(

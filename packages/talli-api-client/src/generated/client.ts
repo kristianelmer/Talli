@@ -2964,6 +2964,19 @@ export interface BillingUnsupportedWire {
 
 export type ProductionPilotStatus = "pending" | "active" | "suspended" | "completed" | "revoked";
 
+export interface CompanyTaxEvidenceImportRequest {
+  companyId: string;
+  evidenceJson: string;
+  evidenceUrl?: string | null;
+  incomeYear: number;
+}
+
+export interface CompanyTaxEvidenceImportWire {
+  authorityTestRunId: string;
+  created: boolean;
+  filingSubmissionId: string;
+}
+
 export interface CompanyTaxWorkspaceWire {
   companyId: string;
   incomeYear: number | null;
@@ -7568,6 +7581,27 @@ function isProductionPilotStatus(value: unknown): value is ProductionPilotStatus
   return value === "pending" || value === "active" || value === "suspended" || value === "completed" || value === "revoked";
 }
 
+function isCompanyTaxEvidenceImportRequest(value: unknown): value is CompanyTaxEvidenceImportRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","evidenceJson","evidenceUrl","incomeYear"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.evidenceJson === "string" && value.evidenceJson.length >= 1 && value.evidenceJson.length <= 524288) &&
+    (value.evidenceUrl === undefined || (typeof value.evidenceUrl === "string" || value.evidenceUrl === null)) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100)
+  );
+}
+
+function isCompanyTaxEvidenceImportWire(value: unknown): value is CompanyTaxEvidenceImportWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["authorityTestRunId","created","filingSubmissionId"]) &&
+    isUuid(value.authorityTestRunId) &&
+    typeof value.created === "boolean" &&
+    isUuid(value.filingSubmissionId)
+  );
+}
+
 function isCompanyTaxWorkspaceWire(value: unknown): value is CompanyTaxWorkspaceWire {
   return (
     isRecord(value) &&
@@ -9931,6 +9965,15 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         throw new TalliApiError(502, undefined);
       }
       return result;
+    },
+
+    async companyTaxImportTt02Evidence(
+      body: CompanyTaxEvidenceImportRequest, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxEvidenceImportWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-tax/tt02-evidence-imports`,
+        "POST", request, body, isCompanyTaxEvidenceImportWire,
+      );
     },
 
     async companyTaxGetFilingWorkspace(

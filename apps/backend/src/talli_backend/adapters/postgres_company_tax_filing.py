@@ -15,12 +15,16 @@ from talli_backend.adapters.supabase_ledger import (
 )
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
 from talli_backend.application.company_tax_filing_workflow import CompanyTaxApplication
+from talli_backend.modules.audit.public import AuditEventDraft, AuditInclusion, audit_inclusion_adapter
+from talli_backend.shared.kernel import ActorId, CompanyId
 from talli_backend.modules.banking.public import (
     TaxSettlementBankCommand, TaxSettlementBankingPersistence,
     bank_transaction_claim_persistence_adapter,
 )
 from talli_backend.modules.company_tax_filing.public import (
     AccountingEntryReference, CompanyTaxError, RecordTaxSettlementCommand,
+    CompanyTaxCompanyIdentity, CompanyTaxReturnPersistence, CompanyTaxEvidenceProjection,
+    ImportedCompanyTaxEvidence, TaxAuthorityEvidenceId, TaxFilingSubmissionId,
     CompanyTaxWorkspaceQuery, CompanyTaxFilingRows, CompanyTaxWorkspacePersistence,
     TaxSettlementPersistence, TaxSettlementArchivePersistence, TaxSettlementArchiveQuery, tax_settlement_persistence_adapter,
 )
@@ -41,8 +45,25 @@ def _company_tax_database_error(error: psycopg.DatabaseError):
         'company_tax_return_invalid_input': CompanyTaxError.invalid_input,
         'company_tax_return_unavailable': CompanyTaxError.unavailable,
     }
-    factory = known.get(error.diag.message_primary)
+    message = error.diag.message_primary or ''
+    if message == 'company_tax_evidence_mfa_required':
+        return CompanyTaxError.mfa_required()
+    if message in ('company_tax_evidence_authentication_required', 'company_tax_evidence_owner_required', 'company_access_forbidden'):
+        return CompanyTaxError.forbidden()
+    if message == 'company_access_not_found':
+        return CompanyTaxError.not_found()
+    if message in ('company_tax_evidence_invalid_payload', 'company_tax_evidence_forbidden_content', 'company_tax_evidence_conflict'):
+        return CompanyTaxError.invalid_input()
+    factory = known.get(message)
     return factory() if factory else _map_database_error(str(error))
+
+
+def _json_value(value):
+    if isinstance(value, Mapping):
+        return {key: _json_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_value(item) for item in value]
+    return value
 
 
 def _request(command: RecordTaxSettlementCommand) -> dict[str, object]:
@@ -114,6 +135,8 @@ class PostgresCompanyTaxSession:
             raise _company_tax_database_error(error) from None
 
 
+@audit_inclusion_adapter(AuditInclusion)
+@tax_settlement_persistence_adapter(CompanyTaxReturnPersistence)
 @tax_settlement_persistence_adapter(CompanyTaxWorkspacePersistence)
 @tax_settlement_persistence_adapter(TaxSettlementArchivePersistence)
 @tax_settlement_persistence_adapter(TaxSettlementPersistence)
@@ -149,6 +172,46 @@ class PostgresCompanyTaxTransaction:
         return await self._database_rows(query, (
             json.dumps(dict(payload), separators=(',', ':')), str(self.actor_id.subject),
         ))
+
+    async def filing_company_identity(self, company_id: CompanyId, actor_id: ActorId) -> CompanyTaxCompanyIdentity:
+        if actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._one_idempotent_row(
+            'select public.company_access_read_rf_company_identity_v1(%s::uuid,%s::text) as result',
+            (str(company_id), str(actor_id.subject)),
+        )
+        result = row.get('result')
+        if (not isinstance(result, Mapping) or result.get('id') != str(company_id)
+                or not isinstance(result.get('org_number'), str)):
+            raise CompanyTaxError.unavailable()
+        return CompanyTaxCompanyIdentity(company_id, result['org_number'])
+
+    async def import_return_evidence(self, projection: CompanyTaxEvidenceProjection, actor_id: ActorId) -> ImportedCompanyTaxEvidence:
+        if actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._one_idempotent_row(
+            'select company_tax_filing.import_tt02_evidence_v1(%s::jsonb,%s::text) as result',
+            (json.dumps(_json_value({'authorityRun': projection.authority_run, 'submission': projection.submission}),
+                        ensure_ascii=True, allow_nan=False, separators=(',', ':')), str(actor_id.subject)),
+        )
+        result = row.get('result')
+        try:
+            if (not isinstance(result, Mapping) or type(result.get('created')) is not bool
+                    or not isinstance(result.get('authority_test_run_id'), str)
+                    or not isinstance(result.get('filing_submission_id'), str)):
+                raise ValueError()
+            return ImportedCompanyTaxEvidence(TaxAuthorityEvidenceId(result['authority_test_run_id']),
+                TaxFilingSubmissionId(result['filing_submission_id']), result['created'])
+        except (KeyError, TypeError, ValueError):
+            raise CompanyTaxError.unavailable() from None
+
+    async def include_audit_event(self, event: AuditEventDraft) -> None:
+        if event.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        await self._database_rows(
+            'select public.audit_include_filing_event_v1(%s::uuid,%s::text,%s::text,%s::text,%s::text)',
+            (str(event.company_id), str(event.actor_id.subject), event.category, event.action, event.message),
+        )
 
     async def filing_workspace(self, query: CompanyTaxWorkspaceQuery) -> CompanyTaxFilingRows:
         if query.actor_id != self.actor_id:

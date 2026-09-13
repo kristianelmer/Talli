@@ -122,3 +122,24 @@ test("filing workspace keeps a failed source unavailable and checks returned sco
   result = { code: "COMPANY_TAX_DEPENDENCY_UNAVAILABLE" };
   await assert.rejects(loadCompanyTaxFilingWorkspace("owner", companyId, 2025), error => error instanceof TalliApiError && error.status === 503);
 });
+
+test("TT02 import preserves evidence bytes, IDs, replay and MFA presentation", async (t) => {
+  environment(t);
+  const { importCompanyTaxTt02Evidence, taxEvidenceImportErrorMessage } = await import("../features/company-tax-filing/index.ts");
+  const body = { companyId, incomeYear: 2025, evidenceJson: '{"synthetic":"ø", "nested": {"original":true}}', evidenceUrl: null };
+  let result = { authorityTestRunId: operationId, filingSubmissionId: companyId, created: true };
+  t.mock.method(globalThis, "fetch", async (url, request) => {
+    assert.equal(new URL(url).pathname, "/api/v1/company-tax/tt02-evidence-imports");
+    assert.equal(request.method, "POST");
+    assert.equal(request.headers.Authorization, "Bearer owner");
+    assert.equal(request.cache, "no-store");
+    assert.deepEqual(JSON.parse(request.body), body);
+    return Response.json(result);
+  });
+  assert.deepEqual(await importCompanyTaxTt02Evidence("owner", body), result);
+  result = { ...result, created: false };
+  assert.deepEqual(await importCompanyTaxTt02Evidence("owner", body), result);
+  result = { ...result, created: "false" };
+  await assert.rejects(importCompanyTaxTt02Evidence("owner", body), error => error instanceof TalliApiError && error.status === 502);
+  assert.equal(taxEvidenceImportErrorMessage(new TalliApiError(403, { code: "COMPANY_TAX_MFA_REQUIRED" })), "Ekstra identitetsbekreftelse med tofaktorautentisering kreves.");
+});

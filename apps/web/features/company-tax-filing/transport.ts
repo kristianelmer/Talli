@@ -1,4 +1,4 @@
-import { createTalliApiClient, TalliApiError, type LedgerTaxSettlementWire, type TaxSettlementPreviewInputWire } from "@talli/talli-api-client";
+import { createTalliApiClient, TalliApiError, type CompanyTaxEvidenceImportRequest, type LedgerTaxSettlementWire, type TaxSettlementPreviewInputWire } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
 
 function client(accessToken: string) {
@@ -43,4 +43,16 @@ export async function loadTaxSettlementArchiveSource(accessToken: string, compan
 
 export function loadCompanyTaxFilingWorkspace(accessToken: string, companyId: string, incomeYear: number | null = null) {
   return client(accessToken).companyTaxGetFilingWorkspace(companyId, incomeYear, { signal: AbortSignal.timeout(10_000) });
+}
+
+export function importCompanyTaxTt02Evidence(accessToken: string, input: CompanyTaxEvidenceImportRequest) {
+  return client(accessToken).companyTaxImportTt02Evidence(input, { signal: AbortSignal.timeout(10_000) });
+}
+
+export function taxEvidenceImportErrorMessage(error: unknown): string {
+  if (error instanceof TalliApiError && error.problem?.code === "COMPANY_TAX_MFA_REQUIRED") {
+    return "Ekstra identitetsbekreftelse med tofaktorautentisering kreves.";
+  }
+  if (error instanceof TalliApiError && error.status === 422) return "Ugyldig TT02-evidens";
+  return "TT02-evidensen kunne ikke lagres.";
 }

@@ -6,10 +6,12 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from talli_backend.application.company_tax_filing_session import CompanyTaxSession, CompanyTaxSessionFactory
+from talli_backend.modules.audit.public import AuditEventDraft
 from talli_backend.modules.banking.public import BankTransactionId, ExternalActionReference, TaxSettlementBankCommand
 from talli_backend.modules.company_tax_filing.public import (
     AccountingEntryReference, CompanyTaxError, RecordTaxSettlementCommand,
     CompanyTaxWorkspaceQuery, CompanyTaxFilingRows,
+    ImportCompanyTaxReturnEvidence, ImportedCompanyTaxEvidence, CompanyTaxEvidenceInput, project_company_tax_evidence,
     TaxSettlementKind, TaxSettlementArchiveQuery, validate_new_tax_settlement,
 )
 from talli_backend.modules.documents.public import DocumentBindingQuery, DocumentId
@@ -116,4 +118,29 @@ class AuthenticatedCompanyTax:
             result = await transaction.filing_workspace(query)
             if result.company_id != query.company_id or result.income_year != query.income_year:
                 raise CompanyTaxError.unavailable()
+            return result
+
+    async def import_return_evidence(self, command: ImportCompanyTaxReturnEvidence) -> ImportedCompanyTaxEvidence:
+        if command.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        async with self._session.transaction() as transaction:
+            company = await transaction.filing_company_identity(command.company_id, command.actor_id)
+            if company.company_id != command.company_id:
+                raise CompanyTaxError.unavailable()
+            try:
+                projection = project_company_tax_evidence(CompanyTaxEvidenceInput(
+                    company_id=str(command.company_id), expected_organization_number=company.organization_number,
+                    expected_income_year=int(command.income_year), evidence=command.evidence,
+                    evidence_url=command.evidence_url, recorded_by=str(command.actor_id.subject),
+                ))
+            except (ValueError, TypeError):
+                raise CompanyTaxError.invalid_input() from None
+            result = await transaction.import_return_evidence(projection, command.actor_id)
+            if result.created:
+                await transaction.include_audit_event(AuditEventDraft(
+                    company_id=command.company_id, actor_id=command.actor_id, category='submission',
+                    action='company_tax_tt02_evidence_imported',
+                    message='Skattemelding TT02-evidens importert og venter på klassifisering med ref '
+                    + str(projection.authority_run['test_reference']) + '.',
+                ))
             return result

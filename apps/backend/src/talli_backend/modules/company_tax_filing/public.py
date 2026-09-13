@@ -90,6 +90,10 @@ class AccountingEntryReference(_UuidReference):
 
 class CompanyTaxError(DomainError):
     @classmethod
+    def mfa_required(cls) -> CompanyTaxError:
+        return cls(code="COMPANY_TAX_MFA_REQUIRED", category=ErrorCategory.FORBIDDEN)
+
+    @classmethod
     def not_found(cls) -> CompanyTaxError:
         return cls(code="COMPANY_TAX_NOT_FOUND", category=ErrorCategory.NOT_FOUND)
 
@@ -373,7 +377,48 @@ def summarize_company_tax_validation(result_xml: str) -> CompanyTaxValidationSum
                                        tuple(value['guidanceCodes']), tuple(value['failureReasons']))
 
 
+@dataclass(frozen=True, slots=True)
+class CompanyTaxCompanyIdentity:
+    company_id: CompanyId
+    organization_number: str
+
+
+@dataclass(frozen=True, slots=True)
+class ImportCompanyTaxReturnEvidence:
+    actor_id: ActorId
+    company_id: CompanyId
+    income_year: IncomeYear
+    evidence: Mapping[str, object]
+    evidence_url: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'evidence', _freeze_return_fact(self.evidence))
+
+
+class TaxAuthorityEvidenceId(_UuidReference):
+    pass
+
+
+class TaxFilingSubmissionId(_UuidReference):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class ImportedCompanyTaxEvidence:
+    authority_test_run_id: TaxAuthorityEvidenceId
+    filing_submission_id: TaxFilingSubmissionId
+    created: bool
+
+
+class CompanyTaxReturnPersistence(Protocol):
+    async def filing_company_identity(self, company_id: CompanyId, actor_id: ActorId) -> CompanyTaxCompanyIdentity: ...
+
+    async def import_return_evidence(self, projection: CompanyTaxEvidenceProjection, actor_id: ActorId) -> ImportedCompanyTaxEvidence: ...
+
+
 __all__ = [
+    "CompanyTaxCompanyIdentity", "ImportCompanyTaxReturnEvidence", "TaxAuthorityEvidenceId",
+    "TaxFilingSubmissionId", "ImportedCompanyTaxEvidence", "CompanyTaxReturnPersistence",
     "CompanyTaxWorkspaceQuery", "CompanyTaxFilingRows", "CompanyTaxWorkspacePersistence",
     "PreparedCompanyTaxReturn", "prepare_company_tax_return",
     "CompanyTaxValidationSummary", "summarize_company_tax_validation",

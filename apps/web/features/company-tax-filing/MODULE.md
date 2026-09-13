@@ -17,3 +17,9 @@ Archive and readiness read the same exact year-scoped Tax source fields. Failed 
 <!-- architecture-inventory
 {"apiOperations":["companyTaxGetFilingWorkspace"]}
 -->
+
+The generated TT02 import transport submits the original bounded evidence JSON with company/year scope. Its error presenter preserves the existing MFA prompt and sanitized failure messages.
+
+<!-- architecture-inventory
+{"apiOperations":["companyTaxImportTt02Evidence"]}
+-->

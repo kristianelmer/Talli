@@ -1,0 +1,47 @@
+{
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_READ_SHAPE_CORRECTION",
+  "baseRevision": "b1bf9e9f7b5697226815a603743dc58e2b751e83",
+  "candidateRevision": "4c5404dfcedfbd5b858d76e1a7095ec2bd800247",
+  "diffCommand": "git diff b1bf9e9f7b5697226815a603743dc58e2b751e83...4c5404dfcedfbd5b858d76e1a7095ec2bd800247",
+  "closedFindings": [
+    "SPEC-152-READ-1"
+  ],
+  "newFindings": [],
+  "verification": {
+    "originalUnchangedRegressionCases": 12,
+    "committedWorkspaceApiCases": 38,
+    "totalPassed": 50,
+    "seconds": 5.11,
+    "positiveControls": "Populated list and tuple six-family inputs accepted, frozen to tuples and nested receipt hash preserved.",
+    "adoptedArtifactHashesVerified": 3,
+    "requirementsByteIdentical": true
+  },
+  "sourceBindings": {
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "77b3407c81f8f98e628c874ddd3c5f4b56f33a96cd73113c9c680645d99bf0f4",
+    "apps/backend/tests/test_company_tax_workspace.py": "e724c4ad9b541bd6345b8f9de62deff9d559633ce53cc839179dc816551fe677",
+    "architecture/evidence/issues/152/read-shape-followup/manifest.json": "b59c5b78854ff77c300d76b5b5a38c9231babd04eb52f5fe24a0550574a77561",
+    "architecture/evidence/issues/152/read-shape-followup/read-shape-followup-tests.log": "5ff96436ba12b50043be11629968b73fe3bb0bc8ee9419792242290eac8f2e64",
+    "architecture/evidence/issues/152/read-shape-followup/read-spec-review-b1bf9e9f.json": "270b270c26bd7b4039beb4685ca293b020be174cf041015a98a640ad203264b6",
+    "architecture/evidence/issues/152/read-shape-followup/read-spec-review-b1bf9e9f.md": "cedae388360aa03b2aa2f146bf2de1bdda1ff3a6265071d260296055f9a09466",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/workspace.py": "481c0c4ce351d465a00880cf4770005691447a4b1ba2f86152ab9b754b148d47",
+    "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py": "fce798bc91d8381d45d247d3dfa5c2cf141af85b08068963e2d6681a05ec22b1",
+    "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py": "6da0d3ad4bcf0356a98cf84dddae1dd7bceb087d202226d912baa3539db2568a",
+    "apps/backend/src/talli_backend/main.py": "cf0236e870d7ab7ed42bf656de203b602f4ea34890d93d2577e903124b560fbc",
+    "scripts/generate-api-client.mjs": "58e90d3676fff7b23a8f9ba97ab1c94ad8ae664670c6d5c60f18865bd12d7734",
+    "packages/talli-api-client/src/generated/client.ts": "67a109b6631fd366fb2285b07608c427eb84e13b0988001691e5dd886b11d6de",
+    "contracts/openapi/talli-v1.json": "d658b4c2c069a4f71c63f051d92c89ed6c66d1e8960e7813230dded4b226e681",
+    "supabase/migrations/20260914201000_company_tax_return_read_contracts.sql": "24ebea4288c9f1357ecdd6b6c761b8b9e816fc188fcabd4e0671125996cc4ff5"
+  },
+  "privateArtifactBindings": {
+    "test_read_spec_b1bf9e9f.py": "94c0fa562100d8ff422ff777b0a325c8f1e3665ebf8401f9e9d80241c8684dec",
+    "read-spec-4c5404df-tests.log": "058be7b816dce421427aebba3a6083d1cf45ab5720dc7cfdc19394c133cb75c0",
+    "read-spec-4c5404df-controls.log": "a8381b826ccda5b37e2a0d7bb9a610d1b21123457396b527d6d29628ffdf73bb"
+  },
+  "limits": [
+    "No SQL/browser/provider execution or shared mutation.",
+    "Prior SQL evidence remains recorded synthetic rollback-only proof.",
+    "No full-stage acceptance or production-completeness claim."
+  ],
+  "reportSha256": "c1110a4ed87df1b71eee0de021de306954ff8ef8d7b5d30b10525afdbcbb81be"
+}

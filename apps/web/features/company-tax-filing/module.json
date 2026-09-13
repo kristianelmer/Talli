@@ -20,7 +20,8 @@
     "companyTaxPreviewSettlement",
     "ledgerPostTaxSettlement",
     "companyTaxGetSettlementArchiveSource",
-    "companyTaxGetFilingWorkspace"
+    "companyTaxGetFilingWorkspace",
+    "companyTaxImportTt02Evidence"
   ],
   "dependencies": [],
   "allowedImports": [

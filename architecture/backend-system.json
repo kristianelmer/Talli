@@ -413,6 +413,17 @@
       "routes": [
         "/api/v1/company-tax/filing-workspace"
       ]
+    },
+    {
+      "name": "company-tax-tt02-evidence-import",
+      "purpose": "Authorizes and projects sanitized TT02 evidence, persists it idempotently through Company Tax, and includes Audit only on creation in one transaction over the canonical legacy Audit store.",
+      "publicPackages": [
+        "talli_backend.modules.company_tax_filing.public",
+        "talli_backend.modules.audit.public"
+      ],
+      "routes": [
+        "/api/v1/company-tax/tt02-evidence-imports"
+      ]
     }
   ],
   "operationalControlState": {
@@ -823,6 +834,18 @@
       "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
       "owner": "backend-system",
       "mode": "one request-scoped read transaction with verified actor and phase-gated owned RLS"
+    },
+    {
+      "port": "CompanyTaxReturnPersistence",
+      "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
+      "owner": "backend-system",
+      "mode": "one request-scoped import transaction; Tax owns validated receipt persistence and Audit retains its canonical legacy append implementation"
+    },
+    {
+      "port": "AuditInclusion",
+      "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
+      "owner": "backend-system",
+      "mode": "one request-scoped import transaction; Tax owns validated receipt persistence and Audit retains its canonical legacy append implementation"
     }
   ],
   "allowedDependencies": {
@@ -896,7 +919,8 @@
       "talli_backend.shared.kernel",
       "time",
       "typing",
-      "uuid"
+      "uuid",
+      "json"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",
@@ -919,7 +943,8 @@
       "talli_backend.modules.marketing_measurement.public",
       "talli_backend.modules.shareholder_register_filing.public",
       "talli_backend.modules.system_boundary.public",
-      "talli_backend.modules.validation_observation.public"
+      "talli_backend.modules.validation_observation.public",
+      "talli_backend.modules.audit.public"
     ],
     "adapters": [
       "__future__",
@@ -991,7 +1016,8 @@
       "typing",
       "urllib.error",
       "urllib.parse",
-      "urllib.request"
+      "urllib.request",
+      "talli_backend.modules.audit.public"
     ]
   }
 }

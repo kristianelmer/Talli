@@ -185,6 +185,22 @@
       "to": "backend:ledger"
     },
     {
+      "from": "backend-system:company-tax-tt02-evidence-import",
+      "imports": [
+        "talli_backend.modules.audit.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:audit"
+    },
+    {
+      "from": "backend-system:company-tax-tt02-evidence-import",
+      "imports": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_tax_filing"
+    },
+    {
       "from": "backend-system:company-year-eligibility-and-admission",
       "imports": [
         "talli_backend.modules.company_access.public"
@@ -350,6 +366,7 @@
     "backend-system:marketing_measurement",
     "backend-system:system_boundary",
     "backend-system:validation_observation",
+    "backend:audit",
     "backend:authority_connections",
     "backend:banking",
     "backend:billing",

@@ -1,0 +1,44 @@
+{
+  "status": "IMPORT_CONTRACT_VERIFIED_OWNER_UI_AND_CUTOVER_PENDING",
+  "baselineRevision": "4c5404dfcedfbd5b858d76e1a7095ec2bd800247",
+  "databaseCases": 19,
+  "backendTests": 214,
+  "additionalFocusedImportTests": 17,
+  "webTests": 18,
+  "webTypecheck": "PASS",
+  "architecture": "PASS",
+  "openapiDelta": {
+    "schemas": {
+      "added": [
+        "CompanyTaxEvidenceImportRequest",
+        "CompanyTaxEvidenceImportWire"
+      ],
+      "removed": [],
+      "changed": []
+    },
+    "paths": {
+      "added": [
+        "/api/v1/company-tax/tt02-evidence-imports"
+      ],
+      "removed": [],
+      "changed": []
+    }
+  },
+  "limits": [
+    "Database claims are synthetic SQL context with temporary phase activation in a rollback-only transaction; no HTTP JWT/MFA, provider, browser, cutover or stage-exit credit.",
+    "The 214-case backend run predates six added malformed-receipt/strict-JSON tests; all 17 focused import tests then pass. Counts overlap and must not be added.",
+    "Owner UI still calls the legacy import until the coordinated cutover; six-family mutation completion, migration reversal and full exit remain pending.",
+    "Audit remains the canonical legacy table behind its declared target contract under the #132 unmigrated dependency allowance; no Audit stage completion."
+  ],
+  "artifacts": {
+    "read-spec-followup-4c5404df.json": "15efddf2352ba5dff73de773d3291b93c1a442d7386cbeaf59d60706aa9fc201",
+    "read-standards-review-b1bf9e9f.json": "84d9427567773ed79f10bcef0d5d888f397cb1189c7f5836c506cd970b0abccf",
+    "read-spec-followup-4c5404df.md": "c1110a4ed87df1b71eee0de021de306954ff8ef8d7b5d30b10525afdbcbb81be",
+    "read-standards-review-b1bf9e9f.md": "3c60e56e8eb6adb7bb1ce3ece75eaea73467669165984cd8a33602c22ae932ce",
+    "import-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "import-backend-tests.log": "51f3d25ce8e69137d98eb31d8245bb2a2640bec2b12720c2289b010af7e03386",
+    "probe-owned-import.py.txt": "4d16c45ec927facbef9e69196cbaa2b5481b9a82ef742a2ee372c9327b0db854",
+    "import-web-tests.log": "8a99db4a99ef8d32faff7af046c5328abe5ad9c5c3e13e5a3c5c0bf1411f2dbe",
+    "owned-import-database-characterization.json": "4f34458a76a14e40b02347fab4cf6dcabdce75e7f764bc5edab8b9c02d07eef4"
+  }
+}

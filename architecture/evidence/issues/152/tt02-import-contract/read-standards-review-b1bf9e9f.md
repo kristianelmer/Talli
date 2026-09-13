@@ -1,0 +1,13 @@
+PASS — no actionable Standards finding in `bcc8dc490a451e9afc181fd9c061afe3da06d120...b1bf9e9f7b5697226815a603743dc58e2b751e83`, limited to the filing-read milestone under the existing ownership, transport and frozen-scope rules.
+
+`20260914201000_company_tax_return_read_contracts.sql:18–71` keeps phase/actor helpers private and grants only the workspace function to the restricted executor. The reader checks matching verified actor context, accepted membership and the cutover/contracted phase. Expanded, rolled-back or missing phase is unavailable; outsiders receive concealed not-found. Six SELECT policies retain FORCE RLS and no write policies/grants are added. Borrowed membership restoration remains transactional. The stored phase is not advanced by this migration.
+
+The application uses one request transaction with verified actor settings. The adapter maps named Tax SQL failures, validates company/year bindings, and exposes recursively frozen rows with duplicate, obligation and relationship checks. Company-wide permissions/test evidence are explicitly not year-completeness proof. The new route has a separate Tax error wrapper; existing settlement routes retain their released wrapper and errors.
+
+Generated client guards reject malformed or cross-scope results and missing relationships; the web export propagates unavailable responses without an empty-success fallback. The capability port, adapter binding, workflow and route appear consistently in module/system declarations. The exported read is not a UI or mutation cutover.
+
+Independently compared parsed OpenAPI documents: exactly seven new schemas and one path, with every existing schema/path and other object unchanged. Independently ran 220 backend policy/workflow/API tests and 17 isolated Node v24.20.0 transport tests against pinned source and generated-client bytes; all passed. HTTP authentication and fetch are test doubles, not a real JWT/browser proof.
+
+Nine adopted artifact hashes and both SQL artifact hashes match. The recorded rollback-only SQL probe has 45 passing checks, including prior expansion checks plus actual read/phase/RLS cases. Its temporary phase switch is correctly distinguished from writer cutover and rollback rehearsal. I inspected that receipt/source without running a database. Typecheck/architecture PASS are recorded root evidence rather than independent reruns here.
+
+No shared DB/browser/configuration or tracked source mutation occurred. Owner UI, canonical mutations, source completeness and full-stage acceptance remain pending; uncommitted mutation work is excluded. No complete gate or #152 exit credit is granted.

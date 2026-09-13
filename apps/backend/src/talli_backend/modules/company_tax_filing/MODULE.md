@@ -45,3 +45,11 @@ The #152 expansion in `supabase/migrations/20260914200000_company_tax_return_exp
 <!-- architecture-inventory
 {"ports":["CompanyTaxWorkspacePersistence"]}
 -->
+
+The TT02 import accepts immutable raw evidence and obtains company identity from the existing Company Access public contract. `CompanyTaxReturnPersistence` writes the deterministic projection and returns original receipt IDs with a creation flag. The application owns the surrounding transaction and Audit ordering. The import SQL retains all legacy strict payload, attribution, timestamp, hash, content and replay checks, using owned Tax tables and owner decisions from Company Access. Expansion and rollback reject import execution.
+
+<!-- architecture-inventory
+{"ports": ["CompanyTaxReturnPersistence"]}
+-->
+
+`ImportCompanyTaxReturnEvidence` carries the immutable command. `CompanyTaxCompanyIdentity` carries the authorized identity fact and `ImportedCompanyTaxEvidence` carries `TaxAuthorityEvidenceId`, `TaxFilingSubmissionId` and the creation flag.

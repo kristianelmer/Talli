@@ -5,6 +5,7 @@ from base64 import b64decode, b64encode
 from binascii import Error as Base64Error
 from hashlib import sha256
 import os
+import json
 import re
 import secrets
 import time
@@ -76,7 +77,7 @@ from talli_backend.modules.company_tax_filing.public import (
     TaxSettlementInput, TaxSettlementValidationError, TaxSettlementArchiveQuery, normalize_tax_settlement,
     BankTransactionReference, DocumentReference, TaxSettlementDocumentStatus,
     TaxSettlementKind as CompanyTaxSettlementKind,
-    CompanyTaxWorkspaceQuery,
+    CompanyTaxWorkspaceQuery, ImportCompanyTaxReturnEvidence,
 )
 from talli_backend.adapters.supabase_investments import compose_investments_application
 from talli_backend.adapters.supabase_marketing_measurement import (
@@ -1041,6 +1042,25 @@ class CompanyTaxSubmissionWire(TransportModel):
     updated_at: datetime
 
 
+class CompanyTaxEvidenceImportRequest(TransportModel):
+    company_id: UUID
+    income_year: Annotated[int, Field(strict=True, ge=2000, le=2100)]
+    evidence_json: Annotated[str, Field(strict=True, min_length=1, max_length=524288)]
+    evidence_url: str | None = None
+
+    @model_validator(mode="after")
+    def bounded_utf8_evidence(self):
+        if len(self.evidence_json.encode("utf-8", errors="replace")) > 512 * 1024:
+            raise ValueError("Evidence file exceeds the size limit.")
+        return self
+
+
+class CompanyTaxEvidenceImportWire(TransportModel):
+    authority_test_run_id: UUID
+    filing_submission_id: UUID
+    created: bool
+
+
 class CompanyTaxWorkspaceWire(TransportModel):
     company_id: UUID
     income_year: int | None
@@ -1050,6 +1070,10 @@ class CompanyTaxWorkspaceWire(TransportModel):
     review_comments: list[CompanyTaxReviewCommentWire]
     permissions: list[CompanyTaxPermissionWire]
     test_evidence: list[CompanyTaxTestEvidenceWire]
+
+
+def reject_non_json_constant(_value: str):
+    raise ValueError("Invalid JSON number.")
 
 
 def company_tax_json_wire(value: object) -> Any:
@@ -9790,6 +9814,34 @@ def create_app(
             )
 
         return await ledger_call(execute)
+
+    @application.post(
+        "/api/v1/company-tax/tt02-evidence-imports",
+        operation_id="companyTaxImportTt02Evidence", response_model=CompanyTaxEvidenceImportWire,
+        responses=ledger_errors, tags=["company-tax"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def company_tax_import_tt02_evidence(
+        body: CompanyTaxEvidenceImportRequest,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyTaxEvidenceImportWire:
+        async def execute() -> CompanyTaxEvidenceImportWire:
+            session = await company_tax_application.session(bearer_token(credentials))
+            try:
+                evidence = json.loads(body.evidence_json, parse_constant=reject_non_json_constant)
+                if not isinstance(evidence, dict):
+                    raise ValueError()
+            except (ValueError, RecursionError):
+                raise CompanyTaxError.invalid_input() from None
+            result = await session.import_return_evidence(ImportCompanyTaxReturnEvidence(
+                actor_id=session.actor_id, company_id=CompanyId(str(body.company_id)),
+                income_year=IncomeYear(body.income_year), evidence=evidence, evidence_url=body.evidence_url,
+            ))
+            return CompanyTaxEvidenceImportWire(
+                authority_test_run_id=UUID(str(result.authority_test_run_id)),
+                filing_submission_id=UUID(str(result.filing_submission_id)), created=result.created,
+            )
+        return await company_tax_call(execute)
 
     @application.get(
         "/api/v1/company-tax/filing-workspace",

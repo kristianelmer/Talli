@@ -604,3 +604,17 @@ The Company Tax filing read workflow at `/api/v1/company-tax/filing-workspace` r
 <!-- architecture-inventory
 {"routes":["/api/v1/company-tax/filing-workspace"]}
 -->
+
+## Company Tax TT02 import contract
+
+The named workflow preserves the original import ordering and atomic Audit inclusion. Audit exposes its declared immutable append contract over `public.audit_events`, its single canonical legacy store, under the #132 dependency allowance. This does not migrate Audit or alter frozen web compatibility scopes. Only created imports append Audit; replay preserves original IDs, actors and timestamps. The owned SQL import is unavailable during expansion and rollback.
+
+<!-- architecture-inventory
+{"workflows": ["company-tax-tt02-evidence-import"], "workflowPurposes": ["company-tax-tt02-evidence-import=>Authorizes and projects sanitized TT02 evidence, persists it idempotently through Company Tax, and includes Audit only on creation in one transaction over the canonical legacy Audit store."], "publicPackages": ["talli_backend.modules.audit.public"], "ports": ["CompanyTaxReturnPersistence", "AuditInclusion"], "adapterBindings": ["CompanyTaxReturnPersistence=>talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction", "AuditInclusion=>talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"], "adapterBindingOwners": ["CompanyTaxReturnPersistence=>backend-system", "AuditInclusion=>backend-system"], "adapterBindingModes": ["CompanyTaxReturnPersistence=>one request-scoped import transaction; Tax owns validated receipt persistence and Audit retains its canonical legacy append implementation", "AuditInclusion=>one request-scoped import transaction; Tax owns validated receipt persistence and Audit retains its canonical legacy append implementation"], "workflowDependencies": ["talli_backend.modules.audit.public"], "adapterDependencies": ["talli_backend.modules.audit.public"], "transportDependencies": ["json"]}
+-->
+
+The import route is `/api/v1/company-tax/tt02-evidence-imports`.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/company-tax/tt02-evidence-imports"]}
+-->

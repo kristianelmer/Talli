@@ -9,7 +9,8 @@
   "publicEntryPoint": "talli_backend.modules.company_tax_filing.public",
   "exports": {
     "commands": [
-      "RecordTaxSettlementCommand"
+      "RecordTaxSettlementCommand",
+      "ImportCompanyTaxReturnEvidence"
     ],
     "queries": [
       "NormalizedTaxSettlement",
@@ -34,7 +35,9 @@
       "PreparedCompanyTaxReturn",
       "prepare_company_tax_return",
       "CompanyTaxWorkspaceQuery",
-      "CompanyTaxFilingRows"
+      "CompanyTaxFilingRows",
+      "CompanyTaxCompanyIdentity",
+      "ImportedCompanyTaxEvidence"
     ],
     "events": [],
     "errors": [
@@ -51,7 +54,10 @@
       "TaxSettlementPersistence",
       "tax_settlement_persistence_adapter",
       "TaxSettlementArchivePersistence",
-      "CompanyTaxWorkspacePersistence"
+      "CompanyTaxWorkspacePersistence",
+      "TaxAuthorityEvidenceId",
+      "TaxFilingSubmissionId",
+      "CompanyTaxReturnPersistence"
     ]
   },
   "owns": {
@@ -94,6 +100,15 @@
       "name": "CompanyTaxWorkspacePersistence",
       "direction": "outbound",
       "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxWorkspacePersistence",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_settlement_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
+      ]
+    },
+    {
+      "name": "CompanyTaxReturnPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxReturnPersistence",
       "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_settlement_persistence_adapter",
       "adapters": [
         "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
