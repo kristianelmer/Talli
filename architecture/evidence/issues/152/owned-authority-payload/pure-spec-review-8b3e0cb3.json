@@ -1,0 +1,108 @@
+{
+  "verdict": "PASS_BOUNDED_PURE_IMPLEMENTATION_FOLLOWUP",
+  "reviewedAt": "2026-09-13T22:56:28.888740+00:00",
+  "baseRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+  "candidateRevision": "8b3e0cb340d962c8140b1ac72ceada59d4d4aea7",
+  "previousReviewedRevision": "6bbccde76e4d7b47e0c6b2c83f21e46470118d3f",
+  "closedFindings": [
+    "SPEC-152-PURE-1",
+    "SPEC-152-PURE-2"
+  ],
+  "findings": [],
+  "independentTests": {
+    "passed": 168,
+    "failed": 0,
+    "durationSeconds": 0.15,
+    "committedPureCases": 157,
+    "originalIndependentRegressions": 11,
+    "log": "spec-pure-8b3e0cb3.log",
+    "runtime": {
+      "python": "3.12.12 (main, Feb  4 2026, 01:57:59) [Clang 21.1.4 ]",
+      "pythonExecutable": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python",
+      "adaPackage": "4.0.0",
+      "adaLibrary": "4.0.0",
+      "pyicu": "2.16.2",
+      "icu": "78.2"
+    },
+    "sourceTree": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/spec-pinned-8b3e0cb3"
+  },
+  "captureReproduction": {
+    "runtime": {
+      "node": "v24.20.0",
+      "ada": "4.0.0",
+      "icu": "78.3",
+      "cldr": "48.0"
+    },
+    "onlyGeneratorModification": "Private output path",
+    "legacySourceRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+    "reviewBoundaries": {
+      "numericCases": 16,
+      "hostCases": 11,
+      "byteExact": true,
+      "sha256": "663d2477a7a9be112c726bc80648a9c2fc0677b2c6bde8b2f60129a65311457c"
+    },
+    "summaries": {
+      "additional": 8,
+      "initial": 6,
+      "byteExact": true,
+      "sha256": "af594941d10aa79dbe7fc23a283f1f6dd833ab622ce6be6fc6c9a5178c7f1a86"
+    }
+  },
+  "dependencyPinsAndLockAgree": true,
+  "allThreeCiNativePrerequisiteLanesReviewed": true,
+  "manifestSourceAndArtifactHashesVerified": true,
+  "linuxEvidence": {
+    "passed": 157,
+    "icu": "76.1",
+    "notIndependentlyRerun": true,
+    "scope": "Direct pins/native compatibility only; no complete locked gate credit"
+  },
+  "parentSettlementRegressionsNotRerun": 53,
+  "originalSixCriteriaUnchanged": true,
+  "limits": [
+    "API/web/SQLcutover and full release gates remain pending.",
+    "No claim of all future ICU collation behavior.",
+    "No hosted/provider/production authority or full-stage/successor acceptance.",
+    "No shared repository/database/browser/process mutation."
+  ],
+  "reportSha256": "3829029a3725c17b35ca899bbb3bed128a8d99f9db3518f151ee083e62c56a8d",
+  "candidateBindings": {
+    ".github/workflows/release-gate.yml": "58e1d6d869a63961876f7f0234b39784d736ad00a89d2a7866eeb1751f1d43f1",
+    "apps/backend/README.md": "e8656d51c1a22194223c3e47874d211de4307ae27b4c6bd3218e6c3231273df9",
+    "apps/backend/pyproject.toml": "acef4faf616fa1678a922159955655d1f8a011b0fc05558e0a49a70220096b53",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "6ef4839f5286a47c81328c52950282511fdd522393b6b7e6dab789b53b287c11",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/calculation.py": "e1655ac807151151557bc4e14e5aa1e5f3da3f54e8895e8bd32528913c8d50aa",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/evidence.py": "0b9ff2aaf0cf016fbea8d7e1a07b0d9cd6f73c3a0c18aac6c47f9c2536ba468a",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "ee002eaea21ba25d7342e0a2d8532ac77e243f14d42d9916c6c7b2db0ff2ded1",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/numbers.py": "96da02012ac092de436faf76ac6a15a8eb610b6cb79479a2d7c4e4dafcc87af3",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "d3ce3afacb009347a5c750b748e611a173d4f1222997a7092ab3d76880547119",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/validation.py": "2ad537de75ac4913d6bbe23887e736b67c25ce88f31a92a2b567e74adc5a8839",
+    "apps/backend/tests/test_company_tax_return_characterization.py": "6cced01b6ff0f0b81a73f3cc76c5bbff0ae47943cb6b48a764b51b8235a238a3",
+    "apps/backend/uv.lock": "eb504b9620c33040797d3564a74437cce504928357d94acd5473acf5af28ce52",
+    "architecture/evidence/issues/152/capture-review-boundaries.mjs.txt": "8d5d3ee3c4bde2b9ac3298dc0f5e2b6ddb74f50d91f9d17bf140c5905dc951da",
+    "architecture/evidence/issues/152/capture-validation-summary.mjs.txt": "c5aed6add5a5b01a8c6ee1ec355fd8750e319e0ca55815e0c0e5ec95ce981a42",
+    "architecture/evidence/issues/152/legacy-review-boundaries.json": "663d2477a7a9be112c726bc80648a9c2fc0677b2c6bde8b2f60129a65311457c",
+    "architecture/evidence/issues/152/legacy-validation-summary.json": "af594941d10aa79dbe7fc23a283f1f6dd833ab622ce6be6fc6c9a5178c7f1a86",
+    "architecture/evidence/issues/152/pure-followup/legacy-authority-tools-characterization.log": "16c0f133b61e124b394b0d615a941180b68268dcc9bf764eaa7a9f469d7ec27b",
+    "architecture/evidence/issues/152/pure-followup/linux-pure-final-tests.log": "c91042241123f162173eba70a4c2acde287a3a812e32e16597e0a0191319ac9b",
+    "architecture/evidence/issues/152/pure-followup/manifest.json": "ebeb9aab4bd83ca4611d74664231c3494a8b4ad514ce6b72dc8c1a267ff94432",
+    "architecture/evidence/issues/152/pure-followup/pure-followup-credentials.log": "0b6e9e0478ec9b7975907a49cd761e980dc14ceea038b4dd8eaec642222f805c",
+    "architecture/evidence/issues/152/pure-followup/pure-followup-tests.log": "14cd7c948641440b52d90a8b4ecb88887ec6be64dc5e0acabdc90cca9bdfc3d4",
+    "architecture/evidence/issues/152/pure-followup/pure-spec-review-6bbccde7.json": "51a9e6f3874df076ece537a19247be125d628c46137fbccf3bd0b55d09e6b70f",
+    "architecture/evidence/issues/152/pure-followup/pure-spec-review-6bbccde7.md": "b24dc8c29c7a6229e8c8cf0d7adbc4667fa40ce928527e6ecc648e44ce61f13d",
+    "architecture/evidence/issues/152/pure-followup/pure-standards-review-6bbccde7.json": "0c44fd4690b4370a839c13946c07897916ca1d5e91f256dc851eda59a0135bde",
+    "architecture/evidence/issues/152/pure-followup/pure-standards-review-6bbccde7.md": "06a7c83ae91192eec41ba25c7347e14ed9379f20d995875444b2922494ce0070",
+    "architecture/evidence/issues/152/requirements.json": "5f69ea9c33b04f40b87311f9f6a7bee21121b9e441dbe415a294bba716d9a89d"
+  },
+  "privateBindings": {
+    "spec-pure-8b3e0cb3.log": "d8004459b79f23f937316f7d2152a65fa3e9c1e620b4b3c80c961bdc348883d2",
+    "test_spec_extra_parity_6bbccde7.py": "c54507008b6dd1f7fada9319b7b26e866daaf59823e731ab00aa26adcff68a9b",
+    "spec-extra-parity-6bbccde7.json": "e227516452df7dd439e7f5b4b6262ab7a73383003dcc6ee281ba0501ebe88136",
+    "spec-capture-review-boundaries.mjs": "0f9c6b2215581e543ae0e5d0bcffc578e7639c7260136bd7f5237137def77ab4",
+    "spec-capture-validation-summary.mjs": "eda934dbeaf263a748c0430274a40270a2e1def0aca918ab3b76b0b7a4a544c0",
+    "spec-reproduced-8b3e0cb3-legacy-review-boundaries.json": "663d2477a7a9be112c726bc80648a9c2fc0677b2c6bde8b2f60129a65311457c",
+    "spec-reproduced-8b3e0cb3-legacy-validation-summary.json": "af594941d10aa79dbe7fc23a283f1f6dd833ab622ce6be6fc6c9a5178c7f1a86",
+    "spec-8b3e0cb3-capture-review-boundaries.mjs.txt.log": "b9448d73d347c8206a5cbc44bc983c32d3749714747d14b1a7a518264a6e1eda",
+    "spec-8b3e0cb3-capture-validation-summary.mjs.txt.log": "75f789542725b74b25bd54267e75bba5b0eaca8cefb288305c3cb7334a87be0b"
+  }
+}

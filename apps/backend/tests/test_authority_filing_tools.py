@@ -214,7 +214,7 @@ def test_local_payload_output_rejects_non_json_constants(monkeypatch, constant):
             '{"result":"validertOK","ignored":[' + constant + ']}', '')
     monkeypatch.setattr(subprocess, "run", spawn)
     with pytest.raises(ValueError):
-        payload("company_tax_validation_summary", {"resultXml": "<r/>"})
+        payload("annual_accounts", {"synthetic": True})
 
 
 def test_json_string_values_and_valid_numeric_syntax_remain_accepted(tmp_path):
@@ -311,7 +311,7 @@ def test_fixed_generator_child_environment_has_no_credential_or_node_injection(m
     monkeypatch.setattr(subprocess, "run", spawn)
     monkeypatch.setenv("TALLI_MASKINPORTEN_PRIVATE_KEY_PATH", "/private/key")
     monkeypatch.setenv("NODE_OPTIONS", "--require /private/inject")
-    assert payload("company_tax_validation_summary", {"resultXml": "<r/>"}) == {"result": "validertOK"}
+    assert payload("annual_accounts", {"synthetic": True}) == {"result": "validertOK"}
     assert set(captured["env"]) == {"PATH", "LANG"}
     assert "key" not in captured["input"] and "NODE_OPTIONS" not in captured["env"]
 

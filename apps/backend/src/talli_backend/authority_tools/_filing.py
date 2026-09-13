@@ -189,6 +189,22 @@ def payload(operation: str, value: dict[str, Any]):
     if operation not in {"annual_accounts", "company_tax", "company_tax_envelope",
                          "company_tax_validation_envelope", "company_tax_validation_summary"}:
         raise ValueError("Unknown fixed payload operation.")
+    if operation != "annual_accounts":
+        from .company_tax_payload import generate
+        try:
+            encoded = json.dumps({"operation": operation, "input": value})
+            if len(encoded.encode()) > MAX_RESPONSE_BYTES:
+                raise ValueError()
+            # Keep the predecessor JSON boundary, including non-standard constants.
+            result = generate(operation, _parse_json(encoded)['input'])
+            # JSON.stringify emits compact UTF-8 and escapes lone UTF-16 surrogates.
+            output = json.dumps(result, ensure_ascii=False, separators=(",", ":")).encode(
+                "utf-8", errors="backslashreplace")
+            if len(output) > MAX_RESPONSE_BYTES:
+                raise ValueError()
+            return result
+        except Exception:
+            raise ValueError("Local authority payload generation failed.") from None
     # Deliberately do not inherit NODE_OPTIONS or any provider/other environment secret.
     result = subprocess.run(["node", "--experimental-strip-types", str(ROOT / "scripts/authority-tool-payload.mjs")],
         input=json.dumps({"operation": operation, "input": value}), cwd=ROOT,

@@ -1,0 +1,24 @@
+{
+  "baselineRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+  "pureReviewRevision": "8b3e0cb340d962c8140b1ac72ceada59d4d4aea7",
+  "pureReview": "PASS_BOTH_AXES",
+  "authorityTools": {
+    "passed": 143,
+    "provider": "mocked; no live provider calls",
+    "scope": "Four Company Tax payload operations use public backend contracts; Annual Accounts remains on its existing Node bridge."
+  },
+  "nodeDispatch": {
+    "passed": 2
+  },
+  "limits": [
+    "CLI payload routing only; owner API/web persistence, workflow cutover and complete stage exit remain pending."
+  ],
+  "artifacts": {
+    "pure-spec-review-8b3e0cb3.md": "3829029a3725c17b35ca899bbb3bed128a8d99f9db3518f151ee083e62c56a8d",
+    "pure-spec-review-8b3e0cb3.json": "3864b0008165e748c143a50012dcd822d4e770ea1c91eb7d6a415ed029082d48",
+    "pure-standards-review-8b3e0cb3.md": "9aa309288b6e165607234dab996792469ad1acdc8128f5c6007305a847ac8723",
+    "pure-standards-review-8b3e0cb3.json": "4c184e9c4b0508f212a4a3d6cf3820cecace30b19b9d2a7b3e04d53dc0499fac",
+    "owned-authority-tools-tests.log": "bc4e037ad6ae73d3affaf170d9f4bf408c1f95e150407a59f2323360ebce2611",
+    "owned-authority-web-dispatch-tests.log": "56123519550bbccfd2d529fe3241b6c40c5e3bea50cbc9d705808ceada9facea"
+  }
+}

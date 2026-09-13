@@ -30,7 +30,9 @@
       "CompanyTaxEvidenceProjection",
       "project_company_tax_evidence",
       "CompanyTaxValidationSummary",
-      "summarize_company_tax_validation"
+      "summarize_company_tax_validation",
+      "PreparedCompanyTaxReturn",
+      "prepare_company_tax_return"
     ],
     "events": [],
     "errors": [

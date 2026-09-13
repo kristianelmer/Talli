@@ -102,6 +102,7 @@
     "fullStageExit": "PENDING",
     "linuxPureTests": 157,
     "legacyAuthorityToolTests": 138,
-    "independentPureFollowupReview": "PENDING"
+    "independentPureFollowupReview": "PASS_BOTH_AXES_8B3E0CB3",
+    "taxCliPayloadRouting": "IMPLEMENTED_143_AUTHORITY_TESTS_PASS"
   }
 }

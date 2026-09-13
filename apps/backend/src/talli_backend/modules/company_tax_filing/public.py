@@ -255,6 +255,23 @@ def render_company_tax_return(candidate: CompanyTaxReturnCandidate) -> CompanyTa
     return CompanyTaxReturnDocuments(value['skattemeldingXml'], value['naeringsspesifikasjonXml'])
 
 
+@dataclass(frozen=True, slots=True)
+class PreparedCompanyTaxReturn:
+    documents: CompanyTaxReturnDocuments
+    feedback: tuple[Mapping[str, object], ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'feedback', _freeze_return_fact(self.feedback))
+
+
+def prepare_company_tax_return(source: CompanyTaxReturnSource) -> PreparedCompanyTaxReturn:
+    """Retain the authority-tool blocking gate before producing sendable XML."""
+    candidate = build_company_tax_return(source)
+    if any(item['level'] == 'block' for item in candidate.feedback):
+        raise CompanyTaxError(code='COMPANY_TAX_PAYLOAD_BLOCKED', category=ErrorCategory.PRECONDITION_FAILED)
+    return PreparedCompanyTaxReturn(render_company_tax_return(candidate), candidate.feedback)
+
+
 def render_company_tax_envelope(input: CompanyTaxEnvelopeInput) -> str:
     from .rendering import envelope
     value = {'skattemeldingXml': input.documents.tax_return_xml,
@@ -317,6 +334,7 @@ def summarize_company_tax_validation(result_xml: str) -> CompanyTaxValidationSum
 
 
 __all__ = [
+    "PreparedCompanyTaxReturn", "prepare_company_tax_return",
     "CompanyTaxValidationSummary", "summarize_company_tax_validation",
     "CompanyTaxEvidenceInput", "CompanyTaxEvidenceProjection", "project_company_tax_evidence",
     "CompanyTaxReturnSource", "CompanyTaxReturnCandidate", "AnnualTaxEstimate",
