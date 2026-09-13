@@ -8,7 +8,11 @@
     "ci-rf-failure-review-50f969c0.md": "7a584eb464e282464dfd40eafed8dbd07db3e8e08517d3d50c9e11c9dce68ce3",
     "ci-rf-failure-review-50f969c0-bindings.json": "989a0ac361b2228b38b4ee7a2fe1121293083bd06cc3da2e155c65582896c531",
     "gate-pair-independent-review-146.md": "752c4a8c01cfd75eb51e7424c680543699899f83ffb2ff3c1b59147080f06348",
-    "gate-pair-independent-review-146.json": "91c5a0a598ca8753862b45fda508d1b77072ed55ccd5e3ab3a695077473448d3"
+    "gate-pair-independent-review-146.json": "91c5a0a598ca8753862b45fda508d1b77072ed55ccd5e3ab3a695077473448d3",
+    "github-release-50f969c0-attempt2.json": "3b43ff0cdf417d4473b4b2b3ab16c083265e19c2e42b9e247646717d9c0f9b02",
+    "ci-retry-result-50f969c0.json": "4c9fee9dea0c31f54406204b1729453b03046d9439902f72ad3ef7afe7ea00e7",
+    "gate-pair-committed-reread-ddcdd34e.json": "8348d4543506136fd2406d36b999d9797784352a3f4bf606555d29e2fc4da3ae",
+    "gate-pair-committed-reread-ddcdd34e.md": "a4000424c67a61effcf75624b2542c646f8f7ae90a88d638c70c6d755ff48a18"
   },
   "gates": [
     {
@@ -32,10 +36,10 @@
       "previousPassingRevision": "aad6bb90951120b09771a23f58d5b662713e7a5a"
     }
   ],
-  "ci": "50f969c0 attempt1 failed RF browser; unchanged retry pending. No failed attempt counts as a pass.",
+  "ci": "50f969c0 attempt1 failed RF browser; unchanged attempt2 passed all required jobs and subsequent Tax/public browsers. Exact integration-head checks remain pending.",
   "limits": [
     "#146 is slice1 only; no complete Company Tax stage exit before #152.",
     "No hosted migration, provider activation, real filing, production promotion or seven-day production observation claimed."
   ],
-  "storage": "Both receipts and the independent pre-storage pair review are included in this evidence commit. Final committed-byte reread remains a prerequisite to integration."
+  "storage": "Both receipts and pair evidence stored at ddcdd34e0e269fb5b00e56fe51d57deb9ac7b145; independent committed-byte reread PASS."
 }

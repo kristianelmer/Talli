@@ -30,7 +30,10 @@ CI passed the application and database Release gate on `aad6bb90`. CI's first
 all 25 Tax database tests passed, but the later Tax browser lane was not reached.
 The [failure record](gate-pair/ci-failure-attempt1-50f969c0.json) and independent
 assessment retain that failed attempt without assigning an unproven cause.
-The unchanged CI retry remains separate from both local passing receipts.
+The unchanged CI retry passed every required job, including the RF and subsequent
+Tax/public browser journeys; its result remains separate from both local passing
+receipts. Both receipts were stored in `ddcdd34e` and independently reread from
+committed bytes. No synchronization cause or product fix is inferred from the retry.
 Protected integration requires a passing exact-head Release/Preview and subsequent
 exact-main verification. Local acceptance alone does not close #146.
 

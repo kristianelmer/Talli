@@ -1,0 +1,14 @@
+{
+  "status": "PASS_UNCHANGED_CI_RETRY",
+  "revision": "50f969c04f4eabbe17ee2fcee36ac652d5ddcc05",
+  "runId": 34778737397,
+  "attempt": 2,
+  "databaseJobId": 103784138638,
+  "logSha256": "e1bb354e6ed077c5c2d68b7de08e0921083b8771bf976a2b8231337f8d210d62",
+  "observations": [
+    "All25TaxDB, RF browser, subsequent Tax browser and public acquisition passed.",
+    "Application, Database isolation and Release gate all succeed.",
+    "Attempt1 remains historical failure; no source, test, wait, assertion or fixture changed between attempts. Cause remains unproven; no product defect or fix inferred."
+  ],
+  "failedAttempt": "ci-failure-attempt1-50f969c0.json"
+}
