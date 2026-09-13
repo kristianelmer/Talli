@@ -16,38 +16,58 @@
     {
       "id": "GH-146-A1",
       "requirement": "Supported tax-settlement actions complete through the web and FastAPI.",
-      "status": "NOT_IMPLEMENTED",
-      "evidence": []
+      "status": "IMPLEMENTED_PENDING_COMPLETE_GATES_AND_PROTECTED_INTEGRATION",
+      "evidence": [
+        "rehearsal-fixes/browser-all-forms.log",
+        "verification-followups/tax-final-owner-browser2.log"
+      ]
     },
     {
       "id": "GH-146-A2",
       "requirement": "Resulting entries match existing characterization evidence.",
-      "status": "NOT_IMPLEMENTED",
-      "evidence": []
+      "status": "IMPLEMENTED_PENDING_COMPLETE_GATES_AND_PROTECTED_INTEGRATION",
+      "evidence": [
+        "legacy-preview-cases.json",
+        "legacy-command-cases.json",
+        "capture-completion-checkpoint/checks.json"
+      ]
     },
     {
       "id": "GH-146-A3",
       "requirement": "Invalid, duplicate, or unauthorized requests fail safely.",
-      "status": "NOT_IMPLEMENTED",
-      "evidence": []
+      "status": "IMPLEMENTED_PENDING_COMPLETE_GATES_AND_PROTECTED_INTEGRATION",
+      "evidence": [
+        "review-86951/disposition.json",
+        "rehearsal-fixes/tax-lifecycle.log",
+        "rehearsal-fixes/browser-all-forms.log"
+      ]
     },
     {
       "id": "GH-146-A4",
       "requirement": "Ledger and banking collaboration use only approved public workflows.",
-      "status": "NOT_IMPLEMENTED",
-      "evidence": []
+      "status": "IMPLEMENTED_PENDING_COMPLETE_GATES_AND_PROTECTED_INTEGRATION",
+      "evidence": [
+        "review-718684/manifest.json",
+        "review-and-deployment-followup/manifest.json"
+      ]
     },
     {
       "id": "GH-146-A5",
       "requirement": "Data ownership and dependency rules pass architecture checks.",
-      "status": "NOT_IMPLEMENTED",
-      "evidence": []
+      "status": "IMPLEMENTED_PENDING_COMPLETE_GATES_AND_PROTECTED_INTEGRATION",
+      "evidence": [
+        "source-read-retirements.json",
+        "review-718684/manifest.json"
+      ]
     },
     {
       "id": "GH-146-A6",
       "requirement": "Duplicate TypeScript policy and active-slice compatibility code are removed.",
-      "status": "NOT_IMPLEMENTED",
-      "evidence": []
+      "status": "IMPLEMENTED_PENDING_COMPLETE_GATES_AND_PROTECTED_INTEGRATION",
+      "evidence": [
+        "source-read-retirements.json",
+        "verification-followups/manifest.json"
+      ]
     }
   ],
   "entryGate": {
@@ -80,9 +100,9 @@
     "Original Audit continuation placement and identity remain unchanged."
   ],
   "remainingWork": [
-    "Independent Spec/Standards review and any resulting fixes",
-    "Fresh full-stack predecessor rehearsal and immutable customer-ready exit gates",
-    "Protected integration and stage completion receipt",
+    "Independent review of the four-line Governance topology detector correction",
+    "Two linked complete immutable customer-ready gates",
+    "Protected integration and slice completion receipt",
     "Full company-tax capability exit remains #152"
   ],
   "claim": {
@@ -92,7 +112,7 @@
   },
   "implementationCheckpoint": {
     "scope": "Canonical Tax capture, backend preview, hydrated web transport, Archive source, final contract and both rollbacks implemented; full gates and protected integration pending.",
-    "verification": "capture-completion-checkpoint/checks.json",
+    "verification": "verification-followups/manifest.json",
     "architecture": "PASS at working implementation checkpoint; no exit gate credit."
   }
 }

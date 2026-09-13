@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-09-13T18:46:55.367Z",
+  "deploymentId": "dpl_HuHzBsgpcgBVTGsFiFLEEy3PqN5f",
+  "projectId": "prj_1JJkOqzGBhn438IKHYADWiRbVGeZ",
+  "gitRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+  "state": "READY",
+  "target": "production",
+  "productionAlias": "talli.no",
+  "expectedRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+  "verdict": "PASS_UNCHANGED"
+}

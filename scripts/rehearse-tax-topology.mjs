@@ -25,6 +25,10 @@ try {
     const oldGovernance = (await database.query("select to_regprocedure('backend_system.prepare_shareholder_loan_v1(jsonb,text)') is not null present")).rows[0].present;
     if (oldGovernance) {
       await apply("contract-migrations/20260902071000_corporate_governance_shareholder_loan_contract.sql");
+    }
+    // The full Governance rollback restores tables with blocked writers; the
+    // already-retired shareholder-loan function need not reappear with them.
+    if (oldGovernance || await kind("public.corporate_decisions") === "r") {
       await apply("contract-migrations/20260902110000_corporate_governance_contract.sql");
     }
     const state = (await database.query("select phase from backend_system.tax_settlement_migration_state where singleton")).rows[0]?.phase;

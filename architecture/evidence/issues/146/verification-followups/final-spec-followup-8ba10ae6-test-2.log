@@ -1,0 +1,22 @@
+✔ mandatory local lane preserves every predecessor before Billing and final Authority verification (2041.696ms)
+✔ real shell stops at success and restores owned generated files (720.799958ms)
+✔ real shell stops at topology:workspace and restores owned generated files (405.171083ms)
+✔ real shell stops at npm:test:supabase-rf-workspace and restores owned generated files (433.352083ms)
+✔ real shell stops at npm:test:browser-owner and restores owned generated files (403.765875ms)
+✔ real shell stops at topology:rollback:2 and restores owned generated files (490.228083ms)
+✔ real shell stops at npm:test:ledger-hosted-migration-authority and restores owned generated files (435.466625ms)
+✔ real shell stops at npm:test:billing-database-lifecycle and restores owned generated files (784.699041ms)
+✔ real shell stops at topology:recutover and restores owned generated files (542.3035ms)
+✔ real shell stops at npm:test:supabase-rf-feedback and restores owned generated files (539.3665ms)
+✔ real shell stops at npm:test:company-tax-database and restores owned generated files (665.456292ms)
+✔ real shell stops at npm:test:browser-owner-annual and restores owned generated files (474.762375ms)
+✔ real shell stops at npm:test:browser-shareholder-register-filing and restores owned generated files (461.348958ms)
+✔ real shell stops at npm:test:browser-company-tax and restores owned generated files (605.203375ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9060.910667

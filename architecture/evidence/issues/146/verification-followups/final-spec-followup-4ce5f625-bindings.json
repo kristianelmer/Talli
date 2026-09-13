@@ -1,0 +1,42 @@
+{
+  "baseRevision": "7186841f3286c53fdb5c838963703de0efac17cc",
+  "reviewedRevision": "4ce5f625c95ea14bb188c4169814130b3327e2ff",
+  "sourceSha256": {
+    "package.json": "32d8c669e182d2962159b555090d3d23b6815c694fd750ac7d6eab723447f873",
+    "supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql": "4259df64004a9ba4382db74be357f6a0e411449ede805f7d30d30590d27ed891",
+    "architecture/evidence/issues/146/review-718684/final-standards-followup-718684.md": "1c4a2577cd3adc69acb57ed2c38a952438e24b580d86cf71c1dd2263a758e719",
+    "architecture/evidence/issues/146/review-718684/manifest.json": "ff3a5844a1db65c26a202e24796178ee79ca6751b9cf4a9fb5402b044fd14304",
+    "supabase/migrations/20260905010000_billing_capability.sql": "2f3731ad44145f9be4c429b2de67b76f7c2203fdd5de5d9ff799709422ce8d1d",
+    "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql": "20783cbd00406594a9203292052094029e7bbe21f83d7e53991e65513910a9bd",
+    "architecture/evidence/issues/146/review-718684/final-spec-followup-718684-bindings.json": "5e1502470aef80f6be7400e62398e64b6051e01804e181a9f3997cb3c8339ef5",
+    "architecture/company-archive-sources.json": "f2f3a3ad1127640db0c5ca50b45d45418aa71737c6bdcd8ceb25e7aab9aa9af1",
+    "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql": "2d9e10172c2e491dc59d25d8a1f79e578e4498f3663e81242ecd8c8e72194e5f",
+    "tests/company_access_cancellation_schema.test.mjs": "3ad34208a38bf44ddcb3438e87b3a6b6aa5af0765fcd6761421e1974996acfc2",
+    "supabase/contract-migrations/20260808121000_company_access_cancellation_contract.sql": "c308ed2f336d1f47188c9855997829149299a3d9d7bfa7b7b927571c3ef9c599",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts": "527bb48f9c71e4a10d3c7a73f53801fd09ffb6733d1c1641beacd2d7b1c67568",
+    "supabase/contract-migrations/20260831193000_investments_stage_exit.sql": "ac8f50d4b9fbe8554c6561c9d10273abe28de0475056acfe3be730d8886738b9",
+    "architecture/evidence/issues/146/review-718684/final-spec-followup-718684.md": "499a764b79f860e10e38d5cf87c60b509abf238eac1a92bc5d2baf40e5f63d10",
+    "architecture/evidence/issues/146/review-718684/final-standards-followup-718684-bindings.json": "22e1f24c410488ee30726b6a4e42dc6ce79f2b8719c42577f0b54ce02b26b055",
+    "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql": "632ef749740e836f9bddf95e143a8f6f330034119178e39eb30ef282d8957526",
+    "architecture/evidence/issues/146/review-718684/final-standards-followup-718684-archive.log": "a0c0838e7cb441a53386e287881e497ffd69b2906e921abc46e5483c80a8e17b"
+  },
+  "onlyInventoryChange": "holding_actions -> company_tax_filing.settlements; scope year and all other entries unchanged",
+  "adoptedPriorSpecFilesByteIdentical": true,
+  "runtime": {
+    "path": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+    "version": "v24.20.0",
+    "sha256": "9d050fd455b56426e25d4d603c7c501cbb2630348e836cf221dcce748e90588a"
+  },
+  "test": {
+    "command": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node --test /Users/kristianelmer/.codex/issue-192-private/issue146-entry/spec-followup-4ce5f625/tests/company_access_cancellation_schema.test.mjs",
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "durationMs": 64.688792
+  },
+  "limits": [
+    "Only focused static test executed",
+    "No DB/browser/repository/git/generated-file mutation",
+    "Full fresh aggregate and immutable gates/protected integration not accepted"
+  ]
+}

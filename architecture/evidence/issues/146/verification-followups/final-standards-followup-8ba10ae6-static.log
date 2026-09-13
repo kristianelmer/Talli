@@ -1,0 +1,25 @@
+Pinned source: 8ba10ae60a5e45c01a082a93f0b1b73f9943103b
+Runtime: v24.20.0
+Isolated mock/static cases only; runtime credentials removed, no database/browser/process lifecycle tests.
+Command: ['/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node', '--test', '--test-name-pattern=^browser owner cleanup (preserves every prior family|removes every tracked company|preserves source failure|preserves both operation|fails closed)|^retained annual browser seeds', '/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-146-86951-standards-73uvbb9g/tests/browser_process_lifecycle.test.mjs', '/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-146-86951-standards-73uvbb9g/tests/browser_fixture_safety.test.mjs']
+✔ retained annual browser seeds canonical historical RF/AU facts without replacing the live simulation (4.332625ms)
+✔ browser owner cleanup preserves every prior family in predecessor before company and user (16.411583ms)
+✔ browser owner cleanup preserves every prior family in overlap before company and user (12.444709ms)
+✔ browser owner cleanup preserves every prior family in contracted before company and user (11.604667ms)
+✔ browser owner cleanup preserves every prior family in tax-contracted before company and user (9.636083ms)
+✔ browser owner cleanup removes every tracked company before the shared owner (14.642708ms)
+✔ browser owner cleanup preserves source failure and continues independent cleanup (3.39625ms)
+✔ browser owner cleanup preserves both operation and rollback failures (4.372167ms)
+✔ browser owner cleanup fails closed for missing-family (0.523084ms)
+✔ browser owner cleanup fails closed for wrong-owner (0.7395ms)
+✔ browser owner cleanup fails closed for invalid-trigger-mode (2.595667ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 179.848375
+
+Exit code: 0

@@ -1,0 +1,17 @@
+Candidate implementation untouched: 8ba10ae60a5e45c01a082a93f0b1b73f9943103b
+Runtime: v24.20.0
+Independent temporary mock variants: omit the Tax family or annual-close Governance family after their public predecessor tables are retired. Original assertions require failure before deletes/commit and restored authority.
+Test fixture substitutions: [["for (const defect of [\"missing-family\", \"wrong-owner\", \"invalid-trigger-mode\"]) {", "for (const defect of [\"missing-tax\", \"missing-governance\"]) {"], ["const database = cleanupDatabaseProbe(calls, { defect });", "const database = cleanupDatabaseProbe(calls, { defect, phase: \"tax-contracted\" });"], ["  const physicalKind = relation => {", "  const physicalKind = relation => {\n    if (defect === \"missing-tax\" && relation === \"company_tax_filing.settlements\") return undefined;\n    if (defect === \"missing-governance\" && relation === \"corporate_governance.annual_close_decisions\") return undefined;"]]
+Command: ['/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node', '--test', '--test-name-pattern=^browser owner cleanup fails closed for missing-(tax|governance)$', '/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-146-86951-standards-73uvbb9g/tests/standards_missing_families.test.mjs']
+✔ browser owner cleanup fails closed for missing-tax (2.509875ms)
+✔ browser owner cleanup fails closed for missing-governance (0.403667ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 78.868916
+
+Exit code: 0

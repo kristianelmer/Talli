@@ -1,0 +1,15 @@
+Pinned source: 4ce5f625c95ea14bb188c4169814130b3327e2ff
+Runtime: v24.20.0
+Isolated static schema test; no database/browser/provider execution.
+Command: ['/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node', '--test', '--test-name-pattern=archive route and generation triggers share one complete source inventory', '/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-146-4ce5f625-schema-03d6i28w/tests/company_access_cancellation_schema.test.mjs']
+✔ archive route and generation triggers share one complete source inventory (2.693334ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 56.319083
+
+Exit code: 0

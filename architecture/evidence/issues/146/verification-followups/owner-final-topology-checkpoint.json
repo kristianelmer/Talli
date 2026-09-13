@@ -1,0 +1,23 @@
+{
+  "implementationRevision": "8ba10ae60a5e45c01a082a93f0b1b73f9943103b",
+  "sourceSha256": {
+    "architecture/company-archive-sources.json": "f2f3a3ad1127640db0c5ca50b45d45418aa71737c6bdcd8ceb25e7aab9aa9af1",
+    "scripts/test-supabase-local.sh": "8a009312a445888353458d5fa768b987d686d9e29a78cf595ee52b143373b7f6",
+    "tests/browser_owner_annual_loop.mjs": "397d8add73b6a735457adbb6ead293d8fb1c217869e797dbb059c590fbb3f5fa",
+    "tests/support/browser-owner-cleanup.mjs": "dd9421ba3a4d10caed8e81c474867d42e1bd26381b21d580cf140980da419b1e",
+    "tests/support/rf1086-fixture-access.mjs": "77396b61a11d44c325b293affc6dfc2553ab5af8ae4f99a38ed6cb727936ecf8",
+    "tests/ci_release_gate.test.mjs": "a7ee8eafec2a786bc7d404f1f639e86bf87f85af9252769184b65f51441f127c",
+    "package.json": "5a3129f1408d7201d0b22d94489f9db7376dc79a1cf0277ddd60f086e8ec57c8"
+  },
+  "boundedResults": {
+    "annualOwnerJourney": "PASS including original readiness, simulated filing, mobile investment correction and fixture teardown",
+    "staticFixtureAndCleanup": "22 passed, 1 real-database case excluded from this isolated run",
+    "harness": "72 passed, 1 real-database skip before the final view-specific cleanup correction; complete gate remains pending"
+  },
+  "logs": {
+    "tax-final-owner-browser2.log": "e10cdf7a103dcb74e0010f3298888398a0ef7eb3fd2e60690e67c5136e8153ee",
+    "tax-final-owner-fixture-static2.log": "bfb1ba8818bb089c6b0e72ca71ad90201ded379d53878a71035ddbd5db83c478",
+    "tax-final-owner-cleanup-recovery.log": "d2cd1daa4d563f06773c1e1e5376aecf3c5e28745b3b3580ef6293e5fc998cd2"
+  },
+  "fullGateCredit": false
+}

@@ -1,0 +1,27 @@
+[
+  {
+    "command": [
+      "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+      "--test",
+      "--test-concurrency=1",
+      "tests/browser_fixture_safety.test.mjs",
+      "tests/browser_process_lifecycle.test.mjs"
+    ],
+    "cwd": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/spec-8ba10ae6-isolated",
+    "exitCode": 0,
+    "log": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/final-spec-followup-8ba10ae6-test-1.log",
+    "sha256": "9579bf1fc462e11efc43509da6ebbc6c73450f1686c672e9b32edb003c150210"
+  },
+  {
+    "command": [
+      "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+      "--test",
+      "--test-name-pattern=mandatory local lane|real shell stops",
+      "tests/ci_release_gate.test.mjs"
+    ],
+    "cwd": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/spec-8ba10ae6-isolated",
+    "exitCode": 0,
+    "log": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/final-spec-followup-8ba10ae6-test-2.log",
+    "sha256": "a75291c717fac3c41e63a89efc9601bccfbd6c947335793e777a65a4f8d1058b"
+  }
+]

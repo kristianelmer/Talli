@@ -1,0 +1,7 @@
+{
+  "oldBackendRevision": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
+  "databasePhase": "contracted",
+  "status": 503,
+  "code": "LEDGER_DEPENDENCY_UNAVAILABLE",
+  "oldWriterEnabled": false
+}

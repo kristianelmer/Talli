@@ -1,0 +1,55 @@
+{
+  "status": "BOUNDED_REVIEWS_AND_BROWSER_PASS_FULL_GATE_FAILED_TOPOLOGY_FIX_PENDING",
+  "reviewsThrough": "8ba10ae60a5e45c01a082a93f0b1b73f9943103b",
+  "artifacts": {
+    "final-spec-followup-4ce5f625-bindings.json": "98e388207be1b927d08a9f15eac2b45b97aaaf6ca11c27c95c18131ebe01b6cf",
+    "final-spec-followup-4ce5f625.md": "c191ab3792bc5c56cd1f89c508f72972aeb281a2fe7f4ad6d4d7d4a3f8618716",
+    "final-standards-followup-4ce5f625-bindings.json": "b61f892bf19ca552f315a08fcf3d0e8138e22dd6437ed3fcd47cc5db4096cd93",
+    "final-standards-followup-4ce5f625.md": "cf0dae149bccedec32d4bda0209618f1622fbbfb58ead366f45ea6f42efb6c6f",
+    "final-standards-followup-4ce5f625-schema.log": "d7f67b0524a5d2ea988325b11f4ffd370863dcbab52dcf07823dfb2975931cbb",
+    "final-standards-followup-8ba10ae6.md": "1b3534b97e4e1917a1fbae4c886cd8341236f4fa09907ee9231c921d89ca33a8",
+    "final-spec-followup-8ba10ae6-test-1.log": "9579bf1fc462e11efc43509da6ebbc6c73450f1686c672e9b32edb003c150210",
+    "final-spec-followup-8ba10ae6-test-2.log": "a75291c717fac3c41e63a89efc9601bccfbd6c947335793e777a65a4f8d1058b",
+    "final-spec-followup-8ba10ae6-bindings.json": "cf96fa22490c729e2535a5e9564de51e5ceaa85ae3b8b41888d63951018be6e6",
+    "final-standards-followup-8ba10ae6-bindings.json": "8808a5cd6eac11a3292a266af3e9630e79d3e37f48e9fe6bce160d7aab9a021e",
+    "final-standards-followup-8ba10ae6-static.log": "93798caabf6fb776955d3ad48c07a0c0a4cb74d8e5ca99baaffcf6bf352306af",
+    "final-spec-followup-8ba10ae6-test-results.json": "e0241d998de5848082a21db29eaded3864acfe85de2bc24a0326c92d78b853c4",
+    "final-standards-followup-8ba10ae6-missing-families.log": "a385e447f85fd6a2cae8a17a328edace5366d42bd3ad2dc83f77d2028705ab2a",
+    "final-spec-followup-8ba10ae6.md": "67d007a038922d793482ffee60f310970a168ac8af36e6072f81f2a9de921abd",
+    "new-preview-old-backend-proof.json": "75b20ec95c3436d3ae9b0f7cd82184543fe0867ea46ca0aa65a5c8198fa83b67",
+    "old-linked-rollback-proof.json": "692f5bd4b0a319437e20680e8745e734e87ca450b0ebdd43ed6be77cfc46fb9b",
+    "old-client-after-contract-proof.json": "c226e6c6d5dd3b3bee5dcf5fb094b3975e0e1090569552e81b1dc625f080cf53",
+    "deployment-order-proof-manifest-4ce5f625.json": "514c9465a9d13379098e9ffca872778505e41f01cf18872e878d4c571ee2ea95",
+    "tax-final-owner-browser2.log": "e10cdf7a103dcb74e0010f3298888398a0ef7eb3fd2e60690e67c5136e8153ee",
+    "tax-final-owner-fixture-static2.log": "bfb1ba8818bb089c6b0e72ca71ad90201ded379d53878a71035ddbd5db83c478",
+    "tax-final-owner-cleanup-recovery.log": "d2cd1daa4d563f06773c1e1e5376aecf3c5e28745b3b3580ef6293e5fc998cd2",
+    "owner-final-topology-checkpoint.json": "e2f6210420d3508fa4b657eeb915108f61bf972bfa941f395e0d72b59282d200",
+    "review-8ba10ae6-adoption-check.json": "9f702d06fe7e19b1df806b7f5f744487385fd3758078dd433296f7beaec71d2a",
+    "production-freeze-8ba10ae6.json": "9a80d1b698ee1e95303116d3efbea7f7ba7eccf2b5cf5470bbcd0eca8ec4a4a0"
+  },
+  "gate": {
+    "revision": "8ba10ae60a5e45c01a082a93f0b1b73f9943103b",
+    "verdict": "FAIL",
+    "transcript": "architecture/evidence/customer-ready-gates/8ba10ae60a5e45c01a082a93f0b1b73f9943103b.log",
+    "completedPassingSections": [
+      "credential-scan",
+      "typecheck",
+      "architecture",
+      "boundary",
+      "build-web",
+      "build-backend",
+      "boundary-smoke",
+      "launch-rehearsal",
+      "production-dependency-audit"
+    ],
+    "failure": "Tax cutover rejected a restored Governance dividend_to_owner row; predecessor Governance contract rehearsal intentionally finishes rolled back. Tax prepare incorrectly inferred topology only from the separately retired shareholder-loan function.",
+    "fix": "Detect restored public.corporate_decisions and apply the unchanged Governance forward contract before Tax expansion.",
+    "exitCredit": false
+  },
+  "limits": [
+    "Latest four-line topology correction still needs independent review and a complete fresh gate.",
+    "Retained-fixture Governance rollback probe was not applicable after RF contract; it aborted atomically and Tax was restored to contracted state. No pass claimed for that probe.",
+    "Deployment-order proofs are explicitly bound to 4ce5f625; later changes affect test orchestration only.",
+    "No full Company Tax capability exit before #152."
+  ]
+}
