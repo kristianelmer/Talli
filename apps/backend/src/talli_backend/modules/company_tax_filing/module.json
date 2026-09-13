@@ -28,7 +28,9 @@
       "render_company_tax_envelope",
       "CompanyTaxEvidenceInput",
       "CompanyTaxEvidenceProjection",
-      "project_company_tax_evidence"
+      "project_company_tax_evidence",
+      "CompanyTaxValidationSummary",
+      "summarize_company_tax_validation"
     ],
     "events": [],
     "errors": [
@@ -81,6 +83,7 @@
   "dependencies": [],
   "allowedImports": [
     "__future__",
+    "ada_url",
     "base64",
     "calendar",
     "collections.abc",
@@ -88,7 +91,7 @@
     "decimal",
     "enum",
     "hashlib",
-    "ipaddress",
+    "icu",
     "math",
     "re",
     "talli_backend.modules.company_tax_filing.public",
@@ -96,7 +99,6 @@
     "talli_backend.shared.kernel",
     "types",
     "typing",
-    "urllib.parse",
     "uuid"
   ],
   "forbiddenResponsibilities": [

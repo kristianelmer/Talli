@@ -1,0 +1,95 @@
+{
+  "verdict": "CHANGES_REQUESTED_PURE_PARITY",
+  "reviewedAt": "2026-09-13T22:43:23.120016+00:00",
+  "baseRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+  "candidateRevision": "6bbccde76e4d7b47e0c6b2c83f21e46470118d3f",
+  "diffCommand": "git diff 054740b81692e0e59b99a76fff085f322f1968b4...6bbccde76e4d7b47e0c6b2c83f21e46470118d3f",
+  "findings": [
+    {
+      "id": "SPEC-152-PURE-1",
+      "priority": "P1",
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/numbers.py",
+      "line": 12,
+      "title": "Preserve JavaScript numeric conversion",
+      "evidence": "BOM-prefixed1000 produces old addback1000/estimate220 but new0; separators/Arabic digits produce opposite acceptance.",
+      "spec": "#132 legacy results/defaults/risk equivalence; GH-152-A1/A2."
+    },
+    {
+      "id": "SPEC-152-PURE-2",
+      "priority": "P2",
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/evidence.py",
+      "line": 75,
+      "title": "Preserve legacy URL canonicalization",
+      "evidence": "Four IPv4 alias forms accepted only by Python; double-dot domain accepted only by old WHATWG URL.",
+      "spec": "#132 coded errors and results equivalence; GH-152-A3."
+    }
+  ],
+  "independentChecks": {
+    "frozenPureComparisons": {
+      "passed": 116,
+      "failed": 0,
+      "durationSeconds": 0.11,
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<private pinned6bbcc>/apps/backend/src apps/backend/.venv/bin/python -m pytest -q -p no:cacheprovider <private pinned6bbcc>/apps/backend/tests/test_company_tax_return_characterization.py"
+    },
+    "extraParityRegressions": {
+      "failed": 8,
+      "passed": 3,
+      "exitCode": 1,
+      "durationSeconds": 0.09,
+      "log": "spec-extra-parity-red-6bbccde7.log"
+    },
+    "legacyDatabaseEvidenceReadOnly": {
+      "cases": 18,
+      "sha256Verified": true,
+      "notRerun": true,
+      "syntheticClaimsNotHttpMfa": true
+    },
+    "parentReportedOnly": "169 aggregate includes53settlementregressions; no independent53rerun."
+  },
+  "scopeLimits": [
+    "Pending API/web/SQLcutover and validation-summary collation are not falsely claimed complete.",
+    "No current production routing to new pure contracts.",
+    "No new-provider, DB, browser or full-gate execution.",
+    "No full-stage acceptance."
+  ],
+  "reportSha256": "b24dc8c29c7a6229e8c8cf0d7adbc4667fa40ce928527e6ecc648e44ce61f13d",
+  "candidateBindings": {
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "c57007cf480c6472d8a14ae297e64ce51c3030665835aad4091c836a6292e628",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/calculation.py": "7703052a22d67d129949b2ed1ffe090b24e995dde2fdcaa318e7128c41c09694",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/evidence.py": "f344acf3494afa201119ea8732b09b2dc996534fb42412fb64d2d4356dff64b1",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "0c39d50476c445ebb23df0af438237c17d362e1523a3f238a11f3d4c6d85aa6c",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/numbers.py": "53230d7595656d7a62a502a51a02813ec1d49a3e866d4e75758da491b92dfbdb",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "298d514ece4b0b668cc03df9902d9c744c0047f8cd40c6adc10a6a383e041ce2",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/rendering.py": "28a1891bbef3c8f2caeddbb04ddefda210aafbcae7414c094f6bc1ad1a992854",
+    "apps/backend/tests/test_company_tax_return_characterization.py": "593e633a6c75b8ab2cea28727994926633ef0990b8bacf72091d09edadc3fa04",
+    "architecture/compatibility.json": "490618b3e5b0a24023b74256dab39789268f505175686e286a1a254521c5da76",
+    "architecture/evidence/issues/152/entry-spec-review-b7e524ae.json": "43d6d9cc628163dd7f6f1a8f745db1ddc72255cd6eae726aa877400be7cfbef3",
+    "architecture/evidence/issues/152/entry-spec-review-b7e524ae.md": "de398dd1f6cb4cb3449724b9a6176c3efb10ea37c2f4c95a78e8345021a53cd0",
+    "architecture/evidence/issues/152/entry-standards-review-b7e524ae.json": "67a0f8a84071b7b7ba86cd7420b7bc8f51604d0566edd03b0f17f5be68c650db",
+    "architecture/evidence/issues/152/entry-standards-review-b7e524ae.md": "b617d2cbc82c925ce6ef594e5ccb0d2eb6b83836d51760634693e7c71b1e9fb0",
+    "architecture/evidence/issues/152/legacy-capture.mjs.txt": "a75cee605c9550d5c959ebec0b4c6701ca00ca60b950eb271966a683944039fe",
+    "architecture/evidence/issues/152/legacy-characterization.json": "2c50fe51fb47ea12e5890198966d4b5b460565056ecc9e9d5f188fc83c1b83a7",
+    "architecture/evidence/issues/152/legacy-database-capture.py.txt": "8ebf917db380282674bedd71ae76e3a5bc8a623763d00a2667103cf0fe9b22fc",
+    "architecture/evidence/issues/152/legacy-database-characterization.json": "59809ac5f43fee05706066c19b6e7d9b891fe6b4a20f9b3e3c6ca8bbf9b6a201",
+    "architecture/evidence/issues/152/legacy-import-boundaries-capture.mjs.txt": "856b900295a7a5792164acd857c843e5d34acdc0f41bc482b40aecb731636356",
+    "architecture/evidence/issues/152/legacy-import-boundaries.json": "834ebca97082d477899954de1f2c4134c9551ea3e435536457a62879ebffe34f",
+    "architecture/evidence/issues/152/published-receipt-independent-reread-146.json": "a3ecb65e484d674d57285023388c7a56b06baf346758686d34073671e39cd96c",
+    "architecture/evidence/issues/152/published-receipt-independent-reread-146.md": "cab5da886f84636352b1802a186ca22419a0b8b1e1b5a9e47c25885536242d24",
+    "architecture/evidence/issues/152/requirements.json": "3088ed19558c7245a055c50c6dfa24b6af18f2958d9ad673961b906e0f192589",
+    "architecture/evidence/issues/152/source-inventory.json": "9d7a53bde5d9599f0f52781e61cd95a5cffd959408aa1a5dfdfc1c90e3a5f982"
+  },
+  "legacyRuntimeBindings": {
+    "apps/web/app/lib/company-tax-return.ts": "765b82a633a859c4108e83cb6f30b18e3fd3ad491f56a53485453f6bc3ca6ec7",
+    "apps/web/app/lib/company-tax-return-submission.ts": "190077eabc091c9143c4223faee030047b09f85d1be2e0ca11dbe1be996b3ced",
+    "apps/web/app/lib/authority-test-evidence.ts": "70b9ba9ebb978c4c40f90e428e29b388c7ede251fc3bcb4582c492c0790601f4",
+    "apps/web/app/lib/tax-settlement.ts": "0712141c523700e51816353d78453558949ec1ed6416c59bfd7cc3a0e519e274",
+    "apps/web/app/lib/company-tax-return-xml.ts": "80fe4c5c10daa3c67b6041b32fb2c6289fe91f8783f7d8b62077f0564c511f17",
+    "apps/web/app/lib/company-tax-return-authority-payload.ts": "c68aa036c33c6dfacf235b9960d8d8f8e36c016cba4b72e12a71cd44566e99c1"
+  },
+  "reproductionBindings": {
+    "spec-extra-parity-6bbccde7.mjs": "bbef664985c3818ca6745db2057c5450d5c35391d8166d24ec04170634518180",
+    "spec-extra-parity-6bbccde7.json": "e227516452df7dd439e7f5b4b6262ab7a73383003dcc6ee281ba0501ebe88136",
+    "test_spec_extra_parity_6bbccde7.py": "c54507008b6dd1f7fada9319b7b26e866daaf59823e731ab00aa26adcff68a9b",
+    "spec-extra-parity-red-6bbccde7.log": "f9b84f8cf9462da09103eb97afdca00f870d53e0d2ef242e0d6f8add60fb29a4"
+  }
+}

@@ -301,7 +301,23 @@ def project_company_tax_evidence(input: CompanyTaxEvidenceInput) -> CompanyTaxEv
     return CompanyTaxEvidenceProjection(result['authorityRun'], result['submission'])
 
 
+@dataclass(frozen=True, slots=True)
+class CompanyTaxValidationSummary:
+    result: str
+    deviation_codes: tuple[str, ...]
+    guidance_codes: tuple[str, ...]
+    failure_reasons: tuple[str, ...]
+
+
+def summarize_company_tax_validation(result_xml: str) -> CompanyTaxValidationSummary:
+    from .validation import summarize
+    value = summarize(result_xml)
+    return CompanyTaxValidationSummary(value['result'], tuple(value['deviationCodes']),
+                                       tuple(value['guidanceCodes']), tuple(value['failureReasons']))
+
+
 __all__ = [
+    "CompanyTaxValidationSummary", "summarize_company_tax_validation",
     "CompanyTaxEvidenceInput", "CompanyTaxEvidenceProjection", "project_company_tax_evidence",
     "CompanyTaxReturnSource", "CompanyTaxReturnCandidate", "AnnualTaxEstimate",
     "CompanyTaxReturnDocuments", "CompanyTaxEnvelopeInput", "build_company_tax_return",

@@ -1,0 +1,20 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {pathToFileURL} from 'node:url';
+import {resolve} from 'node:path';
+const {summarizeCompanyTaxReturnValidation}=await import(pathToFileURL(resolve('apps/web/app/lib/company-tax-return-authority-payload.ts')).href);
+const lists=[
+  ['a','A','å','Å','ø','Ø','æ','Æ','z','Z','aa','Aa','AA','aA'],
+  ['é','e','E','ë','e\u0301','É','ü','u','Y','y','Ü','ö','o','Ö','ä','Ä','æ','Æ'],
+  ['A2','A10','A1','a1','A-1','A_1','A 1','A.1','A/1','B2'],
+  ['Z','🦊','😀','','中','α','я','א','ع','あ','a','Æ'],
+  ['  many\n spaces\t here  ','\u0085not-JS-space','\u001fcontrol','\ufeffBOM','\u00a0NBSP','\u2028line'],
+  ['a'.repeat(501),'a'.repeat(499)+'😀','a'.repeat(498)+'😀','a'.repeat(498)+'😃'],
+  ['A&amp;B','A&B','A&#197;','Å','A&lt;B'],
+];
+const inputs=lists.map(list=>'<r>'+list.map(value=>'<avvikstype>'+value+'</avvikstype>').join('')+'</r>');
+inputs.push('<r><resultatAvValidering>validertOK</resultatAvValidering><resultatAvValidering>validertMedFeil</resultatAvValidering><x:veiledningstype a="b">Å1</x:veiledningstype><y:veiledningstype>Æ1</y:veiledningstype><aarsakTilValidertMedFeil>Først</aarsakTilValidertMedFeil></r>');
+const cases=inputs.map((input,index)=>{let output;try{output={value:summarizeCompanyTaxReturnValidation(input)};}catch(error){output={error:{name:error.name,message:error.message}};}return {id:'summary-'+index,input,output};});
+const json=JSON.stringify({sourceRevision:'054740b81692e0e59b99a76fff085f322f1968b4',runtime:process.version,icu:process.versions.icu,cldr:process.versions.cldr,sourceSha256:createHash('sha256').update(readFileSync('apps/web/app/lib/company-tax-return-authority-payload.ts')).digest('hex'),cases},null,2)+'\n';
+writeFileSync('architecture/evidence/issues/152/legacy-validation-summary.json',json);
+console.log(JSON.stringify({cases:cases.length,sha256:createHash('sha256').update(json).digest('hex')}));

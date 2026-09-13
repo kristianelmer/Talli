@@ -94,11 +94,14 @@
   },
   "implementationProgress": {
     "publicPureContracts": "IMPLEMENTED_NOT_ROUTED",
-    "comparison": "32 payload/annual-estimate/XML/envelope cases and83 evidence-import outcomes match frozen predecessor fixtures",
-    "focusedTests": 169,
+    "comparison": "48 payload/annual-estimate/XML cases,94 evidence-import outcomes and14 validation summaries match frozen predecessor fixtures",
+    "focusedTests": 210,
     "settlementRegression": "PASS",
-    "authorityValidationSummary": "PENDING_NORWEGIAN_COLLATION_PARITY",
+    "authorityValidationSummary": "PASS_CAPTURED_NORWEGIAN_ICU_PARITY_MAC_AND_LINUX",
     "apiWebSqlCutover": "PENDING",
-    "fullStageExit": "PENDING"
+    "fullStageExit": "PENDING",
+    "linuxPureTests": 157,
+    "legacyAuthorityToolTests": 138,
+    "independentPureFollowupReview": "PENDING"
   }
 }

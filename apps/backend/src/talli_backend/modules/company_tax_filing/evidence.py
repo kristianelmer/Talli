@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import calendar
 import hashlib
-import ipaddress
 import re
 from collections.abc import Mapping
-from urllib.parse import quote, urlsplit
+
+from ada_url import URL
 
 _SPACE = '\u0009\u000a\u000b\u000c\u000d\u0020\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff'
 _UUID = r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
@@ -63,25 +63,12 @@ def _safe_url(value):
     if raw != normalized or re.search(r'[\x00-\x20\x7f]', normalized) or len(normalized.encode('utf-16-le', 'surrogatepass')) // 2 > 2048 or '?' in normalized or '#' in normalized or re.search(r'(?:^|/)\.{1,2}(?:/|$)|%(?:2e|2f|5c)|current_document_reference_sentinel', normalized, re.I):
         raise ValueError('TT02-evidenslenken må være en avgrenset HTTPS-lenke uten query eller fragment.')
     try:
-        parsed = urlsplit(normalized)
-        if not parsed.scheme:
-            raise ValueError()
-        host = parsed.hostname or ''
-        port = parsed.port
+        parsed = URL(normalized)
     except ValueError:
         raise ValueError('TT02-evidenslenken må være en absolutt HTTPS-lenke.') from None
-    canonical_host = host
-    try:
-        canonical_host = str(ipaddress.IPv6Address(host)) if ':' in host else host.encode('idna').decode('ascii')
-    except (ValueError, UnicodeError):
-        canonical_host = ''
-    if ':' in canonical_host:
-        canonical_host = '[' + canonical_host + ']'
-    path = quote(parsed.path or '/', safe="/:@!$&'()*+,;=-._~%[]|")
-    canonical = 'https://' + canonical_host + path
-    if parsed.scheme != 'https' or not host or parsed.username or parsed.password or port or parsed.query or parsed.fragment or canonical != normalized or '\\' in normalized:
+    if parsed.protocol != 'https:' or not parsed.hostname or parsed.username or parsed.password or parsed.port or parsed.search or parsed.hash or parsed.href != normalized:
         raise ValueError('TT02-evidenslenken må være en absolutt HTTPS-lenke uten credentials, query eller fragment.')
-    return canonical
+    return parsed.href
 
 
 def project(input):

@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping
 
-from .numbers import money, number, rounded, total
+from .numbers import money, nonnegative, number, rounded, total
 
 TAX = 'skattemeldingUpersonlig'
 BUSINESS = 'naeringsspesifikasjon'
@@ -91,8 +91,8 @@ def feedback(input):
     if annual.get('no_activity_confirmed') and (any(e['entry_type'] != 'opening_balance' for e in entries) or any(a['action_type'] != 'tax_settlement' for a in actions)):
         add('warning', 'tax_return_no_activity_with_activity_data', 'No-activity er bekreftet, men året har posteringer eller holdinghandlinger.')
     totals = _ledger_totals(entries)
-    classified = money(total(_amount(a, 'gross_amount') if a['action_type'] == 'dividend_received' else _amount(a, 'dividend_portion') if a['action_type'] == 'fund_distribution_received' else max(0, _sale_result(a)) if a['action_type'] == 'share_sale' else 0 for a in actions))
-    losses = money(total(max(0, -_sale_result(a)) for a in actions if a['action_type'] == 'share_sale'))
+    classified = money(total(_amount(a, 'gross_amount') if a['action_type'] == 'dividend_received' else _amount(a, 'dividend_portion') if a['action_type'] == 'fund_distribution_received' else nonnegative(_sale_result(a)) if a['action_type'] == 'share_sale' else 0 for a in actions))
+    losses = money(total(nonnegative(-_sale_result(a)) for a in actions if a['action_type'] == 'share_sale'))
     if classified > 0 and classified != totals['dividendAndGainIncome']:
         add('block', 'tax_return_financial_income_classification_mismatch', 'Finansinntekt i hovedbok stemmer ikke med klassifiserte utbytter og aksjegevinster.')
     if losses > 0 and losses != totals['shareSaleLoss']:
@@ -136,11 +136,11 @@ def build(input):
     sales = [a for a in actions if a['action_type'] == 'share_sale']
     classified = total(_amount(a, 'gross_amount') for a in dividends) + total(_amount(a, 'dividend_portion') for a in distributions)
     dividend = money(classified or (totals['dividendAndGainIncome'] if not dividends and not distributions and not sales else 0))
-    gain = money(total(max(0, _sale_result(a)) for a in sales))
-    loss = money(total(max(0, -_sale_result(a)) for a in sales))
-    exempt_gain = money(total(_sale_component(a, 'exempt_gain', max(0, _sale_result(a))) for a in sales))
+    gain = money(total(nonnegative(_sale_result(a)) for a in sales))
+    loss = money(total(nonnegative(-_sale_result(a)) for a in sales))
+    exempt_gain = money(total(_sale_component(a, 'exempt_gain', nonnegative(_sale_result(a))) for a in sales))
     taxable_gain = money(total(_sale_component(a, 'taxable_gain', 0) for a in sales))
-    nondeductible_loss = money(total(_sale_component(a, 'non_deductible_loss', max(0, -_sale_result(a))) for a in sales))
+    nondeductible_loss = money(total(_sale_component(a, 'non_deductible_loss', nonnegative(-_sale_result(a))) for a in sales))
     deductible_loss = money(total(_sale_component(a, 'deductible_loss', 0) for a in sales))
     add_back = money(total(_amount(a, 'taxable_add_back') for a in dividends + distributions))
     accounting = money(totals['dividendAndGainIncome'] + totals['interestIncome'] - totals['adminCosts'] - totals['shareSaleLoss'])
@@ -207,7 +207,7 @@ def build(input):
             'bookShareSaleGain': gain, 'bookShareSaleLoss': loss, 'exemptShareSaleGain': exempt_gain,
             'taxableShareSaleGain': taxable_gain, 'nonDeductibleShareSaleLoss': nondeductible_loss,
             'deductibleShareSaleLoss': deductible_loss, 'accountingResultBeforeTax': accounting,
-            'fritaksmetodenAddBack': add_back, 'taxableBasis': basis, 'estimatedTax': money(max(0, basis) * .22)},
+            'fritaksmetodenAddBack': add_back, 'taxableBasis': basis, 'estimatedTax': money(nonnegative(basis) * .22)},
         'fields': fields, 'feedback': feedback(input),
     }
 
@@ -234,7 +234,7 @@ def estimate(input):
     gain = total(number(a['payload'].get('taxable_gain')) for a in actions if a['action_type'] == 'share_sale')
     loss = total(number(a['payload'].get('deductible_loss')) for a in actions if a['action_type'] == 'share_sale')
     basis = money(interest + add_back + gain - loss - admin)
-    tax = money(max(0, basis) * .22)
+    tax = money(nonnegative(basis) * .22)
     return {'adminCosts': money(admin), 'interestIncome': money(interest), 'fritaksmetodenAddBack': money(add_back),
             'taxableShareSaleGain': money(gain), 'deductibleShareSaleLoss': money(loss), 'taxBasis': basis,
             'estimatedTax': tax, 'status': 'payable' if tax > 0 else 'zero'}

@@ -1,0 +1,13 @@
+# #152 pure implementation Spec review: 6bbccde7
+
+**Two parity defects; no cutover or exit acceptance.** Reviewed fixed `054740b81692e0e59b99a76fff085f322f1968b4...6bbccde76e4d7b47e0c6b2c83f21e46470118d3f` and commits 252cf52a, b7e524ae, 6bbccde7. Both findings violate #132’s requirement to preserve “results, coded errors, ordering, defaults, risk responses” and #152’s unchanged supported outputs/fail-closed gates.
+
+1. **Numeric conversion changes accounting facts** — `numbers.py:8–23`. Python `str.strip()` omits JavaScript’s BOM whitespace, while `float()` accepts separators and non-ASCII digits that `Number()` rejects. Through the public contract, an otherwise unchanged fixed input with `gross_amount`/`taxable_add_back = "\ufeff1000"` yields legacy add-back 1000 and estimate 220, versus new add-back/estimate 0. Conversely `"1_000"` and Arabic `"١٠٠٠"` become 1000 in Python instead of legacy nonfinite/clamped-zero behavior. Preserve JavaScript’s accepted numeric grammar and whitespace, including invalid-number propagation; add these frozen cases.
+
+2. **Evidence URL acceptance differs** — `evidence.py:65–82`. `urlsplit` plus Python IDNA does not reproduce the legacy WHATWG URL canonicalization. New projection accepts `https://127.1/evidence.json`, integer, hex and octal IPv4 spellings that legacy rejects as noncanonical; it rejects `https://example..com/evidence.json`, which legacy accepts. Preserve the exact former normalization/rejection contract and Norwegian errors. This is an import-policy difference; no network fetch or SSRF effect was tested or claimed.
+
+Independent pinned-source pytest execution passes all 116 existing frozen comparisons/immutability checks. Additional exact-old-Node→new-public-contract regressions produce **8 failures, 3 passing controls**, retained privately. The 169 aggregate/53 settlement results are parent-reported, not independently rerun here.
+
+Within JSON source facts, recursive copies/frozen outputs respect ADR0011 without cross-owner I/O or new writers. The 18-case SQL artifact and capture script bind an actual legacy RPC body, synthetic SQL claims, replay/atomic Audit rollback and fixture cleanup; hashes match, but I did not rerun the database or treat SQL claims as HTTP/MFA/browser proof. The public pure module does not authorize persistence or upgrade imported feedback to accepted.
+
+API/web/SQL cutover, validation-summary collation, stateful migrated comparisons, official XSD validation, full gates and protected integration remain explicitly pending. Those planned gaps are not defects in this checkpoint. No repository, database, browser or provider mutation occurred.

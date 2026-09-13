@@ -2,21 +2,36 @@
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Iterable
+
+_SPACE = '\u0009\u000a\u000b\u000c\u000d\u0020\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff'
+
+
+def _array_text(values) -> str:
+    return ','.join('' if value is None else _array_text(value) if isinstance(value, (list, tuple))
+                    else text(value) if isinstance(value, (str, int, float, bool)) else '[object Object]'
+                    for value in values)
 
 
 def number(value: object) -> float:
     if value is None:
         return 0.0
+    if isinstance(value, (list, tuple)):
+        value = _array_text(value)
     if isinstance(value, str):
-        value = value.strip()
+        value = value.strip(_SPACE)
         if not value:
             return 0.0
-        if value.startswith(('0x', '0X', '0b', '0B', '0o', '0O')):
+        if re.fullmatch(r'0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+', value):
             try:
                 return float(int(value, 0))
-            except ValueError:
-                return math.nan
+            except OverflowError:
+                return math.inf
+        if value in ('Infinity', '+Infinity', '-Infinity'):
+            return -math.inf if value.startswith('-') else math.inf
+        if not re.fullmatch(r'[+-]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?', value):
+            return math.nan
     try:
         return float(value)
     except (TypeError, ValueError, OverflowError):
@@ -40,6 +55,10 @@ def rounded(value: float) -> float:
 
 def money(value: float) -> float:
     return rounded(value * 100) / 100
+
+
+def nonnegative(value: float) -> float:
+    return value if math.isnan(value) else max(0.0, value)
 
 
 def text(value: str | float | int | bool) -> str:
