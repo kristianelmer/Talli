@@ -21,6 +21,7 @@ from talli_backend.modules.banking.public import (
 )
 from talli_backend.modules.company_tax_filing.public import (
     AccountingEntryReference, CompanyTaxError, RecordTaxSettlementCommand,
+    CompanyTaxWorkspaceQuery, CompanyTaxFilingRows, CompanyTaxWorkspacePersistence,
     TaxSettlementPersistence, TaxSettlementArchivePersistence, TaxSettlementArchiveQuery, tax_settlement_persistence_adapter,
 )
 from talli_backend.modules.documents.public import (
@@ -31,6 +32,17 @@ from talli_backend.modules.ledger.public import (
     PostTaxSettlementCommand, ledger_persistence_adapter,
 )
 from talli_backend.modules.ledger.service import LedgerService
+
+
+def _company_tax_database_error(error: psycopg.DatabaseError):
+    known = {
+        'company_tax_return_forbidden': CompanyTaxError.forbidden,
+        'company_tax_return_not_found': CompanyTaxError.not_found,
+        'company_tax_return_invalid_input': CompanyTaxError.invalid_input,
+        'company_tax_return_unavailable': CompanyTaxError.unavailable,
+    }
+    factory = known.get(error.diag.message_primary)
+    return factory() if factory else _map_database_error(str(error))
 
 
 def _request(command: RecordTaxSettlementCommand) -> dict[str, object]:
@@ -99,9 +111,10 @@ class PostgresCompanyTaxSession:
             raise CompanyTaxError.unavailable() from None
         except psycopg.DatabaseError as error:
             # Existing receipt, Ledger and input codes remain part of released v1.
-            raise _map_database_error(str(error)) from None
+            raise _company_tax_database_error(error) from None
 
 
+@tax_settlement_persistence_adapter(CompanyTaxWorkspacePersistence)
 @tax_settlement_persistence_adapter(TaxSettlementArchivePersistence)
 @tax_settlement_persistence_adapter(TaxSettlementPersistence)
 @ledger_persistence_adapter(LedgerPersistence)
@@ -124,7 +137,7 @@ class PostgresCompanyTaxTransaction:
         except psycopg.OperationalError:
             raise CompanyTaxError.unavailable() from None
         except psycopg.DatabaseError as error:
-            raise _map_database_error(str(error)) from None
+            raise _company_tax_database_error(error) from None
 
     async def _one_idempotent_row(self, query: str, parameters: tuple[object, ...]):
         rows = await self._database_rows(query, parameters)
@@ -136,6 +149,24 @@ class PostgresCompanyTaxTransaction:
         return await self._database_rows(query, (
             json.dumps(dict(payload), separators=(',', ':')), str(self.actor_id.subject),
         ))
+
+    async def filing_workspace(self, query: CompanyTaxWorkspaceQuery) -> CompanyTaxFilingRows:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._one_idempotent_row(
+            'select company_tax_filing.read_workspace_v1(%s::uuid,%s::integer,%s::text) as result',
+            (str(query.company_id), int(query.income_year) if query.income_year is not None else None,
+             str(self.actor_id.subject)),
+        )
+        result = row.get('result')
+        try:
+            if not isinstance(result, Mapping):
+                raise ValueError()
+            return CompanyTaxFilingRows(query.company_id, query.income_year,
+                **{name: result[name] for name in ('previews', 'submissions', 'overrides',
+                                                  'review_comments', 'permissions', 'test_evidence')})
+        except (KeyError, TypeError, ValueError):
+            raise CompanyTaxError.unavailable() from None
 
     async def archive_settlements(self, query: TaxSettlementArchiveQuery) -> tuple[Mapping[str, object], ...]:
         if query.actor_id != self.actor_id:

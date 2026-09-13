@@ -40,3 +40,7 @@ export async function loadTaxSettlementArchiveSource(accessToken: string, compan
     return { data: [], error: { message: "Kunne ikke lese skatteoppgjørene." } };
   }
 }
+
+export function loadCompanyTaxFilingWorkspace(accessToken: string, companyId: string, incomeYear: number | null = null) {
+  return client(accessToken).companyTaxGetFilingWorkspace(companyId, incomeYear, { signal: AbortSignal.timeout(10_000) });
+}

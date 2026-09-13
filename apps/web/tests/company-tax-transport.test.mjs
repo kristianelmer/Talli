@@ -100,3 +100,25 @@ for (const value of ["abc", "Infinity", "1,5"]) {
     });
   });
 }
+
+test("filing workspace keeps a failed source unavailable and checks returned scope", async (t) => {
+  environment(t);
+  const { loadCompanyTaxFilingWorkspace } = await import("../features/company-tax-filing/index.ts");
+  let status = 200;
+  let result = { companyId, incomeYear: 2025, previews: [], submissions: [], overrides: [], reviewComments: [], permissions: [], testEvidence: [] };
+  t.mock.method(globalThis, "fetch", async (url, request) => {
+    assert.equal(new URL(url).pathname, "/api/v1/company-tax/filing-workspace");
+    assert.deepEqual([...new URL(url).searchParams], [["companyId", companyId], ["incomeYear", "2025"]]);
+    assert.equal(request.cache, "no-store");
+    assert.equal(new Headers(request.headers).get("Authorization"), "Bearer owner");
+    return Response.json(result, { status });
+  });
+  assert.deepEqual(await loadCompanyTaxFilingWorkspace("owner", companyId, 2025), result);
+  for (const malformed of [{ ...result, companyId: operationId }, { ...result, incomeYear: 2024 }, { ...result, testEvidence: null }, { ...result, submissions: [{}] }]) {
+    result = malformed;
+    await assert.rejects(loadCompanyTaxFilingWorkspace("owner", companyId, 2025), error => error instanceof TalliApiError && error.status === 502);
+  }
+  status = 503;
+  result = { code: "COMPANY_TAX_DEPENDENCY_UNAVAILABLE" };
+  await assert.rejects(loadCompanyTaxFilingWorkspace("owner", companyId, 2025), error => error instanceof TalliApiError && error.status === 503);
+});

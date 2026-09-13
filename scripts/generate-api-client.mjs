@@ -277,6 +277,7 @@ const bankingOperations = {
   ],
 };
 const companyTaxOperations = {
+  workspace: ["/api/v1/company-tax/filing-workspace", "get", "companyTaxGetFilingWorkspace"],
   archive: ["/api/v1/company-tax/settlement-archive-source", "get", "companyTaxGetSettlementArchiveSource"],
   preview: ["/api/v1/company-tax/settlement-previews", "post", "companyTaxPreviewSettlement"],
 };
@@ -844,6 +845,8 @@ const bankingSchemas = Object.fromEntries([
   "StartBankConnectionWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const companyTaxSchemas = Object.fromEntries([
+  "CompanyTaxWorkspaceWire", "CompanyTaxPreviewWire", "CompanyTaxSubmissionWire",
+  "CompanyTaxOverrideWire", "CompanyTaxReviewCommentWire", "CompanyTaxPermissionWire", "CompanyTaxTestEvidenceWire",
   "TaxSettlementArchiveItemWire", "TaxSettlementArchiveWire",
   "TaxSettlementDocumentStatus", "TaxSettlementPayloadWire", "TaxSettlementPreviewInputWire",
   "TaxSettlementPreviewLineWire", "TaxSettlementPreviewWire",
@@ -2551,6 +2554,32 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         isAdministrativeCostEntryWire,
       );
       if (result.companyId !== body.companyId || result.incomeYear !== body.incomeYear) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxGetFilingWorkspace(
+      companyId: string, incomeYear: number | null = null, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxWorkspaceWire> {
+      const query = new URLSearchParams({ companyId });
+      if (incomeYear !== null) query.set("incomeYear", String(incomeYear));
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/filing-workspace?\${query}\`,
+        "GET", request, undefined, isCompanyTaxWorkspaceWire,
+      );
+      const families = [result.previews, result.submissions, result.overrides,
+        result.reviewComments, result.permissions, result.testEvidence];
+      if (result.companyId !== companyId || result.incomeYear !== incomeYear
+          || families.some(rows => rows.some(row => row.companyId !== companyId)
+            || new Set(rows.map(row => row.id)).size !== rows.length)
+          || [result.previews, result.submissions, result.overrides].some(rows =>
+            rows.some(row => incomeYear !== null && row.incomeYear !== incomeYear))
+          || [...result.submissions, ...result.overrides].some(row => row.previewId !== null
+            && !result.previews.some(preview => preview.id === row.previewId && preview.incomeYear === row.incomeYear))
+          || result.reviewComments.some(row => !result.previews.some(preview => preview.id === row.previewId))
+          || result.submissions.some(row => row.authorityTestRunId !== null
+            && !result.testEvidence.some(evidence => evidence.id === row.authorityTestRunId))) {
         throw new TalliApiError(502, undefined);
       }
       return result;

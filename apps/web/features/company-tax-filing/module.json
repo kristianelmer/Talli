@@ -19,7 +19,8 @@
   "apiOperations": [
     "companyTaxPreviewSettlement",
     "ledgerPostTaxSettlement",
-    "companyTaxGetSettlementArchiveSource"
+    "companyTaxGetSettlementArchiveSource",
+    "companyTaxGetFilingWorkspace"
   ],
   "dependencies": [],
   "allowedImports": [

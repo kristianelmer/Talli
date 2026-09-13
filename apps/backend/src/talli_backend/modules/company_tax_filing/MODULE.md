@@ -39,3 +39,9 @@ The #152 expansion in `supabase/migrations/20260914200000_company_tax_return_exp
 <!-- architecture-inventory
 {"ownedTables": ["company_tax_filing.filing_previews", "company_tax_filing.filing_submissions", "company_tax_filing.filing_overrides", "company_tax_filing.filing_review_comments", "company_tax_filing.authority_permissions", "company_tax_filing.authority_test_runs"]}
 -->
+
+`CompanyTaxWorkspaceQuery`, `CompanyTaxFilingRows`, and `CompanyTaxWorkspacePersistence` publish complete immutable company-scoped filing rows. The public result checks company, year, obligation, duplicate identities and related preview/test evidence. The read-only SQL contracts in `supabase/migrations/20260914201000_company_tax_return_read_contracts.sql` deny access to inert expansion or rolled-back copies; enabling them still requires the separate canonical cutover. Company-wide test evidence is not a claim of yearly production completeness.
+
+<!-- architecture-inventory
+{"ports":["CompanyTaxWorkspacePersistence"]}
+-->

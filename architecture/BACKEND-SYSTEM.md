@@ -594,3 +594,13 @@ Company Tax #152 records expansion snapshots and reconciliation in five private 
 <!-- architecture-inventory
 {"technicalTables": ["backend_system.company_tax_return_migration_state", "backend_system.company_tax_return_migration_inventory", "backend_system.company_tax_return_source_rows", "backend_system.company_tax_return_quarantine", "backend_system.company_tax_return_reconciliations"], "technicalMigrations": ["supabase/migrations/20260914200000_company_tax_return_expand.sql"]}
 -->
+
+The Company Tax filing read workflow at `/api/v1/company-tax/filing-workspace` returns all six immutable row projections through one verified request transaction. The database rejects expanded or rolled-back sources. This read route does not submit, import or authorize filing, and company-wide permissions/test evidence are not proof of a year's production-history completeness.
+
+<!-- architecture-inventory
+{"workflows": ["company-tax-filing-reads"], "workflowPurposes": ["company-tax-filing-reads=>Returns immutable complete Tax filing rows for one authorized company and optional year; copied expansion and rolled-back sources fail closed."], "ports": ["CompanyTaxWorkspacePersistence"], "adapterBindings": ["CompanyTaxWorkspacePersistence=>talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"], "adapterBindingOwners": ["CompanyTaxWorkspacePersistence=>backend-system"], "adapterBindingModes": ["CompanyTaxWorkspacePersistence=>one request-scoped read transaction with verified actor and phase-gated owned RLS"]}
+-->
+
+<!-- architecture-inventory
+{"routes":["/api/v1/company-tax/filing-workspace"]}
+-->

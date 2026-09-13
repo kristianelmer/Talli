@@ -5133,6 +5133,839 @@
         "title": "CompanyOnboardingResponse",
         "type": "object"
       },
+      "CompanyTaxOverrideWire": {
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "createdBy": {
+            "format": "uuid",
+            "title": "Createdby",
+            "type": "string"
+          },
+          "fieldTarget": {
+            "title": "Fieldtarget",
+            "type": "string"
+          },
+          "filing": {
+            "const": "skattemelding for AS",
+            "title": "Filing",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "newValue": {
+            "title": "Newvalue",
+            "type": "string"
+          },
+          "oldValue": {
+            "title": "Oldvalue",
+            "type": "string"
+          },
+          "ownerConfirmedAt": {
+            "format": "date-time",
+            "title": "Ownerconfirmedat",
+            "type": "string"
+          },
+          "ownerConfirmedBy": {
+            "format": "uuid",
+            "title": "Ownerconfirmedby",
+            "type": "string"
+          },
+          "previewId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previewid"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "riskLevel": {
+            "enum": [
+              "advisory",
+              "warning",
+              "block"
+            ],
+            "title": "Risklevel",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "previewId",
+          "companyId",
+          "incomeYear",
+          "filing",
+          "fieldTarget",
+          "oldValue",
+          "newValue",
+          "reason",
+          "riskLevel",
+          "ownerConfirmedBy",
+          "ownerConfirmedAt",
+          "createdBy",
+          "createdAt"
+        ],
+        "title": "CompanyTaxOverrideWire",
+        "type": "object"
+      },
+      "CompanyTaxPermissionWire": {
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "confirmedAt": {
+            "format": "date-time",
+            "title": "Confirmedat",
+            "type": "string"
+          },
+          "confirmedBy": {
+            "format": "uuid",
+            "title": "Confirmedby",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "obligation": {
+            "const": "skattemelding",
+            "title": "Obligation",
+            "type": "string"
+          },
+          "productionEnabled": {
+            "title": "Productionenabled",
+            "type": "boolean"
+          },
+          "submitterUserId": {
+            "format": "uuid",
+            "title": "Submitteruserid",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "obligation",
+          "submitterUserId",
+          "confirmedBy",
+          "confirmedAt",
+          "productionEnabled",
+          "updatedAt"
+        ],
+        "title": "CompanyTaxPermissionWire",
+        "type": "object"
+      },
+      "CompanyTaxPreviewWire": {
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "createdBy": {
+            "format": "uuid",
+            "title": "Createdby",
+            "type": "string"
+          },
+          "filing": {
+            "const": "skattemelding for AS",
+            "title": "Filing",
+            "type": "string"
+          },
+          "hovedskjemaXml": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hovedskjemaxml"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "issues": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "preview": {
+            "title": "Preview",
+            "type": "string"
+          },
+          "setupId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setupid"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "blocked",
+              "warning"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "underskjemaXml": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Underskjemaxml",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "setupId",
+          "incomeYear",
+          "filing",
+          "status",
+          "issues",
+          "preview",
+          "hovedskjemaXml",
+          "underskjemaXml",
+          "source",
+          "createdBy",
+          "createdAt"
+        ],
+        "title": "CompanyTaxPreviewWire",
+        "type": "object"
+      },
+      "CompanyTaxReviewCommentWire": {
+        "properties": {
+          "acknowledgedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledgedat"
+          },
+          "acknowledgedBy": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledgedby"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "createdBy": {
+            "format": "uuid",
+            "title": "Createdby",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "previewId": {
+            "format": "uuid",
+            "title": "Previewid",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "advisory",
+              "hard_block"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "previewId",
+          "companyId",
+          "target",
+          "severity",
+          "body",
+          "createdBy",
+          "acknowledgedBy",
+          "acknowledgedAt",
+          "createdAt"
+        ],
+        "title": "CompanyTaxReviewCommentWire",
+        "type": "object"
+      },
+      "CompanyTaxSubmissionWire": {
+        "properties": {
+          "adapterMode": {
+            "enum": [
+              "simulation",
+              "test_authority",
+              "production"
+            ],
+            "title": "Adaptermode",
+            "type": "string"
+          },
+          "authorityConfirmedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authorityconfirmedat"
+          },
+          "authorityConfirmedBy": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authorityconfirmedby"
+          },
+          "authorityTestRunId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authoritytestrunid"
+          },
+          "calls": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Calls",
+            "type": "array"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "createdBy": {
+            "format": "uuid",
+            "title": "Createdby",
+            "type": "string"
+          },
+          "failureCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failurecode"
+          },
+          "failureMessage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failuremessage"
+          },
+          "feedbackDocumentIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Feedbackdocumentids",
+            "type": "array"
+          },
+          "feedbackItems": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Feedbackitems",
+            "type": "array"
+          },
+          "filing": {
+            "const": "skattemelding for AS",
+            "title": "Filing",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotencykey"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "mode": {
+            "enum": [
+              "simulation",
+              "test_authority"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "payloadHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payloadhash"
+          },
+          "previewConfirmedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previewconfirmedat"
+          },
+          "previewConfirmedBy": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previewconfirmedby"
+          },
+          "previewId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previewid"
+          },
+          "receiptId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receiptid"
+          },
+          "receiptMetadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receiptmetadata"
+          },
+          "setupId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Setupid"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "submittedBy": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submittedby"
+          },
+          "submittedPayload": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submittedpayload"
+          },
+          "submittedPayloadRef": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submittedpayloadref"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "previewId",
+          "authorityTestRunId",
+          "companyId",
+          "setupId",
+          "incomeYear",
+          "filing",
+          "mode",
+          "adapterMode",
+          "payloadHash",
+          "idempotencyKey",
+          "status",
+          "authorityConfirmedBy",
+          "authorityConfirmedAt",
+          "previewConfirmedBy",
+          "previewConfirmedAt",
+          "calls",
+          "receiptId",
+          "feedbackDocumentIds",
+          "feedbackItems",
+          "receiptMetadata",
+          "submittedPayloadRef",
+          "submittedPayload",
+          "failureCode",
+          "failureMessage",
+          "createdBy",
+          "submittedBy",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "CompanyTaxSubmissionWire",
+        "type": "object"
+      },
+      "CompanyTaxTestEvidenceWire": {
+        "properties": {
+          "archiveReference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archivereference"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "environment": {
+            "enum": [
+              "test",
+              "manual_evidence"
+            ],
+            "title": "Environment",
+            "type": "string"
+          },
+          "evidenceUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidenceurl"
+          },
+          "feedbackSummary": {
+            "title": "Feedbacksummary",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "obligation": {
+            "const": "skattemelding",
+            "title": "Obligation",
+            "type": "string"
+          },
+          "payloadHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payloadhash"
+          },
+          "receiptReference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receiptreference"
+          },
+          "recordedAt": {
+            "format": "date-time",
+            "title": "Recordedat",
+            "type": "string"
+          },
+          "recordedBy": {
+            "format": "uuid",
+            "title": "Recordedby",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "blocked",
+              "pending"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "testReference": {
+            "title": "Testreference",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "companyId",
+          "obligation",
+          "environment",
+          "status",
+          "testReference",
+          "feedbackSummary",
+          "receiptReference",
+          "archiveReference",
+          "evidenceUrl",
+          "payloadHash",
+          "recordedBy",
+          "recordedAt"
+        ],
+        "title": "CompanyTaxTestEvidenceWire",
+        "type": "object"
+      },
+      "CompanyTaxWorkspaceWire": {
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "incomeYear": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incomeyear"
+          },
+          "overrides": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyTaxOverrideWire"
+            },
+            "title": "Overrides",
+            "type": "array"
+          },
+          "permissions": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyTaxPermissionWire"
+            },
+            "title": "Permissions",
+            "type": "array"
+          },
+          "previews": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyTaxPreviewWire"
+            },
+            "title": "Previews",
+            "type": "array"
+          },
+          "reviewComments": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyTaxReviewCommentWire"
+            },
+            "title": "Reviewcomments",
+            "type": "array"
+          },
+          "submissions": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyTaxSubmissionWire"
+            },
+            "title": "Submissions",
+            "type": "array"
+          },
+          "testEvidence": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyTaxTestEvidenceWire"
+            },
+            "title": "Testevidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "previews",
+          "submissions",
+          "overrides",
+          "reviewComments",
+          "permissions",
+          "testEvidence"
+        ],
+        "title": "CompanyTaxWorkspaceWire",
+        "type": "object"
+      },
       "CompanyYearAdmissionRequest": {
         "additionalProperties": false,
         "properties": {
@@ -51814,6 +52647,477 @@
         "summary": "Revoke Company Access Operator Support",
         "tags": [
           "company-access"
+        ]
+      }
+    },
+    "/api/v1/company-tax/filing-workspace": {
+      "get": {
+        "operationId": "companyTaxGetFilingWorkspace",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "companyId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Companyid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "incomeYear",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 2100,
+                  "minimum": 2000,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Incomeyear"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyTaxWorkspaceWire"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Company Tax Filing Workspace",
+        "tags": [
+          "company-tax"
         ]
       }
     },

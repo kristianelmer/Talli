@@ -32,7 +32,9 @@
       "CompanyTaxValidationSummary",
       "summarize_company_tax_validation",
       "PreparedCompanyTaxReturn",
-      "prepare_company_tax_return"
+      "prepare_company_tax_return",
+      "CompanyTaxWorkspaceQuery",
+      "CompanyTaxFilingRows"
     ],
     "events": [],
     "errors": [
@@ -48,7 +50,8 @@
       "TaxSettlementKind",
       "TaxSettlementPersistence",
       "tax_settlement_persistence_adapter",
-      "TaxSettlementArchivePersistence"
+      "TaxSettlementArchivePersistence",
+      "CompanyTaxWorkspacePersistence"
     ]
   },
   "owns": {
@@ -82,6 +85,15 @@
       "name": "TaxSettlementArchivePersistence",
       "direction": "outbound",
       "contract": "talli_backend.modules.company_tax_filing.public.TaxSettlementArchivePersistence",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_settlement_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
+      ]
+    },
+    {
+      "name": "CompanyTaxWorkspacePersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxWorkspacePersistence",
       "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_settlement_persistence_adapter",
       "adapters": [
         "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"

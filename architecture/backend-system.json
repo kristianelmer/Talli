@@ -403,6 +403,16 @@
         "/api/v1/company-tax/settlement-previews",
         "/api/v1/company-tax/settlement-archive-source"
       ]
+    },
+    {
+      "name": "company-tax-filing-reads",
+      "purpose": "Returns immutable complete Tax filing rows for one authorized company and optional year; copied expansion and rolled-back sources fail closed.",
+      "publicPackages": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "routes": [
+        "/api/v1/company-tax/filing-workspace"
+      ]
     }
   ],
   "operationalControlState": {
@@ -807,6 +817,12 @@
       "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
       "owner": "backend-system",
       "mode": "one request-scoped settlement transaction; verified actor, restricted executor and public capability operations"
+    },
+    {
+      "port": "CompanyTaxWorkspacePersistence",
+      "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
+      "owner": "backend-system",
+      "mode": "one request-scoped read transaction with verified actor and phase-gated owned RLS"
     }
   ],
   "allowedDependencies": {

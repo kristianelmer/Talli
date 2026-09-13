@@ -1,0 +1,61 @@
+{
+  "verdict": "PASS_BOUNDED_INERT_EXPANSION_SOURCE_REVIEW",
+  "reviewedAt": "2026-09-13T23:19:10.414596+00:00",
+  "baseRevision": "af95066f0655733b8ea76ef1490b3178864aced7",
+  "candidateRevision": "bcc8dc490a451e9afc181fd9c061afe3da06d120",
+  "findings": [],
+  "migrationPath": "supabase/migrations/20260914200000_company_tax_return_expand.sql",
+  "migrationSha256": "ce0a4b9ab6fc7f90ea4cd851e9a2cff2da113db9c461dc5911bd6c7abfc96281",
+  "reviewScope": [
+    "Six-family source classification and full snapshots",
+    "Count/hash reconciliation and inherited structure",
+    "Internal FK relocation/external retention preservation",
+    "FORCE RLS/no runtime grants",
+    "Borrowed privilege restoration",
+    "Ownership manifests and seeded-probe evidence honesty"
+  ],
+  "independentStaticAssertions": {
+    "sixTargetTablesDeclared": true,
+    "legacyDmlAbsent": true,
+    "countAndHashEqualityEnforced": true,
+    "originalCriteriaUnchanged": true,
+    "allArtifactHashesMatch": true
+  },
+  "savedProbe": {
+    "checks": 33,
+    "status": "PASS",
+    "rollbackVerified": true,
+    "migrationHashMatched": true,
+    "independentlyExecuted": false,
+    "scope": "Read saved actual PostgreSQL synthetic rollback-only probe and source; no HTTP JWT/MFA, provider, durable commit or full lifecycle credit."
+  },
+  "limitations": [
+    "No independent DB rerun; no assertion of comprehensive role/privilege topology testing.",
+    "Expansion-only snapshots do not attest complete production-submission history.",
+    "Writer refresh/cutover/contract/rollback/full stage remain pending.",
+    "No shared repo/DB/browser/provider/process mutation."
+  ],
+  "reportSha256": "54e630ee6c259e1c5643d1afa7d28bcadedcc3b993a36dd42de0e28ffc4651c1",
+  "sourceBindings": {
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "95cc4f1df0f1f7a46d484d12a857e3e88c48ab3d07834a8d7135ec56737c3d33",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "b408790df92088a563f48087c94955b489c6a6a264bcbbe519890386b38a4fa1",
+    "architecture/BACKEND-SYSTEM.md": "29052d9a805c48b88c602288fbd57140a81cae062e81c752189bc1ffb785d891",
+    "architecture/backend-system.json": "d7b56678428b5e490869855c225107a1f9c37598ad4ba1b9025641be923d96c1",
+    "architecture/database-catalog.json": "8b477547b13da11d10ac176459c7c73821c4095444437309f8722d2d41d7ef1a",
+    "architecture/dependency-evidence.json": "990d6f59d433e07ed443e8e24e3ba94525d7c879d51d0449c1f6d56f2ca14222",
+    "architecture/evidence/issues/152/filing-expansion/cli-spec-followup-af95066f.json": "b88e0efe538b4fa336aa55997151fed92a7f6a12dc93cadab4fd6482103d184a",
+    "architecture/evidence/issues/152/filing-expansion/cli-spec-followup-af95066f.md": "3ef88fed1e66f0c35bf1228bf8841c276bb2962a71f5136b40dcd5f5d8a9a782",
+    "architecture/evidence/issues/152/filing-expansion/cli-standards-followup-af95066f.json": "4d27c1e19d1d1fe9a92d71326fbc0019c57daf246e3c19389907572130e8b4f8",
+    "architecture/evidence/issues/152/filing-expansion/cli-standards-followup-af95066f.md": "be32e2605b1c6ac26c39287f3765f5777ef59d7eb7b6473833d45781b08ea1f0",
+    "architecture/evidence/issues/152/filing-expansion/filing-expand-seeded.json": "92a05412793fd0930e9b84b05acf687ea6cb5738cb7646c88471b239c7b5c07d",
+    "architecture/evidence/issues/152/filing-expansion/manifest.json": "2b6926e1806f61d23186176f4c7f6812a30f066f59fb162db2ffee15abe8f091",
+    "architecture/evidence/issues/152/filing-expansion/probe-filing-expand-seeded.py.txt": "d5cee4ae050f77bf76bcdc7026fcefd122c692814e13772d6b01ee2315cefa8c",
+    "architecture/evidence/issues/152/requirements.json": "f9afea01d2c3b14fb24076431e20f6e160a4baf9e431fcbb26837ad4c8f79fed",
+    "supabase/migrations/20260914200000_company_tax_return_expand.sql": "ce0a4b9ab6fc7f90ea4cd851e9a2cff2da113db9c461dc5911bd6c7abfc96281"
+  },
+  "specBindings": {
+    "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482",
+    "architecture/evidence/issues/152/source-inventory.json": "9d7a53bde5d9599f0f52781e61cd95a5cffd959408aa1a5dfdfc1c90e3a5f982"
+  }
+}

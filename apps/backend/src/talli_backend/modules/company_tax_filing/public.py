@@ -90,6 +90,10 @@ class AccountingEntryReference(_UuidReference):
 
 class CompanyTaxError(DomainError):
     @classmethod
+    def not_found(cls) -> CompanyTaxError:
+        return cls(code="COMPANY_TAX_NOT_FOUND", category=ErrorCategory.NOT_FOUND)
+
+    @classmethod
     def invalid_input(cls) -> CompanyTaxError:
         return cls(code="COMPANY_TAX_INVALID_INPUT", category=ErrorCategory.INVALID_INPUT)
 
@@ -159,6 +163,40 @@ class TaxSettlementArchivePersistence(Protocol):
     async def archive_settlements(self, query: TaxSettlementArchiveQuery) -> tuple[Mapping[str, object], ...]:
         """Return all thirteen preserved source fields for the authorized year."""
         ...
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxWorkspaceQuery:
+    actor_id: ActorId
+    company_id: CompanyId
+    income_year: IncomeYear | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxFilingRows:
+    """Complete immutable predecessor row projections, scoped to one company.
+
+    Permissions and authority test evidence are company-wide in the predecessor;
+    their lack of an income year must not be interpreted as year completeness.
+    """
+    company_id: CompanyId
+    income_year: IncomeYear | None
+    previews: tuple[Mapping[str, object], ...]
+    submissions: tuple[Mapping[str, object], ...]
+    overrides: tuple[Mapping[str, object], ...]
+    review_comments: tuple[Mapping[str, object], ...]
+    permissions: tuple[Mapping[str, object], ...]
+    test_evidence: tuple[Mapping[str, object], ...]
+
+    def __post_init__(self) -> None:
+        for name in ('previews', 'submissions', 'overrides', 'review_comments', 'permissions', 'test_evidence'):
+            object.__setattr__(self, name, _freeze_return_fact(getattr(self, name)))
+        from .workspace import validate_rows
+        validate_rows(self)
+
+
+class CompanyTaxWorkspacePersistence(Protocol):
+    async def filing_workspace(self, query: CompanyTaxWorkspaceQuery) -> CompanyTaxFilingRows: ...
 
 
 def _freeze_return_fact(value: object) -> object:
@@ -334,6 +372,7 @@ def summarize_company_tax_validation(result_xml: str) -> CompanyTaxValidationSum
 
 
 __all__ = [
+    "CompanyTaxWorkspaceQuery", "CompanyTaxFilingRows", "CompanyTaxWorkspacePersistence",
     "PreparedCompanyTaxReturn", "prepare_company_tax_return",
     "CompanyTaxValidationSummary", "summarize_company_tax_validation",
     "CompanyTaxEvidenceInput", "CompanyTaxEvidenceProjection", "project_company_tax_evidence",

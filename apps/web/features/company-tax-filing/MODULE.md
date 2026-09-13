@@ -11,3 +11,9 @@ Archive and readiness read the same exact year-scoped Tax source fields. Failed 
 <!-- architecture-inventory
 {"apiOperations":["companyTaxGetSettlementArchiveSource"]}
 -->
+
+`loadCompanyTaxFilingWorkspace` exposes the generated read contract for six owned Tax row families. It preserves source failures; the owner UI cutover remains pending.
+
+<!-- architecture-inventory
+{"apiOperations":["companyTaxGetFilingWorkspace"]}
+-->

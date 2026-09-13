@@ -145,6 +145,14 @@
       "to": "backend:company_access"
     },
     {
+      "from": "backend-system:company-tax-filing-reads",
+      "imports": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_tax_filing"
+    },
+    {
       "from": "backend-system:company-tax-settlement",
       "imports": [
         "talli_backend.modules.banking.public"

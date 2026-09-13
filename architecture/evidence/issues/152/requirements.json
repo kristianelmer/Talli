@@ -104,6 +104,7 @@
     "legacyAuthorityToolTests": 138,
     "independentPureFollowupReview": "PASS_BOTH_AXES_8B3E0CB3",
     "taxCliPayloadRouting": "IMPLEMENTED_146_AUTHORITY_TESTS_PASS_BOTH_REVIEWS_AF95066F",
-    "filingSchemaExpansion": "33_CHECKS_PASS_ROLLBACK_ONLY_TARGETS_INERT"
+    "filingSchemaExpansion": "33_CHECKS_PASS_ROLLBACK_ONLY_TARGETS_INERT",
+    "filingReadContract": "SQL_PUBLIC_FASTAPI_GENERATED_CLIENT_PASS_CANONICAL_CUTOVER_PENDING"
   }
 }

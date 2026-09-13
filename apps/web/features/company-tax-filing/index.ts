@@ -1,2 +1,2 @@
-export { loadTaxSettlementArchiveSource, previewTaxSettlement, postTaxSettlement, taxPreviewErrorMessage, taxSubmissionErrorMessage } from "./transport.ts";
-export type { LedgerTaxSettlementWire, TaxSettlementPreviewInputWire, TaxSettlementPreviewWire } from "@talli/talli-api-client";
+export { loadCompanyTaxFilingWorkspace, loadTaxSettlementArchiveSource, previewTaxSettlement, postTaxSettlement, taxPreviewErrorMessage, taxSubmissionErrorMessage } from "./transport.ts";
+export type { CompanyTaxWorkspaceWire, CompanyTaxPreviewWire, CompanyTaxSubmissionWire, CompanyTaxOverrideWire, CompanyTaxReviewCommentWire, CompanyTaxPermissionWire, CompanyTaxTestEvidenceWire, LedgerTaxSettlementWire, TaxSettlementPreviewInputWire, TaxSettlementPreviewWire } from "@talli/talli-api-client";

@@ -9,6 +9,7 @@ from talli_backend.application.company_tax_filing_session import CompanyTaxSessi
 from talli_backend.modules.banking.public import BankTransactionId, ExternalActionReference, TaxSettlementBankCommand
 from talli_backend.modules.company_tax_filing.public import (
     AccountingEntryReference, CompanyTaxError, RecordTaxSettlementCommand,
+    CompanyTaxWorkspaceQuery, CompanyTaxFilingRows,
     TaxSettlementKind, TaxSettlementArchiveQuery, validate_new_tax_settlement,
 )
 from talli_backend.modules.documents.public import DocumentBindingQuery, DocumentId
@@ -107,3 +108,12 @@ class AuthenticatedCompanyTax:
             if len({row.get('id') for row in rows}) != len(rows):
                 raise CompanyTaxError.unavailable()
             return rows
+
+    async def filing_workspace(self, query: CompanyTaxWorkspaceQuery) -> CompanyTaxFilingRows:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        async with self._session.transaction() as transaction:
+            result = await transaction.filing_workspace(query)
+            if result.company_id != query.company_id or result.income_year != query.income_year:
+                raise CompanyTaxError.unavailable()
+            return result
