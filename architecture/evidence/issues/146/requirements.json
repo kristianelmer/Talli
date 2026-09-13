@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#146",
   "source": "https://github.com/kristianelmer/Talli/issues/146",
-  "status": "LOCAL_SLICE_ACCEPTANCE_PASS_PROTECTED_INTEGRATION_PENDING",
+  "status": "BROWSER_VERIFICATION_FIX_PENDING_COMPLETE_GATE_AND_PROTECTED_INTEGRATION",
   "entryRevision": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
   "predecessor": {
     "issue": "#151",
@@ -106,6 +106,7 @@
     "Original Audit continuation placement and identity remain unchanged."
   ],
   "remainingWork": [
+    "Independent review and complete immutable gate for RF browser synchronization correction",
     "Protected Release/Preview integration and exact-main receipt",
     "Full company-tax capability exit remains #152"
   ],
@@ -116,7 +117,7 @@
   },
   "implementationCheckpoint": {
     "scope": "Settlement capture, preview, owned Archive query, final contract and both rollback forms pass local slice acceptance; protected integration remains pending.",
-    "verification": "gate-pair/manifest.json",
+    "verification": "browser-sync-followup/manifest.json",
     "architecture": "PASS at working implementation checkpoint; no exit gate credit.",
     "firstExitGate": {
       "revision": "aad6bb90951120b09771a23f58d5b662713e7a5a",

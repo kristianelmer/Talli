@@ -1,0 +1,11 @@
+[DEBUG-tax146-comment] before {"length":56,"valid":true,"connected":true,"at":1789332604911}
+[DEBUG-tax146-comment] immediate {"count":1,"requests":[{"event":"request","at":1789332601249},{"event":"response","status":200,"at":1789332601539},{"event":"request","at":1789332605195},{"event":"response","status":200,"at":1789332605500}],"dom":[{"event":"click","target":"BUTTON","name":"","at":1789332601115},{"event":"submit","target":"FORM","name":"","at":1789332601115},{"event":"click","target":"BUTTON","name":"","at":1789332605110},{"event":"submit","target":"FORM","name":"","at":1789332605111}],"field":{"length":56,"valid":true,"at":1789332606734}}
+✔ owner completes fresh RF preview, review, approval, send and private feedback through the canonical backend (39058.113833ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 39388.799875

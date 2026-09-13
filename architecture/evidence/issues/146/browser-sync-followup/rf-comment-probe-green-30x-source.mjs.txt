@@ -208,6 +208,12 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     assert.deepEqual(before.approvals, []);
     assert.deepEqual((await api.bankingListTransactions({ companyIds: [primary.id], limit: 100, headers: authorization })).items, []);
     await page.goto(annualHref);
+    const commentTrace=[];
+    const cdp=await context.newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate",{rate:30});
+    page.on("request",r=>{if(r.method()==="POST"&&r.url().startsWith(annualHref))commentTrace.push({event:"request",at:Date.now()});});
+    page.on("response",r=>{if(r.request().method()==="POST"&&r.url().startsWith(annualHref))commentTrace.push({event:"response",status:r.status(),at:Date.now()});});
+    await page.evaluate(()=>{globalThis.commentTrace=[];for(const kind of ["click","submit","invalid"])document.addEventListener(kind,e=>{globalThis.commentTrace.push({event:kind,target:e.target.tagName,name:e.target.name,at:Date.now()});},true);});
     await page.getByRole("button", { name: "Lag ny forhåndsvisning", exact: true }).click();
     await page.getByRole("button", { name: "Lagre kommentar", exact: true }).waitFor();
     const preview = (await api.rf1086Workspace(primary.id, 2025, { headers: authorization })).previews[0];
@@ -224,11 +230,18 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     const commentSaved = page.waitForResponse((response) => response.url() === annualHref
       && response.request().method() === "POST"
       && response.request().postData()?.includes(reviewComment));
+    console.log("[DEBUG-tax146-comment] before",JSON.stringify(await page.getByLabel("Kommentar",{exact:true}).evaluate(e=>({length:e.value.length,valid:e.checkValidity(),connected:e.isConnected,at:Date.now()}))));
     await page.getByRole("button", { name: "Lagre kommentar", exact: true }).click();
     const commentResponse = await commentSaved;
     assert.equal(commentResponse.status(), 200);
     assert.equal(await commentResponse.finished(), null);
     const reviewed = await api.rf1086Workspace(primary.id, 2025, { headers: authorization });
+    console.log("[DEBUG-tax146-comment] immediate",JSON.stringify({count:reviewed.reviewComments.length,requests:commentTrace,dom:await page.evaluate(()=>globalThis.commentTrace),field:await page.getByLabel("Kommentar",{exact:true}).evaluate(e=>({length:e.value.length,valid:e.checkValidity(),at:Date.now()}))}));
+    if(reviewed.reviewComments.length===0){
+      await page.waitForTimeout(2500);
+      console.log("[DEBUG-tax146-comment] delayed",JSON.stringify({count:(await api.rf1086Workspace(primary.id,2025,{headers:authorization})).reviewComments.length,requests:commentTrace,dom:await page.evaluate(()=>globalThis.commentTrace),field:await page.getByLabel("Kommentar",{exact:true}).evaluate(e=>({length:e.value.length,valid:e.checkValidity(),at:Date.now()}))}));
+    }
+    await cdp.send("Emulation.setCPUThrottlingRate",{rate:1});
     assert.equal(reviewed.reviewComments.length, 1);
     assert.equal(reviewed.reviewComments[0].previewId, preview.id);
     assert.equal(reviewed.reviewComments[0].severity, "advisory");
