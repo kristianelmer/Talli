@@ -1,0 +1,94 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#146",
+  "source": "https://github.com/kristianelmer/Talli/issues/146",
+  "status": "ENTRY_GATE_PASSED_PENDING_INDEPENDENT_REVIEW_AND_CLAIM",
+  "entryRevision": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
+  "predecessor": {
+    "issue": "#151",
+    "state": "CLOSED",
+    "closedAt": "2026-09-13T15:32:00Z",
+    "receipt": "https://github.com/kristianelmer/Talli/issues/151#issuecomment-5654199793",
+    "independentPublishedReread": "PASS"
+  },
+  "scope": "company_tax_filing slice 1 of 2; no full capability exit before #152",
+  "criteria": [
+    {
+      "id": "GH-146-A1",
+      "requirement": "Supported tax-settlement actions complete through the web and FastAPI.",
+      "status": "NOT_IMPLEMENTED",
+      "evidence": []
+    },
+    {
+      "id": "GH-146-A2",
+      "requirement": "Resulting entries match existing characterization evidence.",
+      "status": "NOT_IMPLEMENTED",
+      "evidence": []
+    },
+    {
+      "id": "GH-146-A3",
+      "requirement": "Invalid, duplicate, or unauthorized requests fail safely.",
+      "status": "NOT_IMPLEMENTED",
+      "evidence": []
+    },
+    {
+      "id": "GH-146-A4",
+      "requirement": "Ledger and banking collaboration use only approved public workflows.",
+      "status": "NOT_IMPLEMENTED",
+      "evidence": []
+    },
+    {
+      "id": "GH-146-A5",
+      "requirement": "Data ownership and dependency rules pass architecture checks.",
+      "status": "NOT_IMPLEMENTED",
+      "evidence": []
+    },
+    {
+      "id": "GH-146-A6",
+      "requirement": "Duplicate TypeScript policy and active-slice compatibility code are removed.",
+      "status": "NOT_IMPLEMENTED",
+      "evidence": []
+    }
+  ],
+  "entryGate": {
+    "status": "PASS_11_OF_11_PENDING_INDEPENDENT_REVIEW",
+    "command": "npm run gate:customer-ready",
+    "testedRevision": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
+    "evidencePath": "architecture/evidence/customer-ready-gates/20999f167084492bb4f9a5a50d0cbcd3a48333b3.json",
+    "countsTowardExitPair": false,
+    "canonicalDigest": "sha256:f113c673612fcd483204c7176b25f0b06f05393450cfb27d84a08a8809c7f509",
+    "transcriptPath": "architecture/evidence/customer-ready-gates/20999f167084492bb4f9a5a50d0cbcd3a48333b3.log",
+    "transcriptDigest": "sha256:72cfcff0dae5d79ac8f9411d193262977b57045f48a928dc5b04fedd62737146",
+    "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+    "startedAt": "2026-09-13T15:32:12.822Z",
+    "executedAt": "2026-09-13T15:52:13.794Z",
+    "checkCount": 11,
+    "storageRevision": null
+  },
+  "inventory": {
+    "sourceFiles": "source-inventory.json",
+    "characterization": "legacy-preview-cases.json",
+    "plan": "characterization-and-cutover-plan.md",
+    "status": "ADOPTED_AT_ENTRY_REVISION_PENDING_INDEPENDENT_REVIEW"
+  },
+  "limits": [
+    "No hosted migrations, provider calls, real filing, paid operations or production promotion.",
+    "No new Billing writer or Company Tax filing/annual estimate changes in slice1.",
+    "Frozen compatibility baseline and unrelated future tuples remain unchanged.",
+    "Tax settlement Ledger posting remains behind its public contract; Banking owns bank matching.",
+    "Original Audit continuation placement and identity remain unchanged."
+  ],
+  "remainingWork": [
+    "Independent immutable entry receipt review and committed entry inventory",
+    "Serialized claim",
+    "Characterization and complete owned slice implementation",
+    "Migration, rollback, RLS, generated-client and browser verification",
+    "Independent reviews, immutable gates and protected integration",
+    "Full company-tax stage exit remains#152"
+  ],
+  "claim": {
+    "status": "NOT_CLAIMED",
+    "branch": "codex/issue-146-tax-settlement-d060",
+    "url": null
+  }
+}
