@@ -1,0 +1,37 @@
+{
+  "revision": "50f969c04f4eabbe17ee2fcee36ac652d5ddcc05",
+  "baseRevision": "aad6bb90951120b09771a23f58d5b662713e7a5a",
+  "verdict": "REQUIRED_CI_FAILURE_CAUSE_UNRESOLVED_NO_DEMONSTRATED_NEW_PRODUCT_DEFECT",
+  "sourceBindings": [
+    {
+      "path": "tests/browser_shareholder_register_filing.mjs",
+      "sha256": "4400a76df502969827992b7a5b7ec58cae5057a11fd94d04fe0d20ce80dab272"
+    },
+    {
+      "path": "apps/web/app/actions.ts",
+      "sha256": "a859be4f46dd66491c99be1e4fa811c413b531958426932b5929c1a287967f61"
+    },
+    {
+      "path": "apps/web/app/components/annual-workspace/ObligationWorkspace.tsx",
+      "sha256": "373c692f85cd402359cf0715e3aaad29e7250b53b318d7dd06ae6a101dcafc75"
+    },
+    {
+      "path": "apps/web/features/shareholder-register-filing/transport.ts",
+      "sha256": "72fb52f9b7026b37c7559a00af78d79b83daafed332a2cb97a0fbc1896a9f019"
+    },
+    {
+      "path": "scripts/test-supabase-local.sh",
+      "sha256": "8a009312a445888353458d5fa768b987d686d9e29a78cf595ee52b143373b7f6"
+    }
+  ],
+  "ciLog": {
+    "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/github-database-50f969c0.log",
+    "sha256": "f16716d933ae864902a38ff62924c8747937270076d2ce9a5ee5981c6b3b074c"
+  },
+  "reportSha256": "7a584eb464e282464dfd40eafed8dbd07db3e8e08517d3d50c9e11c9dce68ce3",
+  "limits": [
+    "No rerun or browser trace inspected",
+    "Later Tax browser lane not executed in failed CI",
+    "No pair or integration credit"
+  ]
+}

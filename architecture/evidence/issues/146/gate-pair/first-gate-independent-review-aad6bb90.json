@@ -1,0 +1,237 @@
+{
+  "verdict": "PASS_FIRST_COMMITTED_IMMUTABLE_GATE_11_OF_11",
+  "revision": "aad6bb90951120b09771a23f58d5b662713e7a5a",
+  "evidencePath": "architecture/evidence/customer-ready-gates/aad6bb90951120b09771a23f58d5b662713e7a5a.json",
+  "evidenceDigest": "sha256:159a7a200f226e857778508abb47d7f45d9a0bfaee30b5c393a2bf457c0fe7b6",
+  "receiptByteDigest": "sha256:ebee17284c36d95d4285fa1669a1510548d6a7d58512c794f5984cc884317c16",
+  "storageRevision": "50f969c04f4eabbe17ee2fcee36ac652d5ddcc05",
+  "transcriptPath": "architecture/evidence/customer-ready-gates/aad6bb90951120b09771a23f58d5b662713e7a5a.log",
+  "transcriptDigest": "sha256:30382a344a3b6d5441f74189b97fa795a81dfd6d3c28a5669cb4530490d038df",
+  "producer": "scripts/run-customer-ready-gate.mjs",
+  "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+  "schemaPath": "architecture/customer-ready-gate-evidence.schema.json",
+  "schemaDigest": "sha256:b86a1ae4a8d522b252e79a01b1798eb160d18e87222f9c7a92d79b56ee773ced",
+  "schemaValidation": "PASS_AJV2020_WITH_DATE_TIME_FORMAT",
+  "checks": [
+    {
+      "name": "credential-scan",
+      "command": "npm run test:credential-scan",
+      "exitCode": 0,
+      "durationMs": 1043
+    },
+    {
+      "name": "typecheck",
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "durationMs": 1275
+    },
+    {
+      "name": "architecture",
+      "command": "npm run check:architecture",
+      "exitCode": 0,
+      "durationMs": 15657
+    },
+    {
+      "name": "boundary",
+      "command": "npm run test:boundary",
+      "exitCode": 0,
+      "durationMs": 183098
+    },
+    {
+      "name": "build-web",
+      "command": "TALLI_BACKEND_URL=http://127.0.0.1:8000 TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY=<local-only> npm run build:web && npm run test:browser-public-acquisition:built",
+      "exitCode": 0,
+      "durationMs": 9337
+    },
+    {
+      "name": "build-backend",
+      "command": "npm run build:backend",
+      "exitCode": 0,
+      "durationMs": 1548
+    },
+    {
+      "name": "boundary-smoke",
+      "command": "npm run test:boundary-smoke",
+      "exitCode": 0,
+      "durationMs": 7472
+    },
+    {
+      "name": "launch-rehearsal",
+      "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47> npm run test:launch-rehearsal",
+      "exitCode": 0,
+      "durationMs": 278127
+    },
+    {
+      "name": "production-dependency-audit",
+      "command": "npm audit --omit=dev --audit-level=high && npm audit --prefix apps/web --omit=dev --audit-level=high",
+      "exitCode": 0,
+      "durationMs": 1532
+    },
+    {
+      "name": "database-isolation",
+      "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python npm run test:supabase:local",
+      "exitCode": 0,
+      "durationMs": 743792
+    },
+    {
+      "name": "whitespace",
+      "command": "bash scripts/check-clean-worktree.sh",
+      "exitCode": 0,
+      "durationMs": 89
+    }
+  ],
+  "startedAt": "2026-09-13T19:24:58.373Z",
+  "executedAt": "2026-09-13T19:46:10.454Z",
+  "wallTimeMs": 1272081,
+  "allTranscriptDurationMs": 1272079,
+  "durationOverheadMs": 2,
+  "sourceVerification": {
+    "testedProducerReadFromRevision": true,
+    "cleanTreePreconditionAndFinalWhitespacePass": true,
+    "firstAddCommitVerified": true,
+    "ancestry": true,
+    "storageDiffPaths": [
+      "architecture/evidence/customer-ready-gates/aad6bb90951120b09771a23f58d5b662713e7a5a.json",
+      "architecture/evidence/customer-ready-gates/aad6bb90951120b09771a23f58d5b662713e7a5a.log",
+      "architecture/evidence/issues/146/final-acceptance/deployment-state-aad6bb90.json",
+      "architecture/evidence/issues/146/final-acceptance/final-spec-exit-envelope-aad6bb90-closure.json",
+      "architecture/evidence/issues/146/final-acceptance/final-spec-exit-envelope-aad6bb90-closure.md",
+      "architecture/evidence/issues/146/final-acceptance/final-spec-exit-envelope-aad6bb90.json",
+      "architecture/evidence/issues/146/final-acceptance/final-spec-exit-envelope-aad6bb90.md",
+      "architecture/evidence/issues/146/final-acceptance/final-spec-followup-aad6bb90-bindings.json",
+      "architecture/evidence/issues/146/final-acceptance/final-spec-followup-aad6bb90-static.log",
+      "architecture/evidence/issues/146/final-acceptance/final-spec-followup-aad6bb90-static.py.txt",
+      "architecture/evidence/issues/146/final-acceptance/final-spec-followup-aad6bb90.md",
+      "architecture/evidence/issues/146/final-acceptance/final-standards-followup-aad6bb90-bindings.json",
+      "architecture/evidence/issues/146/final-acceptance/final-standards-followup-aad6bb90-static.log",
+      "architecture/evidence/issues/146/final-acceptance/final-standards-followup-aad6bb90.md",
+      "architecture/evidence/issues/146/final-acceptance/first-exit-gate-verification.json",
+      "architecture/evidence/issues/146/final-acceptance/github-release-aad6bb90.json",
+      "architecture/evidence/issues/146/final-acceptance/manifest.json",
+      "architecture/evidence/issues/146/final-acceptance/old-linked-rollback-aad6bb90.log",
+      "architecture/evidence/issues/146/final-acceptance/old-linked-rollback-proof-aad6bb90.json",
+      "architecture/evidence/issues/146/final-acceptance/probe-old-linked-rollback-aad6bb90.py.txt",
+      "architecture/evidence/issues/146/final-acceptance/probe-pinned-linked-api.py.txt",
+      "architecture/evidence/issues/146/final-acceptance/review-aad6bb90-adoption-check.json",
+      "architecture/evidence/issues/146/final-acceptance/rollback-proof-refresh-manifest-aad6bb90.json",
+      "architecture/evidence/issues/146/requirements.json"
+    ],
+    "runtimeChanges": false
+  },
+  "adoption": {
+    "artifactsVerified": 20,
+    "privateOriginalsByteExact": 20,
+    "closurePreserved": true,
+    "sixCriterionTextsUnchanged": true
+  },
+  "actualLanes": {
+    "taxLifecycle": {
+      "passed": 22,
+      "line": 3284
+    },
+    "taxRestrictedRuntime": {
+      "passed": 3,
+      "line": 3287
+    },
+    "annual": {
+      "passed": 1,
+      "line": 3292
+    },
+    "authorityBrowser": {
+      "passed": 11,
+      "line": 3327
+    },
+    "freshRfBrowser": {
+      "passed": 12,
+      "line": 2829
+    },
+    "taxBrowser": {
+      "passed": 1,
+      "line": 3377
+    },
+    "rfAuthorityDatabase": {
+      "passed": 130,
+      "line": 3277
+    },
+    "predecessorCleanupRuntime": {
+      "line": 3177
+    }
+  },
+  "skips": [
+    {
+      "scope": "broad backend",
+      "count": 2,
+      "names": [
+        "test_supabase_marketing_measurement.py",
+        "test_supabase_validation_observation.py"
+      ],
+      "deselected": 854,
+      "passed": 2864
+    },
+    {
+      "scope": "validation-observation lane",
+      "count": 1,
+      "name": "test_restricted_adapter_executes_the_real_observation_contract",
+      "condition": "TALLI_VALIDATION_OBSERVATION_TEST_DATABASE_URL absent; mandatory Node SQL observation test passed"
+    }
+  ],
+  "advisors": {
+    "blockingSecurityOrError": 0,
+    "performanceWarnings": 60,
+    "line": 2863
+  },
+  "limits": [
+    "Second gate/pair not inspected or accepted",
+    "No rerun of gates/database/browser",
+    "No protected integration/exact-main or fullCompanyTax#152exit credit"
+  ],
+  "verifierRuntime": {
+    "version": "v24.20.0",
+    "execPath": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node"
+  },
+  "browserLanes": [
+    {
+      "command": "test:browser-public-acquisition:built",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "transcriptLine": 1194
+    },
+    {
+      "command": "test:browser-owner",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "transcriptLine": 3151
+    },
+    {
+      "command": "test:browser-owner-annual",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "transcriptLine": 3289
+    },
+    {
+      "command": "test:browser-authority-connections",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "transcriptLine": 3327
+    },
+    {
+      "command": "test:browser-shareholder-register-filing",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "transcriptLine": 3350
+    },
+    {
+      "command": "test:browser-company-tax",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "transcriptLine": 3374
+    }
+  ],
+  "verifierScriptSha256": "2202eef91ceddddf201022a708f6e6cd72788dfb425c3008641b53a5881ac391"
+}

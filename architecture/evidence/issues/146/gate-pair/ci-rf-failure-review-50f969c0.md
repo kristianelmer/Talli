@@ -1,0 +1,11 @@
+# Bounded CI RF failure assessment: 50f969c0
+
+**No demonstrated new product defect; the required RF journey failed and its cause remains unresolved.** Reviewed fixed `50f969c04f4eabbe17ee2fcee36ac652d5ddcc05` against `aad6bb90951120b09771a23f58d5b662713e7a5a`. All runtime, fixture and browser-test sources are byte-identical; the delta is evidence only.
+
+At `tests/browser_shareholder_register_filing.mjs:220–224`, the test fills the required comment field, clicks submit, waits for page `networkidle`, then immediately makes a separate API workspace read and asserts exactly one comment. It does not wait for the specific comment request/action to complete or for a comment-specific persisted/UI outcome. `ObligationWorkspace.tsx:125` wires the submit form to `addFilingReviewComment`; that action awaits the canonical API write before audit/revalidation/redirect (`actions.ts:1607`).
+
+The failed CI log records preview creation success and subsequent workspace GET200 responses, then comment count0. The captured Next log has the preview-generation action but no completed `addFilingReviewComment` action; the backend dump has no review-comment POST. This does **not** establish that a submitted write was rejected or lost. It also does **not** establish that no request was dispatched: the snapshots can omit an unfinished action. Synchronization, hydration, client/form behavior and interrupted submission remain hypotheses. No browser trace or comment-specific response proves the cause.
+
+An unchanged rerun can establish whether the failure repeats. A pass would demonstrate intermittence, not its root cause. If recurring, capture the submission request/response, form value/validity, page errors and completion state before deciding whether the fix belongs in product code or test synchronization. Retain the exact persisted-count, preview-ID and severity assertions; do not add retries that repost the comment or silently accept zero.
+
+Acceptance is not weakened: this attempt remains failed. It passed22 Tax lifecycle plus3 runtime tests, annual owner and Authority journeys, but failed freshRF before the later Tax browser lane ran. The independently verified first complete gate remains historical evidence; second-gate/pair and protected/exact-main acceptance remain pending. No source, DB, browser or shared-process mutation occurred.
