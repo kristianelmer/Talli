@@ -276,6 +276,10 @@ const bankingOperations = {
     "bankingListSuggestionAcceptances",
   ],
 };
+const companyTaxOperations = {
+  archive: ["/api/v1/company-tax/settlement-archive-source", "get", "companyTaxGetSettlementArchiveSource"],
+  preview: ["/api/v1/company-tax/settlement-previews", "post", "companyTaxPreviewSettlement"],
+};
 const shareholderRegisterFilingOperations = {
   archiveSource: ["/api/v1/shareholder-register-filings/archive-source", "get", "rf1086GetArchiveSource"],
   workspace: ["/api/v1/shareholder-register-filings/workspace", "get", "rf1086Workspace"],
@@ -378,6 +382,11 @@ for (const [name, [operationPath, method, operationId]] of Object.entries(bankin
   }
 }
 for (const [name, [operationPath, method, operationId]] of Object.entries(billingOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(companyTaxOperations)) {
   if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
     throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
   }
@@ -834,6 +843,11 @@ const bankingSchemas = Object.fromEntries([
   "SupportedBankDataFormat",
   "StartBankConnectionWire",
 ].map((name) => [name, contract.components.schemas[name]]));
+const companyTaxSchemas = Object.fromEntries([
+  "TaxSettlementArchiveItemWire", "TaxSettlementArchiveWire",
+  "TaxSettlementDocumentStatus", "TaxSettlementPayloadWire", "TaxSettlementPreviewInputWire",
+  "TaxSettlementPreviewLineWire", "TaxSettlementPreviewWire",
+].map((name) => [name, contract.components.schemas[name]]));
 const shareholderRegisterFilingSchemas = Object.fromEntries([
   "LegacyRf1086SendCommandWire", "LegacyRf1086ReconcileCommandWire", "LegacyRf1086SendResultWire", "LegacyRf1086ReconcileResultWire",
   "Rf1086GeneratePreviewWire",
@@ -954,6 +968,8 @@ ${Object.entries(bankingSchemas).map(([name, schema]) => renderSchema(name, sche
 
 ${Object.entries(billingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
+${Object.entries(companyTaxSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
 ${Object.entries(shareholderRegisterFilingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(authorityConnectionsSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
@@ -1069,6 +1085,8 @@ ${Object.entries(corporateGovernanceSchemas).map(([name, schema]) => renderGuard
 ${Object.entries(bankingSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
 ${Object.entries(billingSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
+
+${Object.entries(companyTaxSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
 ${Object.entries(shareholderRegisterFilingSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
@@ -2536,6 +2554,32 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         throw new TalliApiError(502, undefined);
       }
       return result;
+    },
+
+    async companyTaxGetSettlementArchiveSource(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<TaxSettlementArchiveWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/settlement-archive-source?\${query}\`,
+        "GET", request, undefined, isTaxSettlementArchiveWire,
+      );
+      if (result.companyId !== companyId || result.incomeYear !== incomeYear
+          || result.settlements.some(row => row.company_id !== companyId || row.income_year !== incomeYear)
+          || new Set(result.settlements.map(row => row.id)).size !== result.settlements.length) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async companyTaxPreviewSettlement(
+      body: TaxSettlementPreviewInputWire,
+      request: TalliRequestOptions = {},
+    ): Promise<TaxSettlementPreviewWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-tax/settlement-previews\`,
+        "POST", request, body, isTaxSettlementPreviewWire,
+      );
     },
 
     async ledgerPostTaxSettlement(

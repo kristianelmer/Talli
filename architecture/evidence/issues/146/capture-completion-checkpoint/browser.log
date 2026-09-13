@@ -1,0 +1,9 @@
+✔ owner previews all settlement kinds and retries a lost committed response without duplicate effects (15650.324375ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15909.843792

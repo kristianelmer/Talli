@@ -356,6 +356,7 @@
     "web:banking",
     "web:billing",
     "web:company-access",
+    "web:company-tax-filing",
     "web:corporate-governance",
     "web:documents",
     "web:investments",

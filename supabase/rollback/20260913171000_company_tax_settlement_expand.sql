@@ -2,6 +2,7 @@
 -- writer against its physical source, and keep the canonical writer disabled.
 begin;
 set local lock_timeout='5s';
+set local timezone='UTC';
 set local statement_timeout='120s';
 do $membership$
 begin
@@ -33,7 +34,7 @@ begin
   or exists(select 1 from backend_system.tax_settlement_quarantine where payload_sha256<>encode(extensions.digest(payload::text,'sha256'),'hex')) then
   raise exception 'tax_settlement_preserved_evidence_corrupt'; end if;
  select definition into v_inventory from backend_system.tax_settlement_migration_inventory where resource='public.holding_actions';
- if v_inventory is null or jsonb_array_length(v_inventory->'columns')<>13
+ if v_inventory is null or jsonb_typeof(v_inventory->'indexes') is distinct from 'array' or jsonb_array_length(v_inventory->'columns')<>13
   or (select array_agg(item->>'name' order by ordinality) from jsonb_array_elements(v_inventory->'columns') with ordinality t(item,ordinality))
    is distinct from array['id','company_id','income_year','action_type','action_date','payload','ledger_entry_id','bank_transaction_id','document_id','risk_level','blocker_code','created_by','created_at'] then
   raise exception 'tax_settlement_source_inventory_invalid'; end if;
@@ -62,6 +63,9 @@ begin
  for v_item in select value from jsonb_array_elements(v_inventory->'constraints') loop
   execute format('alter table public.holding_actions add constraint %I %s',v_item->>'name',v_item->>'definition');
  end loop;
+ for v_item in select value from jsonb_array_elements(v_inventory->'indexes') loop
+  execute v_item->>'definition';
+ end loop;
  execute format('alter table public.holding_actions owner to %I',v_inventory->>'owner');
  if (v_inventory->>'rls')::boolean then alter table public.holding_actions enable row level security; end if;
  if (v_inventory->>'forceRls')::boolean then alter table public.holding_actions force row level security; end if;
@@ -83,6 +87,10 @@ begin
   execute format('grant %s on public.holding_actions to %I%s',v_item->>'privilege',v_item->>'role',
    case when (v_item->>'grantable')::boolean then ' WITH GRANT OPTION' else '' end);
  end loop;
+ -- The retained Documents callback follows the restored active physical writer.
+ grant select(document_id) on public.holding_actions to company_tax_filing_identity_guard_owner;
+ drop policy if exists tax_document_reference_guard on public.holding_actions;
+ create policy tax_document_reference_guard on public.holding_actions for select to company_tax_filing_identity_guard_owner using(true);
  for v_item in select value from jsonb_array_elements(v_inventory->'triggers') loop
   if v_item->>'name'<>'company_archive_track_holding_actions' then raise exception 'tax_settlement_source_trigger_invalid'; end if;
   execute v_item->>'definition';
@@ -114,7 +122,7 @@ begin
  update backend_system.tax_settlement_migration_state set phase='rolled_back',changed_at=now() where singleton;
 end;
 $rollback$;
-revoke execute on function company_tax_filing.prepare_settlement_v1(jsonb,text),company_tax_filing.complete_settlement_v1(jsonb,uuid,text),
+revoke execute on function company_tax_filing.archive_settlements_v1(uuid,integer,text),company_tax_filing.prepare_settlement_v1(jsonb,text),company_tax_filing.complete_settlement_v1(jsonb,uuid,text),
  ledger.post_company_tax_settlement_v1(text,uuid,integer,text,jsonb,text,text,text),
  banking.prepare_tax_settlement_transaction_v1(jsonb,text),banking.claim_tax_settlement_transaction_v1(jsonb,text),
  documents.lock_metadata_binding_v1(uuid,uuid,integer,text) from company_tax_filing_workflow_executor;

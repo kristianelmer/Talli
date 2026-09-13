@@ -17,3 +17,11 @@ The settlement workflow uses `RecordTaxSettlementCommand`, `validate_new_tax_set
 <!-- architecture-inventory
 {"ports":["TaxSettlementPersistence"],"ownedTables":["company_tax_filing.settlements"]}
 -->
+
+The Archive query preserves all thirteen fields and opaque references in one authorized company/year. Private Documents callbacks disclose only reference existence and follow the active physical source during rollback.
+
+<!-- architecture-inventory
+{"ports":["TaxSettlementArchivePersistence"]}
+-->
+
+`TaxSettlementArchiveQuery` binds the verified actor, company and year for the preserved source read.

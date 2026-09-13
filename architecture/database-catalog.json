@@ -243,7 +243,10 @@
     {
       "name": "company_tax_filing.settlements",
       "kind": "capability-business",
-      "owner": "backend:company_tax_filing"
+      "owner": "backend:company_tax_filing",
+      "compatibilityResources": [
+        "table:holding_actions"
+      ]
     },
     {
       "name": "corporate_governance.annual_close_artifacts",
@@ -686,10 +689,6 @@
       "kind": "legacy-business"
     },
     {
-      "name": "public.holding_actions",
-      "kind": "legacy-business"
-    },
-    {
       "name": "public.launch_signoffs",
       "kind": "technical"
     },
@@ -803,6 +802,27 @@
       "compatibilityResources": [
         "table:production_filing_submissions"
       ]
+    }
+  ],
+  "preservedSourceRetirements": [
+    {
+      "source": "public.holding_actions",
+      "successor": "company_tax_filing.settlements",
+      "issue": "#146",
+      "artifacts": {
+        "cutover": {
+          "path": "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql",
+          "sha256": "783e456de88c44d32755fc58d2eeff9ec9d7ada57043dd92ec448b6fd1603168"
+        },
+        "contract": {
+          "path": "supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql",
+          "sha256": "99b636f296f92096fccceb45c8d5c1724ab8e75bc33db71cb93ccc59da221271"
+        },
+        "rollback": {
+          "path": "supabase/rollback/20260913171000_company_tax_settlement_expand.sql",
+          "sha256": "a2628267136a5e0a1abfa7d9a3ff843497928a4d0f2a75f0b4b43d0ad5e8b32c"
+        }
+      }
     }
   ]
 }

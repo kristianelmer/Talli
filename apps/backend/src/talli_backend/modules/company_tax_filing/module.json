@@ -15,7 +15,8 @@
       "NormalizedTaxSettlement",
       "TaxSettlementInput",
       "normalize_tax_settlement",
-      "validate_new_tax_settlement"
+      "validate_new_tax_settlement",
+      "TaxSettlementArchiveQuery"
     ],
     "events": [],
     "errors": [
@@ -30,7 +31,8 @@
       "TaxSettlementId",
       "TaxSettlementKind",
       "TaxSettlementPersistence",
-      "tax_settlement_persistence_adapter"
+      "tax_settlement_persistence_adapter",
+      "TaxSettlementArchivePersistence"
     ]
   },
   "owns": {
@@ -49,6 +51,15 @@
       "name": "TaxSettlementPersistence",
       "direction": "outbound",
       "contract": "talli_backend.modules.company_tax_filing.public.TaxSettlementPersistence",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_settlement_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
+      ]
+    },
+    {
+      "name": "TaxSettlementArchivePersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.TaxSettlementArchivePersistence",
       "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_settlement_persistence_adapter",
       "adapters": [
         "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"

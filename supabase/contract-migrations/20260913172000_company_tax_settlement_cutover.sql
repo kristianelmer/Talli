@@ -1,16 +1,48 @@
 -- #146 CUTOVER: freeze the predecessor, reconcile, then enable exactly one writer.
 begin;
 set local lock_timeout='5s';
+set local timezone='UTC';
 set local statement_timeout='120s';
 do $membership$
 begin
- execute format('grant company_tax_filing_store_owner,company_tax_filing_workflow_executor,company_tax_filing_ledger_bridge_owner,banking_store_owner,documents_store_owner,company_archive_projection_executor to %I',current_user);
+ execute format('grant company_tax_filing_store_owner,company_tax_filing_workflow_executor,company_tax_filing_ledger_bridge_owner,ledger_store_owner,banking_store_owner,documents_store_owner,company_archive_projection_executor to %I',current_user);
 end;
 $membership$;
 select set_config('talli.tax146.principal',current_user,true);
 grant create on schema public to company_tax_filing_store_owner;
 set local role company_archive_projection_executor;
 grant execute on function public.company_archive_track_source_write_v1() to company_tax_filing_store_owner;
+reset role;
+
+-- Retarget only the two retired storage predicates in the currently installed
+-- Documents routine. Every other owner, receipt and reference predicate is retained.
+do $document_retention$
+declare v_sql text; v_owner name; v_tax text := 'exists (
+      select 1 from public.holding_actions item
+      where item.document_id=p_document_id
+    )'; v_ledger text := 'exists (
+      select 1 from public.ledger_entries item
+      join public.documents document on document.id=p_document_id
+      where item.company_id=document.company_id
+        and pg_catalog.strpos(item.memo, p_document_id::text)>0
+    )';
+begin
+ select pg_get_functiondef(oid),pg_get_userbyid(proowner) into v_sql,v_owner from pg_proc where oid='documents.has_evidence_references_v1(uuid)'::regprocedure;
+ execute format('grant usage on schema company_tax_filing,ledger to %I',v_owner);
+ execute format('grant execute on function company_tax_filing.has_document_reference_v1(uuid),ledger.has_document_memo_reference_v1(uuid,uuid) to %I',v_owner);
+ if strpos(v_sql,v_tax)>0 then
+  v_sql:=replace(v_sql,v_tax,'company_tax_filing.has_document_reference_v1(p_document_id)');
+ elsif strpos(v_sql,'company_tax_filing.has_document_reference_v1(p_document_id)')=0 then
+  raise exception 'tax_settlement_document_retention_definition_changed';
+ end if;
+ if strpos(v_sql,v_ledger)>0 then
+  v_sql:=replace(v_sql,v_ledger,'exists (select 1 from public.documents document where document.id=p_document_id and ledger.has_document_memo_reference_v1(p_document_id,document.company_id))');
+ elsif strpos(v_sql,'ledger.has_document_memo_reference_v1(p_document_id,document.company_id)')=0 then
+  raise exception 'tax_settlement_ledger_retention_definition_changed';
+ end if;
+ execute v_sql;
+end;
+$document_retention$;
 reset role;
 
 do $cutover$
@@ -55,6 +87,7 @@ begin
     from pg_attribute a left join pg_attrdef d on d.adrelid=a.attrelid and d.adnum=a.attnum
     where a.attrelid='public.holding_actions'::regclass and a.attnum>0 and not a.attisdropped),
   'constraints',(select jsonb_agg(jsonb_build_object('name',conname,'definition',pg_get_constraintdef(oid)) order by conname) from pg_constraint where conrelid='public.holding_actions'::regclass),
+  'indexes',(select coalesce(jsonb_agg(jsonb_build_object('name',c.relname,'definition',pg_get_indexdef(i.indexrelid)) order by c.relname),'[]'::jsonb) from pg_index i join pg_class c on c.oid=i.indexrelid where i.indrelid='public.holding_actions'::regclass and not exists(select 1 from pg_constraint k where k.conindid=i.indexrelid)),
   'policies',(select coalesce(jsonb_agg(jsonb_build_object('name',polname,'command',polcmd,'permissive',polpermissive,'roles',(select jsonb_agg(case when r=0 then 'public' else pg_get_userbyid(r) end) from unnest(polroles) r),'using',pg_get_expr(polqual,polrelid),'check',pg_get_expr(polwithcheck,polrelid)) order by polname),'[]'::jsonb) from pg_policy where polrelid='public.holding_actions'::regclass),
   'triggers',(select coalesce(jsonb_agg(jsonb_build_object('name',tgname,'definition',pg_get_triggerdef(oid),'mode',tgenabled) order by tgname),'[]'::jsonb) from pg_trigger where tgrelid='public.holding_actions'::regclass and not tgisinternal),
   'grants',(select coalesce(jsonb_agg(jsonb_build_object('role',case when x.grantee=0 then 'public' else pg_get_userbyid(x.grantee) end,'privilege',x.privilege_type,'grantable',x.is_grantable) order by x.grantee,x.privilege_type),'[]'::jsonb) from pg_class c cross join lateral aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) x where c.oid='public.holding_actions'::regclass)
@@ -106,7 +139,7 @@ begin
  update backend_system.tax_settlement_migration_state set phase='cutover',changed_at=now() where singleton;
 end;
 $cutover$;
-grant execute on function company_tax_filing.prepare_settlement_v1(jsonb,text),company_tax_filing.complete_settlement_v1(jsonb,uuid,text),
+grant execute on function company_tax_filing.archive_settlements_v1(uuid,integer,text),company_tax_filing.prepare_settlement_v1(jsonb,text),company_tax_filing.complete_settlement_v1(jsonb,uuid,text),
  ledger.post_company_tax_settlement_v1(text,uuid,integer,text,jsonb,text,text,text),
  banking.prepare_tax_settlement_transaction_v1(jsonb,text),banking.claim_tax_settlement_transaction_v1(jsonb,text),
  documents.lock_metadata_binding_v1(uuid,uuid,integer,text) to company_tax_filing_workflow_executor;
@@ -114,7 +147,7 @@ grant company_tax_filing_workflow_executor to talli_ledger_backend with inherit 
 revoke create on schema public from company_tax_filing_store_owner;
 do $cleanup$
 begin
- execute format('revoke company_tax_filing_store_owner,company_tax_filing_workflow_executor,company_tax_filing_ledger_bridge_owner,banking_store_owner,documents_store_owner,company_archive_projection_executor from %I',current_user);
+ execute format('revoke company_tax_filing_store_owner,company_tax_filing_workflow_executor,company_tax_filing_ledger_bridge_owner,ledger_store_owner,banking_store_owner,documents_store_owner,company_archive_projection_executor from %I',current_user);
 end;
 $cleanup$;
 commit;

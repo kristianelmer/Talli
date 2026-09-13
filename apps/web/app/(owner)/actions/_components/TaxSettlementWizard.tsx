@@ -1,14 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { recordTaxSettlement } from "../../../actions";
+import { recordTaxSettlement, previewTaxSettlementAction } from "../../../actions";
 import { SubmitButton } from "../../../components/ui";
 import { ownerCopy } from "../../../lib/copy";
-import {
-  taxSettlementLedgerLines,
-  validateTaxSettlement,
-} from "../../../lib/tax-settlement";
 import { ActionPreview, type LedgerLine } from "./ActionPreview";
 import { DocStatusSelect, SelectField, TextField } from "./fields";
 
@@ -30,26 +26,25 @@ export function TaxSettlementWizard({
 
   const ready = settlementDate.trim() !== "" && amount.trim() !== "";
 
-  const preview = useMemo<{ block: string | null; lines: LedgerLine[] | null }>(() => {
-    if (!ready) return { block: null, lines: null };
-    try {
-      const payload = validateTaxSettlement({
-        settlementDate,
-        amount: Number(amount),
-        settlementType: settlementType as "payable" | "payment" | "refund",
-        documentStatus: documentStatus as
-          | "attached"
-          | "missing_accepted_warning"
-          | "not_required",
+  const inputKey = JSON.stringify([settlementDate, amount, settlementType, documentStatus]);
+  const [result, setResult] = useState<{ key: string; block: string | null; lines: LedgerLine[] | null } | null>(null);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    if (!ready) return;
+    let active = true;
+    const timer = setTimeout(() => {
+      void previewTaxSettlementAction({
+        settlementDate, amount: Number(amount), settlementType, documentStatus,
+      }).then((response) => {
+        if (active) setResult({ key: inputKey, block: response.ok ? null : response.error, lines: response.ok ? response.preview.lines : null });
+      }).catch(() => {
+        if (active) setResult({ key: inputKey, block: "Forhåndsvisningen kunne ikke hentes. Prøv igjen.", lines: null });
       });
-      return { block: null, lines: taxSettlementLedgerLines(payload) };
-    } catch (error) {
-      return {
-        block: error instanceof Error ? error.message : "Ugyldig skatteoppgjør",
-        lines: null,
-      };
-    }
-  }, [ready, settlementDate, amount, settlementType, documentStatus]);
+    }, 200);
+    return () => { active = false; clearTimeout(timer); };
+  }, [ready, inputKey, settlementDate, amount, settlementType, documentStatus, retry]);
+  const preview = ready && result?.key === inputKey ? result : { block: null, lines: null };
+  const pending = ready && result?.key !== inputKey;
 
   return (
     <form action={recordTaxSettlement} className="wizardForm">
@@ -90,7 +85,8 @@ export function TaxSettlementWizard({
       </div>
       <DocStatusSelect value={documentStatus} onChange={setDocumentStatus} />
 
-      <ActionPreview block={preview.block} lines={preview.lines} />
+      {pending ? <p className="fieldHelper" role="status">Henter forhåndsvisning…</p> : <ActionPreview block={preview.block} lines={preview.lines} />}
+      {preview.block ? <button type="button" onClick={() => { setResult(null); setRetry((value) => value + 1); }}>Prøv forhåndsvisning igjen</button> : null}
 
       <SubmitButton disabled={preview.lines === null} pendingLabel={a.pending}>
         {a.confirmCta}

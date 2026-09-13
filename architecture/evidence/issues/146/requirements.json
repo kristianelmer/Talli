@@ -80,10 +80,10 @@
     "Original Audit continuation placement and identity remain unchanged."
   ],
   "remainingWork": [
-    "Characterization and complete owned slice implementation",
-    "Migration, rollback, RLS, generated-client and browser verification",
-    "Independent reviews, immutable gates and protected integration",
-    "Full company-tax stage exit remains#152"
+    "Independent Spec/Standards review and any resulting fixes",
+    "Fresh full-stack predecessor rehearsal and immutable customer-ready exit gates",
+    "Protected integration and stage completion receipt",
+    "Full company-tax capability exit remains #152"
   ],
   "claim": {
     "status": "CLAIMED",
@@ -91,8 +91,8 @@
     "url": "https://github.com/kristianelmer/Talli/issues/146#issuecomment-5654370153"
   },
   "implementationCheckpoint": {
-    "scope": "Atomic canonical capture and expand/cutover/full rollback; additive previews, Archive contract, web cutover and full release verification remain pending.",
-    "focusedTests": "76 pure/application/HTTP tests passed; 9 real PostgreSQL migration/HTTP tests passed on owned disposable contracted topology.",
-    "architecture": "PASS at capture checkpoint; no exit gate credit."
+    "scope": "Canonical Tax capture, backend preview, hydrated web transport, Archive source, final contract and both rollbacks implemented; full gates and protected integration pending.",
+    "verification": "capture-completion-checkpoint/checks.json",
+    "architecture": "PASS at working implementation checkpoint; no exit gate credit."
   }
 }

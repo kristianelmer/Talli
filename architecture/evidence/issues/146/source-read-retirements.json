@@ -1,0 +1,62 @@
+{
+  "status": "WORKING_TREE_SOURCE_PROOF_FULL_GATES_PENDING",
+  "sourceBaseline": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
+  "authority": "ADR0013 active-resource authorization cutover; exact read seams only; full row payload, future calculations and unrelated resources unchanged.",
+  "physicalSuccessor": "company_tax_filing.settlements",
+  "owner": "backend:company_tax_filing",
+  "exclusiveOwnershipProof": "Cutover rejects non-Tax source survivors and requires Investment/Governance predecessor retirement; contract retires the old physical resource and disabled writers. No mixed-resource alias.",
+  "retired": [
+    {
+      "record": "compat-annual-compliance-persistence",
+      "scope": {
+        "path": "apps/web/app/actions.ts",
+        "rule": "direct-web-business-persistence",
+        "resource": "table:holding_actions",
+        "operation": "refreshAnnualReadinessSnapshots"
+      },
+      "sourceDigest": "sha256:a507db4a3b4e65281d7b9332d1d800533bbac7f5a5a319c7cc06cd3dd9a3869e",
+      "occurrences": 0
+    },
+    {
+      "record": "compat-company-archive-persistence",
+      "scope": {
+        "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+        "rule": "direct-web-business-persistence",
+        "resource": "table:holding_actions",
+        "operation": "GET"
+      },
+      "sourceDigest": "sha256:527bb48f9c71e4a10d3c7a73f53801fd09ffb6733d1c1641beacd2d7b1c67568",
+      "occurrences": 0
+    }
+  ],
+  "contract": "supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql",
+  "rollback": [
+    "supabase/rollback/20260913171000_company_tax_settlement_expand.sql",
+    "supabase/rollback/20260913173000_company_tax_settlement_contract.sql"
+  ],
+  "compositionDigests": [
+    [
+      "apps/web/app/actions.ts\u0000refreshAnnualReadinessSnapshots",
+      "sha256:8d7b86fe06037a7ce5248c8770ffbae71c275b421f24a2315b9986c77492aed4"
+    ],
+    [
+      "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts\u0000GET",
+      "sha256:fd8e6f5546481fa9fe8c9a8fe4dd9efd681b9b708c8aa705d4ca3650f2616007"
+    ]
+  ],
+  "retainedRfComposition": "The existing immutable RF digests remain. Exactly two successor compositions are accepted only after Tax owns table:holding_actions and its call is gone; existing sibling chain and occurrence guards still apply.",
+  "artifactBindings": {
+    "cutover": {
+      "path": "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql",
+      "sha256": "783e456de88c44d32755fc58d2eeff9ec9d7ada57043dd92ec448b6fd1603168"
+    },
+    "contract": {
+      "path": "supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql",
+      "sha256": "99b636f296f92096fccceb45c8d5c1724ab8e75bc33db71cb93ccc59da221271"
+    },
+    "rollback": {
+      "path": "supabase/rollback/20260913171000_company_tax_settlement_expand.sql",
+      "sha256": "a2628267136a5e0a1abfa7d9a3ff843497928a4d0f2a75f0b4b43d0ad5e8b32c"
+    }
+  }
+}

@@ -220,6 +220,7 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   "backend:banking",
   "backend:billing",
   "backend:company_access",
+  "backend:company_tax_filing",
   "backend:corporate_governance",
   "backend:documents",
   "backend:investments",
@@ -229,11 +230,12 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   "web:banking",
   "web:billing",
   "web:company-access",
+  "web:company-tax-filing",
   "web:corporate-governance",
   "web:documents",
   "web:investments",
   "web:ledger",
-    "web:operator-controls",
+  "web:operator-controls",
   "web:public-acquisition",
   "web:shareholder-register-filing",
   "web:system-boundary"
@@ -382,6 +384,38 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     ],
     "kind": "workflow",
     "to": "backend:company_access"
+  },
+  {
+    "from": "backend-system:company-tax-settlement",
+    "imports": [
+      "talli_backend.modules.banking.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:banking"
+  },
+  {
+    "from": "backend-system:company-tax-settlement",
+    "imports": [
+      "talli_backend.modules.company_tax_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_tax_filing"
+  },
+  {
+    "from": "backend-system:company-tax-settlement",
+    "imports": [
+      "talli_backend.modules.documents.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:documents"
+  },
+  {
+    "from": "backend-system:company-tax-settlement",
+    "imports": [
+      "talli_backend.modules.ledger.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:ledger"
   },
   {
     "from": "backend-system:company-year-eligibility-and-admission",
@@ -2341,7 +2375,7 @@ test("the immutable frozen inventory remains exact while the active registry is 
   assert.equal(expected.size, baseline.records.length);
 
   assert.equal(registry.records.length, 6);
-  assert.equal(registry.records.flatMap((record) => record.scopes).length, 63);
+  assert.equal(registry.records.flatMap((record) => record.scopes).length, 61);
   const baselineById = new Map(baseline.records.map((record) => [record.id, record]));
   const scopeKey = (scope) => [scope.path, scope.rule, scope.resource, scope.operation].join("\0");
   for (const record of registry.records) {
@@ -3413,18 +3447,20 @@ test("#151 bounded retirement compositions remain enforced after RF exits", () =
     readFileSync(new URL(`../${scope.path}`, import.meta.url), "utf8")])));
   const frozen = new Map([...current.keys()].map((path) => [path,
     execFileSync("git", ["show", `${original.sourceRevision}:${path}`], { encoding: "utf8" })]));
-  const check = (sources = current) => {
+  const check = (sources = current, taxOwner = "backend:company_tax_filing") => {
     const { registryPath, baselinePath } = writeCompatibilityFixture(temporaryRoot, registry, baseline);
     return validateCompatibilityRegistry(registryPath, {
       baselinePath, expectedBaselineDigest: "TEST_BASELINE_DIGEST",
       sourceRegistry: { schemaVersion: "1.0", exceptions: records },
       sourceAtRevision: (path) => frozen.get(path), currentSource: (path) => sources.get(path),
       sourceAtGateRevision: (_revision, path) => current.get(path),
-      resourceOwner: (resource) => resource === "table:opening_balance_setups" ? undefined : "backend:shareholder_register_filing",
+      resourceOwner: (resource) => resource === "table:opening_balance_setups" ? undefined
+        : resource === "table:holding_actions" ? taxOwner : "backend:shareholder_register_filing",
     });
   };
   try {
     assert.deepEqual(check(), []);
+    assert.match(check(current, "backend:annual_compliance").join("\n"), /bounded composition|not owned by active/u);
     for (const [path, operation] of [["apps/web/app/actions.ts", simulation],
       ["apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts", "GET"]]) {
       const changed = new Map(current);

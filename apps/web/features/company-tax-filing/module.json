@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "web-feature",
+  "name": "company-tax-filing",
+  "path": "apps/web/features/company-tax-filing",
+  "owner": "web:company-tax-filing",
+  "purpose": "Present authoritative settlement previews and carry capture requests with one stable operation identity through generated transport.",
+  "documentation": "apps/web/features/company-tax-filing/MODULE.md",
+  "publicEntryPoint": "@/features/company-tax-filing",
+  "publicImportPaths": [
+    "@/features/company-tax-filing",
+    "apps/web/features/company-tax-filing",
+    "apps/web/features/company-tax-filing/index.ts"
+  ],
+  "ownedRoutes": [
+    "/workspace",
+    "/actions/[type]"
+  ],
+  "apiOperations": [
+    "companyTaxPreviewSettlement",
+    "ledgerPostTaxSettlement",
+    "companyTaxGetSettlementArchiveSource"
+  ],
+  "dependencies": [],
+  "allowedImports": [
+    "#backend-configuration",
+    "@talli/talli-api-client"
+  ],
+  "cachePolicy": {
+    "default": "no-store",
+    "allowed": []
+  },
+  "directBrowserFlows": [],
+  "forbiddenResponsibilities": [
+    "Posting, balancing, account-mapping, period-lock, warning, or authorization policy",
+    "Direct Supabase ledger persistence or business-endpoint fetch calls",
+    "Handwritten transport DTOs or generated-client deep imports",
+    "Caller-side accounting policy or transaction coordination"
+  ],
+  "tests": {
+    "feature": "apps/web/tests/company-tax-transport.test.mjs",
+    "stageExit": "apps/backend/tests/test_company_tax_filing_database.py",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

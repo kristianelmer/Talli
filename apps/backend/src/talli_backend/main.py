@@ -73,6 +73,7 @@ from talli_backend.adapters.postgres_company_tax_filing import compose_company_t
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
 from talli_backend.modules.company_tax_filing.public import (
     CompanyTaxError, RecordTaxSettlementCommand, TaxSettlementId,
+    TaxSettlementInput, TaxSettlementValidationError, TaxSettlementArchiveQuery, normalize_tax_settlement,
     BankTransactionReference, DocumentReference, TaxSettlementDocumentStatus,
     TaxSettlementKind as CompanyTaxSettlementKind,
 )
@@ -379,6 +380,7 @@ from talli_backend.modules.ledger.public import (
     ReconstructionGapCode,
     ReconstructionState,
     TaxSettlementKind,
+    preview_tax_settlement_lines,
 )
 from talli_backend.modules.documents.public import (
     BeginDocumentUploadCommand,
@@ -1810,6 +1812,61 @@ class LedgerTaxSettlementWire(LedgerCompanyYearWire):
     ]
     bank_transaction_id: UUID | None = None
     document_id: UUID | None = None
+
+
+class TaxSettlementPreviewInputWire(StrictTransportModel):
+    settlement_date: str = Field(max_length=255)
+    amount: float = Field(strict=True, allow_inf_nan=False)
+    settlement_type: str = Field(max_length=100)
+    document_status: str = Field(max_length=100)
+    bank_transaction_id: str | None = Field(default=None, max_length=255)
+    document_id: str | None = Field(default=None, max_length=255)
+
+
+class TaxSettlementPayloadWire(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    settlement_date: str
+    amount: float
+    settlement_type: CompanyTaxSettlementKind
+    document_status: TaxSettlementDocumentStatus
+    bank_transaction_id: str | None
+    document_id: str | None
+
+
+class TaxSettlementPreviewLineWire(StrictTransportModel):
+    account: str
+    description: str
+    debit: float
+    credit: float
+
+
+class TaxSettlementPreviewWire(StrictTransportModel):
+    payload: TaxSettlementPayloadWire
+    lines: list[TaxSettlementPreviewLineWire]
+    expected_bank_amount: float | None
+
+
+class TaxSettlementArchiveItemWire(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    id: str
+    company_id: str
+    income_year: int
+    action_type: Literal["tax_settlement"]
+    action_date: str
+    payload: dict[str, Any]
+    ledger_entry_id: str | None
+    bank_transaction_id: str | None
+    document_id: str | None
+    risk_level: Literal["ready", "warning", "block"]
+    blocker_code: str | None
+    created_by: str
+    created_at: str
+
+
+class TaxSettlementArchiveWire(StrictTransportModel):
+    company_id: UUID
+    income_year: int
+    settlements: list[TaxSettlementArchiveItemWire]
 
 
 class CorporateCompanyFactsWire(StrictTransportModel):
@@ -3718,7 +3775,7 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         request.state.request_id = _request_id(request)
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
-        if request.url.path == "/api/v1/ledger/opening-snapshots/by-year" or request.url.path.startswith(("/api/v1/billing/annual/", "/api/v1/authority-connections/", "/api/v1/operator-controls/", "/api/v1/legacy-rf1086/", "/api/v1/shareholder-register-filings/")):
+        if request.url.path == "/api/v1/ledger/opening-snapshots/by-year" or request.url.path.startswith(("/api/v1/billing/annual/", "/api/v1/authority-connections/", "/api/v1/operator-controls/", "/api/v1/legacy-rf1086/", "/api/v1/shareholder-register-filings/", "/api/v1/company-tax/")):
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -9579,6 +9636,65 @@ def create_app(
                 replayed=result.replayed,
             )
 
+        return await ledger_call(execute)
+
+    @application.get(
+        "/api/v1/company-tax/settlement-archive-source",
+        operation_id="companyTaxGetSettlementArchiveSource",
+        response_model=TaxSettlementArchiveWire,
+        responses=ledger_errors,
+        tags=["company-tax"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def company_tax_settlement_archive_source(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> TaxSettlementArchiveWire:
+        async def execute() -> TaxSettlementArchiveWire:
+            session = await company_tax_application.session(bearer_token(credentials))
+            rows = await session.archive_settlements(TaxSettlementArchiveQuery(
+                session.actor_id, CompanyId(str(company_id)), IncomeYear(income_year),
+            ))
+            try:
+                items = [TaxSettlementArchiveItemWire.model_validate(row) for row in rows]
+            except ValidationError:
+                raise CompanyTaxError.unavailable() from None
+            return TaxSettlementArchiveWire(company_id=company_id, income_year=income_year, settlements=items)
+        return await ledger_call(execute)
+
+    @application.post(
+        "/api/v1/company-tax/settlement-previews",
+        operation_id="companyTaxPreviewSettlement",
+        response_model=TaxSettlementPreviewWire,
+        responses=ledger_errors,
+        tags=["company-tax"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def preview_company_tax_settlement(
+        command: TaxSettlementPreviewInputWire,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> TaxSettlementPreviewWire:
+        async def execute() -> TaxSettlementPreviewWire:
+            await company_tax_application.session(bearer_token(credentials))
+            try:
+                value = normalize_tax_settlement(TaxSettlementInput(
+                    command.settlement_date, command.amount, command.settlement_type,
+                    command.document_status, command.bank_transaction_id, command.document_id,
+                ))
+            except TaxSettlementValidationError as error:
+                raise ApiProblem(status=422, code=error.code, title="Ugyldig skatteoppgjør", detail=error.message) from None
+            lines = preview_tax_settlement_lines(TaxSettlementKind(value.settlement_kind), Money.nok(str(value.amount)))
+            return TaxSettlementPreviewWire(
+                payload=TaxSettlementPayloadWire(
+                    settlement_date=value.settlement_date, amount=value.amount,
+                    settlement_type=value.settlement_kind, document_status=value.document_status,
+                    bank_transaction_id=value.bank_transaction_id, document_id=value.document_id,
+                ),
+                lines=[TaxSettlementPreviewLineWire(account=line.account, description=line.description,
+                    debit=float(line.debit.amount), credit=float(line.credit.amount)) for line in lines],
+                expected_bank_amount=value.expected_bank_amount,
+            )
         return await ledger_call(execute)
 
     @application.post(

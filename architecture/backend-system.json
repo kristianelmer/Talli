@@ -399,7 +399,9 @@
         "talli_backend.modules.documents.public"
       ],
       "routes": [
-        "/api/v1/ledger/tax-settlements"
+        "/api/v1/ledger/tax-settlements",
+        "/api/v1/company-tax/settlement-previews",
+        "/api/v1/company-tax/settlement-archive-source"
       ]
     }
   ],
@@ -498,7 +500,9 @@
       "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql",
       "supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql",
       "supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql",
-      "supabase/migrations/20260913171000_company_tax_settlement_expand.sql"
+      "supabase/migrations/20260913171000_company_tax_settlement_expand.sql",
+      "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql",
+      "supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },
@@ -788,6 +792,12 @@
     },
     {
       "port": "LedgerPersistence",
+      "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
+      "owner": "backend-system",
+      "mode": "one request-scoped settlement transaction; verified actor, restricted executor and public capability operations"
+    },
+    {
+      "port": "TaxSettlementArchivePersistence",
       "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
       "owner": "backend-system",
       "mode": "one request-scoped settlement transaction; verified actor, restricted executor and public capability operations"

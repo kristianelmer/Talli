@@ -1,3 +1,4 @@
+import { loadTaxSettlementArchiveSource } from "../../../../../features/company-tax-filing";
 import { createHash } from "node:crypto";
 
 import {
@@ -372,11 +373,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
         .select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at")
         .eq("company_id", companyId)
         .eq("income_year", incomeYear),
-      supabase
-        .from("holding_actions")
-        .select("id, company_id, income_year, action_type, action_date, payload, ledger_entry_id, bank_transaction_id, document_id, risk_level, blocker_code, created_by, created_at")
-        .eq("company_id", companyId)
-        .eq("income_year", incomeYear),
+      loadTaxSettlementArchiveSource(accessToken, companyId, incomeYear),
       loadArchiveBilling(accessToken, companyId),
       supabase
         .from("authority_permissions")

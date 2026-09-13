@@ -560,3 +560,31 @@ The `company-tax-settlement` workflow serves `/api/v1/ledger/tax-settlements` th
 <!-- architecture-inventory
 {"workflows":["company-tax-settlement"],"workflowPurposes":["company-tax-settlement=>Records tax settlement facts through Company Tax with atomic public Ledger posting, Banking matching and Documents binding; preserves released v1 transport and receipt identity."],"publicPackages":["talli_backend.modules.company_tax_filing.public","talli_backend.modules.ledger.public","talli_backend.modules.banking.public","talli_backend.modules.documents.public"],"transportDependencies":["talli_backend.adapters.postgres_company_tax_filing","talli_backend.application.company_tax_filing_session","talli_backend.modules.company_tax_filing.public"]}
 -->
+
+Authenticated `/api/v1/company-tax/settlement-previews` normalizes settlement input through Company Tax and obtains account lines through the Ledger public query. It does not claim a receipt or write data.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/company-tax/settlement-previews"]}
+-->
+
+Tax cutover inventories standalone source indexes and rollback restores their exact definitions. The canonical table retains company/year and Ledger-reference access paths.
+
+<!-- architecture-inventory
+{"technicalMigrations": ["supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql"]}
+-->
+
+<!-- architecture-inventory
+{"ports": ["TaxSettlementArchivePersistence"], "adapterBindings": ["TaxSettlementArchivePersistence=>talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"], "adapterBindingOwners": ["TaxSettlementArchivePersistence=>backend-system"], "adapterBindingModes": ["TaxSettlementArchivePersistence=>one request-scoped settlement transaction; verified actor, restricted executor and public capability operations"]}
+-->
+
+The Company Tax Archive source authenticates one company/year and preserves original source-row fields through the public query port.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/company-tax/settlement-archive-source"]}
+-->
+
+The final Tax contract retires the exclusive old projection after Archive and readiness reads move to the owned query. Both rollback forms preserve source and canonical rows and keep one writer.
+
+<!-- architecture-inventory
+{"technicalMigrations": ["supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql"]}
+-->

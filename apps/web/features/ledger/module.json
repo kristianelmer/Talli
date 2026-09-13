@@ -7,12 +7,37 @@
   "purpose": "Carry ledger-owned posting, reconstruction readiness, company-year close status, atomic cross-capability writer coordination, locking, and cursor queries through the committed generated API client without recreating accounting policy.",
   "documentation": "apps/web/features/ledger/MODULE.md",
   "publicEntryPoint": "@/features/ledger",
-  "publicImportPaths": ["@/features/ledger", "apps/web/features/ledger", "apps/web/features/ledger/index.ts"],
-  "ownedRoutes": ["/workspace", "/year-end", "/actions/[type]"],
-  "apiOperations": ["ledgerListEntries", "ledgerListOpeningSnapshots", "ledgerListOpeningSnapshotsForYear", "ledgerListPeriodLocks", "ledgerGetCompanyYearCloseAssessment", "ledgerGetReconstructionAssessment", "ledgerStartNewYear", "ledgerPostAdministrativeCost", "ledgerPostTaxSettlement", "ledgerPostManualJournal", "ledgerLockPeriod"],
+  "publicImportPaths": [
+    "@/features/ledger",
+    "apps/web/features/ledger",
+    "apps/web/features/ledger/index.ts"
+  ],
+  "ownedRoutes": [
+    "/workspace",
+    "/year-end",
+    "/actions/[type]"
+  ],
+  "apiOperations": [
+    "ledgerListEntries",
+    "ledgerListOpeningSnapshots",
+    "ledgerListOpeningSnapshotsForYear",
+    "ledgerListPeriodLocks",
+    "ledgerGetCompanyYearCloseAssessment",
+    "ledgerGetReconstructionAssessment",
+    "ledgerStartNewYear",
+    "ledgerPostAdministrativeCost",
+    "ledgerPostManualJournal",
+    "ledgerLockPeriod"
+  ],
   "dependencies": [],
-  "allowedImports": ["#backend-configuration", "@talli/talli-api-client"],
-  "cachePolicy": { "default": "no-store", "allowed": [] },
+  "allowedImports": [
+    "#backend-configuration",
+    "@talli/talli-api-client"
+  ],
+  "cachePolicy": {
+    "default": "no-store",
+    "allowed": []
+  },
   "directBrowserFlows": [],
   "forbiddenResponsibilities": [
     "Posting, balancing, account-mapping, period-lock, warning, or authorization policy",

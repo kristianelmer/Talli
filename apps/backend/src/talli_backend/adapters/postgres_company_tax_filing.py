@@ -10,7 +10,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from talli_backend.adapters.supabase_ledger import (
-    LedgerSupabaseConfiguration, SupabaseLedgerAdapter, SupabaseLedgerWorkflowTransaction,
+    LedgerSupabaseConfiguration, SupabaseLedgerAdapter,
     _VerifiedActor, _line_payload, _map_database_error, _posted_entry,
 )
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
@@ -21,7 +21,7 @@ from talli_backend.modules.banking.public import (
 )
 from talli_backend.modules.company_tax_filing.public import (
     AccountingEntryReference, CompanyTaxError, RecordTaxSettlementCommand,
-    TaxSettlementPersistence, tax_settlement_persistence_adapter,
+    TaxSettlementPersistence, TaxSettlementArchivePersistence, TaxSettlementArchiveQuery, tax_settlement_persistence_adapter,
 )
 from talli_backend.modules.documents.public import (
     DocumentBindingPersistence, DocumentBindingQuery, document_binding_persistence_adapter,
@@ -92,7 +92,7 @@ class PostgresCompanyTaxSession:
                 await connection.execute('set local role company_tax_filing_workflow_executor')
                 await connection.execute("select set_config('talli.verified_actor_id', %s, true)", (str(self.actor_id.subject),))
                 await connection.execute("select set_config('talli.verified_actor_claims', %s, true)", (self._verified.claims_json,))
-                yield PostgresCompanyTaxTransaction(self._database_url, self._verified, connection)
+                yield PostgresCompanyTaxTransaction(self._verified, connection)
         except (CompanyTaxError, LedgerError):
             raise
         except psycopg.OperationalError:
@@ -102,15 +102,52 @@ class PostgresCompanyTaxSession:
             raise _map_database_error(str(error)) from None
 
 
+@tax_settlement_persistence_adapter(TaxSettlementArchivePersistence)
 @tax_settlement_persistence_adapter(TaxSettlementPersistence)
 @ledger_persistence_adapter(LedgerPersistence)
 @bank_transaction_claim_persistence_adapter(TaxSettlementBankingPersistence)
 @document_binding_persistence_adapter(DocumentBindingPersistence)
-class PostgresCompanyTaxTransaction(SupabaseLedgerWorkflowTransaction):
+class PostgresCompanyTaxTransaction:
+    """Only the four public collaborators, bound to an already-open connection."""
+
+    def __init__(self, verified: _VerifiedActor, connection: psycopg.AsyncConnection):
+        self._verified, self._connection = verified, connection
+
+    @property
+    def actor_id(self):
+        return self._verified.actor_id
+
+    async def _database_rows(self, query: str, parameters: tuple[object, ...] = ()):
+        try:
+            cursor = await self._connection.execute(query, parameters)
+            return list(await cursor.fetchall())
+        except psycopg.OperationalError:
+            raise CompanyTaxError.unavailable() from None
+        except psycopg.DatabaseError as error:
+            raise _map_database_error(str(error)) from None
+
+    async def _one_idempotent_row(self, query: str, parameters: tuple[object, ...]):
+        rows = await self._database_rows(query, parameters)
+        if len(rows) != 1:
+            raise CompanyTaxError.unavailable()
+        return rows[0]
+
     async def _tax_rows(self, query: str, payload: Mapping[str, object]):
         return await self._database_rows(query, (
             json.dumps(dict(payload), separators=(',', ':')), str(self.actor_id.subject),
         ))
+
+    async def archive_settlements(self, query: TaxSettlementArchiveQuery) -> tuple[Mapping[str, object], ...]:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._one_idempotent_row(
+            'select company_tax_filing.archive_settlements_v1(%s::uuid,%s::integer,%s::text) as result',
+            (str(query.company_id), int(query.income_year), str(self.actor_id.subject)),
+        )
+        values = row.get('result')
+        if not isinstance(values, list) or any(not isinstance(value, Mapping) for value in values):
+            raise CompanyTaxError.unavailable()
+        return tuple(values)
 
     async def prepare_settlement(self, command: RecordTaxSettlementCommand) -> Mapping[str, object] | None:
         if command.actor_id != self.actor_id:

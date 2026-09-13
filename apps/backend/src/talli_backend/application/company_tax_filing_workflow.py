@@ -9,7 +9,7 @@ from talli_backend.application.company_tax_filing_session import CompanyTaxSessi
 from talli_backend.modules.banking.public import BankTransactionId, ExternalActionReference, TaxSettlementBankCommand
 from talli_backend.modules.company_tax_filing.public import (
     AccountingEntryReference, CompanyTaxError, RecordTaxSettlementCommand,
-    TaxSettlementKind, validate_new_tax_settlement,
+    TaxSettlementKind, TaxSettlementArchiveQuery, validate_new_tax_settlement,
 )
 from talli_backend.modules.documents.public import DocumentBindingQuery, DocumentId
 from talli_backend.modules.ledger.public import (
@@ -96,3 +96,14 @@ class AuthenticatedCompanyTax:
                 await transaction.claim_tax_settlement_bank(bank)
             result = await transaction.complete_settlement(command, AccountingEntryReference(str(posted.entry_id)))
             return TaxSettlementResult(posted, result, False)
+
+    async def archive_settlements(self, query: TaxSettlementArchiveQuery) -> tuple[Mapping[str, object], ...]:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        async with self._session.transaction() as transaction:
+            rows = await transaction.archive_settlements(query)
+            if any(str(row.get('company_id')) != str(query.company_id) or row.get('income_year') != int(query.income_year) for row in rows):
+                raise CompanyTaxError.unavailable()
+            if len({row.get('id') for row in rows}) != len(rows):
+                raise CompanyTaxError.unavailable()
+            return rows

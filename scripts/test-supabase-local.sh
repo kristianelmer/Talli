@@ -148,6 +148,7 @@ DATABASE_URL="$DB_URL" npm run test:billing-database-lifecycle
 # no authority provider is called.
 DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs recutover
 DATABASE_URL="$DB_URL" npm run test:authority-connections-database
+DATABASE_URL="$DB_URL" npm run test:company-tax-database
 SUPABASE_URL="$API_URL" \
 SUPABASE_ANON_KEY="$local_anon_key" \
 SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
@@ -169,3 +170,10 @@ SUPABASE_ANON_KEY="$local_anon_key" \
 SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
 DATABASE_URL="$DB_URL" \
 npm run test:browser-shareholder-register-filing
+
+# Tax uses the final private storage and the normal owner login/MFA flow.
+SUPABASE_URL="$API_URL" \
+SUPABASE_ANON_KEY="$local_anon_key" \
+SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+DATABASE_URL="$DB_URL" \
+npm run test:browser-company-tax

@@ -1,6 +1,7 @@
 -- #146 EXPAND: no new writer is enabled until the separate cutover artifact.
 begin;
 set local lock_timeout='5s';
+set local timezone='UTC';
 set local statement_timeout='120s';
 
 do $roles$
@@ -121,6 +122,8 @@ create table if not exists company_tax_filing.settlements (
   created_by uuid not null,
   created_at timestamptz not null default now()
 );
+create index if not exists tax_settlements_company_id_year_idx on company_tax_filing.settlements(company_id,income_year);
+create index if not exists tax_settlements_ledger_entry_id_idx on company_tax_filing.settlements(ledger_entry_id);
 alter table company_tax_filing.settlements enable row level security;
 alter table company_tax_filing.settlements force row level security;
 drop policy if exists tax_settlement_member_read on company_tax_filing.settlements;
@@ -171,8 +174,9 @@ $references$;
 
 -- A private two-column identity guard preserves the old global UUID-conflict
 -- result without widening normal tenant reads or granting access to facts.
+grant usage on schema public to company_tax_filing_identity_guard_owner;
 grant usage,create on schema company_tax_filing to company_tax_filing_identity_guard_owner;
-grant select(id,company_id) on company_tax_filing.settlements to company_tax_filing_identity_guard_owner;
+grant select(id,company_id,document_id) on company_tax_filing.settlements to company_tax_filing_identity_guard_owner;
 set local role company_tax_filing_store_owner;
 drop policy if exists tax_identity_guard on company_tax_filing.settlements;
 create policy tax_identity_guard on company_tax_filing.settlements for select to company_tax_filing_identity_guard_owner using(true);
@@ -182,10 +186,30 @@ create or replace function company_tax_filing.action_identity_conflicts_v1(p_id 
 returns boolean language sql stable security definer set search_path='' as $function$
  select exists(select 1 from company_tax_filing.settlements where id=p_id and company_id<>p_company);
 $function$;
+-- Documents can ask only whether a reference exists. While the old physical
+-- writer is active, query its current rows; never consult a stale expanded copy.
+create or replace function company_tax_filing.has_document_reference_v1(p_document uuid)
+returns boolean language plpgsql stable security definer set search_path='' as $function$
+declare v_result boolean;
+begin
+ if (select relkind from pg_class where oid=to_regclass('public.holding_actions'))='r' then
+  execute 'select exists(select 1 from public.holding_actions where document_id=$1)' into v_result using p_document;
+  return v_result;
+ end if;
+ return exists(select 1 from company_tax_filing.settlements where document_id=p_document);
+end;
+$function$;
 reset role;
 revoke create on schema company_tax_filing from company_tax_filing_identity_guard_owner;
 revoke all on function company_tax_filing.action_identity_conflicts_v1(uuid,uuid) from public,anon,authenticated,service_role,company_tax_filing_workflow_executor;
 grant execute on function company_tax_filing.action_identity_conflicts_v1(uuid,uuid) to company_tax_filing_store_owner;
+
+revoke all on function company_tax_filing.has_document_reference_v1(uuid) from public,anon,authenticated,service_role,company_tax_filing_workflow_executor;
+grant execute on function company_tax_filing.has_document_reference_v1(uuid) to documents_store_owner;
+grant usage on schema company_tax_filing to documents_store_owner;
+grant select(document_id) on public.holding_actions to company_tax_filing_identity_guard_owner;
+drop policy if exists tax_document_reference_guard on public.holding_actions;
+create policy tax_document_reference_guard on public.holding_actions for select to company_tax_filing_identity_guard_owner using(true);
 
 set local role company_tax_filing_store_owner;
 create or replace function company_tax_filing.assert_source_record_v1(p_row jsonb)
@@ -252,11 +276,22 @@ begin
    'auditRequired',true,'auditAction','tax_settlement_recorded');
 end;
 $function$;
+create or replace function ledger.has_document_memo_reference_v1(p_document uuid,p_company uuid)
+returns boolean language sql stable security definer set search_path='' as $function$
+ select exists(select 1 from ledger.entries where company_id=p_company and strpos(memo,p_document::text)>0);
+$function$;
 reset role;
 grant usage on schema ledger to company_tax_filing_store_owner,company_tax_filing_workflow_executor;
 revoke all on function ledger.post_company_tax_settlement_v1(text,uuid,integer,text,jsonb,text,text,text),
  ledger.tax_settlement_result_v1(uuid,uuid,uuid,integer) from public,anon,authenticated,service_role;
 grant execute on function ledger.tax_settlement_result_v1(uuid,uuid,uuid,integer) to company_tax_filing_store_owner;
+
+revoke all on function ledger.has_document_memo_reference_v1(uuid,uuid) from public,anon,authenticated,service_role;
+grant usage on schema ledger to documents_store_owner;
+grant execute on function ledger.has_document_memo_reference_v1(uuid,uuid) to documents_store_owner;
+
+-- Documents keeps its predecessor reads until the Tax cutover. Earlier owner
+-- rollback rehearsals can still restore their physical predecessor tables.
 
 -- Banking owns scope/amount checks and the original matched-action-only write.
 set local role banking_store_owner;
@@ -335,6 +370,16 @@ begin
  return jsonb_build_object('replay',null);
 end;
 $function$;
+create or replace function company_tax_filing.archive_settlements_v1(p_company uuid,p_year integer,p_subject text)
+returns jsonb language plpgsql stable security definer set search_path='' as $function$
+begin
+ if public.company_access_auth_uid_v1() is null or public.company_access_auth_uid_v1() is distinct from p_subject::uuid then raise exception 'ledger_forbidden'; end if;
+ if not public.company_access_is_accepted_member_v1(p_company) then raise exception 'ledger_not_found'; end if;
+ if p_year is null or p_year not between 2000 and 2100 then raise exception 'ledger_invalid_input'; end if;
+ if not exists(select 1 from backend_system.tax_settlement_migration_state where singleton and phase in ('cutover','contracted')) then raise exception 'ledger_dependency_unavailable'; end if;
+ return (select coalesce(jsonb_agg(to_jsonb(t) order by created_at,id),'[]'::jsonb) from company_tax_filing.settlements t where company_id=p_company and income_year=p_year);
+end;
+$function$;
 create or replace function company_tax_filing.complete_settlement_v1(p_request jsonb,p_entry uuid,p_subject text)
 returns jsonb language plpgsql security definer set search_path='' as $function$
 declare v_result jsonb; v_payload jsonb; v_prepared jsonb;
@@ -352,7 +397,7 @@ begin
  return backend_system.complete_ledger_writer_v1('record_tax_settlement',p_request,v_result,p_subject);
 end;
 $function$;
-revoke all on all functions in schema company_tax_filing from public,anon,authenticated,service_role,company_tax_filing_workflow_executor;
+revoke all on function company_tax_filing.archive_settlements_v1(uuid,integer,text),company_tax_filing.prepare_settlement_v1(jsonb,text), company_tax_filing.complete_settlement_v1(jsonb,uuid,text), company_tax_filing.assert_source_record_v1(jsonb) from public,anon,authenticated,service_role,company_tax_filing_workflow_executor;
 reset role;
 
 -- Only cutover grants execution to the workflow. Expansion cannot become a writer.

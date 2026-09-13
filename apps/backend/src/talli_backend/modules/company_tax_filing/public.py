@@ -147,7 +147,21 @@ def validate_new_tax_settlement(command: RecordTaxSettlementCommand) -> None:
     validate_new(command)
 
 
+@dataclass(frozen=True, slots=True)
+class TaxSettlementArchiveQuery:
+    actor_id: ActorId
+    company_id: CompanyId
+    income_year: IncomeYear
+
+
+class TaxSettlementArchivePersistence(Protocol):
+    async def archive_settlements(self, query: TaxSettlementArchiveQuery) -> tuple[Mapping[str, object], ...]:
+        """Return all thirteen preserved source fields for the authorized year."""
+        ...
+
+
 __all__ = [
+    "TaxSettlementArchiveQuery", "TaxSettlementArchivePersistence",
     "NormalizedTaxSettlement",
     "TaxSettlementDocumentStatus",
     "TaxSettlementInput",

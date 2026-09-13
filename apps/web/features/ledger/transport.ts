@@ -9,7 +9,6 @@ import {
   type LedgerPeriodLockWire,
   type LedgerReconstructionAssessmentWire,
   type LedgerSourceCapability,
-  type LedgerTaxSettlementWire,
   type NewYearStartWire,
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
@@ -285,18 +284,6 @@ export function postLedgerAdministrativeCost(
   requestId?: string,
 ) {
   return client(accessToken).ledgerPostAdministrativeCost(
-    command,
-    mutationRequest(idempotencyKey, requestId),
-  );
-}
-
-export function postLedgerTaxSettlement(
-  accessToken: string,
-  command: LedgerTaxSettlementWire,
-  idempotencyKey: string,
-  requestId?: string,
-) {
-  return client(accessToken).ledgerPostTaxSettlement(
     command,
     mutationRequest(idempotencyKey, requestId),
   );

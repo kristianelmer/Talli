@@ -1297,7 +1297,7 @@ test("all relocated transactional writers use the stable operation ID at the gen
     finalizeCorporateDecision: ["finalizeOwnerDividend", "finalizationId"],
     recordOwnerDividendPayment: ["recordOwnerDividendPaymentThroughApi", "paymentEventId"],
     recordShareholderLoan: ["recordShareholderLoanThroughApi", "actionId"],
-    recordTaxSettlement: ["postLedgerTaxSettlement", "actionId"],
+    recordTaxSettlement: ["postTaxSettlement", "actionId"],
   };
 
   for (const [actionName, [coordinator, commandIdentity]] of Object.entries(coordinators)) {
