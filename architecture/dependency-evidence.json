@@ -398,6 +398,26 @@
     },
     {
       "owner": "backend-system",
+      "table": "backend_system.company_tax_return_migration_inventory"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.company_tax_return_migration_state"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.company_tax_return_quarantine"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.company_tax_return_reconciliations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.company_tax_return_source_rows"
+    },
+    {
+      "owner": "backend-system",
       "table": "backend_system.ledger_command_receipts"
     },
     {

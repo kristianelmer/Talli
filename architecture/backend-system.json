@@ -427,6 +427,11 @@
       "backend_system.banking_migration_reconciliations",
       "backend_system.banking_migration_runs",
       "backend_system.banking_migration_source_rows",
+      "backend_system.company_tax_return_migration_inventory",
+      "backend_system.company_tax_return_migration_state",
+      "backend_system.company_tax_return_quarantine",
+      "backend_system.company_tax_return_reconciliations",
+      "backend_system.company_tax_return_source_rows",
       "backend_system.ledger_command_receipts",
       "backend_system.ledger_cursor_signing_keys",
       "backend_system.ledger_migration_quarantine",
@@ -502,7 +507,8 @@
       "supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql",
       "supabase/migrations/20260913171000_company_tax_settlement_expand.sql",
       "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql",
-      "supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql"
+      "supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql",
+      "supabase/migrations/20260914200000_company_tax_return_expand.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },

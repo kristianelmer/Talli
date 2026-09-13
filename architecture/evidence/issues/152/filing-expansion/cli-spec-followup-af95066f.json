@@ -1,0 +1,52 @@
+{
+  "verdict": "PASS_BOUNDED_CLI_PARITY_FOLLOWUP",
+  "reviewedAt": "2026-09-13T23:11:46.021945+00:00",
+  "originalComparisonRevision": "8b3e0cb340d962c8140b1ac72ceada59d4d4aea7",
+  "previousReviewedRevision": "c3eb992c30531f7402a31ceb830164fa4fda1654",
+  "candidateRevision": "af95066f0655733b8ea76ef1490b3178864aced7",
+  "closedFindings": [
+    "SPEC-152-CLI-1",
+    "SPEC-152-CLI-2"
+  ],
+  "findings": [],
+  "independentTests": {
+    "passed": 313,
+    "failed": 0,
+    "durationSeconds": 4.46,
+    "pureCases": 157,
+    "authorityCases": 146,
+    "originalCliParityCases": 10,
+    "providerScope": "mocked only",
+    "log": "spec-cli-af95066f-tests.log",
+    "originalProbeOutputByteExact": true,
+    "comparisonSha256": "fe3f76fc1d8e7940419e1b9142a884a8b5022da427b98f7522d92482e795e5fb"
+  },
+  "requirementsByteUnchanged": true,
+  "evidenceAdoptionHashesVerified": true,
+  "limits": [
+    "No uncommitted SQL inspected.",
+    "No API/web/persistence/full-stage/protected/provider acceptance.",
+    "No shared repo/DB/browser/config mutation."
+  ],
+  "reportSha256": "3ef88fed1e66f0c35bf1228bf8841c276bb2962a71f5136b40dcd5f5d8a9a782",
+  "sourceBindings": {
+    "apps/backend/src/talli_backend/authority_tools/company_tax_payload.py": "e6f2db858922714d205a3922d97fdbed7a96a031cf608d43c4e3519690ec57e5",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/calculation.py": "a28abdd602da04b251de3d00c3ac0153bd8f50e17b4f061ccdb6795304da2df4",
+    "apps/backend/tests/test_company_tax_authority_payload.py": "739bef3c19f9d83491c4930554aa77fda4089e92beef597ff5bb5dedb673a59f",
+    "architecture/evidence/issues/152/cli-followup/cli-followup-tests.log": "7a71dfe5336abc84cfccc8c4a87d394eb8c39582229b007f43339e8bb04ab126",
+    "architecture/evidence/issues/152/cli-followup/cli-spec-review-c3eb992c.json": "ee418b9906080eff09f6b7d5bbb45a3dfda24d77260d1daea58bdf4fd50a975f",
+    "architecture/evidence/issues/152/cli-followup/cli-spec-review-c3eb992c.md": "bb15d6c551fa41495e937848eacb36a35200c1133393cf8be7bb9831c58f89b4",
+    "architecture/evidence/issues/152/cli-followup/cli-standards-review-c3eb992c.json": "1674f47c0ca6fd32600e617950d7a9fde611ddd533a65f87d644ec232232e29f",
+    "architecture/evidence/issues/152/cli-followup/cli-standards-review-c3eb992c.md": "37e4b178370a632b21964c46223f916030caf6e8df51570453b0b21e92c956bc",
+    "architecture/evidence/issues/152/cli-followup/manifest.json": "8e65db31573ea2aa2a71e3ee0a89f6583e3c81f7944f8fa772670ebf24151483"
+  },
+  "privateBindings": {
+    "spec-cli-probe-c3eb992c.py": "ccf7328c3dc83af21e3fe7a232450bb5a1e091dd8616f40e7ef403530ac0ab64",
+    "spec-cli-c3eb992c-before.json": "fe3f76fc1d8e7940419e1b9142a884a8b5022da427b98f7522d92482e795e5fb",
+    "spec-cli-c3eb992c-after.json": "0f0e89290528e0c70ddd25ff9f0bf6fdfb4f8c0a5cc576a01cf9970113c223cb",
+    "test_spec_cli_parity_c3eb992c.py": "54195a07b2ae99fb370d81a9edc254664365e5e5930ca80265499dc14c7496df",
+    "spec-cli-c3eb992c-regressions-red.log": "0b06029728be026f87e304bae6cced524b7a0a1e27a0da103f21f0bd1aba3030",
+    "spec-cli-af95066f-tests.log": "55c23dae3b6678e372de9b9094d0092c32a42860b4a22289125c2bba6a31f1cc",
+    "spec-cli-af95066f-after.json": "fe3f76fc1d8e7940419e1b9142a884a8b5022da427b98f7522d92482e795e5fb"
+  }
+}

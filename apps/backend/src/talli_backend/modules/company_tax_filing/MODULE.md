@@ -33,3 +33,9 @@ The deterministic filing contracts are `CompanyTaxReturnSource`, `CompanyTaxRetu
 `CompanyTaxValidationSummary` and `summarize_company_tax_validation` preserve bounded validation text, duplicate removal and Norwegian ICU ordering. The pinned Ada URL parser preserves the predecessor WHATWG canonical-URL check. Both dependencies are local deterministic mechanisms; neither performs authority I/O.
 
 `prepare_company_tax_return` returns `PreparedCompanyTaxReturn` only when the characterized payload has no blocking feedback. The existing tax CLI consumes these public contracts in process; its four statutory TypeScript subprocess branches are retired. The annual-accounts subprocess remains until #153.
+
+The #152 expansion in `supabase/migrations/20260914200000_company_tax_return_expand.sql` creates inert filing targets. It copies Tax rows from six shared families under a source lock, pins exact rows/schema/RPC evidence, quarantines ambiguous obligation or relationship provenance, and compares counts and ordered JSONB hashes. The legacy writer remains authoritative; target tables have FORCE RLS and no business policy/grant. Existing company, actor and opening-snapshot foreign-key behavior is preserved, while intra-Tax references bind to the new schema. Temporary migration privileges are restored. Separate cutover, contract and rollback work is still pending.
+
+<!-- architecture-inventory
+{"ownedTables": ["company_tax_filing.filing_previews", "company_tax_filing.filing_submissions", "company_tax_filing.filing_overrides", "company_tax_filing.filing_review_comments", "company_tax_filing.authority_permissions", "company_tax_filing.authority_test_runs"]}
+-->

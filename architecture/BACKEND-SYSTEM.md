@@ -588,3 +588,9 @@ The final Tax contract retires the exclusive old projection after Archive and re
 <!-- architecture-inventory
 {"technicalMigrations": ["supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql"]}
 -->
+
+Company Tax #152 records expansion snapshots and reconciliation in five private technical tables. These are migration evidence, not business facts or a second writer. Six inert Tax filing tables remain inaccessible until a separately verified cutover; no provider or owner workflow is enabled by expansion. The original atomic Audit inclusion remains with the canonical legacy RPC during this phase.
+
+<!-- architecture-inventory
+{"technicalTables": ["backend_system.company_tax_return_migration_state", "backend_system.company_tax_return_migration_inventory", "backend_system.company_tax_return_source_rows", "backend_system.company_tax_return_quarantine", "backend_system.company_tax_return_reconciliations"], "technicalMigrations": ["supabase/migrations/20260914200000_company_tax_return_expand.sql"]}
+-->

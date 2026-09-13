@@ -56,11 +56,17 @@
       "company_tax_filing"
     ],
     "tables": [
-      "company_tax_filing.settlements"
+      "company_tax_filing.settlements",
+      "company_tax_filing.filing_previews",
+      "company_tax_filing.filing_submissions",
+      "company_tax_filing.filing_overrides",
+      "company_tax_filing.filing_review_comments",
+      "company_tax_filing.authority_permissions",
+      "company_tax_filing.authority_test_runs"
     ],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "supabase/migrations/20260913171000_company_tax_settlement_expand.sql"
+    "migrations": "supabase/migrations"
   },
   "ports": [
     {

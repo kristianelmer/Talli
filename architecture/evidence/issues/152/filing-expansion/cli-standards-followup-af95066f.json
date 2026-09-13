@@ -1,0 +1,142 @@
+{
+  "verdict": "PASS_BOUNDED_CLI_STANDARDS_FOLLOWUP",
+  "baseRevision": "8b3e0cb340d962c8140b1ac72ceada59d4d4aea7",
+  "previousReviewedRevision": "c3eb992c30531f7402a31ceb830164fa4fda1654",
+  "candidateRevision": "af95066f0655733b8ea76ef1490b3178864aced7",
+  "closedFinding": "Explicit null document reference no longer becomes omission",
+  "additionalVerifiedFix": "Integral JSON float year date interpolation",
+  "incrementalCommits": [
+    "af95066f0655733b8ea76ef1490b3178864aced7 fix(tax): preserve CLI reference presence and numeric year XML (#152)"
+  ],
+  "diffSha256": "9d24fcd0acc5a15690da777c80d20c28810c3fed636cc402799372bddbfbf87f",
+  "files": [
+    {
+      "path": "apps/backend/src/talli_backend/authority_tools/_filing.py",
+      "sha256": "c1d41d3633b49ea300ed13d7e2ae25f5a923515641505607395ca3e0dcb659a0"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/authority_tools/company_tax_payload.py",
+      "sha256": "e6f2db858922714d205a3922d97fdbed7a96a031cf608d43c4e3519690ec57e5"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md",
+      "sha256": "8f613ed9baa964573ffbfd7e5bc3341538aa8763848ef1a9adbc4220cda59541"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/calculation.py",
+      "sha256": "a28abdd602da04b251de3d00c3ac0153bd8f50e17b4f061ccdb6795304da2df4"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/module.json",
+      "sha256": "60c4720008da6a154d021aa27c5a72245032e4cce5404e1e0ccd46979f27b335"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/public.py",
+      "sha256": "6d714ffd95c95d0fa3fff8366645f188ae49887389488601b2eead72b9822832"
+    },
+    {
+      "path": "apps/backend/tests/test_authority_filing_tools.py",
+      "sha256": "3cc2ae82d1e2b367d09102b0d9fc5b8b254b4b56026d821641f1f0215db97e74"
+    },
+    {
+      "path": "apps/backend/tests/test_company_tax_authority_payload.py",
+      "sha256": "739bef3c19f9d83491c4930554aa77fda4089e92beef597ff5bb5dedb673a59f"
+    },
+    {
+      "path": "architecture/evidence/issues/152/cli-followup/cli-followup-tests.log",
+      "sha256": "7a71dfe5336abc84cfccc8c4a87d394eb8c39582229b007f43339e8bb04ab126"
+    },
+    {
+      "path": "architecture/evidence/issues/152/cli-followup/cli-spec-review-c3eb992c.json",
+      "sha256": "ee418b9906080eff09f6b7d5bbb45a3dfda24d77260d1daea58bdf4fd50a975f"
+    },
+    {
+      "path": "architecture/evidence/issues/152/cli-followup/cli-spec-review-c3eb992c.md",
+      "sha256": "bb15d6c551fa41495e937848eacb36a35200c1133393cf8be7bb9831c58f89b4"
+    },
+    {
+      "path": "architecture/evidence/issues/152/cli-followup/cli-standards-review-c3eb992c.json",
+      "sha256": "1674f47c0ca6fd32600e617950d7a9fde611ddd533a65f87d644ec232232e29f"
+    },
+    {
+      "path": "architecture/evidence/issues/152/cli-followup/cli-standards-review-c3eb992c.md",
+      "sha256": "37e4b178370a632b21964c46223f916030caf6e8df51570453b0b21e92c956bc"
+    },
+    {
+      "path": "architecture/evidence/issues/152/cli-followup/manifest.json",
+      "sha256": "8e65db31573ea2aa2a71e3ee0a89f6583e3c81f7944f8fa772670ebf24151483"
+    },
+    {
+      "path": "architecture/evidence/issues/152/owned-authority-payload/manifest.json",
+      "sha256": "9110df489cdb534fc0b586586179c43cf64c9ae9a8b2b6815310dee55483c0c7"
+    },
+    {
+      "path": "architecture/evidence/issues/152/owned-authority-payload/owned-authority-tools-tests.log",
+      "sha256": "bc4e037ad6ae73d3affaf170d9f4bf408c1f95e150407a59f2323360ebce2611"
+    },
+    {
+      "path": "architecture/evidence/issues/152/owned-authority-payload/owned-authority-web-dispatch-tests.log",
+      "sha256": "56123519550bbccfd2d529fe3241b6c40c5e3bea50cbc9d705808ceada9facea"
+    },
+    {
+      "path": "architecture/evidence/issues/152/owned-authority-payload/pure-spec-review-8b3e0cb3.json",
+      "sha256": "3864b0008165e748c143a50012dcd822d4e770ea1c91eb7d6a415ed029082d48"
+    },
+    {
+      "path": "architecture/evidence/issues/152/owned-authority-payload/pure-spec-review-8b3e0cb3.md",
+      "sha256": "3829029a3725c17b35ca899bbb3bed128a8d99f9db3518f151ee083e62c56a8d"
+    },
+    {
+      "path": "architecture/evidence/issues/152/owned-authority-payload/pure-standards-review-8b3e0cb3.json",
+      "sha256": "4c184e9c4b0508f212a4a3d6cf3820cecace30b19b9d2a7b3e04d53dc0499fac"
+    },
+    {
+      "path": "architecture/evidence/issues/152/owned-authority-payload/pure-standards-review-8b3e0cb3.md",
+      "sha256": "9aa309288b6e165607234dab996792469ad1acdc8128f5c6007305a847ac8723"
+    },
+    {
+      "path": "architecture/evidence/issues/152/requirements.json",
+      "sha256": "5c33d759b95f678e327e429f851f222ee605ae7b108bb987a15ed76ee86f242f"
+    },
+    {
+      "path": "scripts/authority-tool-payload.mjs",
+      "sha256": "d7232070f18843a688e6799fcb032bafeda7430b91a4150d5ccf15742b88ee9f"
+    },
+    {
+      "path": "tests/authority_tool_payload.test.mjs",
+      "sha256": "71aaa6f693eba6adc4556ef08227ebc06bbfc5c84d79b726894874ba9bde570e"
+    }
+  ],
+  "verification": {
+    "independentTests": 241,
+    "pureTests": 157,
+    "authorityCliTests": 84,
+    "originalProbeCases": 8,
+    "yearCases": 2,
+    "artifactDigestsVerified": 5,
+    "broader303TestsInspectedOnly": true
+  },
+  "artifacts": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/cli-standards-probe-af95066f.py",
+      "sha256": "711820e98b66dad78e5f3ce3bd6b1a1b9f373899a3f32f66690e691de621f537"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/cli-standards-probe-af95066f.log",
+      "sha256": "49d3e2b4fa78de3d57e41bfd2512f94cd84104ccc42b685718bf7a3e4f513441"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/cli-standards-tests-af95066f.log",
+      "sha256": "988ef2c674dc42427fd053aea333ee369bd7f3e66591c6ba58d4c5ef64685fd2"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/cli-standards-extraction-af95066f.txt",
+      "sha256": "211b5991b699e3ecd55d40ef3b61c05c2048f389d37c51ade9fc678ed8836744"
+    }
+  ],
+  "limits": [
+    "No complete gate or #152 exit credit",
+    "No shared DB/browser/configuration or tracked mutation",
+    "Uncommitted SQL expansion excluded"
+  ]
+}
