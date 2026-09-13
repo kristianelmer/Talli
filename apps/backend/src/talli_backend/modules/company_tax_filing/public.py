@@ -90,6 +90,10 @@ class AccountingEntryReference(_UuidReference):
 
 class CompanyTaxError(DomainError):
     @classmethod
+    def evidence_persistence_rejected(cls) -> CompanyTaxError:
+        return cls(code="COMPANY_TAX_EVIDENCE_PERSISTENCE_REJECTED", category=ErrorCategory.INVALID_INPUT)
+
+    @classmethod
     def mfa_required(cls) -> CompanyTaxError:
         return cls(code="COMPANY_TAX_MFA_REQUIRED", category=ErrorCategory.FORBIDDEN)
 
@@ -206,11 +210,28 @@ class CompanyTaxWorkspacePersistence(Protocol):
 
 
 def _freeze_return_fact(value: object) -> object:
-    if isinstance(value, Mapping):
-        return MappingProxyType({key: _freeze_return_fact(child) for key, child in value.items()})
-    if isinstance(value, (tuple, list)):
-        return tuple(_freeze_return_fact(child) for child in value)
-    return value
+    # Iteration preserves valid deeply nested ignored JSON fields without using
+    # Python's call stack. Only ancestor cycles are rejected; shared facts copy.
+    result = [None]
+    stack = [(False, value, result, 0)]
+    ancestors = set()
+    while stack:
+        finishing, source, parent, key = stack.pop()
+        if finishing:
+            copied, original_id = source
+            ancestors.remove(original_id)
+            parent[key] = MappingProxyType(copied) if isinstance(copied, dict) else tuple(copied)
+        elif isinstance(source, (Mapping, tuple, list)):
+            if id(source) in ancestors:
+                raise ValueError('Cyclic source facts are invalid.')
+            ancestors.add(id(source))
+            copied = {} if isinstance(source, Mapping) else [None] * len(source)
+            stack.append((True, (copied, id(source)), parent, key))
+            children = source.items() if isinstance(source, Mapping) else enumerate(source)
+            stack.extend((False, child, copied, child_key) for child_key, child in reversed(list(children)))
+        else:
+            parent[key] = source
+    return result[0]
 
 
 @dataclass(frozen=True, slots=True)

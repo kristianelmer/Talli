@@ -53,6 +53,7 @@ export function taxEvidenceImportErrorMessage(error: unknown): string {
   if (error instanceof TalliApiError && error.problem?.code === "COMPANY_TAX_MFA_REQUIRED") {
     return "Ekstra identitetsbekreftelse med tofaktorautentisering kreves.";
   }
-  if (error instanceof TalliApiError && error.status === 422) return "Ugyldig TT02-evidens";
+  if (error instanceof TalliApiError && error.status === 422
+      && error.problem?.code !== "COMPANY_TAX_EVIDENCE_PERSISTENCE_REJECTED") return "Ugyldig TT02-evidens";
   return "TT02-evidensen kunne ikke lagres.";
 }

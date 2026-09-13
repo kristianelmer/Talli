@@ -1,0 +1,27 @@
+✔ preview sends original facts and returns authoritative normalized payload and account lines (15.227ms)
+✔ capture keeps released path and stable identity without retrying an ambiguous outcome (1.187333ms)
+✔ generated preview guard rejects malformed backend output (0.538667ms)
+✔ generated preview guard rejects malformed backend output (0.417208ms)
+✔ generated preview guard rejects malformed backend output (0.380875ms)
+✔ Archive read preserves all source fields and conceals malformed or foreign output as a failed source (1.299916ms)
+✔ submission preserves the original coded validation redirect: bad-date-shape (0.081125ms)
+✔ submission preserves the original coded validation redirect: zero (0.041083ms)
+✔ submission preserves the original coded validation redirect: negative (0.044208ms)
+✔ submission preserves the original coded validation redirect: unknown-kind (0.058458ms)
+✔ submission preserves the original coded validation redirect: unknown-document-status (0.032958ms)
+✔ submission preserves the original coded validation redirect: payable-with-bank (0.032625ms)
+✔ submission preserves the original coded validation redirect: validation-order (0.036875ms)
+✔ unparseable amount text retains backend-owned validation: abc (0.427375ms)
+✔ unparseable amount text retains backend-owned validation: Infinity (0.295291ms)
+✔ unparseable amount text retains backend-owned validation: 1,5 (1.087708ms)
+✔ filing workspace keeps a failed source unavailable and checks returned scope (1.303291ms)
+✔ TT02 import preserves evidence bytes, IDs, replay and MFA presentation (0.44125ms)
+✔ TT02 presenter distinguishes projection validation from persistence rejection (0.072833ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 134.203666

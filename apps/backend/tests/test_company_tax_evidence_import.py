@@ -162,3 +162,25 @@ def test_valid_evidence_with_non_json_number_in_ignored_field_is_rejected_before
     response=client.post('/api/v1/company-tax/tt02-evidence-imports',headers={'Authorization':'Bearer fixture'},json={
         'companyId':str(COMPANY),'incomeYear':2025,'evidenceJson':json.dumps(evidence)})
     assert response.status_code==422 and sessions.events==[]
+
+
+def test_deep_ignored_json_remains_supported_and_recursively_immutable():
+    sessions=Sessions();client=TestClient(create_app(company_tax_session_factory=sessions))
+    evidence_json=json.dumps(VALUE['evidence'])[:-1]+',"ignored":'+('['*600)+'"original"'+(']'*600)+'}'
+    response=client.post('/api/v1/company-tax/tt02-evidence-imports',headers={'Authorization':'Bearer fixture'},json={
+        'companyId':str(COMPANY),'incomeYear':2025,'evidenceJson':evidence_json,'evidenceUrl':VALUE.get('evidenceUrl')})
+    assert response.status_code==200,response.text
+    value=ImportCompanyTaxReturnEvidence(ACTOR,COMPANY,IncomeYear(2025),json.loads(evidence_json))
+    nested=value.evidence['ignored']
+    for _ in range(600):
+        assert isinstance(nested,tuple)
+        nested=nested[0]
+    assert nested=='original'
+
+
+@pytest.mark.parametrize('message',['company_tax_evidence_conflict','company_tax_evidence_invalid_payload','company_tax_evidence_forbidden_content'])
+def test_persistence_rejections_remain_distinct_from_projection_validation(message):
+    from types import SimpleNamespace
+    from talli_backend.adapters.postgres_company_tax_filing import _company_tax_database_error
+    error=_company_tax_database_error(SimpleNamespace(diag=SimpleNamespace(message_primary=message)))
+    assert error.code=='COMPANY_TAX_EVIDENCE_PERSISTENCE_REJECTED'

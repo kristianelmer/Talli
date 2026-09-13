@@ -53,7 +53,7 @@ def _company_tax_database_error(error: psycopg.DatabaseError):
     if message == 'company_access_not_found':
         return CompanyTaxError.not_found()
     if message in ('company_tax_evidence_invalid_payload', 'company_tax_evidence_forbidden_content', 'company_tax_evidence_conflict'):
-        return CompanyTaxError.invalid_input()
+        return CompanyTaxError.evidence_persistence_rejected()
     factory = known.get(message)
     return factory() if factory else _map_database_error(str(error))
 

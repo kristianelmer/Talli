@@ -1,0 +1,18 @@
+{
+  "baselineRevision": "b400103d",
+  "status": "TWO_IMPORT_FINDINGS_FIXED_FOLLOWUP_REVIEW_PENDING",
+  "changes": [
+    "Iterative immutable conversion preserves deeply nested legacy-accepted ignored JSON, with ancestor cycle rejection for direct public inputs.",
+    "Separate persistence rejection code retains original generic SQL failure presentation, distinct from projection validation."
+  ],
+  "limits": [
+    "No SQL, provider or migration change in this fix.",
+    "No stage exit or owner UI activation claim."
+  ],
+  "artifacts": {
+    "import-review-web-tests.log": "9a5f407e3bb7de0fcd717e8d3a5562dd04fb5c259e4c0cf90c5e518c85581698",
+    "import-spec-review-b400103d.md": "89005d2256ddc1ee0adbda15b15922688242a6c40fb10472d68ad0bfcb6eea69",
+    "import-spec-review-b400103d.json": "a768d41831e1e3531267023e0f59def55deda34a26fbe1a860fa9d420bbf57f0",
+    "import-review-fix-tests.log": "98a13c741555e77f840d34a246a6f1441c8d1a78aec3cbbe9184ba7d5227ce19"
+  }
+}

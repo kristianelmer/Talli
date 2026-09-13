@@ -143,3 +143,9 @@ test("TT02 import preserves evidence bytes, IDs, replay and MFA presentation", a
   await assert.rejects(importCompanyTaxTt02Evidence("owner", body), error => error instanceof TalliApiError && error.status === 502);
   assert.equal(taxEvidenceImportErrorMessage(new TalliApiError(403, { code: "COMPANY_TAX_MFA_REQUIRED" })), "Ekstra identitetsbekreftelse med tofaktorautentisering kreves.");
 });
+
+test("TT02 presenter distinguishes projection validation from persistence rejection", async () => {
+  const { taxEvidenceImportErrorMessage } = await import("../features/company-tax-filing/index.ts");
+  assert.equal(taxEvidenceImportErrorMessage(new TalliApiError(422, { code: "COMPANY_TAX_INVALID_INPUT" })), "Ugyldig TT02-evidens");
+  assert.equal(taxEvidenceImportErrorMessage(new TalliApiError(422, { code: "COMPANY_TAX_EVIDENCE_PERSISTENCE_REJECTED" })), "TT02-evidensen kunne ikke lagres.");
+});
