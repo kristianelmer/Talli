@@ -71,10 +71,12 @@
   "characterization": {
     "pureCases": 32,
     "validationSummaryCases": 6,
-    "evidenceImportCases": 11,
+    "evidenceImportCases": 24,
     "fixture": "legacy-characterization.json",
-    "sha256": "5b2d31e2beaa0875b097600c7927cf1f831cc58ccc8b89a0e15f875245c79bf6",
+    "sha256": "2c50fe51fb47ea12e5890198966d4b5b460565056ecc9e9d5f188fc83c1b83a7",
     "statefulDatabaseAndOwnerWorkflow": "PENDING",
-    "independentReview": "PENDING"
+    "independentReview": "INITIAL_PROVENANCE_PASS_POSITIVE_IMPORT_GAP_ADDRESSED_REREAD_PENDING",
+    "evidenceImportSuccessCases": 4,
+    "historicalEvidenceNote": "The unchanged archived TT02 fixture is rejected by the existing timestamp validator (seven fractional digits); successful synthetic fixtures are captured separately without changing official evidence or claiming new provider validation."
   }
 }

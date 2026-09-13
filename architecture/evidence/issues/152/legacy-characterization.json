@@ -2,6 +2,7 @@
   "schemaVersion": "1.0",
   "sourceRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
   "runtime": "v24.20.0",
+  "submissionFixturePrefixSha256": "7421890a409f04e2d2f6d8509a60e7d8a7a20b33cd8837d9fa47c85a6a5b7d6d",
   "caseFixturePrefixSha256": "496e8400a71429ee8f3f157f9b0f54986452cf21e5837ec92f963fb78333b2f7",
   "cases": [
     {
@@ -13752,6 +13753,1411 @@
             "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/5cb600d9-b525-45e9-a506-ebb45b70af31"
           },
           "receiptRetrievedAt": "2026-07-14T19:10:25.077Z"
+        },
+        "evidenceUrl": "https://evidence.example/synthetic.json",
+        "recordedBy": "00000000-0000-0000-0000-000000000153"
+      },
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "TT02-evidensen kan ikke inneholde lagrede hemmeligheter."
+        }
+      }
+    },
+    {
+      "id": "synthetic-completed-pending-feedback",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "expectedCompanyOrgNumber": "310279617",
+        "expectedIncomeYear": 2025,
+        "evidence": {
+          "schemaVersion": 2,
+          "status": "submitted_and_receipted",
+          "environment": "test",
+          "productionEnabled": false,
+          "companyOrgNumber": "310279617",
+          "incomeYear": 2025,
+          "scope": "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
+          "systemUserResource": "app_skd_formueinntekt-skattemelding-v2",
+          "payloadHashes": {
+            "skattemelding": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "naeringsspesifikasjon": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "validationEnvelope": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "submissionEnvelope": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "localSchemaValidation": {
+            "status": "passed",
+            "schemas": [
+              "skattemeldingUpersonlig_v5_ekstern.xsd",
+              "naeringsspesifikasjon_v6_ekstern.xsd",
+              "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd"
+            ]
+          },
+          "authorityValidation": {
+            "result": "validertOK",
+            "failureReasons": []
+          },
+          "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "currentDocumentReference": "CURRENT_DOCUMENT_REFERENCE_SENTINEL",
+          "sourceXml": "<skattemelding>RAW_XML_SENTINEL</skattemelding>",
+          "partyNumber": "PARTY_NUMBER_SENTINEL",
+          "accessToken": "ACCESS_TOKEN_SENTINEL",
+          "privateKeyPem": "PRIVATE_KEY_SENTINEL",
+          "personalIdentifier": "PERSONAL_IDENTIFIER_SENTINEL",
+          "instance": {
+            "id": "51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "envelopeUploaded": true,
+            "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+            "fileScanResult": "Clean",
+            "confirmationPrepared": true,
+            "processTask": "confirmation"
+          },
+          "confirmationUrl": "https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "validatedAt": "2026-07-14T12:20:00.000Z",
+          "confirmationPreparedAt": "2026-07-14T12:21:00.000Z",
+          "receipt": {
+            "dataId": "70beee03-d8c2-4584-b366-8231c6de6584",
+            "dataType": "tilbakemelding",
+            "contentType": "application/xml",
+            "byteLength": 527,
+            "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584"
+          },
+          "submission": {
+            "submitted": true,
+            "processTask": null,
+            "processEndedAt": "2026-07-14T12:30:00.000Z",
+            "archived": true,
+            "archivedAt": "2026-07-14T12:31:00.000Z",
+            "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108"
+          },
+          "receiptRetrievedAt": "2026-07-14T12:32:00.000Z",
+          "secretsStored": false
+        },
+        "evidenceUrl": "https://evidence.example/synthetic.json",
+        "recordedBy": "00000000-0000-0000-0000-000000000153"
+      },
+      "output": {
+        "value": {
+          "authorityRun": {
+            "company_id": "00000000-0000-0000-0000-000000000152",
+            "obligation": "skattemelding",
+            "environment": "test",
+            "status": "pending",
+            "test_reference": "tt02:51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "feedback_summary": "validertOK; personbekreftelse fullført; offisiell tilbakemelding mottatt; myndighetsutfall venter på klassifisering.",
+            "receipt_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584",
+            "archive_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "evidence_url": "https://evidence.example/synthetic.json",
+            "payload_hash": "sha256:16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+            "recorded_by": "00000000-0000-0000-0000-000000000153",
+            "recorded_at": "2026-07-14T12:32:00.000Z"
+          },
+          "submission": {
+            "company_id": "00000000-0000-0000-0000-000000000152",
+            "income_year": 2025,
+            "filing": "skattemelding for AS",
+            "mode": "test_authority",
+            "adapter_mode": "test_authority",
+            "payload_hash": "16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+            "idempotency_key": "company-tax:00000000-0000-0000-0000-000000000152:2025:16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+            "status": "feedback_ready",
+            "calls": [
+              {
+                "endpoint": "skatteetaten:company-tax-validation",
+                "body_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "idempotency_key": null,
+                "status": "validertOK",
+                "created_at": "2026-07-14T12:20:00.000Z"
+              },
+              {
+                "endpoint": "altinn:owner-confirmation-handoff",
+                "body_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "idempotency_key": null,
+                "status": "confirmation_prepared",
+                "created_at": "2026-07-14T12:21:00.000Z"
+              },
+              {
+                "endpoint": "altinn:official-feedback-receipt",
+                "body_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                "idempotency_key": null,
+                "status": "received",
+                "created_at": "2026-07-14T12:32:00.000Z"
+              }
+            ],
+            "receipt_id": "70beee03-d8c2-4584-b366-8231c6de6584",
+            "feedback_document_ids": [
+              "70beee03-d8c2-4584-b366-8231c6de6584"
+            ],
+            "feedback_items": [
+              {
+                "severity": "warning",
+                "code": "COMPANY_TAX_AUTHORITY_OUTCOME_PENDING",
+                "message": "Offisiell tilbakemelding er mottatt, men myndighetsutfallet venter på klassifisering.",
+                "documentId": "70beee03-d8c2-4584-b366-8231c6de6584"
+              }
+            ],
+            "receipt_metadata": {
+              "authority": "skatteetaten",
+              "receiptId": "70beee03-d8c2-4584-b366-8231c6de6584",
+              "status": "feedback_ready",
+              "receivedAt": "2026-07-14T12:32:00.000Z",
+              "feedbackDocumentIds": [
+                "70beee03-d8c2-4584-b366-8231c6de6584"
+              ],
+              "dataType": "tilbakemelding",
+              "contentType": "application/xml",
+              "byteLength": 527,
+              "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584",
+              "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+              "processEndedAt": "2026-07-14T12:30:00.000Z",
+              "archivedAt": "2026-07-14T12:31:00.000Z"
+            },
+            "submitted_payload_ref": {
+              "companyOrgNumber": "310279617",
+              "incomeYear": 2025,
+              "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+              "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+              "payloadHash": "16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+              "skattemeldingHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "naeringsspesifikasjonHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "validationEnvelopeHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "submissionEnvelopeHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+              "storedAt": "2026-07-14T12:32:00.000Z"
+            },
+            "submitted_payload": null,
+            "failure_code": null,
+            "failure_message": null,
+            "created_by": "00000000-0000-0000-0000-000000000153",
+            "submitted_by": null,
+            "updated_at": "2026-07-14T12:32:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "synthetic-blank-url",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "expectedCompanyOrgNumber": "310279617",
+        "expectedIncomeYear": 2025,
+        "evidence": {
+          "schemaVersion": 2,
+          "status": "submitted_and_receipted",
+          "environment": "test",
+          "productionEnabled": false,
+          "companyOrgNumber": "310279617",
+          "incomeYear": 2025,
+          "scope": "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
+          "systemUserResource": "app_skd_formueinntekt-skattemelding-v2",
+          "payloadHashes": {
+            "skattemelding": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "naeringsspesifikasjon": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "validationEnvelope": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "submissionEnvelope": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "localSchemaValidation": {
+            "status": "passed",
+            "schemas": [
+              "skattemeldingUpersonlig_v5_ekstern.xsd",
+              "naeringsspesifikasjon_v6_ekstern.xsd",
+              "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd"
+            ]
+          },
+          "authorityValidation": {
+            "result": "validertOK",
+            "failureReasons": []
+          },
+          "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "currentDocumentReference": "CURRENT_DOCUMENT_REFERENCE_SENTINEL",
+          "sourceXml": "<skattemelding>RAW_XML_SENTINEL</skattemelding>",
+          "partyNumber": "PARTY_NUMBER_SENTINEL",
+          "accessToken": "ACCESS_TOKEN_SENTINEL",
+          "privateKeyPem": "PRIVATE_KEY_SENTINEL",
+          "personalIdentifier": "PERSONAL_IDENTIFIER_SENTINEL",
+          "instance": {
+            "id": "51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "envelopeUploaded": true,
+            "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+            "fileScanResult": "Clean",
+            "confirmationPrepared": true,
+            "processTask": "confirmation"
+          },
+          "confirmationUrl": "https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "validatedAt": "2026-07-14T12:20:00.000Z",
+          "confirmationPreparedAt": "2026-07-14T12:21:00.000Z",
+          "receipt": {
+            "dataId": "70beee03-d8c2-4584-b366-8231c6de6584",
+            "dataType": "tilbakemelding",
+            "contentType": "application/xml",
+            "byteLength": 527,
+            "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584"
+          },
+          "submission": {
+            "submitted": true,
+            "processTask": null,
+            "processEndedAt": "2026-07-14T12:30:00.000Z",
+            "archived": true,
+            "archivedAt": "2026-07-14T12:31:00.000Z",
+            "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108"
+          },
+          "receiptRetrievedAt": "2026-07-14T12:32:00.000Z",
+          "secretsStored": false
+        },
+        "evidenceUrl": "",
+        "recordedBy": "00000000-0000-0000-0000-000000000153"
+      },
+      "output": {
+        "value": {
+          "authorityRun": {
+            "company_id": "00000000-0000-0000-0000-000000000152",
+            "obligation": "skattemelding",
+            "environment": "test",
+            "status": "pending",
+            "test_reference": "tt02:51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "feedback_summary": "validertOK; personbekreftelse fullført; offisiell tilbakemelding mottatt; myndighetsutfall venter på klassifisering.",
+            "receipt_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584",
+            "archive_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "evidence_url": null,
+            "payload_hash": "sha256:16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+            "recorded_by": "00000000-0000-0000-0000-000000000153",
+            "recorded_at": "2026-07-14T12:32:00.000Z"
+          },
+          "submission": {
+            "company_id": "00000000-0000-0000-0000-000000000152",
+            "income_year": 2025,
+            "filing": "skattemelding for AS",
+            "mode": "test_authority",
+            "adapter_mode": "test_authority",
+            "payload_hash": "16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+            "idempotency_key": "company-tax:00000000-0000-0000-0000-000000000152:2025:16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+            "status": "feedback_ready",
+            "calls": [
+              {
+                "endpoint": "skatteetaten:company-tax-validation",
+                "body_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "idempotency_key": null,
+                "status": "validertOK",
+                "created_at": "2026-07-14T12:20:00.000Z"
+              },
+              {
+                "endpoint": "altinn:owner-confirmation-handoff",
+                "body_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "idempotency_key": null,
+                "status": "confirmation_prepared",
+                "created_at": "2026-07-14T12:21:00.000Z"
+              },
+              {
+                "endpoint": "altinn:official-feedback-receipt",
+                "body_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                "idempotency_key": null,
+                "status": "received",
+                "created_at": "2026-07-14T12:32:00.000Z"
+              }
+            ],
+            "receipt_id": "70beee03-d8c2-4584-b366-8231c6de6584",
+            "feedback_document_ids": [
+              "70beee03-d8c2-4584-b366-8231c6de6584"
+            ],
+            "feedback_items": [
+              {
+                "severity": "warning",
+                "code": "COMPANY_TAX_AUTHORITY_OUTCOME_PENDING",
+                "message": "Offisiell tilbakemelding er mottatt, men myndighetsutfallet venter på klassifisering.",
+                "documentId": "70beee03-d8c2-4584-b366-8231c6de6584"
+              }
+            ],
+            "receipt_metadata": {
+              "authority": "skatteetaten",
+              "receiptId": "70beee03-d8c2-4584-b366-8231c6de6584",
+              "status": "feedback_ready",
+              "receivedAt": "2026-07-14T12:32:00.000Z",
+              "feedbackDocumentIds": [
+                "70beee03-d8c2-4584-b366-8231c6de6584"
+              ],
+              "dataType": "tilbakemelding",
+              "contentType": "application/xml",
+              "byteLength": 527,
+              "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584",
+              "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+              "processEndedAt": "2026-07-14T12:30:00.000Z",
+              "archivedAt": "2026-07-14T12:31:00.000Z"
+            },
+            "submitted_payload_ref": {
+              "companyOrgNumber": "310279617",
+              "incomeYear": 2025,
+              "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+              "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+              "payloadHash": "16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+              "skattemeldingHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "naeringsspesifikasjonHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "validationEnvelopeHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "submissionEnvelopeHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+              "storedAt": "2026-07-14T12:32:00.000Z"
+            },
+            "submitted_payload": null,
+            "failure_code": null,
+            "failure_message": null,
+            "created_by": "00000000-0000-0000-0000-000000000153",
+            "submitted_by": null,
+            "updated_at": "2026-07-14T12:32:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "synthetic-second-owner",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "expectedCompanyOrgNumber": "310279617",
+        "expectedIncomeYear": 2025,
+        "evidence": {
+          "schemaVersion": 2,
+          "status": "submitted_and_receipted",
+          "environment": "test",
+          "productionEnabled": false,
+          "companyOrgNumber": "310279617",
+          "incomeYear": 2025,
+          "scope": "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
+          "systemUserResource": "app_skd_formueinntekt-skattemelding-v2",
+          "payloadHashes": {
+            "skattemelding": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "naeringsspesifikasjon": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "validationEnvelope": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "submissionEnvelope": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "localSchemaValidation": {
+            "status": "passed",
+            "schemas": [
+              "skattemeldingUpersonlig_v5_ekstern.xsd",
+              "naeringsspesifikasjon_v6_ekstern.xsd",
+              "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd"
+            ]
+          },
+          "authorityValidation": {
+            "result": "validertOK",
+            "failureReasons": []
+          },
+          "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "currentDocumentReference": "CURRENT_DOCUMENT_REFERENCE_SENTINEL",
+          "sourceXml": "<skattemelding>RAW_XML_SENTINEL</skattemelding>",
+          "partyNumber": "PARTY_NUMBER_SENTINEL",
+          "accessToken": "ACCESS_TOKEN_SENTINEL",
+          "privateKeyPem": "PRIVATE_KEY_SENTINEL",
+          "personalIdentifier": "PERSONAL_IDENTIFIER_SENTINEL",
+          "instance": {
+            "id": "51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "envelopeUploaded": true,
+            "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+            "fileScanResult": "Clean",
+            "confirmationPrepared": true,
+            "processTask": "confirmation"
+          },
+          "confirmationUrl": "https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "validatedAt": "2026-07-14T12:20:00.000Z",
+          "confirmationPreparedAt": "2026-07-14T12:21:00.000Z",
+          "receipt": {
+            "dataId": "70beee03-d8c2-4584-b366-8231c6de6584",
+            "dataType": "tilbakemelding",
+            "contentType": "application/xml",
+            "byteLength": 527,
+            "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584"
+          },
+          "submission": {
+            "submitted": true,
+            "processTask": null,
+            "processEndedAt": "2026-07-14T12:30:00.000Z",
+            "archived": true,
+            "archivedAt": "2026-07-14T12:31:00.000Z",
+            "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108"
+          },
+          "receiptRetrievedAt": "2026-07-14T12:32:00.000Z",
+          "secretsStored": false
+        },
+        "evidenceUrl": "https://evidence.example/synthetic.json",
+        "recordedBy": "00000000-0000-0000-0000-000000000154"
+      },
+      "output": {
+        "value": {
+          "authorityRun": {
+            "company_id": "00000000-0000-0000-0000-000000000152",
+            "obligation": "skattemelding",
+            "environment": "test",
+            "status": "pending",
+            "test_reference": "tt02:51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "feedback_summary": "validertOK; personbekreftelse fullført; offisiell tilbakemelding mottatt; myndighetsutfall venter på klassifisering.",
+            "receipt_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584",
+            "archive_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "evidence_url": "https://evidence.example/synthetic.json",
+            "payload_hash": "sha256:16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+            "recorded_by": "00000000-0000-0000-0000-000000000154",
+            "recorded_at": "2026-07-14T12:32:00.000Z"
+          },
+          "submission": {
+            "company_id": "00000000-0000-0000-0000-000000000152",
+            "income_year": 2025,
+            "filing": "skattemelding for AS",
+            "mode": "test_authority",
+            "adapter_mode": "test_authority",
+            "payload_hash": "16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+            "idempotency_key": "company-tax:00000000-0000-0000-0000-000000000152:2025:16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+            "status": "feedback_ready",
+            "calls": [
+              {
+                "endpoint": "skatteetaten:company-tax-validation",
+                "body_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "idempotency_key": null,
+                "status": "validertOK",
+                "created_at": "2026-07-14T12:20:00.000Z"
+              },
+              {
+                "endpoint": "altinn:owner-confirmation-handoff",
+                "body_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "idempotency_key": null,
+                "status": "confirmation_prepared",
+                "created_at": "2026-07-14T12:21:00.000Z"
+              },
+              {
+                "endpoint": "altinn:official-feedback-receipt",
+                "body_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                "idempotency_key": null,
+                "status": "received",
+                "created_at": "2026-07-14T12:32:00.000Z"
+              }
+            ],
+            "receipt_id": "70beee03-d8c2-4584-b366-8231c6de6584",
+            "feedback_document_ids": [
+              "70beee03-d8c2-4584-b366-8231c6de6584"
+            ],
+            "feedback_items": [
+              {
+                "severity": "warning",
+                "code": "COMPANY_TAX_AUTHORITY_OUTCOME_PENDING",
+                "message": "Offisiell tilbakemelding er mottatt, men myndighetsutfallet venter på klassifisering.",
+                "documentId": "70beee03-d8c2-4584-b366-8231c6de6584"
+              }
+            ],
+            "receipt_metadata": {
+              "authority": "skatteetaten",
+              "receiptId": "70beee03-d8c2-4584-b366-8231c6de6584",
+              "status": "feedback_ready",
+              "receivedAt": "2026-07-14T12:32:00.000Z",
+              "feedbackDocumentIds": [
+                "70beee03-d8c2-4584-b366-8231c6de6584"
+              ],
+              "dataType": "tilbakemelding",
+              "contentType": "application/xml",
+              "byteLength": 527,
+              "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584",
+              "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+              "processEndedAt": "2026-07-14T12:30:00.000Z",
+              "archivedAt": "2026-07-14T12:31:00.000Z"
+            },
+            "submitted_payload_ref": {
+              "companyOrgNumber": "310279617",
+              "incomeYear": 2025,
+              "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+              "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+              "payloadHash": "16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+              "skattemeldingHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "naeringsspesifikasjonHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "validationEnvelopeHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "submissionEnvelopeHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+              "storedAt": "2026-07-14T12:32:00.000Z"
+            },
+            "submitted_payload": null,
+            "failure_code": null,
+            "failure_message": null,
+            "created_by": "00000000-0000-0000-0000-000000000154",
+            "submitted_by": null,
+            "updated_at": "2026-07-14T12:32:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "synthetic-explicit-recorded-time",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "expectedCompanyOrgNumber": "310279617",
+        "expectedIncomeYear": 2025,
+        "evidence": {
+          "schemaVersion": 2,
+          "status": "submitted_and_receipted",
+          "environment": "test",
+          "productionEnabled": false,
+          "companyOrgNumber": "310279617",
+          "incomeYear": 2025,
+          "scope": "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
+          "systemUserResource": "app_skd_formueinntekt-skattemelding-v2",
+          "payloadHashes": {
+            "skattemelding": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "naeringsspesifikasjon": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "validationEnvelope": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "submissionEnvelope": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "localSchemaValidation": {
+            "status": "passed",
+            "schemas": [
+              "skattemeldingUpersonlig_v5_ekstern.xsd",
+              "naeringsspesifikasjon_v6_ekstern.xsd",
+              "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd"
+            ]
+          },
+          "authorityValidation": {
+            "result": "validertOK",
+            "failureReasons": []
+          },
+          "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "currentDocumentReference": "CURRENT_DOCUMENT_REFERENCE_SENTINEL",
+          "sourceXml": "<skattemelding>RAW_XML_SENTINEL</skattemelding>",
+          "partyNumber": "PARTY_NUMBER_SENTINEL",
+          "accessToken": "ACCESS_TOKEN_SENTINEL",
+          "privateKeyPem": "PRIVATE_KEY_SENTINEL",
+          "personalIdentifier": "PERSONAL_IDENTIFIER_SENTINEL",
+          "instance": {
+            "id": "51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "envelopeUploaded": true,
+            "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+            "fileScanResult": "Clean",
+            "confirmationPrepared": true,
+            "processTask": "confirmation"
+          },
+          "confirmationUrl": "https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "validatedAt": "2026-07-14T12:20:00.000Z",
+          "confirmationPreparedAt": "2026-07-14T12:21:00.000Z",
+          "receipt": {
+            "dataId": "70beee03-d8c2-4584-b366-8231c6de6584",
+            "dataType": "tilbakemelding",
+            "contentType": "application/xml",
+            "byteLength": 527,
+            "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584"
+          },
+          "submission": {
+            "submitted": true,
+            "processTask": null,
+            "processEndedAt": "2026-07-14T12:30:00.000Z",
+            "archived": true,
+            "archivedAt": "2026-07-14T12:31:00.000Z",
+            "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108"
+          },
+          "receiptRetrievedAt": "2026-07-14T12:32:00.000Z",
+          "secretsStored": false
+        },
+        "evidenceUrl": "https://evidence.example/synthetic.json",
+        "recordedBy": "00000000-0000-0000-0000-000000000153",
+        "recordedAt": "2026-07-14T12:33:00.000Z"
+      },
+      "output": {
+        "value": {
+          "authorityRun": {
+            "company_id": "00000000-0000-0000-0000-000000000152",
+            "obligation": "skattemelding",
+            "environment": "test",
+            "status": "pending",
+            "test_reference": "tt02:51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "feedback_summary": "validertOK; personbekreftelse fullført; offisiell tilbakemelding mottatt; myndighetsutfall venter på klassifisering.",
+            "receipt_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584",
+            "archive_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "evidence_url": "https://evidence.example/synthetic.json",
+            "payload_hash": "sha256:16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+            "recorded_by": "00000000-0000-0000-0000-000000000153",
+            "recorded_at": "2026-07-14T12:33:00.000Z"
+          },
+          "submission": {
+            "company_id": "00000000-0000-0000-0000-000000000152",
+            "income_year": 2025,
+            "filing": "skattemelding for AS",
+            "mode": "test_authority",
+            "adapter_mode": "test_authority",
+            "payload_hash": "16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+            "idempotency_key": "company-tax:00000000-0000-0000-0000-000000000152:2025:16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+            "status": "feedback_ready",
+            "calls": [
+              {
+                "endpoint": "skatteetaten:company-tax-validation",
+                "body_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "idempotency_key": null,
+                "status": "validertOK",
+                "created_at": "2026-07-14T12:20:00.000Z"
+              },
+              {
+                "endpoint": "altinn:owner-confirmation-handoff",
+                "body_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "idempotency_key": null,
+                "status": "confirmation_prepared",
+                "created_at": "2026-07-14T12:21:00.000Z"
+              },
+              {
+                "endpoint": "altinn:official-feedback-receipt",
+                "body_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                "idempotency_key": null,
+                "status": "received",
+                "created_at": "2026-07-14T12:32:00.000Z"
+              }
+            ],
+            "receipt_id": "70beee03-d8c2-4584-b366-8231c6de6584",
+            "feedback_document_ids": [
+              "70beee03-d8c2-4584-b366-8231c6de6584"
+            ],
+            "feedback_items": [
+              {
+                "severity": "warning",
+                "code": "COMPANY_TAX_AUTHORITY_OUTCOME_PENDING",
+                "message": "Offisiell tilbakemelding er mottatt, men myndighetsutfallet venter på klassifisering.",
+                "documentId": "70beee03-d8c2-4584-b366-8231c6de6584"
+              }
+            ],
+            "receipt_metadata": {
+              "authority": "skatteetaten",
+              "receiptId": "70beee03-d8c2-4584-b366-8231c6de6584",
+              "status": "feedback_ready",
+              "receivedAt": "2026-07-14T12:32:00.000Z",
+              "feedbackDocumentIds": [
+                "70beee03-d8c2-4584-b366-8231c6de6584"
+              ],
+              "dataType": "tilbakemelding",
+              "contentType": "application/xml",
+              "byteLength": 527,
+              "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584",
+              "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+              "processEndedAt": "2026-07-14T12:30:00.000Z",
+              "archivedAt": "2026-07-14T12:31:00.000Z"
+            },
+            "submitted_payload_ref": {
+              "companyOrgNumber": "310279617",
+              "incomeYear": 2025,
+              "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+              "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+              "payloadHash": "16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+              "skattemeldingHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "naeringsspesifikasjonHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "validationEnvelopeHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "submissionEnvelopeHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+              "storedAt": "2026-07-14T12:32:00.000Z"
+            },
+            "submitted_payload": null,
+            "failure_code": null,
+            "failure_message": null,
+            "created_by": "00000000-0000-0000-0000-000000000153",
+            "submitted_by": null,
+            "updated_at": "2026-07-14T12:32:00.000Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "synthetic-unsafe-url",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "expectedCompanyOrgNumber": "310279617",
+        "expectedIncomeYear": 2025,
+        "evidence": {
+          "schemaVersion": 2,
+          "status": "submitted_and_receipted",
+          "environment": "test",
+          "productionEnabled": false,
+          "companyOrgNumber": "310279617",
+          "incomeYear": 2025,
+          "scope": "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
+          "systemUserResource": "app_skd_formueinntekt-skattemelding-v2",
+          "payloadHashes": {
+            "skattemelding": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "naeringsspesifikasjon": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "validationEnvelope": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "submissionEnvelope": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "localSchemaValidation": {
+            "status": "passed",
+            "schemas": [
+              "skattemeldingUpersonlig_v5_ekstern.xsd",
+              "naeringsspesifikasjon_v6_ekstern.xsd",
+              "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd"
+            ]
+          },
+          "authorityValidation": {
+            "result": "validertOK",
+            "failureReasons": []
+          },
+          "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "currentDocumentReference": "CURRENT_DOCUMENT_REFERENCE_SENTINEL",
+          "sourceXml": "<skattemelding>RAW_XML_SENTINEL</skattemelding>",
+          "partyNumber": "PARTY_NUMBER_SENTINEL",
+          "accessToken": "ACCESS_TOKEN_SENTINEL",
+          "privateKeyPem": "PRIVATE_KEY_SENTINEL",
+          "personalIdentifier": "PERSONAL_IDENTIFIER_SENTINEL",
+          "instance": {
+            "id": "51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "envelopeUploaded": true,
+            "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+            "fileScanResult": "Clean",
+            "confirmationPrepared": true,
+            "processTask": "confirmation"
+          },
+          "confirmationUrl": "https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "validatedAt": "2026-07-14T12:20:00.000Z",
+          "confirmationPreparedAt": "2026-07-14T12:21:00.000Z",
+          "receipt": {
+            "dataId": "70beee03-d8c2-4584-b366-8231c6de6584",
+            "dataType": "tilbakemelding",
+            "contentType": "application/xml",
+            "byteLength": 527,
+            "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584"
+          },
+          "submission": {
+            "submitted": true,
+            "processTask": null,
+            "processEndedAt": "2026-07-14T12:30:00.000Z",
+            "archived": true,
+            "archivedAt": "2026-07-14T12:31:00.000Z",
+            "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108"
+          },
+          "receiptRetrievedAt": "2026-07-14T12:32:00.000Z",
+          "secretsStored": false
+        },
+        "evidenceUrl": "data:text/plain,unsafe",
+        "recordedBy": "00000000-0000-0000-0000-000000000153"
+      },
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "TT02-evidenslenken må være en absolutt HTTPS-lenke uten credentials, query eller fragment."
+        }
+      }
+    },
+    {
+      "id": "synthetic-wrong-company",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "expectedCompanyOrgNumber": "314259521",
+        "expectedIncomeYear": 2025,
+        "evidence": {
+          "schemaVersion": 2,
+          "status": "submitted_and_receipted",
+          "environment": "test",
+          "productionEnabled": false,
+          "companyOrgNumber": "310279617",
+          "incomeYear": 2025,
+          "scope": "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
+          "systemUserResource": "app_skd_formueinntekt-skattemelding-v2",
+          "payloadHashes": {
+            "skattemelding": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "naeringsspesifikasjon": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "validationEnvelope": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "submissionEnvelope": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "localSchemaValidation": {
+            "status": "passed",
+            "schemas": [
+              "skattemeldingUpersonlig_v5_ekstern.xsd",
+              "naeringsspesifikasjon_v6_ekstern.xsd",
+              "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd"
+            ]
+          },
+          "authorityValidation": {
+            "result": "validertOK",
+            "failureReasons": []
+          },
+          "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "currentDocumentReference": "CURRENT_DOCUMENT_REFERENCE_SENTINEL",
+          "sourceXml": "<skattemelding>RAW_XML_SENTINEL</skattemelding>",
+          "partyNumber": "PARTY_NUMBER_SENTINEL",
+          "accessToken": "ACCESS_TOKEN_SENTINEL",
+          "privateKeyPem": "PRIVATE_KEY_SENTINEL",
+          "personalIdentifier": "PERSONAL_IDENTIFIER_SENTINEL",
+          "instance": {
+            "id": "51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "envelopeUploaded": true,
+            "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+            "fileScanResult": "Clean",
+            "confirmationPrepared": true,
+            "processTask": "confirmation"
+          },
+          "confirmationUrl": "https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "validatedAt": "2026-07-14T12:20:00.000Z",
+          "confirmationPreparedAt": "2026-07-14T12:21:00.000Z",
+          "receipt": {
+            "dataId": "70beee03-d8c2-4584-b366-8231c6de6584",
+            "dataType": "tilbakemelding",
+            "contentType": "application/xml",
+            "byteLength": 527,
+            "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584"
+          },
+          "submission": {
+            "submitted": true,
+            "processTask": null,
+            "processEndedAt": "2026-07-14T12:30:00.000Z",
+            "archived": true,
+            "archivedAt": "2026-07-14T12:31:00.000Z",
+            "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108"
+          },
+          "receiptRetrievedAt": "2026-07-14T12:32:00.000Z",
+          "secretsStored": false
+        },
+        "evidenceUrl": "https://evidence.example/synthetic.json",
+        "recordedBy": "00000000-0000-0000-0000-000000000153"
+      },
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "TT02-evidensens organisasjonsnummer matcher ikke selskapet."
+        }
+      }
+    },
+    {
+      "id": "synthetic-wrong-year",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "expectedCompanyOrgNumber": "310279617",
+        "expectedIncomeYear": 2026,
+        "evidence": {
+          "schemaVersion": 2,
+          "status": "submitted_and_receipted",
+          "environment": "test",
+          "productionEnabled": false,
+          "companyOrgNumber": "310279617",
+          "incomeYear": 2025,
+          "scope": "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
+          "systemUserResource": "app_skd_formueinntekt-skattemelding-v2",
+          "payloadHashes": {
+            "skattemelding": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "naeringsspesifikasjon": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "validationEnvelope": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "submissionEnvelope": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "localSchemaValidation": {
+            "status": "passed",
+            "schemas": [
+              "skattemeldingUpersonlig_v5_ekstern.xsd",
+              "naeringsspesifikasjon_v6_ekstern.xsd",
+              "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd"
+            ]
+          },
+          "authorityValidation": {
+            "result": "validertOK",
+            "failureReasons": []
+          },
+          "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "currentDocumentReference": "CURRENT_DOCUMENT_REFERENCE_SENTINEL",
+          "sourceXml": "<skattemelding>RAW_XML_SENTINEL</skattemelding>",
+          "partyNumber": "PARTY_NUMBER_SENTINEL",
+          "accessToken": "ACCESS_TOKEN_SENTINEL",
+          "privateKeyPem": "PRIVATE_KEY_SENTINEL",
+          "personalIdentifier": "PERSONAL_IDENTIFIER_SENTINEL",
+          "instance": {
+            "id": "51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "envelopeUploaded": true,
+            "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+            "fileScanResult": "Clean",
+            "confirmationPrepared": true,
+            "processTask": "confirmation"
+          },
+          "confirmationUrl": "https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "validatedAt": "2026-07-14T12:20:00.000Z",
+          "confirmationPreparedAt": "2026-07-14T12:21:00.000Z",
+          "receipt": {
+            "dataId": "70beee03-d8c2-4584-b366-8231c6de6584",
+            "dataType": "tilbakemelding",
+            "contentType": "application/xml",
+            "byteLength": 527,
+            "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584"
+          },
+          "submission": {
+            "submitted": true,
+            "processTask": null,
+            "processEndedAt": "2026-07-14T12:30:00.000Z",
+            "archived": true,
+            "archivedAt": "2026-07-14T12:31:00.000Z",
+            "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108"
+          },
+          "receiptRetrievedAt": "2026-07-14T12:32:00.000Z",
+          "secretsStored": false
+        },
+        "evidenceUrl": "https://evidence.example/synthetic.json",
+        "recordedBy": "00000000-0000-0000-0000-000000000153"
+      },
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "TT02-evidensens inntektsår matcher ikke aktivt regnskapsår."
+        }
+      }
+    },
+    {
+      "id": "synthetic-unfinished",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "expectedCompanyOrgNumber": "310279617",
+        "expectedIncomeYear": 2025,
+        "evidence": {
+          "schemaVersion": 2,
+          "status": "awaiting_person_confirmation",
+          "environment": "test",
+          "productionEnabled": false,
+          "companyOrgNumber": "310279617",
+          "incomeYear": 2025,
+          "scope": "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
+          "systemUserResource": "app_skd_formueinntekt-skattemelding-v2",
+          "payloadHashes": {
+            "skattemelding": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "naeringsspesifikasjon": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "validationEnvelope": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "submissionEnvelope": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "localSchemaValidation": {
+            "status": "passed",
+            "schemas": [
+              "skattemeldingUpersonlig_v5_ekstern.xsd",
+              "naeringsspesifikasjon_v6_ekstern.xsd",
+              "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd"
+            ]
+          },
+          "authorityValidation": {
+            "result": "validertOK",
+            "failureReasons": []
+          },
+          "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "currentDocumentReference": "CURRENT_DOCUMENT_REFERENCE_SENTINEL",
+          "sourceXml": "<skattemelding>RAW_XML_SENTINEL</skattemelding>",
+          "partyNumber": "PARTY_NUMBER_SENTINEL",
+          "accessToken": "ACCESS_TOKEN_SENTINEL",
+          "privateKeyPem": "PRIVATE_KEY_SENTINEL",
+          "personalIdentifier": "PERSONAL_IDENTIFIER_SENTINEL",
+          "instance": {
+            "id": "51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "envelopeUploaded": true,
+            "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+            "fileScanResult": "Clean",
+            "confirmationPrepared": true,
+            "processTask": "confirmation"
+          },
+          "confirmationUrl": "https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "validatedAt": "2026-07-14T12:20:00.000Z",
+          "confirmationPreparedAt": "2026-07-14T12:21:00.000Z",
+          "receipt": {
+            "dataId": "70beee03-d8c2-4584-b366-8231c6de6584",
+            "dataType": "tilbakemelding",
+            "contentType": "application/xml",
+            "byteLength": 527,
+            "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584"
+          },
+          "submission": {
+            "submitted": true,
+            "processTask": null,
+            "processEndedAt": "2026-07-14T12:30:00.000Z",
+            "archived": true,
+            "archivedAt": "2026-07-14T12:31:00.000Z",
+            "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108"
+          },
+          "receiptRetrievedAt": "2026-07-14T12:32:00.000Z",
+          "secretsStored": false
+        },
+        "evidenceUrl": "https://evidence.example/synthetic.json",
+        "recordedBy": "00000000-0000-0000-0000-000000000153"
+      },
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "TT02-evidensen må være ferdig innsendt med offisiell tilbakemelding."
+        }
+      }
+    },
+    {
+      "id": "synthetic-production-enabled",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "expectedCompanyOrgNumber": "310279617",
+        "expectedIncomeYear": 2025,
+        "evidence": {
+          "schemaVersion": 2,
+          "status": "submitted_and_receipted",
+          "environment": "test",
+          "productionEnabled": true,
+          "companyOrgNumber": "310279617",
+          "incomeYear": 2025,
+          "scope": "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
+          "systemUserResource": "app_skd_formueinntekt-skattemelding-v2",
+          "payloadHashes": {
+            "skattemelding": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "naeringsspesifikasjon": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "validationEnvelope": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "submissionEnvelope": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "localSchemaValidation": {
+            "status": "passed",
+            "schemas": [
+              "skattemeldingUpersonlig_v5_ekstern.xsd",
+              "naeringsspesifikasjon_v6_ekstern.xsd",
+              "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd"
+            ]
+          },
+          "authorityValidation": {
+            "result": "validertOK",
+            "failureReasons": []
+          },
+          "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "currentDocumentReference": "CURRENT_DOCUMENT_REFERENCE_SENTINEL",
+          "sourceXml": "<skattemelding>RAW_XML_SENTINEL</skattemelding>",
+          "partyNumber": "PARTY_NUMBER_SENTINEL",
+          "accessToken": "ACCESS_TOKEN_SENTINEL",
+          "privateKeyPem": "PRIVATE_KEY_SENTINEL",
+          "personalIdentifier": "PERSONAL_IDENTIFIER_SENTINEL",
+          "instance": {
+            "id": "51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "envelopeUploaded": true,
+            "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+            "fileScanResult": "Clean",
+            "confirmationPrepared": true,
+            "processTask": "confirmation"
+          },
+          "confirmationUrl": "https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "validatedAt": "2026-07-14T12:20:00.000Z",
+          "confirmationPreparedAt": "2026-07-14T12:21:00.000Z",
+          "receipt": {
+            "dataId": "70beee03-d8c2-4584-b366-8231c6de6584",
+            "dataType": "tilbakemelding",
+            "contentType": "application/xml",
+            "byteLength": 527,
+            "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584"
+          },
+          "submission": {
+            "submitted": true,
+            "processTask": null,
+            "processEndedAt": "2026-07-14T12:30:00.000Z",
+            "archived": true,
+            "archivedAt": "2026-07-14T12:31:00.000Z",
+            "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108"
+          },
+          "receiptRetrievedAt": "2026-07-14T12:32:00.000Z",
+          "secretsStored": false
+        },
+        "evidenceUrl": "https://evidence.example/synthetic.json",
+        "recordedBy": "00000000-0000-0000-0000-000000000153"
+      },
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "TT02-evidens med produksjon aktivert kan ikke importeres."
+        }
+      }
+    },
+    {
+      "id": "synthetic-wrong-scope",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "expectedCompanyOrgNumber": "310279617",
+        "expectedIncomeYear": 2025,
+        "evidence": {
+          "schemaVersion": 2,
+          "status": "submitted_and_receipted",
+          "environment": "test",
+          "productionEnabled": false,
+          "companyOrgNumber": "310279617",
+          "incomeYear": 2025,
+          "scope": "wrong",
+          "systemUserResource": "app_skd_formueinntekt-skattemelding-v2",
+          "payloadHashes": {
+            "skattemelding": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "naeringsspesifikasjon": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "validationEnvelope": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "submissionEnvelope": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "localSchemaValidation": {
+            "status": "passed",
+            "schemas": [
+              "skattemeldingUpersonlig_v5_ekstern.xsd",
+              "naeringsspesifikasjon_v6_ekstern.xsd",
+              "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd"
+            ]
+          },
+          "authorityValidation": {
+            "result": "validertOK",
+            "failureReasons": []
+          },
+          "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "currentDocumentReference": "CURRENT_DOCUMENT_REFERENCE_SENTINEL",
+          "sourceXml": "<skattemelding>RAW_XML_SENTINEL</skattemelding>",
+          "partyNumber": "PARTY_NUMBER_SENTINEL",
+          "accessToken": "ACCESS_TOKEN_SENTINEL",
+          "privateKeyPem": "PRIVATE_KEY_SENTINEL",
+          "personalIdentifier": "PERSONAL_IDENTIFIER_SENTINEL",
+          "instance": {
+            "id": "51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "envelopeUploaded": true,
+            "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+            "fileScanResult": "Clean",
+            "confirmationPrepared": true,
+            "processTask": "confirmation"
+          },
+          "confirmationUrl": "https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "validatedAt": "2026-07-14T12:20:00.000Z",
+          "confirmationPreparedAt": "2026-07-14T12:21:00.000Z",
+          "receipt": {
+            "dataId": "70beee03-d8c2-4584-b366-8231c6de6584",
+            "dataType": "tilbakemelding",
+            "contentType": "application/xml",
+            "byteLength": 527,
+            "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584"
+          },
+          "submission": {
+            "submitted": true,
+            "processTask": null,
+            "processEndedAt": "2026-07-14T12:30:00.000Z",
+            "archived": true,
+            "archivedAt": "2026-07-14T12:31:00.000Z",
+            "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108"
+          },
+          "receiptRetrievedAt": "2026-07-14T12:32:00.000Z",
+          "secretsStored": false
+        },
+        "evidenceUrl": "https://evidence.example/synthetic.json",
+        "recordedBy": "00000000-0000-0000-0000-000000000153"
+      },
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "TT02-evidensen bruker feil scope-sett for skattemelding."
+        }
+      }
+    },
+    {
+      "id": "synthetic-authority-not-accepted",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "expectedCompanyOrgNumber": "310279617",
+        "expectedIncomeYear": 2025,
+        "evidence": {
+          "schemaVersion": 2,
+          "status": "submitted_and_receipted",
+          "environment": "test",
+          "productionEnabled": false,
+          "companyOrgNumber": "310279617",
+          "incomeYear": 2025,
+          "scope": "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
+          "systemUserResource": "app_skd_formueinntekt-skattemelding-v2",
+          "payloadHashes": {
+            "skattemelding": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "naeringsspesifikasjon": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "validationEnvelope": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "submissionEnvelope": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "localSchemaValidation": {
+            "status": "passed",
+            "schemas": [
+              "skattemeldingUpersonlig_v5_ekstern.xsd",
+              "naeringsspesifikasjon_v6_ekstern.xsd",
+              "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd"
+            ]
+          },
+          "authorityValidation": {
+            "result": "validertMedFeil",
+            "failureReasons": []
+          },
+          "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "currentDocumentReference": "CURRENT_DOCUMENT_REFERENCE_SENTINEL",
+          "sourceXml": "<skattemelding>RAW_XML_SENTINEL</skattemelding>",
+          "partyNumber": "PARTY_NUMBER_SENTINEL",
+          "accessToken": "ACCESS_TOKEN_SENTINEL",
+          "privateKeyPem": "PRIVATE_KEY_SENTINEL",
+          "personalIdentifier": "PERSONAL_IDENTIFIER_SENTINEL",
+          "instance": {
+            "id": "51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "envelopeUploaded": true,
+            "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+            "fileScanResult": "Clean",
+            "confirmationPrepared": true,
+            "processTask": "confirmation"
+          },
+          "confirmationUrl": "https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "validatedAt": "2026-07-14T12:20:00.000Z",
+          "confirmationPreparedAt": "2026-07-14T12:21:00.000Z",
+          "receipt": {
+            "dataId": "70beee03-d8c2-4584-b366-8231c6de6584",
+            "dataType": "tilbakemelding",
+            "contentType": "application/xml",
+            "byteLength": 527,
+            "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584"
+          },
+          "submission": {
+            "submitted": true,
+            "processTask": null,
+            "processEndedAt": "2026-07-14T12:30:00.000Z",
+            "archived": true,
+            "archivedAt": "2026-07-14T12:31:00.000Z",
+            "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108"
+          },
+          "receiptRetrievedAt": "2026-07-14T12:32:00.000Z",
+          "secretsStored": false
+        },
+        "evidenceUrl": "https://evidence.example/synthetic.json",
+        "recordedBy": "00000000-0000-0000-0000-000000000153"
+      },
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "TT02-evidensen mangler validertOK uten blokkerende feil."
+        }
+      }
+    },
+    {
+      "id": "synthetic-missing-receipt",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "expectedCompanyOrgNumber": "310279617",
+        "expectedIncomeYear": 2025,
+        "evidence": {
+          "schemaVersion": 2,
+          "status": "submitted_and_receipted",
+          "environment": "test",
+          "productionEnabled": false,
+          "companyOrgNumber": "310279617",
+          "incomeYear": 2025,
+          "scope": "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
+          "systemUserResource": "app_skd_formueinntekt-skattemelding-v2",
+          "payloadHashes": {
+            "skattemelding": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "naeringsspesifikasjon": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "validationEnvelope": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "submissionEnvelope": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "localSchemaValidation": {
+            "status": "passed",
+            "schemas": [
+              "skattemeldingUpersonlig_v5_ekstern.xsd",
+              "naeringsspesifikasjon_v6_ekstern.xsd",
+              "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd"
+            ]
+          },
+          "authorityValidation": {
+            "result": "validertOK",
+            "failureReasons": []
+          },
+          "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "currentDocumentReference": "CURRENT_DOCUMENT_REFERENCE_SENTINEL",
+          "sourceXml": "<skattemelding>RAW_XML_SENTINEL</skattemelding>",
+          "partyNumber": "PARTY_NUMBER_SENTINEL",
+          "accessToken": "ACCESS_TOKEN_SENTINEL",
+          "privateKeyPem": "PRIVATE_KEY_SENTINEL",
+          "personalIdentifier": "PERSONAL_IDENTIFIER_SENTINEL",
+          "instance": {
+            "id": "51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "envelopeUploaded": true,
+            "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+            "fileScanResult": "Clean",
+            "confirmationPrepared": true,
+            "processTask": "confirmation"
+          },
+          "confirmationUrl": "https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "validatedAt": "2026-07-14T12:20:00.000Z",
+          "confirmationPreparedAt": "2026-07-14T12:21:00.000Z",
+          "submission": {
+            "submitted": true,
+            "processTask": null,
+            "processEndedAt": "2026-07-14T12:30:00.000Z",
+            "archived": true,
+            "archivedAt": "2026-07-14T12:31:00.000Z",
+            "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108"
+          },
+          "receiptRetrievedAt": "2026-07-14T12:32:00.000Z",
+          "secretsStored": false
+        },
+        "evidenceUrl": "https://evidence.example/synthetic.json",
+        "recordedBy": "00000000-0000-0000-0000-000000000153"
+      },
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "Kvitteringsdata-id mangler i TT02-evidensen."
+        }
+      }
+    },
+    {
+      "id": "synthetic-secrets-flag",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "expectedCompanyOrgNumber": "310279617",
+        "expectedIncomeYear": 2025,
+        "evidence": {
+          "schemaVersion": 2,
+          "status": "submitted_and_receipted",
+          "environment": "test",
+          "productionEnabled": false,
+          "companyOrgNumber": "310279617",
+          "incomeYear": 2025,
+          "scope": "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
+          "systemUserResource": "app_skd_formueinntekt-skattemelding-v2",
+          "payloadHashes": {
+            "skattemelding": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "naeringsspesifikasjon": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "validationEnvelope": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "submissionEnvelope": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "localSchemaValidation": {
+            "status": "passed",
+            "schemas": [
+              "skattemeldingUpersonlig_v5_ekstern.xsd",
+              "naeringsspesifikasjon_v6_ekstern.xsd",
+              "skattemeldingognaeringsspesifikasjonrequest_v2_kompakt.xsd"
+            ]
+          },
+          "authorityValidation": {
+            "result": "validertOK",
+            "failureReasons": []
+          },
+          "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "currentDocumentReference": "CURRENT_DOCUMENT_REFERENCE_SENTINEL",
+          "sourceXml": "<skattemelding>RAW_XML_SENTINEL</skattemelding>",
+          "partyNumber": "PARTY_NUMBER_SENTINEL",
+          "accessToken": "ACCESS_TOKEN_SENTINEL",
+          "privateKeyPem": "PRIVATE_KEY_SENTINEL",
+          "personalIdentifier": "PERSONAL_IDENTIFIER_SENTINEL",
+          "instance": {
+            "id": "51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "envelopeUploaded": true,
+            "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+            "fileScanResult": "Clean",
+            "confirmationPrepared": true,
+            "processTask": "confirmation"
+          },
+          "confirmationUrl": "https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId=skd/formueinntekt-skattemelding-v2&instansId=51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "validatedAt": "2026-07-14T12:20:00.000Z",
+          "confirmationPreparedAt": "2026-07-14T12:21:00.000Z",
+          "receipt": {
+            "dataId": "70beee03-d8c2-4584-b366-8231c6de6584",
+            "dataType": "tilbakemelding",
+            "contentType": "application/xml",
+            "byteLength": 527,
+            "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584"
+          },
+          "submission": {
+            "submitted": true,
+            "processTask": null,
+            "processEndedAt": "2026-07-14T12:30:00.000Z",
+            "archived": true,
+            "archivedAt": "2026-07-14T12:31:00.000Z",
+            "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108"
+          },
+          "receiptRetrievedAt": "2026-07-14T12:32:00.000Z",
+          "secretsStored": true
         },
         "evidenceUrl": "https://evidence.example/synthetic.json",
         "recordedBy": "00000000-0000-0000-0000-000000000153"

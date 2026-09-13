@@ -46,6 +46,25 @@ const evidence=JSON.parse(readFileSync('docs/filing/evidence/company-tax-tt02-20
 const evidenceCases=[];
 function imported(id,mutate){const input={companyId:'00000000-0000-0000-0000-000000000152',expectedCompanyOrgNumber:evidence.companyOrgNumber,expectedIncomeYear:2025,evidence:structuredClone(evidence),evidenceUrl:'https://evidence.example/synthetic.json',recordedBy:'00000000-0000-0000-0000-000000000153'};mutate?.(input);evidenceCases.push({id,input,output:capture(()=>buildCompanyTaxReturnEvidencePersistence(input))});}
 imported('existing-sanitized-TT02');imported('wrong-company',x=>x.expectedCompanyOrgNumber='314259521');imported('wrong-year',x=>x.expectedIncomeYear=2026);imported('unfinished',x=>x.evidence.status='awaiting_person_confirmation');imported('production-enabled',x=>x.evidence.productionEnabled=true);imported('wrong-scope',x=>x.evidence.scope='wrong');imported('unsafe-url',x=>x.evidenceUrl='data:text/plain,unsafe');imported('blank-url',x=>x.evidenceUrl='');imported('authority-not-accepted',x=>x.evidence.authorityValidation.result='validertMedFeil');imported('missing-receipt',x=>delete x.evidence.receipt);imported('secrets-flag',x=>x.evidence.secretsStored=true);
-const data={schemaVersion:'1.0',sourceRevision:'054740b81692e0e59b99a76fff085f322f1968b4',runtime:process.version,caseFixturePrefixSha256:createHash('sha256').update(fixturePrefix).digest('hex'),cases,summaries,evidenceCases};
+// Preserve archived TT02 bytes and their current rejection above. These separate
+// synthetic cases use the successful fixture already pinned in the source inventory.
+const submissionFixtureSource=readFileSync('tests/company_tax_return_submission.test.mjs','utf8');
+const submissionFixturePrefix=submissionFixtureSource.slice(submissionFixtureSource.indexOf('const instanceId'),submissionFixtureSource.indexOf('function project('));
+const syntheticEvidence=new Function(submissionFixturePrefix+';return companyTaxEvidence();')();
+function syntheticImported(id,mutate){imported('synthetic-'+id,x=>{x.evidence=structuredClone(syntheticEvidence);mutate?.(x);});}
+syntheticImported('completed-pending-feedback');
+syntheticImported('blank-url',x=>x.evidenceUrl='');
+syntheticImported('second-owner',x=>x.recordedBy='00000000-0000-0000-0000-000000000154');
+syntheticImported('explicit-recorded-time',x=>x.recordedAt='2026-07-14T12:33:00.000Z');
+syntheticImported('unsafe-url',x=>x.evidenceUrl='data:text/plain,unsafe');
+syntheticImported('wrong-company',x=>x.expectedCompanyOrgNumber='314259521');
+syntheticImported('wrong-year',x=>x.expectedIncomeYear=2026);
+syntheticImported('unfinished',x=>x.evidence.status='awaiting_person_confirmation');
+syntheticImported('production-enabled',x=>x.evidence.productionEnabled=true);
+syntheticImported('wrong-scope',x=>x.evidence.scope='wrong');
+syntheticImported('authority-not-accepted',x=>x.evidence.authorityValidation.result='validertMedFeil');
+syntheticImported('missing-receipt',x=>delete x.evidence.receipt);
+syntheticImported('secrets-flag',x=>x.evidence.secretsStored=true);
+const data={schemaVersion:'1.0',sourceRevision:'054740b81692e0e59b99a76fff085f322f1968b4',runtime:process.version,submissionFixturePrefixSha256:createHash('sha256').update(submissionFixturePrefix).digest('hex'),caseFixturePrefixSha256:createHash('sha256').update(fixturePrefix).digest('hex'),cases,summaries,evidenceCases};
 const json=JSON.stringify(data,null,2)+'\n';writeFileSync('architecture/evidence/issues/152/legacy-characterization.json',json);
 console.log(JSON.stringify({payloadCases:cases.length,validationSummaryCases:summaries.length,evidenceCases:evidenceCases.length,sha256:createHash('sha256').update(json).digest('hex')}));
