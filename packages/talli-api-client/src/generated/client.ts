@@ -2998,7 +2998,7 @@ export interface TaxSettlementPayloadWire {
 }
 
 export interface TaxSettlementPreviewInputWire {
-  amount: number;
+  amount: number | null;
   bankTransactionId?: string | null;
   documentId?: string | null;
   documentStatus: string;
@@ -7503,7 +7503,7 @@ function isTaxSettlementPreviewInputWire(value: unknown): value is TaxSettlement
   return (
     isRecord(value) &&
     hasOnlyProperties(value, ["amount","bankTransactionId","documentId","documentStatus","settlementDate","settlementType"]) &&
-    typeof value.amount === "number" && Number.isFinite(value.amount) &&
+    (typeof value.amount === "number" && Number.isFinite(value.amount) || value.amount === null) &&
     (value.bankTransactionId === undefined || ((typeof value.bankTransactionId === "string" && value.bankTransactionId.length <= 255) || value.bankTransactionId === null)) &&
     (value.documentId === undefined || ((typeof value.documentId === "string" && value.documentId.length <= 255) || value.documentId === null)) &&
     (typeof value.documentStatus === "string" && value.documentStatus.length <= 100) &&

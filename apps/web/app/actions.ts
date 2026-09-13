@@ -3934,7 +3934,11 @@ export async function recordTaxSettlement(formData: FormData) {
       documentId,
     })).payload;
   } catch (error) {
-    failTo(returnTo, taxSubmissionErrorMessage(error));
+    const retryTarget = returnTo === "/actions" ? "/actions/tax-settlement" : returnTo;
+    redirect(ownerPathWithQuery(retryTarget, {
+      error: taxSubmissionErrorMessage(error),
+      taxSettlementOperationId: operationId,
+    }));
   }
 
   try {

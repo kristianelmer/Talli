@@ -1,0 +1,33 @@
+{
+  "status": "FIXES_IMPLEMENTED_INDEPENDENT_FOLLOWUP_PENDING",
+  "reviewedRevision": "86951dbb5d14c1b74ca8e1c1b581327bed4b48d2",
+  "earlierCorrection": "01d600fc5573967d50879e216c96d96445fdb949",
+  "findings": [
+    {
+      "priority": "P1",
+      "finding": "Server preview failure during ambiguous capture or Audit retry discarded operation identity",
+      "fix": "Every submission preview failure carries the same operation ID back to Tax retry route. Actual browser covers committed response loss, subsequent preview outage and same-ID recovery with one settlement, journal, receipt and audit."
+    },
+    {
+      "priority": "P2",
+      "finding": "Ordinary invalid text serialized to null and lost domain validation message",
+      "fix": "Preview amount accepts explicit null as unparseable/nonfinite boundary representation; backend-owned normalization rejects it with original invalid_amount and precedence. Browser covers abc, Infinity and1,5; API covers null and invalid-date precedence."
+    },
+    {
+      "priority": "P2",
+      "finding": "Submission validation error lost original code prefix",
+      "fix": "Submission-specific formatter preserves code:message; wizard remains detail-only. Closed independently at01d600fc."
+    }
+  ],
+  "verification": {
+    "browser": "PASS extended full-stack test and fixture cleanup",
+    "api": "26 passed",
+    "transport": "16 passed",
+    "typecheck": "PASS",
+    "architecture": "PASS"
+  },
+  "limits": [
+    "Complete gate runs were intentionally interrupted before database phase to fix review findings; neither earns exit credit.",
+    "Full gates, deployment-order evidence and protected integration remain pending."
+  ]
+}

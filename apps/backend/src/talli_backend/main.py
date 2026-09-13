@@ -1816,7 +1816,9 @@ class LedgerTaxSettlementWire(LedgerCompanyYearWire):
 
 class TaxSettlementPreviewInputWire(StrictTransportModel):
     settlement_date: str = Field(max_length=255)
-    amount: float = Field(strict=True, allow_inf_nan=False)
+    amount: Annotated[float, Field(strict=True, allow_inf_nan=False)] | None = Field(
+        description="Null represents an unparseable or nonfinite browser amount; domain validation returns invalid_amount."
+    )
     settlement_type: str = Field(max_length=100)
     document_status: str = Field(max_length=100)
     bank_transaction_id: str | None = Field(default=None, max_length=255)

@@ -20639,8 +20639,16 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "title": "Amount",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null represents an unparseable or nonfinite browser amount; domain validation returns invalid_amount.",
+            "title": "Amount"
           },
           "bankTransactionId": {
             "anyOf": [

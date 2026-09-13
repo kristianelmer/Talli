@@ -1,0 +1,24 @@
+✔ preview sends original facts and returns authoritative normalized payload and account lines (15.089833ms)
+✔ capture keeps released path and stable identity without retrying an ambiguous outcome (0.89625ms)
+✔ generated preview guard rejects malformed backend output (0.417625ms)
+✔ generated preview guard rejects malformed backend output (0.303916ms)
+✔ generated preview guard rejects malformed backend output (0.348083ms)
+✔ Archive read preserves all source fields and conceals malformed or foreign output as a failed source (1.272708ms)
+✔ submission preserves the original coded validation redirect: bad-date-shape (0.216541ms)
+✔ submission preserves the original coded validation redirect: zero (0.05675ms)
+✔ submission preserves the original coded validation redirect: negative (0.052167ms)
+✔ submission preserves the original coded validation redirect: unknown-kind (0.079792ms)
+✔ submission preserves the original coded validation redirect: unknown-document-status (0.050875ms)
+✔ submission preserves the original coded validation redirect: payable-with-bank (0.039709ms)
+✔ submission preserves the original coded validation redirect: validation-order (0.040917ms)
+✔ unparseable amount text retains backend-owned validation: abc (0.696209ms)
+✔ unparseable amount text retains backend-owned validation: Infinity (0.335666ms)
+✔ unparseable amount text retains backend-owned validation: 1,5 (0.199208ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 130.737875

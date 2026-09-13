@@ -83,3 +83,20 @@ for (const example of characterization.cases.filter(item => item.error)) {
     assert.equal(taxSubmissionErrorMessage(error), `${code}: ${message}`);
   });
 }
+
+for (const value of ["abc", "Infinity", "1,5"]) {
+  test(`unparseable amount text retains backend-owned validation: ${value}`, async (t) => {
+    environment(t);
+    t.mock.method(globalThis, "fetch", async (_url, request) => {
+      assert.equal(JSON.parse(request.body).amount, null);
+      return Response.json({ type: "about:blank", title: "Ugyldig skatteoppgjør", status: 422,
+        code: "invalid_amount", detail: "Skattebeløp må være større enn 0.",
+        instance: "/api/v1/company-tax/settlement-previews", requestId: "fixture" }, { status: 422, headers: { "content-type": "application/problem+json" } });
+    });
+    await assert.rejects(previewTaxSettlement("owner", { ...input, amount: Number(value) }), error => {
+      assert.equal(taxPreviewErrorMessage(error), "Skattebeløp må være større enn 0.");
+      assert.equal(taxSubmissionErrorMessage(error), "invalid_amount: Skattebeløp må være større enn 0.");
+      return true;
+    });
+  });
+}

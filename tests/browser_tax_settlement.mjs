@@ -35,9 +35,11 @@ test("owner previews all settlement kinds and retries a lost committed response 
   const operationId = await page.locator('input[name="operationId"]').inputValue();
   const year = await page.locator('input[name="incomeYear"]').inputValue();
   const fill = async value => { await date.fill(`${year}-09-01`); await amount.fill(value); };
-  await fill("-1");
-  await page.getByText("Skattebeløp må være større enn 0.", { exact: true }).waitFor();
-  assert.equal(await confirm.isDisabled(), true);
+  for (const value of ["-1", "abc", "Infinity", "1,5"]) {
+    await fill(value);
+    await page.getByText("Skattebeløp må være større enn 0.", { exact: true }).waitFor();
+    assert.equal(await confirm.isDisabled(), true);
+  }
   await amount.fill("17.605");
   await page.getByRole("cell", { name: "8300 Skattekostnad", exact: true }).waitFor();
   assert.match(await page.locator("table tbody").innerText(), /17,61/u);
@@ -68,6 +70,16 @@ test("owner previews all settlement kinds and retries a lost committed response 
   assert.equal(fixture.controls.captures.length, 1);
   assert.equal(fixture.controls.captures[0].status, 201);
   assert.equal(fixture.controls.captures[0].response.replayed, false);
+  await fill("202");
+  await page.getByRole("cell", { name: "8300 Skattekostnad", exact: true }).waitFor();
+  // The first replay attempt fails at its new server preview hop. It must
+  // retain the already committed action's identity through another redirect.
+  fixture.controls.failNextPreview = true;
+  await confirm.click();
+  await page.waitForURL(url => url.searchParams.get("taxSettlementOperationId") === operationId
+    && url.searchParams.get("error") === "Forhåndsvisningen kunne ikke hentes. Prøv igjen.");
+  assert.equal(await page.locator('input[name="operationId"]').inputValue(), operationId);
+  assert.equal(fixture.controls.captures.length, 1);
   await fill("202");
   await page.getByRole("cell", { name: "8300 Skattekostnad", exact: true }).waitFor();
   await confirm.click();

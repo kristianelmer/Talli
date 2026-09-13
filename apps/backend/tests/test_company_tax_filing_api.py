@@ -41,3 +41,11 @@ def test_preview_requires_authentication(client):
     response=client.post('/api/v1/company-tax/settlement-previews',json={
         'settlementDate':'2026-04-15','amount':100,'settlementType':'payment','documentStatus':'attached'})
     assert response.status_code==401
+
+
+@pytest.mark.parametrize('settlement_date,code', [('2026-04-15','invalid_amount'),('invalid','invalid_date')])
+def test_unparseable_browser_amount_keeps_original_domain_message_and_validation_order(client,settlement_date,code):
+    response=client.post('/api/v1/company-tax/settlement-previews',json={
+        'settlementDate':settlement_date,'amount':None,'settlementType':'payable','documentStatus':'attached'},headers={'Authorization':'Bearer fixture'})
+    assert response.status_code==422 and response.json()['code']==code
+    if code=='invalid_amount':assert response.json()['detail']=='Skattebeløp må være større enn 0.'

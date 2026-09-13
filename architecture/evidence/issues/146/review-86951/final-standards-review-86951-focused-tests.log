@@ -1,0 +1,19 @@
+Independent focused source tests; no database/browser/provider execution.
+Source: git archive 86951dbb5d14c1b74ca8e1c1b581327bed4b48d2 to isolated temporary directory.
+Dependencies: existing node_modules, read only.
+Node: v25.6.1
+Command: /opt/homebrew/opt/node@24/bin/node --test --test-name-pattern='preserved Tax retirement|#151 bounded retirement compositions' EXTRACTED/tests/architecture_foundation.test.mjs EXTRACTED/tests/company_tax_architecture.test.mjs
+Output (concatenated tool chunks):
+✔ #151 bounded retirement compositions remain enforced after RF exits (710.493916ms)
+✔ preserved Tax retirement requires exact artifact bytes, source restoration and exclusive ownership (43152.459ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 43462.170041
+Exit code: 0
+
+Setup note: an initial extraction omitted supabase; that attempt passed the RF composition case and could not start the Tax artifact case (ENOENT). After extracting the pinned supabase directory, the complete two-case rerun above passed. This was a temporary harness setup issue, not a candidate defect.

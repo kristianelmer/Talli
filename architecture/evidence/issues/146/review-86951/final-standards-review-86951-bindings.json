@@ -1,0 +1,447 @@
+{
+  "reviewAxis": "Standards",
+  "base": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
+  "candidate": "86951dbb5d14c1b74ca8e1c1b581327bed4b48d2",
+  "followUpCandidate": "01d600fc5573967d50879e216c96d96445fdb949",
+  "diffCommand": "git diff 20999f167084492bb4f9a5a50d0cbcd3a48333b3...86951dbb5d14c1b74ca8e1c1b581327bed4b48d2",
+  "commits": [
+    "01d600fc Preserve original coded Tax submission validation messages (#146)",
+    "9fa91d33 Keep optional Tax browser screenshots out of clean release gates (#146)",
+    "86951dbb Complete Tax preview, Archive source and contract rehearsal (#146)",
+    "86ae2c5a Move atomic tax settlement capture into Company Tax (#146)",
+    "341838ed Characterize tax settlement replay and normalize previews in backend (#146)",
+    "721c3fe1 Adopt independent tax-settlement entry reviews (#146)",
+    "51ce4405 Record tax-settlement entry gate and pinned inventory (#146)"
+  ],
+  "candidateFiles": [
+    {
+      "path": "apps/backend/pyproject.toml",
+      "sha256": "a72cb6f779d806a86276d79dd993286e1d6aebd9bc7b807c25e5c476b6212c20"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py",
+      "sha256": "54b69c4861ad59ca3eb2735c7249e46ad1e8179d1b7edfe4bb733b90d4323a77"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/adapters/supabase_ledger.py",
+      "sha256": "eec40bcd03ec2d4dec26deb1a0d17ca8fb3e666af264f42901a0daedd558c857"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/company_tax_filing_session.py",
+      "sha256": "27c229e88fee7a822bc94fd08ef871fa43503722cc0f52acdcf8d4b53dbfda83"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py",
+      "sha256": "b09963effc09fda4f9700396d9b79e976bb0f171fb3f904b4fec65f2a4cadc16"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/ledger_session.py",
+      "sha256": "2d64cfb1e32cfea324c2ce966e48ebe81fcde9041cbb61b4cac7896f959e6d7f"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/ledger_workflow.py",
+      "sha256": "94a07f31be4bcdb14913d0f5e3dc8e2778eb4bf065d93875519d0a723fcd1768"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/main.py",
+      "sha256": "1bd0b8e4f0b7a16753ff99516eb074bdffa7344170b16cc6329a6724851eb977"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/banking/MODULE.md",
+      "sha256": "63dbefd4b8fec177f5b0ce858b7ed6ec57b24726b4d61c0af135d53ace06361f"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/banking/module.json",
+      "sha256": "b1d9aed4c3d52ac57c4c60ad9c5975799ff889c77ee1cdbcc6c062f4e969de33"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/banking/public.py",
+      "sha256": "3553765e0b775b8fe16dad20159f3cd02aaa4516d9dbf7ce8360cd5cf1cf8395"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md",
+      "sha256": "20b0f525020ca2c29f7eace29100c220a932b3a0090914e106eb4766f8ed7564"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/__init__.py",
+      "sha256": "fac439658fe7a66f66a31c47fa425c6146d0af6fee7a517a73df78db33503429"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/module.json",
+      "sha256": "5d59a4058d93b041b654bdb8c63bba3e85f80bf7601708adc61085a68ac7cc2c"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/public.py",
+      "sha256": "5b45e9e77568b4cfe1116cf0d25cc716000cd74bbadb2cb185a9b503b922d735"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/service.py",
+      "sha256": "b13d82169f79fcae6262dbae10462bfa33a3952314ef2cdd83d87581b8091f5f"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/documents/MODULE.md",
+      "sha256": "55a42949ba66fa7bcbe1c9940129f4f4f8963ef84f1d55340a29aad146dd7f48"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/documents/module.json",
+      "sha256": "440d7c5799ebd661e8508e60fa311f506bd3b1979e4c44472db37ed04ce1b285"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/documents/public.py",
+      "sha256": "a40d122e48c5f500453dc21ebf30a9b15e9145be92f23b24e58e7a087c55f248"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/ledger/MODULE.md",
+      "sha256": "3363162ac3ca9596127ec2ddaa802e5b51a1900bfd185fac85d14cea967991d6"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/ledger/module.json",
+      "sha256": "9ee242dd015a5017dc7342a91a840ef557c26626da6e6c48f02834b266086f04"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/ledger/public.py",
+      "sha256": "31ca029a2b63b05f0e89fa1768becf8cfdd737589a5ab96b14ec1c00476103e8"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/ledger/service.py",
+      "sha256": "6f66cb6fe99e05e589ec905b6f183942d401114a0903ab58c0039b4b21eeccb0"
+    },
+    {
+      "path": "apps/backend/tests/test_company_tax_filing.py",
+      "sha256": "db9b8875d702143202142f108a5b3b372539d6f4f1f3937a786d8ec91115a18c"
+    },
+    {
+      "path": "apps/backend/tests/test_company_tax_filing_api.py",
+      "sha256": "e545246e12e28d4a61a0a177700bb0e17ca11ada1d99ea2ea02e9c69c63c5a0b"
+    },
+    {
+      "path": "apps/backend/tests/test_company_tax_filing_database.py",
+      "sha256": "5b86602dbe5f1a008aebe56d4a67b2f2546613d8c96cd54d0e78b4fc985f5bf0"
+    },
+    {
+      "path": "apps/backend/tests/test_company_tax_filing_runtime.py",
+      "sha256": "38747442095d7e11f71552cea174f295f2d0cf406302a10b922b1d5789ec3f9e"
+    },
+    {
+      "path": "apps/backend/tests/test_company_tax_filing_workflow.py",
+      "sha256": "a3a67eac4700faedf1ac341ca792ec567698af3323bdf56250c6f96599767c0c"
+    },
+    {
+      "path": "apps/backend/tests/test_ledger_api.py",
+      "sha256": "c691cd057fc2ea1782b8cbd0f9f0bb563f2d801917fd3d811d4522690d91507b"
+    },
+    {
+      "path": "apps/backend/tests/test_supabase_ledger.py",
+      "sha256": "d66a43d47ec80f98113f62c65849a5eec58cc3943cbe28e18317bda6135e5e11"
+    },
+    {
+      "path": "apps/web/app/(owner)/actions/_components/TaxSettlementWizard.tsx",
+      "sha256": "4a88ad26f1aa5811368d0f61e9b606c00f1b513e8ae921e562d3d1446af54954"
+    },
+    {
+      "path": "apps/web/app/actions.ts",
+      "sha256": "a507db4a3b4e65281d7b9332d1d800533bbac7f5a5a319c7cc06cd3dd9a3869e"
+    },
+    {
+      "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+      "sha256": "527bb48f9c71e4a10d3c7a73f53801fd09ffb6733d1c1641beacd2d7b1c67568"
+    },
+    {
+      "path": "apps/web/app/lib/tax-settlement.ts",
+      "sha256": "0712141c523700e51816353d78453558949ec1ed6416c59bfd7cc3a0e519e274"
+    },
+    {
+      "path": "apps/web/features/company-tax-filing/MODULE.md",
+      "sha256": "dc3d38122b99371b6822f93d2293a1ff88cfb5f31ad7db40b6dcb843064d3433"
+    },
+    {
+      "path": "apps/web/features/company-tax-filing/index.ts",
+      "sha256": "4d4fedba3ab32d8fe2440e006436a09cd657073a9898195780789c9061267b47"
+    },
+    {
+      "path": "apps/web/features/company-tax-filing/module.json",
+      "sha256": "43ed39e2f02736d76f8914446aea202a0748ce4e8134217af691f06e52fdc3c1"
+    },
+    {
+      "path": "apps/web/features/company-tax-filing/transport.ts",
+      "sha256": "8fe609d448341a607e4e7edbf8d111fee46b51851c97bf705305dddc88ef1e82"
+    },
+    {
+      "path": "apps/web/features/ledger/MODULE.md",
+      "sha256": "1893e679dad1179a79abda6542ef4330725a8ec59ece98ae600738102227d022"
+    },
+    {
+      "path": "apps/web/features/ledger/index.ts",
+      "sha256": "7429ef0ac09ff7d087a7359e756fc9c4ba379ab200ddeb6b743c921816178b00"
+    },
+    {
+      "path": "apps/web/features/ledger/module.json",
+      "sha256": "caf88c0895484922c45662ad1a2b138b1f2adf8903f1bd0fe12d6f237d125b9b"
+    },
+    {
+      "path": "apps/web/features/ledger/transport.ts",
+      "sha256": "d01875eb58942f892f1ffc07a650bddb8d6d95b9d7708ca13cf5afd9b8151174"
+    },
+    {
+      "path": "apps/web/tests/company-tax-transport.test.mjs",
+      "sha256": "5b4f0afe9d0458cc6777294184e0cc9e1eb919055eda1b5690f3a85176504e77"
+    },
+    {
+      "path": "apps/web/tests/ledger-presentation.test.mjs",
+      "sha256": "d554f580ccb38d18f2e569ab2007252617f3fb1ce8c27c7dc2892a46a373352e"
+    },
+    {
+      "path": "architecture/BACKEND-SYSTEM.md",
+      "sha256": "cc364be07b843d5061064ad656efcf6fbcbd74df2ddef8f9f7d568563feaea18"
+    },
+    {
+      "path": "architecture/backend-system.json",
+      "sha256": "f9428bc59a163cb0134294d0115067d36edc6bcdd0c95537985bb8d400cc8a0f"
+    },
+    {
+      "path": "architecture/compatibility.json",
+      "sha256": "bdc1c3fecb543afa100cdf3b20bad6c3bc4ed0a9095657c4feeec6f00dae6d36"
+    },
+    {
+      "path": "architecture/database-catalog.json",
+      "sha256": "4ebb4d2a2e3f343c434a53de5b11b3bb0a76ce89132f0dc7abb120af6739bb72"
+    },
+    {
+      "path": "architecture/database-catalog.schema.json",
+      "sha256": "0fa0e6a6850ea6dbeeb6d76edb7e89e2bc26e6da671e215c7d4c0fb362892009"
+    },
+    {
+      "path": "architecture/dependency-evidence.json",
+      "sha256": "ed721b28a13e577918b91b32f59520bffe24f01d17676ecceb29b491081fb4ca"
+    },
+    {
+      "path": "architecture/evidence/customer-ready-gates/20999f167084492bb4f9a5a50d0cbcd3a48333b3.json",
+      "sha256": "db5d05e975108108e4e3924e152aa55544a6660a66815d5fec3fef874fb5a387"
+    },
+    {
+      "path": "architecture/evidence/customer-ready-gates/20999f167084492bb4f9a5a50d0cbcd3a48333b3.log",
+      "sha256": "72cfcff0dae5d79ac8f9411d193262977b57045f48a928dc5b04fedd62737146"
+    },
+    {
+      "path": "architecture/evidence/issues/146/capture-completion-checkpoint/architecture-regressions.log",
+      "sha256": "a8584ee420b9bb065e377d83ba009ebd7bd8070622633877d3347b41ae40d55b"
+    },
+    {
+      "path": "architecture/evidence/issues/146/capture-completion-checkpoint/browser.log",
+      "sha256": "fb9ab8dc909a7859e6bf2c9a462b1bcdfb8d2b7ec4d27816a6bcb4b426a1ebbd"
+    },
+    {
+      "path": "architecture/evidence/issues/146/capture-completion-checkpoint/checks.json",
+      "sha256": "4af161ec244ce95f99a5c7f1b7fb63b5963428d6683fc063d3b9df70914f6896"
+    },
+    {
+      "path": "architecture/evidence/issues/146/capture-completion-checkpoint/ci-lanes.log",
+      "sha256": "14e9897e8ef5dc0b9d13ab575619a081e826455bef7bb471950a8e094ead33c8"
+    },
+    {
+      "path": "architecture/evidence/issues/146/capture-completion-checkpoint/contract-boundary.log",
+      "sha256": "023d58a0feee6eb1b16af2b07be2b243cbbf6b43faa29e9a9fe37483029bb180"
+    },
+    {
+      "path": "architecture/evidence/issues/146/capture-completion-checkpoint/database.log",
+      "sha256": "e21f1fc9e0cf90868b9dc45a670099440a3d57c22dc1b6b77cfdeff49d94dcd6"
+    },
+    {
+      "path": "architecture/evidence/issues/146/capture-completion-checkpoint/expansion-order.log",
+      "sha256": "2251df77c823e93bcd0a4806d0be726778ce695e3b4df8f5b32823cb2a5493f0"
+    },
+    {
+      "path": "architecture/evidence/issues/146/capture-completion-checkpoint/ledger-adapter.log",
+      "sha256": "aed0600bbd4b2693d55b4c4807e3f0d0d4af68fe5d76ca0ad6dc05f11c21f50d"
+    },
+    {
+      "path": "architecture/evidence/issues/146/capture-completion-checkpoint/prior-capture-spec-review.md",
+      "sha256": "614e51e283cb22ec0b6f99c5f89a554382203509f8be60317a4b32b40453f5df"
+    },
+    {
+      "path": "architecture/evidence/issues/146/capture-completion-checkpoint/prior-capture-standards-review.md",
+      "sha256": "c4af21488ca4e5b23b02fdd63c7a5dc29533cc7eba8b925afb4d3ba430f4d5b5"
+    },
+    {
+      "path": "architecture/evidence/issues/146/capture-completion-checkpoint/web-boundary.log",
+      "sha256": "70560723f4e90e8224eca2587de4d4ac1db6256ad236cc24ae0f03a24961afbf"
+    },
+    {
+      "path": "architecture/evidence/issues/146/characterization-and-cutover-plan.md",
+      "sha256": "3a190c08d643eb9a33e3b1f895eb090eee1025c7acd4e0f376912275c6365048"
+    },
+    {
+      "path": "architecture/evidence/issues/146/entry-independent-review.json",
+      "sha256": "c27a28d503927966b8473660d452676e560d610c6cd6bb8b9ba952787d776932"
+    },
+    {
+      "path": "architecture/evidence/issues/146/entry-inventory.md",
+      "sha256": "f2135c84858ff09bcef14104f326b943a01434c00b1ea021f83fe018c01a3c0b"
+    },
+    {
+      "path": "architecture/evidence/issues/146/entry-standards-review-bindings.json",
+      "sha256": "d3f69c158eb13dba73a016f1c9149d69a6fe0e7718dbeda4f916ed46635b5bc5"
+    },
+    {
+      "path": "architecture/evidence/issues/146/entry-standards-review.md",
+      "sha256": "cdad5b1e6e611d2071922302c2747940b25b67f0bf689d6c791392f3b1b386b7"
+    },
+    {
+      "path": "architecture/evidence/issues/146/legacy-command-cases.json",
+      "sha256": "69f959201afc040aedd341c58747cea9309d9af9a65dcbf95215481e749902f0"
+    },
+    {
+      "path": "architecture/evidence/issues/146/legacy-preview-cases.json",
+      "sha256": "4cd36415412a2b061cbadbb38f2f0b0d74bc950eab6c12ff3aef5ac0d20f9074"
+    },
+    {
+      "path": "architecture/evidence/issues/146/requirements.json",
+      "sha256": "6ef6894e12f033b1674412cb4ae166a43fdf310c807cde51c62653d42140b150"
+    },
+    {
+      "path": "architecture/evidence/issues/146/source-inventory.json",
+      "sha256": "7109e4e5b11e15e0b498b545554e02bcd1d2271c9a9bc4a70061b12c3b7acef0"
+    },
+    {
+      "path": "architecture/evidence/issues/146/source-read-retirements.json",
+      "sha256": "57c34e1d55bc4676289337122c88730489efeab63afa8ba1c0b148bd14017b26"
+    },
+    {
+      "path": "contracts/openapi/talli-v1.json",
+      "sha256": "e62a39a323ec05b918418cf9e72f03eaf429868598771a01455b404804b58473"
+    },
+    {
+      "path": "package.json",
+      "sha256": "32d8c669e182d2962159b555090d3d23b6815c694fd750ac7d6eab723447f873"
+    },
+    {
+      "path": "packages/talli-api-client/src/generated/client.ts",
+      "sha256": "b53b4730955bdfdf46ad7c4c9176585cf3d1e5d2202172680119f4f9d5f3fb5a"
+    },
+    {
+      "path": "scripts/check-architecture.mjs",
+      "sha256": "3922f90bd863d8c4955434b176f18ea57758abaef3d27c17fab84e09296673d2"
+    },
+    {
+      "path": "scripts/generate-api-client.mjs",
+      "sha256": "d3d645b31cebdbef8bac4bf760ae6883592750f058f2da8c22afe01f6df5bff4"
+    },
+    {
+      "path": "scripts/rehearse-tax-topology.mjs",
+      "sha256": "a278155bf5abf0bcc799b509f3bdde97577ff5d63d3a331b3f3b117b7cb46d30"
+    },
+    {
+      "path": "scripts/test-supabase-local.sh",
+      "sha256": "9100aabe6db56ee9162eee1a32a7039469194241ac36e64b9b9672247d98ff36"
+    },
+    {
+      "path": "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql",
+      "sha256": "783e456de88c44d32755fc58d2eeff9ec9d7ada57043dd92ec448b6fd1603168"
+    },
+    {
+      "path": "supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql",
+      "sha256": "99b636f296f92096fccceb45c8d5c1724ab8e75bc33db71cb93ccc59da221271"
+    },
+    {
+      "path": "supabase/migrations/20260913171000_company_tax_settlement_expand.sql",
+      "sha256": "f4e2bc940c9a155aa335084f853ae149be1afec3de41c3fb3250622d2310f5d5"
+    },
+    {
+      "path": "supabase/rollback/20260913171000_company_tax_settlement_expand.sql",
+      "sha256": "a2628267136a5e0a1abfa7d9a3ff843497928a4d0f2a75f0b4b43d0ad5e8b32c"
+    },
+    {
+      "path": "supabase/rollback/20260913173000_company_tax_settlement_contract.sql",
+      "sha256": "0d3f4e0055e4011ff44c5ad81cbb065fa3cdd3faf3e4043d5ec958e237fad977"
+    },
+    {
+      "path": "tests/architecture_foundation.test.mjs",
+      "sha256": "7019942b61862bd751bf612851f20ddef0c75e574c6ab64f48f00b2e7ccd8444"
+    },
+    {
+      "path": "tests/browser_tax_settlement.mjs",
+      "sha256": "5cfff85824cb7a5983b1074ab83a472297189d2b2bd3850b8924b9b33609af29"
+    },
+    {
+      "path": "tests/ci_release_gate.test.mjs",
+      "sha256": "f1fa915b78b1f8378915195d46087631d38677ddaa395995e89d70e78deda097"
+    },
+    {
+      "path": "tests/company_tax_architecture.test.mjs",
+      "sha256": "9383cfad613dcfbdf021059960d641f4f640b005c154f77b0160714af0c5a441"
+    },
+    {
+      "path": "tests/fixtures/seed_tax_browser_company.py",
+      "sha256": "e9c60c9c36f2810c5fa97538a2ec5360bf67bf35622d16fd94c4238c7f75c6cc"
+    },
+    {
+      "path": "tests/supabase_workspace.test.mjs",
+      "sha256": "d0bdbf63abee78aa8e642e1c06d7936b172924f972b70a4ebd276b0f6ac94c60"
+    },
+    {
+      "path": "tests/support/rf1086-fixture-access.mjs",
+      "sha256": "117b6fb2fe7f22f991af72ba804ec7a29349ab15c315e9156ce572849336aa9e"
+    },
+    {
+      "path": "tests/support/tax-browser-fixture.mjs",
+      "sha256": "6d7ab567b9c7ba007cafd10c6a1698f71600e42bf46872c1920d8a742993e6f7"
+    },
+    {
+      "path": "tests/support/tax-fixture-cleanup.mjs",
+      "sha256": "d67c695572da66a757028b9077063d904c34a09fa6589c7964b2aa8bd1e0f182"
+    },
+    {
+      "path": "tests/tax_settlement.test.mjs",
+      "sha256": "bd115b14d0eb9c3e75f879c12de6e80d73c49c5579a68e889c554ada66a8f652"
+    }
+  ],
+  "followUpFiles": [
+    {
+      "path": "apps/web/app/actions.ts",
+      "sha256": "f3c364e7e94e84d982aa27530a111341de757fccbf7fedcf7075df630ce19832"
+    },
+    {
+      "path": "apps/web/features/company-tax-filing/index.ts",
+      "sha256": "2b0555db3ada961ffe3eaca037f9218bef55320c59aa78ff66c2eac66eaf3aec"
+    },
+    {
+      "path": "apps/web/features/company-tax-filing/transport.ts",
+      "sha256": "0138cf91685082d6920ab1be8bbfce02110962eb043d067b6f155b223549741e"
+    },
+    {
+      "path": "apps/web/tests/company-tax-transport.test.mjs",
+      "sha256": "e3030f05a04d658c5d9ca91f17a826f52cb7c0d43f59685971b622059509aeda"
+    },
+    {
+      "path": "architecture/evidence/issues/146/source-read-retirements.json",
+      "sha256": "a5cdd6a3dcb6269bbd8dc5ddaa9326a480ce224eb033a2138d15aa546496c9cb"
+    },
+    {
+      "path": "tests/browser_tax_settlement.mjs",
+      "sha256": "51c07fe47f76d2230122107bfd713bed8a55c85d797f5d9bdce26ecb566b74d9"
+    }
+  ],
+  "staticChecks": {
+    "migrationStateUnchanged": true,
+    "frozenBaselineAndNormativeSourcesUnchanged": true,
+    "removedScopes": [
+      [
+        "compat-annual-compliance-persistence",
+        "apps/web/app/actions.ts",
+        "direct-web-business-persistence",
+        "table:holding_actions",
+        "refreshAnnualReadinessSnapshots"
+      ],
+      [
+        "compat-company-archive-persistence",
+        "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+        "direct-web-business-persistence",
+        "table:holding_actions",
+        "GET"
+      ]
+    ],
+    "addedScopes": [],
+    "retirementArtifactBindingsVerified": true,
+    "sourceReadFileHashesVerifiedBothCandidates": true
+  }
+}

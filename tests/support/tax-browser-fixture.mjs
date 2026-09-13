@@ -20,7 +20,7 @@ export async function startTaxBrowserFixture() {
   const db=new pg.Client({connectionString:databaseUrl});await db.connect();
   const admin=createClient(supabaseUrl,serviceKey,{auth:{autoRefreshToken:false,persistSession:false}});
   const roles=[];let owner,companyId,backend,web,proxy;
-  const controls={dropNextCapture:false,delayPreviewAmount:null,captures:[],previews:[]};
+  const controls={dropNextCapture:false,failNextPreview:false,delayPreviewAmount:null,captures:[],previews:[]};
   const baseEnv=Object.fromEntries(['PATH','HOME','TMPDIR','LANG','LC_ALL'].filter(key=>process.env[key]).map(key=>[key,process.env[key]]));
   const close=async()=>{
     const errors=[];const attempt=async(fn)=>{try{await fn();}catch(e){errors.push(e);}};
@@ -71,6 +71,7 @@ export async function startTaxBrowserFixture() {
         }
         if(req.url==='/api/v1/company-tax/settlement-previews'){
           const input=JSON.parse(body);controls.previews.push(input);
+          if(controls.failNextPreview){controls.failNextPreview=false;res.writeHead(503);res.end();return;}
           if(input.amount===controls.delayPreviewAmount)await new Promise(resolve=>setTimeout(resolve,1200));
         }
         res.writeHead(response.status,Object.fromEntries([...response.headers].filter(([key])=>!['content-length','content-encoding','transfer-encoding','connection'].includes(key))));res.end(bytes);

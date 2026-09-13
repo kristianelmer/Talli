@@ -32,7 +32,7 @@ class TaxSettlementValidationError(DomainError):
 @dataclass(frozen=True, slots=True)
 class TaxSettlementInput:
     settlement_date: str
-    amount: float
+    amount: float | None
     settlement_kind: str
     document_status: str
     bank_transaction_id: str | None = None
