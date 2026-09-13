@@ -14,7 +14,7 @@
         "resource": "table:holding_actions",
         "operation": "refreshAnnualReadinessSnapshots"
       },
-      "sourceDigest": "sha256:a507db4a3b4e65281d7b9332d1d800533bbac7f5a5a319c7cc06cd3dd9a3869e",
+      "sourceDigest": "sha256:f3c364e7e94e84d982aa27530a111341de757fccbf7fedcf7075df630ce19832",
       "occurrences": 0
     },
     {

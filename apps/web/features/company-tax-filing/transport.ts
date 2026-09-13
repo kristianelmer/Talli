@@ -24,6 +24,14 @@ export function taxPreviewErrorMessage(error: unknown): string {
   return "Forhåndsvisningen kunne ikke hentes. Prøv igjen.";
 }
 
+export function taxSubmissionErrorMessage(error: unknown): string {
+  if (error instanceof TalliApiError && error.status === 422 && error.problem?.code
+      && error.problem.code !== "REQUEST_VALIDATION_FAILED" && error.problem.detail) {
+    return `${error.problem.code}: ${error.problem.detail}`;
+  }
+  return taxPreviewErrorMessage(error);
+}
+
 export async function loadTaxSettlementArchiveSource(accessToken: string, companyId: string, incomeYear: number) {
   try {
     const result = await client(accessToken).companyTaxGetSettlementArchiveSource(companyId, incomeYear, { signal: AbortSignal.timeout(10_000) });

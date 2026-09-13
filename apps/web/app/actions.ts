@@ -213,7 +213,7 @@ import {
   listOpeningSetups,
   listPeriodLocks,
 } from "./lib/supabase/server";
-import { loadTaxSettlementArchiveSource, previewTaxSettlement, postTaxSettlement, taxPreviewErrorMessage, type TaxSettlementPreviewInputWire } from "../features/company-tax-filing";
+import { loadTaxSettlementArchiveSource, previewTaxSettlement, postTaxSettlement, taxPreviewErrorMessage, taxSubmissionErrorMessage, type TaxSettlementPreviewInputWire } from "../features/company-tax-filing";
 
 function formString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -3934,7 +3934,7 @@ export async function recordTaxSettlement(formData: FormData) {
       documentId,
     })).payload;
   } catch (error) {
-    failTo(returnTo, taxPreviewErrorMessage(error));
+    failTo(returnTo, taxSubmissionErrorMessage(error));
   }
 
   try {

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { TalliApiError } from "@talli/talli-api-client";
-import { previewTaxSettlement, postTaxSettlement } from "../features/company-tax-filing/index.ts";
+import { previewTaxSettlement, postTaxSettlement, taxPreviewErrorMessage, taxSubmissionErrorMessage } from "../features/company-tax-filing/index.ts";
 
 const operationId = "70000000-0000-4000-8000-000000000001";
 const companyId = "10000000-0000-4000-8000-000000000001";
@@ -72,3 +73,13 @@ test("Archive read preserves all source fields and conceals malformed or foreign
     assert.deepEqual(failed.data, []);
   }
 });
+
+const characterization = JSON.parse(readFileSync(new URL("../../../architecture/evidence/issues/146/legacy-preview-cases.json", import.meta.url), "utf8"));
+for (const example of characterization.cases.filter(item => item.error)) {
+  test(`submission preserves the original coded validation redirect: ${example.name}`, () => {
+    const { code, message } = example.error;
+    const error = new TalliApiError(422, { code, detail: message });
+    assert.equal(taxPreviewErrorMessage(error), message);
+    assert.equal(taxSubmissionErrorMessage(error), `${code}: ${message}`);
+  });
+}
