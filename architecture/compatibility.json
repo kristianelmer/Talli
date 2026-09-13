@@ -119,7 +119,7 @@
       }
     ],
     "currentCapability": "company_tax_filing",
-    "currentIssue": "#146",
+    "currentIssue": "#152",
     "status": "active",
     "exitedCapabilities": [
       "company_access",

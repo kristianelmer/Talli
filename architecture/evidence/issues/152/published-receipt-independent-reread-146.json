@@ -1,0 +1,513 @@
+{
+  "verdict": "PASS_PUBLISHED_146_COMPLETION_RECEIPT",
+  "reviewedAt": "2026-09-13T22:08:02.739492+00:00",
+  "receiptUrl": "https://github.com/kristianelmer/Talli/issues/146#issuecomment-5656456004",
+  "commentId": 5656456004,
+  "commentCreatedAt": "2026-09-13T22:01:56Z",
+  "commentUpdatedAt": "2026-09-13T22:01:56Z",
+  "issue": {
+    "number": 146,
+    "state": "closed",
+    "closedAt": "2026-09-13T22:02:04Z",
+    "originalSixCriteriaUnchangedAndChecked": true,
+    "criteria": [
+      "Supported tax-settlement actions complete through the web and FastAPI.",
+      "Resulting entries match existing characterization evidence.",
+      "Invalid, duplicate, or unauthorized requests fail safely.",
+      "Ledger and banking collaboration use only approved public workflows.",
+      "Data ownership and dependency rules pass architecture checks.",
+      "Duplicate TypeScript policy and active-slice compatibility code are removed."
+    ]
+  },
+  "merge": {
+    "revision": "054740b81692e0e59b99a76fff085f322f1968b4",
+    "parents": [
+      "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
+      "c75be61c3d9727c65d0879dfd5676f61a96303dd"
+    ],
+    "tree": "c51df2213051d4929858111ec0900d07d1d107e1",
+    "reviewedHead": "c75be61c3d9727c65d0879dfd5676f61a96303dd",
+    "mergedAt": "2026-09-13T21:39:12Z",
+    "headTreeEqual": true,
+    "protectedReleaseGateVerified": true
+  },
+  "ci": [
+    {
+      "runId": 34783378272,
+      "headSha": "c75be61c3d9727c65d0879dfd5676f61a96303dd",
+      "event": "pull_request",
+      "conclusion": "success",
+      "jobs": {
+        "Application": "success",
+        "Database isolation": "success",
+        "Immutable evidence": "skipped",
+        "Release gate": "success"
+      },
+      "updatedAt": "2026-09-13T21:37:59Z"
+    },
+    {
+      "runId": 34784468140,
+      "headSha": "054740b81692e0e59b99a76fff085f322f1968b4",
+      "event": "push",
+      "conclusion": "success",
+      "jobs": {
+        "Database isolation": "success",
+        "Application": "success",
+        "Immutable evidence": "skipped",
+        "Release gate": "success"
+      },
+      "updatedAt": "2026-09-13T22:00:39Z"
+    }
+  ],
+  "pullRequestCiCheckout": {
+    "revision": "d0418da559963a2a98e2047eeae9645bf4f191f3",
+    "parents": [
+      "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
+      "c75be61c3d9727c65d0879dfd5676f61a96303dd"
+    ],
+    "tree": "c51df2213051d4929858111ec0900d07d1d107e1",
+    "note": "PR run metadata binds c75; actual synthetic merge checkout has exactly the c75 tree. Exact-main push checkout is actual 054740b."
+  },
+  "gates": [
+    {
+      "revision": "50f969c04f4eabbe17ee2fcee36ac652d5ddcc05",
+      "evidencePath": "architecture/evidence/customer-ready-gates/50f969c04f4eabbe17ee2fcee36ac652d5ddcc05.json",
+      "evidenceDigest": "sha256:550416dc1164597cb6716bf4ecf7955db7241ae606e2e0d3fc7e4cdf37778533",
+      "receiptByteDigest": "sha256:a91287475c292accc8da5f43936beabc021d16164391c83830e6cd303bf821cb",
+      "transcriptPath": "architecture/evidence/customer-ready-gates/50f969c04f4eabbe17ee2fcee36ac652d5ddcc05.log",
+      "transcriptDigest": "sha256:55adddb7df82958060fa9167bbb7e0f95c8cf89c7c1d49952e2f617a555e4f5f",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "schemaDigest": "sha256:b86a1ae4a8d522b252e79a01b1798eb160d18e87222f9c7a92d79b56ee773ced",
+      "schemaValidation": "Prior AJV2020 schema validation preserved by exact committed receipt and schema bytes",
+      "storageRevision": "ddcdd34e0e269fb5b00e56fe51d57deb9ac7b145",
+      "previousPassingRevision": "aad6bb90951120b09771a23f58d5b662713e7a5a",
+      "startedAt": "2026-09-13T19:46:57.430Z",
+      "executedAt": "2026-09-13T20:08:04.858Z",
+      "checks": [
+        {
+          "name": "credential-scan",
+          "command": "npm run test:credential-scan",
+          "exitCode": 0,
+          "durationMs": 1039
+        },
+        {
+          "name": "typecheck",
+          "command": "npm run typecheck",
+          "exitCode": 0,
+          "durationMs": 1214
+        },
+        {
+          "name": "architecture",
+          "command": "npm run check:architecture",
+          "exitCode": 0,
+          "durationMs": 15712
+        },
+        {
+          "name": "boundary",
+          "command": "npm run test:boundary",
+          "exitCode": 0,
+          "durationMs": 182135
+        },
+        {
+          "name": "build-web",
+          "command": "TALLI_BACKEND_URL=http://127.0.0.1:8000 TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY=<local-only> npm run build:web && npm run test:browser-public-acquisition:built",
+          "exitCode": 0,
+          "durationMs": 9210
+        },
+        {
+          "name": "build-backend",
+          "command": "npm run build:backend",
+          "exitCode": 0,
+          "durationMs": 1713
+        },
+        {
+          "name": "boundary-smoke",
+          "command": "npm run test:boundary-smoke",
+          "exitCode": 0,
+          "durationMs": 7429
+        },
+        {
+          "name": "launch-rehearsal",
+          "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47> npm run test:launch-rehearsal",
+          "exitCode": 0,
+          "durationMs": 276965
+        },
+        {
+          "name": "production-dependency-audit",
+          "command": "npm audit --omit=dev --audit-level=high && npm audit --prefix apps/web --omit=dev --audit-level=high",
+          "exitCode": 0,
+          "durationMs": 1254
+        },
+        {
+          "name": "database-isolation",
+          "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python npm run test:supabase:local",
+          "exitCode": 0,
+          "durationMs": 738519
+        },
+        {
+          "name": "whitespace",
+          "command": "bash scripts/check-clean-worktree.sh",
+          "exitCode": 0,
+          "durationMs": 80
+        }
+      ],
+      "taxDatabase": {
+        "lifecycle": 22,
+        "restrictedRuntime": 3,
+        "skipped": 0,
+        "line": 3279
+      },
+      "browserLanes": [
+        {
+          "command": "test:browser-public-acquisition:built",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "line": 1194
+        },
+        {
+          "command": "test:browser-owner",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "line": 3151
+        },
+        {
+          "command": "test:browser-owner-annual",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "line": 3289
+        },
+        {
+          "command": "test:browser-authority-connections",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "line": 3327
+        },
+        {
+          "command": "test:browser-shareholder-register-filing",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "line": 3350
+        },
+        {
+          "command": "test:browser-company-tax",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "line": 3374
+        }
+      ],
+      "skips": {
+        "broadBackendPassed": 2864,
+        "broadBackendOptionalSkipped": 2,
+        "broadBackendDeselected": 854,
+        "optionalTests": [
+          "test_supabase_marketing_measurement.py",
+          "test_supabase_validation_observation.py"
+        ],
+        "validationLanePythonPassed": 17,
+        "validationLanePythonOptionalSkipped": 1,
+        "mandatoryNodeObservationSqlPassed": true
+      },
+      "advisors": {
+        "blockingSecurityOrError": 0,
+        "performanceWarnings": 60
+      }
+    },
+    {
+      "revision": "fd78d3bbcf563dbc991f84c703b6816e088bca26",
+      "evidencePath": "architecture/evidence/customer-ready-gates/fd78d3bbcf563dbc991f84c703b6816e088bca26.json",
+      "evidenceDigest": "sha256:ae63e4b81a73a0093c42c4e5c9fb60fcb6c31d6da8ba428f5afc0780e4941ff4",
+      "receiptByteDigest": "sha256:4f4fdb4597a25697fde97ab96743596a87ac174cf78420d78632e2d89708e026",
+      "transcriptPath": "architecture/evidence/customer-ready-gates/fd78d3bbcf563dbc991f84c703b6816e088bca26.log",
+      "transcriptDigest": "sha256:1b5a0dcf96f19f3aa8a1bcb02a99a6806babcdfe97937125d46d564fe3296b99",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "schemaDigest": "sha256:b86a1ae4a8d522b252e79a01b1798eb160d18e87222f9c7a92d79b56ee773ced",
+      "schemaValidation": "Prior AJV2020 schema validation preserved by exact committed receipt and schema bytes",
+      "storageRevision": "c75be61c3d9727c65d0879dfd5676f61a96303dd",
+      "previousPassingRevision": "50f969c04f4eabbe17ee2fcee36ac652d5ddcc05",
+      "startedAt": "2026-09-13T20:52:26.633Z",
+      "executedAt": "2026-09-13T21:13:26.555Z",
+      "checks": [
+        {
+          "name": "credential-scan",
+          "command": "npm run test:credential-scan",
+          "exitCode": 0,
+          "durationMs": 1056
+        },
+        {
+          "name": "typecheck",
+          "command": "npm run typecheck",
+          "exitCode": 0,
+          "durationMs": 1226
+        },
+        {
+          "name": "architecture",
+          "command": "npm run check:architecture",
+          "exitCode": 0,
+          "durationMs": 15585
+        },
+        {
+          "name": "boundary",
+          "command": "npm run test:boundary",
+          "exitCode": 0,
+          "durationMs": 179959
+        },
+        {
+          "name": "build-web",
+          "command": "TALLI_BACKEND_URL=http://127.0.0.1:8000 TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY=<local-only> npm run build:web && npm run test:browser-public-acquisition:built",
+          "exitCode": 0,
+          "durationMs": 9247
+        },
+        {
+          "name": "build-backend",
+          "command": "npm run build:backend",
+          "exitCode": 0,
+          "durationMs": 1447
+        },
+        {
+          "name": "boundary-smoke",
+          "command": "npm run test:boundary-smoke",
+          "exitCode": 0,
+          "durationMs": 7320
+        },
+        {
+          "name": "launch-rehearsal",
+          "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47> npm run test:launch-rehearsal",
+          "exitCode": 0,
+          "durationMs": 278475
+        },
+        {
+          "name": "production-dependency-audit",
+          "command": "npm audit --omit=dev --audit-level=high && npm audit --prefix apps/web --omit=dev --audit-level=high",
+          "exitCode": 0,
+          "durationMs": 1235
+        },
+        {
+          "name": "database-isolation",
+          "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python npm run test:supabase:local",
+          "exitCode": 0,
+          "durationMs": 741354
+        },
+        {
+          "name": "whitespace",
+          "command": "bash scripts/check-clean-worktree.sh",
+          "exitCode": 0,
+          "durationMs": 91
+        }
+      ],
+      "taxDatabase": {
+        "lifecycle": 22,
+        "restrictedRuntime": 3,
+        "skipped": 0,
+        "line": 3279
+      },
+      "browserLanes": [
+        {
+          "command": "test:browser-public-acquisition:built",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "line": 1194
+        },
+        {
+          "command": "test:browser-owner",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "line": 3151
+        },
+        {
+          "command": "test:browser-owner-annual",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "line": 3289
+        },
+        {
+          "command": "test:browser-authority-connections",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "line": 3327
+        },
+        {
+          "command": "test:browser-shareholder-register-filing",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "line": 3350
+        },
+        {
+          "command": "test:browser-company-tax",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "line": 3374
+        }
+      ],
+      "skips": {
+        "broadBackendPassed": 2864,
+        "broadBackendOptionalSkipped": 2,
+        "broadBackendDeselected": 854,
+        "optionalTests": [
+          "test_supabase_marketing_measurement.py",
+          "test_supabase_validation_observation.py"
+        ],
+        "validationLanePythonPassed": 17,
+        "validationLanePythonOptionalSkipped": 1,
+        "mandatoryNodeObservationSqlPassed": true
+      },
+      "advisors": {
+        "blockingSecurityOrError": 0,
+        "performanceWarnings": 60
+      }
+    }
+  ],
+  "schemaVerification": "Prior AJV2020 verification retained by byte-exact committed receipts and tested schema; no redundant suite rerun. All canonical/receipt/transcript/producer hashes recomputed from actual-main Git objects.",
+  "all14AdoptionHashesVerified": true,
+  "soleNonEvidenceTestDelta": [
+    "tests/browser_shareholder_register_filing.mjs"
+  ],
+  "publishedBlobLinks": [
+    {
+      "revision": "c75be61c3d9727c65d0879dfd5676f61a96303dd",
+      "path": "architecture/evidence/customer-ready-gates/50f969c04f4eabbe17ee2fcee36ac652d5ddcc05.json",
+      "sha256": "sha256:a91287475c292accc8da5f43936beabc021d16164391c83830e6cd303bf821cb"
+    },
+    {
+      "revision": "c75be61c3d9727c65d0879dfd5676f61a96303dd",
+      "path": "architecture/evidence/customer-ready-gates/fd78d3bbcf563dbc991f84c703b6816e088bca26.json",
+      "sha256": "sha256:4f4fdb4597a25697fde97ab96743596a87ac174cf78420d78632e2d89708e026"
+    },
+    {
+      "revision": "c75be61c3d9727c65d0879dfd5676f61a96303dd",
+      "path": "architecture/evidence/issues/146/updated-gate-pair/updated-gate-pair-independent-review-fd78d3bb.md",
+      "sha256": "sha256:9706d599fe87ef1956f7c2ff59d8670762a4a9ba520afa58d1ce273531da5af3"
+    },
+    {
+      "revision": "c75be61c3d9727c65d0879dfd5676f61a96303dd",
+      "path": "architecture/evidence/issues/146/exit-verification.md",
+      "sha256": "sha256:b5db9be0c28f275a0d9a1d257fac02a20ccdf68f09844b97e83a18215ca120cd"
+    }
+  ],
+  "embeddedPriorMarkdownByteExact": true,
+  "previews": [
+    {
+      "id": "dpl_GNuwZ7GFG2ZCR7p5UDjCn7mXJbzc",
+      "state": "READY",
+      "target": null,
+      "url": "talli-b70qtzjbf-kristianelmers-projects.vercel.app",
+      "sha": "c75be61c3d9727c65d0879dfd5676f61a96303dd",
+      "projectId": "prj_1JJkOqzGBhn438IKHYADWiRbVGeZ",
+      "createdAt": 1789334254608
+    },
+    {
+      "id": "dpl_EnvMNuapyERN4ShvX8Txw89Z2xnM",
+      "state": "READY",
+      "target": null,
+      "url": "talli-c5mfahztv-kristianelmers-projects.vercel.app",
+      "sha": "054740b81692e0e59b99a76fff085f322f1968b4",
+      "projectId": "prj_1JJkOqzGBhn438IKHYADWiRbVGeZ",
+      "createdAt": 1789335556246
+    }
+  ],
+  "productionSnapshot": {
+    "id": "dpl_HuHzBsgpcgBVTGsFiFLEEy3PqN5f",
+    "state": "READY",
+    "target": "production",
+    "url": "talli-qb8g1v5h7-kristianelmers-projects.vercel.app",
+    "sha": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+    "projectId": "prj_1JJkOqzGBhn438IKHYADWiRbVGeZ",
+    "createdAt": 1786263935839,
+    "checkedAt": "2026-09-13 22:01:19 UTC"
+  },
+  "findings": [],
+  "limits": [
+    "Only #146 settlement slice completion; no #152 full-capability acceptance or claim performed.",
+    "Preview READY is saved deployment build/revision evidence, not hosted backend behavior.",
+    "Production freeze is the saved 2026-09-13 22:01:19 UTC snapshot; no new production probe performed.",
+    "No hosted migrations, provider activation, filing, paid operations, promotion or activated-production observation claimed.",
+    "Two optional broad backend skips, one optional validation-observation Python skip, 60 nonblocking advisor warnings remain disclosed; failed historic attempts have no exit credit.",
+    "No repository, database, browser, process or Git mutation and no tests rerun."
+  ],
+  "bindings": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/published-reread-146-comment.json",
+      "sha256": "sha256:6cadc2bb09e7fb9cc099dac0b5ff6d79b8a5f9623e0b0549f078ea0ccc0ce442"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/published-reread-146-issue.json",
+      "sha256": "sha256:4990a6b0c2a05257533ce4c2d9e8305490e4b53630b69f6a8a6f6cf38031bf03"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/published-reread-146-pr.json",
+      "sha256": "sha256:4c6114e7a255125d8b3d07dbf84ed68f73eacc3defb50ef3e6c38d51effafc62"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/published-reread-146-head-ci.json",
+      "sha256": "sha256:c766345822749f2d51128c5f0fef868ff2424fe42d315590208ee5d24c0aee62"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/published-reread-146-main-ci.json",
+      "sha256": "sha256:41c412f065ab7b098d852c51a0c4e4a33d8846b10691553aa22d84fb15a01ce5"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/published-reread-146-head-jobs.json",
+      "sha256": "sha256:5aa2ac7993e52c78256a6efe73144d6e21dab569bc2c015be6f1fb7f855721d9"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/published-reread-146-main-jobs.json",
+      "sha256": "sha256:b89551fb4fc30775aff6c82a04d7bdfd4180c5e02f74c35079958fcf19779553"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/published-reread-146-protection.json",
+      "sha256": "sha256:97077fda90063af76efc9308c50525863233074ee056906e7a95db16c78f02b1"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/published-reread-146-head-ci-checkout.json",
+      "sha256": "sha256:ab2357e6c63aaa795f73160db4d71f36ed8eb3e0f6cc5ca62ed9e187c65f9411"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/published-reread-146-head-ci.log",
+      "sha256": "sha256:07b30878f281e3c3da82034e58a09a4c97e799e6e2391b7b226b8a05365276da"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/github-complete-main146.log",
+      "sha256": "sha256:1b36d69833cbbb7871496eae07c4bf19d640ea0415e5193bd3e74a8730be2023"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/github-release-c75be61c.json",
+      "sha256": "sha256:371e9e42e1a971c167b301f48609e63ee761cfcb7352c56cdd3028745d249082"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/github-release-main146.json",
+      "sha256": "sha256:3e6c9406a98499f1d7c9dc3dc956d2ceffdee83ab87be324b2f4cc750365b1d2"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/final-head-preview-c75be61c.json",
+      "sha256": "sha256:37cd8096f1acc984dce058b59545ebbef7f8a4a5ae85a471dc8bafe654d324ae"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/main146-preview.json",
+      "sha256": "sha256:9bf66b265e0dabc58a2674fc3c83eaf7f6257c8cfe448eea0cb06ea671ca5ccc"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/main146-production-freeze.json",
+      "sha256": "sha256:6bf53870e49a19e9463c51d411cb22cba54ac8fbc23a191b958b424a310f6eaa"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/updated-gate-pair-committed-reread-c75be61c.json",
+      "sha256": "sha256:7d24fceb191536abab8fd8a5a4f3bb86ab87e3dfeab9d3d9a39dd76e857b0134"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue146-entry/updated-gate-pair-committed-reread-c75be61c.md",
+      "sha256": "sha256:8317c8425f8c7ac651d19672396b828b9d25785a91d844c2cf84ea1881b2e0f0"
+    }
+  ],
+  "reportSha256": "sha256:cab5da886f84636352b1802a186ca22419a0b8b1e1b5a9e47c25885536242d24"
+}
