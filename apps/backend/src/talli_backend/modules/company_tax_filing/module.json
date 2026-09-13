@@ -8,39 +8,66 @@
   "documentation": "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.company_tax_filing.public",
   "exports": {
-    "commands": [],
+    "commands": [
+      "RecordTaxSettlementCommand"
+    ],
     "queries": [
       "NormalizedTaxSettlement",
       "TaxSettlementInput",
-      "normalize_tax_settlement"
+      "normalize_tax_settlement",
+      "validate_new_tax_settlement"
     ],
     "events": [],
     "errors": [
+      "CompanyTaxError",
       "TaxSettlementValidationError"
     ],
     "identifiers": [
+      "AccountingEntryReference",
+      "BankTransactionReference",
+      "DocumentReference",
+      "TaxSettlementDocumentStatus",
+      "TaxSettlementId",
       "TaxSettlementKind",
-      "TaxSettlementDocumentStatus"
+      "TaxSettlementPersistence",
+      "tax_settlement_persistence_adapter"
     ]
   },
   "owns": {
-    "postgresSchemas": [],
-    "tables": [],
+    "postgresSchemas": [
+      "company_tax_filing"
+    ],
+    "tables": [
+      "company_tax_filing.settlements"
+    ],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "None"
+    "migrations": "supabase/migrations/20260913171000_company_tax_settlement_expand.sql"
   },
-  "ports": [],
+  "ports": [
+    {
+      "name": "TaxSettlementPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.TaxSettlementPersistence",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_settlement_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
+      ]
+    }
+  ],
   "dependencies": [],
   "allowedImports": [
     "__future__",
+    "collections.abc",
     "dataclasses",
     "enum",
     "math",
     "re",
     "talli_backend.modules.company_tax_filing.public",
     "talli_backend.modules.company_tax_filing.service",
-    "talli_backend.shared.kernel"
+    "talli_backend.shared.kernel",
+    "typing",
+    "uuid"
   ],
   "forbiddenResponsibilities": [
     "Ledger account selection and posting policy",
@@ -50,7 +77,8 @@
   ],
   "tests": {
     "policy": "apps/backend/tests/test_company_tax_filing.py",
-    "architecture": "tests/architecture_foundation.test.mjs"
+    "architecture": "tests/architecture_foundation.test.mjs",
+    "workflow": "apps/backend/tests/test_company_tax_filing_workflow.py"
   },
   "compatibilityExceptions": []
 }

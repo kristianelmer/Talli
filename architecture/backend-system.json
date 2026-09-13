@@ -237,7 +237,6 @@
         "/api/v1/ledger/company-year-close-assessment",
         "/api/v1/ledger/reconstruction-assessment",
         "/api/v1/ledger/administrative-costs",
-        "/api/v1/ledger/tax-settlements",
         "/api/v1/ledger/manual-journals"
       ]
     },
@@ -389,6 +388,19 @@
         "/api/v1/shareholder-register-filings/test-evidence",
         "/api/v1/shareholder-register-filings/production-approvals"
       ]
+    },
+    {
+      "name": "company-tax-settlement",
+      "purpose": "Records tax settlement facts through Company Tax with atomic public Ledger posting, Banking matching and Documents binding; preserves released v1 transport and receipt identity.",
+      "publicPackages": [
+        "talli_backend.modules.company_tax_filing.public",
+        "talli_backend.modules.ledger.public",
+        "talli_backend.modules.banking.public",
+        "talli_backend.modules.documents.public"
+      ],
+      "routes": [
+        "/api/v1/ledger/tax-settlements"
+      ]
     }
   ],
   "operationalControlState": {
@@ -424,6 +436,11 @@
       "backend_system.marketing_funnel_events",
       "backend_system.marketing_funnel_withdrawals",
       "backend_system.marketing_measurement_releases",
+      "backend_system.tax_settlement_migration_inventory",
+      "backend_system.tax_settlement_migration_state",
+      "backend_system.tax_settlement_quarantine",
+      "backend_system.tax_settlement_reconciliations",
+      "backend_system.tax_settlement_source_rows",
       "backend_system.validation_observation_control",
       "backend_system.validation_observations",
       "backend_system.validation_pilot_entitlements",
@@ -480,7 +497,8 @@
       "supabase/migrations/20260909124946_backend_system_launch_signoffs.sql",
       "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql",
       "supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql",
-      "supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql"
+      "supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql",
+      "supabase/migrations/20260913171000_company_tax_settlement_expand.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },
@@ -749,6 +767,30 @@
       "adapter": "talli_backend.adapters.rf1086_authority.Rf1086AuthorityAdapter",
       "owner": "backend-system",
       "mode": "verified request-scoped RF capability binding"
+    },
+    {
+      "port": "TaxSettlementPersistence",
+      "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
+      "owner": "backend-system",
+      "mode": "one request-scoped settlement transaction; verified actor, restricted executor and public capability operations"
+    },
+    {
+      "port": "TaxSettlementBankingPersistence",
+      "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
+      "owner": "backend-system",
+      "mode": "one request-scoped settlement transaction; verified actor, restricted executor and public capability operations"
+    },
+    {
+      "port": "DocumentBindingPersistence",
+      "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
+      "owner": "backend-system",
+      "mode": "one request-scoped settlement transaction; verified actor, restricted executor and public capability operations"
+    },
+    {
+      "port": "LedgerPersistence",
+      "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
+      "owner": "backend-system",
+      "mode": "one request-scoped settlement transaction; verified actor, restricted executor and public capability operations"
     }
   ],
   "allowedDependencies": {
@@ -774,6 +816,7 @@
       "talli_backend.adapters.authority_callback_transport",
       "talli_backend.adapters.brreg_company_registry",
       "talli_backend.adapters.postgres_authority_connections",
+      "talli_backend.adapters.postgres_company_tax_filing",
       "talli_backend.adapters.postgres_launch_signoffs",
       "talli_backend.adapters.postgres_shareholder_register_filing",
       "talli_backend.adapters.simulation_billing",
@@ -794,6 +837,7 @@
       "talli_backend.application.banking_session",
       "talli_backend.application.billing_session",
       "talli_backend.application.billing_workflow",
+      "talli_backend.application.company_tax_filing_session",
       "talli_backend.application.corporate_governance_session",
       "talli_backend.application.corporate_governance_workflow",
       "talli_backend.application.investments_session",
@@ -807,6 +851,7 @@
       "talli_backend.modules.banking.public",
       "talli_backend.modules.billing.public",
       "talli_backend.modules.company_access.public",
+      "talli_backend.modules.company_tax_filing.public",
       "talli_backend.modules.corporate_governance.public",
       "talli_backend.modules.documents.public",
       "talli_backend.modules.investments.public",
@@ -825,6 +870,7 @@
       "talli_backend.application.annual_checkout_prerequisites",
       "talli_backend.application.annual_data_compatibility",
       "talli_backend.application.authority_connections_session",
+      "talli_backend.application.company_tax_filing_session",
       "talli_backend.application.new_year_opening",
       "talli_backend.application.shareholder_register_filing_session",
       "talli_backend.modules.authority_connections.operations",
@@ -833,6 +879,7 @@
       "talli_backend.modules.banking.public",
       "talli_backend.modules.billing.public",
       "talli_backend.modules.company_access.public",
+      "talli_backend.modules.company_tax_filing.public",
       "talli_backend.modules.corporate_governance.public",
       "talli_backend.modules.documents.public",
       "talli_backend.modules.investments.public",
@@ -883,6 +930,8 @@
       "talli_backend.application.banking_workflow",
       "talli_backend.application.billing_session",
       "talli_backend.application.billing_workflow",
+      "talli_backend.application.company_tax_filing_session",
+      "talli_backend.application.company_tax_filing_workflow",
       "talli_backend.application.corporate_governance_session",
       "talli_backend.application.corporate_governance_workflow",
       "talli_backend.application.investments_session",
@@ -896,6 +945,7 @@
       "talli_backend.modules.banking.public",
       "talli_backend.modules.billing.public",
       "talli_backend.modules.company_access.public",
+      "talli_backend.modules.company_tax_filing.public",
       "talli_backend.modules.corporate_governance.public",
       "talli_backend.modules.documents.public",
       "talli_backend.modules.investments.public",

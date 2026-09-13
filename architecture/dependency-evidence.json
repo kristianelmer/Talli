@@ -145,6 +145,38 @@
       "to": "backend:company_access"
     },
     {
+      "from": "backend-system:company-tax-settlement",
+      "imports": [
+        "talli_backend.modules.banking.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:banking"
+    },
+    {
+      "from": "backend-system:company-tax-settlement",
+      "imports": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_tax_filing"
+    },
+    {
+      "from": "backend-system:company-tax-settlement",
+      "imports": [
+        "talli_backend.modules.documents.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:documents"
+    },
+    {
+      "from": "backend-system:company-tax-settlement",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
       "from": "backend-system:company-year-eligibility-and-admission",
       "imports": [
         "talli_backend.modules.company_access.public"
@@ -406,6 +438,26 @@
     {
       "owner": "backend-system",
       "table": "backend_system.marketing_measurement_releases"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.tax_settlement_migration_inventory"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.tax_settlement_migration_state"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.tax_settlement_quarantine"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.tax_settlement_reconciliations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.tax_settlement_source_rows"
     },
     {
       "owner": "backend-system",

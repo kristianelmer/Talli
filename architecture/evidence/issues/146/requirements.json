@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#146",
   "source": "https://github.com/kristianelmer/Talli/issues/146",
-  "status": "CLAIMED_CHARACTERIZATION",
+  "status": "CLAIMED_IMPLEMENTATION_IN_PROGRESS",
   "entryRevision": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
   "predecessor": {
     "issue": "#151",
@@ -89,5 +89,10 @@
     "status": "CLAIMED",
     "branch": "codex/issue-146-tax-settlement-d060",
     "url": "https://github.com/kristianelmer/Talli/issues/146#issuecomment-5654370153"
+  },
+  "implementationCheckpoint": {
+    "scope": "Atomic canonical capture and expand/cutover/full rollback; additive previews, Archive contract, web cutover and full release verification remain pending.",
+    "focusedTests": "76 pure/application/HTTP tests passed; 9 real PostgreSQL migration/HTTP tests passed on owned disposable contracted topology.",
+    "architecture": "PASS at capture checkpoint; no exit gate credit."
   }
 }

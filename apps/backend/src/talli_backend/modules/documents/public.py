@@ -276,6 +276,31 @@ def documents_authorization_adapter(
     return declare
 
 
+
+
+@dataclass(frozen=True, slots=True)
+class DocumentBindingQuery:
+    actor_id: ActorId
+    company_id: CompanyId
+    income_year: IncomeYear
+    document_id: DocumentId
+
+
+class DocumentBindingPersistence(Protocol):
+    async def lock_document_binding(self, query: DocumentBindingQuery) -> None:
+        """Lock a same-company/year metadata reference until its caller commits."""
+        ...
+
+
+def document_binding_persistence_adapter(
+    contract: type[object],
+) -> Callable[[DocumentsAdapter], DocumentsAdapter]:
+    def declare(adapter: DocumentsAdapter) -> DocumentsAdapter:
+        _ = contract
+        return adapter
+    return declare
+
+
 __all__ = [
     "BeginDocumentUploadCommand",
     "DocumentBackupObject",
@@ -298,4 +323,7 @@ __all__ = [
     "document_object_storage_adapter",
     "documents_authorization_adapter",
     "documents_persistence_adapter",
+    "DocumentBindingQuery",
+    "DocumentBindingPersistence",
+    "document_binding_persistence_adapter"
 ]

@@ -69,6 +69,13 @@ from talli_backend.adapters.supabase_corporate_governance import (
 )
 from talli_backend.adapters.supabase_documents import SupabaseDocumentsAdapter
 from talli_backend.adapters.supabase_ledger import compose_ledger_application
+from talli_backend.adapters.postgres_company_tax_filing import compose_company_tax_application
+from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
+from talli_backend.modules.company_tax_filing.public import (
+    CompanyTaxError, RecordTaxSettlementCommand, TaxSettlementId,
+    BankTransactionReference, DocumentReference, TaxSettlementDocumentStatus,
+    TaxSettlementKind as CompanyTaxSettlementKind,
+)
 from talli_backend.adapters.supabase_investments import compose_investments_application
 from talli_backend.adapters.supabase_marketing_measurement import (
     SupabaseMarketingMeasurementAdapter,
@@ -123,7 +130,7 @@ from talli_backend.application.ledger_workflow import (
     LedgerWriterResult,
     NewYearStartCommand,
     RecordAdministrativeCostCommand,
-    RecordTaxSettlementCommand,
+
 )
 from talli_backend.application.new_year_opening import (
     OpeningSnapshotCursor,
@@ -3747,6 +3754,7 @@ def create_app(
     company_access_gateway: CompanyAccessGateway | None = None,
     company_registry_gateway: CompanyRegistryGateway | None = None,
     ledger_session_factory: LedgerSessionFactory | None = None,
+    company_tax_session_factory: CompanyTaxSessionFactory | None = None,
     investments_session_factory: InvestmentsSessionFactory | None = None,
     corporate_governance_session_factory: CorporateGovernanceSessionFactory | None = None,
     documents_session_factory: DocumentsSessionFactory | None = None,
@@ -3793,6 +3801,7 @@ def create_app(
         company_registry_gateway or BrregCompanyRegistryAdapter.from_environment(),
     )
     ledger_application = compose_ledger_application(ledger_session_factory)
+    company_tax_application = compose_company_tax_application(company_tax_session_factory)
     investments_application = compose_investments_application(
         investments_session_factory
     )
@@ -4083,7 +4092,7 @@ def create_app(
                 title="Authentication required",
                 detail="A valid session is required.",
             ) from None
-        except LedgerError as error:
+        except (LedgerError, CompanyTaxError) as error:
             statuses = {
                 ErrorCategory.INVALID_INPUT: 422,
                 ErrorCategory.NOT_FOUND: 404,
@@ -4094,7 +4103,7 @@ def create_app(
             }
             raise ApiProblem(
                 status=statuses[error.category],
-                code=error.code,
+                code=error.code.replace("COMPANY_TAX_", "LEDGER_") if isinstance(error, CompanyTaxError) else error.code,
                 title="Ledger request failed",
                 detail=error.message or "The ledger request could not be completed.",
             ) from None
@@ -4109,7 +4118,7 @@ def create_app(
             }
             raise ApiProblem(
                 status=statuses[error.category],
-                code=error.code,
+                code=error.code.replace("COMPANY_TAX_", "LEDGER_") if isinstance(error, CompanyTaxError) else error.code,
                 title="New-year request failed",
                 detail=error.message or "The opening snapshot could not be recorded.",
             ) from None
@@ -9591,15 +9600,15 @@ def create_app(
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> LedgerWriterResultWire:
         async def execute() -> LedgerWriterResultWire:
-            session = await ledger_application.session(bearer_token(credentials))
+            session = await company_tax_application.session(bearer_token(credentials))
             domain = ledger_input(lambda: RecordTaxSettlementCommand(
                 company_id=CompanyId(str(command.company_id)), actor_id=session.actor_id,
                 correlation_id=ledger_correlation(request), idempotency_key=IdempotencyKey(idempotency_key),
-                income_year=IncomeYear(command.income_year), action_id=LedgerSourceRecordId(str(command.action_id)),
+                income_year=IncomeYear(command.income_year), action_id=TaxSettlementId(str(command.action_id)),
                 settlement_date=LocalDate(command.settlement_date), amount=command.amount.to_domain(),
-                settlement_kind=command.settlement_kind, document_status=command.document_status,
-                bank_transaction_id=(LedgerSourceRecordId(str(command.bank_transaction_id)) if command.bank_transaction_id else None),
-                document_id=(LedgerSourceRecordId(str(command.document_id)) if command.document_id else None),
+                settlement_kind=CompanyTaxSettlementKind(command.settlement_kind), document_status=TaxSettlementDocumentStatus(command.document_status),
+                bank_transaction_id=(BankTransactionReference(str(command.bank_transaction_id)) if command.bank_transaction_id else None),
+                document_id=(DocumentReference(str(command.document_id)) if command.document_id else None),
             ))
             result = await session.record_tax_settlement(domain)
             return ledger_writer_wire(

@@ -25,7 +25,6 @@ from talli_backend.application.ledger_workflow import (
     LedgerSessionFactory,
     NewYearStartCommand,
     RecordAdministrativeCostCommand,
-    RecordTaxSettlementCommand,
 )
 from talli_backend.application.new_year_opening import (
     OpeningShareholderView,
@@ -374,16 +373,6 @@ def _writer_payload(command: LedgerCommand) -> dict[str, object]:
             payee=command.payee,
             amount=format(command.amount.amount, "f"),
             paidDate=command.paid_date.value.isoformat(),
-            documentId=_optional_source(command.document_id),
-        )
-    elif isinstance(command, RecordTaxSettlementCommand):
-        payload.update(
-            actionId=str(command.action_id),
-            settlementDate=command.settlement_date.value.isoformat(),
-            amount=format(command.amount.amount, "f"),
-            settlementKind=command.settlement_kind.value,
-            documentStatus=command.document_status,
-            bankTransactionId=_optional_source(command.bank_transaction_id),
             documentId=_optional_source(command.document_id),
         )
     else:
@@ -2393,26 +2382,6 @@ class SupabaseLedgerWorkflowTransaction(SupabaseLedgerSession):
             prepared,
         )
 
-    async def prepare_tax_settlement(self, command: object) -> dict[str, object]:
-        typed = self._writer_command(command, RecordTaxSettlementCommand)
-        return await self._prepare_writer(
-            "select backend_system.prepare_tax_settlement_v1(%s::jsonb, %s::text) as result",
-            typed,
-        )
-
-    async def complete_tax_settlement(
-        self,
-        command: object,
-        posted_entry: PostedLedgerEntry,
-        prepared: dict[str, object],
-    ) -> dict[str, object]:
-        typed = self._writer_command(command, RecordTaxSettlementCommand)
-        return await self._complete_writer(
-            "select backend_system.complete_tax_settlement_v1(%s::jsonb, %s::uuid, %s::jsonb, %s::text) as result",
-            typed,
-            posted_entry,
-            prepared,
-        )
 
 def compose_ledger_application(
     sessions: LedgerSessionFactory | None = None,
