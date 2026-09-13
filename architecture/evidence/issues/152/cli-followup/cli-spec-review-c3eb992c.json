@@ -1,0 +1,106 @@
+{
+  "verdict": "CHANGES_REQUESTED_CLI_PARITY",
+  "baseRevision": "8b3e0cb340d962c8140b1ac72ceada59d4d4aea7",
+  "candidateRevision": "c3eb992c30531f7402a31ceb830164fa4fda1654",
+  "reviewedAt": "2026-09-13T23:08:52.520123+00:00",
+  "findings": [
+    {
+      "id": "SPEC-152-CLI-1",
+      "priority": "P2",
+      "path": "apps/backend/src/talli_backend/authority_tools/company_tax_payload.py",
+      "line": 24,
+      "title": "Preserve explicit-null document-reference rejection",
+      "operations": [
+        "company_tax_envelope",
+        "company_tax_validation_envelope"
+      ],
+      "expected": "ValueError: Local authority payload generation failed.",
+      "actual": "Successful envelope without current document reference",
+      "spec": "#132 unchanged coded errors/defaults; #152 A1/A3."
+    },
+    {
+      "id": "SPEC-152-CLI-2",
+      "priority": "P1",
+      "path": "apps/backend/src/talli_backend/authority_tools/company_tax_payload.py",
+      "line": 13,
+      "title": "Preserve integral JSON-year formatting in statutory XML",
+      "inputYear": 2025.0,
+      "expectedDates": [
+        "2025-01-01",
+        "2025-12-31"
+      ],
+      "actualDates": [
+        "2025.0-01-01",
+        "2025.0-12-31"
+      ],
+      "spec": "GH-152-A1 outputs identical; #132 statutory/XML equivalence."
+    }
+  ],
+  "independentValidation": {
+    "authorityTests": {
+      "passed": 143,
+      "durationSeconds": 4.28,
+      "provider": "mocked"
+    },
+    "nodeDispatchTests": {
+      "passed": 2,
+      "failed": 0,
+      "runtime": "v24.20.0",
+      "initialFixtureFailure": "Private tree omitted apps/web/package.json; exact committed file restored before successful rerun."
+    },
+    "oldNewCliRegressions": {
+      "failed": 3,
+      "passed": 7,
+      "durationSeconds": 0.08,
+      "oldSourceRevision": "8b3e0cb340d962c8140b1ac72ceada59d4d4aea7",
+      "newSourceRevision": "c3eb992c30531f7402a31ceb830164fa4fda1654",
+      "oldMechanism": "Actual fixed Node subprocess from pinned _filing.payload",
+      "newMechanism": "Actual owned in-process _filing.payload"
+    }
+  },
+  "originalCriteriaUnchangedAndPending": true,
+  "manifestAdoptionHashesVerified": true,
+  "limits": [
+    "No provider calls or DB/browser/config changes.",
+    "No API/web/SQLcutover or full-stage acceptance.",
+    "Findings bind fixed commit; proposed root corrections are not accepted here."
+  ],
+  "reportSha256": "bb15d6c551fa41495e937848eacb36a35200c1133393cf8be7bb9831c58f89b4",
+  "sourceBindings": {
+    "apps/backend/src/talli_backend/authority_tools/_filing.py": "c1d41d3633b49ea300ed13d7e2ae25f5a923515641505607395ca3e0dcb659a0",
+    "apps/backend/src/talli_backend/authority_tools/company_tax_payload.py": "b7f281a97b0d3cb0a00338f52f85ef045fb3565beafac9eb8825f92afb440d45",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "8f613ed9baa964573ffbfd7e5bc3341538aa8763848ef1a9adbc4220cda59541",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "60c4720008da6a154d021aa27c5a72245032e4cce5404e1e0ccd46979f27b335",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "6d714ffd95c95d0fa3fff8366645f188ae49887389488601b2eead72b9822832",
+    "apps/backend/tests/test_authority_filing_tools.py": "3cc2ae82d1e2b367d09102b0d9fc5b8b254b4b56026d821641f1f0215db97e74",
+    "apps/backend/tests/test_company_tax_authority_payload.py": "94024413b79f74acebeeb36be49bd73c0bc3f2b808a6bb2f4aa3906f0d1be835",
+    "architecture/evidence/issues/152/owned-authority-payload/manifest.json": "9110df489cdb534fc0b586586179c43cf64c9ae9a8b2b6815310dee55483c0c7",
+    "architecture/evidence/issues/152/owned-authority-payload/owned-authority-tools-tests.log": "bc4e037ad6ae73d3affaf170d9f4bf408c1f95e150407a59f2323360ebce2611",
+    "architecture/evidence/issues/152/owned-authority-payload/owned-authority-web-dispatch-tests.log": "56123519550bbccfd2d529fe3241b6c40c5e3bea50cbc9d705808ceada9facea",
+    "architecture/evidence/issues/152/owned-authority-payload/pure-spec-review-8b3e0cb3.json": "3864b0008165e748c143a50012dcd822d4e770ea1c91eb7d6a415ed029082d48",
+    "architecture/evidence/issues/152/owned-authority-payload/pure-spec-review-8b3e0cb3.md": "3829029a3725c17b35ca899bbb3bed128a8d99f9db3518f151ee083e62c56a8d",
+    "architecture/evidence/issues/152/owned-authority-payload/pure-standards-review-8b3e0cb3.json": "4c184e9c4b0508f212a4a3d6cf3820cecace30b19b9d2a7b3e04d53dc0499fac",
+    "architecture/evidence/issues/152/owned-authority-payload/pure-standards-review-8b3e0cb3.md": "9aa309288b6e165607234dab996792469ad1acdc8128f5c6007305a847ac8723",
+    "architecture/evidence/issues/152/requirements.json": "5c33d759b95f678e327e429f851f222ee605ae7b108bb987a15ed76ee86f242f",
+    "scripts/authority-tool-payload.mjs": "d7232070f18843a688e6799fcb032bafeda7430b91a4150d5ccf15742b88ee9f",
+    "tests/authority_tool_payload.test.mjs": "71aaa6f693eba6adc4556ef08227ebc06bbfc5c84d79b726894874ba9bde570e"
+  },
+  "legacySourceBindings": {
+    "apps/backend/src/talli_backend/authority_tools/_filing.py": "ee43bdd7b861ba344053377237c4e3682efe8be72eb5bfd0e998ca8bd6b8694f",
+    "scripts/authority-tool-payload.mjs": "46cea5e128e804e830c9da02a2cb72cb1375c0b33734d22874cd4ef26a460f98",
+    "apps/web/app/lib/company-tax-return.ts": "765b82a633a859c4108e83cb6f30b18e3fd3ad491f56a53485453f6bc3ca6ec7",
+    "apps/web/app/lib/company-tax-return-authority-payload.ts": "c68aa036c33c6dfacf235b9960d8d8f8e36c016cba4b72e12a71cd44566e99c1",
+    "apps/web/app/lib/company-tax-return-xml.ts": "80fe4c5c10daa3c67b6041b32fb2c6289fe91f8783f7d8b62077f0564c511f17",
+    "apps/web/package.json": "1540f1296b3d211d0d4e25721e9438a113c7c6ab22670f58680867567890b1e8"
+  },
+  "privateBindings": {
+    "spec-cli-probe-c3eb992c.py": "ccf7328c3dc83af21e3fe7a232450bb5a1e091dd8616f40e7ef403530ac0ab64",
+    "spec-cli-c3eb992c-before.json": "fe3f76fc1d8e7940419e1b9142a884a8b5022da427b98f7522d92482e795e5fb",
+    "spec-cli-c3eb992c-after.json": "0f0e89290528e0c70ddd25ff9f0bf6fdfb4f8c0a5cc576a01cf9970113c223cb",
+    "test_spec_cli_parity_c3eb992c.py": "54195a07b2ae99fb370d81a9edc254664365e5e5930ca80265499dc14c7496df",
+    "spec-cli-c3eb992c-regressions-red.log": "0b06029728be026f87e304bae6cced524b7a0a1e27a0da103f21f0bd1aba3030",
+    "spec-cli-c3eb992c-tests.log": "0cc9f98466838814d0145c2e12deeff750d5e2d2ac7e559c31b524f8e92e7603",
+    "spec-cli-c3eb992c-node-tests.log": "3547ed2019883fcab1e451db6dd21ee9f7338c2b9e2d7dc930f54ef9e524aacb",
+    "spec-cli-c3eb992c-node-tests-complete-fixture.log": "8ea14921e49f24f9f74547cddf19e399f87fd156fc2b1adf8758a8ec065b4499"
+  }
+}

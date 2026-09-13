@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping
 
-from .numbers import money, nonnegative, number, rounded, total
+from .numbers import money, nonnegative, number, rounded, total, text as js_string
 
 TAX = 'skattemeldingUpersonlig'
 BUSINESS = 'naeringsspesifikasjon'
@@ -190,8 +190,8 @@ def build(input):
         fields.extend(_difference(index, kind, value, source))
     for path, value, source, evidence in (
         ('virksomhet.regnskapspliktstype.regnskapspliktstype', 'fullRegnskapsplikt', 'launch_scope', '2025_regnskapsplikttype.xml'),
-        ('virksomhet.regnskapsperiode.start.dato', f'{year}-01-01', 'calendar_year', BUSINESS_XSD),
-        ('virksomhet.regnskapsperiode.slutt.dato', f'{year}-12-31', 'calendar_year', BUSINESS_XSD),
+        ('virksomhet.regnskapsperiode.start.dato', f'{js_string(year)}-01-01', 'calendar_year', BUSINESS_XSD),
+        ('virksomhet.regnskapsperiode.slutt.dato', f'{js_string(year)}-12-31', 'calendar_year', BUSINESS_XSD),
         ('virksomhet.virksomhetstype.virksomhetstype', 'oevrigSelskap', 'launch_scope', '2025_virksomhetstype.xml'),
         ('virksomhet.regeltypeForAarsregnskap.regeltypeForAarsregnskap', 'regnskapslovensAlminneligeRegler', 'launch_scope', '2025_regeltypeForAarsregnskap.xml'),
         ('skalBekreftesAvRevisor', False, 'launch_scope', BUSINESS_XSD),

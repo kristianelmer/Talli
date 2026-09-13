@@ -55,3 +55,25 @@ def test_tax_cli_retains_utf8_output_limit_and_lone_surrogate_summary(monkeypatc
     monkeypatch.setattr(_filing, 'MAX_RESPONSE_BYTES', 213)
     with pytest.raises(ValueError, match='^Local authority payload generation failed.$'):
         payload('company_tax', {})
+
+
+@pytest.mark.parametrize('operation', ['company_tax_envelope', 'company_tax_validation_envelope'])
+def test_tax_cli_distinguishes_omitted_and_explicit_null_document_reference(operation):
+    value = {'skattemeldingXml': '<tax/>', 'naeringsspesifikasjonXml': '<business/>',
+             'companyOrgNumber': '923609016', 'incomeYear': 2025, 'createdBy': 'Talli'}
+    assert '<dokumentreferanseTilGjeldendeDokument>' not in payload(operation, value)['envelopeXml']
+    for invalid in (None, '', ' '):
+        with pytest.raises(ValueError, match='^Local authority payload generation failed.$'):
+            payload(operation, {**value, 'currentDocumentReference': invalid})
+    assert '<dokumentidentifikator>SKI:755:1</dokumentidentifikator>' in payload(
+        operation, {**value, 'currentDocumentReference': 'SKI:755:1'})['envelopeXml']
+
+
+def test_tax_cli_integral_json_float_year_keeps_statutory_xml_bytes():
+    case = json.loads((ROOT / 'tests/fixtures/authority/company-tax-no-activity-2025.json').read_text())
+    value = {'companyOrgNumber': case['company']['orgNumber'], 'companyPartyNumber': '1234567',
+             'incomeYear': 2025.0, 'annualData': case['annualData'],
+             'ledgerEntries': case['ledgerEntries'], 'holdingActions': case['holdingActions']}
+    documents = payload('company_tax', value)
+    assert digest(documents['skattemeldingXml']) == '42f1424f872f108daecb5d0429e473f1bebaebc3a407990f04dcff6fd1fd7a44'
+    assert digest(documents['naeringsspesifikasjonXml']) == 'ab43d1a3120d6cb50c09f1a88ef211a49b4b3e31233342179a76871badf52599'

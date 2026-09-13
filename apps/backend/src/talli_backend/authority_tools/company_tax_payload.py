@@ -21,7 +21,12 @@ def generate(operation, value):
         envelope = CompanyTaxEnvelopeInput(
             documents=CompanyTaxReturnDocuments(value['skattemeldingXml'], value['naeringsspesifikasjonXml']),
             organization_number=value['companyOrgNumber'], income_year=value['incomeYear'],
-            created_by=value['createdBy'], current_document_reference=value.get('currentDocumentReference'),
+            created_by=value['createdBy'],
+            # JSON null is present-but-empty; None in the public contract means
+            # omitted. Preserve presence so Tax's required-reference check runs.
+            current_document_reference=('' if 'currentDocumentReference' in value
+                                        and value['currentDocumentReference'] is None
+                                        else value.get('currentDocumentReference')),
         )
         return {'envelopeXml': render_company_tax_envelope(envelope)}
     if operation == 'company_tax_validation_summary':
