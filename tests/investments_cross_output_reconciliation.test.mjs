@@ -5,7 +5,7 @@ import test from "node:test";
 import { buildAnnualAccountsPayload } from "../apps/web/app/lib/annual-accounts.ts";
 import { buildPersistedCompanyArchive } from "../apps/web/app/lib/archive.ts";
 import { buildCompanyTaxReturnPayload } from "../apps/web/app/lib/company-tax-return.ts";
-import { buildNoActivityRf1086Case, renderRf1086Preview } from "../apps/web/app/lib/rf1086.ts";
+import { renderRf1086SourceFacts } from "./support/rf1086-source-facts.mjs";
 import { estimateAnnualTax } from "../apps/web/app/lib/tax-settlement.ts";
 import { effectiveInvestmentActivity } from "../apps/web/features/investments/presentation.ts";
 
@@ -298,13 +298,13 @@ test("one effective fact set reconciles tax, annual accounts, SAF-T input, archi
   assert.deepEqual(archive.investmentPositions, positions);
   assert.deepEqual(archive.investmentLots, lots);
 
-  const rf1086Case = buildNoActivityRf1086Case(company, setup, shareholders);
-  const issuerOnlyBefore = renderRf1086Preview(rf1086Case);
-  const issuerOnlyAfter = renderRf1086Preview(rf1086Case);
-  assert.equal(issuerOnlyAfter.hovedskjemaXml, issuerOnlyBefore.hovedskjemaXml);
-  assert.deepEqual(issuerOnlyAfter.underskjemaXml, issuerOnlyBefore.underskjemaXml);
+  const issuerOnlyBefore = renderRf1086SourceFacts(company, setup, shareholders);
+  const issuerOnlyAfter = renderRf1086SourceFacts(company, setup, shareholders);
+  assert.equal(issuerOnlyAfter.status, "ready");
+  assert.equal(issuerOnlyAfter.hovedskjema_xml, issuerOnlyBefore.hovedskjema_xml);
+  assert.deepEqual(issuerOnlyAfter.underskjema_xml, issuerOnlyBefore.underskjema_xml);
   for (const investmentAction of activity) {
-    assert.doesNotMatch(issuerOnlyAfter.hovedskjemaXml ?? "", new RegExp(investmentAction.id, "u"));
+    assert.doesNotMatch(issuerOnlyAfter.hovedskjema_xml ?? "", new RegExp(investmentAction.id, "u"));
   }
 });
 

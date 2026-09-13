@@ -1,0 +1,54 @@
+{
+  "reviewed_at": "2026-09-09T22:35:23.827823+00:00",
+  "verdict": "scoped source pass; corrected actual rollback\u2192workspace evidence verified",
+  "source_sha256": {
+    "scripts/rehearse-authority-topology.mjs": "134bb966f43facbec79de8e5fb742a12478aa3686f54716e3d6e3305a88847e5",
+    "tests/ci_release_gate.test.mjs": "d6bb316ec8bf2a139003f298bd6ace5b79b51d327e88ea34be03ebd5cc696d4b",
+    "scripts/test-supabase-local.sh": "2f892e509998c1054224df4bd4ccb833933b7a165b908e21420f7ca94ae3ddb4",
+    "supabase/contract-migrations/20260909124659_authority_connections_contract.sql": "566863774fce534ed05235e84738753a97551be79451b01f436ae065ff0d021e",
+    "supabase/migrations/20260905010000_billing_capability.sql": "2f3731ad44145f9be4c429b2de67b76f7c2203fdd5de5d9ff799709422ce8d1d",
+    "supabase/contract-migrations/20260905013000_billing_contract.sql": "4b418ec72b30598f5986937e2cfbd46105c2bd338ec1b205fe7fa06478a4ea11"
+  },
+  "pre_correction_snapshot": "/tmp/talli-151-before-workspace-au.json",
+  "failed_actual_restoration": {
+    "path": "/tmp/talli-151-owner-workspace-restored.log",
+    "sha256": "a6a7b6cd5609e6a895f4e8690c6b301ede87e5cea927f1cbc5018051be6cdf02",
+    "failure": "authority_rf_resource_cutover_required",
+    "reported_catalog_dependency": "public.manage_production_pilot_entitlement remains the ordinary Billing reader of public.system_user_requests"
+  },
+  "closed_source_finding": "Workspace ran AU contract before ordinary Billing retired its old pilot coordinator. Workspace now retains AU view v; final recutover still removes it after Billing.",
+  "scope_preservation": {
+    "product_au_guard_byte_unchanged": true,
+    "product_billing_expand_byte_unchanged": true,
+    "final_recutover_files_and_order_unchanged": true,
+    "rollback_order_and_existing_wrong_phase_guards_unchanged": true,
+    "all_existing_tests_and_final_required_browser_steps_retained": true
+  },
+  "history": "This additive correction supersedes the earlier source-only assumption that AU could contract during the workspace phase. Earlier draft/review and failed actual restoration evidence remain historical, not rewritten as passing.",
+  "independence": "Reviewer authored earlier runner proposal but did not author this root corrective delta; independent verdict is limited to the latest change against captured snapshots.",
+  "limits": [
+    "No reviewer DB/provider calls or test runs.",
+    "C executed corrected rollback\u2192workspace; reviewer verified five current source hashes, two transcript hashes and reported exact target state.",
+    "Does not certify full lane, fresh browser, stage151 exit or final192 acceptance."
+  ],
+  "actual_correction_evidence": {
+    "receipt": "/tmp/talli-151-workspace-restoration-corrected.json",
+    "receipt_sha256": "7999b6a30ac9e782376d97649da7202d500278f1175cd0c7f8c1a01c58cd3f72",
+    "source_hashes_verified": 5,
+    "artifact_hashes_verified": 2,
+    "topology": {
+      "rfPhase": "canonical_overlap",
+      "authorityPublicKind": "v",
+      "ledgerPublicKind": "v",
+      "openingPublicKind": "r",
+      "ledgerSetupColumnPresent": true,
+      "companyRows": 0,
+      "authUsers": 0,
+      "runtimePrincipalsDisabled": true,
+      "temporaryFixtureLogins": 0
+    },
+    "reviewed_at": "2026-09-09T22:35:57.840922+00:00",
+    "executed_by": "worker_review",
+    "independently_rerun": false
+  }
+}

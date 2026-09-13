@@ -30,6 +30,9 @@ MIGRATION = "20260909120610_authority_connections_capability.sql"
 OPERATIONS_MIGRATION = "20260909123709_authority_operations_capability.sql"
 RF_MIGRATION = "20260909125113_legacy_rf1086_authority_relocation.sql"
 CONTRACT = "20260909124659_authority_connections_contract.sql"
+RF151_EXPAND = "20260909190548_shareholder_register_filing_capability.sql"
+RF151_CUTOVER = "20260909190905_shareholder_register_filing_cutover.sql"
+RF151_CONTRACT = "20260909190955_shareholder_register_filing_contract.sql"
 
 
 def insert(connection, table, values):
@@ -362,7 +365,7 @@ def test_latest_callback_evidence_is_exact_global_history_with_current_owner_gat
     assert dict(evidence.metadata)=={"systemId":"930835978_talli","callbackPath":"/auth/systembruker/confirm"}
 
 
-def test_capability_rollback_recutover_preserves_original_rows_type_oids_and_fk(fixture):
+def test_capability_rollback_recutover_preserves_original_rows_type_oids_and_fk(fixture,rf151_predecessor_topology):
     store,owner,request=accepted(fixture);pilot(fixture,request)
     before=state(fixture)
     with psycopg.connect(DATABASE_URL,autocommit=True) as connection:
@@ -471,7 +474,41 @@ def test_company_access_support_projection_preserves_opened_case_scope(fixture):
 
 
 @pytest.fixture
-def legacy_overlap(fixture):
+def rf151_predecessor_topology(fixture):
+    """Rehearse frozen AU lifecycle SQL only after its RF successor rolls back."""
+    phase = None
+    with psycopg.connect(DATABASE_URL) as connection:
+        if connection.execute("select to_regclass('shareholder_register_filing.migration_state')").fetchone()[0]:
+            # This read-only phase probe borrows authority within a transaction
+            # that is always rolled back; it changes no persistent ACL/membership.
+            try:
+                principal = connection.execute("select current_user").fetchone()[0]
+                if not connection.execute("select pg_has_role(current_user,'shareholder_register_filing_store_owner','SET')").fetchone()[0]:
+                    connection.execute(sql.SQL("grant shareholder_register_filing_store_owner to {} with set true granted by {}").format(
+                        sql.Identifier(principal),sql.Identifier(principal)))
+                connection.execute("set local role shareholder_register_filing_store_owner")
+                phase = connection.execute("select shareholder_register_filing.phase_v1()").fetchone()[0]
+                assert phase in ('legacy_overlap','canonical_overlap','contracted')
+            finally:
+                connection.rollback()
+    if phase is not None:
+        with psycopg.connect(DATABASE_URL,autocommit=True) as connection:
+            connection.execute((ROOT/"supabase"/"rollback"/RF151_EXPAND).read_text())
+    try:
+        yield
+    finally:
+        if phase is not None:
+            with psycopg.connect(DATABASE_URL,autocommit=True) as connection:
+                connection.execute((ROOT/"supabase"/"migrations"/RF151_EXPAND).read_text())
+                if phase in ('canonical_overlap','contracted'):
+                    connection.execute((ROOT/"supabase"/"migrations"/RF151_CUTOVER).read_text())
+                if phase == 'contracted':
+                    connection.execute((ROOT/"supabase"/"contract-migrations"/RF151_CONTRACT).read_text())
+                ensure_fixture_admin_access(connection)
+
+
+@pytest.fixture
+def legacy_overlap(fixture,rf151_predecessor_topology):
     with psycopg.connect(DATABASE_URL,autocommit=True) as connection:
         contracted=connection.execute("select to_regclass('public.system_user_requests') is null").fetchone()[0]
         if contracted:

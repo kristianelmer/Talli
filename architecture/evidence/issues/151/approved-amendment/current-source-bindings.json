@@ -1,0 +1,22 @@
+{
+  "observedAt": "2026-09-10T12:45:06.066585+00:00",
+  "purpose": "Source snapshot after fresh-browser success and last focused quarantine run, before immutable candidate commit. This is not a retroactive binding of earlier intermediate runs.",
+  "files": {
+    "tests/browser_shareholder_register_filing.mjs": "4400a76df502969827992b7a5b7ec58cae5057a11fd94d04fe0d20ce80dab272",
+    "tests/fixtures/start_shareholder_register_filing_backend.py": "0e5c7145577944bdb73dc344b9328613c9ba17ac45b325d6896cc6117e8bdfac",
+    "tests/fixtures/rf1086-filing-authority-mock.mjs": "92916244d2b14bb50ff4106f6cb7b0524d4c3bfa1ca1a7cd1d376ea104dcb0a5",
+    "tests/support/rf1086-fixture-access.mjs": "08b2cd8207949a8d39f33f1ff3b6b772e2c57268fb92f91291b6e322b479c48f",
+    "apps/web/app/actions.ts": "b407f01296b42bb7cc9f5c5e2e2633dcf97110618a818a84ced38270daa8e4f9",
+    "apps/web/app/lib/annual-workspace-server.ts": "47ca6b8fa90744680ecbc81b93b917ec2752720eca83aa11cebc095629aebb47",
+    "apps/web/app/lib/rf1086-workspace-source.ts": "1c0c19d2635a69be66c54221a9013a35d16a996f0815f3350188cc67fa37a7ad",
+    "apps/web/features/shareholder-register-filing/transport.ts": "72fb52f9b7026b37c7559a00af78d79b83daafed332a2cb97a0fbc1896a9f019",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_facts.py": "97df7a594b80e5c266926f88d98c65db18817575061d8590bf4d142f89ebd85b",
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "bc061d7ba670dbb5ffca303464c4a71c3be5673adbb82de9d424ddbe58349f99",
+    "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql": "fa29bbe4b4c7a498554e18bf3f71ede4146d616e414e48b9290815d52fc99e15",
+    "supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql": "4259df64004a9ba4382db74be357f6a0e411449ede805f7d30d30590d27ed891",
+    "supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql": "b70e56d4dbf03bd83fcb6b932f9d0e80543929ef42ce0f711eb3f6c1b585a342",
+    "supabase/rollback/20260909190548_shareholder_register_filing_capability.sql": "dd77bf9f887f4c9d35cf94952a0c183da93b6d84f2fdf0706f8648589f3119ae",
+    "supabase/rollback/20260909190955_shareholder_register_filing_contract.sql": "fa34b43318cbfeb138d27f1791d04f46ac23bc1c686d079a7bd58315680b0a42",
+    "apps/backend/tests/test_shareholder_register_filing_lifecycle.py": "8478625e42aa09c460e0d0dfe4d344ddaa0314e83e89222558f29f58d8c73c91"
+  }
+}

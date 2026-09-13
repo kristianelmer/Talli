@@ -1,0 +1,17 @@
+✔ company-tax evidence migration preserves an atomic reference-only backup boundary (1.119917ms)
+✔ backup manifest identifies launch-critical tables and object references (0.730083ms)
+✔ restore fixture preserves launch-critical accounting state in isolated workspace (0.383ms)
+✔ company-tax submissions are counted and round-trip with generic filing submissions (0.18825ms)
+✔ restore integrity rejects missing and mismatched company-tax authority evidence pairs (0.7905ms)
+✔ restore integrity fails when corporate lifecycle rows or object metadata are incomplete (0.176833ms)
+✔ restore integrity reports missing object warning and missing critical rows (0.116291ms)
+✔ production restore launch gate requires recent passing restore test (0.13025ms)
+✔ corporate release and restore runbooks keep external gates explicitly pending (1.257959ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 87.931166

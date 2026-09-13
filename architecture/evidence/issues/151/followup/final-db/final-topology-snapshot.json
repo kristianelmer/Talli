@@ -1,0 +1,20 @@
+{
+  "observed_at": "2026-09-09T22:15:15.528097+00:00",
+  "local_only": true,
+  "rf_owned": true,
+  "public_opening_absent": true,
+  "public_shareholders_absent": true,
+  "public_ledger_entries_absent": true,
+  "ledger_setup_absent": true,
+  "au_public_view_absent": true,
+  "bank_archive_trigger_present": true,
+  "opening_reader_execute": true,
+  "bank_reader_execute": true,
+  "bank_writer_execute": false,
+  "rf_opening_writer_execute": false,
+  "fixture_logins_remaining": 0,
+  "ledger_backend_login": false,
+  "company_rows": 1129,
+  "rf_phase": "contracted",
+  "company_rows_note": "The existing Billing lifecycle intentionally preserves its original local rehearsal evidence; company count is reported, not erased."
+}

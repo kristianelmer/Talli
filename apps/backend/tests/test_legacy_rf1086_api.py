@@ -6,9 +6,9 @@ from fastapi.testclient import TestClient
 import pytest
 
 from talli_backend.main import create_app
-from talli_backend.compatibility.rf1086_authority_workflow import LegacyRf1086AuthenticationError
+from talli_backend.application.shareholder_register_filing_session import ShareholderRegisterFilingAuthenticationError
 from talli_backend.modules.billing.public import ProductionPilotStatus
-from test_rf1086_compatibility import CoordinatorSession, APPROVAL, SUBMISSION, OWNER
+from test_shareholder_register_filing_production import CoordinatorSession, APPROVAL, SUBMISSION, OWNER
 
 SEND = "/api/v1/legacy-rf1086/production-filings"
 RECOVER = "/api/v1/legacy-rf1086/feedback-reconciliations"
@@ -23,13 +23,13 @@ class Sessions:
     async def session(self, token):
         self.tokens.append(token)
         if token != "local-owner":
-            raise LegacyRf1086AuthenticationError()
+            raise ShareholderRegisterFilingAuthenticationError()
         return self.value
 
 
 def setup():
     sessions = Sessions()
-    return TestClient(create_app(legacy_rf1086_session_factory=sessions)), sessions
+    return TestClient(create_app(shareholder_register_filing_session_factory=sessions)), sessions
 
 
 def test_send_authenticates_and_runs_token_before_durable_begin_and_provider_mutation():

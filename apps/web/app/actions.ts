@@ -1,5 +1,7 @@
 "use server";
 
+import { loadPresentedRf1086Source, composeFilingSources } from "./lib/rf1086-workspace-source";
+
 import type { AnnualSupportRefundRecoveryActionState, AnnualSupportRefundIdentity } from "./lib/annual-support-refund-recovery";
 import type { AnnualSupportCleanupRecoveryActionState, AnnualSupportCleanupIdentity } from "./lib/annual-support-cleanup-recovery";
 import { operatorReadRecovery, operatorRecoveryHref, operatorSupportLocation } from "./lib/operator-support";
@@ -35,7 +37,7 @@ import { buildDeadlineReminderPlan, defaultReminderPreferences } from "./lib/dea
 import {
   validateSignedCorporateArtifactUpload,
 } from "./lib/corporate-signed-artifacts";
-import { assertNoBlockingFilingOverrides, validateFilingOverride } from "./lib/filing-overrides";
+import { validateFilingOverride } from "./lib/filing-overrides";
 import {
   acceptCompanyInvitation,
   administerCompanyMembership,
@@ -180,30 +182,22 @@ import {
 } from "./lib/invitation-side-effects";
 import { persistLedgerAudit } from "./lib/ledger-audit-side-effects";
 import {
-  Rf1086ProductionAdapterDisabledError,
-  rf1086PayloadHash,
-  rf1086ReceiptMetadata,
-  rf1086SubmissionFeedbackItems,
-  rf1086SubmissionIdempotencyKey,
-  rf1086SubmittedPayloadReference,
-  rf1086SubmittedPayloadSnapshot,
-  runRf1086SubmissionAdapter,
-} from "./lib/rf1086-submission";
-import {
-  buildProductionApprovalManifest,
-  productionApprovalHash,
-} from "./lib/production-approval";
-import {
   RF1086_OWNER_ACTION_ERROR_CODES,
   buildRf1086OwnerReconciliationActionState,
   type Rf1086OwnerActionErrorCode,
   type Rf1086OwnerReconciliationActionState,
 } from "./lib/rf1086-production-presentation";
-import { sendApprovedRf1086ThroughApi, reconcileRf1086ThroughApi, rf1086ApiErrorCode } from "../features/legacy-rf1086";
+import {
+  sendApprovedRf1086ThroughApi, reconcileRf1086ThroughApi, rf1086ApiErrorCode,
+  generateRf1086PreviewThroughApi, findRf1086Preview, presentRf1086Preview,
+  recordRf1086OverrideThroughApi, addRf1086ReviewCommentThroughApi,
+  acknowledgeOwnedRf1086Comment, confirmRf1086SimulationThroughApi,
+  confirmRf1086PermissionThroughApi, recordRf1086TestEvidenceThroughApi,
+  approveRf1086ProductionThroughApi, rf1086ActionErrorMessage,
+} from "../features/shareholder-register-filing";
 import { SYSTEM_USER_COOKIE, callbackStateForResult } from "./lib/system-user-presentation";
 import { runAuthorityOperation, authorityOperationErrorCode, startOwnerSystemUserRequest, refreshOwnerSystemUserRequest } from "../features/authority-connections";
-import { buildNoActivityRf1086Case, renderRf1086Preview } from "./lib/rf1086";
-import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "./lib/review";
+import { assertAdvisoryCanBeAcknowledged } from "./lib/review";
 import {
   assertStepUpAllowed,
   loadTrustedStepUpContext,
@@ -1201,10 +1195,17 @@ export async function queueDeadlineReminders(formData: FormData) {
     redirect(`/workspace?error=${encodeURIComponent(firstError.message)}`);
   }
 
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
+  const rfSource = await loadPresentedRf1086Source(accessToken, [companyId], incomeYear);
+  if (rfSource.error) redirect(`/workspace?error=${encodeURIComponent(rfSource.error)}`);
+
   const plan = buildDeadlineReminderPlan({
     incomeYear,
     recipientEmail: user.email.toLowerCase(),
-    submissions: submissions ?? [],
+    submissions: [...(submissions ?? []).filter((row) => !rfSource.submissions.some((owned) =>
+      owned.filing === row.filing && owned.income_year === row.income_year
+      && owned.mode === row.mode && owned.receipt_id === row.receipt_id)), ...rfSource.submissions],
     readinessSnapshots: readinessSnapshots ?? [],
     notifications: notifications ?? [],
     preferences,
@@ -1248,69 +1249,27 @@ export async function queueDeadlineReminders(formData: FormData) {
 }
 
 export async function generateRf1086Preview(formData: FormData) {
-  if (!hasSupabaseEnv()) {
-    redirect("/workspace?error=Supabase%20env%20mangler");
-  }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/login");
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/workspace?error=Innlogging%20kreves");
-  }
-
-  const companyId = formString(formData, "companyId");
-  const setupId = formString(formData, "setupId");
-  const company = await loadAcceptedMembershipCompany(companyId);
-  if (!company) {
-    redirect(`/workspace?error=${encodeURIComponent("Fant ikke selskap")}`);
-  }
-  const openingResult = await listOpeningSetups([company.id]);
-  const setup = openingResult.setups.find((candidate) => (
-    candidate.id === setupId && candidate.company_id === company.id
-  ));
-  if (openingResult.error || !setup) {
-    redirect(`/workspace?error=${encodeURIComponent(openingResult.error ?? "Fant ikke åpningsbalanse")}`);
-  }
-  const shareholders = openingResult.shareholders.filter(
-    (shareholder) => shareholder.setup_id === setup.id,
-  );
-  if (!shareholders.length) {
-    redirect(`/workspace?error=${encodeURIComponent("Fant ikke aksjonærer")}`);
-  }
-
-  let rendered;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  let result;
   try {
-    rendered = renderRf1086Preview(buildNoActivityRf1086Case(company, setup, shareholders));
+    result = await generateRf1086PreviewThroughApi(accessToken, {
+      companyId: requiredFormUuid(formData, "companyId"),
+      openingSnapshotId: requiredFormUuid(formData, "setupId"),
+    });
   } catch (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "RF-1086-generering feilet")}`);
+    redirect(`/workspace?error=${encodeURIComponent(rf1086ActionErrorMessage(error))}`);
   }
-
-  const { error: insertError } = await supabase.from("filing_previews").insert({
-    company_id: setup.company_id,
-    setup_id: setup.id,
-    income_year: setup.income_year,
-    filing: rendered.filing,
-    status: rendered.status,
-    issues: rendered.issues,
-    preview: rendered.preview,
-    hovedskjema_xml: rendered.hovedskjemaXml ?? null,
-    underskjema_xml: rendered.underskjemaXml ?? {},
-    source: "deterministic_rf1086_engine",
-    created_by: user.id,
-  });
-  if (insertError) {
-    redirect(`/workspace?error=${encodeURIComponent(insertError.message)}`);
-  }
-
   await supabase.from("audit_events").insert({
-    company_id: setup.company_id,
+    company_id: result.companyId,
     actor_id: user.id,
     category: "filing",
     action: "rf1086_preview_generated",
-    message: `RF-1086 forhåndsvisning generert for ${setup.income_year}.`,
+    message: `RF-1086 forhåndsvisning generert for ${result.incomeYear}.`,
   });
-
   revalidatePath("/");
   redirect(returnTarget(formData));
 }
@@ -1327,112 +1286,19 @@ export async function confirmSimulatedRf1086Submission(formData: FormData) {
     redirect("/workspace?error=Innlogging%20kreves");
   }
 
-  const previewId = formString(formData, "previewId");
-  const { data: preview, error: previewError } = await supabase
-    .from("filing_previews")
-    .select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at")
-    .eq("id", previewId)
-    .single();
-  if (previewError || !preview) {
-    redirect(`/workspace?error=${encodeURIComponent(previewError?.message ?? "Fant ikke RF-1086 forhåndsvisning")}`);
-  }
-  const { data: readinessSnapshot, error: readinessSnapshotError } = await supabase
-    .from("filing_readiness_snapshots")
-    .select("ready, status, hard_blocks, warnings")
-    .eq("company_id", preview.company_id)
-    .eq("income_year", preview.income_year)
-    .eq("obligation", "aksjonaerregisteroppgaven")
-    .maybeSingle();
-  if (readinessSnapshotError) {
-    redirect(`/workspace?error=${encodeURIComponent(readinessSnapshotError.message)}`);
-  }
-  if (!readinessSnapshot?.ready) {
-    redirect(`/workspace?error=${encodeURIComponent("Aksjonærregisteroppgaven readiness må være lagret og klar før innsending.")}`);
-  }
-  const { data: blockingComments, error: blockingCommentError } = await supabase
-    .from("filing_review_comments")
-    .select("id")
-    .eq("preview_id", preview.id)
-    .eq("severity", "hard_block");
-  if (blockingCommentError) {
-    redirect(`/workspace?error=${encodeURIComponent(blockingCommentError.message)}`);
-  }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
+  let result;
   try {
-    assertNoHardReviewBlocks((blockingComments ?? []).map(() => ({ severity: "hard_block" })));
-  } catch (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Hard review-blokk")}`);
-  }
-  const { data: blockingOverrides, error: blockingOverrideError } = await supabase
-    .from("filing_overrides")
-    .select("risk_level, field_target")
-    .eq("company_id", preview.company_id)
-    .eq("income_year", preview.income_year)
-    .eq("filing", preview.filing)
-    .eq("risk_level", "block");
-  if (blockingOverrideError) {
-    redirect(`/workspace?error=${encodeURIComponent(blockingOverrideError.message)}`);
-  }
-  try {
-    assertNoBlockingFilingOverrides(blockingOverrides ?? []);
-  } catch (error) {
-    redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Blokkerende filing-overstyring")}`);
-  }
-
-  let simulated;
-  try {
-    simulated = runRf1086SubmissionAdapter({
-      mode: "simulation",
-      preview,
-      userId: user.id,
-      confirmations: {
-        authorityConfirmed: formData.get("authorityConfirmed") === "on",
-        previewConfirmed: formData.get("previewConfirmed") === "on",
-      },
+    result = await confirmRf1086SimulationThroughApi(accessToken, {
+      previewId: formString(formData, "previewId"),
+      authorityConfirmed: formData.get("authorityConfirmed") === "on",
+      previewConfirmed: formData.get("previewConfirmed") === "on",
     });
   } catch (error) {
-    const message =
-      error instanceof Rf1086ProductionAdapterDisabledError
-        ? `${error.code}: ${error.message}`
-        : error instanceof Error
-          ? error.message
-          : "Simulert innsending feilet";
-    redirect(`/workspace?error=${encodeURIComponent(message)}`);
+    redirect(`/workspace?error=${encodeURIComponent(rf1086ActionErrorMessage(error))}`);
   }
-
-  const { error: upsertError } = await supabase.from("filing_submissions").upsert(
-    {
-      preview_id: preview.id,
-      company_id: preview.company_id,
-      setup_id: preview.setup_id,
-      income_year: preview.income_year,
-      filing: preview.filing,
-      mode: "simulation",
-      adapter_mode: "simulation",
-      payload_hash: rf1086PayloadHash(preview),
-      idempotency_key: rf1086SubmissionIdempotencyKey(preview),
-      status: simulated.status,
-      authority_confirmed_by: simulated.authority_confirmed_by,
-      authority_confirmed_at: simulated.authority_confirmed_at,
-      preview_confirmed_by: simulated.preview_confirmed_by,
-      preview_confirmed_at: simulated.preview_confirmed_at,
-      calls: simulated.calls,
-      receipt_id: simulated.receipt_id,
-      feedback_document_ids: simulated.feedback_document_ids,
-      feedback_items: rf1086SubmissionFeedbackItems(simulated),
-      receipt_metadata: rf1086ReceiptMetadata(simulated),
-      submitted_payload_ref: rf1086SubmittedPayloadReference(preview, simulated),
-      submitted_payload: rf1086SubmittedPayloadSnapshot(preview),
-      failure_code: simulated.failure_code,
-      failure_message: simulated.failure_message,
-      created_by: user.id,
-      submitted_by: user.id,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "preview_id" },
-  );
-  if (upsertError) {
-    redirect(`/workspace?error=${encodeURIComponent(upsertError.message)}`);
-  }
+  const preview = { company_id: result.companyId, income_year: result.incomeYear };
 
   await supabase.from("audit_events").insert({
     company_id: preview.company_id,
@@ -1459,13 +1325,24 @@ export async function addFilingOverride(formData: FormData) {
   }
 
   const previewId = formString(formData, "previewId");
-  const { data: preview, error: previewError } = await supabase
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
+  let rfPreview;
+  try { rfPreview = await findRf1086Preview(accessToken, previewId); }
+  catch (error) { redirect(`/workspace?error=${encodeURIComponent(rf1086ActionErrorMessage(error))}`); }
+  let preview;
+  if (rfPreview) {
+    preview = presentRf1086Preview(rfPreview);
+  } else {
+  const { data: legacyPreview, error: previewError } = await supabase
     .from("filing_previews")
     .select("id, company_id, income_year, filing")
     .eq("id", previewId)
     .single();
-  if (previewError || !preview) {
+  if (previewError || !legacyPreview) {
     redirect(`/workspace?error=${encodeURIComponent(previewError?.message ?? "Fant ikke forhåndsvisning")}`);
+  }
+  preview = legacyPreview;
   }
   if (formData.get("ownerConfirmed") !== "on") {
     redirect("/workspace?error=Overstyring%20m%C3%A5%20bekreftes%20av%20eier");
@@ -1485,6 +1362,15 @@ export async function addFilingOverride(formData: FormData) {
   }
 
   const confirmedAt = new Date().toISOString();
+  if (rfPreview) {
+    try {
+      await recordRf1086OverrideThroughApi(accessToken!, {
+        previewId, fieldTarget: override.fieldTarget, oldValue: override.oldValue,
+        newValue: override.newValue, reason: override.reason, riskLevel: override.riskLevel,
+        ownerConfirmed: formData.get("ownerConfirmed") === "on",
+      });
+    } catch (error) { redirect(`/workspace?error=${encodeURIComponent(rf1086ActionErrorMessage(error))}`); }
+  } else {
   const { error } = await supabase.from("filing_overrides").insert({
     preview_id: preview.id,
     company_id: preview.company_id,
@@ -1501,6 +1387,7 @@ export async function addFilingOverride(formData: FormData) {
   });
   if (error) {
     redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
+  }
   }
 
   await supabase.from("audit_events").insert({
@@ -1700,15 +1587,32 @@ export async function addFilingReviewComment(formData: FormData) {
     redirect("/workspace?error=Kommentar%20mangler");
   }
 
-  const { data: preview, error: previewError } = await supabase
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
+  let rfPreview;
+  try { rfPreview = await findRf1086Preview(accessToken, previewId); }
+  catch (error) { redirect(`/workspace?error=${encodeURIComponent(rf1086ActionErrorMessage(error))}`); }
+  let preview;
+  if (rfPreview) {
+    preview = presentRf1086Preview(rfPreview);
+  } else {
+  const { data: legacyPreview, error: previewError } = await supabase
     .from("filing_previews")
     .select("id, company_id")
     .eq("id", previewId)
     .single();
-  if (previewError || !preview) {
+  if (previewError || !legacyPreview) {
     redirect(`/workspace?error=${encodeURIComponent(previewError?.message ?? "Fant ikke forhåndsvisning")}`);
   }
+  preview = legacyPreview;
+  }
 
+  if (rfPreview) {
+    try { await addRf1086ReviewCommentThroughApi(accessToken!, {
+      previewId, severity: severity as "advisory" | "hard_block", body,
+    }); }
+    catch (error) { redirect(`/workspace?error=${encodeURIComponent(rf1086ActionErrorMessage(error))}`); }
+  } else {
   const { error } = await supabase.from("filing_review_comments").insert({
     preview_id: preview.id,
     company_id: preview.company_id,
@@ -1719,6 +1623,7 @@ export async function addFilingReviewComment(formData: FormData) {
   });
   if (error) {
     redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
+  }
   }
 
   await supabase.from("audit_events").insert({
@@ -1746,14 +1651,24 @@ export async function acknowledgeFilingReviewComment(formData: FormData) {
   }
 
   const commentId = formString(formData, "commentId");
-  const { data: comment, error: commentError } = await supabase
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
+  let ownedComment;
+  try { ownedComment = await acknowledgeOwnedRf1086Comment(accessToken, commentId); }
+  catch (error) { redirect(`/workspace?error=${encodeURIComponent(rf1086ActionErrorMessage(error))}`); }
+  let comment;
+  if (ownedComment) {
+    comment = { id: ownedComment.recordId, company_id: ownedComment.companyId, severity: "advisory" };
+  } else {
+  const { data: legacyComment, error: commentError } = await supabase
     .from("filing_review_comments")
     .select("id, company_id, severity")
     .eq("id", commentId)
     .single();
-  if (commentError || !comment) {
+  if (commentError || !legacyComment) {
     redirect(`/workspace?error=${encodeURIComponent(commentError?.message ?? "Fant ikke review-kommentar")}`);
   }
+  comment = legacyComment;
   try {
     assertAdvisoryCanBeAcknowledged({ severity: comment.severity });
   } catch (error) {
@@ -1767,6 +1682,8 @@ export async function acknowledgeFilingReviewComment(formData: FormData) {
     .eq("id", comment.id);
   if (error) {
     redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
+  }
+
   }
 
   await supabase.from("audit_events").insert({
@@ -4734,6 +4651,9 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     redirect(`/workspace?error=${encodeURIComponent(firstError.message)}`);
   }
 
+  const rfSource = await loadPresentedRf1086Source(accessToken, [companyId], incomeYear);
+  if (rfSource.error) redirect(`/workspace?error=${encodeURIComponent(rfSource.error)}`);
+
   const holdingActions = [
     ...(legacyHoldingActions ?? []).filter(
       (action) => ![
@@ -4770,13 +4690,13 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     holdingActions,
     bankTransactions: bankTransactions ?? [],
     documents: documents ?? [],
-    overrides: overrides ?? [],
+    overrides: composeFilingSources(overrides ?? [], rfSource.overrides),
     locks: locks ?? [],
     annualData: annualData ?? null,
     billingEntitlements,
-    authorityPermissions: authorityPermissions ?? [],
-    filingPreviews: filingPreviews ?? [],
-    filingSubmissions: filingSubmissions ?? [],
+    authorityPermissions: [...(authorityPermissions ?? []).filter((row) => !rfSource.authorityPermissions.some((owned) => owned.company_id === row.company_id && owned.obligation === row.obligation)), ...rfSource.authorityPermissions],
+    filingPreviews: composeFilingSources(filingPreviews ?? [], rfSource.previews),
+    filingSubmissions: composeFilingSources(filingSubmissions ?? [], rfSource.submissions),
     corporateDocuments: {
       enabled: process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true",
       readiness: corporateReadiness,
@@ -4902,6 +4822,12 @@ export async function confirmAuthorityPermission(formData: FormData) {
   }
   const now = new Date().toISOString();
   const productionEnabled = formData.get("productionEnabled") === "on";
+  if (obligation === "aksjonaerregisteroppgaven") {
+    const accessToken = await getCurrentSessionAccessToken();
+    if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
+    try { await confirmRf1086PermissionThroughApi(accessToken, { companyId, productionEnabled }); }
+    catch (error) { redirect(`/workspace?error=${encodeURIComponent(rf1086ActionErrorMessage(error))}`); }
+  } else {
   const { error } = await supabase.from("authority_permissions").upsert(
     {
       company_id: companyId,
@@ -4916,6 +4842,7 @@ export async function confirmAuthorityPermission(formData: FormData) {
   );
   if (error) {
     redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
+  }
   }
 
   await supabase.from("audit_events").insert({
@@ -4975,9 +4902,21 @@ export async function recordAuthorityTestEvidence(formData: FormData) {
     redirect(`/workspace?error=${encodeURIComponent(error instanceof Error ? error.message : "Ugyldig test-evidens")}`);
   }
 
+  if (obligation === "aksjonaerregisteroppgaven") {
+    const accessToken = await getCurrentSessionAccessToken();
+    if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
+    try { await recordRf1086TestEvidenceThroughApi(accessToken, {
+        companyId, environment, status, testReference: record.test_reference,
+        feedbackSummary: record.feedback_summary, receiptReference: record.receipt_reference,
+        archiveReference: record.archive_reference, evidenceUrl: record.evidence_url,
+        payloadHash: record.payload_hash,
+      }); }
+    catch (error) { redirect(`/workspace?error=${encodeURIComponent(rf1086ActionErrorMessage(error))}`); }
+  } else {
   const { error } = await supabase.from("authority_test_runs").insert(record);
   if (error) {
     redirect(`/workspace?error=${encodeURIComponent(error.message)}`);
+  }
   }
 
   await supabase.from("audit_events").insert({
@@ -5252,27 +5191,11 @@ export async function refreshSystemUserRequestAction(formData: FormData) {
   redirect(destination);
 }
 
-const RF1086_PRODUCTION_ADAPTER_VERSION = "rf1086-production-v1";
-
-function sha256(value: string) {
-  return createHash("sha256").update(value, "utf8").digest("hex");
-}
-
 function rf1086ProductionErrorTarget(
   returnTo: string,
   productionError: Rf1086OwnerActionErrorCode,
 ) {
   return `${returnTo}?productionError=${productionError}`;
-}
-
-function reportRf1086ProductionFailure(operation: string, error: unknown) {
-  const candidateCode = typeof error === "object" && error !== null && "code" in error
-    ? String(error.code)
-    : "UNCLASSIFIED";
-  const code = /^[A-Za-z0-9_:-]{1,100}$/u.test(candidateCode)
-    ? candidateCode
-    : "UNCLASSIFIED";
-  console.error("RF-1086 production operation failed.", { operation, code });
 }
 
 export async function upsertProductionPilotEntitlement(formData: FormData) {
@@ -5341,54 +5264,25 @@ export async function approveProductionFiling(formData: FormData) {
   try {
     previewId = requiredFormUuid(formData, "previewId");
     entitlementId = requiredFormUuid(formData, "entitlementId");
-  } catch (error) {
-    reportRf1086ProductionFailure("validate_approval_basis", error);
+  } catch {
     redirect(rf1086ProductionErrorTarget(returnTo, "invalid_request"));
   }
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  const { data: preview, error: previewError } = await supabase
-    .from("filing_previews").select("*").eq("id", previewId).single();
-  if (previewError || !preview) {
-    reportRf1086ProductionFailure("load_approval_preview", previewError);
-    redirect(rf1086ProductionErrorTarget(returnTo, "basis_unavailable"));
-  }
-  await requireSensitiveActionStepUp(supabase, user.id, preview.company_id, "production_filing");
-  const company = await loadAcceptedMembershipCompany(preview.company_id);
-  if (!company || preview.status !== "ready" || !preview.hovedskjema_xml) {
-    redirect(rf1086ProductionErrorTarget(returnTo, "basis_unavailable"));
-  }
-  const documentHashes = {
-    hovedskjema: sha256(preview.hovedskjema_xml),
-    ...Object.fromEntries(Object.entries(preview.underskjema_xml as Record<string, string>)
-      .map(([name, xml]) => [`underskjema_${name}`, sha256(xml)])),
-  };
-  const manifest = buildProductionApprovalManifest({
-    companyId: preview.company_id,
-    userId: user.id,
-    organizationNumber: company.org_number,
-    incomeYear: preview.income_year,
-    obligation: "aksjonaerregisteroppgaven",
-    caseProfile: "rf1086_no_activity_v1",
-    adapterVersion: RF1086_PRODUCTION_ADAPTER_VERSION,
-    previewId: preview.id,
-    payloadHash: rf1086PayloadHash(preview),
-    documentHashes,
-    blockers: [],
-    warnings: (preview.issues as { level: string; message: string }[])
-      .filter((issue) => issue.level === "warning").map((issue) => issue.message),
-  });
-  const { error } = await supabase.rpc("approve_production_filing", {
-    p_preview_id: preview.id,
-    p_entitlement_id: entitlementId,
-    p_manifest: manifest,
-    p_manifest_hash: productionApprovalHash(manifest),
-    p_adapter_version: RF1086_PRODUCTION_ADAPTER_VERSION,
-  });
-  if (error) {
-    reportRf1086ProductionFailure("approve", error);
-    redirect(rf1086ProductionErrorTarget(returnTo, "unavailable"));
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/login");
+  try {
+    await approveRf1086ProductionThroughApi(accessToken, {
+      previewId,
+      entitlementId,
+      realFilingConfirmed: formData.get("realFilingConfirmed") === "on",
+    });
+  } catch (error) {
+    const code = rf1086ApiErrorCode(error);
+    if (code === "authentication_required") redirect("/login");
+    if (code === "step_up_required") {
+      redirect(`/workspace?error=${encodeURIComponent(rf1086ActionErrorMessage(error))}`);
+    }
+    revalidatePath(returnTo);
+    redirect(rf1086ProductionErrorTarget(returnTo, safeRf1086OwnerErrorCode(code)));
   }
   revalidatePath(returnTo);
   redirect(`${returnTo}?approved=1`);

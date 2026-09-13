@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { fixtureTableTransaction, deleteRfFixtureCompanies } from "./support/rf1086-fixture-access.mjs";
 import { createHash, createHmac, generateKeyPairSync, randomInt, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -47,7 +48,7 @@ test("owner connects through hydrated Next, generated FastAPI transport, real RL
     if (resources.connected) {
       for (const role of resources.roles) await attempt(() => database.query(`alter role ${role} nologin password null`));
       await attempt(async () => {
-        const objects = await database.query("select d.storage_key from public.documents d join public.production_feedback_artifacts a on a.document_id=d.id where a.company_id=any($1::uuid[])", [resources.companies]);
+        const objects = await rfFixtureTransaction(database, () => database.query("select d.storage_key from public.documents d join shareholder_register_filing.production_feedback_artifacts a on a.document_id=d.id where a.company_id=any($1::uuid[])", [resources.companies]));
         if (objects.rows.length) assert.ifError((await admin.storage.from("company-documents").remove(objects.rows.map(({ storage_key }) => storage_key))).error);
       });
       await attempt(() => cleanupFixture(database, resources.companies, resources.users));
@@ -197,13 +198,13 @@ test("owner connects through hydrated Next, generated FastAPI transport, real RL
     assert.equal(await retry.evaluate((element) => element === document.activeElement), true);
     await retry.press("Enter");
     await productionSection.getByText("Godkjent", { exact: true }).waitFor();
-    const storedFiling = await database.query("select feedback_state from public.production_filing_submissions where id=$1", [production.submissionId]);
+    const storedFiling = await rfFixtureTransaction(database, () => database.query("select feedback_state from shareholder_register_filing.production_filing_submissions where id=$1", [production.submissionId]));
     assert.equal(storedFiling.rows[0].feedback_state, "accepted");
     for (let reload = 0; reload < 2; reload += 1) {
       await page.reload();
       await productionSection.getByText("Godkjent", { exact: true }).waitFor();
     }
-    const artifact = (await database.query("select document_id,sha256 from public.production_feedback_artifacts where submission_id=$1", [production.submissionId])).rows;
+    const artifact = (await rfFixtureTransaction(database, () => database.query("select document_id,sha256 from shareholder_register_filing.production_feedback_artifacts where submission_id=$1", [production.submissionId]))).rows;
     assert.equal(artifact.length, 1);
     for (const width of [320, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 });
@@ -324,24 +325,7 @@ async function seedCompany(admin, database, ownerId, name, companies) {
 }
 
 async function authorityFixtureTransaction(database, operation) {
-  await database.query("begin");
-  try {
-    await database.query("set local session_replication_role=replica");
-    await database.query(`do $fixture$ begin execute format('grant authority_connections_store_owner to %I',current_user); end $fixture$`);
-    await database.query("set local role authority_connections_store_owner");
-    await database.query("alter table authority_connections.authority_operations no force row level security");
-    await database.query("alter table authority_connections.system_user_requests no force row level security");
-    const result = await operation();
-    await database.query("alter table authority_connections.authority_operations force row level security");
-    await database.query("alter table authority_connections.system_user_requests force row level security");
-    await database.query("reset role");
-    await database.query(`do $fixture$ begin execute format('revoke authority_connections_store_owner from %I',current_user); end $fixture$`);
-    await database.query("commit");
-    return result;
-  } catch (error) {
-    await database.query("rollback");
-    throw error;
-  }
+  return fixtureTableTransaction(database, ["authority_connections.authority_operations", "authority_connections.system_user_requests"], operation);
 }
 
 async function seedCallbackAudit(database, actorId) {
@@ -354,12 +338,12 @@ async function seedCallbackAudit(database, actorId) {
 
 async function cleanupFixture(database, companyIds, userIds) {
   await rfFixtureTransaction(database, async () => {
-    await database.query("delete from public.production_feedback_artifacts where company_id=any($1::uuid[])", [companyIds]);
+    await database.query("delete from shareholder_register_filing.production_feedback_artifacts where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from documents.evidence_references where document_id in (select id from public.documents where company_id=any($1::uuid[]))", [companyIds]);
-    await database.query("delete from public.production_filing_events where submission_id in (select id from public.production_filing_submissions where company_id=any($1::uuid[]))", [companyIds]);
-    await database.query("delete from public.production_filing_submissions where company_id=any($1::uuid[])", [companyIds]);
-    await database.query("delete from public.filing_approval_snapshots where company_id=any($1::uuid[])", [companyIds]);
-    await database.query("delete from public.filing_previews where company_id=any($1::uuid[])", [companyIds]);
+    await database.query("delete from shareholder_register_filing.production_filing_events where submission_id in (select id from shareholder_register_filing.production_filing_submissions where company_id=any($1::uuid[]))", [companyIds]);
+    await database.query("delete from shareholder_register_filing.production_filing_submissions where company_id=any($1::uuid[])", [companyIds]);
+    await database.query("delete from shareholder_register_filing.filing_approval_snapshots where company_id=any($1::uuid[])", [companyIds]);
+    await database.query("delete from shareholder_register_filing.filing_previews where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from public.documents where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from billing.production_pilot_entitlements where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from public.company_archive_source_generations where company_id=any($1::uuid[])", [companyIds]);
@@ -368,15 +352,14 @@ async function cleanupFixture(database, companyIds, userIds) {
     await database.query("delete from authority_connections.system_user_requests where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from authority_connections.authority_operations where actor_id=any($1::uuid[])", [userIds]);
   });
-  await database.query("begin");
-  try {
-    await database.query("set local session_replication_role=replica");
+  await fixtureTableTransaction(database, ["public.audit_events", "public.customer_agreement_acceptances",
+    "public.company_memberships", "public.companies", "public.company_archive_source_generations"], async () => {
     await database.query("delete from public.audit_events where actor_id=any($1::uuid[])", [userIds]);
     await database.query("delete from public.customer_agreement_acceptances where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from public.company_memberships where company_id=any($1::uuid[])", [companyIds]);
-    await database.query("delete from public.companies where id=any($1::uuid[])", [companyIds]);
-    await database.query("commit");
-  } catch (error) { await database.query("rollback"); throw error; }
+    await database.query("delete from public.company_archive_source_generations where company_id=any($1::uuid[])", [companyIds]);
+    await deleteRfFixtureCompanies(database, companyIds);
+  });
 }
 
 async function login(page, origin, user) {
@@ -422,22 +405,17 @@ async function browserSession(context) {
 
 
 async function rfFixtureTransaction(database, operation) {
-  await database.query("begin");
-  try {
-    await database.query("set local session_replication_role=replica");
-    await database.query(`do $fixture$ begin execute format('grant billing_store_owner,documents_store_owner to %I',current_user); end $fixture$`);
-    const result = await operation();
-    await database.query(`do $fixture$ begin execute format('revoke billing_store_owner,documents_store_owner from %I',current_user); end $fixture$`);
-    await database.query("commit");
-    return result;
-  } catch (error) { await database.query("rollback"); throw error; }
+  return fixtureTableTransaction(database, ["shareholder_register_filing.filing_previews", "shareholder_register_filing.filing_approval_snapshots",
+    "shareholder_register_filing.production_filing_submissions", "shareholder_register_filing.production_filing_events",
+    "shareholder_register_filing.production_feedback_artifacts", "billing.production_pilot_entitlements",
+    "public.documents", "documents.evidence_references"], operation);
 }
 
 async function seedHistoricalRf(database, companyId, ownerId, request) {
   const [previewId, entitlementId, approvalId, submissionId, forsendelseId, dialogId, shareholderId] = Array.from({ length: 7 }, randomUUID);
   const hash = createHash("sha256").update("local historical RF fixture").digest("hex");
   await rfFixtureTransaction(database, async () => {
-    await database.query(`insert into public.filing_previews(id,company_id,income_year,filing,status,issues,preview,hovedskjema_xml,underskjema_xml,created_by)
+    await database.query(`insert into shareholder_register_filing.filing_previews(id,company_id,income_year,filing,status,issues,preview,hovedskjema_xml,underskjema_xml,created_by)
       values($1,$2,2025,'aksjonærregisteroppgaven','ready','[]','Local historical RF fixture','<H>original</H>',$3::jsonb,$4)`,
       [previewId, companyId, JSON.stringify({ [shareholderId]: "<U>original</U>" }), ownerId]);
     // Historical recovery retains its original basis even after the pilot ends
@@ -446,15 +424,15 @@ async function seedHistoricalRf(database, companyId, ownerId, request) {
       system_user_request_id,system_user_external_reference,starts_at,expires_at,evidence_reference,approved_by)
       values($1,$2,$3,2025,'aksjonaerregisteroppgaven','rf1086_no_activity_v1','suspended',true,$4,$5,now()-interval '2 days',now()-interval '1 day','local-browser-historical',$3)`,
       [entitlementId, companyId, ownerId, request.id, request.external_ref]);
-    await database.query(`insert into public.filing_approval_snapshots(id,entitlement_id,preview_id,company_id,user_id,income_year,obligation,case_profile,
+    await database.query(`insert into shareholder_register_filing.filing_approval_snapshots(id,entitlement_id,preview_id,company_id,user_id,income_year,obligation,case_profile,
       adapter_version,payload_hash,manifest_hash,manifest,approved_by,invalidated_at,invalidation_reason)
       values($1,$2,$3,$4,$5,2025,'aksjonaerregisteroppgaven','rf1086_no_activity_v1','rf1086-production-v1',$6,$6,'{"proof":"historical-local"}',$5,now(),'local historical proof')`,
       [approvalId, entitlementId, previewId, companyId, ownerId, hash]);
-    await database.query(`insert into public.production_filing_submissions(id,approval_id,entitlement_id,company_id,user_id,income_year,obligation,case_profile,
+    await database.query(`insert into shareholder_register_filing.production_filing_submissions(id,approval_id,entitlement_id,company_id,user_id,income_year,obligation,case_profile,
       payload_hash,adapter_version,environment,status,authority_references,submitted_by,feedback_state,feedback_forsendelse_id)
       values($1,$2,$3,$4,$5,2025,'aksjonaerregisteroppgaven','rf1086_no_activity_v1',$6,'rf1086-production-v1','production','processing','{}',$5,'processing',$7)`,
       [submissionId, approvalId, entitlementId, companyId, ownerId, hash, forsendelseId]);
-    await database.query(`insert into public.production_filing_events(submission_id,operation_name,operation_state,attempt,body_hash,idempotency_key,authority_reference,resulting_status)
+    await database.query(`insert into shareholder_register_filing.production_filing_events(submission_id,operation_name,operation_state,attempt,body_hash,idempotency_key,authority_reference,resulting_status)
       values($1,'confirm','succeeded',1,$2,$3,$4,'received')`, [submissionId, hash, randomUUID(), JSON.stringify({ dialogId, forsendelseId })]);
   });
   return { submissionId, forsendelseId };

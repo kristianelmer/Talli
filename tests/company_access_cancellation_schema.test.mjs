@@ -27,6 +27,10 @@ const billingCapabilityPath = new URL(
   "../supabase/migrations/20260905010000_billing_capability.sql",
   import.meta.url,
 );
+const rfCutoverPath = new URL(
+  "../supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql",
+  import.meta.url,
+);
 
 function sql(path) {
   return readFileSync(path, "utf8");
@@ -85,6 +89,7 @@ test("archive route and generation triggers share one complete source inventory"
   const investmentsStageExit = sql(investmentsStageExitPath);
   const corporateGovernanceStageExit = sql(corporateGovernanceStageExitPath);
   const billingCapability = sql(billingCapabilityPath);
+  const rfCutover = sql(rfCutoverPath);
   const inventory = JSON.parse(sql(archiveInventoryPath));
   const declared = new Map(inventory.sources.map((item) => [item.table, item.scope]));
   const routeTables = new Set([...route.matchAll(/\.from\("([a-z0-9_]+)"\)/gu)].map((match) => match[1]));
@@ -95,6 +100,16 @@ test("archive route and generation triggers share one complete source inventory"
     // Ledger is now loaded through its generated capability query instead of
     // a direct Supabase `.from("ledger_entries")` call.
     "ledger_entries",
+    // Opening shares and bank amounts come from their separate owners. The
+    // other RF sources supplement the retained sibling filing table reads.
+    "shareholder_register_filing.opening_balance_setups",
+    "shareholder_register_filing.opening_shareholders",
+    "ledger.opening_bank_inputs",
+    "shareholder_register_filing.filing_previews",
+    "shareholder_register_filing.filing_submissions",
+    "shareholder_register_filing.authority_permissions",
+    "shareholder_register_filing.authority_test_runs",
+    "shareholder_register_filing.filing_review_comments",
     // Documents are now loaded through their owned backup projection.
     "documents",
     // Investments are now loaded through generated capability queries. These
@@ -126,6 +141,9 @@ test("archive route and generation triggers share one complete source inventory"
     [...source.matchAll(/\('([a-z0-9_]+)',\s*'(year|company)',\s*'(?:id|company_id)'\)/gu)]
       .map((match) => [match[1], match[2]]),
   );
+  for (const retiredOpeningTable of ["opening_balance_setups", "opening_shareholders"]) {
+    legacyTriggerInventory.delete(retiredOpeningTable);
+  }
   for (const legacyInvestmentTable of [
     "investment_positions",
     "investment_lots",
@@ -163,6 +181,9 @@ test("archive route and generation triggers share one complete source inventory"
     ...legacyTriggerInventory,
     ...canonicalInvestmentTriggerInventory,
     ...canonicalCorporateTriggerInventory,
+    ...[...rfCutover.matchAll(
+      /before insert or delete or update on ((?:shareholder_register_filing|ledger)\.[a-z0-9_]+) for each row\s+execute function public\.company_archive_track_source_write_v1\('(year|company)', 'company_id'\)/giu,
+    )].map((match) => [match[1], match[2]]),
   ]);
   assert.deepEqual([...triggerInventory.entries()].sort(), [...declared.entries()].sort());
   assert.match(source, /\('companies', 'company', 'id'\)/u);
@@ -181,6 +202,10 @@ test("archive route and generation triggers share one complete source inventory"
       < route.indexOf("loadAcceptedMembershipCompany(companyId)"),
     "every authoritative source read must follow the generation boundary",
   );
+  for (const read of ["loadArchiveOpeningSnapshots(accessToken, companyId, incomeYear)", "loadArchiveRf1086(accessToken, companyId, incomeYear)"]) {
+    assert.ok(route.indexOf(read) > route.indexOf('"company_archive_begin_export"'));
+    assert.ok(route.indexOf(read) < route.indexOf('"company_archive_complete_export"'));
+  }
 });
 
 test("expand deterministically supersedes and conceals legacy duplicates", () => {
@@ -377,5 +402,5 @@ test("contract migration removes direct cancellation access only after generated
 
 test("the release Supabase suite includes cancellation schema coverage", () => {
   const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-  assert.match(packageJson.scripts["test:supabase"], /tests\/company_access_cancellation_schema\.test\.mjs/u);
+  assert.match(packageJson.scripts["test:supabase-predecessor"], /tests\/company_access_cancellation_schema\.test\.mjs/u);
 });

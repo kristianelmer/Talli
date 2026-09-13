@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import vm from "node:vm";
 import test from "node:test";
 
 import {
@@ -91,4 +94,68 @@ test("owner browser harness rejects a remote database mixed with local Supabase"
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Browser fixtures require local database/u);
+});
+
+
+test("retained annual browser seeds canonical historical RF/AU facts without replacing the live simulation", async () => {
+  const source = readFileSync(new URL("./browser_owner_annual_loop.mjs", import.meta.url), "utf8");
+  const seedSource = source.slice(source.indexOf("async function seedAnnualLoop("), source.indexOf("async function establishOwnerAal2("));
+  const sql = [];
+  const inserts = [];
+  const borrowed = [];
+  const database = { async query(statement, values) {
+    sql.push({ statement, values });
+    return { rows: [{ id: "fixture-permission", exact: true, count: 0 }] };
+  } };
+  const admin = { from(table) { return { async insert(value) { inserts.push({ table, value }); return { error: null }; } }; } };
+  const seed = vm.runInNewContext(`(${seedSource.trim()})`, {
+    assert, createHash,
+    async assertNoError(query) { assert.ifError((await query).error); },
+    async fixtureTableTransaction(actualDatabase, tables, operation) {
+      assert.equal(actualDatabase, database);
+      borrowed.push(...tables);
+      return operation();
+    },
+  });
+  const ids = Object.fromEntries(["companyId", "setupId", "shareholderId", "previewId", "systemUserRequestId", "ownerId", "orgNumber"].map((name, index) => [name, `fixture-${index}`]));
+  let created = 0;
+  await seed(admin, database, ids, () => { created += 1; });
+  assert.equal(created, 1);
+  const statements = sql.map(row => row.statement).join("\n");
+  assert.match(statements, /insert into authority_connections\.system_user_requests/u);
+  assert.doesNotMatch(statements, /insert into public\.system_user_requests/u);
+  assert.match(statements, /insert into shareholder_register_filing\.filing_previews/u);
+  assert.match(statements, /insert into shareholder_register_filing\.authority_permissions/u);
+  assert.match(statements, /insert into ledger\.opening_bank_inputs/u);
+  for (const schema of ["public", "shareholder_register_filing"]) {
+    for (const table of ["opening_balance_setups", "opening_shareholders"]) {
+      const row = sql.find(row => row.statement.includes(`insert into ${schema}.${table}`));
+      assert.ok(row, `${schema}.${table} is seeded with the same historical source`);
+      assert.ok(row.values.includes(table === "opening_shareholders" ? ids.shareholderId : ids.setupId));
+      assert.ok(row.values.includes(ids.companyId) && row.values.includes(ids.ownerId));
+    }
+  }
+  assert.ok(borrowed.includes("authority_connections.system_user_requests"));
+  assert.ok(borrowed.includes("shareholder_register_filing.filing_previews"));
+  for (const [table, id] of [["authority_permissions", "fixture-permission"], ["filing_previews", ids.previewId]]) {
+    assert.ok(borrowed.includes(`public.${table}`));
+    const mirror = sql.find(row => row.statement.includes(`insert into public.${table}`));
+    assert.ok(mirror.statement.includes(`jsonb_populate_record(null::public.${table},to_jsonb(r))`));
+    assert.equal(mirror.values[0], id);
+    assert.ok(sql.some(row => row.statement.includes(`from public.${table} p join shareholder_register_filing.${table}`)
+      && row.values[0] === id), "every historical mirror verifies full-row identity");
+  }
+  const preview = sql.find(row => row.statement.includes("insert into shareholder_register_filing.filing_previews"));
+  assert.ok(preview.values.includes(ids.previewId) && preview.values.includes(ids.setupId));
+  assert.ok(preview.values.includes("<RF-1086><org>test</org></RF-1086>"));
+  assert.equal(JSON.parse(preview.values.find(value => typeof value === "string" && value.startsWith("{")))[ids.shareholderId],
+    "<RF-1086U><shareholder>test</shareholder></RF-1086U>");
+  const permissions = inserts.find(row => row.table === "authority_permissions");
+  assert.deepEqual(Array.from(permissions.value, row => row.obligation), ["skattemelding", "aarsregnskap"]);
+  assert.doesNotMatch(statements, /insert into (?:public|shareholder_register_filing)\.(?:filing_submissions|filing_approval_snapshots|production_filing_submissions)/u);
+  assert.doesNotMatch(statements, /(?:paid|charge)_at|billing_accounts/u);
+  assert.match(source, /set local role ledger_executor/u);
+  assert.match(source, /backend_system\.read_new_year_opening_snapshots_v1/u);
+  assert.doesNotMatch(source, /backend_system\.list_opening_snapshots_legacy_v1/u);
+  assert.match(source, /Arkiver simulert kvittering/u);
 });

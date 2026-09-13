@@ -1,0 +1,60 @@
+{
+  "originalRevision": "91b178c281bcc5fb887a6257d2f72e380199f3e6",
+  "originalRouteSha256": "22565d88597bd9dc05a3e0dddec0b6c851c251466147eeabfceb8a01dc314c07",
+  "equivalentArchiveInputFields": [
+    "company",
+    "incomeYear",
+    "setups",
+    "shareholders",
+    "ledgerEntries",
+    "documents",
+    "documentBackupProjection",
+    "holdingActions",
+    "investmentPositions",
+    "investmentLots",
+    "investmentLotAllocations",
+    "investmentCorrections",
+    "effectiveInvestmentActions",
+    "bankSuggestionAcceptances",
+    "billingAccounts",
+    "authorityPermissions",
+    "authorityTestRuns",
+    "auditEvents",
+    "reviewComments",
+    "filingPreviews",
+    "filingSubmissions",
+    "corporateDecisions",
+    "corporateDocumentSets",
+    "corporateDocumentArtifacts",
+    "corporateDocumentEvents",
+    "corporateDecisionFinalizations",
+    "supportedCorporateEvents"
+  ],
+  "oldReadTables": [
+    "filing_submissions",
+    "opening_balance_setups",
+    "filing_previews",
+    "holding_actions",
+    "authority_permissions",
+    "filing_review_comments",
+    "audit_events",
+    "bank_suggestion_acceptances",
+    "opening_shareholders"
+  ],
+  "newReadTables": [
+    "filing_submissions",
+    "filing_previews",
+    "holding_actions",
+    "authority_permissions",
+    "filing_review_comments",
+    "audit_events",
+    "bank_suggestion_acceptances"
+  ],
+  "nestedPayloadValuesIdentical": true,
+  "onlyRemovedTableReads": [
+    "opening_balance_setups",
+    "opening_shareholders"
+  ],
+  "bothCompleteAfterSources": true,
+  "limits": "Executed real route with synthetic local source adapters; no database/provider/hosted calls."
+}

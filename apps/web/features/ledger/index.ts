@@ -5,6 +5,7 @@ export {
   loadLedgerPeriodLocks,
   loadLedgerReconstructionAssessment,
   loadOpeningSnapshots,
+  loadOpeningSnapshotsForYear,
   lockLedgerPeriod,
   postLedgerAdministrativeCost,
   postLedgerManualJournal,

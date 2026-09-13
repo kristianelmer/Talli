@@ -11,6 +11,7 @@ import {
   loadLedgerCompanyYearCloseAssessment,
   loadLedgerReconstructionAssessment,
   loadOpeningSnapshots,
+  loadOpeningSnapshotsForYear,
   postLedgerAdministrativeCost,
   postLedgerManualJournal,
   startNewYear,
@@ -163,6 +164,69 @@ function openingSnapshot(overrides = {}) {
 
 function openingPage(items, nextCursor = null) {
   return { items, hasMore: nextCursor !== null, nextCursor };
+}
+
+test("year-scoped opening transport sends one exact company/year read and preserves zero or one row", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.TALLI_BACKEND_URL;
+  const calls = [];
+  const snapshot = openingSnapshot({ incomeYear: 2025 });
+  globalThis.fetch = async (url, request) => {
+    calls.push({ url: new URL(url), request });
+    return Response.json(openingPage(calls.length === 1 ? [] : [snapshot]));
+  };
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+  try {
+    assert.deepEqual(await loadOpeningSnapshotsForYear("session-token", OPENING_COMPANY_ID, 2025, "opening-year-test"), []);
+    assert.deepEqual(await loadOpeningSnapshotsForYear("session-token", OPENING_COMPANY_ID, 2025, "opening-year-test"), [snapshot]);
+    assert.equal(calls.length, 2);
+    for (const { url, request } of calls) {
+      assert.equal(url.origin, "https://backend.example");
+      assert.equal(url.pathname, "/api/v1/ledger/opening-snapshots/by-year");
+      assert.deepEqual([...url.searchParams.entries()].sort(), [["companyId", OPENING_COMPANY_ID], ["incomeYear", "2025"]]);
+      assert.equal(request.method ?? "GET", "GET");
+      assert.equal(request.body, undefined);
+      const headers = new Headers(request.headers);
+      assert.equal(headers.get("Authorization"), "Bearer session-token");
+      assert.equal(headers.get("X-Request-ID"), "opening-year-test");
+      assert.equal(request.signal instanceof AbortSignal, true);
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = originalUrl;
+  }
+});
+
+for (const [label, result] of [
+  ["another year", openingPage([openingSnapshot({ incomeYear: 2024 })])],
+  ["another company", openingPage([openingSnapshot({ companyId: "10000000-0000-0000-0000-000000000099" })])],
+  ["multiple snapshots", openingPage([openingSnapshot(), openingSnapshot()])],
+  ["a continuation page", openingPage([openingSnapshot()], "unexpected-next")],
+  ["a hidden continuation cursor", { items: [], hasMore: false, nextCursor: "unexpected-next" }],
+  ["an incomplete page", { items: [], hasMore: true, nextCursor: null }],
+  ["inconsistent share capital", openingPage([openingSnapshot({ shareCapital: { amount: "29999.00", currency: "NOK" } })])],
+  ["a holder bound to another setup", openingPage([openingSnapshot({ shareholders: [{ ...openingSnapshot().shareholders[0], setupId: "60000000-0000-0000-0000-000000000099" }] })])],
+  ["inconsistent shareholder totals", openingPage([openingSnapshot({ shareholders: [{ ...openingSnapshot().shareholders[0], shareCount: 99 }] })])],
+]) {
+  test(`year-scoped opening transport rejects ${label} without a broader or repeated read`, async () => {
+    const originalFetch = globalThis.fetch;
+    const originalUrl = process.env.TALLI_BACKEND_URL;
+    const calls = [];
+    globalThis.fetch = async url => { calls.push(new URL(url)); return Response.json(result); };
+    process.env.TALLI_BACKEND_URL = "https://backend.example";
+    try {
+      await assert.rejects(loadOpeningSnapshotsForYear("session-token", OPENING_COMPANY_ID, 2026), /inconsistent/u);
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].pathname, "/api/v1/ledger/opening-snapshots/by-year");
+      assert.deepEqual(calls[0].searchParams.getAll("companyId"), [OPENING_COMPANY_ID]);
+      assert.equal(calls[0].searchParams.get("incomeYear"), "2026");
+    } finally {
+      globalThis.fetch = originalFetch;
+      if (originalUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+      else process.env.TALLI_BACKEND_URL = originalUrl;
+    }
+  });
 }
 
 test("opening-snapshot transport chunks companies and follows opaque pages", async () => {

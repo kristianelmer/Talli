@@ -1,0 +1,174 @@
+{
+  "schemaVersion": "1.0",
+  "reviewKind": "independent-read-only-gate1-evidence-verification",
+  "reviewedAt": "2026-09-10T13:10:11.270Z",
+  "revision": "dd1a7dba8192746f5e882d5b119d895bf7730ce1",
+  "verdict": "PASS_11_OF_11_FIRST_GATE_ONLY",
+  "receiptPath": "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+  "transcriptPath": "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.log",
+  "schemaValidation": "PASS: committed Draft2020-12 schema using Ajv2020; UTC ISO date-time checked",
+  "canonicalization": "recursive sorted object keys; arrays unchanged; compact JSON; no newline",
+  "canonicalDigest": "sha256:a50f815ba3c980b1f3e48d559f850a9ee2732210a43c31e63f70f77ba3d14fc5",
+  "rawReceiptDigest": "sha256:ce4d48f4e6cabb667871a33f9e1ce8c229c7bff63d491b760f5cf0a3063ecb94",
+  "transcriptDigest": "sha256:41a8db718e186ea0c294aa6484e9f926b24ae32835902df89531ce5cd732000e",
+  "testedProducerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+  "startedAt": "2026-09-10T12:46:33.872Z",
+  "executedAt": "2026-09-10T13:06:15.791Z",
+  "elapsedMs": 1181919,
+  "sumRecordedDurationsIncludingSchemaSetupMs": 1181917,
+  "overheadMs": 2,
+  "checks": [
+    {
+      "name": "credential-scan",
+      "command": "npm run test:credential-scan",
+      "exitCode": 0,
+      "durationMs": 1002
+    },
+    {
+      "name": "typecheck",
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "durationMs": 5382
+    },
+    {
+      "name": "architecture",
+      "command": "npm run check:architecture",
+      "exitCode": 0,
+      "durationMs": 14632
+    },
+    {
+      "name": "boundary",
+      "command": "npm run test:boundary",
+      "exitCode": 0,
+      "durationMs": 171093
+    },
+    {
+      "name": "build-web",
+      "command": "TALLI_BACKEND_URL=http://127.0.0.1:8000 TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY=<local-only> npm run build:web && npm run test:browser-public-acquisition:built",
+      "exitCode": 0,
+      "durationMs": 14701
+    },
+    {
+      "name": "build-backend",
+      "command": "npm run build:backend",
+      "exitCode": 0,
+      "durationMs": 1546
+    },
+    {
+      "name": "boundary-smoke",
+      "command": "npm run test:boundary-smoke",
+      "exitCode": 0,
+      "durationMs": 7428
+    },
+    {
+      "name": "launch-rehearsal",
+      "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47> npm run test:launch-rehearsal",
+      "exitCode": 0,
+      "durationMs": 265108
+    },
+    {
+      "name": "production-dependency-audit",
+      "command": "npm audit --omit=dev --audit-level=high && npm audit --prefix apps/web --omit=dev --audit-level=high",
+      "exitCode": 0,
+      "durationMs": 1249
+    },
+    {
+      "name": "database-isolation",
+      "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python npm run test:supabase:local",
+      "exitCode": 0,
+      "durationMs": 677085
+    },
+    {
+      "name": "whitespace",
+      "command": "bash scripts/check-clean-worktree.sh",
+      "exitCode": 0,
+      "durationMs": 79
+    }
+  ],
+  "schemaSetup": {
+    "name": "schema-setup",
+    "command": "git clone --depth 1 --branch v1.62.47 https://github.com/Skatteetaten/skattemeldingen.git",
+    "exitCode": 0,
+    "durationMs": 22612
+  },
+  "sourceState": {
+    "head": "dd1a7dba8192746f5e882d5b119d895bf7730ce1",
+    "productSourceDiffEmpty": true,
+    "postRunChangedEvidencePaths": [
+      "architecture/evidence/issues/151/requirements.json"
+    ],
+    "untrackedEvidencePaths": [
+      "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+      "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.log",
+      "architecture/evidence/issues/151/approved-amendment/candidate-spec-acceptance.md",
+      "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+      "architecture/evidence/issues/151/exit-protocol/README.md",
+      "architecture/evidence/issues/151/exit-protocol/artifact-sha256.json",
+      "architecture/evidence/issues/151/exit-protocol/new-server.log",
+      "architecture/evidence/issues/151/exit-protocol/node24-repeat/artifact-sha256.json",
+      "architecture/evidence/issues/151/exit-protocol/node24-repeat/new-server.log",
+      "architecture/evidence/issues/151/exit-protocol/node24-repeat/old-server.log",
+      "architecture/evidence/issues/151/exit-protocol/node24-repeat/results.json",
+      "architecture/evidence/issues/151/exit-protocol/node24-repeat/source-manifest.json",
+      "architecture/evidence/issues/151/exit-protocol/node24-repeat/transcript.log",
+      "architecture/evidence/issues/151/exit-protocol/old-server.log",
+      "architecture/evidence/issues/151/exit-protocol/proof.mjs",
+      "architecture/evidence/issues/151/exit-protocol/results.json",
+      "architecture/evidence/issues/151/exit-protocol/run.py",
+      "architecture/evidence/issues/151/exit-protocol/server.py",
+      "architecture/evidence/issues/151/exit-protocol/source-manifest.json",
+      "architecture/evidence/issues/151/exit-protocol/transcript.log",
+      "architecture/evidence/issues/151/exit-verification.md"
+    ],
+    "storage": "UNCOMMITTED_PENDING_STORAGE",
+    "qualification": "Initial observation contained only generated receipt/log untracked; root then prepared evidence-only updates. Producer rejects dirty startup. No continuous filesystem monitoring claimed."
+  },
+  "observedSuites": {
+    "backendBoundary": {
+      "passed": 2811,
+      "skipped": 2,
+      "deselected": 829
+    },
+    "finalAuthorityAndRfDatabase": {
+      "passed": 130,
+      "skipped": 0
+    },
+    "historicalBrowser": {
+      "passed": 11,
+      "skipped": 0
+    },
+    "freshBrowser": {
+      "passed": 12,
+      "skipped": 0
+    },
+    "advisors": {
+      "blockingSecurityError": 0,
+      "performanceWarnings": 60
+    }
+  },
+  "skipDisclosure": [
+    {
+      "lane": "backend-boundary",
+      "count": 2,
+      "files": [
+        "apps/backend/tests/test_supabase_marketing_measurement.py",
+        "apps/backend/tests/test_supabase_validation_observation.py"
+      ],
+      "note": "Existing optional adapter rehearsals; mandatory local Node SQL runtime lanes executed separately."
+    },
+    {
+      "lane": "database-isolation validation-observation Python",
+      "count": 1,
+      "file": "apps/backend/tests/test_supabase_validation_observation.py",
+      "reason": "TALLI_VALIDATION_OBSERVATION_TEST_DATABASE_URL absent; test skipif delegates real rehearsal to PostgreSQL runtime test.",
+      "compensatingEvidence": "Immediately following validation_observation_database_runtime.test.mjs:1 pass,0 skip."
+    }
+  ],
+  "limits": [
+    "No database/browser/test rerun by this reviewer.",
+    "Verified script-produced normalized transcript bytes; not an independent capture of underlying raw process stdout.",
+    "First gate only. Second linked complete gate and protected integration pending.",
+    "Receipt/log not yet committed; no committed-storage claim.",
+    "No live provider or production activation acceptance."
+  ]
+}

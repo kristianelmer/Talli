@@ -1,0 +1,31 @@
+{
+  "observed_at": "2026-09-09T21:17:46.720011+00:00",
+  "base_commit": "3e8bf5187d614a3a2d02437f12186d90dbd19078",
+  "checkout_status": "uncommitted source checkpoint; path hashes authoritative",
+  "result": "104 passed, 0 skipped, 0 failures in 29.20s",
+  "log": "/tmp/talli-151-combined-runtime-run2.log",
+  "log_completed_at": "2026-09-09T21:16:23.728341+00:00",
+  "log_sha256": "f0b37ce575c903b707b24a6efb8a510cf03c65a2d492b6ffd3264086b37d8fb0",
+  "source_sha256": {
+    "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql": "3432985a30d318583ee1f9a18e2c853d030780fea673f37d7004670d68dbe57a",
+    "supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql": "4b88c63a76f133f743eb63254eef0d8300defb5f6d31934b9a7a10c1593cc109",
+    "supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql": "413b755cf8f5dc589bfd2827787f4f0cd74db13118d6eca3735c06417c55f8ad",
+    "supabase/rollback/20260909190548_shareholder_register_filing_capability.sql": "b14ed6bd2224be710adc31e089dea6468cd992f0960ef1494924b504ff056e71",
+    "supabase/rollback/20260909190905_shareholder_register_filing_cutover.sql": "0ac7af94f08fbba31b16058a802b22749138950da56df89fcfa9c19be222f129",
+    "supabase/rollback/20260909190955_shareholder_register_filing_contract.sql": "5f9d6a6782bf8aa90b3dfb9786e10e9b767263da5ed58612427d58495060929b",
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "bc061d7ba670dbb5ffca303464c4a71c3be5673adbb82de9d424ddbe58349f99",
+    "apps/backend/tests/test_rf1086_database_runtime.py": "d3cb7d73b05e749b31205b14ac5f0bd1e416b40510ae7b24df258046e13a9141",
+    "apps/backend/tests/test_shareholder_register_filing_lifecycle.py": "bb4e2263099d72db6e1965718c64d8c579ceecb9f9558d9596c0ed8c311b094d",
+    "apps/backend/tests/test_authority_connections_database_runtime.py": "fb98daabd3f2ef09205208655bdf41a52d529062190be38acabd6518be56de89",
+    "apps/backend/tests/test_authority_operations_database_runtime.py": "38df809af253f74477da4b5a4dd365c9c850e62cccacba0ef40fa392757850a5",
+    "apps/backend/tests/test_launch_signoffs_database_runtime.py": "66219b8a2bf1d16dd2dce9928637ff39f1000c8d41a4603b4bf1d3f50d430efc"
+  },
+  "database_scope": "owned disposable local Supabase fixture; no hosted/provider operations",
+  "proof": [
+    "literal original opening reconstruction with metadata validation and exact table/function/policy/ACL restoration",
+    "final original opening tables absent after reconciliation; original generic sibling FK behavior retained",
+    "old and new backend begin calls and retries bind one existing submission",
+    "RF24 plus lifecycle37 and retained authority/operator/launch cases",
+    "frozen projection cleanup restores exact trigger modes on successful cleanup and transaction rollback"
+  ]
+}

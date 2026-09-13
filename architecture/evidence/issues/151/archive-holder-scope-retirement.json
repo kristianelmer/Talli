@@ -1,0 +1,18 @@
+{
+  "state": "working-tree exact source proof; full gates pending",
+  "record": "compat-company-archive-persistence",
+  "scope": {
+    "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:opening_shareholders",
+    "operation": "GET"
+  },
+  "sourceDigest": "sha256:ee842cde4213510412ce1ae636f76c5844541dfeb8e47cfcea3a42f285cfb151",
+  "occurrences": 0,
+  "physicalSuccessor": "shareholder_register_filing.opening_shareholders",
+  "ownership": "backend:shareholder_register_filing",
+  "contract": "supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql",
+  "rollback": "supabase/rollback/20260909190955_shareholder_register_filing_contract.sql",
+  "databaseProof": "followup/combined-runtime-run2.json",
+  "limits": "Only holder source is attributed to RF. The retired opening_balance_setups resource carried Ledger bank amounts and has no single-owner alias; its exact archive scope remains pending the finite amendment."
+}

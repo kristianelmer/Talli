@@ -13,7 +13,7 @@ import pytest
 from psycopg import sql
 from psycopg.conninfo import make_conninfo
 
-from test_annual_purchase_basis_runtime import test_role_authority
+from test_annual_purchase_basis_runtime import database_now, test_role_authority
 from test_annual_refund_runtime import admitted, insert, paid, purchase, setup
 from test_annual_checkout_runtime import session as annual_session
 
@@ -82,6 +82,7 @@ def disable_backend_login() -> None:
         )
 
 
+# Fresh synthetic MFA uses the database authorization clock, one second before now.
 def metadata(key: str) -> dict[str, object]:
     actor = ActorId(ActorKind.USER, UserId(OWNER_ID))
     return {
@@ -198,7 +199,7 @@ def test_non_provider_commands_replay_exactly_and_reject_key_reuse() -> None:
                         "aal": "aal2",
                         "amr": [{
                             "method": "totp",
-                            "timestamp": datetime.now(UTC).timestamp(),
+                            "timestamp": database_now().timestamp() - 1,
                         }],
                     }),
                 ),
@@ -258,7 +259,7 @@ def test_non_provider_commands_replay_exactly_and_reject_key_reuse() -> None:
                         "aal": "aal2",
                         "amr": [{
                             "method": "totp",
-                            "timestamp": datetime.now(UTC).timestamp(),
+                            "timestamp": database_now().timestamp() - 1,
                         }],
                     }),
                 ),
@@ -672,7 +673,7 @@ def test_committed_provider_intent_survives_lost_response_and_restart(failure_mo
             actor = ActorId(ActorKind.USER, UserId(OWNER_ID))
             verified = _VerifiedActor(actor_id=actor, claims_json=json.dumps({
                 "sub": OWNER_ID, "role": "authenticated", "aal": "aal2",
-                "amr": [{"method": "totp", "timestamp": datetime.now(UTC).timestamp()}],
+                "amr": [{"method": "totp", "timestamp": database_now().timestamp() - 1}],
             }))
             session = (LostStorageSession if failure_mode == "storage" else SupabaseBillingSession)(backend_database_url, verified)
             provider = LostResponseProvider()

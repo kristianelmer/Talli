@@ -1,0 +1,13 @@
+# RF fixture and retained journey verification
+
+The retained workspace passed on the declared RF canonical overlap / ordinary Ledger compatibility topology: 1 test, 0 skips, 10.46 seconds. It used real Supabase Auth, the generated client, FastAPI and canonical RF commands. All nine frozen Ledger assertions and sibling tax/import/retry, audit, notifications, storage and archive checks remain. No provider was called.
+
+The earlier final contracted topology passed 20 feedback/schema cases and the hydrated authority browser (1 test, 25.88 seconds). That browser verifies owner callback, decoy/other-owner isolation, and GET-only historical RF recovery with original hashes, private artifact download, denial and health checks. Those runs are separately captured in `talli-151-final-schema-js-proof.json`; they do not certify the full fresh RF web flow.
+
+The fixture correction replaces replica mode with a finite table inventory and owner-scoped USER-trigger capture/restore. Internal foreign keys remain active, FORCE RLS is untouched, and temporary SET membership/table privileges are restored. Unit checks cover O/D/R/A modes and rollback; actual DB checks cover unchanged grants/FORCE/memberships/trigger modes, live FK rejection, and standalone company-cleanup success/late-failure rollback. The company cleanup borrows only the existing Billing receipt DELETE needed by its internal cascade, under its real owner and inside a savepoint.
+
+Reached fixture corrections also preserve exact historical opening IDs, values and provenance across the declared overlap projection, restore original outsider empty-list semantics, reuse a real verified MFA session only after proving a valid sibling AAL1 denial, and test cross-obligation conversion against the actual canonical simulation. The old direct RF INSERT is explicitly denied.
+
+Actual HTTP exposed two production read grants missing for `ledger_executor`. The database owner corrected only EXECUTE for the new opening-list composition and opening-bank read. Both minimal role replays changed from SQLSTATE 42501 to success; mutation authority remains absent. `talli-151-opening-grants-applied.json` records the exact shipped delta applied after reset.
+
+The handoff is RF canonical overlap with Ledger compatibility view, zero company fixtures, both borrowed runtime logins disabled, and no active owned server/browser process. The full final-contract lifecycle/new-read regression and final-source schema replay remain for the DB owner. The pending 16-scope amendment still prevents claiming the full fresh RF web flow. These bounded runs are not canonical gate receipts.

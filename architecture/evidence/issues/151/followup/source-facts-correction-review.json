@@ -1,0 +1,12 @@
+{
+  "verdict": "PASS for closure of the two independently reproduced source-fact findings only",
+  "independence": "Reviewer did not author the corrected source_facts/public DTO delta. Reviewer excludes own production/workflow implementation.",
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_facts.py": "52a7e3d22214cc663cf9ee08a77946ea5a82620cd4fa1624f0512249ae0b3543",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "e1db8f499b4435f857154d75dc393d81a6b0ee1491525257224be6d619b86390",
+    "apps/backend/tests/test_rf1086_source_facts.py": "f841c5fc36d0de75aa5272e9bffea0c3638cc80db350080936d6c7a508dc27b5"
+  },
+  "independentCharacterization": "/tmp/talli-151-source-facts-correction-repro.jsonl",
+  "review": "/tmp/talli-151-source-facts-independent-review.md",
+  "providerOrDatabaseExecution": false
+}

@@ -1,0 +1,30 @@
+✔ all migrations use portable JSONB object checks (12.427833ms)
+✔ creates a separate production-only aggregate with constrained states (2.244834ms)
+✔ denies direct customer mutation and keeps authority events service-only (0.910875ms)
+✔ approval and begin RPCs enforce owner AAL2 and an exact active entitlement (0.514542ms)
+✔ acceptance requires explicit final authority evidence and events are append-only (0.178ms)
+✔ rollback revokes RPC access before dropping additive objects (0.478458ms)
+✔ Systembruker binding preserves every existing production filing gate (0.691708ms)
+✔ canonical RF relocation preserves physical production aggregates and uses dedicated authority (1.458042ms)
+✔ canonical begin retains owner MFA, exact System User and Billing bindings, and every original release gate (0.924958ms)
+✔ feedback fixture cleanup preserves primary and returned Supabase errors (2.161167ms)
+✔ creates private, constrained feedback metadata and durable reconciliation state (0.873916ms)
+✔ uses explicit least privilege grants and owner/operator read policies (1.280458ms)
+✔ recording validates exact relationships and the deterministic private key (0.42925ms)
+✔ change-only reconciliation events are serialized and expose safe diagnostics only (0.482084ms)
+✔ backfills and atomically claims only an exact valid succeeded confirmation reference (0.718083ms)
+✔ rollback revokes functions first and restores only feature-owned schema and storage policy changes (0.441791ms)
+✔ local Supabase exposes owned RLS metadata and dedicated-executor mutation authority (46.015333ms)
+✔ local Supabase recovers confirmed submissions and limits feedback data to authorized readers (9400.45725ms)
+✔ canonical feedback preserves owner-only metadata and dedicated immutable journal authority (2.019709ms)
+✔ local fixture restores exact authority and keeps internal foreign keys active on success and failure (474.701625ms)
+✔ local company janitor restores its own missing Billing SET grant on success (57.382209ms)
+✔ local company janitor restores its own missing Billing SET grant on failure (53.304ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10339.789792

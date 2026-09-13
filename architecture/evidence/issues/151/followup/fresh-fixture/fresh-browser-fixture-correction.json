@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-09T22:17:32.304296+00:00",
+  "head": "7730bd3473943f5308136207b2acce4f720c851c",
+  "scope": "Fresh RF browser fixture-only correction; no product implementation changes.",
+  "files_sha256": {
+    "tests/browser_shareholder_register_filing.mjs": "6390b557471a92ad856ae21070987c9d5a28225a32a9274a6cf18d5d16736e56",
+    "tests/shareholder_register_browser_fixture_safety.test.mjs": "1e988c613b1b12e0a303d9075adc87c4b67a7dff2acdf3ca567c8d15549fcfc3",
+    "tests/support/rf1086-fixture-access.mjs": "08b2cd8207949a8d39f33f1ff3b6b772e2c57268fb92f91291b6e322b479c48f"
+  },
+  "preservation": {
+    "entire_browser_test_callback_byte_identical": true,
+    "fresh_basis_seed_byte_identical": true,
+    "login_mfa_session_helpers_byte_identical": true,
+    "no_seeded_preview_approval_journal_receipt": true,
+    "signoff_physical_owner": "public.launch_signoffs remains postgres-owned technical storage; current backend functions operate on it."
+  },
+  "change": "Use finite fixtureTableTransaction for AU/RF setup/reads, one atomic FK-active cleanup, exact existing signoff capture/restore. Borrow receipt DELETE only via existing deleteRfFixtureCompanies. C added three explicit physical test relations to shared helper.",
+  "validation": {
+    "command": "node --test tests/shareholder_register_browser_fixture_safety.test.mjs",
+    "node_version": "24.20.0",
+    "pass": 8,
+    "fail": 0,
+    "skip": 0,
+    "log": "/tmp/talli-151-fresh-browser-fixture-safety.log",
+    "log_sha256": "7e77f7da33d9d11999125895655fabb5b99785ae543b750a2a97660b461b41e4",
+    "diff_check": "passed"
+  },
+  "limits": [
+    "No DB or actual browser execution.",
+    "No fresh journey pass, full gate, pending16 approval or stage exit claimed.",
+    "Local mocks use synthetic data only; no provider calls."
+  ],
+  "superseded_by_current_receipt": "/tmp/talli-151-fresh-browser-owner-provenance-correction.json",
+  "current_source_note": "Original8-case retarget proof is historical and source-bound. Current source includes six public mirror cleanup plus created_by fixture correction; complete11-case safety result and precise seed parity are in the successor receipt."
+}

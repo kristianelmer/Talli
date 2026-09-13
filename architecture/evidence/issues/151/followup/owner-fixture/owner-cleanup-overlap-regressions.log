@@ -1,0 +1,42 @@
+✔ Supabase browser fixtures only accept loopback URLs (0.477458ms)
+✔ browser database fixtures only accept loopback PostgreSQL URLs (0.11125ms)
+✔ owner browser harness stops before remote fixture creation (318.596125ms)
+✔ owner browser harness rejects a remote database mixed with local Supabase (305.874084ms)
+✔ retained annual browser seeds canonical historical RF/AU facts without replacing the live simulation (3.87175ms)
+✔ readiness rejects when its owned process exits before an unrelated listener responds (33.758416ms)
+✔ an unrelated ready listener cannot satisfy a live child without its bind proof (44.0455ms)
+✔ readiness failure tears down a live owned process (43.440709ms)
+✔ a listener that never responds cannot outlive the readiness deadline (110.077667ms)
+✔ a ready owned process is terminated and cleanup is idempotent (54.572791ms)
+✔ forced process cleanup has a final timeout and tolerates an undefined handle (12.3115ms)
+✔ partial setup cleanup closes the database and removes only known resources (0.473792ms)
+✔ browser owner cleanup preserves every prior family in predecessor before company and user (12.295708ms)
+✔ browser owner cleanup preserves every prior family in overlap before company and user (11.256875ms)
+✔ browser owner cleanup preserves every prior family in contracted before company and user (10.99425ms)
+✔ browser owner cleanup removes every tracked company before the shared owner (12.259583ms)
+✔ browser owner cleanup preserves source failure and continues independent cleanup (6.322167ms)
+✔ browser owner cleanup preserves both operation and rollback failures (3.202959ms)
+✔ browser owner cleanup fails closed for missing-family (0.563ms)
+✔ browser owner cleanup fails closed for wrong-owner (0.67325ms)
+✔ browser owner cleanup fails closed for invalid-trigger-mode (2.789333ms)
+✔ browser owner cleanup removes immutable corporate and production filing graphs (1308.638041ms)
+✔ workspace RF backend refuses hosted database before opening a listener (212.487ms)
+✔ workspace RF backend refuses hosted Supabase before opening a listener (126.885125ms)
+✔ workspace RF backend refuses global RF activation before opening a listener (126.554ms)
+✔ workspace RF backend refuses global operator activation before opening a listener (126.9315ms)
+✔ workspace RF backend refuses ambient credential before opening a listener (125.20625ms)
+✔ workspace API requests use the actual current Supabase session and exact denial statuses (3.986583ms)
+✔ feedback fixture refuses hosted databases and undeclared operations before actor or SQL effects (1.394125ms)
+✔ feedback fixture verifies the token owner before reading membership or connecting an actor database session (0.385666ms)
+✔ workspace RF assertions use canonical commands and preserve sibling tax and audit rehearsals (2.067375ms)
+✔ fixture access refuses external databases and undeclared relations before SQL (0.474459ms)
+✔ fixture restores exact USER trigger modes on success without disabling foreign keys (0.657125ms)
+✔ fixture restores exact USER trigger modes on rollback without disabling foreign keys (0.270292ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3271.603167

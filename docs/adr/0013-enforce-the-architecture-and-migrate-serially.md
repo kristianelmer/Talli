@@ -395,3 +395,38 @@ journeys, independent reviews and two immutable complete gates remain required.
 This amendment changes no source-stage order and grants no provider activation,
 real filing, spending, named-company processing, production promotion or launch
 authority.
+
+## 2026-09-10 amendment: sixteen exact RF compatibility dispositions
+
+Kristian replied **"approved"** in the requested handoff destination to the exact
+sixteen-entry revision-2 decision. The [decision record](../../architecture/evidence/issues/151/compatibility-amendment-v2-decision.json)
+binds the unchanged [proposal](../../architecture/evidence/issues/151/compatibility-amendment-v2-proposal.md)
+and [inventory](../../architecture/evidence/issues/151/compatibility-amendment-v2-inventory.json),
+including the original twelve handoffs and three simulation reads.
+
+Only those twelve baseline tuples may move from `compat-rf1086-persistence/#151`
+to existing `compat-annual-compliance-persistence/#149`, after RF rows and writers
+leave the generic stores. Each retains its path, rule, resource, operation and
+single occurrence, sibling authorization, validation, results, errors and effect
+order. Tax/accounts retain business ownership. Each residual call expires when
+its last real sibling source migrates, no later than the last filing cutover.
+
+Only the three listed `confirmSimulatedRf1086Submission` reads may retire
+atomically with that coordinator's two current RF persistence tuples. RF owns
+review/override facts; the unchanged stored-ready prerequisite remains a declared
+frozen annual-source query, with its scope, unavailable/error behavior and owner.
+The sixteenth disposition retires only archive GET's historical
+`table:opening_balance_setups` tuple under `compat-company-archive-persistence/#157`.
+Its generated year-scoped Ledger query composes RF shares/identity and Ledger bank
+amounts, preserving archive output, authorization, begin/complete records, audit
+and eight remaining generic reads. Do not assign the historical mixed resource
+to one owner or introduce a general split-resource exception.
+
+Require zero direct/dynamic occurrences for each retired resource. Preserve the
+eight adjacent action audit calls and both notification calls and their placement.
+Reject unlisted, moved, dynamic or additional persistence and changed sibling
+counts. Keep the immutable compatibility baseline byte-identical. Count/hash,
+row ownership, tenant/RLS, sibling journeys, rollback/recutover, independent review,
+both complete immutable gates and protected integration remain mandatory.
+This approval changes no serialized stage order or production freeze and grants
+no provider tests, real filings, spending or production activation/promotion.

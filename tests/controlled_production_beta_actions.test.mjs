@@ -27,13 +27,15 @@ test("operator entitlement action is exact and database-authorized", () => {
   assert.doesNotMatch(operatorPage, /skattemelding.*produksjonspilot|årsregnskap.*produksjonspilot/iu);
 });
 
-test("owner approval binds persisted preview data and requires a real-filing acknowledgement", () => {
-  assert.match(actions, /export async function approveProductionFiling/u);
-  assert.match(actions, /realFilingConfirmed/u);
-  assert.match(actions, /requireSensitiveActionStepUp\(supabase, user\.id, preview\.company_id, "production_filing"\)/u);
-  assert.match(actions, /buildProductionApprovalManifest/u);
-  assert.match(actions, /productionApprovalHash/u);
-  assert.match(actions, /approve_production_filing/u);
+test("owner approval delegates persisted identity and acknowledgement to the authenticated RF boundary", () => {
+  const approval = actions.slice(actions.indexOf("export async function approveProductionFiling"),
+    actions.indexOf("export async function sendApprovedRf1086ProductionFiling"));
+  assert.match(approval, /requiredFormUuid\(formData, "previewId"\)/u);
+  assert.match(approval, /requiredFormUuid\(formData, "entitlementId"\)/u);
+  assert.match(approval, /realFilingConfirmed/u);
+  assert.match(approval, /getCurrentSessionAccessToken/u);
+  assert.match(approval, /approveRf1086ProductionThroughApi\(accessToken,/u);
+  assert.doesNotMatch(approval, /buildProductionApprovalManifest|productionApprovalHash|\.from\(|\.rpc\(/u);
   assert.match(ownerPage, /f\.production\.warning/u);
   assert.match(ownerPage, /f\.production\.approveCta/u);
   assert.match(ownerCopy, /juridiske konsekvenser/u);
@@ -52,7 +54,7 @@ test("send action carries only approval identity through the authenticated backe
 test("owner connection actions accept only local UUID selection and enforce fresh AAL2 before flow orchestration", () => {
   const ownerConnectionActions = actions.slice(
     actions.indexOf("export async function startSystemUserRequestAction"),
-    actions.indexOf("const RF1086_PRODUCTION_ADAPTER_VERSION"),
+    actions.indexOf("function rf1086ProductionErrorTarget"),
   );
   assert.match(ownerConnectionActions, /export async function startSystemUserRequestAction/u);
   assert.match(ownerConnectionActions, /export async function refreshSystemUserRequestAction/u);
@@ -79,8 +81,11 @@ test("production UI never equates receipt transport with final acceptance", () =
   assert.doesNotMatch(ownerPage, /\{productionSubmission\?\.feedback_state\}|\{artifact\.classification\}/u);
 });
 
-test("a disabled production adapter tolerates an unapplied additive schema during rollout", () => {
-  assert.match(supabaseServer, /function productionPilotSchemaUnavailable/u);
-  assert.match(supabaseServer, /TALLI_RF1086_PRODUCTION_ENABLED !== "true"/u);
-  assert.match(supabaseServer, /PGRST205|42P01/u);
+test("production history reports unavailable backend reads through the existing error result", () => {
+  const start = supabaseServer.indexOf("export async function listProductionFilingState");
+  const reader = supabaseServer.slice(start, supabaseServer.indexOf("\nexport async function ", start + 1));
+  assert.match(reader, /loadRf1086Workspaces/u);
+  assert.match(reader, /catch/u);
+  assert.match(reader, /error: rf1086ActionErrorMessage\(error\)/u);
+  assert.doesNotMatch(reader, /\.from\(|\.rpc\(|productionPilotSchemaUnavailable/u);
 });

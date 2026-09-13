@@ -1,0 +1,7 @@
+{
+  "captured_at": "2026-09-09T22:11:58.859560+00:00",
+  "source_sha256": {
+    "tests/billing_database_runtime.test.mjs": "b6956c1fef13b47df12a84264b02fa0890a4547a780386542c2731b8cd4325ff"
+  },
+  "timing": "Captured after the successful corrected Node lifecycle. That file was unchanged throughout. A repeat to capture a complete before/after manifest was rejected by the initial expected-overlap topology assertion because the successful run already contracted Billing; no repeat lifecycle mutation occurred. The valid run is billing-node-clock-corrected, followed by successful shipped RF recutover."
+}

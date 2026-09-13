@@ -249,6 +249,23 @@ export async function loadOpeningSnapshots(
   return snapshots;
 }
 
+export async function loadOpeningSnapshotsForYear(
+  accessToken: string,
+  companyId: string,
+  incomeYear: number,
+  requestId?: string,
+): Promise<LedgerOpeningSnapshotWire[]> {
+  const page = await client(accessToken).ledgerListOpeningSnapshotsForYear({
+    companyId, incomeYear, ...request(requestId),
+  });
+  if (page.hasMore || page.nextCursor !== null || page.items.length > 1
+      || page.items.some((snapshot) => snapshot.incomeYear !== incomeYear
+        || !openingSnapshotIsConsistent(snapshot, new Set([companyId])))) {
+    throw new Error("Opening-snapshot year response is inconsistent.");
+  }
+  return page.items;
+}
+
 export function startNewYear(
   accessToken: string,
   command: NewYearStartWire,

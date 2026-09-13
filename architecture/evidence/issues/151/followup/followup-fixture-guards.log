@@ -1,0 +1,24 @@
+✔ workspace RF backend refuses hosted database before opening a listener (145.573666ms)
+✔ workspace RF backend refuses hosted Supabase before opening a listener (127.816875ms)
+✔ workspace RF backend refuses global RF activation before opening a listener (127.560333ms)
+✔ workspace RF backend refuses global operator activation before opening a listener (127.996583ms)
+✔ workspace RF backend refuses ambient credential before opening a listener (138.282833ms)
+✔ workspace API requests use the actual current Supabase session and exact denial statuses (6.619583ms)
+✔ feedback fixture refuses hosted databases and undeclared operations before actor or SQL effects (1.435666ms)
+✔ feedback fixture verifies the token owner before reading membership or connecting an actor database session (0.468333ms)
+✔ workspace RF assertions use canonical commands and preserve sibling tax and audit rehearsals (0.928666ms)
+✔ fixture access refuses external databases and undeclared relations before SQL (0.539625ms)
+✔ fixture restores exact USER trigger modes on success without disabling foreign keys (0.879458ms)
+✔ fixture restores exact USER trigger modes on rollback without disabling foreign keys (0.243459ms)
+✔ fresh RF fixture permits only its five exact method templates and loopback egress (160.1885ms)
+✔ fresh local RF mock preserves request identity and emits relationship-bound feedback (51.033375ms)
+✔ fresh browser starts without a preview or approval and verifies the complete durable result (2.051625ms)
+✔ ambiguous fresh mock response records the original mutation before disconnecting (6.754833ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 841.909917

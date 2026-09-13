@@ -1,3 +1,4 @@
+import { loadPresentedRf1086Source, newestFirst, composeFilingSources } from "./rf1086-workspace-source";
 import { buildCancellationLifecycle } from "./cancellation";
 import {
   buildDeadlineDashboard,
@@ -75,8 +76,8 @@ export async function loadWorkspaceData() {
         error: null,
       };
   const { setups, shareholders } = user ? await listOpeningSetups(companies.map((company) => company.id)) : { setups: [], shareholders: [] };
-  const { previews } = user ? await listFilingPreviews(companies.map((company) => company.id)) : { previews: [] };
-  const { submissions } = user ? await listFilingSubmissions(companies.map((company) => company.id)) : { submissions: [] };
+  const { previews: legacyPreviews } = user ? await listFilingPreviews(companies.map((company) => company.id)) : { previews: [] };
+  const { submissions: legacySubmissions } = user ? await listFilingSubmissions(companies.map((company) => company.id)) : { submissions: [] };
   const { error: productionStateError, ...productionState } = user
     ? await listProductionFilingState(companies.map((company) => company.id))
     : {
@@ -86,11 +87,20 @@ export async function loadWorkspaceData() {
         productionFeedbackArtifacts: [],
         error: null,
       };
-  const { overrides } = user ? await listFilingOverrides(companies.map((company) => company.id)) : { overrides: [] };
+  const { overrides: legacyOverrides } = user ? await listFilingOverrides(companies.map((company) => company.id)) : { overrides: [] };
   const { readinessSnapshots } = user ? await listFilingReadinessSnapshots(companies.map((company) => company.id)) : { readinessSnapshots: [] };
-  const { comments } = user ? await listFilingReviewComments(companies.map((company) => company.id)) : { comments: [] };
-  const { authorityPermissions } = user ? await listAuthorityPermissions(companies.map((company) => company.id)) : { authorityPermissions: [] };
-  const { authorityTestRuns } = user ? await listAuthorityTestRuns(companies.map((company) => company.id)) : { authorityTestRuns: [] };
+  const { comments: legacyComments } = user ? await listFilingReviewComments(companies.map((company) => company.id)) : { comments: [] };
+  const { authorityPermissions: legacyAuthorityPermissions } = user ? await listAuthorityPermissions(companies.map((company) => company.id)) : { authorityPermissions: [] };
+  const { authorityTestRuns: legacyAuthorityTestRuns } = user ? await listAuthorityTestRuns(companies.map((company) => company.id)) : { authorityTestRuns: [] };
+  const rfSource = accessToken
+    ? await loadPresentedRf1086Source(accessToken, companies.map((company) => company.id))
+    : { previews: [], submissions: [], overrides: [], comments: [], authorityPermissions: [], authorityTestRuns: [], error: null };
+  const previews = newestFirst(composeFilingSources(legacyPreviews, rfSource.previews), (row) => row.created_at);
+  const submissions = newestFirst(composeFilingSources(legacySubmissions, rfSource.submissions), (row) => row.updated_at);
+  const overrides = newestFirst(composeFilingSources(legacyOverrides, rfSource.overrides), (row) => row.created_at);
+  const comments = newestFirst(composeFilingSources(legacyComments, rfSource.comments), (row) => row.created_at);
+  const authorityPermissions = newestFirst(composeFilingSources(legacyAuthorityPermissions, rfSource.authorityPermissions), (row) => row.updated_at);
+  const authorityTestRuns = newestFirst(composeFilingSources(legacyAuthorityTestRuns, rfSource.authorityTestRuns), (row) => row.recorded_at);
   const primaryCompanyId = companies[0]?.id;
   const { invitations, memberships, error: companyAccessAdministrationError } = user
     ? await listCompanyAccessAdministration(primaryCompanyId)
@@ -276,7 +286,7 @@ export async function loadWorkspaceData() {
   const deadlineReminderPreferences = defaultReminderPreferences();
   return {
     user,
-    error: error ?? corporateLifecycleError ?? corporateReadinessError ?? productionStateError ?? companyAccessAdministrationError ?? cancellationLifecycleError,
+    error: error ?? corporateLifecycleError ?? corporateReadinessError ?? productionStateError ?? rfSource.error ?? companyAccessAdministrationError ?? cancellationLifecycleError,
     cancellationLifecycleError,
     companies,
     documents,

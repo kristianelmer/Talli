@@ -52,6 +52,7 @@ const ledgerOperations = {
     "ledgerGetReconstructionAssessment",
   ],
   listOpeningSnapshots: ["/api/v1/ledger/opening-snapshots", "get", "ledgerListOpeningSnapshots"],
+  listOpeningSnapshotsForYear: ["/api/v1/ledger/opening-snapshots/by-year", "get", "ledgerListOpeningSnapshotsForYear"],
   listEntries: ["/api/v1/ledger/entries", "get", "ledgerListEntries"],
   listPeriodLocks: ["/api/v1/ledger/period-locks", "get", "ledgerListPeriodLocks"],
   postAdministrativeCost: ["/api/v1/ledger/administrative-costs", "post", "ledgerPostAdministrativeCost"],
@@ -275,6 +276,19 @@ const bankingOperations = {
     "bankingListSuggestionAcceptances",
   ],
 };
+const shareholderRegisterFilingOperations = {
+  archiveSource: ["/api/v1/shareholder-register-filings/archive-source", "get", "rf1086GetArchiveSource"],
+  workspace: ["/api/v1/shareholder-register-filings/workspace", "get", "rf1086Workspace"],
+  preview: ["/api/v1/shareholder-register-filings/previews/{previewId}", "get", "rf1086Preview"],
+  generate: ["/api/v1/shareholder-register-filings/previews", "post", "rf1086GeneratePreview"],
+  override: ["/api/v1/shareholder-register-filings/overrides", "post", "rf1086RecordOverride"],
+  comment: ["/api/v1/shareholder-register-filings/review-comments", "post", "rf1086AddReviewComment"],
+  acknowledge: ["/api/v1/shareholder-register-filings/review-comment-acknowledgements", "post", "rf1086AcknowledgeReviewComment"],
+  simulation: ["/api/v1/shareholder-register-filings/simulations", "post", "rf1086ConfirmSimulation"],
+  permission: ["/api/v1/shareholder-register-filings/filing-permissions", "post", "rf1086ConfirmFilingPermission"],
+  testEvidence: ["/api/v1/shareholder-register-filings/test-evidence", "post", "rf1086RecordTestEvidence"],
+  approve: ["/api/v1/shareholder-register-filings/production-approvals", "post", "rf1086ApproveProduction"],
+};
 const authorityConnectionsOperations = {
   rfSend: ["/api/v1/legacy-rf1086/production-filings", "post", "legacyRf1086SendApprovedFiling"],
   rfReconcile: ["/api/v1/legacy-rf1086/feedback-reconciliations", "post", "legacyRf1086ReconcileFeedback"],
@@ -364,6 +378,11 @@ for (const [name, [operationPath, method, operationId]] of Object.entries(bankin
   }
 }
 for (const [name, [operationPath, method, operationId]] of Object.entries(billingOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(shareholderRegisterFilingOperations)) {
   if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
     throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
   }
@@ -531,6 +550,7 @@ const companyContextResponseSchema = resolveSchema(
   companyAccessOperation.responses["200"].content["application/json"].schema,
 );
 const additionalSchemas = Object.fromEntries([
+
   "CompanyInvitation",
   "CompanyInvitationListResponse",
   "CompanyInvitationResponse",
@@ -814,8 +834,37 @@ const bankingSchemas = Object.fromEntries([
   "SupportedBankDataFormat",
   "StartBankConnectionWire",
 ].map((name) => [name, contract.components.schemas[name]]));
-const authorityConnectionsSchemas = Object.fromEntries([
+const shareholderRegisterFilingSchemas = Object.fromEntries([
   "LegacyRf1086SendCommandWire", "LegacyRf1086ReconcileCommandWire", "LegacyRf1086SendResultWire", "LegacyRf1086ReconcileResultWire",
+  "Rf1086GeneratePreviewWire",
+  "Rf1086OverrideCommandWire",
+  "Rf1086ReviewCommentCommandWire",
+  "Rf1086ReviewAcknowledgementWire",
+  "Rf1086SimulationCommandWire",
+  "Rf1086PermissionCommandWire",
+  "Rf1086TestEvidenceCommandWire",
+  "Rf1086ProductionApprovalCommandWire",
+  "Rf1086RecordedResultWire",
+  "Rf1086IssueWire",
+  "Rf1086PreviewWire",
+  "Rf1086OverrideWire",
+  "Rf1086ReviewCommentWire",
+  "Rf1086PermissionWire",
+  "Rf1086TestEvidenceWire",
+  "Rf1086SimulationCallWire",
+  "Rf1086SimulationFeedbackWire",
+  "Rf1086ReceiptMetadataWire",
+  "Rf1086SubmittedPayloadReferenceWire",
+  "Rf1086SubmittedPayloadWire",
+  "Rf1086SimulationWire",
+  "Rf1086ApprovalWire",
+  "Rf1086ProductionSubmissionWire",
+  "Rf1086FeedbackArtifactWire",
+  "Rf1086ActionAvailabilityWire",
+  "Rf1086WorkspaceWire",
+  "Rf1086ArchiveSourceWire",
+].map((name) => [name, contract.components.schemas[name]]));
+const authorityConnectionsSchemas = Object.fromEntries([
   "LaunchSignoffKey", "LaunchSignoffStatus", "LaunchSignoffCommandWire", "LaunchSignoffRecordWire", "LaunchSignoffListWire",
   "AuthorityOperationKind", "AuthorityOperationStatus", "AuthorityOperationCode",
   "AuthorityOperationCommandWire", "AuthorityOperationRecordWire", "AuthorityOperationListWire",
@@ -904,6 +953,8 @@ ${Object.entries(corporateGovernanceSchemas).map(([name, schema]) => renderSchem
 ${Object.entries(bankingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(billingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
+${Object.entries(shareholderRegisterFilingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(authorityConnectionsSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
@@ -1019,6 +1070,8 @@ ${Object.entries(bankingSchemas).map(([name, schema]) => renderGuard(name, schem
 
 ${Object.entries(billingSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
+${Object.entries(shareholderRegisterFilingSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
+
 ${Object.entries(authorityConnectionsSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
 ${Object.entries(marketingMeasurementSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
@@ -1101,6 +1154,11 @@ export interface LedgerOpeningSnapshotListRequest extends TalliRequestOptions {
   companyIds: readonly string[];
   cursor?: string;
   limit?: number;
+}
+
+export interface LedgerOpeningSnapshotYearRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
 }
 
 export interface LedgerReconstructionRequest extends TalliRequestOptions {
@@ -2421,6 +2479,19 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
+    async ledgerListOpeningSnapshotsForYear(
+      request: LedgerOpeningSnapshotYearRequest,
+    ): Promise<LedgerOpeningSnapshotPageWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(
+        \`\${baseUrl}/api/v1/ledger/opening-snapshots/by-year?\${query}\`,
+        "GET",
+        request,
+        undefined,
+        isLedgerOpeningSnapshotPageWire,
+      );
+    },
+
     async ledgerListPeriodLocks(
       request: LedgerListRequest,
     ): Promise<LedgerPeriodLockPageWire> {
@@ -2664,6 +2735,86 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async rf1086GetArchiveSource(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<Rf1086ArchiveSourceWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source?" + query,
+        "GET", request, undefined, isRf1086ArchiveSourceWire);
+    },
+
+    async rf1086Workspace(
+      companyId: string, incomeYear?: number, request: TalliRequestOptions = {},
+    ): Promise<Rf1086WorkspaceWire> {
+      const query = new URLSearchParams({ companyId });
+      if (incomeYear !== undefined) query.set("incomeYear", String(incomeYear));
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/workspace?" + query,
+        "GET", request, undefined, isRf1086WorkspaceWire);
+    },
+
+    async rf1086Preview(
+      previewId: string, request: TalliRequestOptions = {},
+    ): Promise<Rf1086PreviewWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/previews/" + encodeURIComponent(previewId),
+        "GET", request, undefined, isRf1086PreviewWire);
+    },
+
+    async rf1086GeneratePreview(
+      body: Rf1086GeneratePreviewWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/previews",
+        "POST", request, body, isRf1086RecordedResultWire);
+    },
+
+    async rf1086RecordOverride(
+      body: Rf1086OverrideCommandWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/overrides",
+        "POST", request, body, isRf1086RecordedResultWire);
+    },
+
+    async rf1086AddReviewComment(
+      body: Rf1086ReviewCommentCommandWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/review-comments",
+        "POST", request, body, isRf1086RecordedResultWire);
+    },
+
+    async rf1086AcknowledgeReviewComment(
+      body: Rf1086ReviewAcknowledgementWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/review-comment-acknowledgements",
+        "POST", request, body, isRf1086RecordedResultWire);
+    },
+
+    async rf1086ConfirmSimulation(
+      body: Rf1086SimulationCommandWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/simulations",
+        "POST", request, body, isRf1086RecordedResultWire);
+    },
+
+    async rf1086ConfirmFilingPermission(
+      body: Rf1086PermissionCommandWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/filing-permissions",
+        "POST", request, body, isRf1086RecordedResultWire);
+    },
+
+    async rf1086RecordTestEvidence(
+      body: Rf1086TestEvidenceCommandWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/test-evidence",
+        "POST", request, body, isRf1086RecordedResultWire);
+    },
+
+    async rf1086ApproveProduction(
+      body: Rf1086ProductionApprovalCommandWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/production-approvals",
+        "POST", request, body, isRf1086RecordedResultWire);
     },
 
     async legacyRf1086SendApprovedFiling(

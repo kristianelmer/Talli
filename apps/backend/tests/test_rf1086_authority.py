@@ -10,7 +10,7 @@ import pytest
 
 from talli_backend.adapters.maskinporten import MaskinportenAccessToken, SYSTEM_USER_TAX_SCOPE
 from talli_backend.adapters.rf1086_authority import Rf1086AuthorityAdapter, Rf1086ReadOnlyAuthorityAdapter
-from talli_backend.compatibility.rf1086_authority_workflow import Rf1086AuthorityError, Rf1086DocumentReference
+from talli_backend.modules.shareholder_register_filing.public import Rf1086AuthorityError, Rf1086DocumentReference
 
 
 MAIN = "10000000-0000-4000-8000-000000000001"
@@ -309,9 +309,9 @@ def test_document_disallowed_mime_and_empty_body_cannot_be_accepted(raw, mime, c
 
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from talli_backend.adapters.postgres_legacy_rf1086_authority import PostgresLegacyRf1086AuthoritySession, _PersistenceError
+from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingSession, _PersistenceError
 from talli_backend.adapters.supabase_ledger import LedgerSupabaseConfiguration, _VerifiedActor
-from talli_backend.compatibility.rf1086_authority_workflow import Rf1086FeedbackArtifactPersistenceError, Rf1086ReconciliationArtifact
+from talli_backend.modules.shareholder_register_filing.public import Rf1086FeedbackArtifactPersistenceError, Rf1086ReconciliationArtifact
 from talli_backend.modules.documents.public import DocumentId, DocumentRecord, DocumentStatus, DocumentUploadTransfer, DocumentsError
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYear, UserId
 
@@ -361,7 +361,7 @@ def feedback_store(*, existing=(), metadata_error=None, response_status=200):
     def upload(request):
         uploads.append(request)
         return httpx.Response(response_status, headers={"location": "https://other.invalid"})
-    session = PostgresLegacyRf1086AuthoritySession(LedgerSupabaseConfiguration("https://project.example.test", "", ""),
+    session = PostgresShareholderRegisterFilingSession(LedgerSupabaseConfiguration("https://project.example.test", "", ""),
         _VerifiedActor(ACTOR, json.dumps({"sub": str(ACTOR.subject), "role": "authenticated"})),
         access_token="verified-owner-session", billing=None, documents=documents, company_access=None,
         storage_transport=httpx.MockTransport(upload))
@@ -373,7 +373,7 @@ def feedback_store(*, existing=(), metadata_error=None, response_status=200):
             if isinstance(result, Exception):
                 raise result
             return [result] if result else []
-        assert statement.startswith("select id from public.record_production_feedback_artifact")
+        assert statement.startswith("select id from shareholder_register_filing.record_production_feedback_artifact")
         if metadata_error:
             raise metadata_error
         return [{"id": MAIN}]
@@ -477,7 +477,7 @@ def test_signed_upload_redirect_is_not_followed_and_does_not_finalize_or_write_a
 
 def test_persistence_operation_prepare_preserves_latest_key_attempt_and_exact_submission_binding():
     actor = _VerifiedActor(ACTOR, "{}")
-    session = PostgresLegacyRf1086AuthoritySession(LedgerSupabaseConfiguration("", "", ""), actor,
+    session = PostgresShareholderRegisterFilingSession(LedgerSupabaseConfiguration("", "", ""), actor,
         access_token="", billing=None, documents=None, company_access=None)
     calls = []
     async def rows(query, parameters):

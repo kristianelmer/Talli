@@ -1,0 +1,15 @@
+{
+  "apps/backend/src/talli_backend/main.py": "faaddb5ee1038c3956bf0f608b9801dd8d25038386f04f08a083e2a1f39bc7d7",
+  "apps/backend/src/talli_backend/modules/ledger/public.py": "da273f5fa829c056d3b17903d7c0b312c0334ef67c526d01e562e265fcf1af21",
+  "apps/backend/src/talli_backend/modules/ledger/service.py": "0e42148525a98eab7735e525afebc3278884cadb04e7c37dee56cd432315f87f",
+  "apps/backend/src/talli_backend/adapters/supabase_ledger.py": "e6618d02a1c497480633574d9292b487d67b15c3c22c31597ccb803f1e1607d9",
+  "apps/backend/src/talli_backend/application/new_year_opening.py": "a3352c2c2fbc4968c89cabffa29d44a5cd4cff101f06ea16a7712ea06b059737",
+  "apps/backend/src/talli_backend/application/ledger_workflow.py": "c33f5887f22c38036a5c3e63668b4a21bffbd1b752f8501da018cb99d4d15a53",
+  "apps/backend/src/talli_backend/application/ledger_session.py": "aaf71e4910c56e7cc157923af379d099bcb60b26ac7c8fbab8f000dc6ef761a0",
+  "apps/backend/src/talli_backend/application/corporate_governance_session.py": "65afb07c159cc108b8090c401aa0f625633d28cb528d3c0eac3b72bd7797ad00",
+  "apps/web/app/actions.ts": "b1fcf38c5f1513f7ea64c3a4998b32a23ae488503a6b23e4b9d3c9edcad91f95",
+  "apps/web/app/lib/supabase/server.ts": "5e5f768f0dc6bbebe0e622e62ddb7c9d9409aa29b7d04da2ecdff6b9e9b962fd",
+  "apps/web/features/shareholder-register-filing/transport.ts": "2ede74dbd3e115d7997c87fbefcb9d5116a10f2628f791f12cb3e8aee1b2e300",
+  "apps/web/features/shareholder-register-filing/presentation.ts": "294f0db17c899fd7759dec3ec70d27178a64cc0a62dc6ce3c871af10bba483af",
+  "packages/talli-api-client/src/generated/client.ts": "415d2ba82c4a97a3a1d80cc050e8caf00052fa4d483b01b10ac6aea34dc8701f"
+}

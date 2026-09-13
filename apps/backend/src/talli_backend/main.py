@@ -18,16 +18,16 @@ from fastapi import Depends, FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError, model_validator
 from pydantic.json_schema import SkipJsonSchema
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import ClientDisconnect
 
-from talli_backend.compatibility.rf1086_authority_workflow import (
-    LegacyRf1086AuthenticationError, LegacyRf1086Error, LegacyRf1086SessionFactory,
-    send_approved_rf1086_production_filing, reconcile_rf1086_production,
+from talli_backend.application.shareholder_register_filing_session import (
+    ShareholderRegisterFilingAuthenticationError, ShareholderRegisterFilingSessionFactory,
 )
+from talli_backend.application.shareholder_register_filing_workflow import ShareholderRegisterFilingWorkflow
 from talli_backend.application.launch_signoffs import (
     LaunchSignoffAuthenticationError, LaunchSignoffError, LaunchSignoffKey,
     LaunchSignoffRecord, LaunchSignoffSessionFactory, LaunchSignoffStatus,
@@ -125,10 +125,10 @@ from talli_backend.application.ledger_workflow import (
     RecordAdministrativeCostCommand,
     RecordTaxSettlementCommand,
 )
-from talli_backend.application.opening_snapshot_compatibility import (
-    LegacyOpeningSnapshotCursor,
-    LegacyOpeningSnapshotPage,
-    LegacyOpeningSnapshotView,
+from talli_backend.application.new_year_opening import (
+    OpeningSnapshotCursor,
+    OpeningSnapshotPage,
+    OpeningSnapshotView,
 )
 from talli_backend.modules.banking.public import (
     AcceptBankFileCommand,
@@ -425,8 +425,13 @@ from talli_backend.modules.investments.public import (
     ShareSaleAllocationView,
 )
 from talli_backend.modules.shareholder_register_filing.public import (
-    OpeningShareholder,
-    ShareholderRegisterFilingError,
+    AcknowledgeRf1086ReviewCommentCommand, AddRf1086ReviewCommentCommand,
+    ApprovalId, ApproveRf1086ProductionCommand, ConfirmRf1086FilingPermissionCommand,
+    ConfirmRf1086SimulationCommand, GenerateRf1086PreviewCommand, OpeningShareholder,
+    Rf1086ArchiveQuery, OpeningSnapshotId, PreviewId, ReadRf1086PreviewQuery, ReconcileRf1086FeedbackCommand,
+    RecordRf1086OverrideCommand, RecordRf1086TestEvidenceCommand, ReviewCommentId,
+    Rf1086ProductionError, Rf1086RecordedResult, Rf1086WorkspaceQuery,
+    SendApprovedRf1086Command, ShareholderRegisterFilingError, SubmissionId,
 )
 from talli_backend.modules.system_boundary.public import (
     SYSTEM_BOUNDARY_AVAILABLE,
@@ -853,6 +858,313 @@ class LegacyRf1086ReconcileResultWire(TransportModel):
         "connection_unavailable", "payload_changed", "configuration_unavailable", "send_unavailable",
         "status_unavailable", "status_busy", "step_up_required"] | None
     requires_manual_retry: bool
+
+
+class Rf1086GeneratePreviewWire(StrictTransportModel):
+    company_id: UUID
+    opening_snapshot_id: UUID
+
+
+class Rf1086OverrideCommandWire(StrictTransportModel):
+    preview_id: UUID
+    field_target: str
+    old_value: str
+    new_value: str
+    reason: str
+    risk_level: Literal["advisory", "warning", "block"]
+    owner_confirmed: bool = Field(strict=True)
+
+
+class Rf1086ReviewCommentCommandWire(StrictTransportModel):
+    preview_id: UUID
+    severity: Literal["advisory", "hard_block"]
+    body: str
+
+
+class Rf1086ReviewAcknowledgementWire(StrictTransportModel):
+    comment_id: UUID
+
+
+class Rf1086SimulationCommandWire(StrictTransportModel):
+    preview_id: UUID
+    authority_confirmed: bool = Field(strict=True)
+    preview_confirmed: bool = Field(strict=True)
+
+
+class Rf1086PermissionCommandWire(StrictTransportModel):
+    company_id: UUID
+    production_enabled: bool = Field(strict=True)
+
+
+class Rf1086TestEvidenceCommandWire(StrictTransportModel):
+    company_id: UUID
+    environment: Literal["test", "manual_evidence"]
+    status: Literal["accepted", "rejected", "blocked", "pending"]
+    test_reference: str
+    feedback_summary: str
+    receipt_reference: str | None
+    archive_reference: str | None
+    evidence_url: str | None
+    payload_hash: str | None
+
+
+class Rf1086ProductionApprovalCommandWire(StrictTransportModel):
+    preview_id: UUID
+    entitlement_id: UUID
+    real_filing_confirmed: bool = Field(strict=True)
+
+
+class Rf1086RecordedResultWire(TransportModel):
+    record_id: UUID
+    company_id: UUID
+    income_year: int | None
+
+
+class Rf1086IssueWire(TransportModel):
+    level: str
+    code: str
+    message: str
+
+
+class Rf1086PreviewWire(TransportModel):
+    id: UUID
+    company_id: UUID
+    setup_id: UUID | None
+    income_year: int
+    filing: str
+    status: Literal["ready", "blocked", "warning"]
+    issues: list[Rf1086IssueWire]
+    preview: str
+    hovedskjema_xml: str | None
+    underskjema_xml: dict[str, str]
+    source: str
+    created_at: datetime
+
+
+class Rf1086OverrideWire(TransportModel):
+    id: UUID
+    preview_id: UUID | None
+    company_id: UUID
+    income_year: int
+    filing: str
+    field_target: str
+    old_value: str
+    new_value: str
+    reason: str
+    risk_level: Literal["advisory", "warning", "block"]
+    owner_confirmed_by: UUID
+    owner_confirmed_at: datetime
+    created_by: UUID
+    created_at: datetime
+
+
+class Rf1086ReviewCommentWire(TransportModel):
+    id: UUID
+    preview_id: UUID
+    company_id: UUID
+    target: str
+    severity: Literal["advisory", "hard_block"]
+    body: str
+    created_by: UUID
+    acknowledged_by: UUID | None
+    acknowledged_at: datetime | None
+    created_at: datetime
+
+
+class Rf1086PermissionWire(TransportModel):
+    id: UUID
+    company_id: UUID
+    obligation: Literal["aksjonaerregisteroppgaven"]
+    submitter_user_id: UUID
+    confirmed_by: UUID
+    confirmed_at: datetime
+    production_enabled: bool
+    updated_at: datetime
+
+
+class Rf1086TestEvidenceWire(TransportModel):
+    id: UUID
+    company_id: UUID
+    obligation: Literal["aksjonaerregisteroppgaven"]
+    environment: Literal["test", "manual_evidence"]
+    status: Literal["accepted", "rejected", "blocked", "pending"]
+    test_reference: str
+    feedback_summary: str
+    receipt_reference: str | None
+    archive_reference: str | None
+    evidence_url: str | None
+    payload_hash: str | None
+    recorded_by: UUID
+    recorded_at: datetime
+
+
+def _validate_rf1086_historical_timestamp(value: str) -> str:
+    # These values are retained JSON evidence, unlike top-level DB timestamps.
+    # Validate without rewriting the original fractional precision or offset.
+    datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return value
+
+
+Rf1086HistoricalTimestampWire = Annotated[
+    str, AfterValidator(_validate_rf1086_historical_timestamp),
+    Field(json_schema_extra={"format": "date-time"}),
+]
+
+
+class Rf1086SimulationCallWire(TransportModel):
+    endpoint: str
+    body_hash: str
+    idempotency_key: str | None
+    status: str
+    created_at: Rf1086HistoricalTimestampWire
+
+
+class Rf1086SimulationFeedbackWire(TransportModel):
+    severity: Literal["accepted", "error", "warning"]
+    code: str
+    message: str
+    document_id: str | None
+
+
+class Rf1086ReceiptMetadataWire(TransportModel):
+    authority: Literal["simulation", "skatteetaten"]
+    receipt_id: str
+    status: Literal["receipt_stored"]
+    received_at: Rf1086HistoricalTimestampWire
+    feedback_document_ids: list[str]
+
+
+class Rf1086SubmittedPayloadReferenceWire(TransportModel):
+    preview_id: UUID
+    payload_hash: str
+    hovedskjema_hash: str | None
+    underskjema_hashes: dict[str, str]
+    call_count: int
+    stored_at: Rf1086HistoricalTimestampWire
+
+
+class Rf1086SubmittedPayloadWire(TransportModel):
+    filing: str
+    company_id: UUID
+    income_year: int
+    payload_hash: str
+    hovedskjema_xml: str | None
+    underskjema_xml: dict[str, str]
+
+
+class Rf1086SimulationWire(TransportModel):
+    id: UUID
+    preview_id: UUID | None
+    authority_test_run_id: UUID | None
+    company_id: UUID
+    income_year: int
+    filing: str
+    mode: Literal["simulation", "test_authority"]
+    adapter_mode: Literal["simulation", "test_authority", "production"]
+    payload_hash: str | None
+    idempotency_key: str | None
+    status: str
+    calls: list[Rf1086SimulationCallWire]
+    receipt_id: str | None
+    feedback_document_ids: list[str]
+    feedback_items: list[Rf1086SimulationFeedbackWire]
+    receipt_metadata: Rf1086ReceiptMetadataWire | None
+    submitted_payload_ref: Rf1086SubmittedPayloadReferenceWire | None
+    submitted_payload: Rf1086SubmittedPayloadWire | None
+    authority_confirmed_at: datetime | None
+    preview_confirmed_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+    submitted_by: UUID | None
+
+
+class Rf1086ApprovalWire(TransportModel):
+    id: UUID
+    entitlement_id: UUID
+    preview_id: UUID
+    company_id: UUID
+    user_id: UUID
+    income_year: int
+    obligation: Literal["aksjonaerregisteroppgaven"]
+    case_profile: Literal["rf1086_no_activity_v1"]
+    adapter_version: str
+    payload_hash: str
+    manifest_hash: str
+    manifest: dict[str, Any]
+    approved_by: UUID
+    approved_at: datetime
+    invalidated_at: datetime | None
+    invalidation_reason: str | None
+
+
+class Rf1086ProductionSubmissionWire(TransportModel):
+    id: UUID
+    approval_id: UUID
+    entitlement_id: UUID
+    company_id: UUID
+    user_id: UUID
+    income_year: int
+    obligation: Literal["aksjonaerregisteroppgaven"]
+    case_profile: Literal["rf1086_no_activity_v1"]
+    payload_hash: str
+    adapter_version: str
+    environment: Literal["production"]
+    status: Literal["approved", "sending", "received", "processing", "accepted", "rejected", "action_required", "unknown"]
+    authority_references: dict[str, str]
+    failure_class: str | None
+    supersedes_submission_id: UUID | None
+    submitted_by: UUID
+    feedback_state: Literal["sent", "processing", "accepted", "rejected", "action_required", "unknown"]
+    feedback_artifact_count: int
+    feedback_last_checked_at: datetime | None
+    feedback_last_changed_at: datetime | None
+    feedback_safe_error_code: str | None
+    feedback_correlation_id: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class Rf1086FeedbackArtifactWire(TransportModel):
+    id: UUID
+    company_id: UUID
+    submission_id: UUID
+    document_id: UUID
+    content_type: Literal["application/xml", "text/xml", "application/pdf", "text/plain", "application/octet-stream"]
+    byte_length: int
+    sha256: str
+    retrieved_at: datetime
+    classification: Literal["accepted", "rejected", "action_required"]
+
+
+class Rf1086ActionAvailabilityWire(TransportModel):
+    action: str
+    allowed: bool
+    reason_code: str | None
+
+
+class Rf1086WorkspaceWire(TransportModel):
+    company_id: UUID
+    income_year: int | None
+    previews: list[Rf1086PreviewWire]
+    simulations: list[Rf1086SimulationWire]
+    overrides: list[Rf1086OverrideWire]
+    review_comments: list[Rf1086ReviewCommentWire]
+    permissions: list[Rf1086PermissionWire]
+    test_evidence: list[Rf1086TestEvidenceWire]
+    approvals: list[Rf1086ApprovalWire]
+    production_submissions: list[Rf1086ProductionSubmissionWire]
+    feedback_artifacts: list[Rf1086FeedbackArtifactWire]
+    actions: list[Rf1086ActionAvailabilityWire]
+
+
+class Rf1086ArchiveSourceWire(TransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    previews: list[Rf1086PreviewWire]
+    simulations: list[Rf1086SimulationWire]
+    review_comments: list[Rf1086ReviewCommentWire]
+    permissions: list[Rf1086PermissionWire]
+    test_evidence: list[Rf1086TestEvidenceWire]
 
 
 class BillingCompanyWire(StrictTransportModel):
@@ -3160,7 +3472,7 @@ def _lock_wire(value: PeriodLock) -> LedgerPeriodLockWire:
 
 
 def _opening_snapshot_wire(
-    value: LegacyOpeningSnapshotView,
+    value: OpeningSnapshotView,
 ) -> LedgerOpeningSnapshotWire:
     return LedgerOpeningSnapshotWire(
         setup_id=str(value.setup_id),
@@ -3399,7 +3711,7 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         request.state.request_id = _request_id(request)
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
-        if request.url.path.startswith(("/api/v1/billing/annual/", "/api/v1/authority-connections/", "/api/v1/operator-controls/", "/api/v1/legacy-rf1086/")):
+        if request.url.path == "/api/v1/ledger/opening-snapshots/by-year" or request.url.path.startswith(("/api/v1/billing/annual/", "/api/v1/authority-connections/", "/api/v1/operator-controls/", "/api/v1/legacy-rf1086/", "/api/v1/shareholder-register-filings/")):
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -3442,7 +3754,7 @@ def create_app(
     banking_providers: Mapping[str, BankDataProvider] | None = None,
     billing_session_factory: BillingSessionFactory | None = None,
     billing_payment_provider: BillingPaymentProvider | None = None,
-    legacy_rf1086_session_factory: LegacyRf1086SessionFactory | None = None,
+    shareholder_register_filing_session_factory: ShareholderRegisterFilingSessionFactory | None = None,
     launch_signoff_session_factory: LaunchSignoffSessionFactory | None = None,
     authority_connections_session_factory: AuthorityConnectionsSessionFactory | None = None,
     system_user_authority_provider: SystemUserAuthorityProvider | None = None,
@@ -3516,11 +3828,11 @@ def create_app(
         )
 
     billing_provider = billing_payment_provider or SimulationBillingProvider()
-    if legacy_rf1086_session_factory is None:
-        from talli_backend.adapters.postgres_legacy_rf1086_authority import PostgresLegacyRf1086AuthorityAdapter
+    if shareholder_register_filing_session_factory is None:
+        from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingAdapter
         async def rf_billing_queries(access_token: str):
             return BillingWorkflow(await billing_sessions.session(access_token), billing_provider)
-        legacy_rf1086_session_factory = PostgresLegacyRf1086AuthorityAdapter.from_environment(
+        shareholder_register_filing_session_factory = PostgresShareholderRegisterFilingAdapter.from_environment(
             billing_queries_factory=rf_billing_queries, documents_session_factory=documents_application,
             company_access_service=company_access_service,
         )
@@ -3944,17 +4256,48 @@ def create_app(
                 detail="Status kunne ikke bekreftes. Prøv igjen senere.",
             ) from None
 
-    async def legacy_rf1086_call(call: Callable[[], Awaitable[ResponseT]]) -> ResponseT:
+    async def shareholder_register_filing_call(call: Callable[[], Awaitable[ResponseT]]) -> ResponseT:
         try:
             return await call()
-        except LegacyRf1086AuthenticationError:
+        except ShareholderRegisterFilingAuthenticationError:
             raise ApiProblem(status=401, code="authentication_required", title="Innlogging kreves",
                 detail="En gyldig innlogging kreves.") from None
-        except LegacyRf1086Error as error:
+        except Rf1086ProductionError as error:
             status = 422 if error.code == "invalid_request" else 401 if error.code == "authentication_required" else (
                 503 if error.code in {"configuration_unavailable", "send_unavailable", "status_unavailable"} else 409)
             raise ApiProblem(status=status, code=error.code, title="RF-1086-handlingen kunne ikke fullføres",
                 detail="Se lagret innsendingsstatus før du prøver igjen.") from None
+
+        except ShareholderRegisterFilingError as error:
+            statuses = {
+                ErrorCategory.INVALID_INPUT: 422, ErrorCategory.NOT_FOUND: 404,
+                ErrorCategory.CONFLICT: 409, ErrorCategory.FORBIDDEN: 403,
+                ErrorCategory.PRECONDITION_FAILED: 409, ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
+            }
+            raise ApiProblem(status=statuses[error.category], code=str(error.code),
+                title="RF-1086-handlingen kunne ikke fullføres",
+                detail="Handlingen kunne ikke bekreftes. Se lagret status før du prøver igjen.") from None
+
+    async def shareholder_register_filing_workflow(
+        credentials: HTTPAuthorizationCredentials | None,
+    ) -> ShareholderRegisterFilingWorkflow:
+        return ShareholderRegisterFilingWorkflow(
+            await shareholder_register_filing_session_factory.session(bearer_token(credentials))
+        )
+
+    def rf1086_recorded_wire(value: Rf1086RecordedResult) -> Rf1086RecordedResultWire:
+        return Rf1086RecordedResultWire(
+            record_id=UUID(value.record_id), company_id=UUID(str(value.company_id)),
+            income_year=int(value.income_year) if value.income_year is not None else None,
+        )
+
+    def rf1086_json_wire(value: Any) -> Any:
+        """Materialize immutable JSON at the transport edge, preserving keys/order."""
+        if isinstance(value, Mapping):
+            return {key: rf1086_json_wire(item) for key, item in value.items()}
+        if isinstance(value, (tuple, list)):
+            return [rf1086_json_wire(item) for item in value]
+        return value
 
     def launch_signoff_wire(value: LaunchSignoffRecord) -> LaunchSignoffRecordWire:
         return LaunchSignoffRecordWire(
@@ -8999,14 +9342,14 @@ def create_app(
     ) -> LedgerOpeningSnapshotPageWire:
         async def execute() -> LedgerOpeningSnapshotPageWire:
             session = await ledger_application.session(bearer_token(credentials))
-            snapshots: LegacyOpeningSnapshotPage = await session.list_opening_snapshots(
+            snapshots: OpeningSnapshotPage = await session.list_opening_snapshots(
                 actor_id=session.actor_id,
                 company_ids=ledger_input(
                     lambda: tuple(CompanyId(str(value)) for value in company_id)
                 ),
                 correlation_id=ledger_correlation(request),
                 cursor=(
-                    ledger_input(lambda: LegacyOpeningSnapshotCursor(cursor))
+                    ledger_input(lambda: OpeningSnapshotCursor(cursor))
                     if cursor
                     else None
                 ),
@@ -9020,6 +9363,41 @@ def create_app(
                     else None
                 ),
                 has_more=snapshots.has_more,
+            )
+
+        return await ledger_call(execute)
+
+    @application.get(
+        "/api/v1/ledger/opening-snapshots/by-year",
+        operation_id="ledgerListOpeningSnapshotsForYear",
+        response_model=LedgerOpeningSnapshotPageWire,
+        responses={200: {"description": "Authorized opening source for one company-year."} | ledger_success}
+        | ledger_errors,
+        tags=["ledger"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def list_opening_snapshots_for_year(
+        request: Request,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> LedgerOpeningSnapshotPageWire:
+        async def execute() -> LedgerOpeningSnapshotPageWire:
+            session = await ledger_application.session(bearer_token(credentials))
+            snapshots = await session.list_opening_snapshots_for_year(
+                actor_id=session.actor_id,
+                company_id=CompanyId(str(company_id)),
+                income_year=IncomeYear(income_year),
+                correlation_id=ledger_correlation(request),
+            )
+            if (snapshots.has_more or snapshots.next_cursor is not None or len(snapshots.items) > 1
+                    or any(str(item.company_id) != str(company_id) or item.income_year.value != income_year
+                           for item in snapshots.items)):
+                raise LedgerError.unavailable()
+            return LedgerOpeningSnapshotPageWire(
+                items=[_opening_snapshot_wire(item) for item in snapshots.items],
+                next_cursor=None,
+                has_more=False,
             )
 
         return await ledger_call(execute)
@@ -9652,6 +10030,240 @@ def create_app(
             )))
         return await authority_connections_call(execute)
 
+    @application.get(
+        "/api/v1/shareholder-register-filings/archive-source",
+        operation_id="rf1086GetArchiveSource", response_model=Rf1086ArchiveSourceWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_archive_source(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> Rf1086ArchiveSourceWire:
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            result = await workflow.archive_source(Rf1086ArchiveQuery(
+                company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year), actor_id=workflow.actor_id,
+            ))
+            try:
+                return Rf1086ArchiveSourceWire(
+                    company_id=UUID(str(result.company_id)), income_year=int(result.income_year),
+                    previews=[Rf1086PreviewWire.model_validate(row, from_attributes=True) for row in result.previews],
+                    simulations=[Rf1086SimulationWire.model_validate(row, from_attributes=True) for row in result.simulations],
+                    review_comments=[Rf1086ReviewCommentWire.model_validate(row, from_attributes=True) for row in result.review_comments],
+                    permissions=[Rf1086PermissionWire.model_validate(row, from_attributes=True) for row in result.permissions],
+                    test_evidence=[Rf1086TestEvidenceWire.model_validate(row, from_attributes=True) for row in result.test_evidence],
+                )
+            except ValidationError:
+                raise ShareholderRegisterFilingError.unavailable() from None
+        return await shareholder_register_filing_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/workspace",
+        operation_id="rf1086Workspace", response_model=Rf1086WorkspaceWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_workspace(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int | None, Query(alias="incomeYear", ge=2000, le=2100)] = None,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> Rf1086WorkspaceWire:
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            result = await workflow.workspace(Rf1086WorkspaceQuery(
+                CompanyId(str(company_id)), workflow.actor_id,
+                IncomeYear(income_year) if income_year is not None else None,
+            ))
+            try:
+                return Rf1086WorkspaceWire(
+                    company_id=UUID(str(result.company_id)),
+                    income_year=int(result.income_year) if result.income_year is not None else None,
+                    previews=[Rf1086PreviewWire.model_validate(row, from_attributes=True) for row in result.previews],
+                    simulations=[Rf1086SimulationWire.model_validate(row, from_attributes=True) for row in result.simulations],
+                    overrides=[Rf1086OverrideWire.model_validate(row, from_attributes=True) for row in result.overrides],
+                    review_comments=[Rf1086ReviewCommentWire.model_validate(row, from_attributes=True) for row in result.review_comments],
+                    permissions=[Rf1086PermissionWire.model_validate(row, from_attributes=True) for row in result.permissions],
+                    test_evidence=[Rf1086TestEvidenceWire.model_validate(row, from_attributes=True) for row in result.test_evidence],
+                    approvals=[Rf1086ApprovalWire.model_validate(row, from_attributes=True).model_copy(
+                        update={"manifest": rf1086_json_wire(row.manifest)},
+                    ) for row in result.approvals],
+                    production_submissions=[Rf1086ProductionSubmissionWire.model_validate(row, from_attributes=True) for row in result.production_submissions],
+                    feedback_artifacts=[Rf1086FeedbackArtifactWire.model_validate(row, from_attributes=True) for row in result.feedback_artifacts],
+                    actions=[Rf1086ActionAvailabilityWire.model_validate(row, from_attributes=True) for row in result.actions],
+                )
+            except ValidationError:
+                raise ShareholderRegisterFilingError.unavailable() from None
+        return await shareholder_register_filing_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/previews/{previewId}",
+        operation_id="rf1086Preview", response_model=Rf1086PreviewWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_preview(
+        previewId: UUID,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> Rf1086PreviewWire:
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            result = await workflow.read_preview(ReadRf1086PreviewQuery(
+                PreviewId(str(previewId)), workflow.actor_id,
+            ))
+            if result is None:
+                raise ShareholderRegisterFilingError.not_found()
+            return Rf1086PreviewWire.model_validate(result, from_attributes=True)
+        return await shareholder_register_filing_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/previews",
+        operation_id="rf1086GeneratePreview", response_model=Rf1086RecordedResultWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_generate_preview(
+        body: Rf1086GeneratePreviewWire, request: Request,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> Rf1086RecordedResultWire:
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            return rf1086_recorded_wire(await workflow.generate_preview(GenerateRf1086PreviewCommand(
+                company_id=CompanyId(str(body.company_id)), opening_snapshot_id=OpeningSnapshotId(str(body.opening_snapshot_id)),
+                actor_id=workflow.actor_id, correlation_id=CorrelationId(request.state.request_id),
+            )))
+        return await shareholder_register_filing_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/overrides",
+        operation_id="rf1086RecordOverride", response_model=Rf1086RecordedResultWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_record_override(
+        body: Rf1086OverrideCommandWire, request: Request,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> Rf1086RecordedResultWire:
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            return rf1086_recorded_wire(await workflow.record_override(RecordRf1086OverrideCommand(
+                preview_id=PreviewId(str(body.preview_id)), field_target=body.field_target, old_value=body.old_value,
+                new_value=body.new_value, reason=body.reason, risk_level=body.risk_level, owner_confirmed=body.owner_confirmed,
+                actor_id=workflow.actor_id, correlation_id=CorrelationId(request.state.request_id),
+            )))
+        return await shareholder_register_filing_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/review-comments",
+        operation_id="rf1086AddReviewComment", response_model=Rf1086RecordedResultWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_add_review_comment(
+        body: Rf1086ReviewCommentCommandWire, request: Request,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> Rf1086RecordedResultWire:
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            return rf1086_recorded_wire(await workflow.add_review_comment(AddRf1086ReviewCommentCommand(
+                preview_id=PreviewId(str(body.preview_id)), severity=body.severity, body=body.body,
+                actor_id=workflow.actor_id, correlation_id=CorrelationId(request.state.request_id),
+            )))
+        return await shareholder_register_filing_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/review-comment-acknowledgements",
+        operation_id="rf1086AcknowledgeReviewComment", response_model=Rf1086RecordedResultWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_acknowledge_review_comment(
+        body: Rf1086ReviewAcknowledgementWire, request: Request,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> Rf1086RecordedResultWire:
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            return rf1086_recorded_wire(await workflow.acknowledge_review_comment(AcknowledgeRf1086ReviewCommentCommand(
+                comment_id=ReviewCommentId(str(body.comment_id)),
+                actor_id=workflow.actor_id, correlation_id=CorrelationId(request.state.request_id),
+            )))
+        return await shareholder_register_filing_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/simulations",
+        operation_id="rf1086ConfirmSimulation", response_model=Rf1086RecordedResultWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_confirm_simulation(
+        body: Rf1086SimulationCommandWire, request: Request,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> Rf1086RecordedResultWire:
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            return rf1086_recorded_wire(await workflow.confirm_simulation(ConfirmRf1086SimulationCommand(
+                preview_id=PreviewId(str(body.preview_id)), authority_confirmed=body.authority_confirmed, preview_confirmed=body.preview_confirmed,
+                actor_id=workflow.actor_id, correlation_id=CorrelationId(request.state.request_id),
+            )))
+        return await shareholder_register_filing_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/filing-permissions",
+        operation_id="rf1086ConfirmFilingPermission", response_model=Rf1086RecordedResultWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_confirm_filing_permission(
+        body: Rf1086PermissionCommandWire, request: Request,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> Rf1086RecordedResultWire:
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            return rf1086_recorded_wire(await workflow.confirm_filing_permission(ConfirmRf1086FilingPermissionCommand(
+                company_id=CompanyId(str(body.company_id)), production_enabled=body.production_enabled,
+                actor_id=workflow.actor_id, correlation_id=CorrelationId(request.state.request_id),
+            )))
+        return await shareholder_register_filing_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/test-evidence",
+        operation_id="rf1086RecordTestEvidence", response_model=Rf1086RecordedResultWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_record_test_evidence(
+        body: Rf1086TestEvidenceCommandWire, request: Request,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> Rf1086RecordedResultWire:
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            return rf1086_recorded_wire(await workflow.record_test_evidence(RecordRf1086TestEvidenceCommand(
+                company_id=CompanyId(str(body.company_id)), environment=body.environment, status=body.status,
+                test_reference=body.test_reference, feedback_summary=body.feedback_summary, receipt_reference=body.receipt_reference,
+                archive_reference=body.archive_reference, evidence_url=body.evidence_url, payload_hash=body.payload_hash,
+                actor_id=workflow.actor_id, correlation_id=CorrelationId(request.state.request_id),
+            )))
+        return await shareholder_register_filing_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/production-approvals",
+        operation_id="rf1086ApproveProduction", response_model=Rf1086RecordedResultWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_approve_production(
+        body: Rf1086ProductionApprovalCommandWire, request: Request,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> Rf1086RecordedResultWire:
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            return rf1086_recorded_wire(await workflow.approve_production(ApproveRf1086ProductionCommand(
+                preview_id=PreviewId(str(body.preview_id)), entitlement_id=str(body.entitlement_id), real_filing_confirmed=body.real_filing_confirmed,
+                actor_id=workflow.actor_id, correlation_id=CorrelationId(request.state.request_id),
+            )))
+        return await shareholder_register_filing_call(execute)
+
     @application.post(
         "/api/v1/legacy-rf1086/production-filings",
         operation_id="legacyRf1086SendApprovedFiling", response_model=LegacyRf1086SendResultWire,
@@ -9660,13 +10272,16 @@ def create_app(
     )
     async def send_legacy_rf1086(
         body: LegacyRf1086SendCommandWire,
+        request: Request,
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> LegacyRf1086SendResultWire:
         async def execute():
-            session = await legacy_rf1086_session_factory.session(bearer_token(credentials))
-            result = await send_approved_rf1086_production_filing(session, str(body.approval_id))
+            workflow = await shareholder_register_filing_workflow(credentials)
+            result = await workflow.send_approved_filing(SendApprovedRf1086Command(
+                ApprovalId(str(body.approval_id)), workflow.actor_id, CorrelationId(request.state.request_id),
+            ))
             return LegacyRf1086SendResultWire(submission_id=UUID(result.submission_id))
-        return await legacy_rf1086_call(execute)
+        return await shareholder_register_filing_call(execute)
 
     @application.post(
         "/api/v1/legacy-rf1086/feedback-reconciliations",
@@ -9676,14 +10291,17 @@ def create_app(
     )
     async def reconcile_legacy_rf1086(
         body: LegacyRf1086ReconcileCommandWire,
+        request: Request,
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> LegacyRf1086ReconcileResultWire:
         async def execute():
-            session = await legacy_rf1086_session_factory.session(bearer_token(credentials))
-            result = await reconcile_rf1086_production(session, str(body.submission_id))
+            workflow = await shareholder_register_filing_workflow(credentials)
+            result = await workflow.reconcile_feedback(ReconcileRf1086FeedbackCommand(
+                SubmissionId(str(body.submission_id)), workflow.actor_id, CorrelationId(request.state.request_id),
+            ))
             return LegacyRf1086ReconcileResultWire(state=result.state,error_code=result.error_code,
                 requires_manual_retry=result.requires_manual_retry)
-        return await legacy_rf1086_call(execute)
+        return await shareholder_register_filing_call(execute)
 
     billing_errors: Any = {
         status: {

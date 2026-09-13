@@ -86,14 +86,14 @@ def main() -> None:
     transport = httpx.MockTransport(mock_transport)
     maskinporten = MaskinportenClient(MaskinportenConfiguration.production(os.environ), transport=transport)
     from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAdapter
-    from talli_backend.adapters.postgres_legacy_rf1086_authority import PostgresLegacyRf1086AuthorityAdapter
+    from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingAdapter
     from talli_backend.adapters.supabase_billing import SupabaseBillingAdapter
     from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
     from talli_backend.adapters.supabase_documents import SupabaseDocumentsAdapter
     from talli_backend.adapters.supabase_ledger import LedgerSupabaseConfiguration
     from talli_backend.adapters.simulation_billing import SimulationBillingProvider
     from talli_backend.application.billing_workflow import BillingWorkflow
-    from talli_backend.compatibility.rf1086_authority_workflow import LegacyRf1086Error
+    from talli_backend.modules.shareholder_register_filing.public import Rf1086ProductionError
     from talli_backend.modules.company_access.public import CompanyAccessService
     billing = SupabaseBillingAdapter.from_environment()
     documents = SupabaseDocumentsAdapter.from_environment()
@@ -103,18 +103,18 @@ def main() -> None:
         async def session(self, access_token):
             session = await rf.session(access_token)
             async def deny_mutation(*args, **kwargs):
-                raise LegacyRf1086Error("send_unavailable")
+                raise Rf1086ProductionError("send_unavailable")
             session.bind_mutation_authority = deny_mutation
             session.begin_production_filing = deny_mutation
             return session
-    rf = PostgresLegacyRf1086AuthorityAdapter(
+    rf = PostgresShareholderRegisterFilingAdapter(
         LedgerSupabaseConfiguration(os.environ["SUPABASE_URL"], os.environ["SUPABASE_ANON_KEY"], os.environ["TALLI_LEDGER_DATABASE_URL"]),
         billing_queries_factory=billing_queries, documents_session_factory=documents,
         company_access_service=CompanyAccessService(SupabaseCompanyAccessAdapter.from_environment(), BrregCompanyRegistryAdapter.from_environment()),
         environment=dict(os.environ) | {"TALLI_RF1086_PRODUCTION_ENABLED": "true", "TALLI_PROD_RF1086_SCOPE": "skatteetaten:innrapporteringaksjonaerregisteroppgave"},
         maskinporten=maskinporten, rf_transport=transport,
     )
-    application = create_app(legacy_rf1086_session_factory=RecoveryOnlyFactory(), documents_session_factory=documents,
+    application = create_app(shareholder_register_filing_session_factory=RecoveryOnlyFactory(), documents_session_factory=documents,
         system_user_authority_provider=AltinnSystemUserAdapter(
         maskinporten, environment="production", transport=transport,
     ))

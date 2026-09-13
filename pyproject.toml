@@ -2,8 +2,8 @@
 name = "talli"
 version = "0.1.0"
 description = "Talli filing simulation engine for Norwegian holding companies"
-requires-python = ">=3.12"
-dependencies = ["pydantic>=2", "reportlab==5.0.0"]
+requires-python = ">=3.12,<3.14"
+dependencies = ["pydantic>=2", "reportlab==5.0.0", "talli-backend==0.1.0"]
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -20,3 +20,6 @@ talli = "holding_cli.main:main"
 
 [tool.ruff]
 line-length = 110
+
+[tool.uv.sources]
+talli-backend = { path = "apps/backend", editable = true }

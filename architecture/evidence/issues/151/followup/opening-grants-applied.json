@@ -1,0 +1,18 @@
+{
+  "appliedAt": "2026-09-09T21:44:38.516072+00:00",
+  "source": "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql",
+  "grants": [
+    {
+      "signature": "backend_system.read_new_year_opening_snapshots_v1(uuid[],text,integer,text,integer)",
+      "execute": true
+    },
+    {
+      "signature": "ledger.read_opening_bank_inputs_v1(uuid,integer,text)",
+      "execute": true
+    }
+  ],
+  "scope": "exact shipped correction on owned normal-migration overlap; no reset or gate credit",
+  "temporaryMembershipsRestored": true,
+  "mutationExecute": false,
+  "sourceSha256": "187f4210ab2df4b230ddfc631875eb6879216b8d8618b4d5b3ecd50764cac05b"
+}

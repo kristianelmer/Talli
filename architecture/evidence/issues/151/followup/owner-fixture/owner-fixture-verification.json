@@ -1,0 +1,64 @@
+{
+  "verifiedAt": "2026-09-09T22:29:55.584915+00:00",
+  "scope": "Synthetic local fixture-only verification. Actual unchanged onboarding browser plus extracted historical owner seed; no fresh RF simulation/send or authority acceptance claim.",
+  "results": {
+    "overlapRegression": {
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0
+    },
+    "predecessorRegression": {
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0
+    },
+    "onboardingBrowser": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 48610.119291
+    },
+    "extractedHistoricalSeedCleanup": {
+      "passed": true,
+      "residueCompanies": 0,
+      "residueUsers": 0
+    },
+    "actualLateFailureRollback": {
+      "passed": true,
+      "retainedForeignKeysAndForceRls": true,
+      "exactOwnerAclUserTriggersSchemaAndMembershipRestored": true
+    }
+  },
+  "sourceHashes": {
+    "tests/browser_owner_annual_loop.mjs": "4cec91925cf1a72b2f2e02d94d1299d95f22302773cb5b020915a709b9c2bab4",
+    "tests/browser_fixture_safety.test.mjs": "476806d2dc2ed94d8f9286121b5f85e8385c79119f7c22d41c978458ae108001",
+    "tests/browser_process_lifecycle.test.mjs": "f76e34f81cfa6118a7b3022f57b307fae5c7be1100fac8fc1bb0aebeec2af06a",
+    "tests/support/browser-owner-cleanup.mjs": "25c81125c76c094d3b6c480fa01da2f1ddebd81eb874b6b78d26a8117c853fe0",
+    "tests/support/rf1086-fixture-access.mjs": "08b2cd8207949a8d39f33f1ff3b6b772e2c57268fb92f91291b6e322b479c48f",
+    "tests/browser_company_onboarding.mjs": "9e5131003b66baf54d99e44b7f50099fd8be6bc5e0bc7e633e90c1a90a001bb3"
+  },
+  "artifactHashes": {
+    "/tmp/talli-151-owner-cleanup-overlap-regressions.log": "f5e5e95b1f59a74cd1bf38c691512d5a523d6fec49a11fa7d92828e70d8b59b3",
+    "/tmp/talli-151-owner-cleanup-predecessor-regressions.log": "c97366879b6c1e1110b03d3a7d51851f9908c4e0bc68a9392d1aba93e88b50b9",
+    "/tmp/talli-151-onboarding-browser-overlap-current.log": "de04c45ad8f33811242133d3996c629af36baef2699b0b693552d5865b369195",
+    "/tmp/talli-151-retained-owner-seed-cleanup.json": "c477f26d8206e3ccb65acf7d4172cd6a3eb6898515c18f8425214f09ebbb8344",
+    "/tmp/talli-151-retained-owner-rollback-proof.json": "852587c5280be75a7131e7616f0e15fd21e254ae500c6657165f4efc44de746d",
+    "/tmp/talli-151-owner-predecessor-topology.log": "9446e94a5b974acb25e3f0d3139bff2c4117a192afc00ef2b2618a5c23bb5cd6",
+    "/tmp/talli-151-owner-normal-reset.log": "a0e3edc3c6f9a6e2914d7bfda8f42206c87966422f6edfd68852004b17820958",
+    "/tmp/talli-151-owner-normal-reset-migration-sync.json": "dcd4f3328a1dbf11528ccbcdbb8bbe8ee05884ac115fa36e174eca71cbd7a74b",
+    "/tmp/talli-151-workspace-restoration-corrected.json": "7999b6a30ac9e782376d97649da7202d500278f1175cd0c7f8c1a01c58cd3f72"
+  },
+  "generatedFilesRestored": true,
+  "workspaceRestoration": "Passed actual shipped rollback \u2192 corrected workspace; see /tmp/talli-151-workspace-restoration-corrected.json.",
+  "releasedTopology": {
+    "rfPhase": "canonical_overlap",
+    "authorityPublicKind": "v",
+    "ledgerPublicKind": "v",
+    "openingPublicKind": "r",
+    "ledgerSetupColumnPresent": true,
+    "companyRows": 0,
+    "authUsers": 0,
+    "runtimePrincipalsDisabled": true,
+    "temporaryFixtureLogins": 0
+  }
+}

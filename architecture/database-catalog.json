@@ -9,7 +9,27 @@
       "kind": "technical"
     },
     {
+      "name": "authority_connections.authority_operations",
+      "kind": "capability-business",
+      "owner": "backend:authority_connections",
+      "compatibilityResources": [
+        "table:authority_operations"
+      ]
+    },
+    {
+      "name": "authority_connections.system_user_requests",
+      "kind": "capability-business",
+      "owner": "backend:authority_connections",
+      "compatibilityResources": [
+        "table:system_user_requests"
+      ]
+    },
+    {
       "name": "backend_system.annual_checkout_observation_work",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.authority_connections_overlap_grants",
       "kind": "technical"
     },
     {
@@ -57,15 +77,15 @@
       "kind": "technical"
     },
     {
+      "name": "backend_system.marketing_consent_actions",
+      "kind": "technical"
+    },
+    {
       "name": "backend_system.marketing_funnel_events",
       "kind": "technical"
     },
     {
       "name": "backend_system.marketing_funnel_withdrawals",
-      "kind": "technical"
-    },
-    {
-      "name": "backend_system.marketing_consent_actions",
       "kind": "technical"
     },
     {
@@ -133,6 +153,11 @@
       "owner": "backend:banking"
     },
     {
+      "name": "billing.annual_cancellation_requests",
+      "kind": "capability-business",
+      "owner": "backend:billing"
+    },
+    {
       "name": "billing.annual_checkout_observation_authorities",
       "kind": "capability-business",
       "owner": "backend:billing"
@@ -144,11 +169,6 @@
     },
     {
       "name": "billing.annual_checkout_withdrawals",
-      "kind": "capability-business",
-      "owner": "backend:billing"
-    },
-    {
-      "name": "billing.annual_cancellation_requests",
       "kind": "capability-business",
       "owner": "backend:billing"
     },
@@ -398,128 +418,6 @@
       "owner": "backend:investments"
     },
     {
-      "name": "public.annual_data",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.audit_events",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "authority_connections.authority_operations",
-      "kind": "capability-business",
-      "owner": "backend:authority_connections",
-      "compatibilityResources": [
-        "table:authority_operations"
-      ]
-    },
-    {
-      "name": "public.authority_permissions",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.authority_test_runs",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.companies",
-      "kind": "capability-business",
-      "owner": "backend:company_access"
-    },
-    {
-      "name": "public.company_archive_export_attempts",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.company_archive_export_receipts",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.company_archive_source_generations",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.company_cancellations",
-      "kind": "capability-business",
-      "owner": "backend:company_access"
-    },
-    {
-      "name": "public.company_access_command_receipts",
-      "kind": "technical"
-    },
-    {
-      "name": "public.company_deletion_reviews",
-      "kind": "capability-business",
-      "owner": "backend:company_access"
-    },
-    {
-      "name": "public.company_eligibility_assessments",
-      "kind": "capability-business",
-      "owner": "backend:company_access"
-    },
-    {
-      "name": "public.company_invitations",
-      "kind": "capability-business",
-      "owner": "backend:company_access"
-    },
-    {
-      "name": "public.company_memberships",
-      "kind": "capability-business",
-      "owner": "backend:company_access"
-    },
-    {
-      "name": "public.company_year_acceptances",
-      "kind": "capability-business",
-      "owner": "backend:company_access"
-    },
-    {
-      "name": "public.company_year_admissions",
-      "kind": "capability-business",
-      "owner": "backend:company_access"
-    },
-    {
-      "name": "public.customer_agreement_acceptances",
-      "kind": "capability-business",
-      "owner": "backend:company_access"
-    },
-    {
-      "name": "public.documents",
-      "kind": "capability-business",
-      "owner": "backend:documents"
-    },
-    {
-      "name": "public.filing_approval_snapshots",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.filing_overrides",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.filing_previews",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.filing_readiness_snapshots",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.filing_review_comments",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.filing_submissions",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.holding_actions",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.launch_signoffs",
-      "kind": "technical"
-    },
-    {
       "name": "ledger.bank_loan_anchors",
       "kind": "capability-business",
       "owner": "backend:ledger"
@@ -588,6 +486,11 @@
       "owner": "backend:ledger"
     },
     {
+      "name": "ledger.opening_bank_inputs",
+      "kind": "capability-business",
+      "owner": "backend:ledger"
+    },
+    {
       "name": "ledger.opening_position_component_sources",
       "kind": "capability-business",
       "owner": "backend:ledger"
@@ -606,6 +509,14 @@
       "name": "ledger.opening_received_dividend_settlements",
       "kind": "capability-business",
       "owner": "backend:ledger"
+    },
+    {
+      "name": "ledger.period_locks",
+      "kind": "capability-business",
+      "owner": "backend:ledger",
+      "compatibilityResources": [
+        "table:period_locks"
+      ]
     },
     {
       "name": "ledger.received_dividend_decisions",
@@ -648,36 +559,118 @@
       "owner": "backend:ledger"
     },
     {
-      "name": "public.notification_outbox",
+      "name": "public.annual_data",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.audit_events",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.authority_permissions",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.authority_test_runs",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.companies",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.company_access_command_receipts",
       "kind": "technical"
     },
     {
-      "name": "public.opening_balance_setups",
+      "name": "public.company_archive_export_attempts",
       "kind": "legacy-business"
     },
     {
-      "name": "public.opening_shareholders",
+      "name": "public.company_archive_export_receipts",
       "kind": "legacy-business"
     },
     {
-      "name": "ledger.period_locks",
+      "name": "public.company_archive_source_generations",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.company_cancellations",
       "kind": "capability-business",
-      "owner": "backend:ledger",
-      "compatibilityResources": [
-        "table:period_locks"
-      ]
+      "owner": "backend:company_access"
     },
     {
-      "name": "public.production_feedback_artifacts",
+      "name": "public.company_deletion_reviews",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.company_eligibility_assessments",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.company_invitations",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.company_memberships",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.company_year_acceptances",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.company_year_admissions",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.customer_agreement_acceptances",
+      "kind": "capability-business",
+      "owner": "backend:company_access"
+    },
+    {
+      "name": "public.documents",
+      "kind": "capability-business",
+      "owner": "backend:documents"
+    },
+    {
+      "name": "public.filing_overrides",
       "kind": "legacy-business"
     },
     {
-      "name": "public.production_filing_events",
+      "name": "public.filing_previews",
       "kind": "legacy-business"
     },
     {
-      "name": "public.production_filing_submissions",
+      "name": "public.filing_readiness_snapshots",
       "kind": "legacy-business"
+    },
+    {
+      "name": "public.filing_review_comments",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.filing_submissions",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.holding_actions",
+      "kind": "legacy-business"
+    },
+    {
+      "name": "public.launch_signoffs",
+      "kind": "technical"
+    },
+    {
+      "name": "public.notification_outbox",
+      "kind": "technical"
     },
     {
       "name": "public.support_access_grants",
@@ -700,16 +693,91 @@
       "owner": "backend:company_access"
     },
     {
-      "name": "authority_connections.system_user_requests",
+      "name": "shareholder_register_filing.authority_permissions",
       "kind": "capability-business",
-      "owner": "backend:authority_connections",
+      "owner": "backend:shareholder_register_filing"
+    },
+    {
+      "name": "shareholder_register_filing.authority_test_runs",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing"
+    },
+    {
+      "name": "shareholder_register_filing.filing_approval_snapshots",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
       "compatibilityResources": [
-        "table:system_user_requests"
+        "table:filing_approval_snapshots"
       ]
     },
     {
-      "name": "backend_system.authority_connections_overlap_grants",
+      "name": "shareholder_register_filing.filing_overrides",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing"
+    },
+    {
+      "name": "shareholder_register_filing.filing_previews",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing"
+    },
+    {
+      "name": "shareholder_register_filing.filing_review_comments",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing"
+    },
+    {
+      "name": "shareholder_register_filing.filing_submissions",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing"
+    },
+    {
+      "name": "shareholder_register_filing.migration_inventory",
       "kind": "technical"
+    },
+    {
+      "name": "shareholder_register_filing.migration_quarantine",
+      "kind": "technical"
+    },
+    {
+      "name": "shareholder_register_filing.migration_state",
+      "kind": "technical"
+    },
+    {
+      "name": "shareholder_register_filing.opening_balance_setups",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing"
+    },
+    {
+      "name": "shareholder_register_filing.opening_shareholders",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": [
+        "table:opening_shareholders"
+      ]
+    },
+    {
+      "name": "shareholder_register_filing.production_feedback_artifacts",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": [
+        "table:production_feedback_artifacts"
+      ]
+    },
+    {
+      "name": "shareholder_register_filing.production_filing_events",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": [
+        "table:production_filing_events"
+      ]
+    },
+    {
+      "name": "shareholder_register_filing.production_filing_submissions",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": [
+        "table:production_filing_submissions"
+      ]
     }
   ]
 }

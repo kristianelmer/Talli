@@ -47,7 +47,7 @@ test("mandatory authority browser uses real generated HTTP, backend-owned callba
   assert.match(source, /cookie\?\.httpOnly && cookie\.secure/u);
   assert.match(source, /start_authority_connections_backend\.py/u);
   assert.match(fixture, /system_user_authority_provider=AltinnSystemUserAdapter/u);
-  assert.match(fixture, /legacy_rf1086_session_factory=RecoveryOnlyFactory\(\)/u);
+  assert.match(fixture, /shareholder_register_filing_session_factory=RecoveryOnlyFactory\(\)/u);
   assert.match(fixture, /MaskinportenConfiguration\.production\(os\.environ\)/u);
   assert.match(fixture, /sys\.addaudithook\(guard_socket\)/u);
   assert.ok(source.indexOf("t.after(async ()") < source.indexOf("await database.connect()"));

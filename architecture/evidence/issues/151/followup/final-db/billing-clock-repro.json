@@ -1,0 +1,24 @@
+{
+  "observed_at": "2026-09-09T22:03:19.282479+00:00",
+  "local_only": true,
+  "claims": "synthetic valid authenticated AAL2 with host-clock TOTP timestamp",
+  "database_delta_seconds": [
+    0.00985002517700195,
+    -0.00639915466308594,
+    -0.00719690322875977,
+    -0.00651001930236816
+  ],
+  "fresh_results": [
+    true,
+    false,
+    false,
+    false
+  ],
+  "first_runtime_error": "new row violates row-level security policy for table billing_command_receipts",
+  "bounded_red_run": {
+    "failed": 9,
+    "passed": 313,
+    "interrupted_for_diagnosis": true
+  },
+  "proposed_correction": "Use existing database_now().timestamp() - 1 only for ordinary fresh synthetic fixture claims; preserve explicit boundary and stale cases."
+}

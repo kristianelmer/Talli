@@ -1,0 +1,9 @@
+{
+  "captured_at": "2026-09-09T22:05:11.132196+00:00",
+  "timing": "Captured after the affected run completed and after full Billing rerun started; not a pre-run hash capture. Files have remained unchanged since the five fixture corrections before both runs; independent AST review confirms scope.",
+  "files": {
+    "apps/backend/tests/test_supabase_billing_runtime.py": "bef0e354492584ae3b2e93cc3fb046c1feae701a9f51ad6c768e54ac678cfea7",
+    "apps/backend/tests/test_legacy_billing_retirement_runtime.py": "a369b0717095e7eee6ab8c27dae24d4e7c1610a7259d137c080e91d2977484e8",
+    "apps/backend/tests/test_annual_purchase_basis_runtime.py": "019584d0680b3f19a2f4f3bf7b708da2841328a00471a36eb81b27411349e977"
+  }
+}

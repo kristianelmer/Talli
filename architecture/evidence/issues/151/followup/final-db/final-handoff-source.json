@@ -1,0 +1,13 @@
+{
+  "captured_at": "2026-09-09T22:17:05.627805+00:00",
+  "run_receipt": "/tmp/talli-151-final-combined-108.json",
+  "unchanged_at_handoff": true,
+  "changed_since_run": [],
+  "report_sha256": "b7dd2eaab528c3e1eb4d913f905abd16f64e9fcf8ced22500186c9ea6d5673c8",
+  "fixture_corrections": {
+    "tests/billing_database_runtime.test.mjs": "b6956c1fef13b47df12a84264b02fa0890a4547a780386542c2731b8cd4325ff",
+    "apps/backend/tests/test_supabase_billing_runtime.py": "bef0e354492584ae3b2e93cc3fb046c1feae701a9f51ad6c768e54ac678cfea7",
+    "apps/backend/tests/test_legacy_billing_retirement_runtime.py": "a369b0717095e7eee6ab8c27dae24d4e7c1610a7259d137c080e91d2977484e8",
+    "apps/backend/tests/test_annual_purchase_basis_runtime.py": "019584d0680b3f19a2f4f3bf7b708da2841328a00471a36eb81b27411349e977"
+  }
+}

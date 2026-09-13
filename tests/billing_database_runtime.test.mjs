@@ -102,12 +102,16 @@ async function commandReceiptEvidence(client) {
     await client.query("begin");
     try {
       await client.query("set local role billing_store_owner");
+      // Synthetic fresh MFA uses the database authorization clock, away from its future boundary.
+      const { rows: [{ timestamp }] } = await client.query(
+        "select extract(epoch from clock_timestamp())::double precision - 1 as timestamp",
+      );
       await client.query(
         "select pg_catalog.set_config('talli.verified_actor_id', $1, true), pg_catalog.set_config('talli.verified_actor_claims', $2, true)",
         [ownerId, JSON.stringify({
           sub: ownerId,
           aal: "aal2",
-          amr: [{ method: "totp", timestamp: Date.now() / 1000 }],
+          amr: [{ method: "totp", timestamp: timestamp }],
         })],
       );
       const result = await client.query(String.raw`
@@ -134,12 +138,16 @@ async function seedCommandReceipt(client) {
     await client.query("begin");
     try {
       await client.query("set local role billing_store_owner");
+      // Synthetic fresh MFA uses the database authorization clock, away from its future boundary.
+      const { rows: [{ timestamp }] } = await client.query(
+        "select extract(epoch from clock_timestamp())::double precision - 1 as timestamp",
+      );
       await client.query(
         "select pg_catalog.set_config('talli.verified_actor_id', $1, true), pg_catalog.set_config('talli.verified_actor_claims', $2, true)",
         [ownerId, JSON.stringify({
           sub: ownerId,
           aal: "aal2",
-          amr: [{ method: "totp", timestamp: Date.now() / 1000 }],
+          amr: [{ method: "totp", timestamp: timestamp }],
         })],
       );
       await client.query(

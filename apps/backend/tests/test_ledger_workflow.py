@@ -20,6 +20,8 @@ from talli_backend.modules.ledger.public import (
     LedgerSourceCapability,
     LedgerSourceRecordId,
     OpeningBalanceCategory,
+    OpeningBankInput,
+    RecordOpeningBankInputCommand,
     OpeningBalanceComponent,
     OpeningPositionMode,
     PeriodLockPage,
@@ -111,16 +113,28 @@ class WorkflowTransactionStub:
         self.claim_request = request
         return self.replay
 
-    async def record_legacy_opening_snapshot(
+    async def record_opening_snapshot(
         self,
         command: RecordOpeningSnapshotCommand,
-        *,
-        ledger_bank_balance: Money,
     ) -> OpeningSnapshotId:
         self.events.append("shareholder-register")
         assert command.share_capital == Money.nok("30000")
-        assert ledger_bank_balance == Money.nok("30000")
         return SETUP_ID
+
+    async def record_opening_bank_input(
+        self, command: RecordOpeningBankInputCommand
+    ) -> OpeningBankInput:
+        self.events.append("ledger-bank-input")
+        assert command.snapshot_id == str(SETUP_ID)
+        assert command.bank_balance == Money.nok("30000")
+        return OpeningBankInput(
+            snapshot_id=command.snapshot_id,
+            company_id=command.company_id,
+            income_year=command.income_year,
+            bank_balance=command.bank_balance,
+            recorded_by=command.actor_id,
+            recorded_at=NOW,
+        )
 
     async def complete_workflow(
         self,
@@ -231,6 +245,7 @@ def test_new_year_start_uses_one_transaction_and_ledger_owned_posting_policy() -
         "begin",
         "claim:new_year_start",
         "shareholder-register",
+        "ledger-bank-input",
         "ledger",
         "complete:new_year_start",
         "commit",
@@ -371,6 +386,7 @@ def test_new_year_start_retries_one_unknown_commit_with_the_same_command() -> No
     assert result.posted_entry.replayed is True
     assert unknown_session.attempts == 2
     assert transaction.events.count("shareholder-register") == 1
+    assert transaction.events.count("ledger-bank-input") == 1
     assert transaction.events.count("claim:new_year_start") == 2
 
 
@@ -427,3 +443,26 @@ def test_administrative_cost_uses_one_transaction_and_python_posting_policy() ->
     ]
     assert transaction.posting is not None
     assert transaction.posting["entry_kind"] is LedgerEntryKind.ADMINISTRATIVE_COST
+
+
+def test_new_year_rolls_back_rf_snapshot_before_posting_if_bank_provenance_disagrees() -> None:
+    from dataclasses import replace
+
+    class MisboundBankTransaction(WorkflowTransactionStub):
+        async def record_opening_bank_input(self, command):
+            original = await super().record_opening_bank_input(command)
+            return replace(original, bank_balance=Money.nok("1"))
+
+    transaction = MisboundBankTransaction()
+    session = asyncio.run(application(transaction).session("token"))
+    try:
+        asyncio.run(session.start_new_year(new_year_command()))
+    except LedgerError as error:
+        assert error.code == "LEDGER_DEPENDENCY_UNAVAILABLE"
+    else:
+        raise AssertionError("misbound original bank input unexpectedly committed")
+    assert transaction.events.count("shareholder-register") == 2
+    assert transaction.events.count("rollback") == 2
+    assert "ledger" not in transaction.events
+    assert "complete:new_year_start" not in transaction.events
+    assert "commit" not in transaction.events

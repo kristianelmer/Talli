@@ -1,0 +1,101 @@
+{
+  "python": "3.12.11",
+  "pydantic": "2.13.4",
+  "source_revision": "91b178c281bcc5fb887a6257d2f72e380199f3e6",
+  "cases": [
+    {
+      "name": "generate",
+      "changed_fields": [],
+      "only_pydantic_documentation_url": false,
+      "observed": null
+    },
+    {
+      "name": "xml",
+      "changed_fields": [],
+      "only_pydantic_documentation_url": false,
+      "observed": null
+    },
+    {
+      "name": "readiness_json",
+      "changed_fields": [],
+      "only_pydantic_documentation_url": false,
+      "observed": null
+    },
+    {
+      "name": "readiness_text",
+      "changed_fields": [],
+      "only_pydantic_documentation_url": false,
+      "observed": null
+    },
+    {
+      "name": "validation_json",
+      "changed_fields": [],
+      "only_pydantic_documentation_url": false,
+      "observed": null
+    },
+    {
+      "name": "validation_text",
+      "changed_fields": [],
+      "only_pydantic_documentation_url": false,
+      "observed": null
+    },
+    {
+      "name": "render_ready",
+      "changed_fields": [],
+      "only_pydantic_documentation_url": false,
+      "observed": null
+    },
+    {
+      "name": "render_blocked",
+      "changed_fields": [],
+      "only_pydantic_documentation_url": false,
+      "observed": null
+    },
+    {
+      "name": "render_invalid",
+      "changed_fields": [
+        "stdout"
+      ],
+      "only_pydantic_documentation_url": true,
+      "observed": null
+    },
+    {
+      "name": "generate_blocked",
+      "changed_fields": [],
+      "only_pydantic_documentation_url": false,
+      "observed": null
+    },
+    {
+      "name": "generate_invalid",
+      "changed_fields": [
+        "stderr"
+      ],
+      "only_pydantic_documentation_url": true,
+      "observed": null
+    },
+    {
+      "name": "simulation_baseline",
+      "changed_fields": [],
+      "only_pydantic_documentation_url": false,
+      "observed": null
+    },
+    {
+      "name": "simulation_mixed_keys",
+      "changed_fields": [],
+      "only_pydantic_documentation_url": false,
+      "observed": null
+    },
+    {
+      "name": "simulation_false_authority",
+      "changed_fields": [],
+      "only_pydantic_documentation_url": false,
+      "observed": null
+    },
+    {
+      "name": "simulation_surrogate_xml",
+      "changed_fields": [],
+      "only_pydantic_documentation_url": false,
+      "observed": null
+    }
+  ]
+}

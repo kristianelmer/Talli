@@ -1,0 +1,28 @@
+{
+  "verifiedAt": "2026-09-09T22:35:07.180437+00:00",
+  "passed": true,
+  "scope": "Actual shipped rollback then workspace rehearsal on known disposable local stack; preserves AU overlap before ordinary Billing retirement. Final recutover order and SQL guards unchanged.",
+  "topology": {
+    "rfPhase": "canonical_overlap",
+    "authorityPublicKind": "v",
+    "ledgerPublicKind": "v",
+    "openingPublicKind": "r",
+    "ledgerSetupColumnPresent": true,
+    "companyRows": 0,
+    "authUsers": 0,
+    "runtimePrincipalsDisabled": true,
+    "temporaryFixtureLogins": 0
+  },
+  "sourceHashes": {
+    "scripts/rehearse-authority-topology.mjs": "134bb966f43facbec79de8e5fb742a12478aa3686f54716e3d6e3305a88847e5",
+    "scripts/test-supabase-local.sh": "2f892e509998c1054224df4bd4ccb833933b7a165b908e21420f7ca94ae3ddb4",
+    "supabase/contract-migrations/20260909124659_authority_connections_contract.sql": "566863774fce534ed05235e84738753a97551be79451b01f436ae065ff0d021e",
+    "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql": "187f4210ab2df4b230ddfc631875eb6879216b8d8618b4d5b3ecd50764cac05b",
+    "supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql": "4259df64004a9ba4382db74be357f6a0e411449ede805f7d30d30590d27ed891"
+  },
+  "artifactHashes": {
+    "/tmp/talli-151-owner-workspace-corrected-rollback.log": "9446e94a5b974acb25e3f0d3139bff2c4117a192afc00ef2b2618a5c23bb5cd6",
+    "/tmp/talli-151-owner-workspace-corrected.log": "d7736905f74daa572b37c42532b6b8705e884877bfaabe22d3f530376a11f78e"
+  },
+  "released": true
+}

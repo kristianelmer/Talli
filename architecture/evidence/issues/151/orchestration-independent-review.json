@@ -1,0 +1,40 @@
+{
+  "reviewedAt": "2026-09-09T21:54:53.625506+00:00",
+  "mode": "read-only source review; no tests or DB calls",
+  "sourceHashes": {
+    "scripts/rehearse-authority-topology.mjs": "85900cfd7ab3bbf263a1aaadf99efb1172d1c0d37a4e95d64583dfb207d68e15",
+    "scripts/test-supabase-local.sh": "9e0c5a5f0d177ab30ffdd0a4474beb937e491612e3ec58988f146461e7c1f5a7",
+    "package.json": "fb81be090d47fde18a38469afc0315be8a0147b1feffb8d1252ee1997def4cfe",
+    "tests/ci_release_gate.test.mjs": "7144ce0ff9785a9064fd996d27404937f6bf70fbeea9c53ab5980e9ab04e10bf",
+    "tests/browser_owner_annual_loop.mjs": "7837d0ba76fee0568c2c3ea10c9c603c38191730a31d5d11c2b951726a5e4933"
+  },
+  "oldFilePartition": {
+    "original": 14,
+    "current": 14,
+    "exactlyOnce": true
+  },
+  "workspaceReceiptSources": {
+    "tests/support/rf1086-fixture-access.mjs": true,
+    "tests/support/rf1086-workspace-api.mjs": true,
+    "tests/browser_authority_connections.mjs": true,
+    "tests/rf1086_feedback_schema.test.mjs": true,
+    "tests/rf1086_workspace_fixture_safety.test.mjs": true,
+    "tests/supabase_workspace.test.mjs": true,
+    "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql": true
+  },
+  "workspaceReceiptLogs": {
+    "/tmp/talli-151-workspace-overlap-run7.log": true,
+    "/tmp/talli-151-fixture-correction-guards-final.log": true,
+    "/tmp/talli-151-fixture-janitor-overlap.log": true,
+    "/tmp/talli-151-workspace-residue-cleanup.log": true
+  },
+  "findings": [
+    {
+      "path": "scripts/test-supabase-local.sh",
+      "line": 127,
+      "severity": "integration pending",
+      "message": "The retained owner browser is now intentionally called after workspace recutover, where Authority Connections is contracted and RF canonical. Its current fixtures still INSERT public.system_user_requests (browser_owner_annual_loop.mjs:882; absent after Authority contract) and direct RF public authority_permissions/filing_previews (889/914; retired writes). Retarget these exact fixtures before running the complete harness; moving it back would conflict with the current app RF flow. This is the already-known unfinished owner-browser integration dependent on the pending16-scope work, not a new domain requirement."
+    }
+  ],
+  "verdict": "Other bounded ordering, original-file preservation and stop-on-failure checks pass source review. Full harness cannot pass until the known retained owner-browser integration is complete. All six fixture source hashes, seventh migration hash and four raw-log hashes match the source-bound workspace receipt."
+}

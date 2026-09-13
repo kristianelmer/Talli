@@ -4,9 +4,9 @@ from contextlib import AbstractAsyncContextManager
 from typing import Protocol
 
 from talli_backend.application.annual_data_compatibility import LegacyAnnualDataView
-from talli_backend.application.opening_snapshot_compatibility import (
-    LegacyOpeningSnapshotCursor,
-    LegacyOpeningSnapshotPage,
+from talli_backend.application.new_year_opening import (
+    OpeningSnapshotCursor,
+    OpeningSnapshotPage,
 )
 from talli_backend.modules.banking.public import BankTransactionClaimPersistence
 from talli_backend.modules.corporate_governance.public import (
@@ -36,9 +36,9 @@ class CorporateGovernanceWorkflowTransaction(
         actor_id: ActorId,
         company_ids: tuple[CompanyId, ...],
         correlation_id: CorrelationId,
-        cursor: LegacyOpeningSnapshotCursor | None,
+        cursor: OpeningSnapshotCursor | None,
         limit: int,
-    ) -> LegacyOpeningSnapshotPage: ...
+    ) -> OpeningSnapshotPage: ...
 
     async def list_annual_data_compatibility(
         self,

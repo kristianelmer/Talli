@@ -1,0 +1,14 @@
+{
+  "producerPath": "/tmp/talli-151-final-opening-http-proof.mjs",
+  "producerSha256": "a99ea908207e32ebf73a59451e3dbe2cdc6eb2ae713834968b17b471f536f2e7",
+  "capturedAt": "2026-09-09T22:23:54.789076+00:00",
+  "producerModifiedAt": "2026-09-09T22:19:29.907275+00:00",
+  "captureTiming": "After the successful run; no pre-run digest was captured.",
+  "unchangedDuringSuccessfulRun": true,
+  "unchangedBasis": "The successful command ran this file after the final bounded SET-role probe correction; no producer edit occurred during or after that command. Recorded modification time predates the successful start. This is an execution-history/source inspection statement, not a pre-run hash attestation.",
+  "successfulRunStartedAt": "2026-09-09T22:19:30.480Z",
+  "successfulRunFinishedAt": "2026-09-09T22:19:33.587Z",
+  "successfulReportSha256": "3ccf534be628cdce0b44170917fcd5f278ba24177ece9e7e36b1b3c8e89c3654",
+  "safeToCopy": true,
+  "contents": "Reusable local-only producer; reads local configuration from environment at runtime, contains no credential/token values or actual fixture IDs, no hosted/provider execution."
+}

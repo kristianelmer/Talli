@@ -1,0 +1,639 @@
+[
+  {
+    "recordId": "compat-annual-compliance-persistence",
+    "capability": "annual_compliance",
+    "removalIssue": "#149",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_review_comments",
+    "operation": "acknowledgeFilingReviewComment",
+    "baselineOccurrences": 2,
+    "currentOccurrences": 2,
+    "calls": [
+      {
+        "line": 1749,
+        "source": "supabase\n    .from(\"filing_review_comments\")\n    .select(\"id, company_id, severity\")\n    .eq(\"id\", commentId)\n    .single()"
+      },
+      {
+        "line": 1764,
+        "source": "supabase\n    .from(\"filing_review_comments\")\n    .update({ acknowledged_by: user.id, acknowledged_at: acknowledgedAt })\n    .eq(\"id\", comment.id)"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-annual-compliance-persistence",
+    "capability": "annual_compliance",
+    "removalIssue": "#149",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_overrides",
+    "operation": "addFilingOverride",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1488,
+        "source": "supabase.from(\"filing_overrides\").insert({\n    preview_id: preview.id,\n    company_id: preview.company_id,\n    income_year: preview.income_year,\n    filing: preview.filing,\n    field_target: override.fieldTarget,\n    old_value: override.oldValue,\n    new_value: override.newValue,\n    reason: override.reason,\n    risk_level: override.riskLevel,\n    owner_confirmed_by: user.id,\n    owner_confirmed_at: confirmedAt,\n    created_by: user.id,\n  })"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-annual-compliance-persistence",
+    "capability": "annual_compliance",
+    "removalIssue": "#149",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_review_comments",
+    "operation": "addFilingReviewComment",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1712,
+        "source": "supabase.from(\"filing_review_comments\").insert({\n    preview_id: preview.id,\n    company_id: preview.company_id,\n    target: \"rf1086_preview\",\n    severity,\n    body,\n    created_by: user.id,\n  })"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-annual-compliance-persistence",
+    "capability": "annual_compliance",
+    "removalIssue": "#149",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_overrides",
+    "operation": "confirmSimulatedRf1086Submission",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1365,
+        "source": "supabase\n    .from(\"filing_overrides\")\n    .select(\"risk_level, field_target\")\n    .eq(\"company_id\", preview.company_id)\n    .eq(\"income_year\", preview.income_year)\n    .eq(\"filing\", preview.filing)\n    .eq(\"risk_level\", \"block\")"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-annual-compliance-persistence",
+    "capability": "annual_compliance",
+    "removalIssue": "#149",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_readiness_snapshots",
+    "operation": "confirmSimulatedRf1086Submission",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1339,
+        "source": "supabase\n    .from(\"filing_readiness_snapshots\")\n    .select(\"ready, status, hard_blocks, warnings\")\n    .eq(\"company_id\", preview.company_id)\n    .eq(\"income_year\", preview.income_year)\n    .eq(\"obligation\", \"aksjonaerregisteroppgaven\")\n    .maybeSingle()"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-annual-compliance-persistence",
+    "capability": "annual_compliance",
+    "removalIssue": "#149",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_review_comments",
+    "operation": "confirmSimulatedRf1086Submission",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1352,
+        "source": "supabase\n    .from(\"filing_review_comments\")\n    .select(\"id\")\n    .eq(\"preview_id\", preview.id)\n    .eq(\"severity\", \"hard_block\")"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-annual-compliance-persistence",
+    "capability": "annual_compliance",
+    "removalIssue": "#149",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_readiness_snapshots",
+    "operation": "queueDeadlineReminders",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1196,
+        "source": "supabase.from(\"filing_readiness_snapshots\").select(\"obligation, income_year, ready, hard_blocks, status\").eq(\"company_id\", companyId).eq(\"income_year\", incomeYear)"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-annual-compliance-persistence",
+    "capability": "annual_compliance",
+    "removalIssue": "#149",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:annual_data",
+    "operation": "refreshAnnualReadinessSnapshots",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 4707,
+        "source": "supabase.from(\"annual_data\").select(\"id, company_id, income_year, answers, confirmations, no_activity_confirmed, annual_full_time_equivalents, completed_by, completed_at, updated_by, updated_at\").eq(\"company_id\", companyId).eq(\"income_year\", incomeYear).maybeSingle()"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-annual-compliance-persistence",
+    "capability": "annual_compliance",
+    "removalIssue": "#149",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_overrides",
+    "operation": "refreshAnnualReadinessSnapshots",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 4702,
+        "source": "supabase.from(\"filing_overrides\").select(\"id, preview_id, company_id, income_year, filing, field_target, old_value, new_value, reason, risk_level, owner_confirmed_by, owner_confirmed_at, created_by, created_at\").eq(\"company_id\", companyId).eq(\"income_year\", incomeYear)"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-annual-compliance-persistence",
+    "capability": "annual_compliance",
+    "removalIssue": "#149",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_readiness_snapshots",
+    "operation": "refreshAnnualReadinessSnapshots",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 4786,
+        "source": "supabase.from(\"filing_readiness_snapshots\").upsert(\n    snapshots.map((snapshot) => ({\n      company_id: snapshot.company_id,\n      income_year: snapshot.income_year,\n      obligation: snapshot.obligation,\n      status: snapshot.status,\n      ready: snapshot.ready,\n      hard_blocks: snapshot.hard_blocks,\n      warnings: snapshot.warnings,\n      accepted_warnings: snapshot.accepted_warnings,\n      evaluated_at: snapshot.evaluated_at,\n      created_by: user.id,\n      updated_at: new Date().toISOString(),\n    })),\n    { onConflict: \"company_id,income_year,obligation\" },\n  )"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-annual-compliance-persistence",
+    "capability": "annual_compliance",
+    "removalIssue": "#149",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:holding_actions",
+    "operation": "refreshAnnualReadinessSnapshots",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 4685,
+        "source": "supabase.from(\"holding_actions\").select(\"id, company_id, income_year, action_type, action_date, payload, ledger_entry_id, bank_transaction_id, document_id, risk_level, blocker_code, created_by, created_at\").eq(\"company_id\", companyId).eq(\"income_year\", incomeYear)"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-annual-compliance-persistence",
+    "capability": "annual_compliance",
+    "removalIssue": "#149",
+    "path": "apps/web/app/lib/supabase/server.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_overrides",
+    "operation": "listFilingOverrides",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 980,
+        "source": "supabase\n    .from(\"filing_overrides\")\n    .select(\"id, preview_id, company_id, income_year, filing, field_target, old_value, new_value, reason, risk_level, owner_confirmed_by, owner_confirmed_at, created_by, created_at\")\n    .in(\"company_id\", companyIds)\n    .order(\"created_at\", { ascending: false })"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-annual-compliance-persistence",
+    "capability": "annual_compliance",
+    "removalIssue": "#149",
+    "path": "apps/web/app/lib/supabase/server.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_readiness_snapshots",
+    "operation": "listFilingReadinessSnapshots",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1066,
+        "source": "supabase\n    .from(\"filing_readiness_snapshots\")\n    .select(\"id, company_id, income_year, obligation, status, ready, hard_blocks, warnings, accepted_warnings, evaluated_at, created_by, updated_at\")\n    .in(\"company_id\", companyIds)\n    .order(\"updated_at\", { ascending: false })"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-annual-compliance-persistence",
+    "capability": "annual_compliance",
+    "removalIssue": "#149",
+    "path": "apps/web/app/lib/supabase/server.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_review_comments",
+    "operation": "listFilingReviewComments",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1083,
+        "source": "supabase\n    .from(\"filing_review_comments\")\n    .select(\"id, preview_id, company_id, target, severity, body, created_by, acknowledged_by, acknowledged_at, created_at\")\n    .in(\"company_id\", companyIds)\n    .order(\"created_at\", { ascending: false })"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-rf1086-persistence",
+    "capability": "shareholder_register_filing",
+    "removalIssue": "#151",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_previews",
+    "operation": "addFilingOverride",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1462,
+        "source": "supabase\n    .from(\"filing_previews\")\n    .select(\"id, company_id, income_year, filing\")\n    .eq(\"id\", previewId)\n    .single()"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-rf1086-persistence",
+    "capability": "shareholder_register_filing",
+    "removalIssue": "#151",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_previews",
+    "operation": "addFilingReviewComment",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1703,
+        "source": "supabase\n    .from(\"filing_previews\")\n    .select(\"id, company_id\")\n    .eq(\"id\", previewId)\n    .single()"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-rf1086-persistence",
+    "capability": "shareholder_register_filing",
+    "removalIssue": "#151",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:authority_permissions",
+    "operation": "confirmAuthorityPermission",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 4905,
+        "source": "supabase.from(\"authority_permissions\").upsert(\n    {\n      company_id: companyId,\n      obligation,\n      submitter_user_id: user.id,\n      confirmed_by: user.id,\n      confirmed_at: now,\n      production_enabled: productionEnabled,\n      updated_at: now,\n    },\n    { onConflict: \"company_id,obligation\" },\n  )"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-rf1086-persistence",
+    "capability": "shareholder_register_filing",
+    "removalIssue": "#151",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_previews",
+    "operation": "confirmSimulatedRf1086Submission",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1331,
+        "source": "supabase\n    .from(\"filing_previews\")\n    .select(\"id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at\")\n    .eq(\"id\", previewId)\n    .single()"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-rf1086-persistence",
+    "capability": "shareholder_register_filing",
+    "removalIssue": "#151",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_submissions",
+    "operation": "confirmSimulatedRf1086Submission",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1402,
+        "source": "supabase.from(\"filing_submissions\").upsert(\n    {\n      preview_id: preview.id,\n      company_id: preview.company_id,\n      setup_id: preview.setup_id,\n      income_year: preview.income_year,\n      filing: preview.filing,\n      mode: \"simulation\",\n      adapter_mode: \"simulation\",\n      payload_hash: rf1086PayloadHash(preview),\n      idempotency_key: rf1086SubmissionIdempotencyKey(preview),\n      status: simulated.status,\n      authority_confirmed_by: simulated.authority_confirmed_by,\n      authority_confirmed_at: simulated.authority_confirmed_at,\n      preview_confirmed_by: simulated.preview_confirmed_by,\n      preview_confirmed_at: simulated.preview_confirmed_at,\n      calls: simulated.calls,\n      receipt_id: simulated.receipt_id,\n      feedback_document_ids: simulated.feedback_document_ids,\n      feedback_items: rf1086SubmissionFeedbackItems(simulated),\n      receipt_metadata: rf1086ReceiptMetadata(simulated),\n      submitted_payload_ref: rf1086SubmittedPayloadReference(preview, simulated),\n      submitted_payload: rf1086SubmittedPayloadSnapshot(preview),\n      failure_code: simulated.failure_code,\n      failure_message: simulated.failure_message,\n      created_by: user.id,\n      submitted_by: user.id,\n      updated_at: new Date().toISOString(),\n    },\n    { onConflict: \"preview_id\" },\n  )"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-rf1086-persistence",
+    "capability": "shareholder_register_filing",
+    "removalIssue": "#151",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_submissions",
+    "operation": "queueDeadlineReminders",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1195,
+        "source": "supabase.from(\"filing_submissions\").select(\"filing, income_year, mode, receipt_id, created_at, preview_confirmed_at\").eq(\"company_id\", companyId).eq(\"income_year\", incomeYear)"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-rf1086-persistence",
+    "capability": "shareholder_register_filing",
+    "removalIssue": "#151",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:authority_test_runs",
+    "operation": "recordAuthorityTestEvidence",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 4978,
+        "source": "supabase.from(\"authority_test_runs\").insert(record)"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-rf1086-persistence",
+    "capability": "shareholder_register_filing",
+    "removalIssue": "#151",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:authority_permissions",
+    "operation": "refreshAnnualReadinessSnapshots",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 4714,
+        "source": "supabase.from(\"authority_permissions\").select(\"company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled\").eq(\"company_id\", companyId)"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-rf1086-persistence",
+    "capability": "shareholder_register_filing",
+    "removalIssue": "#151",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_previews",
+    "operation": "refreshAnnualReadinessSnapshots",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 4715,
+        "source": "supabase.from(\"filing_previews\").select(\"id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at\").eq(\"company_id\", companyId).eq(\"income_year\", incomeYear)"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-rf1086-persistence",
+    "capability": "shareholder_register_filing",
+    "removalIssue": "#151",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_submissions",
+    "operation": "refreshAnnualReadinessSnapshots",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 4716,
+        "source": "supabase.from(\"filing_submissions\").select(\"id, preview_id, authority_test_run_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by\").eq(\"company_id\", companyId).eq(\"income_year\", incomeYear)"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-rf1086-persistence",
+    "capability": "shareholder_register_filing",
+    "removalIssue": "#151",
+    "path": "apps/web/app/lib/supabase/server.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:authority_permissions",
+    "operation": "listAuthorityPermissions",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1100,
+        "source": "supabase\n    .from(\"authority_permissions\")\n    .select(\"id, company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled, updated_at\")\n    .in(\"company_id\", companyIds)\n    .order(\"updated_at\", { ascending: false })"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-rf1086-persistence",
+    "capability": "shareholder_register_filing",
+    "removalIssue": "#151",
+    "path": "apps/web/app/lib/supabase/server.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:authority_test_runs",
+    "operation": "listAuthorityTestRuns",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1117,
+        "source": "supabase\n    .from(\"authority_test_runs\")\n    .select(\"id, company_id, obligation, environment, status, test_reference, feedback_summary, receipt_reference, archive_reference, evidence_url, payload_hash, recorded_by, recorded_at\")\n    .in(\"company_id\", companyIds)\n    .order(\"recorded_at\", { ascending: false })"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-rf1086-persistence",
+    "capability": "shareholder_register_filing",
+    "removalIssue": "#151",
+    "path": "apps/web/app/lib/supabase/server.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_previews",
+    "operation": "listFilingPreviews",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 872,
+        "source": "supabase\n    .from(\"filing_previews\")\n    .select(\"id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at\")\n    .in(\"company_id\", companyIds)\n    .order(\"created_at\", { ascending: false })"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-rf1086-persistence",
+    "capability": "shareholder_register_filing",
+    "removalIssue": "#151",
+    "path": "apps/web/app/lib/supabase/server.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:filing_submissions",
+    "operation": "listFilingSubmissions",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 889,
+        "source": "supabase\n    .from(\"filing_submissions\")\n    .select(\"id, preview_id, authority_test_run_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by\")\n    .in(\"company_id\", companyIds)\n    .order(\"updated_at\", { ascending: false })"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-audit-persistence",
+    "capability": "audit",
+    "removalIssue": "#155",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:audit_events",
+    "operation": "acknowledgeFilingReviewComment",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1772,
+        "source": "supabase.from(\"audit_events\").insert({\n    company_id: comment.company_id,\n    actor_id: user.id,\n    category: \"review\",\n    action: \"filing_review_comment_acknowledged\",\n    message: \"Advisory review-kommentar acknowledged av eier.\",\n  })"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-audit-persistence",
+    "capability": "audit",
+    "removalIssue": "#155",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:audit_events",
+    "operation": "addFilingOverride",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1506,
+        "source": "supabase.from(\"audit_events\").insert({\n    company_id: preview.company_id,\n    actor_id: user.id,\n    category: \"filing\",\n    action: \"filing_override_added\",\n    message: `Filing-overstyring lagt til for ${override.fieldTarget}: ${override.riskLevel}.`,\n  })"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-audit-persistence",
+    "capability": "audit",
+    "removalIssue": "#155",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:audit_events",
+    "operation": "addFilingReviewComment",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1724,
+        "source": "supabase.from(\"audit_events\").insert({\n    company_id: preview.company_id,\n    actor_id: user.id,\n    category: \"review\",\n    action: \"filing_review_comment_created\",\n    message: `Review-kommentar lagt til: ${severity}.`,\n  })"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-audit-persistence",
+    "capability": "audit",
+    "removalIssue": "#155",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:audit_events",
+    "operation": "confirmAuthorityPermission",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 4921,
+        "source": "supabase.from(\"audit_events\").insert({\n    company_id: companyId,\n    actor_id: user.id,\n    category: \"submission\",\n    action: \"authority_permission_confirmed\",\n    message: `Innsendingsrett bekreftet for ${obligation}. Produksjonsgate: ${productionEnabled ? \"aktiv\" : \"av\"}.`,\n  })"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-audit-persistence",
+    "capability": "audit",
+    "removalIssue": "#155",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:audit_events",
+    "operation": "confirmSimulatedRf1086Submission",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1437,
+        "source": "supabase.from(\"audit_events\").insert({\n    company_id: preview.company_id,\n    actor_id: user.id,\n    category: \"filing\",\n    action: \"rf1086_simulated_receipt_archived\",\n    message: `Simulert RF-1086-kvittering arkivert for ${preview.income_year}.`,\n  })"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-audit-persistence",
+    "capability": "audit",
+    "removalIssue": "#155",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:audit_events",
+    "operation": "queueDeadlineReminders",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 1238,
+        "source": "supabase.from(\"audit_events\").insert({\n    company_id: companyId,\n    actor_id: user.id,\n    category: \"filing\",\n    action: \"deadline_reminders_queued\",\n    message: `${queueable.length} fristvarsler køet for ${incomeYear}.`,\n  })"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-audit-persistence",
+    "capability": "audit",
+    "removalIssue": "#155",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:audit_events",
+    "operation": "recordAuthorityTestEvidence",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 4983,
+        "source": "supabase.from(\"audit_events\").insert({\n    company_id: companyId,\n    actor_id: user.id,\n    category: \"submission\",\n    action: \"authority_test_evidence_recorded\",\n    message: `${obligation} test-evidens registrert som ${status} med ref ${record.test_reference}.`,\n  })"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-audit-persistence",
+    "capability": "audit",
+    "removalIssue": "#155",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:audit_events",
+    "operation": "refreshAnnualReadinessSnapshots",
+    "baselineOccurrences": 1,
+    "currentOccurrences": 1,
+    "calls": [
+      {
+        "line": 4806,
+        "source": "supabase.from(\"audit_events\").insert({\n    company_id: companyId,\n    actor_id: user.id,\n    category: \"filing\",\n    action: \"annual_readiness_refreshed\",\n    message: `Annual loop readiness oppdatert for ${incomeYear}.`,\n  })"
+      }
+    ]
+  },
+  {
+    "recordId": "compat-notification-persistence",
+    "capability": "notifications",
+    "removalIssue": "#156",
+    "path": "apps/web/app/actions.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:notification_outbox",
+    "operation": "queueDeadlineReminders",
+    "baselineOccurrences": 2,
+    "currentOccurrences": 2,
+    "calls": [
+      {
+        "line": 1197,
+        "source": "supabase.from(\"notification_outbox\").select(\"template, payload, status\").eq(\"company_id\", companyId)"
+      },
+      {
+        "line": 1214,
+        "source": "supabase.from(\"notification_outbox\").insert(\n      queueable.map((candidate) => ({\n        company_id: companyId,\n        recipient_email: user.email!.toLowerCase(),\n        template: \"deadline_reminder\",\n        payload: {\n          dedupeKey: candidate.dedupeKey,\n          filing: candidate.filing,\n          obligation: candidate.obligation,\n          incomeYear: candidate.incomeYear,\n          deadline: candidate.deadline,\n          reminderKind: candidate.reminderKind,\n          subject: candidate.subject,\n          body: candidate.body,\n          readinessPath: candidate.readinessPath,\n        },\n        created_by: user.id,\n      })),\n    )"
+      }
+    ]
+  }
+]

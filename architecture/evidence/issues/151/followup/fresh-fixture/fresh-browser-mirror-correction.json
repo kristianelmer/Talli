@@ -1,0 +1,28 @@
+{
+  "at": "2026-09-09T22:20:30.359813+00:00",
+  "scope": "Exact retained public RF preparation mirror cleanup correction",
+  "source_sha256": {
+    "tests/browser_shareholder_register_filing.mjs": "66bc32e17ad2380967e3982e954ed53fc233d77cf51ead8d3d4cf5015931e5f4",
+    "tests/shareholder_register_browser_fixture_safety.test.mjs": "3457ffa4969c67dd64aba865d8a9c4f71e480914ad2b4b54ada50426108e6f6b",
+    "tests/support/rf1086-fixture-access.mjs": "08b2cd8207949a8d39f33f1ff3b6b772e2c57268fb92f91291b6e322b479c48f"
+  },
+  "log_sha256": {
+    "/tmp/talli-151-fresh-browser-mirror-red.log": "d3ffb0fdffbec0ff5fa9143cf59ae1f99801fbe9c4b1b758c0fc081d10e930a1",
+    "/tmp/talli-151-fresh-browser-mirror-green.log": "b63ada56dcfebbea6521205de1920877fd3b580d8b574fc687911be87105546d"
+  },
+  "regression": {
+    "before_fix": "Both new populated-mirror cases fail because canonical opening deletion still has public projection children; injected cleanup failure is not reached.",
+    "after_fix": "All10 safety cases pass, zero skips. Populated six-table public mirrors removed before canonical opening; other company retained; injected public cleanup error preserves identity and transactional caller rollback state.",
+    "model_limit": "Local query/FK model executes the actual cleanup function and models the shared transaction boundary; no actual database execution."
+  },
+  "preservation": {
+    "browser_callback_exact": true,
+    "fresh_seed_exact": true,
+    "login_mfa_exact": true,
+    "shared_helper_unchanged": true
+  },
+  "limits": [
+    "No actual browser/DB/provider calls.",
+    "Full fresh journey and stage gate remain pending."
+  ]
+}

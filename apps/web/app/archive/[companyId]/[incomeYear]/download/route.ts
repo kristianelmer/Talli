@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import {
   loadLedgerEntriesForArchive,
   presentLedgerEntriesForArchive,
+  loadOpeningSnapshotsForYear,
+  presentOpeningSnapshots,
 } from "../../../../../features/ledger";
 import {
   loadInvestmentAcquisitionLots,
@@ -24,6 +26,14 @@ import {
   listCorporateDecisionLifecycle,
   listSupportedCorporateEvents,
 } from "../../../../../features/corporate-governance";
+import {
+  loadRf1086ArchiveSource,
+  presentRf1086Preview,
+  presentRf1086Simulation,
+  presentRf1086Permission,
+  presentRf1086TestEvidence,
+  presentRf1086ReviewComment,
+} from "../../../../../features/shareholder-register-filing";
 import { loadBillingSnapshot, presentBillingAccount } from "../../../../../features/billing";
 import {
   buildPersistedCompanyArchive,
@@ -36,6 +46,46 @@ import {
   createSupabaseServerClient,
   createSupabaseServiceRoleClient,
 } from "../../../../lib/supabase/server";
+
+async function loadArchiveOpeningSnapshots(accessToken: string, companyId: string, incomeYear: number) {
+  try {
+    const projection = presentOpeningSnapshots(await loadOpeningSnapshotsForYear(accessToken, companyId, incomeYear));
+    if ([...projection.setups, ...projection.shareholders].some((row) => row.company_id !== companyId)) {
+      throw new Error("Opening query escaped the authorized company scope.");
+    }
+    const setups = projection.setups.filter((setup) => setup.income_year === incomeYear);
+    const setupIds = new Set(setups.map((setup) => setup.id));
+    return { data: setups, shareholders: projection.shareholders.filter((row) => setupIds.has(row.setup_id)), error: null };
+  } catch {
+    return { data: null, shareholders: null, error: new Error("Opening archive source unavailable.") };
+  }
+}
+
+async function loadArchiveRf1086(accessToken: string, companyId: string, incomeYear: number) {
+  try {
+    // The source keeps company-wide comments/permissions and selects year-bound rows before decoding.
+    const workspace = await loadRf1086ArchiveSource(accessToken, companyId, incomeYear);
+    const submissions = workspace.simulations.filter((row) => row.incomeYear === incomeYear).map(presentRf1086Simulation);
+    const evidenceIds = new Set(submissions.filter((row) => row.mode === "test_authority")
+      .map((row) => row.authority_test_run_id).filter((id): id is string => Boolean(id)));
+    return { data: {
+      submissions,
+      previews: workspace.previews.filter((row) => row.incomeYear === incomeYear).map(presentRf1086Preview),
+      permissions: workspace.permissions.map(presentRf1086Permission),
+      comments: workspace.reviewComments.map(presentRf1086ReviewComment),
+      testEvidence: workspace.testEvidence.filter((row) => evidenceIds.has(row.id)).map(presentRf1086TestEvidence),
+    }, error: null };
+  } catch {
+    return { data: null, error: new Error("RF archive source unavailable.") };
+  }
+}
+
+function mergeArchiveRfRows<T extends { id: string }>(existing: readonly T[], owned: readonly T[]): T[] {
+  // The overlap projection may still contain the same immutable row identity.
+  const rows = new Map(existing.map((row) => [row.id, row]));
+  for (const row of owned) rows.set(row.id, row);
+  return [...rows.values()];
+}
 
 async function loadArchiveLedgerEntries(
   accessToken: string,
@@ -289,11 +339,13 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
   if (submissionError) {
     return new Response("Kunne ikke lese innsendingsgrunnlaget", { status: 500 });
   }
-  if (!submissions?.length) {
+  const rf1086 = await loadArchiveRf1086(accessToken, companyId, incomeYear);
+  if (!submissions?.length && !rf1086.data?.submissions.length) {
+    if (rf1086.error) return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
     return new Response("Arkivet krever lagret RF-1086-status", { status: 409 });
   }
   const authorityTestRunIds = [...new Set(
-    submissions
+    (submissions ?? [])
       .filter((submission) => submission.mode === "test_authority")
       .map((submission) => submission.authority_test_run_id)
       .filter((id): id is string => Boolean(id)),
@@ -308,12 +360,11 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     return new Response("Kunne ikke lese myndighetsdokumentasjonen", { status: 500 });
   }
 
+  if (rf1086.error) {
+    return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
+  }
   const sourceResults = await Promise.all([
-      supabase
-        .from("opening_balance_setups")
-        .select("id, company_id, income_year, bank_balance, share_capital, share_count, nominal_value, locked_at, created_by")
-        .eq("company_id", companyId)
-        .eq("income_year", incomeYear),
+      loadArchiveOpeningSnapshots(accessToken, companyId, incomeYear),
       loadArchiveLedgerEntries(accessToken, companyId, incomeYear),
       loadArchiveDocuments(accessToken, companyId, incomeYear),
       supabase
@@ -350,23 +401,12 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
   }
   const [
-    { data: setups }, { data: ledgerEntries }, { data: documents, projection: documentBackupProjection }, { data: previews },
+    { data: setups, shareholders }, { data: ledgerEntries }, { data: documents, projection: documentBackupProjection }, { data: previews },
     { data: holdingActions }, { data: billingAccounts }, { data: authorityPermissions },
     { data: reviewComments }, { data: auditEvents }, { data: investments },
     { data: bankSuggestionAcceptances },
     { data: corporateLifecycle },
   ] = sourceResults;
-
-  const setupIds = (setups ?? []).map((setup) => setup.id);
-  const { data: shareholders, error: shareholdersError } = setupIds.length
-    ? await supabase
-        .from("opening_shareholders")
-        .select("id, setup_id, company_id, name, shareholder_kind, national_id, org_number, share_count")
-        .in("setup_id", setupIds)
-    : { data: [], error: null };
-  if (shareholdersError) {
-    return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
-  }
 
   const archive = buildPersistedCompanyArchive({
     company,
@@ -399,12 +439,12 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     ),
     bankSuggestionAcceptances: bankSuggestionAcceptances ?? [],
     billingAccounts: billingAccounts ?? [],
-    authorityPermissions: authorityPermissions ?? [],
-    authorityTestRuns: authorityTestRuns ?? [],
+    authorityPermissions: mergeArchiveRfRows(authorityPermissions ?? [], rf1086.data?.permissions ?? []),
+    authorityTestRuns: mergeArchiveRfRows(authorityTestRuns ?? [], rf1086.data?.testEvidence ?? []),
     auditEvents: auditEvents ?? [],
-    reviewComments: reviewComments ?? [],
-    filingPreviews: previews ?? [],
-    filingSubmissions: submissions ?? [],
+    reviewComments: mergeArchiveRfRows(reviewComments ?? [], rf1086.data?.comments ?? []),
+    filingPreviews: mergeArchiveRfRows(previews ?? [], rf1086.data?.previews ?? []),
+    filingSubmissions: mergeArchiveRfRows(submissions ?? [], rf1086.data?.submissions ?? []),
     corporateDecisions: corporateLifecycle?.corporateDecisions ?? [],
     corporateDocumentSets: corporateLifecycle?.corporateDocumentSets ?? [],
     corporateDocumentArtifacts: corporateLifecycle?.corporateDocumentArtifacts ?? [],

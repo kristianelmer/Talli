@@ -6,11 +6,11 @@ from datetime import UTC, date, datetime
 
 from fastapi.testclient import TestClient
 from talli_backend.application.ledger_session import LedgerAuthenticationError
-from talli_backend.application.opening_snapshot_compatibility import (
-    LegacyOpeningShareholderView,
-    LegacyOpeningSnapshotCursor,
-    LegacyOpeningSnapshotPage,
-    LegacyOpeningSnapshotView,
+from talli_backend.application.new_year_opening import (
+    OpeningShareholderView,
+    OpeningSnapshotCursor,
+    OpeningSnapshotPage,
+    OpeningSnapshotView,
 )
 from talli_backend.main import create_app
 from talli_backend.modules.ledger.public import (
@@ -29,6 +29,7 @@ from talli_backend.modules.ledger.public import (
     LedgerRiskFlag,
     LedgerSourceCapability,
     LedgerSourceRecordId,
+    OpeningBankInput,
     PeriodLock,
     PeriodLockId,
     PeriodLockPage,
@@ -66,7 +67,7 @@ class LedgerSessionStub:
         self.tokens: list[str] = []
         self.entry_items: tuple[LedgerEntryView, ...] = ()
         self.entry_next_cursor: LedgerCursor | None = LedgerCursor("opaque-next")
-        self.opening_snapshots = LegacyOpeningSnapshotPage(
+        self.opening_snapshots = OpeningSnapshotPage(
             items=(), next_cursor=None, has_more=False
         )
         self.reconstruction_assessment = ReconstructionAssessment(
@@ -130,17 +131,28 @@ class LedgerSessionStub:
             ("claim_workflow", {"operation": operation_name, "request": request})
         )
 
-    async def record_legacy_opening_snapshot(
-        self, command: object, *, ledger_bank_balance: object
+    async def record_opening_snapshot(
+        self, command: object
     ) -> OpeningSnapshotId:
         self.calls.append(
-            ("record_legacy_opening_snapshot", {"command": command, "bank": ledger_bank_balance})
+            ("record_opening_snapshot", {"command": command})
         )
         return SETUP_ID
 
+    async def record_opening_bank_input(self, command) -> OpeningBankInput:
+        self.calls.append(("record_opening_bank_input", {"command": command}))
+        return OpeningBankInput(
+            snapshot_id=command.snapshot_id,
+            company_id=command.company_id,
+            income_year=command.income_year,
+            bank_balance=command.bank_balance,
+            recorded_by=command.actor_id,
+            recorded_at=NOW,
+        )
+
     async def list_opening_snapshots(
         self, *, actor_id, company_ids, correlation_id, cursor, limit
-    ) -> LegacyOpeningSnapshotPage:
+    ) -> OpeningSnapshotPage:
         self.calls.append(
             (
                 "list_opening_snapshots",
@@ -153,6 +165,15 @@ class LedgerSessionStub:
                 },
             )
         )
+        return self.opening_snapshots
+
+    async def list_opening_snapshots_for_year(
+        self, *, actor_id, company_id, income_year, correlation_id
+    ) -> OpeningSnapshotPage:
+        self.calls.append(("list_opening_snapshots_for_year", {
+            "actor_id": actor_id, "company_id": company_id,
+            "income_year": income_year, "correlation_id": correlation_id,
+        }))
         return self.opening_snapshots
 
     async def complete_workflow(
@@ -529,8 +550,8 @@ def test_cross_capability_writers_bind_business_facts_to_one_ledger_result() -> 
 def test_opening_snapshot_query_exposes_the_frozen_projection() -> None:
     client, session = client_and_session()
     shareholder_id = "70000000-0000-0000-0000-000000000007"
-    session.opening_snapshots = LegacyOpeningSnapshotPage(
-        items=(LegacyOpeningSnapshotView(
+    session.opening_snapshots = OpeningSnapshotPage(
+        items=(OpeningSnapshotView(
             setup_id=str(SETUP_ID),
             company_id=COMPANY_ID,
             income_year=IncomeYear(2026),
@@ -542,7 +563,7 @@ def test_opening_snapshot_query_exposes_the_frozen_projection() -> None:
             created_at=Timestamp(datetime(2026, 8, 27, 9, tzinfo=UTC)),
             created_by=ACTOR_ID,
             shareholders=(
-                LegacyOpeningShareholderView(
+                OpeningShareholderView(
                     shareholder_id=shareholder_id,
                     setup_id=str(SETUP_ID),
                     company_id=COMPANY_ID,
@@ -554,7 +575,7 @@ def test_opening_snapshot_query_exposes_the_frozen_projection() -> None:
                 ),
             ),
         ),),
-        next_cursor=LegacyOpeningSnapshotCursor("opaque-opening-next"),
+        next_cursor=OpeningSnapshotCursor("opaque-opening-next"),
         has_more=True,
     )
 
@@ -1047,3 +1068,40 @@ def test_source_unaware_database_keeps_legacy_reads_but_blocks_source_queries() 
     assert "createdAt" not in legacy_response.json()["items"][0]
     assert source_response.status_code == 503
     assert source_response.json()["code"] == "LEDGER_DEPENDENCY_UNAVAILABLE"
+
+
+def test_opening_year_query_binds_verified_actor_and_requested_year_without_all_year_read():
+    client, session = client_and_session()
+    response = client.get(
+        f"/api/v1/ledger/opening-snapshots/by-year?companyId={COMPANY_ID}&incomeYear=2025",
+        headers={"Authorization": "Bearer session-token"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json() == {"items": [], "hasMore": False, "nextCursor": None}
+    assert response.headers["cache-control"] == "no-store"
+    call = next(value for name, value in session.calls if name == "list_opening_snapshots_for_year")
+    assert call["actor_id"] == ACTOR_ID
+    assert call["company_id"] == COMPANY_ID
+    assert call["income_year"] == IncomeYear(2025)
+    assert not any(name == "list_opening_snapshots" for name, _ in session.calls)
+
+
+def test_opening_year_query_rejects_missing_or_invalid_scope_before_session():
+    client, session = client_and_session()
+    for query in [f"companyId={COMPANY_ID}", f"companyId={COMPANY_ID}&incomeYear=1999",
+                  "companyId=invalid&incomeYear=2025", "incomeYear=2025"]:
+        response = client.get("/api/v1/ledger/opening-snapshots/by-year?" + query,
+                              headers={"Authorization": "Bearer session-token"})
+        assert response.status_code == 422, response.text
+    assert session.calls == []
+
+
+def test_opening_year_query_denies_paginated_projection():
+    client, session = client_and_session()
+    session.opening_snapshots = OpeningSnapshotPage(items=(), has_more=True,
+                                                   next_cursor=OpeningSnapshotCursor("unexpected"))
+    response = client.get(
+        f"/api/v1/ledger/opening-snapshots/by-year?companyId={COMPANY_ID}&incomeYear=2025",
+        headers={"Authorization": "Bearer session-token"},
+    )
+    assert response.status_code == 503, response.text

@@ -1,0 +1,54 @@
+{
+  "verifiedAt": "2026-09-09T21:36:50.377455+00:00",
+  "scope": "synthetic local final contracted schema, retained authority owner/callback plus GET-only historical RF; no fresh RF send or real provider",
+  "results": {
+    "schema": {
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0
+    },
+    "authorityBrowser": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "fixtureGuards": {
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "sourceHashes": {
+    "tests/support/rf1086-fixture-access.mjs": "077a2806f68bb5a3548e122985a27e14c71043442023aaaf8b285d3d67a45773",
+    "tests/support/rf1086-workspace-api.mjs": "f630b693e6929aca8a8587e949449395dcddbbfe4e141986bea3d166979ffe14",
+    "tests/browser_authority_connections.mjs": "452dfb792bd81b6076a1da8b7d6c4fee70c29e5133e2bb4ec06cd4a3693049d4",
+    "tests/rf1086_feedback_schema.test.mjs": "04313ce4b5b330e3a46bf520a54e1f8d3c1ed49e6bbbc9e685b8f36af6cf2a9f",
+    "tests/controlled_production_beta_schema.test.mjs": "78fbaa8485c9b865b034df87406af5e6ca57e86f036d59da451f47688b3125da",
+    "tests/rf1086_workspace_fixture_safety.test.mjs": "28450ab96828b54da45446e31275a11cae8e421ec697956439d66e270dae7668",
+    "tests/fixtures/start_authority_connections_backend.py": "717e4a6a6a211fd7a81f0d2789a07839c7cdb948340f7fc668057d0548a5d3f5",
+    "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql": "3432985a30d318583ee1f9a18e2c853d030780fea673f37d7004670d68dbe57a",
+    "supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql": "4b88c63a76f133f743eb63254eef0d8300defb5f6d31934b9a7a10c1593cc109",
+    "supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql": "413b755cf8f5dc589bfd2827787f4f0cd74db13118d6eca3735c06417c55f8ad"
+  },
+  "logs": {
+    "/tmp/talli-151-feedback-schema-final.log": "f5bc88aee26165de686114b8f4027f8ed19f02f41461e3be6861cc71a4107cd7",
+    "/tmp/talli-151-authority-browser-run2.log": "c6d30f046f12db4b79a2fa8cf00de9f5c0ad4674a6234dba76cd6f8604342b82",
+    "/tmp/talli-151-fixture-safety-final.log": "d2ff1c380bfeebaff9556d59330ac68c64e43e1c84482949e6bfcdb6e96d4bdd",
+    "/tmp/talli-151-failed-fixture-cleanup.log": "8cf3fd86dde5d456e66eb4abdc313f930e0e3b3c0f1976f458338c5e028a634c"
+  },
+  "limits": [
+    "Workspace failed before RF because its frozen Ledger assertions require ordinary overlap; this report gives no workspace or full fresh RF web acceptance."
+  ],
+  "topology": {
+    "rfPhase": "contracted",
+    "publicOpeningAbsent": true,
+    "publicHoldersAbsent": true,
+    "publicLedgerAbsent": true
+  },
+  "remainingKnownSyntheticCompanyCounts": {
+    "Billing Rehearsal AS": 1,
+    "Other Synthetic Pilot AS": 68,
+    "Basis Holding AS": 68
+  },
+  "borrowedRuntimeLogins": 0
+}

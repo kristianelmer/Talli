@@ -2,49 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import {
-  classifyRf1086TransportOutcome,
-  transitionProductionSubmission,
-} from "../apps/web/app/lib/production-submission.ts";
-
-test("allows only documented production submission transitions", () => {
-  assert.equal(transitionProductionSubmission("approved", "sending"), "sending");
-  assert.equal(transitionProductionSubmission("sending", "received"), "received");
-  assert.equal(transitionProductionSubmission("received", "processing"), "processing");
-  assert.equal(
-    transitionProductionSubmission("processing", "accepted", { finalAuthorityDecision: true }),
-    "accepted",
-  );
-  assert.throws(() => transitionProductionSubmission("approved", "accepted", { finalAuthorityDecision: true }), /illegal/i);
-  assert.throws(() => transitionProductionSubmission("accepted", "sending"), /terminal/i);
-});
-
-test("transport acknowledgement cannot become accepted", () => {
-  assert.throws(
-    () => transitionProductionSubmission("processing", "accepted", { finalAuthorityDecision: false }),
-    /final authority decision/i,
-  );
-  assert.equal(
-    classifyRf1086TransportOutcome({
-      forsendelseId: "forsendelse-id",
-      documents: ["<submitted-document />"],
-      finalAuthorityDecision: null,
-    }),
-    "processing",
-  );
-});
-
-test("uses explicit authority feedback for terminal outcomes", () => {
-  assert.equal(classifyRf1086TransportOutcome({ forsendelseId: "id", documents: [], finalAuthorityDecision: "accepted" }), "accepted");
-  assert.equal(classifyRf1086TransportOutcome({ forsendelseId: "id", documents: [], finalAuthorityDecision: "rejected" }), "rejected");
-  assert.equal(classifyRf1086TransportOutcome({ forsendelseId: null, documents: [], finalAuthorityDecision: null }), "unknown");
-});
-
 const actions = readFileSync(new URL("../apps/web/app/actions.ts", import.meta.url), "utf8");
 const ownerPage = readFileSync(new URL("../apps/web/app/(owner)/filing/[obligation]/page.tsx", import.meta.url), "utf8");
 const documents = readFileSync(new URL("../apps/web/app/lib/documents.ts", import.meta.url), "utf8");
 const feedbackPersistence = readFileSync(
-  new URL("../apps/backend/src/talli_backend/adapters/postgres_legacy_rf1086_authority.py", import.meta.url),
+  new URL("../apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py", import.meta.url),
   "utf8",
 );
 let reconciliationControl = "";

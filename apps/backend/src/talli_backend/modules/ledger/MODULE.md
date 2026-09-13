@@ -1,7 +1,7 @@
 # Ledger backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["ledger.bank_loan_anchors","ledger.bank_loan_payment_allocations","ledger.cash_capital_increase_phases","ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_sources","ledger.loss_coverage_capital_reduction_phases","ledger.opening_position_component_sources","ledger.opening_position_components","ledger.opening_position_rebuilds","ledger.opening_received_dividend_settlements","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_economic_fact_sets","ledger.reconstruction_economic_facts","ledger.reconstruction_evidence","ledger.reconstruction_source_evidence_bindings","ledger.reconstruction_source_evidence_sets"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
+{"dependencies":[],"ownedTables":["ledger.bank_loan_anchors","ledger.bank_loan_payment_allocations","ledger.cash_capital_increase_phases","ledger.company_year_close_assessments","ledger.company_year_close_evidence","ledger.company_year_close_locks","ledger.company_year_close_reporting_outputs","ledger.entries","ledger.entry_contexts","ledger.entry_corrections","ledger.entry_reversals","ledger.entry_sources","ledger.loss_coverage_capital_reduction_phases","ledger.opening_bank_inputs","ledger.opening_position_component_sources","ledger.opening_position_components","ledger.opening_position_rebuilds","ledger.opening_received_dividend_settlements","ledger.period_locks","ledger.received_dividend_decisions","ledger.received_dividend_settlements","ledger.reconstruction_assessments","ledger.reconstruction_economic_fact_sets","ledger.reconstruction_economic_facts","ledger.reconstruction_evidence","ledger.reconstruction_source_evidence_bindings","ledger.reconstruction_source_evidence_sets"],"ports":["LedgerPersistence"],"publicEntryPoints":["talli_backend.modules.ledger.public"]}
 -->
 
 <!-- architecture-inventory
@@ -314,3 +314,13 @@ The expand migration exposes security-invoker views over the same physical
 relations for deployment-order overlap. The contract artifact removes those
 views, every browser write grant, every active legacy SQL posting routine, and
 `compat-ledger-persistence` before #139 exit.
+
+## Original opening bank input
+
+`RecordOpeningBankInputCommand` stores the original input in
+`ledger.opening_bank_inputs`; `OpeningBankInput` exposes its exact Money, original
+snapshot UUID, company/year and recording attribution through `LedgerPersistence`.
+The input is independent of current account balances and RF-owned shareholder
+facts. Exact replay preserves the original value; a conflicting identity or
+amount fails. The backend new-year transaction binds this write to the RF
+snapshot and existing opening posting, so a later failure rolls all effects back.

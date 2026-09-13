@@ -1,0 +1,28 @@
+{
+  "status": "pending-owner-decision",
+  "amendmentCount": 16,
+  "previousProposalSha256": "3cc58e95162e6cd52328a075019419e1005f9ca8794eda1811b77fc30ae50d40",
+  "previousExactScopeSha256": "af56cf7ad98bdf0feca6c4b2d9208545fc1c633d3f66596f3bf5dfa8ff950da3",
+  "previousInventorySha256": "e0e8f9e2a3835ca206817f3b6d1a0529ce6340e1638b8c59b624f5aef2240f12",
+  "additionalScope": {
+    "record": "compat-company-archive-persistence",
+    "capability": "company_archive",
+    "removalIssue": "#157",
+    "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+    "rule": "direct-web-business-persistence",
+    "resource": "table:opening_balance_setups",
+    "operation": "GET",
+    "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+    "baselineProof": {
+      "sourceDigest": "sha256:f9b1a58aeb1dfb63c49a6d18b2b729026e8cdf49e6bb952b9db82c609a4b004c",
+      "occurrences": 1
+    },
+    "currentSourceProof": {
+      "sourceDigest": "sha256:ee842cde4213510412ce1ae636f76c5844541dfeb8e47cfcea3a42f285cfb151",
+      "occurrences": 0
+    },
+    "currentFileSha256": "c83ccf71c9eeb9a05316bed2b5a5fee387f36d478cafc08c201afa1bb6bf2373"
+  },
+  "existingAuthorization": "RF physical shares and Ledger bank split; only exact future-scope bookkeeping extension is requested",
+  "immutableBaselineSha256": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab"
+}

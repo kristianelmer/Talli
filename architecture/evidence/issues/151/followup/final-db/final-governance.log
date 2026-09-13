@@ -1,0 +1,46 @@
+
+> talli-repository@0.1.0 test:corporate-governance-database-lifecycle
+> node --test --test-concurrency=1 tests/corporate_governance_capability_schema.test.mjs tests/corporate_governance_database_runtime.test.mjs tests/corporate_governance_migration_lifecycle.test.mjs tests/corporate_governance_annual_close_schema.test.mjs tests/corporate_governance_annual_close_database_runtime.test.mjs tests/corporate_governance_supported_events_schema.test.mjs tests/corporate_governance_supported_events_ui.test.mjs && node --test --test-concurrency=1 tests/corporate_governance_contract_migration_lifecycle.test.mjs
+
+✔ annual-close migration rolls back and recuts over twice without authority drift (105.087041ms)
+✔ annual-close proposals are immutable and restricted to the governance executor (3.837084ms)
+✔ owner-dividend expand owns an isolated forced-RLS store (4.49175ms)
+✔ owner-dividend lifecycle is available only through exact restricted routines (1.981333ms)
+✔ owner-dividend persistence is exact-replay, append-only, and reversible (1.802667ms)
+✔ owner-dividend cutover removes the predecessor RPC and optimizes RLS (0.776792ms)
+✔ owner-dividend insert policies init-plan both actor checks (0.498292ms)
+✔ shareholder-loan expand moves authority behind governance contracts (1.518458ms)
+✔ shareholder-loan contract cutover capsules the predecessor writer (0.780667ms)
+✔ shareholder-loan insert policy init-plans both actor checks reversibly (0.491666ms)
+✔ governance tables and workflow routines are isolated behind the backend role (26.546917ms)
+✔ legacy shareholder-loan replay requires every canonical fact to match (64.774959ms)
+✔ artifact persistence does not duplicate Python signer policy (3.3165ms)
+✔ hosted owner-dividend shape is upgraded before contract (1.946041ms)
+✔ governance evidence is locked and revalidated before immutable insertion (2.132291ms)
+✔ governance decisions keep compatibility source identity without cross-capability foreign keys (0.776667ms)
+✔ company access owns the governance identity query migration (0.79875ms)
+✔ company identity reader serves only an accepted member through its owned contract (31.851584ms)
+✔ annual-data compatibility reader serves an accepted owner under the runtime role (31.679583ms)
+✔ populated hosted shape preserves evidence through parity and contract cutover (115.975667ms)
+✔ governance rollback and recutover are lossless and repeatable twice (377.730709ms)
+✔ shareholder-loan RLS cleanup rollback and recutover are repeatable twice (24.149083ms)
+✔ supported corporate events are immutable, tenant-scoped and atomic (3.550625ms)
+✔ owner workflow exposes every supported event, correction, AAL2 and mobile layout (4.976333ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1165.858
+✔ corporate-governance contract rollback and cutover are repeatable twice (172.017458ms)
+✔ corporate-governance contract retires every predecessor surface (1.373042ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 239.268958

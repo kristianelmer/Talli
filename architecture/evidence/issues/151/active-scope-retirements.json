@@ -1,0 +1,71 @@
+{
+  "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+  "sourceRevision": "3e8bf5187d614a3a2d02437f12186d90dbd19078",
+  "record": "compat-rf1086-persistence",
+  "currentCapability": "shareholder_register_filing",
+  "authority": "ADR0013 permits removal of active capability frozen scopes; no future scope reattribution or deletion included.",
+  "baselineSha256": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+  "retired": [
+    {
+      "scope": {
+        "path": "apps/web/app/actions.ts",
+        "rule": "direct-web-business-persistence",
+        "resource": "rpc:approve_production_filing",
+        "operation": "approveProductionFiling"
+      },
+      "sourceDigest": "sha256:7aaf3b9f24bc14cb972807aad8febd31bc32501f5a0f8fc0faad6e376e496232",
+      "occurrences": 0
+    },
+    {
+      "scope": {
+        "path": "apps/web/app/actions.ts",
+        "rule": "direct-web-business-persistence",
+        "resource": "table:filing_previews",
+        "operation": "approveProductionFiling"
+      },
+      "sourceDigest": "sha256:7aaf3b9f24bc14cb972807aad8febd31bc32501f5a0f8fc0faad6e376e496232",
+      "occurrences": 0
+    },
+    {
+      "scope": {
+        "path": "apps/web/app/actions.ts",
+        "rule": "direct-web-business-persistence",
+        "resource": "table:filing_previews",
+        "operation": "generateRf1086Preview"
+      },
+      "sourceDigest": "sha256:6c2987ed27291c7f9eec484e375ba36111c2dc939164d48e725896d212ed098a",
+      "occurrences": 0
+    },
+    {
+      "scope": {
+        "path": "apps/web/app/lib/supabase/server.ts",
+        "rule": "direct-web-business-persistence",
+        "resource": "table:filing_approval_snapshots",
+        "operation": "listProductionFilingState"
+      },
+      "sourceDigest": "sha256:3d27286c280fccb7b90b5fddabd6bcfc944140472488aee64ed103b14612af3d",
+      "occurrences": 0
+    },
+    {
+      "scope": {
+        "path": "apps/web/app/lib/supabase/server.ts",
+        "rule": "direct-web-business-persistence",
+        "resource": "table:production_feedback_artifacts",
+        "operation": "listProductionFilingState"
+      },
+      "sourceDigest": "sha256:3d27286c280fccb7b90b5fddabd6bcfc944140472488aee64ed103b14612af3d",
+      "occurrences": 0
+    },
+    {
+      "scope": {
+        "path": "apps/web/app/lib/supabase/server.ts",
+        "rule": "direct-web-business-persistence",
+        "resource": "table:production_filing_submissions",
+        "operation": "listProductionFilingState"
+      },
+      "sourceDigest": "sha256:3d27286c280fccb7b90b5fddabd6bcfc944140472488aee64ed103b14612af3d",
+      "occurrences": 0
+    }
+  ],
+  "limits": "Source deletion proof only; complete database lifecycle, pending fifteen-tuple amendment and immutable gates remain outstanding."
+}

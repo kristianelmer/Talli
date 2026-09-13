@@ -1,0 +1,565 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#151",
+  "source": "https://github.com/kristianelmer/Talli/issues/151",
+  "sourceCheckedAt": "2026-09-09T18:58:36Z",
+  "status": "local-stage-exit-passed-protected-integration-pending",
+  "notice": "All local #151/#132 stage-exit evidence and two linked immutable11/11 gates pass. Protected PR, exact-main Release/Preview and published closure remain pending; no successor implementation starts before protected #151 exit.",
+  "entryBlockers": [
+    {
+      "issue": "#150",
+      "requiredState": "CLOSED with independently verified protected integration",
+      "observedState": "CLOSED",
+      "closedAt": "2026-09-09T18:39:46Z",
+      "evidence": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5606893685",
+      "mainRevision": "91b178c281bcc5fb887a6257d2f72e380199f3e6"
+    },
+    {
+      "name": "prior stage prerequisites",
+      "requiredState": "ledger and investments exited; billing approved interim exited; authority_connections exited",
+      "observedState": "recorded in current compatibility registry and predecessor closure",
+      "evidence": [
+        "architecture/compatibility.json",
+        "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5606893685",
+        "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5600490534"
+      ],
+      "limit": "#192 final remains OPEN under approved source order; do not require or imply its final acceptance at RF entry."
+    },
+    {
+      "name": "immutable entry baseline",
+      "revision": "91b178c281bcc5fb887a6257d2f72e380199f3e6",
+      "command": "npm run gate:customer-ready",
+      "status": "pass-independently-verified-committed",
+      "evidencePath": "architecture/evidence/customer-ready-gates/91b178c281bcc5fb887a6257d2f72e380199f3e6.json",
+      "rawTranscriptPath": "architecture/evidence/customer-ready-gates/91b178c281bcc5fb887a6257d2f72e380199f3e6.log",
+      "checkCount": 11,
+      "canonicalDigest": "sha256:1ac57b0619c2ae8f95ed0a6c776315e6562d4fc0be6af55d23e37222463b2607",
+      "transcriptDigest": "sha256:99ee6b001f8271ac0c8b6da5e58e162759e4f2aa2aef2b05c7c76383a5d2583b",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "storageRevision": "7a49f010229baf13d4942364d352786d7cddc5c3",
+      "startedAt": "2026-09-09T18:40:21.300Z",
+      "finishedAt": "2026-09-09T18:58:17.826Z",
+      "requiredProof": "Actual completed11checks/zero exits; canonical schema/sortedJSON/rawlog/testedproducer digest; clean committed tested revision and committed evidence storage. This is entry evidence, not either #151 final exit pass.",
+      "independentReview": "architecture/evidence/issues/151/entry-independent-review.json"
+    },
+    {
+      "name": "entry inventory",
+      "status": "adopted-at-entry-baseline",
+      "evidence": [
+        "architecture/evidence/issues/151/legacy-inventory.md",
+        "architecture/evidence/issues/151/storage-ownership-inventory.md",
+        "architecture/evidence/issues/151/characterization-matrix.md",
+        "architecture/evidence/issues/151/source-contract-requirements.md",
+        "architecture/evidence/issues/151/characterization-test-plan.md",
+        "architecture/evidence/issues/151/tt02-replay-availability.md"
+      ],
+      "requiredProof": "Adopt/pin current legacy entrypoints, all consumers, row/field ownership, rules, tests and rollback assets to actual entry revision. Older draft timestamps/statuses are historical; do not copy their stale150pending status."
+    },
+    {
+      "name": "serialized claim",
+      "status": "CLAIMED",
+      "claimUrl": "https://github.com/kristianelmer/Talli/issues/151#issuecomment-5607212335",
+      "branch": "codex/issue-151-rf1086-01a08515",
+      "observationAtEntry": {
+        "state": "OPEN",
+        "assignees": [],
+        "commentCount": 0,
+        "labels": [
+          "ready-for-agent"
+        ],
+        "ticketUpdatedAt": "2026-09-09T08:56:06Z",
+        "openPrSearch151": []
+      }
+    }
+  ],
+  "decisionBoundary": {
+    "migrationOrderSource": "https://github.com/kristianelmer/Talli/issues/132#issuecomment-5083588592",
+    "sourceHandoffApproval": "https://github.com/kristianelmer/Talli/issues/192#issuecomment-5599100453",
+    "predecessorClosure": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5606893685",
+    "route": "#151 -> #146 -> #152 -> #153 -> #193 [RF -> tax -> accounts] -> #149 -> #208 -> #192 final -> #194",
+    "approvedNow": "RF semantics/row ownership, public contracts, canonical backend rules, normal reversible migration and exact behavior-preserving dependency query; start only after normal entry. Do not migrate sibling rules/annual aggregation/audit/notifications.",
+    "pendingException": {
+      "status": "APPROVED_IMPLEMENTED_LOCAL_STAGE_VERIFIED",
+      "proposal": "architecture/evidence/issues/151/compatibility-amendment-v2-proposal.md",
+      "proposalDigest": "sha256:37472588213825c948c4a4870e9df7396b10aa273e9d1c5118db929d9149b09a",
+      "scope": "architecture/evidence/issues/151/compatibility-amendment-v2-inventory.json",
+      "scopeDigest": "sha256:698439251dbba00606c04ea9599032db5f3a082a14946ad4cb1beef24d121c28",
+      "inventoryDigest": "sha256:698439251dbba00606c04ea9599032db5f3a082a14946ad4cb1beef24d121c28",
+      "approvalEvidence": "architecture/evidence/issues/151/compatibility-amendment-v2-decision.json",
+      "counts": {
+        "mixedTupleReattributions": 12,
+        "futureReadDeletions": 4,
+        "adjacentAuditCallsUnchanged": 8,
+        "adjacentNotificationCallsUnchanged": 2
+      },
+      "restriction": "Exact sixteen-entry revision-2 amendment approved 2026-09-10; implement only the bound scope with preserved effects and expiry. Full stage acceptance remains required.",
+      "expiry": "Each retained tuple leaves when last real sibling source migrates, no later than last filing cutover; #149 is not blanket retention authority.",
+      "inventory": "architecture/evidence/issues/151/compatibility-amendment-v2-inventory.json",
+      "independentReview": "architecture/evidence/issues/151/compatibility-amendment-v2-independent-review.md",
+      "publicationNote": "Revision2 approved by exact reply in handoff destination; original proposals and bound inventories remain unchanged as historical decision inputs.",
+      "previousFifteenTupleProposal": {
+        "proposal": "architecture/evidence/issues/151/compatibility-amendment-proposal.md",
+        "proposalDigest": "sha256:3cc58e95162e6cd52328a075019419e1005f9ca8794eda1811b77fc30ae50d40",
+        "scope": "architecture/evidence/issues/151/frozen-scope-disposition.md",
+        "scopeDigest": "sha256:af56cf7ad98bdf0feca6c4b2d9208545fc1c633d3f66596f3bf5dfa8ff950da3",
+        "inventory": "architecture/evidence/issues/151/frozen-scope-inventory.json",
+        "inventoryDigest": "sha256:e0e8f9e2a3835ca206817f3b6d1a0529ce6340e1638b8c59b624f5aef2240f12",
+        "independentReview": "architecture/evidence/issues/151/frozen-scope-independent-review.md"
+      }
+    },
+    "noAuthority": "No provider activation/live filing/spending/production promotion/hosted schema application. Real provider evidence and named-company production remain separate authorized later work.",
+    "historicalPayloadReplay": {
+      "status": "exact-historical-payload-regeneration-pass",
+      "evidence": "architecture/evidence/issues/151/tt02-deterministic-replay.json",
+      "procedure": "architecture/evidence/issues/151/tt02-deterministic-replay.md",
+      "limit": "Original single2025 no-activity case reproduces both accepted document hashes byte for byte offline, including bundled XSD validation; no new provider acceptance or full stage exit is claimed."
+    }
+  },
+  "criteria": [
+    {
+      "id": "GH-151-A1",
+      "requirement": "Supported RF-1086 cases produce payloads identical to current authority-tested evidence.",
+      "status": "PASS_LOCAL_VERIFIED",
+      "existingCharacterizationPaths": [
+        "tests/fixtures/rf1086",
+        "tests/fixtures/rf1086_invalid",
+        "tests/test_rf1086.py",
+        "tests/rf1086_persisted_preview.test.mjs",
+        "tests/rf1086_submission_persisted.test.mjs",
+        "docs/filing/evidence/rf1086-tt02-2026-07-14.json",
+        "docs/filing/rf1086-code-evidence-register.md"
+      ],
+      "existingFocusedCommands": [
+        "npm run test:rf1086:persisted",
+        "npm run test:rf1086:submission",
+        "npm run test:authority-evidence"
+      ],
+      "expectedResult": "Fixed input/clock/ID old-new equality for supported no-activity preview/XML bytes, hashes, order, defaults, coded errors and exclusion behavior. Historical TT02 hashes retained; broader offline fixtures do not imply live support.",
+      "newEvidence": [
+        "architecture/evidence/issues/151/implementation-checkpoint.md",
+        "architecture/evidence/issues/151/tt02-deterministic-replay.json",
+        "architecture/evidence/issues/151/followup-verification.md",
+        "architecture/evidence/issues/151/tt02-deterministic-replay.md",
+        "architecture/evidence/issues/151/characterization-matrix.md",
+        "architecture/evidence/issues/151/cli-retirement-validation.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    },
+    {
+      "id": "GH-151-A2",
+      "requirement": "Owner confirmation, AAL2, entitlement, release, and pilot gates remain mandatory.",
+      "status": "PASS_LOCAL_VERIFIED",
+      "existingCharacterizationPaths": [
+        "tests/production_approval.test.mjs",
+        "tests/production_pilot.test.mjs",
+        "tests/controlled_production_beta_actions.test.mjs",
+        "apps/backend/tests/test_rf1086_database_runtime.py",
+        "apps/backend/tests/test_rf1086_compatibility.py"
+      ],
+      "existingFocusedCommands": [
+        "npm run test:rf1086:production-pilot"
+      ],
+      "expectedResult": "Fresh complete owner preview-to-approval-to-Send journey and independent fail-closed owner/AAL2/authority/preflight/readiness/review/override/entitlement/release/pilot checks. Token failure precedes begin; no unauthorized effects. Historical recovery preserves its distinct original authority.",
+      "newEvidence": [
+        "architecture/evidence/issues/151/implementation-checkpoint.md",
+        "architecture/evidence/issues/151/approved-amendment/candidate-spec-acceptance.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    },
+    {
+      "id": "GH-151-A3",
+      "requirement": "Submission, retry, feedback, unknown outcomes, and receipts remain idempotent and auditable.",
+      "status": "PASS_LOCAL_VERIFIED",
+      "existingCharacterizationPaths": [
+        "apps/backend/tests/test_rf1086_compatibility.py",
+        "apps/backend/tests/test_rf1086_database_runtime.py",
+        "apps/backend/tests/test_rf1086_authority.py",
+        "apps/backend/tests/test_postgres_legacy_rf1086_authority.py",
+        "tests/production_submission.test.mjs"
+      ],
+      "existingFocusedCommands": [
+        "npm run test:rf1086:production-pilot",
+        "npm run test:rf1086:authority-client"
+      ],
+      "expectedResult": "Permanent original-intent journal, exact per-operation body/key, concurrency/lease/retry-cap/partial-send/unknown outcomes, no blind POST replay, explicit feedback classification and Documents receipt integrity/conditional rollback.",
+      "newEvidence": [
+        "architecture/evidence/issues/151/implementation-checkpoint.md",
+        "architecture/evidence/issues/151/production-coordinator-independent-review.md",
+        "architecture/evidence/issues/151/approved-amendment/candidate-spec-acceptance.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    },
+    {
+      "id": "GH-151-A4",
+      "requirement": "The complete owner filing flow uses the generated API client.",
+      "status": "PASS_LOCAL_VERIFIED",
+      "existingCharacterizationPaths": [
+        "apps/web/app/actions.ts",
+        "apps/web/app/lib/supabase/server.ts",
+        "apps/web/app/(owner)/filing/[obligation]/page.tsx",
+        "apps/web/app/components/annual-workspace/ObligationWorkspace.tsx",
+        "apps/web/features/legacy-rf1086/transport.ts",
+        "tests/browser_authority_connections.mjs"
+      ],
+      "existingFocusedCommands": [],
+      "expectedResult": "New complete owned generated API covers opening facts/readiness/preview/review/override/confirmation/approval/Send/recovery/receipt presentation. Real local auth, backend and RLS with loopback provider; current seeded historical browser proof is retained but does not replace fresh owner-journey evidence.",
+      "newEvidence": [
+        "architecture/evidence/issues/151/implementation-checkpoint.md",
+        "architecture/evidence/issues/151/exit-protocol/independent-spec-closure.md",
+        "architecture/evidence/issues/151/exit-protocol/README.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    },
+    {
+      "id": "GH-151-A5",
+      "requirement": "Both RF-1086 CLI bridges, generic RF-1086 rows, duplicate TypeScript rules, and active-stage compatibility code are removed.",
+      "status": "PASS_LOCAL_VERIFIED",
+      "existingCharacterizationPaths": [
+        "apps/backend/src/talli_backend/modules/shareholder_register_filing",
+        "apps/backend/src/talli_backend/application/shareholder_register_compatibility.py",
+        "apps/backend/src/talli_backend/application/opening_snapshot_compatibility.py",
+        "apps/backend/src/talli_backend/compatibility/rf1086_authority_workflow.py",
+        "apps/backend/src/talli_backend/adapters/postgres_legacy_rf1086_authority.py",
+        "apps/backend/src/talli_backend/authority_tools/rf1086_test.py",
+        "apps/web/app/lib/rf1086.ts",
+        "apps/web/app/lib/rf1086-submission.ts",
+        "architecture/compatibility.json",
+        "architecture/compatibility-baseline.json",
+        "architecture/database-catalog.json"
+      ],
+      "existingFocusedCommands": [
+        "npm run check:architecture",
+        "npm run test:architecture"
+      ],
+      "expectedResult": "One owned implementation/writer; shareholder fields and RF generic rows migrated without sibling/ledger/foreign-owner acquisition; both web Python bridges and duplicate TS rules removed, frozen RF backend compatibility absorbed, RF tool calls canonical generator, obsolete authority contracted, temporary parity/allowlist debt removed. Baseline stays byte-identical. Exact approved sixteen-entry amendment only; preserve all sibling effects and expiry.",
+      "newEvidence": [
+        "architecture/evidence/issues/151/implementation-checkpoint.md",
+        "architecture/evidence/issues/151/approved-amendment-standards-review.md",
+        "architecture/evidence/issues/151/approved-amendment/exit-standards-audit.md",
+        "architecture/evidence/issues/151/approved-amendment/candidate-spec-acceptance.md",
+        "architecture/evidence/issues/151/compatibility-amendment-v2-decision.json",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    },
+    {
+      "id": "GH-151-A6",
+      "requirement": "The complete `shareholder_register_filing` stage exit criteria from issue #132 pass before company-tax migration begins.",
+      "status": "LOCAL_PASS_PROTECTED_INTEGRATION_PENDING",
+      "existingCharacterizationPaths": [
+        "architecture/compatibility.json",
+        "architecture/backend-system.json",
+        "architecture/dependency-evidence.json",
+        "architecture/customer-ready-gate-evidence.schema.json",
+        ".github/workflows"
+      ],
+      "existingFocusedCommands": [
+        "npm run gate:customer-ready",
+        "npm run gate:customer-ready -- --previous <FIRST_PASSING_151_REVISION>"
+      ],
+      "expectedResult": "Complete #132 envelope, independent review, two linked immutable11/11 gates, protected PR/exact-main Release+Preview and preserved production freeze before successor. Activated production alone would additionally require approved seven-day observation; no activation or such observation is planned or claimed.",
+      "newEvidence": [
+        "architecture/evidence/issues/151/implementation-checkpoint.md",
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-protocol/independent-spec-closure.md",
+        "architecture/evidence/issues/151/gate-pair-independent-review.json",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    }
+  ],
+  "approvedSourceHandoff": {
+    "status": "PASS_LOCAL_IMPLEMENTED_AND_DATABASE_VERIFIED",
+    "requiredFacts": [
+      "immutable company/year/obligation readiness",
+      "complete production-submission history and positive completeness evidence before declaring none submitted",
+      "terminal and unknown outcomes",
+      "existing correction/relationship facts without introducing new correction writer",
+      "source-owned incident facts with supported attribution",
+      "evidence identity, source version, currentness, timing and actor/source attribution"
+    ],
+    "boundaries": [
+      "Absent/incomplete source is unavailable, never false evidence of no submission.",
+      "Legacy owner-writable annual-ready row is only frozen workflow input, not new trusted checkout evidence.",
+      "RF readiness source must avoid circular dependence on paid entitlement; actual Send retains action-time commercial gate.",
+      "Billing alone applies#177 monetary/commercial classification; no second billing writer.",
+      "Annual Compliance later aggregates all3 owners; Company Access#208 supplies year admission."
+    ],
+    "evidence": [
+      "architecture/evidence/issues/151/source-facts-independent-review.md",
+      "architecture/evidence/issues/151/approved-amendment-spec-review.md",
+      "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+      "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+    ]
+  },
+  "completeExitEnvelope": [
+    {
+      "name": "fixed-input characterization and golden/statutory equivalence",
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    },
+    {
+      "name": "owned data and one authoritative writer",
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    },
+    {
+      "name": "expand/migrate/count-hash/backfill reconciliation",
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    },
+    {
+      "name": "full API/web contract and deployment order cutover",
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json",
+        "architecture/evidence/issues/151/exit-protocol/independent-spec-closure.md"
+      ]
+    },
+    {
+      "name": "restricted roles/FORCE RLS/verified actor/tenant/concurrency safety",
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    },
+    {
+      "name": "permanent journal and unknown-effect rollback/quarantine",
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    },
+    {
+      "name": "rollback and recutover with immutable identity preserved",
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    },
+    {
+      "name": "exact old-code/genericRF/CLI/compatibility/parity-suite cleanup",
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    },
+    {
+      "name": "sibling audit notification archive support and annual input equivalence",
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    },
+    {
+      "name": "full fresh owner browser plus historical recovery journey",
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    },
+    {
+      "name": "both builds, package smoke, security/dependency/advisors",
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    },
+    {
+      "name": "independent Standards and Spec review with self-overlap disclosed",
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    },
+    {
+      "name": "matching module/system/catalog/generated/dependency evidence",
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json"
+      ]
+    },
+    {
+      "name": "two consecutive linked immutable complete gates",
+      "status": "PASS_LOCAL_VERIFIED",
+      "evidence": [
+        "architecture/evidence/issues/151/approved-amendment/exit-envelope-mapping.md",
+        "architecture/evidence/issues/151/exit-verification.md",
+        "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+        "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json",
+        "architecture/evidence/issues/151/gate-pair-independent-review.json"
+      ]
+    },
+    {
+      "name": "protected integration and exact-main Release/Preview truth",
+      "status": "PENDING_PROTECTED_INTEGRATION",
+      "evidence": []
+    }
+  ],
+  "observation": {
+    "activatedProduction": false,
+    "sevenDayEvidence": null,
+    "status": "NOT_APPLICABLE_UNLESS_PATH_ACTIVATED",
+    "note": "Do not turn optional semantic Graphify into a blocker; deterministic manifest dependency evidence is mandatory under ADR0013."
+  },
+  "completeGates": [
+    {
+      "revision": "dd1a7dba8192746f5e882d5b119d895bf7730ce1",
+      "evidencePath": "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+      "evidenceDigest": "sha256:a50f815ba3c980b1f3e48d559f850a9ee2732210a43c31e63f70f77ba3d14fc5",
+      "transcriptDigest": "sha256:41a8db718e186ea0c294aa6484e9f926b24ae32835902df89531ce5cd732000e",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "checkCount": 11,
+      "startedAt": "2026-09-10T12:46:33.872Z",
+      "finishedAt": "2026-09-10T13:06:15.791Z",
+      "status": "pass-independently-verified-committed",
+      "storageRevision": "c8a8f3dd79ebe990136bda63bcfc126432104d6d",
+      "independentReview": "architecture/evidence/issues/151/approved-amendment/gate1-independent-review.json"
+    },
+    {
+      "revision": "c8a8f3dd79ebe990136bda63bcfc126432104d6d",
+      "evidencePath": "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json",
+      "evidenceDigest": "sha256:95b09ebd71aa6d0ac0082ac12bb446afa7a9ff3bdb193d2020ee6fb2d92e14c7",
+      "transcriptDigest": "sha256:382db8a0b90dc1745d79e7e5d8baec7e0dfc6be8c813ea82db33a17d8f6d8971",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "checkCount": 11,
+      "startedAt": "2026-09-10T13:12:58.970Z",
+      "finishedAt": "2026-09-10T13:32:40.212Z",
+      "status": "pass-independently-verified-committed",
+      "storageRevision": "2982a662c9cc1ebb8413d7a3a36abf07f4a713b6",
+      "independentReview": "architecture/evidence/issues/151/gate-pair-independent-review.json"
+    }
+  ],
+  "expectedCanonicalChecks": [
+    "credential-scan",
+    "typecheck",
+    "architecture",
+    "boundary",
+    "build-web",
+    "build-backend",
+    "boundary-smoke",
+    "launch-rehearsal",
+    "production-dependency-audit",
+    "database-isolation",
+    "whitespace"
+  ],
+  "localValidation": [
+    {
+      "evidence": "architecture/evidence/issues/151/focused/manifest.json",
+      "state": "passed-focused-working-tree-checks",
+      "qualifiesAsCompleteImmutableGate": false,
+      "limit": "Files evolved during focused checks; linked transcript hashes and implementation-checkpoint.md disclose counts, omissions and skips."
+    },
+    {
+      "evidence": "architecture/evidence/issues/151/followup-verification.md",
+      "state": "focused-final-schema-and-historical-replay-pass",
+      "qualifiesAsCompleteImmutableGate": false,
+      "limit": "Updated108 mandatoryDB cases pass without skips; preceding699 PythonBilling +1 NodeBilling pass with disclosed fixture-clock corrections. Final feedback/schema22, real-auth openingHTTP5 and historicalbrowser1 pass. Historical broaderbackend2808pass2existingoptionalskips and exactTT02 reproduction remain. Retainedworkspace, webboundary, contractchecks, bothbuilds and installedpackagesmoke pass. Fresh RF fixture safety11 and shared cleanup/onboarding/restoration checks pass; the full fresh owner flow, pending16-entry exception, full gates and integration remain open."
+    },
+    {
+      "evidence": "architecture/evidence/issues/151/approved-amendment-verification.md",
+      "state": "approved-amendment-and-exit-corrections-focused-verification",
+      "qualifiesAsCompleteImmutableGate": false,
+      "limit": "Finite approved amendment, independently found SQL retirement/classification/rollback corrections, and complete fresh owner browser have focused passing evidence. Full gates and protected integration remain pending."
+    },
+    {
+      "evidence": "architecture/evidence/customer-ready-gates/dd1a7dba8192746f5e882d5b119d895bf7730ce1.json",
+      "state": "first-complete-immutable-gate-pass",
+      "qualifiesAsCompleteImmutableGate": true,
+      "limit": "All11checks pass, final RF/authority DB130, Billing699, historicalbrowser11 and freshbrowser12. Backend boundary has2existing optional environment-gated skips; validation-observation Python has1existing optional environment-gated skip while its mandatoryNodeSQLtest passes. Advisors report0blockingsecurity/error findings and60performancewarnings. Second linked gate, RF protocol supplement and protected integration remain open."
+    },
+    {
+      "evidence": "architecture/evidence/issues/151/exit-protocol/README.md",
+      "state": "exact-predecessor-candidate-rf-protocol-pass",
+      "qualifiesAsCompleteImmutableGate": false,
+      "limit": "29checks/33real-loopbackHTTPrequests; independently repeated withNode24.20.0. Exact pinned app/transport/generated source, existing in-memory identity/persistence/authority ports and six extracted actions. No DB/browser/provider acceptance; complements first full gate."
+    }
+  ],
+  "predecessorEvidence": {
+    "issue": "#150",
+    "closure": "https://github.com/kristianelmer/Talli/issues/150#issuecomment-5606893685",
+    "limit": "Predecessor passing suites, TT02 historical evidence and seeded RF recovery are carried characterization sources, not #151 newly passed evidence."
+  },
+  "protectedIntegration": {
+    "status": "PENDING_NOT_STARTED",
+    "pullRequest": null,
+    "premergeHead": null,
+    "prReleaseRun": null,
+    "mergedMain": null,
+    "mainReleaseRun": null,
+    "preview": null,
+    "productionBranch": "release/production",
+    "productionRevisionToRemainFrozen": "d331ee2717d1eeacef0d81db42b9d4fb5848b408"
+  },
+  "implementationCheckpoint": "architecture/evidence/issues/151/implementation-checkpoint.md",
+  "implementationRevision": "3e8bf5187d614a3a2d02437f12186d90dbd19078",
+  "latestSourceCheckpoint": "dd1a7dba8192746f5e882d5b119d895bf7730ce1",
+  "stageExit": {
+    "capability": "shareholder_register_filing",
+    "issue": "#151",
+    "localVerdict": "pass",
+    "nextRegistryCapability": "company_tax_filing",
+    "nextRegistryIssue": "#146",
+    "nextStageClaimed": false,
+    "scope": "Registry advances after both linked gates. #146 claim and implementation remain blocked until protected #151 integration and exact-main Release/Preview verification."
+  },
+  "remainingWork": [
+    "Protected PR and exact-main Release/Preview verification",
+    "Independent published-closure reread before closing #151",
+    "Serialized successor entry after protected #151 exit"
+  ]
+}

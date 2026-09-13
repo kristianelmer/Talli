@@ -1,0 +1,137 @@
+[
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "resume_production_operation",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "execute_rf1086_production_release",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "_js_utf8_bytes",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "_sha256",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "_reference",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "_js_trim",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "_js_utf16_key",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "_js_object",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "_json",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "_failure",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "_mutation",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "_read_operation",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "_pending_archive_error",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "execute_journaled_rf1086_production",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "rf1086_preview_payload_hash",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "rf1086_production_document_order",
+    "status": "changed"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "rf1086_current_manifest",
+    "status": "changed"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/production.py",
+    "function": "rf1086_current_manifest_hash",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/feedback.py",
+    "function": "classify_rf1086_feedback",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/feedback.py",
+    "function": "create_rf1086_feedback_artifact_persistence_error",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/feedback.py",
+    "function": "_safe_reconciliation_failure",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/feedback.py",
+    "function": "_read_feedback_once",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/feedback.py",
+    "function": "reconcile_journaled_rf1086_production",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/application/shareholder_register_filing_workflow.py",
+    "function": "_required_uuid_identity",
+    "status": "changed"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/application/shareholder_register_filing_workflow.py",
+    "function": "_valid_connection",
+    "status": "identical"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/application/shareholder_register_filing_workflow.py",
+    "function": "send_approved_rf1086_production_filing",
+    "status": "changed"
+  },
+  {
+    "file": "apps/backend/src/talli_backend/application/shareholder_register_filing_workflow.py",
+    "function": "reconcile_rf1086_production",
+    "status": "changed"
+  }
+]

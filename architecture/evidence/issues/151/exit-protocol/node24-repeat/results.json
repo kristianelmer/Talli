@@ -1,0 +1,1607 @@
+{
+  "node": "v24.20.0",
+  "sourceManifest": "source-manifest.json",
+  "results": [
+    {
+      "name": "old transport -> new backend: Send wire, token-before-begin, same five operation identities on retry",
+      "passed": true,
+      "evidence": {
+        "first": {
+          "version": "new",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/new/apps/backend/src/talli_backend/main.py",
+          "tokens": [
+            "local-owner"
+          ],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/legacy-rf1086/production-filings",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "approvalId": "80000000-0000-4000-8000-000000000008"
+              },
+              "status": 200,
+              "responseRequestId": "e3e80bd2-615f-45cc-884c-7e079ae11ce8",
+              "cacheControl": "no-store"
+            }
+          ],
+          "events": [
+            "configuration",
+            "approval",
+            "fresh_mfa",
+            "preview",
+            "billing_snapshot",
+            "billing_entitlement",
+            "company",
+            "connection",
+            "mutation_token",
+            "begin",
+            "operation_journal",
+            "claim",
+            "reference",
+            "feedback_journal",
+            "release",
+            "discard"
+          ],
+          "mutationCalls": [
+            "main",
+            "sub",
+            "sub",
+            "confirm",
+            "list"
+          ],
+          "operations": {
+            "post_hovedskjema": {
+              "id": "bda1780d-90ae-4047-b0be-5e642641f08f",
+              "name": "post_hovedskjema",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": "f78966dd4ee61d7818cba6deff6b1a570569f839032b4fc42c9ab404466462ec",
+              "idempotency_key": "cf8f98d8-ee29-411f-815e-aa414cca9b0d",
+              "authority_reference": "10000000-0000-4000-8000-000000000001",
+              "failure_classification": null
+            },
+            "post_underskjema:10000000-0000-4000-8000-000000000001": {
+              "id": "43f75377-baf9-4667-951e-ca04f08a50cb",
+              "name": "post_underskjema:10000000-0000-4000-8000-000000000001",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": "3a258d0b2eefe08db313419e40878d43e93ecdf9b32175f36fd076accdc5f66a",
+              "idempotency_key": "1f034fb7-8a6e-43e9-81b4-3396655cd761",
+              "authority_reference": "posted",
+              "failure_classification": null
+            },
+            "post_underskjema:40000000-0000-4000-8000-000000000004": {
+              "id": "f8ccbeea-c9dc-4b4d-9a0e-b5d0138df13e",
+              "name": "post_underskjema:40000000-0000-4000-8000-000000000004",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": "81edeb4b6472f5cc4fef6f511f8949202e71d4b145a2469440005d998826f527",
+              "idempotency_key": "ce51dea4-3e10-45cf-bddd-596f1b036c69",
+              "authority_reference": "posted",
+              "failure_classification": null
+            },
+            "confirm": {
+              "id": "899a123c-5e62-4727-9b87-5aa3861536f2",
+              "name": "confirm",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": "954849fdb3d3ec9b0b3622b0e5e6244f6dc33665c10126c633e1fea222ba90e8",
+              "idempotency_key": "5c745db8-f2c3-4442-881c-f2a15f0af071",
+              "authority_reference": "{\"dialogId\":\"20000000-0000-4000-8000-000000000002\",\"forsendelseId\":\"30000000-0000-4000-8000-000000000003\"}",
+              "failure_classification": null
+            },
+            "list_documents": {
+              "id": "4c0eb291-df47-470a-be29-3db0c20cab4a",
+              "name": "list_documents",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": null,
+              "idempotency_key": null,
+              "authority_reference": "{\"documentCount\":0}",
+              "failure_classification": null
+            }
+          }
+        },
+        "repeated": {
+          "version": "new",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/new/apps/backend/src/talli_backend/main.py",
+          "tokens": [
+            "local-owner",
+            "local-owner"
+          ],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/legacy-rf1086/production-filings",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "approvalId": "80000000-0000-4000-8000-000000000008"
+              },
+              "status": 200,
+              "responseRequestId": "e3e80bd2-615f-45cc-884c-7e079ae11ce8",
+              "cacheControl": "no-store"
+            },
+            {
+              "method": "POST",
+              "path": "/api/v1/legacy-rf1086/production-filings",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "approvalId": "80000000-0000-4000-8000-000000000008"
+              },
+              "status": 200,
+              "responseRequestId": "e36e2e34-7372-4def-8c18-b3efb5870df1",
+              "cacheControl": "no-store"
+            }
+          ],
+          "events": [
+            "configuration",
+            "approval",
+            "fresh_mfa",
+            "preview",
+            "billing_snapshot",
+            "billing_entitlement",
+            "company",
+            "connection",
+            "mutation_token",
+            "begin",
+            "operation_journal",
+            "claim",
+            "reference",
+            "feedback_journal",
+            "release",
+            "discard",
+            "configuration",
+            "approval",
+            "fresh_mfa",
+            "preview",
+            "billing_snapshot",
+            "billing_entitlement",
+            "company",
+            "connection",
+            "mutation_token",
+            "begin",
+            "operation_journal",
+            "claim",
+            "reference",
+            "feedback_journal",
+            "release",
+            "discard"
+          ],
+          "mutationCalls": [
+            "main",
+            "sub",
+            "sub",
+            "confirm",
+            "list"
+          ],
+          "operations": {
+            "post_hovedskjema": {
+              "id": "bda1780d-90ae-4047-b0be-5e642641f08f",
+              "name": "post_hovedskjema",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": "f78966dd4ee61d7818cba6deff6b1a570569f839032b4fc42c9ab404466462ec",
+              "idempotency_key": "cf8f98d8-ee29-411f-815e-aa414cca9b0d",
+              "authority_reference": "10000000-0000-4000-8000-000000000001",
+              "failure_classification": null
+            },
+            "post_underskjema:10000000-0000-4000-8000-000000000001": {
+              "id": "43f75377-baf9-4667-951e-ca04f08a50cb",
+              "name": "post_underskjema:10000000-0000-4000-8000-000000000001",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": "3a258d0b2eefe08db313419e40878d43e93ecdf9b32175f36fd076accdc5f66a",
+              "idempotency_key": "1f034fb7-8a6e-43e9-81b4-3396655cd761",
+              "authority_reference": "posted",
+              "failure_classification": null
+            },
+            "post_underskjema:40000000-0000-4000-8000-000000000004": {
+              "id": "f8ccbeea-c9dc-4b4d-9a0e-b5d0138df13e",
+              "name": "post_underskjema:40000000-0000-4000-8000-000000000004",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": "81edeb4b6472f5cc4fef6f511f8949202e71d4b145a2469440005d998826f527",
+              "idempotency_key": "ce51dea4-3e10-45cf-bddd-596f1b036c69",
+              "authority_reference": "posted",
+              "failure_classification": null
+            },
+            "confirm": {
+              "id": "899a123c-5e62-4727-9b87-5aa3861536f2",
+              "name": "confirm",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": "954849fdb3d3ec9b0b3622b0e5e6244f6dc33665c10126c633e1fea222ba90e8",
+              "idempotency_key": "5c745db8-f2c3-4442-881c-f2a15f0af071",
+              "authority_reference": "{\"dialogId\":\"20000000-0000-4000-8000-000000000002\",\"forsendelseId\":\"30000000-0000-4000-8000-000000000003\"}",
+              "failure_classification": null
+            },
+            "list_documents": {
+              "id": "4c0eb291-df47-470a-be29-3db0c20cab4a",
+              "name": "list_documents",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": null,
+              "idempotency_key": null,
+              "authority_reference": "{\"documentCount\":0}",
+              "failure_classification": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "old transport -> new backend: compatible read-only recovery",
+      "passed": true,
+      "evidence": {
+        "version": "new",
+        "appSource": "/private/tmp/talli-151-rollout-root-node24/new/apps/backend/src/talli_backend/main.py",
+        "tokens": [
+          "local-owner"
+        ],
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/api/v1/legacy-rf1086/feedback-reconciliations",
+            "authorization": "Bearer local-owner",
+            "requestId": null,
+            "body": {
+              "submissionId": "c0000000-0000-4000-8000-00000000000c"
+            },
+            "status": 200,
+            "responseRequestId": "cd8966c3-25c0-4362-a993-51c8d1eb1f26",
+            "cacheControl": "no-store"
+          }
+        ],
+        "events": [
+          "submission",
+          "company",
+          "approval",
+          "billing_snapshot",
+          "connection",
+          "preview",
+          "configuration",
+          "claim",
+          "reference",
+          "recovery_token",
+          "feedback_journal",
+          "discard",
+          "release"
+        ],
+        "mutationCalls": [],
+        "operations": {}
+      }
+    },
+    {
+      "name": "old transport -> new backend: unknown outcome never blindly reposted",
+      "passed": true,
+      "evidence": {
+        "error1": {
+          "status": 503,
+          "code": "send_unavailable"
+        },
+        "error2": {
+          "status": 503,
+          "code": "send_unavailable"
+        },
+        "unknown1": {
+          "version": "new",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/new/apps/backend/src/talli_backend/main.py",
+          "tokens": [
+            "local-owner"
+          ],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/legacy-rf1086/production-filings",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "approvalId": "80000000-0000-4000-8000-000000000008"
+              },
+              "status": 503,
+              "responseRequestId": "1a37e15d-a71c-47e4-b0e1-40b758c4e741",
+              "cacheControl": "no-store"
+            }
+          ],
+          "events": [
+            "configuration",
+            "approval",
+            "fresh_mfa",
+            "preview",
+            "billing_snapshot",
+            "billing_entitlement",
+            "company",
+            "connection",
+            "mutation_token",
+            "begin",
+            "operation_journal",
+            "discard"
+          ],
+          "mutationCalls": [
+            "main"
+          ],
+          "operations": {
+            "post_hovedskjema": {
+              "id": "89381e7f-6a3f-4840-9083-d95ca176b5ed",
+              "name": "post_hovedskjema",
+              "state": "unknown",
+              "attempt": 1,
+              "body_hash": "f78966dd4ee61d7818cba6deff6b1a570569f839032b4fc42c9ab404466462ec",
+              "idempotency_key": "ae0cbdd4-9749-488a-bd89-ea140bdf095e",
+              "authority_reference": null,
+              "failure_classification": "unknown"
+            }
+          }
+        },
+        "unknown2": {
+          "version": "new",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/new/apps/backend/src/talli_backend/main.py",
+          "tokens": [
+            "local-owner",
+            "local-owner"
+          ],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/legacy-rf1086/production-filings",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "approvalId": "80000000-0000-4000-8000-000000000008"
+              },
+              "status": 503,
+              "responseRequestId": "1a37e15d-a71c-47e4-b0e1-40b758c4e741",
+              "cacheControl": "no-store"
+            },
+            {
+              "method": "POST",
+              "path": "/api/v1/legacy-rf1086/production-filings",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "approvalId": "80000000-0000-4000-8000-000000000008"
+              },
+              "status": 503,
+              "responseRequestId": "df800bc3-15ce-4549-8755-c04b628be05e",
+              "cacheControl": "no-store"
+            }
+          ],
+          "events": [
+            "configuration",
+            "approval",
+            "fresh_mfa",
+            "preview",
+            "billing_snapshot",
+            "billing_entitlement",
+            "company",
+            "connection",
+            "mutation_token",
+            "begin",
+            "operation_journal",
+            "discard",
+            "configuration",
+            "approval",
+            "fresh_mfa",
+            "preview",
+            "billing_snapshot",
+            "billing_entitlement",
+            "company",
+            "connection",
+            "mutation_token",
+            "begin",
+            "operation_journal",
+            "discard"
+          ],
+          "mutationCalls": [
+            "main"
+          ],
+          "operations": {
+            "post_hovedskjema": {
+              "id": "89381e7f-6a3f-4840-9083-d95ca176b5ed",
+              "name": "post_hovedskjema",
+              "state": "unknown",
+              "attempt": 1,
+              "body_hash": "f78966dd4ee61d7818cba6deff6b1a570569f839032b4fc42c9ab404466462ec",
+              "idempotency_key": "ae0cbdd4-9749-488a-bd89-ea140bdf095e",
+              "authority_reference": null,
+              "failure_classification": "unknown"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "old transport -> new backend: token failure precedes every mutation",
+      "passed": true,
+      "evidence": {
+        "tokenFailure": {
+          "status": 503,
+          "code": "send_unavailable"
+        },
+        "state": {
+          "version": "new",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/new/apps/backend/src/talli_backend/main.py",
+          "tokens": [
+            "local-owner"
+          ],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/legacy-rf1086/production-filings",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "approvalId": "80000000-0000-4000-8000-000000000008"
+              },
+              "status": 503,
+              "responseRequestId": "29e4ff9f-e4d8-4259-9db1-ef4c1eb9a37c",
+              "cacheControl": "no-store"
+            }
+          ],
+          "events": [
+            "configuration",
+            "approval",
+            "fresh_mfa",
+            "preview",
+            "billing_snapshot",
+            "billing_entitlement",
+            "company",
+            "connection",
+            "mutation_token"
+          ],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "old transport -> new backend: invalid bearer cannot begin",
+      "passed": true,
+      "evidence": {
+        "authFailure": {
+          "status": 401,
+          "code": "authentication_required"
+        },
+        "state": {
+          "version": "new",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/new/apps/backend/src/talli_backend/main.py",
+          "tokens": [
+            "wrong-owner"
+          ],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/legacy-rf1086/production-filings",
+              "authorization": "Bearer wrong-owner",
+              "requestId": null,
+              "body": {
+                "approvalId": "80000000-0000-4000-8000-000000000008"
+              },
+              "status": 401,
+              "responseRequestId": "cf301719-d89e-40a3-a56c-48d073dca2f4",
+              "cacheControl": "no-store"
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "old generated client -> new backend: explicit correlation preserved",
+      "passed": true,
+      "evidence": [
+        {
+          "method": "POST",
+          "path": "/api/v1/legacy-rf1086/feedback-reconciliations",
+          "authorization": "Bearer local-owner",
+          "requestId": "rf151-old-to-new",
+          "body": {
+            "submissionId": "c0000000-0000-4000-8000-00000000000c"
+          },
+          "status": 200,
+          "responseRequestId": "rf151-old-to-new",
+          "cacheControl": "no-store"
+        }
+      ]
+    },
+    {
+      "name": "new transport -> old backend: Send wire, token-before-begin, same five operation identities on retry",
+      "passed": true,
+      "evidence": {
+        "first": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [
+            "local-owner"
+          ],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/legacy-rf1086/production-filings",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "approvalId": "80000000-0000-4000-8000-000000000008"
+              },
+              "status": 200,
+              "responseRequestId": "bea602eb-25e0-41ba-ab29-bbc5227d0e35",
+              "cacheControl": "no-store"
+            }
+          ],
+          "events": [
+            "configuration",
+            "approval",
+            "fresh_mfa",
+            "preview",
+            "billing_snapshot",
+            "billing_entitlement",
+            "company",
+            "connection",
+            "mutation_token",
+            "begin",
+            "operation_journal",
+            "claim",
+            "reference",
+            "feedback_journal",
+            "release",
+            "discard"
+          ],
+          "mutationCalls": [
+            "main",
+            "sub",
+            "sub",
+            "confirm",
+            "list"
+          ],
+          "operations": {
+            "post_hovedskjema": {
+              "id": "372befdc-1fd9-47e0-a16e-3898a13039e6",
+              "name": "post_hovedskjema",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": "f78966dd4ee61d7818cba6deff6b1a570569f839032b4fc42c9ab404466462ec",
+              "idempotency_key": "53b57dc3-f7b5-4576-97ca-c6506a13f35d",
+              "authority_reference": "10000000-0000-4000-8000-000000000001",
+              "failure_classification": null
+            },
+            "post_underskjema:10000000-0000-4000-8000-000000000001": {
+              "id": "32f27186-d37b-4caf-b8b2-6ab7e229b607",
+              "name": "post_underskjema:10000000-0000-4000-8000-000000000001",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": "3a258d0b2eefe08db313419e40878d43e93ecdf9b32175f36fd076accdc5f66a",
+              "idempotency_key": "cd187af8-89f0-4c45-ac65-3eb56a6484fd",
+              "authority_reference": "posted",
+              "failure_classification": null
+            },
+            "post_underskjema:40000000-0000-4000-8000-000000000004": {
+              "id": "40d419a0-0cc5-46bc-8090-c996cee2eefe",
+              "name": "post_underskjema:40000000-0000-4000-8000-000000000004",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": "81edeb4b6472f5cc4fef6f511f8949202e71d4b145a2469440005d998826f527",
+              "idempotency_key": "365378fb-08a8-44e0-9445-edfe4b6055da",
+              "authority_reference": "posted",
+              "failure_classification": null
+            },
+            "confirm": {
+              "id": "7d5f5366-d0ff-4b72-b689-9f618539a13f",
+              "name": "confirm",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": "954849fdb3d3ec9b0b3622b0e5e6244f6dc33665c10126c633e1fea222ba90e8",
+              "idempotency_key": "d935f5c0-1457-4bb3-a650-0eb22f3470fc",
+              "authority_reference": "{\"dialogId\":\"20000000-0000-4000-8000-000000000002\",\"forsendelseId\":\"30000000-0000-4000-8000-000000000003\"}",
+              "failure_classification": null
+            },
+            "list_documents": {
+              "id": "76bc0434-1439-4e39-a94f-eda7868e38f1",
+              "name": "list_documents",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": null,
+              "idempotency_key": null,
+              "authority_reference": "{\"documentCount\":0}",
+              "failure_classification": null
+            }
+          }
+        },
+        "repeated": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [
+            "local-owner",
+            "local-owner"
+          ],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/legacy-rf1086/production-filings",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "approvalId": "80000000-0000-4000-8000-000000000008"
+              },
+              "status": 200,
+              "responseRequestId": "bea602eb-25e0-41ba-ab29-bbc5227d0e35",
+              "cacheControl": "no-store"
+            },
+            {
+              "method": "POST",
+              "path": "/api/v1/legacy-rf1086/production-filings",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "approvalId": "80000000-0000-4000-8000-000000000008"
+              },
+              "status": 200,
+              "responseRequestId": "c77de374-6305-4dc9-a325-bbea0f206072",
+              "cacheControl": "no-store"
+            }
+          ],
+          "events": [
+            "configuration",
+            "approval",
+            "fresh_mfa",
+            "preview",
+            "billing_snapshot",
+            "billing_entitlement",
+            "company",
+            "connection",
+            "mutation_token",
+            "begin",
+            "operation_journal",
+            "claim",
+            "reference",
+            "feedback_journal",
+            "release",
+            "discard",
+            "configuration",
+            "approval",
+            "fresh_mfa",
+            "preview",
+            "billing_snapshot",
+            "billing_entitlement",
+            "company",
+            "connection",
+            "mutation_token",
+            "begin",
+            "operation_journal",
+            "claim",
+            "reference",
+            "feedback_journal",
+            "release",
+            "discard"
+          ],
+          "mutationCalls": [
+            "main",
+            "sub",
+            "sub",
+            "confirm",
+            "list"
+          ],
+          "operations": {
+            "post_hovedskjema": {
+              "id": "372befdc-1fd9-47e0-a16e-3898a13039e6",
+              "name": "post_hovedskjema",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": "f78966dd4ee61d7818cba6deff6b1a570569f839032b4fc42c9ab404466462ec",
+              "idempotency_key": "53b57dc3-f7b5-4576-97ca-c6506a13f35d",
+              "authority_reference": "10000000-0000-4000-8000-000000000001",
+              "failure_classification": null
+            },
+            "post_underskjema:10000000-0000-4000-8000-000000000001": {
+              "id": "32f27186-d37b-4caf-b8b2-6ab7e229b607",
+              "name": "post_underskjema:10000000-0000-4000-8000-000000000001",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": "3a258d0b2eefe08db313419e40878d43e93ecdf9b32175f36fd076accdc5f66a",
+              "idempotency_key": "cd187af8-89f0-4c45-ac65-3eb56a6484fd",
+              "authority_reference": "posted",
+              "failure_classification": null
+            },
+            "post_underskjema:40000000-0000-4000-8000-000000000004": {
+              "id": "40d419a0-0cc5-46bc-8090-c996cee2eefe",
+              "name": "post_underskjema:40000000-0000-4000-8000-000000000004",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": "81edeb4b6472f5cc4fef6f511f8949202e71d4b145a2469440005d998826f527",
+              "idempotency_key": "365378fb-08a8-44e0-9445-edfe4b6055da",
+              "authority_reference": "posted",
+              "failure_classification": null
+            },
+            "confirm": {
+              "id": "7d5f5366-d0ff-4b72-b689-9f618539a13f",
+              "name": "confirm",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": "954849fdb3d3ec9b0b3622b0e5e6244f6dc33665c10126c633e1fea222ba90e8",
+              "idempotency_key": "d935f5c0-1457-4bb3-a650-0eb22f3470fc",
+              "authority_reference": "{\"dialogId\":\"20000000-0000-4000-8000-000000000002\",\"forsendelseId\":\"30000000-0000-4000-8000-000000000003\"}",
+              "failure_classification": null
+            },
+            "list_documents": {
+              "id": "76bc0434-1439-4e39-a94f-eda7868e38f1",
+              "name": "list_documents",
+              "state": "succeeded",
+              "attempt": 1,
+              "body_hash": null,
+              "idempotency_key": null,
+              "authority_reference": "{\"documentCount\":0}",
+              "failure_classification": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "new transport -> old backend: compatible read-only recovery",
+      "passed": true,
+      "evidence": {
+        "version": "old",
+        "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+        "tokens": [
+          "local-owner"
+        ],
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/api/v1/legacy-rf1086/feedback-reconciliations",
+            "authorization": "Bearer local-owner",
+            "requestId": null,
+            "body": {
+              "submissionId": "c0000000-0000-4000-8000-00000000000c"
+            },
+            "status": 200,
+            "responseRequestId": "fc0c9fd9-4d42-444b-8a07-8299f1ec7657",
+            "cacheControl": "no-store"
+          }
+        ],
+        "events": [
+          "submission",
+          "company",
+          "approval",
+          "billing_snapshot",
+          "connection",
+          "preview",
+          "configuration",
+          "claim",
+          "reference",
+          "recovery_token",
+          "feedback_journal",
+          "discard",
+          "release"
+        ],
+        "mutationCalls": [],
+        "operations": {}
+      }
+    },
+    {
+      "name": "new transport -> old backend: unknown outcome never blindly reposted",
+      "passed": true,
+      "evidence": {
+        "error1": {
+          "status": 503,
+          "code": "send_unavailable"
+        },
+        "error2": {
+          "status": 503,
+          "code": "send_unavailable"
+        },
+        "unknown1": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [
+            "local-owner"
+          ],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/legacy-rf1086/production-filings",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "approvalId": "80000000-0000-4000-8000-000000000008"
+              },
+              "status": 503,
+              "responseRequestId": "9a5fcba3-6d86-460f-a8ac-29612b197c8e",
+              "cacheControl": "no-store"
+            }
+          ],
+          "events": [
+            "configuration",
+            "approval",
+            "fresh_mfa",
+            "preview",
+            "billing_snapshot",
+            "billing_entitlement",
+            "company",
+            "connection",
+            "mutation_token",
+            "begin",
+            "operation_journal",
+            "discard"
+          ],
+          "mutationCalls": [
+            "main"
+          ],
+          "operations": {
+            "post_hovedskjema": {
+              "id": "7a095cba-9020-4f39-9602-8ad954689d34",
+              "name": "post_hovedskjema",
+              "state": "unknown",
+              "attempt": 1,
+              "body_hash": "f78966dd4ee61d7818cba6deff6b1a570569f839032b4fc42c9ab404466462ec",
+              "idempotency_key": "12fec5b2-e1a7-419f-8f98-9b52b84aaca1",
+              "authority_reference": null,
+              "failure_classification": "unknown"
+            }
+          }
+        },
+        "unknown2": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [
+            "local-owner",
+            "local-owner"
+          ],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/legacy-rf1086/production-filings",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "approvalId": "80000000-0000-4000-8000-000000000008"
+              },
+              "status": 503,
+              "responseRequestId": "9a5fcba3-6d86-460f-a8ac-29612b197c8e",
+              "cacheControl": "no-store"
+            },
+            {
+              "method": "POST",
+              "path": "/api/v1/legacy-rf1086/production-filings",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "approvalId": "80000000-0000-4000-8000-000000000008"
+              },
+              "status": 503,
+              "responseRequestId": "7dfc8ae9-c7a6-4160-86c2-ac2c1f772037",
+              "cacheControl": "no-store"
+            }
+          ],
+          "events": [
+            "configuration",
+            "approval",
+            "fresh_mfa",
+            "preview",
+            "billing_snapshot",
+            "billing_entitlement",
+            "company",
+            "connection",
+            "mutation_token",
+            "begin",
+            "operation_journal",
+            "discard",
+            "configuration",
+            "approval",
+            "fresh_mfa",
+            "preview",
+            "billing_snapshot",
+            "billing_entitlement",
+            "company",
+            "connection",
+            "mutation_token",
+            "begin",
+            "operation_journal",
+            "discard"
+          ],
+          "mutationCalls": [
+            "main"
+          ],
+          "operations": {
+            "post_hovedskjema": {
+              "id": "7a095cba-9020-4f39-9602-8ad954689d34",
+              "name": "post_hovedskjema",
+              "state": "unknown",
+              "attempt": 1,
+              "body_hash": "f78966dd4ee61d7818cba6deff6b1a570569f839032b4fc42c9ab404466462ec",
+              "idempotency_key": "12fec5b2-e1a7-419f-8f98-9b52b84aaca1",
+              "authority_reference": null,
+              "failure_classification": "unknown"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "new transport -> old backend: token failure precedes every mutation",
+      "passed": true,
+      "evidence": {
+        "tokenFailure": {
+          "status": 503,
+          "code": "send_unavailable"
+        },
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [
+            "local-owner"
+          ],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/legacy-rf1086/production-filings",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "approvalId": "80000000-0000-4000-8000-000000000008"
+              },
+              "status": 503,
+              "responseRequestId": "e867ce7e-f326-4999-a03a-1948aa58699e",
+              "cacheControl": "no-store"
+            }
+          ],
+          "events": [
+            "configuration",
+            "approval",
+            "fresh_mfa",
+            "preview",
+            "billing_snapshot",
+            "billing_entitlement",
+            "company",
+            "connection",
+            "mutation_token"
+          ],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "new transport -> old backend: invalid bearer cannot begin",
+      "passed": true,
+      "evidence": {
+        "authFailure": {
+          "status": 401,
+          "code": "authentication_required"
+        },
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [
+            "wrong-owner"
+          ],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/legacy-rf1086/production-filings",
+              "authorization": "Bearer wrong-owner",
+              "requestId": null,
+              "body": {
+                "approvalId": "80000000-0000-4000-8000-000000000008"
+              },
+              "status": 401,
+              "responseRequestId": "c4193463-3046-4d3d-b1b1-da34425f32d6",
+              "cacheControl": "no-store"
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "new generated client -> old backend: explicit correlation preserved",
+      "passed": true,
+      "evidence": [
+        {
+          "method": "POST",
+          "path": "/api/v1/legacy-rf1086/feedback-reconciliations",
+          "authorization": "Bearer local-owner",
+          "requestId": "rf151-new-to-old",
+          "body": {
+            "submissionId": "c0000000-0000-4000-8000-00000000000c"
+          },
+          "status": 200,
+          "responseRequestId": "rf151-new-to-old",
+          "cacheControl": "no-store"
+        }
+      ]
+    },
+    {
+      "name": "new findRf1086Preview -> predecessor missing route: typed error, no ownership fallback or backend ports",
+      "passed": true,
+      "evidence": {
+        "error": {
+          "status": 404,
+          "code": "RESOURCE_NOT_FOUND"
+        },
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [],
+          "requests": [
+            {
+              "method": "GET",
+              "path": "/api/v1/shareholder-register-filings/previews/a0000000-0000-4000-8000-00000000000a",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": null,
+              "status": 404,
+              "responseRequestId": "1851c789-d00a-44d0-b312-52040c8d391e",
+              "cacheControl": null
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "new acknowledgeOwnedRf1086Comment -> predecessor missing route: typed error, no ownership fallback or backend ports",
+      "passed": true,
+      "evidence": {
+        "error": {
+          "status": 404,
+          "code": "RESOURCE_NOT_FOUND"
+        },
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/shareholder-register-filings/review-comment-acknowledgements",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "commentId": "a0000000-0000-4000-8000-00000000000a"
+              },
+              "status": 404,
+              "responseRequestId": "1819f38a-2c3b-466a-9010-3a8747dd064e",
+              "cacheControl": null
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "new loadRf1086Workspaces -> predecessor missing route: typed error, no ownership fallback or backend ports",
+      "passed": true,
+      "evidence": {
+        "error": {
+          "status": 404,
+          "code": "RESOURCE_NOT_FOUND"
+        },
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [],
+          "requests": [
+            {
+              "method": "GET",
+              "path": "/api/v1/shareholder-register-filings/workspace",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": null,
+              "status": 404,
+              "responseRequestId": "fd903ed3-7c87-40c6-a07f-2d163e2f15d3",
+              "cacheControl": null
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "new loadRf1086ArchiveSource -> predecessor missing route: typed error, no ownership fallback or backend ports",
+      "passed": true,
+      "evidence": {
+        "error": {
+          "status": 404,
+          "code": "RESOURCE_NOT_FOUND"
+        },
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [],
+          "requests": [
+            {
+              "method": "GET",
+              "path": "/api/v1/shareholder-register-filings/archive-source",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": null,
+              "status": 404,
+              "responseRequestId": "30168455-5401-4baf-9833-8f0113222122",
+              "cacheControl": null
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "new generateRf1086PreviewThroughApi -> predecessor missing route: typed error, no ownership fallback or backend ports",
+      "passed": true,
+      "evidence": {
+        "error": {
+          "status": 404,
+          "code": "RESOURCE_NOT_FOUND"
+        },
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/shareholder-register-filings/previews",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "companyId": "70000000-0000-4000-8000-000000000007",
+                "openingSnapshotId": "a0000000-0000-4000-8000-00000000000a"
+              },
+              "status": 404,
+              "responseRequestId": "0fd1bbfb-73e7-4fe3-811b-9bd614b05c57",
+              "cacheControl": null
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "new recordRf1086OverrideThroughApi -> predecessor missing route: typed error, no ownership fallback or backend ports",
+      "passed": true,
+      "evidence": {
+        "error": {
+          "status": 404,
+          "code": "RESOURCE_NOT_FOUND"
+        },
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/shareholder-register-filings/overrides",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "previewId": "a0000000-0000-4000-8000-00000000000a",
+                "fieldTarget": "company.name",
+                "newValue": "After",
+                "oldValue": "Before",
+                "ownerConfirmed": true,
+                "reason": "Documented reason",
+                "riskLevel": "warning"
+              },
+              "status": 404,
+              "responseRequestId": "26ce1a8b-17bc-4674-919b-1f64b112e125",
+              "cacheControl": null
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "new addRf1086ReviewCommentThroughApi -> predecessor missing route: typed error, no ownership fallback or backend ports",
+      "passed": true,
+      "evidence": {
+        "error": {
+          "status": 404,
+          "code": "RESOURCE_NOT_FOUND"
+        },
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/shareholder-register-filings/review-comments",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "previewId": "a0000000-0000-4000-8000-00000000000a",
+                "body": "Review note",
+                "severity": "advisory"
+              },
+              "status": 404,
+              "responseRequestId": "029e26b5-3024-4837-949a-9fdc18c60d76",
+              "cacheControl": null
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "new confirmRf1086SimulationThroughApi -> predecessor missing route: typed error, no ownership fallback or backend ports",
+      "passed": true,
+      "evidence": {
+        "error": {
+          "status": 404,
+          "code": "RESOURCE_NOT_FOUND"
+        },
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/shareholder-register-filings/simulations",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "previewId": "a0000000-0000-4000-8000-00000000000a",
+                "authorityConfirmed": true,
+                "previewConfirmed": true
+              },
+              "status": 404,
+              "responseRequestId": "44a14edd-3a13-4b8a-b305-56c8887f129d",
+              "cacheControl": null
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "new confirmRf1086PermissionThroughApi -> predecessor missing route: typed error, no ownership fallback or backend ports",
+      "passed": true,
+      "evidence": {
+        "error": {
+          "status": 404,
+          "code": "RESOURCE_NOT_FOUND"
+        },
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/shareholder-register-filings/filing-permissions",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "companyId": "70000000-0000-4000-8000-000000000007",
+                "productionEnabled": true
+              },
+              "status": 404,
+              "responseRequestId": "1fe6488c-5a95-46f4-8927-9c6c1d877dfa",
+              "cacheControl": null
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "new recordRf1086TestEvidenceThroughApi -> predecessor missing route: typed error, no ownership fallback or backend ports",
+      "passed": true,
+      "evidence": {
+        "error": {
+          "status": 404,
+          "code": "RESOURCE_NOT_FOUND"
+        },
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/shareholder-register-filings/test-evidence",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "companyId": "70000000-0000-4000-8000-000000000007",
+                "environment": "test",
+                "status": "accepted",
+                "testReference": "local-test",
+                "feedbackSummary": "ok",
+                "archiveReference": null,
+                "evidenceUrl": null,
+                "payloadHash": null,
+                "receiptReference": null
+              },
+              "status": 404,
+              "responseRequestId": "d06707b7-4d4e-4fae-9113-24dd8ad8c9dc",
+              "cacheControl": null
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "new approveRf1086ProductionThroughApi -> predecessor missing route: typed error, no ownership fallback or backend ports",
+      "passed": true,
+      "evidence": {
+        "error": {
+          "status": 404,
+          "code": "RESOURCE_NOT_FOUND"
+        },
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/shareholder-register-filings/production-approvals",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "previewId": "a0000000-0000-4000-8000-00000000000a",
+                "entitlementId": "90000000-0000-4000-8000-000000000009",
+                "realFilingConfirmed": true
+              },
+              "status": 404,
+              "responseRequestId": "126f4af2-56e9-4a3a-b0a7-c08a60b3e11f",
+              "cacheControl": null
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "current action addFilingOverride -> predecessor: no public read/write/audit or success redirect after missing-route error",
+      "passed": true,
+      "evidence": {
+        "sourceSha256": "5a920b5d97a6d2f874e09926040e0b890cbfe452b5674379b387150f47d4dabd",
+        "effects": [],
+        "redirects": [
+          "/workspace?error=RF-1086-handlingen%20kunne%20ikke%20bekreftes.%20Se%20lagret%20status%20f%C3%B8r%20du%20pr%C3%B8ver%20igjen."
+        ],
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [],
+          "requests": [
+            {
+              "method": "GET",
+              "path": "/api/v1/shareholder-register-filings/previews/a0000000-0000-4000-8000-00000000000a",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": null,
+              "status": 404,
+              "responseRequestId": "88a97525-37c4-4050-8c8a-c904ff39025a",
+              "cacheControl": null
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "current action addFilingReviewComment -> predecessor: no public read/write/audit or success redirect after missing-route error",
+      "passed": true,
+      "evidence": {
+        "sourceSha256": "d1e8bab2c1e3b0a2cfed27ac08f247477abbce64a2ee4606e4b33f59b5398f5b",
+        "effects": [],
+        "redirects": [
+          "/workspace?error=RF-1086-handlingen%20kunne%20ikke%20bekreftes.%20Se%20lagret%20status%20f%C3%B8r%20du%20pr%C3%B8ver%20igjen."
+        ],
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [],
+          "requests": [
+            {
+              "method": "GET",
+              "path": "/api/v1/shareholder-register-filings/previews/a0000000-0000-4000-8000-00000000000a",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": null,
+              "status": 404,
+              "responseRequestId": "16a64e43-0cb8-466a-baf4-208e17129c26",
+              "cacheControl": null
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "current action acknowledgeFilingReviewComment -> predecessor: no public read/write/audit or success redirect after missing-route error",
+      "passed": true,
+      "evidence": {
+        "sourceSha256": "85513413b66ec74e6a3f8d9a7993114815dd9b4eb6bde31109d618d8e78277d2",
+        "effects": [],
+        "redirects": [
+          "/workspace?error=RF-1086-handlingen%20kunne%20ikke%20bekreftes.%20Se%20lagret%20status%20f%C3%B8r%20du%20pr%C3%B8ver%20igjen."
+        ],
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/shareholder-register-filings/review-comment-acknowledgements",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "commentId": "a0000000-0000-4000-8000-00000000000a"
+              },
+              "status": 404,
+              "responseRequestId": "28085cf8-1dea-4d57-a40e-daee5b2cb16c",
+              "cacheControl": null
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "current action confirmSimulatedRf1086Submission -> predecessor: no public read/write/audit or success redirect after missing-route error",
+      "passed": true,
+      "evidence": {
+        "sourceSha256": "e9852ccb1c7bc83176019898d8ce6a0ecab96d9b1b3af5954c2fe2579912ceb0",
+        "effects": [],
+        "redirects": [
+          "/workspace?error=RF-1086-handlingen%20kunne%20ikke%20bekreftes.%20Se%20lagret%20status%20f%C3%B8r%20du%20pr%C3%B8ver%20igjen."
+        ],
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/shareholder-register-filings/simulations",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "previewId": "a0000000-0000-4000-8000-00000000000a",
+                "authorityConfirmed": true,
+                "previewConfirmed": true
+              },
+              "status": 404,
+              "responseRequestId": "4f68c9ef-f53d-4ff2-8739-bfe0e8828ddd",
+              "cacheControl": null
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "current action confirmAuthorityPermission -> predecessor: no public read/write/audit or success redirect after missing-route error",
+      "passed": true,
+      "evidence": {
+        "sourceSha256": "1881b07830624aea2ee4a71e603fe43222efada2a60eeab2e97076e8edc4291a",
+        "effects": [
+          "local-step-up"
+        ],
+        "redirects": [
+          "/workspace?error=RF-1086-handlingen%20kunne%20ikke%20bekreftes.%20Se%20lagret%20status%20f%C3%B8r%20du%20pr%C3%B8ver%20igjen."
+        ],
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/shareholder-register-filings/filing-permissions",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "companyId": "70000000-0000-4000-8000-000000000007",
+                "productionEnabled": true
+              },
+              "status": 404,
+              "responseRequestId": "bc451032-8baa-43b8-866d-fdc27f70fb8f",
+              "cacheControl": null
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    },
+    {
+      "name": "current action recordAuthorityTestEvidence -> predecessor: no public read/write/audit or success redirect after missing-route error",
+      "passed": true,
+      "evidence": {
+        "sourceSha256": "8c9514d17ad0c60a2dbadf7536dc517d892d99e6a57c6929faad5ba4494416ff",
+        "effects": [
+          "local-step-up"
+        ],
+        "redirects": [
+          "/workspace?error=RF-1086-handlingen%20kunne%20ikke%20bekreftes.%20Se%20lagret%20status%20f%C3%B8r%20du%20pr%C3%B8ver%20igjen."
+        ],
+        "state": {
+          "version": "old",
+          "appSource": "/private/tmp/talli-151-rollout-root-node24/old/apps/backend/src/talli_backend/main.py",
+          "tokens": [],
+          "requests": [
+            {
+              "method": "POST",
+              "path": "/api/v1/shareholder-register-filings/test-evidence",
+              "authorization": "Bearer local-owner",
+              "requestId": null,
+              "body": {
+                "companyId": "70000000-0000-4000-8000-000000000007",
+                "environment": "test",
+                "status": "accepted",
+                "testReference": "local-test",
+                "feedbackSummary": "ok",
+                "receiptReference": null,
+                "archiveReference": null,
+                "evidenceUrl": null,
+                "payloadHash": null
+              },
+              "status": 404,
+              "responseRequestId": "44a53ff9-6900-4191-a8b2-eceb78d7b28e",
+              "cacheControl": null
+            }
+          ],
+          "events": [],
+          "mutationCalls": [],
+          "operations": {}
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "Exact pinned transports/generated clients and real FastAPI routes/coordinators over loopback HTTP.",
+    "Existing in-memory CoordinatorSession authority/persistence/billing/identity fakes; no DB or actual identity/provider integration.",
+    "Actions are exact AST-extracted pinned function bodies, transpiled with repo TypeScript and injected boundary dependencies, not full Next hydration.",
+    "No old preparation UI continuity is asserted after writer cutover."
+  ],
+  "passed": true,
+  "total": 29
+}

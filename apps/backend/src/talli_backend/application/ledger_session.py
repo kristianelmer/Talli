@@ -3,16 +3,16 @@
 from contextlib import AbstractAsyncContextManager
 from typing import Protocol
 
-from talli_backend.application.opening_snapshot_compatibility import (
-    LegacyOpeningSnapshotCursor,
-    LegacyOpeningSnapshotPage,
+from talli_backend.application.new_year_opening import (
+    OpeningSnapshotCursor,
+    OpeningSnapshotPage,
 )
 from talli_backend.modules.ledger.public import LedgerPersistence, PostedLedgerEntry
 from talli_backend.modules.shareholder_register_filing.public import (
     OpeningSnapshotId,
     RecordOpeningSnapshotCommand,
 )
-from talli_backend.shared.kernel import ActorId, CompanyId, CorrelationId, Money
+from talli_backend.shared.kernel import ActorId, CompanyId, CorrelationId, IncomeYear
 
 
 class LedgerAuthenticationError(Exception):
@@ -31,11 +31,9 @@ class LedgerWorkflowTransaction(LedgerPersistence, Protocol):
         request: dict[str, object],
     ) -> dict[str, object] | None: ...
 
-    async def record_legacy_opening_snapshot(
+    async def record_opening_snapshot(
         self,
         command: RecordOpeningSnapshotCommand,
-        *,
-        ledger_bank_balance: Money,
     ) -> OpeningSnapshotId: ...
 
     async def complete_workflow(
@@ -76,9 +74,18 @@ class AuthenticatedLedgerSession(LedgerPersistence, Protocol):
         actor_id: ActorId,
         company_ids: tuple[CompanyId, ...],
         correlation_id: CorrelationId,
-        cursor: LegacyOpeningSnapshotCursor | None,
+        cursor: OpeningSnapshotCursor | None,
         limit: int,
-    ) -> LegacyOpeningSnapshotPage: ...
+    ) -> OpeningSnapshotPage: ...
+
+    async def list_opening_snapshots_for_year(
+        self,
+        *,
+        actor_id: ActorId,
+        company_id: CompanyId,
+        income_year: IncomeYear,
+        correlation_id: CorrelationId,
+    ) -> OpeningSnapshotPage: ...
 
 
 class LedgerSessionFactory(Protocol):

@@ -1,0 +1,696 @@
+[
+  {
+    "name": "no_activity",
+    "input": {
+      "case_id": "no_activity",
+      "company": {
+        "org_number": "314259521",
+        "name": "TALLI TEST HOLDING AS",
+        "address": "Testveien 1",
+        "postal_code": "0123",
+        "city": "OSLO",
+        "income_year": 2025,
+        "share_type": "01",
+        "contact_email": "kontakt@talli.no"
+      },
+      "share_snapshot": {
+        "previous_share_capital": 30000,
+        "current_share_capital": 30000,
+        "previous_nominal_value": 300,
+        "current_nominal_value": 300,
+        "previous_share_count": 100,
+        "current_share_count": 100,
+        "previous_paid_in_share_capital": 30000,
+        "current_paid_in_share_capital": 30000,
+        "previous_paid_in_premium": 0,
+        "current_paid_in_premium": 0
+      },
+      "shareholders": [
+        {
+          "id": "0000000b-0000-4000-8000-000000000001",
+          "kind": "norwegian_person",
+          "name": "Ola Nordmann",
+          "national_id": "26829398612",
+          "org_number": null
+        }
+      ],
+      "shareholder_snapshots": [
+        {
+          "shareholder_id": "0000000b-0000-4000-8000-000000000001",
+          "previous_share_count": 100,
+          "current_share_count": 100
+        }
+      ],
+      "events": []
+    },
+    "preview": {
+      "id": "30000000-0000-4000-8000-000000000003",
+      "company_id": "10000000-0000-4000-8000-000000000001",
+      "setup_id": "40000000-0000-4000-8000-000000000004",
+      "income_year": 2025,
+      "filing": "aksjonærregisteroppgaven",
+      "status": "ready",
+      "issues": [],
+      "preview": "Aksjonærregisteroppgaven 2025\nSelskap: TALLI TEST HOLDING AS (314259521)\nAksjeklasse: ordinære (01)\n\nSelskapsnivå:\n- Aksjekapital 1. januar: 30000 kr\n- Aksjekapital 31. desember: 30000 kr\n- Antall aksjer 1. januar: 100\n- Antall aksjer 31. desember: 100\n\nAksjonærer:\n- Ola Nordmann: 100 aksjer 1. januar, 100 aksjer 31. desember\n",
+      "hovedskjema_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"890\" spesifikasjonsnummer=\"12144\" blankettnummer=\"RF-1086\" tittel=\"Aksjonærregisteroppgaven\" gruppeid=\"2586\" etatid=\"974761076\">\n  <GenerellInformasjon-grp-2587 gruppeid=\"2587\">\n    <Selskap-grp-2588 gruppeid=\"2588\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <EnhetNavn-datadef-1 orid=\"1\">TALLI TEST HOLDING AS</EnhetNavn-datadef-1>\n      <EnhetAdresse-datadef-15 orid=\"15\">Testveien 1</EnhetAdresse-datadef-15>\n      <EnhetPostnummer-datadef-6673 orid=\"6673\">0123</EnhetPostnummer-datadef-6673>\n      <EnhetPoststed-datadef-6674 orid=\"6674\">OSLO</EnhetPoststed-datadef-6674>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskap-grp-2588>\n    <Kontaktperson-grp-3442 gruppeid=\"3442\" />\n    <AnnenKontaktperson-grp-5384 gruppeid=\"5384\" />\n  </GenerellInformasjon-grp-2587>\n  <Selskapsopplysninger-grp-2589 gruppeid=\"2589\">\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\"3443\">\n      <AksjekapitalFjoraret-datadef-7129 orid=\"7129\">30000</AksjekapitalFjoraret-datadef-7129>\n      <Aksjekapital-datadef-87 orid=\"87\">30000</Aksjekapital-datadef-87>\n    </AksjekapitalForHeleSelskapet-grp-3443>\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\"3444\">\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\"17663\">30000</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\"17664\">30000</AksjekapitalISINAksjetype-datadef-17664>\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\n    <PalydendePerAksje-grp-3447 gruppeid=\"3447\">\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\"23944\">300</AksjeMvPalydendeFjoraret-datadef-23944>\n      <AksjeMvPalydende-datadef-23945 orid=\"23945\">300</AksjeMvPalydende-datadef-23945>\n    </PalydendePerAksje-grp-3447>\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\"3445\">\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\"29166\">100</AksjerMvAntallFjoraret-datadef-29166>\n      <AksjerMvAntall-datadef-29167 orid=\"29167\">100</AksjerMvAntall-datadef-29167>\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\"3446\">\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\"8020\">30000</AksjekapitalInnbetaltFjoraret-datadef-8020>\n      <AksjekapitalInnbetalt-datadef-5867 orid=\"5867\">30000</AksjekapitalInnbetalt-datadef-5867>\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\"3448\">\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\"17662\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\"17661\">0</AksjeOverkursISINAksjetype-datadef-17661>\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\n  </Selskapsopplysninger-grp-2589>\n</Skjema>\n",
+      "underskjema_xml": {
+        "0000000b-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">100</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">100</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n"
+      },
+      "source": "deterministic_rf1086_engine",
+      "created_at": "2026-09-09T12:00:00.123Z"
+    },
+    "result": {
+      "filing": "aksjonærregisteroppgaven",
+      "company_id": "10000000-0000-4000-8000-000000000001",
+      "income_year": 2025,
+      "status": "receipt_stored",
+      "authority_confirmed_by": "20000000-0000-4000-8000-000000000002",
+      "authority_confirmed_at": "2026-09-09T12:00:00.123Z",
+      "preview_confirmed_by": "20000000-0000-4000-8000-000000000002",
+      "preview_confirmed_at": "2026-09-09T12:00:00.123Z",
+      "calls": [
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/1086H",
+          "body_hash": "0d4513aca21889a9e87f924a587cca3d6ad429256d67b728f246bb3109e6515d",
+          "idempotency_key": "02265a8b-5c58-5266-901f-7fc9a32d3448",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-30000000-0000-4000-8000-000000000003/1086U",
+          "body_hash": "b079959bc6ba805758332df899d5d0a5ed883d6bf94eb8e5a3ba740df5c78cc5",
+          "idempotency_key": "09e36a13-8b86-5e05-b53f-43b30c3b647a",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-30000000-0000-4000-8000-000000000003/bekreft?antall_underskjema=1",
+          "body_hash": "ffdb44a81d960c04195d1756312e7e4a18273c3ab052f3ea3643145ff4ead268",
+          "idempotency_key": "fd750cbd-57c0-55d6-87c4-9c24b6a5e65b",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-30000000-0000-4000-8000-000000000003/dokumenter?page=0&size=50",
+          "body_hash": "0f44414c4cdc6ead4f2f2229fc3c5e25efa2fb24072b2b2fc0c7038b14c11030",
+          "idempotency_key": "83310bf7-4c8b-5eba-acd6-926b099bb301",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        }
+      ],
+      "receipt_id": "sim-rf1086-10000000-0000-4000-8000-000000000001-2025-30000000",
+      "feedback_document_ids": [
+        "sim-feedback-30000000"
+      ],
+      "failure_code": null,
+      "failure_message": null
+    },
+    "payload_hash": "b74d17699fe26f8ac231bfc1b3a762bf4bf183b68cf7cca20a48aed1613f7864",
+    "idempotency_key": "rf1086:10000000-0000-4000-8000-000000000001:2025:b74d17699fe26f8a",
+    "feedback_items": [
+      {
+        "severity": "accepted",
+        "code": "RF1086_ACCEPTED",
+        "message": "RF-1086 er akseptert i simuleringsadapter og kvittering er lagret.",
+        "documentId": "sim-feedback-30000000"
+      }
+    ],
+    "receipt_metadata": {
+      "authority": "simulation",
+      "receiptId": "sim-rf1086-10000000-0000-4000-8000-000000000001-2025-30000000",
+      "status": "receipt_stored",
+      "receivedAt": "2026-09-09T12:00:00.123Z",
+      "feedbackDocumentIds": [
+        "sim-feedback-30000000"
+      ]
+    },
+    "submitted_payload_ref": {
+      "previewId": "30000000-0000-4000-8000-000000000003",
+      "payloadHash": "b74d17699fe26f8ac231bfc1b3a762bf4bf183b68cf7cca20a48aed1613f7864",
+      "hovedskjemaHash": "fef057b814c9e8f740e00ecaeaae0ce4ff8507b8f0312d3c12d96e250029cccc",
+      "underskjemaHashes": {
+        "0000000b-0000-4000-8000-000000000001": "2ab75706abfff6cb63e96d278a7f6d969cab218cbb0f8474aef47efa0c192012"
+      },
+      "callCount": 4,
+      "storedAt": "2026-09-09T12:00:00.123Z"
+    },
+    "submitted_payload": {
+      "filing": "aksjonærregisteroppgaven",
+      "companyId": "10000000-0000-4000-8000-000000000001",
+      "incomeYear": 2025,
+      "payloadHash": "b74d17699fe26f8ac231bfc1b3a762bf4bf183b68cf7cca20a48aed1613f7864",
+      "hovedskjemaXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"890\" spesifikasjonsnummer=\"12144\" blankettnummer=\"RF-1086\" tittel=\"Aksjonærregisteroppgaven\" gruppeid=\"2586\" etatid=\"974761076\">\n  <GenerellInformasjon-grp-2587 gruppeid=\"2587\">\n    <Selskap-grp-2588 gruppeid=\"2588\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <EnhetNavn-datadef-1 orid=\"1\">TALLI TEST HOLDING AS</EnhetNavn-datadef-1>\n      <EnhetAdresse-datadef-15 orid=\"15\">Testveien 1</EnhetAdresse-datadef-15>\n      <EnhetPostnummer-datadef-6673 orid=\"6673\">0123</EnhetPostnummer-datadef-6673>\n      <EnhetPoststed-datadef-6674 orid=\"6674\">OSLO</EnhetPoststed-datadef-6674>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskap-grp-2588>\n    <Kontaktperson-grp-3442 gruppeid=\"3442\" />\n    <AnnenKontaktperson-grp-5384 gruppeid=\"5384\" />\n  </GenerellInformasjon-grp-2587>\n  <Selskapsopplysninger-grp-2589 gruppeid=\"2589\">\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\"3443\">\n      <AksjekapitalFjoraret-datadef-7129 orid=\"7129\">30000</AksjekapitalFjoraret-datadef-7129>\n      <Aksjekapital-datadef-87 orid=\"87\">30000</Aksjekapital-datadef-87>\n    </AksjekapitalForHeleSelskapet-grp-3443>\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\"3444\">\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\"17663\">30000</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\"17664\">30000</AksjekapitalISINAksjetype-datadef-17664>\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\n    <PalydendePerAksje-grp-3447 gruppeid=\"3447\">\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\"23944\">300</AksjeMvPalydendeFjoraret-datadef-23944>\n      <AksjeMvPalydende-datadef-23945 orid=\"23945\">300</AksjeMvPalydende-datadef-23945>\n    </PalydendePerAksje-grp-3447>\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\"3445\">\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\"29166\">100</AksjerMvAntallFjoraret-datadef-29166>\n      <AksjerMvAntall-datadef-29167 orid=\"29167\">100</AksjerMvAntall-datadef-29167>\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\"3446\">\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\"8020\">30000</AksjekapitalInnbetaltFjoraret-datadef-8020>\n      <AksjekapitalInnbetalt-datadef-5867 orid=\"5867\">30000</AksjekapitalInnbetalt-datadef-5867>\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\"3448\">\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\"17662\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\"17661\">0</AksjeOverkursISINAksjetype-datadef-17661>\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\n  </Selskapsopplysninger-grp-2589>\n</Skjema>\n",
+      "underskjemaXml": {
+        "0000000b-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">100</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">100</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n"
+      }
+    }
+  },
+  {
+    "name": "escaped_text",
+    "input": {
+      "case_id": "no_activity",
+      "company": {
+        "org_number": "314259521",
+        "name": "Ægir & <Selskap> \"AS\"",
+        "address": "Gate\n2",
+        "postal_code": "0123",
+        "city": "OSLO",
+        "income_year": 2025,
+        "share_type": "01",
+        "contact_email": "kontakt@talli.no"
+      },
+      "share_snapshot": {
+        "previous_share_capital": 30000,
+        "current_share_capital": 30000,
+        "previous_nominal_value": 300,
+        "current_nominal_value": 300,
+        "previous_share_count": 100,
+        "current_share_count": 100,
+        "previous_paid_in_share_capital": 30000,
+        "current_paid_in_share_capital": 30000,
+        "previous_paid_in_premium": 0,
+        "current_paid_in_premium": 0
+      },
+      "shareholders": [
+        {
+          "id": "0000000b-0000-4000-8000-000000000001",
+          "kind": "norwegian_person",
+          "name": "Ola Nordmann",
+          "national_id": "26829398612",
+          "org_number": null
+        }
+      ],
+      "shareholder_snapshots": [
+        {
+          "shareholder_id": "0000000b-0000-4000-8000-000000000001",
+          "previous_share_count": 100,
+          "current_share_count": 100
+        }
+      ],
+      "events": []
+    },
+    "preview": {
+      "id": "30000000-0000-4000-8000-000000000003",
+      "company_id": "10000000-0000-4000-8000-000000000001",
+      "setup_id": "40000000-0000-4000-8000-000000000004",
+      "income_year": 2025,
+      "filing": "aksjonærregisteroppgaven",
+      "status": "ready",
+      "issues": [],
+      "preview": "Aksjonærregisteroppgaven 2025\nSelskap: Ægir & <Selskap> \"AS\" (314259521)\nAksjeklasse: ordinære (01)\n\nSelskapsnivå:\n- Aksjekapital 1. januar: 30000 kr\n- Aksjekapital 31. desember: 30000 kr\n- Antall aksjer 1. januar: 100\n- Antall aksjer 31. desember: 100\n\nAksjonærer:\n- Ola Nordmann: 100 aksjer 1. januar, 100 aksjer 31. desember\n",
+      "hovedskjema_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"890\" spesifikasjonsnummer=\"12144\" blankettnummer=\"RF-1086\" tittel=\"Aksjonærregisteroppgaven\" gruppeid=\"2586\" etatid=\"974761076\">\n  <GenerellInformasjon-grp-2587 gruppeid=\"2587\">\n    <Selskap-grp-2588 gruppeid=\"2588\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <EnhetNavn-datadef-1 orid=\"1\">Ægir &amp; &lt;Selskap&gt; \"AS\"</EnhetNavn-datadef-1>\n      <EnhetAdresse-datadef-15 orid=\"15\">Gate\n2</EnhetAdresse-datadef-15>\n      <EnhetPostnummer-datadef-6673 orid=\"6673\">0123</EnhetPostnummer-datadef-6673>\n      <EnhetPoststed-datadef-6674 orid=\"6674\">OSLO</EnhetPoststed-datadef-6674>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskap-grp-2588>\n    <Kontaktperson-grp-3442 gruppeid=\"3442\" />\n    <AnnenKontaktperson-grp-5384 gruppeid=\"5384\" />\n  </GenerellInformasjon-grp-2587>\n  <Selskapsopplysninger-grp-2589 gruppeid=\"2589\">\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\"3443\">\n      <AksjekapitalFjoraret-datadef-7129 orid=\"7129\">30000</AksjekapitalFjoraret-datadef-7129>\n      <Aksjekapital-datadef-87 orid=\"87\">30000</Aksjekapital-datadef-87>\n    </AksjekapitalForHeleSelskapet-grp-3443>\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\"3444\">\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\"17663\">30000</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\"17664\">30000</AksjekapitalISINAksjetype-datadef-17664>\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\n    <PalydendePerAksje-grp-3447 gruppeid=\"3447\">\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\"23944\">300</AksjeMvPalydendeFjoraret-datadef-23944>\n      <AksjeMvPalydende-datadef-23945 orid=\"23945\">300</AksjeMvPalydende-datadef-23945>\n    </PalydendePerAksje-grp-3447>\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\"3445\">\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\"29166\">100</AksjerMvAntallFjoraret-datadef-29166>\n      <AksjerMvAntall-datadef-29167 orid=\"29167\">100</AksjerMvAntall-datadef-29167>\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\"3446\">\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\"8020\">30000</AksjekapitalInnbetaltFjoraret-datadef-8020>\n      <AksjekapitalInnbetalt-datadef-5867 orid=\"5867\">30000</AksjekapitalInnbetalt-datadef-5867>\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\"3448\">\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\"17662\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\"17661\">0</AksjeOverkursISINAksjetype-datadef-17661>\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\n  </Selskapsopplysninger-grp-2589>\n</Skjema>\n",
+      "underskjema_xml": {
+        "0000000b-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">100</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">100</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n"
+      },
+      "source": "deterministic_rf1086_engine",
+      "created_at": "2026-09-09T12:00:00.123Z"
+    },
+    "result": {
+      "filing": "aksjonærregisteroppgaven",
+      "company_id": "10000000-0000-4000-8000-000000000001",
+      "income_year": 2025,
+      "status": "receipt_stored",
+      "authority_confirmed_by": "20000000-0000-4000-8000-000000000002",
+      "authority_confirmed_at": "2026-09-09T12:00:00.123Z",
+      "preview_confirmed_by": "20000000-0000-4000-8000-000000000002",
+      "preview_confirmed_at": "2026-09-09T12:00:00.123Z",
+      "calls": [
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/1086H",
+          "body_hash": "c2e1a892d8816e36c0fc869e8bc2531da74fa58bd98ee86552e9c0f41d7b7505",
+          "idempotency_key": "a9cf0cd3-a18f-5019-8070-9e83c7f11ea6",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-30000000-0000-4000-8000-000000000003/1086U",
+          "body_hash": "b079959bc6ba805758332df899d5d0a5ed883d6bf94eb8e5a3ba740df5c78cc5",
+          "idempotency_key": "09e36a13-8b86-5e05-b53f-43b30c3b647a",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-30000000-0000-4000-8000-000000000003/bekreft?antall_underskjema=1",
+          "body_hash": "ffdb44a81d960c04195d1756312e7e4a18273c3ab052f3ea3643145ff4ead268",
+          "idempotency_key": "fd750cbd-57c0-55d6-87c4-9c24b6a5e65b",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-30000000-0000-4000-8000-000000000003/dokumenter?page=0&size=50",
+          "body_hash": "0f44414c4cdc6ead4f2f2229fc3c5e25efa2fb24072b2b2fc0c7038b14c11030",
+          "idempotency_key": "83310bf7-4c8b-5eba-acd6-926b099bb301",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        }
+      ],
+      "receipt_id": "sim-rf1086-10000000-0000-4000-8000-000000000001-2025-30000000",
+      "feedback_document_ids": [
+        "sim-feedback-30000000"
+      ],
+      "failure_code": null,
+      "failure_message": null
+    },
+    "payload_hash": "0d8915bef55802417e354e883b94e1a9f7a01aa9377accd7976ad2c565292369",
+    "idempotency_key": "rf1086:10000000-0000-4000-8000-000000000001:2025:0d8915bef5580241",
+    "feedback_items": [
+      {
+        "severity": "accepted",
+        "code": "RF1086_ACCEPTED",
+        "message": "RF-1086 er akseptert i simuleringsadapter og kvittering er lagret.",
+        "documentId": "sim-feedback-30000000"
+      }
+    ],
+    "receipt_metadata": {
+      "authority": "simulation",
+      "receiptId": "sim-rf1086-10000000-0000-4000-8000-000000000001-2025-30000000",
+      "status": "receipt_stored",
+      "receivedAt": "2026-09-09T12:00:00.123Z",
+      "feedbackDocumentIds": [
+        "sim-feedback-30000000"
+      ]
+    },
+    "submitted_payload_ref": {
+      "previewId": "30000000-0000-4000-8000-000000000003",
+      "payloadHash": "0d8915bef55802417e354e883b94e1a9f7a01aa9377accd7976ad2c565292369",
+      "hovedskjemaHash": "4290687837c8a33335cda0ac195bb1ae696dabbabea786f6264f88d0a843da33",
+      "underskjemaHashes": {
+        "0000000b-0000-4000-8000-000000000001": "2ab75706abfff6cb63e96d278a7f6d969cab218cbb0f8474aef47efa0c192012"
+      },
+      "callCount": 4,
+      "storedAt": "2026-09-09T12:00:00.123Z"
+    },
+    "submitted_payload": {
+      "filing": "aksjonærregisteroppgaven",
+      "companyId": "10000000-0000-4000-8000-000000000001",
+      "incomeYear": 2025,
+      "payloadHash": "0d8915bef55802417e354e883b94e1a9f7a01aa9377accd7976ad2c565292369",
+      "hovedskjemaXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"890\" spesifikasjonsnummer=\"12144\" blankettnummer=\"RF-1086\" tittel=\"Aksjonærregisteroppgaven\" gruppeid=\"2586\" etatid=\"974761076\">\n  <GenerellInformasjon-grp-2587 gruppeid=\"2587\">\n    <Selskap-grp-2588 gruppeid=\"2588\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <EnhetNavn-datadef-1 orid=\"1\">Ægir &amp; &lt;Selskap&gt; \"AS\"</EnhetNavn-datadef-1>\n      <EnhetAdresse-datadef-15 orid=\"15\">Gate\n2</EnhetAdresse-datadef-15>\n      <EnhetPostnummer-datadef-6673 orid=\"6673\">0123</EnhetPostnummer-datadef-6673>\n      <EnhetPoststed-datadef-6674 orid=\"6674\">OSLO</EnhetPoststed-datadef-6674>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskap-grp-2588>\n    <Kontaktperson-grp-3442 gruppeid=\"3442\" />\n    <AnnenKontaktperson-grp-5384 gruppeid=\"5384\" />\n  </GenerellInformasjon-grp-2587>\n  <Selskapsopplysninger-grp-2589 gruppeid=\"2589\">\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\"3443\">\n      <AksjekapitalFjoraret-datadef-7129 orid=\"7129\">30000</AksjekapitalFjoraret-datadef-7129>\n      <Aksjekapital-datadef-87 orid=\"87\">30000</Aksjekapital-datadef-87>\n    </AksjekapitalForHeleSelskapet-grp-3443>\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\"3444\">\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\"17663\">30000</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\"17664\">30000</AksjekapitalISINAksjetype-datadef-17664>\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\n    <PalydendePerAksje-grp-3447 gruppeid=\"3447\">\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\"23944\">300</AksjeMvPalydendeFjoraret-datadef-23944>\n      <AksjeMvPalydende-datadef-23945 orid=\"23945\">300</AksjeMvPalydende-datadef-23945>\n    </PalydendePerAksje-grp-3447>\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\"3445\">\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\"29166\">100</AksjerMvAntallFjoraret-datadef-29166>\n      <AksjerMvAntall-datadef-29167 orid=\"29167\">100</AksjerMvAntall-datadef-29167>\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\"3446\">\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\"8020\">30000</AksjekapitalInnbetaltFjoraret-datadef-8020>\n      <AksjekapitalInnbetalt-datadef-5867 orid=\"5867\">30000</AksjekapitalInnbetalt-datadef-5867>\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\"3448\">\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\"17662\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\"17661\">0</AksjeOverkursISINAksjetype-datadef-17661>\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\n  </Selskapsopplysninger-grp-2589>\n</Skjema>\n",
+      "underskjemaXml": {
+        "0000000b-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">100</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">100</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n"
+      }
+    }
+  },
+  {
+    "name": "fractional_values",
+    "input": {
+      "case_id": "no_activity",
+      "company": {
+        "org_number": "314259521",
+        "name": "TALLI TEST HOLDING AS",
+        "address": "Testveien 1",
+        "postal_code": "0123",
+        "city": "OSLO",
+        "income_year": 2025,
+        "share_type": "01",
+        "contact_email": "kontakt@talli.no"
+      },
+      "share_snapshot": {
+        "previous_share_capital": 30000,
+        "current_share_capital": 30000,
+        "previous_nominal_value": 0.1234565,
+        "current_nominal_value": 5e-7,
+        "previous_share_count": 100,
+        "current_share_count": 100,
+        "previous_paid_in_share_capital": 30000,
+        "current_paid_in_share_capital": 30000,
+        "previous_paid_in_premium": 0,
+        "current_paid_in_premium": 0
+      },
+      "shareholders": [
+        {
+          "id": "0000000b-0000-4000-8000-000000000001",
+          "kind": "norwegian_person",
+          "name": "Ola Nordmann",
+          "national_id": "26829398612",
+          "org_number": null
+        }
+      ],
+      "shareholder_snapshots": [
+        {
+          "shareholder_id": "0000000b-0000-4000-8000-000000000001",
+          "previous_share_count": 100,
+          "current_share_count": 100
+        }
+      ],
+      "events": []
+    },
+    "preview": {
+      "id": "30000000-0000-4000-8000-000000000003",
+      "company_id": "10000000-0000-4000-8000-000000000001",
+      "setup_id": "40000000-0000-4000-8000-000000000004",
+      "income_year": 2025,
+      "filing": "aksjonærregisteroppgaven",
+      "status": "ready",
+      "issues": [],
+      "preview": "Aksjonærregisteroppgaven 2025\nSelskap: TALLI TEST HOLDING AS (314259521)\nAksjeklasse: ordinære (01)\n\nSelskapsnivå:\n- Aksjekapital 1. januar: 30000 kr\n- Aksjekapital 31. desember: 30000 kr\n- Antall aksjer 1. januar: 100\n- Antall aksjer 31. desember: 100\n\nAksjonærer:\n- Ola Nordmann: 100 aksjer 1. januar, 100 aksjer 31. desember\n",
+      "hovedskjema_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"890\" spesifikasjonsnummer=\"12144\" blankettnummer=\"RF-1086\" tittel=\"Aksjonærregisteroppgaven\" gruppeid=\"2586\" etatid=\"974761076\">\n  <GenerellInformasjon-grp-2587 gruppeid=\"2587\">\n    <Selskap-grp-2588 gruppeid=\"2588\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <EnhetNavn-datadef-1 orid=\"1\">TALLI TEST HOLDING AS</EnhetNavn-datadef-1>\n      <EnhetAdresse-datadef-15 orid=\"15\">Testveien 1</EnhetAdresse-datadef-15>\n      <EnhetPostnummer-datadef-6673 orid=\"6673\">0123</EnhetPostnummer-datadef-6673>\n      <EnhetPoststed-datadef-6674 orid=\"6674\">OSLO</EnhetPoststed-datadef-6674>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskap-grp-2588>\n    <Kontaktperson-grp-3442 gruppeid=\"3442\" />\n    <AnnenKontaktperson-grp-5384 gruppeid=\"5384\" />\n  </GenerellInformasjon-grp-2587>\n  <Selskapsopplysninger-grp-2589 gruppeid=\"2589\">\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\"3443\">\n      <AksjekapitalFjoraret-datadef-7129 orid=\"7129\">30000</AksjekapitalFjoraret-datadef-7129>\n      <Aksjekapital-datadef-87 orid=\"87\">30000</Aksjekapital-datadef-87>\n    </AksjekapitalForHeleSelskapet-grp-3443>\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\"3444\">\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\"17663\">30000</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\"17664\">30000</AksjekapitalISINAksjetype-datadef-17664>\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\n    <PalydendePerAksje-grp-3447 gruppeid=\"3447\">\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\"23944\">0.123456</AksjeMvPalydendeFjoraret-datadef-23944>\n      <AksjeMvPalydende-datadef-23945 orid=\"23945\">0</AksjeMvPalydende-datadef-23945>\n    </PalydendePerAksje-grp-3447>\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\"3445\">\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\"29166\">100</AksjerMvAntallFjoraret-datadef-29166>\n      <AksjerMvAntall-datadef-29167 orid=\"29167\">100</AksjerMvAntall-datadef-29167>\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\"3446\">\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\"8020\">30000</AksjekapitalInnbetaltFjoraret-datadef-8020>\n      <AksjekapitalInnbetalt-datadef-5867 orid=\"5867\">30000</AksjekapitalInnbetalt-datadef-5867>\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\"3448\">\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\"17662\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\"17661\">0</AksjeOverkursISINAksjetype-datadef-17661>\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\n  </Selskapsopplysninger-grp-2589>\n</Skjema>\n",
+      "underskjema_xml": {
+        "0000000b-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">100</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">100</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n"
+      },
+      "source": "deterministic_rf1086_engine",
+      "created_at": "2026-09-09T12:00:00.123Z"
+    },
+    "result": {
+      "filing": "aksjonærregisteroppgaven",
+      "company_id": "10000000-0000-4000-8000-000000000001",
+      "income_year": 2025,
+      "status": "receipt_stored",
+      "authority_confirmed_by": "20000000-0000-4000-8000-000000000002",
+      "authority_confirmed_at": "2026-09-09T12:00:00.123Z",
+      "preview_confirmed_by": "20000000-0000-4000-8000-000000000002",
+      "preview_confirmed_at": "2026-09-09T12:00:00.123Z",
+      "calls": [
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/1086H",
+          "body_hash": "dac48311c7af5e7b2fef0ce825d6c53e555452dbb2d6c759df672718eaf48708",
+          "idempotency_key": "51ada9c8-a82e-5c30-8cab-2b71a7f6e6e9",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-30000000-0000-4000-8000-000000000003/1086U",
+          "body_hash": "b079959bc6ba805758332df899d5d0a5ed883d6bf94eb8e5a3ba740df5c78cc5",
+          "idempotency_key": "09e36a13-8b86-5e05-b53f-43b30c3b647a",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-30000000-0000-4000-8000-000000000003/bekreft?antall_underskjema=1",
+          "body_hash": "ffdb44a81d960c04195d1756312e7e4a18273c3ab052f3ea3643145ff4ead268",
+          "idempotency_key": "fd750cbd-57c0-55d6-87c4-9c24b6a5e65b",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-30000000-0000-4000-8000-000000000003/dokumenter?page=0&size=50",
+          "body_hash": "0f44414c4cdc6ead4f2f2229fc3c5e25efa2fb24072b2b2fc0c7038b14c11030",
+          "idempotency_key": "83310bf7-4c8b-5eba-acd6-926b099bb301",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        }
+      ],
+      "receipt_id": "sim-rf1086-10000000-0000-4000-8000-000000000001-2025-30000000",
+      "feedback_document_ids": [
+        "sim-feedback-30000000"
+      ],
+      "failure_code": null,
+      "failure_message": null
+    },
+    "payload_hash": "f41458fb8334ddaa2df9927e4135738030858695b7553b622e1660bee57f1a67",
+    "idempotency_key": "rf1086:10000000-0000-4000-8000-000000000001:2025:f41458fb8334ddaa",
+    "feedback_items": [
+      {
+        "severity": "accepted",
+        "code": "RF1086_ACCEPTED",
+        "message": "RF-1086 er akseptert i simuleringsadapter og kvittering er lagret.",
+        "documentId": "sim-feedback-30000000"
+      }
+    ],
+    "receipt_metadata": {
+      "authority": "simulation",
+      "receiptId": "sim-rf1086-10000000-0000-4000-8000-000000000001-2025-30000000",
+      "status": "receipt_stored",
+      "receivedAt": "2026-09-09T12:00:00.123Z",
+      "feedbackDocumentIds": [
+        "sim-feedback-30000000"
+      ]
+    },
+    "submitted_payload_ref": {
+      "previewId": "30000000-0000-4000-8000-000000000003",
+      "payloadHash": "f41458fb8334ddaa2df9927e4135738030858695b7553b622e1660bee57f1a67",
+      "hovedskjemaHash": "7038486390dfd925f54e96aefb3c8030015b8ccde0f0eb5b299f972a99817fa7",
+      "underskjemaHashes": {
+        "0000000b-0000-4000-8000-000000000001": "2ab75706abfff6cb63e96d278a7f6d969cab218cbb0f8474aef47efa0c192012"
+      },
+      "callCount": 4,
+      "storedAt": "2026-09-09T12:00:00.123Z"
+    },
+    "submitted_payload": {
+      "filing": "aksjonærregisteroppgaven",
+      "companyId": "10000000-0000-4000-8000-000000000001",
+      "incomeYear": 2025,
+      "payloadHash": "f41458fb8334ddaa2df9927e4135738030858695b7553b622e1660bee57f1a67",
+      "hovedskjemaXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"890\" spesifikasjonsnummer=\"12144\" blankettnummer=\"RF-1086\" tittel=\"Aksjonærregisteroppgaven\" gruppeid=\"2586\" etatid=\"974761076\">\n  <GenerellInformasjon-grp-2587 gruppeid=\"2587\">\n    <Selskap-grp-2588 gruppeid=\"2588\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <EnhetNavn-datadef-1 orid=\"1\">TALLI TEST HOLDING AS</EnhetNavn-datadef-1>\n      <EnhetAdresse-datadef-15 orid=\"15\">Testveien 1</EnhetAdresse-datadef-15>\n      <EnhetPostnummer-datadef-6673 orid=\"6673\">0123</EnhetPostnummer-datadef-6673>\n      <EnhetPoststed-datadef-6674 orid=\"6674\">OSLO</EnhetPoststed-datadef-6674>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskap-grp-2588>\n    <Kontaktperson-grp-3442 gruppeid=\"3442\" />\n    <AnnenKontaktperson-grp-5384 gruppeid=\"5384\" />\n  </GenerellInformasjon-grp-2587>\n  <Selskapsopplysninger-grp-2589 gruppeid=\"2589\">\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\"3443\">\n      <AksjekapitalFjoraret-datadef-7129 orid=\"7129\">30000</AksjekapitalFjoraret-datadef-7129>\n      <Aksjekapital-datadef-87 orid=\"87\">30000</Aksjekapital-datadef-87>\n    </AksjekapitalForHeleSelskapet-grp-3443>\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\"3444\">\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\"17663\">30000</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\"17664\">30000</AksjekapitalISINAksjetype-datadef-17664>\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\n    <PalydendePerAksje-grp-3447 gruppeid=\"3447\">\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\"23944\">0.123456</AksjeMvPalydendeFjoraret-datadef-23944>\n      <AksjeMvPalydende-datadef-23945 orid=\"23945\">0</AksjeMvPalydende-datadef-23945>\n    </PalydendePerAksje-grp-3447>\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\"3445\">\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\"29166\">100</AksjerMvAntallFjoraret-datadef-29166>\n      <AksjerMvAntall-datadef-29167 orid=\"29167\">100</AksjerMvAntall-datadef-29167>\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\"3446\">\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\"8020\">30000</AksjekapitalInnbetaltFjoraret-datadef-8020>\n      <AksjekapitalInnbetalt-datadef-5867 orid=\"5867\">30000</AksjekapitalInnbetalt-datadef-5867>\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\"3448\">\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\"17662\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\"17661\">0</AksjeOverkursISINAksjetype-datadef-17661>\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\n  </Selskapsopplysninger-grp-2589>\n</Skjema>\n",
+      "underskjemaXml": {
+        "0000000b-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">100</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">100</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n"
+      }
+    }
+  },
+  {
+    "name": "ordered_multiple",
+    "input": {
+      "case_id": "no_activity",
+      "company": {
+        "org_number": "314259521",
+        "name": "TALLI TEST HOLDING AS",
+        "address": "Testveien 1",
+        "postal_code": "0123",
+        "city": "OSLO",
+        "income_year": 2025,
+        "share_type": "01",
+        "contact_email": "kontakt@talli.no"
+      },
+      "share_snapshot": {
+        "previous_share_capital": 30000,
+        "current_share_capital": 30000,
+        "previous_nominal_value": 300,
+        "current_nominal_value": 300,
+        "previous_share_count": 6,
+        "current_share_count": 6,
+        "previous_paid_in_share_capital": 30000,
+        "current_paid_in_share_capital": 30000,
+        "previous_paid_in_premium": 0,
+        "current_paid_in_premium": 0
+      },
+      "shareholders": [
+        {
+          "id": "0000000b-0000-4000-8000-000000000001",
+          "kind": "norwegian_person",
+          "name": "Ola Nordmann",
+          "national_id": "26829398612",
+          "org_number": null
+        },
+        {
+          "id": "0000000a-0000-4000-8000-000000000001",
+          "kind": "norwegian_person",
+          "name": "Ola Nordmann",
+          "national_id": "26829398612",
+          "org_number": null
+        },
+        {
+          "id": "00000009-0000-4000-8000-000000000001",
+          "kind": "norwegian_person",
+          "name": "Ola Nordmann",
+          "national_id": "26829398612",
+          "org_number": null
+        },
+        {
+          "id": "00000008-0000-4000-8000-000000000001",
+          "kind": "norwegian_person",
+          "name": "Ola Nordmann",
+          "national_id": "26829398612",
+          "org_number": null
+        },
+        {
+          "id": "00000007-0000-4000-8000-000000000001",
+          "kind": "norwegian_person",
+          "name": "Ola Nordmann",
+          "national_id": "26829398612",
+          "org_number": null
+        },
+        {
+          "id": "00000006-0000-4000-8000-000000000001",
+          "kind": "norwegian_person",
+          "name": "Ola Nordmann",
+          "national_id": "26829398612",
+          "org_number": null
+        }
+      ],
+      "shareholder_snapshots": [
+        {
+          "shareholder_id": "0000000b-0000-4000-8000-000000000001",
+          "previous_share_count": 1,
+          "current_share_count": 1
+        },
+        {
+          "shareholder_id": "0000000a-0000-4000-8000-000000000001",
+          "previous_share_count": 1,
+          "current_share_count": 1
+        },
+        {
+          "shareholder_id": "00000009-0000-4000-8000-000000000001",
+          "previous_share_count": 1,
+          "current_share_count": 1
+        },
+        {
+          "shareholder_id": "00000008-0000-4000-8000-000000000001",
+          "previous_share_count": 1,
+          "current_share_count": 1
+        },
+        {
+          "shareholder_id": "00000007-0000-4000-8000-000000000001",
+          "previous_share_count": 1,
+          "current_share_count": 1
+        },
+        {
+          "shareholder_id": "00000006-0000-4000-8000-000000000001",
+          "previous_share_count": 1,
+          "current_share_count": 1
+        }
+      ],
+      "events": []
+    },
+    "preview": {
+      "id": "30000000-0000-4000-8000-000000000003",
+      "company_id": "10000000-0000-4000-8000-000000000001",
+      "setup_id": "40000000-0000-4000-8000-000000000004",
+      "income_year": 2025,
+      "filing": "aksjonærregisteroppgaven",
+      "status": "ready",
+      "issues": [],
+      "preview": "Aksjonærregisteroppgaven 2025\nSelskap: TALLI TEST HOLDING AS (314259521)\nAksjeklasse: ordinære (01)\n\nSelskapsnivå:\n- Aksjekapital 1. januar: 30000 kr\n- Aksjekapital 31. desember: 30000 kr\n- Antall aksjer 1. januar: 6\n- Antall aksjer 31. desember: 6\n\nAksjonærer:\n- Ola Nordmann: 1 aksjer 1. januar, 1 aksjer 31. desember\n- Ola Nordmann: 1 aksjer 1. januar, 1 aksjer 31. desember\n- Ola Nordmann: 1 aksjer 1. januar, 1 aksjer 31. desember\n- Ola Nordmann: 1 aksjer 1. januar, 1 aksjer 31. desember\n- Ola Nordmann: 1 aksjer 1. januar, 1 aksjer 31. desember\n- Ola Nordmann: 1 aksjer 1. januar, 1 aksjer 31. desember\n",
+      "hovedskjema_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"890\" spesifikasjonsnummer=\"12144\" blankettnummer=\"RF-1086\" tittel=\"Aksjonærregisteroppgaven\" gruppeid=\"2586\" etatid=\"974761076\">\n  <GenerellInformasjon-grp-2587 gruppeid=\"2587\">\n    <Selskap-grp-2588 gruppeid=\"2588\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <EnhetNavn-datadef-1 orid=\"1\">TALLI TEST HOLDING AS</EnhetNavn-datadef-1>\n      <EnhetAdresse-datadef-15 orid=\"15\">Testveien 1</EnhetAdresse-datadef-15>\n      <EnhetPostnummer-datadef-6673 orid=\"6673\">0123</EnhetPostnummer-datadef-6673>\n      <EnhetPoststed-datadef-6674 orid=\"6674\">OSLO</EnhetPoststed-datadef-6674>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskap-grp-2588>\n    <Kontaktperson-grp-3442 gruppeid=\"3442\" />\n    <AnnenKontaktperson-grp-5384 gruppeid=\"5384\" />\n  </GenerellInformasjon-grp-2587>\n  <Selskapsopplysninger-grp-2589 gruppeid=\"2589\">\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\"3443\">\n      <AksjekapitalFjoraret-datadef-7129 orid=\"7129\">30000</AksjekapitalFjoraret-datadef-7129>\n      <Aksjekapital-datadef-87 orid=\"87\">30000</Aksjekapital-datadef-87>\n    </AksjekapitalForHeleSelskapet-grp-3443>\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\"3444\">\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\"17663\">30000</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\"17664\">30000</AksjekapitalISINAksjetype-datadef-17664>\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\n    <PalydendePerAksje-grp-3447 gruppeid=\"3447\">\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\"23944\">300</AksjeMvPalydendeFjoraret-datadef-23944>\n      <AksjeMvPalydende-datadef-23945 orid=\"23945\">300</AksjeMvPalydende-datadef-23945>\n    </PalydendePerAksje-grp-3447>\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\"3445\">\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\"29166\">6</AksjerMvAntallFjoraret-datadef-29166>\n      <AksjerMvAntall-datadef-29167 orid=\"29167\">6</AksjerMvAntall-datadef-29167>\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\"3446\">\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\"8020\">30000</AksjekapitalInnbetaltFjoraret-datadef-8020>\n      <AksjekapitalInnbetalt-datadef-5867 orid=\"5867\">30000</AksjekapitalInnbetalt-datadef-5867>\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\"3448\">\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\"17662\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\"17661\">0</AksjeOverkursISINAksjetype-datadef-17661>\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\n  </Selskapsopplysninger-grp-2589>\n</Skjema>\n",
+      "underskjema_xml": {
+        "0000000b-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">1</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">1</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n",
+        "0000000a-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">1</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">1</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n",
+        "00000009-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">1</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">1</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n",
+        "00000008-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">1</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">1</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n",
+        "00000007-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">1</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">1</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n",
+        "00000006-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">1</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">1</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n"
+      },
+      "source": "deterministic_rf1086_engine",
+      "created_at": "2026-09-09T12:00:00.123Z"
+    },
+    "result": {
+      "filing": "aksjonærregisteroppgaven",
+      "company_id": "10000000-0000-4000-8000-000000000001",
+      "income_year": 2025,
+      "status": "receipt_stored",
+      "authority_confirmed_by": "20000000-0000-4000-8000-000000000002",
+      "authority_confirmed_at": "2026-09-09T12:00:00.123Z",
+      "preview_confirmed_by": "20000000-0000-4000-8000-000000000002",
+      "preview_confirmed_at": "2026-09-09T12:00:00.123Z",
+      "calls": [
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/1086H",
+          "body_hash": "904c17d2067a26a75d16d55a503b64775263bf6836549e31124de937bc925620",
+          "idempotency_key": "ae9bcfcb-fe0a-5b2c-93a7-e551a38ac1d0",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-30000000-0000-4000-8000-000000000003/1086U",
+          "body_hash": "40763cef314de585d700aae75e9e1983b3edf12156923bf665b012b95489647a",
+          "idempotency_key": "90a2ebf3-e26d-5f74-842a-31d320950ed7",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-30000000-0000-4000-8000-000000000003/1086U",
+          "body_hash": "31869d164223dac86fd85c4a6e38ba43baa5f0bbcaaac35fc437821a6e5b179d",
+          "idempotency_key": "78adea15-7505-58a1-b4f7-de7fc9951549",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-30000000-0000-4000-8000-000000000003/1086U",
+          "body_hash": "72402d565816bb9efef86a63d45f0201525ffb9b015f0ef8579af869f6958423",
+          "idempotency_key": "8282b49b-36cc-5353-9142-893377f77b43",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-30000000-0000-4000-8000-000000000003/1086U",
+          "body_hash": "605ecb8af5bf51b93872b62d5eb519ae16a161712a585d35ff0faaa8dd228b8b",
+          "idempotency_key": "589e1068-2c14-5b47-a760-7326d8fb46d4",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-30000000-0000-4000-8000-000000000003/1086U",
+          "body_hash": "f90644bbf6309a45f3e346d5f4d3494e59f6ba20096e9240aedcd86ddf4005a0",
+          "idempotency_key": "e3f13f05-5003-55be-bdc3-924d84b69f86",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-30000000-0000-4000-8000-000000000003/1086U",
+          "body_hash": "5c45868986d3e92012d77760c1ff510d8183cfd09e4b82e4cf8a8c9efc9e763b",
+          "idempotency_key": "45466c4e-6b82-5992-a470-a94594f7a3df",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-30000000-0000-4000-8000-000000000003/bekreft?antall_underskjema=6",
+          "body_hash": "d7fd67ba98c0be558cd0d960c3aeb72f982f98431e3f56b6037a494e12ad67d8",
+          "idempotency_key": "e2568076-9020-54f4-93a7-a9244921258a",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-30000000-0000-4000-8000-000000000003/dokumenter?page=0&size=50",
+          "body_hash": "0f44414c4cdc6ead4f2f2229fc3c5e25efa2fb24072b2b2fc0c7038b14c11030",
+          "idempotency_key": "83310bf7-4c8b-5eba-acd6-926b099bb301",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123Z"
+        }
+      ],
+      "receipt_id": "sim-rf1086-10000000-0000-4000-8000-000000000001-2025-30000000",
+      "feedback_document_ids": [
+        "sim-feedback-30000000"
+      ],
+      "failure_code": null,
+      "failure_message": null
+    },
+    "payload_hash": "adccfffd3fdc5a4002ad797d79f5d70cec285e9cd03b8013112ae56cd6c7f6ec",
+    "idempotency_key": "rf1086:10000000-0000-4000-8000-000000000001:2025:adccfffd3fdc5a40",
+    "feedback_items": [
+      {
+        "severity": "accepted",
+        "code": "RF1086_ACCEPTED",
+        "message": "RF-1086 er akseptert i simuleringsadapter og kvittering er lagret.",
+        "documentId": "sim-feedback-30000000"
+      }
+    ],
+    "receipt_metadata": {
+      "authority": "simulation",
+      "receiptId": "sim-rf1086-10000000-0000-4000-8000-000000000001-2025-30000000",
+      "status": "receipt_stored",
+      "receivedAt": "2026-09-09T12:00:00.123Z",
+      "feedbackDocumentIds": [
+        "sim-feedback-30000000"
+      ]
+    },
+    "submitted_payload_ref": {
+      "previewId": "30000000-0000-4000-8000-000000000003",
+      "payloadHash": "adccfffd3fdc5a4002ad797d79f5d70cec285e9cd03b8013112ae56cd6c7f6ec",
+      "hovedskjemaHash": "1cb47342e5ecff16c9ecb21efc3b0ae74e7b325d7fc50327c2a8850caeac6163",
+      "underskjemaHashes": {
+        "0000000b-0000-4000-8000-000000000001": "40401a76697b224b5873aca47eabd83d3b089c4a0ad8e992eba5122051b93977",
+        "0000000a-0000-4000-8000-000000000001": "40401a76697b224b5873aca47eabd83d3b089c4a0ad8e992eba5122051b93977",
+        "00000009-0000-4000-8000-000000000001": "40401a76697b224b5873aca47eabd83d3b089c4a0ad8e992eba5122051b93977",
+        "00000008-0000-4000-8000-000000000001": "40401a76697b224b5873aca47eabd83d3b089c4a0ad8e992eba5122051b93977",
+        "00000007-0000-4000-8000-000000000001": "40401a76697b224b5873aca47eabd83d3b089c4a0ad8e992eba5122051b93977",
+        "00000006-0000-4000-8000-000000000001": "40401a76697b224b5873aca47eabd83d3b089c4a0ad8e992eba5122051b93977"
+      },
+      "callCount": 9,
+      "storedAt": "2026-09-09T12:00:00.123Z"
+    },
+    "submitted_payload": {
+      "filing": "aksjonærregisteroppgaven",
+      "companyId": "10000000-0000-4000-8000-000000000001",
+      "incomeYear": 2025,
+      "payloadHash": "adccfffd3fdc5a4002ad797d79f5d70cec285e9cd03b8013112ae56cd6c7f6ec",
+      "hovedskjemaXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"890\" spesifikasjonsnummer=\"12144\" blankettnummer=\"RF-1086\" tittel=\"Aksjonærregisteroppgaven\" gruppeid=\"2586\" etatid=\"974761076\">\n  <GenerellInformasjon-grp-2587 gruppeid=\"2587\">\n    <Selskap-grp-2588 gruppeid=\"2588\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <EnhetNavn-datadef-1 orid=\"1\">TALLI TEST HOLDING AS</EnhetNavn-datadef-1>\n      <EnhetAdresse-datadef-15 orid=\"15\">Testveien 1</EnhetAdresse-datadef-15>\n      <EnhetPostnummer-datadef-6673 orid=\"6673\">0123</EnhetPostnummer-datadef-6673>\n      <EnhetPoststed-datadef-6674 orid=\"6674\">OSLO</EnhetPoststed-datadef-6674>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskap-grp-2588>\n    <Kontaktperson-grp-3442 gruppeid=\"3442\" />\n    <AnnenKontaktperson-grp-5384 gruppeid=\"5384\" />\n  </GenerellInformasjon-grp-2587>\n  <Selskapsopplysninger-grp-2589 gruppeid=\"2589\">\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\"3443\">\n      <AksjekapitalFjoraret-datadef-7129 orid=\"7129\">30000</AksjekapitalFjoraret-datadef-7129>\n      <Aksjekapital-datadef-87 orid=\"87\">30000</Aksjekapital-datadef-87>\n    </AksjekapitalForHeleSelskapet-grp-3443>\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\"3444\">\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\"17663\">30000</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\"17664\">30000</AksjekapitalISINAksjetype-datadef-17664>\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\n    <PalydendePerAksje-grp-3447 gruppeid=\"3447\">\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\"23944\">300</AksjeMvPalydendeFjoraret-datadef-23944>\n      <AksjeMvPalydende-datadef-23945 orid=\"23945\">300</AksjeMvPalydende-datadef-23945>\n    </PalydendePerAksje-grp-3447>\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\"3445\">\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\"29166\">6</AksjerMvAntallFjoraret-datadef-29166>\n      <AksjerMvAntall-datadef-29167 orid=\"29167\">6</AksjerMvAntall-datadef-29167>\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\"3446\">\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\"8020\">30000</AksjekapitalInnbetaltFjoraret-datadef-8020>\n      <AksjekapitalInnbetalt-datadef-5867 orid=\"5867\">30000</AksjekapitalInnbetalt-datadef-5867>\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\"3448\">\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\"17662\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\"17661\">0</AksjeOverkursISINAksjetype-datadef-17661>\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\n  </Selskapsopplysninger-grp-2589>\n</Skjema>\n",
+      "underskjemaXml": {
+        "0000000b-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">1</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">1</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n",
+        "0000000a-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">1</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">1</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n",
+        "00000009-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">1</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">1</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n",
+        "00000008-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">1</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">1</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n",
+        "00000007-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">1</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">1</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n",
+        "00000006-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">1</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">1</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n"
+      }
+    }
+  }
+]

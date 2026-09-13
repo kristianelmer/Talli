@@ -5,10 +5,8 @@ from dataclasses import replace
 
 import pytest
 
-from talli_backend.application.shareholder_register_compatibility import (
-    LegacyShareholderRegisterFilingFacade,
-)
 from talli_backend.modules.shareholder_register_filing.public import (
+    create_opening_snapshot_service,
     OpeningShareholder,
     OpeningSnapshotId,
     RecordOpeningSnapshotCommand,
@@ -56,24 +54,19 @@ def command() -> RecordOpeningSnapshotCommand:
     )
 
 
-def test_frozen_opening_snapshot_is_reached_only_through_the_public_contract() -> None:
+def test_opening_snapshot_is_reached_only_through_the_owned_public_contract() -> None:
     class Persistence:
         actor_id = ACTOR
         seen = None
 
-        async def record_legacy_opening_snapshot(
-            self, value, *, ledger_bank_balance
-        ):
+        async def record_opening_snapshot(self, value):
             self.seen = value
-            assert ledger_bank_balance == Money.nok("45000")
+            assert not hasattr(value, "bank_balance")
             return OpeningSnapshotId("60000000-0000-0000-0000-000000000006")
 
     persistence = Persistence()
     result = asyncio.run(
-        LegacyShareholderRegisterFilingFacade(
-            persistence,
-            Money.nok("45000"),
-        )
+        create_opening_snapshot_service(persistence)
         .record_opening_snapshot(command())
     )
 
@@ -87,7 +80,7 @@ def test_opening_snapshot_rejects_cross_contract_inconsistency() -> None:
     assert raised.value.code == "SHAREHOLDER_REGISTER_FILING_INVALID_INPUT"
 
 
-def test_frozen_contract_allows_both_identifiers_and_owns_no_bank_fact() -> None:
+def test_opening_contract_allows_both_identifiers_and_owns_no_bank_fact() -> None:
     shareholder = OpeningShareholder(
         name="Owner",
         shareholder_kind="norwegian_person",

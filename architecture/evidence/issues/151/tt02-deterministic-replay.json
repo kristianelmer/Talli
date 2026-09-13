@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "issue": "#151",
+  "acceptanceCriterion": "A1",
+  "status": "exact-historical-payload-regeneration-pass",
+  "observedAt": "2026-09-09T21:19:11.620736+00:00",
+  "historicalEvidence": "docs/filing/evidence/rf1086-tt02-2026-07-14.json",
+  "historicalEvidenceSha256": "b8d26ceb568bb83f9c13599d0c03236da508b54a29d553e2dfab47a1a526fe3f",
+  "historicalGeneratorRevision": "1d06b06",
+  "testedHead": "3e8bf5187d614a3a2d02437f12186d90dbd19078",
+  "testedSourceState": "working-tree-source-hashes-below",
+  "originalCaseSha256": "d73a5c57ff0cf971c7443423c58011b6e50a75997cea14ec3310bc49f04bd6f9",
+  "caseCount": 1,
+  "incomeYear": 2025,
+  "eventCount": 0,
+  "shareholderCount": 1,
+  "childDocumentCount": 1,
+  "canonicalReadiness": "ready",
+  "canonicalPublicEntry": "talli_backend.modules.shareholder_register_filing.public",
+  "operations": [
+    "parse_rf1086_case",
+    "assess_rf1086_readiness",
+    "generate_rf1086_documents",
+    "rf1086_xml_schema"
+  ],
+  "repeatGenerationByteEquality": true,
+  "documents": [
+    {
+      "document": "hovedskjema",
+      "generatedSha256": "37113adf3281a9c3b6b2564006f54f9925d1427b8592d7a9ed219d065b400e78",
+      "historicalXmlSha256": "37113adf3281a9c3b6b2564006f54f9925d1427b8592d7a9ed219d065b400e78",
+      "historicalPreflightXmlSha256": "37113adf3281a9c3b6b2564006f54f9925d1427b8592d7a9ed219d065b400e78",
+      "recordedAuthoritySha256": "37113adf3281a9c3b6b2564006f54f9925d1427b8592d7a9ed219d065b400e78",
+      "bytes": 3133,
+      "exactByteEquality": true,
+      "bundledSchemaSha256": "8d820975a4fb189f9fd02fcae4c23b5cdfb0f139dcb8a71f1c7672a4e8bc316f",
+      "bundledSchemaValidation": "pass"
+    },
+    {
+      "document": "underskjema",
+      "generatedSha256": "02ae217c54e8bf7313aa108223d4fe559242a8e47b95e5e4d8c22be55dd39556",
+      "historicalXmlSha256": "02ae217c54e8bf7313aa108223d4fe559242a8e47b95e5e4d8c22be55dd39556",
+      "historicalPreflightXmlSha256": "02ae217c54e8bf7313aa108223d4fe559242a8e47b95e5e4d8c22be55dd39556",
+      "recordedAuthoritySha256": "02ae217c54e8bf7313aa108223d4fe559242a8e47b95e5e4d8c22be55dd39556",
+      "bytes": 1441,
+      "exactByteEquality": true,
+      "bundledSchemaSha256": "98f4c0fbeb99b40765fbb4e0bf98923280ace94f31d5dff1f4057cca15b39875",
+      "bundledSchemaValidation": "pass"
+    }
+  ],
+  "sourceFiles": {
+    "apps/backend/src/talli_backend/__init__.py": "ef9ff245852f5a4907b55795a53962dab431a587c0262b220b79c38a0e0c8f7a",
+    "apps/backend/src/talli_backend/modules/__init__.py": "1e975e181c4b6f50e8c2b48f28d534c181e9e8f93f1eaafc873f0231832d7f32",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/__init__.py": "1d7be7a4b390fc171df82f0298bfdbec7abd535f1cb2ac921edf09eb0a32e8d1",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/case_parser.py": "c683801034ef596acefb3ffd5602486b00db8d14b4100eef6265b788038f24a9",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/codes.py": "2133dcea58e4e905964cd0a956892145b12b2e332b83a3ca286e0a5b47d6909e",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "a9c0c54763ec7311d03b2370b961a6509ed6927ff157a28a252cbf0daee6a674",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/readiness.py": "2d0dd1cda910453e927d9852b259adb8736ba385cab9bbb0442c12b336632a57",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/rendering.py": "5ddbfde3896f1dcb7aa0fc92afd25f0b10b5c8e99c9f386394defe34b8c24b56",
+    "apps/backend/src/talli_backend/shared/__init__.py": "2c465ea0c40bcc98dad911e2d10fcf228cb7b468a5dc4cd551610e36bbc463ae",
+    "apps/backend/src/talli_backend/shared/kernel.py": "86b108e5c292ca20e9dc031a463c284c9bd2d7698e1d26a3967d51500bf82fe3"
+  },
+  "producerPath": "scripts/verify-rf1086-historical-replay.py",
+  "producerSha256": "28838d9b476625d7399f83f881fd95b31454e0863c3912a9931850e0b63ebf00",
+  "pythonVersion": "3.12.11",
+  "providerCalls": 0,
+  "credentialAccess": false,
+  "historicalSourceModified": false,
+  "privateOutputModes": {
+    "directory": "0700",
+    "documentsAndSchemas": "0600"
+  },
+  "rawInputsOrXmlCommitted": false,
+  "limits": [
+    "Offline replay of one original historical no-activity case, not a new authority acceptance run.",
+    "No provider, credentials, database, production activation or commercial decision was used.",
+    "The full #151 two-pass exit and protected integration remain separate requirements."
+  ]
+}

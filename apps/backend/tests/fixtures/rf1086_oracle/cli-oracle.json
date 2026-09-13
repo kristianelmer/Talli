@@ -1,0 +1,194 @@
+[
+  {
+    "name": "generate",
+    "argv": [
+      "simulate-aksjonaerregister",
+      "--case",
+      "tests/fixtures/rf1086/no_activity.json",
+      "--out",
+      "out/cli-noactivity",
+      "--preview"
+    ],
+    "stdin": null,
+    "exit_code": 0,
+    "stdout": "Generated 2 files in out/cli-noactivity\nFiling readiness: aksjon\u00e6rregisteroppgaven\n\nStatus: klar for simulering\n\nIngen kjente blokkerende feil eller advarsler i lanseringssubset.\n\nAksjon\u00e6rregisteroppgaven 2025\nSelskap: TALLI TEST HOLDING AS (314259521)\nAksjeklasse: ordin\u00e6re (01)\n\nSelskapsniv\u00e5:\n- Aksjekapital 1. januar: 30000 kr\n- Aksjekapital 31. desember: 30000 kr\n- Antall aksjer 1. januar: 100\n- Antall aksjer 31. desember: 100\n\nAksjon\u00e6rer:\n- Ola Nordmann: 100 aksjer 1. januar, 100 aksjer 31. desember\n",
+    "stderr": ""
+  },
+  {
+    "name": "xml",
+    "argv": [
+      "validate-rf1086-xml",
+      "--hovedskjema",
+      "out/cli-noactivity/1086H.xml",
+      "--underskjema",
+      "out/cli-noactivity/1086U-owner.xml"
+    ],
+    "stdin": null,
+    "exit_code": 0,
+    "stdout": "out/cli-noactivity/1086H.xml validates\nout/cli-noactivity/1086U-owner.xml validates\n",
+    "stderr": ""
+  },
+  {
+    "name": "readiness_json",
+    "argv": [
+      "validate-case",
+      "--case",
+      "tests/fixtures/rf1086/dividend.json",
+      "--json"
+    ],
+    "stdin": null,
+    "exit_code": 0,
+    "stdout": "{\n  \"filing\": \"aksjon\u00e6rregisteroppgaven\",\n  \"status\": \"ready\",\n  \"issues\": []\n}\n",
+    "stderr": ""
+  },
+  {
+    "name": "readiness_text",
+    "argv": [
+      "validate-case",
+      "--case",
+      "tests/fixtures/rf1086/stiftelse.json"
+    ],
+    "stdin": null,
+    "exit_code": 0,
+    "stdout": "Filing readiness: aksjon\u00e6rregisteroppgaven\n\nStatus: klar for simulering\n\nIngen kjente blokkerende feil eller advarsler i lanseringssubset.\n",
+    "stderr": ""
+  },
+  {
+    "name": "validation_json",
+    "argv": [
+      "validate-public-data",
+      "--case",
+      "tests/fixtures/rf1086/no_activity.json",
+      "--case",
+      "tests/fixtures/rf1086_invalid/unsupported_share_class.json",
+      "--json"
+    ],
+    "stdin": null,
+    "exit_code": 1,
+    "stdout": "{\n  \"filing\": \"aksjon\u00e6rregisteroppgaven\",\n  \"source\": \"public/synthetic\",\n  \"limitations\": [\n    \"Public and synthetic data cannot prove voucher completeness.\",\n    \"Public and synthetic data cannot prove exact bank transaction classification.\",\n    \"Public and synthetic data cannot prove parity with Fiken or accountant-submitted payloads.\"\n  ],\n  \"cases\": [\n    {\n      \"case_path\": \"tests/fixtures/rf1086/no_activity.json\",\n      \"case_id\": \"no_activity\",\n      \"outcome\": \"pass\",\n      \"assumptions\": [\n        \"RF-1086 launch subset\",\n        \"No production authority submission\",\n        \"Official XSD validation is separate\"\n      ],\n      \"issues\": [],\n      \"generated_documents\": 2\n    },\n    {\n      \"case_path\": \"tests/fixtures/rf1086_invalid/unsupported_share_class.json\",\n      \"case_id\": \"unsupported_share_class\",\n      \"outcome\": \"blocked\",\n      \"assumptions\": [\n        \"RF-1086 launch subset\",\n        \"No production authority submission\",\n        \"Official XSD validation is separate\"\n      ],\n      \"issues\": [\n        \"Kun ordin\u00e6r aksjeklasse er st\u00f8ttet i f\u00f8rste versjon.\"\n      ],\n      \"generated_documents\": 0\n    }\n  ]\n}\n",
+    "stderr": ""
+  },
+  {
+    "name": "validation_text",
+    "argv": [
+      "validate-public-data",
+      "--case",
+      "tests/fixtures/rf1086/no_activity.json",
+      "--case",
+      "tests/fixtures/rf1086_invalid/unsupported_share_class.json"
+    ],
+    "stdin": null,
+    "exit_code": 1,
+    "stdout": "Validation report: aksjon\u00e6rregisteroppgaven\nSource: public/synthetic\n\nLimitations:\n- Public and synthetic data cannot prove voucher completeness.\n- Public and synthetic data cannot prove exact bank transaction classification.\n- Public and synthetic data cannot prove parity with Fiken or accountant-submitted payloads.\n\nCases:\n- no_activity: pass (2 document(s))\n- unsupported_share_class: blocked (0 document(s))\n  - Kun ordin\u00e6r aksjeklasse er st\u00f8ttet i f\u00f8rste versjon.\n",
+    "stderr": ""
+  },
+  {
+    "name": "render_ready",
+    "argv": [
+      "render-rf1086-preview",
+      "--stdin-json"
+    ],
+    "stdin": "{\n  \"case_id\": \"no_activity\",\n  \"company\": {\n    \"org_number\": \"314259521\",\n    \"name\": \"TALLI TEST HOLDING AS\",\n    \"address\": \"Testveien 1\",\n    \"postal_code\": \"0123\",\n    \"city\": \"OSLO\",\n    \"income_year\": 2025,\n    \"contact_email\": \"kontakt@talli.no\"\n  },\n  \"share_snapshot\": {\n    \"previous_share_capital\": 30000,\n    \"current_share_capital\": 30000,\n    \"previous_nominal_value\": 300,\n    \"current_nominal_value\": 300,\n    \"previous_share_count\": 100,\n    \"current_share_count\": 100,\n    \"previous_paid_in_share_capital\": 30000,\n    \"current_paid_in_share_capital\": 30000\n  },\n  \"shareholders\": [\n    {\n      \"id\": \"owner\",\n      \"kind\": \"norwegian_person\",\n      \"name\": \"Ola Nordmann\",\n      \"national_id\": \"26829398612\"\n    }\n  ],\n  \"shareholder_snapshots\": [\n    {\n      \"shareholder_id\": \"owner\",\n      \"previous_share_count\": 100,\n      \"current_share_count\": 100\n    }\n  ],\n  \"events\": []\n}\n\n",
+    "exit_code": 0,
+    "stdout": "{\"filing\": \"aksjon\u00e6rregisteroppgaven\", \"status\": \"ready\", \"issues\": [], \"preview\": \"Aksjon\u00e6rregisteroppgaven 2025\\nSelskap: TALLI TEST HOLDING AS (314259521)\\nAksjeklasse: ordin\u00e6re (01)\\n\\nSelskapsniv\u00e5:\\n- Aksjekapital 1. januar: 30000 kr\\n- Aksjekapital 31. desember: 30000 kr\\n- Antall aksjer 1. januar: 100\\n- Antall aksjer 31. desember: 100\\n\\nAksjon\u00e6rer:\\n- Ola Nordmann: 100 aksjer 1. januar, 100 aksjer 31. desember\\n\", \"hovedskjemaXml\": \"<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?>\\n<Skjema skjemanummer=\\\"890\\\" spesifikasjonsnummer=\\\"12144\\\" blankettnummer=\\\"RF-1086\\\" tittel=\\\"Aksjon\u00e6rregisteroppgaven\\\" gruppeid=\\\"2586\\\" etatid=\\\"974761076\\\">\\n  <GenerellInformasjon-grp-2587 gruppeid=\\\"2587\\\">\\n    <Selskap-grp-2588 gruppeid=\\\"2588\\\">\\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\\\"18\\\">314259521</EnhetOrganisasjonsnummer-datadef-18>\\n      <EnhetNavn-datadef-1 orid=\\\"1\\\">TALLI TEST HOLDING AS</EnhetNavn-datadef-1>\\n      <EnhetAdresse-datadef-15 orid=\\\"15\\\">Testveien 1</EnhetAdresse-datadef-15>\\n      <EnhetPostnummer-datadef-6673 orid=\\\"6673\\\">0123</EnhetPostnummer-datadef-6673>\\n      <EnhetPoststed-datadef-6674 orid=\\\"6674\\\">OSLO</EnhetPoststed-datadef-6674>\\n      <AksjeType-datadef-17659 orid=\\\"17659\\\">01</AksjeType-datadef-17659>\\n      <Inntektsar-datadef-692 orid=\\\"692\\\">2025</Inntektsar-datadef-692>\\n    </Selskap-grp-2588>\\n    <Kontaktperson-grp-3442 gruppeid=\\\"3442\\\">\\n      <KontaktpersonSkjemaEPost-datadef-30533 orid=\\\"30533\\\">kontakt@talli.no</KontaktpersonSkjemaEPost-datadef-30533>\\n    </Kontaktperson-grp-3442>\\n    <AnnenKontaktperson-grp-5384 gruppeid=\\\"5384\\\" />\\n  </GenerellInformasjon-grp-2587>\\n  <Selskapsopplysninger-grp-2589 gruppeid=\\\"2589\\\">\\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\\\"3443\\\">\\n      <AksjekapitalFjoraret-datadef-7129 orid=\\\"7129\\\">30000</AksjekapitalFjoraret-datadef-7129>\\n      <Aksjekapital-datadef-87 orid=\\\"87\\\">30000</Aksjekapital-datadef-87>\\n    </AksjekapitalForHeleSelskapet-grp-3443>\\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\\\"3444\\\">\\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\\\"17663\\\">30000</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\\\"17664\\\">30000</AksjekapitalISINAksjetype-datadef-17664>\\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\\n    <PalydendePerAksje-grp-3447 gruppeid=\\\"3447\\\">\\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\\\"23944\\\">300</AksjeMvPalydendeFjoraret-datadef-23944>\\n      <AksjeMvPalydende-datadef-23945 orid=\\\"23945\\\">300</AksjeMvPalydende-datadef-23945>\\n    </PalydendePerAksje-grp-3447>\\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\\\"3445\\\">\\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\\\"29166\\\">100</AksjerMvAntallFjoraret-datadef-29166>\\n      <AksjerMvAntall-datadef-29167 orid=\\\"29167\\\">100</AksjerMvAntall-datadef-29167>\\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\\\"3446\\\">\\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\\\"8020\\\">30000</AksjekapitalInnbetaltFjoraret-datadef-8020>\\n      <AksjekapitalInnbetalt-datadef-5867 orid=\\\"5867\\\">30000</AksjekapitalInnbetalt-datadef-5867>\\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\\\"3448\\\">\\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\\\"17662\\\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\\\"17661\\\">0</AksjeOverkursISINAksjetype-datadef-17661>\\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\\n  </Selskapsopplysninger-grp-2589>\\n</Skjema>\\n\", \"underskjemaXml\": {\"owner\": \"<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?>\\n<Skjema skjemanummer=\\\"923\\\" spesifikasjonsnummer=\\\"12232\\\" blankettnummer=\\\"RF-1086-U\\\" tittel=\\\"Aksjon\u00e6rregisteroppgaven - underskjema\\\" gruppeid=\\\"3983\\\" etatid=\\\"974761076\\\">\\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\\\"3987\\\">\\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\\\"3986\\\">\\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\\\"18\\\">314259521</EnhetOrganisasjonsnummer-datadef-18>\\n      <AksjeType-datadef-17659 orid=\\\"17659\\\">01</AksjeType-datadef-17659>\\n      <Inntektsar-datadef-692 orid=\\\"692\\\">2025</Inntektsar-datadef-692>\\n    </Selskapsidentifikasjon-grp-3986>\\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\\\"3988\\\">\\n      <AksjonarFodselsnummer-datadef-1156 orid=\\\"1156\\\">26829398612</AksjonarFodselsnummer-datadef-1156>\\n      <AksjonarNavn-datadef-1153 orid=\\\"1153\\\">Ola Nordmann</AksjonarNavn-datadef-1153>\\n      <Adresse-grp-7722 gruppeid=\\\"7722\\\" />\\n    </NorskUtenlandskAksjonar-grp-3988>\\n  </SelskapsOgAksjonaropplysninger-grp-3987>\\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\\\"3990\\\">\\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\\\"3989\\\">\\n      <AksjerAntallFjoraret-datadef-29168 orid=\\\"29168\\\">100</AksjerAntallFjoraret-datadef-29168>\\n      <AksjonarAksjerAntall-datadef-17741 orid=\\\"17741\\\">100</AksjonarAksjerAntall-datadef-17741>\\n    </AntallAksjerPerAksjonar-grp-3989>\\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\\n</Skjema>\\n\"}}\n",
+    "stderr": ""
+  },
+  {
+    "name": "render_blocked",
+    "argv": [
+      "render-rf1086-preview",
+      "--stdin-json"
+    ],
+    "stdin": "{\n  \"case_id\": \"unsupported_share_class\",\n  \"company\": {\n    \"org_number\": \"314259521\",\n    \"name\": \"TALLI TEST HOLDING AS\",\n    \"address\": \"Testveien 1\",\n    \"postal_code\": \"0123\",\n    \"city\": \"OSLO\",\n    \"income_year\": 2025,\n    \"share_type\": \"02\",\n    \"contact_email\": \"kontakt@talli.no\"\n  },\n  \"share_snapshot\": {\n    \"previous_share_capital\": 30000,\n    \"current_share_capital\": 30000,\n    \"previous_nominal_value\": 300,\n    \"current_nominal_value\": 300,\n    \"previous_share_count\": 100,\n    \"current_share_count\": 100,\n    \"previous_paid_in_share_capital\": 30000,\n    \"current_paid_in_share_capital\": 30000\n  },\n  \"shareholders\": [\n    {\n      \"id\": \"owner\",\n      \"kind\": \"norwegian_person\",\n      \"name\": \"Ola Nordmann\",\n      \"national_id\": \"26829398612\"\n    }\n  ],\n  \"shareholder_snapshots\": [\n    {\n      \"shareholder_id\": \"owner\",\n      \"previous_share_count\": 100,\n      \"current_share_count\": 100\n    }\n  ],\n  \"events\": []\n}\n",
+    "exit_code": 1,
+    "stdout": "{\"filing\": \"aksjon\u00e6rregisteroppgaven\", \"status\": \"blocked\", \"issues\": [{\"level\": \"error\", \"code\": \"unsupported_share_class\", \"message\": \"Kun ordin\u00e6r aksjeklasse er st\u00f8ttet i f\u00f8rste versjon.\"}], \"preview\": \"Aksjon\u00e6rregisteroppgaven 2025\\nSelskap: TALLI TEST HOLDING AS (314259521)\\nAksjeklasse: ordin\u00e6re (02)\\n\\nSelskapsniv\u00e5:\\n- Aksjekapital 1. januar: 30000 kr\\n- Aksjekapital 31. desember: 30000 kr\\n- Antall aksjer 1. januar: 100\\n- Antall aksjer 31. desember: 100\\n\\nAksjon\u00e6rer:\\n- Ola Nordmann: 100 aksjer 1. januar, 100 aksjer 31. desember\\n\"}\n",
+    "stderr": ""
+  },
+  {
+    "name": "render_invalid",
+    "argv": [
+      "render-rf1086-preview",
+      "--stdin-json"
+    ],
+    "stdin": "{\n  \"case_id\": \"invalid_mismatched_share_count\",\n  \"company\": {\n    \"org_number\": \"314259521\",\n    \"name\": \"TALLI TEST HOLDING AS\",\n    \"address\": \"Testveien 1\",\n    \"postal_code\": \"0123\",\n    \"city\": \"OSLO\",\n    \"income_year\": 2025,\n    \"contact_email\": \"kontakt@talli.no\"\n  },\n  \"share_snapshot\": {\n    \"previous_share_capital\": 30000,\n    \"current_share_capital\": 30000,\n    \"previous_nominal_value\": 300,\n    \"current_nominal_value\": 300,\n    \"previous_share_count\": 100,\n    \"current_share_count\": 100,\n    \"previous_paid_in_share_capital\": 30000,\n    \"current_paid_in_share_capital\": 30000\n  },\n  \"shareholders\": [\n    {\n      \"id\": \"owner\",\n      \"kind\": \"norwegian_person\",\n      \"name\": \"Ola Nordmann\",\n      \"national_id\": \"26829398612\"\n    }\n  ],\n  \"shareholder_snapshots\": [\n    {\n      \"shareholder_id\": \"owner\",\n      \"previous_share_count\": 100,\n      \"current_share_count\": 99\n    }\n  ],\n  \"events\": []\n}\n",
+    "exit_code": 1,
+    "stdout": "{\"status\": \"blocked\", \"issues\": [{\"code\": \"invalid_case\", \"message\": \"1 validation error for FilingCase\\n  Value error, sum of current shareholder shares must equal company current share count [type=value_error, input_value={'case_id': 'invalid_mism...nt': 99}], 'events': []}, input_type=dict]\\n    For further information visit https://errors.pydantic.dev/2.11/v/value_error\"}]}\n",
+    "stderr": ""
+  },
+  {
+    "name": "generate_blocked",
+    "argv": [
+      "simulate-aksjonaerregister",
+      "--case",
+      "tests/fixtures/rf1086_invalid/unsupported_share_class.json",
+      "--out",
+      "out/blocked"
+    ],
+    "stdin": null,
+    "exit_code": 1,
+    "stdout": "Filing readiness: aksjon\u00e6rregisteroppgaven\n\nStatus: blokkert\n\nBlokkerende feil:\n- Kun ordin\u00e6r aksjeklasse er st\u00f8ttet i f\u00f8rste versjon.\n",
+    "stderr": ""
+  },
+  {
+    "name": "generate_invalid",
+    "argv": [
+      "simulate-aksjonaerregister",
+      "--case",
+      "tests/fixtures/rf1086_invalid/mismatched_share_count.json",
+      "--out",
+      "out/blocked"
+    ],
+    "stdin": null,
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "Case validation failed: 1 validation error for FilingCase\n  Value error, sum of current shareholder shares must equal company current share count [type=value_error, input_value={'case_id': 'invalid_mism...nt': 99}], 'events': []}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/value_error\n"
+  },
+  {
+    "name": "simulation_baseline",
+    "argv": [
+      "simulate-rf1086-submission",
+      "--stdin-json"
+    ],
+    "stdin": "{\"authority_confirmed\": true, \"preview_confirmed\": true, \"filing\": \"aksjon\\u00e6rregisteroppgaven\", \"company_id\": \"offline-\\u00e6\", \"income_year\": 2025, \"user_id\": \"offline-owner\", \"preview_id\": \"preview-01\", \"hovedskjema_xml\": \"<main>\\u00e6</main>\", \"underskjema_xml\": {\"h1\": \"<sub />\"}}",
+    "exit_code": 0,
+    "stdout": "{\"filing\":\"aksjon\u00e6rregisteroppgaven\",\"company_id\":\"offline-\u00e6\",\"income_year\":2025,\"status\":\"receipt_stored\",\"authority_confirmed_by\":\"offline-owner\",\"authority_confirmed_at\":\"2026-09-09T12:00:00.123456Z\",\"preview_confirmed_by\":\"offline-owner\",\"preview_confirmed_at\":\"2026-09-09T12:00:00.123457Z\",\"calls\":[{\"endpoint\":\"/api/aksjonaerregister/v1/2025/1086H\",\"body_hash\":\"77eaad2ae95838ab1b24ff672bb4e8a8b48176dcda34b4888d06d3182c1ea867\",\"idempotency_key\":\"3051dbac-cfff-5655-868d-a1243024e164\",\"status\":\"prepared\",\"created_at\":\"2026-09-09T12:00:00.123458Z\"},{\"endpoint\":\"/api/aksjonaerregister/v1/2025/simulated-preview-01/1086U\",\"body_hash\":\"638178d4c57bc9c1e8998c7bcfb9d5d82f7a52047d4819bffac68e62545cca09\",\"idempotency_key\":\"cad0fc25-fcca-5c61-ac93-d28545531538\",\"status\":\"prepared\",\"created_at\":\"2026-09-09T12:00:00.123459Z\"},{\"endpoint\":\"/api/aksjonaerregister/v1/2025/simulated-preview-01/bekreft?antall_underskjema=1\",\"body_hash\":\"ffdb44a81d960c04195d1756312e7e4a18273c3ab052f3ea3643145ff4ead268\",\"idempotency_key\":\"146e4e86-962b-51c3-a537-63ef7b1beb12\",\"status\":\"prepared\",\"created_at\":\"2026-09-09T12:00:00.123460Z\"},{\"endpoint\":\"/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-preview-01/dokumenter?page=0&size=50\",\"body_hash\":\"0f44414c4cdc6ead4f2f2229fc3c5e25efa2fb24072b2b2fc0c7038b14c11030\",\"idempotency_key\":\"80bc019f-91f4-5bf8-9cc5-3a0d52c935d4\",\"status\":\"prepared\",\"created_at\":\"2026-09-09T12:00:00.123461Z\"}],\"receipt_id\":\"sim-rf1086-offline-\u00e6-2025-preview-\",\"feedback_document_ids\":[\"sim-feedback-preview-\"],\"failure_code\":null,\"failure_message\":null}\n",
+    "stderr": "",
+    "fixed_clock": true
+  },
+  {
+    "name": "simulation_mixed_keys",
+    "argv": [
+      "simulate-rf1086-submission",
+      "--stdin-json"
+    ],
+    "stdin": "{\"authority_confirmed\": true, \"preview_confirmed\": true, \"filing\": \"aksjon\\u00e6rregisteroppgaven\", \"company_id\": \"offline-\\u00e6\", \"income_year\": 2025, \"user_id\": \"offline-owner\", \"preview_id\": \"preview-01\", \"hovedskjema_xml\": \"<main>\\u00e6</main>\", \"underskjema_xml\": {\"b\": \"<b/>\", \"A\": \"<A/>\", \"\\u00e6\": \"<ae/>\", \"\\ud83d\\ude00\": \"<astral/>\", \"2\": \"<two/>\", \"10\": \"<ten/>\"}}",
+    "exit_code": 0,
+    "stdout": "{\"filing\":\"aksjon\u00e6rregisteroppgaven\",\"company_id\":\"offline-\u00e6\",\"income_year\":2025,\"status\":\"receipt_stored\",\"authority_confirmed_by\":\"offline-owner\",\"authority_confirmed_at\":\"2026-09-09T12:00:00.123456Z\",\"preview_confirmed_by\":\"offline-owner\",\"preview_confirmed_at\":\"2026-09-09T12:00:00.123457Z\",\"calls\":[{\"endpoint\":\"/api/aksjonaerregister/v1/2025/1086H\",\"body_hash\":\"77eaad2ae95838ab1b24ff672bb4e8a8b48176dcda34b4888d06d3182c1ea867\",\"idempotency_key\":\"3051dbac-cfff-5655-868d-a1243024e164\",\"status\":\"prepared\",\"created_at\":\"2026-09-09T12:00:00.123458Z\"},{\"endpoint\":\"/api/aksjonaerregister/v1/2025/simulated-preview-01/1086U\",\"body_hash\":\"b87b41b16d0ae904e6f57c03e660135e22aa1263b0d6c6b0c90b7c8269d2b462\",\"idempotency_key\":\"2e33f129-45e3-557f-bb5f-59cfab643850\",\"status\":\"prepared\",\"created_at\":\"2026-09-09T12:00:00.123459Z\"},{\"endpoint\":\"/api/aksjonaerregister/v1/2025/simulated-preview-01/1086U\",\"body_hash\":\"f37765e13e88b79c83ed9eadcbcbdacc904a01b981bc5a346a77f84f97280b23\",\"idempotency_key\":\"720cc215-3811-551e-8342-52532d11d283\",\"status\":\"prepared\",\"created_at\":\"2026-09-09T12:00:00.123460Z\"},{\"endpoint\":\"/api/aksjonaerregister/v1/2025/simulated-preview-01/1086U\",\"body_hash\":\"c8b0d5a25a2366614fa247bb12d9a0c44c0e4334a4e23aa891de7386c1d0e2d0\",\"idempotency_key\":\"7b1e1565-ce94-565d-832f-508ac0883f9a\",\"status\":\"prepared\",\"created_at\":\"2026-09-09T12:00:00.123461Z\"},{\"endpoint\":\"/api/aksjonaerregister/v1/2025/simulated-preview-01/1086U\",\"body_hash\":\"f0e14e59cb8f685a696228934f2f633a5bb2fdd05a6d635eaeb9f558eb56d5df\",\"idempotency_key\":\"207de1c5-da86-5f81-aa7c-189936bd4bae\",\"status\":\"prepared\",\"created_at\":\"2026-09-09T12:00:00.123462Z\"},{\"endpoint\":\"/api/aksjonaerregister/v1/2025/simulated-preview-01/1086U\",\"body_hash\":\"b59b155e5d2f76ad7950b925d49e2a60dbb82d7c774a15e26fbc8d773930aae9\",\"idempotency_key\":\"f840021e-11c2-5271-ac25-a152b9473974\",\"status\":\"prepared\",\"created_at\":\"2026-09-09T12:00:00.123463Z\"},{\"endpoint\":\"/api/aksjonaerregister/v1/2025/simulated-preview-01/1086U\",\"body_hash\":\"e729447e4086b7bbd0ec55e035993230b7f5a3e5d3a407ccaf81394728b30025\",\"idempotency_key\":\"792a1a06-1386-58a1-833d-67d95b1df95c\",\"status\":\"prepared\",\"created_at\":\"2026-09-09T12:00:00.123464Z\"},{\"endpoint\":\"/api/aksjonaerregister/v1/2025/simulated-preview-01/bekreft?antall_underskjema=6\",\"body_hash\":\"d7fd67ba98c0be558cd0d960c3aeb72f982f98431e3f56b6037a494e12ad67d8\",\"idempotency_key\":\"26611c31-dcb4-5745-94ed-68a5b0834046\",\"status\":\"prepared\",\"created_at\":\"2026-09-09T12:00:00.123465Z\"},{\"endpoint\":\"/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-preview-01/dokumenter?page=0&size=50\",\"body_hash\":\"0f44414c4cdc6ead4f2f2229fc3c5e25efa2fb24072b2b2fc0c7038b14c11030\",\"idempotency_key\":\"80bc019f-91f4-5bf8-9cc5-3a0d52c935d4\",\"status\":\"prepared\",\"created_at\":\"2026-09-09T12:00:00.123466Z\"}],\"receipt_id\":\"sim-rf1086-offline-\u00e6-2025-preview-\",\"feedback_document_ids\":[\"sim-feedback-preview-\"],\"failure_code\":null,\"failure_message\":null}\n",
+    "stderr": "",
+    "fixed_clock": true
+  },
+  {
+    "name": "simulation_false_authority",
+    "argv": [
+      "simulate-rf1086-submission",
+      "--stdin-json"
+    ],
+    "stdin": "{\"authority_confirmed\": false, \"preview_confirmed\": true, \"filing\": \"aksjon\\u00e6rregisteroppgaven\", \"company_id\": \"offline-\\u00e6\", \"income_year\": 2025, \"user_id\": \"offline-owner\", \"preview_id\": \"preview-01\", \"hovedskjema_xml\": \"<main>\\u00e6</main>\", \"underskjema_xml\": {\"h1\": \"<sub />\"}}",
+    "exit_code": 1,
+    "stdout": "{\"status\": \"failed_blocked\", \"failure_code\": \"simulation_input_blocked\", \"failure_message\": \"authority confirmation is required before simulated submission\"}\n",
+    "stderr": "",
+    "fixed_clock": true
+  },
+  {
+    "name": "simulation_surrogate_xml",
+    "argv": [
+      "simulate-rf1086-submission",
+      "--stdin-json"
+    ],
+    "stdin": "{\"authority_confirmed\": true, \"preview_confirmed\": true, \"filing\": \"aksjon\\u00e6rregisteroppgaven\", \"company_id\": \"offline-\\u00e6\", \"income_year\": 2025, \"user_id\": \"offline-owner\", \"preview_id\": \"preview-01\", \"hovedskjema_xml\": \"<main>\\ud800</main>\", \"underskjema_xml\": {\"h1\": \"<sub />\"}}",
+    "exit_code": 1,
+    "stdout": "{\"status\": \"failed_blocked\", \"failure_code\": \"simulation_input_blocked\", \"failure_message\": \"'utf-8' codec can't encode character '\\\\ud800' in position 47: surrogates not allowed\"}\n",
+    "stderr": "",
+    "fixed_clock": true
+  }
+]

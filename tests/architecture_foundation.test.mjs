@@ -233,9 +233,9 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   "web:documents",
   "web:investments",
   "web:ledger",
-  "web:legacy-rf1086",
-  "web:operator-controls",
+    "web:operator-controls",
   "web:public-acquisition",
+  "web:shareholder-register-filing",
   "web:system-boundary"
 ]);
   assert.deepEqual(result.evidence.edges, [
@@ -472,30 +472,6 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     "to": "backend:ledger"
   },
   {
-    "from": "backend-system:legacy-rf1086-authority-relocation",
-    "imports": [
-      "talli_backend.modules.billing.public"
-    ],
-    "kind": "workflow",
-    "to": "backend:billing"
-  },
-  {
-    "from": "backend-system:legacy-rf1086-authority-relocation",
-    "imports": [
-      "talli_backend.modules.company_access.public"
-    ],
-    "kind": "workflow",
-    "to": "backend:company_access"
-  },
-  {
-    "from": "backend-system:legacy-rf1086-authority-relocation",
-    "imports": [
-      "talli_backend.modules.documents.public"
-    ],
-    "kind": "workflow",
-    "to": "backend:documents"
-  },
-  {
     "from": "backend-system:marketing-funnel-measurement",
     "imports": [
       "talli_backend.modules.marketing_measurement.public"
@@ -526,6 +502,38 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     ],
     "kind": "workflow",
     "to": "backend-system:validation_observation"
+  },
+  {
+    "from": "backend-system:shareholder-register-filing",
+    "imports": [
+      "talli_backend.modules.billing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:billing"
+  },
+  {
+    "from": "backend-system:shareholder-register-filing",
+    "imports": [
+      "talli_backend.modules.company_access.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_access"
+  },
+  {
+    "from": "backend-system:shareholder-register-filing",
+    "imports": [
+      "talli_backend.modules.documents.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:documents"
+  },
+  {
+    "from": "backend-system:shareholder-register-filing",
+    "imports": [
+      "talli_backend.modules.shareholder_register_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:shareholder_register_filing"
   },
   {
     "from": "backend-system:system-boundary-tracer",
@@ -2332,8 +2340,8 @@ test("the immutable frozen inventory remains exact while the active registry is 
   }
   assert.equal(expected.size, baseline.records.length);
 
-  assert.equal(registry.records.length, 7);
-  assert.equal(registry.records.flatMap((record) => record.scopes).length, 76);
+  assert.equal(registry.records.length, 6);
+  assert.equal(registry.records.flatMap((record) => record.scopes).length, 63);
   const baselineById = new Map(baseline.records.map((record) => [record.id, record]));
   const scopeKey = (scope) => [scope.path, scope.rule, scope.resource, scope.operation].join("\0");
   for (const record of registry.records) {
@@ -2344,6 +2352,15 @@ test("the immutable frozen inventory remains exact while the active registry is 
     assert.equal(record.removalIssue, frozen.removalIssue, record.id);
     assert.equal(record.canonicalImplementation, frozen.canonicalImplementation, record.id);
     const frozenScopes = new Set(frozen.scopes.map(scopeKey));
+    const handoffOperations = new Set(["addFilingOverride", "addFilingReviewComment", "confirmAuthorityPermission",
+      "recordAuthorityTestEvidence", "queueDeadlineReminders", "refreshAnnualReadinessSnapshots",
+      "listAuthorityPermissions", "listAuthorityTestRuns", "listFilingPreviews", "listFilingSubmissions"]);
+    const approved = baselineById.get("compat-rf1086-persistence").scopes.filter((scope) => handoffOperations.has(scope.operation));
+    assert.equal(approved.length, 12);
+    if (record.id === "compat-annual-compliance-persistence") {
+      for (const scope of approved) frozenScopes.add(scopeKey(scope));
+      assert.equal(record.scopes.filter((scope) => approved.some((item) => scopeKey(item) === scopeKey(scope))).length, 12);
+    }
     assert.ok(record.scopes.every((scope) => frozenScopes.has(scopeKey(scope))), record.id);
     assert.equal("expiresAt" in record, false, record.id);
     assert.equal("releaseLimit" in record, false, record.id);
@@ -2366,6 +2383,7 @@ test("the immutable frozen inventory remains exact while the active registry is 
       "compat-corporate-governance-persistence",
       "compat-billing-persistence",
       "compat-authority-connections-persistence",
+      "compat-rf1086-persistence",
     ]),
   );
 });
@@ -3220,4 +3238,203 @@ import "@talli/talli-api-client/src/generated/client.ts";
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }
+});
+
+test("#151 amendment permits only twelve exact handoffs and four exact read retirements", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-rf-compatibility-"));
+  const action = "apps/web/app/actions.ts";
+  const server = "apps/web/app/lib/supabase/server.ts";
+  const archive = "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts";
+  const triples = [
+    [action, "filing_previews", "addFilingOverride"],
+    [action, "filing_previews", "addFilingReviewComment"],
+    [action, "authority_permissions", "confirmAuthorityPermission"],
+    [action, "authority_test_runs", "recordAuthorityTestEvidence"],
+    [action, "filing_submissions", "queueDeadlineReminders"],
+    ...["authority_permissions", "filing_previews", "filing_submissions"].map((table) => [action, table, "refreshAnnualReadinessSnapshots"]),
+    [server, "authority_permissions", "listAuthorityPermissions"],
+    [server, "authority_test_runs", "listAuthorityTestRuns"],
+    [server, "filing_previews", "listFilingPreviews"],
+    [server, "filing_submissions", "listFilingSubmissions"],
+  ];
+  const simulation = "confirmSimulatedRf1086Submission";
+  const simTables = ["filing_previews", "filing_submissions", "filing_overrides", "filing_review_comments", "filing_readiness_snapshots"];
+  const all = [...triples, ...simTables.map((table) => [action, table, simulation]),
+    [action, "audit_events", simulation], [action, "audit_events", "addFilingOverride"],
+    [action, "filing_overrides", "addFilingOverride"],
+    [archive, "opening_balance_setups", "GET"], [archive, "audit_events", "GET"]];
+  const sources = new Map();
+  for (const [path, table, operation] of all) {
+    const functions = sources.get(path) ?? new Map();
+    functions.set(operation, [...(functions.get(operation) ?? []), `client.from("${table}").select("id");`]);
+    sources.set(path, functions);
+  }
+  const frozen = new Map([...sources].map(([path, functions]) => [path,
+    [...functions].map(([operation, calls]) => `export function ${operation}() { ${calls.join(" ")} }`).join("\n")]));
+  const scope = ([path, table, operation]) => {
+    const item = { path, rule: "direct-web-business-persistence", resource: `table:${table}`, operation };
+    return { ...item, ...legacyOperationProof(frozen.get(path), path, item) };
+  };
+  const records = [
+    legacyFacade({ id: "compat-rf1086-persistence", capability: "shareholder_register_filing", removalIssue: "#151",
+      scopes: [...triples, ...simTables.slice(0, 2).map((table) => [action, table, simulation])].map(scope) }),
+    legacyFacade({ id: "compat-annual-compliance-persistence", capability: "annual_compliance", removalIssue: "#149",
+      scopes: [...simTables.slice(2).map((table) => [action, table, simulation]), [action, "filing_overrides", "addFilingOverride"]].map(scope) }),
+    legacyFacade({ id: "compat-audit-persistence", capability: "audit", removalIssue: "#155",
+      scopes: [[action, "audit_events", simulation], [action, "audit_events", "addFilingOverride"]].map(scope) }),
+    legacyFacade({ id: "compat-company-archive-persistence", capability: "company_archive", removalIssue: "#157",
+      scopes: [[archive, "opening_balance_setups", "GET"], [archive, "audit_events", "GET"]].map(scope) }),
+  ];
+  const baseline = compatibilityBaseline(records);
+  const registry = compatibilityFixture({ records: structuredClone(records.slice(1)) });
+  registry.records[0].scopes = [...records[1].scopes.filter((item) => item.operation !== simulation), ...triples.map(scope)];
+  registry.records[2].scopes = registry.records[2].scopes.filter((item) => item.resource !== "table:opening_balance_setups");
+  registry.migration.order = [
+    { capability: "shareholder_register_filing", removalIssues: ["#151"] },
+    { capability: "company_tax_return", removalIssues: ["#152"] },
+    { capability: "annual_accounts_filing", removalIssues: ["#153"] },
+    { capability: "annual_compliance", removalIssues: ["#149"] },
+    { capability: "audit", removalIssues: ["#155"] },
+    { capability: "company_archive", removalIssues: ["#157"] },
+  ];
+  registry.migration.currentCapability = "shareholder_register_filing";
+  registry.migration.currentIssue = "#151";
+  registry.migration.exitedCapabilities = [];
+  registry.migration.completedStages = [];
+  const current = new Map(frozen);
+  current.set(action, current.get(action).replace(
+    [...simTables.map((table) => `client.from("${table}").select("id");`), 'client.from("audit_events").select("id");'].join(" "),
+    'canonicalSimulation(); client.from("audit_events").select("id");'));
+  current.set(archive, current.get(archive).replace('client.from("opening_balance_setups").select("id");', "generatedOpeningQuery();"));
+  // Attribution alone preserves original code; edited production compositions
+  // must additionally match their exact reviewed operation digest.
+  const check = ({ candidate = registry, frozenBaseline = baseline, source = current } = {}) => {
+    const { registryPath, baselinePath } = writeCompatibilityFixture(temporaryRoot, candidate, frozenBaseline);
+    return validateCompatibilityRegistry(registryPath, {
+      baselinePath, expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+      currentSource: (path) => source.get(path), sourceAtRevision: (path) => frozen.get(path),
+      resourceOwner: (resource) => resource === "table:opening_balance_setups" ? undefined : "backend:annual_compliance",
+    });
+  };
+  try {
+    assert.deepEqual(check(), []);
+    for (const tuple of triples) {
+      const partial = structuredClone(registry);
+      partial.records[0].scopes = partial.records[0].scopes.filter((item) => !(item.path === tuple[0] && item.resource === `table:${tuple[1]}` && item.operation === tuple[2]));
+      assert.match(check({ candidate: partial }).join("\n"), /all twelve tuples/u);
+    }
+    const wrongTarget = structuredClone(registry);
+    wrongTarget.records[1].scopes.push(wrongTarget.records[0].scopes.pop());
+    assert.match(check({ candidate: wrongTarget }).join("\n"), /outside the frozen baseline/u);
+    const duplicated = structuredClone(registry);
+    duplicated.records.push({ ...records[0], scopes: [records[0].scopes[0]] });
+    assert.match(check({ candidate: duplicated }).join("\n"), /duplicate source attribution/u);
+    for (const table of simTables) {
+      const partial = structuredClone(registry);
+      const owner = table === "filing_previews" || table === "filing_submissions" ? records[0] : records[1];
+      let target = partial.records.find((record) => record.id === owner.id);
+      if (!target) { target = { ...owner, scopes: [] }; partial.records.push(target); }
+      target.scopes.push(scope([action, table, simulation]));
+      assert.match(check({ candidate: partial }).join("\n"), /all five simulation tuples atomically/u);
+    }
+    for (const replacement of ['client.from("audit_events").select("id"); client.from("audit_events").select("id");',
+      'client.from(dynamicTable).select("id");', 'client.from(getTable()).select("id");',
+      'client.from("unlisted").select("id");']) {
+      const changed = new Map(current);
+      changed.set(action, changed.get(action).replace('client.from("audit_events").select("id");', replacement));
+      assert.notDeepEqual(check({ source: changed }), [], replacement);
+    }
+    for (const branch of ["return;", "if (rf) canonicalOverride();", "validate = () => true;"]) {
+      const changed = new Map(current);
+      changed.set(action, changed.get(action).replace('function addFilingOverride() {', `function addFilingOverride() { ${branch}`));
+      assert.match(check({ source: changed }).join("\n"), /unchanged sibling persistence chains/u);
+    }
+    const reordered = new Map(current);
+    reordered.set(action, reordered.get(action).replace(
+      'client.from("filing_previews").select("id"); client.from("audit_events").select("id");',
+      'client.from("audit_events").select("id"); client.from("filing_previews").select("id");'));
+    assert.match(check({ source: reordered }).join("\n"), /unchanged sibling persistence chains/u);
+    const changedFilter = new Map(current);
+    changedFilter.set(action, changedFilter.get(action).replace('client.from("filing_overrides").select("id")', 'client.from("filing_overrides").select("secret")'));
+    assert.match(check({ source: changedFilter }).join("\n"), /unchanged sibling persistence chains/u);
+    for (const replacement of ['client.from("opening_balance_setups");', 'client.from(resourceName);', 'client.from(getTable());']) {
+      const changed = new Map(current);
+      changed.set(archive, changed.get(archive).replace("generatedOpeningQuery();", replacement));
+      assert.match(check({ source: changed }).join("\n"), /removed frozen scope still exists/u);
+    }
+    const unrelatedArchiveDeletion = structuredClone(registry);
+    unrelatedArchiveDeletion.records = unrelatedArchiveDeletion.records.filter((record) => record.id !== "compat-company-archive-persistence");
+    assert.notDeepEqual(check({ candidate: unrelatedArchiveDeletion }), []);
+    for (const field of ["path", "rule", "resource", "operation"]) {
+      const changed = structuredClone(baseline);
+      changed.records[0].scopes[0][field] += "-unapproved";
+      assert.match(check({ frozenBaseline: changed }).join("\n"), /exact twelve original single-call tuples/u);
+    }
+    const lastFiling = structuredClone(registry);
+    lastFiling.migration.currentCapability = "annual_accounts_filing";
+    lastFiling.migration.currentIssue = "#153";
+    lastFiling.migration.status = "exit-review";
+    lastFiling.migration.exitedCapabilities = ["shareholder_register_filing", "company_tax_return"];
+    assert.match(check({ candidate: lastFiling }).join("\n"), /must retire by the last filing cutover/u);
+    const earlier = structuredClone(registry);
+    earlier.migration.order.unshift({ capability: "authority_connections", removalIssues: ["#150"] });
+    earlier.migration.currentCapability = "authority_connections";
+    earlier.migration.currentIssue = "#150";
+    assert.match(check({ candidate: earlier }).join("\n"), /only at #151 or later/u);
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("#151 bounded retirement compositions remain enforced after RF exits", () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "talli-rf-retirement-pins-"));
+  const original = JSON.parse(readFileSync(new URL("../architecture/compatibility-baseline.json", import.meta.url), "utf8"));
+  const active = JSON.parse(readFileSync(new URL("../architecture/compatibility.json", import.meta.url), "utf8"));
+  const simulation = "confirmSimulatedRf1086Submission";
+  const archiveId = "compat-company-archive-persistence";
+  const records = original.records.filter((record) => [archiveId, "compat-rf1086-persistence", "compat-annual-compliance-persistence", "compat-audit-persistence"].includes(record.id))
+    .map((record) => ({ ...record, scopes: record.scopes.filter((scope) => record.id === archiveId || scope.operation === simulation) }));
+  const baseline = { ...original, records };
+  const registry = compatibilityFixture({ records: active.records.filter((record) => [archiveId, "compat-audit-persistence"].includes(record.id))
+    .map((record) => ({ ...record, scopes: record.scopes.filter((scope) => record.id === archiveId || scope.operation === simulation) })) });
+  registry.migration.order = [
+    { capability: "shareholder_register_filing", removalIssues: ["#151"] },
+    { capability: "company_tax_filing", removalIssues: ["#146", "#152"] },
+    { capability: "annual_compliance", removalIssues: ["#149"] },
+    { capability: "audit", removalIssues: ["#155"] },
+    { capability: "company_archive", removalIssues: ["#157"] },
+  ];
+  registry.migration.currentCapability = "company_tax_filing";
+  registry.migration.currentIssue = "#152";
+  registry.migration.exitedCapabilities = ["shareholder_register_filing"];
+  registry.migration.completedStages = [{ capability: "shareholder_register_filing", removalIssues: ["#151"],
+    gates: registry.migration.foundationRecovery.gates }];
+  const current = new Map(records.flatMap((record) => record.scopes.map((scope) => [scope.path,
+    readFileSync(new URL(`../${scope.path}`, import.meta.url), "utf8")])));
+  const frozen = new Map([...current.keys()].map((path) => [path,
+    execFileSync("git", ["show", `${original.sourceRevision}:${path}`], { encoding: "utf8" })]));
+  const check = (sources = current) => {
+    const { registryPath, baselinePath } = writeCompatibilityFixture(temporaryRoot, registry, baseline);
+    return validateCompatibilityRegistry(registryPath, {
+      baselinePath, expectedBaselineDigest: "TEST_BASELINE_DIGEST",
+      sourceRegistry: { schemaVersion: "1.0", exceptions: records },
+      sourceAtRevision: (path) => frozen.get(path), currentSource: (path) => sources.get(path),
+      sourceAtGateRevision: (_revision, path) => current.get(path),
+      resourceOwner: (resource) => resource === "table:opening_balance_setups" ? undefined : "backend:shareholder_register_filing",
+    });
+  };
+  try {
+    assert.deepEqual(check(), []);
+    for (const [path, operation] of [["apps/web/app/actions.ts", simulation],
+      ["apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts", "GET"]]) {
+      const changed = new Map(current);
+      const source = changed.get(path);
+      const start = source.indexOf(`export async function ${operation}(`);
+      assert.ok(start >= 0);
+      // Insert a no-effect early return without changing a single persistence call.
+      const body = source.indexOf("{", source.indexOf(")", start));
+      changed.set(path, source.slice(0, body + 1) + "\nreturn;\n" + source.slice(body + 1));
+      assert.match(check(changed).join("\n"), /retirement differs from its bounded composition/u, operation);
+    }
+  } finally { rmSync(temporaryRoot, { recursive: true, force: true }); }
 });

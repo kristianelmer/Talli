@@ -251,10 +251,11 @@ def test_rollback_and_recutover_preserve_the_exact_accepted_evidence(admitted):
 
 
 def test_adapter_lock_contention_times_out_and_the_same_basis_recovers(admitted):
+    # Keep fresh proof on the DB clock so this test reaches the intended lock.
     class VerifiedLocalAdapter(SupabaseCompanyAccessAdapter):
         async def _verified_actor_context(self, access_token):
             return str(admitted["owner"]), {"sub": str(admitted["owner"]), "aal": "aal2",
-                "amr": [{"method": "totp", "timestamp": datetime.now(UTC).timestamp()}]}
+                "amr": [{"method": "totp", "timestamp": database_now().timestamp() - 1}]}
 
     with psycopg.connect(DATABASE_URL) as connection:
         principal = connection.execute("select current_user").fetchone()[0]

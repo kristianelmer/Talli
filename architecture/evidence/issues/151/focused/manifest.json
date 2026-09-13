@@ -1,0 +1,21 @@
+{
+  "observedAt": "2026-09-09T20:24:55Z",
+  "revision": "7a49f010229baf13d4942364d352786d7cddc5c3",
+  "implementationState": "uncommitted working tree; files evolved during focused checks",
+  "qualifiesAsCompleteImmutableGate": false,
+  "files": {
+    "backend-boundary.log": "c6b1bcd9b6e5e944c754a2c53a21ba99f54bccb1aeafcf2c34494105b49a8342",
+    "web-boundary.log": "5a61a6a0474b28310867aa068e0b49f7f29332896a153b28cb051abf2d1f9aa6",
+    "launch-rehearsal.log": "d0a43927eccaeb33574307270ef4ab6ea7da81d8e2cb95251cbc13900869e3e9",
+    "web-build.log": "d31cf4c3834a41d26cc8e467b2c497438cd4c79596b5c10079db33ed6489c109",
+    "backend-build.log": "8e7729037d302084f8e6333f0202b811eb25c8a6398a034c1799a553c7822e06",
+    "nested-json-api.log": "1d35f3f5a142b0faad6e06f8158feaa69ce9dc0823c44b2496e6e24fbba8ec7d",
+    "backup-physical-catalog.log": "102d9f4dd0fc64ecb2e263d0bd22e1a7cae1fb93e63adcc74ba964ce9b40b8c1"
+  },
+  "rawLogHashes": {
+    "web-build.log": "3e9c9feddb89ebfc00c4e1418fcd1bd660e35304d9e52a59542d03b816029a2a"
+  },
+  "logNormalization": {
+    "web-build.log": "Archived copy strips terminal carriage returns, trailing spaces and final empty lines only; raw log retained at /tmp/talli-151-web-build.log."
+  }
+}

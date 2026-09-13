@@ -1,0 +1,38 @@
+{
+  "reviewed_at": "2026-09-09T22:10:55.423274+00:00",
+  "base_commit": "7730bd3473943f5308136207b2acce4f720c851c",
+  "verdict": "scoped source pass after schema-owner correction",
+  "draft_sha256": {
+    "/tmp/talli-151-browser-owner-cleanup.mjs": "f7222e800d91a9f9dc75fa1d619166bfa954123ecc0f6352026db6365d903ca9",
+    "/tmp/talli-151-rf1086-fixture-access.mjs": "d00283479f821626cc351a409998d2222b290788061045f1216e070fa6386fe1",
+    "/tmp/talli-151-owner-cleanup-proposal.patch": "7ac2e61aab323414969c6eb29faf1e0ec806244ccc0c2f0abc78e339da74e828",
+    "/tmp/talli-151-owner-cleanup-inventory.json": "b8ea80f7c723e8ff36b1289b0218ddb00adfd3bdb1e62bea045893af88c1fa18"
+  },
+  "referenced_source_sha256": {
+    "tests/support/browser-owner-cleanup.mjs": "f76de8e452f7ef0f70fe34cccf6beb1e674ea254c07988e8c8653b37adcf0479",
+    "tests/support/rf1086-fixture-access.mjs": "ac623515a4564af9e2fe9997d2b281fbec9dabc15b58f2e389b90ed808f8c542",
+    "tests/browser_owner_annual_loop.mjs": "4cec91925cf1a72b2f2e02d94d1299d95f22302773cb5b020915a709b9c2bab4",
+    "tests/browser_company_onboarding.mjs": "9e5131003b66baf54d99e44b7f50099fd8be6bc5e0bc7e633e90c1a90a001bb3",
+    "supabase/migrations/20260827100000_ledger_capability.sql": "1d647e053cc0b779a57a75088809b8f7cf63692f2a6445791177284adc800bf4",
+    "supabase/migrations/20260828102000_banking_connections.sql": "36581d82c89b1554e25fbc4a0c8d569dfbcb245eabb7cd26aac59cd664cffdea"
+  },
+  "inventory": {
+    "predecessor_explicit_families": 77,
+    "missing_predecessor_families": [],
+    "required_relations": 68,
+    "named_rollout_relations": 30,
+    "engine_allowed_relations": 99
+  },
+  "closed_finding": {
+    "description": "backend_system schema-USAGE borrowing must use ledger_store_owner, not postgres",
+    "standard_source": "supabase/migrations/20260827100000_ledger_capability.sql:2276",
+    "correction": "draft schema owner now ledger_store_owner; per-table Banking/Ledger/workflow receipt owners remain distinct"
+  },
+  "independence": "Reviewer did not author this draft, engine or current seed correction. Older root archive/RF public work is outside this review.",
+  "limits": [
+    "Draft remains unapplied at review.",
+    "No reviewer database/provider use or runtime tests.",
+    "Mock and real DB success/failure restoration proof remain pending.",
+    "No fresh owner-journey or complete-gate claim; finite16 amendment remains pending."
+  ]
+}

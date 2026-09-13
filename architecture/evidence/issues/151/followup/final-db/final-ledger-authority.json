@@ -1,0 +1,29 @@
+{
+  "started_at": "2026-09-09T21:57:28.771780+00:00",
+  "command": [
+    "npm",
+    "run",
+    "test:ledger-hosted-migration-authority"
+  ],
+  "source_sha256": {
+    "scripts/rehearse-authority-topology.mjs": "85900cfd7ab3bbf263a1aaadf99efb1172d1c0d37a4e95d64583dfb207d68e15",
+    "package.json": "fb81be090d47fde18a38469afc0315be8a0147b1feffb8d1252ee1997def4cfe",
+    "supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql": "4b88c63a76f133f743eb63254eef0d8300defb5f6d31934b9a7a10c1593cc109",
+    "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql": "187f4210ab2df4b230ddfc631875eb6879216b8d8618b4d5b3ecd50764cac05b",
+    "supabase/rollback/20260909190905_shareholder_register_filing_cutover.sql": "0ac7af94f08fbba31b16058a802b22749138950da56df89fcfa9c19be222f129",
+    "supabase/rollback/20260909190548_shareholder_register_filing_capability.sql": "b14ed6bd2224be710adc31e089dea6468cd992f0960ef1494924b504ff056e71",
+    "supabase/rollback/20260909190955_shareholder_register_filing_contract.sql": "5f9d6a6782bf8aa90b3dfb9786e10e9b767263da5ed58612427d58495060929b",
+    "supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql": "413b755cf8f5dc589bfd2827787f4f0cd74db13118d6eca3735c06417c55f8ad",
+    "apps/backend/tests/test_authority_operations_database_runtime.py": "38df809af253f74477da4b5a4dd365c9c850e62cccacba0ef40fa392757850a5",
+    "apps/backend/tests/test_rf1086_database_runtime.py": "d3cb7d73b05e749b31205b14ac5f0bd1e416b40510ae7b24df258046e13a9141",
+    "apps/backend/tests/test_authority_connections_database_runtime.py": "fb98daabd3f2ef09205208655bdf41a52d529062190be38acabd6518be56de89",
+    "apps/backend/tests/test_launch_signoffs_database_runtime.py": "66219b8a2bf1d16dd2dce9928637ff39f1000c8d41a4603b4bf1d3f50d430efc",
+    "apps/backend/tests/test_shareholder_register_filing_lifecycle.py": "d02ce2a59bd29713834559cacea909fbb97e6d5f17b7817c217cf9fcfc97b680"
+  },
+  "head": "7730bd3473943f5308136207b2acce4f720c851c",
+  "local_only": true,
+  "completed_at": "2026-09-09T21:57:29.294413+00:00",
+  "exit_code": 0,
+  "log_sha256": "655a709b02506c7d7919db1b576197a3594c29b41512ea44282eb6e7c5f45208",
+  "source_unchanged": true
+}

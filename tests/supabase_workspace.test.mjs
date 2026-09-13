@@ -1,3 +1,4 @@
+import { deleteRfFixtureCompanies } from "./support/rf1086-fixture-access.mjs";
 import assert from "node:assert/strict";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
@@ -14,19 +15,9 @@ import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed 
 import { evaluateAnnualReadinessGates } from "../apps/web/app/lib/annual-readiness.ts";
 import { productionAuthorityGate } from "../apps/web/app/lib/authority-permission.ts";
 import { buildCompanyTaxReturnEvidencePersistence } from "../apps/web/app/lib/company-tax-return-submission.ts";
-import { assertNoBlockingFilingOverrides, validateFilingOverride } from "../apps/web/app/lib/filing-overrides.ts";
-import { buildNoActivityRf1086Case, renderRf1086PreviewWithPython } from "../apps/web/app/lib/rf1086.ts";
-import {
-  Rf1086ProductionAdapterDisabledError,
-  rf1086PayloadHash,
-  rf1086ReceiptMetadata,
-  rf1086SubmissionFeedbackItems,
-  rf1086SubmissionIdempotencyKey,
-  rf1086SubmittedPayloadReference,
-  rf1086SubmittedPayloadSnapshot,
-  runRf1086SubmissionAdapter,
-} from "../apps/web/app/lib/rf1086-submission.ts";
-import { assertAdvisoryCanBeAcknowledged, assertNoHardReviewBlocks } from "../apps/web/app/lib/review.ts";
+import { TalliApiError } from "../packages/talli-api-client/src/index.ts";
+import { apiRequest, deniedRf, startWorkspaceRfApi, seedHistoricalRfOpening,
+  rfFixtureTransaction, RF_FIXTURE_TABLES } from "./support/rf1086-workspace-api.mjs";
 import {
   estimateAnnualTax,
   taxSettlementLedgerLines,
@@ -343,6 +334,14 @@ async function deleteWorkspaceCompanyFixture(companyId) {
   try {
     await database.connect();
     connected = true;
+    await rfFixtureTransaction(database, async () => {
+      for (const table of ["filing_review_comments", "filing_overrides", "filing_submissions", "filing_previews", "authority_permissions", "authority_test_runs"])
+        await database.query(`delete from public.${table} where company_id=$1`, [companyId]);
+      await database.query("delete from shareholder_register_filing.production_filing_events where submission_id in (select id from shareholder_register_filing.production_filing_submissions where company_id=$1)", [companyId]);
+      for (const table of RF_FIXTURE_TABLES) await database.query(`delete from shareholder_register_filing.${table} where company_id=$1`, [companyId]);
+      await database.query("delete from ledger.opening_bank_inputs where company_id=$1", [companyId]);
+      for (const table of RF_FIXTURE_TABLES) assert.equal((await database.query(`select count(*)::int count from shareholder_register_filing.${table} where company_id=$1`, [companyId])).rows[0].count, 0);
+    }, { openingProjection: true });
     await database.query("begin");
     await database.query(String.raw`
       do $authority$ begin
@@ -358,8 +357,6 @@ async function deleteWorkspaceCompanyFixture(companyId) {
       [companyId],
     );
     for (const table of [
-      "production_feedback_artifacts",
-      "filing_approval_snapshots",
       "company_archive_export_receipts",
       "company_archive_export_attempts",
       "company_deletion_reviews",
@@ -382,21 +379,27 @@ async function deleteWorkspaceCompanyFixture(companyId) {
       "authority_permissions",
       "filing_previews",
       "ledger_entries",
-      "opening_shareholders",
-      "opening_balance_setups",
       "billing_accounts",
       "audit_events",
     ]) {
       await database.query(`delete from public.${table} where company_id = $1`, [companyId]);
     }
     await database.query("delete from public.company_archive_source_generations where company_id = $1", [companyId]);
-    await database.query("delete from public.companies where id = $1", [companyId]);
     await database.query(String.raw`
       do $authority$ begin
         execute pg_catalog.format('revoke documents_store_owner from %I', current_user);
       end $authority$
     `);
     await database.query("commit");
+    await rfFixtureTransaction(database, async () => {
+      // Frozen Ledger entries retain their setup FK until their fixture rows
+      // above are removed. Internal FK triggers remain active throughout.
+      if ((await database.query("select to_regclass('public.opening_balance_setups') is not null present")).rows[0].present) {
+        await database.query("delete from public.opening_shareholders where company_id=$1", [companyId]);
+        await database.query("delete from public.opening_balance_setups where company_id=$1", [companyId]);
+      }
+      await deleteRfFixtureCompanies(database, [companyId]);
+    }, { openingProjection: true });
   } catch (error) {
     operationError = error;
     if (connected) {
@@ -576,6 +579,9 @@ test(
   let companyId;
   let foreignCompanyId;
   let primaryError;
+  let rf;
+  let rfDatabase;
+  let rfOwner;
   const cleanupErrors = [];
 
   try {
@@ -597,6 +603,18 @@ test(
     reviewer = await signIn(reviewerUser);
     readOnly = await signIn(readOnlyUser);
     invitee = await signIn(inviteeUser);
+    // RF uses a real MFA session. Verifying the first factor revokes older
+    // AAL1 sessions, so sign the sibling fixture in again without MFA; its
+    // original tax-import denial must exercise a valid AAL1 session.
+    rfOwner = await signIn(ownerUser);
+    await elevateToAal2(rfOwner);
+    owner = await signIn(ownerUser);
+    const siblingAssurance = await owner.auth.mfa.getAuthenticatorAssuranceLevel();
+    assert.ifError(siblingAssurance.error);
+    assert.equal(siblingAssurance.data.currentLevel, "aal1");
+    rfDatabase = new pg.Client(getDatabaseConfig());
+    await rfDatabase.connect();
+    rf = await startWorkspaceRfApi(rfDatabase, getDatabaseConfig());
 
     const { data: company, error: companyError } = await owner
       .from("companies")
@@ -721,7 +739,14 @@ test(
     await assertNoError(
       admin.from("company_memberships").delete().eq("company_id", companyId).eq("user_id", inviteeUser.id),
     );
-    await assertNoError(admin.from("companies").delete().eq("id", foreignCompanyId));
+    const fixtureDatabase = new pg.Client(getDatabaseConfig());
+    await fixtureDatabase.connect();
+    try {
+      await fixtureDatabase.query("begin");
+      await deleteRfFixtureCompanies(fixtureDatabase, [foreignCompanyId]);
+      await fixtureDatabase.query("commit");
+    } catch (error) { await fixtureDatabase.query("rollback"); throw error; }
+    finally { await fixtureDatabase.end(); }
     foreignCompanyId = undefined;
 
     const { error: auditError } = await owner.from("audit_events").insert({
@@ -933,32 +958,10 @@ test(
         },
       ],
     };
-    const { data: setup, error: setupError } = await owner
-      .from("opening_balance_setups")
-      .insert({
-        company_id: companyId,
-        income_year: 2025,
-        bank_balance: openingInput.bankBalance,
-        share_capital: openingInput.shareCapital,
-        share_count: openingInput.shareCount,
-        nominal_value: openingInput.nominalValue,
-        created_by: ownerUser.id,
-      })
-      .select("id, company_id, income_year, bank_balance, share_capital, share_count, nominal_value, locked_at, created_by")
-      .single();
-    assert.ifError(setupError);
+    const setupId = await seedHistoricalRfOpening(rfDatabase, companyId, ownerUser.id, openingInput);
+    const setup = (await rf.openings(rfOwner, companyId)).find((row) => row.id === setupId);
+    assert.ok(setup);
     assert.equal(setup.share_count, 100);
-
-    const { error: openingShareholderError } = await owner.from("opening_shareholders").insert({
-      setup_id: setup.id,
-      company_id: companyId,
-      name: "Ola Nordmann",
-      shareholder_kind: "norwegian_person",
-      national_id: "01017012345",
-      share_count: 100,
-      created_by: ownerUser.id,
-    });
-    assert.ifError(openingShareholderError);
 
     const { data: openingLedgerEntry, error: ledgerError } = await owner
       .from("ledger_entries")
@@ -988,20 +991,9 @@ test(
     });
     assert.ifError(openingAuditError);
 
-    const { data: openingReload, error: openingReloadError } = await owner
-      .from("opening_balance_setups")
-      .select("id, share_count")
-      .eq("id", setup.id)
-      .single();
-    assert.ifError(openingReloadError);
+    const openingReload = (await rf.openings(rfOwner, companyId)).find((row) => row.id === setup.id);
     assert.equal(openingReload.share_count, 100);
-
-    const { data: outsiderSetups, error: outsiderSetupError } = await outsider
-      .from("opening_balance_setups")
-      .select("id")
-      .eq("id", setup.id);
-    assert.ifError(outsiderSetupError);
-    assert.deepEqual(outsiderSetups, []);
+    assert.deepEqual(await rf.openings(outsider, companyId), []);
 
     const { data: persistedCompany, error: persistedCompanyError } = await owner
       .from("companies")
@@ -1081,53 +1073,22 @@ test(
       .eq("company_id", companyId);
     assert.ifError(outsiderAnnualDataRowsError);
     assert.equal(outsiderAnnualDataRows.length, 0);
-    const { data: persistedShareholders, error: persistedShareholdersError } = await owner
-      .from("opening_shareholders")
-      .select("id, setup_id, company_id, name, shareholder_kind, national_id, org_number, share_count")
-      .eq("setup_id", setup.id);
-    assert.ifError(persistedShareholdersError);
-    const rendered = renderRf1086PreviewWithPython(
-      buildNoActivityRf1086Case(persistedCompany, setup, persistedShareholders),
-    );
-    assert.equal(rendered.status, "ready");
-    assert.match(rendered.preview, /Talli Test Holding AS/);
-
-    const { data: filingPreview, error: filingPreviewError } = await owner
-      .from("filing_previews")
-      .insert({
-        company_id: companyId,
-        setup_id: setup.id,
-        income_year: 2025,
-        filing: rendered.filing,
-        status: rendered.status,
-        issues: rendered.issues,
-        preview: rendered.preview,
-        hovedskjema_xml: rendered.hovedskjemaXml,
-        underskjema_xml: rendered.underskjemaXml,
-        source: "python_rf1086_engine",
-        created_by: ownerUser.id,
-      })
-      .select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at")
-      .single();
-    assert.ifError(filingPreviewError);
+    const persistedShareholders = (await rf.openings(rfOwner, companyId)).find((row) => row.id === setup.id).shareholders;
+    const generated = await rf.call(rfOwner, "rf1086GeneratePreview", { companyId, openingSnapshotId: setup.id });
+    const filingPreview = await rf.preview(rfOwner, generated.recordId);
     assert.equal(filingPreview.status, "ready");
+    assert.match(filingPreview.preview, /Talli Test Holding AS/);
+    assert.equal(filingPreview.filing, "aksjonærregisteroppgaven");
 
     assert.equal(productionAuthorityGate([], "aksjonaerregisteroppgaven").status, "missing_authority_confirmation");
-    const { data: authorityPermission, error: authorityPermissionError } = await owner
-      .from("authority_permissions")
-      .insert({
-        company_id: companyId,
-        obligation: "aksjonaerregisteroppgaven",
-        submitter_user_id: ownerUser.id,
-        confirmed_by: ownerUser.id,
-        production_enabled: true,
-      })
-      .select("id, company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled, updated_at")
-      .single();
-    assert.ifError(authorityPermissionError);
+    const permissionResult = await rf.call(rfOwner, "rf1086ConfirmFilingPermission", { companyId, productionEnabled: true });
+    const authorityPermission = (await rf.workspace(rfOwner, companyId)).permissions.find((row) => row.id === permissionResult.recordId);
     assert.equal(authorityPermission.obligation, "aksjonaerregisteroppgaven");
     assert.equal(authorityPermission.submitter_user_id, ownerUser.id);
     assert.equal(productionAuthorityGate([authorityPermission], "aksjonaerregisteroppgaven").allowed, true);
+    await assert.rejects(rf.call(reviewer, "rf1086ConfirmFilingPermission", { companyId, productionEnabled: false }), deniedRf);
+    await assert.rejects(rf.call(outsider, "rf1086ConfirmFilingPermission", { companyId, productionEnabled: false }), deniedRf);
+
     const { error: authorityAuditError } = await owner.from("audit_events").insert({
       company_id: companyId,
       actor_id: ownerUser.id,
@@ -1187,6 +1148,7 @@ test(
       .eq("company_id", companyId)
       .order("obligation");
     assert.ifError(authorityPermissionsBeforeImportError);
+    const rfPermissionsBeforeImport = (await rf.workspace(rfOwner, companyId)).permissions;
     const { data: launchSignoffsBeforeImport, error: launchSignoffsBeforeImportError } = await admin
       .from("launch_signoffs")
       .select("key, status, reviewer, reviewed_at, evidence_link, decision, recorded_by, updated_at")
@@ -1198,7 +1160,14 @@ test(
     });
     assert.match(noMfaImportError?.message ?? "", /company_tax_evidence_mfa_required/u);
 
-    await elevateToAal2(owner);
+    // The same owner already verified a real factor for RF. Reuse that
+    // authenticated AAL2 session after proving the sibling AAL1 denial; an
+    // AAL1 session cannot enroll a second factor once one is verified.
+    const verifiedRfSession = await rfOwner.auth.getSession();
+    assert.ifError(verifiedRfSession.error);
+    assert.ok(verifiedRfSession.data.session);
+    assert.ifError((await owner.auth.setSession(verifiedRfSession.data.session)).error);
+    assert.equal((await owner.auth.mfa.getAuthenticatorAssuranceLevel()).data.currentLevel, "aal2");
     for (const [label, evidenceUrl] of [
       ["missing host", "https:///missing-host"],
       ["non-canonical host-only URL", "https://evidence.example"],
@@ -1559,30 +1528,8 @@ test(
       })
       .select("id")
       .single();
-    assert.ifError(directSimulationSubmissionError);
-    const { error: simulationToTestAuthorityError } = await owner
-      .from("filing_submissions")
-      .update({
-        mode: "test_authority",
-        adapter_mode: "test_authority",
-        preview_id: null,
-        authority_test_run_id: directAuthorityRow.id,
-      })
-      .eq("id", directSimulationSubmission.id);
-    assert.ok(simulationToTestAuthorityError);
-    const { data: unchangedSimulationSubmission, error: unchangedSimulationSubmissionError } = await owner
-      .from("filing_submissions")
-      .select("mode, adapter_mode, preview_id, authority_test_run_id")
-      .eq("id", directSimulationSubmission.id)
-      .single();
-    assert.ifError(unchangedSimulationSubmissionError);
-    assert.deepEqual(unchangedSimulationSubmission, {
-      mode: "simulation",
-      adapter_mode: "simulation",
-      preview_id: filingPreview.id,
-      authority_test_run_id: null,
-    });
-
+    assert.match(directSimulationSubmissionError?.message ?? "", /rf1086_legacy_writer_retired/u);
+    assert.equal(directSimulationSubmission, null);
     const { data: directTestAuthorityUpdates, error: directTestAuthorityUpdateError } = await owner
       .from("filing_submissions")
       .update({
@@ -1644,6 +1591,7 @@ test(
       .order("obligation");
     assert.ifError(authorityPermissionsAfterImportError);
     assert.deepEqual(authorityPermissionsAfterImport, authorityPermissionsBeforeImport);
+    assert.deepEqual((await rf.workspace(rfOwner, companyId)).permissions, rfPermissionsBeforeImport);
     const { data: launchSignoffsAfterImport, error: launchSignoffsAfterImportError } = await admin
       .from("launch_signoffs")
       .select("key, status, reviewer, reviewed_at, evidence_link, decision, recorded_by, updated_at")
@@ -1741,6 +1689,7 @@ test(
       .select("company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled")
       .eq("company_id", companyId);
     assert.ifError(annualAuthorityPermissionsError);
+    annualAuthorityPermissions.push(...(await rf.workspace(rfOwner, companyId)).permissions);
     const annualReadinessSnapshots = evaluateAnnualReadinessGates({
       company: persistedCompany,
       incomeYear: 2025,
@@ -1848,315 +1797,115 @@ test(
     assert.ifError(billingAfterOutsiderUpdateError);
     assert.equal(billingAfterOutsiderUpdate.filing_package_paid, true);
     assert.equal(billingAfterOutsiderUpdate.refund_eligible, true);
-    assert.equal(filingPreview.source, "python_rf1086_engine");
+    assert.equal(filingPreview.source, "deterministic_rf1086_engine");
 
-    const advisoryOverride = validateFilingOverride({
-      fieldTarget: "rf1086.note",
-      oldValue: "",
-      newValue: "Manuell note for myndighetsfelt",
-      reason: "Authority field not modelled yet",
-      riskLevel: "advisory",
-    });
-    const { data: persistedAdvisoryOverride, error: advisoryOverrideError } = await owner
-      .from("filing_overrides")
-      .insert({
-        preview_id: filingPreview.id,
-        company_id: companyId,
-        income_year: 2025,
-        filing: filingPreview.filing,
-        field_target: advisoryOverride.fieldTarget,
-        old_value: advisoryOverride.oldValue,
-        new_value: advisoryOverride.newValue,
-        reason: advisoryOverride.reason,
-        risk_level: advisoryOverride.riskLevel,
-        owner_confirmed_by: ownerUser.id,
-        owner_confirmed_at: new Date().toISOString(),
-        created_by: ownerUser.id,
-      })
-      .select("id, preview_id, company_id, income_year, filing, field_target, old_value, new_value, reason, risk_level, owner_confirmed_by")
-      .single();
-    assert.ifError(advisoryOverrideError);
+    const advisoryOverride = { fieldTarget: "rf1086.note", oldValue: "", newValue: "Manuell note for myndighetsfelt",
+      reason: "Authority field not modelled yet", riskLevel: "advisory", previewId: filingPreview.id, ownerConfirmed: true };
+    const advisoryResult = await rf.call(rfOwner, "rf1086RecordOverride", advisoryOverride);
+    const persistedAdvisoryOverride = (await rf.workspace(rfOwner, companyId)).overrides.find((row) => row.id === advisoryResult.recordId);
     assert.equal(persistedAdvisoryOverride.field_target, "rf1086.note");
     assert.equal(persistedAdvisoryOverride.risk_level, "advisory");
     assert.equal(persistedAdvisoryOverride.owner_confirmed_by, ownerUser.id);
-
     const { error: advisoryOverrideAuditError } = await owner.from("audit_events").insert({
-      company_id: companyId,
-      actor_id: ownerUser.id,
-      category: "filing",
-      action: "filing_override_added",
+      company_id: companyId, actor_id: ownerUser.id, category: "filing", action: "filing_override_added",
       message: "Filing-overstyring lagt til for rf1086.note: advisory.",
     });
     assert.ifError(advisoryOverrideAuditError);
+    const reloadedOverrides = (await rf.workspace(rfOwner, companyId)).overrides.map(({ id, field_target, risk_level }) => ({ id, field_target, risk_level }));
+    assert.deepEqual(reloadedOverrides, [{ id: persistedAdvisoryOverride.id, field_target: "rf1086.note", risk_level: "advisory" }]);
+    await assert.rejects(rf.workspace(outsider, companyId), deniedRf);
+    await assert.rejects(rf.call(readOnly, "rf1086RecordOverride", { ...advisoryOverride, newValue: "Read-only should not write." }), deniedRf);
 
-    const { data: reloadedOverrides, error: reloadedOverrideError } = await owner
-      .from("filing_overrides")
-      .select("id, field_target, risk_level")
-      .eq("preview_id", filingPreview.id);
-    assert.ifError(reloadedOverrideError);
-    assert.deepEqual(reloadedOverrides, [
-      {
-        id: persistedAdvisoryOverride.id,
-        field_target: "rf1086.note",
-        risk_level: "advisory",
-      },
-    ]);
-
-    const { data: outsiderOverrides, error: outsiderOverrideError } = await outsider
-      .from("filing_overrides")
-      .select("id")
-      .eq("preview_id", filingPreview.id);
-    assert.ifError(outsiderOverrideError);
-    assert.deepEqual(outsiderOverrides, []);
-
-    const { error: readOnlyOverrideError } = await readOnly.from("filing_overrides").insert({
-      preview_id: filingPreview.id,
-      company_id: companyId,
-      income_year: 2025,
-      filing: filingPreview.filing,
-      field_target: "rf1086.note",
-      old_value: "",
-      new_value: "Read-only should not write.",
-      reason: "Forbidden role.",
-      risk_level: "advisory",
-      owner_confirmed_by: readOnlyUser.id,
-      owner_confirmed_at: new Date().toISOString(),
-      created_by: readOnlyUser.id,
-    });
-    assert.ok(readOnlyOverrideError);
-    assertNoBlockingFilingOverrides([persistedAdvisoryOverride]);
-
-    assert.throws(
-      () =>
-        runRf1086SubmissionAdapter({
-          mode: "production",
-          preview: filingPreview,
-          userId: ownerUser.id,
-          confirmations: { authorityConfirmed: true, previewConfirmed: true },
-        }),
-      (error) => error instanceof Rf1086ProductionAdapterDisabledError,
-    );
-    const simulatedSubmission = runRf1086SubmissionAdapter({
-      mode: "simulation",
-      preview: filingPreview,
-      userId: ownerUser.id,
-      confirmations: {
-        authorityConfirmed: true,
-        previewConfirmed: true,
-      },
-    });
-    assert.equal(simulatedSubmission.status, "receipt_stored");
-    const submissionPayloadHash = rf1086PayloadHash(filingPreview);
-    const submissionIdempotencyKey = rf1086SubmissionIdempotencyKey(filingPreview);
-    const submissionFeedbackItems = rf1086SubmissionFeedbackItems(simulatedSubmission);
-    const submissionReceiptMetadata = rf1086ReceiptMetadata(simulatedSubmission);
-    const submittedPayloadRef = rf1086SubmittedPayloadReference(filingPreview, simulatedSubmission);
-    const submittedPayload = rf1086SubmittedPayloadSnapshot(filingPreview);
-    const { data: filingSubmission, error: filingSubmissionError } = await owner
-      .from("filing_submissions")
-      .upsert(
-        {
-          preview_id: filingPreview.id,
-          company_id: companyId,
-          setup_id: setup.id,
-          income_year: 2025,
-          filing: filingPreview.filing,
-          mode: "simulation",
-          adapter_mode: "simulation",
-          payload_hash: submissionPayloadHash,
-          idempotency_key: submissionIdempotencyKey,
-          status: simulatedSubmission.status,
-          authority_confirmed_by: simulatedSubmission.authority_confirmed_by,
-          authority_confirmed_at: simulatedSubmission.authority_confirmed_at,
-          preview_confirmed_by: simulatedSubmission.preview_confirmed_by,
-          preview_confirmed_at: simulatedSubmission.preview_confirmed_at,
-          calls: simulatedSubmission.calls,
-          receipt_id: simulatedSubmission.receipt_id,
-          feedback_document_ids: simulatedSubmission.feedback_document_ids,
-          feedback_items: submissionFeedbackItems,
-          receipt_metadata: submissionReceiptMetadata,
-          submitted_payload_ref: submittedPayloadRef,
-          submitted_payload: submittedPayload,
-          failure_code: simulatedSubmission.failure_code,
-          failure_message: simulatedSubmission.failure_message,
-          created_by: ownerUser.id,
-          submitted_by: ownerUser.id,
-        },
-        { onConflict: "preview_id" },
-      )
-      .select("id, preview_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by")
-      .single();
-    assert.ifError(filingSubmissionError);
+    // Global provider activation remains disabled; a real Send route is denied
+    // before provider/configuration I/O, while the separate simulation is real.
+    await assert.rejects(rf.call(rfOwner, "legacyRf1086SendApprovedFiling", { approvalId: randomUUID() }),
+      (error) => error instanceof TalliApiError && error.status === 503 && error.problem?.code === "configuration_unavailable");
+    const simulationInput = { previewId: filingPreview.id, authorityConfirmed: true, previewConfirmed: true };
+    const simulationResult = await rf.call(rfOwner, "rf1086ConfirmSimulation", simulationInput);
+    const filingSubmission = (await rf.workspace(rfOwner, companyId)).submissions.find((row) => row.id === simulationResult.recordId);
+    const submissionPayloadHash = createHash("sha256").update(JSON.stringify({ filing: filingPreview.filing,
+      company_id: filingPreview.company_id, income_year: filingPreview.income_year,
+      hovedskjema_xml: filingPreview.hovedskjema_xml, underskjema_xml: filingPreview.underskjema_xml })).digest("hex");
+    const submissionIdempotencyKey = `rf1086:${companyId}:2025:${submissionPayloadHash.slice(0, 16)}`;
     assert.equal(filingSubmission.status, "receipt_stored");
     assert.equal(filingSubmission.calls.length, 4);
     assert.equal(filingSubmission.payload_hash, submissionPayloadHash);
     assert.equal(filingSubmission.idempotency_key, submissionIdempotencyKey);
     assert.equal(filingSubmission.submitted_by, ownerUser.id);
     assert.equal(filingSubmission.feedback_items[0].severity, "accepted");
-    assert.equal(filingSubmission.receipt_metadata.receiptId, simulatedSubmission.receipt_id);
+    assert.equal(filingSubmission.receipt_metadata.receiptId, filingSubmission.receipt_id);
     assert.equal(filingSubmission.submitted_payload_ref.payloadHash, submissionPayloadHash);
     assert.equal(filingSubmission.submitted_payload.hovedskjemaXml, filingPreview.hovedskjema_xml);
-
-    const retrySubmission = runRf1086SubmissionAdapter({
-      mode: "simulation",
-      preview: filingPreview,
-      userId: ownerUser.id,
-      confirmations: {
-        authorityConfirmed: true,
-        previewConfirmed: true,
-      },
-    });
-    const { error: retryError } = await owner.from("filing_submissions").upsert(
-      {
-        preview_id: filingPreview.id,
-        company_id: companyId,
-        setup_id: setup.id,
-        income_year: 2025,
-        filing: filingPreview.filing,
-        mode: "simulation",
-        adapter_mode: "simulation",
-        payload_hash: submissionPayloadHash,
-        idempotency_key: submissionIdempotencyKey,
-        status: retrySubmission.status,
-        authority_confirmed_by: retrySubmission.authority_confirmed_by,
-        authority_confirmed_at: retrySubmission.authority_confirmed_at,
-        preview_confirmed_by: retrySubmission.preview_confirmed_by,
-        preview_confirmed_at: retrySubmission.preview_confirmed_at,
-        calls: retrySubmission.calls,
-        receipt_id: retrySubmission.receipt_id,
-        feedback_document_ids: retrySubmission.feedback_document_ids,
-        feedback_items: rf1086SubmissionFeedbackItems(retrySubmission),
-        receipt_metadata: rf1086ReceiptMetadata(retrySubmission),
-        submitted_payload_ref: rf1086SubmittedPayloadReference(filingPreview, retrySubmission),
-        submitted_payload: submittedPayload,
-        failure_code: retrySubmission.failure_code,
-        failure_message: retrySubmission.failure_message,
-        created_by: ownerUser.id,
-        submitted_by: ownerUser.id,
-      },
-      { onConflict: "preview_id" },
-    );
-    assert.ifError(retryError);
-    assert.deepEqual(
-      retrySubmission.calls.map((call) => call.idempotency_key),
-      simulatedSubmission.calls.map((call) => call.idempotency_key),
-    );
-
-    const { data: reloadedSubmissions, error: reloadSubmissionError } = await owner
+    assert.deepEqual(filingSubmission.submitted_payload.underskjemaXml, filingPreview.underskjema_xml);
+    // The original cross-obligation conversion denial now targets the actual
+    // canonical simulation receipt, rather than inserting a retired RF row.
+    const { error: simulationToTestAuthorityError } = await owner
       .from("filing_submissions")
-      .select("id, receipt_id, idempotency_key, feedback_items, receipt_metadata, submitted_payload_ref")
-      .eq("preview_id", filingPreview.id);
-    assert.ifError(reloadSubmissionError);
+      .update({
+        mode: "test_authority",
+        adapter_mode: "test_authority",
+        preview_id: null,
+        authority_test_run_id: directAuthorityRow.id,
+      })
+      .eq("id", filingSubmission.id);
+    assert.ok(simulationToTestAuthorityError);
+    const { data: unchangedSimulationSubmission, error: unchangedSimulationSubmissionError } = await owner
+      .from("filing_submissions")
+      .select("mode, adapter_mode, preview_id, authority_test_run_id")
+      .eq("id", filingSubmission.id)
+      .single();
+    assert.ifError(unchangedSimulationSubmissionError);
+    assert.deepEqual(unchangedSimulationSubmission, {
+      mode: "simulation",
+      adapter_mode: "simulation",
+      preview_id: filingPreview.id,
+      authority_test_run_id: null,
+    });
+
+    const retryResult = await rf.call(rfOwner, "rf1086ConfirmSimulation", simulationInput);
+    assert.equal(retryResult.recordId, filingSubmission.id);
+    const reloadedSubmissions = (await rf.workspace(rfOwner, companyId)).submissions.filter((row) => row.preview_id === filingPreview.id);
     assert.equal(reloadedSubmissions.length, 1);
-    assert.equal(reloadedSubmissions[0].receipt_id, simulatedSubmission.receipt_id);
+    assert.equal(reloadedSubmissions[0].receipt_id, filingSubmission.receipt_id);
     assert.equal(reloadedSubmissions[0].idempotency_key, submissionIdempotencyKey);
+    assert.deepEqual(reloadedSubmissions[0].calls.map((call) => call.idempotency_key), filingSubmission.calls.map((call) => call.idempotency_key));
     assert.equal(reloadedSubmissions[0].feedback_items[0].code, "RF1086_ACCEPTED");
-    assert.equal(reloadedSubmissions[0].receipt_metadata.receiptId, simulatedSubmission.receipt_id);
+    assert.equal(reloadedSubmissions[0].receipt_metadata.receiptId, filingSubmission.receipt_id);
     assert.equal(reloadedSubmissions[0].submitted_payload_ref.payloadHash, submissionPayloadHash);
 
-    const blockingOverride = validateFilingOverride({
-      fieldTarget: "rf1086.transaction_code",
-      oldValue: "U",
-      newValue: "K",
-      reason: "Production value not verified by authority evidence.",
-      riskLevel: "block",
-    });
-    const { data: persistedBlockingOverride, error: blockingOverrideError } = await owner
-      .from("filing_overrides")
-      .insert({
-        preview_id: filingPreview.id,
-        company_id: companyId,
-        income_year: 2025,
-        filing: filingPreview.filing,
-        field_target: blockingOverride.fieldTarget,
-        old_value: blockingOverride.oldValue,
-        new_value: blockingOverride.newValue,
-        reason: blockingOverride.reason,
-        risk_level: blockingOverride.riskLevel,
-        owner_confirmed_by: ownerUser.id,
-        owner_confirmed_at: new Date().toISOString(),
-        created_by: ownerUser.id,
-      })
-      .select("risk_level, field_target")
-      .single();
-    assert.ifError(blockingOverrideError);
-    assert.throws(() => assertNoBlockingFilingOverrides([persistedBlockingOverride]), /Blokkerende filing-overstyring/);
+    const blockingResult = await rf.call(rfOwner, "rf1086RecordOverride", { previewId: filingPreview.id,
+      fieldTarget: "rf1086.transaction_code", oldValue: "U", newValue: "K",
+      reason: "Production value not verified by authority evidence.", riskLevel: "block", ownerConfirmed: true });
+    const persistedBlockingOverride = (await rf.workspace(rfOwner, companyId)).overrides.find((row) => row.id === blockingResult.recordId);
+    assert.equal(persistedBlockingOverride.risk_level, "block");
+    assert.equal(persistedBlockingOverride.field_target, "rf1086.transaction_code");
+    await assert.rejects(rf.call(rfOwner, "rf1086ConfirmSimulation", simulationInput),
+      (error) => error instanceof TalliApiError && error.status === 409);
+    assert.equal((await rf.workspace(rfOwner, companyId)).submissions.length, 1);
+    await assert.rejects(rf.workspace(outsider, companyId), deniedRf);
+    await assert.rejects(rf.preview(outsider, filingPreview.id), deniedRf);
+    assert.equal((await rf.preview(reviewer, filingPreview.id)).id, filingPreview.id);
 
-    const { data: outsiderSubmissions, error: outsiderSubmissionError } = await outsider
-      .from("filing_submissions")
-      .select("id")
-      .eq("id", filingSubmission.id);
-    assert.ifError(outsiderSubmissionError);
-    assert.deepEqual(outsiderSubmissions, []);
-
-    const { data: outsiderPreviews, error: outsiderPreviewError } = await outsider
-      .from("filing_previews")
-      .select("id")
-      .eq("id", filingPreview.id);
-    assert.ifError(outsiderPreviewError);
-    assert.deepEqual(outsiderPreviews, []);
-
-    const { data: reviewerPreviews, error: reviewerPreviewError } = await reviewer
-      .from("filing_previews")
-      .select("id")
-      .eq("id", filingPreview.id);
-    assert.ifError(reviewerPreviewError);
-    assert.deepEqual(reviewerPreviews, [{ id: filingPreview.id }]);
-
-    const { data: advisoryComment, error: advisoryCommentError } = await reviewer
-      .from("filing_review_comments")
-      .insert({
-        preview_id: filingPreview.id,
-        company_id: companyId,
-        target: "rf1086_preview",
-        severity: "advisory",
-        body: "Kontroller aksjonærnavn før innsending.",
-        created_by: reviewerUser.id,
-      })
-      .select("id, severity, acknowledged_by")
-      .single();
-    assert.ifError(advisoryCommentError);
+    const commentResult = await rf.call(reviewer, "rf1086AddReviewComment", { previewId: filingPreview.id,
+      severity: "advisory", body: "Kontroller aksjonærnavn før innsending." });
+    const advisoryComment = (await rf.workspace(rfOwner, companyId)).comments.find((row) => row.id === commentResult.recordId);
     assert.equal(advisoryComment.severity, "advisory");
-    assertAdvisoryCanBeAcknowledged({ severity: advisoryComment.severity });
-
-    const { error: readOnlyCommentError } = await readOnly.from("filing_review_comments").insert({
-      preview_id: filingPreview.id,
-      company_id: companyId,
-      target: "rf1086_preview",
-      severity: "advisory",
-      body: "Read-only should not write.",
-      created_by: readOnlyUser.id,
-    });
-    assert.ok(readOnlyCommentError);
-
-    const acknowledgedAt = new Date().toISOString();
-    const { data: acknowledgedComment, error: acknowledgeError } = await owner
-      .from("filing_review_comments")
-      .update({ acknowledged_by: ownerUser.id, acknowledged_at: acknowledgedAt })
-      .eq("id", advisoryComment.id)
-      .select("id, acknowledged_by")
-      .single();
-    assert.ifError(acknowledgeError);
+    assert.equal(advisoryComment.acknowledged_by, null);
+    await assert.rejects(rf.call(readOnly, "rf1086AddReviewComment", { previewId: filingPreview.id,
+      severity: "advisory", body: "Read-only should not write." }), deniedRf);
+    await rf.call(rfOwner, "rf1086AcknowledgeReviewComment", { commentId: advisoryComment.id });
+    const acknowledgedComment = (await rf.workspace(rfOwner, companyId)).comments.find((row) => row.id === advisoryComment.id);
     assert.equal(acknowledgedComment.acknowledged_by, ownerUser.id);
-
-    const { data: hardBlockComment, error: hardBlockError } = await reviewer
-      .from("filing_review_comments")
-      .insert({
-        preview_id: filingPreview.id,
-        company_id: companyId,
-        target: "rf1086_preview",
-        severity: "hard_block",
-        body: "Mangler gyldig avklaring.",
-        created_by: reviewerUser.id,
-      })
-      .select("id, severity")
-      .single();
-    assert.ifError(hardBlockError);
-    assert.throws(() => assertAdvisoryCanBeAcknowledged({ severity: hardBlockComment.severity }), /Hard review-blokk/);
-    assert.throws(
-      () => assertNoHardReviewBlocks([{ severity: "advisory" }, { severity: hardBlockComment.severity }]),
-      /simulert innsending/,
-    );
+    assert.ok(acknowledgedComment.acknowledged_at);
+    const hardBlockResult = await rf.call(reviewer, "rf1086AddReviewComment", { previewId: filingPreview.id,
+      severity: "hard_block", body: "Mangler gyldig avklaring." });
+    const hardBlockComment = (await rf.workspace(rfOwner, companyId)).comments.find((row) => row.id === hardBlockResult.recordId);
+    assert.equal(hardBlockComment.severity, "hard_block");
+    await assert.rejects(rf.call(rfOwner, "rf1086AcknowledgeReviewComment", { commentId: hardBlockComment.id }),
+      (error) => error instanceof TalliApiError && error.status === 403 && error.problem?.code === "SHAREHOLDER_REGISTER_FILING_FORBIDDEN");
+    assert.equal((await rf.workspace(rfOwner, companyId)).comments.find((row) => row.id === hardBlockComment.id).acknowledged_at, null);
+    await assert.rejects(rf.call(rfOwner, "rf1086ConfirmSimulation", simulationInput),
+      (error) => error instanceof TalliApiError && error.status === 409);
 
     const parsedBank = [
       {
@@ -2744,16 +2493,13 @@ test(
       locked_by: ownerUser.id,
     });
     assert.ifError(periodLock2026Error);
-    const { error: lockedOpeningSetupError } = await owner.from("opening_balance_setups").insert({
-      company_id: companyId,
-      income_year: 2026,
-      bank_balance: 30000,
-      share_capital: 30000,
-      share_count: 100,
-      nominal_value: 300,
-      created_by: ownerUser.id,
-    });
-    assert.ok(lockedOpeningSetupError);
+    await assert.rejects(rf.client.ledgerStartNewYear({ companyId, incomeYear: 2026,
+      bankBalance: { amount: "30000.00", currency: "NOK" }, shareCapital: { amount: "30000.00", currency: "NOK" },
+      shareCount: 100, nominalValue: { amount: "300.00", currency: "NOK" }, shareholders: [{
+        name: "Ola Nordmann", shareholderKind: "norwegian_person", nationalId: "01017012345", orgNumber: null, shareCount: 100,
+      }] }, await apiRequest(rfOwner, { idempotencyKey: `workspace-locked-opening-${randomUUID()}` })),
+      (error) => error instanceof TalliApiError && error.status === 409);
+    assert.equal((await rf.openings(rfOwner, companyId)).some((row) => row.income_year === 2026), false);
 
     const documentId = randomUUID();
     const storageKey = `${companyId}/2025/${documentId}/bank.pdf`;
@@ -2808,6 +2554,7 @@ test(
       .select("id, company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled, updated_at")
       .eq("company_id", companyId);
     assert.ifError(persistedAuthorityError);
+    persistedAuthorityPermissions.push(...(await rf.workspace(rfOwner, companyId)).permissions);
     const { data: persistedBankSuggestionAcceptances, error: persistedBankSuggestionAcceptanceError } = await owner
       .from("bank_suggestion_acceptances")
       .select("id, company_id, bank_transaction_id, ledger_entry_id, rule_id, rule_version, reason, lines, accepted_by, accepted_at")
@@ -2912,6 +2659,8 @@ test(
   } catch (error) {
     primaryError = error;
   } finally {
+    if (rf) await collectCleanupError(() => rf.close(), cleanupErrors);
+    if (rfDatabase) await collectCleanupError(() => rfDatabase.end(), cleanupErrors);
     if (foreignCompanyId) {
       await collectCleanupError(
         () => deleteWorkspaceCompanyFixture(foreignCompanyId),

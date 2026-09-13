@@ -1,0 +1,95 @@
+{
+  "kind": "independent-shareholder-register-filing-entry-review",
+  "issue": "#151",
+  "stage": "shareholder_register_filing",
+  "verdict": "pass-precommit-entry-only",
+  "checkedAt": "2026-09-09T19:00:06.659689+00:00",
+  "testedRevision": "91b178c281bcc5fb887a6257d2f72e380199f3e6",
+  "startedAt": "2026-09-09T18:40:21.300Z",
+  "executedAt": "2026-09-09T18:58:17.826Z",
+  "finalGateCredit": false,
+  "validatesConsecutivePair": false,
+  "previousPassingRevision": null,
+  "validationReport": "/tmp/talli-151-entry-validator-precommit.json",
+  "canonicalEvidenceDigest": "sha256:1ac57b0619c2ae8f95ed0a6c776315e6562d4fc0be6af55d23e37222463b2607",
+  "rawTranscriptDigest": "sha256:99ee6b001f8271ac0c8b6da5e58e162759e4f2aa2aef2b05c7c76383a5d2583b",
+  "testedProducerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+  "schemaDigest": "sha256:b86a1ae4a8d522b252e79a01b1798eb160d18e87222f9c7a92d79b56ee773ced",
+  "checkerDigest": "sha256:1e3167d86cd9a9b9ed04e6df803e93bba1f749bc2f750ac0242e8041eab83031",
+  "checks": {
+    "names": [
+      "credential-scan",
+      "typecheck",
+      "architecture",
+      "boundary",
+      "build-web",
+      "build-backend",
+      "boundary-smoke",
+      "launch-rehearsal",
+      "production-dependency-audit",
+      "database-isolation",
+      "whitespace"
+    ],
+    "count": 11,
+    "allPassAndExitZero": true,
+    "schemaValid": true,
+    "commandsOrderingAndMarkersValid": true,
+    "rawLogAndTestedProducerAndCanonicalJsonHashesRecomputed": true
+  },
+  "artifactState": {
+    "jsonAndLogUntrackedOnly": true,
+    "productAndGeneratedWorktreeRestored": true,
+    "immutableCommittedEvidence": false,
+    "requiresImmutableValidationAfterCommit": true
+  },
+  "observedCounts": {
+    "backendBoundary": {
+      "passed": 2486,
+      "skipped": 2,
+      "deselected": 764
+    },
+    "standaloneValidation": {
+      "passed": 17,
+      "skipped": 1
+    },
+    "finalBilling": {
+      "pythonPassed": 699,
+      "nodePassed": 1,
+      "skipped": 0
+    },
+    "finalAuthorityRfOperatorLaunchDatabase": {
+      "passed": 65,
+      "skipped": 0
+    },
+    "finalAuthorityBrowser": {
+      "passed": 11,
+      "skipped": 0,
+      "hydratedJourneyDurationMs": 24805.360583
+    },
+    "productionDependencyAudits": {
+      "rootVulnerabilities": 0,
+      "webVulnerabilities": 0
+    }
+  },
+  "warningsAndSkips": {
+    "advisorBlockingSecurityErrorFindings": 0,
+    "advisorPerformanceWarnings": 41,
+    "optionalSkippedAdapterTests": [
+      "apps/backend/tests/test_supabase_marketing_measurement.py",
+      "apps/backend/tests/test_supabase_validation_observation.py"
+    ],
+    "standaloneSkip": "same optional validation database adapter",
+    "dedicatedDatabaseRehearsals": "marketing2/2 and validation1/1 passed with no skips; underlying adapter checks are exercised through their existing Node subprocess fixtures",
+    "postgresLifecycleWarningLines": 41,
+    "postgresLifecycleWarningMultisetMatchesPriorPassingR2": true,
+    "newPostgresWarningsComparedWithPriorR2": []
+  },
+  "limits": [
+    "Entry baseline only; receives no #151 final implementation gate credit.",
+    "This uncommitted validation cannot claim immutable committed evidence; repeat single mode after storage commit.",
+    "Canonical11/11 is not a claim that all underlying tests have zero skips.",
+    "No hosted provider, production activation or historical TT02 byte-regeneration claim.",
+    "Original A1 remains unproven for exact historical TT02 replay until original case/XML/archive is located; entry pass does not waive it."
+  ],
+  "errors": []
+}

@@ -1,3 +1,10 @@
+import {
+  loadRf1086Workspaces, presentRf1086Approval, presentRf1086ProductionSubmission,
+  presentRf1086FeedbackArtifact, rf1086ActionErrorMessage,
+  type Rf1086ReceiptMetadataWire as Rf1086ReceiptMetadata,
+  type Rf1086SubmittedPayloadReferenceWire as Rf1086SubmittedPayloadReference,
+  type Rf1086SubmittedPayloadWire as Rf1086SubmittedPayloadSnapshot,
+} from "../../../features/shareholder-register-filing";
 import { loadLaunchSignoffs } from "../../../features/operator-controls";
 import type { AnnualSupportRefundTargetsView } from "../annual-support-refund-recovery";
 import { loadAuthorityOperations, loadSystemUserRequests } from "../../../features/authority-connections";
@@ -17,11 +24,6 @@ import type {
 import type { CompanyCancellationRow } from "../cancellation";
 import type { LaunchSignoffKey, LaunchSignoffStatus } from "../launch-signoff";
 import { buildOperatorSupportSummaries, operatorReadRecovery, type OperatorReadRecovery, type OperatorAnnualRefundSelection } from "../operator-support";
-import type {
-  Rf1086ReceiptMetadata,
-  Rf1086SubmittedPayloadReference,
-  Rf1086SubmittedPayloadSnapshot,
-} from "../rf1086-submission";
 import type { SystemUserRequestStatus } from "@talli/talli-api-client";
 import {
   loadBankSuggestionAcceptances,
@@ -898,20 +900,6 @@ export async function listFilingSubmissions(companyIds: string[]) {
   };
 }
 
-function productionPilotSchemaUnavailable(
-  errors: Array<{ code?: string; message?: string } | null>,
-) {
-  return errors.some(
-    (error) =>
-      error != null &&
-      (error.code === "PGRST205" ||
-        error.code === "42P01" ||
-        /production_(?:pilot|filing|feedback)|filing_approval_snapshots/iu.test(
-          error.message ?? "",
-        )),
-  );
-}
-
 export async function listSystemUserRequests(
   supabase: SupabaseClient,
   companyIds: string[],
@@ -937,39 +925,32 @@ export async function listSystemUserRequests(
 }
 
 export async function listProductionFilingState(companyIds: string[]) {
-  if (!hasSupabaseEnv() || companyIds.length === 0) {
+  const empty = {
+    productionPilotEntitlements: [] as ProductionPilotEntitlementRow[],
+    filingApprovalSnapshots: [] as FilingApprovalSnapshotRow[],
+    productionFilingSubmissions: [] as ProductionFilingSubmissionRow[],
+    productionFeedbackArtifacts: [] as ProductionFeedbackArtifactRow[],
+  };
+  if (companyIds.length === 0) return { ...empty, error: null };
+  if (!hasSupabaseEnv()) return { ...empty, error: "RF-1086-status er midlertidig utilgjengelig." };
+  try {
+    const supabase = await createSupabaseServerClient();
+    const accessToken = await backendAccessToken(supabase);
+    if (!accessToken) return { ...empty, error: "Innlogging kreves." };
+    const workspaces = await loadRf1086Workspaces(accessToken, companyIds);
     return {
-      productionPilotEntitlements: [] as ProductionPilotEntitlementRow[],
-      filingApprovalSnapshots: [] as FilingApprovalSnapshotRow[],
-      productionFilingSubmissions: [] as ProductionFilingSubmissionRow[],
-      productionFeedbackArtifacts: [] as ProductionFeedbackArtifactRow[],
+      productionPilotEntitlements: empty.productionPilotEntitlements,
+      filingApprovalSnapshots: workspaces.flatMap((value) => value.approvals.map(presentRf1086Approval))
+        .sort((left, right) => right.approved_at.localeCompare(left.approved_at)),
+      productionFilingSubmissions: workspaces.flatMap((value) => value.productionSubmissions.map(presentRf1086ProductionSubmission))
+        .sort((left, right) => right.updated_at.localeCompare(left.updated_at)),
+      productionFeedbackArtifacts: workspaces.flatMap((value) => value.feedbackArtifacts.map(presentRf1086FeedbackArtifact))
+        .sort((left, right) => right.retrieved_at.localeCompare(left.retrieved_at)),
       error: null,
     };
+  } catch (error) {
+    return { ...empty, error: rf1086ActionErrorMessage(error) };
   }
-  const supabase = await createSupabaseServerClient();
-  const [approvals, submissions, artifacts] = await Promise.all([
-    supabase.from("filing_approval_snapshots").select("*").in("company_id", companyIds).order("approved_at", { ascending: false }),
-    supabase.from("production_filing_submissions")
-      .select("id,approval_id,entitlement_id,company_id,user_id,income_year,obligation,case_profile,payload_hash,adapter_version,environment,status,supersedes_submission_id,submitted_by,feedback_state,feedback_artifact_count,feedback_last_checked_at,feedback_last_changed_at,feedback_safe_error_code,feedback_correlation_id,created_at,updated_at")
-      .in("company_id", companyIds)
-      .order("updated_at", { ascending: false }),
-    supabase.from("production_feedback_artifacts")
-      .select("id,company_id,submission_id,document_id,content_type,byte_length,sha256,retrieved_at,classification")
-      .in("company_id", companyIds)
-      .order("retrieved_at", { ascending: false }),
-  ]);
-  const errors = [approvals.error, submissions.error, artifacts.error];
-  const rolloutSchemaPending = process.env.TALLI_RF1086_PRODUCTION_ENABLED !== "true"
-    && productionPilotSchemaUnavailable(errors);
-  return {
-    productionPilotEntitlements: [] as ProductionPilotEntitlementRow[],
-    filingApprovalSnapshots: (approvals.data ?? []) as FilingApprovalSnapshotRow[],
-    productionFilingSubmissions: (submissions.data ?? []) as ProductionFilingSubmissionRow[],
-    productionFeedbackArtifacts: (artifacts.data ?? []) as ProductionFeedbackArtifactRow[],
-    error: rolloutSchemaPending
-      ? null
-      : approvals.error?.message ?? submissions.error?.message ?? artifacts.error?.message ?? null,
-  };
 }
 
 export async function listFilingOverrides(companyIds: string[]) {

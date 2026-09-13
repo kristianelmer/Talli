@@ -1,0 +1,29 @@
+.F                                                                       [100%]
+=================================== FAILURES ===================================
+_ test_rf_read_rejects_malformed_selected_receipt_without_caching_or_exposure[workspace] _
+
+endpoint = 'workspace'
+
+    @pytest.mark.parametrize("endpoint", ["archive-source", "workspace"])
+    def test_rf_read_rejects_malformed_selected_receipt_without_caching_or_exposure(endpoint):
+        _, record = _simulation_workspace_api(SIMULATION_ORACLES[0])
+        sessions = Sessions()
+        snapshot_type = Rf1086ArchiveSnapshot if endpoint == "archive-source" else Rf1086WorkspaceSnapshot
+        result = snapshot_type(
+            CompanyId(record.company_id), IncomeYear(record.income_year),
+            simulations=(replace(record, receipt_metadata={"privateDetail": "must-not-be-exposed"}),),
+        )
+        if endpoint == "archive-source": sessions.value.archive_result = result
+        else: sessions.value.workspace_result = result
+        api = TestClient(create_app(shareholder_register_filing_session_factory=sessions),
+                         raise_server_exceptions=False)
+        response = api.get(BASE + f"/{endpoint}?companyId={record.company_id}&incomeYear={record.income_year}", headers=HEADERS)
+>       assert response.status_code == 503, response.text
+E       AssertionError: {"type":"https://talli.no/problems/internal-server-error","title":"Internal server error","status":500,"detail":"An unexpected error occurred.","instance":"/api/v1/shareholder-register-filings/workspace","code":"INTERNAL_SERVER_ERROR","requestId":"rf-new-route-proof"}
+E       assert 500 == 503
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+apps/backend/tests/test_shareholder_register_filing_api.py:359: AssertionError
+=========================== short test summary info ============================
+FAILED apps/backend/tests/test_shareholder_register_filing_api.py::test_rf_read_rejects_malformed_selected_receipt_without_caching_or_exposure[workspace]
+1 failed, 1 passed, 106 deselected in 1.94s

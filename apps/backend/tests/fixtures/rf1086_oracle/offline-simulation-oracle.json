@@ -1,0 +1,618 @@
+[
+  {
+    "name": "baseline",
+    "input": {
+      "authority_confirmed": true,
+      "preview_confirmed": true,
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": 2025,
+      "user_id": "offline-owner",
+      "preview_id": "preview-01",
+      "hovedskjema_xml": "<main>\u00e6</main>",
+      "underskjema_xml": {
+        "h1": "<sub />"
+      }
+    },
+    "exit_code": 0,
+    "output": {
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": 2025,
+      "status": "receipt_stored",
+      "authority_confirmed_by": "offline-owner",
+      "authority_confirmed_at": "2026-09-09T12:00:00.123456Z",
+      "preview_confirmed_by": "offline-owner",
+      "preview_confirmed_at": "2026-09-09T12:00:00.123457Z",
+      "calls": [
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/1086H",
+          "body_hash": "77eaad2ae95838ab1b24ff672bb4e8a8b48176dcda34b4888d06d3182c1ea867",
+          "idempotency_key": "3051dbac-cfff-5655-868d-a1243024e164",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123458Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-preview-01/1086U",
+          "body_hash": "638178d4c57bc9c1e8998c7bcfb9d5d82f7a52047d4819bffac68e62545cca09",
+          "idempotency_key": "cad0fc25-fcca-5c61-ac93-d28545531538",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123459Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-preview-01/bekreft?antall_underskjema=1",
+          "body_hash": "ffdb44a81d960c04195d1756312e7e4a18273c3ab052f3ea3643145ff4ead268",
+          "idempotency_key": "146e4e86-962b-51c3-a537-63ef7b1beb12",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123460Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-preview-01/dokumenter?page=0&size=50",
+          "body_hash": "0f44414c4cdc6ead4f2f2229fc3c5e25efa2fb24072b2b2fc0c7038b14c11030",
+          "idempotency_key": "80bc019f-91f4-5bf8-9cc5-3a0d52c935d4",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123461Z"
+        }
+      ],
+      "receipt_id": "sim-rf1086-offline-\u00e6-2025-preview-",
+      "feedback_document_ids": [
+        "sim-feedback-preview-"
+      ],
+      "failure_code": null,
+      "failure_message": null
+    },
+    "stderr": ""
+  },
+  {
+    "name": "mixed_keys",
+    "input": {
+      "authority_confirmed": true,
+      "preview_confirmed": true,
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": 2025,
+      "user_id": "offline-owner",
+      "preview_id": "preview-01",
+      "hovedskjema_xml": "<main>\u00e6</main>",
+      "underskjema_xml": {
+        "b": "<b/>",
+        "A": "<A/>",
+        "\u00e6": "<ae/>",
+        "\ud83d\ude00": "<astral/>",
+        "2": "<two/>",
+        "10": "<ten/>"
+      }
+    },
+    "exit_code": 0,
+    "output": {
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": 2025,
+      "status": "receipt_stored",
+      "authority_confirmed_by": "offline-owner",
+      "authority_confirmed_at": "2026-09-09T12:00:00.123456Z",
+      "preview_confirmed_by": "offline-owner",
+      "preview_confirmed_at": "2026-09-09T12:00:00.123457Z",
+      "calls": [
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/1086H",
+          "body_hash": "77eaad2ae95838ab1b24ff672bb4e8a8b48176dcda34b4888d06d3182c1ea867",
+          "idempotency_key": "3051dbac-cfff-5655-868d-a1243024e164",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123458Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-preview-01/1086U",
+          "body_hash": "b87b41b16d0ae904e6f57c03e660135e22aa1263b0d6c6b0c90b7c8269d2b462",
+          "idempotency_key": "2e33f129-45e3-557f-bb5f-59cfab643850",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123459Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-preview-01/1086U",
+          "body_hash": "f37765e13e88b79c83ed9eadcbcbdacc904a01b981bc5a346a77f84f97280b23",
+          "idempotency_key": "720cc215-3811-551e-8342-52532d11d283",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123460Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-preview-01/1086U",
+          "body_hash": "c8b0d5a25a2366614fa247bb12d9a0c44c0e4334a4e23aa891de7386c1d0e2d0",
+          "idempotency_key": "7b1e1565-ce94-565d-832f-508ac0883f9a",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123461Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-preview-01/1086U",
+          "body_hash": "f0e14e59cb8f685a696228934f2f633a5bb2fdd05a6d635eaeb9f558eb56d5df",
+          "idempotency_key": "207de1c5-da86-5f81-aa7c-189936bd4bae",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123462Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-preview-01/1086U",
+          "body_hash": "b59b155e5d2f76ad7950b925d49e2a60dbb82d7c774a15e26fbc8d773930aae9",
+          "idempotency_key": "f840021e-11c2-5271-ac25-a152b9473974",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123463Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-preview-01/1086U",
+          "body_hash": "e729447e4086b7bbd0ec55e035993230b7f5a3e5d3a407ccaf81394728b30025",
+          "idempotency_key": "792a1a06-1386-58a1-833d-67d95b1df95c",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123464Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-preview-01/bekreft?antall_underskjema=6",
+          "body_hash": "d7fd67ba98c0be558cd0d960c3aeb72f982f98431e3f56b6037a494e12ad67d8",
+          "idempotency_key": "26611c31-dcb4-5745-94ed-68a5b0834046",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123465Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-preview-01/dokumenter?page=0&size=50",
+          "body_hash": "0f44414c4cdc6ead4f2f2229fc3c5e25efa2fb24072b2b2fc0c7038b14c11030",
+          "idempotency_key": "80bc019f-91f4-5bf8-9cc5-3a0d52c935d4",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123466Z"
+        }
+      ],
+      "receipt_id": "sim-rf1086-offline-\u00e6-2025-preview-",
+      "feedback_document_ids": [
+        "sim-feedback-preview-"
+      ],
+      "failure_code": null,
+      "failure_message": null
+    },
+    "stderr": ""
+  },
+  {
+    "name": "year_string",
+    "input": {
+      "authority_confirmed": true,
+      "preview_confirmed": true,
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": "2025",
+      "user_id": "offline-owner",
+      "preview_id": "preview-01",
+      "hovedskjema_xml": "<main>\u00e6</main>",
+      "underskjema_xml": {
+        "h1": "<sub />"
+      }
+    },
+    "exit_code": 0,
+    "output": {
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": 2025,
+      "status": "receipt_stored",
+      "authority_confirmed_by": "offline-owner",
+      "authority_confirmed_at": "2026-09-09T12:00:00.123456Z",
+      "preview_confirmed_by": "offline-owner",
+      "preview_confirmed_at": "2026-09-09T12:00:00.123457Z",
+      "calls": [
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/1086H",
+          "body_hash": "77eaad2ae95838ab1b24ff672bb4e8a8b48176dcda34b4888d06d3182c1ea867",
+          "idempotency_key": "3051dbac-cfff-5655-868d-a1243024e164",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123458Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-preview-01/1086U",
+          "body_hash": "638178d4c57bc9c1e8998c7bcfb9d5d82f7a52047d4819bffac68e62545cca09",
+          "idempotency_key": "cad0fc25-fcca-5c61-ac93-d28545531538",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123459Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-preview-01/bekreft?antall_underskjema=1",
+          "body_hash": "ffdb44a81d960c04195d1756312e7e4a18273c3ab052f3ea3643145ff4ead268",
+          "idempotency_key": "146e4e86-962b-51c3-a537-63ef7b1beb12",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123460Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-preview-01/dokumenter?page=0&size=50",
+          "body_hash": "0f44414c4cdc6ead4f2f2229fc3c5e25efa2fb24072b2b2fc0c7038b14c11030",
+          "idempotency_key": "80bc019f-91f4-5bf8-9cc5-3a0d52c935d4",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123461Z"
+        }
+      ],
+      "receipt_id": "sim-rf1086-offline-\u00e6-2025-preview-",
+      "feedback_document_ids": [
+        "sim-feedback-preview-"
+      ],
+      "failure_code": null,
+      "failure_message": null
+    },
+    "stderr": ""
+  },
+  {
+    "name": "fractional_year",
+    "input": {
+      "authority_confirmed": true,
+      "preview_confirmed": true,
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": 2025.9,
+      "user_id": "offline-owner",
+      "preview_id": "preview-01",
+      "hovedskjema_xml": "<main>\u00e6</main>",
+      "underskjema_xml": {
+        "h1": "<sub />"
+      }
+    },
+    "exit_code": 0,
+    "output": {
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": 2025,
+      "status": "receipt_stored",
+      "authority_confirmed_by": "offline-owner",
+      "authority_confirmed_at": "2026-09-09T12:00:00.123456Z",
+      "preview_confirmed_by": "offline-owner",
+      "preview_confirmed_at": "2026-09-09T12:00:00.123457Z",
+      "calls": [
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/1086H",
+          "body_hash": "77eaad2ae95838ab1b24ff672bb4e8a8b48176dcda34b4888d06d3182c1ea867",
+          "idempotency_key": "3051dbac-cfff-5655-868d-a1243024e164",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123458Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-preview-01/1086U",
+          "body_hash": "638178d4c57bc9c1e8998c7bcfb9d5d82f7a52047d4819bffac68e62545cca09",
+          "idempotency_key": "cad0fc25-fcca-5c61-ac93-d28545531538",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123459Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-preview-01/bekreft?antall_underskjema=1",
+          "body_hash": "ffdb44a81d960c04195d1756312e7e4a18273c3ab052f3ea3643145ff4ead268",
+          "idempotency_key": "146e4e86-962b-51c3-a537-63ef7b1beb12",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123460Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-preview-01/dokumenter?page=0&size=50",
+          "body_hash": "0f44414c4cdc6ead4f2f2229fc3c5e25efa2fb24072b2b2fc0c7038b14c11030",
+          "idempotency_key": "80bc019f-91f4-5bf8-9cc5-3a0d52c935d4",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123461Z"
+        }
+      ],
+      "receipt_id": "sim-rf1086-offline-\u00e6-2025-preview-",
+      "feedback_document_ids": [
+        "sim-feedback-preview-"
+      ],
+      "failure_code": null,
+      "failure_message": null
+    },
+    "stderr": ""
+  },
+  {
+    "name": "truthy_confirmations",
+    "input": {
+      "authority_confirmed": "yes",
+      "preview_confirmed": 1,
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": 2025,
+      "user_id": "offline-owner",
+      "preview_id": "preview-01",
+      "hovedskjema_xml": "<main>\u00e6</main>",
+      "underskjema_xml": {
+        "h1": "<sub />"
+      }
+    },
+    "exit_code": 0,
+    "output": {
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": 2025,
+      "status": "receipt_stored",
+      "authority_confirmed_by": "offline-owner",
+      "authority_confirmed_at": "2026-09-09T12:00:00.123456Z",
+      "preview_confirmed_by": "offline-owner",
+      "preview_confirmed_at": "2026-09-09T12:00:00.123457Z",
+      "calls": [
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/1086H",
+          "body_hash": "77eaad2ae95838ab1b24ff672bb4e8a8b48176dcda34b4888d06d3182c1ea867",
+          "idempotency_key": "3051dbac-cfff-5655-868d-a1243024e164",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123458Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-preview-01/1086U",
+          "body_hash": "638178d4c57bc9c1e8998c7bcfb9d5d82f7a52047d4819bffac68e62545cca09",
+          "idempotency_key": "cad0fc25-fcca-5c61-ac93-d28545531538",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123459Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-preview-01/bekreft?antall_underskjema=1",
+          "body_hash": "ffdb44a81d960c04195d1756312e7e4a18273c3ab052f3ea3643145ff4ead268",
+          "idempotency_key": "146e4e86-962b-51c3-a537-63ef7b1beb12",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123460Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-preview-01/dokumenter?page=0&size=50",
+          "body_hash": "0f44414c4cdc6ead4f2f2229fc3c5e25efa2fb24072b2b2fc0c7038b14c11030",
+          "idempotency_key": "80bc019f-91f4-5bf8-9cc5-3a0d52c935d4",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123461Z"
+        }
+      ],
+      "receipt_id": "sim-rf1086-offline-\u00e6-2025-preview-",
+      "feedback_document_ids": [
+        "sim-feedback-preview-"
+      ],
+      "failure_code": null,
+      "failure_message": null
+    },
+    "stderr": ""
+  },
+  {
+    "name": "false_authority",
+    "input": {
+      "authority_confirmed": false,
+      "preview_confirmed": true,
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": 2025,
+      "user_id": "offline-owner",
+      "preview_id": "preview-01",
+      "hovedskjema_xml": "<main>\u00e6</main>",
+      "underskjema_xml": {
+        "h1": "<sub />"
+      }
+    },
+    "exit_code": 1,
+    "output": {
+      "status": "failed_blocked",
+      "failure_code": "simulation_input_blocked",
+      "failure_message": "authority confirmation is required before simulated submission"
+    },
+    "stderr": ""
+  },
+  {
+    "name": "false_preview",
+    "input": {
+      "authority_confirmed": true,
+      "preview_confirmed": false,
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": 2025,
+      "user_id": "offline-owner",
+      "preview_id": "preview-01",
+      "hovedskjema_xml": "<main>\u00e6</main>",
+      "underskjema_xml": {
+        "h1": "<sub />"
+      }
+    },
+    "exit_code": 1,
+    "output": {
+      "status": "failed_blocked",
+      "failure_code": "simulation_input_blocked",
+      "failure_message": "final preview confirmation is required before simulated submission"
+    },
+    "stderr": ""
+  },
+  {
+    "name": "falsy_subdocuments",
+    "input": {
+      "authority_confirmed": true,
+      "preview_confirmed": true,
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": 2025,
+      "user_id": "offline-owner",
+      "preview_id": "preview-01",
+      "hovedskjema_xml": "<main>\u00e6</main>",
+      "underskjema_xml": []
+    },
+    "exit_code": 0,
+    "output": {
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": 2025,
+      "status": "receipt_stored",
+      "authority_confirmed_by": "offline-owner",
+      "authority_confirmed_at": "2026-09-09T12:00:00.123456Z",
+      "preview_confirmed_by": "offline-owner",
+      "preview_confirmed_at": "2026-09-09T12:00:00.123457Z",
+      "calls": [
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/1086H",
+          "body_hash": "77eaad2ae95838ab1b24ff672bb4e8a8b48176dcda34b4888d06d3182c1ea867",
+          "idempotency_key": "3051dbac-cfff-5655-868d-a1243024e164",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123458Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-preview-01/bekreft?antall_underskjema=0",
+          "body_hash": "92b003275e496cc44c28690d8559849dbf15f6a63331608e64a7c7bc590968a6",
+          "idempotency_key": "f7366251-afe6-57c7-8d27-37f528d224c4",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123459Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-preview-01/dokumenter?page=0&size=50",
+          "body_hash": "0f44414c4cdc6ead4f2f2229fc3c5e25efa2fb24072b2b2fc0c7038b14c11030",
+          "idempotency_key": "80bc019f-91f4-5bf8-9cc5-3a0d52c935d4",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123460Z"
+        }
+      ],
+      "receipt_id": "sim-rf1086-offline-\u00e6-2025-preview-",
+      "feedback_document_ids": [
+        "sim-feedback-preview-"
+      ],
+      "failure_code": null,
+      "failure_message": null
+    },
+    "stderr": ""
+  },
+  {
+    "name": "truthy_nonobject_subdocuments",
+    "input": {
+      "authority_confirmed": true,
+      "preview_confirmed": true,
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": 2025,
+      "user_id": "offline-owner",
+      "preview_id": "preview-01",
+      "hovedskjema_xml": "<main>\u00e6</main>",
+      "underskjema_xml": [
+        "x"
+      ]
+    },
+    "exit_code": 1,
+    "output": {
+      "status": "failed_blocked",
+      "failure_code": "simulation_input_blocked",
+      "failure_message": "underskjema_xml must be an object"
+    },
+    "stderr": ""
+  },
+  {
+    "name": "string_coercions",
+    "input": {
+      "authority_confirmed": true,
+      "preview_confirmed": true,
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": null,
+      "income_year": 2025,
+      "user_id": 17,
+      "preview_id": true,
+      "hovedskjema_xml": 42,
+      "underskjema_xml": {
+        "h1": false
+      }
+    },
+    "exit_code": 0,
+    "output": {
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "None",
+      "income_year": 2025,
+      "status": "receipt_stored",
+      "authority_confirmed_by": "17",
+      "authority_confirmed_at": "2026-09-09T12:00:00.123456Z",
+      "preview_confirmed_by": "17",
+      "preview_confirmed_at": "2026-09-09T12:00:00.123457Z",
+      "calls": [
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/1086H",
+          "body_hash": "04c250a063b7449fa41369bc288a27f9208f82e9c4306ee68453095110dcf4b2",
+          "idempotency_key": "7c15abbb-808a-56fc-a7df-c9542e43b026",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123458Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-True/1086U",
+          "body_hash": "05e5afcc1bc804e85c77eb3bfeb6555c06add91fd3b8f6e4b93ad08907992db9",
+          "idempotency_key": "4917937d-a741-53c7-8d3d-a34c1143388d",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123459Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-True/bekreft?antall_underskjema=1",
+          "body_hash": "ffdb44a81d960c04195d1756312e7e4a18273c3ab052f3ea3643145ff4ead268",
+          "idempotency_key": "da5f5701-68ec-57eb-b144-84f8d227c673",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123460Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-True/dokumenter?page=0&size=50",
+          "body_hash": "0f44414c4cdc6ead4f2f2229fc3c5e25efa2fb24072b2b2fc0c7038b14c11030",
+          "idempotency_key": "0acf6185-602b-5620-8909-40546dbe6231",
+          "status": "prepared",
+          "created_at": "2026-09-09T12:00:00.123461Z"
+        }
+      ],
+      "receipt_id": "sim-rf1086-None-2025-True",
+      "feedback_document_ids": [
+        "sim-feedback-True"
+      ],
+      "failure_code": null,
+      "failure_message": null
+    },
+    "stderr": ""
+  },
+  {
+    "name": "surrogate_xml",
+    "input": {
+      "authority_confirmed": true,
+      "preview_confirmed": true,
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": 2025,
+      "user_id": "offline-owner",
+      "preview_id": "preview-01",
+      "hovedskjema_xml": "<main>\ud800</main>",
+      "underskjema_xml": {
+        "h1": "<sub />"
+      }
+    },
+    "exit_code": 1,
+    "output": {
+      "status": "failed_blocked",
+      "failure_code": "simulation_input_blocked",
+      "failure_message": "'utf-8' codec can't encode character '\\ud800' in position 47: surrogates not allowed"
+    },
+    "stderr": ""
+  },
+  {
+    "name": "null_year",
+    "input": {
+      "authority_confirmed": true,
+      "preview_confirmed": true,
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": null,
+      "user_id": "offline-owner",
+      "preview_id": "preview-01",
+      "hovedskjema_xml": "<main>\u00e6</main>",
+      "underskjema_xml": {
+        "h1": "<sub />"
+      }
+    },
+    "exit_code": 1,
+    "output": {
+      "status": "failed_blocked",
+      "failure_code": "simulation_input_blocked",
+      "failure_message": "int() argument must be a string, a bytes-like object or a real number, not 'NoneType'"
+    },
+    "stderr": ""
+  },
+  {
+    "name": "missing_main",
+    "input": {
+      "authority_confirmed": true,
+      "preview_confirmed": true,
+      "filing": "aksjon\u00e6rregisteroppgaven",
+      "company_id": "offline-\u00e6",
+      "income_year": 2025,
+      "user_id": "offline-owner",
+      "preview_id": "preview-01",
+      "underskjema_xml": {
+        "h1": "<sub />"
+      }
+    },
+    "exit_code": 1,
+    "output": {
+      "status": "failed_blocked",
+      "failure_code": "simulation_input_blocked",
+      "failure_message": "'hovedskjema_xml'"
+    },
+    "stderr": ""
+  }
+]

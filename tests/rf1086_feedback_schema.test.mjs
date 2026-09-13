@@ -5,6 +5,9 @@ import test from "node:test";
 
 import { createClient } from "@supabase/supabase-js";
 import pg from "pg";
+import { createRfDatabaseActor } from "./support/rf1086-database-actor.mjs";
+import { deleteRfFixtureCompanies } from "./support/rf1086-fixture-access.mjs";
+import { rfFixtureTransaction } from "./support/rf1086-workspace-api.mjs";
 
 const files = await readdir(new URL("../supabase/migrations/", import.meta.url));
 const migrationName = files.find((file) => file.endsWith("_rf1086_feedback_reconciliation.sql"));
@@ -249,51 +252,57 @@ test("rollback revokes functions first and restores only feature-owned schema an
 });
 
 test(
-  "local Supabase exposes read-only RLS metadata and service-only mutation RPCs",
+  "local Supabase exposes owned RLS metadata and dedicated-executor mutation authority",
   { skip: isLocalDatabase() ? false : "local Supabase DATABASE_URL is required", timeout: 30_000 },
   async () => {
     const database = new pg.Client({ connectionString: process.env.DATABASE_URL });
     await database.connect();
     try {
       const { rows: [table] } = await database.query(`
-        select relrowsecurity,
-          has_table_privilege('authenticated', 'public.production_feedback_artifacts', 'select') as authenticated_select,
-          has_table_privilege('authenticated', 'public.production_feedback_artifacts', 'insert') as authenticated_insert,
-          has_table_privilege('service_role', 'public.production_feedback_artifacts', 'insert') as service_insert
+        select relrowsecurity, relforcerowsecurity,
+          has_table_privilege('authenticated', 'shareholder_register_filing.production_feedback_artifacts', 'select') as authenticated_select,
+          has_table_privilege('authenticated', 'shareholder_register_filing.production_feedback_artifacts', 'insert') as authenticated_insert,
+          has_table_privilege('service_role', 'shareholder_register_filing.production_feedback_artifacts', 'insert') as service_insert
         from pg_class
-        where oid = 'public.production_feedback_artifacts'::regclass
+        where oid = 'shareholder_register_filing.production_feedback_artifacts'::regclass
       `);
       assert.equal(table.relrowsecurity, true);
-      assert.equal(table.authenticated_select, true);
+      assert.equal(table.relforcerowsecurity, true);
+      assert.equal(table.authenticated_select, false);
       assert.equal(table.authenticated_insert, false);
       assert.equal(table.service_insert, false);
 
       const { rows: [functions] } = await database.query(`
         select
-          has_function_privilege('authenticated', 'public.record_production_feedback_artifact(uuid,uuid,uuid,text,text,bigint,text,text)', 'execute') as authenticated_record,
-          has_function_privilege('service_role', 'public.record_production_feedback_artifact(uuid,uuid,uuid,text,text,bigint,text,text)', 'execute') as service_record,
-          has_function_privilege('authenticated', 'public.claim_production_feedback_reconciliation(uuid,uuid)', 'execute') as authenticated_claim,
-          has_function_privilege('service_role', 'public.claim_production_feedback_reconciliation(uuid,uuid)', 'execute') as service_claim,
-          has_function_privilege('authenticated', 'public.append_production_feedback_reconciliation(uuid,uuid,uuid,text,text[],text,text)', 'execute') as authenticated_append,
-          has_function_privilege('service_role', 'public.append_production_feedback_reconciliation(uuid,uuid,uuid,text,text[],text,text)', 'execute') as service_append,
-          has_function_privilege('authenticated', 'public.rf1086_confirmation_forsendelse_id(text)', 'execute') as authenticated_parse,
-          has_function_privilege('service_role', 'public.rf1086_confirmation_forsendelse_id(text)', 'execute') as service_parse
+          has_function_privilege('authenticated', 'shareholder_register_filing.record_production_feedback_artifact(uuid,uuid,uuid,text,text,bigint,text,text)', 'execute') as authenticated_record,
+          has_function_privilege('service_role', 'shareholder_register_filing.record_production_feedback_artifact(uuid,uuid,uuid,text,text,bigint,text,text)', 'execute') as service_record,
+          has_function_privilege('authenticated', 'shareholder_register_filing.claim_production_feedback_reconciliation(uuid,uuid)', 'execute') as authenticated_claim,
+          has_function_privilege('service_role', 'shareholder_register_filing.claim_production_feedback_reconciliation(uuid,uuid)', 'execute') as service_claim,
+          has_function_privilege('authenticated', 'shareholder_register_filing.append_production_feedback_reconciliation(uuid,uuid,uuid,text,text[],text,text)', 'execute') as authenticated_append,
+          has_function_privilege('service_role', 'shareholder_register_filing.append_production_feedback_reconciliation(uuid,uuid,uuid,text,text[],text,text)', 'execute') as service_append,
+          has_function_privilege('authenticated', 'shareholder_register_filing.rf1086_confirmation_forsendelse_id(text)', 'execute') as authenticated_parse,
+          has_function_privilege('service_role', 'shareholder_register_filing.rf1086_confirmation_forsendelse_id(text)', 'execute') as service_parse
       `);
       assert.equal(functions.authenticated_record, false);
-      assert.equal(functions.service_record, true);
+      assert.equal(functions.service_record, false);
       assert.equal(functions.authenticated_claim, false);
-      assert.equal(functions.service_claim, true);
+      assert.equal(functions.service_claim, false);
       assert.equal(functions.authenticated_append, false);
-      assert.equal(functions.service_append, true);
+      assert.equal(functions.service_append, false);
       assert.equal(functions.authenticated_parse, false);
       assert.equal(functions.service_parse, false);
+      for (const signature of ["record_production_feedback_artifact(uuid,uuid,uuid,text,text,bigint,text,text)",
+        "claim_production_feedback_reconciliation(uuid,uuid)", "append_production_feedback_reconciliation(uuid,uuid,uuid,text,text[],text,text)"]) {
+        const privilege = await database.query("select has_function_privilege('shareholder_register_filing_executor',$1,'execute') allowed", [`shareholder_register_filing.${signature}`]);
+        assert.equal(privilege.rows[0].allowed, true);
+      }
 
       for (const role of ["authenticated", "service_role"]) {
         await database.query("begin");
         try {
           await database.query(`set local role ${role}`);
           await assert.rejects(
-            database.query("insert into public.production_feedback_artifacts default values"),
+            database.query("insert into shareholder_register_filing.production_feedback_artifacts default values"),
             (error) => error?.code === "42501",
           );
         } finally {
@@ -304,7 +313,7 @@ test(
       try {
         await database.query("set local role authenticated");
         await assert.rejects(
-          database.query("select public.claim_production_feedback_reconciliation(gen_random_uuid(), gen_random_uuid())"),
+          database.query("select shareholder_register_filing.claim_production_feedback_reconciliation(gen_random_uuid(), gen_random_uuid())"),
           (error) => error?.code === "42501",
         );
       } finally {
@@ -353,13 +362,12 @@ test(
     const normalKey = `${companyId}/2025/${normalDocumentId}/ordinary.pdf`;
     let primaryError;
     const cleanupErrors = [];
+    let actorStore;
+    const fixtureQuery = (statement, parameters) => rfFixtureTransaction(database,
+      () => database.query(statement, parameters), { feedbackSupport: true });
 
     try {
-      await database.query(String.raw`
-        do $authority$ begin
-          execute pg_catalog.format('grant documents_store_owner to %I', current_user);
-        end $authority$
-      `);
+      actorStore = await createRfDatabaseActor(database, process.env.DATABASE_URL);
       const ownerUser = await createConfirmedUser(admin, "owner");
       users.push(ownerUser);
       const reviewerUser = await createConfirmedUser(admin, "reviewer");
@@ -378,29 +386,29 @@ test(
       const operator = await signIn(operatorUser);
       clients.push(operator);
 
-      await database.query(
+      await fixtureQuery(
         `insert into public.companies (id, org_number, name, entity_type, created_by)
          values ($1, $2, 'Feedback RLS Company', 'AS', $3)`,
         [companyId, String(100_000_000 + Math.floor(Math.random() * 899_999_999)), ownerUser.id],
       );
-      await database.query(
+      await fixtureQuery(
         `insert into public.company_memberships (company_id, user_id, role, accepted_at)
          values ($1, $2, 'owner', now()), ($1, $3, 'reviewer', now()), ($1, $4, 'read_only', now())`,
         [companyId, ownerUser.id, reviewerUser.id, readOnlyUser.id],
       );
-      await database.query(
+      await fixtureQuery(
         `insert into public.support_operators (user_id, role, active) values ($1, 'support', true)`,
         [operatorUser.id],
       );
-      await database.query(
-        `insert into public.filing_previews (
+      await fixtureQuery(
+        `insert into shareholder_register_filing.filing_previews (
            id, company_id, income_year, filing, status, issues, preview,
            hovedskjema_xml, underskjema_xml, created_by
-         ) values ($1, $2, 2025, 'RF-1086', 'ready', '[]', 'preview', '<xml/>', '{}', $3)`,
+         ) values ($1, $2, 2025, 'aksjonærregisteroppgaven', 'ready', '[]', 'preview', '<xml/>', '{}', $3)`,
         [previewId, companyId, ownerUser.id],
       );
-      await database.query(
-        `insert into public.production_pilot_entitlements (
+      await fixtureQuery(
+        `insert into billing.production_pilot_entitlements (
            id, company_id, user_id, income_year, obligation, case_profile, status,
            billing_exempt, system_user_external_reference, starts_at, expires_at,
            evidence_reference, approved_by
@@ -411,8 +419,8 @@ test(
          )`,
         [entitlementId, companyId, ownerUser.id],
       );
-      await database.query(
-        `insert into public.filing_approval_snapshots (
+      await fixtureQuery(
+        `insert into shareholder_register_filing.filing_approval_snapshots (
            id, entitlement_id, preview_id, company_id, user_id, income_year,
            obligation, case_profile, adapter_version, payload_hash, manifest_hash,
            manifest, approved_by, invalidated_at, invalidation_reason
@@ -422,8 +430,8 @@ test(
          )`,
         [approvalId, entitlementId, previewId, companyId, ownerUser.id, "b".repeat(64), "c".repeat(64)],
       );
-      await database.query(
-        `insert into public.production_filing_submissions (
+      await fixtureQuery(
+        `insert into shareholder_register_filing.production_filing_submissions (
            id, approval_id, entitlement_id, company_id, user_id, income_year,
            obligation, case_profile, payload_hash, adapter_version, environment,
            status, submitted_by
@@ -433,8 +441,8 @@ test(
          )`,
         [submissionId, approvalId, entitlementId, companyId, ownerUser.id, "b".repeat(64)],
       );
-      await database.query(
-        `insert into public.production_filing_events (
+      await fixtureQuery(
+        `insert into shareholder_register_filing.production_filing_events (
            submission_id, operation_name, operation_state, attempt, body_hash,
            idempotency_key, authority_reference, failure_class, resulting_status
          ) values ($1, 'confirm', 'succeeded', 1, $2, $3, $4, null, 'received')`,
@@ -448,36 +456,36 @@ test(
 
       // Exercise the migration's bounded immutable-event backfill without
       // replaying predecessor document/storage policies after their cutover.
-      await database.query(String.raw`
+      await fixtureQuery(String.raw`
         with latest_succeeded_confirm as (
           select distinct on (event.submission_id)
             event.submission_id, event.authority_reference
-          from public.production_filing_events event
+          from shareholder_register_filing.production_filing_events event
           where event.operation_name='confirm' and event.operation_state='succeeded'
           order by event.submission_id, event.created_at desc, event.id desc
         ), validated_confirmation as (
           select confirmation.submission_id,
-            public.rf1086_confirmation_forsendelse_id(
+            shareholder_register_filing.rf1086_confirmation_forsendelse_id(
               confirmation.authority_reference
             ) as forsendelse_id
           from latest_succeeded_confirm confirmation
         )
-        update public.production_filing_submissions submission
+        update shareholder_register_filing.production_filing_submissions submission
         set feedback_forsendelse_id=validated.forsendelse_id
         from validated_confirmation validated
         where submission.id=validated.submission_id
           and submission.feedback_forsendelse_id is null
           and validated.forsendelse_id is not null
       `);
-      const backfilled = await database.query(
+      const backfilled = await fixtureQuery(
         `select feedback_forsendelse_id
-         from public.production_filing_submissions where id = $1`,
+         from shareholder_register_filing.production_filing_submissions where id = $1`,
         [submissionId],
       );
       assert.equal(backfilled.rows[0].feedback_forsendelse_id, forsendelseId);
 
-      await database.query(
-        `update public.production_filing_submissions
+      await fixtureQuery(
+        `update shareholder_register_filing.production_filing_submissions
          set feedback_forsendelse_id = null,
              feedback_reconciliation_lease_id = null,
              feedback_reconciliation_started_at = null
@@ -485,11 +493,11 @@ test(
         [submissionId],
       );
       const [firstClaim, competingClaim] = await Promise.all([
-        admin.rpc("claim_production_feedback_reconciliation", {
+        actorStore.rpc(owner, "claim_production_feedback_reconciliation", {
           p_submission_id: submissionId,
           p_lease_id: firstLeaseId,
         }),
-        admin.rpc("claim_production_feedback_reconciliation", {
+        actorStore.rpc(owner, "claim_production_feedback_reconciliation", {
           p_submission_id: submissionId,
           p_lease_id: competingLeaseId,
         }),
@@ -497,28 +505,28 @@ test(
       assert.ifError(firstClaim.error);
       assert.ifError(competingClaim.error);
       assert.deepEqual([firstClaim.data, competingClaim.data].sort(), [false, true]);
-      const recovered = await database.query(
+      const recovered = await fixtureQuery(
         `select feedback_forsendelse_id, feedback_reconciliation_lease_id
-         from public.production_filing_submissions where id = $1`,
+         from shareholder_register_filing.production_filing_submissions where id = $1`,
         [submissionId],
       );
       assert.equal(recovered.rows[0].feedback_forsendelse_id, forsendelseId);
       assert.ok([firstLeaseId, competingLeaseId].includes(recovered.rows[0].feedback_reconciliation_lease_id));
 
-      const released = await admin.rpc("release_production_feedback_reconciliation", {
+      const released = await actorStore.rpc(owner, "release_production_feedback_reconciliation", {
         p_submission_id: submissionId,
         p_lease_id: recovered.rows[0].feedback_reconciliation_lease_id,
       });
       assert.ifError(released.error);
       assert.equal(released.data, true);
 
-      const persistenceFailureClaim = await admin.rpc("claim_production_feedback_reconciliation", {
+      const persistenceFailureClaim = await actorStore.rpc(owner, "claim_production_feedback_reconciliation", {
         p_submission_id: submissionId,
         p_lease_id: persistenceFailureLeaseId,
       });
       assert.ifError(persistenceFailureClaim.error);
       assert.equal(persistenceFailureClaim.data, true);
-      const persistenceFailure = await admin.rpc("append_production_feedback_reconciliation", {
+      const persistenceFailure = await actorStore.rpc(owner, "append_production_feedback_reconciliation", {
         p_submission_id: submissionId,
         p_lease_id: persistenceFailureLeaseId,
         p_forsendelse_id: forsendelseId,
@@ -529,40 +537,40 @@ test(
       });
       assert.ifError(persistenceFailure.error);
       assert.equal(persistenceFailure.data, true);
-      const persistenceFailureRelease = await admin.rpc("release_production_feedback_reconciliation", {
+      const persistenceFailureRelease = await actorStore.rpc(owner, "release_production_feedback_reconciliation", {
         p_submission_id: submissionId,
         p_lease_id: persistenceFailureLeaseId,
       });
       assert.ifError(persistenceFailureRelease.error);
       assert.equal(persistenceFailureRelease.data, true);
-      const persistenceRetryClaim = await admin.rpc("claim_production_feedback_reconciliation", {
+      const persistenceRetryClaim = await actorStore.rpc(owner, "claim_production_feedback_reconciliation", {
         p_submission_id: submissionId,
         p_lease_id: persistenceRetryLeaseId,
       });
       assert.ifError(persistenceRetryClaim.error);
       assert.equal(persistenceRetryClaim.data, true);
-      const persistenceRetryRelease = await admin.rpc("release_production_feedback_reconciliation", {
+      const persistenceRetryRelease = await actorStore.rpc(owner, "release_production_feedback_reconciliation", {
         p_submission_id: submissionId,
         p_lease_id: persistenceRetryLeaseId,
       });
       assert.ifError(persistenceRetryRelease.error);
       assert.equal(persistenceRetryRelease.data, true);
 
-      await database.query(
-        `update public.production_filing_submissions
+      await fixtureQuery(
+        `update shareholder_register_filing.production_filing_submissions
          set feedback_forsendelse_id = $2,
              feedback_reconciliation_lease_id = null,
              feedback_reconciliation_started_at = null
          where id = $1`,
         [submissionId, randomUUID()],
       );
-      const mismatchedClaim = await admin.rpc("claim_production_feedback_reconciliation", {
+      const mismatchedClaim = await actorStore.rpc(owner, "claim_production_feedback_reconciliation", {
         p_submission_id: submissionId,
         p_lease_id: randomUUID(),
       });
       assert.match(mismatchedClaim.error?.message ?? "", /confirmation_relationship_mismatch/iu);
-      await database.query(
-        `update public.production_filing_submissions
+      await fixtureQuery(
+        `update shareholder_register_filing.production_filing_submissions
          set feedback_forsendelse_id = null,
              feedback_reconciliation_lease_id = null,
              feedback_reconciliation_started_at = null
@@ -570,8 +578,8 @@ test(
         [submissionId],
       );
 
-      await database.query(
-        `insert into public.production_filing_events (
+      await fixtureQuery(
+        `insert into shareholder_register_filing.production_filing_events (
            submission_id, operation_name, operation_state, attempt, body_hash,
            idempotency_key, authority_reference, failure_class, resulting_status
          ) values ($1, 'confirm', 'succeeded', 2, $2, $3, $4, null, 'received')`,
@@ -582,33 +590,33 @@ test(
           JSON.stringify({ dialogId, forsendelseId: "not-a-uuid" }),
         ],
       );
-      const malformedClaim = await admin.rpc("claim_production_feedback_reconciliation", {
+      const malformedClaim = await actorStore.rpc(owner, "claim_production_feedback_reconciliation", {
         p_submission_id: submissionId,
         p_lease_id: randomUUID(),
       });
       assert.match(malformedClaim.error?.message ?? "", /confirmation_reference_invalid/iu);
 
-      await database.query(
-        `insert into public.production_filing_events (
+      await fixtureQuery(
+        `insert into shareholder_register_filing.production_filing_events (
            submission_id, operation_name, operation_state, attempt, body_hash,
            idempotency_key, authority_reference, failure_class, resulting_status
          ) values ($1, 'confirm', 'succeeded', 3, $2, $3, '{malformed', null, 'received')`,
         [submissionId, "f".repeat(64), randomUUID()],
       );
-      const invalidJsonClaim = await admin.rpc("claim_production_feedback_reconciliation", {
+      const invalidJsonClaim = await actorStore.rpc(owner, "claim_production_feedback_reconciliation", {
         p_submission_id: submissionId,
         p_lease_id: randomUUID(),
       });
       assert.match(invalidJsonClaim.error?.message ?? "", /confirmation_reference_invalid/iu);
-      const unclaimed = await database.query(
+      const unclaimed = await fixtureQuery(
         `select feedback_forsendelse_id, feedback_reconciliation_lease_id
-         from public.production_filing_submissions where id = $1`,
+         from shareholder_register_filing.production_filing_submissions where id = $1`,
         [submissionId],
       );
       assert.equal(unclaimed.rows[0].feedback_forsendelse_id, null);
       assert.equal(unclaimed.rows[0].feedback_reconciliation_lease_id, null);
 
-      await database.query(
+      await fixtureQuery(
         `insert into public.documents (
            id, company_id, income_year, document_type, name, linked_to, status,
            storage_key, created_by
@@ -625,8 +633,8 @@ test(
           normalKey,
         ],
       );
-      await database.query(
-        `insert into public.production_feedback_artifacts (
+      await fixtureQuery(
+        `insert into shareholder_register_filing.production_feedback_artifacts (
            company_id, submission_id, document_id, authority_reference,
            content_type, byte_length, sha256, classification
          ) values ($1, $2, $3, 'authority-reference', 'application/xml', 8, $4, 'accepted')`,
@@ -650,11 +658,7 @@ test(
         .maybeSingle();
       assert.ok(ownerFeedbackDocument.error);
       assert.equal(ownerFeedbackDocument.data, null);
-      const ownerArtifact = await owner
-        .from("production_feedback_artifacts")
-        .select("document_id")
-        .eq("document_id", feedbackDocumentId)
-        .maybeSingle();
+      const ownerArtifact = await actorStore.artifact(owner, feedbackDocumentId);
       assert.ifError(ownerArtifact.error);
       assert.equal(ownerArtifact.data?.document_id, feedbackDocumentId);
       const ownerDownload = await owner.storage.from("company-documents").download(feedbackKey);
@@ -669,11 +673,7 @@ test(
         .maybeSingle();
       assert.ok(operatorFeedbackDocument.error);
       assert.equal(operatorFeedbackDocument.data, null);
-      const operatorArtifact = await operator
-        .from("production_feedback_artifacts")
-        .select("document_id")
-        .eq("document_id", feedbackDocumentId)
-        .maybeSingle();
+      const operatorArtifact = await actorStore.artifact(operator, feedbackDocumentId);
       assert.ifError(operatorArtifact.error);
       assert.equal(operatorArtifact.data, null);
       const operatorDownload = await operator.storage.from("company-documents").download(feedbackKey);
@@ -685,11 +685,7 @@ test(
         const feedbackDocument = await client.from("documents").select("id").eq("id", feedbackDocumentId).maybeSingle();
         assert.ok(feedbackDocument.error);
         assert.equal(feedbackDocument.data, null);
-        const artifact = await client
-          .from("production_feedback_artifacts")
-          .select("document_id")
-          .eq("document_id", feedbackDocumentId)
-          .maybeSingle();
+        const artifact = await actorStore.artifact(client, feedbackDocumentId);
         assert.ifError(artifact.error);
         assert.equal(artifact.data, null);
         const download = await client.storage.from("company-documents").download(feedbackKey);
@@ -711,12 +707,13 @@ test(
         cleanupErrors,
       );
       for (const [statement, parameters] of [
-        ["delete from public.production_feedback_artifacts where company_id = $1", [companyId]],
-        ["delete from public.production_filing_submissions where company_id = $1", [companyId]],
-        ["delete from public.filing_approval_snapshots where company_id = $1", [companyId]],
-        ["delete from public.production_pilot_entitlements where company_id = $1", [companyId]],
+        ["delete from shareholder_register_filing.production_feedback_artifacts where company_id = $1", [companyId]],
+        ["delete from shareholder_register_filing.production_filing_events where submission_id in (select id from shareholder_register_filing.production_filing_submissions where company_id=$1)", [companyId]],
+        ["delete from shareholder_register_filing.production_filing_submissions where company_id = $1", [companyId]],
+        ["delete from shareholder_register_filing.filing_approval_snapshots where company_id = $1", [companyId]],
+        ["delete from billing.production_pilot_entitlements where company_id = $1", [companyId]],
         ["delete from public.documents where company_id = $1", [companyId]],
-        ["delete from public.filing_previews where company_id = $1", [companyId]],
+        ["delete from shareholder_register_filing.filing_previews where company_id = $1", [companyId]],
         ["delete from public.company_archive_export_receipts where company_id = $1", [companyId]],
         ["delete from public.company_archive_export_attempts where company_id = $1", [companyId]],
         ["delete from public.company_archive_source_generations where company_id = $1", [companyId]],
@@ -724,7 +721,9 @@ test(
         ["delete from public.company_memberships where company_id = $1", [companyId]],
         ["delete from public.companies where id = $1", [companyId]],
       ]) {
-        await collectCleanupError(() => database.query(statement, parameters), cleanupErrors);
+        await collectCleanupError(() => statement === "delete from public.companies where id = $1"
+          ? rfFixtureTransaction(database, () => deleteRfFixtureCompanies(database, [companyId]), { feedbackSupport: true })
+          : fixtureQuery(statement, parameters), cleanupErrors);
       }
       for (const client of clients) {
         await collectCleanupError(() => assertNoCleanupError(client.auth.signOut()), cleanupErrors);
@@ -732,16 +731,78 @@ test(
       for (const user of users) {
         await collectCleanupError(() => assertNoCleanupError(admin.auth.admin.deleteUser(user.id)), cleanupErrors);
       }
-      await collectCleanupError(
-        () => database.query(String.raw`
-          do $authority$ begin
-            execute pg_catalog.format('revoke documents_store_owner from %I', current_user);
-          end $authority$
-        `),
-        cleanupErrors,
-      );
+      if (actorStore) await collectCleanupError(() => actorStore.close(), cleanupErrors);
       await collectCleanupError(() => database.end(), cleanupErrors);
     }
     throwWithCleanupErrors(primaryError, cleanupErrors);
   },
 );
+
+const canonicalSql = await readFile(new URL("../supabase/migrations/20260909190548_shareholder_register_filing_capability.sql", import.meta.url), "utf8");
+test("canonical feedback preserves owner-only metadata and dedicated immutable journal authority", () => {
+  const artifactPolicy = canonicalSql.match(/create policy rf151_artifact_read[^;]+;/iu)?.[0] ?? "";
+  assert.match(artifactPolicy, /for select to shareholder_register_filing_executor/iu);
+  assert.match(artifactPolicy, /company_access_is_accepted_owner_v1\(company_id\)/iu);
+  assert.doesNotMatch(artifactPolicy, /company_access_is_accepted_member_v1/iu);
+  for (const name of ["record_production_feedback_artifact", "claim_production_feedback_reconciliation", "release_production_feedback_reconciliation", "append_production_feedback_reconciliation"]) {
+    assert.match(canonicalSql, new RegExp(`revoke all on function shareholder_register_filing\\.${name}[^;]+from public,anon,authenticated,service_role`, "isu"));
+    assert.match(canonicalSql, new RegExp(`grant execute on function shareholder_register_filing\\.${name}[^;]+to shareholder_register_filing_executor`, "isu"));
+  }
+  assert.match(canonicalSql, /alter table public\.production_feedback_artifacts set schema shareholder_register_filing/iu);
+  assert.match(canonicalSql, /alter table shareholder_register_filing\.production_feedback_artifacts force row level security/iu);
+});
+
+
+test("local fixture restores exact authority and keeps internal foreign keys active on success and failure", {
+  skip: isLocalDatabase() ? false : "local Supabase DATABASE_URL is required", timeout: 30_000,
+}, async () => {
+  const database = new pg.Client({ connectionString: process.env.DATABASE_URL });
+  await database.connect();
+  const snapshot = async () => (await database.query(`select
+    (select jsonb_agg(to_jsonb(m) order by roleid,member,grantor) from pg_auth_members m) memberships,
+    (select jsonb_agg(jsonb_build_array(c.oid,c.relacl::text,c.relforcerowsecurity) order by c.oid)
+      from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in
+      ('public','shareholder_register_filing','ledger','billing','documents')) relations,
+    (select jsonb_agg(jsonb_build_array(oid,tgenabled) order by oid) from pg_trigger) triggers,
+    (select jsonb_agg(jsonb_build_array(oid,nspacl::text) order by oid) from pg_namespace) schemas`)).rows[0];
+  try {
+    const before = await snapshot();
+    assert.equal(await rfFixtureTransaction(database, async () => "fixture-result", { feedbackSupport: true }), "fixture-result");
+    assert.deepEqual(await snapshot(), before);
+    const failure = new Error("original fixture error");
+    await assert.rejects(rfFixtureTransaction(database, async () => { throw failure; }, { feedbackSupport: true }), error => error === failure);
+    assert.deepEqual(await snapshot(), before);
+    await assert.rejects(rfFixtureTransaction(database, () => database.query(`insert into shareholder_register_filing.filing_previews
+      (company_id,income_year,filing,issues,status,preview,hovedskjema_xml,underskjema_xml,created_by) values($1,2025,'aksjonærregisteroppgaven','[]','ready','synthetic','<xml/>','{}',$1)`, [randomUUID()])), error => error.code === "23503");
+    assert.deepEqual(await snapshot(), before);
+  } finally { await database.end(); }
+});
+
+
+for (const lateFailure of [false, true]) test(`local company janitor restores its own missing Billing SET grant on ${lateFailure ? "failure" : "success"}`, {
+  skip: isLocalDatabase() ? false : "local Supabase DATABASE_URL is required", timeout: 30_000,
+}, async () => {
+  const database = new pg.Client({ connectionString: process.env.DATABASE_URL });
+  await database.connect();
+  const actorId = randomUUID(), companyId = randomUUID();
+  try {
+    await database.query("begin");
+    await database.query("insert into auth.users(id,email) values($1,$2)", [actorId, `rf-fixture-cleanup-${actorId}@example.test`]);
+    await database.query(`insert into public.companies(id,org_number,name,entity_type,created_by)
+      values($1,'123456789','Temporary RF cleanup fixture','AS',$2)`, [companyId, actorId]);
+    const snapshot = async () => (await database.query(`select
+      (select jsonb_agg(to_jsonb(m) order by roleid,member,grantor) from pg_auth_members m) memberships,
+      (select relacl::text from pg_class where oid='billing.billing_command_receipts'::regclass) receipt_acl`)).rows[0];
+    const before = await snapshot();
+    const failure = new Error("late fixture company deletion failure");
+    const wrapped = { connectionParameters: database.connectionParameters, query: async (statement, parameters) => {
+      const result = await database.query(statement, parameters);
+      if (lateFailure && statement === "delete from public.companies where id=any($1::uuid[])") throw failure;
+      return result;
+    } };
+    if (lateFailure) await assert.rejects(deleteRfFixtureCompanies(wrapped, [companyId]), error => error === failure);
+    else await deleteRfFixtureCompanies(wrapped, [companyId]);
+    assert.deepEqual(await snapshot(), before);
+    assert.equal((await database.query("select count(*)::int count from public.companies where id=$1", [companyId])).rows[0].count, lateFailure ? 1 : 0);
+  } finally { await database.query("rollback"); await database.end(); }
+});
