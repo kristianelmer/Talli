@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#146",
   "source": "https://github.com/kristianelmer/Talli/issues/146",
-  "status": "ENTRY_GATE_PASSED_PENDING_INDEPENDENT_REVIEW_AND_CLAIM",
+  "status": "ENTRY_INDEPENDENTLY_VERIFIED_PENDING_CLAIM",
   "entryRevision": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
   "predecessor": {
     "issue": "#151",
@@ -51,7 +51,7 @@
     }
   ],
   "entryGate": {
-    "status": "PASS_11_OF_11_PENDING_INDEPENDENT_REVIEW",
+    "status": "PASS_11_OF_11_INDEPENDENTLY_VERIFIED",
     "command": "npm run gate:customer-ready",
     "testedRevision": "20999f167084492bb4f9a5a50d0cbcd3a48333b3",
     "evidencePath": "architecture/evidence/customer-ready-gates/20999f167084492bb4f9a5a50d0cbcd3a48333b3.json",
@@ -63,13 +63,14 @@
     "startedAt": "2026-09-13T15:32:12.822Z",
     "executedAt": "2026-09-13T15:52:13.794Z",
     "checkCount": 11,
-    "storageRevision": null
+    "storageRevision": "51ce44051bf11a3935d10f1b315b70a22eacac22",
+    "independentReview": "entry-independent-review.json"
   },
   "inventory": {
     "sourceFiles": "source-inventory.json",
     "characterization": "legacy-preview-cases.json",
     "plan": "characterization-and-cutover-plan.md",
-    "status": "ADOPTED_AT_ENTRY_REVISION_PENDING_INDEPENDENT_REVIEW"
+    "status": "INDEPENDENTLY_VERIFIED"
   },
   "limits": [
     "No hosted migrations, provider calls, real filing, paid operations or production promotion.",
@@ -79,7 +80,6 @@
     "Original Audit continuation placement and identity remain unchanged."
   ],
   "remainingWork": [
-    "Independent immutable entry receipt review and committed entry inventory",
     "Serialized claim",
     "Characterization and complete owned slice implementation",
     "Migration, rollback, RLS, generated-client and browser verification",
