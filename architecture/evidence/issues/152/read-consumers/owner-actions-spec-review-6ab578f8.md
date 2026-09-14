@@ -1,0 +1,13 @@
+# #152 owner-action Spec review: 6ab578f8
+
+**PASS for the bounded owner-action checkpoint; no actionable finding.** Reviewed fixed `8af134bf673ea0969f31856b84bde2246d615835...6ab578f8d2afb02544a23ab685800d120764a5cc` against the unchanged #152 requirements, #132 serialized migration rules, and frozen #151 mixed-flow dispositions. Later uncommitted read work is excluded.
+
+The preview/comment actions route through RF first, then Tax when RF reports an exact owned absence, then the retained Accounts path. Errors stop the action before sibling writes or Audit. Owned acknowledgements bypass the legacy read/update branch. Each successful control retains exactly one original subsequent Audit insertion; this preserves the approved continuation rather than claiming a new atomic cross-backend/web Audit transaction. Permission and manual-evidence actions retain their existing step-up calls and route by validated obligation.
+
+TT02 import preserves file extension/size checks, raw text and JSON syntax validation, sends company/year/raw JSON through the generated API, and removes the web projection/RPC writer. Missing-company, invalid-evidence, persistence and MFA presentation remain separated. It has no web persistence or Audit continuation; the already-reviewed backend workflow owns its Audit transaction.
+
+The architecture change pins exactly five full operation digests, requires #152 or completed Tax stage and absence of the retired Tax facade, rejects dynamic resources, and still compares all retained persistence chains with original source. Independent checks confirm each pinned digest and one Audit occurrence. Only `compat-company-tax-persistence` is deleted: every remaining registry record, migration pointer, original baseline byte and criterion remains unchanged. No broader compatibility exception is admitted.
+
+Independent Node 24.20.0 execution from a private committed snapshot passes **27 tests, zero skips**: 25 extracted-action tests plus both architecture tests, including the new 20 mutation cases, earlier-stage and restored-facade rejections. The older retirement test accounts for most of the 76.33-second runtime. These tests use dependency doubles and private fixtures; they do not prove browser/JWT/MFA/deployment behavior. All eight adopted artifact hashes match; the separately recorded 28-test run includes an additional test selection and is not presented as my independent count.
+
+No SQL/runtime backend changes occur here. Read consumers, coordinated cutover, source completeness, deployment-order proof, full gates and protected integration remain pending. No shared repository/database/browser/configuration mutation or full-stage credit.

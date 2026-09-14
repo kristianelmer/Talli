@@ -1,0 +1,56 @@
+{
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_OWNER_ACTIONS",
+  "baseRevision": "8af134bf673ea0969f31856b84bde2246d615835",
+  "candidateRevision": "6ab578f8d2afb02544a23ab685800d120764a5cc",
+  "findings": [],
+  "independentVerification": {
+    "node": "v24.20.0",
+    "tests": 27,
+    "passed": 27,
+    "skipped": 0,
+    "durationMs": 76328.145917,
+    "testSelection": [
+      "tests/rf1086_mixed_actions.test.mjs",
+      "tests/company_tax_architecture.test.mjs"
+    ],
+    "fiveOperationDigestsMatch": true,
+    "auditOccurrencesPerOperation": 1,
+    "retainedRegistryRecordsByteEquivalent": true,
+    "migrationMetadataUnchanged": true,
+    "frozenBaselineUnchanged": true,
+    "sixCriteriaUnchanged": true,
+    "adoptedArtifactHashesVerified": 8
+  },
+  "sourceBindings": {
+    "apps/web/app/actions.ts": "89a60a726c384e76f1366a9afb40c433be63638c596b6bc3929611fe5d92b8ac",
+    "apps/web/features/company-tax-filing/transport.ts": "79268c805483061d8a68da212bfc15d7103ca80bb6e26f5638842dfebeb44d59",
+    "apps/web/tests/company-tax-transport.test.mjs": "4b915dbe9bdf02327078a91246865bc0e7ea054592d435d77448a5bb3e05a7ef",
+    "architecture/COMPATIBILITY.md": "b08dbf435cb65257480cedf1b7ca26df2fc9a798df0b033726efdbed9e1c0fb6",
+    "architecture/compatibility.json": "5d426910e56c0fed393bcbd309a5d64ab858363483d2892ae2107cc45bd8c90b",
+    "architecture/evidence/issues/152/owner-actions/manifest.json": "8b3f6095d8b774b8cefc4dd0db15e4a494bcc00daa21f64d3d8127703c08cf1a",
+    "architecture/evidence/issues/152/owner-actions/preparation-spec-followup-8af134bf.json": "7175820fc598d9eeec849305fc94e47b11e8bcce1e58793260475a2636919922",
+    "architecture/evidence/issues/152/owner-actions/preparation-spec-followup-8af134bf.md": "d05df680d6f8d7f7b619e8080d0833f72ef2ed309314e33127da6bf68a7024b7",
+    "architecture/evidence/issues/152/owner-actions/tax-action-composition-digests.json": "ce38aef6f5dc238b1c6cc1d63b1c9df50d42a0c1f8a2f5084ef19af6cc81bb66",
+    "architecture/evidence/issues/152/owner-actions/tax-actions-guard-tests.log": "4a77aa0a67883b4f3289ec7f6889daf362ab69a791587fbbc8e8d7844b55a718",
+    "architecture/evidence/issues/152/owner-actions/tax-actions-mixed-tests.log": "bf91da91ad747db45f3f63b1c3a0d1986ce00d12795341b344c064aa07cbd73d",
+    "architecture/evidence/issues/152/owner-actions/tax-actions-original-guard-tests.log": "1487989a4a12d7e79e3c33a2a09d7b43bea75d54e56f6488a2d8a1a2a75df2b1",
+    "architecture/evidence/issues/152/owner-actions/tax-actions-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "architecture/evidence/issues/152/owner-actions/tax-actions-web-tests.log": "c6c9deea9f0ce1ebef4a8ed56925249fdcadbd1e1b99b8225ad447ae3f3eabbd",
+    "scripts/check-architecture.mjs": "21427c295cab66f39fa80f664cbf79de9017f2f722af87b5b334465b1e2ce895",
+    "tests/company_tax_architecture.test.mjs": "60e2a5eeeb5103c358745e3cba15ea7688bec0480553df19bb1fd93854e4821c",
+    "tests/rf1086_mixed_actions.test.mjs": "d2eba35b29bfb51f3f610d3de0989b9f38009678d3b859fb9f807b15d470eb52",
+    "architecture/compatibility-baseline.json": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+    "architecture/evidence/issues/152/requirements.json": "cd4da5befa561f08dd35d1a62ba15e8b4ea3ade0873df6e1f16a680c62b7cdf6"
+  },
+  "privateArtifactBindings": {
+    "owner-actions-spec-6ab578f8-tests.log": "c044624c3a09a06721a1a94599406ac23e2aee238cb3769ba197d78ff5ca3e57",
+    "owner-actions-spec-6ab578f8-digests.json": "b687fb7ddef1f8f43c8b0ec9279c790781e4a142a6d030edc08c875eeea2c4fe"
+  },
+  "reportSha256": "7b2b76befb195f6412a6a5992d6ba15acc9bc3604adc0862fda71a689be88932",
+  "limits": [
+    "Private committed source and dependency doubles, no real JWT/MFA/browser/provider proof.",
+    "Recorded28 test selection differs from independent27 test selection.",
+    "No SQL/backend runtime delta, shared mutation, cutover or full-stage credit."
+  ]
+}

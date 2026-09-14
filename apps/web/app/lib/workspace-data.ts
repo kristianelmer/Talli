@@ -1,3 +1,4 @@
+import { loadPresentedCompanyTaxSource } from "./company-tax-workspace-source.ts";
 import { loadPresentedRf1086Source, newestFirst, composeFilingSources } from "./rf1086-workspace-source";
 import { buildCancellationLifecycle } from "./cancellation";
 import {
@@ -95,12 +96,15 @@ export async function loadWorkspaceData() {
   const rfSource = accessToken
     ? await loadPresentedRf1086Source(accessToken, companies.map((company) => company.id))
     : { previews: [], submissions: [], overrides: [], comments: [], authorityPermissions: [], authorityTestRuns: [], error: null };
-  const previews = newestFirst(composeFilingSources(legacyPreviews, rfSource.previews), (row) => row.created_at);
-  const submissions = newestFirst(composeFilingSources(legacySubmissions, rfSource.submissions), (row) => row.updated_at);
-  const overrides = newestFirst(composeFilingSources(legacyOverrides, rfSource.overrides), (row) => row.created_at);
-  const comments = newestFirst(composeFilingSources(legacyComments, rfSource.comments), (row) => row.created_at);
-  const authorityPermissions = newestFirst(composeFilingSources(legacyAuthorityPermissions, rfSource.authorityPermissions), (row) => row.updated_at);
-  const authorityTestRuns = newestFirst(composeFilingSources(legacyAuthorityTestRuns, rfSource.authorityTestRuns), (row) => row.recorded_at);
+  const taxSource = accessToken
+    ? await loadPresentedCompanyTaxSource(accessToken, companies.map((company) => company.id))
+    : { previews: [], submissions: [], overrides: [], comments: [], authorityPermissions: [], authorityTestRuns: [], error: null };
+  const previews = newestFirst(composeFilingSources(composeFilingSources(legacyPreviews, rfSource.previews), taxSource.previews), (row) => row.created_at);
+  const submissions = newestFirst(composeFilingSources(composeFilingSources(legacySubmissions, rfSource.submissions), taxSource.submissions), (row) => row.updated_at);
+  const overrides = newestFirst(composeFilingSources(composeFilingSources(legacyOverrides, rfSource.overrides), taxSource.overrides), (row) => row.created_at);
+  const comments = newestFirst(composeFilingSources(composeFilingSources(legacyComments, rfSource.comments), taxSource.comments), (row) => row.created_at);
+  const authorityPermissions = newestFirst(composeFilingSources(composeFilingSources(legacyAuthorityPermissions, rfSource.authorityPermissions), taxSource.authorityPermissions), (row) => row.updated_at);
+  const authorityTestRuns = newestFirst(composeFilingSources(composeFilingSources(legacyAuthorityTestRuns, rfSource.authorityTestRuns), taxSource.authorityTestRuns), (row) => row.recorded_at);
   const primaryCompanyId = companies[0]?.id;
   const { invitations, memberships, error: companyAccessAdministrationError } = user
     ? await listCompanyAccessAdministration(primaryCompanyId)
@@ -286,7 +290,7 @@ export async function loadWorkspaceData() {
   const deadlineReminderPreferences = defaultReminderPreferences();
   return {
     user,
-    error: error ?? corporateLifecycleError ?? corporateReadinessError ?? productionStateError ?? rfSource.error ?? companyAccessAdministrationError ?? cancellationLifecycleError,
+    error: error ?? corporateLifecycleError ?? corporateReadinessError ?? productionStateError ?? rfSource.error ?? taxSource.error ?? companyAccessAdministrationError ?? cancellationLifecycleError,
     cancellationLifecycleError,
     companies,
     documents,

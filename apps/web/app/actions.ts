@@ -1,5 +1,6 @@
 "use server";
 
+import { loadPresentedCompanyTaxSource } from "./lib/company-tax-workspace-source";
 import { loadPresentedRf1086Source, composeFilingSources } from "./lib/rf1086-workspace-source";
 
 import type { AnnualSupportRefundRecoveryActionState, AnnualSupportRefundIdentity } from "./lib/annual-support-refund-recovery";
@@ -4686,6 +4687,9 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
   const rfSource = await loadPresentedRf1086Source(accessToken, [companyId], incomeYear);
   if (rfSource.error) redirect(`/workspace?error=${encodeURIComponent(rfSource.error)}`);
 
+  const taxSource = await loadPresentedCompanyTaxSource(accessToken, [companyId], incomeYear);
+  if (taxSource.error) redirect(`/workspace?error=${encodeURIComponent(taxSource.error)}`);
+
   const holdingActions = [
     ...(legacyHoldingActions ?? []).filter(
       (action) => ![
@@ -4722,13 +4726,13 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     holdingActions,
     bankTransactions: bankTransactions ?? [],
     documents: documents ?? [],
-    overrides: composeFilingSources(overrides ?? [], rfSource.overrides),
+    overrides: composeFilingSources(composeFilingSources(overrides ?? [], rfSource.overrides), taxSource.overrides),
     locks: locks ?? [],
     annualData: annualData ?? null,
     billingEntitlements,
-    authorityPermissions: [...(authorityPermissions ?? []).filter((row) => !rfSource.authorityPermissions.some((owned) => owned.company_id === row.company_id && owned.obligation === row.obligation)), ...rfSource.authorityPermissions],
-    filingPreviews: composeFilingSources(filingPreviews ?? [], rfSource.previews),
-    filingSubmissions: composeFilingSources(filingSubmissions ?? [], rfSource.submissions),
+    authorityPermissions: [...(authorityPermissions ?? []).filter((row) => ![...rfSource.authorityPermissions, ...taxSource.authorityPermissions].some((owned) => owned.company_id === row.company_id && owned.obligation === row.obligation)), ...rfSource.authorityPermissions, ...taxSource.authorityPermissions],
+    filingPreviews: composeFilingSources(composeFilingSources(filingPreviews ?? [], rfSource.previews), taxSource.previews),
+    filingSubmissions: composeFilingSources(composeFilingSources(filingSubmissions ?? [], rfSource.submissions), taxSource.submissions),
     corporateDocuments: {
       enabled: process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true",
       readiness: corporateReadiness,

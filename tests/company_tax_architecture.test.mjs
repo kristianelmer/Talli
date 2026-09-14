@@ -53,6 +53,15 @@ test("#152 mixed actions retain exact Accounts/Audit chains and cannot inherit p
     }
     return originals.get(path);
   };
+  const gateSources = new Map();
+  const sourceAtGateRevision = (revision, path) => {
+    const key = `${revision}:${path}`;
+    if (!gateSources.has(key)) {
+      try { gateSources.set(key, execFileSync("git", ["show", key], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })); }
+      catch { gateSources.set(key, undefined); }
+    }
+    return gateSources.get(key);
+  };
   const catalog = JSON.parse(readFileSync(join(root, "architecture/database-catalog.json"), "utf8"));
   const owners = new Map(catalog.tables.flatMap(row => [[`table:${row.name.replace(/^public\./u, "")}`, row.owner], ...(row.compatibilityResources ?? []).map(resource => [resource, row.owner])]));
   const operations = ["addFilingOverride", "addFilingReviewComment", "acknowledgeFilingReviewComment", "confirmAuthorityPermission", "recordAuthorityTestEvidence"];
@@ -60,7 +69,7 @@ test("#152 mixed actions retain exact Accounts/Audit chains and cannot inherit p
     const path = join(directory, "compatibility.json");
     writeFileSync(path, JSON.stringify(candidateRegistry));
     return validateCompatibilityRegistry(path, {
-      baselinePath, sourceAtRevision, resourceOwner: resource => owners.get(resource),
+      baselinePath, sourceAtRevision, sourceAtGateRevision, resourceOwner: resource => owners.get(resource),
       currentSource: path => path === "apps/web/app/actions.ts" ? candidateSource : readFileSync(join(root, path), "utf8"),
     }).filter(error => operations.some(operation => error.endsWith(`operation:${operation}`)));
   };
@@ -79,6 +88,38 @@ test("#152 mixed actions retain exact Accounts/Audit chains and cannot inherit p
         assert.notEqual(mutation, body);
         assert.ok(check(source.slice(0, start) + mutation + source.slice(end)).some(error => error.endsWith(`operation:${operation}`)), operation);
       }
+    }
+    for (const [file, operation] of [
+      ["apps/web/app/actions.ts", "refreshAnnualReadinessSnapshots"],
+      ["apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts", "GET"],
+    ]) {
+      const original = readFileSync(join(root, file), "utf8");
+      const readCheck = (candidate = original, candidateRegistry = registry) => {
+        const path = join(directory, "compatibility.json");
+        writeFileSync(path, JSON.stringify(candidateRegistry));
+        return validateCompatibilityRegistry(path, {
+          baselinePath, sourceAtRevision, sourceAtGateRevision, resourceOwner: resource => owners.get(resource),
+          currentSource: path => path === file ? candidate : readFileSync(join(root, path), "utf8"),
+        }).filter(error => error.includes(`operation:${operation}`));
+      };
+      assert.deepEqual(readCheck(), []);
+      const start = original.indexOf(`export async function ${operation}(`);
+      const head = original.slice(0, start), body = original.slice(start);
+      for (const mutated of [
+        body.replace('.from("filing_submissions")', '.from(dynamicFilingTable)'),
+        body.replace('.from("filing_submissions")', '.from("other_submissions")'),
+        body.replace('  const taxSource =', '  await supabase.from("filing_submissions").delete();\n  const taxSource ='),
+        body.replace('  const taxSource =', '  await unexpectedBusinessOperation();\n  const taxSource ='),
+      ]) {
+        assert.notEqual(mutated, body);
+        assert.ok(readCheck(head + mutated).length > 0, `${operation} rejects changed persistence or composition: ${mutated.slice(Math.max(0, mutated.indexOf("const taxSource") - 100), mutated.indexOf("const taxSource") + 15)}`);
+      }
+      const earlierRead = structuredClone(registry);
+      earlierRead.migration.currentIssue = "#146";
+      assert.ok(readCheck(original, earlierRead).length > 0, `${operation} requires #152`);
+      const restoredRead = structuredClone(registry);
+      restoredRead.records.push(baseline.records.find(record => record.id === "compat-company-tax-persistence"));
+      assert.ok(readCheck(original, restoredRead).length > 0, `${operation} requires retired Tax facade`);
     }
     const earlier = structuredClone(registry);
     earlier.migration.currentIssue = "#146";

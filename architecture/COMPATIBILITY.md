@@ -150,10 +150,15 @@ rules to issue #186 before the first capability migration starts.
 
 The #152 owner actions now route Tax overrides, review comments, acknowledgements,
 permissions and manual evidence through the declared generated API. The exact
-five operation digests are pinned in `TAX_RETURN_COMPOSITION_DIGESTS`. This is a
+seven operation digests (five owner actions plus readiness refresh and Archive)
+are pinned in `TAX_RETURN_COMPOSITION_DIGESTS`. This is a
 Tax migration within the existing mixed functions: every retained Accounts and
 Audit persistence chain, original tuple and occurrence count remains unchanged.
 The composition is admitted only at #152 or after Tax has exited, and only after
 the original Tax import facade is removed. Dynamic resources, additional writes,
 altered retained chains, or any different operation body still fail the guard.
+The two source compositions add a complete owned Tax read; they stop when it is
+unavailable. Archive includes only evidence referenced by selected-year Tax
+submissions. The #146 composition pins remain unchanged and cannot authorize
+these #152 bodies at an earlier stage.
 The frozen #185 baseline and #151 twelve-tuple attribution are unchanged.

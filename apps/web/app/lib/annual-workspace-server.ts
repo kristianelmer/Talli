@@ -1,3 +1,4 @@
+import { loadPresentedCompanyTaxSource } from "./company-tax-workspace-source.ts";
 import { loadPresentedRf1086Source, newestFirst, composeFilingSources } from "./rf1086-workspace-source";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation.js";
@@ -66,6 +67,7 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     billingEntitlement,
     authorityResult,
     rfSource,
+    taxSource,
   ] = await Promise.all([
     listDocumentsForCompanies(companyIds),
     listOpeningSetups(companyIds),
@@ -89,10 +91,12 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     }),
     listAuthorityPermissions(companyIds),
     loadPresentedRf1086Source(accessToken, companyIds, context.incomeYear),
+    loadPresentedCompanyTaxSource(accessToken, companyIds, context.incomeYear),
   ]);
 
   const failedSources = [
     ["rf1086", rfSource.error],
+    ["company-tax", taxSource.error],
     ["documents", documentsResult.error],
     ["opening", openingResult.error],
     ["locks", locksResult.error],
@@ -120,9 +124,9 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     shareholders: openingResult.shareholders,
     locks: locksResult.locks,
     annualData: annualDataResult.annualData,
-    previews: newestFirst(composeFilingSources(previewsResult.previews, rfSource.previews), (row) => row.created_at),
-    submissions: newestFirst(composeFilingSources(submissionsResult.submissions, rfSource.submissions), (row) => row.updated_at),
-    overrides: newestFirst(composeFilingSources(overridesResult.overrides, rfSource.overrides), (row) => row.created_at),
+    previews: newestFirst(composeFilingSources(composeFilingSources(previewsResult.previews, rfSource.previews), taxSource.previews), (row) => row.created_at),
+    submissions: newestFirst(composeFilingSources(composeFilingSources(submissionsResult.submissions, rfSource.submissions), taxSource.submissions), (row) => row.updated_at),
+    overrides: newestFirst(composeFilingSources(composeFilingSources(overridesResult.overrides, rfSource.overrides), taxSource.overrides), (row) => row.created_at),
     transactions: transactionsResult.transactions,
     actions: effectiveInvestmentActivity(
       actionsResult.actions,
@@ -131,8 +135,8 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     positions: positionsResult.positions,
     entries: entriesResult.entries,
     snapshots: snapshotsResult.readinessSnapshots,
-    comments: newestFirst(composeFilingSources(commentsResult.comments, rfSource.comments), (row) => row.created_at),
-    authorityPermissions: newestFirst(composeFilingSources(authorityResult.authorityPermissions, rfSource.authorityPermissions), (row) => row.updated_at),
+    comments: newestFirst(composeFilingSources(composeFilingSources(commentsResult.comments, rfSource.comments), taxSource.comments), (row) => row.created_at),
+    authorityPermissions: newestFirst(composeFilingSources(composeFilingSources(authorityResult.authorityPermissions, rfSource.authorityPermissions), taxSource.authorityPermissions), (row) => row.updated_at),
   });
   const deadlines = buildDeadlineDashboard({ incomeYear: context.incomeYear, submissions: records.submissions });
   const model = buildAnnualWorkspaceViewModel({

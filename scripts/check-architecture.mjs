@@ -195,6 +195,14 @@ const TAX_SOURCE_COMPOSITION_DIGESTS = new Map([["apps/web/app/actions.ts\u0000r
 // Accounts and Audit chain. This pins behavior, not a new persistence exception.
 const TAX_RETURN_COMPOSITION_DIGESTS = new Map([
   [
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts\u0000GET",
+    "sha256:04376bf0612dd248fb20d24709607315bf82f0f992fa71902b3a6774ce611f09"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000refreshAnnualReadinessSnapshots",
+    "sha256:c60b6349e32588fce7ef53a302ab60c589b0b9bd55d373667a9ff90aaf476080"
+  ],
+  [
     "apps/web/app/actions.ts\u0000addFilingOverride",
     "sha256:e27053ee548262be1ea95a207757b90a06987153e7667d85203e18e6864156a4"
   ],
@@ -2204,7 +2212,7 @@ export function validateCompatibilityRegistry(path, {
       && resourceOwner?.("table:holding_actions") === "backend:company_tax_filing"
       && !activeLegacyScopeKeys.has(compatibilityScopeKey(scope.path, scope.rule, "table:holding_actions", scope.operation))
       && analysis?.state === "found"
-      && analysis.sourceDigest === TAX_SOURCE_COMPOSITION_DIGESTS.get(key)
+      && (analysis.sourceDigest === TAX_SOURCE_COMPOSITION_DIGESTS.get(key) || taxReturnComposition(scope))
       && (analysis.resourceOccurrences.get("table:holding_actions") ?? 0) === 0
       && (analysis.resourceOccurrences.get("table:*") ?? 0) === 0;
   };
@@ -2219,6 +2227,24 @@ export function validateCompatibilityRegistry(path, {
       && (analysis.persistenceOccurrences.get("rpc:import_company_tax_tt02_evidence") ?? 0) === 0
       && ![...analysis.persistenceOccurrences.keys()].some((resource) => resource.endsWith(":*"));
   };
+  // Archive's older completed deletions must not authorize arbitrary edits to
+  // the retained sibling reads when adding the owned Tax source.
+  for (const operationKey of TAX_SOURCE_COMPOSITION_DIGESTS.keys()) {
+    const scopes = frozenScopesByOperation.get(operationKey) ?? [];
+    const scope = scopes[0];
+    if (!scope || !(currentCapability === "company_tax_filing" || exitedCapabilities.has("company_tax_filing"))
+        || resourceOwner?.("table:holding_actions") !== "backend:company_tax_filing") continue;
+    const retained = scopes.filter(item => activeLegacyScopeKeys.has(
+      compatibilityScopeKey(item.path, item.rule, item.resource, item.operation)));
+    if (!retained.length) continue;
+    const current = currentOperationAnalysis(scope);
+    const original = legacyOperationAnalysis(sourceAtRevision?.(scope.path), scope.path, scope.operation);
+    if (!taxOwnedSourceRetirement(scope) || original?.state !== "found"
+        || !retained.every(item => JSON.stringify(current.persistenceChains.get(item.resource))
+          === JSON.stringify(original.persistenceChains.get(item.resource)))) {
+      errors.push(`Tax source composition requires its exact body and unchanged sibling persistence chains: ${operationLabel(operationKey)}`);
+    }
+  }
   const removedRfReads = removedFrozenScopes.filter(({ record, scope }) => rfAmendmentRead(record, scope));
   const rfSimulationRemoved = removedRfReads.some(({ scope }) => scope.operation === "confirmSimulatedRf1086Submission");
   let rfSimulationAtomic = false;

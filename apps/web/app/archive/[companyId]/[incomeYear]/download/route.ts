@@ -1,3 +1,4 @@
+import { loadPresentedCompanyTaxSource } from "../../../../lib/company-tax-workspace-source";
 import { loadTaxSettlementArchiveSource } from "../../../../../features/company-tax-filing";
 import { createHash } from "node:crypto";
 
@@ -341,7 +342,11 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     return new Response("Kunne ikke lese innsendingsgrunnlaget", { status: 500 });
   }
   const rf1086 = await loadArchiveRf1086(accessToken, companyId, incomeYear);
-  if (!submissions?.length && !rf1086.data?.submissions.length) {
+  const taxSource = await loadPresentedCompanyTaxSource(accessToken, [companyId], incomeYear);
+  if (taxSource.error) return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
+  const taxEvidenceIds = new Set(taxSource.submissions.filter((row) => row.mode === "test_authority")
+    .map((row) => row.authority_test_run_id).filter((id): id is string => Boolean(id)));
+  if (!submissions?.length && !rf1086.data?.submissions.length && !taxSource.submissions.length) {
     if (rf1086.error) return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
     return new Response("Arkivet krever lagret RF-1086-status", { status: 409 });
   }
@@ -436,12 +441,12 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     ),
     bankSuggestionAcceptances: bankSuggestionAcceptances ?? [],
     billingAccounts: billingAccounts ?? [],
-    authorityPermissions: mergeArchiveRfRows(authorityPermissions ?? [], rf1086.data?.permissions ?? []),
-    authorityTestRuns: mergeArchiveRfRows(authorityTestRuns ?? [], rf1086.data?.testEvidence ?? []),
+    authorityPermissions: mergeArchiveRfRows(mergeArchiveRfRows(authorityPermissions ?? [], rf1086.data?.permissions ?? []), taxSource.authorityPermissions),
+    authorityTestRuns: mergeArchiveRfRows(mergeArchiveRfRows(authorityTestRuns ?? [], rf1086.data?.testEvidence ?? []), taxSource.authorityTestRuns.filter((row) => taxEvidenceIds.has(row.id))),
     auditEvents: auditEvents ?? [],
-    reviewComments: mergeArchiveRfRows(reviewComments ?? [], rf1086.data?.comments ?? []),
-    filingPreviews: mergeArchiveRfRows(previews ?? [], rf1086.data?.previews ?? []),
-    filingSubmissions: mergeArchiveRfRows(submissions ?? [], rf1086.data?.submissions ?? []),
+    reviewComments: mergeArchiveRfRows(mergeArchiveRfRows(reviewComments ?? [], rf1086.data?.comments ?? []), taxSource.comments),
+    filingPreviews: mergeArchiveRfRows(mergeArchiveRfRows(previews ?? [], rf1086.data?.previews ?? []), taxSource.previews),
+    filingSubmissions: mergeArchiveRfRows(mergeArchiveRfRows(submissions ?? [], rf1086.data?.submissions ?? []), taxSource.submissions),
     corporateDecisions: corporateLifecycle?.corporateDecisions ?? [],
     corporateDocumentSets: corporateLifecycle?.corporateDocumentSets ?? [],
     corporateDocumentArtifacts: corporateLifecycle?.corporateDocumentArtifacts ?? [],
