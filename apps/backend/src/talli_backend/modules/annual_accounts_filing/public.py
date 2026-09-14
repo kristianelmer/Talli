@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
+from typing import Callable, Protocol, TypeVar
 
 
 def _freeze(value):
@@ -215,6 +216,85 @@ def import_annual_accounts_evidence(input: AnnualAccountsEvidenceInput) -> Annua
     return project(input)
 
 
+class AnnualAccountsAuthorityError(Exception):
+    """Stable sanitized authority failure; provider text is not reflected."""
+    def __init__(self, message: str, *, code: str, status: int | None = None,
+                 retryable: bool = False, validation_codes: list[str] | None = None):
+        super().__init__(message)
+        self.code, self.status, self.retryable = code, status, retryable
+        self.correlation_id = None
+        self.validation_codes = validation_codes or []
+
+    def evidence(self) -> Mapping[str, object]:
+        return {"code": self.code, "status": self.status, "correlationId": None,
+                "retryable": self.retryable, "message": str(self), "validationCodes": self.validation_codes}
+
+
+class AnnualAccountsAuthority(Protocol):
+    """Test-only authority operations; a person performs signing."""
+    async def create_instance(self, *, company_org_number: str) -> Mapping[str, object]: ...
+    async def upload_main_form(self, *, instance_id: str, data_id: str, xml: str) -> Mapping[str, object]: ...
+    async def upload_company_accounts(self, *, instance_id: str, data_id: str, xml: str) -> Mapping[str, object]: ...
+    async def validate_instance(self, *, instance_id: str) -> Mapping[str, object]: ...
+    async def lock_for_signing(self, *, instance_id: str) -> Mapping[str, object]: ...
+    async def get_signing_handoff(self, *, instance_id: str) -> Mapping[str, object]: ...
+    async def get_submission_evidence(self, *, instance_id: str) -> Mapping[str, object]: ...
+
+
+AuthorityAdapter = TypeVar("AuthorityAdapter", bound=type[object])
+
+
+def annual_accounts_authority_adapter(contract: type[object]) -> Callable[[AuthorityAdapter], AuthorityAdapter]:
+    def declare(adapter: AuthorityAdapter) -> AuthorityAdapter:
+        _ = contract
+        return adapter
+    return declare
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsRehearsalConfiguration:
+    """Nonsecret CLI declarations; the workflow preserves ordered validation."""
+    approved_test_write: str = ""
+    authority_environment: str = ""
+    scope: str = ""
+    system_user_org: str = ""
+    external_reference: str = ""
+    system_user_request_id: str = ""
+    contact_email: str = ""
+    approval_date: str = ""
+    confirming_representative: str = ""
+
+
+class AnnualAccountsRehearsalIO(Protocol):
+    """Local file, clock, document and credential mechanisms for the workflow."""
+    def load_case(self) -> Mapping[str, object]: ...
+    def load_evidence(self) -> dict[str, object] | None: ...
+    def save_evidence(self, evidence: Mapping[str, object]) -> None: ...
+    def evidence_filename(self) -> str: ...
+    def case_filename(self) -> str: ...
+    def revision(self) -> str: ...
+    def timestamp(self) -> str: ...
+    async def connect(self, evidence: Mapping[str, object]) -> AnnualAccountsAuthority: ...
+    def generate(self, operation: str, values: Mapping[str, object]) -> Mapping[str, object]: ...
+    def validate_documents(self, documents: Mapping[str, str]) -> None: ...
+
+
+async def rehearse_annual_accounts(
+    configuration: AnnualAccountsRehearsalConfiguration, io: AnnualAccountsRehearsalIO,
+) -> Mapping[str, object]:
+    from .rehearsal import run
+    return _freeze(await run(configuration, io))
+
+
+async def prepare_annual_accounts_for_signing(
+    client: AnnualAccountsAuthority, *, company_org_number: str,
+    main_form_xml: str, company_accounts_xml: str,
+) -> Mapping[str, object]:
+    from .authority_workflow import prepare
+    return _freeze(await prepare(client, company_org_number=company_org_number,
+        main_form_xml=main_form_xml, company_accounts_xml=company_accounts_xml))
+
+
 __all__ = [
     'AnnualAccountsSource', 'AnnualAccountsCandidate', 'AnnualAccountsRenderInput',
     'AnnualAccountsDocuments', 'AnnualAccountsReadinessIssue', 'AnnualAccountsCorporateReadiness',
@@ -222,4 +302,7 @@ __all__ = [
     'AnnualAccountsOfflineSource', 'AnnualAccountsOfflineSimulation',
     'build_annual_accounts_offline_payload', 'assess_annual_accounts_offline', 'simulate_annual_accounts_offline',
     'AnnualAccountsEvidenceInput', 'AnnualAccountsEvidenceProjection', 'import_annual_accounts_evidence',
+    'AnnualAccountsAuthorityError', 'AnnualAccountsAuthority', 'annual_accounts_authority_adapter',
+    'AnnualAccountsRehearsalConfiguration', 'AnnualAccountsRehearsalIO', 'rehearse_annual_accounts',
+    'prepare_annual_accounts_for_signing',
 ]

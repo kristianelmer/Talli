@@ -4,11 +4,14 @@
   "name": "annual_accounts_filing",
   "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing",
   "owner": "backend:annual_accounts_filing",
-  "purpose": "Own deterministic Annual Accounts calculation, RR0002 XML, Accounts readiness, offline projection and TT02 evidence projection; persistence and authority workflow migration remain pending.",
+  "purpose": "Own Annual Accounts calculation, XML, readiness, evidence and test rehearsal lifecycle; persistence and live web workflow migration remain pending.",
   "documentation": "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.annual_accounts_filing.public",
   "exports": {
-    "commands": [],
+    "commands": [
+      "rehearse_annual_accounts",
+      "prepare_annual_accounts_for_signing"
+    ],
     "queries": [
       "AnnualAccountsSource",
       "AnnualAccountsCandidate",
@@ -26,11 +29,18 @@
       "simulate_annual_accounts_offline",
       "AnnualAccountsEvidenceInput",
       "AnnualAccountsEvidenceProjection",
-      "import_annual_accounts_evidence"
+      "import_annual_accounts_evidence",
+      "AnnualAccountsRehearsalConfiguration"
     ],
     "events": [],
-    "errors": [],
-    "identifiers": []
+    "errors": [
+      "AnnualAccountsAuthorityError"
+    ],
+    "identifiers": [
+      "AnnualAccountsAuthority",
+      "AnnualAccountsRehearsalIO",
+      "annual_accounts_authority_adapter"
+    ]
   },
   "owns": {
     "postgresSchemas": [],
@@ -39,7 +49,26 @@
     "projections": [],
     "migrations": "supabase/migrations"
   },
-  "ports": [],
+  "ports": [
+    {
+      "name": "AnnualAccountsAuthority",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.annual_accounts_filing.public.AnnualAccountsAuthority",
+      "registrationDecorator": "talli_backend.modules.annual_accounts_filing.public.annual_accounts_authority_adapter",
+      "adapters": [
+        "talli_backend.adapters.annual_accounts_authority.AnnualAccountsTransport"
+      ]
+    },
+    {
+      "name": "AnnualAccountsRehearsalIO",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.annual_accounts_filing.public.AnnualAccountsRehearsalIO",
+      "registrationDecorator": "talli_backend.modules.annual_accounts_filing.public.annual_accounts_authority_adapter",
+      "adapters": [
+        "talli_backend.adapters.local_annual_accounts_rehearsal.LocalAnnualAccountsRehearsal"
+      ]
+    }
+  ],
   "dependencies": [],
   "allowedImports": [
     "__future__",
@@ -51,13 +80,14 @@
     "re",
     "types",
     "hashlib",
-    "icu"
+    "icu",
+    "typing"
   ],
   "forbiddenResponsibilities": [
     "Ledger posting or account ownership",
     "Corporate Governance and Documents source ownership",
     "Annual common aggregation and Billing commercial policy",
-    "Database access, provider activation or production submission in the pure calculation slice"
+    "Provider activation, production submission and persistence before the explicit migration cutover"
   ],
   "tests": {
     "policy": "apps/backend/tests/test_annual_accounts_filing.py",

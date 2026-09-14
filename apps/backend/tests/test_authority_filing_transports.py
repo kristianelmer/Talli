@@ -6,9 +6,10 @@ import json
 import httpx
 import pytest
 
-from talli_backend.authority_tools import annual_accounts_transport as annual
+from talli_backend.adapters import annual_accounts_authority as annual
 from talli_backend.adapters import company_tax_authority as tax
 from talli_backend.authority_tools._filing import MAX_RESPONSE_BYTES
+from talli_backend.modules.annual_accounts_filing.public import prepare_annual_accounts_for_signing
 from talli_backend.modules.company_tax_filing.public import (
     wait_for_company_tax_validation, wait_for_company_tax_feedback,
     wait_for_company_tax_clean_envelope,
@@ -52,7 +53,7 @@ def test_annual_exact_create_upload_validate_lock_and_person_handoff():
     transport, requests, pending = queue(annual_instance(), httpx.Response(201), httpx.Response(201),
         [{"severity": "Warning", "code": "RR0002_GUIDANCE", "field": "approval", "message": "Check date."}],
         {"currentTask": {"altinnTaskType": "signing"}}, annual_instance("signing"))
-    result = run(annual.prepare_annual_accounts_for_signing(annual.AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
+    result = run(prepare_annual_accounts_for_signing(annual.AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
         company_org_number=ORG, main_form_xml="<main/>", company_accounts_xml="<accounts/>"))
     assert not pending
     assert [(r.method, str(r.url)) for r in requests] == [
@@ -72,7 +73,7 @@ def test_annual_validation_error_never_locks():
     transport, requests, _ = queue(annual_instance(), httpx.Response(201), httpx.Response(201),
         [{"severity": "Error", "code": "RR0002_REQUIRED"}])
     with pytest.raises(annual.AnnualAccountsAuthorityError) as caught:
-        run(annual.prepare_annual_accounts_for_signing(annual.AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
+        run(prepare_annual_accounts_for_signing(annual.AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
             company_org_number=ORG, main_form_xml="<main/>", company_accounts_xml="<accounts/>"))
     assert caught.value.validation_codes == ["RR0002_REQUIRED"]
     assert len(requests) == 4 and not any(r.url.path.endswith("/process/next") for r in requests)

@@ -1,16 +1,16 @@
-"""Frozen #152 RR0002 TT02 transport. A person, never this tool, signs."""
+"""Fixed RR0002 TT02 HTTP adapter. A person, never this adapter, signs."""
 from __future__ import annotations
 import json
 
-from ._filing import FixedTransport, FilingToolError, data_id, instance_id, iso, obj, opaque, org_number, xml
+from talli_backend.authority_tools._filing import FixedTransport, FilingToolError, data_id, instance_id, iso, obj, opaque, org_number, xml
 
 BASE = "https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406"
 PLATFORM = "https://platform.tt02.altinn.no"
 
 
-class AnnualAccountsAuthorityError(FilingToolError):
-    def evidence(self):
-        return super().evidence() | {"validationCodes": self.validation_codes}
+from talli_backend.modules.annual_accounts_filing.public import (
+    AnnualAccountsAuthority, AnnualAccountsAuthorityError, annual_accounts_authority_adapter,
+)
 
 
 async def exchange_maskinporten_for_altinn_token(token, *, environment="test", transport=None, timeout_ms=20_000):
@@ -22,6 +22,7 @@ async def exchange_maskinporten_for_altinn_token(token, *, environment="test", t
     return opaque(raw)
 
 
+@annual_accounts_authority_adapter(AnnualAccountsAuthority)
 class AnnualAccountsTransport(FixedTransport):
     def __init__(self, altinn_access_token, *, environment="test", transport=None, timeout_ms=20_000):
         if environment != "test":
@@ -56,7 +57,7 @@ class AnnualAccountsTransport(FixedTransport):
         return {"id": identifier, "dataIds": identifiers, "processTask": self._task(result)}
 
     async def _upload(self, *, instance_id, data_id: str, xml: str):
-        from ._filing import data_id as checked_id, xml as checked_xml
+        from talli_backend.authority_tools._filing import data_id as checked_id, xml as checked_xml
         identifier = checked_id(data_id)
         await self._request(self._url(instance_id)+f"/data/{identifier}", "PUT", self._token,
             content_type="application/xml", body=checked_xml(xml))
@@ -129,15 +130,3 @@ class AnnualAccountsTransport(FixedTransport):
             "archived": archived, "archivedAt": archived_at,
             "archiveReference": f"{PLATFORM}/storage/api/v1/instances/{instance_id}" if archived else None,
             "receipt": receipt}
-
-
-async def prepare_annual_accounts_for_signing(client, *, company_org_number, main_form_xml, company_accounts_xml):
-    instance = await client.create_instance(company_org_number=company_org_number)
-    await client.upload_main_form(instance_id=instance["id"], data_id=instance["dataIds"]["mainForm"], xml=main_form_xml)
-    await client.upload_company_accounts(instance_id=instance["id"], data_id=instance["dataIds"]["companyAccounts"], xml=company_accounts_xml)
-    validation = await client.validate_instance(instance_id=instance["id"])
-    if validation["hasErrors"]:
-        raise AnnualAccountsAuthorityError("Annual accounts validation must pass before locking.",
-            code="ANNUAL_ACCOUNTS_VALIDATION_FAILED", validation_codes=sorted({v["code"] for v in validation["issues"] if v["severity"].lower() == "error"}))
-    await client.lock_for_signing(instance_id=instance["id"])
-    return await client.get_signing_handoff(instance_id=instance["id"]) | {"dataIds": instance["dataIds"], "validation": validation}

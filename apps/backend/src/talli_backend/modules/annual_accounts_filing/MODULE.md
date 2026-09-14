@@ -1,15 +1,16 @@
 # Annual Accounts Filing
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":[],"ports":[],"publicEntryPoints":["talli_backend.modules.annual_accounts_filing.public"]}
+{"dependencies":[],"ownedTables":[],"ports":["AnnualAccountsAuthority","AnnualAccountsRehearsalIO"],"publicEntryPoints":["talli_backend.modules.annual_accounts_filing.public"]}
 -->
 
 ## Purpose
 
 Own the deterministic annual-accounts filing rules and RR0002 documents. Stage
 #153 currently contains the pure calculation, XML and Accounts-specific readiness
-slice. The legacy writer remains authoritative until the explicit database
-cutover; this slice performs no persistence or provider operations.
+slice and test rehearsal lifecycle. The legacy writer remains authoritative until the explicit database
+cutover; authority work is accessible only through the existing explicitly
+approved synthetic test gate and fixed TT02 adapter. Production stays disabled.
 
 ## Owns and must not own
 
@@ -43,8 +44,23 @@ manual warnings retain their original order. Common Annual gates remain separate
 
 ## Data and effects
 
-No database tables, storage buckets, outbound ports or external effects are
-activated by this slice. The canonical persistence/authorization boundary and
+No database tables or storage buckets are activated by this slice.
+`AnnualAccountsAuthority` declares the fixed TT02 operations and
+`AnnualAccountsRehearsalIO` declares local file, clock, XML and credential seams.
+`annual_accounts_authority_adapter` registers implementations.
+`AnnualAccountsRehearsalConfiguration` holds nonsecret declarations, and
+`AnnualAccountsAuthorityError` carries sanitized failure metadata.
+Their registered adapters retain transport mechanics; Accounts owns the ordered
+rehearsal guards, checkpoints, retries and human-signing continuation.
+`rehearse_annual_accounts` returns an immutable summary.
+`prepare_annual_accounts_for_signing` preserves create/upload/validate/lock/handoff
+order and refuses to lock after validation errors. Neither contract signs.
+The local CLI retains the exact explicit test gate, scopes, synthetic case and
+organization checks. It writes intent before credentials or provider work, reuses
+existing uploads, reads receipt state after human signing and replays completed
+evidence without constructing a provider. Credential setup remains outside the
+original provider error-catching block. Validation-failed status and sanitized
+retryable/blocked errors retain their original behavior. The canonical persistence/authorization boundary and
 generated client are pending. The old direct RLS observations do not authorize
 unaccepted membership or skipping fresh MFA in the future request boundary.
 
@@ -102,5 +118,7 @@ the module manifest, documentation and language-aware dependency evidence.
 and 14 actual CLI executions against pre-migration output. Existing Annual, Tax
 and Archive tests remain active. `test_annual_accounts_evidence.py` checks 43 frozen
 evidence results, 1,804 actual importer date cases, 4,320 TimeClip cases across six
-timezones, and immutable inputs/results. Provider-state relocation, generated workflow,
+timezones, and immutable inputs/results. The old standalone transport path and final Node payload subprocess are retired.
+The CLI maps directly to the owned Python calculation and XML contracts.
+Generated web workflow,
 data migration/RLS/rollback and full stage-exit gates remain pending.

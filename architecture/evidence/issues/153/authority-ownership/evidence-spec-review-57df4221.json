@@ -1,0 +1,366 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_PURE_EVIDENCE_SLICE",
+  "baseRevision": "e412ebcceba83399f26f283d879b67118bfe697a",
+  "reviewedRevision": "57df4221ba8341ae2b7c5e9942eb946e2e557088",
+  "originalStageBaseline": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "diffCommand": "git diff e412ebcceba83399f26f283d879b67118bfe697a...57df4221ba8341ae2b7c5e9942eb946e2e557088",
+  "commits": [
+    "57df4221ba8341ae2b7c5e9942eb946e2e557088 feat(accounts): own the preserved TT02 evidence projection"
+  ],
+  "findings": [],
+  "reportPath": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-spec-review-57df4221.md",
+  "reportSha256": "6bf0d506071a96d00a813413c80833996c1c0b70156cf08277a2cbc432bbb26a",
+  "runtime": {
+    "nodePath": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+    "nodeVersion": "v24.20.0",
+    "nodeExecutableSha256": "9d050fd455b56426e25d4d603c7c501cbb2630348e836cf221dcce748e90588a",
+    "pythonPath": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python",
+    "pythonVersion": "Python 3.12.12"
+  },
+  "independentChecks": {
+    "pytest": {
+      "passed": 2112,
+      "failed": 0,
+      "skipped": 0,
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<private-pin>:<private-pin>/apps/backend/src PATH=<backend-venv>/bin:/usr/bin:/bin <backend-venv>/bin/python -m pytest -q -c /dev/null --rootdir=. -p no:cacheprovider apps/backend/tests/test_annual_accounts_evidence.py apps/backend/tests/test_annual_accounts_filing.py"
+    },
+    "capture": {
+      "command": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node architecture/evidence/issues/153/evidence-import/capture-import-dates.mjs ../evidence-spec-recapture-57df4221.json",
+      "cases": 1804,
+      "timezoneCases": 4320,
+      "byteExact": true,
+      "sha256": "224402da9a7590157553e8dd1739e98fc1b7acc3c3c80405abe042a658422fb2"
+    },
+    "adversarial": {
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<private-pin>/apps/backend/src <backend-venv>/bin/python /Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-spec-adversarial-57df4221.py",
+      "casesPerZone": 35051,
+      "zones": 6,
+      "comparisons": 210306,
+      "differences": 0
+    },
+    "validationOrder": {
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<private-pin>/apps/backend/src <backend-venv>/bin/python /Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-spec-order-57df4221.py",
+      "cases": 493,
+      "differences": 0,
+      "deep1200Detached": true
+    },
+    "originalTypeScript": {
+      "path": "apps/web/app/lib/authority-test-evidence.ts",
+      "baselineAndCandidateByteIdentical": true,
+      "sha256": "3288e82a19ec640fa3b7142bac88f7d5262be957592303a1e41f6db057302d9d"
+    },
+    "originalCriteriaUnchangedAndAllPending": true
+  },
+  "executionCorrections": [
+    "Initial pytest invocation named nonexistent split pure/offline files; no tests ran (exit 4). Corrected invocation used the actual test_annual_accounts_filing.py and passed all 2112.",
+    "First independent deep-control call omitted the baseline evidence_url, so its equality check was false; supplying the identical fixture argument yielded true. Production source was not changed."
+  ],
+  "manifestArtifactChecks": [
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/v8-reference-sources.json",
+      "sha256": "2689ba4e6e08c850d41fd825f9ff8b8677c9b673becc4ed1c1cc0621472d1be8"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/date-parse-second-comparison.json",
+      "sha256": "0f5452989c48982cde2a618cff601a40fdde98e69b2e0a6ce5e97e656e10acf3"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/offline-standards-review-e412ebcc.md",
+      "sha256": "b0f4dc8ce06cd80c1654239c2df5702b9987b897963c17c3d0f87fbb249bf032"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/evidence-first-tests.log",
+      "sha256": "ddb14e3eaf6853858fc78049bfd35f35935db17046bc8bdc186a46d4b13fcb5e"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/offline-spec-review-e412ebcc.md",
+      "sha256": "c2a60b4f7729fcd86c8003edd4251884486af0b70ede7590a523cd62a834df3e"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/evidence-architecture.log",
+      "sha256": "2c610bb808ef428dfd5e850d2a906b846422542b8c6c297372a11a60256116f9"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/offline-standards-review-e412ebcc.json",
+      "sha256": "01f64a6343fcbdd3ded2c118175a7df585761f1f472e8862c5efb3c63b5bf687"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/evidence-second-tests.log",
+      "sha256": "479d26475389d96a617e29023ee30c17b1a8e97c17d0cc7db09138cad83cd7d5"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/legacy-import-dates.json",
+      "sha256": "224402da9a7590157553e8dd1739e98fc1b7acc3c3c80405abe042a658422fb2"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/capture-import-dates.mjs",
+      "sha256": "65afaf3df4923d7eaa8e4711429d36f937c8c6a5cc901232b993dd27cb2082b4"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/capture-date-parse.mjs",
+      "sha256": "2da921df81d83b246c63cf2c644e497b2146d2e96115efe1fb1e48b7b6bfe469"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/date-parse-first-comparison.json",
+      "sha256": "c4a9bfec40a6aee5d4fc6c035e916dfbb6ecc9ea399efc1aa1c56ed75eebb404"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/offline-spec-review-e412ebcc.json",
+      "sha256": "c9f3c58cdb9ced94c10155cb65d869a0468c4f4a09b43dff4a5c805413ab6118"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/verification.md",
+      "sha256": "95485fab3e5a7463e4ed9533226b61931bf71bc0d208bc6c75fee18e75e7b189"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/legacy-date-parse.json",
+      "sha256": "2d282f129fb996249eb79908ad53495623a1d41d6ced3f8aee1e193603e42dc4"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/date_parse.py",
+      "sha256": "a7b4cb590c607e0a246b6c44098861dd3171f800af22a521850f5598838a64b6"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py",
+      "sha256": "5ed31725891678bbbe82b29af17c92fd4cf02d76c396cfed4b8a3be73f19aa9e"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/rendering.py",
+      "sha256": "222fac8e3a0adaaa1b985cb320dd374f52511dc2c46a818b6b8141624e1ddbc3"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/V8-LICENSE",
+      "sha256": "6ab33af8774a0f396ee3aeeb761e3229057682d6f9fa7f572e390c2cb3a6e509"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/calculation.py",
+      "sha256": "c579d40eb3ef800073219cc156e6bb6537d35dc10ed54e93274d72878d2532ec"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/__init__.py",
+      "sha256": "bbf344ff2db22c18f7f3081b331c1939f7b49daa110fa97ed2b6a49113c8b726"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md",
+      "sha256": "8fc2b5f0831ba643845942ded79d7bfcc4932c527fb9050419331a1c9ffe9458"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py",
+      "sha256": "c7b8996391bf831d9530cfe9717d8353231126167ba2d0aed19e52efd764ceaf"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/numbers.py",
+      "sha256": "9a9bc64da8087e312af6c21887682489b74c1883434d0077ec78d374e552c694"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json",
+      "sha256": "aa10d5afe0c3769dd5136e0e8e8f1e6b4986af0a6681381374de86516c6cdaee"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/readiness.py",
+      "sha256": "07783baea9e4f2085b3ba3d3620f1c896b93045dba765c26f9c3dc44be2e2234"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/evidence.py",
+      "sha256": "a6be36e7b61699f5e91b463b9ba23dfdbfe6f1fd57d32d141060122dd1fdc69e"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_evidence.py",
+      "sha256": "5c931c47e57dce1c18599b05248559d6b45e954d3af8feaf3e36ab6ecd18a41f"
+    },
+    {
+      "path": "architecture/dependency-evidence.json",
+      "sha256": "2c610bb808ef428dfd5e850d2a906b846422542b8c6c297372a11a60256116f9"
+    }
+  ],
+  "v8LocalReferenceChecks": [
+    {
+      "name": "dateparser.h",
+      "sha256": "8c4dd28958ac3781d99c038f3fcc9ae70814c34377e314c4867642d5b3466665",
+      "referenceUrl": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/src/date/dateparser.h"
+    },
+    {
+      "name": "dateparser-inl.h",
+      "sha256": "f4d6751423c17f671f383aa4bfa9f8c8158a09fc28f7bc860c71edc2cb01fb73",
+      "referenceUrl": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/src/date/dateparser-inl.h"
+    },
+    {
+      "name": "dateparser.cc",
+      "sha256": "64ae6bae3ba2438a8a9323a0a1010da285f51bcbab1e02adf753fbbdaffaf461",
+      "referenceUrl": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/src/date/dateparser.cc"
+    },
+    {
+      "name": "LICENSE",
+      "sha256": "6ab33af8774a0f396ee3aeeb761e3229057682d6f9fa7f572e390c2cb3a6e509",
+      "referenceUrl": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/LICENSE"
+    },
+    {
+      "name": "date.h",
+      "sha256": "dbf631fc2c2f2c26491b3123e0b27f2a6b98af5811edc2a576eff6bfb7b8b9a3",
+      "referenceUrl": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/src/date/date.h"
+    },
+    {
+      "name": "date.cc",
+      "sha256": "5394ed9dc2e001dbf1ed0cc32382d1ba12c33c39e09e08cdc9e1253b16e2066a",
+      "referenceUrl": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/src/date/date.cc"
+    }
+  ],
+  "adoptedOriginalReviews": [
+    {
+      "name": "offline-spec-review-e412ebcc.md",
+      "sha256": "c2a60b4f7729fcd86c8003edd4251884486af0b70ede7590a523cd62a834df3e"
+    },
+    {
+      "name": "offline-spec-review-e412ebcc.json",
+      "sha256": "c9f3c58cdb9ced94c10155cb65d869a0468c4f4a09b43dff4a5c805413ab6118"
+    },
+    {
+      "name": "offline-standards-review-e412ebcc.md",
+      "sha256": "b0f4dc8ce06cd80c1654239c2df5702b9987b897963c17c3d0f87fbb249bf032"
+    },
+    {
+      "name": "offline-standards-review-e412ebcc.json",
+      "sha256": "01f64a6343fcbdd3ded2c118175a7df585761f1f472e8862c5efb3c63b5bf687"
+    }
+  ],
+  "changedCommittedSourceBindings": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md",
+      "sha256": "8fc2b5f0831ba643845942ded79d7bfcc4932c527fb9050419331a1c9ffe9458"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/V8-LICENSE",
+      "sha256": "6ab33af8774a0f396ee3aeeb761e3229057682d6f9fa7f572e390c2cb3a6e509"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/date_parse.py",
+      "sha256": "a7b4cb590c607e0a246b6c44098861dd3171f800af22a521850f5598838a64b6"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/evidence.py",
+      "sha256": "a6be36e7b61699f5e91b463b9ba23dfdbfe6f1fd57d32d141060122dd1fdc69e"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json",
+      "sha256": "aa10d5afe0c3769dd5136e0e8e8f1e6b4986af0a6681381374de86516c6cdaee"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py",
+      "sha256": "5ed31725891678bbbe82b29af17c92fd4cf02d76c396cfed4b8a3be73f19aa9e"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_evidence.py",
+      "sha256": "5c931c47e57dce1c18599b05248559d6b45e954d3af8feaf3e36ab6ecd18a41f"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/capture-date-parse.mjs",
+      "sha256": "2da921df81d83b246c63cf2c644e497b2146d2e96115efe1fb1e48b7b6bfe469"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/capture-import-dates.mjs",
+      "sha256": "65afaf3df4923d7eaa8e4711429d36f937c8c6a5cc901232b993dd27cb2082b4"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/date-parse-first-comparison.json",
+      "sha256": "c4a9bfec40a6aee5d4fc6c035e916dfbb6ecc9ea399efc1aa1c56ed75eebb404"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/date-parse-second-comparison.json",
+      "sha256": "0f5452989c48982cde2a618cff601a40fdde98e69b2e0a6ce5e97e656e10acf3"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/evidence-architecture.log",
+      "sha256": "2c610bb808ef428dfd5e850d2a906b846422542b8c6c297372a11a60256116f9"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/evidence-first-tests.log",
+      "sha256": "ddb14e3eaf6853858fc78049bfd35f35935db17046bc8bdc186a46d4b13fcb5e"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/evidence-second-tests.log",
+      "sha256": "479d26475389d96a617e29023ee30c17b1a8e97c17d0cc7db09138cad83cd7d5"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/legacy-date-parse.json",
+      "sha256": "2d282f129fb996249eb79908ad53495623a1d41d6ced3f8aee1e193603e42dc4"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/legacy-import-dates.json",
+      "sha256": "224402da9a7590157553e8dd1739e98fc1b7acc3c3c80405abe042a658422fb2"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/manifest.json",
+      "sha256": "8c79c5ca966ce4dbea2e3400a63c11767fb5260687ec1cb3d0c724e351b037df"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/offline-spec-review-e412ebcc.json",
+      "sha256": "c9f3c58cdb9ced94c10155cb65d869a0468c4f4a09b43dff4a5c805413ab6118"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/offline-spec-review-e412ebcc.md",
+      "sha256": "c2a60b4f7729fcd86c8003edd4251884486af0b70ede7590a523cd62a834df3e"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/offline-standards-review-e412ebcc.json",
+      "sha256": "01f64a6343fcbdd3ded2c118175a7df585761f1f472e8862c5efb3c63b5bf687"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/offline-standards-review-e412ebcc.md",
+      "sha256": "b0f4dc8ce06cd80c1654239c2df5702b9987b897963c17c3d0f87fbb249bf032"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/v8-reference-sources.json",
+      "sha256": "2689ba4e6e08c850d41fd825f9ff8b8677c9b673becc4ed1c1cc0621472d1be8"
+    },
+    {
+      "path": "architecture/evidence/issues/153/evidence-import/verification.md",
+      "sha256": "95485fab3e5a7463e4ed9533226b61931bf71bc0d208bc6c75fee18e75e7b189"
+    }
+  ],
+  "privateArtifacts": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-spec-tests-57df4221.log",
+      "sha256": "1c77b1dcd6d8be1769f8045ec6ff7f8501edc4026bcfb477d3a49be1e7debcb3"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-spec-tests-corrected-57df4221.log",
+      "sha256": "d1d2f96f739264504c42ac150d646cc74ecad5ecf246bcff99830cf661548a05"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-spec-recapture-57df4221.json",
+      "sha256": "224402da9a7590157553e8dd1739e98fc1b7acc3c3c80405abe042a658422fb2"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-spec-adversarial-57df4221.py",
+      "sha256": "77459990c8095f5d05b8ab57210175201c06ded0abef6980dada4c894a8923e6"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-spec-adversarial-inputs-57df4221.json",
+      "sha256": "c04956e586be75707995f8feb4f7ed662f87ca9f8b7c7366a2cf8d96ccb948aa"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-spec-adversarial-results-57df4221.json",
+      "sha256": "71868889db814340041e130b0e187c77aa3a8bafcd2dd32c5d0a632e2c68ffee"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-spec-order-57df4221.py",
+      "sha256": "b533ce1a2549362e58bf50ada6a196baa1ac86f296b67a2ef5d34f9f2da64b93"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-spec-order-inputs-57df4221.json",
+      "sha256": "3f69400f2be3484fa3ef5066d4e3e86c555f81ecda5d5c0bc43ee4a95e4bda38"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-spec-order-results-57df4221.json",
+      "sha256": "81770a77186f0597baba6146b9ac7ce87e48d5afc261d2aad3d0487ad53df2db"
+    }
+  ],
+  "limitations": [
+    "No database, HTTP, browser, provider, authority acceptance or complete stage exit validation.",
+    "Finite-date corpus covers selected zones and pinned local runtimes; it is not exhaustive or a new Linux execution.",
+    "V8 retained files were verified against committed declared reference hashes, not re-fetched from the network.",
+    "Existing web writer remains in place in this bounded milestone; callers, Audit, SQL cutover and full gates remain pending."
+  ]
+}

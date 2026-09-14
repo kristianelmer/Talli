@@ -12,7 +12,7 @@ import pytest
 
 from talli_backend.authority_tools import annual_accounts_test as annual
 from talli_backend.authority_tools import company_tax_test as tax
-from talli_backend.authority_tools import annual_accounts_transport as annual_http
+from talli_backend.adapters import annual_accounts_authority as annual_http
 from talli_backend.adapters import company_tax_authority as tax_http
 from talli_backend.authority_tools._filing import ROOT, payload, read_evidence, write_evidence
 from test_authority_filing_transports import ALTINN_TOKEN, TAX_TOKEN, ID, DATA, OTHER, ORG, annual_instance, instance, queue
@@ -24,7 +24,7 @@ def environment(tmp_path, kind):
     name = "ANNUAL_ACCOUNTS" if kind == "annual" else "COMPANY_TAX"
     fixture = "annual-accounts-simple-holding-2025.json" if kind == "annual" else "company-tax-no-activity-2025.json"
     return {f"TALLI_{name}_APPROVED_TEST_WRITE": "true", "TALLI_MASKINPORTEN_ENVIRONMENT": "test",
-        "TALLI_MASKINPORTEN_SCOPE": annual.SCOPE if kind == "annual" else "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
+        "TALLI_MASKINPORTEN_SCOPE": "altinn:instances.read altinn:instances.write" if kind == "annual" else "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
         f"TALLI_{name}_CASE_PATH": str(ROOT / "tests/fixtures/authority" / fixture),
         f"TALLI_{name}_EVIDENCE_PATH": str(tmp_path / "evidence.json"),
         "TALLI_MASKINPORTEN_SYSTEM_USER_ORG": ORG, "TALLI_MASKINPORTEN_SYSTEM_USER_EXTERNAL_REF": "original-fixture-ref",
@@ -303,17 +303,21 @@ def test_tax_prior_identity_payload_and_reference_conflicts_fail_before_instance
     assert all(r.method == "GET" for r in requests)
 
 
-def test_fixed_generator_child_environment_has_no_credential_or_node_injection(monkeypatch):
-    captured = {}
+def test_fixed_generator_has_no_child_process_or_credential_environment_dependency(monkeypatch):
     def spawn(*args, **kwargs):
-        captured.update(kwargs)
-        return subprocess.CompletedProcess(args[0], 0, '{"result":"validertOK"}', '')
+        pytest.fail("Owned Accounts payload must not invoke a child process")
     monkeypatch.setattr(subprocess, "run", spawn)
     monkeypatch.setenv("TALLI_MASKINPORTEN_PRIVATE_KEY_PATH", "/private/key")
     monkeypatch.setenv("NODE_OPTIONS", "--require /private/inject")
-    assert payload("annual_accounts", {"synthetic": True}) == {"result": "validertOK"}
-    assert set(captured["env"]) == {"PATH", "LANG"}
-    assert "key" not in captured["input"] and "NODE_OPTIONS" not in captured["env"]
+    case = json.loads((ROOT / "tests/fixtures/authority/annual-accounts-simple-holding-2025.json").read_text())
+    result = payload("annual_accounts", {"incomeYear": case["company"]["incomeYear"],
+        "annualData": case["annualData"], "ledgerEntries": case["ledgerEntries"],
+        "companyOrgNumber": case["company"]["orgNumber"], "companyName": case["company"]["name"],
+        "contactEmail": "synthetic@example.test", "approvalDate": "2026-06-30",
+        "confirmingRepresentative": "Synthetic Person"})
+    assert set(result) == {"mainFormXml", "companyAccountsXml", "feedback"}
+    assert "<" in result["mainFormXml"]
+    assert "/private/" not in json.dumps(result) and "NODE_OPTIONS" not in json.dumps(result)
 
 
 @pytest.mark.parametrize("kind", ["annual", "tax"])
@@ -392,7 +396,7 @@ def test_tax_key_file_failure_preserves_prepared_checkpoint(tmp_path):
 def test_real_client_composition_discards_grant_wrapper_and_preserves_external_reference(monkeypatch, module):
     from talli_backend.authority_tools import _grant
     configuration = _grant.CliGrantConfiguration("test", "client", "key", "synthetic-private-key",
-        annual.SCOPE if module is annual else "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write", ORG, "environment-ref")
+        "altinn:instances.read altinn:instances.write" if module is annual else "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write", ORG, "environment-ref")
     monkeypatch.setattr(_grant.CliGrantConfiguration, "from_environment", lambda _: configuration)
     observed = []
     class Token:

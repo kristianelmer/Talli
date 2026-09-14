@@ -1,0 +1,3 @@
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared AnnualAccountsRehearsalConfiguration
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared AnnualAccountsAuthorityError
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared annual_accounts_authority_adapter
