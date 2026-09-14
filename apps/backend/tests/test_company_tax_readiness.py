@@ -14,6 +14,7 @@ def source(value):
     return CompanyTaxReturnSource(
         organization_number=value['companyOrgNumber'], income_year=value['incomeYear'],
         annual_data=value['annualData'], ledger_entries=value['ledgerEntries'], holding_actions=value['holdingActions'],
+        party_number=value.get('companyPartyNumber'),
     )
 
 
@@ -136,6 +137,18 @@ def test_nonarray_risk_flags_cannot_become_clear_readiness(preview_client, flags
     assert response.status_code == 422
 
 
+BOOLEAN_PAYLOADS = json.loads((Path(__file__).resolve().parents[3] / 'architecture/evidence/issues/152/legacy-tax-boolean-payloads.json').read_text())
+
+
+def plain(value):
+    from collections.abc import Mapping
+    if isinstance(value, Mapping):
+        return {key: plain(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [plain(item) for item in value]
+    return value
+
+
 BOOLEAN_BOUNDARIES = json.loads((Path(__file__).resolve().parents[3] / 'architecture/evidence/issues/152/legacy-tax-boolean-boundaries.json').read_text())
 
 
@@ -145,6 +158,9 @@ def test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics(case):
     value = source(case['input'])
     assert [asdict(issue) for issue in assess_company_tax_readiness(value, company_id=case['input']['company']['id'])] == case['output']['readiness']
     assert [dict(item) for item in build_company_tax_return(value).feedback] == case['output']['feedback']
+    candidate = build_company_tax_return(value)
+    assert {name: plain(getattr(candidate, name)) for name in ('schema', 'derived', 'fields', 'feedback')} == next(
+        item['candidate'] for item in BOOLEAN_PAYLOADS['cases'] if item['id'] == case['id'])
 
 
 @pytest.mark.parametrize('line', [{'debit': 100, 'credit': 0}, {'account': None, 'debit': 100, 'credit': 0}])
@@ -166,3 +182,10 @@ def test_malformed_truthy_loan_answer_still_blocks_the_pure_cli_preparation_gate
         with pytest.raises(CompanyTaxError) as error:
             prepare_company_tax_return(source(raw))
         assert error.value.code == 'COMPANY_TAX_PAYLOAD_BLOCKED'
+
+
+def test_extended_boolean_payload_capture_is_bound_to_the_unchanged_input_fixture():
+    from hashlib import sha256
+    path = Path(__file__).resolve().parents[3] / BOOLEAN_PAYLOADS['inputFixture']
+    assert sha256(path.read_bytes()).hexdigest() == BOOLEAN_PAYLOADS['inputFixtureSha256']
+    assert [case['id'] for case in BOOLEAN_PAYLOADS['cases']] == [case['id'] for case in BOOLEAN_BOUNDARIES['cases']]

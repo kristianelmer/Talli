@@ -202,7 +202,7 @@ def build(input):
             TAX: {'type': TAX, 'xsd': TAX_XSD, 'namespace': 'urn:no:skatteetaten:fastsetting:formueinntekt:skattemelding:upersonlig:ekstern:v5'},
             BUSINESS: {'type': BUSINESS, 'xsd': BUSINESS_XSD, 'namespace': 'urn:no:skatteetaten:fastsetting:formueinntekt:naeringsspesifikasjon:ekstern:v6'},
             'codeListYear': 2025, 'evidenceRegister': 'docs/filing/company-tax-return-schema-evidence-register.md'},
-        'derived': {'noActivity': bool((input['annualData'] or {}).get('no_activity_confirmed')),
+        'derived': {'noActivity': truthy((input['annualData'] or {}).get('no_activity_confirmed')),
             'adminCosts': totals['adminCosts'], 'interestIncome': totals['interestIncome'], 'dividendIncome': dividend,
             'bookShareSaleGain': gain, 'bookShareSaleLoss': loss, 'exemptShareSaleGain': exempt_gain,
             'taxableShareSaleGain': taxable_gain, 'nonDeductibleShareSaleLoss': nondeductible_loss,
