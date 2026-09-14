@@ -200,7 +200,7 @@ const TAX_RETURN_COMPOSITION_DIGESTS = new Map([
   ],
   [
     "apps/web/app/actions.ts\u0000refreshAnnualReadinessSnapshots",
-    "sha256:c60b6349e32588fce7ef53a302ab60c589b0b9bd55d373667a9ff90aaf476080"
+    "sha256:9cf071a669f53fd1a19f96054143641e31581e68f43c1286844af2f3e236fd81"
   ],
   [
     "apps/web/app/actions.ts\u0000addFilingOverride",

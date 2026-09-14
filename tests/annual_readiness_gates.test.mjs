@@ -138,6 +138,7 @@ function baseInput(overrides = {}) {
       },
     ],
     filingSubmissions: [],
+    companyTaxReadiness: { companyId: company.id, incomeYear: 2025, issues: [] },
     ...overrides,
   };
 }
@@ -165,7 +166,7 @@ test("returns hard blocks for missing permission and billing", () => {
   assert.ok(rf1086.hard_blocks.some((issue) => issue.code === "billing_account_missing"));
 });
 
-test("uses no-activity annual data to avoid unrelated tax-settlement clutter", () => {
+test("composes a clear owned Tax assessment with no-activity annual data", () => {
   const noActivityAnnualData = {
     ...baseInput().annualData,
     answers: {
@@ -242,6 +243,7 @@ test("reports open warnings and obligation-specific blocks", () => {
   const snapshots = evaluateAnnualReadinessGates(
     baseInput({
       locks: [],
+      companyTaxReadiness: { companyId: company.id, incomeYear: 2025, issues: [{ level: "block", code: "blocking_holding_action", message: "Støttet holdinghandling må ryddes før skattemelding.", source: "holding_actions", accepted: false }] },
       holdingActions: [
         {
           id: "blocked-action-id",
@@ -269,3 +271,11 @@ test("reports open warnings and obligation-specific blocks", () => {
   assert.equal(tax.status, "blocked");
   assert.ok(tax.hard_blocks.some((issue) => issue.code === "blocking_holding_action"));
 });
+
+for (const preview of [undefined, null, { companyId: "other", incomeYear: 2025, issues: [] }, { companyId: company.id, incomeYear: 2024, issues: [] }]) {
+  test("Annual cannot turn missing or wrong-scope Tax preview into ready", () => {
+    const tax = evaluateAnnualReadinessGates(baseInput({ companyTaxReadiness: preview })).find(item => item.obligation === "skattemelding");
+    assert.equal(tax.ready, false);
+    assert.ok(tax.hard_blocks.some(item => item.code === "company_tax_source_unavailable"));
+  });
+}

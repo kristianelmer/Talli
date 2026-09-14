@@ -2,7 +2,7 @@ import type { AuthorityObligation, AuthorityPermission } from "./authority-permi
 import { productionAuthorityGate } from "./authority-permission.ts";
 import { annualAccountsPayloadFeedback } from "./annual-accounts.ts";
 import type { BillingEntitlementDecisionWire } from "../../features/billing";
-import { companyTaxReturnPayloadFeedback } from "./company-tax-return.ts";
+import type { CompanyTaxReadinessPreviewWire } from "../../features/company-tax-filing/index.ts";
 import type {
   BankTransactionRow,
   AnnualDataRow,
@@ -53,6 +53,7 @@ export type AnnualReadinessInput = {
   authorityPermissions: Pick<AuthorityPermission, "obligation" | "confirmed_at" | "production_enabled">[];
   filingPreviews: FilingPreviewRow[];
   filingSubmissions: FilingSubmissionRow[];
+  companyTaxReadiness?: CompanyTaxReadinessPreviewWire | null;
   corporateDocuments?: {
     enabled: boolean;
     readiness: {
@@ -206,33 +207,11 @@ function aksjonaerregisterIssues(input: AnnualReadinessInput): AnnualReadinessIs
 }
 
 function skattemeldingIssues(input: AnnualReadinessInput): AnnualReadinessIssue[] {
-  const issues: AnnualReadinessIssue[] = [];
-  const blockingActions = input.holdingActions.filter(
-    (action) =>
-      action.company_id === input.company.id &&
-      action.income_year === input.incomeYear &&
-      action.risk_level === "block",
-  );
-  if (blockingActions.length) {
-    issues.push(block("blocking_holding_action", "Støttet holdinghandling må ryddes før skattemelding.", "holding_actions"));
+  const preview = input.companyTaxReadiness;
+  if (!preview || preview.companyId !== input.company.id || preview.incomeYear !== input.incomeYear) {
+    return [block("company_tax_source_unavailable", "Skattegrunnlaget kunne ikke vurderes. Prøv igjen.", "company_tax_filing")];
   }
-  const hasTaxSettlement = input.holdingActions.some(
-    (action) =>
-      action.company_id === input.company.id &&
-      action.income_year === input.incomeYear &&
-      action.action_type === "tax_settlement",
-  );
-  if (!hasTaxSettlement && !input.annualData?.no_activity_confirmed) {
-    issues.push(warning("tax_settlement_missing", "Skatteoppgjør er ikke registrert for året.", "tax_settlement", false));
-  }
-  for (const feedback of companyTaxReturnPayloadFeedback(input)) {
-    if (feedback.level === "block") {
-      issues.push(block(feedback.code, feedback.message, feedback.source));
-    } else if (feedback.level === "warning") {
-      issues.push(warning(feedback.code, feedback.message, feedback.source, false));
-    }
-  }
-  return issues;
+  return preview.issues.map(issue => ({ ...issue, accepted: issue.accepted ?? false }));
 }
 
 function aarsregnskapIssues(input: AnnualReadinessInput): AnnualReadinessIssue[] {

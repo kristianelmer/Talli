@@ -1,3 +1,4 @@
+import { previewCompanyTaxReadiness } from "../features/company-tax-filing";
 "use server";
 
 import { loadPresentedCompanyTaxSource } from "./lib/company-tax-workspace-source";
@@ -4718,6 +4719,15 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
       error instanceof Error ? error.message : "Dokumentstatus kunne ikke leses.",
     )}`);
   }
+  let companyTaxReadiness;
+  try {
+    companyTaxReadiness = await previewCompanyTaxReadiness(accessToken, {
+      companyId, incomeYear, annualData: annualData ?? null,
+      ledgerEntries: ledgerEntries ?? [], holdingActions: holdingActions.map(action => ({ ...action })),
+    });
+  } catch {
+    redirect(`/workspace?error=${encodeURIComponent("Skattegrunnlaget kunne ikke vurderes. Prøv igjen.")}`);
+  }
   const snapshots = evaluateAnnualReadinessGates({
     company,
     incomeYear,
@@ -4733,6 +4743,7 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     authorityPermissions: [...(authorityPermissions ?? []).filter((row) => ![...rfSource.authorityPermissions, ...taxSource.authorityPermissions].some((owned) => owned.company_id === row.company_id && owned.obligation === row.obligation)), ...rfSource.authorityPermissions, ...taxSource.authorityPermissions],
     filingPreviews: composeFilingSources(composeFilingSources(filingPreviews ?? [], rfSource.previews), taxSource.previews),
     filingSubmissions: composeFilingSources(composeFilingSources(filingSubmissions ?? [], rfSource.submissions), taxSource.submissions),
+    companyTaxReadiness,
     corporateDocuments: {
       enabled: process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true",
       readiness: corporateReadiness,

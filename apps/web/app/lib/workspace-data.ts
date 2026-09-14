@@ -7,7 +7,7 @@ import {
   defaultReminderPreferences,
 } from "./deadlines";
 import { reviewChecklistStatus } from "./invitations";
-import { estimateAnnualTax } from "./tax-settlement";
+import { loadCompanyTaxAssessmentSource } from "./company-tax-assessment-source.ts";
 import {
   getCurrentUser,
   listAuthorityPermissions,
@@ -57,14 +57,15 @@ import {
  *
  * Extracted verbatim from the original single-page console so the owner routes
  * (#90) share one data source. Pure data assembly — no compliance logic lives
- * here; all filing math stays in holding_core, reached through app/lib/*.
+ * here; calculations stay with their owning capabilities and arrive through
+ * their public contracts.
  */
 export async function loadWorkspaceData() {
   const user = await getCurrentUser();
   const accessToken = user ? await getCurrentSessionAccessToken() : null;
   const { companies, error } = user ? await listCompanyAccessContexts() : { companies: [], error: null };
   const { documents } = user ? await listDocumentsForCompanies(companies.map((company) => company.id)) : { documents: [] };
-  const { annualData } = user ? await listAnnualData(companies.map((company) => company.id)) : { annualData: [] };
+  const { annualData, error: annualDataError } = user ? await listAnnualData(companies.map((company) => company.id)) : { annualData: [], error: null };
   const { error: corporateLifecycleError, ...corporateLifecycle } = user
     ? await listCorporateDocumentLifecycle(companies.map((company) => company.id))
     : {
@@ -178,7 +179,7 @@ export async function loadWorkspaceData() {
     investmentActivityHistory,
     investmentCorrections,
   );
-  const { entries } = user ? await listLedgerEntries(companies.map((company) => company.id)) : { entries: [] };
+  const { entries, error: entriesError } = user ? await listLedgerEntries(companies.map((company) => company.id)) : { entries: [], error: null };
   const { locks } = user ? await listPeriodLocks(companies.map((company) => company.id)) : { locks: [] };
   const unmatchedTransactions = transactions.filter(
     (transaction) => !transaction.matched_entry_id && !transaction.matched_action_id && !transaction.accepted_warning,
@@ -193,7 +194,6 @@ export async function loadWorkspaceData() {
   );
   const manualJournalEntries = entries.filter((entry) => entry.entry_type === "manual_journal");
   const manualJournalWarnings = manualJournalEntries.flatMap((entry) => entry.risk_flags ?? []);
-  const taxEstimate = estimateAnnualTax({ ledgerEntries: entries, holdingActions: actions });
   const incomeYears = Array.from(
     new Set([
       ...companies
@@ -218,6 +218,13 @@ export async function loadWorkspaceData() {
   const primaryAnnualData = annualData.find(
     (item) => item.company_id === primaryCompanyId && item.income_year === primaryIncomeYear,
   );
+  const taxAssessment = await loadCompanyTaxAssessmentSource({
+    accessToken, companyId: primaryCompanyId ?? null, incomeYear: primaryIncomeYear,
+    annualData: primaryAnnualData ?? null, ledgerEntries: entries, holdingActions: actions,
+    sourceUnavailable: Boolean(annualDataError || entriesError || activityResult.error || correctionsResult.error || taxSource.error),
+  });
+  const taxEstimate = taxAssessment.estimate;
+  const primaryTaxReadiness = taxAssessment.readiness;
   let primaryCorporateDecisionReadiness = corporateLifecycle.corporateDecisionReadiness.find(
     (item) => item.companyId === primaryCompanyId
       && item.incomeYear === primaryIncomeYear
@@ -288,7 +295,7 @@ export async function loadWorkspaceData() {
   const deadlineReminderPreferences = defaultReminderPreferences();
   return {
     user,
-    error: error ?? corporateLifecycleError ?? corporateReadinessError ?? productionStateError ?? rfSource.error ?? taxSource.error ?? companyAccessAdministrationError ?? cancellationLifecycleError,
+    error: error ?? corporateLifecycleError ?? corporateReadinessError ?? productionStateError ?? rfSource.error ?? taxSource.error ?? taxAssessment.error ?? companyAccessAdministrationError ?? cancellationLifecycleError,
     cancellationLifecycleError,
     companies,
     documents,
@@ -332,6 +339,7 @@ export async function loadWorkspaceData() {
     manualJournalEntries,
     manualJournalWarnings,
     taxEstimate,
+    primaryTaxReadiness,
     incomeYears,
     primaryIncomeYear,
     primaryBillingAccount,

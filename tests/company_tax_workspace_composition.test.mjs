@@ -139,6 +139,10 @@ function consumerSetup(failed = false) {
     listPeriodLocks: async () => ({ locks: [], error: null }),
     loadAnnualBillingEntitlements: async () => ({}), billingActionErrorMessage: () => "Billing unavailable",
     composeFilingSources: compose, readCorporateDecisionReadiness: async () => ({}),
+    previewCompanyTaxReadiness: async (token, input) => {
+      effects.push({ name: "tax-readiness", body: { token, input } });
+      return { companyId: input.companyId, incomeYear: input.incomeYear, issues: [] };
+    },
     evaluateAnnualReadinessGates: value => { effects.push({ name: "readiness", body: value }); return []; },
     revalidatePath: () => {}, returnTarget: () => "/workspace", redirect: url => { throw new Error(`redirect:${url}`); },
   };
@@ -175,6 +179,7 @@ for (const failed of [false, true]) test(`readiness refresh ${failed ? "stops wi
     assert.equal(effects.some(item => ["readiness", "filing_readiness_snapshots", "audit_events"].includes(item.name)), false);
   } else {
     const input = effects.find(item => item.name === "readiness").body;
+    assert.deepEqual(input.companyTaxReadiness, { companyId: "company", incomeYear: 2024, issues: [] });
     assert.deepEqual(input.overrides, taxSource.overrides);
     assert.deepEqual(input.filingPreviews, taxSource.previews);
     assert.deepEqual(input.filingSubmissions, taxSource.submissions);
@@ -190,4 +195,49 @@ test("missing session token cannot turn an authorized company scope into complet
   assert.deepEqual(plain(await readSource(null, ["company"], 2025)), unavailable);
   assert.deepEqual(plain(await readSource(null, [])), { ...unavailable, error: null });
   assert.equal(calls, 0);
+});
+
+test("readiness preview failure stops the real refresh before any snapshot or Audit write", async () => {
+  const { effects, dependencies } = consumerSetup();
+  dependencies.previewCompanyTaxReadiness = async () => { throw new Error("Private calculation failure"); };
+  const refresh = functionFrom("../apps/web/app/actions.ts", "refreshAnnualReadinessSnapshots", dependencies);
+  const form = new FormData(); form.set("companyId", "company"); form.set("incomeYear", "2025");
+  await assert.rejects(refresh(form), /redirect:/u);
+  assert.equal(effects.some(item => ["readiness", "filing_readiness_snapshots", "audit_events"].includes(item.name)), false);
+});
+
+function assessmentSource(previewAnnualTaxEstimate, previewCompanyTaxReadiness) {
+  return module(read("../apps/web/app/lib/company-tax-assessment-source.ts"), {
+    previewAnnualTaxEstimate, previewCompanyTaxReadiness,
+  }).loadCompanyTaxAssessmentSource;
+}
+const assessmentInput = {
+  accessToken: "token", companyId: "company", incomeYear: 2025,
+  annualData: { no_activity_confirmed: true, answers: {} }, sourceUnavailable: false,
+  ledgerEntries: [{ id: "other-first", company_id: "other", income_year: 2025 }, { id: "primary-old", company_id: "company", income_year: 2024 }, { id: "primary", company_id: "company", income_year: 2025 }],
+  holdingActions: [{ id: "other-action", company_id: "other" }, { id: "primary-action", company_id: "company" }],
+};
+test("workspace assessment preserves portfolio estimate ordering and primary-company readiness scope", async () => {
+  const calls = [];
+  const loadSource = assessmentSource(
+    async (...args) => { calls.push(["estimate", ...args]); return { status: "zero" }; },
+    async (...args) => { calls.push(["readiness", ...args]); return { companyId: "company", incomeYear: 2025, issues: [] }; },
+  );
+  const result = await loadSource(assessmentInput);
+  assert.equal(result.error, null);
+  assert.deepEqual(plain(calls), [
+    ["estimate", "token", { ledgerEntries: assessmentInput.ledgerEntries, holdingActions: assessmentInput.holdingActions }],
+    ["readiness", "token", { companyId: "company", incomeYear: 2025, annualData: assessmentInput.annualData,
+      ledgerEntries: assessmentInput.ledgerEntries.slice(1), holdingActions: assessmentInput.holdingActions.slice(1) }],
+  ]);
+});
+for (const change of [{ accessToken: null }, { sourceUnavailable: true }]) test("missing Tax assessment dependencies never yield zero or clear previews", async () => {
+  let calls = 0;
+  const query = async () => { calls += 1; return {}; };
+  const result = await assessmentSource(query, query)({ ...assessmentInput, ...change });
+  assert.equal(calls, 0); assert.equal(result.estimate, null); assert.equal(result.readiness, null); assert.ok(result.error);
+});
+test("one failed assessment query discards partial success and preserves an explicit source error", async () => {
+  const result = await assessmentSource(async () => ({ status: "zero" }), async () => { throw new Error("Private failure"); })(assessmentInput);
+  assert.equal(result.estimate, null); assert.equal(result.readiness, null); assert.ok(result.error);
 });
