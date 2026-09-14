@@ -1,0 +1,23 @@
+[
+  {
+    "validationBody": "<html>upstream service failure</html>",
+    "hasErrors": false,
+    "lockPutCount": 1,
+    "receivedHandoff": true,
+    "mode": "LOCAL_HTTPX_MOCK_TRANSPORT_NO_PROVIDER"
+  },
+  {
+    "validationBody": "{\"validationIssues\":\"not-an-array\"}",
+    "hasErrors": false,
+    "lockPutCount": 1,
+    "receivedHandoff": true,
+    "mode": "LOCAL_HTTPX_MOCK_TRANSPORT_NO_PROVIDER"
+  },
+  {
+    "validationBody": "[]",
+    "hasErrors": false,
+    "lockPutCount": 1,
+    "receivedHandoff": true,
+    "mode": "LOCAL_HTTPX_MOCK_TRANSPORT_NO_PROVIDER"
+  }
+]

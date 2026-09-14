@@ -1,0 +1,928 @@
+FFFFFFFFFFFFFFFFFFFFFF............                                       [100%]
+=================================== FAILURES ===================================
+_ test_ambiguous_effect_remains_durable_and_rerun_cannot_connect[lost_response-create_instance] _
+
+operation = 'create_instance', failure = 'lost_response'
+
+    @pytest.mark.parametrize('operation', ['create_instance', 'lock_for_signing'])
+    @pytest.mark.parametrize('failure', ['lost_response', 'malformed_response', 'checkpoint_write', 'interruption'])
+    def test_ambiguous_effect_remains_durable_and_rerun_cannot_connect(operation, failure):
+        io = EvidenceIO(operation, failure)
+        with pytest.raises((AnnualAccountsAuthorityError, KeyError, OSError, KeyboardInterrupt)):
+            asyncio.run(rehearse_annual_accounts(CONFIG, io))
+>       assert io.saved['pendingAuthorityOperation']['operation'] == operation
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'pendingAuthorityOperation'
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py:77: KeyError
+_ test_ambiguous_effect_remains_durable_and_rerun_cannot_connect[lost_response-lock_for_signing] _
+
+operation = 'lock_for_signing', failure = 'lost_response'
+
+    @pytest.mark.parametrize('operation', ['create_instance', 'lock_for_signing'])
+    @pytest.mark.parametrize('failure', ['lost_response', 'malformed_response', 'checkpoint_write', 'interruption'])
+    def test_ambiguous_effect_remains_durable_and_rerun_cannot_connect(operation, failure):
+        io = EvidenceIO(operation, failure)
+        with pytest.raises((AnnualAccountsAuthorityError, KeyError, OSError, KeyboardInterrupt)):
+            asyncio.run(rehearse_annual_accounts(CONFIG, io))
+>       assert io.saved['pendingAuthorityOperation']['operation'] == operation
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'pendingAuthorityOperation'
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py:77: KeyError
+_ test_ambiguous_effect_remains_durable_and_rerun_cannot_connect[malformed_response-create_instance] _
+
+operation = 'create_instance', failure = 'malformed_response'
+
+    @pytest.mark.parametrize('operation', ['create_instance', 'lock_for_signing'])
+    @pytest.mark.parametrize('failure', ['lost_response', 'malformed_response', 'checkpoint_write', 'interruption'])
+    def test_ambiguous_effect_remains_durable_and_rerun_cannot_connect(operation, failure):
+        io = EvidenceIO(operation, failure)
+        with pytest.raises((AnnualAccountsAuthorityError, KeyError, OSError, KeyboardInterrupt)):
+            asyncio.run(rehearse_annual_accounts(CONFIG, io))
+>       assert io.saved['pendingAuthorityOperation']['operation'] == operation
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'pendingAuthorityOperation'
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py:77: KeyError
+_ test_ambiguous_effect_remains_durable_and_rerun_cannot_connect[malformed_response-lock_for_signing] _
+
+operation = 'lock_for_signing', failure = 'malformed_response'
+
+    @pytest.mark.parametrize('operation', ['create_instance', 'lock_for_signing'])
+    @pytest.mark.parametrize('failure', ['lost_response', 'malformed_response', 'checkpoint_write', 'interruption'])
+    def test_ambiguous_effect_remains_durable_and_rerun_cannot_connect(operation, failure):
+        io = EvidenceIO(operation, failure)
+        with pytest.raises((AnnualAccountsAuthorityError, KeyError, OSError, KeyboardInterrupt)):
+            asyncio.run(rehearse_annual_accounts(CONFIG, io))
+>       assert io.saved['pendingAuthorityOperation']['operation'] == operation
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'pendingAuthorityOperation'
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py:77: KeyError
+_ test_ambiguous_effect_remains_durable_and_rerun_cannot_connect[checkpoint_write-create_instance] _
+
+operation = 'create_instance', failure = 'checkpoint_write'
+
+    @pytest.mark.parametrize('operation', ['create_instance', 'lock_for_signing'])
+    @pytest.mark.parametrize('failure', ['lost_response', 'malformed_response', 'checkpoint_write', 'interruption'])
+    def test_ambiguous_effect_remains_durable_and_rerun_cannot_connect(operation, failure):
+        io = EvidenceIO(operation, failure)
+>       with pytest.raises((AnnualAccountsAuthorityError, KeyError, OSError, KeyboardInterrupt)):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE any of (<class 'talli_backend.modules.annual_accounts_filing.public.AnnualAccountsAuthorityError'>, <class 'KeyError'>, <class 'OSError'>, <class 'KeyboardInterrupt'>)
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py:75: Failed
+_ test_ambiguous_effect_remains_durable_and_rerun_cannot_connect[checkpoint_write-lock_for_signing] _
+
+operation = 'lock_for_signing', failure = 'checkpoint_write'
+
+    @pytest.mark.parametrize('operation', ['create_instance', 'lock_for_signing'])
+    @pytest.mark.parametrize('failure', ['lost_response', 'malformed_response', 'checkpoint_write', 'interruption'])
+    def test_ambiguous_effect_remains_durable_and_rerun_cannot_connect(operation, failure):
+        io = EvidenceIO(operation, failure)
+>       with pytest.raises((AnnualAccountsAuthorityError, KeyError, OSError, KeyboardInterrupt)):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE any of (<class 'talli_backend.modules.annual_accounts_filing.public.AnnualAccountsAuthorityError'>, <class 'KeyError'>, <class 'OSError'>, <class 'KeyboardInterrupt'>)
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py:75: Failed
+_ test_ambiguous_effect_remains_durable_and_rerun_cannot_connect[interruption-create_instance] _
+
+operation = 'create_instance', failure = 'interruption'
+
+    @pytest.mark.parametrize('operation', ['create_instance', 'lock_for_signing'])
+    @pytest.mark.parametrize('failure', ['lost_response', 'malformed_response', 'checkpoint_write', 'interruption'])
+    def test_ambiguous_effect_remains_durable_and_rerun_cannot_connect(operation, failure):
+        io = EvidenceIO(operation, failure)
+        with pytest.raises((AnnualAccountsAuthorityError, KeyError, OSError, KeyboardInterrupt)):
+            asyncio.run(rehearse_annual_accounts(CONFIG, io))
+>       assert io.saved['pendingAuthorityOperation']['operation'] == operation
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'pendingAuthorityOperation'
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py:77: KeyError
+_ test_ambiguous_effect_remains_durable_and_rerun_cannot_connect[interruption-lock_for_signing] _
+
+operation = 'lock_for_signing', failure = 'interruption'
+
+    @pytest.mark.parametrize('operation', ['create_instance', 'lock_for_signing'])
+    @pytest.mark.parametrize('failure', ['lost_response', 'malformed_response', 'checkpoint_write', 'interruption'])
+    def test_ambiguous_effect_remains_durable_and_rerun_cannot_connect(operation, failure):
+        io = EvidenceIO(operation, failure)
+        with pytest.raises((AnnualAccountsAuthorityError, KeyError, OSError, KeyboardInterrupt)):
+            asyncio.run(rehearse_annual_accounts(CONFIG, io))
+>       assert io.saved['pendingAuthorityOperation']['operation'] == operation
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'pendingAuthorityOperation'
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py:77: KeyError
+____ test_legacy_ambiguous_checkpoint_cannot_repeat_effect[create_instance] ____
+
+operation = 'create_instance'
+
+    @pytest.mark.parametrize('operation', ['create_instance', 'lock_for_signing'])
+    def test_legacy_ambiguous_checkpoint_cannot_repeat_effect(operation):
+        io = EvidenceIO(operation, 'lost_response')
+        with pytest.raises(AnnualAccountsAuthorityError): asyncio.run(rehearse_annual_accounts(CONFIG, io))
+        io.saved.pop('pendingAuthorityOperation', None)
+        io.saved.pop('operationJournalVersion', None)
+        io.saved['status'] = 'failed_retryable'
+        before = list(io.calls)
+>       with pytest.raises(AnnualAccountsAuthorityError) as rejected: asyncio.run(rehearse_annual_accounts(CONFIG, io))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE <class 'talli_backend.modules.annual_accounts_filing.public.AnnualAccountsAuthorityError'>
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py:96: Failed
+___ test_legacy_ambiguous_checkpoint_cannot_repeat_effect[lock_for_signing] ____
+
+operation = 'lock_for_signing'
+
+    @pytest.mark.parametrize('operation', ['create_instance', 'lock_for_signing'])
+    def test_legacy_ambiguous_checkpoint_cannot_repeat_effect(operation):
+        io = EvidenceIO(operation, 'lost_response')
+        with pytest.raises(AnnualAccountsAuthorityError): asyncio.run(rehearse_annual_accounts(CONFIG, io))
+        io.saved.pop('pendingAuthorityOperation', None)
+        io.saved.pop('operationJournalVersion', None)
+        io.saved['status'] = 'failed_retryable'
+        before = list(io.calls)
+>       with pytest.raises(AnnualAccountsAuthorityError) as rejected: asyncio.run(rehearse_annual_accounts(CONFIG, io))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE <class 'talli_backend.modules.annual_accounts_filing.public.AnnualAccountsAuthorityError'>
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py:96: Failed
+_____ test_malformed_validation_never_locks[<html>upstream failure</html>] _____
+
+body = '<html>upstream failure</html>'
+
+    @pytest.mark.parametrize('body', [
+        '<html>upstream failure</html>', '{}', 'null', 'true', '0',
+        '{"validationIssues":"not-an-array"}', '[null]', '[{}]',
+        '[{"severity":0}]', '[{"severity":true}]', '[{"severity":"unknown"}]',
+    ])
+    def test_malformed_validation_never_locks(body):
+        transport, requests, _ = queue(annual_instance(), httpx.Response(201), httpx.Response(201), httpx.Response(200, text=body))
+        with pytest.raises(AnnualAccountsAuthorityError) as failure:
+>           asyncio.run(prepare_annual_accounts_for_signing(AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
+                company_org_number=ORG, main_form_xml=XML, company_accounts_xml=XML))
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py:18: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:296: in prepare_annual_accounts_for_signing
+    return _freeze(await prepare(client, company_org_number=company_org_number,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py:13: in prepare
+    await client.lock_for_signing(instance_id=instance["id"])
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:84: in lock_for_signing
+    _, result, _, _ = await self._request(self._url(instance_id)+"/process/next", "PUT", self._token,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/authority_tools/_filing.py:249: in _request
+    async with client.stream(method, url, headers=request_headers,
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1583: in stream
+    response = await self.send(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_transports/mock.py:34: in handle_async_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('PUT', 'https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next')>
+
+    def respond(request):
+        requests.append(request)
+>       assert pending, f"Unexpected {request.method} {request.url.path}"
+E       AssertionError: Unexpected PUT /brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next
+E       assert []
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_authority_filing_transports.py:42: AssertionError
+__________________ test_malformed_validation_never_locks[{}] ___________________
+
+body = '{}'
+
+    @pytest.mark.parametrize('body', [
+        '<html>upstream failure</html>', '{}', 'null', 'true', '0',
+        '{"validationIssues":"not-an-array"}', '[null]', '[{}]',
+        '[{"severity":0}]', '[{"severity":true}]', '[{"severity":"unknown"}]',
+    ])
+    def test_malformed_validation_never_locks(body):
+        transport, requests, _ = queue(annual_instance(), httpx.Response(201), httpx.Response(201), httpx.Response(200, text=body))
+        with pytest.raises(AnnualAccountsAuthorityError) as failure:
+>           asyncio.run(prepare_annual_accounts_for_signing(AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
+                company_org_number=ORG, main_form_xml=XML, company_accounts_xml=XML))
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py:18: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:296: in prepare_annual_accounts_for_signing
+    return _freeze(await prepare(client, company_org_number=company_org_number,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py:13: in prepare
+    await client.lock_for_signing(instance_id=instance["id"])
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:84: in lock_for_signing
+    _, result, _, _ = await self._request(self._url(instance_id)+"/process/next", "PUT", self._token,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/authority_tools/_filing.py:249: in _request
+    async with client.stream(method, url, headers=request_headers,
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1583: in stream
+    response = await self.send(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_transports/mock.py:34: in handle_async_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('PUT', 'https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next')>
+
+    def respond(request):
+        requests.append(request)
+>       assert pending, f"Unexpected {request.method} {request.url.path}"
+E       AssertionError: Unexpected PUT /brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next
+E       assert []
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_authority_filing_transports.py:42: AssertionError
+_________________ test_malformed_validation_never_locks[null] __________________
+
+body = 'null'
+
+    @pytest.mark.parametrize('body', [
+        '<html>upstream failure</html>', '{}', 'null', 'true', '0',
+        '{"validationIssues":"not-an-array"}', '[null]', '[{}]',
+        '[{"severity":0}]', '[{"severity":true}]', '[{"severity":"unknown"}]',
+    ])
+    def test_malformed_validation_never_locks(body):
+        transport, requests, _ = queue(annual_instance(), httpx.Response(201), httpx.Response(201), httpx.Response(200, text=body))
+        with pytest.raises(AnnualAccountsAuthorityError) as failure:
+>           asyncio.run(prepare_annual_accounts_for_signing(AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
+                company_org_number=ORG, main_form_xml=XML, company_accounts_xml=XML))
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py:18: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:296: in prepare_annual_accounts_for_signing
+    return _freeze(await prepare(client, company_org_number=company_org_number,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py:13: in prepare
+    await client.lock_for_signing(instance_id=instance["id"])
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:84: in lock_for_signing
+    _, result, _, _ = await self._request(self._url(instance_id)+"/process/next", "PUT", self._token,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/authority_tools/_filing.py:249: in _request
+    async with client.stream(method, url, headers=request_headers,
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1583: in stream
+    response = await self.send(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_transports/mock.py:34: in handle_async_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('PUT', 'https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next')>
+
+    def respond(request):
+        requests.append(request)
+>       assert pending, f"Unexpected {request.method} {request.url.path}"
+E       AssertionError: Unexpected PUT /brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next
+E       assert []
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_authority_filing_transports.py:42: AssertionError
+_________________ test_malformed_validation_never_locks[true] __________________
+
+body = 'true'
+
+    @pytest.mark.parametrize('body', [
+        '<html>upstream failure</html>', '{}', 'null', 'true', '0',
+        '{"validationIssues":"not-an-array"}', '[null]', '[{}]',
+        '[{"severity":0}]', '[{"severity":true}]', '[{"severity":"unknown"}]',
+    ])
+    def test_malformed_validation_never_locks(body):
+        transport, requests, _ = queue(annual_instance(), httpx.Response(201), httpx.Response(201), httpx.Response(200, text=body))
+        with pytest.raises(AnnualAccountsAuthorityError) as failure:
+>           asyncio.run(prepare_annual_accounts_for_signing(AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
+                company_org_number=ORG, main_form_xml=XML, company_accounts_xml=XML))
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py:18: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:296: in prepare_annual_accounts_for_signing
+    return _freeze(await prepare(client, company_org_number=company_org_number,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py:13: in prepare
+    await client.lock_for_signing(instance_id=instance["id"])
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:84: in lock_for_signing
+    _, result, _, _ = await self._request(self._url(instance_id)+"/process/next", "PUT", self._token,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/authority_tools/_filing.py:249: in _request
+    async with client.stream(method, url, headers=request_headers,
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1583: in stream
+    response = await self.send(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_transports/mock.py:34: in handle_async_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('PUT', 'https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next')>
+
+    def respond(request):
+        requests.append(request)
+>       assert pending, f"Unexpected {request.method} {request.url.path}"
+E       AssertionError: Unexpected PUT /brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next
+E       assert []
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_authority_filing_transports.py:42: AssertionError
+___________________ test_malformed_validation_never_locks[0] ___________________
+
+body = '0'
+
+    @pytest.mark.parametrize('body', [
+        '<html>upstream failure</html>', '{}', 'null', 'true', '0',
+        '{"validationIssues":"not-an-array"}', '[null]', '[{}]',
+        '[{"severity":0}]', '[{"severity":true}]', '[{"severity":"unknown"}]',
+    ])
+    def test_malformed_validation_never_locks(body):
+        transport, requests, _ = queue(annual_instance(), httpx.Response(201), httpx.Response(201), httpx.Response(200, text=body))
+        with pytest.raises(AnnualAccountsAuthorityError) as failure:
+>           asyncio.run(prepare_annual_accounts_for_signing(AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
+                company_org_number=ORG, main_form_xml=XML, company_accounts_xml=XML))
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py:18: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:296: in prepare_annual_accounts_for_signing
+    return _freeze(await prepare(client, company_org_number=company_org_number,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py:13: in prepare
+    await client.lock_for_signing(instance_id=instance["id"])
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:84: in lock_for_signing
+    _, result, _, _ = await self._request(self._url(instance_id)+"/process/next", "PUT", self._token,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/authority_tools/_filing.py:249: in _request
+    async with client.stream(method, url, headers=request_headers,
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1583: in stream
+    response = await self.send(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_transports/mock.py:34: in handle_async_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('PUT', 'https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next')>
+
+    def respond(request):
+        requests.append(request)
+>       assert pending, f"Unexpected {request.method} {request.url.path}"
+E       AssertionError: Unexpected PUT /brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next
+E       assert []
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_authority_filing_transports.py:42: AssertionError
+__ test_malformed_validation_never_locks[{"validationIssues":"not-an-array"}] __
+
+body = '{"validationIssues":"not-an-array"}'
+
+    @pytest.mark.parametrize('body', [
+        '<html>upstream failure</html>', '{}', 'null', 'true', '0',
+        '{"validationIssues":"not-an-array"}', '[null]', '[{}]',
+        '[{"severity":0}]', '[{"severity":true}]', '[{"severity":"unknown"}]',
+    ])
+    def test_malformed_validation_never_locks(body):
+        transport, requests, _ = queue(annual_instance(), httpx.Response(201), httpx.Response(201), httpx.Response(200, text=body))
+        with pytest.raises(AnnualAccountsAuthorityError) as failure:
+>           asyncio.run(prepare_annual_accounts_for_signing(AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
+                company_org_number=ORG, main_form_xml=XML, company_accounts_xml=XML))
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py:18: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:296: in prepare_annual_accounts_for_signing
+    return _freeze(await prepare(client, company_org_number=company_org_number,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py:13: in prepare
+    await client.lock_for_signing(instance_id=instance["id"])
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:84: in lock_for_signing
+    _, result, _, _ = await self._request(self._url(instance_id)+"/process/next", "PUT", self._token,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/authority_tools/_filing.py:249: in _request
+    async with client.stream(method, url, headers=request_headers,
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1583: in stream
+    response = await self.send(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_transports/mock.py:34: in handle_async_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('PUT', 'https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next')>
+
+    def respond(request):
+        requests.append(request)
+>       assert pending, f"Unexpected {request.method} {request.url.path}"
+E       AssertionError: Unexpected PUT /brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next
+E       assert []
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_authority_filing_transports.py:42: AssertionError
+________________ test_malformed_validation_never_locks[[null]] _________________
+
+body = '[null]'
+
+    @pytest.mark.parametrize('body', [
+        '<html>upstream failure</html>', '{}', 'null', 'true', '0',
+        '{"validationIssues":"not-an-array"}', '[null]', '[{}]',
+        '[{"severity":0}]', '[{"severity":true}]', '[{"severity":"unknown"}]',
+    ])
+    def test_malformed_validation_never_locks(body):
+        transport, requests, _ = queue(annual_instance(), httpx.Response(201), httpx.Response(201), httpx.Response(200, text=body))
+        with pytest.raises(AnnualAccountsAuthorityError) as failure:
+>           asyncio.run(prepare_annual_accounts_for_signing(AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
+                company_org_number=ORG, main_form_xml=XML, company_accounts_xml=XML))
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py:18: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:296: in prepare_annual_accounts_for_signing
+    return _freeze(await prepare(client, company_org_number=company_org_number,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py:13: in prepare
+    await client.lock_for_signing(instance_id=instance["id"])
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:84: in lock_for_signing
+    _, result, _, _ = await self._request(self._url(instance_id)+"/process/next", "PUT", self._token,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/authority_tools/_filing.py:249: in _request
+    async with client.stream(method, url, headers=request_headers,
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1583: in stream
+    response = await self.send(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_transports/mock.py:34: in handle_async_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('PUT', 'https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next')>
+
+    def respond(request):
+        requests.append(request)
+>       assert pending, f"Unexpected {request.method} {request.url.path}"
+E       AssertionError: Unexpected PUT /brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next
+E       assert []
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_authority_filing_transports.py:42: AssertionError
+_________________ test_malformed_validation_never_locks[[{}]] __________________
+
+body = '[{}]'
+
+    @pytest.mark.parametrize('body', [
+        '<html>upstream failure</html>', '{}', 'null', 'true', '0',
+        '{"validationIssues":"not-an-array"}', '[null]', '[{}]',
+        '[{"severity":0}]', '[{"severity":true}]', '[{"severity":"unknown"}]',
+    ])
+    def test_malformed_validation_never_locks(body):
+        transport, requests, _ = queue(annual_instance(), httpx.Response(201), httpx.Response(201), httpx.Response(200, text=body))
+        with pytest.raises(AnnualAccountsAuthorityError) as failure:
+>           asyncio.run(prepare_annual_accounts_for_signing(AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
+                company_org_number=ORG, main_form_xml=XML, company_accounts_xml=XML))
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py:18: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:296: in prepare_annual_accounts_for_signing
+    return _freeze(await prepare(client, company_org_number=company_org_number,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py:13: in prepare
+    await client.lock_for_signing(instance_id=instance["id"])
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:84: in lock_for_signing
+    _, result, _, _ = await self._request(self._url(instance_id)+"/process/next", "PUT", self._token,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/authority_tools/_filing.py:249: in _request
+    async with client.stream(method, url, headers=request_headers,
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1583: in stream
+    response = await self.send(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_transports/mock.py:34: in handle_async_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('PUT', 'https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next')>
+
+    def respond(request):
+        requests.append(request)
+>       assert pending, f"Unexpected {request.method} {request.url.path}"
+E       AssertionError: Unexpected PUT /brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next
+E       assert []
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_authority_filing_transports.py:42: AssertionError
+___________ test_malformed_validation_never_locks[[{"severity":0}]] ____________
+
+body = '[{"severity":0}]'
+
+    @pytest.mark.parametrize('body', [
+        '<html>upstream failure</html>', '{}', 'null', 'true', '0',
+        '{"validationIssues":"not-an-array"}', '[null]', '[{}]',
+        '[{"severity":0}]', '[{"severity":true}]', '[{"severity":"unknown"}]',
+    ])
+    def test_malformed_validation_never_locks(body):
+        transport, requests, _ = queue(annual_instance(), httpx.Response(201), httpx.Response(201), httpx.Response(200, text=body))
+        with pytest.raises(AnnualAccountsAuthorityError) as failure:
+>           asyncio.run(prepare_annual_accounts_for_signing(AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
+                company_org_number=ORG, main_form_xml=XML, company_accounts_xml=XML))
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py:18: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:296: in prepare_annual_accounts_for_signing
+    return _freeze(await prepare(client, company_org_number=company_org_number,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py:13: in prepare
+    await client.lock_for_signing(instance_id=instance["id"])
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:84: in lock_for_signing
+    _, result, _, _ = await self._request(self._url(instance_id)+"/process/next", "PUT", self._token,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/authority_tools/_filing.py:249: in _request
+    async with client.stream(method, url, headers=request_headers,
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1583: in stream
+    response = await self.send(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_transports/mock.py:34: in handle_async_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('PUT', 'https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next')>
+
+    def respond(request):
+        requests.append(request)
+>       assert pending, f"Unexpected {request.method} {request.url.path}"
+E       AssertionError: Unexpected PUT /brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next
+E       assert []
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_authority_filing_transports.py:42: AssertionError
+__________ test_malformed_validation_never_locks[[{"severity":true}]] __________
+
+body = '[{"severity":true}]'
+
+    @pytest.mark.parametrize('body', [
+        '<html>upstream failure</html>', '{}', 'null', 'true', '0',
+        '{"validationIssues":"not-an-array"}', '[null]', '[{}]',
+        '[{"severity":0}]', '[{"severity":true}]', '[{"severity":"unknown"}]',
+    ])
+    def test_malformed_validation_never_locks(body):
+        transport, requests, _ = queue(annual_instance(), httpx.Response(201), httpx.Response(201), httpx.Response(200, text=body))
+        with pytest.raises(AnnualAccountsAuthorityError) as failure:
+>           asyncio.run(prepare_annual_accounts_for_signing(AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
+                company_org_number=ORG, main_form_xml=XML, company_accounts_xml=XML))
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py:18: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:296: in prepare_annual_accounts_for_signing
+    return _freeze(await prepare(client, company_org_number=company_org_number,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py:13: in prepare
+    await client.lock_for_signing(instance_id=instance["id"])
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:84: in lock_for_signing
+    _, result, _, _ = await self._request(self._url(instance_id)+"/process/next", "PUT", self._token,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/authority_tools/_filing.py:249: in _request
+    async with client.stream(method, url, headers=request_headers,
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1583: in stream
+    response = await self.send(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_transports/mock.py:34: in handle_async_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('PUT', 'https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next')>
+
+    def respond(request):
+        requests.append(request)
+>       assert pending, f"Unexpected {request.method} {request.url.path}"
+E       AssertionError: Unexpected PUT /brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next
+E       assert []
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_authority_filing_transports.py:42: AssertionError
+_______ test_malformed_validation_never_locks[[{"severity":"unknown"}]] ________
+
+body = '[{"severity":"unknown"}]'
+
+    @pytest.mark.parametrize('body', [
+        '<html>upstream failure</html>', '{}', 'null', 'true', '0',
+        '{"validationIssues":"not-an-array"}', '[null]', '[{}]',
+        '[{"severity":0}]', '[{"severity":true}]', '[{"severity":"unknown"}]',
+    ])
+    def test_malformed_validation_never_locks(body):
+        transport, requests, _ = queue(annual_instance(), httpx.Response(201), httpx.Response(201), httpx.Response(200, text=body))
+        with pytest.raises(AnnualAccountsAuthorityError) as failure:
+>           asyncio.run(prepare_annual_accounts_for_signing(AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
+                company_org_number=ORG, main_form_xml=XML, company_accounts_xml=XML))
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py:18: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:296: in prepare_annual_accounts_for_signing
+    return _freeze(await prepare(client, company_org_number=company_org_number,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py:13: in prepare
+    await client.lock_for_signing(instance_id=instance["id"])
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:84: in lock_for_signing
+    _, result, _, _ = await self._request(self._url(instance_id)+"/process/next", "PUT", self._token,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/authority_tools/_filing.py:249: in _request
+    async with client.stream(method, url, headers=request_headers,
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1583: in stream
+    response = await self.send(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_transports/mock.py:34: in handle_async_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('PUT', 'https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next')>
+
+    def respond(request):
+        requests.append(request)
+>       assert pending, f"Unexpected {request.method} {request.url.path}"
+E       AssertionError: Unexpected PUT /brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next
+E       assert []
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_authority_filing_transports.py:42: AssertionError
+______________ test_numeric_and_named_validation_errors_block[1] _______________
+
+severity = 1
+
+    @pytest.mark.parametrize('severity', [1, 'Error', 'error'])
+    def test_numeric_and_named_validation_errors_block(severity):
+        transport, requests, _ = queue(annual_instance(), httpx.Response(201), httpx.Response(201), [{'severity': severity, 'code': 'BLOCK'}])
+        with pytest.raises(AnnualAccountsAuthorityError) as failure:
+>           asyncio.run(prepare_annual_accounts_for_signing(AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
+                company_org_number=ORG, main_form_xml=XML, company_accounts_xml=XML))
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:296: in prepare_annual_accounts_for_signing
+    return _freeze(await prepare(client, company_org_number=company_org_number,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py:13: in prepare
+    await client.lock_for_signing(instance_id=instance["id"])
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:84: in lock_for_signing
+    _, result, _, _ = await self._request(self._url(instance_id)+"/process/next", "PUT", self._token,
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/src/talli_backend/authority_tools/_filing.py:249: in _request
+    async with client.stream(method, url, headers=request_headers,
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1583: in stream
+    response = await self.send(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_transports/mock.py:34: in handle_async_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('PUT', 'https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next')>
+
+    def respond(request):
+        requests.append(request)
+>       assert pending, f"Unexpected {request.method} {request.url.path}"
+E       AssertionError: Unexpected PUT /brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001/process/next
+E       assert []
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_authority_filing_transports.py:42: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py::test_ambiguous_effect_remains_durable_and_rerun_cannot_connect[lost_response-create_instance]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py::test_ambiguous_effect_remains_durable_and_rerun_cannot_connect[lost_response-lock_for_signing]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py::test_ambiguous_effect_remains_durable_and_rerun_cannot_connect[malformed_response-create_instance]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py::test_ambiguous_effect_remains_durable_and_rerun_cannot_connect[malformed_response-lock_for_signing]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py::test_ambiguous_effect_remains_durable_and_rerun_cannot_connect[checkpoint_write-create_instance]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py::test_ambiguous_effect_remains_durable_and_rerun_cannot_connect[checkpoint_write-lock_for_signing]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py::test_ambiguous_effect_remains_durable_and_rerun_cannot_connect[interruption-create_instance]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py::test_ambiguous_effect_remains_durable_and_rerun_cannot_connect[interruption-lock_for_signing]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py::test_legacy_ambiguous_checkpoint_cannot_repeat_effect[create_instance]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_rehearsal_recovery.py::test_legacy_ambiguous_checkpoint_cannot_repeat_effect[lock_for_signing]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py::test_malformed_validation_never_locks[<html>upstream failure</html>]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py::test_malformed_validation_never_locks[{}]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py::test_malformed_validation_never_locks[null]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py::test_malformed_validation_never_locks[true]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py::test_malformed_validation_never_locks[0]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py::test_malformed_validation_never_locks[{"validationIssues":"not-an-array"}]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py::test_malformed_validation_never_locks[[null]]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py::test_malformed_validation_never_locks[[{}]]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py::test_malformed_validation_never_locks[[{"severity":0}]]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py::test_malformed_validation_never_locks[[{"severity":true}]]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py::test_malformed_validation_never_locks[[{"severity":"unknown"}]]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_validation_response.py::test_numeric_and_named_validation_errors_block[1]
+22 failed, 12 passed in 0.97s

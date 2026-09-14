@@ -1,0 +1,24 @@
+✔ expand migration adds append-only revision-bound deletion reviews (2.38775ms)
+✔ request derives archive and source completeness inside one atomic RPC (0.874167ms)
+✔ archive route and generation triggers share one complete source inventory (5.430792ms)
+✔ expand deterministically supersedes and conceals legacy duplicates (0.811084ms)
+✔ review is admin+AAL2 only, append-only, and cannot be self-approved by an owner (0.865417ms)
+✔ finalize re-derives prerequisites and requires exact approved review (0.569417ms)
+✔ legacy export-required cancellations resume through a receipt-bound RPC (0.413792ms)
+✔ archive receipt completion is server-only, one-time, expiring, and generation-bound (0.749916ms)
+✔ direct lifecycle RPCs mirror strict request validation before receipts (0.56175ms)
+✔ archive and reconciliation reject null income years explicitly (0.286875ms)
+✔ review JSON is projected to the strict public response shape (0.198125ms)
+✔ lifecycle commands use durable receipts and least-privilege RLS (1.09775ms)
+✔ lifecycle mutations share operation-company-cancellation lock order (0.489291ms)
+✔ unknown command outcomes reconcile behind the exact operation lock (0.437ms)
+✔ contract migration removes direct cancellation access only after generated-client cutover (0.655625ms)
+✔ the release Supabase suite includes cancellation schema coverage (0.29225ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 69.207458

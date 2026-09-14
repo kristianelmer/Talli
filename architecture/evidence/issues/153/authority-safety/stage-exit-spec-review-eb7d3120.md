@@ -1,0 +1,13 @@
+Spec whole-stage review: CHANGES REQUIRED — two P2 findings shared with Standards, independently reproduced.
+
+Reviewed the complete nonempty `5b74340ca75f215b43d754c6bf0fc49ef5974b0b...eb7d312054c32a8e94dd9d0c8bf9f22dcf9a12fa` diff and accumulated correction evidence against the original six #153 criteria, #132 envelope and approved #192 source decision.
+
+1. **STD-153-REPLAY-1, P2** — `modules/annual_accounts_filing/rehearsal.py:110–115,133–147` saves generic failure state after a lost create/lock response, then repeats that consequential operation on the next invocation. Two-invocation probes produced two creates or two locks without reconciliation. #132 explicitly requires: “Never blindly retry an ambiguous filing, payment, ledger, document, or provider effect.” Quarantine the ambiguous operation durably before permitting another effect; require authoritative reconciliation or deliberate repair. This is inherited behavior, not a statutory-output parity difference; synthetic-only TT02 gating does not satisfy the full-stage failure rule.
+
+2. **STD-153-VALIDATION-1, P2** — `adapters/annual_accounts_authority.py:72–81` treats missing/non-array validation issues as an empty successful result; `_filing.py:272–275` turns malformed JSON into `{}`. Actual adapter/public-contract probes with HTTP200 HTML and `validationIssues:"not-an-array"` both returned `hasErrors=false` and sent the lock PUT. #153 requires hybrid signing/submission states to “remain fail closed and auditable.” Reject malformed validation responses before lock/handoff; retain the legitimate empty-array control.
+
+No additional implementation defect or scope expansion confirmed. The offline profile stays distinct; Corporate/signed-artifact gates remain preserved, while the durable source correctly reports production disabled and does not certify other prerequisites. Six-family single-writer cutover, latest-state rollback, Archive/retention rebindings and exact compatibility retirement retain prior corrected evidence.
+
+Independent private checks: **2,328 backend tests +28 generated-client/composition/Corporate/readiness checks pass**, zero skips; both adversarial probes reproduce. Separate newly supplied deployment proofs close the protocol gap: 17 real PostgREST/FastAPI/SQL phase checks and seven current-consumer/exact-predecessor-API checks, with disclosed synthetic authentication. All 182 old backend files match the pinned predecessor; current consumed sources match eb7. These private proofs are not yet committed adoption.
+
+All six original criteria remain pending. Full immutable gate pair, real Accounts browser, final metadata/registry adoption and protected integration remain pending; no provider, production, hosted or successor credit.

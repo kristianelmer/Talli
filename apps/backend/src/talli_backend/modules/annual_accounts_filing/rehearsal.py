@@ -40,6 +40,23 @@ def _local_error():
             "retryable": False, "message": "Local configuration, payload or authority response is invalid."}
 
 
+def _reconciliation_error():
+    return AnnualAccountsAuthorityError(
+        "An earlier authority operation may have completed. Reconcile the saved evidence before retrying.",
+        code="ANNUAL_ACCOUNTS_RECONCILIATION_REQUIRED", retryable=False)
+
+
+def _legacy_ambiguous(prior):
+    if prior.get("operationJournalVersion") == 1:
+        return False
+    instance = prior.get("instance") or {}
+    if not instance:
+        return True
+    return (not instance.get("locked") and instance.get("mainFormUploaded")
+        and instance.get("companyAccountsUploaded")
+        and prior.get("status") not in ("company_accounts_uploaded", "validation_failed"))
+
+
 def safe_summary(evidence):
     submission = evidence.get("submission") or {}
     return {"ok": evidence["status"] in ("locked_for_person_signing", "submitted_and_archived"),
@@ -80,6 +97,10 @@ async def run(configuration: AnnualAccountsRehearsalConfiguration, io: AnnualAcc
     if prior and (prior.get("environment") != "test" or prior.get("companyOrgNumber") != organization
         or prior.get("incomeYear") != year or any((prior.get("payloadHashes") or {}).get(k) != v for k, v in hashes.items())):
         raise ValueError("Existing annual-accounts evidence belongs to a different payload; choose a new evidence path.")
+    if prior and ("pendingAuthorityOperation" in prior or prior.get("status") == "reconciliation_required"):
+        raise _reconciliation_error()
+    if prior and prior.get("status") != "submitted_and_archived" and _legacy_ambiguous(prior):
+        raise _reconciliation_error()
     if prior and prior.get("status") == "submitted_and_archived":
         prior.update(codeCommit=io.revision(), evidenceFile=io.evidence_filename())
         prior.pop("evidencePath", None)
@@ -95,24 +116,34 @@ async def run(configuration: AnnualAccountsRehearsalConfiguration, io: AnnualAcc
         "payloadHashes": hashes, "payloadFeedbackCodes": sorted(v["code"] for v in documents["feedback"]),
         "localXmlValidation": {"status": "well_formed"}, "instance": None, "validation": None, "signingUrl": None,
         "signed": False, "submitted": False, "submission": None, "secretsStored": False, "preparedAt": io.timestamp(), "error": None}
+    evidence.setdefault("operationJournalVersion", 1)
     evidence.update(codeCommit=io.revision(), evidenceFile=io.evidence_filename())
     evidence.pop("evidencePath", None)
     io.save_evidence(evidence)
     client = await io.connect(evidence)
+    pending_operation = None
     try:
-        if evidence["status"] == "locked_for_person_signing":
+        if evidence["status"] == "locked_for_person_signing" or (evidence.get("instance") or {}).get("locked") is True:
             submission = await client.get_submission_evidence(instance_id=evidence["instance"]["id"])
+            if not submission["submitted"] and not evidence.get("signingUrl"):
+                handoff = await client.get_signing_handoff(instance_id=evidence["instance"]["id"])
+                evidence["signingUrl"] = handoff["signingUrl"]
             evidence.update(submission=submission, signed=submission["signed"], submitted=submission["submitted"],
                 status="submitted_and_archived" if submission["submitted"] else "locked_for_person_signing",
                 submittedAt=submission["processEndedAt"] if submission["submitted"] else None, error=None)
             io.save_evidence(evidence)
             return safe_summary(evidence)
         if not evidence["instance"]:
+            pending_operation = {"operation": "create_instance", "instanceId": None, "startedAt": io.timestamp()}
+            evidence["pendingAuthorityOperation"] = pending_operation
+            io.save_evidence(evidence)
             created = await client.create_instance(company_org_number=organization)
             evidence["instance"] = {"id": created["id"], "dataIds": created["dataIds"],
                 "createdProcessTask": created["processTask"], "mainFormUploaded": False, "companyAccountsUploaded": False, "locked": False}
             evidence["status"] = "instance_created"
+            evidence.pop("pendingAuthorityOperation")
             io.save_evidence(evidence)
+            pending_operation = None
         instance = evidence["instance"]
         if not instance["mainFormUploaded"]:
             await client.upload_main_form(instance_id=instance["id"], data_id=instance["dataIds"]["mainForm"], xml=documents["mainFormXml"])
@@ -131,16 +162,27 @@ async def run(configuration: AnnualAccountsRehearsalConfiguration, io: AnnualAcc
         evidence["status"] = "validated"
         io.save_evidence(evidence)
         if not instance["locked"]:
+            pending_operation = {"operation": "lock_for_signing", "instanceId": instance["id"], "startedAt": io.timestamp()}
+            evidence["pendingAuthorityOperation"] = pending_operation
+            io.save_evidence(evidence)
             locked = await client.lock_for_signing(instance_id=instance["id"])
             instance.update(locked=True, lockedProcessTask=locked["processTask"])
             evidence["status"] = "locked"
+            evidence.pop("pendingAuthorityOperation")
             io.save_evidence(evidence)
+            pending_operation = None
         handoff = await client.get_signing_handoff(instance_id=instance["id"])
         evidence.update(signingUrl=handoff["signingUrl"], signed=False, submitted=False,
             status="locked_for_person_signing", lockedAt=io.timestamp(), error=None)
         io.save_evidence(evidence)
         return safe_summary(evidence)
     except Exception as error:
+        if pending_operation is not None:
+            pending_operation["failure"] = error.evidence() if isinstance(error, AnnualAccountsAuthorityError) else _local_error()
+            evidence.update(pendingAuthorityOperation=pending_operation, status="reconciliation_required",
+                error=_reconciliation_error().evidence())
+            io.save_evidence(evidence)
+            raise _reconciliation_error() from None
         if evidence["status"] != "validation_failed":
             evidence["status"] = "failed_retryable" if isinstance(error, AnnualAccountsAuthorityError) and error.retryable else "failed_blocked"
         evidence["error"] = error.evidence() if isinstance(error, AnnualAccountsAuthorityError) else _local_error()

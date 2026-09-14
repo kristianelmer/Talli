@@ -1,0 +1,104 @@
+{
+  "verdict": "CHANGES_REQUIRED",
+  "baseline": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "candidate": "eb7d312054c32a8e94dd9d0c8bf9f22dcf9a12fa",
+  "findings": [
+    {
+      "id": "STD-153-REPLAY-1",
+      "severity": "P2",
+      "file": "apps/backend/src/talli_backend/modules/annual_accounts_filing/rehearsal.py",
+      "lines": [
+        110,
+        115,
+        133,
+        147
+      ],
+      "spec": "#132: Never blindly retry an ambiguous filing, payment, ledger, document, or provider effect.",
+      "independentReproduction": "stage-exit-spec-ambiguous-replay-eb7d3120.json",
+      "status": "OPEN_AT_PINNED_REVISION"
+    },
+    {
+      "id": "STD-153-VALIDATION-1",
+      "severity": "P2",
+      "file": "apps/backend/src/talli_backend/adapters/annual_accounts_authority.py",
+      "lines": [
+        72,
+        81
+      ],
+      "supportingFile": "apps/backend/src/talli_backend/authority_tools/_filing.py:272",
+      "spec": "GH-153-A3: Hybrid signing, submission, feedback, and receipt states remain fail closed and auditable.",
+      "independentReproduction": "stage-exit-spec-validation-response-eb7d3120.json",
+      "status": "OPEN_AT_PINNED_REVISION"
+    }
+  ],
+  "criteriaMapping": [
+    {
+      "id": "GH-153-A1",
+      "assessment": "No new statutory-output defect; distinct live/offline profiles, frozen output/XML/error/date evidence, canonical Python contracts and consumers; independent backend suite includes fixed captures."
+    },
+    {
+      "id": "GH-153-A2",
+      "assessment": "Corporate blockers and signed-artifact/public facts remain owned by Corporate/Documents and required by existing enabled workflow; preview route is caller-fact-only. Production-disabled source does not certify durable prerequisite completeness."
+    },
+    {
+      "id": "GH-153-A3",
+      "assessment": "Two concrete open provider failure/retry defects above. Other import/control authorization, immutable history, receipts, Audit ordering and source classification retain prior proofs."
+    },
+    {
+      "id": "GH-153-A4",
+      "assessment": "Workspace/readiness/controls/import/Archive use FastAPI and generated client. Existing CLI uses canonical Python rehearsal and registered fixed transport. Real hydrated Accounts lane remains pending."
+    },
+    {
+      "id": "GH-153-A5",
+      "assessment": "Six owned row families and strict physical contract; generic tables retired, exact24 compatibility scopes removed with original baseline unchanged; dead TS payload/XML/import and Node bridge removed; retained test-only public driver calls current Python, not legacy implementation."
+    },
+    {
+      "id": "GH-153-A6",
+      "assessment": "Not complete. Gate pair, real browser, metadata adoption and protected integration pending. No annual-compliance/successor claim."
+    }
+  ],
+  "bindingsArtifact": "stage-exit-spec-bindings-eb7d3120.json",
+  "independentChecks": {
+    "backendPassed": 2328,
+    "webPassed": 28,
+    "skipped": 0,
+    "adversarialResultsMatchStandards": true
+  },
+  "deploymentEvidence": {
+    "storagePhaseChecks": 17,
+    "exactOldBackendChecks": 7,
+    "oldSourceFilesIndependentlyVerified": 182,
+    "verdict": "PROTOCOL_GAP_CLOSED_WITH_PRIVATE_SUPPLEMENT",
+    "limits": "No live provider or real Auth/TOTP claim; current-source hashes verified after execution against immutable eb7; historical loaded-module identity not separately recorded; no independent DB/HTTP rerun."
+  },
+  "publicationReview": "11 current publication manifest artifact hashes match; original failed log hash bound; synthetic-marker derivative explicitly labelled; unchanged credential scanner; expired TOTP test actually subtracts86400seconds separately fromAAL1. Requirements still original6pending. Earlier milestone metadata is historical, final adoption pending.",
+  "artifacts": {
+    "stage-exit-spec-bindings-eb7d3120.json": "0b74dd43b451ce14e7b5f9752dc32984faa7053a1a456edf96964c22c3098353",
+    "stage-exit-spec-pure-eb7d3120.log": "8f53ab3c86dc91941ca829ab5df3b1b90d9ec8a057a1e181de5ae76a70d02209",
+    "stage-exit-spec-web-eb7d3120.log": "79338b3ba830fd5beb8b01e1af9cf4760c8b8f504800446a61c5172c1d2e5846",
+    "stage-exit-standards-ambiguous-replay-eb7d3120.py": "c4323a6723f89570e3d9a11758bac48d1af754e1add22df41ecc60a01d18533a",
+    "stage-exit-standards-validation-response-eb7d3120.py": "677c10e89c5bad7407725705f8ced7391b154c0ee3268bf48e609655da2e0024",
+    "stage-exit-spec-ambiguous-replay-eb7d3120.json": "ceefffbcc692d286ef02abff2264bfd59882da538a6893e9ef851c1342a36243",
+    "stage-exit-spec-validation-response-eb7d3120.json": "110d873badcc77b92b951f65292b4370cced7c825ae19db3e9abd44114817d15",
+    "issue153-current.json": "e90e3a7291b049d41f6b193d831c9e4126b04b54a27f5782db4993836cf7e0b6",
+    "stage-exit132-comments-current.md": "6c1bc0d88cf93369f1551f8cacecd00c3f72916a11c31c8b491d512338011fec"
+  },
+  "protocolArtifacts": {
+    "probe-accounts-deployment-order.py": "ffb1d691b59a9c00e6257badc7dd0c214a4c12fc2a5ee9d3ed24ff244bb338b2",
+    "accounts-deployment-order.json": "26fbe9552f93ebd5f96ba226b9efd233deddb358aa43ae686de94470860033ad",
+    "accounts-deployment-order-first.log": "d4c19b24aecaeacc4a2a94533135130a14d712ccc1663193e5a2e150c05381ca",
+    "accounts-old-backend-protocol.json": "ad6ad5f7bbac8cf20028f5bdfdcbc5995cf5dd87fe456e0a18023bfb9ef5d2fd",
+    "accounts-old-backend-consumer.mjs": "41d5e47ca352acde7b5a48268459e5a999fad1251f8a42789a47033e57ada75e",
+    "accounts-old-backend-consumer.log": "e927fc4df2263ef312fb59ef550061e9a23036cfa6546026929fb9ea9c4f305c",
+    "probe-accounts-old-backend.py": "d697c0f234d2bf0bda2fc18eb0c37ca02541de813b4e0f0b67a6d6cd4d76332f",
+    "accounts-old-backend-server.log": "70aac865767474f8b6dc59a8767fab278f5b35060be52692a5d2d975ef6c1534"
+  },
+  "reportSha256": "9e7f33e5f88be8d2325dba1f85eba4c4fb94837831281aa06c75dbaab5823a76",
+  "limits": [
+    "No shared source/git mutations",
+    "No DB/Docker/browser/provider operations",
+    "No full gate acceptance",
+    "Two defects are inherited but violate full-stage explicit failure envelope",
+    "Prior independently reviewed SQL corrections and retained real DB proofs reread; not rerun"
+  ]
+}

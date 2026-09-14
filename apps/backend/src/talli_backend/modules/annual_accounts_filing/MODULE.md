@@ -72,8 +72,21 @@ The local CLI retains the exact explicit test gate, scopes, synthetic case and
 organization checks. It writes intent before credentials or provider work, reuses
 existing uploads, reads receipt state after human signing and replays completed
 evidence without constructing a provider. Credential setup remains outside the
-original provider error-catching block. Validation-failed status and sanitized
-retryable/blocked errors retain their original behavior. The generated client and authenticated persistence boundary enforce accepted
+provider error-catching block. Before create-instance and signing-lock calls, a
+durable pending-operation marker is saved. Lost responses, malformed results,
+interruption or failed success-checkpoint writes preserve that marker and block
+rerun before credentials or provider access. Legacy ambiguous checkpoints also
+require reconciliation. A confirmed lock with a lost handoff resumes through
+submission reads; it cannot relock. Same-payload uploads to known data identities
+retain their original PUT retry behavior.
+
+Successful HTTP validation requires a recognized issue list and severities.
+Malformed evidence and unknown severities block before lock. Official numeric
+severity 1 is an error; 2–5 retain their documented nonblocking meanings. Existing
+named severities and their output casing remain supported. Lock and handoff
+responses must positively identify the signing task. These #132 safety corrections
+intentionally tighten inherited ambiguous-failure behavior; frozen statutory
+payloads, valid TT02 documents and successful request order remain unchanged. The generated client and authenticated persistence boundary enforce accepted
 membership and fresh MFA where required. The old direct RLS observations do not authorize
 unaccepted membership or skipping fresh MFA in the future request boundary.
 

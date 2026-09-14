@@ -25,9 +25,37 @@ def test_reviewed_json_shapes_preserve_actual_predecessor_subprocess_boundary(ca
     assert result == case['old']
 
 
+def without_operation_journal(value):
+    if isinstance(value, list):
+        return [without_operation_journal(item) for item in value]
+    if isinstance(value, dict):
+        return {key: without_operation_journal(item) for key, item in value.items() if key != 'operationJournalVersion'}
+    return value
+
+
 @pytest.mark.parametrize('case', TRACES['cases'], ids=lambda case: case['id'])
-def test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints(case):
-    assert trace(annual_accounts_test, case['id'], relocated=True) == case['trace']
+def test_owned_rehearsal_preserves_original_trace_except_required_ambiguity_guard(case):
+    actual = trace(annual_accounts_test, case['id'], relocated=True)
+    # Same provider calls, payloads, reads and ordering. The explicit #132 safety
+    # correction adds journal saves and blocks an ambiguous create/lock result.
+    effects = lambda value: [row for row in value['events'] if row['operation'] not in ('save_evidence', 'connect')]
+    assert effects(actual) == effects(case['trace'])
+    if case['id'] in ('create_instance', 'lock_for_signing'):
+        pending = actual['checkpoints'][-1]
+        assert pending['status'] == 'reconciliation_required'
+        assert pending['pendingAuthorityOperation']['operation'] == case['id']
+        assert pending['pendingAuthorityOperation']['failure']['code'] == 'ANNUAL_ACCOUNTS_NETWORK_ERROR'
+        assert pending['error']['code'] == 'ANNUAL_ACCOUNTS_RECONCILIATION_REQUIRED'
+        assert pending['error']['retryable'] is False
+        assert pending['instance'] == case['trace']['checkpoints'][-1]['instance']
+        assert actual['output'] == {'error': {'type': 'AnnualAccountsAuthorityError',
+            'message': 'An earlier authority operation may have completed. Reconcile the saved evidence before retrying.'}}
+        return
+    normalized = without_operation_journal(actual)
+    normalized['checkpoints'] = [row for row in normalized['checkpoints'] if 'pendingAuthorityOperation' not in row]
+    normalized['events'] = [row for row in normalized['events']
+        if not (row['operation'] == 'save_evidence' and 'pendingAuthorityOperation' in row['input'])]
+    assert normalized == case['trace']
 
 
 @pytest.mark.parametrize('case', CAPTURE['cases'], ids=lambda case: case['id'])

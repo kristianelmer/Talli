@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "predecessorRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "predecessorArchiveSha256": "a85049d9aa00c71e514758ebcc4186e3b8eb4a218ee47e1254f28a74ee4f2459",
+  "currentRevision": "eb7d312054c32a8e94dd9d0c8bf9f22dcf9a12fa",
+  "checks": [
+    "workspace rejects raw missing route",
+    "source facts reject raw missing route",
+    "import rejects raw missing route",
+    "preview lookup does not translate raw404 into not found",
+    "acknowledgement does not translate raw404 into not found",
+    "all raw404s map to unavailable Norwegian errors",
+    "workspace composition retains error instead of successful empty history"
+  ],
+  "currentConsumerSha256": "41d5e47ca352acde7b5a48268459e5a999fad1251f8a42789a47033e57ada75e",
+  "sourceBindings": {
+    "apps/web/features/annual-accounts-filing/transport.ts": "4eee7df7c9aadc50d265bf90ce5f0b40123939b85ca81321605d48559a051926",
+    "apps/web/app/lib/annual-accounts-workspace-source.ts": "81022e8f4f2232b4d3549c92adeb7c6cbbc4bade599ed6a4f82045373447ef09"
+  },
+  "effects": "No DB or provider configuration, no external operations; predecessor HTTP server stopped"
+}

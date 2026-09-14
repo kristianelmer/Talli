@@ -71,20 +71,37 @@ class AnnualAccountsTransport(FixedTransport):
 
     async def validate_instance(self, *, instance_id):
         _, result, _, _ = await self._request(self._url(instance_id)+"/validate", "GET", self._token)
-        issues = result if isinstance(result, list) else obj(result).get("validationIssues", [])
+        issues = result if isinstance(result, list) else obj(result).get("validationIssues")
         if not isinstance(issues, list):
-            issues = []
-        issues = [{"severity": self.safe(obj(v).get("severity"), "Unknown"),
-                   "code": self.safe(obj(v).get("code"), "ANNUAL_ACCOUNTS_VALIDATION_ISSUE"),
-                   "field": self.safe(obj(v).get("field")), "message": self.safe(obj(v).get("message"))}
-                  for v in issues]
-        return {"hasErrors": any(v["severity"].lower() == "error" for v in issues), "issues": issues}
+            raise AnnualAccountsAuthorityError("Altinn did not return recognized validation evidence.",
+                code="ANNUAL_ACCOUNTS_VALIDATION_RESPONSE_INVALID")
+        severities = {1: "Error", 2: "Warning", 3: "Informational", 4: "Fixed", 5: "Success"}
+        normalized = []
+        for value in issues:
+            severity = obj(value).get("severity")
+            if type(severity) is int:
+                severity = severities.get(severity)
+            elif isinstance(severity, str):
+                severity = severity if any(name.lower() == severity.lower() for name in severities.values()) else None
+            else:
+                severity = None
+            if severity is None:
+                raise AnnualAccountsAuthorityError("Altinn returned an unknown validation issue severity.",
+                    code="ANNUAL_ACCOUNTS_VALIDATION_RESPONSE_INVALID")
+            normalized.append({"severity": severity,
+                "code": self.safe(obj(value).get("code"), "ANNUAL_ACCOUNTS_VALIDATION_ISSUE"),
+                "field": self.safe(obj(value).get("field")), "message": self.safe(obj(value).get("message"))})
+        return {"hasErrors": any(v["severity"].lower() == "error" for v in normalized), "issues": normalized}
 
     async def lock_for_signing(self, *, instance_id):
         _, result, _, _ = await self._request(self._url(instance_id)+"/process/next", "PUT", self._token,
             content_type="application/json", body='{"action":"confirm"}')
         task = obj(obj(result).get("currentTask"))
-        return {"processTask": self.safe(task.get("altinnTaskType") or task.get("elementId"), "unknown"), "locked": True}
+        process_task = self.safe(task.get("altinnTaskType") or task.get("elementId"), "unknown")
+        if process_task != "signing":
+            raise AnnualAccountsAuthorityError("Altinn did not confirm the signing task.",
+                code="ANNUAL_ACCOUNTS_SIGNING_STATE_UNCONFIRMED")
+        return {"processTask": process_task, "locked": True}
 
     async def _instance(self, identifier):
         _, result, _, _ = await self._request(self._url(identifier), "GET", self._token)
@@ -95,6 +112,9 @@ class AnnualAccountsTransport(FixedTransport):
 
     async def get_signing_handoff(self, *, instance_id):
         result = await self._instance(instance_id)
+        if self._task(result) != "signing":
+            raise AnnualAccountsAuthorityError("Altinn did not confirm the signing task.",
+                code="ANNUAL_ACCOUNTS_SIGNING_STATE_UNCONFIRMED")
         return {"instanceId": instance_id, "processTask": self._task(result),
                 "signingUrl": f"{BASE}/#/instance/{instance_id}", "signed": False, "submitted": False}
 

@@ -1,0 +1,210 @@
+FFFF                                                                     [100%]
+=================================== FAILURES ===================================
+________ test_unknown_lock_response_never_claims_signing_handoff[body0] ________
+
+body = {}
+
+    @pytest.mark.parametrize('body', [{}, {'currentTask': {'altinnTaskType': 'data'}}, {'currentTask': None}])
+    def test_unknown_lock_response_never_claims_signing_handoff(body):
+        transport, requests, _ = queue(annual_instance(), httpx.Response(201), httpx.Response(201), [], body)
+        with pytest.raises(AnnualAccountsAuthorityError) as failure:
+>           asyncio.run(prepare_annual_accounts_for_signing(AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
+                company_org_number=ORG, main_form_xml=XML, company_accounts_xml=XML))
+
+apps/backend/tests/test_annual_accounts_validation_response.py:49: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:296: in prepare_annual_accounts_for_signing
+    return _freeze(await prepare(client, company_org_number=company_org_number,
+apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py:14: in prepare
+    return await client.get_signing_handoff(instance_id=instance["id"]) | {"dataIds": instance["dataIds"], "validation": validation}
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:110: in get_signing_handoff
+    result = await self._instance(instance_id)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:103: in _instance
+    _, result, _, _ = await self._request(self._url(identifier), "GET", self._token)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/authority_tools/_filing.py:249: in _request
+    async with client.stream(method, url, headers=request_headers,
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1583: in stream
+    response = await self.send(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_transports/mock.py:34: in handle_async_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('GET', 'https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001')>
+
+    def respond(request):
+        requests.append(request)
+>       assert pending, f"Unexpected {request.method} {request.url.path}"
+E       AssertionError: Unexpected GET /brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001
+E       assert []
+
+apps/backend/tests/test_authority_filing_transports.py:42: AssertionError
+________ test_unknown_lock_response_never_claims_signing_handoff[body1] ________
+
+body = {'currentTask': {'altinnTaskType': 'data'}}
+
+    @pytest.mark.parametrize('body', [{}, {'currentTask': {'altinnTaskType': 'data'}}, {'currentTask': None}])
+    def test_unknown_lock_response_never_claims_signing_handoff(body):
+        transport, requests, _ = queue(annual_instance(), httpx.Response(201), httpx.Response(201), [], body)
+        with pytest.raises(AnnualAccountsAuthorityError) as failure:
+>           asyncio.run(prepare_annual_accounts_for_signing(AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
+                company_org_number=ORG, main_form_xml=XML, company_accounts_xml=XML))
+
+apps/backend/tests/test_annual_accounts_validation_response.py:49: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:296: in prepare_annual_accounts_for_signing
+    return _freeze(await prepare(client, company_org_number=company_org_number,
+apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py:14: in prepare
+    return await client.get_signing_handoff(instance_id=instance["id"]) | {"dataIds": instance["dataIds"], "validation": validation}
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:110: in get_signing_handoff
+    result = await self._instance(instance_id)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:103: in _instance
+    _, result, _, _ = await self._request(self._url(identifier), "GET", self._token)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/authority_tools/_filing.py:249: in _request
+    async with client.stream(method, url, headers=request_headers,
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1583: in stream
+    response = await self.send(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_transports/mock.py:34: in handle_async_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('GET', 'https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001')>
+
+    def respond(request):
+        requests.append(request)
+>       assert pending, f"Unexpected {request.method} {request.url.path}"
+E       AssertionError: Unexpected GET /brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001
+E       assert []
+
+apps/backend/tests/test_authority_filing_transports.py:42: AssertionError
+________ test_unknown_lock_response_never_claims_signing_handoff[body2] ________
+
+body = {'currentTask': None}
+
+    @pytest.mark.parametrize('body', [{}, {'currentTask': {'altinnTaskType': 'data'}}, {'currentTask': None}])
+    def test_unknown_lock_response_never_claims_signing_handoff(body):
+        transport, requests, _ = queue(annual_instance(), httpx.Response(201), httpx.Response(201), [], body)
+        with pytest.raises(AnnualAccountsAuthorityError) as failure:
+>           asyncio.run(prepare_annual_accounts_for_signing(AnnualAccountsTransport(ALTINN_TOKEN, transport=transport),
+                company_org_number=ORG, main_form_xml=XML, company_accounts_xml=XML))
+
+apps/backend/tests/test_annual_accounts_validation_response.py:49: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:296: in prepare_annual_accounts_for_signing
+    return _freeze(await prepare(client, company_org_number=company_org_number,
+apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py:14: in prepare
+    return await client.get_signing_handoff(instance_id=instance["id"]) | {"dataIds": instance["dataIds"], "validation": validation}
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:110: in get_signing_handoff
+    result = await self._instance(instance_id)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/adapters/annual_accounts_authority.py:103: in _instance
+    _, result, _, _ = await self._request(self._url(identifier), "GET", self._token)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/authority_tools/_filing.py:249: in _request
+    async with client.stream(method, url, headers=request_headers,
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py:210: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1583: in stream
+    response = await self.send(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/.venv/lib/python3.12/site-packages/httpx/_transports/mock.py:34: in handle_async_request
+    response = self.handler(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = <Request('GET', 'https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001')>
+
+    def respond(request):
+        requests.append(request)
+>       assert pending, f"Unexpected {request.method} {request.url.path}"
+E       AssertionError: Unexpected GET /brg/aarsregnskap-vanlig-202406/instances/50001234/10000000-0000-4000-8000-000000000001
+E       assert []
+
+apps/backend/tests/test_authority_filing_transports.py:42: AssertionError
+_________________ test_handoff_requires_observed_signing_task __________________
+
+    def test_handoff_requires_observed_signing_task():
+        transport, _, _ = queue(annual_instance('data'))
+        from test_authority_filing_transports import ID
+>       with pytest.raises(AnnualAccountsAuthorityError) as failure:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE <class 'talli_backend.modules.annual_accounts_filing.public.AnnualAccountsAuthorityError'>
+
+apps/backend/tests/test_annual_accounts_validation_response.py:58: Failed
+=========================== short test summary info ============================
+FAILED apps/backend/tests/test_annual_accounts_validation_response.py::test_unknown_lock_response_never_claims_signing_handoff[body0]
+FAILED apps/backend/tests/test_annual_accounts_validation_response.py::test_unknown_lock_response_never_claims_signing_handoff[body1]
+FAILED apps/backend/tests/test_annual_accounts_validation_response.py::test_unknown_lock_response_never_claims_signing_handoff[body2]
+FAILED apps/backend/tests/test_annual_accounts_validation_response.py::test_handoff_requires_observed_signing_task
+4 failed, 24 deselected in 0.35s
