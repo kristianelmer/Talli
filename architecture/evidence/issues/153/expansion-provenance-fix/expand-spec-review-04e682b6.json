@@ -1,0 +1,543 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Spec",
+  "verdict": "FINDINGS",
+  "baseRevision": "61c9c93add0cfd0011bd55e8f71200eaf8a76a43",
+  "reviewedRevision": "04e682b69e5426408932233d05328134e8e997f8",
+  "diffCommand": "git diff 61c9c93add0cfd0011bd55e8f71200eaf8a76a43...04e682b69e5426408932233d05328134e8e997f8",
+  "commits": [
+    "04e682b69e5426408932233d05328134e8e997f8 feat(accounts): add inert reconciled database expansion"
+  ],
+  "findings": [
+    {
+      "id": "SPEC-153-EXPAND-1",
+      "severity": "P2",
+      "file": "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql",
+      "startLine": 125,
+      "endLine": 138,
+      "title": "Validate retained opening setup scope and quarantine affected dependents",
+      "spec": "#132 common envelope: reconcile copied data by counts and deterministic hashes; approved #153 positive classification, as recorded in inactive-expansion/verification.md: Every remaining row must positively match Accounts and matching referenced company/year/obligation.",
+      "description": "Non-null preview/submission setup_id never participates in classification. Existing legacy FK permits a valid setup ID from a different company/year; existing sibling barriers also allow it. The independent exact-migration probe copied cross-company/wrong-year preview rows and a cross-company submission with zero quarantine while all reconciliations passed. Preserve matching/null references, quarantine missing/mismatched source-owned setups and propagate preview quarantine to dependent copies.",
+      "reproduction": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/expand-spec-setup-provenance-04e682b6.py",
+      "result": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/expand-spec-setup-provenance-results-04e682b6.json"
+    }
+  ],
+  "reportPath": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/expand-spec-review-04e682b6.md",
+  "reportSha256": "29e64cde87d12d67b12c7e035de3119f67bb68e8c32b5419a29698737794d671",
+  "sourceBindings": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md",
+      "sha256": "3fc9c9c98f64f25a3b9f12104e34cf16c716fc27136079f49424ba7acb0dfdf9"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json",
+      "sha256": "1c89b1fb3266776a1eca7d4f46be9e5a691a540599cfd023d5768aa299e0b206"
+    },
+    {
+      "path": "apps/backend/tests/accounts_database_fixtures.py",
+      "sha256": "987bd221fb2776982f0d0dc4352e6b93c64e3e83f25a4e7be74fc45ddd89114d"
+    },
+    {
+      "path": "architecture/BACKEND-SYSTEM.md",
+      "sha256": "ea63d2e49c58d57a5c5cc37ea72d93969f1822ebef87bea47941bebe850f9052"
+    },
+    {
+      "path": "architecture/backend-system.json",
+      "sha256": "145976854a627f58558bfbc964307a326a15b64931cfb7b5f92932b2d842436b"
+    },
+    {
+      "path": "architecture/database-catalog.json",
+      "sha256": "c52e171a944e55521c808ef81acd9158a72c69bbe4a902edcc5879944eb9b3e0"
+    },
+    {
+      "path": "architecture/dependency-evidence.json",
+      "sha256": "4f2339a8b136e18efa2600ab2d65659cc842a092ddf119ca615495ac7b79f578"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/apply-local-accounts-expand.py",
+      "sha256": "dd167b92074a3a3f757357a115d2a537b5716bde02b44bf275e665a31455fd88"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/authority-fix-spec-review-61c9c93a.json",
+      "sha256": "b328c587f39c465e1ca8eba6ac7a0eed7b9b3f5634b1435b439e2094e0e54c9d"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/authority-fix-spec-review-61c9c93a.md",
+      "sha256": "86018d299eaa65d47c5800fbf822792de93ab03ec4a835b78409f537690d0583"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/authority-fix-standards-review-61c9c93a.json",
+      "sha256": "a6c9660714d345f0d7315c0fe6687c0e0e218d5173b393b0820f59e1b7585f50"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/authority-fix-standards-review-61c9c93a.md",
+      "sha256": "8691b3a1eb9080130fb0323e845e505cf0b156d708737d06b3fab6c6ff2eeb63"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-advisors-local-tls.stderr",
+      "sha256": "81f919d0bef0e76ac433f90c5afb665beb47d68fa0cee4e562903838fd9b1351"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-advisors-local-tls.stdout",
+      "sha256": "d22dada3153e47992f62de08d0097d5079c4cfd0e0fcfe9ca4fdd4fccb8063b6"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-advisors-summary.json",
+      "sha256": "82b53bd8b6fe3ce016223a501a98f92eb75f528e2534247d5d28e2cf9c60f70c"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-advisors.stderr",
+      "sha256": "4a519831ea3947cd4fc7a67309855024b4b7aaac74051bd88333268afcf54d53"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-architecture.log",
+      "sha256": "4f2339a8b136e18efa2600ab2d65659cc842a092ddf119ca615495ac7b79f578"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-first-probe.json",
+      "sha256": "acbdc21e220386005993e828647490dc29218017f35243f70b326db2e7af10f8"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-local-apply.json",
+      "sha256": "a60fb58c2fd18ccde270204df5ef04753220de609599354f602510a0a257de43"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-populated-explicit-role.json",
+      "sha256": "450c11c94a7689c9edeab3db1b77d0b9b392a357ca1be9dfaa2fa70bb94025dc"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-populated-first.json",
+      "sha256": "9704d63b7ddc9c0e807c0c39a9c2bd6c69ebb56bbdf88141ebb6adcc684fe9c6"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-populated-second.json",
+      "sha256": "15bed314797b05c5d3ab92166d314d309935066d29d405b0f257204dff251ddc"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-quarantine.json",
+      "sha256": "8056b574d659866b8f05d909dee651ab328a0723825b0c21a0b089a4cfe6ab26"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/inspect-accounts-advisors.py",
+      "sha256": "a9520ecda11533c1a0a824fecd8643f4b5e27bc7a4c44fbb69d8c185a1b50224"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/local-probe-diagnostic.json",
+      "sha256": "81f9ab2993888ddf83a6dbc89e8ed4e96a2b2eb0f3ed9be8b956bf3cfc3e35f0"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/manifest.json",
+      "sha256": "8d155a896fb8d50559c0749fdf4b95348dfabde3d2da635656f6973954f85a23"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/probe-accounts-expand.py",
+      "sha256": "f778eebf728e22d119342a25c032875637ba84cd01ad1e9fb237bf787a08c1ce"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/probe-accounts-populated-expand.py",
+      "sha256": "907665171ad5689545ea20dc2de05e16e140616bbffae10eb35e1e387edcb740"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/verification.md",
+      "sha256": "594a92f7c74e6b98c44e6b980f2d4a5fecae173da3212920fb86e9c07101c6e7"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql",
+      "sha256": "ea3c0601ec92539a5c9d672b5254a7342e6e63e4c4147e0ed7e6abec74ea7caa"
+    }
+  ],
+  "manifestArtifactChecks": [
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-quarantine.json",
+      "sha256": "8056b574d659866b8f05d909dee651ab328a0723825b0c21a0b089a4cfe6ab26"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/probe-accounts-expand.py",
+      "sha256": "f778eebf728e22d119342a25c032875637ba84cd01ad1e9fb237bf787a08c1ce"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/authority-fix-standards-review-61c9c93a.json",
+      "sha256": "a6c9660714d345f0d7315c0fe6687c0e0e218d5173b393b0820f59e1b7585f50"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-local-apply.json",
+      "sha256": "a60fb58c2fd18ccde270204df5ef04753220de609599354f602510a0a257de43"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/authority-fix-spec-review-61c9c93a.md",
+      "sha256": "86018d299eaa65d47c5800fbf822792de93ab03ec4a835b78409f537690d0583"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/apply-local-accounts-expand.py",
+      "sha256": "dd167b92074a3a3f757357a115d2a537b5716bde02b44bf275e665a31455fd88"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-populated-first.json",
+      "sha256": "9704d63b7ddc9c0e807c0c39a9c2bd6c69ebb56bbdf88141ebb6adcc684fe9c6"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/probe-accounts-populated-expand.py",
+      "sha256": "907665171ad5689545ea20dc2de05e16e140616bbffae10eb35e1e387edcb740"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-first-probe.json",
+      "sha256": "acbdc21e220386005993e828647490dc29218017f35243f70b326db2e7af10f8"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/inspect-accounts-advisors.py",
+      "sha256": "a9520ecda11533c1a0a824fecd8643f4b5e27bc7a4c44fbb69d8c185a1b50224"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/verification.md",
+      "sha256": "594a92f7c74e6b98c44e6b980f2d4a5fecae173da3212920fb86e9c07101c6e7"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-architecture.log",
+      "sha256": "4f2339a8b136e18efa2600ab2d65659cc842a092ddf119ca615495ac7b79f578"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-advisors-local-tls.stderr",
+      "sha256": "81f919d0bef0e76ac433f90c5afb665beb47d68fa0cee4e562903838fd9b1351"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-populated-explicit-role.json",
+      "sha256": "450c11c94a7689c9edeab3db1b77d0b9b392a357ca1be9dfaa2fa70bb94025dc"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/authority-fix-standards-review-61c9c93a.md",
+      "sha256": "8691b3a1eb9080130fb0323e845e505cf0b156d708737d06b3fab6c6ff2eeb63"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-advisors-summary.json",
+      "sha256": "82b53bd8b6fe3ce016223a501a98f92eb75f528e2534247d5d28e2cf9c60f70c"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-advisors.stderr",
+      "sha256": "4a519831ea3947cd4fc7a67309855024b4b7aaac74051bd88333268afcf54d53"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-advisors-local-tls.stdout",
+      "sha256": "d22dada3153e47992f62de08d0097d5079c4cfd0e0fcfe9ca4fdd4fccb8063b6"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/expand-populated-second.json",
+      "sha256": "15bed314797b05c5d3ab92166d314d309935066d29d405b0f257204dff251ddc"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/authority-fix-spec-review-61c9c93a.json",
+      "sha256": "b328c587f39c465e1ca8eba6ac7a0eed7b9b3f5634b1435b439e2094e0e54c9d"
+    },
+    {
+      "path": "architecture/evidence/issues/153/inactive-expansion/local-probe-diagnostic.json",
+      "sha256": "81f9ab2993888ddf83a6dbc89e8ed4e96a2b2eb0f3ed9be8b956bf3cfc3e35f0"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql",
+      "sha256": "ea3c0601ec92539a5c9d672b5254a7342e6e63e4c4147e0ed7e6abec74ea7caa"
+    },
+    {
+      "path": "apps/backend/tests/accounts_database_fixtures.py",
+      "sha256": "987bd221fb2776982f0d0dc4352e6b93c64e3e83f25a4e7be74fc45ddd89114d"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md",
+      "sha256": "3fc9c9c98f64f25a3b9f12104e34cf16c716fc27136079f49424ba7acb0dfdf9"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json",
+      "sha256": "1c89b1fb3266776a1eca7d4f46be9e5a691a540599cfd023d5768aa299e0b206"
+    },
+    {
+      "path": "architecture/BACKEND-SYSTEM.md",
+      "sha256": "ea63d2e49c58d57a5c5cc37ea72d93969f1822ebef87bea47941bebe850f9052"
+    },
+    {
+      "path": "architecture/backend-system.json",
+      "sha256": "145976854a627f58558bfbc964307a326a15b64931cfb7b5f92932b2d842436b"
+    },
+    {
+      "path": "architecture/database-catalog.json",
+      "sha256": "c52e171a944e55521c808ef81acd9158a72c69bbe4a902edcc5879944eb9b3e0"
+    },
+    {
+      "path": "architecture/dependency-evidence.json",
+      "sha256": "4f2339a8b136e18efa2600ab2d65659cc842a092ddf119ca615495ac7b79f578"
+    }
+  ],
+  "adoptedOriginalReviews": [
+    {
+      "name": "authority-fix-spec-review-61c9c93a.md",
+      "sha256": "86018d299eaa65d47c5800fbf822792de93ab03ec4a835b78409f537690d0583"
+    },
+    {
+      "name": "authority-fix-spec-review-61c9c93a.json",
+      "sha256": "b328c587f39c465e1ca8eba6ac7a0eed7b9b3f5634b1435b439e2094e0e54c9d"
+    },
+    {
+      "name": "authority-fix-standards-review-61c9c93a.md",
+      "sha256": "8691b3a1eb9080130fb0323e845e505cf0b156d708737d06b3fab6c6ff2eeb63"
+    },
+    {
+      "name": "authority-fix-standards-review-61c9c93a.json",
+      "sha256": "a6c9660714d345f0d7315c0fe6687c0e0e218d5173b393b0820f59e1b7585f50"
+    }
+  ],
+  "requirementsSha256": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+  "originalCriteriaUnchangedAndPending": true,
+  "migrationSha256": "ea3c0601ec92539a5c9d672b5254a7342e6e63e4c4147e0ed7e6abec74ea7caa",
+  "independentDatabaseProbe": {
+    "database": "accounts153_spec_04e682b6_d060",
+    "hostGuard": "127.0.0.1 or localhost, port 52966, exact disposable name",
+    "restoreDumpSha256": "9e51f4edb2acbf2c322f06239e6485323b73beb8edeb3003db9f71c6331c16ee",
+    "restore": "docker exec -i -u postgres supabase_db_tallig6753 pg_restore -U supabase_admin -d accounts153_spec_04e682b6_d060 --exit-on-error",
+    "command": "PYTHONDONTWRITEBYTECODE=1 <backend-venv>/bin/python /Users/kristianelmer/.codex/issue-192-private/issue153-entry/expand-spec-setup-provenance-04e682b6.py",
+    "result": {
+      "revision": "04e682b69e5426408932233d05328134e8e997f8",
+      "migrationSha256": "ea3c0601ec92539a5c9d672b5254a7342e6e63e4c4147e0ed7e6abec74ea7caa",
+      "database": "accounts153_spec_04e682b6_d060",
+      "mode": "ROLLBACK_ONLY",
+      "legacyTriggersEnabled": [
+        [
+          "filing_previews",
+          "company_archive_track_filing_previews",
+          "O"
+        ],
+        [
+          "filing_previews",
+          "rf151_legacy_write_barrier",
+          "O"
+        ],
+        [
+          "filing_submissions",
+          "company_archive_track_filing_submissions",
+          "O"
+        ],
+        [
+          "filing_submissions",
+          "rf151_legacy_write_barrier",
+          "O"
+        ]
+      ],
+      "migrationRestoredMemberships": true,
+      "legacyRowsUnchanged": true,
+      "sourceClassifications": [
+        [
+          "authority_permissions",
+          "15300000-0000-4000-8000-000000000022",
+          null,
+          "accounts"
+        ],
+        [
+          "authority_test_runs",
+          "15300000-0000-4000-8000-000000000021",
+          null,
+          "accounts"
+        ],
+        [
+          "filing_overrides",
+          "15300000-0000-4000-8000-000000000024",
+          null,
+          "accounts"
+        ],
+        [
+          "filing_previews",
+          "15300000-0000-4000-8000-000000000020",
+          "15300000-0000-4000-8000-000000000091",
+          "accounts"
+        ],
+        [
+          "filing_previews",
+          "15300000-0000-4000-8000-000000000094",
+          "15300000-0000-4000-8000-000000000092",
+          "accounts"
+        ],
+        [
+          "filing_previews",
+          "15300000-0000-4000-8000-000000000095",
+          "15300000-0000-4000-8000-000000000093",
+          "accounts"
+        ],
+        [
+          "filing_previews",
+          "15300000-0000-4000-8000-000000000096",
+          null,
+          "accounts"
+        ],
+        [
+          "filing_review_comments",
+          "15300000-0000-4000-8000-000000000025",
+          null,
+          "accounts"
+        ],
+        [
+          "filing_submissions",
+          "15300000-0000-4000-8000-000000000023",
+          null,
+          "accounts"
+        ],
+        [
+          "filing_submissions",
+          "15300000-0000-4000-8000-000000000026",
+          "15300000-0000-4000-8000-000000000091",
+          "accounts"
+        ]
+      ],
+      "quarantineCount": 0,
+      "canonicalPreviewScopes": [
+        [
+          "15300000-0000-4000-8000-000000000020",
+          "15300000-0000-4000-8000-000000000001",
+          2025,
+          "15300000-0000-4000-8000-000000000090",
+          2025
+        ],
+        [
+          "15300000-0000-4000-8000-000000000094",
+          "15300000-0000-4000-8000-000000000001",
+          2025,
+          "15300000-0000-4000-8000-000000000001",
+          2024
+        ],
+        [
+          "15300000-0000-4000-8000-000000000095",
+          "15300000-0000-4000-8000-000000000001",
+          2025,
+          "15300000-0000-4000-8000-000000000001",
+          2025
+        ],
+        [
+          "15300000-0000-4000-8000-000000000096",
+          "15300000-0000-4000-8000-000000000001",
+          2025,
+          null,
+          null
+        ]
+      ],
+      "canonicalSubmissionScopes": [
+        [
+          "15300000-0000-4000-8000-000000000023",
+          "15300000-0000-4000-8000-000000000001",
+          2025,
+          null,
+          null
+        ],
+        [
+          "15300000-0000-4000-8000-000000000026",
+          "15300000-0000-4000-8000-000000000001",
+          2025,
+          "15300000-0000-4000-8000-000000000090",
+          2025
+        ]
+      ],
+      "reconciliations": [
+        [
+          "authority_permissions",
+          1,
+          1,
+          true
+        ],
+        [
+          "authority_test_runs",
+          1,
+          1,
+          true
+        ],
+        [
+          "filing_overrides",
+          1,
+          1,
+          true
+        ],
+        [
+          "filing_previews",
+          4,
+          4,
+          true
+        ],
+        [
+          "filing_review_comments",
+          1,
+          1,
+          true
+        ],
+        [
+          "filing_submissions",
+          2,
+          2,
+          true
+        ]
+      ],
+      "sourceFunctions": 37,
+      "status": "CONFIRMED_SETUP_SCOPE_CLASSIFICATION_GAP",
+      "rollbackSchemaAbsent": true,
+      "rollbackFixtureAbsent": true,
+      "globalMembershipsRestored": true
+    },
+    "cleanup": {
+      "database": "accounts153_spec_04e682b6_d060",
+      "zeroSessionsBeforeDrop": true,
+      "removed": true
+    },
+    "roleMutationSerialization": "Parent explicitly reserved SQL slot and was notified after rollback/drop.",
+    "initialCorrection": "Initial RF-owner fixture INSERT correctly failed RLS (42501). Retained failed result; corrected seed granted INSERT temporarily from RF owner to existing local postgres bypass-RLS runner. All role/table grants rolled back; original legacy triggers remained enabled."
+  },
+  "recordedEvidenceScope": {
+    "currentHashPopulatedAccessCases": 60,
+    "currentHashClassifiers": 7,
+    "currentHashPopulatedRows": 7,
+    "currentHashQuarantinedRows": 2,
+    "routineInventoryIndependentCount": 37,
+    "advisors": {
+      "findings": 46,
+      "blocking": 0,
+      "accounts": 0
+    },
+    "historicalEmptyProbeSha256": "5676b907eb35d34a8717e6ac3aa4cc6a5c56f2f6221dc2e17e6bb4485f2d7551",
+    "currentAccessAndAdvisorLanesNotIndependentlyRerun": true
+  },
+  "privateArtifacts": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/expand-spec-clone-04e682b6.py",
+      "sha256": "34ad097b06a86a89daee2b3e8b7e5fef45e222734fa0369b7b7b362ede1936a4"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/expand-spec-clone-restore-04e682b6.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/expand-spec-setup-provenance-04e682b6.py",
+      "sha256": "4efeea66b2d53736aa725d77b77982b9e024f6c90fefe2a70e452da31a6a27cb"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/expand-spec-setup-provenance-results-04e682b6.json",
+      "sha256": "d56ec09dc760ef7f8add7677b0ac92b572f4ab988af1b893c169752488ec3e73"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/expand-spec-setup-provenance-first-04e682b6.py",
+      "sha256": "41ba88537ac605a206ae594040000154f56988966889cc3d4dccc5cc59180198"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/expand-spec-setup-provenance-first-results-04e682b6.json",
+      "sha256": "258d13e99df455a9716dfaa376a972f83797276426bc0fe18324d311ca7ccc8f"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/expand-spec-clone-cleanup-04e682b6.json",
+      "sha256": "52ae74587f2ac5b1ff50a1c84aa1366932bc82d3095d1fabeda8a9cad4bd562e"
+    }
+  ],
+  "consultedDocumentation": [
+    {
+      "url": "https://www.postgresql.org/docs/17/sql-createtable.html",
+      "topic": "LIKE copies attributes/constraints/indexes, separate explicit foreign-key definitions."
+    },
+    {
+      "url": "https://supabase.com/changelog.md",
+      "result": "Web fetch unsupported text/markdown; existing pinned local PostgreSQL17.6 behavior was verified directly, no Supabase feature implementation."
+    }
+  ],
+  "limitations": [
+    "No changes to tracked files or running accounts153_lifecycle_d060.",
+    "Only private disposable local clone used; no hosted/provider/browser operations.",
+    "Inert expansion only; no application writer activated and no full-stage acceptance granted."
+  ]
+}

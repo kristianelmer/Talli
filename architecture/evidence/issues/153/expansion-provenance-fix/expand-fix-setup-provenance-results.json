@@ -1,0 +1,181 @@
+{
+  "baseRevision": "04e682b69e5426408932233d05328134e8e997f8",
+  "migrationSha256": "c1358d77a13a2d6e3d7345c487290fdf10220f3bbd984c6ff5d4983ababe1bea",
+  "database": "accounts153_setup_fix_d060",
+  "mode": "ROLLBACK_ONLY",
+  "legacyTriggersEnabled": [
+    [
+      "filing_previews",
+      "company_archive_track_filing_previews",
+      "O"
+    ],
+    [
+      "filing_previews",
+      "rf151_legacy_write_barrier",
+      "O"
+    ],
+    [
+      "filing_submissions",
+      "company_archive_track_filing_submissions",
+      "O"
+    ],
+    [
+      "filing_submissions",
+      "rf151_legacy_write_barrier",
+      "O"
+    ]
+  ],
+  "migrationRestoredMemberships": true,
+  "legacyRowsUnchanged": true,
+  "sourceClassifications": [
+    [
+      "authority_permissions",
+      "15300000-0000-4000-8000-000000000022",
+      null,
+      "accounts"
+    ],
+    [
+      "authority_test_runs",
+      "15300000-0000-4000-8000-000000000021",
+      null,
+      "accounts"
+    ],
+    [
+      "filing_overrides",
+      "15300000-0000-4000-8000-000000000024",
+      null,
+      "quarantine"
+    ],
+    [
+      "filing_previews",
+      "15300000-0000-4000-8000-000000000020",
+      "15300000-0000-4000-8000-000000000091",
+      "quarantine"
+    ],
+    [
+      "filing_previews",
+      "15300000-0000-4000-8000-000000000094",
+      "15300000-0000-4000-8000-000000000092",
+      "quarantine"
+    ],
+    [
+      "filing_previews",
+      "15300000-0000-4000-8000-000000000095",
+      "15300000-0000-4000-8000-000000000093",
+      "accounts"
+    ],
+    [
+      "filing_previews",
+      "15300000-0000-4000-8000-000000000096",
+      null,
+      "accounts"
+    ],
+    [
+      "filing_review_comments",
+      "15300000-0000-4000-8000-000000000025",
+      null,
+      "quarantine"
+    ],
+    [
+      "filing_submissions",
+      "15300000-0000-4000-8000-000000000023",
+      null,
+      "quarantine"
+    ],
+    [
+      "filing_submissions",
+      "15300000-0000-4000-8000-000000000026",
+      "15300000-0000-4000-8000-000000000091",
+      "quarantine"
+    ],
+    [
+      "filing_submissions",
+      "15300000-0000-4000-8000-000000000097",
+      "15300000-0000-4000-8000-000000000093",
+      "accounts"
+    ],
+    [
+      "filing_submissions",
+      "15300000-0000-4000-8000-000000000098",
+      null,
+      "accounts"
+    ]
+  ],
+  "setupAclAndPoliciesUnchanged": true,
+  "quarantineCount": 6,
+  "canonicalPreviewScopes": [
+    [
+      "15300000-0000-4000-8000-000000000095",
+      "15300000-0000-4000-8000-000000000001",
+      2025,
+      "15300000-0000-4000-8000-000000000001",
+      2025
+    ],
+    [
+      "15300000-0000-4000-8000-000000000096",
+      "15300000-0000-4000-8000-000000000001",
+      2025,
+      null,
+      null
+    ]
+  ],
+  "canonicalSubmissionScopes": [
+    [
+      "15300000-0000-4000-8000-000000000097",
+      "15300000-0000-4000-8000-000000000001",
+      2025,
+      "15300000-0000-4000-8000-000000000001",
+      2025
+    ],
+    [
+      "15300000-0000-4000-8000-000000000098",
+      "15300000-0000-4000-8000-000000000001",
+      2025,
+      null,
+      null
+    ]
+  ],
+  "reconciliations": [
+    [
+      "authority_permissions",
+      1,
+      1,
+      true
+    ],
+    [
+      "authority_test_runs",
+      1,
+      1,
+      true
+    ],
+    [
+      "filing_overrides",
+      0,
+      0,
+      true
+    ],
+    [
+      "filing_previews",
+      2,
+      2,
+      true
+    ],
+    [
+      "filing_review_comments",
+      0,
+      0,
+      true
+    ],
+    [
+      "filing_submissions",
+      2,
+      2,
+      true
+    ]
+  ],
+  "sourceFunctions": 37,
+  "status": "PASS",
+  "rollbackSchemaAbsent": true,
+  "rollbackFixtureAbsent": true,
+  "globalMembershipsRestored": true
+}

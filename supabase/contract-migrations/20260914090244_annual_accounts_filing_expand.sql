@@ -74,6 +74,26 @@ reset role;
 lock table public.filing_previews,public.filing_submissions,public.filing_overrides,
  public.filing_review_comments,public.authority_permissions,public.authority_test_runs in share row exclusive mode;
 
+-- Migration-only scope evidence for retained RF-owned setup IDs. The owner
+-- takes the snapshot under a write-blocking lock; its temporary SELECT policy
+-- is removed in this transaction, so no runtime cross-owner access is added.
+create temporary table accounts153_setup_ids(id uuid primary key) on commit drop;
+insert into accounts153_setup_ids
+select setup_id from public.filing_previews where setup_id is not null
+union select setup_id from public.filing_submissions where setup_id is not null;
+create temporary table accounts153_setup_scopes(id uuid primary key,company_id uuid,income_year integer) on commit drop;
+grant select on accounts153_setup_ids to shareholder_register_filing_store_owner;
+grant insert on accounts153_setup_scopes to shareholder_register_filing_store_owner;
+set local role shareholder_register_filing_store_owner;
+lock table shareholder_register_filing.opening_balance_setups in share row exclusive mode;
+create policy accounts153_migration_setup_scope on shareholder_register_filing.opening_balance_setups
+ for select to shareholder_register_filing_store_owner using(true);
+insert into pg_temp.accounts153_setup_scopes
+select s.id,s.company_id,s.income_year from shareholder_register_filing.opening_balance_setups s
+join pg_temp.accounts153_setup_ids wanted on wanted.id=s.id;
+drop policy accounts153_migration_setup_scope on shareholder_register_filing.opening_balance_setups;
+reset role;
+
 create table backend_system.annual_accounts_migration_state (
  singleton boolean primary key default true check(singleton),
  phase text not null check(phase in ('expanded','cutover','contracted','rolled_back')),
@@ -121,6 +141,12 @@ begin
  elsif family<>'filing_review_comments' then raise exception 'annual_accounts_unknown_family';
  end if;
  if family='filing_overrides' and row_data->>'field_target' like 'skattemelding.%' then return 'quarantine'; end if;
+ if family in ('filing_previews','filing_submissions') and row_data->>'setup_id' is not null then
+  select pg_catalog.to_jsonb(s) into linked from pg_temp.accounts153_setup_scopes s where s.id=(row_data->>'setup_id')::uuid;
+  if linked is null or linked->>'company_id' is distinct from row_data->>'company_id'
+   or linked->>'income_year' is distinct from row_data->>'income_year'
+  then return 'quarantine'; end if;
+ end if;
  if family='filing_review_comments' and row_data->>'preview_id' is null then return 'quarantine'; end if;
  if family in ('filing_submissions','filing_overrides','filing_review_comments') and row_data->>'preview_id' is not null then
   select pg_catalog.to_jsonb(p) into linked from public.filing_previews p where p.id=(row_data->>'preview_id')::uuid;
@@ -128,6 +154,7 @@ begin
    or linked->>'company_id' is distinct from row_data->>'company_id'
    or (row_data ? 'income_year' and linked->>'income_year' is distinct from row_data->>'income_year')
   then return 'quarantine'; end if;
+  if pg_temp.accounts153_classify('filing_previews',linked)<>'accounts' then return 'quarantine'; end if;
  end if;
  if family='filing_submissions' and row_data->>'authority_test_run_id' is not null then
   select pg_catalog.to_jsonb(r) into linked from public.authority_test_runs r where r.id=(row_data->>'authority_test_run_id')::uuid;

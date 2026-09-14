@@ -1,0 +1,12 @@
+{
+  "baseRevision": "04e682b69e5426408932233d05328134e8e997f8",
+  "migrationSha256": "c1358d77a13a2d6e3d7345c487290fdf10220f3bbd984c6ff5d4983ababe1bea",
+  "database": "accounts153_setup_fix_d060",
+  "mode": "ROLLBACK_ONLY",
+  "status": "PROBE_ERROR",
+  "error": "duplicate key value violates unique constraint \"filing_submissions_preview_id_key\"\nDETAIL:  Key (preview_id)=(15300000-0000-4000-8000-000000000095) already exists.",
+  "sqlstate": "23505",
+  "rollbackSchemaAbsent": true,
+  "rollbackFixtureAbsent": true,
+  "globalMembershipsRestored": true
+}
