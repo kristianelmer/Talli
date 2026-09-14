@@ -338,5 +338,9 @@ def test_explicit_backend_binding_requires_cutover_and_can_be_removed(database):
     assert db.execute("select pg_has_role('talli_ledger_backend','annual_accounts_filing_workflow_executor','SET')").fetchone()[0]
     assert not db.execute("select pg_has_role('talli_ledger_backend','annual_accounts_filing_store_owner','SET')").fetchone()[0]
     assert db.execute("select inherit_option,set_option,admin_option from pg_auth_members where roleid='annual_accounts_filing_workflow_executor'::regrole and member='talli_ledger_backend'::regrole").fetchone() == (False, True, False)
+    # Rerunning the binding must remove a pre-existing delegation privilege.
+    db.execute('grant annual_accounts_filing_workflow_executor to talli_ledger_backend with admin true')
+    execute_binding()
+    assert db.execute("select inherit_option,set_option,admin_option from pg_auth_members where roleid='annual_accounts_filing_workflow_executor'::regrole and member='talli_ledger_backend'::regrole").fetchone() == (False, True, False)
     execute_binding(rollback=True)
     assert memberships(db) == before

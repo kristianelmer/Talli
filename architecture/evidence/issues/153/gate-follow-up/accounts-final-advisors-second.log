@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/probe-accounts-final-advisors.py", line 27, in <module>
+    assert result.returncode==0, 'advisor CLI failed (private stderr retained)'
+           ^^^^^^^^^^^^^^^^^^^^
+AssertionError: advisor CLI failed (private stderr retained)

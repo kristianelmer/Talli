@@ -1,0 +1,18 @@
+✔ cancellation lifecycle transport uses generated operations with bearer and deadline (20.925709ms)
+✔ generated cancellation decoders reject malformed optional fields, UUIDs, and timestamps (2.367167ms)
+✔ generated review decoder enforces evidence-reference length bounds (0.992958ms)
+✔ truncated successful command JSON becomes a typed 502 and preserves the operation (0.262625ms)
+✔ every concurrent archive source failure trips the completion barrier (0.194ms)
+✔ actions preserve exact cancellation inputs for network and decoder failures (0.068042ms)
+✔ web cancellation lifecycle has no direct Supabase persistence or caller-owned proof (2.709292ms)
+✔ Authority Connections retirement leaves no web authority signing, token or credential transport (31.891125ms)
+✔ the four standalone authority commands execute backend modules and retain their public command names (2.932083ms)
+✔ all migrated authority and filing facades are retired (1.2245ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 164.10725

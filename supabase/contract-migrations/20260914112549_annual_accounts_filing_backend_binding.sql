@@ -14,5 +14,5 @@ begin
  end if;
 end;
 $guard$;
-grant annual_accounts_filing_workflow_executor to talli_ledger_backend with inherit false,set true;
+grant annual_accounts_filing_workflow_executor to talli_ledger_backend with inherit false,set true,admin false;
 commit;
