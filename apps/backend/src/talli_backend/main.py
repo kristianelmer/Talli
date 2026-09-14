@@ -70,9 +70,11 @@ from talli_backend.adapters.supabase_corporate_governance import (
 )
 from talli_backend.adapters.supabase_documents import SupabaseDocumentsAdapter
 from talli_backend.adapters.supabase_ledger import compose_ledger_application
+from talli_backend.json_transport import json_value, model_json_response
 from talli_backend.adapters.postgres_annual_accounts import compose_annual_accounts_application
 from talli_backend.application.annual_accounts_session import AnnualAccountsSessionFactory
 from talli_backend.modules.annual_accounts_filing.public import (
+    AnnualAccountsSource, AnnualAccountsCorporateReadiness, AnnualAccountsReadinessIssue, assess_annual_accounts_readiness,
     ImportAnnualAccountsEvidence, AnnualAccountsError, AnnualAccountsWorkspaceQuery, AnnualAccountsRecordQuery, AnnualAccountsRecordId,
     RecordAnnualAccountsOverride, AddAnnualAccountsReviewComment, ConfirmAnnualAccountsPermission,
     RecordAnnualAccountsTestEvidence,
@@ -1129,6 +1131,45 @@ class AnnualAccountsSubmissionWire(TransportModel):
     updated_at: datetime
 
 
+class AnnualAccountsCorporateBlockerWire(TransportModel):
+    code: str
+    message: str
+
+
+class AnnualAccountsReadinessPreviewRequest(TransportModel):
+    company_id: UUID
+    income_year: Annotated[int, Field(strict=True, ge=2000, le=2100)]
+    annual_data: dict[str, Any] | None = None
+    ledger_entries: list[dict[str, Any]]
+    corporate_enabled: Annotated[bool, Field(strict=True)]
+    corporate_blockers: list[AnnualAccountsCorporateBlockerWire]
+
+    @model_validator(mode="after")
+    def bounded_readiness_facts(self):
+        if any(not isinstance(entry.get('risk_flags'), list) for entry in self.ledger_entries):
+            raise ValueError('Accounts ledger warning facts are malformed.')
+        try:
+            if len(json.dumps(self.model_dump(mode='json'), ensure_ascii=True, allow_nan=False).encode()) > 8 * 1024 * 1024:
+                raise ValueError('Accounts preview facts exceed the size limit.')
+        except RecursionError:
+            raise ValueError('Accounts preview facts are too deeply nested.') from None
+        return self
+
+
+class AnnualAccountsReadinessIssueWire(TransportModel):
+    level: Literal['block', 'warning']
+    code: str
+    message: str
+    source: str
+    accepted: bool
+
+
+class AnnualAccountsReadinessPreviewWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    issues: list[AnnualAccountsReadinessIssueWire]
+
+
 class AnnualAccountsRecordedWire(TransportModel):
     record_id: UUID
     company_id: UUID
@@ -1180,11 +1221,7 @@ class AnnualAccountsWorkspaceWire(TransportModel):
 
 
 def annual_accounts_json_wire(value: object) -> Any:
-    if isinstance(value, Mapping):
-        return {key: annual_accounts_json_wire(child) for key, child in value.items()}
-    if isinstance(value, (tuple, list)):
-        return [annual_accounts_json_wire(child) for child in value]
-    return value
+    return json_value(value)
 
 
 class CompanyTaxPreviewWire(TransportModel):
@@ -10232,7 +10269,7 @@ def create_app(
             if result.get('id') != str(preview_id):
                 raise AnnualAccountsError.unavailable()
             try:
-                return AnnualAccountsPreviewWire(**annual_accounts_json_wire(result))
+                return model_json_response(AnnualAccountsPreviewWire(**annual_accounts_json_wire(result)))
             except ValidationError:
                 raise AnnualAccountsError.unavailable() from None
         return await annual_accounts_call(execute)
@@ -10322,6 +10359,31 @@ def create_app(
                 income_year=int(result.income_year) if result.income_year is not None else None)
         return await annual_accounts_call(execute)
 
+    @application.post(
+        "/api/v1/annual-accounts/readiness-previews",
+        operation_id="annualAccountsPreviewReadiness", response_model=AnnualAccountsReadinessPreviewWire,
+        responses=ledger_errors, tags=["annual-accounts"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def preview_annual_accounts_readiness(
+        facts: AnnualAccountsReadinessPreviewRequest,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualAccountsReadinessPreviewWire:
+        async def execute() -> AnnualAccountsReadinessPreviewWire:
+            await annual_accounts_application.session(bearer_token(credentials))
+            try:
+                source = AnnualAccountsSource(income_year=facts.income_year, annual_data=facts.annual_data, ledger_entries=facts.ledger_entries)
+                corporate = AnnualAccountsCorporateReadiness(facts.corporate_enabled, tuple(
+                    AnnualAccountsReadinessIssue('block', blocker.code, blocker.message, 'corporate_documents')
+                    for blocker in facts.corporate_blockers))
+                issues = assess_annual_accounts_readiness(source, company_id=str(facts.company_id), corporate=corporate)
+                return AnnualAccountsReadinessPreviewWire(company_id=facts.company_id, income_year=facts.income_year,
+                    issues=[AnnualAccountsReadinessIssueWire(level=issue.level,code=issue.code,message=issue.message,
+                        source=issue.source,accepted=issue.accepted) for issue in issues])
+            except (KeyError, TypeError, ValueError, OverflowError, AttributeError):
+                raise AnnualAccountsError.invalid_input() from None
+        return await annual_accounts_call(execute)
+
     @application.get(
         "/api/v1/annual-accounts/filing-workspace",
         operation_id="annualAccountsGetFilingWorkspace", response_model=AnnualAccountsWorkspaceWire,
@@ -10340,11 +10402,11 @@ def create_app(
                 IncomeYear(income_year) if income_year is not None else None,
             ))
             try:
-                return AnnualAccountsWorkspaceWire(
+                return model_json_response(AnnualAccountsWorkspaceWire(
                     company_id=company_id, income_year=income_year,
                     **{name: annual_accounts_json_wire(getattr(result, name)) for name in (
                         'previews', 'submissions', 'overrides', 'review_comments', 'permissions', 'test_evidence')},
-                )
+                ))
             except ValidationError:
                 raise AnnualAccountsError.unavailable() from None
         return await annual_accounts_call(execute)

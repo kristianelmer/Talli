@@ -75,3 +75,24 @@ def test_http_workspace_binds_actor_and_rejects_wrong_result_company():
     assert sessions.queries[0].actor_id==ACTOR
     sessions.corrupt=True
     assert client.get(url,headers=headers).status_code==503
+
+
+@pytest.mark.parametrize('depth',[1,600,1200])
+@pytest.mark.parametrize('route',['workspace','preview'])
+def test_http_preserves_deep_retained_json_without_serializer_depth_failure(depth,route):
+    nested='kept'
+    for _ in range(depth):nested={'ignored':nested}
+    row=dict(id=PREVIEW,company_id=str(COMPANY),setup_id=None,income_year=2025,filing='årsregnskap',status='ready',
+        issues=[{'message':'kept','metadata':nested}],preview='synthetic',hovedskjema_xml=None,underskjema_xml={},
+        source='synthetic',created_by=str(ACTOR.subject),created_at='2026-09-14T09:00:00.000Z')
+    class DeepSessions(Sessions):
+        async def filing_workspace(self,query):
+            return AnnualAccountsFilingRows(COMPANY,IncomeYear(2025),previews=[row],submissions=[],overrides=[],review_comments=[],permissions=[],test_evidence=[])
+        async def filing_preview(self,query):return (await self.filing_workspace(query)).previews[0]
+    client=TestClient(create_app(annual_accounts_session_factory=DeepSessions()),raise_server_exceptions=False)
+    path=f'filing-workspace?companyId={COMPANY}&incomeYear=2025' if route=='workspace' else f'previews/{PREVIEW}'
+    response=client.get('/api/v1/annual-accounts/'+path,headers={'Authorization':'Bearer fixture'})
+    assert response.status_code==200,response.text[:300]
+    assert response.headers['cache-control']=='no-store'
+    assert response.text.count('"ignored":')==depth
+    assert '"metadata":'+('{'+'"ignored":')*depth+'"kept"'+'}'*depth in response.text

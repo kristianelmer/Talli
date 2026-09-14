@@ -697,3 +697,11 @@ All three Accounts workflows consume `talli_backend.modules.annual_accounts_fili
 <!-- architecture-inventory
 {"transportDependencies": ["talli_backend.adapters.postgres_annual_accounts", "talli_backend.application.annual_accounts_session", "talli_backend.modules.annual_accounts_filing.public"]}
 -->
+
+Accounts readiness previews consume supplied immutable source facts; they do not
+certify durable prerequisites. Retained JSON responses validate their wire model
+and use iterative transport encoding to preserve deeply nested opaque metadata.
+
+<!-- architecture-inventory
+{"workflows": ["annual-accounts-readiness-preview"], "workflowPurposes": ["annual-accounts-readiness-preview=>Presents Accounts-owned readiness for supplied immutable Annual, Ledger and Corporate facts; a preview grants no durable filing authorization."], "publicPackages": ["talli_backend.modules.annual_accounts_filing.public"], "routes": ["/api/v1/annual-accounts/readiness-previews"], "transportDependencies": ["talli_backend.json_transport"]}
+-->

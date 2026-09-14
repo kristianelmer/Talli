@@ -1,0 +1,218 @@
+  + Exception Group Traceback (most recent call last):
+  |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/_utils.py", line 79, in collapse_excgroups
+  |     yield
+  |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 183, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 815, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/read-controls-standards-deep-wire-trace-af5c6523.py", line 25, in <module>
+    |     response=client.get(f'/api/v1/annual-accounts/filing-workspace?companyId={C}&incomeYear=2025',headers={'Authorization':'Bearer fixture'})
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/testclient.py", line 479, in get
+    |     return super().get(
+    |            ^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1053, in get
+    |     return self.request(
+    |            ^^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/testclient.py", line 451, in request
+    |     return super().request(
+    |            ^^^^^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py", line 825, in request
+    |     return self.send(request, auth=auth, follow_redirects=follow_redirects)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py", line 914, in send
+    |     response = self._send_handling_auth(
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    |     response = self._send_handling_redirects(
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    |     response = self._send_single_request(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    |     response = transport.handle_request(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/testclient.py", line 354, in handle_request
+    |     raise exc
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/testclient.py", line 351, in handle_request
+    |     portal.call(self.app, scope, receive, send)
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/anyio/from_thread.py", line 338, in call
+    |     return cast(T_Retval, self.start_task_soon(func, *args).result())
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    |     return self.__get_result()
+    |            ^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    |     raise self._exception
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/anyio/from_thread.py", line 263, in _call_func
+    |     retval = await retval_or_awaitable
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1054, in __call__
+    |     await super().__call__(scope, receive, send)
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/applications.py", line 113, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    |     raise exc
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 182, in __call__
+    |     with recv_stream, send_stream, collapse_excgroups():
+    |                                    ^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py", line 158, in __exit__
+    |     self.gen.throw(value)
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/_utils.py", line 85, in collapse_excgroups
+    |     raise exc
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 184, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-read-controls-standards-x9n1j719/apps/backend/src/talli_backend/main.py", line 4300, in dispatch
+    |     response = await call_next(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 159, in call_next
+    |     raise app_exc
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    |     await route.handle(scope, receive, send)
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    |     await self.app(scope, receive, send)
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/routing.py", line 78, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/routing.py", line 75, in app
+    |     response = await f(request)
+    |                ^^^^^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 328, in app
+    |     content = await serialize_response(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 182, in serialize_response
+    |     return field.serialize(
+    |            ^^^^^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/fastapi/_compat.py", line 152, in serialize
+    |     return self._type_adapter.dump_python(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/pydantic/type_adapter.py", line 572, in dump_python
+    |     return self.serializer.to_python(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | ValueError: Circular reference detected (depth exceeded)
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/read-controls-standards-deep-wire-trace-af5c6523.py", line 25, in <module>
+    response=client.get(f'/api/v1/annual-accounts/filing-workspace?companyId={C}&incomeYear=2025',headers={'Authorization':'Bearer fixture'})
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/testclient.py", line 479, in get
+    return super().get(
+           ^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1053, in get
+    return self.request(
+           ^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/testclient.py", line 451, in request
+    return super().request(
+           ^^^^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/testclient.py", line 354, in handle_request
+    raise exc
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/testclient.py", line 351, in handle_request
+    portal.call(self.app, scope, receive, send)
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/anyio/from_thread.py", line 338, in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/anyio/from_thread.py", line 263, in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 182, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+                                   ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/_utils.py", line 85, in collapse_excgroups
+    raise exc
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 184, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-read-controls-standards-x9n1j719/apps/backend/src/talli_backend/main.py", line 4300, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 159, in call_next
+    raise app_exc
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/middleware/base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/routing.py", line 78, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/starlette/routing.py", line 75, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 328, in app
+    content = await serialize_response(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 182, in serialize_response
+    return field.serialize(
+           ^^^^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/fastapi/_compat.py", line 152, in serialize
+    return self._type_adapter.dump_python(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/lib/python3.12/site-packages/pydantic/type_adapter.py", line 572, in dump_python
+    return self.serializer.to_python(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: Circular reference detected (depth exceeded)

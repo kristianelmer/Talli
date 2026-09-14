@@ -2964,6 +2964,34 @@ export interface BillingUnsupportedWire {
 
 export type ProductionPilotStatus = "pending" | "active" | "suspended" | "completed" | "revoked";
 
+export interface AnnualAccountsCorporateBlockerWire {
+  code: string;
+  message: string;
+}
+
+export interface AnnualAccountsReadinessPreviewRequest {
+  annualData?: Record<string, unknown> | null;
+  companyId: string;
+  corporateBlockers: AnnualAccountsCorporateBlockerWire[];
+  corporateEnabled: boolean;
+  incomeYear: number;
+  ledgerEntries: Record<string, unknown>[];
+}
+
+export interface AnnualAccountsReadinessIssueWire {
+  accepted: boolean;
+  code: string;
+  level: "block" | "warning";
+  message: string;
+  source: string;
+}
+
+export interface AnnualAccountsReadinessPreviewWire {
+  companyId: string;
+  incomeYear: number;
+  issues: AnnualAccountsReadinessIssueWire[];
+}
+
 export interface AnnualAccountsRecordedWire {
   companyId: string;
   incomeYear: number | null;
@@ -7903,6 +7931,50 @@ function isProductionPilotStatus(value: unknown): value is ProductionPilotStatus
   return value === "pending" || value === "active" || value === "suspended" || value === "completed" || value === "revoked";
 }
 
+function isAnnualAccountsCorporateBlockerWire(value: unknown): value is AnnualAccountsCorporateBlockerWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["code","message"]) &&
+    typeof value.code === "string" &&
+    typeof value.message === "string"
+  );
+}
+
+function isAnnualAccountsReadinessPreviewRequest(value: unknown): value is AnnualAccountsReadinessPreviewRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["annualData","companyId","corporateBlockers","corporateEnabled","incomeYear","ledgerEntries"]) &&
+    (value.annualData === undefined || (isRecord(value.annualData) || value.annualData === null)) &&
+    isUuid(value.companyId) &&
+    Array.isArray(value.corporateBlockers) && value.corporateBlockers.every((item) => isAnnualAccountsCorporateBlockerWire(item)) &&
+    typeof value.corporateEnabled === "boolean" &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    Array.isArray(value.ledgerEntries) && value.ledgerEntries.every((item) => isRecord(item))
+  );
+}
+
+function isAnnualAccountsReadinessIssueWire(value: unknown): value is AnnualAccountsReadinessIssueWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accepted","code","level","message","source"]) &&
+    typeof value.accepted === "boolean" &&
+    typeof value.code === "string" &&
+    (value.level === "block" || value.level === "warning") &&
+    typeof value.message === "string" &&
+    typeof value.source === "string"
+  );
+}
+
+function isAnnualAccountsReadinessPreviewWire(value: unknown): value is AnnualAccountsReadinessPreviewWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","issues"]) &&
+    isUuid(value.companyId) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    Array.isArray(value.issues) && value.issues.every((item) => isAnnualAccountsReadinessIssueWire(item))
+  );
+}
+
 function isAnnualAccountsRecordedWire(value: unknown): value is AnnualAccountsRecordedWire {
   return (
     isRecord(value) &&
@@ -10732,6 +10804,17 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       if (result.companyId !== body.companyId || result.incomeYear !== body.incomeYear) {
         throw new TalliApiError(502, undefined);
       }
+      return result;
+    },
+
+    async annualAccountsPreviewReadiness(
+      body: AnnualAccountsReadinessPreviewRequest, request: TalliRequestOptions = {},
+    ): Promise<AnnualAccountsReadinessPreviewWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/annual-accounts/readiness-previews`,
+        "POST", request, body, isAnnualAccountsReadinessPreviewWire,
+      );
+      if (result.companyId !== body.companyId || result.incomeYear !== body.incomeYear) throw new TalliApiError(502, undefined);
       return result;
     },
 

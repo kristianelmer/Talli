@@ -495,6 +495,16 @@
       "routes": [
         "/api/v1/annual-accounts/tt02-evidence-imports"
       ]
+    },
+    {
+      "name": "annual-accounts-readiness-preview",
+      "purpose": "Presents Accounts-owned readiness for supplied immutable Annual, Ledger and Corporate facts; a preview grants no durable filing authorization.",
+      "publicPackages": [
+        "talli_backend.modules.annual_accounts_filing.public"
+      ],
+      "routes": [
+        "/api/v1/annual-accounts/readiness-previews"
+      ]
     }
   ],
   "operationalControlState": {
@@ -1051,7 +1061,8 @@
       "json",
       "talli_backend.adapters.postgres_annual_accounts",
       "talli_backend.application.annual_accounts_session",
-      "talli_backend.modules.annual_accounts_filing.public"
+      "talli_backend.modules.annual_accounts_filing.public",
+      "talli_backend.json_transport"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",

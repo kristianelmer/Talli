@@ -277,6 +277,7 @@ const bankingOperations = {
   ],
 };
 const annualAccountsOperations = {
+  readinessPreview: ["/api/v1/annual-accounts/readiness-previews", "post", "annualAccountsPreviewReadiness"],
   getPreview: ["/api/v1/annual-accounts/previews/{preview_id}", "get", "annualAccountsGetPreview"],
   override: ["/api/v1/annual-accounts/overrides", "post", "annualAccountsRecordOverride"],
   review: ["/api/v1/annual-accounts/review-comments", "post", "annualAccountsAddReviewComment"],
@@ -872,6 +873,7 @@ const bankingSchemas = Object.fromEntries([
   "StartBankConnectionWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const annualAccountsSchemas = Object.fromEntries([
+  "AnnualAccountsCorporateBlockerWire", "AnnualAccountsReadinessPreviewRequest", "AnnualAccountsReadinessIssueWire", "AnnualAccountsReadinessPreviewWire",
   "AnnualAccountsRecordedWire", "AnnualAccountsOverrideRequest", "AnnualAccountsReviewRequest", "AnnualAccountsPermissionRequest", "AnnualAccountsTestEvidenceRequest",
   "AnnualAccountsEvidenceImportRequest", "AnnualAccountsEvidenceImportWire",
   "AnnualAccountsWorkspaceWire", "AnnualAccountsPreviewWire", "AnnualAccountsSubmissionWire",
@@ -2599,6 +2601,17 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       if (result.companyId !== body.companyId || result.incomeYear !== body.incomeYear) {
         throw new TalliApiError(502, undefined);
       }
+      return result;
+    },
+
+    async annualAccountsPreviewReadiness(
+      body: AnnualAccountsReadinessPreviewRequest, request: TalliRequestOptions = {},
+    ): Promise<AnnualAccountsReadinessPreviewWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/annual-accounts/readiness-previews\`,
+        "POST", request, body, isAnnualAccountsReadinessPreviewWire,
+      );
+      if (result.companyId !== body.companyId || result.incomeYear !== body.incomeYear) throw new TalliApiError(502, undefined);
       return result;
     },
 
