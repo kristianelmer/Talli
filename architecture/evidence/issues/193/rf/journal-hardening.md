@@ -1,5 +1,10 @@
 # RF test-journal interruption safety — #193 partial work
 
+Current bounded result: both final independent reviews PASS at source revision
+`abb48eda31f75583629eb1ec9ecd71f676061317`; 83 focused tests pass.
+See `journal-verification.json` and both reports under `reviews/`.
+Provider authorization remains pending and no full RF criterion is accepted.
+
 RF is the only active #193 obligation. #153 closed with reviewed merged evidence;
 Tax, Accounts production completion, Annual #149, #208 and final #192 remain waiting.
 This change addresses the local RF authority-test command, not the production SQL journal.

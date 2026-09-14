@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#193",
   "slice": "RF-1086",
-  "status": "IN_PROGRESS_LOCAL_RF_JOURNAL_HARDENING",
+  "status": "LOCAL_JOURNAL_PASS_PROVIDER_AUTHORIZATION_PENDING",
   "source": "https://github.com/kristianelmer/Talli/issues/193",
   "predecessor": {
     "issue": "#153",
@@ -53,5 +53,6 @@
     "The #172 accepted supported boundary cannot be silently narrowed.",
     "No #149/#208/#192 final/#194 progression without the approved prerequisites."
   ],
-  "claim": "https://github.com/kristianelmer/Talli/issues/193#issuecomment-5671808140"
+  "claim": "https://github.com/kristianelmer/Talli/issues/193#issuecomment-5671808140",
+  "localJournalVerification": "journal-verification.json"
 }

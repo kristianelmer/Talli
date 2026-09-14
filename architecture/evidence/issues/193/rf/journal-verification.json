@@ -1,0 +1,94 @@
+{
+  "issue": "#193",
+  "slice": "RF-1086",
+  "status": "LOCAL_JOURNAL_PASS_PROVIDER_AUTHORIZATION_PENDING",
+  "sourceRevision": "abb48eda31f75583629eb1ec9ecd71f676061317",
+  "predecessor": {
+    "issue": "#153",
+    "status": "CLOSED",
+    "receipt": "https://github.com/kristianelmer/Talli/issues/153#issuecomment-5671727749"
+  },
+  "tests": {
+    "focused": 83,
+    "result": "PASS",
+    "completeRfGates": 0
+  },
+  "providerCalls": 0,
+  "productionChanges": 0,
+  "laterObligationsStarted": false,
+  "originalCriteriaAccepted": false,
+  "artifacts": [
+    {
+      "path": "journal-public-regression-red.log",
+      "sha256": "2462d86be4febc1caf8ffc4e182e1e7d951392de242a17cd6426e5c3eaa8f477"
+    },
+    {
+      "path": "journal-first-run.log",
+      "sha256": "e03388c228b1a9136b0d7c6fbd23af117a07eb0965a3d644d8ef4b7a03d3b4da"
+    },
+    {
+      "path": "journal-second-run.log",
+      "sha256": "632edf48e55a41d9f304b6f6c786a8e9c74c21ac87dd87cd965207a78cc6f28e"
+    },
+    {
+      "path": "journal-third-run.log",
+      "sha256": "e8da0690b3711a385b7816a14a218c075f58e957c9bdb182b68ac4bac330af2e"
+    },
+    {
+      "path": "journal-review-fixes-final-run.log",
+      "sha256": "b8e736f10a8b5fe627dc66a5aa72fae2ffcc0b80b90445b85e90fd26de4927a7"
+    },
+    {
+      "path": "journal-archive-consistency-first-run.log",
+      "sha256": "34773c028ab43704013f042638306a0d8b7a7990afd2987eeb93df2399c87d01"
+    },
+    {
+      "path": "journal-architecture.log",
+      "sha256": "5096ab8df3bc349b6886466baae30461c5504bf924bb82a09b40006cf94d4109"
+    },
+    {
+      "path": "journal-review-fixes-architecture.log",
+      "sha256": "5096ab8df3bc349b6886466baae30461c5504bf924bb82a09b40006cf94d4109"
+    },
+    {
+      "path": "journal-archive-consistency-architecture.log",
+      "sha256": "5096ab8df3bc349b6886466baae30461c5504bf924bb82a09b40006cf94d4109"
+    },
+    {
+      "path": "final-journal-standards-review-abb48eda.md",
+      "sha256": "330e55702a1afba0a0126064362f531ca01186d4ed33b29e681e9febef56fb45"
+    },
+    {
+      "path": "final-journal-standards-review-abb48eda.json",
+      "sha256": "5cf701b3c815abddb525025d9ac3c60108a61912f0472a74ebe44a07e1c3679c"
+    },
+    {
+      "path": "baseline-action/action-manifest-final-source.json",
+      "sha256": "eb313557b98b36f4d65eff60e6ddd01e32960c7a81e4bf732274830dff4b1fef"
+    },
+    {
+      "path": "baseline-action/mock-execution-proof.json",
+      "sha256": "fa62b07fade879bb0531f3f58d2a9b0b8f01b812a9aafac71fa4cba697176ddc"
+    },
+    {
+      "path": "baseline-action/cross-output-proof.json",
+      "sha256": "da6bf4f08a2985ce9415679d4d12f8f4cbba1a9b0ab7cdb4a7dfc4d74c74d3ac"
+    },
+    {
+      "path": "final-journal-spec-review-abb48eda.json",
+      "sha256": "e84a3bf605f9a2d5cda48afddf67a73db8983252bc06c4b88c20b90b6cb5f9b5"
+    }
+  ],
+  "reviews": {
+    "spec": {
+      "status": "PASS_BOUNDED_ONLY",
+      "path": "architecture/evidence/issues/193/rf/reviews/journal-spec-abb48eda.md",
+      "sha256": "94b3f95e0bd07eeb63c2212b3d652daea62b8c15dd24c03ef84cc72bee76159c"
+    },
+    "standards": {
+      "status": "PASS_BOUNDED_ONLY",
+      "path": "architecture/evidence/issues/193/rf/reviews/journal-standards-abb48eda.md",
+      "sha256": "330e55702a1afba0a0126064362f531ca01186d4ed33b29e681e9febef56fb45"
+    }
+  }
+}
