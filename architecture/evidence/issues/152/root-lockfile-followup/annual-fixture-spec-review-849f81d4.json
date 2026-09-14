@@ -1,0 +1,111 @@
+{
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_ANNUAL_FIXTURE_FOLLOWUP",
+  "baselineRevision": "ac9b349ab58b89bdd0efa4810ef382844be5c6fa",
+  "reviewedRevision": "849f81d4cb8a9405504138928539f8026d665852",
+  "findings": [],
+  "reportSha256": "e8cf1d253c348ce72fbfba263faa01bc8299b752748bd2d7d0ce10be494631c2",
+  "sourceBindings": {
+    "architecture/evidence/customer-ready-gates/ac9b349ab58b89bdd0efa4810ef382844be5c6fa.log": "1b621a67cd1a16aad73678bd382cda1c83c98a3d2d7bee56145ebfc386178f4f",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/annual-fixture-cleanup-tests.log": "eae566e4b404598bffef856a54ff7ff74eb8f3753e1e375e02665d4ebde4aab6",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/annual-owner-tax-fixture-green.log": "79af08a62a06abee0256c111b636a6df54efbda84da982ab63ebbf3537ac1441",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/annual-owner-tax-fixture-red.log": "54cd284d3c95252ffcf7096a5c5749cf3bca5b375fb703880f6562872fc81909",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/final-spec-review-ac9b349a.json": "010befedc2a8ebe21bde4cfd1289e30d676ee42e6b10e8df516ad2a35cfb4466",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/final-spec-review-ac9b349a.md": "4a60ce5ef8d3aa387badf4e47475e4d667b17cc459e0f79a34abf37b04e6220f",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/final-standards-review-ac9b349a.json": "73397f9950c31ce5f691cf4d36b07b64bf1ab166a6946617fa42b19b64760d0b",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/final-standards-review-ac9b349a.md": "cc583862d79812004f81c30df4dca01b595b83041aed3b5b78e4e6ddcd7d3af8",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/manifest.json": "e7d6519e43f809a6c8500c341ae8c289669d61aca2932375d143708dca4efd3e",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/post-contract-remaining-browser.log": "a79566a7526f81f49faee4d051ae2fcce52cbd46160ab0c451352dea5e75f369",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/verification.md": "47d323c12cde2153f2c3c9469a3b731c3c7b61d2557dc51b39521c0887846bb6",
+    "architecture/evidence/issues/152/verification.md": "a8cd6eee57ab34e03fc1c81d7f5b9c85a822e7998738bc6dab0c1cb144c6289e",
+    "tests/browser_fixture_safety.test.mjs": "b222829ba7c496fde97c0b8f17fe2b7c158ff22e14dbe6223f16ffd8797a3182",
+    "tests/browser_owner_annual_loop.mjs": "07e7c865260b07659f667f2af57a207b96086e5000fbb63d5d0859018e6c9eee",
+    "tests/browser_process_lifecycle.test.mjs": "677de2a71543141724a6dcc07093f89df2f5e13f64e6c067fd4cf4c85f41f513",
+    "tests/support/browser-owner-cleanup.mjs": "e862c23361e4a0cb6f7d0a38fe3cefc1cc6345df81b819d8cc4ef5ca457b8be9"
+  },
+  "manifestBindings": [
+    {
+      "path": "architecture/evidence/issues/152/annual-browser-fixture-followup/annual-owner-tax-fixture-green.log",
+      "sha256": "79af08a62a06abee0256c111b636a6df54efbda84da982ab63ebbf3537ac1441"
+    },
+    {
+      "path": "architecture/evidence/issues/152/annual-browser-fixture-followup/annual-owner-tax-fixture-red.log",
+      "sha256": "54cd284d3c95252ffcf7096a5c5749cf3bca5b375fb703880f6562872fc81909"
+    },
+    {
+      "path": "architecture/evidence/issues/152/annual-browser-fixture-followup/final-standards-review-ac9b349a.json",
+      "sha256": "73397f9950c31ce5f691cf4d36b07b64bf1ab166a6946617fa42b19b64760d0b"
+    },
+    {
+      "path": "architecture/evidence/issues/152/annual-browser-fixture-followup/verification.md",
+      "sha256": "47d323c12cde2153f2c3c9469a3b731c3c7b61d2557dc51b39521c0887846bb6"
+    },
+    {
+      "path": "architecture/evidence/issues/152/annual-browser-fixture-followup/final-spec-review-ac9b349a.json",
+      "sha256": "010befedc2a8ebe21bde4cfd1289e30d676ee42e6b10e8df516ad2a35cfb4466"
+    },
+    {
+      "path": "architecture/evidence/issues/152/annual-browser-fixture-followup/post-contract-remaining-browser.log",
+      "sha256": "a79566a7526f81f49faee4d051ae2fcce52cbd46160ab0c451352dea5e75f369"
+    },
+    {
+      "path": "architecture/evidence/issues/152/annual-browser-fixture-followup/annual-fixture-cleanup-tests.log",
+      "sha256": "eae566e4b404598bffef856a54ff7ff74eb8f3753e1e375e02665d4ebde4aab6"
+    },
+    {
+      "path": "architecture/evidence/issues/152/annual-browser-fixture-followup/final-standards-review-ac9b349a.md",
+      "sha256": "cc583862d79812004f81c30df4dca01b595b83041aed3b5b78e4e6ddcd7d3af8"
+    },
+    {
+      "path": "architecture/evidence/issues/152/annual-browser-fixture-followup/final-spec-review-ac9b349a.md",
+      "sha256": "4a60ce5ef8d3aa387badf4e47475e4d667b17cc459e0f79a34abf37b04e6220f"
+    },
+    {
+      "path": "tests/browser_fixture_safety.test.mjs",
+      "sha256": "b222829ba7c496fde97c0b8f17fe2b7c158ff22e14dbe6223f16ffd8797a3182"
+    },
+    {
+      "path": "tests/browser_owner_annual_loop.mjs",
+      "sha256": "07e7c865260b07659f667f2af57a207b96086e5000fbb63d5d0859018e6c9eee"
+    },
+    {
+      "path": "tests/browser_process_lifecycle.test.mjs",
+      "sha256": "677de2a71543141724a6dcc07093f89df2f5e13f64e6c067fd4cf4c85f41f513"
+    },
+    {
+      "path": "tests/support/browser-owner-cleanup.mjs",
+      "sha256": "e862c23361e4a0cb6f7d0a38fe3cefc1cc6345df81b819d8cc4ef5ca457b8be9"
+    }
+  ],
+  "independentChecks": {
+    "fixtureProcessPassed": 22,
+    "failed": 0,
+    "optionalLiveDatabaseSkipped": 1,
+    "exactPredecessorSeedRejectedByNewGuard": true,
+    "exactPredecessorCleanupRejectedByNewGuard": true,
+    "requirementsByteIdentical": true,
+    "onlyFourTestSupportFilesChangeExecutableBehavior": true
+  },
+  "priorWholeStageReviewStillApplies": true,
+  "recordedNotRerun": {
+    "failedGateTaxDbPassed": [
+      22,
+      3,
+      7
+    ],
+    "focusedRed": "Retired public Tax permission CHECK 23514",
+    "focusedAnnualGreen": {
+      "passed": 1,
+      "skipped": 0
+    },
+    "remainingBrowserLanes": "Separate recorded PASS; no mandatory journey skipped"
+  },
+  "noSharedMutation": true,
+  "noDatabaseBrowserProviderRerun": true,
+  "fullGateCredit": false,
+  "privateArtifacts": {
+    "annual-fixture-spec-bindings-849f81d4.json": "b6630e08517780b55c3a409e8dc689aa16fbc4bbfdc5fb6390feda0339bd032b",
+    "annual-fixture-spec-tests-849f81d4.log": "88294f8917856719479c1941e6814da90afb9e066623c05df4bf60a6dc5e0022",
+    "annual-fixture-spec-red-probes-849f81d4.json": "f0e58a63d73293fb49b4de347ff4956ce80f49a62a74c657fa468cedf498edda"
+  }
+}

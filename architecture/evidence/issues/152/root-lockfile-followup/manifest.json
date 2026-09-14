@@ -1,0 +1,18 @@
+{
+  "status": "PASS_LOCK_REPAIR_FULL_GATE_PENDING",
+  "artifacts": {
+    "architecture/evidence/issues/152/root-lockfile-followup/annual-fixture-spec-review-849f81d4.json": "0e25943bf14301c5fa889e9d65b3c18a35e845c3b16caaa3a16ecbd38ac69724",
+    "architecture/evidence/issues/152/root-lockfile-followup/lock-check-red.log": "0873873c906876b099725bef2ba6fdad564c5adf9f3d143e7b8f44c030e66e12",
+    "architecture/evidence/issues/152/root-lockfile-followup/annual-fixture-standards-review-849f81d4.json": "f0cd427195c945f1f7f249f12d913e6defb4d0616b9e2db5e60372f62cd98aa2",
+    "architecture/evidence/issues/152/root-lockfile-followup/root-locked-sync-green.log": "a12c409c67ced57b4f05aff211925de1553644bd4235f9896bb16afa34c80f49",
+    "architecture/evidence/issues/152/root-lockfile-followup/annual-fixture-standards-review-849f81d4.md": "c286fe205357a9f57f0f5cc53c424e387c2f434d5c939e84766a108524bc9f6b",
+    "architecture/evidence/issues/152/root-lockfile-followup/gate-849f81d4-cancellation.json": "aeaae2b5a3a2255661ff1e5255da27306a61cb35505ef03a91902a2839cab01d",
+    "architecture/evidence/issues/152/root-lockfile-followup/verification.md": "c79c4e0452c74f22bf776ae3f515790b0b46a9544e9e13e3eeb5e06a8bc452e1",
+    "architecture/evidence/issues/152/root-lockfile-followup/ci-34805023185-failed.log": "bf98019de412a9fa3d9429874a843fb917eafb272eb6f2de02dc19d6316ca9be",
+    "architecture/evidence/issues/152/root-lockfile-followup/lock-repair.log": "3f22f6242588c187bbe416df2109b6051d381a153f8d242e209026f3258b5828",
+    "architecture/evidence/issues/152/root-lockfile-followup/annual-fixture-spec-review-849f81d4.md": "e8cf1d253c348ce72fbfba263faa01bc8299b752748bd2d7d0ce10be494631c2",
+    "architecture/evidence/issues/152/root-lockfile-followup/lock-check-green.log": "622139f1e875d62d8407a6718f476dd0d79f25a9171d874fa803fc2d3a31275b",
+    "architecture/evidence/issues/152/root-lockfile-followup/dependency-comparison.json": "4c053d6e9cee057ef0ba1cb1a6063c201d3563e17b5c5eb3c1a32dd8fbd10655",
+    "uv.lock": "f9511008745b497b8d8f6f0a296e53e9b209654cb5a8d4f939f9d06829df1c1f"
+  }
+}

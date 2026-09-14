@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "baselineRevision": "849f81d4cb8a9405504138928539f8026d665852",
+  "addedPackages": {
+    "ada-url": "4.0.0",
+    "pyicu": "2.16.2"
+  },
+  "newPackageArtifactsMatchBackendLockExactly": true,
+  "existingPackageVersionsAndArtifactsUnchanged": true,
+  "rootBackendDependencyMetadataNowMatchesDeclaredDependencies": true
+}
