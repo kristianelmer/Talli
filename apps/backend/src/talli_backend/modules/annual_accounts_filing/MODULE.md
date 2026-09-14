@@ -1,7 +1,7 @@
 # Annual Accounts Filing
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["annual_accounts_filing.authority_permissions","annual_accounts_filing.authority_test_runs","annual_accounts_filing.filing_overrides","annual_accounts_filing.filing_previews","annual_accounts_filing.filing_review_comments","annual_accounts_filing.filing_submissions"],"ports":["AnnualAccountsAuthority","AnnualAccountsRehearsalIO"],"publicEntryPoints":["talli_backend.modules.annual_accounts_filing.public"]}
+{"dependencies":[],"ownedTables":["annual_accounts_filing.authority_permissions","annual_accounts_filing.authority_test_runs","annual_accounts_filing.filing_overrides","annual_accounts_filing.filing_previews","annual_accounts_filing.filing_review_comments","annual_accounts_filing.filing_submissions"],"ports":["AnnualAccountsAuthority","AnnualAccountsRehearsalIO","AnnualAccountsWorkspacePersistence","AnnualAccountsPreparationPersistence","AnnualAccountsEvidencePersistence"],"publicEntryPoints":["talli_backend.modules.annual_accounts_filing.public"]}
 -->
 
 ## Purpose
@@ -47,7 +47,9 @@ manual warnings retain their original order. Common Annual gates remain separate
 Six inert successor tables in `annual_accounts_filing` are declared and owned:
 `authority_permissions`, `authority_test_runs`, `filing_overrides`,
 `filing_previews`, `filing_review_comments`, and `filing_submissions`.
-They have FORCE RLS, no business policy and no runtime grants during expansion.
+They have FORCE RLS. Read and preparation policies require cutover or contracted
+phase, accepted membership and the appropriate owner/reviewer role. Expansion
+remains unavailable through every owned business contract.
 The legacy public writer remains active until a separately verified cutover.
 No storage bucket is added.
 `AnnualAccountsAuthority` declares the fixed TT02 operations and
@@ -127,3 +129,33 @@ timezones, and immutable inputs/results. The old standalone transport path and f
 The CLI maps directly to the owned Python calculation and XML contracts.
 Generated web workflow,
 data migration/RLS/rollback and full stage-exit gates remain pending.
+
+## Authenticated filing boundary
+
+`AnnualAccountsWorkspaceQuery` and `AnnualAccountsFilingRows` expose complete,
+immutable Accounts rows scoped to company and optional year. Permissions and
+test evidence retain their predecessor company-wide scope. Invalid identities,
+cross-company/year rows, missing linked previews or test evidence and non-Accounts
+obligations fail closed. `AnnualAccountsPreparationPersistence` owns normalized
+override/review controls and owner acknowledgement, permission and manual evidence.
+Company Access supplies accepted-role and fresh-MFA decisions through its public
+contracts. `AnnualAccountsEvidencePersistence` reads Company Access identity and
+inserts the pure TT02 projection once per request. Audit remains the existing
+subsequent web continuation; no provider call or Tax-style combined submission
+or deduplication is added. The verified application session binds every actor;
+PostgreSQL functions run only via the restricted executor with phase-gated RLS.
+The generated HTTP boundary is installed before the web writer is switched.
+
+`AnnualAccountsRecordId` and `AnnualAccountsRecordQuery` identify an owned record.
+`RecordAnnualAccountsOverride`, `AddAnnualAccountsReviewComment`,
+`ConfirmAnnualAccountsPermission`, and `RecordAnnualAccountsTestEvidence` carry
+actor-bound control inputs; `AnnualAccountsRecordedResult` returns the persisted
+identity and scope. `normalize_annual_accounts_override`,
+`normalize_annual_accounts_review`, and `normalize_annual_accounts_test_evidence`
+preserve the released text trimming, validation order and messages.
+`AnnualAccountsError` distinguishes forbidden, missing, invalid and unavailable
+operations. `annual_accounts_persistence_adapter` declares the registered adapter.
+`ImportAnnualAccountsEvidence` freezes the untrusted document,
+`AnnualAccountsCompanyIdentity` carries Company Access's organization, and
+`ImportedAnnualAccountsEvidence` returns the inserted ID and TT02 reference for
+the subsequent Audit continuation.

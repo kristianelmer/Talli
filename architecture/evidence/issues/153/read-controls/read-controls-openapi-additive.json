@@ -1,0 +1,36 @@
+{
+  "schemas": {
+    "added": [
+      "AnnualAccountsEvidenceImportRequest",
+      "AnnualAccountsEvidenceImportWire",
+      "AnnualAccountsOverrideRequest",
+      "AnnualAccountsOverrideWire",
+      "AnnualAccountsPermissionRequest",
+      "AnnualAccountsPermissionWire",
+      "AnnualAccountsPreviewWire",
+      "AnnualAccountsRecordedWire",
+      "AnnualAccountsReviewCommentWire",
+      "AnnualAccountsReviewRequest",
+      "AnnualAccountsSubmissionWire",
+      "AnnualAccountsTestEvidenceRequest",
+      "AnnualAccountsTestEvidenceWire",
+      "AnnualAccountsWorkspaceWire"
+    ],
+    "removed": [],
+    "modified": []
+  },
+  "paths": {
+    "added": [
+      "/api/v1/annual-accounts/filing-workspace",
+      "/api/v1/annual-accounts/overrides",
+      "/api/v1/annual-accounts/permissions",
+      "/api/v1/annual-accounts/previews/{preview_id}",
+      "/api/v1/annual-accounts/review-comments",
+      "/api/v1/annual-accounts/review-comments/{comment_id}/acknowledgements",
+      "/api/v1/annual-accounts/test-evidence",
+      "/api/v1/annual-accounts/tt02-evidence-imports"
+    ],
+    "removed": [],
+    "modified": []
+  }
+}

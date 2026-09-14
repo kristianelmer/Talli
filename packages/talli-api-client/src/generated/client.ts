@@ -2964,6 +2964,172 @@ export interface BillingUnsupportedWire {
 
 export type ProductionPilotStatus = "pending" | "active" | "suspended" | "completed" | "revoked";
 
+export interface AnnualAccountsRecordedWire {
+  companyId: string;
+  incomeYear: number | null;
+  recordId: string;
+}
+
+export interface AnnualAccountsOverrideRequest {
+  fieldTarget: string;
+  newValue: string;
+  oldValue: string;
+  ownerConfirmed: boolean;
+  previewId: string;
+  reason: string;
+  riskLevel: string;
+}
+
+export interface AnnualAccountsReviewRequest {
+  body: string;
+  previewId: string;
+  severity?: string;
+}
+
+export interface AnnualAccountsPermissionRequest {
+  companyId: string;
+  productionEnabled: boolean;
+}
+
+export interface AnnualAccountsTestEvidenceRequest {
+  archiveReference?: string | null;
+  companyId: string;
+  environment: string;
+  evidenceUrl?: string | null;
+  feedbackSummary?: string;
+  payloadHash?: string | null;
+  receiptReference?: string | null;
+  status: string;
+  testReference: string;
+}
+
+export interface AnnualAccountsEvidenceImportRequest {
+  companyId: string;
+  evidenceJson: string;
+  evidenceUrl?: string | null;
+}
+
+export interface AnnualAccountsEvidenceImportWire {
+  recordId: string;
+  testReference: string;
+}
+
+export interface AnnualAccountsWorkspaceWire {
+  companyId: string;
+  incomeYear: number | null;
+  overrides: AnnualAccountsOverrideWire[];
+  permissions: AnnualAccountsPermissionWire[];
+  previews: AnnualAccountsPreviewWire[];
+  reviewComments: AnnualAccountsReviewCommentWire[];
+  submissions: AnnualAccountsSubmissionWire[];
+  testEvidence: AnnualAccountsTestEvidenceWire[];
+}
+
+export interface AnnualAccountsPreviewWire {
+  companyId: string;
+  createdAt: string;
+  createdBy: string;
+  filing: "årsregnskap";
+  hovedskjemaXml: string | null;
+  id: string;
+  incomeYear: number;
+  issues: Record<string, unknown>[];
+  preview: string;
+  setupId: string | null;
+  source: string;
+  status: "ready" | "blocked" | "warning";
+  underskjemaXml: Record<string, string>;
+}
+
+export interface AnnualAccountsSubmissionWire {
+  adapterMode: "simulation" | "test_authority" | "production";
+  authorityConfirmedAt: string | null;
+  authorityConfirmedBy: string | null;
+  authorityTestRunId: string | null;
+  calls: Record<string, unknown>[];
+  companyId: string;
+  createdAt: string;
+  createdBy: string;
+  failureCode: string | null;
+  failureMessage: string | null;
+  feedbackDocumentIds: string[];
+  feedbackItems: Record<string, unknown>[];
+  filing: "årsregnskap";
+  id: string;
+  idempotencyKey: string | null;
+  incomeYear: number;
+  mode: "simulation" | "test_authority";
+  payloadHash: string | null;
+  previewConfirmedAt: string | null;
+  previewConfirmedBy: string | null;
+  previewId: string | null;
+  receiptId: string | null;
+  receiptMetadata: Record<string, unknown> | null;
+  setupId: string | null;
+  status: string;
+  submittedBy: string | null;
+  submittedPayload: Record<string, unknown> | null;
+  submittedPayloadRef: Record<string, unknown> | null;
+  updatedAt: string;
+}
+
+export interface AnnualAccountsOverrideWire {
+  companyId: string;
+  createdAt: string;
+  createdBy: string;
+  fieldTarget: string;
+  filing: "årsregnskap";
+  id: string;
+  incomeYear: number;
+  newValue: string;
+  oldValue: string;
+  ownerConfirmedAt: string;
+  ownerConfirmedBy: string;
+  previewId: string | null;
+  reason: string;
+  riskLevel: "advisory" | "warning" | "block";
+}
+
+export interface AnnualAccountsReviewCommentWire {
+  acknowledgedAt: string | null;
+  acknowledgedBy: string | null;
+  body: string;
+  companyId: string;
+  createdAt: string;
+  createdBy: string;
+  id: string;
+  previewId: string;
+  severity: "advisory" | "hard_block";
+  target: string;
+}
+
+export interface AnnualAccountsPermissionWire {
+  companyId: string;
+  confirmedAt: string;
+  confirmedBy: string;
+  id: string;
+  obligation: "aarsregnskap";
+  productionEnabled: boolean;
+  submitterUserId: string;
+  updatedAt: string;
+}
+
+export interface AnnualAccountsTestEvidenceWire {
+  archiveReference: string | null;
+  companyId: string;
+  environment: "test" | "manual_evidence";
+  evidenceUrl: string | null;
+  feedbackSummary: string;
+  id: string;
+  obligation: "aarsregnskap";
+  payloadHash: string | null;
+  receiptReference: string | null;
+  recordedAt: string;
+  recordedBy: string;
+  status: "accepted" | "rejected" | "blocked" | "pending";
+  testReference: string;
+}
+
 export interface CompanyTaxSourceEvidenceWire {
   companyId: string;
   digest: string;
@@ -7737,6 +7903,228 @@ function isProductionPilotStatus(value: unknown): value is ProductionPilotStatus
   return value === "pending" || value === "active" || value === "suspended" || value === "completed" || value === "revoked";
 }
 
+function isAnnualAccountsRecordedWire(value: unknown): value is AnnualAccountsRecordedWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","recordId"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) || value.incomeYear === null) &&
+    isUuid(value.recordId)
+  );
+}
+
+function isAnnualAccountsOverrideRequest(value: unknown): value is AnnualAccountsOverrideRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["fieldTarget","newValue","oldValue","ownerConfirmed","previewId","reason","riskLevel"]) &&
+    typeof value.fieldTarget === "string" &&
+    typeof value.newValue === "string" &&
+    typeof value.oldValue === "string" &&
+    typeof value.ownerConfirmed === "boolean" &&
+    isUuid(value.previewId) &&
+    typeof value.reason === "string" &&
+    typeof value.riskLevel === "string"
+  );
+}
+
+function isAnnualAccountsReviewRequest(value: unknown): value is AnnualAccountsReviewRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["body","previewId","severity"]) &&
+    typeof value.body === "string" &&
+    isUuid(value.previewId) &&
+    (value.severity === undefined || typeof value.severity === "string")
+  );
+}
+
+function isAnnualAccountsPermissionRequest(value: unknown): value is AnnualAccountsPermissionRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","productionEnabled"]) &&
+    isUuid(value.companyId) &&
+    typeof value.productionEnabled === "boolean"
+  );
+}
+
+function isAnnualAccountsTestEvidenceRequest(value: unknown): value is AnnualAccountsTestEvidenceRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["archiveReference","companyId","environment","evidenceUrl","feedbackSummary","payloadHash","receiptReference","status","testReference"]) &&
+    (value.archiveReference === undefined || (typeof value.archiveReference === "string" || value.archiveReference === null)) &&
+    isUuid(value.companyId) &&
+    typeof value.environment === "string" &&
+    (value.evidenceUrl === undefined || (typeof value.evidenceUrl === "string" || value.evidenceUrl === null)) &&
+    (value.feedbackSummary === undefined || typeof value.feedbackSummary === "string") &&
+    (value.payloadHash === undefined || (typeof value.payloadHash === "string" || value.payloadHash === null)) &&
+    (value.receiptReference === undefined || (typeof value.receiptReference === "string" || value.receiptReference === null)) &&
+    typeof value.status === "string" &&
+    typeof value.testReference === "string"
+  );
+}
+
+function isAnnualAccountsEvidenceImportRequest(value: unknown): value is AnnualAccountsEvidenceImportRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","evidenceJson","evidenceUrl"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.evidenceJson === "string" && value.evidenceJson.length >= 1 && value.evidenceJson.length <= 524288) &&
+    (value.evidenceUrl === undefined || (typeof value.evidenceUrl === "string" || value.evidenceUrl === null))
+  );
+}
+
+function isAnnualAccountsEvidenceImportWire(value: unknown): value is AnnualAccountsEvidenceImportWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["recordId","testReference"]) &&
+    isUuid(value.recordId) &&
+    typeof value.testReference === "string"
+  );
+}
+
+function isAnnualAccountsWorkspaceWire(value: unknown): value is AnnualAccountsWorkspaceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","overrides","permissions","previews","reviewComments","submissions","testEvidence"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) || value.incomeYear === null) &&
+    Array.isArray(value.overrides) && value.overrides.every((item) => isAnnualAccountsOverrideWire(item)) &&
+    Array.isArray(value.permissions) && value.permissions.every((item) => isAnnualAccountsPermissionWire(item)) &&
+    Array.isArray(value.previews) && value.previews.every((item) => isAnnualAccountsPreviewWire(item)) &&
+    Array.isArray(value.reviewComments) && value.reviewComments.every((item) => isAnnualAccountsReviewCommentWire(item)) &&
+    Array.isArray(value.submissions) && value.submissions.every((item) => isAnnualAccountsSubmissionWire(item)) &&
+    Array.isArray(value.testEvidence) && value.testEvidence.every((item) => isAnnualAccountsTestEvidenceWire(item))
+  );
+}
+
+function isAnnualAccountsPreviewWire(value: unknown): value is AnnualAccountsPreviewWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","createdAt","createdBy","filing","hovedskjemaXml","id","incomeYear","issues","preview","setupId","source","status","underskjemaXml"]) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    value.filing === "årsregnskap" &&
+    (typeof value.hovedskjemaXml === "string" || value.hovedskjemaXml === null) &&
+    isUuid(value.id) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    Array.isArray(value.issues) && value.issues.every((item) => isRecord(item)) &&
+    typeof value.preview === "string" &&
+    (isUuid(value.setupId) || value.setupId === null) &&
+    typeof value.source === "string" &&
+    (value.status === "ready" || value.status === "blocked" || value.status === "warning") &&
+    isRecord(value.underskjemaXml) && Object.values(value.underskjemaXml).every((item) => typeof item === "string")
+  );
+}
+
+function isAnnualAccountsSubmissionWire(value: unknown): value is AnnualAccountsSubmissionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["adapterMode","authorityConfirmedAt","authorityConfirmedBy","authorityTestRunId","calls","companyId","createdAt","createdBy","failureCode","failureMessage","feedbackDocumentIds","feedbackItems","filing","id","idempotencyKey","incomeYear","mode","payloadHash","previewConfirmedAt","previewConfirmedBy","previewId","receiptId","receiptMetadata","setupId","status","submittedBy","submittedPayload","submittedPayloadRef","updatedAt"]) &&
+    (value.adapterMode === "simulation" || value.adapterMode === "test_authority" || value.adapterMode === "production") &&
+    (isDateTime(value.authorityConfirmedAt) || value.authorityConfirmedAt === null) &&
+    (isUuid(value.authorityConfirmedBy) || value.authorityConfirmedBy === null) &&
+    (isUuid(value.authorityTestRunId) || value.authorityTestRunId === null) &&
+    Array.isArray(value.calls) && value.calls.every((item) => isRecord(item)) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    (typeof value.failureCode === "string" || value.failureCode === null) &&
+    (typeof value.failureMessage === "string" || value.failureMessage === null) &&
+    Array.isArray(value.feedbackDocumentIds) && value.feedbackDocumentIds.every((item) => typeof item === "string") &&
+    Array.isArray(value.feedbackItems) && value.feedbackItems.every((item) => isRecord(item)) &&
+    value.filing === "årsregnskap" &&
+    isUuid(value.id) &&
+    (typeof value.idempotencyKey === "string" || value.idempotencyKey === null) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    (value.mode === "simulation" || value.mode === "test_authority") &&
+    (typeof value.payloadHash === "string" || value.payloadHash === null) &&
+    (isDateTime(value.previewConfirmedAt) || value.previewConfirmedAt === null) &&
+    (isUuid(value.previewConfirmedBy) || value.previewConfirmedBy === null) &&
+    (isUuid(value.previewId) || value.previewId === null) &&
+    (typeof value.receiptId === "string" || value.receiptId === null) &&
+    (isRecord(value.receiptMetadata) || value.receiptMetadata === null) &&
+    (isUuid(value.setupId) || value.setupId === null) &&
+    typeof value.status === "string" &&
+    (isUuid(value.submittedBy) || value.submittedBy === null) &&
+    (isRecord(value.submittedPayload) || value.submittedPayload === null) &&
+    (isRecord(value.submittedPayloadRef) || value.submittedPayloadRef === null) &&
+    isDateTime(value.updatedAt)
+  );
+}
+
+function isAnnualAccountsOverrideWire(value: unknown): value is AnnualAccountsOverrideWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","createdAt","createdBy","fieldTarget","filing","id","incomeYear","newValue","oldValue","ownerConfirmedAt","ownerConfirmedBy","previewId","reason","riskLevel"]) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    typeof value.fieldTarget === "string" &&
+    value.filing === "årsregnskap" &&
+    isUuid(value.id) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    typeof value.newValue === "string" &&
+    typeof value.oldValue === "string" &&
+    isDateTime(value.ownerConfirmedAt) &&
+    isUuid(value.ownerConfirmedBy) &&
+    (isUuid(value.previewId) || value.previewId === null) &&
+    typeof value.reason === "string" &&
+    (value.riskLevel === "advisory" || value.riskLevel === "warning" || value.riskLevel === "block")
+  );
+}
+
+function isAnnualAccountsReviewCommentWire(value: unknown): value is AnnualAccountsReviewCommentWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["acknowledgedAt","acknowledgedBy","body","companyId","createdAt","createdBy","id","previewId","severity","target"]) &&
+    (isDateTime(value.acknowledgedAt) || value.acknowledgedAt === null) &&
+    (isUuid(value.acknowledgedBy) || value.acknowledgedBy === null) &&
+    typeof value.body === "string" &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    isUuid(value.id) &&
+    isUuid(value.previewId) &&
+    (value.severity === "advisory" || value.severity === "hard_block") &&
+    typeof value.target === "string"
+  );
+}
+
+function isAnnualAccountsPermissionWire(value: unknown): value is AnnualAccountsPermissionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","confirmedAt","confirmedBy","id","obligation","productionEnabled","submitterUserId","updatedAt"]) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.confirmedAt) &&
+    isUuid(value.confirmedBy) &&
+    isUuid(value.id) &&
+    value.obligation === "aarsregnskap" &&
+    typeof value.productionEnabled === "boolean" &&
+    isUuid(value.submitterUserId) &&
+    isDateTime(value.updatedAt)
+  );
+}
+
+function isAnnualAccountsTestEvidenceWire(value: unknown): value is AnnualAccountsTestEvidenceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["archiveReference","companyId","environment","evidenceUrl","feedbackSummary","id","obligation","payloadHash","receiptReference","recordedAt","recordedBy","status","testReference"]) &&
+    (typeof value.archiveReference === "string" || value.archiveReference === null) &&
+    isUuid(value.companyId) &&
+    (value.environment === "test" || value.environment === "manual_evidence") &&
+    (typeof value.evidenceUrl === "string" || value.evidenceUrl === null) &&
+    typeof value.feedbackSummary === "string" &&
+    isUuid(value.id) &&
+    value.obligation === "aarsregnskap" &&
+    (typeof value.payloadHash === "string" || value.payloadHash === null) &&
+    (typeof value.receiptReference === "string" || value.receiptReference === null) &&
+    isDateTime(value.recordedAt) &&
+    isUuid(value.recordedBy) &&
+    (value.status === "accepted" || value.status === "rejected" || value.status === "blocked" || value.status === "pending") &&
+    typeof value.testReference === "string"
+  );
+}
+
 function isCompanyTaxSourceEvidenceWire(value: unknown): value is CompanyTaxSourceEvidenceWire {
   return (
     isRecord(value) &&
@@ -10342,6 +10730,93 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         isAdministrativeCostEntryWire,
       );
       if (result.companyId !== body.companyId || result.incomeYear !== body.incomeYear) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async annualAccountsGetPreview(previewId: string, request: TalliRequestOptions = {}): Promise<AnnualAccountsPreviewWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/annual-accounts/previews/${encodeURIComponent(previewId)}`,
+        "GET", request, undefined, isAnnualAccountsPreviewWire,
+      );
+      if (result.id !== previewId) throw new TalliApiError(502, undefined);
+      return result;
+    },
+
+    async annualAccountsAcknowledgeReviewComment(commentId: string, request: TalliRequestOptions = {}): Promise<AnnualAccountsRecordedWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/annual-accounts/review-comments/${encodeURIComponent(commentId)}/acknowledgements`,
+        "POST", request, undefined, isAnnualAccountsRecordedWire,
+      );
+      if (result.recordId !== commentId) throw new TalliApiError(502, undefined);
+      return result;
+    },
+
+    async annualAccountsRecordOverride(body: AnnualAccountsOverrideRequest, request: TalliRequestOptions = {}): Promise<AnnualAccountsRecordedWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/annual-accounts/overrides`,
+        "POST", request, body, isAnnualAccountsRecordedWire,
+      );
+      return result;
+    },
+
+    async annualAccountsAddReviewComment(body: AnnualAccountsReviewRequest, request: TalliRequestOptions = {}): Promise<AnnualAccountsRecordedWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/annual-accounts/review-comments`,
+        "POST", request, body, isAnnualAccountsRecordedWire,
+      );
+      return result;
+    },
+
+    async annualAccountsConfirmPermission(body: AnnualAccountsPermissionRequest, request: TalliRequestOptions = {}): Promise<AnnualAccountsRecordedWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/annual-accounts/permissions`,
+        "POST", request, body, isAnnualAccountsRecordedWire,
+      );
+      if (result.companyId !== body.companyId || result.incomeYear !== null) throw new TalliApiError(502, undefined);
+      return result;
+    },
+
+    async annualAccountsRecordTestEvidence(body: AnnualAccountsTestEvidenceRequest, request: TalliRequestOptions = {}): Promise<AnnualAccountsRecordedWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/annual-accounts/test-evidence`,
+        "POST", request, body, isAnnualAccountsRecordedWire,
+      );
+      if (result.companyId !== body.companyId || result.incomeYear !== null) throw new TalliApiError(502, undefined);
+      return result;
+    },
+
+    async annualAccountsImportTt02Evidence(
+      body: AnnualAccountsEvidenceImportRequest, request: TalliRequestOptions = {},
+    ): Promise<AnnualAccountsEvidenceImportWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/annual-accounts/tt02-evidence-imports`,
+        "POST", request, body, isAnnualAccountsEvidenceImportWire,
+      );
+    },
+
+    async annualAccountsGetFilingWorkspace(
+      companyId: string, incomeYear: number | null = null, request: TalliRequestOptions = {},
+    ): Promise<AnnualAccountsWorkspaceWire> {
+      const query = new URLSearchParams({ companyId });
+      if (incomeYear !== null) query.set("incomeYear", String(incomeYear));
+      const result = await executeJson(
+        `${baseUrl}/api/v1/annual-accounts/filing-workspace?${query}`,
+        "GET", request, undefined, isAnnualAccountsWorkspaceWire,
+      );
+      const families = [result.previews, result.submissions, result.overrides,
+        result.reviewComments, result.permissions, result.testEvidence];
+      if (result.companyId !== companyId || result.incomeYear !== incomeYear
+          || families.some(rows => rows.some(row => row.companyId !== companyId)
+            || new Set(rows.map(row => row.id)).size !== rows.length)
+          || [result.previews, result.submissions, result.overrides].some(rows =>
+            rows.some(row => incomeYear !== null && row.incomeYear !== incomeYear))
+          || [...result.submissions, ...result.overrides].some(row => row.previewId !== null
+            && !result.previews.some(preview => preview.id === row.previewId && preview.incomeYear === row.incomeYear))
+          || result.reviewComments.some(row => !result.previews.some(preview => preview.id === row.previewId))
+          || result.submissions.some(row => row.authorityTestRunId !== null
+            && !result.testEvidence.some(evidence => evidence.id === row.authorityTestRunId))) {
         throw new TalliApiError(502, undefined);
       }
       return result;

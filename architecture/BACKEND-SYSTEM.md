@@ -676,3 +676,24 @@ migration inventory, source-row hashes, quarantine, reconciliations and phase;
 Accounts owns the business rows. Unknown or conflicting provenance is preserved
 and blocks later cutover. Expansion neither emits business effects nor advances
 Archive generations. The legacy public runtime remains active until cutover.
+
+## Accounts filing reads and controls
+
+Accounts exposes phase-gated reads, preparation controls and single-row TT02
+evidence import. The application binds the verified actor, Company Access owns
+role and MFA decisions, and Audit remains an after-commit web continuation.
+The web cutover and full source handoff are still pending.
+
+<!-- architecture-inventory
+{"workflows": ["annual-accounts-filing-reads", "annual-accounts-filing-preparation", "annual-accounts-tt02-evidence-import"], "workflowPurposes": ["annual-accounts-filing-reads=>Returns immutable complete Accounts filing rows for one authorized company and optional year; copied expansion and rolled-back sources fail closed.", "annual-accounts-filing-preparation=>Runs owned Accounts override, review, acknowledgement, permission and manual-evidence controls with Company Access authorization; preserves existing external Audit continuations and performs no provider operation.", "annual-accounts-tt02-evidence-import=>Authenticates and projects Accounts TT02 evidence and commits its single owned evidence row; preserves the subsequent web Audit continuation without a provider operation."], "routes": ["/api/v1/annual-accounts/filing-workspace", "/api/v1/annual-accounts/previews/{preview_id}", "/api/v1/annual-accounts/overrides", "/api/v1/annual-accounts/review-comments", "/api/v1/annual-accounts/review-comments/{comment_id}/acknowledgements", "/api/v1/annual-accounts/permissions", "/api/v1/annual-accounts/test-evidence", "/api/v1/annual-accounts/tt02-evidence-imports"], "ports": ["AnnualAccountsWorkspacePersistence", "AnnualAccountsPreparationPersistence", "AnnualAccountsEvidencePersistence"], "adapterBindings": ["AnnualAccountsWorkspacePersistence=>talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction", "AnnualAccountsPreparationPersistence=>talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction", "AnnualAccountsEvidencePersistence=>talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction"], "adapterBindingOwners": ["AnnualAccountsWorkspacePersistence=>backend-system", "AnnualAccountsPreparationPersistence=>backend-system", "AnnualAccountsEvidencePersistence=>backend-system"], "adapterBindingModes": ["AnnualAccountsWorkspacePersistence=>one verified phase-gated Accounts transaction; accepted Company Access role and fresh MFA for sensitive evidence and permission writes", "AnnualAccountsPreparationPersistence=>one verified phase-gated Accounts transaction; accepted Company Access role and fresh MFA for sensitive evidence and permission writes", "AnnualAccountsEvidencePersistence=>one verified phase-gated Accounts transaction; accepted Company Access role and fresh MFA for sensitive evidence and permission writes"], "technicalMigrations": ["supabase/contract-migrations/20260914092018_annual_accounts_filing_read_contracts.sql", "supabase/contract-migrations/20260914093204_annual_accounts_filing_import_contract.sql", "supabase/contract-migrations/20260914092924_annual_accounts_filing_preparation_contracts.sql"]}
+-->
+
+All three Accounts workflows consume `talli_backend.modules.annual_accounts_filing.public`.
+
+<!-- architecture-inventory
+{"publicPackages": ["talli_backend.modules.annual_accounts_filing.public", "talli_backend.modules.annual_accounts_filing.public", "talli_backend.modules.annual_accounts_filing.public"]}
+-->
+
+<!-- architecture-inventory
+{"transportDependencies": ["talli_backend.adapters.postgres_annual_accounts", "talli_backend.application.annual_accounts_session", "talli_backend.modules.annual_accounts_filing.public"]}
+-->

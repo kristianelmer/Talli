@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Callable, Protocol, TypeVar
 
+from talli_backend.shared.kernel import ActorId, CompanyId, DomainError, ErrorCategory, IncomeYear
+
 
 def _freeze(value):
     # Ignored JSON metadata may be deeply nested. Copy without Python call-stack
@@ -295,7 +297,204 @@ async def prepare_annual_accounts_for_signing(
         main_form_xml=main_form_xml, company_accounts_xml=company_accounts_xml))
 
 
+class AnnualAccountsError(DomainError):
+    @classmethod
+    def hard_review_block(cls) -> AnnualAccountsError:
+        return cls(code="ANNUAL_ACCOUNTS_HARD_REVIEW_BLOCK", category=ErrorCategory.FORBIDDEN,
+            message="Hard review-blokk kan ikke acknowledges som advisory.")
+
+    @classmethod
+    def evidence_persistence_rejected(cls) -> AnnualAccountsError:
+        return cls(code="ANNUAL_ACCOUNTS_EVIDENCE_PERSISTENCE_REJECTED", category=ErrorCategory.INVALID_INPUT)
+
+    @classmethod
+    def mfa_required(cls) -> AnnualAccountsError:
+        return cls(code="ANNUAL_ACCOUNTS_MFA_REQUIRED", category=ErrorCategory.FORBIDDEN)
+
+    @classmethod
+    def not_found(cls) -> AnnualAccountsError:
+        return cls(code="ANNUAL_ACCOUNTS_NOT_FOUND", category=ErrorCategory.NOT_FOUND)
+
+    @classmethod
+    def invalid_input(cls, message: str = "") -> AnnualAccountsError:
+        return cls(code="ANNUAL_ACCOUNTS_INVALID_INPUT", category=ErrorCategory.INVALID_INPUT, message=message)
+
+    @classmethod
+    def forbidden(cls) -> AnnualAccountsError:
+        return cls(code="ANNUAL_ACCOUNTS_FORBIDDEN", category=ErrorCategory.FORBIDDEN)
+
+    @classmethod
+    def unavailable(cls) -> AnnualAccountsError:
+        return cls(code="ANNUAL_ACCOUNTS_DEPENDENCY_UNAVAILABLE", category=ErrorCategory.DEPENDENCY_UNAVAILABLE)
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsWorkspaceQuery:
+    actor_id: ActorId
+    company_id: CompanyId
+    income_year: IncomeYear | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsFilingRows:
+    """Complete immutable predecessor row projections, scoped to one company.
+
+    Permissions and authority test evidence are company-wide in the predecessor;
+    their lack of an income year must not be interpreted as year completeness.
+    """
+    company_id: CompanyId
+    income_year: IncomeYear | None
+    previews: tuple[Mapping[str, object], ...]
+    submissions: tuple[Mapping[str, object], ...]
+    overrides: tuple[Mapping[str, object], ...]
+    review_comments: tuple[Mapping[str, object], ...]
+    permissions: tuple[Mapping[str, object], ...]
+    test_evidence: tuple[Mapping[str, object], ...]
+
+    def __post_init__(self) -> None:
+        for name in ('previews', 'submissions', 'overrides', 'review_comments', 'permissions', 'test_evidence'):
+            if not isinstance(getattr(self, name), (list, tuple)):
+                raise AnnualAccountsError.unavailable()
+            object.__setattr__(self, name, _freeze(getattr(self, name)))
+        from .workspace import validate_rows
+        validate_rows(self)
+
+
+class AnnualAccountsWorkspacePersistence(Protocol):
+    async def filing_workspace(self, query: AnnualAccountsWorkspaceQuery) -> AnnualAccountsFilingRows: ...
+
+
+PersistenceAdapter = TypeVar("PersistenceAdapter", bound=type[object])
+
+
+def annual_accounts_persistence_adapter(contract: type[object]) -> Callable[[PersistenceAdapter], PersistenceAdapter]:
+    def declare(adapter: PersistenceAdapter) -> PersistenceAdapter:
+        _ = contract
+        return adapter
+    return declare
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsRecordId:
+    value: str
+
+    def __post_init__(self) -> None:
+        from uuid import UUID
+        object.__setattr__(self, 'value', str(UUID(self.value)))
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsRecordQuery:
+    actor_id: ActorId
+    record_id: AnnualAccountsRecordId
+
+
+@dataclass(frozen=True, slots=True)
+class RecordAnnualAccountsOverride:
+    actor_id: ActorId
+    preview_id: AnnualAccountsRecordId
+    field_target: str
+    old_value: str
+    new_value: str
+    reason: str
+    risk_level: str
+    owner_confirmed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class AddAnnualAccountsReviewComment:
+    actor_id: ActorId
+    preview_id: AnnualAccountsRecordId
+    severity: str
+    body: str
+
+
+@dataclass(frozen=True, slots=True)
+class ConfirmAnnualAccountsPermission:
+    actor_id: ActorId
+    company_id: CompanyId
+    production_enabled: bool
+
+
+@dataclass(frozen=True, slots=True)
+class RecordAnnualAccountsTestEvidence:
+    actor_id: ActorId
+    company_id: CompanyId
+    environment: str
+    status: str
+    test_reference: str
+    feedback_summary: str
+    receipt_reference: str | None = None
+    archive_reference: str | None = None
+    evidence_url: str | None = None
+    payload_hash: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsRecordedResult:
+    record_id: AnnualAccountsRecordId
+    company_id: CompanyId
+    income_year: IncomeYear | None
+
+
+class AnnualAccountsPreparationPersistence(Protocol):
+    async def filing_preview(self, query: AnnualAccountsRecordQuery) -> Mapping[str, object] | None: ...
+    async def record_override(self, command: RecordAnnualAccountsOverride) -> AnnualAccountsRecordedResult: ...
+    async def add_review_comment(self, command: AddAnnualAccountsReviewComment) -> AnnualAccountsRecordedResult: ...
+    async def acknowledge_review_comment(self, query: AnnualAccountsRecordQuery) -> AnnualAccountsRecordedResult: ...
+    async def confirm_filing_permission(self, command: ConfirmAnnualAccountsPermission) -> AnnualAccountsRecordedResult: ...
+    async def record_test_evidence(self, command: RecordAnnualAccountsTestEvidence) -> AnnualAccountsRecordedResult: ...
+
+
+def normalize_annual_accounts_override(command: RecordAnnualAccountsOverride) -> RecordAnnualAccountsOverride:
+    from .preparation import normalize_override
+    return normalize_override(command)
+
+
+def normalize_annual_accounts_review(command: AddAnnualAccountsReviewComment) -> AddAnnualAccountsReviewComment:
+    from .preparation import normalize_review
+    return normalize_review(command)
+
+
+def normalize_annual_accounts_test_evidence(command: RecordAnnualAccountsTestEvidence) -> RecordAnnualAccountsTestEvidence:
+    from .preparation import normalize_test_evidence
+    return normalize_test_evidence(command)
+
+
+@dataclass(frozen=True, slots=True)
+class ImportAnnualAccountsEvidence:
+    actor_id: ActorId
+    company_id: CompanyId
+    evidence: object
+    evidence_url: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'evidence', _freeze(self.evidence))
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsCompanyIdentity:
+    company_id: CompanyId
+    organization_number: str
+
+
+@dataclass(frozen=True, slots=True)
+class ImportedAnnualAccountsEvidence:
+    record_id: AnnualAccountsRecordId
+    test_reference: str
+
+
+class AnnualAccountsEvidencePersistence(Protocol):
+    async def filing_company_identity(self, company_id: CompanyId, actor_id: ActorId) -> AnnualAccountsCompanyIdentity: ...
+    async def import_tt02_evidence(self, projection: AnnualAccountsEvidenceProjection, actor_id: ActorId) -> AnnualAccountsRecordId: ...
+
+
 __all__ = [
+    "ImportAnnualAccountsEvidence", "AnnualAccountsCompanyIdentity", "ImportedAnnualAccountsEvidence",
+    "AnnualAccountsEvidencePersistence",
     'AnnualAccountsSource', 'AnnualAccountsCandidate', 'AnnualAccountsRenderInput',
     'AnnualAccountsDocuments', 'AnnualAccountsReadinessIssue', 'AnnualAccountsCorporateReadiness',
     'build_annual_accounts', 'render_annual_accounts', 'assess_annual_accounts_readiness',
@@ -305,4 +504,10 @@ __all__ = [
     'AnnualAccountsAuthorityError', 'AnnualAccountsAuthority', 'annual_accounts_authority_adapter',
     'AnnualAccountsRehearsalConfiguration', 'AnnualAccountsRehearsalIO', 'rehearse_annual_accounts',
     'prepare_annual_accounts_for_signing',
+    'AnnualAccountsRecordId', 'AnnualAccountsRecordQuery', 'RecordAnnualAccountsOverride',
+    'AddAnnualAccountsReviewComment', 'ConfirmAnnualAccountsPermission', 'RecordAnnualAccountsTestEvidence',
+    'AnnualAccountsRecordedResult', 'AnnualAccountsPreparationPersistence', 'normalize_annual_accounts_override',
+    'normalize_annual_accounts_review', 'normalize_annual_accounts_test_evidence',
+    'AnnualAccountsError', 'AnnualAccountsWorkspaceQuery', 'AnnualAccountsFilingRows',
+    'AnnualAccountsWorkspacePersistence', 'annual_accounts_persistence_adapter',
 ]

@@ -1,0 +1,212 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_FIX",
+  "baseRevision": "04e682b69e5426408932233d05328134e8e997f8",
+  "reviewedRevision": "e6f8e889852e9c26057d80f75930dc5a34ad5729",
+  "diffCommand": "git diff 04e682b69e5426408932233d05328134e8e997f8...e6f8e889852e9c26057d80f75930dc5a34ad5729",
+  "commits": [
+    "e6f8e889852e9c26057d80f75930dc5a34ad5729 fix(accounts): quarantine mismatched retained setup references"
+  ],
+  "findings": [],
+  "findingDispositions": [
+    {
+      "id": "SPEC-153-EXPAND-1",
+      "priorSeverity": "P2",
+      "status": "CLOSED",
+      "file": "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql",
+      "sourceSections": [
+        {
+          "startLine": 77,
+          "endLine": 97,
+          "purpose": "Reference-filtered owner snapshot with lock and transactional temporary policy."
+        },
+        {
+          "startLine": 144,
+          "endLine": 159,
+          "purpose": "Setup company/year classification and preview-dependent propagation."
+        }
+      ],
+      "basis": "Independent fixed-source inspection plus committed exact-SQL reproduction, controls, restoration and reconciliation evidence; no fresh SQL execution."
+    }
+  ],
+  "migrationSha256": "c1358d77a13a2d6e3d7345c487290fdf10220f3bbd984c6ff5d4983ababe1bea",
+  "reportPath": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/expand-fix-spec-review-e6f8e889.md",
+  "reportSha256": "caf105feb1f6438733bb37512c8e1f8134b8fe0d9a62fadf4829a094775c4a40",
+  "sourceBindings": [
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-clone-restore-04e682b6.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-clone.py",
+      "sha256": "0843f4b662c13092291b9fa51f345a02f8b1908f66cb855b5e4b2c5809909370"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-populated-results.json",
+      "sha256": "864817ec7c2fc9ce3a69dd396fe8cbdd6b7640783e0f80b409e1e5c6e09094eb"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-quarantine-results.json",
+      "sha256": "eb1d7e1fa8a13a25861f1191d07a9f0ebfa1465083019ccf0ef9e09ca943e6bc"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-setup-provenance-first-fixture-failure.json",
+      "sha256": "a715d6a214552d78870aa8ed61ebecbb5cb17f6132ac2eb79d7563b3f082c09a"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-setup-provenance-results.json",
+      "sha256": "9a7bb2105dc32c90d7220924942009e06b16b6b6fc4c0de30cdf7acb9045fe8c"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-setup-provenance.py",
+      "sha256": "95b16d73fd8e8df954190ea522544beef93b4a1e96fddf7ba9d5188da4497465"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-spec-review-04e682b6.json",
+      "sha256": "9cb547103b4de6b73b25cd77154a2a76e9b58319ead6ce17efebd1bdd79156db"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-spec-review-04e682b6.md",
+      "sha256": "29e64cde87d12d67b12c7e035de3119f67bb68e8c32b5419a29698737794d671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-spec-setup-provenance-04e682b6.py",
+      "sha256": "4efeea66b2d53736aa725d77b77982b9e024f6c90fefe2a70e452da31a6a27cb"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-spec-setup-provenance-results-04e682b6.json",
+      "sha256": "d56ec09dc760ef7f8add7677b0ac92b572f4ab988af1b893c169752488ec3e73"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/manifest.json",
+      "sha256": "d61214a5885e4c0dfa864b1113ebecbf115a654cf3dbe3585da5c0ac3da79ea1"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/probe-accounts-fix-populated-expand.py",
+      "sha256": "abfd0c04c048e18bfd280ba4092af2f01c87e442976fc9b256f01ad7334f1fbc"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/verification.md",
+      "sha256": "8a198650d801e854f40bfe235f0935ecb1cf117a06b98534de0c0dde84843681"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql",
+      "sha256": "c1358d77a13a2d6e3d7345c487290fdf10220f3bbd984c6ff5d4983ababe1bea"
+    }
+  ],
+  "manifestArtifactChecks": [
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-setup-provenance.py",
+      "sha256": "95b16d73fd8e8df954190ea522544beef93b4a1e96fddf7ba9d5188da4497465"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-populated-results.json",
+      "sha256": "864817ec7c2fc9ce3a69dd396fe8cbdd6b7640783e0f80b409e1e5c6e09094eb"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-spec-setup-provenance-04e682b6.py",
+      "sha256": "4efeea66b2d53736aa725d77b77982b9e024f6c90fefe2a70e452da31a6a27cb"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-setup-provenance-first-fixture-failure.json",
+      "sha256": "a715d6a214552d78870aa8ed61ebecbb5cb17f6132ac2eb79d7563b3f082c09a"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-clone.py",
+      "sha256": "0843f4b662c13092291b9fa51f345a02f8b1908f66cb855b5e4b2c5809909370"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/verification.md",
+      "sha256": "8a198650d801e854f40bfe235f0935ecb1cf117a06b98534de0c0dde84843681"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-spec-review-04e682b6.md",
+      "sha256": "29e64cde87d12d67b12c7e035de3119f67bb68e8c32b5419a29698737794d671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-clone-restore-04e682b6.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-spec-review-04e682b6.json",
+      "sha256": "9cb547103b4de6b73b25cd77154a2a76e9b58319ead6ce17efebd1bdd79156db"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-quarantine-results.json",
+      "sha256": "eb1d7e1fa8a13a25861f1191d07a9f0ebfa1465083019ccf0ef9e09ca943e6bc"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-setup-provenance-results.json",
+      "sha256": "9a7bb2105dc32c90d7220924942009e06b16b6b6fc4c0de30cdf7acb9045fe8c"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-spec-setup-provenance-results-04e682b6.json",
+      "sha256": "d56ec09dc760ef7f8add7677b0ac92b572f4ab988af1b893c169752488ec3e73"
+    },
+    {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/probe-accounts-fix-populated-expand.py",
+      "sha256": "abfd0c04c048e18bfd280ba4092af2f01c87e442976fc9b256f01ad7334f1fbc"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql",
+      "sha256": "c1358d77a13a2d6e3d7345c487290fdf10220f3bbd984c6ff5d4983ababe1bea"
+    }
+  ],
+  "adoptedOriginals": [
+    {
+      "name": "expand-spec-review-04e682b6.md",
+      "sha256": "29e64cde87d12d67b12c7e035de3119f67bb68e8c32b5419a29698737794d671"
+    },
+    {
+      "name": "expand-spec-review-04e682b6.json",
+      "sha256": "9cb547103b4de6b73b25cd77154a2a76e9b58319ead6ce17efebd1bdd79156db"
+    },
+    {
+      "name": "expand-spec-setup-provenance-04e682b6.py",
+      "sha256": "4efeea66b2d53736aa725d77b77982b9e024f6c90fefe2a70e452da31a6a27cb"
+    },
+    {
+      "name": "expand-spec-setup-provenance-results-04e682b6.json",
+      "sha256": "d56ec09dc760ef7f8add7677b0ac92b572f4ab988af1b893c169752488ec3e73"
+    }
+  ],
+  "requirementsSha256": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+  "originalCriteriaUnchangedAndPending": true,
+  "verifiedRecordedChecks": {
+    "setupProbe": {
+      "path": "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-setup-provenance-results.json",
+      "sha256": "9a7bb2105dc32c90d7220924942009e06b16b6b6fc4c0de30cdf7acb9045fe8c",
+      "quarantined": 6,
+      "copiedMatchingAndNullPreviews": 2,
+      "copiedMatchingAndNullSubmissions": 2,
+      "reconciledFamilies": 6,
+      "dependentRoutines": 37,
+      "legacyRowsUnchanged": true,
+      "rfAclPoliciesRestored": true,
+      "globalMembershipsRestored": true,
+      "schemaAndFixturesRolledBack": true
+    },
+    "accessProbe": {
+      "accessCases": 60,
+      "classifierCases": 7,
+      "sha256": "864817ec7c2fc9ce3a69dd396fe8cbdd6b7640783e0f80b409e1e5c6e09094eb"
+    },
+    "unknownQuarantine": {
+      "quarantinedRows": 2,
+      "sha256": "eb1d7e1fa8a13a25861f1191d07a9f0ebfa1465083019ccf0ef9e09ca943e6bc"
+    }
+  },
+  "independentCommands": [
+    "git rev-parse e6f8e889",
+    "git log --oneline 04e682b6..e6f8e889",
+    "git diff 04e682b6...e6f8e889 -- supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql",
+    "git show e6f8e889:<each source/evidence path>",
+    "python3 /Users/kristianelmer/.codex/issue-192-private/issue153-entry/write-expand-fix-spec-review-e6f8e889.py"
+  ],
+  "limits": [
+    "No fresh SQL/DB/browser/provider/test execution, global role changes or shared file mutations.",
+    "Stored probe metadata describes its historical clone state; no assertion about current parent-owned read/control rehearsal state.",
+    "All six stage acceptance criteria remain pending; no full-stage or exit credit."
+  ]
+}
