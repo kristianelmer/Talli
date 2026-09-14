@@ -229,7 +229,8 @@ def test_actual_canonical_generation_preserves_source_xml_bytes(rf_environment, 
     monkeypatch.chdir(ROOT)
     summary, calls = execute(rf_environment)
     assert summary["status"] == "accepted"
-    output = Path(rf_environment["TALLI_RF1086_EVIDENCE_PATH"]).parent / "xml"
+    path = Path(rf_environment["TALLI_RF1086_EVIDENCE_PATH"])
+    output = path.with_name(f".{path.name}.xml")
     assert calls[1].content == (output / "1086H.xml").read_bytes()
     assert calls[2].content == (output / "1086U-founder.xml").read_bytes()
     assert evidence(rf_environment)["payloadHashes"]["hovedskjema"] == hashlib.sha256(calls[1].content).hexdigest()

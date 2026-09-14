@@ -35,3 +35,14 @@ representative genuine-company production evidence, and all seven original crite
 The historical CLI status `accepted` reports archived transport documents, not final
 business acceptance. No current provider call, credential activation, hosted mutation,
 production promotion or genuine filing has been performed by this change.
+
+## Independent review corrections
+
+The first Spec review reproduced three file/evidence defects. Preparation now uses
+a fresh temporary directory, so only the current generated child extent can be sent.
+Retained payloads live under `.<evidence-filename>.xml` beside their journal and are
+published only after prior payload and intent checks; a rejected invocation cannot
+overwrite earlier XML. The former shared `xml/` folder is no longer used or modified.
+Accepted replay validates nonempty document hashes/count, archive reference and GET
+call against the recorded confirmation before reporting the saved transport success.
+These changes preserve the original review failures and add direct regression tests.
