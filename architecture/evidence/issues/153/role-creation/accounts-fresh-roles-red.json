@@ -1,0 +1,25 @@
+{
+  "status": "FRESH_ROLE_MEMBERSHIP_ASSERTION_REPRODUCED",
+  "newRows": [
+    [
+      303459,
+      16384,
+      10,
+      true,
+      false,
+      false
+    ],
+    [
+      303461,
+      16384,
+      10,
+      true,
+      false,
+      false
+    ]
+  ],
+  "freshRoles": 2,
+  "outerRollbackExact": true,
+  "originalRoleNamesAndOidsRestored": true,
+  "mode": "OWNED_LOCAL_CLONE_UNCOMMITTED_ROLE_RENAMES_ONLY"
+}

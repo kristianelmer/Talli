@@ -1,0 +1,13 @@
+Spec design assessment: the proposed narrow correction is appropriate; validation is still required.
+
+At55f5abbdcb0f4d638f26aea093db13722ef922c5, all28 Accounts lifecycle cases fail during fixture expansion at `apply():55`, where the complete membership set must equal its pre-expansion snapshot. The recorded difference is two memberships `(new_role, postgres, bootstrap, true, false, false)`. Expansion creates exactly two named owner/executor roles before separately borrowing/restoring execution memberships.
+
+PostgreSQL17 documents automatic creator-management grants for non-superuser CREATEROLE users, issued by the bootstrap superuser and not revocable by that creator. They grant administration; INHERIT/SET false prevents immediate use, but ADMIN allows regranting access. Thus describe this as expected role-creation authority, not “no privilege change.” [PostgreSQL17 role attributes](https://www.postgresql.org/docs/17/role-attributes.html)
+
+Capture before execution: the creating principal’s OID/attributes, bootstrap grantor identity, the two exact role names/OIDs or positive absence, and every membership tuple. Only for this expansion, a non-superuser CREATEROLE creator and roles positively absent beforehand may the expected after-set add one exact bootstrap-to-creator tuple per newly created role: ADMIN true, INHERIT false, SET false. Bind each new OID back to its exact name and require the intended restricted role attributes. Assert `after == before ∪ expected`; do not filter arbitrary additions. Require zero expected delta for superuser creation, already-existing roles and every other artifact.
+
+Preserve exact preexisting memberships, including grantor/options; reject extra recipients, unrelated roles, wrong grantors or any option change. Keep temporary borrowing restoration exact and retain strict outer-transaction rollback equality, including disappearance of newly created roles. The migration’s advisory lock serializes its creation path; no global administrative exception is justified.
+
+Decisive tests: fresh two-role and mixed-existing creation under the actual Supabase principal; existing-role reuse; superuser control; negative extra/mutated membership cases; exact rollback; then all28 mandatory lifecycle cases. The original failure remains failed evidence. #132 forbids hiding failed authorization/RLS, so an explicit engine-defined creation delta is suitable; broad allowance or skipped membership checks are not.
+
+No SQL execution or product/test edits were performed. No new superuser dependency or SECURITY DEFINER workaround is warranted. No stage-exit credit.

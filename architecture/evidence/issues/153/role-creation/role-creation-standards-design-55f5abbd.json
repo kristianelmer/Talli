@@ -1,0 +1,96 @@
+{
+  "axis": "Standards",
+  "verdict": "NARROW_ORACLE_CORRECTION_SUPPORTED_PENDING_RUNTIME_PROOF",
+  "candidateRevision": "55f5abbdcb0f4d638f26aea093db13722ef922c5",
+  "baselineRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "sourceBindings": {
+    "apps/backend/tests/test_annual_accounts_filing_lifecycle.py": "5a4b7c8766e93fcd283ab256a26fc965c1b74e691f330860abdf020775db062b",
+    "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql": "c1358d77a13a2d6e3d7345c487290fdf10220f3bbd984c6ff5d4983ababe1bea",
+    "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482",
+    "architecture/COMPATIBILITY.md": "7683810e3f0b816fcc166c428faba245060f91c86ae7e0750b39803730c57ab7"
+  },
+  "observedFailedGate": {
+    "path": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/architecture/evidence/customer-ready-gates/55f5abbdcb0f4d638f26aea093db13722ef922c5.log",
+    "sha256": "5623972e48ced8f20f875890a924d2cb37312b388d3ae825e8e192cbfd80ed5f",
+    "bytes": 352636,
+    "errors": 28,
+    "site": "test_annual_accounts_filing_lifecycle.py:55",
+    "firstObservedExtraTuple": [
+      101731,
+      16384,
+      10,
+      true,
+      false,
+      false
+    ],
+    "interpretation": "Expected automatic creator-management grants are inconsistent with blanket post-expansion membership equality; exact grant identities require parent runtime catalog proof."
+  },
+  "primarySources": {
+    "role-attributes": {
+      "url": "https://www.postgresql.org/docs/17/role-attributes.html",
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/role-creation-postgresql17-role-attributes.html",
+      "sha256": "4f143e7526e42446c62ba39249a9b0ae3ad476d6869e4b9a6cfd3b465848f808",
+      "bytes": 24183
+    },
+    "client-defaults": {
+      "url": "https://www.postgresql.org/docs/17/runtime-config-client.html",
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/role-creation-postgresql17-client-defaults.html",
+      "sha256": "401012dadba0755ab928808eea01c330200af72ffa575ff63d306c073a81c946",
+      "bytes": 85627
+    }
+  },
+  "cachedSpec": {
+    "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/stage-exit132-comments-current.md",
+    "sha256": "6c1bc0d88cf93369f1551f8cacecd00c3f72916a11c31c8b491d512338011fec"
+  },
+  "design": {
+    "scope": "Exact Accounts expansion artifact only",
+    "roleNames": [
+      "annual_accounts_filing_store_owner",
+      "annual_accounts_filing_workflow_executor"
+    ],
+    "prerequisites": [
+      "Positive pre-execution absence of each allowed role",
+      "Captured effective creating principal OID, CREATEROLE and non-superuser status",
+      "Verified bootstrap grantor identity",
+      "Exact post-role name/OID and restricted attribute binding"
+    ],
+    "expectedNewMembership": {
+      "roleid": "OID of positively new declared role",
+      "member": "Captured effective creating principal OID",
+      "grantor": 10,
+      "admin_option": true,
+      "inherit_option": false,
+      "set_option": false
+    },
+    "comparison": "post == pre union expected_new_management_grants; never blanket subtraction/filtering",
+    "unchanged": [
+      "Every preexisting tuple including grantor/options",
+      "Every other artifact/existing-role path",
+      "Temporary borrowed membership cleanup",
+      "Outer transaction rollback equality and role/schema cleanup"
+    ],
+    "negativeControls": [
+      "Incorrect grantor or member",
+      "SET/INHERIT true or ADMIN false",
+      "Unexpected unrelated role grant",
+      "Changed prior membership",
+      "Existing-role replay new grant",
+      "Unexpected createrole_self_grant execution privileges"
+    ],
+    "positiveControls": [
+      "Zero, one, two absent declared roles",
+      "Non-superuser CREATEROLE creation",
+      "Superuser creation expects no auto-management row",
+      "Outer rollback removes newly created roles and their grants"
+    ]
+  },
+  "reportSha256": "4cc9a8f1068703fb7197d0f49f1c3aec234e9760b295cf006e793c7b45c15060",
+  "limits": [
+    "No DB, role, Docker or implementation mutation",
+    "No independent runtime reproduction; parent owns that evidence",
+    "Does not waive authorization or RLS acceptance",
+    "Full gate55f remains failed"
+  ]
+}

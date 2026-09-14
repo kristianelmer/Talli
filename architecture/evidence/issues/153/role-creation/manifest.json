@@ -1,0 +1,148 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#153",
+  "baseRevision": "55f5abbdcb0f4d638f26aea093db13722ef922c5",
+  "status": "41_SQL_TESTS_PASS_IMPLEMENTATION_REVIEW_AND_FULL_EXIT_PENDING",
+  "artifacts": [
+    {
+      "path": "architecture/evidence/issues/153/role-creation/accounts-fresh-roles-green.json",
+      "sha256": "2f752587a4fd11f0f99059aad42d0a193aa2fb5f6bdae988407ba3b7736d79da",
+      "bytes": 209
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/accounts-fresh-roles-red.json",
+      "sha256": "0246620203eb31d315547718fa05d431ca067a2f9173e712eb957237d22c2745",
+      "bytes": 408
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/accounts-role-creation-lifecycle-complete.log",
+      "sha256": "ab50a9b179cce2dee71a73caacdb0ec822bd553434c2060d06b5d005657b65a9",
+      "bytes": 100
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/accounts-role-creation-lifecycle-corrected.log",
+      "sha256": "129bb8c89ec79dfe6562c09e6b0295ccd3076122d61d9d505f07e0f582b6ae83",
+      "bytes": 100
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/accounts-role-creation-lifecycle-final.log",
+      "sha256": "ff6bd3b9373bc08e19c7ec43ac05bed91b1a052b53963739a4d8e04d9e725f51",
+      "bytes": 3294
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/accounts-role-creation-lifecycle-first.log",
+      "sha256": "f1cdc2acd52ab63d726177adabd5dcddd1ef56b306e7c4e0dafb6d8b33f5e829",
+      "bytes": 3398
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/journal-standards-artifact-checks-f1e6316c.json",
+      "sha256": "1e698118a19d9202c3e0b76f0ca5fc5df7e4494c3f7a1440c94756847b8f01b1",
+      "bytes": 16804
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/journal-standards-cleanup-command-f1e6316c.json",
+      "sha256": "ffd2b0891b996c15563200e77292dab227dbe270ef360fa5c4417778ebf31795",
+      "bytes": 387
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/journal-standards-cleanup-tests-f1e6316c.log",
+      "sha256": "9f2d35f994d4e74e50e4b03527720d6ad5586ed158286c0a32374cbed2d90fad",
+      "bytes": 1640
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/journal-standards-concurrent-cli-f1e6316c.py",
+      "sha256": "e4290c58004ddc8ca9a73ba585e75ee6807e17683d83730b6f976ff81eaed5f6",
+      "bytes": 3478
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/journal-standards-concurrent-cli-results-f1e6316c.json",
+      "sha256": "0d716a3f8942fa2515068c83a4a4d5e6154fb7dfbdce0947eca51afab1d086bf",
+      "bytes": 409
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/journal-standards-edge-results-f1e6316c.json",
+      "sha256": "210014f2fc2aee5813c1613cc84ed0e3f7f9bdd01962ebce1974d41b39198f58",
+      "bytes": 1394
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/journal-standards-review-f1e6316c.json",
+      "sha256": "f136bbc9318e0e96974596a53cb251c2433aa8605d2b6d19bb30bd22b64a61d5",
+      "bytes": 14480
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/journal-standards-review-f1e6316c.md",
+      "sha256": "543b70f5fc799c8a0222ea9ee0ec3c1e5c11637d84ef90af60f6a0c19b77b63d",
+      "bytes": 2430
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/journal-standards-structural-checks-f1e6316c.json",
+      "sha256": "bebfb2e638eb5f7d521a0a86b3a3fcc34cd7935f796f62ce3a520d43e19870c9",
+      "bytes": 174
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/journal-standards-test-command-f1e6316c.json",
+      "sha256": "158d3806308a201f579dac77e5df2c00ce97208e8e680ba06c071e81b156a312",
+      "bytes": 761
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/journal-standards-tests-f1e6316c.log",
+      "sha256": "3d737f80ee2ed1bdd87bf263f7deccc4cf5ed8f32667ddddc6e502a940ec9c13",
+      "bytes": 340
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/journal-standards-workspace-f1e6316c.json",
+      "sha256": "4f545c17e6e95ca05dade5acf9f5355460447fc1f63aca6b64a518d920403221",
+      "bytes": 221
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/probe-accounts-fresh-roles.py",
+      "sha256": "d81e46e12138620ee0b89fb5d5271fec03a222ffca10cccc346a433230cc8c28",
+      "bytes": 1864
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/probe-role-creation-pg17.py",
+      "sha256": "34ec88e904a44191a301ed7a86699e08815c6ed4afd37a9373a176cc740b9b01",
+      "bytes": 3439
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/role-creation-owned-container.json",
+      "sha256": "6e993843fb13efa16a7ed46566dfeefb4b395cda0fc1c5c11cc250a468d40c45",
+      "bytes": 108
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/role-creation-pg17.json",
+      "sha256": "fc1abb3fa159a92dbf5ecc2a3ced4616a1e420ee60d9a865cc355ba699333bc8",
+      "bytes": 780
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/role-creation-spec-design-55f5abbd.json",
+      "sha256": "def94ee9952d83372a57f6074837b3300a7e20aba9c300b03738f11c5a8c5fbc",
+      "bytes": 3397
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/role-creation-spec-design-55f5abbd.md",
+      "sha256": "77a417c0299826d178f99578d580f75e2bb4d0e7d5a3748d44b71d81f7d638ed",
+      "bytes": 2624
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/role-creation-standards-design-55f5abbd.json",
+      "sha256": "2fed27c48be23ff43bffc08637248c30747f9362a0dc31cab767dbee149b08fe",
+      "bytes": 4489
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/role-creation-standards-design-55f5abbd.md",
+      "sha256": "4cc9a8f1068703fb7197d0f49f1c3aec234e9760b295cf006e793c7b45c15060",
+      "bytes": 2761
+    },
+    {
+      "path": "architecture/evidence/issues/153/role-creation/verification.md",
+      "sha256": "0d2e178c814ff9b01e8a0cfb8fd4f9cf9556fdfdf1ecac4e2ecb2900678e570b",
+      "bytes": 2794
+    },
+    {
+      "path": "architecture/evidence/customer-ready-gates/55f5abbdcb0f4d638f26aea093db13722ef922c5.log",
+      "sha256": "5623972e48ced8f20f875890a924d2cb37312b388d3ae825e8e192cbfd80ed5f",
+      "bytes": 352636
+    }
+  ]
+}

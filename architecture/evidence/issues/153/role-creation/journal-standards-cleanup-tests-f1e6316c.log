@@ -1,0 +1,24 @@
+✔ browser owner cleanup preserves every prior family in predecessor before company and user (16.384542ms)
+✔ browser owner cleanup preserves every prior family in overlap before company and user (13.101625ms)
+✔ browser owner cleanup preserves every prior family in contracted before company and user (11.840791ms)
+✔ browser owner cleanup preserves every prior family in tax-contracted before company and user (13.222542ms)
+✔ browser owner cleanup preserves every prior family in accounts-expanded before company and user (12.957625ms)
+✔ browser owner cleanup preserves every prior family in accounts-contracted before company and user (13.624916ms)
+✔ browser owner cleanup removes every tracked company before the shared owner (12.245584ms)
+✔ browser owner cleanup preserves source failure and continues independent cleanup (5.802958ms)
+✔ browser owner cleanup preserves both operation and rollback failures (3.4295ms)
+✔ browser owner cleanup fails closed for accounts-missing-family (1.408416ms)
+✔ browser owner cleanup fails closed for accounts-partial-retirement (0.372125ms)
+✔ browser owner cleanup fails closed for accounts-wrong-phase (2.054041ms)
+✔ browser owner cleanup fails closed for missing-family (0.225125ms)
+✔ browser owner cleanup fails closed for wrong-owner (0.526625ms)
+✔ browser owner cleanup fails closed for invalid-trigger-mode (5.043167ms)
+﹣ browser owner cleanup removes immutable corporate and production filing graphs (0.214ms) # local Supabase runtime is required
+ℹ tests 16
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 226.872708

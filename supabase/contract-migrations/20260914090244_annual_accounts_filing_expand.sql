@@ -5,6 +5,9 @@ set local lock_timeout='5s';
 set local statement_timeout='120s';
 set local timezone='UTC';
 set local search_path='';
+-- Suppress ambient creator SET/INHERIT self-grants; PostgreSQL's required
+-- bootstrap-granted creator ADMIN remains explicit migration administration.
+set local createrole_self_grant='';
 select pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('talli:annual-accounts-filing:migration:v1',0));
 
 -- Serial predecessor and first owner creation; no existing runtime is switched.
@@ -286,7 +289,7 @@ do $restore$ declare r record; begin
  for r in select * from accounts153_borrowed_roles loop
   execute pg_catalog.format('revoke %I from %I granted by %I',r.role_name,current_user,current_user);
   if r.prior is not null then
-   execute pg_catalog.format('grant %I to %I with admin %s,inherit %s,set %s granted by %I',r.role_name,current_user,(r.prior->>'admin')::boolean,(r.prior->>'inherit')::boolean,(r.prior->>'set')::boolean,current_user);
+   execute pg_catalog.format('grant %I to %I with admin %s,inherit %s,set %s granted by %I',r.role_name,current_user,r.prior->>'admin',r.prior->>'inherit',r.prior->>'set',current_user);
   end if;
  end loop;
 end; $restore$;

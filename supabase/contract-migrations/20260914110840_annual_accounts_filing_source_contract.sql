@@ -95,7 +95,7 @@ do $restore$ declare r record; begin
   if r.prior is null then
    execute pg_catalog.format('revoke %I from %I granted by %I',r.role_name,current_user,current_user);
   else
-   execute pg_catalog.format('grant %I to %I with admin %s,inherit %s,set %s granted by %I',r.role_name,current_user,(r.prior->>'admin')::boolean,(r.prior->>'inherit')::boolean,(r.prior->>'set')::boolean,current_user);
+   execute pg_catalog.format('grant %I to %I with admin %s,inherit %s,set %s granted by %I',r.role_name,current_user,r.prior->>'admin',r.prior->>'inherit',r.prior->>'set',current_user);
   end if;
  end loop;
 end; $restore$;

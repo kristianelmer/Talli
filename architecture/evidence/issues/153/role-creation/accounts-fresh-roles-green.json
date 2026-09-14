@@ -1,0 +1,7 @@
+{
+  "status": "FRESH_ROLE_MEMBERSHIP_ASSERTION_PASS",
+  "freshRoles": 2,
+  "outerRollbackExact": true,
+  "originalRoleNamesAndOidsRestored": true,
+  "mode": "OWNED_LOCAL_CLONE_UNCOMMITTED_ROLE_RENAMES_ONLY"
+}

@@ -7,6 +7,7 @@ from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
+from uuid import uuid4
 
 import psycopg
 from psycopg import sql
@@ -27,6 +28,7 @@ EXPANSION = (
 )
 CUTOVER = '20260914101805_annual_accounts_filing_cutover.sql'
 CONTRACT = '20260914101842_annual_accounts_filing_contract.sql'
+ACCOUNTS_ROLES = ('annual_accounts_filing_store_owner', 'annual_accounts_filing_workflow_executor')
 
 
 def memberships(db):
@@ -51,32 +53,137 @@ def apply(db, name, *, rollback=False):
     raw = path.read_text()
     assert raw.endswith('commit;\n') and 'begin;\n' in raw
     before = memberships(db)
+    creator = db.execute('select oid,rolsuper,rolcreaterole from pg_roles where rolname=current_user').fetchone()
+    prior_roles = {role_name for role_name, in db.execute('select rolname from pg_roles where rolname=any(%s)', (list(ACCOUNTS_ROLES),))}
     db.execute(raw.replace('begin;\n', '', 1).removesuffix('commit;\n'), prepare=False)
-    assert memberships(db) == before
+    expected = set(before)
+    if name == EXPANSION[0] and not rollback and not creator[1]:
+        assert creator[2], 'role creation requires the captured CREATEROLE principal'
+        # PostgreSQL itself grants ADMIN to a non-superuser creator, from the
+        # bootstrap superuser (OID10). This is management authority, not a
+        # temporary execution grant, and the creator cannot revoke it.
+        assert db.execute('select rolsuper from pg_roles where oid=10').fetchone() == (True,)
+        for role_name in set(ACCOUNTS_ROLES) - prior_roles:
+            role_id = db.execute('select oid from pg_roles where rolname=%s', (role_name,)).fetchone()[0]
+            expected.add((role_id, creator[0], 10, True, False, False))
+    assert set(memberships(db)) == expected
     # Emulate each artifact's ON COMMIT DROP without committing the outer test.
     for schema, table in db.execute("select n.nspname,c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.oid=pg_my_temp_schema() and c.relkind='r'").fetchall():
         db.execute(sql.SQL('drop table {}.{} cascade').format(sql.Identifier(schema), sql.Identifier(table)))
 
 
 @pytest.fixture
-def database():
+def unexpanded_database():
     url = os.environ.get('DATABASE_URL')
     assert url and conninfo_to_dict(url).get('host') in ('localhost', '127.0.0.1', '::1'), 'owned disposable loopback database required'
     with psycopg.connect(url, autocommit=True) as db:
         assert db.execute("select to_regnamespace('annual_accounts_filing') is null").fetchone()[0], 'run before Accounts expansion'
         assert db.execute('select phase from backend_system.company_tax_return_migration_state').fetchone()[0] == 'contracted'
         before = memberships(db)
+        original_roles = db.execute('select oid,rolname from pg_roles where rolname=any(%s) order by oid', (list(ACCOUNTS_ROLES),)).fetchall()
         db.execute('begin isolation level repeatable read')
         try:
             seed(db)
-            for artifact in EXPANSION:
-                apply(db, artifact)
             yield db
         finally:
             db.execute('rollback')
             assert memberships(db) == before
+            assert db.execute('select oid,rolname from pg_roles where rolname=any(%s) order by oid', (list(ACCOUNTS_ROLES),)).fetchall() == original_roles
             assert db.execute("select to_regnamespace('annual_accounts_filing') is null").fetchone()[0]
             assert db.execute('select count(*) from public.companies where id=%s', (COMPANY,)).fetchone()[0] == 0
+
+
+@pytest.fixture
+def database(unexpanded_database):
+    for artifact in EXPANSION:
+        apply(unexpanded_database, artifact)
+    return unexpanded_database
+
+
+def hide_existing_accounts_roles(db):
+    # These catalog renames stay uncommitted inside the fixture's outer rollback.
+    # This permits fresh-role coverage even when another owned clone provisioned
+    # the two global roles earlier; other sessions retain their committed names.
+    original = db.execute('select oid,rolname from pg_roles where rolname=any(%s)', (list(ACCOUNTS_ROLES),)).fetchall()
+    for _, role_name in original:
+        db.execute(sql.SQL('alter role {} rename to {}').format(sql.Identifier(role_name),
+            sql.Identifier('accounts153_prior_' + uuid4().hex)))
+    return original
+
+
+@pytest.mark.parametrize('existing_count', [0, 1, 2])
+@pytest.mark.parametrize('self_grant', ['', 'set,inherit'])
+def test_expansion_preserves_existing_grants_and_bounds_new_role_administration(unexpanded_database, existing_count, self_grant):
+    db = unexpanded_database
+    hide_existing_accounts_roles(db)
+    for role_name in ACCOUNTS_ROLES[:existing_count]:
+        db.execute(sql.SQL('create role {} nologin noinherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls').format(sql.Identifier(role_name)))
+    db.execute('select set_config(%s,%s,true)', ('createrole_self_grant', self_grant))
+    apply(db, EXPANSION[0])
+    assert db.execute('show createrole_self_grant').fetchone()[0] == ''
+    assert db.execute("select phase from backend_system.annual_accounts_migration_state").fetchone()[0] == 'expanded'
+    # Existing-role treatment on replay is exact; the guard refuses the second
+    # expansion without changing role administration or any execution grant.
+    before = memberships(db)
+    expect_error(db, 'annual_accounts_expansion_already_exists', lambda: apply(db, EXPANSION[0]))
+    assert memberships(db) == before
+
+
+@pytest.mark.parametrize('inherit', [False, True])
+def test_every_artifact_restores_preexisting_direct_membership_options(unexpanded_database, inherit):
+    db = unexpanded_database
+    hide_existing_accounts_roles(db)
+    for role_name in ACCOUNTS_ROLES:
+        db.execute(sql.SQL('create role {} nologin noinherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls').format(sql.Identifier(role_name)))
+    runner = db.execute('select current_user').fetchone()[0]
+    db.execute(sql.SQL('grant annual_accounts_filing_store_owner to {} with admin false,inherit {},set false granted by {}').format(
+        sql.Identifier(runner), sql.SQL('true' if inherit else 'false'), sql.Identifier(runner)))
+    before = memberships(db)
+    for artifact in EXPANSION:
+        apply(db, artifact)
+    for artifact, rollback in [(CUTOVER, False), (CONTRACT, False), (CONTRACT, True), (CUTOVER, True), (CUTOVER, False), (CONTRACT, False)]:
+        apply(db, artifact, rollback=rollback)
+    assert memberships(db) == before
+
+
+def inject_expansion_grant(monkeypatch, options, *, other_recipient=False):
+    original_read = Path.read_text
+    recipient = "'authenticated'" if other_recipient else "current_user"
+    extra = "do $probe$ begin execute pg_catalog.format('grant annual_accounts_filing_store_owner to %I with " + options + " granted by %I'," + recipient + ",current_user); end; $probe$;\n"
+    def mutated_read(path, *args, **kwargs):
+        text = original_read(path, *args, **kwargs)
+        if path.name == EXPANSION[0]: return text.removesuffix('commit;\n') + extra + 'commit;\n'
+        return text
+    monkeypatch.setattr(Path, 'read_text', mutated_read)
+
+
+@pytest.mark.parametrize('options', ['set true', 'inherit true', 'admin false,inherit false,set false'])
+def test_expansion_assertion_rejects_extra_creator_grants(unexpanded_database, monkeypatch, options):
+    db = unexpanded_database
+    hide_existing_accounts_roles(db)
+    inject_expansion_grant(monkeypatch, options)
+    with pytest.raises(AssertionError):
+        apply(db, EXPANSION[0])
+
+
+def test_expansion_assertion_rejects_a_different_grant_recipient(unexpanded_database, monkeypatch):
+    db = unexpanded_database
+    hide_existing_accounts_roles(db)
+    inject_expansion_grant(monkeypatch, 'set true', other_recipient=True)
+    with pytest.raises(AssertionError):
+        apply(db, EXPANSION[0])
+
+
+def test_expansion_assertion_rejects_changed_preexisting_self_grant(unexpanded_database, monkeypatch):
+    db = unexpanded_database
+    hide_existing_accounts_roles(db)
+    for role_name in ACCOUNTS_ROLES:
+        db.execute(sql.SQL('create role {} nologin noinherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls').format(sql.Identifier(role_name)))
+    runner = db.execute('select current_user').fetchone()[0]
+    db.execute(sql.SQL('grant annual_accounts_filing_store_owner to {} with admin false,inherit false,set false granted by {}').format(sql.Identifier(runner), sql.Identifier(runner)))
+    inject_expansion_grant(monkeypatch, 'set true')
+    with pytest.raises(AssertionError):
+        apply(db, EXPANSION[0])
 
 
 @contextmanager

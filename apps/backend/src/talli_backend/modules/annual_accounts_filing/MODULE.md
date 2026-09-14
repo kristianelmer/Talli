@@ -57,6 +57,14 @@ reconciles all six families by count and digest and fences the legacy tables;
 contract removes them. Paired rollback restores the latest owned rows and original
 access definitions before returning authority to the legacy writer. Owned
 contracts fail closed during expansion and after rollback.
+On [PostgreSQL17](https://www.postgresql.org/docs/17/role-attributes.html), a non-superuser CREATEROLE migration principal receives the
+engine's bootstrap-granted ADMIN membership only for newly created owner/executor
+roles. This is real role-management authority: ADMIN can subsequently grant access.
+The expansion suppresses optional creator SET/INHERIT self-grants. Every preexisting
+membership and borrowed execution grant is restored exactly, including its grantor
+and Boolean options; the tests allow only the two positively identified creation
+management grants and retain exact outer-rollback checks.
+
 No storage bucket is added.
 `AnnualAccountsAuthority` declares the fixed TT02 operations and
 `AnnualAccountsRehearsalIO` declares exclusive evidence ownership, local file, clock, XML and credential seams.

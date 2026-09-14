@@ -1,0 +1,8 @@
+{
+  "rehearsalBusinessBodyAstUnchanged": true,
+  "cleanupProductionBytesUnchanged": true,
+  "python": "3.12.12",
+  "PyICU": "2.16.2",
+  "ICU": "78.2",
+  "node": "v24.20.0"
+}

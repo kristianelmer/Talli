@@ -145,7 +145,7 @@ do $restore$ declare r record; begin
  for r in select * from accounts153_preparation_borrowed_roles loop
   execute pg_catalog.format('revoke %I from %I granted by %I',r.role_name,current_user,current_user);
   if r.prior is not null then
-   execute pg_catalog.format('grant %I to %I with admin %s,inherit %s,set %s granted by %I',r.role_name,current_user,(r.prior->>'admin')::boolean,(r.prior->>'inherit')::boolean,(r.prior->>'set')::boolean,current_user);
+   execute pg_catalog.format('grant %I to %I with admin %s,inherit %s,set %s granted by %I',r.role_name,current_user,r.prior->>'admin',r.prior->>'inherit',r.prior->>'set',current_user);
   end if;
  end loop;
 end; $restore$;

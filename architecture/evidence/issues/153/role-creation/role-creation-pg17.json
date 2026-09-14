@@ -1,0 +1,20 @@
+{
+  "containerRemoved": true,
+  "volumeRemoved": true,
+  "status": "REPRODUCED_EXPECTED_ENGINE_CREATOR_ADMIN_GRANT",
+  "postgresVersion": "17.11 (Debian 17.11-1.pgdg13+2)",
+  "automaticGrant": {
+    "role": "accounts_owned",
+    "member": "accounts_creator",
+    "grantor": "postgres",
+    "admin": true,
+    "inherit": false,
+    "set": false
+  },
+  "creatorCannotRevokeBootstrapGrant": true,
+  "revokeError": "ERROR:  permission denied to revoke privileges granted by role \"postgres\"\nDETAIL:  Only roles with privileges of role \"postgres\" may revoke privileges granted by this role.",
+  "temporarySelfGrantExactlyRemoved": true,
+  "superuserCreationAddsNoMembership": true,
+  "initialMembershipCount": 3,
+  "mode": "OWNED_DISPOSABLE_LOCAL_POSTGRES_NO_HOSTED_OR_PROVIDER"
+}
