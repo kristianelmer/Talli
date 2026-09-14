@@ -253,3 +253,17 @@ def test_malformed_success_response_never_authorizes_replay(rf_environment, fake
     with pytest.raises(Rf1086AuthorityError, match="RECONCILIATION_REQUIRED") as caught:
         execute(rf_environment)
     assert caught.value.test_calls == [] and evidence(rf_environment) == saved
+
+
+def test_partial_archive_never_mints_success_and_recovers_without_post(rf_environment, fake_xml):
+    def partial(request):
+        if request.url.path.endswith("/dokumenter"):
+            return httpx.Response(200, json={"dokumenter": ["<first/>"], "totalItems": 2,
+                                            "totalPages": 2, "currentPage": 0})
+    with pytest.raises(Rf1086AuthorityError, match="ARCHIVE_INCOMPLETE"):
+        execute(rf_environment, handler=partial)
+    saved = evidence(rf_environment)
+    assert saved["status"] == "failed_blocked" and saved["archive"] is None
+    _, calls = execute(rf_environment)
+    assert [request.url.path.split("/")[-1] for request in calls] == ["token", "dokumenter"]
+    assert evidence(rf_environment)["idempotencyKeys"] == saved["idempotencyKeys"]

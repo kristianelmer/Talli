@@ -171,23 +171,28 @@ def _validate_saved_intent(prior: dict, shareholders: dict) -> None:
         if prior["status"] in {"confirmed", "accepted"} and not confirmed:
             raise ValueError()
         if prior["status"] == "accepted":
-            archive = prior["archive"]
-            hashes = archive["documentHashes"]
-            if (archive["lookupReferenceType"] != "forsendelseId"
-                    or archive["lookupReferenceId"] != prior["confirmation"]["forsendelseId"]
-                    or not isinstance(hashes, list) or not hashes
-                    or type(archive["totalItems"]) is not int or archive["totalItems"] != len(hashes)
-                    or any(not isinstance(digest, str) or len(digest) != 64
-                           or any(character not in "0123456789abcdef" for character in digest) for digest in hashes)):
-                raise ValueError()
-            call = archive["call"]
-            expected = (f"https://api-test.sits.no/api/aksjonaerregister/v1/{prior['incomeYear']}/forsendelser/"
-                        f"{prior['confirmation']['forsendelseId']}/dokumenter?page=0&size=50")
-            if (call["method"] != "GET" or call["endpoint"] != expected or call["bodyHash"] != _sha256("")
-                    or call["idempotencyKey"] is not None or call["status"] != "accepted"):
-                raise ValueError()
+            _validate_archive(prior)
     except (KeyError, TypeError, ValueError, AttributeError):
         raise Rf1086AuthorityError("RF1086_SAVED_INTENT_INVALID") from None
+
+
+def _validate_archive(prior: dict) -> None:
+    archive = prior["archive"]
+    hashes = archive["documentHashes"]
+    if (archive["lookupReferenceType"] != "forsendelseId"
+            or archive["lookupReferenceId"] != prior["confirmation"]["forsendelseId"]
+            or not isinstance(hashes, list) or not hashes
+            or type(archive["totalItems"]) is not int or archive["totalItems"] != len(hashes)
+            or archive["totalPages"] != 1 or archive["currentPage"] != 0
+            or any(not isinstance(digest, str) or len(digest) != 64
+                   or any(character not in "0123456789abcdef" for character in digest) for digest in hashes)):
+        raise ValueError()
+    call = archive["call"]
+    expected = (f"https://api-test.sits.no/api/aksjonaerregister/v1/{prior['incomeYear']}/forsendelser/"
+                f"{prior['confirmation']['forsendelseId']}/dokumenter?page=0&size=50")
+    if (call["method"] != "GET" or call["endpoint"] != expected or call["bodyHash"] != _sha256("")
+            or call["idempotencyKey"] is not None or call["status"] != "accepted"):
+        raise ValueError()
 
 
 def _validate_saved_call(call: dict, key: str, body_hash: str, endpoint: str) -> None:
@@ -438,8 +443,11 @@ async def _run_owned(values, scope, evidence_path, *, token_transport, authority
                 await sleep(2)
         if archive is None:
             raise ValueError("RF-1086 archive returned no documents after confirmation.")
-        evidence.update(archive=archive, status="accepted", acceptedAt=_now())
-        _write_json(evidence_path, evidence)
+        try:
+            _validate_archive(evidence | {"archive": archive})
+        except (KeyError, TypeError, ValueError, AttributeError):
+            raise Rf1086AuthorityError("RF1086_ARCHIVE_INCOMPLETE") from None
+        _checkpoint(evidence_path, evidence, archive=archive, status="accepted", acceptedAt=_now())
         return _summary(evidence)
     except Exception as error:
         evidence["status"] = ("unknown" if evidence["pendingOperation"] else

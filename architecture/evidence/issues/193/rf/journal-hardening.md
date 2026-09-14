@@ -46,3 +46,15 @@ overwrite earlier XML. The former shared `xml/` folder is no longer used or modi
 Accepted replay validates nonempty document hashes/count, archive reference and GET
 call against the recorded confirmation before reporting the saved transport success.
 These changes preserve the original review failures and add direct regression tests.
+
+The b51c57d7 rereview found that partial archive pages could mint success on the
+first invocation and fail validation on replay. One shared archive validator now
+runs before both success checkpoints and accepted replay. Incomplete/unknown page
+metadata produces `RF1086_ARCHIVE_INCOMPLETE`; confirmed intent remains available
+for read-only recovery. The historical permissive pagination characterization is
+explicitly tightened. Full multi-page archive acquisition remains required RF
+completion work, not a permanent supported-scope exclusion.
+
+After these corrections, all 83 focused tests pass (18.64 seconds), including a
+partial archive followed by GET-only recovery. The original review failures remain
+preserved. Final independent rereview is pending; no complete RF gate is claimed.

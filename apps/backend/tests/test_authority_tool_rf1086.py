@@ -414,12 +414,15 @@ def test_ordering_subprocess_receives_only_identifiers_and_runtime_locale(rf_env
     assert kwargs["timeout"] == 30 and SECRET not in str(captured)
 
 
-def test_original_harness_pagination_projection_does_not_gain_an_acceptance_gate(rf_environment, fake_xml):
+def test_incomplete_pagination_metadata_cannot_mint_accepted_receipt(rf_environment, fake_xml):
     def mixed_page(request):
         if request.url.path.endswith("/dokumenter"):
             return httpx.Response(200, json={"dokumenter": ["<archive/>"], "totalItems": "1", "totalPages": "unknown"})
-    summary, _ = execute(rf_environment, handler=mixed_page)
-    assert summary["status"] == "accepted" and evidence(rf_environment)["archive"]["totalPages"] is None
+    with pytest.raises(Rf1086AuthorityError, match="ARCHIVE_INCOMPLETE"):
+        execute(rf_environment, handler=mixed_page)
+    assert evidence(rf_environment)["status"] == "failed_blocked"
+    assert evidence(rf_environment)["confirmation"] is not None
+    assert evidence(rf_environment)["archive"] is None
 
 
 @pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
