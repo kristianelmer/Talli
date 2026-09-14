@@ -1,0 +1,3010 @@
+{
+  "schemaVersion": "1.0",
+  "sourceRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "runtime": "v24.20.0",
+  "sourceSha256": "457a6919488f6f87dcb579d041d52d694ca2e55172ec2aa5bbde874267d40856",
+  "fixturePrefixSha256": "af2f3016685bc95bd212dc403252ebdd22df58916038e63293d4a95b4b0c5982",
+  "actionHashes": {
+    "addFilingOverride": "e27053ee548262be1ea95a207757b90a06987153e7667d85203e18e6864156a4",
+    "addFilingReviewComment": "aad9741fdb3c7c4d5f1dcc235d460f4894db2a60b62aa4faa374441c9869a419",
+    "acknowledgeFilingReviewComment": "eb4bc1e3f35ff9bd712480142f867cb91ea8d38fb561f50d7abe14137333704f",
+    "confirmAuthorityPermission": "52dcba11b44765eacd352ec29abb389ddb18610fc9b1a894f335527c10ac9290",
+    "recordAuthorityTestEvidence": "7399b5e1c0755371ec4290f3d2b2874aa68c1368261f6e512b0adce50ca72f13",
+    "recordAnnualAccountsTt02Evidence": "674c6e7bb25030e3add3feb0c642c8012fdcd4094702cb8160b22881eb95a407"
+  },
+  "scope": "Exact original action bodies with deterministic time and synthetic dependencies. No SQL, HTTP, JWT/MFA ceremony or provider evidence; records original after-commit Audit continuation including returned-error behavior.",
+  "cases": [
+    {
+      "action": "addFilingOverride",
+      "fault": "none",
+      "effects": [
+        "canonical-lookup",
+        "tax-lookup",
+        "validate-override"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_previews",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id, income_year, filing"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "preview"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        },
+        {
+          "table": "filing_overrides",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "preview_id": "preview",
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "income_year": 2025,
+                  "filing": "årsregnskap",
+                  "field_target": "company.name",
+                  "old_value": "Before",
+                  "new_value": "After",
+                  "reason": "Documented reason",
+                  "risk_level": "warning",
+                  "owner_confirmed_by": "owner",
+                  "owner_confirmed_at": "2026-07-14T12:00:00.000Z",
+                  "created_by": "owner"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "filing",
+                  "action": "filing_override_added",
+                  "message": "Filing-overstyring lagt til for company.name: warning."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "addFilingOverride",
+      "fault": "unauthenticated",
+      "effects": [],
+      "trace": [
+        {
+          "operation": "get-user"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Innlogging%20kreves"
+      }
+    },
+    {
+      "action": "addFilingOverride",
+      "fault": "step-up",
+      "effects": [
+        "canonical-lookup",
+        "tax-lookup",
+        "validate-override"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_previews",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id, income_year, filing"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "preview"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        },
+        {
+          "table": "filing_overrides",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "preview_id": "preview",
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "income_year": 2025,
+                  "filing": "årsregnskap",
+                  "field_target": "company.name",
+                  "old_value": "Before",
+                  "new_value": "After",
+                  "reason": "Documented reason",
+                  "risk_level": "warning",
+                  "owner_confirmed_by": "owner",
+                  "owner_confirmed_at": "2026-07-14T12:00:00.000Z",
+                  "created_by": "owner"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "filing",
+                  "action": "filing_override_added",
+                  "message": "Filing-overstyring lagt til for company.name: warning."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "addFilingOverride",
+      "fault": "rf-unavailable",
+      "effects": [],
+      "trace": [
+        {
+          "operation": "get-user"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Unavailable"
+      }
+    },
+    {
+      "action": "addFilingOverride",
+      "fault": "tax-unavailable",
+      "effects": [
+        "canonical-lookup"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Tax%20unavailable"
+      }
+    },
+    {
+      "action": "addFilingOverride",
+      "fault": "read-failure",
+      "effects": [
+        "canonical-lookup",
+        "tax-lookup"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_previews",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id, income_year, filing"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "preview"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=synthetic-read-failure"
+      }
+    },
+    {
+      "action": "addFilingOverride",
+      "fault": "write-failure",
+      "effects": [
+        "canonical-lookup",
+        "tax-lookup",
+        "validate-override"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_previews",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id, income_year, filing"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "preview"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        },
+        {
+          "table": "filing_overrides",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "preview_id": "preview",
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "income_year": 2025,
+                  "filing": "årsregnskap",
+                  "field_target": "company.name",
+                  "old_value": "Before",
+                  "new_value": "After",
+                  "reason": "Documented reason",
+                  "risk_level": "warning",
+                  "owner_confirmed_by": "owner",
+                  "owner_confirmed_at": "2026-07-14T12:00:00.000Z",
+                  "created_by": "owner"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=synthetic-write-failure"
+      }
+    },
+    {
+      "action": "addFilingOverride",
+      "fault": "audit-returned-error",
+      "effects": [
+        "canonical-lookup",
+        "tax-lookup",
+        "validate-override"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_previews",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id, income_year, filing"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "preview"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        },
+        {
+          "table": "filing_overrides",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "preview_id": "preview",
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "income_year": 2025,
+                  "filing": "årsregnskap",
+                  "field_target": "company.name",
+                  "old_value": "Before",
+                  "new_value": "After",
+                  "reason": "Documented reason",
+                  "risk_level": "warning",
+                  "owner_confirmed_by": "owner",
+                  "owner_confirmed_at": "2026-07-14T12:00:00.000Z",
+                  "created_by": "owner"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "filing",
+                  "action": "filing_override_added",
+                  "message": "Filing-overstyring lagt til for company.name: warning."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "addFilingOverride",
+      "fault": "audit-throws",
+      "effects": [
+        "canonical-lookup",
+        "tax-lookup",
+        "validate-override"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_previews",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id, income_year, filing"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "preview"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        },
+        {
+          "table": "filing_overrides",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "preview_id": "preview",
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "income_year": 2025,
+                  "filing": "årsregnskap",
+                  "field_target": "company.name",
+                  "old_value": "Before",
+                  "new_value": "After",
+                  "reason": "Documented reason",
+                  "risk_level": "warning",
+                  "owner_confirmed_by": "owner",
+                  "owner_confirmed_at": "2026-07-14T12:00:00.000Z",
+                  "created_by": "owner"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "filing",
+                  "action": "filing_override_added",
+                  "message": "Filing-overstyring lagt til for company.name: warning."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "synthetic-audit-failure"
+        }
+      }
+    },
+    {
+      "action": "addFilingReviewComment",
+      "fault": "none",
+      "effects": [
+        "canonical-lookup",
+        "tax-lookup"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_previews",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "preview"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        },
+        {
+          "table": "filing_review_comments",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "preview_id": "preview",
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "target": "rf1086_preview",
+                  "severity": "advisory",
+                  "body": "Review note",
+                  "created_by": "owner"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "review",
+                  "action": "filing_review_comment_created",
+                  "message": "Review-kommentar lagt til: advisory."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "addFilingReviewComment",
+      "fault": "unauthenticated",
+      "effects": [],
+      "trace": [
+        {
+          "operation": "get-user"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Innlogging%20kreves"
+      }
+    },
+    {
+      "action": "addFilingReviewComment",
+      "fault": "step-up",
+      "effects": [
+        "canonical-lookup",
+        "tax-lookup"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_previews",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "preview"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        },
+        {
+          "table": "filing_review_comments",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "preview_id": "preview",
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "target": "rf1086_preview",
+                  "severity": "advisory",
+                  "body": "Review note",
+                  "created_by": "owner"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "review",
+                  "action": "filing_review_comment_created",
+                  "message": "Review-kommentar lagt til: advisory."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "addFilingReviewComment",
+      "fault": "rf-unavailable",
+      "effects": [],
+      "trace": [
+        {
+          "operation": "get-user"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Unavailable"
+      }
+    },
+    {
+      "action": "addFilingReviewComment",
+      "fault": "tax-unavailable",
+      "effects": [
+        "canonical-lookup"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Tax%20unavailable"
+      }
+    },
+    {
+      "action": "addFilingReviewComment",
+      "fault": "read-failure",
+      "effects": [
+        "canonical-lookup",
+        "tax-lookup"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_previews",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "preview"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=synthetic-read-failure"
+      }
+    },
+    {
+      "action": "addFilingReviewComment",
+      "fault": "write-failure",
+      "effects": [
+        "canonical-lookup",
+        "tax-lookup"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_previews",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "preview"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        },
+        {
+          "table": "filing_review_comments",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "preview_id": "preview",
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "target": "rf1086_preview",
+                  "severity": "advisory",
+                  "body": "Review note",
+                  "created_by": "owner"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=synthetic-write-failure"
+      }
+    },
+    {
+      "action": "addFilingReviewComment",
+      "fault": "audit-returned-error",
+      "effects": [
+        "canonical-lookup",
+        "tax-lookup"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_previews",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "preview"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        },
+        {
+          "table": "filing_review_comments",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "preview_id": "preview",
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "target": "rf1086_preview",
+                  "severity": "advisory",
+                  "body": "Review note",
+                  "created_by": "owner"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "review",
+                  "action": "filing_review_comment_created",
+                  "message": "Review-kommentar lagt til: advisory."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "addFilingReviewComment",
+      "fault": "audit-throws",
+      "effects": [
+        "canonical-lookup",
+        "tax-lookup"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_previews",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "preview"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        },
+        {
+          "table": "filing_review_comments",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "preview_id": "preview",
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "target": "rf1086_preview",
+                  "severity": "advisory",
+                  "body": "Review note",
+                  "created_by": "owner"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "review",
+                  "action": "filing_review_comment_created",
+                  "message": "Review-kommentar lagt til: advisory."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "synthetic-audit-failure"
+        }
+      }
+    },
+    {
+      "action": "acknowledgeFilingReviewComment",
+      "fault": "none",
+      "effects": [
+        "canonical-acknowledge",
+        "tax-acknowledge",
+        "validate-advisory"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_review_comments",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id, severity"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "comment"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        },
+        {
+          "table": "filing_review_comments",
+          "kind": "update",
+          "operations": [
+            {
+              "method": "update",
+              "args": [
+                {
+                  "acknowledged_by": "owner",
+                  "acknowledged_at": "2026-07-14T12:00:00.000Z"
+                }
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "comment"
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "review",
+                  "action": "filing_review_comment_acknowledged",
+                  "message": "Advisory review-kommentar acknowledged av eier."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "acknowledgeFilingReviewComment",
+      "fault": "unauthenticated",
+      "effects": [],
+      "trace": [
+        {
+          "operation": "get-user"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Innlogging%20kreves"
+      }
+    },
+    {
+      "action": "acknowledgeFilingReviewComment",
+      "fault": "step-up",
+      "effects": [
+        "canonical-acknowledge",
+        "tax-acknowledge",
+        "validate-advisory"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_review_comments",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id, severity"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "comment"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        },
+        {
+          "table": "filing_review_comments",
+          "kind": "update",
+          "operations": [
+            {
+              "method": "update",
+              "args": [
+                {
+                  "acknowledged_by": "owner",
+                  "acknowledged_at": "2026-07-14T12:00:00.000Z"
+                }
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "comment"
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "review",
+                  "action": "filing_review_comment_acknowledged",
+                  "message": "Advisory review-kommentar acknowledged av eier."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "acknowledgeFilingReviewComment",
+      "fault": "rf-unavailable",
+      "effects": [],
+      "trace": [
+        {
+          "operation": "get-user"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Unavailable"
+      }
+    },
+    {
+      "action": "acknowledgeFilingReviewComment",
+      "fault": "tax-unavailable",
+      "effects": [
+        "canonical-acknowledge"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Tax%20unavailable"
+      }
+    },
+    {
+      "action": "acknowledgeFilingReviewComment",
+      "fault": "read-failure",
+      "effects": [
+        "canonical-acknowledge",
+        "tax-acknowledge"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_review_comments",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id, severity"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "comment"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=synthetic-read-failure"
+      }
+    },
+    {
+      "action": "acknowledgeFilingReviewComment",
+      "fault": "write-failure",
+      "effects": [
+        "canonical-acknowledge",
+        "tax-acknowledge",
+        "validate-advisory"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_review_comments",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id, severity"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "comment"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        },
+        {
+          "table": "filing_review_comments",
+          "kind": "update",
+          "operations": [
+            {
+              "method": "update",
+              "args": [
+                {
+                  "acknowledged_by": "owner",
+                  "acknowledged_at": "2026-07-14T12:00:00.000Z"
+                }
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "comment"
+              ]
+            }
+          ]
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=synthetic-write-failure"
+      }
+    },
+    {
+      "action": "acknowledgeFilingReviewComment",
+      "fault": "audit-returned-error",
+      "effects": [
+        "canonical-acknowledge",
+        "tax-acknowledge",
+        "validate-advisory"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_review_comments",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id, severity"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "comment"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        },
+        {
+          "table": "filing_review_comments",
+          "kind": "update",
+          "operations": [
+            {
+              "method": "update",
+              "args": [
+                {
+                  "acknowledged_by": "owner",
+                  "acknowledged_at": "2026-07-14T12:00:00.000Z"
+                }
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "comment"
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "review",
+                  "action": "filing_review_comment_acknowledged",
+                  "message": "Advisory review-kommentar acknowledged av eier."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "acknowledgeFilingReviewComment",
+      "fault": "audit-throws",
+      "effects": [
+        "canonical-acknowledge",
+        "tax-acknowledge",
+        "validate-advisory"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "table": "filing_review_comments",
+          "kind": "read",
+          "operations": [
+            {
+              "method": "select",
+              "args": [
+                "id, company_id, severity"
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "comment"
+              ]
+            },
+            {
+              "method": "single",
+              "args": []
+            }
+          ]
+        },
+        {
+          "table": "filing_review_comments",
+          "kind": "update",
+          "operations": [
+            {
+              "method": "update",
+              "args": [
+                {
+                  "acknowledged_by": "owner",
+                  "acknowledged_at": "2026-07-14T12:00:00.000Z"
+                }
+              ]
+            },
+            {
+              "method": "eq",
+              "args": [
+                "id",
+                "comment"
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "review",
+                  "action": "filing_review_comment_acknowledged",
+                  "message": "Advisory review-kommentar acknowledged av eier."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "synthetic-audit-failure"
+        }
+      }
+    },
+    {
+      "action": "confirmAuthorityPermission",
+      "fault": "none",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "table": "authority_permissions",
+          "kind": "upsert",
+          "operations": [
+            {
+              "method": "upsert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "obligation": "aarsregnskap",
+                  "submitter_user_id": "owner",
+                  "confirmed_by": "owner",
+                  "confirmed_at": "2026-07-14T12:00:00.000Z",
+                  "production_enabled": true,
+                  "updated_at": "2026-07-14T12:00:00.000Z"
+                },
+                {
+                  "onConflict": "company_id,obligation"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "authority_permission_confirmed",
+                  "message": "Innsendingsrett bekreftet for aarsregnskap. Produksjonsgate: aktiv."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "confirmAuthorityPermission",
+      "fault": "unauthenticated",
+      "effects": [],
+      "trace": [
+        {
+          "operation": "get-user"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Innlogging%20kreves"
+      }
+    },
+    {
+      "action": "confirmAuthorityPermission",
+      "fault": "step-up",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        }
+      ],
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "synthetic-step-up"
+        }
+      }
+    },
+    {
+      "action": "confirmAuthorityPermission",
+      "fault": "rf-unavailable",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "table": "authority_permissions",
+          "kind": "upsert",
+          "operations": [
+            {
+              "method": "upsert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "obligation": "aarsregnskap",
+                  "submitter_user_id": "owner",
+                  "confirmed_by": "owner",
+                  "confirmed_at": "2026-07-14T12:00:00.000Z",
+                  "production_enabled": true,
+                  "updated_at": "2026-07-14T12:00:00.000Z"
+                },
+                {
+                  "onConflict": "company_id,obligation"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "authority_permission_confirmed",
+                  "message": "Innsendingsrett bekreftet for aarsregnskap. Produksjonsgate: aktiv."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "confirmAuthorityPermission",
+      "fault": "tax-unavailable",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "table": "authority_permissions",
+          "kind": "upsert",
+          "operations": [
+            {
+              "method": "upsert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "obligation": "aarsregnskap",
+                  "submitter_user_id": "owner",
+                  "confirmed_by": "owner",
+                  "confirmed_at": "2026-07-14T12:00:00.000Z",
+                  "production_enabled": true,
+                  "updated_at": "2026-07-14T12:00:00.000Z"
+                },
+                {
+                  "onConflict": "company_id,obligation"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "authority_permission_confirmed",
+                  "message": "Innsendingsrett bekreftet for aarsregnskap. Produksjonsgate: aktiv."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "confirmAuthorityPermission",
+      "fault": "read-failure",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "table": "authority_permissions",
+          "kind": "upsert",
+          "operations": [
+            {
+              "method": "upsert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "obligation": "aarsregnskap",
+                  "submitter_user_id": "owner",
+                  "confirmed_by": "owner",
+                  "confirmed_at": "2026-07-14T12:00:00.000Z",
+                  "production_enabled": true,
+                  "updated_at": "2026-07-14T12:00:00.000Z"
+                },
+                {
+                  "onConflict": "company_id,obligation"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "authority_permission_confirmed",
+                  "message": "Innsendingsrett bekreftet for aarsregnskap. Produksjonsgate: aktiv."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "confirmAuthorityPermission",
+      "fault": "write-failure",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "table": "authority_permissions",
+          "kind": "upsert",
+          "operations": [
+            {
+              "method": "upsert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "obligation": "aarsregnskap",
+                  "submitter_user_id": "owner",
+                  "confirmed_by": "owner",
+                  "confirmed_at": "2026-07-14T12:00:00.000Z",
+                  "production_enabled": true,
+                  "updated_at": "2026-07-14T12:00:00.000Z"
+                },
+                {
+                  "onConflict": "company_id,obligation"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=synthetic-write-failure"
+      }
+    },
+    {
+      "action": "confirmAuthorityPermission",
+      "fault": "audit-returned-error",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "table": "authority_permissions",
+          "kind": "upsert",
+          "operations": [
+            {
+              "method": "upsert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "obligation": "aarsregnskap",
+                  "submitter_user_id": "owner",
+                  "confirmed_by": "owner",
+                  "confirmed_at": "2026-07-14T12:00:00.000Z",
+                  "production_enabled": true,
+                  "updated_at": "2026-07-14T12:00:00.000Z"
+                },
+                {
+                  "onConflict": "company_id,obligation"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "authority_permission_confirmed",
+                  "message": "Innsendingsrett bekreftet for aarsregnskap. Produksjonsgate: aktiv."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "confirmAuthorityPermission",
+      "fault": "audit-throws",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "table": "authority_permissions",
+          "kind": "upsert",
+          "operations": [
+            {
+              "method": "upsert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "obligation": "aarsregnskap",
+                  "submitter_user_id": "owner",
+                  "confirmed_by": "owner",
+                  "confirmed_at": "2026-07-14T12:00:00.000Z",
+                  "production_enabled": true,
+                  "updated_at": "2026-07-14T12:00:00.000Z"
+                },
+                {
+                  "onConflict": "company_id,obligation"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "authority_permission_confirmed",
+                  "message": "Innsendingsrett bekreftet for aarsregnskap. Produksjonsgate: aktiv."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "synthetic-audit-failure"
+        }
+      }
+    },
+    {
+      "action": "recordAuthorityTestEvidence",
+      "fault": "none",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "table": "authority_test_runs",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "test_reference": "test-ref",
+                  "feedback_summary": "ok",
+                  "receipt_reference": null,
+                  "archive_reference": null,
+                  "evidence_url": null,
+                  "payload_hash": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "authority_test_evidence_recorded",
+                  "message": "aarsregnskap test-evidens registrert som accepted med ref test-ref."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "recordAuthorityTestEvidence",
+      "fault": "unauthenticated",
+      "effects": [],
+      "trace": [
+        {
+          "operation": "get-user"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Innlogging%20kreves"
+      }
+    },
+    {
+      "action": "recordAuthorityTestEvidence",
+      "fault": "step-up",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        }
+      ],
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "synthetic-step-up"
+        }
+      }
+    },
+    {
+      "action": "recordAuthorityTestEvidence",
+      "fault": "rf-unavailable",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "table": "authority_test_runs",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "test_reference": "test-ref",
+                  "feedback_summary": "ok",
+                  "receipt_reference": null,
+                  "archive_reference": null,
+                  "evidence_url": null,
+                  "payload_hash": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "authority_test_evidence_recorded",
+                  "message": "aarsregnskap test-evidens registrert som accepted med ref test-ref."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "recordAuthorityTestEvidence",
+      "fault": "tax-unavailable",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "table": "authority_test_runs",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "test_reference": "test-ref",
+                  "feedback_summary": "ok",
+                  "receipt_reference": null,
+                  "archive_reference": null,
+                  "evidence_url": null,
+                  "payload_hash": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "authority_test_evidence_recorded",
+                  "message": "aarsregnskap test-evidens registrert som accepted med ref test-ref."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "recordAuthorityTestEvidence",
+      "fault": "read-failure",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "table": "authority_test_runs",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "test_reference": "test-ref",
+                  "feedback_summary": "ok",
+                  "receipt_reference": null,
+                  "archive_reference": null,
+                  "evidence_url": null,
+                  "payload_hash": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "authority_test_evidence_recorded",
+                  "message": "aarsregnskap test-evidens registrert som accepted med ref test-ref."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "recordAuthorityTestEvidence",
+      "fault": "write-failure",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "table": "authority_test_runs",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "test_reference": "test-ref",
+                  "feedback_summary": "ok",
+                  "receipt_reference": null,
+                  "archive_reference": null,
+                  "evidence_url": null,
+                  "payload_hash": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=synthetic-write-failure"
+      }
+    },
+    {
+      "action": "recordAuthorityTestEvidence",
+      "fault": "audit-returned-error",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "table": "authority_test_runs",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "test_reference": "test-ref",
+                  "feedback_summary": "ok",
+                  "receipt_reference": null,
+                  "archive_reference": null,
+                  "evidence_url": null,
+                  "payload_hash": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "authority_test_evidence_recorded",
+                  "message": "aarsregnskap test-evidens registrert som accepted med ref test-ref."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "recordAuthorityTestEvidence",
+      "fault": "audit-throws",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "table": "authority_test_runs",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "test_reference": "test-ref",
+                  "feedback_summary": "ok",
+                  "receipt_reference": null,
+                  "archive_reference": null,
+                  "evidence_url": null,
+                  "payload_hash": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "authority_test_evidence_recorded",
+                  "message": "aarsregnskap test-evidens registrert som accepted med ref test-ref."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "synthetic-audit-failure"
+        }
+      }
+    },
+    {
+      "action": "recordAnnualAccountsTt02Evidence",
+      "fault": "none",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "operation": "accepted-company",
+          "companyId": "10000000-0000-4000-8000-000000000001"
+        },
+        {
+          "table": "authority_test_runs",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "obligation": "aarsregnskap",
+                  "environment": "test",
+                  "status": "pending",
+                  "test_reference": "tt02:51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+                  "feedback_summary": "Til behandling (til_behandling): Innsendingen er bekreftet mottatt.",
+                  "receipt_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51/data/f9b307e1-3534-4adb-9e5b-515c312f16f3",
+                  "archive_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+                  "evidence_url": null,
+                  "payload_hash": "sha256:d52e2e09e3233499c96e21f5561554c9f7f30a97964540f1b27b5f94184bacd9",
+                  "recorded_by": "owner",
+                  "recorded_at": "2026-07-14T12:00:00.000Z"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "annual_accounts_tt02_evidence_imported",
+                  "message": "Årsregnskap TT02-evidens importert som pending med ref tt02:51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "recordAnnualAccountsTt02Evidence",
+      "fault": "unauthenticated",
+      "effects": [],
+      "trace": [
+        {
+          "operation": "get-user"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Innlogging%20kreves"
+      }
+    },
+    {
+      "action": "recordAnnualAccountsTt02Evidence",
+      "fault": "step-up",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        }
+      ],
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "synthetic-step-up"
+        }
+      }
+    },
+    {
+      "action": "recordAnnualAccountsTt02Evidence",
+      "fault": "rf-unavailable",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "operation": "accepted-company",
+          "companyId": "10000000-0000-4000-8000-000000000001"
+        },
+        {
+          "table": "authority_test_runs",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "obligation": "aarsregnskap",
+                  "environment": "test",
+                  "status": "pending",
+                  "test_reference": "tt02:51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+                  "feedback_summary": "Til behandling (til_behandling): Innsendingen er bekreftet mottatt.",
+                  "receipt_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51/data/f9b307e1-3534-4adb-9e5b-515c312f16f3",
+                  "archive_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+                  "evidence_url": null,
+                  "payload_hash": "sha256:d52e2e09e3233499c96e21f5561554c9f7f30a97964540f1b27b5f94184bacd9",
+                  "recorded_by": "owner",
+                  "recorded_at": "2026-07-14T12:00:00.000Z"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "annual_accounts_tt02_evidence_imported",
+                  "message": "Årsregnskap TT02-evidens importert som pending med ref tt02:51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "recordAnnualAccountsTt02Evidence",
+      "fault": "tax-unavailable",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "operation": "accepted-company",
+          "companyId": "10000000-0000-4000-8000-000000000001"
+        },
+        {
+          "table": "authority_test_runs",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "obligation": "aarsregnskap",
+                  "environment": "test",
+                  "status": "pending",
+                  "test_reference": "tt02:51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+                  "feedback_summary": "Til behandling (til_behandling): Innsendingen er bekreftet mottatt.",
+                  "receipt_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51/data/f9b307e1-3534-4adb-9e5b-515c312f16f3",
+                  "archive_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+                  "evidence_url": null,
+                  "payload_hash": "sha256:d52e2e09e3233499c96e21f5561554c9f7f30a97964540f1b27b5f94184bacd9",
+                  "recorded_by": "owner",
+                  "recorded_at": "2026-07-14T12:00:00.000Z"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "annual_accounts_tt02_evidence_imported",
+                  "message": "Årsregnskap TT02-evidens importert som pending med ref tt02:51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "recordAnnualAccountsTt02Evidence",
+      "fault": "read-failure",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "operation": "accepted-company",
+          "companyId": "10000000-0000-4000-8000-000000000001"
+        },
+        {
+          "table": "authority_test_runs",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "obligation": "aarsregnskap",
+                  "environment": "test",
+                  "status": "pending",
+                  "test_reference": "tt02:51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+                  "feedback_summary": "Til behandling (til_behandling): Innsendingen er bekreftet mottatt.",
+                  "receipt_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51/data/f9b307e1-3534-4adb-9e5b-515c312f16f3",
+                  "archive_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+                  "evidence_url": null,
+                  "payload_hash": "sha256:d52e2e09e3233499c96e21f5561554c9f7f30a97964540f1b27b5f94184bacd9",
+                  "recorded_by": "owner",
+                  "recorded_at": "2026-07-14T12:00:00.000Z"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "annual_accounts_tt02_evidence_imported",
+                  "message": "Årsregnskap TT02-evidens importert som pending med ref tt02:51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "recordAnnualAccountsTt02Evidence",
+      "fault": "write-failure",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "operation": "accepted-company",
+          "companyId": "10000000-0000-4000-8000-000000000001"
+        },
+        {
+          "table": "authority_test_runs",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "obligation": "aarsregnskap",
+                  "environment": "test",
+                  "status": "pending",
+                  "test_reference": "tt02:51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+                  "feedback_summary": "Til behandling (til_behandling): Innsendingen er bekreftet mottatt.",
+                  "receipt_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51/data/f9b307e1-3534-4adb-9e5b-515c312f16f3",
+                  "archive_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+                  "evidence_url": null,
+                  "payload_hash": "sha256:d52e2e09e3233499c96e21f5561554c9f7f30a97964540f1b27b5f94184bacd9",
+                  "recorded_by": "owner",
+                  "recorded_at": "2026-07-14T12:00:00.000Z"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=synthetic-write-failure"
+      }
+    },
+    {
+      "action": "recordAnnualAccountsTt02Evidence",
+      "fault": "audit-returned-error",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "operation": "accepted-company",
+          "companyId": "10000000-0000-4000-8000-000000000001"
+        },
+        {
+          "table": "authority_test_runs",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "obligation": "aarsregnskap",
+                  "environment": "test",
+                  "status": "pending",
+                  "test_reference": "tt02:51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+                  "feedback_summary": "Til behandling (til_behandling): Innsendingen er bekreftet mottatt.",
+                  "receipt_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51/data/f9b307e1-3534-4adb-9e5b-515c312f16f3",
+                  "archive_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+                  "evidence_url": null,
+                  "payload_hash": "sha256:d52e2e09e3233499c96e21f5561554c9f7f30a97964540f1b27b5f94184bacd9",
+                  "recorded_by": "owner",
+                  "recorded_at": "2026-07-14T12:00:00.000Z"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "annual_accounts_tt02_evidence_imported",
+                  "message": "Årsregnskap TT02-evidens importert som pending med ref tt02:51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "operation": "revalidate",
+          "path": "/"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace"
+      }
+    },
+    {
+      "action": "recordAnnualAccountsTt02Evidence",
+      "fault": "audit-throws",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "operation": "accepted-company",
+          "companyId": "10000000-0000-4000-8000-000000000001"
+        },
+        {
+          "table": "authority_test_runs",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "obligation": "aarsregnskap",
+                  "environment": "test",
+                  "status": "pending",
+                  "test_reference": "tt02:51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+                  "feedback_summary": "Til behandling (til_behandling): Innsendingen er bekreftet mottatt.",
+                  "receipt_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51/data/f9b307e1-3534-4adb-9e5b-515c312f16f3",
+                  "archive_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51",
+                  "evidence_url": null,
+                  "payload_hash": "sha256:d52e2e09e3233499c96e21f5561554c9f7f30a97964540f1b27b5f94184bacd9",
+                  "recorded_by": "owner",
+                  "recorded_at": "2026-07-14T12:00:00.000Z"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "table": "audit_events",
+          "kind": "insert",
+          "operations": [
+            {
+              "method": "insert",
+              "args": [
+                {
+                  "company_id": "10000000-0000-4000-8000-000000000001",
+                  "actor_id": "owner",
+                  "category": "submission",
+                  "action": "annual_accounts_tt02_evidence_imported",
+                  "message": "Årsregnskap TT02-evidens importert som pending med ref tt02:51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "output": {
+        "error": {
+          "name": "Error",
+          "message": "synthetic-audit-failure"
+        }
+      }
+    },
+    {
+      "action": "recordAnnualAccountsTt02Evidence",
+      "fault": "missing-file",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Velg%20en%20gyldig%20TT02-evidensfil%20i%20JSON-format"
+      }
+    },
+    {
+      "action": "recordAnnualAccountsTt02Evidence",
+      "fault": "wrong-extension",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Velg%20en%20gyldig%20TT02-evidensfil%20i%20JSON-format"
+      }
+    },
+    {
+      "action": "recordAnnualAccountsTt02Evidence",
+      "fault": "empty-file",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Velg%20en%20gyldig%20TT02-evidensfil%20i%20JSON-format"
+      }
+    },
+    {
+      "action": "recordAnnualAccountsTt02Evidence",
+      "fault": "oversized-file",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Velg%20en%20gyldig%20TT02-evidensfil%20i%20JSON-format"
+      }
+    },
+    {
+      "action": "recordAnnualAccountsTt02Evidence",
+      "fault": "invalid-json",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=TT02-evidensfilen%20er%20ikke%20gyldig%20JSON"
+      }
+    },
+    {
+      "action": "recordAnnualAccountsTt02Evidence",
+      "fault": "missing-company",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "operation": "accepted-company",
+          "companyId": "10000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Selskapet%20finnes%20ikke"
+      }
+    },
+    {
+      "action": "recordAnnualAccountsTt02Evidence",
+      "fault": "invalid-evidence",
+      "effects": [
+        "step-up"
+      ],
+      "trace": [
+        {
+          "operation": "get-user"
+        },
+        {
+          "operation": "step-up",
+          "companyId": "10000000-0000-4000-8000-000000000001",
+          "purpose": "confirm_authority"
+        },
+        {
+          "operation": "accepted-company",
+          "companyId": "10000000-0000-4000-8000-000000000001"
+        }
+      ],
+      "output": {
+        "redirect": "/workspace?error=Organisasjonsnummer%20mangler%20i%20TT02-evidensen."
+      }
+    }
+  ]
+}

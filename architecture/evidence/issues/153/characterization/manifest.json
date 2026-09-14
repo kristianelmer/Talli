@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0",
+  "status": "LEGACY_CHARACTERIZATION_REVIEW_PENDING",
+  "baselineRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "inventoryReviewedRevision": "2074701450524f40d705b36c222dcabf2c215991",
+  "specInventory": "PASS",
+  "standardsInventory": "PASS",
+  "sourceBusinessCodeUnchanged": true,
+  "counts": {
+    "payload": 67,
+    "xml": 175,
+    "evidenceImport": 43,
+    "accountsSpecificReadiness": 11,
+    "offline": 46,
+    "serverAction": 61,
+    "database": 87,
+    "existingAuthorityWorkflowTests": 138,
+    "existingWebTests": 46
+  },
+  "criteriaStatus": "All six original criteria remain pending; no implementation or exit credit. Historical requirements and earlier manifests remain bound to their original revisions.",
+  "artifacts": {
+    "architecture/evidence/issues/153/characterization/entry-inventory-spec-review-20747014.md": "b311737b8f9f953d73fa7c65a083f67033c6fbda4205f4e8b439547aeafd56c0",
+    "architecture/evidence/issues/153/characterization/entry-inventory-spec-review-20747014.json": "e185494f9e7294259dc9f89496dda6046cdb91de172f2e015ee6ad30144d70a2",
+    "architecture/evidence/issues/153/characterization/entry-inventory-standards-review-20747014.md": "f2cef5713426feb182a847e4a4a422b7f2d4c8f15310441a58d5eebdd9675e43",
+    "architecture/evidence/issues/153/characterization/entry-inventory-standards-review-20747014.json": "7762eef6724bbc991d78b58e9284cddb3ece376ff893d8836e1816a36ed1d8c3",
+    "architecture/evidence/issues/153/characterization/capture-legacy-pure.mjs": "6b6cfff3b2f93df65d73ad9ca19d3c892ad7114931dbbc4df8f84d30e5d188a6",
+    "architecture/evidence/issues/153/characterization/capture-legacy-offline.py": "b3631aefc30ccc845db3d4e0792b02a6cdc3f2a5df3b98b19535567c0e4032c8",
+    "architecture/evidence/issues/153/characterization/capture-legacy-actions.mjs": "04399aaccfa58a477812322d0487442d027d05644f18990aa3d7bd85671da6f8",
+    "architecture/evidence/issues/153/characterization/capture-legacy-database.py": "a10ee053b389ca2a972d1a1f4b916ea54acba8cf74ca1bdb89cbfea3ea63bdec",
+    "architecture/evidence/issues/153/characterization/legacy-pure-characterization.json": "879953277ecf92ae4bb6672cbe96218a46ef8385ac5f735add96a5584e4e3492",
+    "architecture/evidence/issues/153/characterization/legacy-offline-characterization.json": "de7d5c5398175a4882a96bc4b594d0781832ff86327ba78a3ea47cf07c39895d",
+    "architecture/evidence/issues/153/characterization/legacy-action-characterization.json": "267400245d4392710f44e070c0ad785275a5389a1477cb079e4e1229e04c4b63",
+    "architecture/evidence/issues/153/characterization/legacy-database-characterization-v2.json": "c09643442126965009097d58cf12d4252666e38095fb69ebdec539bccbc37d25",
+    "architecture/evidence/issues/153/characterization/legacy-authority-workflow-tests.log": "70c040c8f1b525f8cd04a918370d07dcb80b9b84b2fb2e8fdc19d1191b5d23bf",
+    "architecture/evidence/issues/153/characterization/legacy-web-accounts-tests.log": "459564ab0383ec12365ea3ff6f6fb34b98d69c5fc111d87e9ff26c107bfef4d5",
+    "architecture/evidence/issues/153/characterization/verification.md": "ae57e54eb0064ec9ea50c5edb243ad25927a8f2aa8346b4af28cfecfa719ca40"
+  }
+}
