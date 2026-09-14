@@ -30,32 +30,83 @@
     {
       "id": "GH-152-A1",
       "requirement": "Supported company-tax cases produce outputs identical to current schema and TT02 evidence.",
-      "status": "PENDING"
+      "status": "LOCAL_PASS_PENDING_FULL_EXIT_ENVELOPE",
+      "evidence": [
+        "legacy-characterization.json",
+        "legacy-import-boundaries.json",
+        "legacy-validation-summary.json",
+        "pure-followup/manifest.json",
+        "owned-authority-payload/manifest.json",
+        "authority-workflow-ownership/manifest.json",
+        "authority-summary-immutability/manifest.json",
+        "final-acceptance/first-exit-gate-verification.json"
+      ]
     },
     {
       "id": "GH-152-A2",
       "requirement": "Participation-exemption reconciliation and attachment gates remain deterministic and fail closed.",
-      "status": "PENDING"
+      "status": "LOCAL_PASS_PENDING_FULL_EXIT_ENVELOPE",
+      "evidence": [
+        "legacy-tax-boolean-boundaries.json",
+        "legacy-preparation-controls.json",
+        "assessment-contract/manifest.json",
+        "assessment-boolean-followup/manifest.json",
+        "assessment-derived-followup/manifest.json",
+        "assessment-nested-facts-followup/manifest.json",
+        "preparation-contract/manifest.json",
+        "final-acceptance/first-exit-gate-verification.json"
+      ]
     },
     {
       "id": "GH-152-A3",
       "requirement": "Confirmation, submission, feedback, and receipt transitions remain authorized and idempotent.",
-      "status": "PENDING"
+      "status": "LOCAL_PASS_PENDING_FULL_EXIT_ENVELOPE",
+      "evidence": [
+        "legacy-database-characterization.json",
+        "tt02-import-contract/manifest.json",
+        "preparation-identity-followup/manifest.json",
+        "filing-cutover-lifecycle/manifest.json",
+        "archive-trigger-acl-followup/manifest.json",
+        "owner-browser/manifest.json",
+        "exit-cleanup/filing-deployment-order.json",
+        "final-acceptance/first-exit-gate-verification.json"
+      ]
     },
     {
       "id": "GH-152-A4",
       "requirement": "The complete owner workflow uses FastAPI and the generated client.",
-      "status": "PENDING"
+      "status": "LOCAL_PASS_PENDING_FULL_EXIT_ENVELOPE",
+      "evidence": [
+        "owner-actions/manifest.json",
+        "read-consumers/manifest.json",
+        "assessment-consumers/manifest.json",
+        "read-session-followup/manifest.json",
+        "owner-browser/manifest.json",
+        "source-handoff/manifest.json",
+        "final-acceptance/first-exit-gate-verification.json"
+      ]
     },
     {
       "id": "GH-152-A5",
       "requirement": "Generic company-tax rows, duplicate TypeScript calculations, and active-stage compatibility code are removed.",
-      "status": "PENDING"
+      "status": "LOCAL_PASS_PENDING_FULL_EXIT_ENVELOPE",
+      "evidence": [
+        "typescript-policy-retirement/manifest.json",
+        "retirement-boundary-audit/manifest.json",
+        "authority-workflow-ownership/manifest.json",
+        "filing-cutover-lifecycle/manifest.json",
+        "exit-cleanup/manifest.json",
+        "final-acceptance/first-exit-gate-verification.json"
+      ]
     },
     {
       "id": "GH-152-A6",
       "requirement": "The complete `company_tax_filing` stage exit criteria from issue #132 pass before annual-accounts migration begins.",
-      "status": "PENDING"
+      "status": "PENDING_SECOND_GATE_AND_PROTECTED_INTEGRATION",
+      "evidence": [
+        "verification.md",
+        "final-acceptance/first-exit-gate-verification.json"
+      ]
     }
   ],
   "sourceHandoff": "Immutable company/year/obligation readiness, complete production history with positive completeness evidence, terminal/unknown outcomes, corrections and source-owned incidents; Billing alone owns commercial/refund policy. Missing source is unavailable.",
@@ -99,7 +150,7 @@
     "settlementRegression": "PASS",
     "authorityValidationSummary": "PASS_CAPTURED_NORWEGIAN_ICU_PARITY_MAC_AND_LINUX",
     "apiWebSqlCutover": "IMPLEMENTED_LOCAL_CONTRACT_AND_ROLLBACK_REHEARSED",
-    "fullStageExit": "PENDING_TWO_NEW_COMPLETE_GATES_AND_PROTECTED_INTEGRATION",
+    "fullStageExit": "FIRST_COMPLETE_GATE_PASS_SECOND_GATE_AND_INTEGRATION_PENDING",
     "linuxPureTests": 157,
     "legacyAuthorityToolTests": 138,
     "independentPureFollowupReview": "PASS_BOTH_AXES_8B3E0CB3",
@@ -107,5 +158,11 @@
     "filingSchemaExpansion": "33_CHECKS_PASS_ROLLBACK_ONLY_TARGETS_INERT",
     "filingReadContract": "IMPLEMENTED_CANONICAL_OWNED_SOURCE",
     "verificationReport": "verification.md"
+  },
+  "firstExitGate": {
+    "revision": "7c9b3caae3cd278bbe381589308cf302142b58a5",
+    "evidencePath": "architecture/evidence/customer-ready-gates/7c9b3caae3cd278bbe381589308cf302142b58a5.json",
+    "checkCount": 11,
+    "status": "PASS_11_OF_11"
   }
 }

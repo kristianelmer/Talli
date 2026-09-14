@@ -1,0 +1,144 @@
+{
+  "revision": "ac9b349ab58b89bdd0efa4810ef382844be5c6fa",
+  "proposedOnlyChange": {
+    "path": "architecture/compatibility.json",
+    "pointer": "/migration/status",
+    "before": "active",
+    "during": "exit-review",
+    "after": "active"
+  },
+  "exitCode": 0,
+  "errors": [],
+  "originalRegistrySha256": "5d426910e56c0fed393bcbd309a5d64ab858363483d2892ae2107cc45bd8c90b",
+  "proposedRegistrySha256": "49e17f277c0c35e5bc2f319110ffddfa29de9543f457cf7c203ed3d99a9c8a22",
+  "restoredRegistrySha256": "5d426910e56c0fed393bcbd309a5d64ab858363483d2892ae2107cc45bd8c90b",
+  "frozenBaselineSha256": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+  "allCompatibilityRecordsUnchanged": true,
+  "privateFileRestoredByteExactly": true,
+  "node": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+  "archive": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/tax152-final-standards-ac9b-65vqbcpl",
+  "transcriptSha256": "5c178f0ab608b501660f99bfa69b9513df43954de7bc749fc90706cc75fec1ca",
+  "limits": [
+    "Proposed metadata preflight only; no full-stage acceptance or gate credit.",
+    "Only private archive registry temporarily changed; shared checkout untouched."
+  ],
+  "status": "PASS_METADATA_PREFLIGHT_ONLY",
+  "retainedAnnualMixedTupleCount": 16,
+  "retainedAnnualMixedTuples": [
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_review_comments",
+      "operation": "acknowledgeFilingReviewComment"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_overrides",
+      "operation": "addFilingOverride"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_review_comments",
+      "operation": "addFilingReviewComment"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_overrides",
+      "operation": "refreshAnnualReadinessSnapshots"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_previews",
+      "operation": "addFilingOverride"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_previews",
+      "operation": "addFilingReviewComment"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:authority_permissions",
+      "operation": "confirmAuthorityPermission"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:authority_test_runs",
+      "operation": "recordAuthorityTestEvidence"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:authority_permissions",
+      "operation": "refreshAnnualReadinessSnapshots"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_previews",
+      "operation": "refreshAnnualReadinessSnapshots"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_submissions",
+      "operation": "refreshAnnualReadinessSnapshots"
+    },
+    {
+      "record": "compat-company-archive-persistence",
+      "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:authority_permissions",
+      "operation": "GET"
+    },
+    {
+      "record": "compat-company-archive-persistence",
+      "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:authority_test_runs",
+      "operation": "GET"
+    },
+    {
+      "record": "compat-company-archive-persistence",
+      "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_previews",
+      "operation": "GET"
+    },
+    {
+      "record": "compat-company-archive-persistence",
+      "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_review_comments",
+      "operation": "GET"
+    },
+    {
+      "record": "compat-company-archive-persistence",
+      "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_submissions",
+      "operation": "GET"
+    }
+  ],
+  "retainedTuplesSha256": "63b698d9fbe584cbd28987251f76ce693fa3e05aa3cb0bffc55e97c76e9ab157",
+  "checkerSha256": "2f71ed1d36618d6badb8a803312a29e516d92f4129aff4395a957cd144ecffb3",
+  "reportSha256": "49cd0d8a495ef0be6f5e8861e5231254b4b987a6a3d9087e4553630aa8f1f70b"
+}

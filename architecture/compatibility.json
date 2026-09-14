@@ -120,7 +120,7 @@
     ],
     "currentCapability": "company_tax_filing",
     "currentIssue": "#152",
-    "status": "active",
+    "status": "exit-review",
     "exitedCapabilities": [
       "company_access",
       "ledger",
