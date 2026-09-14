@@ -4,9 +4,9 @@ import test from "node:test";
 
 import { buildAnnualAccountsPayload } from "../apps/web/app/lib/annual-accounts.ts";
 import { buildPersistedCompanyArchive } from "../apps/web/app/lib/archive.ts";
-import { buildCompanyTaxReturnPayload } from "../apps/web/app/lib/company-tax-return.ts";
+import { buildCompanyTaxReturnPayload } from "./support/company_tax_public.mjs";
 import { renderRf1086SourceFacts } from "./support/rf1086-source-facts.mjs";
-import { estimateAnnualTax } from "../apps/web/app/lib/tax-settlement.ts";
+import { estimateAnnualTax } from "./support/company_tax_public.mjs";
 import { effectiveInvestmentActivity } from "../apps/web/features/investments/presentation.ts";
 
 const companyId = "10000000-0000-4000-8000-000000000190";

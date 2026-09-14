@@ -3,7 +3,7 @@ import test from "node:test";
 
 import {
   estimateAnnualTax,
-} from "../apps/web/app/lib/tax-settlement.ts";
+} from "./support/company_tax_public.mjs";
 
 test("estimates payable tax from interest, costs, and canonical investment tax components", () => {
   const estimate = estimateAnnualTax({

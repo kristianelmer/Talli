@@ -14,13 +14,13 @@ import { buildPersistedCompanyArchive } from "../apps/web/app/lib/archive.ts";
 import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed } from "../apps/web/app/lib/annual-data.ts";
 import { evaluateAnnualReadinessGates } from "../apps/web/app/lib/annual-readiness.ts";
 import { productionAuthorityGate } from "../apps/web/app/lib/authority-permission.ts";
-import { buildCompanyTaxReturnEvidencePersistence } from "../apps/web/app/lib/company-tax-return-submission.ts";
+import { buildCompanyTaxReturnEvidencePersistence } from "./support/company_tax_public.mjs";
 import { TalliApiError } from "../packages/talli-api-client/src/index.ts";
 import { apiRequest, deniedRf, startWorkspaceRfApi, seedHistoricalRfOpening,
   rfFixtureTransaction, RF_FIXTURE_TABLES } from "./support/rf1086-workspace-api.mjs";
 import {
   estimateAnnualTax,
-} from "../apps/web/app/lib/tax-settlement.ts";
+} from "./support/company_tax_public.mjs";
 
 const requiredEnv = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
 

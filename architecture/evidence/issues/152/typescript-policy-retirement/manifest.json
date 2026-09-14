@@ -1,0 +1,34 @@
+{
+  "baselineRevision": "6353c78cdc32700b92c1431732d9e782fba5612a",
+  "status": "DEAD_TYPESCRIPT_TAX_POLICY_REMOVED",
+  "removedSourceSha256": {
+    "apps/web/app/lib/company-tax-return.ts": "765b82a633a859c4108e83cb6f30b18e3fd3ad491f56a53485453f6bc3ca6ec7",
+    "apps/web/app/lib/company-tax-return-xml.ts": "80fe4c5c10daa3c67b6041b32fb2c6289fe91f8783f7d8b62077f0564c511f17",
+    "apps/web/app/lib/company-tax-return-authority-payload.ts": "c68aa036c33c6dfacf235b9960d8d8f8e36c016cba4b72e12a71cd44566e99c1",
+    "apps/web/app/lib/company-tax-return-submission.ts": "190077eabc091c9143c4223faee030047b09f85d1be2e0ca11dbe1be996b3ced",
+    "apps/web/app/lib/tax-settlement.ts": "0712141c523700e51816353d78453558949ec1ed6416c59bfd7cc3a0e519e274"
+  },
+  "checks": {
+    "existingJsFixtures": 41,
+    "skipped": 0,
+    "webTypecheck": "PASS",
+    "architecture": "PASS",
+    "officialSchemasRevision": "7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba"
+  },
+  "changes": [
+    "All five predecessor Tax policy files removed; Tax-only evidence parsing/projection helpers removed from the shared evidence file.",
+    "The existing cross-output/Tax fixtures invoke actual backend public contracts through a fixed test-only JSON driver. No production facade, dynamic module dispatch, HTTP or provider is introduced.",
+    "Retained Annual/shared evidence definitions match exact predecessor source bodies.",
+    "Supabase workspace imports are rebound to the same test driver; its durable predecessor/runtime journey remains for the complete gate.",
+    "The obsolete owner-action assertion now requires the authenticated Tax API and stable error presenter; original predecessor SQL assertions remain explicitly labelled."
+  ],
+  "limits": [
+    "No new HTTP, browser, real-role or full release gate claim from this pure/test-consumer slice.",
+    "The Tax provider rehearsal workflow and complete source contracts still require completion."
+  ],
+  "artifacts": {
+    "owned-tax-ts-retirement-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "retained-annual-evidence-definitions.json": "aa3b6b6695b524f725577e58844e6310901542461a3c3b6726416ff86dc0e50b",
+    "owned-tax-ts-retirement-xsd-tests.log": "fd533a3a5d245970fc1721d2913f37dfdcefa7dcf5b0b2afa95bb0cc448c8846"
+  }
+}

@@ -5,8 +5,8 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
-import { buildCompanyTaxReturnPayload } from "../apps/web/app/lib/company-tax-return.ts";
-import { renderCompanyTaxReturnXml } from "../apps/web/app/lib/company-tax-return-xml.ts";
+import { buildCompanyTaxReturnPayload } from "./support/company_tax_public.mjs";
+import { renderCompanyTaxReturnXml } from "./support/company_tax_public.mjs";
 
 const annualData = {
   id: "annual-data-id",

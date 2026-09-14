@@ -1,3 +1,4 @@
+import { buildCompanyTaxReturnAuthorityTestRunFromEvidence } from "./support/company_tax_public.mjs";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -5,7 +6,6 @@ import {
   authorityTestEvidenceGate,
   buildAnnualAccountsAuthorityTestRunFromEvidence,
   buildAuthorityTestRun,
-  buildCompanyTaxReturnAuthorityTestRunFromEvidence,
 } from "../apps/web/app/lib/authority-test-evidence.ts";
 
 const annualInstanceId = "51549454/90560530-005d-4f9e-8d8f-a1b7e8a20f51";
