@@ -1,0 +1,38 @@
+✔ RF fixture uses its declared projection phase (legacy present) (3.001125ms)
+✔ RF fixture uses its declared projection phase (Accounts contracted) (0.458083ms)
+✔ RF fixture refuses partial retirement before fixture effects (0.608709ms)
+✔ RF fixture refuses missing owned family before fixture effects (0.105709ms)
+✔ RF fixture refuses uncontracted phase before fixture effects (0.196166ms)
+✔ workspace RF backend refuses hosted database before opening a listener (102.249583ms)
+✔ workspace RF backend refuses hosted Supabase before opening a listener (98.717167ms)
+✔ workspace RF backend refuses global RF activation before opening a listener (96.759959ms)
+✔ workspace RF backend refuses global operator activation before opening a listener (109.149625ms)
+✔ workspace RF backend refuses ambient credential before opening a listener (104.792625ms)
+✔ workspace API requests use the actual current Supabase session and exact denial statuses (2.63575ms)
+✔ feedback fixture refuses hosted databases and undeclared operations before actor or SQL effects (1.313834ms)
+✔ feedback fixture verifies the token owner before reading membership or connecting an actor database session (0.349542ms)
+✔ workspace RF assertions use canonical commands and preserve sibling tax and audit rehearsals (1.663125ms)
+✔ fixture access refuses external databases and undeclared relations before SQL (0.239375ms)
+✔ fixture restores exact USER trigger modes on success without disabling foreign keys (0.527084ms)
+✔ fixture restores exact USER trigger modes on rollback without disabling foreign keys (0.72875ms)
+✔ fresh RF fixture permits only its five exact method templates and loopback egress (101.690375ms)
+✔ fresh local RF mock preserves request identity and emits relationship-bound feedback (39.938375ms)
+✔ fresh browser starts without a preview or approval and verifies the complete durable result (1.390416ms)
+✔ ambiguous fresh mock response records the original mutation before disconnecting (4.438458ms)
+✔ fresh RF browser uses finite fixture authority while preserving foreign keys and signoff storage (0.590541ms)
+✔ fresh RF basis binds every opening row to its existing owner without seeding filing success (0.996458ms)
+✔ fresh RF cleanup handles present public mirrors (success) (1.398334ms)
+✔ fresh RF cleanup handles present public mirrors (failure preserved) (0.948167ms)
+✔ fresh RF cleanup handles retired public mirrors (success) (0.683625ms)
+✔ fresh RF cleanup handles retired public mirrors (failure preserved) (0.6415ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (success) (9.464625ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (seed) (0.708709ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (restore) (0.840875ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 653.474541

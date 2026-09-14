@@ -1,0 +1,115 @@
+{
+  "verdict": "PASS_BOUNDED_SPEC_REVIEW",
+  "axis": "Spec",
+  "base": "006469373fc79f16c20dfec75bbc0d3ecd51ff6c",
+  "candidate": "5915af48277c4074556ba2b750c93e523ffeb85a",
+  "reviewedAtUtc": "2026-09-14T20:37:48.678185+00:00",
+  "findings": [],
+  "scope": "Test-only RF projection fixture retirement; no full gate or #153 exit credit",
+  "bindings": {
+    "base": "006469373fc79f16c20dfec75bbc0d3ecd51ff6c",
+    "candidate": "5915af48277c4074556ba2b750c93e523ffeb85a",
+    "log": [
+      "5915af48277c4074556ba2b750c93e523ffeb85a test(accounts): recognize retired RF fixture projections"
+    ],
+    "diffSha256": "96b0703b6150d1f9c775e99587e936d9b816efbe154c6ce0d57ee80c6f8ca98c",
+    "sourceBindings": {
+      "architecture/evidence/customer-ready-gates/006469373fc79f16c20dfec75bbc0d3ecd51ff6c.log": "d4805e7250abb7228adcba912a58c8cd9fe6f4e6632f604bd810f676f02f8b07",
+      "architecture/evidence/issues/153/rf-projection-fixture/manifest.json": "0721ba8afa47ca90ae994a9263a000499f64923db05d02ec0bcf8c34ac6a6198",
+      "architecture/evidence/issues/153/rf-projection-fixture/rf-projection-fixture-combined.log": "66d9abde6ce65fb01063fbf4d7251f5b97cc627bb1791e5deda4033aeabfaf65",
+      "architecture/evidence/issues/153/rf-projection-fixture/rf-projection-fixture-green.log": "22e7ed09785b8c8f851782fe9e07932f92f036b384cbd5cdc78be47eb0e0a06a",
+      "architecture/evidence/issues/153/rf-projection-fixture/rf-projection-fixture-red.log": "1d11328879a202b97c22cd140be41ecef3e70761ce63c157e9dd966fcffec2d8",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-spec-bindings-00646937.json": "9ced4ac684d2c5d26771efc9faab5fe212234705d7f873650802955560ae45a1",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-spec-probe-00646937.json": "b2e2c761485262c8125876519c3394a8ca5cd7564b88fd90d3cb7192211905bf",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-spec-probe-00646937.py": "562ea20a3cae64c7614c72996acb81f587a9a52e67fcee8afdaa03854db1501a",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-spec-review-00646937.json": "d020d222153c8ee2c5bc4c536a4985301f227dfa4d25f2cd4ca8e3660954c47e",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-spec-review-00646937.md": "950c3dcf5055d8a2252b0ae8adec24164e4b0c2dafd9d74d724eee678b256995",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-artifact-checks-00646937.json": "d7f766b57c87397641b7b4f4af7c5e137800239df0d094d194b07d170dca6d6b",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-oracle-probe-00646937.py": "6b6ca5b77466629f3163f0eb22171244d0d8c0953ad2ebf21ea7b3274bacec0b",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-oracle-results-00646937.json": "9b529325e394c08e21ee7f49e90934c62893262be2406186f7efb8788471fb54",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-review-00646937.json": "dcbfb9df7817f493a300ca11d2546a7ac0adbaae19759119bfad3d075af22da8",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-review-00646937.md": "91b234f0d7287188c28e863f8ec3aae41c2bf1efde3083a3a95bd758e3c34f6b",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-workspace-00646937.json": "c1ca3873f3382b5e5cb6b6673f89bf42a6c3770d1d2ee2a4339357950c7e8df8",
+      "architecture/evidence/issues/153/rf-projection-fixture/verification.md": "414ebad38f644ab47953b2ac804f3dde80a761da39ed304d19fc86db3daa1584",
+      "tests/browser_shareholder_register_filing.mjs": "f91b8c24b27fd2e9ee618987f5a5e591b08f8f8a9e13c39dbda26b9b194c7146",
+      "tests/rf1086_workspace_fixture_safety.test.mjs": "a7a837c6fc0464fdca065e09b84747eb50692c89937bef535f95bc2106208ebd",
+      "tests/shareholder_register_browser_fixture_safety.test.mjs": "cf88df95602a095734a8f13b8b385f7426f8208c52cc74c675019153fe68d33c",
+      "tests/support/rf1086-fixture-access.mjs": "b91fdf5b688b180a703642b70b91567154400cace12bebd292e6c9927a38a362",
+      "tests/support/rf1086-workspace-api.mjs": "cff638bfe761732ddb513683be516a522dbb5ca57df985acd9dba3e9e22b68a4"
+    },
+    "manifestArtifactsVerified": [
+      "architecture/evidence/issues/153/rf-projection-fixture/rf-projection-fixture-combined.log",
+      "architecture/evidence/issues/153/rf-projection-fixture/rf-projection-fixture-green.log",
+      "architecture/evidence/issues/153/rf-projection-fixture/rf-projection-fixture-red.log",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-spec-bindings-00646937.json",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-spec-probe-00646937.json",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-spec-probe-00646937.py",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-spec-review-00646937.json",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-spec-review-00646937.md",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-artifact-checks-00646937.json",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-oracle-probe-00646937.py",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-oracle-results-00646937.json",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-review-00646937.json",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-review-00646937.md",
+      "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-workspace-00646937.json",
+      "architecture/evidence/issues/153/rf-projection-fixture/verification.md",
+      "architecture/evidence/customer-ready-gates/006469373fc79f16c20dfec75bbc0d3ecd51ff6c.log"
+    ],
+    "adoptedOriginalChecks": {
+      "role-creation-spec-bindings-00646937.json": true,
+      "role-creation-spec-probe-00646937.json": true,
+      "role-creation-spec-probe-00646937.py": true,
+      "role-creation-spec-review-00646937.json": true,
+      "role-creation-spec-review-00646937.md": true,
+      "role-creation-standards-artifact-checks-00646937.json": true,
+      "role-creation-standards-oracle-probe-00646937.py": true,
+      "role-creation-standards-oracle-results-00646937.json": true,
+      "role-creation-standards-review-00646937.json": true,
+      "role-creation-standards-review-00646937.md": true,
+      "role-creation-standards-workspace-00646937.json": true
+    },
+    "browserAssertionLinesIdentical": true,
+    "existingFixtureAuthorityHelperAndFollowingDefinitionsByteIdentical": true,
+    "nonEvidencePaths": [
+      "tests/browser_shareholder_register_filing.mjs",
+      "tests/rf1086_workspace_fixture_safety.test.mjs",
+      "tests/shareholder_register_browser_fixture_safety.test.mjs",
+      "tests/support/rf1086-fixture-access.mjs",
+      "tests/support/rf1086-workspace-api.mjs"
+    ]
+  },
+  "checks": {
+    "independentFixtureTestsPassed": 30,
+    "independentFixtureTestsSkipped": 0,
+    "independentCatalogProbeCasesPassed": 12,
+    "committedCombinedTestsPassed": 52,
+    "committedCombinedOptionalDatabaseSkips": 1,
+    "actualFreshBrowserAssertionLinesUnchanged": true,
+    "existingAuthorityRestorationHelperByteIdentical": true,
+    "manifestArtifactsVerified": 16,
+    "adoptedOriginalsVerified": 11,
+    "sharedDatabaseExecuted": false
+  },
+  "commands": [
+    "env PYTHONDONTWRITEBYTECODE=1 TALLI_BACKEND_PYTHON_BIN=<existing Python3.12 runtime> <pinned Node24.20.0> --test tests/rf1086_workspace_fixture_safety.test.mjs tests/shareholder_register_browser_fixture_safety.test.mjs (cwd private exact archive)",
+    "<pinned Node24.20.0> rf-projection-spec-probe-5915af48.mjs"
+  ],
+  "runtime": {
+    "node": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+    "python": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python"
+  },
+  "privateArtifacts": {
+    "rf-projection-spec-workspace-5915af48.json": "ab427095c5d91ae5af2c78b6a48ec1e87307910d05adfa644b177d6d3939bf8f",
+    "rf-projection-spec-bindings-5915af48.json": "a1466d84e0c70a254df2559952aee5921d07ab42b9468a5cb2101cc10cd01dbd",
+    "rf-projection-spec-tests-5915af48.log": "d22bd355cad3dfec1980c8d4cd27f8173b1b7d54a655b8b4213af6d6c4d2b891",
+    "rf-projection-spec-probe-5915af48.mjs": "bbbe03970d7a8cd9c4c8d21792581a44931b67f46ade2cd2bd96a9579494413c",
+    "rf-projection-spec-probe-5915af48.json": "82d00f6a857e1459998259d396481a3491f4ca80fda617f1a21c982063087742"
+  },
+  "reportPath": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/rf-projection-spec-review-5915af48.md",
+  "reportSha256": "903c55cad1a759dc76484d06a8d1565ba2fdf8980cd5197c51e6c248e93f379d",
+  "limitations": [
+    "Model/fixture tests and local mock HTTP only; no real SQL/browser journey rerun by reviewer",
+    "Original 006 full gate failed and has zero passing-gate credit",
+    "Candidate runtime rerun, complete pair, protected integration and stage exit pending"
+  ]
+}

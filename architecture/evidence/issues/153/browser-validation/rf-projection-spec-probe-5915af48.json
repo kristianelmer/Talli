@@ -1,0 +1,79 @@
+{
+  "status": "PASS",
+  "count": 12,
+  "scope": "Pinned actual selector with synthetic catalog responses; no database",
+  "results": [
+    {
+      "label": "legacy",
+      "passed": true,
+      "accepted": true,
+      "queryCount": 2
+    },
+    {
+      "label": "expanded",
+      "passed": true,
+      "accepted": true,
+      "queryCount": 3
+    },
+    {
+      "label": "contracted",
+      "passed": true,
+      "accepted": true,
+      "queryCount": 4
+    },
+    {
+      "label": "partitioned_owned",
+      "passed": true,
+      "accepted": true,
+      "queryCount": 4
+    },
+    {
+      "label": "contradictory_contract",
+      "passed": true,
+      "accepted": false,
+      "queryCount": 3
+    },
+    {
+      "label": "partial",
+      "passed": true,
+      "accepted": false,
+      "queryCount": 3
+    },
+    {
+      "label": "missing_state",
+      "passed": true,
+      "accepted": false,
+      "queryCount": 2
+    },
+    {
+      "label": "no_phase_row",
+      "passed": true,
+      "accepted": false,
+      "queryCount": 3
+    },
+    {
+      "label": "public_view",
+      "passed": true,
+      "accepted": false,
+      "queryCount": 1
+    },
+    {
+      "label": "owned_view",
+      "passed": true,
+      "accepted": false,
+      "queryCount": 4
+    },
+    {
+      "label": "missing_owned",
+      "passed": true,
+      "accepted": false,
+      "queryCount": 4
+    },
+    {
+      "label": "remote",
+      "passed": true,
+      "accepted": false,
+      "queryCount": 0
+    }
+  ]
+}

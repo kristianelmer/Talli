@@ -1,0 +1,72 @@
+{
+  "artifactsVerified": 16,
+  "byteExactPrivateAdoptions": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/role-creation-spec-bindings-00646937.json",
+      "sha256": "9ced4ac684d2c5d26771efc9faab5fe212234705d7f873650802955560ae45a1"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/role-creation-spec-probe-00646937.json",
+      "sha256": "b2e2c761485262c8125876519c3394a8ca5cd7564b88fd90d3cb7192211905bf"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/role-creation-spec-probe-00646937.py",
+      "sha256": "562ea20a3cae64c7614c72996acb81f587a9a52e67fcee8afdaa03854db1501a"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/role-creation-spec-review-00646937.json",
+      "sha256": "d020d222153c8ee2c5bc4c536a4985301f227dfa4d25f2cd4ca8e3660954c47e"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/role-creation-spec-review-00646937.md",
+      "sha256": "950c3dcf5055d8a2252b0ae8adec24164e4b0c2dafd9d74d724eee678b256995"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/role-creation-standards-artifact-checks-00646937.json",
+      "sha256": "d7f766b57c87397641b7b4f4af7c5e137800239df0d094d194b07d170dca6d6b"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/role-creation-standards-oracle-probe-00646937.py",
+      "sha256": "6b6ca5b77466629f3163f0eb22171244d0d8c0953ad2ebf21ea7b3274bacec0b"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/role-creation-standards-oracle-results-00646937.json",
+      "sha256": "9b529325e394c08e21ee7f49e90934c62893262be2406186f7efb8788471fb54"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/role-creation-standards-review-00646937.json",
+      "sha256": "dcbfb9df7817f493a300ca11d2546a7ac0adbaae19759119bfad3d075af22da8"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/role-creation-standards-review-00646937.md",
+      "sha256": "91b234f0d7287188c28e863f8ec3aae41c2bf1efde3083a3a95bd758e3c34f6b"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/role-creation-standards-workspace-00646937.json",
+      "sha256": "c1ca3873f3382b5e5cb6b6673f89bf42a6c3770d1d2ee2a4339357950c7e8df8"
+    }
+  ],
+  "sourceBindings": {
+    "tests/browser_shareholder_register_filing.mjs": "f91b8c24b27fd2e9ee618987f5a5e591b08f8f8a9e13c39dbda26b9b194c7146",
+    "tests/rf1086_workspace_fixture_safety.test.mjs": "a7a837c6fc0464fdca065e09b84747eb50692c89937bef535f95bc2106208ebd",
+    "tests/shareholder_register_browser_fixture_safety.test.mjs": "cf88df95602a095734a8f13b8b385f7426f8208c52cc74c675019153fe68d33c",
+    "tests/support/rf1086-fixture-access.mjs": "b91fdf5b688b180a703642b70b91567154400cace12bebd292e6c9927a38a362",
+    "tests/support/rf1086-workspace-api.mjs": "cff638bfe761732ddb513683be516a522dbb5ca57df985acd9dba3e9e22b68a4"
+  },
+  "fixtureAuthorityAndRollbackBodiesUnchanged": true,
+  "freshBrowserEntireTestBodyUnchanged": true,
+  "nonEvidencePaths": [
+    "tests/browser_shareholder_register_filing.mjs",
+    "tests/rf1086_workspace_fixture_safety.test.mjs",
+    "tests/shareholder_register_browser_fixture_safety.test.mjs",
+    "tests/support/rf1086-fixture-access.mjs",
+    "tests/support/rf1086-workspace-api.mjs"
+  ],
+  "unchangedControls": {
+    "architecture/compatibility.json": "e06ddbbc974bbaa7f418eced549bef1c02e3b29d4e12a6851ed503428aa83e10",
+    "architecture/compatibility-baseline.json": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+    "architecture/evidence/issues/153/requirements.json": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+    "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+    "package.json": "47b34c14544e0ee80570af051555d1f87e8633576fcef98e74cb9208b2ec9339"
+  }
+}

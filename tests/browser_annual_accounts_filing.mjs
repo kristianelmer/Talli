@@ -52,7 +52,9 @@ test("Accounts owner imports pending evidence, records controls and reads scoped
   await importEvidence(evidence);
   assert.equal(imports().at(-1).status, 200);
   assert.ok(imports().at(-1).response.recordId);
-  await page.getByText('Venter på klassifisering', { exact: true }).waitFor();
+  const accountsEvidence = page.locator('.readinessItem').filter({ has: page.getByText('Årsregnskap', { exact: true }) });
+  await accountsEvidence.getByText('Test-evidens: Venter på klassifisering', { exact: true }).waitFor();
+  await accountsEvidence.getByText(`Siste testref: tt02:${evidence.instance.id} (Venter på klassifisering)`, { exact: true }).waitFor();
   const permission = page.locator('form').filter({ has: page.getByRole('button', { name: 'Bekreft innsendingsrett', exact: true }) });
   await permission.locator('select[name="obligation"]').selectOption('aarsregnskap');
   await permission.getByRole('button', { name: 'Bekreft innsendingsrett', exact: true }).click();
@@ -86,7 +88,10 @@ test("Accounts owner imports pending evidence, records controls and reads scoped
   });
   fixture.controls.failAccountsReads = true;
   await page.goto(fixture.siteOrigin + '/workspace');
-  await page.getByText('Årsregnskapsgrunnlaget kunne ikke leses. Prøv igjen.', { exact: true }).waitFor();
+  assert.ok(fixture.controls.accountsReadFailures.some(call => call.status === 503 && call.path.includes(fixture.companyId)));
+  await page.getByRole('complementary', { name: 'Status', exact: true }).getByText('Feil', { exact: true }).waitFor();
+  await accountsEvidence.getByText('Test-evidens: Test-evidens mangler', { exact: true }).waitFor();
+  await accountsEvidence.getByText('Siste testref: Ingen', { exact: true }).waitFor();
   fixture.controls.failAccountsReads = false;
   await fixtureTableTransaction(fixture.db, ['public.company_memberships'], async () => {
     await fixture.db.query("update public.company_memberships set role='read_only' where company_id=$1 and user_id=$2", [fixture.companyId, fixture.owner.id]);

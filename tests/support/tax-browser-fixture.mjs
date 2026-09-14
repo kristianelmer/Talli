@@ -22,7 +22,7 @@ export async function startTaxBrowserFixture({incomeYear=2026}={}) {
   const admin=createClient(supabaseUrl,serviceKey,{auth:{autoRefreshToken:false,persistSession:false}});
   const roles=[];let owner,companyId,orgNumber,backend,web,proxy;
   const filingAuthorization=new Map();
-  const controls={dropNextCapture:false,failNextPreview:false,delayPreviewAmount:null,captures:[],previews:[],filingCalls:[],dropNextTaxImport:false,failAccountsReads:false};
+  const controls={dropNextCapture:false,failNextPreview:false,delayPreviewAmount:null,captures:[],previews:[],filingCalls:[],dropNextTaxImport:false,failAccountsReads:false,accountsReadFailures:[]};
   const baseEnv=Object.fromEntries(['PATH','HOME','TMPDIR','LANG','LC_ALL'].filter(key=>process.env[key]).map(key=>[key,process.env[key]]));
   const close=async()=>{
     const errors=[];const attempt=async(fn)=>{try{await fn();}catch(e){errors.push(e);}};
@@ -67,6 +67,7 @@ export async function startTaxBrowserFixture({incomeYear=2026}={}) {
         let body='';for await(const chunk of req)body+=chunk;
         const headers=new Headers();for(const [key,value]of Object.entries(req.headers))if(!['host','connection','content-length'].includes(key)&&value!==undefined)headers.set(key,Array.isArray(value)?value.join(','):value);
         if(controls.failAccountsReads && req.method==='GET' && req.url.startsWith('/api/v1/annual-accounts/')) {
+          controls.accountsReadFailures.push({path:req.url,status:503});
           res.writeHead(503);res.end();return;
         }
         const response=await fetch(backendOrigin+req.url,{method:req.method,headers,...(body?{body}:{})});
