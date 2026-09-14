@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#152",
   "source": "https://github.com/kristianelmer/Talli/issues/152",
-  "status": "PURE_BACKEND_IMPLEMENTATION_IN_PROGRESS",
+  "status": "IMPLEMENTED_FULL_EXIT_VERIFICATION_IN_PROGRESS",
   "scope": "Company Tax stage10 slice2 and full capability exit",
   "baselineRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
   "predecessor": {
@@ -74,7 +74,7 @@
     "evidenceImportCases": 24,
     "fixture": "legacy-characterization.json",
     "sha256": "2c50fe51fb47ea12e5890198966d4b5b460565056ecc9e9d5f188fc83c1b83a7",
-    "statefulDatabaseAndOwnerWorkflow": "SQL_CAPTURE_PASS_OWNER_HTTP_AND_BROWSER_PENDING",
+    "statefulDatabaseAndOwnerWorkflow": "PASS_SQL_HTTP_AND_REAL_OWNER_TOTP_BROWSER",
     "independentReview": "PASS_BOTH_AXES_PURE_CAPTURE_B7E524AE",
     "evidenceImportSuccessCases": 4,
     "historicalEvidenceNote": "The unchanged archived TT02 fixture is rejected by the existing timestamp validator (seven fractional digits); successful synthetic fixtures are captured separately without changing official evidence or claiming new provider validation.",
@@ -93,18 +93,19 @@
     }
   },
   "implementationProgress": {
-    "publicPureContracts": "IMPLEMENTED_NOT_ROUTED",
+    "publicPureContracts": "IMPLEMENTED_AND_ROUTED",
     "comparison": "48 payload/annual-estimate/XML cases,94 evidence-import outcomes and14 validation summaries match frozen predecessor fixtures",
     "focusedTests": 210,
     "settlementRegression": "PASS",
     "authorityValidationSummary": "PASS_CAPTURED_NORWEGIAN_ICU_PARITY_MAC_AND_LINUX",
-    "apiWebSqlCutover": "PENDING",
-    "fullStageExit": "PENDING",
+    "apiWebSqlCutover": "IMPLEMENTED_LOCAL_CONTRACT_AND_ROLLBACK_REHEARSED",
+    "fullStageExit": "PENDING_TWO_NEW_COMPLETE_GATES_AND_PROTECTED_INTEGRATION",
     "linuxPureTests": 157,
     "legacyAuthorityToolTests": 138,
     "independentPureFollowupReview": "PASS_BOTH_AXES_8B3E0CB3",
     "taxCliPayloadRouting": "IMPLEMENTED_146_AUTHORITY_TESTS_PASS_BOTH_REVIEWS_AF95066F",
     "filingSchemaExpansion": "33_CHECKS_PASS_ROLLBACK_ONLY_TARGETS_INERT",
-    "filingReadContract": "SQL_PUBLIC_FASTAPI_GENERATED_CLIENT_PASS_CANONICAL_CUTOVER_PENDING"
+    "filingReadContract": "IMPLEMENTED_CANONICAL_OWNED_SOURCE",
+    "verificationReport": "verification.md"
   }
 }

@@ -12,7 +12,7 @@ Archive and readiness read the same exact year-scoped Tax source fields. Failed 
 {"apiOperations":["companyTaxGetSettlementArchiveSource"]}
 -->
 
-`loadCompanyTaxFilingWorkspace` exposes the generated read contract for six owned Tax row families. It preserves source failures; the owner UI cutover remains pending.
+`loadCompanyTaxFilingWorkspace` exposes the generated read contract for six owned Tax row families. Workspace, Annual readiness and Archive consume this owned source. A failed source remains unavailable; the UI never substitutes empty history.
 
 <!-- architecture-inventory
 {"apiOperations":["companyTaxGetFilingWorkspace"]}
@@ -28,4 +28,10 @@ Generated preparation transports provide Tax preview lookup, overrides, review c
 
 <!-- architecture-inventory
 {"apiOperations": ["companyTaxGetPreview", "companyTaxRecordOverride", "companyTaxAddReviewComment", "companyTaxAcknowledgeReviewComment", "companyTaxConfirmPermission", "companyTaxRecordTestEvidence"]}
+-->
+
+The readiness and annual-estimate transports send caller facts to the canonical Python previews; they contain no TypeScript Tax calculation. Their responses are display previews, not attestations of stored prerequisites or production readiness. The separate backend source contract carries positively covered recorded history and the disabled-production gate.
+
+<!-- architecture-inventory
+{"apiOperations":["companyTaxPreviewReadiness","companyTaxPreviewAnnualEstimate"]}
 -->

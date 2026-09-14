@@ -4,7 +4,7 @@
   "name": "company-tax-filing",
   "path": "apps/web/features/company-tax-filing",
   "owner": "web:company-tax-filing",
-  "purpose": "Present authoritative settlement previews and carry capture requests with one stable operation identity through generated transport.",
+  "purpose": "Present authoritative Tax settlement and filing facts, route owner preparation and evidence imports through generated transport, and display backend-owned readiness and annual estimates.",
   "documentation": "apps/web/features/company-tax-filing/MODULE.md",
   "publicEntryPoint": "@/features/company-tax-filing",
   "publicImportPaths": [
@@ -27,7 +27,9 @@
     "companyTaxAddReviewComment",
     "companyTaxAcknowledgeReviewComment",
     "companyTaxConfirmPermission",
-    "companyTaxRecordTestEvidence"
+    "companyTaxRecordTestEvidence",
+    "companyTaxPreviewReadiness",
+    "companyTaxPreviewAnnualEstimate"
   ],
   "dependencies": [],
   "allowedImports": [
