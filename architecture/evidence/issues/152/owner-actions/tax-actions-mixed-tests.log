@@ -1,0 +1,36 @@
+✔ addFilingOverride uses canonical ownership even when a public RF mirror exists (37.801417ms)
+✔ addFilingOverride fails closed before any legacy effect when canonical ownership is unavailable (5.382375ms)
+✔ addFilingReviewComment uses canonical ownership even when a public RF mirror exists (3.16775ms)
+✔ addFilingReviewComment fails closed before any legacy effect when canonical ownership is unavailable (2.928667ms)
+✔ acknowledgeFilingReviewComment uses canonical ownership even when a public RF mirror exists (2.30775ms)
+✔ acknowledgeFilingReviewComment fails closed before any legacy effect when canonical ownership is unavailable (1.930167ms)
+✔ addFilingOverride preserves the sibling validator, writer and subsequent audit (2.549333ms)
+✔ addFilingReviewComment preserves the sibling validator, writer and subsequent audit (4.096333ms)
+✔ acknowledgeFilingReviewComment preserves the sibling validator, writer and subsequent audit (2.079708ms)
+✔ RF simulation delegates all five retired persistence effects before its unchanged audit (1.587917ms)
+✔ confirmAuthorityPermission preserves step-up and audit for RF (1.687667ms)
+✔ confirmAuthorityPermission preserves step-up and audit for sibling (1.356ms)
+✔ recordAuthorityTestEvidence preserves step-up and audit for RF (2.262291ms)
+✔ recordAuthorityTestEvidence preserves step-up and audit for sibling (2.3185ms)
+✔ addFilingOverride uses owned Tax before exactly one existing Audit continuation (2.644584ms)
+✔ addFilingOverride stops on unavailable Tax without a sibling write or Audit continuation (2.192292ms)
+✔ addFilingReviewComment uses owned Tax before exactly one existing Audit continuation (1.922958ms)
+✔ addFilingReviewComment stops on unavailable Tax without a sibling write or Audit continuation (2.138583ms)
+✔ acknowledgeFilingReviewComment uses owned Tax before exactly one existing Audit continuation (1.599958ms)
+✔ acknowledgeFilingReviewComment stops on unavailable Tax without a sibling write or Audit continuation (1.701083ms)
+✔ confirmAuthorityPermission uses owned Tax before exactly one existing Audit continuation (1.496584ms)
+✔ confirmAuthorityPermission stops on unavailable Tax without a sibling write or Audit continuation (1.5305ms)
+✔ recordAuthorityTestEvidence uses owned Tax before exactly one existing Audit continuation (4.537583ms)
+✔ recordAuthorityTestEvidence stops on unavailable Tax without a sibling write or Audit continuation (1.69475ms)
+✔ TT02 import sends original file bytes to owned API and has no web persistence continuation (2.103667ms)
+✔ failed RF source preserves explicit unavailable state and never returns successful partial facts (32.278625ms)
+✔ composition replaces overlap mirrors by identity and preserves sibling records and ordering (13.491625ms)
+✔ one scoped source read supplies every family without substituting a current year (4.669084ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 328.87

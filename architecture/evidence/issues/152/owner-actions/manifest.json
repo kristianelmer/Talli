@@ -1,0 +1,29 @@
+{
+  "status": "OWNER_ACTIONS_ROUTED_READ_CONSUMERS_AND_CUTOVER_PENDING",
+  "baselineRevision": "8af134bf673ea0969f31856b84bde2246d615835",
+  "mixedActionAndCompositionTests": 28,
+  "transportTests": 22,
+  "architecture": "PASS",
+  "webTypecheck": "PASS",
+  "guardTests": [
+    "Original #151 amendment negative matrix passes.",
+    "New #152 guard checks exact admitted composition,20 operation-body/persistence mutants, earlier #146 stage and restored Tax facade."
+  ],
+  "compatibilityChange": "Only compat-company-tax-persistence removed. No frozen tuple, occurrence, attribution, baseline byte, stage or exit pointer changed. Five exact owner-action compositions pinned with all retained chains still compared against the original source.",
+  "frozenBaselineSha256": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+  "limits": [
+    "Action tests execute transpiled real action bodies with dependency doubles; no browser, real JWT/MFA, provider or deployed UI claim.",
+    "No SQL change, durable migration, cutover or stage-exit credit.",
+    "Generic Accounts paths and original Audit continuations remain under their existing expiry. Read-source integration remains pending."
+  ],
+  "artifacts": {
+    "tax-actions-guard-tests.log": "4a77aa0a67883b4f3289ec7f6889daf362ab69a791587fbbc8e8d7844b55a718",
+    "tax-actions-mixed-tests.log": "bf91da91ad747db45f3f63b1c3a0d1986ce00d12795341b344c064aa07cbd73d",
+    "tax-actions-web-tests.log": "c6c9deea9f0ce1ebef4a8ed56925249fdcadbd1e1b99b8225ad447ae3f3eabbd",
+    "preparation-spec-followup-8af134bf.json": "7175820fc598d9eeec849305fc94e47b11e8bcce1e58793260475a2636919922",
+    "tax-actions-original-guard-tests.log": "1487989a4a12d7e79e3c33a2a09d7b43bea75d54e56f6488a2d8a1a2a75df2b1",
+    "tax-action-composition-digests.json": "ce38aef6f5dc238b1c6cc1d63b1c9df50d42a0c1f8a2f5084ef19af6cc81bb66",
+    "preparation-spec-followup-8af134bf.md": "d05df680d6f8d7f7b619e8080d0833f72ef2ed309314e33127da6bf68a7024b7",
+    "tax-actions-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531"
+  }
+}

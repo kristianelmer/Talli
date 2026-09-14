@@ -190,3 +190,8 @@ test("Tax lookup and acknowledgement only return absence for an explicit owned n
     status = 404; code = "COMPANY_TAX_NOT_FOUND";
   }
 });
+
+test("TT02 import retains the missing-company message", async () => {
+  const { taxEvidenceImportErrorMessage } = await import("../features/company-tax-filing/index.ts");
+  assert.equal(taxEvidenceImportErrorMessage(new TalliApiError(404, { code: "COMPANY_TAX_NOT_FOUND" })), "Selskapet finnes ikke");
+});

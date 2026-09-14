@@ -475,28 +475,6 @@
       ]
     },
     {
-      "id": "compat-company-tax-persistence",
-      "kind": "legacy-facade",
-      "capability": "company_tax_filing",
-      "owner": "web:legacy-runtime",
-      "creationIssue": "#135",
-      "decisionIssue": "#185",
-      "removalIssue": "#152",
-      "baselineRevision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
-      "canonicalImplementation": "web:legacy-runtime:company_tax_filing",
-      "approvedBy": "Kristian Elmer",
-      "approvedAt": "2026-08-26T10:56:36Z",
-      "removalCondition": "Remove company-tax evidence persistence in #152.",
-      "scopes": [
-        {
-          "path": "apps/web/app/actions.ts",
-          "rule": "direct-web-business-persistence",
-          "resource": "rpc:import_company_tax_tt02_evidence",
-          "operation": "recordCompanyTaxReturnTt02Evidence"
-        }
-      ]
-    },
-    {
       "id": "compat-annual-accounts-persistence",
       "kind": "legacy-facade",
       "capability": "annual_accounts_filing",

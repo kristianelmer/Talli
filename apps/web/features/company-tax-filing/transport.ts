@@ -50,6 +50,9 @@ export function importCompanyTaxTt02Evidence(accessToken: string, input: Company
 }
 
 export function taxEvidenceImportErrorMessage(error: unknown): string {
+  if (error instanceof TalliApiError && error.status === 404 && error.problem?.code === "COMPANY_TAX_NOT_FOUND") {
+    return "Selskapet finnes ikke";
+  }
   if (error instanceof TalliApiError && error.problem?.code === "COMPANY_TAX_MFA_REQUIRED") {
     return "Ekstra identitetsbekreftelse med tofaktorautentisering kreves.";
   }

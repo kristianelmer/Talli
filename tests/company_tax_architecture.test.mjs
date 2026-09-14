@@ -36,3 +36,55 @@ test("preserved Tax retirement requires exact artifact bytes, source restoration
     assert.match(errors(),invalid);
   } finally {rmSync(directory,{recursive:true,force:true});}
 });
+
+test("#152 mixed actions retain exact Accounts/Audit chains and cannot inherit permission for another edit", async () => {
+  const { execFileSync } = await import("node:child_process");
+  const { validateCompatibilityRegistry } = await import("../scripts/check-architecture.mjs");
+  const directory = mkdtempSync(join(tmpdir(), "talli-tax-composition-"));
+  const baselinePath = join(root, "architecture/compatibility-baseline.json");
+  const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
+  const registry = JSON.parse(readFileSync(join(root, "architecture/compatibility.json"), "utf8"));
+  const source = readFileSync(join(root, "apps/web/app/actions.ts"), "utf8");
+  const originals = new Map();
+  const sourceAtRevision = (path) => {
+    if (!originals.has(path)) {
+      try { originals.set(path, execFileSync("git", ["show", `${baseline.sourceRevision}:${path}`], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })); }
+      catch { originals.set(path, undefined); }
+    }
+    return originals.get(path);
+  };
+  const catalog = JSON.parse(readFileSync(join(root, "architecture/database-catalog.json"), "utf8"));
+  const owners = new Map(catalog.tables.flatMap(row => [[`table:${row.name.replace(/^public\./u, "")}`, row.owner], ...(row.compatibilityResources ?? []).map(resource => [resource, row.owner])]));
+  const operations = ["addFilingOverride", "addFilingReviewComment", "acknowledgeFilingReviewComment", "confirmAuthorityPermission", "recordAuthorityTestEvidence"];
+  const check = (candidateSource = source, candidateRegistry = registry) => {
+    const path = join(directory, "compatibility.json");
+    writeFileSync(path, JSON.stringify(candidateRegistry));
+    return validateCompatibilityRegistry(path, {
+      baselinePath, sourceAtRevision, resourceOwner: resource => owners.get(resource),
+      currentSource: path => path === "apps/web/app/actions.ts" ? candidateSource : readFileSync(join(root, path), "utf8"),
+    }).filter(error => operations.some(operation => error.endsWith(`operation:${operation}`)));
+  };
+  try {
+    assert.deepEqual(check(), []);
+    for (const operation of operations) {
+      const start = source.indexOf(`export async function ${operation}(`);
+      const end = source.indexOf("\nexport async function ", start + 1);
+      const body = source.slice(start, end);
+      for (const mutation of [
+        body.replace('await supabase.from("audit_events").insert(', 'await supabase.from(dynamicAuditTable).insert('),
+        body.replace('await supabase.from("audit_events").insert(', 'await supabase.from("other_events").insert('),
+        body.replace('await supabase.from("audit_events").insert(', 'await supabase.from("audit_events").insert({}); await supabase.from("audit_events").insert('),
+        body.replace('  revalidatePath("/");', '  await unexpectedBusinessOperation(); revalidatePath("/");'),
+      ]) {
+        assert.notEqual(mutation, body);
+        assert.ok(check(source.slice(0, start) + mutation + source.slice(end)).some(error => error.endsWith(`operation:${operation}`)), operation);
+      }
+    }
+    const earlier = structuredClone(registry);
+    earlier.migration.currentIssue = "#146";
+    assert.ok(check(source, earlier).length >= operations.length);
+    const duplicateWriter = structuredClone(registry);
+    duplicateWriter.records.push(baseline.records.find(record => record.id === "compat-company-tax-persistence"));
+    assert.ok(check(source, duplicateWriter).length >= operations.length);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
